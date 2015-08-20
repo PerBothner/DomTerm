@@ -12,14 +12,14 @@ efficient and flexible design, and does not require Java.
 
 ## Why another terminal emulator
 
-The goal of this projects is to combine two related but
+The goal of this project is to combine two related but
 separate tools: terminal emulator, and rich-text console,
 and do it properly.
 
 There are many terminal emulators, including quite a few written in JavaScript.
-However, they generally work with a rectangulat grid of characters,
+However, they generally work with a rectangular grid of characters,
 and don't integrate rich text (images, math, variable-width text,
-variable-length lines) well.
+variable-length lines, interaction) well.
 
 There are also various tools designed for REPL-style interaction,
 chat clients, etc.  IPython is a popular example.  However, they don't

@@ -88,7 +88,7 @@ public class PtyConsole extends WebTerminal {
     void start(String[] commandArgs) {
         String[] childArgs =
             commandArgs.length == 0 ? defaultArgs : commandArgs;
-        pty = new PTY(childArgs, "jfxterm");
+        pty = new PTY(childArgs, "domterm");
         try {
             pin = new OutputStreamWriter(pty.toChildInput);
             pout = new InputStreamReader(pty.fromChildOutput, "UTF-8");

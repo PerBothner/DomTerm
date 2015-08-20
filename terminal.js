@@ -1933,10 +1933,9 @@ WebTerminal.prototype.arrowKeySequence = function(ch) {
 };
 WebTerminal.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" data:"+event.data+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
+    //this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" data:"+event.data+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
     if (this.lineEditing) {
     } else {
-        this.log("keyDownHandler: "+key);
         switch (key) {
         case 8: /* Backspace */ str = "\177";  break;
         case 9: /* Tab */    str = "\t";       break;
@@ -1996,7 +1995,7 @@ WebTerminal.prototype.keyDownHandler = function(event) {
 
 WebTerminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine));
+    //this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine));
     if (this.lineEditing) {
         if (key == 13)
             this.processEnter(event);
