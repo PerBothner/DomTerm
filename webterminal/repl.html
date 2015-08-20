@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+<meta charset="UTF-8">
+<!-- See http://architects.dzone.com/articles/sample-java-web-socket-client-->
+<title>Web-Terminal</title>
+<style type="text/css">
+  span[class="wrap"] {padding: 0px; margin: 0x; font-family: monospace; white-space: nowrap }
+  span[line="soft"] { padding: 0px; margin: 0x; font: monospace medium; }
+  body { overflow-y: scroll }
+  div[class=interaction] { font-family: monospace;  margin: 0px; padding: 0px; border: 0px; white-space: pre }
+  dummy {white-space: pre-wrap; word-break: break-all}
+  span[std="output"] { }
+  span[std="error"] { color: red; }
+  span[std="prompt"] { color: green; margin: 0px; padding: 0px; border: 1px }
+  span[std="input"] { font-weight: bolder; color: blue }
+  input[std="input"] { font-weight: bolder; }
+  input[std="input"] {
+        border: 0px;
+        margin: 0px;
+        padding: 0px;
+  right: 0px;
+  width: auto;
+  left: auto;
+}
+</style>
+<script type="text/javascript" src="../ResizeSensor.js"> </script>
+<script type="text/javascript" src="../terminal.js"> </script>
+<script type="text/javascript">
+//var webTerminal;
+function makeWebTerminal(javaWebTerminal) {         
+    var bodyNode = document.getElementsByTagName("body")[0];
+    var webTerminal = new WebTerminal(bodyNode);
+    webTerminal.processInputCharacters =
+        function(str) { webTerminal.java.processInputCharacters(str); };
+    webTerminal.log =
+        function(str) {
+            if (webTerminal && webTerminal.java) webTerminal.java.log(str); }
+    return webTerminal;
+}
+</script>
+</head>
+<body>
+</body>
+</html>

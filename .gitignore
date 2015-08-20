@@ -1,0 +1,3 @@
+*.class
+libpty.so
+*~
