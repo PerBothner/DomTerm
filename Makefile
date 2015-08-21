@@ -35,16 +35,14 @@ ptyconsole/App.class: ptyconsole/App.java ptyconsole/PtyConsole.class
 d/domterm: d/domterm.ti
 	tic -o. $<
 
-pty-app: ptyconsole/App.class libpty.so d/domterm
-
-run-pty:
+run-pty: ptyconsole/App.class libpty.so d/domterm
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` ptyconsole.App
 
-run: websocketterm/WebSocketServer.class websocketterm/ReplServer.class d/domterm
+run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class libpty.so d/domterm
 	$(JAVA) -cp .:$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
 
 libpty.so:
 	cd ptyconsole && $(MAKE) all DIST_DIR=.. JDK_HOME=$(JAVA_HOME)
 
 clean:
-	-rm -f webterminal/*.class ptyconsole/*.class libpty.so
+	-rm -rf webterminal/*.class ptyconsole/*.class websocketterm/*.class libpty.so build
