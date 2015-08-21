@@ -5,15 +5,16 @@ technlogies - i.e. JavaScript and DOM: Users can type commands which
 gets sent to an application, which evaluates the command, and displays
 the results, typically in some kind of type-script format.
 
-It is a follow-up and replacement to my earlier JWebTerminal project,
-which was mostly written in Java using Javafx WebView.  JWebTerminal
-is currently more stable with fewer bugs, but DomTerm has a more
-efficient and flexible design, and does not require Java.
+The [JWebTerminal](https://github.com/PerBothner/JWebTerminal) project
+was based on similar concepts, but was mostly written in Java using
+[Javafx WebView]https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm).
+JWebTerminal is currently more stable with fewer bugs, but DomTerm has a more
+efficient and flexible design, and will not require Java.
 
 ## Why another terminal emulator
 
 The goal of this project is to combine two related but
-separate tools: terminal emulator, and rich-text console,
+separate tools: a terminal emulator, and a rich-text console,
 and do it properly.
 
 There are many terminal emulators, including quite a few written in JavaScript.
@@ -22,8 +23,9 @@ and don't integrate rich text (images, math, variable-width text,
 variable-length lines, interaction) well.
 
 There are also various tools designed for REPL-style interaction,
-chat clients, etc.  IPython is a popular example.  However, they don't
-work as terminal emulators, or if they do, they do it by switching modes.
+chat clients, etc. [IPython](http://ipython.org/) is a popular example.
+However, they don't work as terminal emulators, or if they do, they
+do it by switching modes.
 
 For rich text applications it seems obvious to use web technlogies:
 DOM and JavaScript.
@@ -66,26 +68,26 @@ and then do:
     make run-pty
 
 The code to set up the handshake between JavaScript and Java is not
-robust and sometimess fail.
+robust and sometimes fails.
 
 There is no "chrome" (menus, buttons, etc), so far.
 
 ### Future: Standalone terminal emulator
 
 Rather than using JavaFX WebView, some other toolkits to consider include:
-- Chromium Embedded Framework: https://bitbucket.org/chromiumembedded/ce
+- [Chromium Embedded Framework](https://bitbucket.org/chromiumembedded/ce)
 - Mozilla Servo: http://lwn.net/Articles/647921/
-- Atom/Electon http://atom.io
+- [Atom/Electon](http://atom.io)
 - QtWebEngine
-- WebKitGtk+
+- [WebKitGtk+](http://webkitgtk.org/)
 
 ### Using WebSockets between a server and a browser
 
 This allows you to use "any" modern browser as the client.
 This is nice for development, as you can use the browser's
 JavaScript console and debugger, DOM inspector, and so on.
-Browser talks to a special server using WebSockets; the
-server uses pty.
+The browser talks to a special server using WebSockets; the
+server uses PTYs.
 
 The server uses various third-party Java libraries, and is
 *not* covered by the DomTerm license.
