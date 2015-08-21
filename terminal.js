@@ -124,6 +124,9 @@ function WebTerminal(topNode) {
     this.lineEnds = new Array();
 
     // Index of the 'home' position in the lineStarts table.
+    // Cursor motion is relative to the start of this line
+    // (normally a div or pre).
+    // "Erase screen" only erases starting at this line.
     this.homeLine = 0;
 
     // A stack of currently active "style" strings.
@@ -263,7 +266,7 @@ WebTerminal.prototype.restoreCursor = function() {
  * Add spaces as needed.
  * @param goalLine number of lines (non-negative) to move down from startNod
 e
-* @param goalColumn number of columns to move right from the start of teh g
+* @param goalColumn number of columns to move right from the start of the g
 oalLine
 */
 WebTerminal.prototype.moveTo = function(goalLine, goalColumn) {
@@ -282,6 +285,14 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
     var column = this.getCursorColumn();
     console.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+
                 " goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
+    // This moves current (and parent) forwards in the DOM tree
+    // until we reach the desired (goalLine,goalColumn).
+    // The invariant is if current is non-null, then the position is
+    // just before current (and parent == current.parentNode);
+    // otherwise, the position is after the last child of parent.
+
+    // First we use the current position or the lineStarts table
+    // to quickly go to the desired line.
     var current, parent;
     if (goalLine == line && goalColumn >= column) {
         current = this.outputBefore;
@@ -319,7 +330,7 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
         line = goalLine;
         column = 0;
     }
-    var lineEnd = this.lineEnds[homeLine+line];
+    var lineEnd = this.lineEnds[this.homeLine+line];
 
     // Temporarily remove inputLine from tree.
     if (this.inputLine != null) {
@@ -327,10 +338,6 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
         if (inputParent != null) {
             if (this.outputBefore==this.inputLine)
                 this.outputBefore = this.outputBefore.nextSibling;
-            if (!current)
-                console.log("null current before  removing inputLine 1");
-            else if (! current.nextSibling && current==this.inputLine)
-                console.log("null current before  removing inputLine 2");
             if (current==this.inputLine)
                 current = current.nextSibling;
             inputParent.removeChild(this.inputLine);
@@ -338,31 +345,24 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
             // These are merged below.
         }
     }
+    // At this point we're at the correct line; scan to the desired column.
     mainLoop:
-    while (line < goalLine || column < goalColumn) {
+    while (column < goalColumn) {
         console.log("-move line:%s col:%s cur:%s", line, column, current);
         if (parent==null||(current!=null&&parent!=current.parentNode))
             error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
-        if (current == lineEnd || this.isBreakNode(current)) {
-            if (line == goalLine) {
-                if (addSpaceAsNeeded) {
-                    if (!current) {
-                        console.log("null current goal:l:%s c:%s", goalLine, goalColumn);
-                    }
-                    var str = WebTerminal.makeSpaces(goalColumn-column);
-                    if (current && current.previousSibling instanceof Text)
-                         current.previousSibling.appendData(str);
-                    else
-                        parent.insertBefore(document.createTextNode(str), current);
-                    column = goalColumn;
-                }
+        if (current == lineEnd) {
+            if (addSpaceAsNeeded) {
+                var str = WebTerminal.makeSpaces(goalColumn-column);
+                if (current && current.previousSibling instanceof Text)
+                    current.previousSibling.appendData(str);
                 else
-                    goalColumn = column;
-                break;
-            } else {
-                line++;
-                column = 0;
+                    parent.insertBefore(document.createTextNode(str), current);
+                column = goalColumn;
             }
+            else
+                goalColumn = column;
+            break;
         }
         else if (current instanceof Text) {
             var tnode = current;
@@ -450,29 +450,8 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
         ch = current;
         for (;;) {
             console.log(" move 2 parent:%s home:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.cursorHome, this.topNode, line, goalLine, this.currentCursorLine, current);
-            if (/*parent == this.cursorHome ||*/ parent == this.topNode) {
+            if (parent == this.initial || parent == this.topNode) {
                 current = null;
-                if (true) { // FIXME - remove
-                    while (line++ < goalLine) {
-                        var el = document.createLineNode("hard");
-                        el.appendChild(document.createTextNode("\n"));
-                        parent.appendChild(el);
-                        console.log("created space cl-l:"+el.clientLeft+" off-l:"+el.offsetLeft+" w:"+el.offsetWidth);
-                        this.lineStarts[line] = el;
-                    }
-                } else {
-                    while (line++ < goalLine) {
-                        var newLine = document.createElement("div");
-                        newLine.setAttribute("class", "interaction");
-                        parent.appendChild(newLine);
-                        var text = line < goalLine || goalColumn == 0 ? "\u200B"
-                            : WebTerminal.makeSpaces(goalColumn);
-                        newLine.appendChild(document.createTextNode(text));
-                        current = newLine;
-                        column = goalColumn;
-                    }
-                    parent = current;
-                }
                 var fill = goalColumn - column;
                 //console.log(" move 2 fill:%s pareent:%s", fill, parent);
                 if (fill > 0) {
@@ -491,7 +470,6 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
                 break;
             }
         }
-        continue;
     }
     //console.log("after mainLoop parent:%s", parent);
     if (parent == this.topNode && this.isBlockNode(current)) {
@@ -863,6 +841,8 @@ WebTerminal.prototype.isBlockNode = function(node) {
     return "P" == tag || "DIV" == tag || "PRE" == tag;
 };
 
+// Obsolete?  We should never have a <br> node in the DOM.
+// (If we allow it, we should wrap it in a <span line="br">.)
 WebTerminal.prototype.isBreakNode = function( node) {
     if (! (node instanceof Element)) return false;
     var tag = node.tagName;
@@ -1340,6 +1320,9 @@ WebTerminal.prototype.handleControlSequence = function(last) {
         break;
     case 68 /*'D'*/:
         this.cursorLeft(this.getParameter(0, 1));
+        break;
+    case 71 /*'G*/:
+        this.moveTo(this.getCursorLine(), this.getParameter(0, 1)-1);
         break;
     case 72 /*'H*/:
         this.moveTo(this.getParameter(0, 1)-1, this.getParameter(1, 1)-1);
@@ -1921,7 +1904,7 @@ WebTerminal.prototype.wtest = function (x) {
 };
 
 WebTerminal.prototype.processEnter = function(event) {
-    this.processInputCharacters(handleEnter(event)+"\r\n");
+    this.processInputCharacters(this.handleEnter(event)+"\r\n");
 };
 
 WebTerminal.prototype.isApplicationMode = function() {
@@ -1995,10 +1978,11 @@ WebTerminal.prototype.keyDownHandler = function(event) {
 
 WebTerminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    //this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine));
+    //this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" inputLine:"+this.inputLine);
     if (this.lineEditing) {
-        if (key == 13)
+        if (key == 13) {
             this.processEnter(event);
+        }
     } else {
         if (event.which !== 0
             && key != 8
