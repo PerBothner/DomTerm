@@ -1,8 +1,19 @@
+# Ideas and projects for DomTerm
+
 ## Basic functionality
 
 #### Make robust enough for actual use
 
+Other terminal emulators:
+
+[term.js](https://github.com/chjj/term.js/)
+has quite complete terminal emulation and even better documentation.
+Howewver, it's based on a simple 2-d array (char value and attributes
+encoded as an integer).
+
 #### Use vttest for testing
+
+http://invisible-island.net/vttest/
 
 #### Detect re-sizing, and send re-size report to client.
 
@@ -31,14 +42,14 @@ Using JavaFx WebView is probably the wrong toolkit for this.
 The idea is the line-editing mode would provide the
 functionality of readline or similar programs.
 
-#### Automatic switching to from line-editing mode
+#### Automatic switching to/from line-editing mode
 
 In addition to "char mode" and "line mode" (like the
 Emacs term mode) there should be an "auto mode" which watches
 the states of the inferior pty to automatically switch
 between them.  This would be like the existing rlfe program.
 
-Ideally you'd want to integrat with the kernel
+Ideally you'd want to integrate with the kernel
 terminal sub-system, to suppress echoing.   In lieu of
 that, line editing mode should delete the input line
 from the DOM before sending them to the inferior.
@@ -79,13 +90,13 @@ Emacs term mode does this.
 
 Allow processe to send HTML and graphics to DomTerm.
 
-### Allow printing images
+#### Allow printing images
 
 A REPL might want to "print" an image which we want to display.
 This could use a blob: or data: URL (neither of which are universally
 supported) or create a URL to a temporary file.
 
-### Event forwarding to inferior
+#### Event forwarding to inferior
 
 A process may "print"/paint graphics with event handlers.
 For example a button.  On clicking the button, the click

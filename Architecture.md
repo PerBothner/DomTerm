@@ -3,6 +3,7 @@
 ## The WebTeminal object
 
 A WebTerminal class (should be renamed DomTerm?) encapsulates the
+the statge of a terminal emulator / console.
 
 ### Line structure
 
@@ -20,28 +21,57 @@ lineStarts[i] is the start of a <div> or other block element.
 
 ## DOM structure
 
-<div class="interaction">
+`<div class="interaction">`
 A "console object" is representated as a <div> of class "interaction".
 The only required structure is that all newlines are
 wrapped in a <span> that has a line attribute.
 Logical structure may use span or div nodes. (TBD).
 
-<span id="input1" std="input" contenteditable="true">
+`<span id="input1" std="input" contenteditable="true">` -
 The location of the input cursor.
 In char-mode the contents are empty.  In line-mode contains
 the current enput line.
 Referenced by the inputLine field of the DomTerm object.
 
-<span line="hard">
+`<span line="hard">` =
 A "hard" newline.  Has a "\n" text node as its sole child.
 
-<span line="soft">
+`<span line="soft">` -
 A "soft" newline, as breaked by line-breaking.
 It's sole child is a text node consisting of wrapString
 followed by a newline.  The newline might be followed by indentation.
 
-<span line="end">
+`<span line="end">` -
 Marks the end of the final line.  Has no contents.
+
+## Line-breaking / pretty-printing
+
+For a terminal emulator we need to preserve (not collapse) whitespace,
+and (usually) we want to line-break in the middle of a word.
+
+These CSS properties come close:
+   white-space: pre-wrap; word-break: break-all
+This is simple and fast.  However:
+- It doesn't help in inserting a visual indicator, line Emacs's arrow,
+  to indicate when a line was broken.
+- It doesn't help managing the line table.
+- It doesn't help with pretty-printing (for example grouping).
+
+Hence we need to do the job ourselves.
+
+Define a DOM API for (LISP-style) pretty-printing.
+Line-breaking is re-calculated on page width change.
+
+`<span line="fill">`
+`<span line="linear">` -
+Line break types, as in Common Lisp.
+
+`<span class="group" ident=N">`
+
+Derek Oppen algorithm
+
+Stable, Flexible, Peephole Pretty-Printing
+http://macbeth.cs.ucdavis.edu/ph-final.pdf
 
 ## Future: Saved notebooks
 
