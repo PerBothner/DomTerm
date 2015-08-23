@@ -1,101 +1,137 @@
 # tc:XX means the termcap equivalency is XX
 domterm|DomTerm terminal emulator,
-	cols#80,
-	lines#24,
-# maximum number of color-pairs on the screen [tc: pa]
-	pairs#32767,
-# tabs initially every # spaces [tc: it]
-        it#8,
-# no pad char [tc: NP]
-        npc,
-# screen erased with background color [tc: ut]
-        bce,
-#  terminal can redefine existing colors [tc: cc]
-#       ccc,
 # automatic margins [tc:am]
-#	am,
+	am,
+# printer will not echo on screen [tc:5i]
+	mc5i,
+# safe to move while in insert mode [tc: mi]
+#	mir,
+# safe to move while in standout mode [tc: ms]
+#	msgr,
+# non-destructive space (move right one space [tc: nd]
+	cuf1=\E[C,
+# move #1 characters to the right [tc: RI]
+	cuf=\E[%p1%dC,
+# move to row #1 columns #2 [tc: cm]
+	cup=\E[%i%p1%d;%p2%dH,
+# up #1 lines (P*) [tc: UP]
+	cuu=\E[%p1%dA,
+# up one line [tc: up]
+	cuu1=\E[A,
+# delete character (P*) [tc: dc]
+	dch1=\E[P,
+# delete #1 characters (P*) [tc: DC]
+	dch=\E[%p1%dP,
+# insert character [tc: ic]
+	ich1=\E[@,
+# insert #1 characters (P*) [tc: IC]
+	ich=\E[%p1%d@,
+# number of columns in a line [tc: co]
+	cols#80,
+# number of lines on screen or page [tc: li]
+	lines#24,
+# tabs initially every # spaces [tc: it]
+	it#8,
+# clear to beginning of line [tc: cb]
+	el1=\E[1K,
+# home cursor (if no cup) [tc: ho]
+	home=\E[H,
+# horizontal position #1, absolute (P) [tc: ch]
+	hpa=\E[%i%p1%dG,
+# from TERM=ansi
+        colors#8, ncv#3, pairs#64,
+# from TERM=ansi
+#        acsc=+\020\,\021-\030.^Y0\333`\004a\261f\370g\361h\260j\331k\277l\332m\300n\305o~p\304q\304r\304s_t\303u\264v\301w\302x\263y\363z\362{\343|\330}\234~\376,
+        bel=^G, blink=\E[5m, bold=\E[1m, cbt=\E[Z, clear=\E[H\E[J,
+        cr=^M, cub=\E[%p1%dD, cub1=\E[D, cud=\E[%p1%dB, cud1=\E[B,
+        dl=\E[%p1%dM, dl1=\E[M, ech=\E[%p1%dX, ed=\E[J, el=\E[K,
+        ht=\E[I, hts=\EH,
+        il=\E[%p1%dL, il1=\E[L, ind=^J,
+        indn=\E[%p1%dS, invis=\E[8m, kbs=^H, kcbt=\E[Z, kcub1=\E[D,
+        kcud1=\E[B, kcuf1=\E[C, kcuu1=\E[A, khome=\E[H, kich1=\E[L,
+        mc4=\E[4i, mc5=\E[5i, nel=\r\E[S, op=\E[39;49m,
+        rep=%p1%c\E[%p2%{1}%-%db, rev=\E[7m, rin=\E[%p1%dT,
+        rmacs=\E[10m, rmpch=\E[10m, rmso=\E[m, rmul=\E[m,
+        s0ds=\E(B, s1ds=\E)B, s2ds=\E*B, s3ds=\E+B,
+        setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
+        sgr=\E[0;10%?%p1%t;7%;%?%p2%t;4%;%?%p3%t;7%;%?%p4%t;5%;%?%p6%t;1%;%?%p7%t;8%;%?%p9%t;11%;m,
+        sgr0=\E[0;10m, smacs=\E[11m, smpch=\E[11m, smso=\E[7m,
+        smul=\E[4m, tbc=\E[3g, u6=\E[%i%d;%dR, u7=\E[6n,
+        u8=\E[?%[;0123456789]c, u9=\E[c, vpa=\E[%i%p1%dd,
+# no pad char [tc: NP]
+#	npc,
+# screen erased with background color [tc: ut]
+#	bce,
+# terminal can redefine existing colors [tc: cc]
+#       ccc,
 # initialize color #1 to (#2,#3,#4) [tc: Ic]
 #	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
-# safe to move while in insert mode [tc: mi]
-	mir,
-# safe to move while in standout mode [tc: ms]
-	msgr,
 # newline ignores after 80 cols [Concept] [tc: xn]
 #	xenl,
 #	bel=^G,
 # turn on bold (extra bright) mode [tc: md]
-	bold=\E[1m,
+#	bold=\E[1m,
 # clear screen and home cursor [tc: cl]
-	clear=\E[H\E[J,
-	cr=\r,
+#	clear=\E[H\E[J,
+#	cr=\r,
 # change scroll region to line #1 to line #2 [tc: cs]
 #	csr=\E[%i%p1%d;%p2%dr,
-	cub1=\b,
+#	cub1=\b,
 # move #1 characters to the left [tc: LE]
-	cub=\E[%p1%dD,
-	cud1=\n,
-	cud=\E[%p1%dB,
-	cuf1=\E[C,
-# move #1 characters to the right [tc: RI]
-	cuf=\E[%p1%dC,
-	cup=\E[%i%p1%d;%p2%dH,
-# up one line [tc: up]
-	cuu1=\E[A,
-	cuu=\E[%p1%dA,
-#	dch1=\E[P,
-#	dch=\E[%p1%dP,
+#	cub=\E[%p1%dD,
+#	cud1=\n,
+#	cud=\E[%p1%dB,
+# delete line (P*) [tc: dl]
 #	dl1=\E[M,
 #	dl=\E[%p1%dM,
-	ed=\E[J,
-# clear to beginning of line [tc: cb]
-	el1=\E[1K,
+#	ed=\E[J,
 # clear to end of line [tc: ce]
-	el=\E[K,
-	home=\E[H,
-	ht=\t,
-# insert character [tc: ic]
-#	ich1=\E[@,
-#	ich=\E[%p1%d@,
+#	el=\E[K,
+# tab to next 8-space hardware tab stop [tc: ta]
+#	ht=\t,
 #	il1=\E[L,
 #	il=\E[%p1%dL,
-	ind=\n,
-        indn=\E[%p1%dS,
+#	ind=\n,
+#	indn=\E[%p1%dS,
 #	invis=\E[8m,
 #	kbs=^?,
 # left-arrow key [tc: kl]
-	kcub1=\EOD,
-	kcud1=\EOB,
-	kcuf1=\EOC,
-	kcuu1=\EOA,
-	kdch1=\E[3~,
-	kend=\E[4~,
-	khome=\E[1~,
+#	kcub1=\EOD,
+#	kcud1=\EOB,
+#	kcuf1=\EOC,
+#	kcuu1=\EOA,
+#	kdch1=\E[3~,
+#	kend=\E[4~,
+#	khome=\E[1~,
 # delete-character key [tc: kD]
         kdch1=\E[3~,
 # insert-character key [tc: kI]
-	kich1=\E[2~,
-	knp=\E[6~,
-	kpp=\E[5~,
+#	kich1=\E[2~,
+#	knp=\E[6~,
+#	kpp=\E[5~,
 #	op=\E[39;49m,
 # restore cursor (to position of last save_cursor) [tc: rc]
 #	rc=\E8,
 # turn on reverse video mode [tc: mr]
-	rev=\E[7m,
+#	rev=\E[7m,
 #	ri=\EM,
 # parm_rindex )scroll back #1 lines) [tc: SR]
 #	rin=\E[%p1%dT,
 # exit insert mode [tc: ei]
 #	rmir=\E[4l,
 # exit standout mode [tc: se]
-	rmso=\E[27m,
+#	rmso=\E[27m,
 # exit underline mode [tc: ue]
-	rmul=\E[24m,
-	rs1=\Ec,
-	sc=\E7,
+#	rmul=\E[24m,
+#	rs1=\Ec,
+#	sc=\E7,
+# COLORS
+# TERM=ansi does this:
+#	colors#8, pairs#64, setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
+# maximum number of color-pairs on the screen [tc: pa]
+#	pairs#32767,
 # Max number of colors on screen [tc: Co]
 #	colors#256,
-# TERM=ansi does this:
-	colors#8, setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
 # set background color to #1, using ANSI escape [tc: AB]
 #	setab=\E[%p1%{40}%+%dm,
 #	setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m,
@@ -103,16 +139,16 @@ domterm|DomTerm terminal emulator,
 #	setaf=\E[%p1%{30}%+%dm,
 #        setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
 # exit attribute mode (turn off all attributes] [tc: me]
-	sgr0=\E[m,
+#	sgr0=\E[m,
 # enter insert mode [tc: im]
-	smir=\E[4h,
+#	smir=\E[4h,
 # enter underline mode [tc: us]
-	smul=\E[4m,
+#	smul=\E[4m,
 # enter standout mode [tc: so]
- 	smso=\E[7m,
+#	smso=\E[7m,
 # 	u6=\E[%i%d;%dR,
 # 	u7=\E[6n,
 #	smcup=\E[?47h,
 #	rmcup=\E[?47l,
-#        vpa=\E[%i%p1%dd,
+#       vpa=\E[%i%p1%dd,
 #       rs2 may need to be added

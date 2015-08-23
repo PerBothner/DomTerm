@@ -7,7 +7,7 @@ the results, typically in some kind of type-script format.
 
 The [JWebTerminal](https://github.com/PerBothner/JWebTerminal) project
 was based on similar concepts, but was mostly written in Java using
-[Javafx WebView]https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm).
+[Javafx WebView](https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm).
 JWebTerminal is currently more stable with fewer bugs, but DomTerm has a more
 efficient and flexible design, and will not require Java.
 
@@ -75,9 +75,10 @@ There is no "chrome" (menus, buttons, etc), so far.
 ### Future: Standalone terminal emulator
 
 Rather than using JavaFX WebView, some other toolkits to consider include:
-- [Chromium Embedded Framework](https://bitbucket.org/chromiumembedded/ce)
+- [Chromium Embedded Framework](https://bitbucket.org/chromiumembedded/cef)
 - Mozilla Servo: http://lwn.net/Articles/647921/
-- [Atom/Electon](http://atom.io)
+- [Atom/Electon](http://atom.io).
+  A possible start is [term2](https://atom.io/packages/term2).
 - QtWebEngine
 - [WebKitGtk+](http://webkitgtk.org/)
 
@@ -86,11 +87,13 @@ Rather than using JavaFX WebView, some other toolkits to consider include:
 This allows you to use "any" modern browser as the client.
 This is nice for development, as you can use the browser's
 JavaScript console and debugger, DOM inspector, and so on.
-The browser talks to a special server using WebSockets; the
-server uses PTYs.
+The browser talks to server using WebSockets.  The included
+server is a special-purpose server, and it uses PTYs.
 
-The server uses various third-party Java libraries, and is
-*not* covered by the DomTerm license.
+The server uses third-party Java libraries from the
+[Tyrus project](https://tyrus.java.net/).  These are *not* covered
+by the DomTerm license.  (It might make sense to use node.js
+or [Vert.x](http://vertx.io/) instead.)
 
 To start the server do:
 

@@ -49,6 +49,19 @@ function WebTerminal(topNode) {
 
     this.lineEditing = false;
 
+    // True if a client performs echo on lines sent to it.
+    // In that case, when lineEditing is true, when a completed
+    // input line is sent to the client, it gets echoed by the client.
+    // Hence we get two copies of each input line.
+    // If this setting is true, we clear the contents of the input line
+    // before the client each.
+    // If lineEditing is false, the client is always responsible
+    // for each, so this setting is ignored in that case.
+    this.clientDoesEcho = true;
+
+    // Used to implement clientDoesEscho handling.
+    this._deferredForDeletion = null;
+
     // Cursor motion is relative to the start of this element
     // (normally a div or pre).
     // I.e. the cursor home location is the start of this element.
@@ -98,7 +111,8 @@ function WebTerminal(topNode) {
     this.controlSequenceState = WebTerminal.INITIAL_STATE;
 
     // The output position (cursor) - insert output before this node.
-    // Usually equal to inputLine except for temporary updates.
+    // Usually equal to inputLine except for temporary updates,
+    // or when lineEditing is true.
     // If null, this means append output to the end of the output container's
     // children. (FIXME: The null case is not fully debugged.)
     this.outputBefore = null;
@@ -314,7 +328,6 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
             last.parentNode.appendChild(next);
             this.lineStarts[homeLine+lineCount] = last;
             this.lineEnds[homeLine+lineCount] = next;
-            console.log("- moveTo last:"+last+" kind:"+kind+" next:"+next);
             lineCount++;
         }
         var lineStart = this.lineStarts[absLine];
@@ -330,144 +343,146 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
         line = goalLine;
         column = 0;
     }
-    var lineEnd = this.lineEnds[this.homeLine+line];
+    if (column != goalColumn) {
+        var lineEnd = this.lineEnds[this.homeLine+line];
 
-    // Temporarily remove inputLine from tree.
-    if (this.inputLine != null) {
-        var inputParent = this.inputLine.parentNode;
-        if (inputParent != null) {
-            if (this.outputBefore==this.inputLine)
-                this.outputBefore = this.outputBefore.nextSibling;
-            if (current==this.inputLine)
-                current = current.nextSibling;
-            inputParent.removeChild(this.inputLine);
-            // Removing input line may leave 2 Text nodes adjacent.
-            // These are merged below.
+        // Temporarily remove inputLine from tree.
+        if (this.inputLine != null) {
+            var inputParent = this.inputLine.parentNode;
+            if (inputParent != null) {
+                if (this.outputBefore==this.inputLine)
+                    this.outputBefore = this.outputBefore.nextSibling;
+                if (current==this.inputLine)
+                    current = current.nextSibling;
+                inputParent.removeChild(this.inputLine);
+                // Removing input line may leave 2 Text nodes adjacent.
+                // These are merged below.
+            }
         }
-    }
-    // At this point we're at the correct line; scan to the desired column.
-    mainLoop:
-    while (column < goalColumn) {
-        console.log("-move line:%s col:%s cur:%s", line, column, current);
-        if (parent==null||(current!=null&&parent!=current.parentNode))
-            error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
-        if (current == lineEnd) {
-            if (addSpaceAsNeeded) {
-                var str = WebTerminal.makeSpaces(goalColumn-column);
-                if (current && current.previousSibling instanceof Text)
-                    current.previousSibling.appendData(str);
+        // At this point we're at the correct line; scan to the desired column.
+        mainLoop:
+        while (column < goalColumn) {
+            console.log("-move line:%s col:%s cur:%s", line, column, current);
+            if (parent==null||(current!=null&&parent!=current.parentNode))
+                error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
+            if (current == lineEnd) {
+                if (addSpaceAsNeeded) {
+                    var str = WebTerminal.makeSpaces(goalColumn-column);
+                    if (current && current.previousSibling instanceof Text)
+                        current.previousSibling.appendData(str);
+                    else
+                        parent.insertBefore(document.createTextNode(str), current);
+                    column = goalColumn;
+                }
                 else
-                    parent.insertBefore(document.createTextNode(str), current);
-                column = goalColumn;
+                    goalColumn = column;
+                break;
             }
-            else
-                goalColumn = column;
-            break;
-        }
-        else if (current instanceof Text) {
-            var tnode = current;
-            var tstart = 0;
-            var before;
-            while ((before = tnode.previousSibling) instanceof Text) {
-                // merge nodes
-                // (adjacent text nodes may happen after removing inputLine)
-                var beforeData = before.data;
-                tstart += beforeData.length;
-                tnode.insertData(0, beforeData);
-                parent.removeChild(before);
-            }
-            var text = tnode.textContent;
-            var tlen = text.length;
-            var i = tstart;
-            for (; i < tlen;  i++) {
-                if (line >= goalLine && column >= goalColumn) {
-                    tnode.splitText(i);
-                    break;
+            else if (current instanceof Text) {
+                var tnode = current;
+                var tstart = 0;
+                var before;
+                while ((before = tnode.previousSibling) instanceof Text) {
+                    // merge nodes
+                    // (adjacent text nodes may happen after removing inputLine)
+                    var beforeData = before.data;
+                    tstart += beforeData.length;
+                    tnode.insertData(0, beforeData);
+                    parent.removeChild(before);
                 }
-                var ch = text.charCodeAt(i);
-                var nextColumn = this.updateColumn(ch, column);
-                if (nextColumn > this.columnWidth) {
-                    line++;
-                    column = this.updateColumn(ch, 0);
-                }
-                else if (nextColumn == -1) {
-                    //console.log("nextCol=-1 ch "+
-                    if (line == goalLine) {
-                        var nspaces = goalColumn-column;
-                        if (addSpaceAsNeeded) {
-                            var spaces = WebTerminal.makeSpaces(nspaces);
-                            tnode.insertData(i, spaces);
-                            tlen += nspaces;
-                            i += nspaces;
-                        }
-                        column = goalColumn;
-                        i--;
-                    } else {
+                var text = tnode.textContent;
+                var tlen = text.length;
+                var i = tstart;
+                for (; i < tlen;  i++) {
+                    if (line >= goalLine && column >= goalColumn) {
+                        tnode.splitText(i);
+                        break;
+                    }
+                    var ch = text.charCodeAt(i);
+                    var nextColumn = this.updateColumn(ch, column);
+                    if (nextColumn > this.columnWidth) {
                         line++;
-                        column = 0;
-                        if (ch == 13 /*'\r'*/
-                            && i+1<tlen
-                            && text.charCodeAt(i+1) == 10 /*'\n'*/)
-                            i++;
+                        column = this.updateColumn(ch, 0);
+                    }
+                    else if (nextColumn == -1) {
+                        //console.log("nextCol=-1 ch "+
+                        if (line == goalLine) {
+                            var nspaces = goalColumn-column;
+                            if (addSpaceAsNeeded) {
+                                var spaces = WebTerminal.makeSpaces(nspaces);
+                                tnode.insertData(i, spaces);
+                                tlen += nspaces;
+                                i += nspaces;
+                            }
+                            column = goalColumn;
+                            i--;
+                        } else {
+                            line++;
+                            column = 0;
+                            if (ch == 13 /*'\r'*/
+                                && i+1<tlen
+                                && text.charCodeAt(i+1) == 10 /*'\n'*/)
+                                i++;
+                        }
+                    }
+                    else
+                        column = nextColumn;
+                }
+            }
+
+            //if (parent==null||(current!=null&&parent!=current.parentNode))            error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
+            // If there is a child, go the the first child next.
+            var ch;
+            if (current != null) {
+                if (current instanceof Element
+                    && this.isObjectElement(current))
+                    column += 1;
+                else {
+                    ch = current.firstChild;
+                    if (ch != null) {
+                        parent = current;
+                        if (! ch)
+                            console.log("setting current to null 1");
+                        current = ch;
+                        continue;
                     }
                 }
-                else
-                    column = nextColumn;
-            }
-        }
-
-        //if (parent==null||(current!=null&&parent!=current.parentNode))            error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
-        // If there is a child, go the the first child next.
-        var ch;
-        if (current != null) {
-            if (current instanceof Element
-                && this.isObjectElement(current))
-                column += 1;
-            else {
-                ch = current.firstChild;
+                // Otherwise, go to the next sibling.
+                ch = current.nextSibling;
                 if (ch != null) {
-                    parent = current;
-                    if (! ch)
-                        console.log("setting current to null 1");
-                    current = ch;
-                    continue;
-                    }
-            }
-            // Otherwise, go to the next sibling.
-            ch = current.nextSibling;
-            if (ch != null) {
                     if (! ch)
                         console.log("setting current to null 2");
-                current = ch;
-                //if (parent==null||(current!=null&&parent!=current.parentNode))                    throw new Error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
-                continue;
-            }
-            // Otherwise go to the parent's sibling - but this gets complicated.
-            if (this.isBlockNode(current))
-                line++;
-        }
-
-        ch = current;
-        for (;;) {
-            console.log(" move 2 parent:%s home:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.cursorHome, this.topNode, line, goalLine, this.currentCursorLine, current);
-            if (parent == this.initial || parent == this.topNode) {
-                current = null;
-                var fill = goalColumn - column;
-                //console.log(" move 2 fill:%s pareent:%s", fill, parent);
-                if (fill > 0) {
-                    this.appendText(parent, WebTerminal.makeSpaces(fill))
+                    current = ch;
+                    //if (parent==null||(current!=null&&parent!=current.parentNode))                    throw new Error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
+                    continue;
                 }
-                line = goalLine;
-                column = goalColumn;
-                break mainLoop;
+                // Otherwise go to the parent's sibling - but this gets complicated.
+                if (this.isBlockNode(current))
+                    line++;
             }
-            var sib = parent.nextSibling;
-            ch = parent; // ??
-            parent = parent.parentNode;
-            if (sib != null) {
-                current = sib;
-                //parent = ch;
-                break;
+
+            ch = current;
+            for (;;) {
+                console.log(" move 2 parent:%s home:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.cursorHome, this.topNode, line, goalLine, this.currentCursorLine, current);
+                if (parent == this.initial || parent == this.topNode) {
+                    current = null;
+                    var fill = goalColumn - column;
+                    //console.log(" move 2 fill:%s pareent:%s", fill, parent);
+                    if (fill > 0) {
+                        this.appendText(parent, WebTerminal.makeSpaces(fill))
+                    }
+                    line = goalLine;
+                    column = goalColumn;
+                    break mainLoop;
+                }
+                var sib = parent.nextSibling;
+                ch = parent; // ??
+                parent = parent.parentNode;
+                if (sib != null) {
+                    current = sib;
+                    //parent = ch;
+                    break;
+                }
             }
         }
     }
@@ -479,13 +494,12 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
     if (this.inputLine != null) {
         parent.insertBefore(this.inputLine, current);
         this.inputLine.focus();
+        current = this.inputLine;
     }
     this.outputContainer = parent;
-    this.outputBefore = this.inputLine;
-    //if (startNode == this.cursorHome) {
+    this.outputBefore = current;
     this.currentCursorLine = line;
     this.currentCursorColumn = column;
-    //}  else this.resetCursorCache(); // ??? can we do better?
 };
 
 /** Move cursor to beginning of line, relative.
@@ -749,7 +763,7 @@ WebTerminal.prototype.insertLines = function(count) {
 
  WebTerminal.prototype.deleteLines = function(count) {
      this.deleteLinesIgnoreScroll(count);
-     var line = getCursorLine();
+     var line = this.getCursorLine();
      this.cursorLineStart(this.getScrollBottom() - line - count);
      this.insertLinesIgnoreScroll(count);
      this.moveTo(line, 0);
@@ -903,7 +917,7 @@ WebTerminal.prototype.addInputLine = function() {
     inputNode.setAttribute("id", id);
     inputNode.setAttribute("std", "input");
     inputNode.contentEditable = true;
-    this.outputContainer.appendChild(inputNode);
+    this.insertNode(inputNode);
 
     /*
     // The Java WebView has a kludge to deal with that insertion caret isn't
@@ -1043,22 +1057,32 @@ WebTerminal.prototype.getPendingInput = function() {
 };
 
 WebTerminal.prototype.handleEnter = function(event) {
-    var text = this.grabInput(this.inputLine);
-    this.nextInputLine();
-    return text;
-};
-
-WebTerminal.prototype.nextInputLine = function() {
-    var outputSave = this.outputBefore;
-    var containerSave = this.outputContainer;
-    var normal = outputSave == this.inputLine;
-    this.outputBefore = this.inputLine.nextSibling;
-    this.outputContainer = this.inputLine.parentNode;
-    this.inputLine.contentEditable = false;
-    this.insertBreak();
+    this._doDeferredDeletion();
+    // For now we only support the normal case when  outputSave == inputLine.
+    var oldInputLine = this.inputLine;
+    var text = this.grabInput(oldInputLine);
+    var spanNode;
+    if (this.clientDoesEcho) {
+        this._deferredForDeletion = oldInputLine;
+        spanNode = this.createSpanNode();
+        spanNode.setAttribute("class", "domterm-dummy");
+        oldInputLine.appendChild(spanNode);
+    }
+    oldInputLine.removeAttribute("contenteditable");
+    var line = this.getCursorLine();
+    var column = this.getCursorColumn();
+    this.outputBefore = oldInputLine.nextSibling;
+    this.outputContainer = oldInputLine.parentNode;
+    this.inputLine = null; // To avoid confusing cursorLineStart
+    this.cursorLineStart(1);
     this.addInputLine();
-    this.outputBefore = normal ? this.inputLine : outputSave;
-    this.outputContainer = containerSave;
+    if (this.clientDoesEcho) {
+        this.outputBefore = spanNode;
+        this.outputContainer = oldInputLine;
+        this.currentCursorLine = line;
+        this.currentCursorColumn = column;
+    }
+    return text;
 };
 
 WebTerminal.prototype.appendText = function(parent, data) {
@@ -1533,6 +1557,19 @@ WebTerminal.prototype.handleOperatingSystemControl = function(code, text) {
     }
 };
 
+WebTerminal.prototype._doDeferredDeletion = function() {
+    var deferred = this._deferredForDeletion;
+    if (deferred) {
+        var child = deferred.firstChild;
+        while (child && child != this.outputBefore) {
+            var next = child.nextSibling;
+            deferred.removeChild(child);
+            child = next;
+        }
+        this._deferredForDeletion = null;
+    }
+}
+
 WebTerminal.prototype.insertString = function(str, kind) {
     console.log("insertString '%s'", str);
     /*
@@ -1546,6 +1583,7 @@ WebTerminal.prototype.insertString = function(str, kind) {
         return i;
     };
     */
+    this._doDeferredDeletion();
     var slen = str.length;
     var i = 0;
     var prevEnd = 0;
@@ -1654,7 +1692,7 @@ WebTerminal.prototype.insertString = function(str, kind) {
                 break;
             case 10: // '\n' newline
                 this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
-                console.log("NL as CRLF:"+this.outputLFasCRLF());
+                this.log("NL as CRLF:"+this.outputLFasCRLF());
                 if (this.outputLFasCRLF()) {
                     if (this.insertMode) {
                         this.insertRawOutput("\n"); // FIXME
@@ -1760,11 +1798,10 @@ WebTerminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, k
     }
     else {
         var beforePos = this.outputBefore.offsetLeft;
-        this.insertRawOutput(str);
-        var textNode = this.outputBefore.previousSibling;
+        var textNode = this.insertRawOutput(str);
         var afterPos = this.outputBefore.offsetLeft;
         var lineEnd = this.lineEnds[this.getCursorLine()];
-        console.log("after insert outputBefore:"+this.outputBefore+" lineEnd:"+lineEnd+" out.next:"+this.outputBefore.nextSibling+" line.prev:"+lineEnd.previousSibling+" out.next==line?"+(this.outputBefore.nextSibling==lineEnd)+" beforePos:"+beforePos+" afterPos:"+afterPos);
+        //this.log("after insert outputBefore:"+this.outputBefore+" lineEnd:"+lineEnd+" out.next:"+this.outputBefore.nextSibling+" line.prev:"+lineEnd.previousSibling+" out.next==line?"+(this.outputBefore.nextSibling==lineEnd)+" beforePos:"+beforePos+" afterPos:"+afterPos);
         var clientWidth = this.topNode.clientWidth;
         var excess = afterPos - (clientWidth - this.rightMarginWidth);
         var availWidth = clientWidth - this.rightMarginWidth;
@@ -1839,19 +1876,22 @@ WebTerminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, k
 };
 
 WebTerminal.prototype.insertRawOutput = function( str) {
-    var previous
+    var node
         = this.outputBefore != null ? this.outputBefore.previousSibling
         : this.outputContainer.lastChild;
-    if (previous instanceof Text)
-        previous.appendData(str);
-    else
-        this.insertNode(document.createTextNode(str));
+    if (node instanceof Text)
+        node.appendData(str);
+    else {
+        node = document.createTextNode(str);
+        this.insertNode(node);
+    }
     /*
     var strRect = this.outputContainer.getBoundingClientRect();
     var topRect = this.topNode.getBoundingClientRect();
     if (strRect.right > topRect.right - charWidth) {
     }
-*/
+    */
+    return node;
 };
 
 /** Insert element at current position, and move to start of element.
@@ -1891,7 +1931,7 @@ WebTerminal.prototype.processResponseCharacters = function(str) {
 
 /** This function should be overidden. */
 WebTerminal.prototype.processInputCharacters = function(str) {
-    console.log("processInputCharacters called with %s characters", str.length);
+    this.log("processInputCharacters called with %s characters", str.length);
 };
 
 function dtest(x) {
@@ -1904,7 +1944,9 @@ WebTerminal.prototype.wtest = function (x) {
 };
 
 WebTerminal.prototype.processEnter = function(event) {
-    this.processInputCharacters(this.handleEnter(event)+"\r\n");
+    var text = this.handleEnter(event);
+    this.log("processEnter \""+this.toQuoted(text)+"\"");
+    this.processInputCharacters(text+"\r\n");
 };
 
 WebTerminal.prototype.isApplicationMode = function() {
@@ -1980,6 +2022,7 @@ WebTerminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     //this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" inputLine:"+this.inputLine);
     if (this.lineEditing) {
+        this.inputLine.focus();
         if (key == 13) {
             this.processEnter(event);
         }
@@ -1992,6 +2035,36 @@ WebTerminal.prototype.keyPressHandler = function(event) {
     }
 };
 
+// For debugging (may be overridden)
 WebTerminal.prototype.log = function(str) {
     console.log(str);
+};
+
+// For debugging
+WebTerminal.prototype.toQuoted = function(str) {
+    var i = 0;
+    var len = str.length;
+    for (;  i < len;  i++) {
+        var enc = null;
+        var ch = str.charCodeAt(i);
+        if (ch == 13)
+           enc = "\\r";
+        else if (ch == 10)
+            enc = "\\n";
+        else if (ch == 9)
+            enc = "\\t";
+        else if (ch == 27)
+            enc = "\\E";
+        else if (ch < 32 || ch >= 127)
+            enc = String.fromCharCode(92,((ch>>6)&7)+48,((ch>>3)&7)+48,(ch&7)+48);
+        else if (ch == 34 /*'\"'*/ || ch == 39 /*'\''*/)
+            enc = String.fromCharCode(92, ch);
+        if (enc) {
+            var delta = enc.length - 1;
+            str = str.substring(0, i)+enc+str.substring(i+1);
+            len += delta;
+            i += len;
+        }
+    }
+    return str;
 };

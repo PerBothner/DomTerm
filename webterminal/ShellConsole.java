@@ -63,26 +63,28 @@ public class ShellConsole extends Application
 
     Process process;
 
+    public static class ShellTerminal extends WebTerminal {
+        ShellConsole app;
+        public ShellTerminal(ShellConsole app) { this.app = app; }
+        public void processInputCharacters(String text) {
+            app.replNode.log("ShellC.processInputCharacters(\""+WTDebug.toQuoted(text)+"\")");
+            try {
+                app.pin.write(text.replaceAll("\r", ""));
+                app.pin.flush();
+            } catch (Throwable ex) {
+                ex.printStackTrace();
+                System.exit(-1);
+            } 
+        }
+        @Override
+        protected void loadSucceeded() {
+            setLineEditing(true);
+            jsWebTerminal.setMember("clientDoesEcho", Boolean.FALSE);
+        }
+    }
+
     Scene createScene() {
-        replNode = new WebTerminal() {
-                protected void enter (KeyEvent ke) {
-                    String text = replNode.handleEnter(ke);
-                    if (pin != null) {
-                        synchronized (pin) {
-                            try {
-                                pin.write(text);
-                                pin.write("\n");
-                                pin.flush();
-                                //pin.notifyAll();
-                            }
-                            catch (Throwable ex) {
-                                ex.printStackTrace();
-                                System.exit(-1);
-                            }
-                        }
-                    }
-                }
-            };
+        replNode = new ShellTerminal(this);
         VBox.setVgrow(replNode.webView, Priority.ALWAYS);
 
         VBox pane = replNode;
@@ -106,6 +108,11 @@ public class ShellConsole extends Application
             String[] commandWithArgs = argsSize == 0 ? defaultCommandWithArgs
                 : args.toArray(new String[argsSize]);
             ProcessBuilder pbuilder = new ProcessBuilder(commandWithArgs);
+            java.util.Map<String, String> env = pbuilder.environment();
+            env.put("TERM", "domterm");
+            String dir = System.getProperty("user.dir");
+            if (dir != null)
+                env.put("TERMINFO", dir+"/");
             pbuilder.redirectErrorStream(true);
             process = pbuilder.start();
             pin = new OutputStreamWriter(process.getOutputStream());
@@ -116,7 +123,7 @@ public class ShellConsole extends Application
             System.exit(-1);
         }
         final Scene scene = createScene();
-        stage.setTitle("Jfx-Shell");
+        stage.setTitle("Dom-Shell");
 
         stage.setScene(scene);
         stage.setWidth(900);
@@ -139,6 +146,7 @@ public class ShellConsole extends Application
                             int count = fromInferior.read(buffer);
                             if (count < 0)
                                 break;
+                            //System.err.println("toPane.write: \""+WTDebug.toQuoted(new String(buffer, 0, count))+"\"");
                             toPane.write(buffer, 0, count);
                         } catch (Throwable ex) {
                             ex.printStackTrace();
@@ -146,7 +154,7 @@ public class ShellConsole extends Application
                         }
                     }
                 }
-            }; 
+            };
         th.start();
     }
 

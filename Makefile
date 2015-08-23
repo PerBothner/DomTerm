@@ -26,11 +26,17 @@ webterminal/WebTerminal.class: webterminal/WebTerminal.java
 webterminal/WebWriter.class: webterminal/WebWriter.java webterminal/WebTerminal.class
 	$(JAVAC_WITH_PATH) webterminal/WebWriter.java
 
+webterminal/ShellConsole.class: webterminal/ShellConsole.java webterminal/WebTerminal.class webterminal/WebWriter.class
+	$(JAVAC_WITH_PATH) webterminal/ShellConsole.java
+
 ptyconsole/PtyConsole.class: ptyconsole/PtyConsole.java webterminal/WebTerminal.class webterminal/WebWriter.class ptyconsole/PTY.class
 	$(JAVAC_WITH_PATH) ptyconsole/PtyConsole.java
 
 ptyconsole/App.class: ptyconsole/App.java ptyconsole/PtyConsole.class
 	$(JAVAC_WITH_PATH) ptyconsole/App.java
+
+libpty.so:
+	cd ptyconsole && $(MAKE) all DIST_DIR=.. JDK_HOME=$(JAVA_HOME)
 
 d/domterm: d/domterm.ti
 	tic -o. $<
@@ -41,8 +47,8 @@ run-pty: ptyconsole/App.class libpty.so d/domterm
 run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class libpty.so d/domterm
 	$(JAVA) -cp .:$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
 
-libpty.so:
-	cd ptyconsole && $(MAKE) all DIST_DIR=.. JDK_HOME=$(JAVA_HOME)
+run-shell: webterminal/ShellConsole.class
+	$(JAVA_WITH_PATH) webterminal.ShellConsole
 
 clean:
 	-rm -rf webterminal/*.class ptyconsole/*.class websocketterm/*.class libpty.so build

@@ -55,7 +55,7 @@ import java.util.ArrayList;
  * A div or paragraph of N lines has (N-1) br elements between lines.
  * (br elements are only allowed in div or p elements.)
  */
-public abstract class WebTerminal extends VBox // FIXME should extend Control
+public class WebTerminal extends VBox // FIXME should extend Control
       implements javafx.event.EventHandler, org.w3c.dom.events.EventListener
                       /*implements KeyListener, ChangeListener*/ 
 {
@@ -70,11 +70,14 @@ public abstract class WebTerminal extends VBox // FIXME should extend Control
     String defaultBackgroundColor = "white";
     String defaultForegroundColor = "black";
 
-    public boolean isLineEditing() { return lineEditing; }
-    public void setLineEditing(boolean lineEditing) {
-        this.lineEditing = lineEditing;
+    public boolean isLineEditing() {
+        Object val = jsWebTerminal.getMember("lineEditing");
+        return val != null
+            && val instanceof Boolean && ((Boolean) val).booleanValue();
     }
-    private boolean lineEditing = false;
+    public void setLineEditing(boolean lineEditing) {
+        jsWebTerminal.setMember("lineEditing", lineEditing);
+    }
 
     public boolean outputLFasCRLF() { return isLineEditing(); }
 
@@ -212,8 +215,6 @@ public abstract class WebTerminal extends VBox // FIXME should extend Control
         System.err.println("webTerminal: "+tmp);
         jsWebTerminal = (JSObject) tmp;
         jsWebTerminal.setMember("java", this);
-        tmp = jsWebTerminal.getMember("java");
-        log("direct-log");
 
         //((EventTarget) bodyNode).addEventListener("click", this, false);
 

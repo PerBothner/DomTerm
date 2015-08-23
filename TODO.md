@@ -26,8 +26,6 @@ The ResizeManger hook should enable this.
 Copy should "sanitize" the DOM.  For example soft line wraps
 need to be eliminated.
 
-#### Get line-editing mode working
-
 ## Write a better stand-line application
 
 For example, we need a menu to select between character and line mode,
@@ -89,6 +87,7 @@ Emacs term mode does this.
 ### Graphics hooks
 
 Allow processe to send HTML and graphics to DomTerm.
+See some previous work: http://per.bothner.com/blog/2007/ReplPane/
 
 #### Allow printing images
 

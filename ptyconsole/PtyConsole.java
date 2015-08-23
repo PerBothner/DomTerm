@@ -97,7 +97,10 @@ public class PtyConsole extends WebTerminal {
             ex.printStackTrace();
             System.exit(-1);
         }
-        setLineEditing(false);
+    }
+
+    protected void loadSucceeded() {
+        //setLineEditing(false);
     }
 
     WebWriter out_stream;
