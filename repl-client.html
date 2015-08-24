@@ -5,10 +5,10 @@
 <!-- See http://architects.dzone.com/articles/sample-java-web-socket-client-->
 <title>Web-Terminal</title>
 <style type="text/css">
+  body { top: 0; bottom: 0 }
   span[class="wrap"] {padding: 0px; margin: 0x; font-family: monospace; white-space: nowrap }
   span[line="soft"] { padding: 0px; margin: 0x; font: monospace medium; }
-  body { overflow-y: scroll }
-  div[class=interaction] { font-family: monospace;  margin: 0px; padding: 0px; border: 0px; white-space: pre }
+  div[class="interaction"] { overflow-y: scroll; font-family: monospace;  margin: 0px; padding: 0px; border: 0px; white-space: pre }
   dummy {white-space: pre-wrap; word-break: break-all}
   span[std="output"] { }
   span[std="error"] { color: red; }
@@ -42,7 +42,7 @@ function connect() {
     wsocket = new WebSocket("ws://localhost:8025/websocket/replsrv");
     wsocket.onmessage = onMessage;
     var bodyNode = document.getElementsByTagName("body")[0];
-    wt = new WebTerminal(bodyNode);
+    wt = new WebTerminal(bodyNode, "term1");
     wt.processInputCharacters = socketSendChars;
 }
 

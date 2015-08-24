@@ -30,9 +30,13 @@
 //var webTerminal;
 function makeWebTerminal(javaWebTerminal) {         
     var bodyNode = document.getElementsByTagName("body")[0];
-    var webTerminal = new WebTerminal(bodyNode);
+    var webTerminal = new WebTerminal(bodyNode, "term1");
     webTerminal.processInputCharacters =
         function(str) { webTerminal.java.processInputCharacters(str); };
+    webTerminal.setWindowSize =
+        function(numRows, numColumns, availHeight, availWidth) {
+            webTerminal.java.setWindowSize(numRows, numColumns,
+                                           availHeight, availWidth); };
     webTerminal.log =
         function(str) {
             if (webTerminal && webTerminal.java) webTerminal.java.log(str); }

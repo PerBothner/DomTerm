@@ -100,8 +100,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
     public void setInputLine(Element inputLine) { this.inputLine = inputLine; }
     Element inputLine;
 
-    // FIXME should have call-back from JavaScript to call this on size change
-    public void setRowsColumns(int rows, int columns) {
+    public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
     }
 
     protected void enter(KeyEvent ke) {

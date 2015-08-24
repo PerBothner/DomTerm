@@ -62,6 +62,11 @@ public class PtyConsole extends WebTerminal {
             System.exit(-1);
         }
     }
+    @Override
+    public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
+        pty.setWindowSize(nrows, ncols, pixw, pixh);
+        super.setWindowSize(nrows, ncols, pixw, pixh);
+    }
 
     @Override protected void enter (KeyEvent ke) {
         /*
@@ -128,10 +133,5 @@ public class PtyConsole extends WebTerminal {
                 }
             };
         th.start();
-    }
-
-    @Override public void setRowsColumns(int rows, int columns) {
-        pty.setWindowSize(rows, columns, 0, 0);
-        super.setRowsColumns(rows, columns);
     }
 }

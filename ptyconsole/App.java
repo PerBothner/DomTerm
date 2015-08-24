@@ -65,7 +65,7 @@ public class App extends Application
     @Override public void start(Stage stage) {
         final Scene scene = createScene();
         console.start(commandArgs);
-        console.setRowsColumns(24, 80);
+        console.setWindowSize(24, 80, 0, 0);
         stage.setTitle("Jfx-Terminal");
 
         stage.setScene(scene);

@@ -34,7 +34,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-function WebTerminal(topNode) {
+function WebTerminal(topNode, name) {
+    // A unique name for this DomTerm instance.
+    // Should match the syntax for an XML NCName, as it is used to
+    // generate "id" attributes.  I.e. only allowed special characters
+    // are '_', '-', and '.'; the first character must be a letter or '_'.
+    // (Colons are technically allowed, but could cause problems.)
+    // Generated named have the format:  name + "__" + something.
+    this.name = name;
 
     // Input lines that have not been processed yet.
     // In some modes we support enhanced type-ahead: Input lines are queued
@@ -89,6 +96,12 @@ function WebTerminal(topNode) {
     this.wrapWidth = 80;
 
     this.rightMarginWidth = 0;
+
+    // Number of vertical pixels available.
+    this.availHeight = 0;
+    // Number of horizontal pixels available.
+    // Doesn't count scrollbar or rightMarginWidth.
+    this.availWidth = 0;
 
     this.wrapOnLongLines = true;
 
@@ -171,6 +184,11 @@ function WebTerminal(topNode) {
     if (topNode)
         this.initializeTerminal(topNode);
 }
+
+// For debugging (may be overridden)
+WebTerminal.prototype.log = function(str) {
+    console.log(str);
+};
 
 // States of escape sequences handler state machine.
 WebTerminal.INITIAL_STATE = 0;
@@ -792,9 +810,13 @@ WebTerminal.prototype.createSpanNode = function() {
     return document.createElement("span");
 };
 
+WebTerminal.prototype.makeId = function(local) {
+    return this.name + "__" + local;
+};
+
 WebTerminal.prototype.createLineNode = function(kind) {
     var el = document.createElement("span");
-    el.setAttribute("id", "line"+(++this.lineIdCounter));
+    el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
     el.setAttribute("line", kind);
     return el;
 };
@@ -871,20 +893,37 @@ WebTerminal.prototype.isSpanNode = function(node) {
 
 WebTerminal.prototype.initializeTerminal = function(topNode) {
     var wt = this;
-    //var topNode = document.getElementById("body");
     this.topNode = topNode;
-    topNode.innerHTML = '<span id="ruler" class="wrap" style="position: absolute;visibility: hidden">abcdefghijklmnopqrstuvwxyz</span><div class="interaction" id="initial"></div>';
+    var rulerName = this.makeId("ruler");
+    var helperNode = document.createElement("div");
+    helperNode.setAttribute("id", this.makeId("helper"));
+    helperNode.setAttribute("style", "position: absolute; visibility: hidden");
+    topNode.insertBefore(helperNode, topNode.firstChild);
+    var rulerNode = document.createElement("span");
+    rulerNode.setAttribute("id", rulerName);
+    rulerNode.setAttribute("class", "wrap");
+    rulerNode.appendChild(document
+                          .createTextNode("abcdefghijklmnopqrstuvwxyz"));
+    this._rulerNode = rulerNode;
+    helperNode.appendChild(rulerNode);
+    var mainNode = document.createElement("div");
+    mainNode.setAttribute("id", this.makeId("main"));
+    mainNode.setAttribute("class", "interaction");
+    topNode.appendChild(mainNode);
+    var wrapDummy = this.createLineNode("soft");
+    wrapDummy.appendChild(document.createTextNode(this.wrapString));
+    helperNode.appendChild(wrapDummy);
+    this._wrapDummy = wrapDummy;
+
     document.onkeydown =
         function(e) { wt.keyDownHandler(e ? e : window.event) };
     document.onkeypress =
         function(e) { wt.keyPressHandler(e ? e : window.event) };
 
-    this.initial = document.getElementById("initial");
+    this.initial = mainNode; //document.getElementById(mainName);
     this.lineStarts[0] = this.initial;
-    //this.lineStarts[0] = this.initial.previousSibling;
     this.outputContainer = this.initial;
     this.cursorHome = this.initial;
-    //this.cursorHome = this.topNode;
     this.addInputLine();
     this.outputBefore = this.inputLine;
     this.pendingInput = this.inputLine;
@@ -892,28 +931,54 @@ WebTerminal.prototype.initializeTerminal = function(topNode) {
     this.initial.appendChild(lineEnd);
     this.lineEnds[0] = lineEnd;
 
-    ///*
-    var ruler = document.getElementById("ruler");
-    var rect=ruler.getBoundingClientRect()
-   
-    var rulerWidth = ruler.clientWidth;
-    var charWidth = ruler.clientWidth/26.0;
-    console.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight
-             +" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" innerW:"+innerWidth+" numCols:"+this.numColumns);
-    //*/
-    var wrapDummy = this.createLineNode("soft");
-    wrapDummy.appendChild(document.createTextNode(this.wrapString));
-    ruler.appendChild(wrapDummy);
-    this.rightMarginWidth = wrapDummy.offsetWidth;
-    console.log("wrapDummy:"+wrapDummy+" width:"+this.rightMarginWidth);
-    this.numColumns = Math.floor((this.topNode.clientWidth - this.rightMarginWidth) / charWidth);
+    this.measureWindow();
+
+    // FIXME we want the resize-sensor to be a child of helperNode
+    var dt = this;
+    new ResizeSensor(topNode, function () {
+        dt.log("ResizeSensor called"); 
+        // FIXME do some throttling.
+        // The link below has an example using requestAnimationFrame:
+        // https://developer.mozilla.org/en-US/docs/Web/Events/scroll
+        dt.measureWindow();
+    });
+};
+
+WebTerminal.prototype.measureWindow = function()  {
+    var ruler = this._rulerNode; //document.getElementById(rulerName);
+    var rect = ruler.getBoundingClientRect()
+    var charWidth = ruler.offsetWidth/26.0;
+    var charHeight = ruler.offsetHeight;
+    this.rightMarginWidth = this._wrapDummy.offsetWidth;
+    //console.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+charWidth+" chH:"+charHeight+" ht:"+availHeight);
+    // We calculate rows from initial.clientWidth because we don't
+    // want to include the scroll-bar.  On the other hand, for veritcal
+    // height we have to look at the parent of the topNode because
+    // topNode may not have grown to full size yet.
+    var availHeight = this.topNode.parentNode.clientHeight;
+    var availWidth = this.initial.clientWidth - this.rightMarginWidth;
+    var numRows = Math.floor(availHeight / charHeight);
+    var numColumns = Math.floor(availWidth / charWidth);
+    if (numRows != this.numRows || numColumns != this.numColumns
+        || availHeight != this.availHeight || availWidth != this.availWidth) {
+        this.setWindowSize(numRows, numColumns, availHeight, availWidth);
+    }
+    this.numRows = numRows;
+    this.numColumns = numColumns;
+    this.availHeight = availHeight;
+    this.availWidth = availWidth;
+    //console.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
     this.wrapWidth = this.numColumns;
-    new ResizeSensor(topNode, function() { console.log("ResizeSensor called"); });
+};
+
+WebTerminal.prototype.setWindowSize = function(numRows, numColumns,
+                                               availHeight, availWidth) {
+    this.log("windowSizeChanged numRows:"+numRows+" numCols:"+numColumns);
 };
 
 WebTerminal.prototype.addInputLine = function() {
     var inputNode = this.createSpanNode();
-    var id = "input"+(++this.inputLineNumber);
+    var id = this.makeId("I"+(++this.inputLineNumber));
     inputNode.setAttribute("id", id);
     inputNode.setAttribute("std", "input");
     inputNode.contentEditable = true;
@@ -1802,7 +1867,7 @@ WebTerminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, k
         var afterPos = this.outputBefore.offsetLeft;
         var lineEnd = this.lineEnds[this.getCursorLine()];
         //this.log("after insert outputBefore:"+this.outputBefore+" lineEnd:"+lineEnd+" out.next:"+this.outputBefore.nextSibling+" line.prev:"+lineEnd.previousSibling+" out.next==line?"+(this.outputBefore.nextSibling==lineEnd)+" beforePos:"+beforePos+" afterPos:"+afterPos);
-        var clientWidth = this.topNode.clientWidth;
+        var clientWidth = this.initial.clientWidth;
         var excess = afterPos - (clientWidth - this.rightMarginWidth);
         var availWidth = clientWidth - this.rightMarginWidth;
         if (afterPos > availWidth) {
@@ -2033,11 +2098,6 @@ WebTerminal.prototype.keyPressHandler = function(event) {
             this.processInputCharacters(String.fromCharCode(key));
         event.preventDefault();
     }
-};
-
-// For debugging (may be overridden)
-WebTerminal.prototype.log = function(str) {
-    console.log(str);
 };
 
 // For debugging
