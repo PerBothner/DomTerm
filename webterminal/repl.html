@@ -27,20 +27,19 @@
 <script type="text/javascript" src="../ResizeSensor.js"> </script>
 <script type="text/javascript" src="../terminal.js"> </script>
 <script type="text/javascript">
-//var webTerminal;
-function makeWebTerminal(javaWebTerminal) {         
+function makeDomTerm(javaWebTerminal) {         
     var bodyNode = document.getElementsByTagName("body")[0];
-    var webTerminal = new WebTerminal(bodyNode, "term1");
-    webTerminal.processInputCharacters =
-        function(str) { webTerminal.java.processInputCharacters(str); };
-    webTerminal.setWindowSize =
+    var term = new DomTerm(bodyNode, "term1");
+    term.processInputCharacters =
+        function(str) { term.java.processInputCharacters(str); };
+    term.setWindowSize =
         function(numRows, numColumns, availHeight, availWidth) {
-            webTerminal.java.setWindowSize(numRows, numColumns,
-                                           availHeight, availWidth); };
-    webTerminal.log =
+            term.java.setWindowSize(numRows, numColumns,
+                                    availHeight, availWidth); };
+    term.log =
         function(str) {
-            if (webTerminal && webTerminal.java) webTerminal.java.log(str); }
-    return webTerminal;
+            if (term && term.java) term.java.log(str); }
+    return term;
 }
 </script>
 </head>

@@ -42,7 +42,7 @@ function connect() {
     wsocket = new WebSocket("ws://localhost:8025/websocket/replsrv");
     wsocket.onmessage = onMessage;
     var bodyNode = document.getElementsByTagName("body")[0];
-    wt = new WebTerminal(bodyNode, "term1");
+    wt = new DomTerm(bodyNode, "term1");
     wt.processInputCharacters = socketSendChars;
 }
 

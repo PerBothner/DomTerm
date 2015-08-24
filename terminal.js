@@ -34,7 +34,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-function WebTerminal(topNode, name) {
+function DomTerm(topNode, name) {
     // A unique name for this DomTerm instance.
     // Should match the syntax for an XML NCName, as it is used to
     // generate "id" attributes.  I.e. only allowed special characters
@@ -121,7 +121,7 @@ function WebTerminal(topNode, name) {
     // The value -1 is equivalent to numRows.
     this.scrollRegionBottom = -1;
 
-    this.controlSequenceState = WebTerminal.INITIAL_STATE;
+    this.controlSequenceState = DomTerm.INITIAL_STATE;
 
     // The output position (cursor) - insert output before this node.
     // Usually equal to inputLine except for temporary updates,
@@ -186,21 +186,21 @@ function WebTerminal(topNode, name) {
 }
 
 // For debugging (may be overridden)
-WebTerminal.prototype.log = function(str) {
+DomTerm.prototype.log = function(str) {
     console.log(str);
 };
 
 // States of escape sequences handler state machine.
-WebTerminal.INITIAL_STATE = 0;
-WebTerminal.SEEN_ESC_STATE = 1;
+DomTerm.INITIAL_STATE = 0;
+DomTerm.SEEN_ESC_STATE = 1;
 /** We have seen ESC '['. */
-WebTerminal.SEEN_ESC_LBRACKET_STATE = 2;
+DomTerm.SEEN_ESC_LBRACKET_STATE = 2;
 /** We have seen ESC '[' '?'. */
-WebTerminal.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
+DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
 /** We have seen ESC ']'. */
-WebTerminal.SEEN_ESC_RBRACKET_STATE = 4;
+DomTerm.SEEN_ESC_RBRACKET_STATE = 4;
 /** We have seen ESC ']' numeric-parameter ';'. */
-WebTerminal.SEEN_ESC_BRACKET_TEXT_STATE = 5;
+DomTerm.SEEN_ESC_BRACKET_TEXT_STATE = 5;
 
 // FIXME StringBuilder curTextParameter;
 
@@ -225,14 +225,14 @@ if (!String.prototype.startsWith) {
   });
 };
 
-WebTerminal.makeSpaces = function(n) {
+DomTerm.makeSpaces = function(n) {
     return ' '.repeat(n)
 };
 
-WebTerminal.prototype.getScrollTop = function() {
+DomTerm.prototype.getScrollTop = function() {
     return this.scrollRegionTop;
 };
-WebTerminal.prototype.getScrollBottom = function() {
+DomTerm.prototype.getScrollBottom = function() {
     return this.scrollRegionBottom < 0 ? this.numRows : this.scrollRegionBottom;
 };
 
@@ -240,7 +240,7 @@ WebTerminal.prototype.getScrollBottom = function() {
 // Ths col is the initial column, 0-origin.
 // Return the column number (0-origin) after a tab.
 // Default implementation assumes tabs every 8 columns.
- WebTerminal.prototype.nextTabCol = function(col) {
+ DomTerm.prototype.nextTabCol = function(col) {
     return (col & ~7) + 8;
 };
 
@@ -249,7 +249,7 @@ WebTerminal.prototype.getScrollBottom = function() {
  * However, in the future we should handle zero-width characters
  * as well as double-width characters, and composing charcters.
  */
-WebTerminal.prototype.charColumns = function(ch) {
+DomTerm.prototype.charColumns = function(ch) {
     if (ch == 0x200B)
         return 0;
     return 1;
@@ -271,7 +271,7 @@ WebTerminal.prototype.charColumns = function(ch) {
  * Returns the column state after {@code ch} is appended,
  *  or -1 after a character that starts a new line.
  */
-WebTerminal.prototype.updateColumn = function(ch, startState) {
+DomTerm.prototype.updateColumn = function(ch, startState) {
     if (ch == 10 /* '\n' */ ||
         ch == 13 /* '\r' */ ||
         ch == 12 /* '\f' */)
@@ -284,12 +284,12 @@ WebTerminal.prototype.updateColumn = function(ch, startState) {
     return startState+this.charColumns(ch);
 };
 
-WebTerminal.prototype.saveCursor = function() {
+DomTerm.prototype.saveCursor = function() {
     this.savedCursorLine = this.getCursorLine();
     this.savedCursorColumn = this.getCursorColumn();
 };
  
-WebTerminal.prototype.restoreCursor = function() {
+DomTerm.prototype.restoreCursor = function() {
     this.moveTo(this.savedCursorLine, this.savedCursorColumn);
 }; 
 
@@ -301,7 +301,7 @@ e
 * @param goalColumn number of columns to move right from the start of the g
 oalLine
 */
-WebTerminal.prototype.moveTo = function(goalLine, goalColumn) {
+DomTerm.prototype.moveTo = function(goalLine, goalColumn) {
     this.moveToIn(goalLine, goalColumn, true);
 };
 
@@ -311,7 +311,7 @@ WebTerminal.prototype.moveTo = function(goalLine, goalColumn) {
  * @param goalColumn number of columns to move right from the start of teh goalLine
  * @param addSpaceAsNeeded if we should add blank linesor spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine
  */
-WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
+DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     this._adjustStyleNeeded = true; // FIXME optimize?
     var line = this.getCursorLine();
     var column = this.getCursorColumn();
@@ -385,7 +385,7 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
                 error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
             if (current == lineEnd) {
                 if (addSpaceAsNeeded) {
-                    var str = WebTerminal.makeSpaces(goalColumn-column);
+                    var str = DomTerm.makeSpaces(goalColumn-column);
                     if (current && current.previousSibling instanceof Text)
                         current.previousSibling.appendData(str);
                     else
@@ -427,7 +427,7 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
                         if (line == goalLine) {
                             var nspaces = goalColumn-column;
                             if (addSpaceAsNeeded) {
-                                var spaces = WebTerminal.makeSpaces(nspaces);
+                                var spaces = DomTerm.makeSpaces(nspaces);
                                 tnode.insertData(i, spaces);
                                 tlen += nspaces;
                                 i += nspaces;
@@ -487,7 +487,7 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
                     var fill = goalColumn - column;
                     //console.log(" move 2 fill:%s pareent:%s", fill, parent);
                     if (fill > 0) {
-                        this.appendText(parent, WebTerminal.makeSpaces(fill))
+                        this.appendText(parent, DomTerm.makeSpaces(fill))
                     }
                     line = goalLine;
                     column = goalColumn;
@@ -523,16 +523,16 @@ WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded
 /** Move cursor to beginning of line, relative.
  * @param deltaLines line number to move to, relative to current line.
  */
-WebTerminal.prototype.cursorLineStart = function(deltaLines) {
+DomTerm.prototype.cursorLineStart = function(deltaLines) {
     this.moveTo(this.getCursorLine()+deltaLines, 0);
 };
 
-WebTerminal.prototype.cursorDown = function(deltaLines) {
+DomTerm.prototype.cursorDown = function(deltaLines) {
     console.log("cursurDown %d cur %d:%d", deltaLines, this.getCursorLine(), this.getCursorColumn()+"body:"+this.topNode);
     this.moveTo(this.getCursorLine()+deltaLines, this.getCursorColumn());
 };
 
-WebTerminal.prototype.cursorRight = function(count) {
+DomTerm.prototype.cursorRight = function(count) {
     // FIXME optimize same way cursorLeft is.
     //long lcol = this.delta2D(this.cursorHome, this.outputBefore);
     //inline = (int) (lcol >> 32);
@@ -540,7 +540,7 @@ WebTerminal.prototype.cursorRight = function(count) {
     this.moveTo(this.getCursorLine(), this.getCursorColumn()+count);
 };
 
-WebTerminal.prototype.cursorLeft = function(count) {
+DomTerm.prototype.cursorLeft = function(count) {
     if (count == 0)
         return;
     var prev = this.outputBefore.previousSibling;
@@ -589,7 +589,7 @@ WebTerminal.prototype.cursorLeft = function(count) {
     }
 };
 
-WebTerminal.prototype.outputLFasCRLF = function() {
+DomTerm.prototype.outputLFasCRLF = function() {
     return this.lineEditing;
 };
 
@@ -601,7 +601,7 @@ WebTerminal.prototype.outputLFasCRLF = function() {
  * @param styleValue style property value string (for example "underline"),
  *     or null to indicate the default value.
  */
-WebTerminal.prototype._pushStyle = function(styleNameWithColon, styleValue) {
+DomTerm.prototype._pushStyle = function(styleNameWithColon, styleValue) {
     var nstyles = this._currentStyles.length;
     var i = 0;
     for (;  i < nstyles;  i++) {
@@ -626,7 +626,7 @@ WebTerminal.prototype._pushStyle = function(styleNameWithColon, styleValue) {
  * then we have to split the {@code span} node so the current
  * position is not inside the span node, but text before and after is.
  */
-WebTerminal.prototype._adjustStyle = function() {
+DomTerm.prototype._adjustStyle = function() {
     this._adjustStyleNeeded = false;
     var parentStyles = new Array();
     for (var n = this.outputContainer;  n != this.topNode && n != null;
@@ -734,7 +734,7 @@ WebTerminal.prototype._adjustStyle = function() {
     }
 };
 
-WebTerminal.prototype.insertLinesIgnoreScroll = function(count) {
+DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
     var text = document.createTextNode("\n".repeat(count));
     if (this.outputBefore == this.inputLine && this.inputLine != null)
         this.outputContainer.insertBefore(text, this.outputBefore.nextSibling);
@@ -745,7 +745,7 @@ WebTerminal.prototype.insertLinesIgnoreScroll = function(count) {
 
 };
 
-WebTerminal.prototype.deleteLinesIgnoreScroll = function(count) {
+DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
     console.log("deleteLinesIgnoreScroll %d", count);
     for (var i = count; --i >= 0; ) {
         this.eraseCharactersRight(-1, true);
@@ -770,7 +770,7 @@ WebTerminal.prototype.deleteLinesIgnoreScroll = function(count) {
     }
 };
 
-WebTerminal.prototype.insertLines = function(count) {
+DomTerm.prototype.insertLines = function(count) {
     var line = this.getCursorLine();
     this.moveTo(this.getScrollBottom()-count, 0);
     this.deleteLinesIgnoreScroll(count);
@@ -778,7 +778,7 @@ WebTerminal.prototype.insertLines = function(count) {
     this.insertLinesIgnoreScroll(count);
 };
 
- WebTerminal.prototype.deleteLines = function(count) {
+ DomTerm.prototype.deleteLines = function(count) {
      this.deleteLinesIgnoreScroll(count);
      var line = this.getCursorLine();
      this.cursorLineStart(this.getScrollBottom() - line - count);
@@ -786,7 +786,7 @@ WebTerminal.prototype.insertLines = function(count) {
      this.moveTo(line, 0);
  };
 
-WebTerminal.prototype.scrollForward = function(count) {
+DomTerm.prototype.scrollForward = function(count) {
     var line = this.getCursorLine();
     this.moveTo(this.getScrollTop(), 0);
     this.deleteLinesIgnoreScroll(count);
@@ -796,7 +796,7 @@ WebTerminal.prototype.scrollForward = function(count) {
     this.moveTo(line, 0);
 };
 
-WebTerminal.prototype.scrollReverse = function(count) {
+DomTerm.prototype.scrollReverse = function(count) {
     var line = this.getCursorLine();
     this.moveTo(this.getScrollBottom()-count, 0);
     this.deleteLinesIgnoreScroll(count);
@@ -805,22 +805,22 @@ WebTerminal.prototype.scrollReverse = function(count) {
     this.moveTo(line, 0);
 };
 
-WebTerminal.prototype.createSpanNode = function() {
+DomTerm.prototype.createSpanNode = function() {
     return document.createElement("span");
 };
 
-WebTerminal.prototype.makeId = function(local) {
+DomTerm.prototype.makeId = function(local) {
     return this.name + "__" + local;
 };
 
-WebTerminal.prototype.createLineNode = function(kind) {
+DomTerm.prototype.createLineNode = function(kind) {
     var el = document.createElement("span");
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
     el.setAttribute("line", kind);
     return el;
 };
  
-WebTerminal.prototype.setAlternateScreenBuffer = function(val) {
+DomTerm.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         if (val) {
             // FIXME should scroll top of new buffer to top of window.
@@ -865,12 +865,12 @@ WebTerminal.prototype.setAlternateScreenBuffer = function(val) {
  *  For now returns true for {@code img}, {@code a}, and {@code object}.
  *  (We should perhaps treat {@code a} as text.)
  */
-WebTerminal.prototype.isObjectElement = function(node) {
+DomTerm.prototype.isObjectElement = function(node) {
     var tag = node.tagName;
     return "A" == tag || "OBJECT" == tag || "IMG" == tag;
 };
 
-WebTerminal.prototype.isBlockNode = function(node) {
+DomTerm.prototype.isBlockNode = function(node) {
     if (! (node instanceof Element)) return false;
     var tag = node.tagName;
     return "P" == tag || "DIV" == tag || "PRE" == tag;
@@ -878,19 +878,19 @@ WebTerminal.prototype.isBlockNode = function(node) {
 
 // Obsolete?  We should never have a <br> node in the DOM.
 // (If we allow it, we should wrap it in a <span line="br">.)
-WebTerminal.prototype.isBreakNode = function( node) {
+DomTerm.prototype.isBreakNode = function( node) {
     if (! (node instanceof Element)) return false;
     var tag = node.tagName;
     return "BR" == tag;
 };
 
-WebTerminal.prototype.isSpanNode = function(node) {
+DomTerm.prototype.isSpanNode = function(node) {
     if (! (node instanceof Element)) return false;
     var tag = node.tagName;
     return "SPAN" == tag;
 };
 
-WebTerminal.prototype.initializeTerminal = function(topNode) {
+DomTerm.prototype.initializeTerminal = function(topNode) {
     var wt = this;
     this.topNode = topNode;
     var rulerName = this.makeId("ruler");
@@ -943,7 +943,7 @@ WebTerminal.prototype.initializeTerminal = function(topNode) {
     });
 };
 
-WebTerminal.prototype.measureWindow = function()  {
+DomTerm.prototype.measureWindow = function()  {
     var ruler = this._rulerNode; //document.getElementById(rulerName);
     var rect = ruler.getBoundingClientRect()
     var charWidth = ruler.offsetWidth/26.0;
@@ -970,12 +970,12 @@ WebTerminal.prototype.measureWindow = function()  {
     this.wrapWidth = this.numColumns;
 };
 
-WebTerminal.prototype.setWindowSize = function(numRows, numColumns,
+DomTerm.prototype.setWindowSize = function(numRows, numColumns,
                                                availHeight, availWidth) {
     this.log("windowSizeChanged numRows:"+numRows+" numCols:"+numColumns);
 };
 
-WebTerminal.prototype.addInputLine = function() {
+DomTerm.prototype.addInputLine = function() {
     var inputNode = this.createSpanNode();
     var id = this.makeId("I"+(++this.inputLineNumber));
     inputNode.setAttribute("id", id);
@@ -998,7 +998,7 @@ WebTerminal.prototype.addInputLine = function() {
     this.inputLine.focus();
 };
 
-WebTerminal.prototype.resetCursorCache = function() {
+DomTerm.prototype.resetCursorCache = function() {
     this.currentCursorColumn = -1;
     this.currentCursorLine = -1;
 };
@@ -1010,7 +1010,7 @@ WebTerminal.prototype.resetCursorCache = function() {
  * the number of lines and result[1] the number of columns.
  * Return true id we actually saw stopNode.
 */
-WebTerminal.prototype.delta2D = function(startNode, stopNode, result) {
+DomTerm.prototype.delta2D = function(startNode, stopNode, result) {
     //console.log("delta2D start start:%s stop:%s ->%s:%s", startNode, stopNode, result[0], result[1]);
     if (startNode == stopNode)
         return true;
@@ -1064,7 +1064,7 @@ WebTerminal.prototype.delta2D = function(startNode, stopNode, result) {
     return false;
 };
 
-WebTerminal.prototype.updateCursorCache = function() {
+DomTerm.prototype.updateCursorCache = function() {
     var tmp = this.delta2DHelper;
     tmp[0] = 0;
     tmp[1] = 0;
@@ -1077,7 +1077,7 @@ WebTerminal.prototype.updateCursorCache = function() {
 
 /** Get line of current cursor position.
  * This is 0-origin (i.e. 0 is the top line), relative to cursorHome. */
-WebTerminal.prototype.getCursorLine = function() {
+DomTerm.prototype.getCursorLine = function() {
     if (this.currentCursorLine < 0)
         this.updateCursorCache();
     return this.currentCursorLine;
@@ -1085,20 +1085,20 @@ WebTerminal.prototype.getCursorLine = function() {
 
 /** Get column of current cursor position.
  * This is 0-origin (i.e. 0 is the left column), relative to cursorHome. */
-WebTerminal.prototype.getCursorColumn = function() {
+DomTerm.prototype.getCursorColumn = function() {
     if (this.currentCursorColumn < 0)
         this.updateCursorCache();
     return this.currentCursorColumn;
 };
 
-WebTerminal.prototype.grabInput = function(input) {
+DomTerm.prototype.grabInput = function(input) {
     var text = input.textContent;
     // FIXME the Java version does some extra filtering for special chars
     // See addInputLine.
     return text;
 };
 
-WebTerminal.prototype.getPendingInput = function() {
+DomTerm.prototype.getPendingInput = function() {
     var text = null;
     while (this.pendingInput != this.inputLine && text == null) {
         if (this.isSpanNode(pendingInput)) {
@@ -1120,7 +1120,7 @@ WebTerminal.prototype.getPendingInput = function() {
     return text;
 };
 
-WebTerminal.prototype.handleEnter = function(event) {
+DomTerm.prototype.handleEnter = function(event) {
     this._doDeferredDeletion();
     // For now we only support the normal case when  outputSave == inputLine.
     var oldInputLine = this.inputLine;
@@ -1149,7 +1149,7 @@ WebTerminal.prototype.handleEnter = function(event) {
     return text;
 };
 
-WebTerminal.prototype.appendText = function(parent, data) {
+DomTerm.prototype.appendText = function(parent, data) {
     if (data.length == 0)
         return;
     var last = parent.lastChild;
@@ -1161,7 +1161,7 @@ WebTerminal.prototype.appendText = function(parent, data) {
 };
 
 /** Insert a <br> node. */
-WebTerminal.prototype.insertBreak = function() {
+DomTerm.prototype.insertBreak = function() {
     var breakNode = document.createElement("br");
     this.insertNode(breakNode);
     this.currentCursorColumn = 0;
@@ -1170,7 +1170,7 @@ WebTerminal.prototype.insertBreak = function() {
 };
 
 /* * Insert a line break because of wrapping an over-long line. * /
-WebTerminal.prototype.insertWrapBreak = function() {
+DomTerm.prototype.insertWrapBreak = function() {
     if (false) {
         this.cursorLineStart(1);
     } else {
@@ -1191,7 +1191,7 @@ WebTerminal.prototype.insertWrapBreak = function() {
  * If currently inside stopNode, erase to end of stopNode;
  * otherwise erase until start of stopNode.
  */
-WebTerminal.prototype.eraseUntil = function(stopNode) {
+DomTerm.prototype.eraseUntil = function(stopNode) {
     var current = this.outputBefore;
     var parent = this.outputContainer;
     if (current==this.inputLine && current != null)
@@ -1217,7 +1217,7 @@ WebTerminal.prototype.eraseUntil = function(stopNode) {
     stopNode.appendChild(lastEnd);
 };
 
-WebTerminal.prototype.eraseCharactersRight = function(count, doDelete) {
+DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
     if (count < 0)
         count = 999999999;
     // Note that the traversal logic is similar to move.
@@ -1269,7 +1269,7 @@ WebTerminal.prototype.eraseCharactersRight = function(count, doDelete) {
                 if (doDelete)
                     tnode.deleteData(0, i);
                 else {
-                    tnode.replaceData(0, i, WebTerminal.makeSpaces(i));
+                    tnode.replaceData(0, i, DomTerm.makeSpaces(i));
                 }
             }
             continue;
@@ -1323,24 +1323,24 @@ WebTerminal.prototype.eraseCharactersRight = function(count, doDelete) {
 };
 
 
-WebTerminal.prototype.eraseLineRight = function() {
+DomTerm.prototype.eraseLineRight = function() {
     this.eraseCharactersRight(-1, true);
 };
 
-WebTerminal.prototype.eraseLineLeft = function() {
+DomTerm.prototype.eraseLineLeft = function() {
     var column = getCursorColumn();
     this.cursorLineStart(0);
     this.eraseCharactersRight(column, false);
     this.cursorRight(column);
 };
 
-WebTerminal.prototype.rgb = function(r,g,b) {
+DomTerm.prototype.rgb = function(r,g,b) {
     return "rgb("+this.getParameter(i+2,0)
         +","+this.getParameter(i+3,0)
         +","+this.getParameter(i+4,0)+")";
 };
 
-WebTerminal.prototype.color256 = function(u) {
+DomTerm.prototype.color256 = function(u) {
     // FIXME This is just the default - could be overridden.
     //   0.. 16: system colors
     if (u < 16) {
@@ -1379,12 +1379,12 @@ WebTerminal.prototype.color256 = function(u) {
     return this.rgb(gray, gray, gray);
 };
 
-WebTerminal.prototype.getParameter = function(index, defaultValue) {
+DomTerm.prototype.getParameter = function(index, defaultValue) {
     var arr = this.parameters;
     return arr.length > index && arr[index] ? arr[index] : defaultValue;
 }
 
-WebTerminal.prototype.handleControlSequence = function(last) {
+DomTerm.prototype.handleControlSequence = function(last) {
     var param;
     switch (last) {
     case 64 /*'@'*/:
@@ -1392,7 +1392,7 @@ WebTerminal.prototype.handleControlSequence = function(last) {
         this.insertMode = true;
         param = this.getParameter(0, 1);
         console.log("before insert for append param %s", param);
-        this.insertSimpleOutput(WebTerminal.makeSpaces(param), 0, param,
+        this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param,
                            'O', this.getCursorColumn()+param);
         this.cursorLeft(param);
         this.insertMode = saveInsertMode;
@@ -1467,7 +1467,7 @@ WebTerminal.prototype.handleControlSequence = function(last) {
         break;
     case 104 /*'h'*/:
         param = this.getParameter(0, 0);
-        if (this.controlSequenceState == WebTerminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Set (DECSET)
             switch (param) {
             case 47:
@@ -1493,7 +1493,7 @@ WebTerminal.prototype.handleControlSequence = function(last) {
         break;
     case 108 /*'l'*/:
         param = this.getParameter(0, 0);
-        if (this.controlSequenceState == WebTerminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Reset (DECRST)
             switch (param) {
             case 47:
@@ -1607,11 +1607,11 @@ WebTerminal.prototype.handleControlSequence = function(last) {
     }
 };
 
-WebTerminal.prototype.handleBell = function() {
+DomTerm.prototype.handleBell = function() {
     // Do nothing, for now.
 };
 
-WebTerminal.prototype.handleOperatingSystemControl = function(code, text) {
+DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     console.log("handleOperatingSystemControl %s '%s'", code, text);
     if (code == 72) {
         inputLine.insertAdjacentHTML("beforeBegin", text);
@@ -1621,7 +1621,7 @@ WebTerminal.prototype.handleOperatingSystemControl = function(code, text) {
     }
 };
 
-WebTerminal.prototype._doDeferredDeletion = function() {
+DomTerm.prototype._doDeferredDeletion = function() {
     var deferred = this._deferredForDeletion;
     if (deferred) {
         var child = deferred.firstChild;
@@ -1634,7 +1634,7 @@ WebTerminal.prototype._doDeferredDeletion = function() {
     }
 }
 
-WebTerminal.prototype.insertString = function(str, kind) {
+DomTerm.prototype.insertString = function(str, kind) {
     console.log("insertString '%s'", str);
     /*
     var indexTextEnd = function(str, start) {
@@ -1656,15 +1656,15 @@ WebTerminal.prototype.insertString = function(str, kind) {
         var ch = str.charCodeAt(i);
         //console.log("- insert char:%d='%s'",ch, String.fromCharCode(ch));
         switch (this.controlSequenceState) {
-        case WebTerminal.SEEN_ESC_STATE:
+        case DomTerm.SEEN_ESC_STATE:
             switch (ch) {
             case 91 /*'['*/:
-                this.controlSequenceState = WebTerminal.SEEN_ESC_LBRACKET_STATE;
+                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
                 continue;
             case 93 /*']'*/:
-                this.controlSequenceState = WebTerminal.SEEN_ESC_RBRACKET_STATE;
+                this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
                 continue;
@@ -1678,12 +1678,12 @@ WebTerminal.prototype.insertString = function(str, kind) {
                 this.insertLines(1); // FIXME
                 break;
             }
-            this.controlSequenceState = WebTerminal.INITIAL_STATE;
+            this.controlSequenceState = DomTerm.INITIAL_STATE;
             prevEnd = i + 1;
             curColumn = this.getCursorColumn();
             break;
-        case WebTerminal.SEEN_ESC_LBRACKET_STATE:
-        case WebTerminal.SEEN_ESC_LBRACKET_QUESTION_STATE:
+        case DomTerm.SEEN_ESC_LBRACKET_STATE:
+        case DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE:
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
                 var cur = this.parameters[plen-1];
@@ -1693,17 +1693,17 @@ WebTerminal.prototype.insertString = function(str, kind) {
             else if (ch == 59 /*';'*/) {
                 this.parameters.push(null);
             } else if (ch == 63 /*'?'*/)
-                this.controlSequenceState = WebTerminal.SEEN_ESC_LBRACKET_QUESTION_STATE;
+                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE;
             else {
                 this.handleControlSequence(ch);
                 this.parameters.length = 1;
                 prevEnd = i + 1;
                 curColumn = this.getCursorColumn();
-                this.controlSequenceState = WebTerminal.INITIAL_STATE;
+                this.controlSequenceState = DomTerm.INITIAL_STATE;
             }
             continue;
 
-        case WebTerminal.SEEN_ESC_RBRACKET_STATE:
+        case DomTerm.SEEN_ESC_RBRACKET_STATE:
             // if (ch == 4) // set/read color palette
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
@@ -1712,7 +1712,7 @@ WebTerminal.prototype.insertString = function(str, kind) {
                 this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
             }
             else if (ch == 59 /*';'*/) {
-                controlSequenceState = WebTerminal.SEEN_ESC_BRACKET_TEXT_STATE;
+                controlSequenceState = DomTerm.SEEN_ESC_BRACKET_TEXT_STATE;
                 //prevEnd = indexTextEnd(str, i);
                 this.parameters.push("");
                 prevEnv = i + 1;
@@ -1722,9 +1722,9 @@ WebTerminal.prototype.insertString = function(str, kind) {
                 this.parameters.length = 1;
                 prevEnd = i + 1;
                 curColumn = this.getCursorColumn();
-                this.controlSequenceState = WebTerminal.INITIAL_STATE;
+                this.controlSequenceState = DomTerm.INITIAL_STATE;
             }
-        case WebTerminal.SEEN_ESC_BRACKET_TEXT_STATE:
+        case DomTerm.SEEN_ESC_BRACKET_TEXT_STATE:
             if (ch == 7 || ch == 0) {
                 this.parameters[1] =
                     this.parameters[1] + str.substring(prevEnv, i);
@@ -1732,12 +1732,12 @@ WebTerminal.prototype.insertString = function(str, kind) {
                 this.parameters.length = 1;
                 prevEnd = i + 1;
                 curColumn = this.getCursorColumn();
-                this.controlSequenceState = WebTerminal.INITIAL_STATE;
+                this.controlSequenceState = DomTerm.INITIAL_STATE;
             } else {
                 // Do nothing, for now.
             }
             continue;
-        case WebTerminal.INITIAL_STATE:
+        case DomTerm.INITIAL_STATE:
             switch (ch) {
             case 13: // '\r' carriage return
                 this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
@@ -1780,7 +1780,7 @@ WebTerminal.prototype.insertString = function(str, kind) {
                 this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
                 //this.currentCursorColumn = column;
                 prevEnd = i + 1;
-                this.controlSequenceState = WebTerminal.SEEN_ESC_STATE;
+                this.controlSequenceState = DomTerm.SEEN_ESC_STATE;
                 continue;
             case 8 /*'\b'*/:
                 this.insertSimpleOutput(str, prevEnd, i, kind, curColumn); 
@@ -1819,16 +1819,16 @@ WebTerminal.prototype.insertString = function(str, kind) {
             }
         }
     }
-    if (this.controlSequenceState == WebTerminal.INITIAL_STATE) {
+    if (this.controlSequenceState == DomTerm.INITIAL_STATE) {
         this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
         //this.currentCursorColumn = column;
     }
-    if (this.controlSequenceState == WebTerminal.SEEN_ESC_BRACKET_TEXT_STATE) {
+    if (this.controlSequenceState == DomTerm.SEEN_ESC_BRACKET_TEXT_STATE) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnv, i);
     }
 };
 
-WebTerminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind, endColumn) {
+DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind, endColumn) {
     var sslen = endIndex - beginIndex;
     if (sslen == 0)
         return;
@@ -1939,7 +1939,7 @@ WebTerminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, k
     this.currentCursorColumn = endColumn;
 };
 
-WebTerminal.prototype.insertRawOutput = function( str) {
+DomTerm.prototype.insertRawOutput = function( str) {
     var node
         = this.outputBefore != null ? this.outputBefore.previousSibling
         : this.outputContainer.lastChild;
@@ -1963,7 +1963,7 @@ WebTerminal.prototype.insertRawOutput = function( str) {
  *  This element should have no parents *or* children.
  *  It becomes the new outputContainer.
  */
-WebTerminal.prototype.pushIntoElement = function(element) {
+DomTerm.prototype.pushIntoElement = function(element) {
     this.resetCursorCache(); // FIXME - not needed if element is span, say.
     this.insertNode(element);
     this.outputContainer = element;
@@ -1971,7 +1971,7 @@ WebTerminal.prototype.pushIntoElement = function(element) {
 };
 
 /** Move position to follow current container. */
-WebTerminal.prototype.popFromElement = function() {
+DomTerm.prototype.popFromElement = function() {
     var element = this.outputContainer;
     this.outputContainer = element.parentNode;
     this.outputBefore = element.nextSibling;
@@ -1982,19 +1982,19 @@ WebTerminal.prototype.popFromElement = function() {
  * The node to be inserted at current output position.
  *   (Should not have any parents or siblings.)
  */
-WebTerminal.prototype.insertNode = function (node) {
+DomTerm.prototype.insertNode = function (node) {
     this.outputContainer.insertBefore(node, this.outputBefore);
 };
 
 /** Send a response to the client.
 * By default just calls processInputCharacters.
 */
-WebTerminal.prototype.processResponseCharacters = function(str) {
+DomTerm.prototype.processResponseCharacters = function(str) {
     this.processInputCharacters(str);
 };
 
 /** This function should be overidden. */
-WebTerminal.prototype.processInputCharacters = function(str) {
+DomTerm.prototype.processInputCharacters = function(str) {
     this.log("processInputCharacters called with %s characters", str.length);
 };
 
@@ -2002,25 +2002,25 @@ function dtest(x) {
     return "[dtest: "+x+"]";
 }
 
-WebTerminal.prototype.wtest = function (x) {
+DomTerm.prototype.wtest = function (x) {
     this.log("called wtest");
     return dtest(x);
 };
 
-WebTerminal.prototype.processEnter = function(event) {
+DomTerm.prototype.processEnter = function(event) {
     var text = this.handleEnter(event);
     this.log("processEnter \""+this.toQuoted(text)+"\"");
     this.processInputCharacters(text+"\r\n");
 };
 
-WebTerminal.prototype.isApplicationMode = function() {
+DomTerm.prototype.isApplicationMode = function() {
     return true;
 };
 
-WebTerminal.prototype.arrowKeySequence = function(ch) {
+DomTerm.prototype.arrowKeySequence = function(ch) {
     return (this.isApplicationMode() ? "\033O" : "\033[")+ch;
 };
-WebTerminal.prototype.keyDownHandler = function(event) {
+DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     //this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" data:"+event.data+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
     if (this.lineEditing) {
@@ -2082,7 +2082,7 @@ WebTerminal.prototype.keyDownHandler = function(event) {
     }
 };
 
-WebTerminal.prototype.keyPressHandler = function(event) {
+DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     //this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" inputLine:"+this.inputLine);
     if (this.lineEditing) {
@@ -2100,7 +2100,7 @@ WebTerminal.prototype.keyPressHandler = function(event) {
 };
 
 // For debugging
-WebTerminal.prototype.toQuoted = function(str) {
+DomTerm.prototype.toQuoted = function(str) {
     var i = 0;
     var len = str.length;
     for (;  i < len;  i++) {
