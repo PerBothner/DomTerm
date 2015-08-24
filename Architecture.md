@@ -1,4 +1,4 @@
-# Notes towwards design and specification documents
+# Notes towards design and specification documents
 
 ## The WebTeminal object
 
@@ -43,6 +43,32 @@ followed by a newline.  The newline might be followed by indentation.
 
 `<span line="end">` -
 Marks the end of the final line.  Has no contents.
+
+## Colors and high-lighting
+
+Escape sequences (for example `"\e[4m"` - "underlined", or
+`"\e[32m"` - "set foreground color to green") are translated to
+<span> elements with "`style`" attributes (for example
+`<span style="text-decoration:underline">` or `<span style="color: green">`).
+After creating such a `<span>` the current position is moved inside it.
+
+If we've previously processed "set foreground color to green", and we
+see a request for "underlined" it is easy to ceate a nested `<span>`
+for the latter.  But what if we then see "set foreground color to red"?
+We don't want to nest <span style="color: red">` inside
+<span style="color: green">` - that could lead to some deep and
+ugly nesting.  Instead, we move the cursor outside bot existing
+spans, and then create new spans for red and underlined.
+
+The `<span>` nodes are created lazily just before characters are
+inserted, by `_adjustStyle`, which compares the current active styles
+with the desired ones (set by `_pushStyle`).
+
+A possibly better approach would be to match each highlight style into
+a `class` attribute (for example `green-foreground-style` and
+`underlined-style`).  A default stylesheet can map each style class to
+the correspoding CSS rules.  This has the advantage that one could
+override the highlighting appearance with a custom style sheet.
 
 ## Line-breaking / pretty-printing
 

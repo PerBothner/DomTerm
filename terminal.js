@@ -157,11 +157,11 @@ function WebTerminal(topNode, name) {
     this.homeLine = 0;
 
     // A stack of currently active "style" strings.
-    this.currentStyles = new Array();
+    this._currentStyles = new Array();
 
     // True if currentStyles may not match the current style context.
     // Thus the context needs to be adjusted before text is inserted.
-    this.adjustStyleNeeded = false;
+    this._adjustStyleNeeded = false;
 
     this.defaultBackgroundColor = "white";
     this.defaultForegroundColor = "black";
@@ -312,7 +312,7 @@ WebTerminal.prototype.moveTo = function(goalLine, goalColumn) {
  * @param addSpaceAsNeeded if we should add blank linesor spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine
  */
 WebTerminal.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
-    this.adjustStyleNeeded = true; // FIXME optimize?
+    this._adjustStyleNeeded = true; // FIXME optimize?
     var line = this.getCursorLine();
     var column = this.getCursorColumn();
     console.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+
@@ -593,7 +593,7 @@ WebTerminal.prototype.outputLFasCRLF = function() {
     return this.lineEditing;
 };
 
-/** Add a style property specifier to the currentStyles list.
+/** Add a style property specifier to the _currentStyles list.
  * However, if the new specifier "cancels" an existing specifier,
  * just remove the old one.
  * @param styleNameWithColon style property name including colon,
@@ -601,34 +601,33 @@ WebTerminal.prototype.outputLFasCRLF = function() {
  * @param styleValue style property value string (for example "underline"),
  *     or null to indicate the default value.
  */
-WebTerminal.prototype.pushSimpleStyle = function(styleNameWithColon, styleValue) {
-    var nstyles = this.currentStyles.length;
+WebTerminal.prototype._pushStyle = function(styleNameWithColon, styleValue) {
+    var nstyles = this._currentStyles.length;
     var i = 0;
     for (;  i < nstyles;  i++) {
-        if (this.currentStyles[i].startsWith(styleNameWithColon)) {
-            // Remove old currentStyles[i]
+        if (this._currentStyles[i].startsWith(styleNameWithColon)) {
+            // Remove old _currentStyles[i]
             while (++i < nstyles) {
-                this.currentStyles[i-1] = this.currentStyles[i];
+                this._currentStyles[i-1] = this._currentStyles[i];
             }
-            this.currentStyles.pop();
+            this._currentStyles.pop();
             break;
         }
     }
     if (styleValue != null)
-        this.currentStyles.push(styleNameWithColon+' '+styleValue);
+        this._currentStyles.push(styleNameWithColon+' '+styleValue);
 };
 
 /** Adjust style at current position to match desired style.
- * The desired style is a specified by the currentStyles list.
+ * The desired style is a specified by the _currentStyles list.
  * This usually means adding {@code <span style=...>} nodes around the
  * current position.  If the current position is already inside
  * a {@code <span style=...>} node that doesn't match the desired style,
  * then we have to split the {@code span} node so the current
  * position is not inside the span node, but text before and after is.
  */
-WebTerminal.prototype.adjustStyle = function() {
-    this.adjustStyleNeeded = false;
-    console.log("adjustStyle");
+WebTerminal.prototype._adjustStyle = function() {
+    this._adjustStyleNeeded = false;
     var parentStyles = new Array();
     for (var n = this.outputContainer;  n != this.topNode && n != null;
          n = n.parentNode) {
@@ -639,11 +638,11 @@ WebTerminal.prototype.adjustStyle = function() {
         }
     }
 
-    // Compare the parentStyles and currentStyles lists,
+    // Compare the parentStyles and _currentStyles lists,
     // so we can "keep" the styles where the match, and pop or add
     // the styles where they don't match.
     var keptStyles = 0;
-    var currentStylesLength = this.currentStyles.length;
+    var currentStylesLength = this._currentStyles.length;
     var j;
     for (j = parentStyles.length; --j >= 0; ) {
         var parentStyle = parentStyles[j];
@@ -652,7 +651,7 @@ WebTerminal.prototype.adjustStyle = function() {
                 break;
             }
 
-            // Matching is made more complicate because parentStyles
+            // Matching is made more complicated because parentStyles
             // may specify multiple properties in a single style attribute.
             // For example "color: red; background-color: blue".
             var k = 0;
@@ -673,7 +672,7 @@ WebTerminal.prototype.adjustStyle = function() {
                     parentStyle = "";
                 }
                 if (keptStyles+k < currentStylesLength
-                    && s == this.currentStyles[keptStyles+k])
+                    && s == this._currentStyles[keptStyles+k])
                     k++;
                 else
                     k = -1;
@@ -721,7 +720,7 @@ WebTerminal.prototype.adjustStyle = function() {
         this.outputContainer.removeChild(this.inputLine);
         var styleValue = null;
         do {
-            var s = this.currentStyles[keptStyles];
+            var s = this._currentStyles[keptStyles];
             styleValue = styleValue == null ? s : styleValue + ';' + s;
         } while (++keptStyles < currentStylesLength);
         var spanNode = this.createSpanNode();
@@ -1521,49 +1520,49 @@ WebTerminal.prototype.handleControlSequence = function(last) {
      case 109 /*'m'*/:
         var numParameters = this.parameters.length;
         if (numParameters == 0)
-            this.currentStyles.length = 0;
+            this._currentStyles.length = 0;
         for (var i = 0; i < numParameters; i++) {
             param = this.getParameter(i, -1);
             if (param <= 0)
-                this.currentStyles.length = 0;
+                this._currentStyles.length = 0;
             else {
-                var nstyles = this.currentStyles.length;
+                var nstyles = this._currentStyles.length;
                 switch (param) {
                 case 1:
-                    this.pushSimpleStyle("font-weight:", "bold");
+                    this._pushStyle("font-weight:", "bold");
                     break;
                 case 22:
-                    this.pushSimpleStyle("font-weight:", null/*"normal"*/);
+                    this._pushStyle("font-weight:", null/*"normal"*/);
                     break;
                 case 4:
-                    this.pushSimpleStyle("text-decoration:", "underline");
+                    this._pushStyle("text-decoration:", "underline");
                     break;
                 case 24:
-                    this.pushSimpleStyle("text-decoration:", null/*"none"*/);
+                    this._pushStyle("text-decoration:", null/*"none"*/);
                     break;
                 case 7:
-                    this.pushSimpleStyle("color:", this.defaultBackgroundColor);
-                    this.pushSimpleStyle("background-color:", this.defaultForegroundColor);
+                    this._pushStyle("color:", this.defaultBackgroundColor);
+                    this._pushStyle("background-color:", this.defaultForegroundColor);
                     break;
                 case 27:
-                    this.pushSimpleStyle("color:", null/*defaultForegroundColor*/);
-                    this.pushSimpleStyle("background-color:", null/*defaultBackgroundColor*/);
+                    this._pushStyle("color:", null/*defaultForegroundColor*/);
+                    this._pushStyle("background-color:", null/*defaultBackgroundColor*/);
                     break;
-                case 30: this.pushSimpleStyle("color:", "black"); break;
-                case 31: this.pushSimpleStyle("color:", "red"); break;
-                case 32: this.pushSimpleStyle("color:", "green"); break;
-                case 33: this.pushSimpleStyle("color:", "yellow"); break;
-                case 34: this.pushSimpleStyle("color:", "blue"); break;
-                case 35: this.pushSimpleStyle("color:", "magenta"); break;
-                case 36: this.pushSimpleStyle("color:", "cyan"); break;
-                case 37: this.pushSimpleStyle("color:", "white"); break;
+                case 30: this._pushStyle("color:", "black"); break;
+                case 31: this._pushStyle("color:", "red"); break;
+                case 32: this._pushStyle("color:", "green"); break;
+                case 33: this._pushStyle("color:", "yellow"); break;
+                case 34: this._pushStyle("color:", "blue"); break;
+                case 35: this._pushStyle("color:", "magenta"); break;
+                case 36: this._pushStyle("color:", "cyan"); break;
+                case 37: this._pushStyle("color:", "white"); break;
                 case 38:
                 case 48:
                     var property = param==38 ? " color" : "background-color:";
                     if (this.getParameter(i+1,-1) == 2
                         && numParameters >= i+5) {
                         var color = 
-                            this.pushSimpleStyle(property,
+                            this._pushStyle(property,
                                              this.rgb(this.getParameter(i+2,0),
                                                       this.getParameter(i+3,0),
                                                       this.getParameter(i+4,0)));
@@ -1571,25 +1570,25 @@ WebTerminal.prototype.handleControlSequence = function(last) {
                     } else if (this.getParameter(i+1,-1) == 5
                                && numParameters >= i+2) {
                         var c = this.getParameter(i+2,0);
-                        this.pushSimpleStyle(property, c);
+                        this._pushStyle(property, c);
                         i += 2;
                     }
                     break;
-                case 39: this.pushSimpleStyle("color:", null/*defaultForegroundColor*/); break;
-                case 40: this.pushSimpleStyle("background-color:", "black"); break;
-                case 41: this.pushSimpleStyle("background-color:", "red"); break;
-                case 42: this.pushSimpleStyle("background-color:", "green"); break;
-                case 43: this.pushSimpleStyle("background-color:", "yellow"); break;
-                case 44: this.pushSimpleStyle("background-color:", "blue"); break;
-                case 45: this.pushSimpleStyle("background-color:", "magenta"); break;
-                case 46: this.pushSimpleStyle("background-color:", "cyan"); break;
-                case 47: this.pushSimpleStyle("background-color:", "white"); break;
-                case 49: this.pushSimpleStyle("background-color:", null/*defaultBackgroundColor*/); break
+                case 39: this._pushStyle("color:", null/*defaultForegroundColor*/); break;
+                case 40: this._pushStyle("background-color:", "black"); break;
+                case 41: this._pushStyle("background-color:", "red"); break;
+                case 42: this._pushStyle("background-color:", "green"); break;
+                case 43: this._pushStyle("background-color:", "yellow"); break;
+                case 44: this._pushStyle("background-color:", "blue"); break;
+                case 45: this._pushStyle("background-color:", "magenta"); break;
+                case 46: this._pushStyle("background-color:", "cyan"); break;
+                case 47: this._pushStyle("background-color:", "white"); break;
+                case 49: this._pushStyle("background-color:", null/*defaultBackgroundColor*/); break
                 }
             }
         }
-        this.adjustStyleNeeded = true;
-        console.log("currentStyles: "+this.currentStyles);
+        this._adjustStyleNeeded = true;
+        console.log("currentStyles: "+this._currentStyles);
         break;
     case 114 /*'r'*/:
         this.scrollRegionTop = this.getParameter(0, 1) - 1;
@@ -1839,9 +1838,9 @@ WebTerminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, k
         str = str.substring(beginIndex, endIndex);
         slen = endIndex - beginIndex;
     }
-    console.log("insertSimple '%s' adjustStyleNeeded '%s'", str, this.adjustStyleNeeded);
-    if (this.adjustStyleNeeded)
-        this.adjustStyle();
+    console.log("insertSimple '%s' _adjustStyleNeeded '%s'", str, this._adjustStyleNeeded);
+    if (this._adjustStyleNeeded)
+        this._adjustStyle();
     var column =this.getCursorColumn();
     var widthInColums = endColumn-column;
     if (! this.insertMode) {
