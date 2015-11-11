@@ -103,7 +103,3 @@ then use a web brower to read file:///path/to/DomTerm/repl-client.html
 
 The websocketterm/ReplServer.java uses standard JavaEE annotations,
 so it should be possibly to deploy it in an EE server like Glassfish.
-
-Support for windows resizing is not implemented when using websockets.
-What is needed is an encoding to transmit the size change over
-the websocket.

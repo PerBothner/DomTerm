@@ -5,10 +5,10 @@
 <!-- See http://architects.dzone.com/articles/sample-java-web-socket-client-->
 <title>Web-Terminal</title>
 <style type="text/css">
-  body { top: 0; bottom: 0 }
+  html, body { width: 100%; height: 100% ; margin: 0px; overflow: hidden }
+  div[class="domterm"] { width: 100%; height: 100%; overflow-y: scroll; overflow-x: hidden; font-family: monospace;  margin: 0px; padding: 0px; border: 0px; white-space: pre }
   span[class="wrap"] {padding: 0px; margin: 0x; font-family: monospace; white-space: nowrap }
   span[line="soft"] { padding: 0px; margin: 0x; font: monospace medium; }
-  div[class="interaction"] { overflow-y: scroll; font-family: monospace;  margin: 0px; padding: 0px; border: 0px; white-space: pre }
   dummy {white-space: pre-wrap; word-break: break-all}
   span[std="output"] { }
   span[std="error"] { color: red; }
@@ -16,13 +16,13 @@
   span[std="input"] { font-weight: bolder; color: blue }
   input[std="input"] { font-weight: bolder; }
   input[std="input"] {
-        border: 0px;
-        margin: 0px;
-        padding: 0px;
-  right: 0px;
-  width: auto;
-  left: auto;
-}
+    border: 0px;
+    margin: 0px;
+    padding: 0px;
+    right: 0px;
+    width: auto;
+    left: auto;
+  }
 </style>
 <script type="text/javascript" src="ResizeSensor.js"> </script>
 <script type="text/javascript" src="terminal.js"> </script>
@@ -38,18 +38,18 @@ function onMessage(evt) {
     wt.insertString(evt.data);
 }
 
-function connect() {         
+function connect() {
+    wt = new DomTerm("term1");
+    wt.processInputCharacters = socketSendChars;
+    var bodyNode = document.getElementsByTagName("div")[0];
     wsocket = new WebSocket("ws://localhost:8025/websocket/replsrv");
     wsocket.onmessage = onMessage;
-    var bodyNode = document.getElementsByTagName("body")[0];
-    wt = new DomTerm(bodyNode, "term1");
-    wt.processInputCharacters = socketSendChars;
+    wsocket.onopen = function(e) { wt.initializeTerminal(bodyNode); };
 }
 
 window.addEventListener("load", connect, false);
 
-  </script>
+</script>
 </head>
-<body>
-</body>
+<body><div class="domterm" id="term1"></div></body>
 </html>

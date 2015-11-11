@@ -15,7 +15,7 @@ The lineStarts array maps from a line number to the DOM location
 of the start of the corresponding line.
 
 The lineEnds array maps to the end of each line.
-Alwways points to a span node with the line attribute set.
+Always points to a span node with the line attribute set.
 Normally lineEnds[i] == lineStarts[i+1]; however, sometimes
 lineStarts[i] is the start of a <div> or other block element.
 
@@ -37,12 +37,13 @@ Referenced by the inputLine field of the DomTerm object.
 A "hard" newline.  Has a "\n" text node as its sole child.
 
 `<span line="soft">` -
-A "soft" newline, as breaked by line-breaking.
-It's sole child is a text node consisting of wrapString
+A "soft" newline, as created by line-breaking.
+Its sole child is a text node consisting of wrapString
 followed by a newline.  The newline might be followed by indentation.
 
 `<span line="end">` -
-Marks the end of the final line.  Has no contents.
+Marks the end of the final line.  Has no contents (except a zero-width space).
+(May also be used in the future for the end of `<div>`-level content.)
 
 ## Colors and high-lighting
 
@@ -78,7 +79,7 @@ and (usually) we want to line-break in the middle of a word.
 These CSS properties come close:
    white-space: pre-wrap; word-break: break-all
 This is simple and fast.  However:
-- It doesn't help in inserting a visual indicator, line Emacs's arrow,
+- It doesn't help in inserting a visual indicator, like Emacs's arrow,
   to indicate when a line was broken.
 - It doesn't help managing the line table.
 - It doesn't help with pretty-printing (for example grouping).

@@ -34,7 +34,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-function DomTerm(topNode, name) {
+function DomTerm(name, topNode) {
     // A unique name for this DomTerm instance.
     // Should match the syntax for an XML NCName, as it is used to
     // generate "id" attributes.  I.e. only allowed special characters
@@ -315,8 +315,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     this._adjustStyleNeeded = true; // FIXME optimize?
     var line = this.getCursorLine();
     var column = this.getCursorColumn();
-    console.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+
-                " goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
+    //this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
     // This moves current (and parent) forwards in the DOM tree
     // until we reach the desired (goalLine,goalColumn).
     // The invariant is if current is non-null, then the position is
@@ -336,25 +335,41 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         while (absLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
-            var last = this.lineEnds[homeLine+lineCount-1];
+            var last = this.lineEnds[lineCount-1];
             var kind = last.getAttribute("line");
             if (kind=="end") {
                 last.setAttribute("line", "hard");
                 this.appendText(last, "\n");
             }
-            var next = this.createLineNode("end");
+            var next = this._createEndNode();
             last.parentNode.appendChild(next);
-            this.lineStarts[homeLine+lineCount] = last;
-            this.lineEnds[homeLine+lineCount] = next;
+            this.lineStarts[lineCount] = last;
+            this.lineEnds[lineCount] = next;
+            var nextLine = lineCount;
             lineCount++;
+            while (homeLine < nextLine) {
+                var homeTop = homeLine == 0 ? this.lineStarts[homeLine].offsetTop
+                    : this.lineEnds[homeLine-1].offsetTop + this.lineEnds[homeLine-1].offsetHeight;
+                if (next.offsetTop+next.offsetHeight <= homeTop + this.availHeight)
+                    break;
+                homeLine++;
+                var homeStart = this.lineStarts[homeLine];
+                this.cursorHome = homeStart;
+                this.log(" increment homeLine");
+            }
+            this.homeLine = homeLine;
         }
         var lineStart = this.lineStarts[absLine];
+        //this.log("- lineStart:"+lineStart+" homeL:"+homeLine+" goalL:"+goalLine+" lines.len:"+this.lineStarts.length+" absLine:"+absLine);
         if (absLine > 0 && lineStart == this.lineEnds[absLine-1]) {
             current = lineStart.nextSibling;
             parent = lineStart.parentNode;
         } else {
             parent = lineStart;
-            current = lineStart.firstChild;
+            if (lineStart) {
+                current = lineStart.firstChild;
+            } else
+                this.log("- bad lineStart");
         }
         if (!current)
             console.log("null current after init moveTo line");
@@ -380,9 +395,8 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         // At this point we're at the correct line; scan to the desired column.
         mainLoop:
         while (column < goalColumn) {
-            console.log("-move line:%s col:%s cur:%s", line, column, current);
             if (parent==null||(current!=null&&parent!=current.parentNode))
-                error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
+                this.log("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
             if (current == lineEnd) {
                 if (addSpaceAsNeeded) {
                     var str = DomTerm.makeSpaces(goalColumn-column);
@@ -481,7 +495,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
 
             ch = current;
             for (;;) {
-                console.log(" move 2 parent:%s home:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.cursorHome, this.topNode, line, goalLine, this.currentCursorLine, current);
+                //this.log(" move 2 parent:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.topNode, line, goalLine, this.currentCursorLine, current);
                 if (parent == this.initial || parent == this.topNode) {
                     current = null;
                     var fill = goalColumn - column;
@@ -528,7 +542,7 @@ DomTerm.prototype.cursorLineStart = function(deltaLines) {
 };
 
 DomTerm.prototype.cursorDown = function(deltaLines) {
-    console.log("cursurDown %d cur %d:%d", deltaLines, this.getCursorLine(), this.getCursorColumn()+"body:"+this.topNode);
+    //this.log("cursorDown "+deltaLines+" cur "+this.getCursorLine()+":"+this.getCursorColumn()+" body:"+this.topNode);
     this.moveTo(this.getCursorLine()+deltaLines, this.getCursorColumn());
 };
 
@@ -748,25 +762,7 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
 DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
     console.log("deleteLinesIgnoreScroll %d", count);
     for (var i = count; --i >= 0; ) {
-        this.eraseCharactersRight(-1, true);
-        var current = this.outputBefore;
-        if (current==this.inputLine)
-            current=current.nextSibling;
-        if (current instanceof Text) {
-            var text = current.textContent;
-            var length = text.length;
-            if (length == 0 || text.charCodeAt(0) != 10/*'\n'*/) // Invalid usage
-                break;
-            current.deleteData(0, 1);
-        }
-        else if (this.isBreakNode(current)) {
-            current.parentNode.removeChild(current);
-            current=current.nextSibling;
-        }
-        else {
-            // Invalid usage.
-            break;
-        }
+        this.eraseCharactersRight(-2, true);
     }
 };
 
@@ -781,8 +777,12 @@ DomTerm.prototype.insertLines = function(count) {
  DomTerm.prototype.deleteLines = function(count) {
      this.deleteLinesIgnoreScroll(count);
      var line = this.getCursorLine();
-     this.cursorLineStart(this.getScrollBottom() - line - count);
-     this.insertLinesIgnoreScroll(count);
+     var scrollBotton = this.getScrollBottom(); 
+     var insertNeeded = true; // FIXME: scrollBottom != last_line
+     if (insertNeeded) {
+         this.cursorLineStart(scrollBottom - line - count);
+         this.insertLinesIgnoreScroll(count);
+     }
      this.moveTo(line, 0);
  };
 
@@ -813,13 +813,17 @@ DomTerm.prototype.makeId = function(local) {
     return this.name + "__" + local;
 };
 
-DomTerm.prototype.createLineNode = function(kind) {
+DomTerm.prototype._createLineNode = function(kind) {
     var el = document.createElement("span");
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
     el.setAttribute("line", kind);
     return el;
 };
  
+DomTerm.prototype._createEndNode = function(kind) {
+    return this._createLineNode("end");
+};
+
 DomTerm.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         if (val) {
@@ -905,14 +909,26 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                           .createTextNode("abcdefghijklmnopqrstuvwxyz"));
     this._rulerNode = rulerNode;
     helperNode.appendChild(rulerNode);
+
+    var wrapDummy = this._createLineNode("soft");
+    wrapDummy.appendChild(document.createTextNode(this.wrapString));
+    helperNode.appendChild(wrapDummy);
+    this._wrapDummy = wrapDummy;
+
+    // FIXME we want the resize-sensor to be a child of helperNode
+    var dt = this;
+    new ResizeSensor(topNode, function () {
+        dt.log("ResizeSensor called"); 
+        // FIXME do some throttling.
+        // The link below has an example using requestAnimationFrame:
+        // https://developer.mozilla.org/en-US/docs/Web/Events/scroll
+        dt.measureWindow();
+    });
+
     var mainNode = document.createElement("div");
     mainNode.setAttribute("id", this.makeId("main"));
     mainNode.setAttribute("class", "interaction");
     topNode.appendChild(mainNode);
-    var wrapDummy = this.createLineNode("soft");
-    wrapDummy.appendChild(document.createTextNode(this.wrapString));
-    helperNode.appendChild(wrapDummy);
-    this._wrapDummy = wrapDummy;
 
     document.onkeydown =
         function(e) { wt.keyDownHandler(e ? e : window.event) };
@@ -926,21 +942,12 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     this.addInputLine();
     this.outputBefore = this.inputLine;
     this.pendingInput = this.inputLine;
-    var lineEnd = this.createLineNode("end");
+    var lineEnd = this._createEndNode();
     this.initial.appendChild(lineEnd);
     this.lineEnds[0] = lineEnd;
 
     this.measureWindow();
 
-    // FIXME we want the resize-sensor to be a child of helperNode
-    var dt = this;
-    new ResizeSensor(topNode, function () {
-        dt.log("ResizeSensor called"); 
-        // FIXME do some throttling.
-        // The link below has an example using requestAnimationFrame:
-        // https://developer.mozilla.org/en-US/docs/Web/Events/scroll
-        dt.measureWindow();
-    });
 };
 
 DomTerm.prototype.measureWindow = function()  {
@@ -970,9 +977,14 @@ DomTerm.prototype.measureWindow = function()  {
     this.wrapWidth = this.numColumns;
 };
 
+DomTerm.prototype.reportEvent = function(name, data) {
+    // 0x92 is "Private Use 2".
+    this.processInputCharacters("\x92"+name+" "+data+"\n");
+};
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
-                                               availHeight, availWidth) {
-    this.log("windowSizeChanged numRows:"+numRows+" numCols:"+numColumns);
+                                           availHeight, availWidth) {
+    //this.log("windowSizeChanged numRows:"+numRows+" numCols:"+numColumns);
+    this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
 };
 
 DomTerm.prototype.addInputLine = function() {
@@ -1069,8 +1081,7 @@ DomTerm.prototype.updateCursorCache = function() {
     tmp[0] = 0;
     tmp[1] = 0;
     var x = this.delta2D(this.cursorHome, this.outputBefore, tmp);
-    console.log("updateCursorCache home:%s outBef:%s ->%s:%s r:%s",
-                this.cursorHome, this.outputBefore, tmp[0], tmp[1], x);
+    //console.log("updateCursorCache outBef:%s ->%s:%s r:%s", this.outputBefore, tmp[0], tmp[1], x);
     this.currentCursorLine = tmp[0];
     this.currentCursorColumn = tmp[1];
 };
@@ -1153,7 +1164,6 @@ DomTerm.prototype.appendText = function(parent, data) {
     if (data.length == 0)
         return;
     var last = parent.lastChild;
-    console.log("appendtext data:'%s' parent:%s last:%s", data, parent, last);
     if (last instanceof Text)
         last.appendData(data);
     else
@@ -1176,7 +1186,7 @@ DomTerm.prototype.insertWrapBreak = function() {
     } else {
         var oldLine = this.currentCursorLine;
         //this.insertRawOutput(this.wrapStringNewline);
-        var el = this.createLineNode("soft");
+        var el = this._createLineNode("soft");
         el.appendChild(document.createTextNode(this.wrapStringNewline));
          this.insertNode(el);
         if (oldLine >= 0)
@@ -1210,16 +1220,23 @@ DomTerm.prototype.eraseUntil = function(stopNode) {
     }
     var line = this.homeLine + this.getCursorLine();
     var lastEnd = this.lineEnds[line];
-    console.log("updateLine homestart:%s curL:%s line:%s last:%s",  this.homeLine, this.getCursorLine(). line, lastEnd);
+    //console.log("updateLine homestart:%s curL:%s line:%s last:%s",  this.homeLine, this.getCursorLine(). line, lastEnd);
     this.lineStarts.length = line+1;
     this.lineEnds.length = line+1;
     this.lineEnds[line]= lastEnd;
     stopNode.appendChild(lastEnd);
 };
 
+/** Erase or delete characters in the current line.
+ * If 'doDelete' is true delete characters (and move the rest of the line left);
+ * if 'doDelete' is false erase characters (replace them with space).
+ * The 'count' is the number of characters to erase/delete;
+ * a count of -1 or -2 means erase to the end of the line.
+ * The value -2 means also erase the end-of-line marker
+ * (unless it has the line="end" property).  Does not update lineStart/lineEnd.
+ */
 DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
-    if (count < 0)
-        count = 999999999;
+    var todo = count >= 0 ? count : 999999999;
     // Note that the traversal logic is similar to move.
     var current = this.outputBefore;
     var parent = this.outputContainer;
@@ -1227,9 +1244,20 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
     if (current==this.inputLine && current != null)
         current=current.nextSibling;
     var curColumn = -1;
-    var seen = 0; // Number of columns scanned so far.
     for (;;) {
-        if (this.isBreakNode(current) || current == lineEnd || seen >= count) {
+        if (current == lineEnd) {
+            if (count == -2) {
+                parent = current.parentNode; // Probably redundant
+                parent.removeChild(current);
+                while (this.isSpanNode(parent) && parent.firstChild == null) {
+                    var pparent = parent.parentNode;
+                    pparent.removeChild(parent);
+                    parent = pparent;
+                }
+            }
+            break;
+        }
+        if (this.isBreakNode(current) || todo <= 0) {
             break;
         }
         else if (current instanceof Text) {
@@ -1238,24 +1266,29 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
             var length = text.length;
 
             var i = 0;
-            for (; i < length; i++) {
-                if (seen >= count)
-                    break;
-                var ch = text.charCodeAt(i);
-                // Optimization - don't need to calculate getCurrentColumn.
-                if (ch >= 32/*' '*/ && ch < 127) {
-                    seen++;
-                }
-                else if (ch == 13/*'\r'*/ || ch == 10/*'\n'*/ || ch == 12/*'\f'*/) {
-                    count = seen;
-                    break;
-                }
-                else {
-                    if (curColumn < 0)
-                        curColumn = this.getCursorColumn();
-                    var col = this.updateColumn(ch, curColumn+seen);
-                    seen = col - curColumn;
-                    // general case using updateColumn FIXME
+            if (count < 0) {
+                i = length;
+            } else {
+                for (; i < length; i++) {
+                    if (todo <= 0)
+                        break;
+                    var ch = text.charCodeAt(i);
+                    // Optimization - don't need to calculate getCurrentColumn.
+                    if (ch >= 32/*' '*/ && ch < 127) {
+                        todo--;
+                    }
+                    else if (ch == 13/*'\r'*/ || ch == 10/*'\n'*/ || ch == 12/*'\f'*/) {
+                        todo = 0;
+                        break;
+                    }
+                    else {
+                        if (curColumn < 0)
+                            curColumn = this.getCursorColumn();
+                        var col = this.updateColumn(ch,
+                                                    curColumn+(count-todo));
+                        todo = count - (col - curColumn);
+                        // general case using updateColumn FIXME
+                    }
                 }
             }
 
@@ -1278,7 +1311,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
                 var next = current.nextSibling;
                 parent.removeChild(current);
                 current = next;
-                count--;
+                todo--;
                 continue;
             }
         }
@@ -1391,7 +1424,6 @@ DomTerm.prototype.handleControlSequence = function(last) {
         var saveInsertMode = this.insertMode;
         this.insertMode = true;
         param = this.getParameter(0, 1);
-        console.log("before insert for append param %s", param);
         this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param,
                            'O', this.getCursorColumn()+param);
         this.cursorLeft(param);
@@ -1588,7 +1620,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             }
         }
         this._adjustStyleNeeded = true;
-        console.log("currentStyles: "+this._currentStyles);
+        //console.log("currentStyles: "+this._currentStyles);
         break;
     case 114 /*'r'*/:
         this.scrollRegionTop = this.getParameter(0, 1) - 1;
@@ -1635,7 +1667,7 @@ DomTerm.prototype._doDeferredDeletion = function() {
 }
 
 DomTerm.prototype.insertString = function(str, kind) {
-    console.log("insertString '%s'", str);
+    //this.log("insertString '%s'", str);
     /*
     var indexTextEnd = function(str, start) {
         var len = str.length;
@@ -1744,11 +1776,9 @@ DomTerm.prototype.insertString = function(str, kind) {
                 //this.currentCursorColumn = column;
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && this.getCursorLine() !== this.scrollRegionBottom-1) {
-                    console.log("CR a l:%d", this.getCursorLine());
                     this.cursorLineStart(1);
                     i++;
                 } else {
-                    console.log("CR b");
                     this.cursorLineStart(0);
                 }
                 prevEnd = i + 1;
@@ -1756,7 +1786,6 @@ DomTerm.prototype.insertString = function(str, kind) {
                 break;
             case 10: // '\n' newline
                 this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
-                this.log("NL as CRLF:"+this.outputLFasCRLF());
                 if (this.outputLFasCRLF()) {
                     if (this.insertMode) {
                         this.insertRawOutput("\n"); // FIXME
@@ -1826,6 +1855,12 @@ DomTerm.prototype.insertString = function(str, kind) {
     if (this.controlSequenceState == DomTerm.SEEN_ESC_BRACKET_TEXT_STATE) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnv, i);
     }
+    if (true) { // FIXME only if "scrollWanted"
+        var last = this.topNode.lastChild;
+        var lastBottom = last.offsetTop + last.offsetHeight;
+        if (lastBottom > this.topNode.scrollTop + this.availHeight)
+            this.topNode.scrollTop = lastBottom - this.availHeight;
+    }
 };
 
 DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind, endColumn) {
@@ -1838,7 +1873,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
         str = str.substring(beginIndex, endIndex);
         slen = endIndex - beginIndex;
     }
-    console.log("insertSimple '%s' _adjustStyleNeeded '%s'", str, this._adjustStyleNeeded);
+    //this.log("insertSimple '%s' _adjustStyleNeeded '%s'", str, this._adjustStyleNeeded);
     if (this._adjustStyleNeeded)
         this._adjustStyle();
     var column =this.getCursorColumn();
@@ -1934,7 +1969,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
             // FIXME find out much between outputBefore and lineEnd fits
             // remove whatever doesn't fit.
         }
-        console.log("after insert ["+str+"]"+" out:"+this.outputBefore+" o.left:"+this.outputBefore.offsetLeft+" curL:"+this.getCursorLine()+" lineEnd:"+this.lineEnds[this.getCursorLine()]+" .oL="+this.lineEnds[this.getCursorLine()].offsetLeft);
+        //console.log("after insert ["+str+"]"+" out:"+this.outputBefore+" o.left:"+this.outputBefore.offsetLeft+" curL:"+this.getCursorLine()+" lineEnd:"+this.lineEnds[this.getCursorLine()]+" .oL="+this.lineEnds[this.getCursorLine()].offsetLeft);
     }
     this.currentCursorColumn = endColumn;
 };

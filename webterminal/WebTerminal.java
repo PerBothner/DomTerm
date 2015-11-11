@@ -59,6 +59,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
       implements javafx.event.EventHandler, org.w3c.dom.events.EventListener
                       /*implements KeyListener, ChangeListener*/ 
 {
+    public int verbosity;
     public void log(String str) { System.err.println(str); }
     
     WebView webView;
@@ -159,7 +160,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
                     if (newValue == State.SUCCEEDED) {
                         initialize();
                         if (initialOutput != null) {
-                            System.err.println("WT.changed newV:"+newValue+" initial:"+initialOutput+" jsW:"+jsWebTerminal+" outB:"+jsWebTerminal.getMember("outputBefore"));
+                            if (verbosity > 0)
+                                System.err.println("WT.changed newV:"+newValue+" initial:"+initialOutput+" jsW:"+jsWebTerminal+" outB:"+jsWebTerminal.getMember("outputBefore"));
                             jsWebTerminal.call("insertString", initialOutput);
                             initialOutput = null;
                         }
@@ -240,7 +242,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
        Platform.runLater(new Runnable() {
                 public void run() {
                     //jsWebTerminal = (JSObject) webEngine.executeScript("webTerminal");
-                    System.err.println("insertOutput/later jsW:"+jsWebTerminal+" str:"+str);
+                    if (verbosity > 0)
+                        System.err.println("insertOutput/later jsW:"+jsWebTerminal+" str:"+WTDebug.toQuoted(str));
                     if (jsWebTerminal == null)
                         initialOutput = initialOutput == null ? str
                             : initialOutput + str;

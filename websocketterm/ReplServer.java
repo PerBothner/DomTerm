@@ -17,6 +17,7 @@ public class ReplServer {
  private static Queue<Session> queue = new ConcurrentLinkedQueue<Session>();
 
     static PTY pty;
+    static int verbose;
  
     static Writer pin;
     static Reader pout;
@@ -47,7 +48,8 @@ static
                          System.out.println("caught "+ex);
                          break;
                      }
-                     System.out.println("got "+n+" chars");
+                     if (verbose > 0)
+                         System.out.println("got "+n+" chars");
                      if (n < 0)
                          break; // FIXME
                      sendAll(new String(buffer, 0, n));
@@ -77,10 +79,38 @@ static
         return sbuf.toString();
     }
  
+    String pending = null;
+
  @OnMessage
  public void onMessage(Session session, String msg) {
   try {   
-      System.out.println("received msg ["+quoteString(msg)+"] from "+session.getId());
+      if (verbose > 0)
+          System.out.println("received msg ["+quoteString(msg)+"] from "+session.getId());
+      if (pending != null) {
+          msg = pending + msg;
+          pending = null;
+      }
+      int i = 0;
+      int len = msg.length();
+      for (; i < len; i++) {
+          // Octal 222 is 0x92 "Private Use 2".
+          if (msg.charAt(i) == '\222') {
+              pin.write(msg.substring(0, i));
+              int eol = msg.indexOf('\n', i+1);
+              if (eol >= 0) {
+                  String cmd = msg.substring(i+1, eol);
+                  processEvent(cmd);
+                  msg = msg.substring(eol+1);
+                  i = -1;
+                  len = msg.length();
+              } else {
+                  pending = msg.substring(i);
+                  msg = "";
+                  i = -1;
+                  len = 0;
+              }
+          }
+      }
    pin.write(msg);
    //pin.write("\r\n");
    pin.flush();
@@ -88,6 +118,25 @@ static
    e.printStackTrace();
   }
  }
+
+    public void processEvent(String str) {
+        String[] words = str.split("  *");
+        if (words.length == 5 && "WS".equals(words[0])) {
+            try {
+                int i1 = Integer.parseInt(words[1]);
+                int i2 = Integer.parseInt(words[2]);
+                int i3 = Integer.parseInt(words[3]);
+                int i4 = Integer.parseInt(words[4]);
+                pty.setWindowSize(i1, i2, i3, i3);
+            } catch (Throwable ex) {
+                System.err.println("caught "+ex);
+            }
+            if (verbose > 0)
+                System.err.println("event/WS "+words[1]+"/"+words[2]+"/"+words[3]+"/"+words[4]);
+        }
+        else
+            System.out.println("event ["+quoteString(str)+"] "+words.length+" words");
+    }
 
  @OnOpen
  public void open(Session session) {
@@ -123,7 +172,8 @@ static
     }    
    }
    queue.removeAll(closedSessions);
-   System.out.println("Sending ["+quoteString(msg)+"] to "+queue.size()+" clients");
+   if (verbose > 0)
+       System.out.println("Sending ["+quoteString(msg)+"] to "+queue.size()+" clients");
   } catch (Throwable e) {
    e.printStackTrace();
   }

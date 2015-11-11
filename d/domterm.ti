@@ -13,7 +13,7 @@ domterm|DomTerm terminal emulator,
 # move #1 characters to the right [tc: RI]
 	cuf=\E[%p1%dC,
 # move to row #1 columns #2 [tc: cm]
-	cup=\E[%i%p1%d;%p2%dH,
+  	cup=\E[%i%p1%d;%p2%dH,
 # up #1 lines (P*) [tc: UP]
 	cuu=\E[%p1%dA,
 # up one line [tc: up]
@@ -66,8 +66,8 @@ domterm|DomTerm terminal emulator,
 #       ccc,
 # initialize color #1 to (#2,#3,#4) [tc: Ic]
 #	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
-# newline ignores after 80 cols [Concept] [tc: xn]
-#	xenl,
+# newline ignored after 80 cols [Concept] [tc: xn]
+	xenl,
 #	bel=^G,
 # turn on bold (extra bright) mode [tc: md]
 #	bold=\E[1m,

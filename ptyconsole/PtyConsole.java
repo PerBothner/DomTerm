@@ -51,9 +51,11 @@ public class PtyConsole extends WebTerminal {
     Writer pin;
     Reader pout;
     PTY pty;
+    int verbosity;
 
     @Override public void processInputCharacters(String text) {
-        System.err.println("processInputCharacters["+text+"]");
+        if (verbosity > 0)
+            System.err.println("processInputCharacters["+WTDebug.toQuoted(text)+"]");
         try {
             pin.write(text);
             pin.flush();
