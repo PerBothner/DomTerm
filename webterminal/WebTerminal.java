@@ -59,13 +59,13 @@ public class WebTerminal extends VBox // FIXME should extend Control
       implements javafx.event.EventHandler, org.w3c.dom.events.EventListener
                       /*implements KeyListener, ChangeListener*/ 
 {
-    public int verbosity;
+    public int verbosity = 0;
     public void log(String str) { System.err.println(str); }
     
     WebView webView;
     protected WebView getWebView() { return webView; } 
 
-    protected WebEngine webEngine;
+    public WebEngine webEngine;
     JSObject jsWebTerminal;
 
     String defaultBackgroundColor = "white";
@@ -79,8 +79,17 @@ public class WebTerminal extends VBox // FIXME should extend Control
     public void setLineEditing(boolean lineEditing) {
         jsWebTerminal.setMember("lineEditing", lineEditing);
     }
-
-    public boolean outputLFasCRLF() { return isLineEditing(); }
+    public void setLineEditing(char mode) {
+        jsWebTerminal.setMember("autoEditing", mode == 'a');
+        jsWebTerminal.setMember("lineEditing", mode == 'l');
+    }
+    public String getSelectedText() {
+        return jsWebTerminal.call("getSelectedText").toString();
+    }
+    public void pasteText(String str) {
+         jsWebTerminal.call("pasteText", str);
+    }
+   public boolean outputLFasCRLF() { return isLineEditing(); }
 
     /** Input lines that have not been processed yet.
      * In some modes we support enhanced type-ahead: Input lines are queued
@@ -144,7 +153,6 @@ public class WebTerminal extends VBox // FIXME should extend Control
     */
 
     Document documentNode;
-    Element bodyNode;
 
     public Document getDocumentNode() { return documentNode; }
 
@@ -210,10 +218,10 @@ public class WebTerminal extends VBox // FIXME should extend Control
 
     protected void initialize() {
         documentNode = webEngine.getDocument();
-        bodyNode = documentNode.getElementById("body");
         Object tmp = webEngine.executeScript("makeDomTerm()");
         jsWebTerminal = (JSObject) tmp;
         jsWebTerminal.setMember("java", this);
+        webEngine.executeScript("initDomTerm()");
 
         //((EventTarget) bodyNode).addEventListener("click", this, false);
 

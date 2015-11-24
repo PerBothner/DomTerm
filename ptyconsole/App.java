@@ -31,13 +31,28 @@
  */
 
 package ptyconsole;
-import javafx.scene.Node;
-import javafx.scene.Scene;
-import javafx.scene.layout.*;
 import javax.net.ssl.*;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.layout.*;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.Toggle;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.web.*;
 import javafx.stage.Stage;
 import java.io.*;
@@ -59,6 +74,74 @@ public class App extends Application
 
         VBox pane = console;
         Scene scene = new Scene(pane);
+
+        ContextMenu popup = new ContextMenu();
+        pane.addEventHandler(MouseEvent.MOUSE_CLICKED,
+                             new EventHandler<MouseEvent>() {
+                                 @Override public void handle(MouseEvent e) {
+                                     if (e.getButton() == MouseButton.SECONDARY)   {
+                                         popup.show(pane, e.getScreenX(), e.getScreenY());
+                                     }
+                                 }
+                             });
+        pane.addEventHandler(MouseEvent.MOUSE_PRESSED,
+                             new EventHandler<MouseEvent>() {
+                                 @Override public void handle(MouseEvent e) {
+                                     if (e.getButton() == MouseButton.SECONDARY)   {
+                                         // Neeed to avoid selection being cancelled
+                                         e.consume();
+                                     }
+                                 }
+                             });
+
+        MenuItem copyItem = new MenuItem("Copy");
+        popup.getItems().add(copyItem);
+        copyItem.setOnAction(new EventHandler<ActionEvent>() {
+                public void handle(ActionEvent t) {
+                    String selected = console.getSelectedText();
+                    System.err.println("selected: ["+selected+"] event:"+t);
+                    ClipboardContent content = new ClipboardContent();
+                    content.putString(selected);
+                    Clipboard.getSystemClipboard().setContent(content);
+                    //console.webEngine.executeScript("document.execCommand('copy')");
+                }
+            });
+
+        MenuItem pasteItem = new MenuItem("Paste");
+        popup.getItems().add(pasteItem);
+        pasteItem.setOnAction(new EventHandler<ActionEvent>() {
+                public void handle(ActionEvent t) {
+                    String content = (String) Clipboard.getSystemClipboard().getContent(DataFormat.PLAIN_TEXT);
+                    System.err.println("pasted: ["+content+"] event:"+t);
+                    if (content != null) {
+                        console.pasteText(content);
+                    }
+                }
+            });
+
+        Menu inputModeMenu = new Menu("input mode");
+        ToggleGroup inputModeGroup = new ToggleGroup();
+        RadioMenuItem charModeItem = new RadioMenuItem("character mode");
+        charModeItem.setToggleGroup(inputModeGroup);
+        RadioMenuItem lineModeItem = new RadioMenuItem("line mode");
+        lineModeItem.setToggleGroup(inputModeGroup);
+        RadioMenuItem autoModeItem = new RadioMenuItem("auto mode");
+        autoModeItem.setToggleGroup(inputModeGroup);
+        inputModeMenu.getItems().add(charModeItem);
+        inputModeMenu.getItems().add(lineModeItem);
+        inputModeMenu.getItems().add(autoModeItem);
+        autoModeItem.setSelected(true);
+        popup.getItems().add(inputModeMenu);
+        inputModeGroup.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
+                public void changed(ObservableValue<? extends Toggle> ov,
+                                    Toggle old_toggle, Toggle new_toggle) {
+                    if (new_toggle != null) {
+                        String text = ((RadioMenuItem)new_toggle).getText();
+                        console.setLineEditing(text.charAt(0));
+                        System.err.println("TOGGLE "+inputModeGroup+" new:"+new_toggle+" - "+text);
+                    }
+                }
+            });
         return scene;
     }
 

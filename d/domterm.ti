@@ -1,6 +1,6 @@
 # tc:XX means the termcap equivalency is XX
 domterm|DomTerm terminal emulator,
-# automatic margins [tc:am]
+# automatic margins [tc: am]
 	am,
 # printer will not echo on screen [tc:5i]
 	mc5i,
@@ -46,7 +46,10 @@ domterm|DomTerm terminal emulator,
         cr=^M, cub=\E[%p1%dD, cub1=\E[D, cud=\E[%p1%dB, cud1=\E[B,
         dl=\E[%p1%dM, dl1=\E[M, ech=\E[%p1%dX, ed=\E[J, el=\E[K,
         ht=\E[I, hts=\EH,
-        il=\E[%p1%dL, il1=\E[L, ind=^J,
+# insert #1 lines [tc: AL]
+	il=\E[%p1%dL,
+# insert line [tc: al]
+        il1=\E[L, ind=^J,
         indn=\E[%p1%dS, invis=\E[8m, kbs=^H, kcbt=\E[Z, kcub1=\E[D,
         kcud1=\E[B, kcuf1=\E[C, kcuu1=\E[A, khome=\E[H, kich1=\E[L,
         mc4=\E[4i, mc5=\E[5i, nel=\r\E[S, op=\E[39;49m,
@@ -57,9 +60,11 @@ domterm|DomTerm terminal emulator,
         sgr=\E[0;10%?%p1%t;7%;%?%p2%t;4%;%?%p3%t;7%;%?%p4%t;5%;%?%p6%t;1%;%?%p7%t;8%;%?%p9%t;11%;m,
         sgr0=\E[0;10m, smacs=\E[11m, smpch=\E[11m, smso=\E[7m,
         smul=\E[4m, tbc=\E[3g, u6=\E[%i%d;%dR, u7=\E[6n,
-        u8=\E[?%[;0123456789]c, u9=\E[c, vpa=\E[%i%p1%dd,
+        u8=\E[?%[;0123456789]c, u9=\E[c,
+# row_address - vertical position #1 absolute [tc: cv]
+        vpa=\E[%i%p1%dd,
 # no pad char [tc: NP]
-#	npc,
+	npc,
 # screen erased with background color [tc: ut]
 #	bce,
 # terminal can redefine existing colors [tc: cc]
@@ -76,9 +81,9 @@ domterm|DomTerm terminal emulator,
 #	cr=\r,
 # change scroll region to line #1 to line #2 [tc: cs]
 #	csr=\E[%i%p1%d;%p2%dr,
-#	cub1=\b,
+	cub1=\b,
 # move #1 characters to the left [tc: LE]
-#	cub=\E[%p1%dD,
+	cub=\E[%p1%dD,
 #	cud1=\n,
 #	cud=\E[%p1%dB,
 # delete line (P*) [tc: dl]

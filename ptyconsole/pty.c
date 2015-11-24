@@ -173,3 +173,20 @@ JNIEXPORT void JNICALL Java_ptyconsole_PTY_setWindowSize
   if (ioctl(fdm, TIOCSWINSZ, &ws) < 0) /* *** fds or fdm ??? */
     err_sys("TIOCSWINSZ error on slave pty");
 }
+
+/*
+ * Class:     ptyconsole_PTY
+ * Method:    getTtyMode
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_ptyconsole_PTY_getTtyMode
+(JNIEnvP UNUSED(env), jclass UNUSED(pclas), jint fdm)
+{
+  struct termios term_master;
+  if (tcgetattr(fdm, &term_master) < 0)
+    return -1;
+  jint result = 0;
+  if ((term_master.c_lflag & ICANON) != 0)
+    result |= 1;
+  return result;
+}

@@ -80,7 +80,7 @@ static
             else if (ch < ' ' || ch >= 127)
                 buf.append("\\"+(char)(((ch>>6)&7)+'0')+(char)(((ch>>3)&7)+'0')+(char)((ch&7)+'0'));
             else {
-                if (ch == '\"' || ch == '\'')
+                if (ch == '\"' || ch == '\'' || ch == '\\')
                     buf.append('\\');
                 buf.append(ch);
             }

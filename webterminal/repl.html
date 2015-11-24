@@ -6,15 +6,11 @@
 <title>Web-Terminal</title>
 <style type="text/css">
   html, body { width: 100%; height: 100% ; margin: 0px; overflow: hidden }
-  div[class="domterm"] { width: 100%; height: 100%; overflow-y: scroll; overflow-x: hidden; font-family: monospace;  margin: 0px; padding: 0px; border: 0px; white-space: pre }
-  span[class="wrap"] {padding: 0px; margin: 0x; font-family: monospace; white-space: nowrap }
-  span[line="soft"] { padding: 0px; margin: 0x; font: monospace medium; }
+  div[class="domterm"] { width: 100%; height: 100%; overflow-y: scroll; overflow-x: hidden; margin: 0px; padding: 0px; border: 0px; white-space: pre }
+  span[class="wrap"] {padding: 0px; margin: 0x; white-space: nowrap }
+  span[line="soft"] { padding: 0px; margin: 0x; }
   dummy {white-space: pre-wrap; word-break: break-all}
-  span[std="output"] { }
-  span[std="error"] { color: red; }
-  span[std="prompt"] { color: green; margin: 0px; padding: 0px; border: 1px }
-  span[std="input"] { font-weight: bolder; color: blue }
-  input[std="input"] { font-weight: bolder; }
+  span[std="prompt"] { margin: 0px; padding: 0px; border: 1px }
   input[std="input"] {
     border: 0px;
     margin: 0px;
@@ -23,15 +19,28 @@
     width: auto;
     left: auto;
   }
+  /* Optional - user-overridable styling */
+  span[line="soft"]:before {content: "\2936"; }
+  div[class="domterm"] { background-color: #fffff8 } /* Suggested by Tufte CSS - less harsh than pure white. */
+  div[class="domterm"] { font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace; } /* As used by Tufte CSS: */
+  span[std="input"] { font-weight: bolder; color: blue }
+  input[std="input"] { font-weight: bolder; }
+  span[std="prompt"] { color: green; }
+  span[std="error"] { color: red; }
 </style>
 <script type="text/javascript" src="../ResizeSensor.js"> </script>
+<script type="text/javascript" src="../bililiteRange.js"> </script>
 <script type="text/javascript" src="../terminal.js"> </script>
 <script type="text/javascript">
+var termElement;
+var termInstance;
 function makeDomTerm(javaWebTerminal) {         
-    var topNode = document.getElementById("term1");
-    var term = new DomTerm("term1", topNode);
+    termElement = document.getElementById("term1");
+    var term = new DomTerm("term1");
     term.processInputCharacters =
         function(str) { term.java.processInputCharacters(str); };
+    term.reportEvent =
+        function(name, data) { term.java.reportEvent(name, data); };
     term.setWindowSize =
         function(numRows, numColumns, availHeight, availWidth) {
             term.java.setWindowSize(numRows, numColumns,
@@ -39,8 +48,11 @@ function makeDomTerm(javaWebTerminal) {
     term.log =
         function(str) {
             if (term && term.java) term.java.log(str); }
-    //term.initializeTerminal(topNode);
+    termInstance = term;
     return term;
+}
+function initDomTerm() {
+    termInstance.initializeTerminal(termElement);
 }
 </script>
 </head>

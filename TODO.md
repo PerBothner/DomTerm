@@ -15,23 +15,27 @@ encoded as an integer).
 
 http://invisible-island.net/vttest/
 
-#### Detect re-sizing, and send re-size report to client.
-
-The ResizeManger hook should enable this.
-
 #### Re-wrap on line length change
 
-#### Handle copy and paste
+#### Improve copy and paste
 
-Copy should "sanitize" the DOM.  For example soft line wraps
-need to be eliminated.
+Handle exporting html to clipboard.
+
+Implement Ctrl-Shift-C as copy and Ctrl-Shift-V as paste.
+(At least in standaline ptyconsole.App, as there may be security
+problems when using a normal browser.)
+
+Fix paste in line-editing mode.
+
+Think about how to do multi-line paste.
 
 ## Write a better stand-line application
 
-For example, we need a menu to select between character and line mode,
-or to export the DOM to a "notebook".
+Should probably have a (hideable) top menubar (in additon to pop-up menu).
 
-Using JavaFx WebView is probably the wrong toolkit for this.
+Allow switching styles.
+
+Evaluate using other ligher-weight (?) toolkits than JavaFx WebView.
 
 ## Extra features
 
@@ -40,22 +44,11 @@ Using JavaFx WebView is probably the wrong toolkit for this.
 The idea is the line-editing mode would provide the
 functionality of readline or similar programs.
 
-#### Automatic switching to/from line-editing mode
-
-In addition to "char mode" and "line mode" (like the
-Emacs term mode) there should be an "auto mode" which watches
-the states of the inferior pty to automatically switch
-between them.  This would be like the existing rlfe program.
-
-Ideally you'd want to integrate with the kernel
-terminal sub-system, to suppress echoing.   In lieu of
-that, line editing mode should delete the input line
-from the DOM before sending them to the inferior.
-To avoid annoying flashing, it should do so lazily:
-Don't remove the input line until we get some
-output from the inferior.  (Emacs term does this, IIRC.)
-
 #### Add history support in line-editing mode
+
+http://sdether.github.io/josh.js/ has readline and history emulation
+
+there is a history addition for node.js's  https://nodejs.org/api/readline.html
 
 #### Colorize output differently for prompt and input
 
@@ -71,6 +64,9 @@ readline not being able to move the cursor on mouse-clicks).
 Another advantage is local editing, which is a benefit
 over slow links (such as satellites) or when you don't
 want to interrupt the server needlessly.
+
+Readline should at least behave as if the screen width were infinite,
+delegating line-wrapping to DomTerm.
 
 #### Customizable key sequences, as in readline
 

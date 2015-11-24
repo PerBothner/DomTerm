@@ -100,6 +100,9 @@ public class PTY {
             };
     }
 
+    private static native int getTtyMode(int fdm);
+    public int getTtyMode() { return getTtyMode(fdm); }
+
     private static native int init(byte[][] args, String termname, String termdir);
 
     private static native void writeToChildInput(int fdm, byte[] buf, int start, int length);

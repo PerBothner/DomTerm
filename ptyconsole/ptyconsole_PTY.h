@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:     ptyconsole_PTY
+ * Method:    getTtyMode
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_ptyconsole_PTY_getTtyMode
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     ptyconsole_PTY
  * Method:    init
  * Signature: ([[BLjava/lang/String;Ljava/lang/String;)I
  */

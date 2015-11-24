@@ -56,14 +56,27 @@ function DomTerm(name, topNode) {
 
     this.lineEditing = false;
 
+    // If true, we automatically switching lineEditing depending
+    // on slate pty's canon mode.  TODO
+    this.autoEditing = true;
+
+    this.verbosity = 0;
+
+    // Use the doLineEdit when in lineEditing mode.
+    // Because default this is only used in autoEditing mode, for the
+    // character when switching fro character to line mode,
+    // because doLineEdit is rather incomplete.
+    // However, doLineEdit does open the possibility of user keymaps.
+    this.useDoLineEdit = false;
+
     // True if a client performs echo on lines sent to it.
     // In that case, when lineEditing is true, when a completed
     // input line is sent to the client, it gets echoed by the client.
     // Hence we get two copies of each input line.
     // If this setting is true, we clear the contents of the input line
-    // before the client each.
+    // before the client echo.
     // If lineEditing is false, the client is always responsible
-    // for each, so this setting is ignored in that case.
+    // for echo, so this setting is ignored in that case.
     this.clientDoesEcho = true;
 
     // Used to implement clientDoesEscho handling.
@@ -171,15 +184,6 @@ function DomTerm(name, topNode) {
     this.savedHomeLine = -1;
 
     this.delta2DHelper = new Array(2);
-
-    // String to use to mark an automatic break for over-long lines.
-    // The defaults 'arrow pointing downwards then curving leftwards'
-    // followed by 'zero width space'.  This visually looks OK,
-    // plus is easy to recognize as it wouldn't appear in real text.
-    // TODO: On windows resize remove wrapString, and re-wrap.
-    // TODO: On copy/selection, remove wrapString.
-    this.wrapString = "\u2936\u200B";
-    this.wrapStringNewline = this.wrapString + "\n";
 
     if (topNode)
         this.initializeTerminal(topNode);
@@ -302,6 +306,14 @@ e
 oalLine
 */
 DomTerm.prototype.moveTo = function(goalLine, goalColumn) {
+    if (goalLine < 0)
+        goalLine = 0;
+    else if (goalLine >= this.numRows)
+        goalLine = this.numRows-1;
+    if (goalColumn < 0)
+        goalColumn = 0;
+    else if (goalColumn >= this.numColumns)
+        goalColumn = this.numColumns-1;
     this.moveToIn(goalLine, goalColumn, true);
 };
 
@@ -315,7 +327,8 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     this._adjustStyleNeeded = true; // FIXME optimize?
     var line = this.getCursorLine();
     var column = this.getCursorColumn();
-    //this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
+    if (this.verbosity >= 2)
+        this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
     // This moves current (and parent) forwards in the DOM tree
     // until we reach the desired (goalLine,goalColumn).
     // The invariant is if current is non-null, then the position is
@@ -336,17 +349,29 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
             if (! addSpaceAsNeeded)
                 return;
             var last = this.lineEnds[lineCount-1];
+            if (! last) {
+                this.log("bad last!");
+            }
             var kind = last.getAttribute("line");
             if (kind=="end") {
                 last.setAttribute("line", "hard");
-                this.appendText(last, "\n");
+                //this.appendText(last, "\n");
             }
             var next = this._createEndNode();
+            if (! last.parentNode)
+                this.log("null parentNode!");
             last.parentNode.appendChild(next);
             this.lineStarts[lineCount] = last;
             this.lineEnds[lineCount] = next;
             var nextLine = lineCount;
             lineCount++;
+            if (lineCount > homeLine + this.numRows) {
+                homeLine = lineCount - this.numRows;
+                goalLine -= homeLine - this.homeLine;
+                this.homeLine = homeLine;
+                this.cursorHome = this.lineStarts[homeLine];
+            }
+            /*
             while (homeLine < nextLine) {
                 var homeTop = homeLine == 0 ? this.lineStarts[homeLine].offsetTop
                     : this.lineEnds[homeLine-1].offsetTop + this.lineEnds[homeLine-1].offsetHeight;
@@ -355,9 +380,8 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                 homeLine++;
                 var homeStart = this.lineStarts[homeLine];
                 this.cursorHome = homeStart;
-                this.log(" increment homeLine");
             }
-            this.homeLine = homeLine;
+            */
         }
         var lineStart = this.lineStarts[absLine];
         //this.log("- lineStart:"+lineStart+" homeL:"+homeLine+" goalL:"+goalLine+" lines.len:"+this.lineStarts.length+" absLine:"+absLine);
@@ -538,11 +562,10 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
  * @param deltaLines line number to move to, relative to current line.
  */
 DomTerm.prototype.cursorLineStart = function(deltaLines) {
-    this.moveTo(this.getCursorLine()+deltaLines, 0);
+    this.moveToIn(this.getCursorLine()+deltaLines, 0, true);
 };
 
 DomTerm.prototype.cursorDown = function(deltaLines) {
-    //this.log("cursorDown "+deltaLines+" cur "+this.getCursorLine()+":"+this.getCursorColumn()+" body:"+this.topNode);
     this.moveTo(this.getCursorLine()+deltaLines, this.getCursorColumn());
 };
 
@@ -749,6 +772,31 @@ DomTerm.prototype._adjustStyle = function() {
 };
 
 DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
+    this._checkLines();
+    var line = this.getCursorLine();
+    var absLine = this.homeLine+line;
+    var column = this.getCursorColumn();
+    if (column != 0)
+        this.moveTo(line, 0);
+    var pos = this.outputBefore;
+    var oldLength = this.lineStarts.length;
+    this.lineStarts.length += count;
+    this.lineEnds.length += count;
+    for (var i = oldLength-1-count; i > absLine+count; i--) {
+        this.lineStarts[i+count] = this.lineStarts[i];
+        this.lineEnds[i+count] = this.lineEnds[i];
+    }
+    this.lineEnds[absLine+count] = this.lineEnds[absLine];
+    for (var i = 0; i < count;  i++) {
+        var newLine = this._createLineNode("hard", "\n");
+        this.outputContainer.insertBefore(newLine, pos);
+        this.lineEnds[absLine+i] = newLine;
+        this.lineStarts[absLine+i+1] = newLine;
+    }
+    if (column != null)
+        this.moveTo(line, column);
+    this._checkLines();
+    /*
     var text = document.createTextNode("\n".repeat(count));
     if (this.outputBefore == this.inputLine && this.inputLine != null)
         this.outputContainer.insertBefore(text, this.outputBefore.nextSibling);
@@ -756,14 +804,88 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
         this.insertNode(text);
         this.outputBefore = text;
     }
+    */
+};
 
+DomTerm.prototype._rootNode = function(node) {
+    for (;;) {
+        var parent = node.parentNode;
+        if (! parent)
+            return node;
+        node = parent;
+    }
+};
+
+DomTerm.prototype._isAnAncestor = function(node, ancestor) {
+    while (node != ancestor) {
+        var parent = node.parentNode;
+        if (! parent)
+            return false;
+        node = parent;
+    }
+    return true;
 };
 
 DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
     console.log("deleteLinesIgnoreScroll %d", count);
-    for (var i = count; --i >= 0; ) {
-        this.eraseCharactersRight(-2, true);
+    this._checkLines();
+    var line = this.getCursorLine();
+    var absLine = this.homeLine+line;
+    var start = this.lineStarts[absLine];
+    var end;
+    if (count < 0 || absLine+count >= this.lineStarts.length) {
+        end = this.lineEnds[this.lineEnds.length-1];
+        count = this.lineStarts.length - absLine;
+    } else
+        end = this.lineStarts[absLine+count];
+    var cur = this.outputBefore;
+    var parent = this.outputContainer;
+    //if (end && cur && end.parentNode == this.outputContainer) {
+    var inputLine = this.inputLine;
+    var inputRoot = this._rootNode(inputLine);
+    while (cur != end) {
+        if (this._isAnAncestor(end, cur)) {
+            parent = cur;
+            cur = cur.firstChild;
+        } else if (cur == null) {
+            cur = parent.nextSibling;
+            if (! cur)
+                break;
+            parent = cur.parentNode;
+        } else {
+            var next = cur.nextSibling;
+            parent.removeChild(cur);
+            cur = next;
+        }
     }
+    // If inputLine was among deleted content, put it just before end.
+    if (inputRoot != this._rootNode(inputLine)) {
+        if (inputLine.parentNode)
+            inputLine.parentNode.removeChild(inputLine);
+        if (! end.parentNode) {
+            this.log("bad end node "+end);
+        }
+        end.parentNode.insertBefore(inputLine, end);
+    }
+    this.lineEnds[absLine] = end;
+    var length = this.lineStarts.length;
+    for (var i = absLine+1;  i+count < length;  i++) {
+        this.lineStarts[i] = this.lineStarts[i+count];
+        this.lineEnds[i] = this.lineEnds[i+count];
+    }
+    length -= count - 1;
+    this.lineStarts.length = length;
+    this.lineEnds.length = length;
+    this.outputBefore = end;
+    this.outputContainer = end.parentNode;
+    this._checkLines();
+    /*
+    } else {
+        for (var i = count; --i >= 0; ) {
+            this.eraseCharactersRight(-2, true);
+        }
+    }
+*/
 };
 
 DomTerm.prototype.insertLines = function(count) {
@@ -777,7 +899,7 @@ DomTerm.prototype.insertLines = function(count) {
  DomTerm.prototype.deleteLines = function(count) {
      this.deleteLinesIgnoreScroll(count);
      var line = this.getCursorLine();
-     var scrollBotton = this.getScrollBottom(); 
+     var scrollBottom = this.getScrollBottom(); 
      var insertNeeded = true; // FIXME: scrollBottom != last_line
      if (insertNeeded) {
          this.cursorLineStart(scrollBottom - line - count);
@@ -805,6 +927,14 @@ DomTerm.prototype.scrollReverse = function(count) {
     this.moveTo(line, 0);
 };
 
+DomTerm.prototype._checkLines = function() {
+    for (var i = 0;  i < this.lineEnds.length; i++) {
+        if (! this.lineEnds[i] || ! this.lineEnds[i].parentNode) {
+            this.log("bad lineEdnds i:"+i);
+        }
+    }
+}
+
 DomTerm.prototype.createSpanNode = function() {
     return document.createElement("span");
 };
@@ -813,15 +943,17 @@ DomTerm.prototype.makeId = function(local) {
     return this.name + "__" + local;
 };
 
-DomTerm.prototype._createLineNode = function(kind) {
+DomTerm.prototype._createLineNode = function(kind, text) {
     var el = document.createElement("span");
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
     el.setAttribute("line", kind);
+    if (text)
+        el.appendChild(document.createTextNode(text));
     return el;
 };
  
 DomTerm.prototype._createEndNode = function(kind) {
-    return this._createLineNode("end");
+    return this._createLineNode("end", "\n");
 };
 
 DomTerm.prototype.setAlternateScreenBuffer = function(val) {
@@ -910,15 +1042,15 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     this._rulerNode = rulerNode;
     helperNode.appendChild(rulerNode);
 
-    var wrapDummy = this._createLineNode("soft");
-    wrapDummy.appendChild(document.createTextNode(this.wrapString));
+    var wrapDummy = this._createLineNode("soft", "\n");
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
 
     // FIXME we want the resize-sensor to be a child of helperNode
     var dt = this;
     new ResizeSensor(topNode, function () {
-        dt.log("ResizeSensor called"); 
+        if (dt.verbosity > 0)
+            dt.log("ResizeSensor called"); 
         // FIXME do some throttling.
         // The link below has an example using requestAnimationFrame:
         // https://developer.mozilla.org/en-US/docs/Web/Events/scroll
@@ -931,9 +1063,14 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     topNode.appendChild(mainNode);
 
     document.onkeydown =
-        function(e) { wt.keyDownHandler(e ? e : window.event) };
+        function(e) { dt.keyDownHandler(e ? e : window.event) };
     document.onkeypress =
-        function(e) { wt.keyPressHandler(e ? e : window.event) };
+        function(e) { dt.keyPressHandler(e ? e : window.event) };
+    document.addEventListener("paste",
+                              function(e) {
+                                  dt.pasteText(e.clipboardData.getData("text"));
+                                  e.preventDefault(); },
+                             false);
 
     this.initial = mainNode; //document.getElementById(mainName);
     this.lineStarts[0] = this.initial;
@@ -956,7 +1093,7 @@ DomTerm.prototype.measureWindow = function()  {
     var charWidth = ruler.offsetWidth/26.0;
     var charHeight = ruler.offsetHeight;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
-    //console.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+charWidth+" chH:"+charHeight+" ht:"+availHeight);
+    //this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+charWidth+" chH:"+charHeight+" ht:"+availHeight);
     // We calculate rows from initial.clientWidth because we don't
     // want to include the scroll-bar.  On the other hand, for veritcal
     // height we have to look at the parent of the topNode because
@@ -973,17 +1110,19 @@ DomTerm.prototype.measureWindow = function()  {
     this.numColumns = numColumns;
     this.availHeight = availHeight;
     this.availWidth = availWidth;
-    //console.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
+    //this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
     this.wrapWidth = this.numColumns;
 };
 
 DomTerm.prototype.reportEvent = function(name, data) {
     // 0x92 is "Private Use 2".
+    // FIXME should encode data
     this.processInputCharacters("\x92"+name+" "+data+"\n");
 };
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
                                            availHeight, availWidth) {
-    //this.log("windowSizeChanged numRows:"+numRows+" numCols:"+numColumns);
+    if (this.verbosity >= 2)
+        this.log("windowSizeChanged numRows:"+numRows+" numCols:"+numColumns);
     this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
 };
 
@@ -1103,10 +1242,16 @@ DomTerm.prototype.getCursorColumn = function() {
 };
 
 DomTerm.prototype.grabInput = function(input) {
-    var text = input.textContent;
-    // FIXME the Java version does some extra filtering for special chars
-    // See addInputLine.
-    return text;
+    if (input instanceof Text)
+        return input.data;
+    if (this.isSpanNode(input) && input.getAttribute("line"))
+        return "";
+    var result = "";
+    for (var n = input.firstChild; n != null;
+         n = n.nextSibling) {
+        result = result + this.grabInput(n);
+    }
+    return result;
 };
 
 DomTerm.prototype.getPendingInput = function() {
@@ -1179,29 +1324,13 @@ DomTerm.prototype.insertBreak = function() {
         this.currentCursorLine++;
 };
 
-/* * Insert a line break because of wrapping an over-long line. * /
-DomTerm.prototype.insertWrapBreak = function() {
-    if (false) {
-        this.cursorLineStart(1);
-    } else {
-        var oldLine = this.currentCursorLine;
-        //this.insertRawOutput(this.wrapStringNewline);
-        var el = this._createLineNode("soft");
-        el.appendChild(document.createTextNode(this.wrapStringNewline));
-         this.insertNode(el);
-        if (oldLine >= 0)
-            this.currentCursorLine = oldLine + 1;
-        this.lineStarts[this.getCursorLine()] = el;
-        this.currentCursorColumn = 0;
-    }
-};
-*/
-
 /** Erase from the current position until stopNode.
  * If currently inside stopNode, erase to end of stopNode;
  * otherwise erase until start of stopNode.
  */
 DomTerm.prototype.eraseUntil = function(stopNode) {
+    this.deleteLinesIgnoreScroll(this.numRows-this.getCursorLine());
+    /*
     var current = this.outputBefore;
     var parent = this.outputContainer;
     if (current==this.inputLine && current != null)
@@ -1225,6 +1354,7 @@ DomTerm.prototype.eraseUntil = function(stopNode) {
     this.lineEnds.length = line+1;
     this.lineEnds[line]= lastEnd;
     stopNode.appendChild(lastEnd);
+*/
 };
 
 /** Erase or delete characters in the current line.
@@ -1326,7 +1456,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
                 continue;
             }
             // Otherwise, go to the next sibling.
-            ch = current.nxtSibling;
+            ch = current.nextSibling;
             if (ch != null) {
                 current = ch;
                 continue;
@@ -1342,6 +1472,8 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
             if (parent == this.topNode) {
                 return;
             }
+            if (! parent)
+                this.log("null parent in eraseCharactersRight!");
             var sib = parent.nextSibling;
             var pparent = parent.parentNode;
             if (this.isSpanNode(parent) && parent.firstChild == null)
@@ -1450,7 +1582,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 74 /*'J'*/:
         param = this.getParameter(0, 0);
         if (param == 0) // Erase below.
-            this.eraseUntil(this.cursorHome);
+            this.eraseUntil(this.topNode);
         else {
             var saveLine = this.getCursorLine();
             var saveCol = this.getCursorColumn();
@@ -1465,14 +1597,18 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 }
             } else { // Erase all
                 this.moveTo(0, 0);
-                this.eraseUntil(cursorHome);
+                this.eraseUntil(this.topNode);
             }
         }
         break;
     case 75 /*'K'*/:
         param = this.getParameter(0, 0);
-        if (param != 1)
+        if (param != 1) {
             this.eraseLineRight();
+            var lineEnd = this.lineEnds[this.homeLine+this.getCursorLine()];
+            if (lineEnd.getAttribute("line")=="soft")
+                lineEnd.setAttribute("line", "hard");
+        }
         if (param >= 1)
             this.eraseLineLeft();
         break;
@@ -1502,6 +1638,13 @@ DomTerm.prototype.handleControlSequence = function(last) {
         if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Set (DECSET)
             switch (param) {
+            case 1000:
+                // Send Mouse X & Y on button press and release.
+                // This is the X11 xterm mouse protocol.   Sent by emacs.
+                break; // FIXME
+            case 1006:
+                // Enable SGR Mouse Mode.  Sent by emacs.
+                break; // FIXME
             case 47:
             case 1047:
                 this.setAlternateScreenBuffer(true);
@@ -1620,7 +1763,19 @@ DomTerm.prototype.handleControlSequence = function(last) {
             }
         }
         this._adjustStyleNeeded = true;
-        //console.log("currentStyles: "+this._currentStyles);
+        if (this.verbosity >= 2)
+            console.log("currentStyles: "+this._currentStyles);
+        break;
+    case 110 /*'n'*/:
+        switch (this.getParameter(0, 0)) {
+        case 5:
+            this.processResponseCharacters("\x1B[0n");
+            break;
+        case 6:
+            this.processResponseCharacters("\x1B["+this.numRows
+                                           +";"+this.numColumns+"R");
+            break;
+        }
         break;
     case 114 /*'r'*/:
         this.scrollRegionTop = this.getParameter(0, 1) - 1;
@@ -1629,7 +1784,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 116 /*'t'*/: // Xterm window manipulation.
         switch (this.getParameter(0, 0)) {
         case 18: // Report the size of the text area in characters.
-            this.processResponseCharacters("\033[8"+this.numRows
+            this.processResponseCharacters("\x1B[8;"+this.numRows
                                            +";"+this.numColumns+"t");
             break;
         };
@@ -1644,11 +1799,18 @@ DomTerm.prototype.handleBell = function() {
 };
 
 DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
-    console.log("handleOperatingSystemControl %s '%s'", code, text);
+    if (this.verbosity >= 2)
+        this.log("handleOperatingSystemControl "+code+" '"+text+"'");
     if (code == 72) {
         inputLine.insertAdjacentHTML("beforeBegin", text);
-    }
-    else {
+    } else if (code == 74) {
+        var sp = text.indexOf(' ');
+        var key = parseInt(text.substring(0, sp), 10);
+        var kstr = JSON.parse(text.substring(sp+1));
+        this.log("OSC KEY k:"+key+" kstr:"+this.toQuoted(kstr));
+        this.lineEditing = true;
+        this.doLineEdit(key, kstr);
+    } else {
         // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
     }
 };
@@ -1667,7 +1829,8 @@ DomTerm.prototype._doDeferredDeletion = function() {
 }
 
 DomTerm.prototype.insertString = function(str, kind) {
-    //this.log("insertString '%s'", str);
+    if (this.verbosity >= 2)
+        this.log("insertString '"+this.toQuoted(str)+"' state:"+this.controlSequenceState);
     /*
     var indexTextEnd = function(str, start) {
         var len = str.length;
@@ -1686,7 +1849,7 @@ DomTerm.prototype.insertString = function(str, kind) {
     var curColumn = this.getCursorColumn();
     for (; i < slen; i++) {
         var ch = str.charCodeAt(i);
-        //console.log("- insert char:%d='%s'",ch, String.fromCharCode(ch));
+        //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
         switch (this.controlSequenceState) {
         case DomTerm.SEEN_ESC_STATE:
             switch (ch) {
@@ -1744,7 +1907,8 @@ DomTerm.prototype.insertString = function(str, kind) {
                 this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
             }
             else if (ch == 59 /*';'*/) {
-                controlSequenceState = DomTerm.SEEN_ESC_BRACKET_TEXT_STATE;
+                this.log("enter esc br text state");
+                this.controlSequenceState = DomTerm.SEEN_ESC_BRACKET_TEXT_STATE;
                 //prevEnd = indexTextEnd(str, i);
                 this.parameters.push("");
                 prevEnv = i + 1;
@@ -1756,11 +1920,12 @@ DomTerm.prototype.insertString = function(str, kind) {
                 curColumn = this.getCursorColumn();
                 this.controlSequenceState = DomTerm.INITIAL_STATE;
             }
+            continue;
         case DomTerm.SEEN_ESC_BRACKET_TEXT_STATE:
             if (ch == 7 || ch == 0) {
                 this.parameters[1] =
                     this.parameters[1] + str.substring(prevEnv, i);
-                this.handleOperatingSystemControl(this.parameters[0], tis.parameters[1]);
+                this.handleOperatingSystemControl(this.parameters[0], this.parameters[1]);
                 this.parameters.length = 1;
                 prevEnd = i + 1;
                 curColumn = this.getCursorColumn();
@@ -1873,7 +2038,8 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
         str = str.substring(beginIndex, endIndex);
         slen = endIndex - beginIndex;
     }
-    //this.log("insertSimple '%s' _adjustStyleNeeded '%s'", str, this._adjustStyleNeeded);
+    if (this.verbosity >= 2)
+        this.log("insertSimple '"+this.toQuoted(str)+"'"+" adjustStyle:"+this._adjustStyleNeeded);
     if (this._adjustStyleNeeded)
         this._adjustStyle();
     var column =this.getCursorColumn();
@@ -1899,7 +2065,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
         var beforePos = this.outputBefore.offsetLeft;
         var textNode = this.insertRawOutput(str);
         var afterPos = this.outputBefore.offsetLeft;
-        var lineEnd = this.lineEnds[this.getCursorLine()];
+        var lineEnd = this.lineEnds[this.homeLine+this.getCursorLine()];
         //this.log("after insert outputBefore:"+this.outputBefore+" lineEnd:"+lineEnd+" out.next:"+this.outputBefore.nextSibling+" line.prev:"+lineEnd.previousSibling+" out.next==line?"+(this.outputBefore.nextSibling==lineEnd)+" beforePos:"+beforePos+" afterPos:"+afterPos);
         var clientWidth = this.initial.clientWidth;
         var excess = afterPos - (clientWidth - this.rightMarginWidth);
@@ -1950,11 +2116,6 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
             // insert soft wrap (re-use existing line, but make soft)
             this.cursorLineStart(1);
             lineEnd.setAttribute("line", "soft");
-            var lineText = lineEnd.firstChild;
-            if (lineText instanceof Text)
-                lineText.data = this.wrapStringNewline;
-            else
-                lineEnd.appendChild(document.createTextNode(this.wrapStringNewline));
             // insert rest of new line recursively
             this.insertSimpleOutput(textData, goodLength, textLength,
                                    textLength-goodLength);
@@ -1962,6 +2123,10 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
         }
         // FIXME This does doesn't seem to work on Chrome:
         // It doesn't handle offsetLength the same as Mozilla.
+        else if (! lineEnd) {
+            // FIXME
+            this.log("bad lineEnd");
+        }
         else if (lineEnd.offsetLeft > availWidth) {
             // FIXME there may be stuff between outputBefore and
             // lineEnd, and it may need to be truncated.
@@ -2044,8 +2209,9 @@ DomTerm.prototype.wtest = function (x) {
 
 DomTerm.prototype.processEnter = function(event) {
     var text = this.handleEnter(event);
-    this.log("processEnter \""+this.toQuoted(text)+"\"");
-    this.processInputCharacters(text+"\r\n");
+    if (this.verbosity >= 2)
+        this.log("processEnter \""+this.toQuoted(text)+"\"");
+    this.processInputCharacters(text+"\r");
 };
 
 DomTerm.prototype.isApplicationMode = function() {
@@ -2053,83 +2219,161 @@ DomTerm.prototype.isApplicationMode = function() {
 };
 
 DomTerm.prototype.arrowKeySequence = function(ch) {
-    return (this.isApplicationMode() ? "\033O" : "\033[")+ch;
+    return (this.isApplicationMode() ? "\x1BO" : "\x1B[")+ch;
 };
+
+DomTerm.prototype.keyDownToString = function(event) {
+    var key = event.keyCode ? event.keyCode : event.which;
+    switch (key) {
+    case 8: /* Backspace */ return "\177";
+    case 9: /* Tab */    return "\t";
+    case 27: /* Esc */   return "\x1B";
+    case 33 /* PageUp*/: return "\x1B[5~";
+    case 34 /* PageDown*/:return"\x1B[6~";
+    case 35 /*End*/:     return "\x1B[4~";
+    case 36 /*Home*/:    return "\x1B[1~";
+    case 37 /*Left*/:  return this.arrowKeySequence("D");
+    case 38 /*Up*/:    return this.arrowKeySequence("A");
+    case 39 /*Right*/: return this.arrowKeySequence("C");
+    case 40 /*Down*/:  return this.arrowKeySequence("B");
+    case 45 /*Insert*/:  return "\x1B[2~";
+    case 46 /*Delete*/:  return "\x1B[3~"; // In some modes: 127;
+    case 112: /* F1 */   return "\x1BOP";
+    case 113: /* F2 */   return "\x1BOQ";
+    case 114: /* F3 */   return "\x1BOR";
+    case 115: /* F4 */   return "\x1BOS";
+    case 116: /* F5 */   return "\x1B[15~";
+    case 117: /* F6 */   return "\x1B[17~";
+    case 118: /* F7 */   return "\x1B[18~";
+    case 119: /* F8 */   return "\x1B[19~";
+    case 120: /* F9 */   return "\x1B[20~";
+    case 121: /* F10 */  return "\x1B[21~";
+    case 122: /* F11 */  return "\x1B[23~";
+    case 123: /* F12 */  return "\x1B[24~";
+    case 124: /* F13 */  return "\x1B[1;2P";
+    case 125: /* F14 */  return "\x1B[1;2Q";
+    case 126: /* F15 */  return "\x1B[1;2R";
+    case 127: /* F16 */  return "\x1B[1;2S";
+    case 128: /* F17 */  return "\x1B[15;2~";
+    case 129: /* F18 */  return "\x1B[17;2~";
+    case 130: /* F19 */  return "\x1B[18;2~";
+    case 131: /* F20 */  return "\x1B[19;2~";
+    case 132: /* F21 */  return "\x1B[20;2~";
+    case 133: /* F22 */  return "\x1B[21;2~";
+    case 134: /* F23 */  return "\x1B[23;2~";
+    case 135: /* F24 */  return "\x1B[24;2~";
+    default:
+        if (event.ctrlKey && key >=65 && key <= 90) {
+            return String.fromCharCode(key-64);
+        }
+        else if (event.altKey || event.metaKey) {
+            var str = String.fromCharCode(key);
+            if (! event.shiftKey)
+                str = str.toLowerCase();
+            return (event.altKey ? "\x1B" : "\x18@s") + str;
+        }
+        return null;
+    }
+};
+
+DomTerm.prototype.pasteText = function(str) {
+    if (this.lineEditing) {
+        var rng = bililiteRange(this.inputLine).bounds('selection');
+        rng.text(str, 'end');
+        rng.select();
+    } else {
+        this.processInputCharacters(str);
+    }
+};
+
+DomTerm.prototype.doLineEdit = function(key, str) {
+    this.log("doLineEdit "+key+" "+JSON.stringify(str));
+    var rng = bililiteRange(this.inputLine).bounds('selection');
+    switch (key) {
+    case 8:
+        rng.sendkeys('{Backspace}');
+        rng.select();
+        break;
+    case 37:
+        rng.sendkeys('{ArrowLeft}');
+        rng.select();
+        break;
+    case 39:
+        rng.sendkeys('{ArrowRight}');
+        rng.select();
+        break;
+    case 46:
+        rng.sendkeys('{Delete}');
+        rng.select();
+        break;
+    default:
+        rng.text(str, 'end');
+        rng.select();
+    }
+};
+
+DomTerm.prototype.getSelectedText = function() {
+    return window.getSelection().toString();
+};
+
 DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    //this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" data:"+event.data+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
+    if (this.verbosity >= 2)
+        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" data:"+event.data+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
     if (this.lineEditing) {
-    } else {
-        switch (key) {
-        case 8: /* Backspace */ str = "\177";  break;
-        case 9: /* Tab */    str = "\t";       break;
-        case 27: /* Esc */   str = "\033";     break; 
-        case 33 /* PageUp*/: str = "\033[5~";  break;
-        case 34 /* PageDown*/:str ="\033[6~";  break;
-        case 35 /*End*/:     str = "\033[4~";  break;
-        case 36 /*Home*/:    str = "\033[1~";  break;
-        case 37 /*Left*/:  str = this.arrowKeySequence("D"); break;
-        case 38 /*Up*/:    str = this.arrowKeySequence("A"); break;
-        case 39 /*Right*/: str = this.arrowKeySequence("C"); break;
-        case 40 /*Down*/:  str = this.arrowKeySequence("B"); break;
-        case 45 /*Insert*/:  str = "\033[2~";   break;
-        case 46 /*Delete*/:  str = "\033[3~"; break; // In some modes: 127;
-        case 112: /* F1 */   str = "\033OP";    break;
-        case 113: /* F2 */   str = "\033OQ";    break;
-        case 114: /* F3 */   str = "\033OR";    break;
-        case 115: /* F4 */   str = "\033OS";    break;
-        case 116: /* F5 */   str = "\033[15~";  break;
-        case 117: /* F6 */   str = "\033[17~";  break;
-        case 118: /* F7 */   str = "\033[18~";  break;
-        case 119: /* F8 */   str = "\033[19~";  break;
-        case 120: /* F9 */   str = "\033[20~";  break;
-        case 121: /* F10 */  str = "\033[21~";  break;
-        case 122: /* F11 */  str = "\033[23~";  break;
-        case 123: /* F12 */  str = "\033[24~";  break;
-        case 124: /* F13 */  str = "\033[1;2P"; break;
-        case 125: /* F14 */  str = "\033[1;2Q"; break;
-        case 126: /* F15 */  str = "\033[1;2R"; break;
-        case 127: /* F16 */  str = "\033[1;2S"; break;
-        case 128: /* F17 */  str = "\033[15;2~"; break;
-        case 129: /* F18 */  str = "\033[17;2~"; break;
-        case 130: /* F19 */  str = "\033[18;2~"; break;
-        case 131: /* F20 */  str = "\033[19;2~"; break;
-        case 132: /* F21 */  str = "\033[20;2~"; break;
-        case 133: /* F22 */  str = "\033[21;2~"; break;
-        case 134: /* F23 */  str = "\033[23;2~"; break;
-        case 135: /* F24 */  str = "\033[24;2~"; break;
-        default:
-            if (event.ctrlKey && key >=65 && key <= 90) {
-                this.processInputCharacters(String.fromCharCode(key-64));
-                event.preventDefault();
-            }
-            if (event.altKey || event.metaKey) {
-                var str = String.fromCharCode(key);
-                if (! event.shiftKey)
-                    str = str.toLowerCase();
-                var prefix = event.altKey ? "\033" : "\030@s";
-                this.processInputCharacters(prefix+str);
-                event.preventDefault();
-            }
-            return;
+        if (key == 13) {
+            event.preventDefault();
+            this.processEnter(event);
+            if (this.autoEditing)
+                this.lineEditing = false;
         }
-        this.processInputCharacters(str);
+        else if (key == 68 && event.ctrlKey
+                 && this.grabInput(this.inputLine).length == 0) {
+            this.log("ctrl-D");
+            if (this.autoEditing)
+                this.lineEditing = false;
+            this.processInputCharacters(this.keyDownToString(event));
+        } else if (this.useDoLineEdit) {
+            var str = this.keyDownToString(event);
+            if (str) {
+                event.preventDefault();
+                this.log("KEY "+key+" "+JSON.stringify(str));
+                this.doLineEdit(key, str);
+            }
+        }
+    } else {
+        var str = this.keyDownToString(event);
+        if (str) {
+            event.preventDefault();
+            if (this.autoEditing)
+                this.reportEvent("KEY", ""+key+" "+JSON.stringify(str));
+            else
+                this.processInputCharacters(str);
+        }
     }
 };
 
 DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    //this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" inputLine:"+this.inputLine);
+    if (this.verbosity >= 2)
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" inputLine:"+this.inputLine);
     if (this.lineEditing) {
-        this.inputLine.focus();
-        if (key == 13) {
-            this.processEnter(event);
+        if (this.useDoLineEdit) {
+            event.preventDefault();
+            var str = String.fromCharCode(key);
+            this.doLineEdit(-key, str);
         }
+        this.inputLine.focus();
     } else {
         if (event.which !== 0
             && key != 8
-            && ! (event.ctrlKey && key >=97 && key <= 122))
-            this.processInputCharacters(String.fromCharCode(key));
+            && ! (event.ctrlKey && key >= 97 && key <= 122)) {
+            var str = String.fromCharCode(key);
+            if (this.autoEditing)
+                this.reportEvent("KEY", ""+(-key)+" "+JSON.stringify(str));
+            else
+                this.processInputCharacters(str);
+        }
         event.preventDefault();
     }
 };
@@ -2157,7 +2401,7 @@ DomTerm.prototype.toQuoted = function(str) {
             var delta = enc.length - 1;
             str = str.substring(0, i)+enc+str.substring(i+1);
             len += delta;
-            i += len;
+            i += delta;
         }
     }
     return str;

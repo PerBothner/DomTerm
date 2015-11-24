@@ -10,6 +10,7 @@ import java.util.concurrent.*;
 import javax.websocket.*;
 import javax.websocket.server.*;
 import ptyconsole.PTY;
+import ptyconsole.Util;
 
 @ServerEndpoint("/replsrv")
 public class ReplServer {
@@ -61,6 +62,8 @@ static
 
     /** for debugging */
     public static String quoteString(String str) {
+        if (str == null)
+            return "(null)";
         StringBuilder sbuf = new StringBuilder();
         for (int i = 0;  i < str.length();  i++) {
             char ch = str.charAt(i);
@@ -99,7 +102,7 @@ static
               int eol = msg.indexOf('\n', i+1);
               if (eol >= 0) {
                   String cmd = msg.substring(i+1, eol);
-                  processEvent(cmd);
+                  processEvent(session, cmd);
                   msg = msg.substring(eol+1);
                   i = -1;
                   len = msg.length();
@@ -112,14 +115,13 @@ static
           }
       }
    pin.write(msg);
-   //pin.write("\r\n");
    pin.flush();
   } catch (Exception e) {
    e.printStackTrace();
   }
  }
 
-    public void processEvent(String str) {
+    public void processEvent(Session session, String str) {
         String[] words = str.split("  *");
         if (words.length == 5 && "WS".equals(words[0])) {
             try {
@@ -134,7 +136,21 @@ static
             if (verbose > 0)
                 System.err.println("event/WS "+words[1]+"/"+words[2]+"/"+words[3]+"/"+words[4]);
         }
-        else
+        else if ("KEY".equals(words[0])) {
+            int mode = pty.getTtyMode();
+            int q = str.indexOf('"');
+            String kstr = Util.parseSimpleJsonString(str, q, str.length());
+            boolean canonical = (mode & 1) != 0;
+            if (canonical) {
+                try {
+                    session.getBasicRemote()
+                        .sendText("\033]74;"+str.substring(4)+"\007");
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            } else
+                onMessage(session, kstr);
+        } else
             System.out.println("event ["+quoteString(str)+"] "+words.length+" words");
     }
 
@@ -153,7 +169,11 @@ static
  @OnClose
  public void closedConnection(Session session) { 
   queue.remove(session);
-  System.out.println("session closed: "+session.getId());
+  String msg = "session closed: "+session.getId();
+  if (verbose > 0)
+      new Error(msg).printStackTrace();
+  else
+      System.out.println(msg);
  }
  
  private static void sendAll(String msg) {

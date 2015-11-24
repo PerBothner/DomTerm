@@ -14,6 +14,9 @@ websocketterm/ReplServer.class: websocketterm/ReplServer.java
 websocketterm/WebSocketServer.class: websocketterm/WebSocketServer.java
 	$(JAVAC) websocketterm/WebSocketServer.java -cp .:$(JLIBS)
 
+ptyconsole/Util.class: ptyconsole/Util.java
+	$(JAVAC) ptyconsole/Util.java
+
 ptyconsole/PTY.class: ptyconsole/PTY.java
 	$(JAVAC) ptyconsole/PTY.java
 
@@ -44,7 +47,7 @@ d/domterm: d/domterm.ti
 run-pty: ptyconsole/App.class libpty.so d/domterm
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` ptyconsole.App
 
-run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class libpty.so d/domterm
+run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class ptyconsole/Util.class libpty.so d/domterm
 	$(JAVA) -cp .:$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
 
 run-shell: webterminal/ShellConsole.class

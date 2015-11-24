@@ -51,8 +51,22 @@ public class PtyConsole extends WebTerminal {
     Writer pin;
     Reader pout;
     PTY pty;
-    int verbosity;
 
+    public void reportEvent(String name, String str) {
+        if (verbosity > 0)
+            System.err.println("PtyConsole.reportEvent "+name+"["+WTDebug.toQuoted(str)+"]");
+        if (name.equals("KEY")) {
+            int mode = pty.getTtyMode();
+            boolean canonical = (mode & 1) != 0;
+            if (canonical) {
+                out_stream.write("\033]74;"+str+"\007");
+            } else {
+                int q = str.indexOf('"');
+                String kstr = Util.parseSimpleJsonString(str, q, str.length());
+                processInputCharacters(kstr);
+            }
+        }
+    }
     @Override public void processInputCharacters(String text) {
         if (verbosity > 0)
             System.err.println("processInputCharacters["+WTDebug.toQuoted(text)+"]");

@@ -1,5 +1,29 @@
 # Notes towards design and specification documents
 
+# Line vs character input modes
+
+In line input mode we can end up with double echoing:
+As you edit the input line, it is displayed.
+Then when the line is sent, the slave will normally echo the input.
+
+Ideally you'd want to integrate with the kernel
+terminal sub-system, to suppress echoing.   In lieu of
+that, line editing mode could delete the input line
+from the DOM before sending them to the inferior.
+To avoid annoying flashing, this is done lazily:
+DomTerm waits to remove the input line until it gets some
+output from the inferior (usually the echo).
+
+In addition to "char mode" and "line mode" (like the
+Emacs term mode) there is an "auto mode" which watches
+the states of the inferior pty to automatically switch
+between them.  In autoEditing mode, if we're currently
+in char mode, then a key event gets sent to the pty layer.
+If the pty is in non-canonical mode, the key event is
+sent to the server.  If the pty is in canonical mode, then
+a message is sent back to the front-end, which switches
+to line mode, and processes the event.
+
 ## The WebTeminal object
 
 A WebTerminal class (should be renamed DomTerm?) encapsulates the

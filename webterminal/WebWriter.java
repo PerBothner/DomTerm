@@ -67,7 +67,7 @@ public class WebWriter extends java.io.Writer
 
     public synchronized void write (char[] data, int off, int len) {
         sbuf.append(data, off, len);
-        WTDebug.println("after writeN len:"+String.valueOf(data,off,len));
+        //WTDebug.println("after writeN len:"+String.valueOf(data,off,len));
         flush();
     }
 
