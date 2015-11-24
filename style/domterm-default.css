@@ -1,0 +1,10 @@
+/* Optional - user-overridable styling */
+span[line="soft"]:before {content: "\2936"; }
+/* Suggested by Tufte CSS - less harsh than pure white. */
+div[class="domterm"] { background-color: #fffff8 }
+/* As used by Tufte CSS: */
+div[class="domterm"] { font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace; }
+span[std="input"] { font-weight: bolder; color: blue }
+input[std="input"] { font-weight: bolder; }
+span[std="prompt"] { color: green; }
+span[std="error"] { color: red; }

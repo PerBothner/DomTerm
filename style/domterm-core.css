@@ -1,0 +1,13 @@
+/* Styling that is required for DomTem to work sanely.
+ * "True" optional styling should go in domterm-default.css.
+ */
+html, body { width: 100%; height: 100% ; margin: 0px; overflow: hidden }
+div[class="domterm"] { width: 100%; height: 100%; overflow-y: scroll; overflow-x: hidden; margin: 0px; padding: 0px; border: 0px; white-space: pre }
+span[class="wrap"] {padding: 0px; margin: 0x; white-space: nowrap }
+span[line="soft"] { padding: 0px; margin: 0x;}
+span[line="soft"]:before {content: "\2936"; }
+span[std="prompt"] { margin: 0px; padding: 0px; border: 1px }
+input[std="input"] {
+  border: 0px; margin: 0px; padding: 0px; right: 0px;
+  width: auto; left: auto;
+}
