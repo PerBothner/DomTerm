@@ -39,8 +39,6 @@ domterm|DomTerm terminal emulator,
 # horizontal position #1, absolute (P) [tc: ch]
 	hpa=\E[%i%p1%dG,
 # from TERM=ansi
-        colors#8, ncv#3, pairs#64,
-# from TERM=ansi
 #        acsc=+\020\,\021-\030.^Y0\333`\004a\261f\370g\361h\260j\331k\277l\332m\300n\305o~p\304q\304r\304s_t\303u\264v\301w\302x\263y\363z\362{\343|\330}\234~\376,
         bel=^G, blink=\E[5m, bold=\E[1m, cbt=\E[Z, clear=\E[H\E[J,
         cr=^M, cub=\E[%p1%dD, cub1=\E[D, cud=\E[%p1%dB, cud1=\E[B,
@@ -131,20 +129,21 @@ domterm|DomTerm terminal emulator,
 #	rs1=\Ec,
 #	sc=\E7,
 # COLORS
+# from TERM=ansi
+#        colors#8, ncv#3, pairs#64,
+# xterm-256color also supports ccc
 # TERM=ansi does this:
 #	colors#8, pairs#64, setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
 # maximum number of color-pairs on the screen [tc: pa]
-#	pairs#32767,
+	pairs#32767,
 # Max number of colors on screen [tc: Co]
-#	colors#256,
+	colors#256,
 # set background color to #1, using ANSI escape [tc: AB]
-#	setab=\E[%p1%{40}%+%dm,
-#	setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m,
+	setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m,
 # set foreground color to #1, using ANSI escape [tc: AF]
-#	setaf=\E[%p1%{30}%+%dm,
-#        setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
+	setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
 # exit attribute mode (turn off all attributes] [tc: me]
-#	sgr0=\E[m,
+	sgr0=\E[m,
 # enter insert mode [tc: im]
 #	smir=\E[4h,
 # enter underline mode [tc: us]

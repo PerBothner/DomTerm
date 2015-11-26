@@ -8,3 +8,45 @@ span[std="input"] { font-weight: bolder; color: blue }
 input[std="input"] { font-weight: bolder; }
 span[std="prompt"] { color: green; }
 span[std="error"] { color: red; }
+
+/* The X: comments refers to xterm color names and their defaults */
+span.term-style[color="black"] { color: #000000); } /* X: 0=black */
+span.term-style[color="red"] { color: #CD0000; } /* X: 1=red3 */
+span.term-style[color="green"] { color: #00CD00; } /* X: 2=green3 */
+span.term-style[color="yellow"] { color: #CDCD00; } /* X: 3=yellow3*/
+span.term-style[color="blue"] { color: #0000CD; } /* X: 4=blue3 */
+span.term-style[color="magenta"] { color: #CD00CD; } /* X: 5=magenta3 */
+span.term-style[color="cyan"] { color: #00CDCD; } /* X: 6=cyan3 */
+span.term-style[color="light-gray"] { color: #E5E5E5; } /* X: 7=gray90 */
+span.term-style[color="dark-gray"] { color: #4D4D4D; } /* X: 8=gray30 */
+span.term-style[color="light-red"] { color: #FF0000; } /* X: 9=red */
+span.term-style[color="light-green"] { color: #00FF00; } /* X: 10=green */
+span.term-style[color="light-yellow"] { color: #FFFF00; } /* X: 11=yellow */
+span.term-style[color="light-blue"] { color: #0000FF; } /* X: 12=blue */
+span.term-style[color="light-magenta"] { color: #FF00FF; } /* 13=magenta */
+span.term-style[color="light-cyan"] { color: #00FFFF; } /* X: 14=cyan */
+span.term-style[color="white"] { color: #FFFFFF; } /* X: 15=white */
+
+span.term-style[background-color="black"] { background-color: #000000; }
+span.term-style[background-color="red"] { background-color: #CD0000; }
+span.term-style[background-color="green"] { background-color: #00CD00; }
+span.term-style[background-color="yellow"] { background-color: #CDCD00; }
+span.term-style[background-color="blue"] { background-color: #0000CD; }
+span.term-style[background-color="magenta"] { background-color: #CD00CD; }
+span.term-style[background-color="cyan"] { background-color: #00CDCD; }
+span.term-style[background-color="light-gray"] { background-color: #E5E5E5; }
+span.term-style[background-color="dark-gray"] { background-color: #4D4D4D; }
+span.term-style[background-color="light-red"] { background-color: #FF0000; }
+span.term-style[background-color="light-green"] { background-color: #00FF00; }
+span.term-style[background-color="light-yellow"] { background-color: #FFFF00; }
+span.term-style[background-color="light-blue"] { background-color: #0000FF; }
+span.term-style[background-color="light-magenta"] { background-color: #FF00FF; }
+span.term-style[background-color="light-cyan"] { background-color: #00FFFF; }
+span.term-style[background-color="white"] { background-color: #FFFFFF; }
+
+span.term-style[font-weight="bold"] { font-weight: bold }
+span.term-style[font-weight="lighter"] { font-weight: lighter }
+span.term-style[text-decoration~="underline"] { text-decoration: underline }
+span.term-style[text-decoration~="overline"] { text-decoration: overline }
+span.term-style[text-decoration~="line-through"] { text-decoration: line-through }
+span.term-style[text-decoration~="blink"] { text-decoration: blink }

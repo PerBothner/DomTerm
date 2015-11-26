@@ -170,11 +170,8 @@ function DomTerm(name, topNode) {
     this.homeLine = 0;
 
     // A stack of currently active "style" strings.
-    this._currentStyles = new Array();
-
-    // True if currentStyles may not match the current style context.
-    // Thus the context needs to be adjusted before text is inserted.
-    this._adjustStyleNeeded = false;
+    this._currentStyleMap = null;
+    this._currentStyleSpan = null;
 
     this.defaultBackgroundColor = "white";
     this.defaultForegroundColor = "black";
@@ -324,7 +321,6 @@ DomTerm.prototype.moveTo = function(goalLine, goalColumn) {
  * @param addSpaceAsNeeded if we should add blank linesor spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine
  */
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
-    this._adjustStyleNeeded = true; // FIXME optimize?
     var line = this.getCursorLine();
     var column = this.getCursorColumn();
     if (this.verbosity >= 2)
@@ -630,33 +626,24 @@ DomTerm.prototype.outputLFasCRLF = function() {
     return this.lineEditing;
 };
 
-/** Add a style property specifier to the _currentStyles list.
+/** Add a style property specifier to the _currentStyleMap.
  * However, if the new specifier "cancels" an existing specifier,
  * just remove the old one.
- * @param styleNameWithColon style property name including colon,
- *     (for example "text-decoration:").
+ * @param styleName style property name (for example "text-decoration").
  * @param styleValue style property value string (for example "underline"),
  *     or null to indicate the default value.
  */
-DomTerm.prototype._pushStyle = function(styleNameWithColon, styleValue) {
-    var nstyles = this._currentStyles.length;
-    var i = 0;
-    for (;  i < nstyles;  i++) {
-        if (this._currentStyles[i].startsWith(styleNameWithColon)) {
-            // Remove old _currentStyles[i]
-            while (++i < nstyles) {
-                this._currentStyles[i-1] = this._currentStyles[i];
-            }
-            this._currentStyles.pop();
-            break;
-        }
-    }
-    if (styleValue != null)
-        this._currentStyles.push(styleNameWithColon+' '+styleValue);
+DomTerm.prototype._pushStyle = function(styleName, styleValue) {
+    if (! this._currentStyleMap)
+        this._currentStyleMap = new Map();
+    if (styleValue)
+        this._currentStyleMap.set(styleName, styleValue);
+    else
+        this._currentStyleMap.delete(styleName);
 };
 
 /** Adjust style at current position to match desired style.
- * The desired style is a specified by the _currentStyles list.
+ * The desired style is a specified by the _currentStyleMap.
  * This usually means adding {@code <span style=...>} nodes around the
  * current position.  If the current position is already inside
  * a {@code <span style=...>} node that doesn't match the desired style,
@@ -664,111 +651,109 @@ DomTerm.prototype._pushStyle = function(styleNameWithColon, styleValue) {
  * position is not inside the span node, but text before and after is.
  */
 DomTerm.prototype._adjustStyle = function() {
-    this._adjustStyleNeeded = false;
-    var parentStyles = new Array();
-    for (var n = this.outputContainer;  n != this.topNode && n != null;
-         n = n.parentNode) {
-        if (n instanceof Element) {
-            var style = n.getAttribute("style");
-            if (style != null && style.length > 0)
-                parentStyles.push(style);
-        }
+    var parentSpan = this.outputContainer;
+    var inStyleSpan = parentSpan.getAttribute("class") == "term-style";
+    if (this._currentStyleMap == null && ! inStyleSpan) {
+        this._currentStyleSpan = parentSpan;
+        return;
     }
-
-    // Compare the parentStyles and _currentStyles lists,
-    // so we can "keep" the styles where the match, and pop or add
-    // the styles where they don't match.
-    var keptStyles = 0;
-    var currentStylesLength = this._currentStyles.length;
-    var j;
-    for (j = parentStyles.length; --j >= 0; ) {
-        var parentStyle = parentStyles[j];
-        if (parentStyle != null) {
-            if (keptStyles == currentStylesLength) {
+    var inputLineMoved = false;
+    if (this.inputLine == this.outputBefore) {
+        this.outputBefore = this.outputBefore.nextSibling;
+        parentSpan.removeChild(this.inputLine);
+        inputLineMoved = true;
+    }
+    if (inStyleSpan) {
+        if (this.outputBefore) {
+            // split into new child
+            var restSpan = this.createSpanNode();
+            parentSpan.parentNode.insertBefore(restSpan,
+                                               parentSpan.nextSibling);
+            // Copy attributes
+            for (var attr in parentSpan.attributes) {
+                restSpan.setAttribute(attr.name, attr.value);
+            }
+            for (var child = this.outputBefore; child != null; ) {
+                var next = child.nextSibling;
+                parentSpan.removeChild(child);
+                restSpan.appendChild(child);
+                child = next;
+            }
+        }
+        this.outputContainer = parentSpan.parentNode;
+        this.outputBefore = parentSpan.nextSibling;
+    }
+    if (this._currentStyleMap != null) {
+        var styleSpan = this.createSpanNode();
+        this.outputContainer.insertBefore(styleSpan, this.outputBefore);
+        styleSpan.setAttribute("class", "term-style");
+        var styleAttr = null;
+        var decoration = null;
+        var reverse = false;
+        var fgcolor = null;
+        var bgcolor = null;
+        for (var key of this._currentStyleMap.keys()) {
+            var value = this._currentStyleMap.get(key);
+            switch (key) {
+            case "reverse":
+                reverse = true;
+                break;
+            case "color":
+                fgcolor = value;
+                break;
+            case "background-color":
+                bgcolor = value;
+                break;
+            case "text-underline":
+                decoration = decoration ? decoration + " underline" : "underline";
+                break;
+            case "text-overline":
+                decoration = decoration ? decoration + " overline" : "overline";
+                break;
+            case "text-blink":
+                decoration = decoration ? decoration + " blink" : "blink";
+                break;
+            case "text-line-through":
+                decoration = decoration ? decoration + " line-through" : "line-through";
+                break;
+            case "font-weight":
+                styleSpan.setAttribute(key, value);
                 break;
             }
-
-            // Matching is made more complicated because parentStyles
-            // may specify multiple properties in a single style attribute.
-            // For example "color: red; background-color: blue".
-            var k = 0;
-            while (k >= 0 && (parentStyle = parentStyle.trim()).length > 0) {
-                // Assume property values cannot contain semi-colons.
-                // This may fail if there are string-valued properties,
-                // since we don't check for quoted semi-colons.
-                var semi = parentStyle.indexOf(';');
-                var s;
-                if (semi >= 0) {
-                    s = parentStyle.substring(0, semi).trim();
-                    parentStyle = parentStyle.substring(semi+1);
-                    if (s.length == 0)
-                        continue;
-                }
-                else {
-                    s = parentStyle;
-                    parentStyle = "";
-                }
-                if (keptStyles+k < currentStylesLength
-                    && s == this._currentStyles[keptStyles+k])
-                    k++;
-                else
-                    k = -1;
+        }
+        if (reverse) {
+            var tmp = bgcolor ? bgcolor : this.defaultBackgroundColor;
+            bgcolor = fgcolor ? fgcolor : this.defaultForegroundColor;
+            fgcolor = tmp;
+        }
+        if (fgcolor) {
+            styleSpan.setAttribute("color", fgcolor);
+            if (fgcolor.length > 0 && fgcolor.charCodeAt(0) == 35) {
+                fgcolor = "color: "+fgcolor;
+                styleAttr = styleAttr ? styleAttr+";"+fgcolor : fgcolor;
             }
-
-            if (k >= 0)
-                keptStyles += k;
-            else
-                break;                   
         }
+        if (bgcolor) {
+            styleSpan.setAttribute("background-color", bgcolor);
+            if (bgcolor.length > 0 && bgcolor.charCodeAt(0) == 35) {
+                bgcolor = "background-color: "+bgcolor;
+                styleAttr = styleAttr ? styleAttr+";"+bgcolor : bgcolor;
+            }
+        }
+        if (styleAttr)
+            styleSpan.setAttribute("style", styleAttr);
+        if (decoration)
+            styleSpan.setAttribute("text-decoration", decoration);
+        this._currentStyleSpan = styleSpan;
+        this.outputContainer = styleSpan;
     }
-    var popCount = j+1;
-    while (--popCount >= 0) {
-        // Pop style - move inputLine outside current (style) span.
-        var following = this.inputLine.nextSibling;
-        var span1 = this.inputLine.parentNode;
-        if (! span1) {
-            console.log("null span1 inputLine:"+this.inputLine);
-        }
-        var parent = span1.parentNode;
-        span1.removeChild(this.inputLine);
-        this.outputContainer = parent;
-        parent.insertBefore(this.inputLine, span1.nextSibling);
+    if (inputLineMoved) {
+        styleSpan.insertBefore(this.inputLine, null);
         this.outputBefore = this.inputLine;
-        if (following != null) {
-            var span2 = this.createSpanNode();
-            var classAttr = span1.getAttribute("class");
-            var styleAttr = span1.getAttribute("style");
-            if (classAttr != null && classAttr.length > 0)
-                span2.setAttribute("class", classAttr);
-            if (styleAttr != null && styleAttr.length > 0)
-                span2.setAttribute("style", styleAttr);
-            parent.insertBefore(span2, this.inputLine.nextSibling);
-            do {
-                var ch = following;
-                following = ch.nextSibling;
-                span1.removeChild(ch);
-                span2.appendChild(ch);
-            } while (following != null);
-        }
-        this.inputLine.focus();
     }
-    if (keptStyles < currentStylesLength) {
-        this.outputBefore = this.inputLine.nextSibling;
-        this.outputContainer.removeChild(this.inputLine);
-        var styleValue = null;
-        do {
-            var s = this._currentStyles[keptStyles];
-            styleValue = styleValue == null ? s : styleValue + ';' + s;
-        } while (++keptStyles < currentStylesLength);
-        var spanNode = this.createSpanNode();
-        spanNode.setAttribute("style", styleValue);
-        this.outputContainer.insertBefore(spanNode, this.outputBefore);
-        this.outputContainer = spanNode;
+    else
         this.outputBefore = null;
-        spanNode.appendChild(this.inputLine);
-        this.outputBefore = this.inputLine;
-        this.inputLine.focus();
-    }
+    this.inputLine.focus();
 };
 
 DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
@@ -1500,9 +1485,17 @@ DomTerm.prototype.eraseLineLeft = function() {
 };
 
 DomTerm.prototype.rgb = function(r,g,b) {
-    return "rgb("+this.getParameter(i+2,0)
-        +","+this.getParameter(i+3,0)
-        +","+this.getParameter(i+4,0)+")";
+    var digits = "0123456789ABCDEF";
+    var r1 = r & 15;
+    var g1 = g & 15;
+    var b1 = b & 15;
+    return String.fromCharCode(35/*'#'*/,
+                               digits.charCodeAt((r-r1)/16),
+                               digits.charCodeAt(r1),
+                               digits.charCodeAt((g-g1)/16),
+                               digits.charCodeAt(g1),
+                               digits.charCodeAt((b-b1)/16),
+                               digits.charCodeAt(b1));
 };
 
 DomTerm.prototype.color256 = function(u) {
@@ -1517,25 +1510,30 @@ DomTerm.prototype.color256 = function(u) {
         case 4: return this.rgb(0x18, 0x18, 0xB2); // Blue
         case 5: return this.rgb(0xB2, 0x18, 0xB2); // Magenta
         case 6: return this.rgb(0x18, 0xB2, 0xB2); // Cyan
-        case 7: return this.rgb(0xB2, 0xB2, 0xB2); // White
+        case 7: return this.rgb(0xB2, 0xB2, 0xB2); // White (light gray)
             // intensive versions
-        case 8: return this.rgb(0x68, 0x68, 0x68);
-        case 9: return this.rgb(0xFF, 0x54, 0x54);
-        case 10: return this.rgb(0x54, 0xFF, 0x54);
-        case 11: return this.rgb(0xFF, 0xFF, 0x54);
-        case 12: return this.rgb(0x54, 0x54, 0xFF);
-        case 13: return this.rgb(0xFF, 0x54, 0xFF);
-        case 14: return this.rgb(0x54, 0xFF, 0xFF);
-        case 15: return this.rgb(0xFF, 0xFF, 0xFF);
+        case 8: return this.rgb(0x68, 0x68, 0x68); // dark-gray
+        case 9: return this.rgb(0xFF, 0x54, 0x54); // light-red
+        case 10: return this.rgb(0x54, 0xFF, 0x54); // light-green
+        case 11: return this.rgb(0xFF, 0xFF, 0x54); // light-yellow
+        case 12: return this.rgb(0x54, 0x54, 0xFF); // light-blue
+        case 13: return this.rgb(0xFF, 0x54, 0xFF); // light-magenta
+        case 14: return this.rgb(0x54, 0xFF, 0xFF); // light-cyan
+        case 15: return this.rgb(0xFF, 0xFF, 0xFF); // White
         }
     }
     u -= 16;
 
     //  16..231: 6x6x6 rgb color cube
     if (u < 216) {
-        return this.rgb(((u / 36) % 6) ? (40 * ((u / 36) % 6) + 55) : 0,
-                        ((u / 6) % 6) ? (40 * ((u / 6) % 6) + 55) : 0,
-                        ((u / 1) % 6) ? (40 * ((u / 1) % 6) + 55) : 0);
+        var bcode = u % 6;
+        u = (u - bcode) / 6;
+        var gcode = u % 6;
+        u = (u - gcode) / 6;
+        var rcode = u % 6;
+        return this.rgb(rcode > 0 ? rcode * 40 + 55 : 0,
+                        gcode > 0 ? gcode * 40 + 55 : 0,
+                        bcode > 0 ? bcode * 40 + 55 : 0);
     }
     u -= 216;
 
@@ -1695,45 +1693,57 @@ DomTerm.prototype.handleControlSequence = function(last) {
      case 109 /*'m'*/:
         var numParameters = this.parameters.length;
         if (numParameters == 0)
-            this._currentStyles.length = 0;
+            this._currentStyleMap = null;
         for (var i = 0; i < numParameters; i++) {
             param = this.getParameter(i, -1);
             if (param <= 0)
-                this._currentStyles.length = 0;
+                this._currentStyleMap = null;
             else {
-                var nstyles = this._currentStyles.length;
                 switch (param) {
                 case 1:
-                    this._pushStyle("font-weight:", "bold");
+                    this._pushStyle("font-weight", "bold");
+                    break;
+                case 2:
+                    this._pushStyle("font-weight", "lighter");
                     break;
                 case 22:
-                    this._pushStyle("font-weight:", null/*"normal"*/);
+                    this._pushStyle("font-weight", null/*"normal"*/);
                     break;
                 case 4:
-                    this._pushStyle("text-decoration:", "underline");
+                    this._pushStyle("text-underline", "yes");
                     break;
                 case 24:
-                    this._pushStyle("text-decoration:", null/*"none"*/);
+                    this._pushStyle("text-underline", null/*"none"*/);
+                    break;
+                case 5:
+                    this._pushStyle("text-blink", "yes");
+                    break;
+                case 25:
+                    this._pushStyle("text-blink", null);
                     break;
                 case 7:
-                    this._pushStyle("color:", this.defaultBackgroundColor);
-                    this._pushStyle("background-color:", this.defaultForegroundColor);
+                    this._pushStyle("reverse", "yes");
+                    break;
+                case 9:
+                    this._pushStyle("text-line-through", "yes");
+                    break;
+                case 29:
+                    this._pushStyle("text-line-through", null/*"none"*/);
                     break;
                 case 27:
-                    this._pushStyle("color:", null/*defaultForegroundColor*/);
-                    this._pushStyle("background-color:", null/*defaultBackgroundColor*/);
+                    this._pushStyle("reverse", null);
                     break;
-                case 30: this._pushStyle("color:", "black"); break;
-                case 31: this._pushStyle("color:", "red"); break;
-                case 32: this._pushStyle("color:", "green"); break;
-                case 33: this._pushStyle("color:", "yellow"); break;
-                case 34: this._pushStyle("color:", "blue"); break;
-                case 35: this._pushStyle("color:", "magenta"); break;
-                case 36: this._pushStyle("color:", "cyan"); break;
-                case 37: this._pushStyle("color:", "white"); break;
+                case 30: this._pushStyle("color", "black"); break;
+                case 31: this._pushStyle("color", "red"); break;
+                case 32: this._pushStyle("color", "green"); break;
+                case 33: this._pushStyle("color", "yellow"); break;
+                case 34: this._pushStyle("color", "blue"); break;
+                case 35: this._pushStyle("color", "magenta"); break;
+                case 36: this._pushStyle("color", "cyan"); break;
+                case 37: this._pushStyle("color", "light-gray"); break;
                 case 38:
                 case 48:
-                    var property = param==38 ? " color" : "background-color:";
+                    var property = param==38 ? "color" : "background-color";
                     if (this.getParameter(i+1,-1) == 2
                         && numParameters >= i+5) {
                         var color = 
@@ -1745,26 +1755,40 @@ DomTerm.prototype.handleControlSequence = function(last) {
                     } else if (this.getParameter(i+1,-1) == 5
                                && numParameters >= i+2) {
                         var c = this.getParameter(i+2,0);
-                        this._pushStyle(property, c);
+                        this._pushStyle(property, this.color256(c));
                         i += 2;
                     }
                     break;
-                case 39: this._pushStyle("color:", null/*defaultForegroundColor*/); break;
-                case 40: this._pushStyle("background-color:", "black"); break;
-                case 41: this._pushStyle("background-color:", "red"); break;
-                case 42: this._pushStyle("background-color:", "green"); break;
-                case 43: this._pushStyle("background-color:", "yellow"); break;
-                case 44: this._pushStyle("background-color:", "blue"); break;
-                case 45: this._pushStyle("background-color:", "magenta"); break;
-                case 46: this._pushStyle("background-color:", "cyan"); break;
-                case 47: this._pushStyle("background-color:", "white"); break;
-                case 49: this._pushStyle("background-color:", null/*defaultBackgroundColor*/); break
+                case 39: this._pushStyle("color", null/*defaultForegroundColor*/); break;
+                case 40: this._pushStyle("background-color", "black"); break;
+                case 41: this._pushStyle("background-color", "red"); break;
+                case 42: this._pushStyle("background-color", "green"); break;
+                case 43: this._pushStyle("background-color", "yellow"); break;
+                case 44: this._pushStyle("background-color", "blue"); break;
+                case 45: this._pushStyle("background-color", "magenta"); break;
+                case 46: this._pushStyle("background-color", "cyan"); break;
+                case 47: this._pushStyle("background-color", "light-gray"); break;
+                case 49: this._pushStyle("background-color", null/*defaultBackgroundColor*/); break
+                case 90: this._pushStyle("color", "dark-gray"); break;
+                case 91: this._pushStyle("color", "light-red"); break;
+                case 92: this._pushStyle("color", "light-green"); break;
+                case 93: this._pushStyle("color", "light-yellow"); break;
+                case 94: this._pushStyle("color", "light-blue"); break;
+                case 95: this._pushStyle("color", "light-magenta"); break;
+                case 96: this._pushStyle("color", "light-cyan"); break;
+                case 97: this._pushStyle("color", "white"); break;
+                case 100: this._pushStyle("background-color", "dark-gray"); break;
+                case 101: this._pushStyle("background-color", "light-red"); break;
+                case 102: this._pushStyle("background-color", "light-green"); break;
+                case 103: this._pushStyle("background-color", "light-yellow"); break;
+                case 104: this._pushStyle("background-color", "light-blue"); break;
+                case 105: this._pushStyle("background-color", "light-magenta"); break;
+                case 106: this._pushStyle("background-color", "light-cyan"); break;
+                case 107: this._pushStyle("background-color", "white"); break;
                 }
             }
         }
-        this._adjustStyleNeeded = true;
-        if (this.verbosity >= 2)
-            console.log("currentStyles: "+this._currentStyles);
+        this._currentStyleSpan = null;
         break;
     case 110 /*'n'*/:
         switch (this.getParameter(0, 0)) {
@@ -1985,7 +2009,6 @@ DomTerm.prototype.insertString = function(str, kind) {
             case 9 /*'\t'*/:
                 this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
                 var nextStop = this.nextTabCol(this.getCursorColumn());
-                console.log("TAB %d-%d", this.currentCursorColumn, nextStop);
                 this.cursorRight(nextStop-this.currentCursorColumn);
                 curColumn = this.currentCursorColumn;
                 prevEnd = i + 1;
@@ -2039,10 +2062,10 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
         slen = endIndex - beginIndex;
     }
     if (this.verbosity >= 2)
-        this.log("insertSimple '"+this.toQuoted(str)+"'"+" adjustStyle:"+this._adjustStyleNeeded);
-    if (this._adjustStyleNeeded)
+        this.log("insertSimple '"+this.toQuoted(str)+"'");
+    if (this._adjustStyleSpan != this.outputContainer)
         this._adjustStyle();
-    var column =this.getCursorColumn();
+    var column = this.getCursorColumn();
     var widthInColums = endColumn-column;
     if (! this.insertMode) {
         this.eraseCharactersRight(widthInColums, true);
@@ -2055,7 +2078,6 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
     if (false /* FIXME kind == 'E'*/) {
         var errElement = this.createSpanNode();
         errElement.setAttribute("std", "error");
-        //errElement.setAttribute("style", "font-weight: bold; color: green; background: blue");
         //resetCursorCache(); // FIXME - should avoid
         this.insertNode(errElement);
         errElement.appendChild(document.createTextNode(str));
