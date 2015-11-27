@@ -34,6 +34,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+"use strict";
+
 function DomTerm(name, topNode) {
     // A unique name for this DomTerm instance.
     // Should match the syntax for an XML NCName, as it is used to
@@ -115,8 +117,6 @@ function DomTerm(name, topNode) {
     // Number of horizontal pixels available.
     // Doesn't count scrollbar or rightMarginWidth.
     this.availWidth = 0;
-
-    this.wrapOnLongLines = true;
 
     // This is the column width at which the next line implicitly starts.
     // Compare with wrapWidth - if both are less than 9999999
@@ -348,16 +348,23 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
             if (! last) {
                 this.log("bad last!");
             }
-            var kind = last.getAttribute("line");
-            if (kind=="end") {
-                last.setAttribute("line", "hard");
-                //this.appendText(last, "\n");
+
+            var preNode = document.createElement("pre");
+            // preNode.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
+            var lastParent = last;
+            for (;;) {
+                var tag = lastParent.tagName;
+                if (tag == "PRE" || tag == "DIV" || tag == "P")
+                    break;
+                var p = lastParent.parentNode;
+                if (p == this.initial)
+                    break;
+                lastParent = p;
             }
-            var next = this._createEndNode();
-            if (! last.parentNode)
-                this.log("null parentNode!");
-            last.parentNode.appendChild(next);
-            this.lineStarts[lineCount] = last;
+            lastParent.parentNode.appendChild(preNode);
+            var next = this._createLineNode("hard", "\n");
+            preNode.appendChild(next);
+            this.lineStarts[lineCount] = preNode;
             this.lineEnds[lineCount] = next;
             var nextLine = lineCount;
             lineCount++;
@@ -745,13 +752,12 @@ DomTerm.prototype._adjustStyle = function() {
             styleSpan.setAttribute("text-decoration", decoration);
         this._currentStyleSpan = styleSpan;
         this.outputContainer = styleSpan;
+        this.outputBefore = null;
     }
     if (inputLineMoved) {
-        this.outputContainer.insertBefore(this.inputLine, null);
+        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
         this.outputBefore = this.inputLine;
     }
-    else
-        this.outputBefore = null;
 };
 
 DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
@@ -935,10 +941,6 @@ DomTerm.prototype._createLineNode = function(kind, text) {
     return el;
 };
  
-DomTerm.prototype._createEndNode = function(kind) {
-    return this._createLineNode("end", "\n");
-};
-
 DomTerm.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         if (val) {
@@ -1055,14 +1057,16 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                              false);
 
     this.initial = mainNode; //document.getElementById(mainName);
-    this.lineStarts[0] = this.initial;
-    this.outputContainer = this.initial;
-    this.cursorHome = this.initial;
+    var preNode = document.createElement("pre");
+    mainNode.appendChild(preNode);
+    this.lineStarts[0] = preNode;
+    this.outputContainer = preNode;
+    this.cursorHome = preNode;
     this.addInputLine();
     this.outputBefore = this.inputLine;
     this.pendingInput = this.inputLine;
-    var lineEnd = this._createEndNode();
-    this.initial.appendChild(lineEnd);
+    var lineEnd = this._createLineNode("hard", "\n");
+    preNode.appendChild(lineEnd);
     this.lineEnds[0] = lineEnd;
 
     this.measureWindow();
@@ -2018,15 +2022,7 @@ DomTerm.prototype.insertString = function(str, kind) {
             default:
                 var nextColumn = this.updateColumn(ch, curColumn);
                 if (nextColumn > this.wrapWidth) {
-                    /*
-                    if (this.wrapOnLongLines) {
-                        this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
-                        this.insertWrapBreak();
-                        prevEnd = i;
-                    }
-                    */
-                    //line++;
-                    nextColumn = this.updateColumn(ch, 0);
+                   nextColumn = this.updateColumn(ch, 0);
                 }
                 curColumn = nextColumn;
             }
@@ -2066,11 +2062,6 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
     var widthInColums = endColumn-column;
     if (! this.insertMode) {
         this.eraseCharactersRight(widthInColums, true);
-    } else if (false && this.wrapOnLongLines) {
-        // ????
-            this.moveToIn(this.getCursorLine(), this.wrapWidth-widthInColums, false);
-            this.eraseCharactersRight(-1, true);
-            this.moveTo(this.getCursorLine(), column);
     }
     if (false /* FIXME kind == 'E'*/) {
         var errElement = this.createSpanNode();
@@ -2243,7 +2234,7 @@ DomTerm.prototype.arrowKeySequence = function(ch) {
 DomTerm.prototype.keyDownToString = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     switch (key) {
-    case 8: /* Backspace */ return "\177";
+    case 8: /* Backspace */ return "\x7F";
     case 9: /* Tab */    return "\t";
     case 27: /* Esc */   return "\x1B";
     case 33 /* PageUp*/: return "\x1B[5~";
