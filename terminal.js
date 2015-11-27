@@ -545,7 +545,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     }
     if (this.inputLine != null) {
         parent.insertBefore(this.inputLine, current);
-        this.inputLine.focus();
         current = this.inputLine;
     }
     this.outputContainer = parent;
@@ -748,12 +747,11 @@ DomTerm.prototype._adjustStyle = function() {
         this.outputContainer = styleSpan;
     }
     if (inputLineMoved) {
-        styleSpan.insertBefore(this.inputLine, null);
+        this.outputContainer.insertBefore(this.inputLine, null);
         this.outputBefore = this.inputLine;
     }
     else
         this.outputBefore = null;
-    this.inputLine.focus();
 };
 
 DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
@@ -969,7 +967,6 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.outputContainer = this.cursorHome;
             this.resetCursorCache();
         }
-        this.inputLine.focus();
         this.usingAlternateScreenBuffer = val;
         this.scrollRegionTop = 0;
         this.scrollRegionBottom = -1;
@@ -1131,7 +1128,6 @@ DomTerm.prototype.addInputLine = function() {
     //inputNode.appendChild(dummyText);
 
     this.inputLine = inputNode;
-    this.inputLine.focus();
 };
 
 DomTerm.prototype.resetCursorCache = function() {
@@ -2049,6 +2045,7 @@ DomTerm.prototype.insertString = function(str, kind) {
         if (lastBottom > this.topNode.scrollTop + this.availHeight)
             this.topNode.scrollTop = lastBottom - this.availHeight;
     }
+    this.inputLine.focus();
 };
 
 DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind, endColumn) {
@@ -2090,7 +2087,6 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
         var lineEnd = this.lineEnds[this.homeLine+this.getCursorLine()];
         //this.log("after insert outputBefore:"+this.outputBefore+" lineEnd:"+lineEnd+" out.next:"+this.outputBefore.nextSibling+" line.prev:"+lineEnd.previousSibling+" out.next==line?"+(this.outputBefore.nextSibling==lineEnd)+" beforePos:"+beforePos+" afterPos:"+afterPos);
         var clientWidth = this.initial.clientWidth;
-        var excess = afterPos - (clientWidth - this.rightMarginWidth);
         var availWidth = clientWidth - this.rightMarginWidth;
         if (afterPos > availWidth) {
             // wrap needed:
@@ -2385,7 +2381,6 @@ DomTerm.prototype.keyPressHandler = function(event) {
             var str = String.fromCharCode(key);
             this.doLineEdit(-key, str);
         }
-        this.inputLine.focus();
     } else {
         if (event.which !== 0
             && key != 8
