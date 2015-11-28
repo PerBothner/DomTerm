@@ -201,7 +201,7 @@ DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
 /** We have seen ESC ']'. */
 DomTerm.SEEN_ESC_RBRACKET_STATE = 4;
 /** We have seen ESC ']' numeric-parameter ';'. */
-DomTerm.SEEN_ESC_BRACKET_TEXT_STATE = 5;
+DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 5;
 
 // FIXME StringBuilder curTextParameter;
 
@@ -722,6 +722,7 @@ DomTerm.prototype._adjustStyle = function() {
             case "text-line-through":
                 decoration = decoration ? decoration + " line-through" : "line-through";
                 break;
+            case "std":
             case "font-weight":
                 styleSpan.setAttribute(key, value);
                 break;
@@ -1813,7 +1814,17 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         };
         break;
-    default:
+    case 117 /*'u'*/:
+        switch (this.getParameter(0, 0)) {
+        case 11:
+            this._pushStyle("std", null);
+            break;
+        case 12:
+            this._pushStyle("std", "error");
+            break;
+        }
+        break;
+   default:
         ; // FIXME
     }
 };
@@ -1932,7 +1943,7 @@ DomTerm.prototype.insertString = function(str, kind) {
             }
             else if (ch == 59 /*';'*/) {
                 this.log("enter esc br text state");
-                this.controlSequenceState = DomTerm.SEEN_ESC_BRACKET_TEXT_STATE;
+                this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE;
                 //prevEnd = indexTextEnd(str, i);
                 this.parameters.push("");
                 prevEnv = i + 1;
@@ -1945,7 +1956,7 @@ DomTerm.prototype.insertString = function(str, kind) {
                 this.controlSequenceState = DomTerm.INITIAL_STATE;
             }
             continue;
-        case DomTerm.SEEN_ESC_BRACKET_TEXT_STATE:
+        case DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE:
             if (ch == 7 || ch == 0) {
                 this.parameters[1] =
                     this.parameters[1] + str.substring(prevEnv, i);
@@ -2032,7 +2043,7 @@ DomTerm.prototype.insertString = function(str, kind) {
         this.insertSimpleOutput(str, prevEnd, i, kind, curColumn);
         //this.currentCursorColumn = column;
     }
-    if (this.controlSequenceState == DomTerm.SEEN_ESC_BRACKET_TEXT_STATE) {
+    if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnv, i);
     }
     if (true) { // FIXME only if "scrollWanted"
@@ -2063,15 +2074,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind,
     if (! this.insertMode) {
         this.eraseCharactersRight(widthInColums, true);
     }
-    if (false /* FIXME kind == 'E'*/) {
-        var errElement = this.createSpanNode();
-        errElement.setAttribute("std", "error");
-        //resetCursorCache(); // FIXME - should avoid
-        this.insertNode(errElement);
-        errElement.appendChild(document.createTextNode(str));
-        this.outputBefore = errElement.nextSibling;
-    }
-    else {
+    if (true) {
         var beforePos = this.outputBefore.offsetLeft;
         var textNode = this.insertRawOutput(str);
         var afterPos = this.outputBefore.offsetLeft;
