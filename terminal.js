@@ -170,7 +170,7 @@ function DomTerm(name, topNode) {
     this.homeLine = 0;
 
     // A stack of currently active "style" strings.
-    this._currentStyleMap = null;
+    this._currentStyleMap = new Map();
     this._currentStyleSpan = null;
 
     this.defaultBackgroundColor = "white";
@@ -640,12 +640,18 @@ DomTerm.prototype.outputLFasCRLF = function() {
  *     or null to indicate the default value.
  */
 DomTerm.prototype._pushStyle = function(styleName, styleValue) {
-    if (! this._currentStyleMap)
-        this._currentStyleMap = new Map();
     if (styleValue)
         this._currentStyleMap.set(styleName, styleValue);
     else
         this._currentStyleMap.delete(styleName);
+    this._currentStyleSpan = null;
+};
+
+DomTerm.prototype._clearStyle = function() {
+    var std = this._currentStyleMap.get("std");
+    this._currentStyleMap.clear();
+    if (std != null)
+        this._currentStyleMap.set("sid", std);
 };
 
 /** Adjust style at current position to match desired style.
@@ -659,7 +665,7 @@ DomTerm.prototype._pushStyle = function(styleName, styleValue) {
 DomTerm.prototype._adjustStyle = function() {
     var parentSpan = this.outputContainer;
     var inStyleSpan = parentSpan.getAttribute("class") == "term-style";
-    if (this._currentStyleMap == null && ! inStyleSpan) {
+    if (this._currentStyleMap.size == 0 && ! inStyleSpan) {
         this._currentStyleSpan = parentSpan;
         return;
     }
@@ -689,7 +695,7 @@ DomTerm.prototype._adjustStyle = function() {
         this.outputContainer = parentSpan.parentNode;
         this.outputBefore = parentSpan.nextSibling;
     }
-    if (this._currentStyleMap != null) {
+    if (this._currentStyleMap.size != 0) {
         var styleSpan = this.createSpanNode();
         this.outputContainer.insertBefore(styleSpan, this.outputBefore);
         styleSpan.setAttribute("class", "term-style");
@@ -1694,11 +1700,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
      case 109 /*'m'*/:
         var numParameters = this.parameters.length;
         if (numParameters == 0)
-            this._currentStyleMap = null;
+            this._clearStyle();
         for (var i = 0; i < numParameters; i++) {
             param = this.getParameter(i, -1);
             if (param <= 0)
-                this._currentStyleMap = null;
+                this._clearStyle();
             else {
                 switch (param) {
                 case 1:
@@ -1789,7 +1795,6 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 }
             }
         }
-        this._currentStyleSpan = null;
         break;
     case 110 /*'n'*/:
         switch (this.getParameter(0, 0)) {
@@ -1821,6 +1826,14 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 12:
             this._pushStyle("std", "error");
+            break;
+        case 13:
+            this._pushStyle("std", null);
+            // Force inputLine outside prompt
+            this._adjustStyle();
+            break;
+        case 14:
+            this._pushStyle("std", "prompt");
             break;
         }
         break;
@@ -1942,11 +1955,10 @@ DomTerm.prototype.insertString = function(str, kind) {
                 this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
             }
             else if (ch == 59 /*';'*/) {
-                this.log("enter esc br text state");
                 this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE;
                 //prevEnd = indexTextEnd(str, i);
                 this.parameters.push("");
-                prevEnv = i + 1;
+                prevEnd = i + 1;
                 //this.parameters.push(str.substring(i, prevEnd));
                 //i = prevEnd;
             } else {
@@ -1959,7 +1971,7 @@ DomTerm.prototype.insertString = function(str, kind) {
         case DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE:
             if (ch == 7 || ch == 0) {
                 this.parameters[1] =
-                    this.parameters[1] + str.substring(prevEnv, i);
+                    this.parameters[1] + str.substring(prevEnd, i);
                 this.handleOperatingSystemControl(this.parameters[0], this.parameters[1]);
                 this.parameters.length = 1;
                 prevEnd = i + 1;

@@ -11,13 +11,19 @@ which may change based on experience and feedback.
 Insert HTML text.
 
 `ESC ] 74 ; KEY ^G`
-Simulate pressening KEY.  Used by auto-line mode.
+Simulate pressing KEY.  Used by auto-line mode.
 
 `ESC [ 12 u`
 Start of error output.
 
 `ESC [ 11 u`
 End of error output.
+
+`ESC [ 14 u`
+Start of prompt.
+
+`ESC [ 13 u`
+End of prompt.
 
 ## Special sequences sent by DomTerm to client
 
