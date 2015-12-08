@@ -2,13 +2,21 @@
 span[line="soft"]:before {content: "\2936"; }
 /* Suggested by Tufte CSS - less harsh than pure white. */
 div[class="domterm"] { background-color: #fffff8 }
-/* As used by Tufte CSS: */
-div[class="domterm"] { font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace; }
+/* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
+   However, the first four in that list cause some vertical spacing issues,
+   including background-color not being full-height.
+   Check with tests/256-colors.sh. */
+div[class="domterm"] pre { font-family: monospace }
 span[std="input"] { font-weight: bolder; color: blue }
 input[std="input"] { font-weight: bolder; }
 span[std="prompt"] { color: green; }
 span[std="error"] { color: red; }
 
+/* http://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+  says xterm in July 2004 changed blue #0000CD to  #0000EE,
+  and light-blue #0000FF to #5C5CFF.
+  It also gives #7F7F7F for dark-gray.
+ */
 /* The X: comments refers to xterm color names and their defaults */
 span.term-style[color="black"] { color: #000000); } /* X: 0=black */
 span.term-style[color="red"] { color: #CD0000; } /* X: 1=red3 */

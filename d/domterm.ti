@@ -1,5 +1,21 @@
 # tc:XX means the termcap equivalency is XX
 domterm|DomTerm terminal emulator,
+# initialialization
+# i1s [tc: i1]
+# is2 [tc: is]
+# is3 [tc: i3]
+# smcup [tc: ti] string to start programs using cup
+# rmcup [tc: te] string to end programs using cup
+# ??? Use alternative screen buffer
+#	smcup=\E[?47h,
+#	rmcup=\E[?47l,
+# xterm:
+# Save cursor as in DECSC and use Alternate Screen Buffer, clearing it first.
+#	smcup=\E[?1049h,
+#       rmcup=\E[?1049l,
+# soft terminal reset
+#       is2==\E[!p\E[?3;4l\E[4l\E>,
+#
 # automatic margins [tc: am]
 	am,
 # printer will not echo on screen [tc:5i]
@@ -152,7 +168,5 @@ domterm|DomTerm terminal emulator,
 #	smso=\E[7m,
 # 	u6=\E[%i%d;%dR,
 # 	u7=\E[6n,
-#	smcup=\E[?47h,
-#	rmcup=\E[?47l,
 #       vpa=\E[%i%p1%dd,
 #       rs2 may need to be added

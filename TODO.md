@@ -15,8 +15,6 @@ encoded as an integer).
 
 http://invisible-island.net/vttest/
 
-#### Re-wrap on line length change
-
 #### Improve copy and paste
 
 Handle exporting html to clipboard.
