@@ -54,4 +54,45 @@ run-shell: webterminal/ShellConsole.class
 	$(JAVA_WITH_PATH) webterminal.ShellConsole
 
 clean:
-	-rm -rf webterminal/*.class ptyconsole/*.class websocketterm/*.class libpty.so build
+	-rm -rf webterminal/*.class ptyconsole/*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html
+
+MAKEINFO = makeinfo
+srcdir = .
+DOMTERM_HTMLDIR = doc/html
+XSLT = xsltproc
+DOCBOOK_XSL_DIR = /home/bothner/Software/docbook-xsl-1.78.1
+doc/DomTerm.html: doc/DomTerm.texi
+	$(MAKEINFO) -I$(srcdir) --html --no-node-files $< -o $(DOMTERM_HTMLDIR)
+
+doc/DomTerm.xml: doc/DomTerm.texi
+	$(MAKEINFO) -I=doc --docbook doc/DomTerm.texi -o - | \
+	sed \
+	-e 's|_002d|-|g' \
+	-e 's|<chapter label="" id="Top">|<chapter label="Top" id="Top"><?dbhtml filename="index.html"?>|' \
+	> doc/DomTerm.xml
+
+web/index.html: doc/DomTerm.xml Makefile
+	$(XSLT) --path $(DOCBOOK_XSL_DIR)/html \
+	  --output web/  \
+	  --stringparam root.filename toc \
+	  --stringparam generate.section.toc.level 0 \
+	  --stringparam chunker.output.encoding UTF-8 \
+	  --stringparam chunker.output.doctype-public "-//W3C//DTD HTML 4.01 Transitional//EN" \
+	  --stringparam generate.index 1 \
+	  --stringparam use.id.as.filename 1 \
+	  --stringparam chunker.output.indent yes \
+	  --stringparam chunk.first.sections 1 \
+	  --stringparam chunk.section.depth 0 \
+	  --stringparam chapter.autolabel 0 \
+	  --stringparam chunk.fast 1 \
+	  --stringparam toc.max.depth 4 \
+	  --stringparam toc.list.type ul \
+	  --stringparam toc.section.depth 3 \
+	  --stringparam chunk.separate.lots 1 \
+	  --stringparam chunk.tocs.and.lots 1 \
+	  doc/style/domterm.xsl doc/DomTerm.xml
+
+WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
+upload-web:
+	cd web && \
+	  rsync -v -r -u -l -p -t --relative . $(WEB_SERVER_ROOT)

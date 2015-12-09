@@ -1,0 +1,569 @@
+\input texinfo.tex      @c -*-texinfo-*-
+@c %**start of header
+@setfilename domterm.info
+@settitle DomTerm - a terminal emulator and console using DOM and JavaScript
+
+@titlepage
+@title DomTerm - a terminal emulator and console using DOM and JavaScript
+@end titlepage
+
+@node Top
+@top DomTerm
+
+DomTerm is a combined terminal emulator and REPL console using web
+technlogies - i.e. JavaScript and DOM: Users can type commands which
+gets sent to an application, which evaluates the command, and displays
+the results, typically in some kind of type-script format.
+
+DomTerm is Free Software (open-source)
+available at @uref{https://github.com/PerBothner/DomTerm,https://github.com/PerBothner/DomTerm}.
+
+The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
+was based on similar concepts, but was mostly written in Java using
+@uref{https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm, Javafx WebView}.
+
+@subheading Why another terminal emulator
+
+The goal of this project is to combine two related but
+separate tools: a terminal emulator, and a rich-text console,
+and do it properly.
+
+There are many terminal emulators, including quite a few written in JavaScript.
+However, they generally work with a rectangular grid of characters,
+and don't integrate rich text (images, math, variable-width text,
+variable-length lines, interaction) well.
+
+There are also various tools designed for REPL-style interaction,
+chat clients, etc. @uref{http://ipython.org/,IPython} is a popular example.
+However, they don't work as terminal emulators, or if they do, they
+do it by switching modes.
+
+For rich text applications it seems obvious to use web technologies:
+DOM and JavaScript.
+
+One goal of this project is a stand-alone terminal emulator application
+that techies can use as a day-to-day terminal emulator, and that also
+seamlessly provides support for rich text and interaction. That means
+an embedded web engine.
+
+The core of the project is a JavaScript package that can be used and
+embedded in different modes and applications.
+
+@menu
+* Features:: Features and benefits
+* Applications::
+* To-do:: Ideas and projects for DomTerm
+* DOM structure::
+* Wire byte protocol::
+* Architecture notes::
+@end menu
+
+@node Features
+@chapter Features and benefits
+
+@emph{Screenshots needed!}
+
+A @strong{full-featured terminal emulator}, like @code{xterm}.
+(Well, almost - it's still a bit rough.)
+The goal support all of the functionality of the
+pseudo-terminal-type @code{xterm-256color}, which is set by
+many GNU/Linux terminal emulators.
+
+Can be @strong{embedded} in multiple front-ends.
+Applications of DomTerm include:
+@itemize
+@item
+A chat/talk window.
+@item
+A read-eval-print-loop for an interactive scripting language.
+@item
+A command console.
+@item
+A terminal emulator.
+@end itemize
+
+A client @strong{can ``print'' images, graphics, and rich text}.
+Handles Unicode.
+
+User @strong{preferences are controlled a CSS stylesheet},
+which can be changed by an application.
+
+@strong{Uses a byte-protocol} to communicate with the client,
+so can run in a browser (using web sockets);
+be embedded in an application;
+or run as a standard terminal emulator application.
+
+Optional @strong{input editing}.  In @dfn{character mode},
+each character is sent to the application, like a traditional terminal.
+In @dfn{line mode}, the browser does the editing, and send the input line
+to the client when Enter is typed.
+@dfn{Automatic mode} switches between character mode and line mode
+depending on whether the client is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
+
+@strong{Smart line-wrapping}: Remembers which lines were too wide (and thus
+were wrapped).  Window size re-size will automatically re-do line-breaking.
+Copying the selection as text will only include hard newlines.
+Reports window resize to applicaton.
+(Future: structure-based line-breaking aka pretty-printing.)
+
+Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
+
+Future: Optional automatic pagination.
+
+@node Applications
+@chapter Applications
+
+The core of DomTerm is the JavaScript @code{terminal.js},
+but we also provides a few wrappers and applications that make use of it.
+
+@section Standalone terminal emulator
+
+This is a prototype of a stand-alone terminal emulator program.
+It uses PTYs so it only works on Unix-like systems.
+The prototype uses Java and the JavaFX WebView component (based on WebKit).
+It needs OpenJDK 1.8 but should otherwise not need anything else.
+
+To run the terminal emulator, first edit Makefile to set JAVA_HOME,
+and then do:
+
+@example
+make run-pty
+@end example
+
+The code to set up the handshake between JavaScript and Java is not
+robust and sometimes fails.
+
+There is no "chrome" (menus, buttons, etc), so far.
+Right-clicking will bring up a popup menu.
+
+@section Using WebSockets between a server and a browser
+
+This allows you to use "any" modern browser as the client.
+This is nice for development, as you can use the browser's
+JavaScript console and debugger, DOM inspector, and so on.
+The browser talks to server using WebSockets.  The included
+server is a special-purpose server, and it uses PTYs.
+
+The server uses third-party Java libraries from the
+@uref{https://tyrus.java.net/,Tyrus project}.  These are @emph{not} covered
+by the DomTerm license.  (It might make sense to use @code{node.js}
+or @uref{http://vertx.io/,Vert.x} instead.)
+
+To start the server do:
+
+@example
+make run-server
+@end example
+
+then use a web brower to read @code{file:///path/to/DomTerm/repl-client.html}
+
+The @code{websocketterm/ReplServer.java} uses standard JavaEE annotations,
+so it should be possibly to deploy it in an EE server like Glassfish.
+
+@node To-do
+@chapter Ideas and projects for DomTerm
+
+@section Basic terminal emulator functionality
+
+@subsubheading Make robust enough for actual use
+
+This means supporting all the ``base'' functionality
+of xterm as implemented by terminal emulators that
+set @code{TERM} tp @code{xterm-256color}.
+
+This includes handling mouse clicks and other mouse events
+compatibly with @code{xterm}.
+
+Other terminal emulators:
+
+@uref{https://github.com/chjj/term.js/,term.js}
+has quite complete terminal emulation and even better documentation.
+Howewver, it's based on a simple 2-d array (char value and attributes
+encoded as an integer).
+
+@subsubheading Document any discrepances from xterm
+
+While implementing all of the
+@uref{http://invisible-island.net/xterm/ctlseqs/ctlseqs.html,features of xterm}
+is probably not feasible, we should at least have a list of
+anything we don't implement, or implement differently from xterm.
+
+@subsubheading  Use vttest for testing
+
+The xterm distribution includes @uref{http://invisible-island.net/vttest/,vttest}.
+
+@subsubheading Improve copy and paste
+
+Handle exporting html to clipboard.
+
+Implement Ctrl-Shift-C as copy and Ctrl-Shift-V as paste.
+(At least in standaline ptyconsole.App, as there may be security
+problems when using a normal browser.)
+
+Fix paste in line-editing mode.
+
+Think about how to do multi-line paste.
+
+@section Better stand-line terminal enumator
+
+Should probably have a (hideable) top menubar (in additon to pop-up menu).
+
+Allow switching styles.
+
+@subsection Support other embeddable browsers
+
+Evaluate using other ligher-weight (?) toolkits than JavaFx WebView.
+
+Rather than using JavaFX WebView, some other toolkits to consider include:
+@itemize
+@item
+@uref{https://bitbucket.org/chromiumembedded/cef,Chromium Embedded Framework}
+@item
+@uref{http://lwn.net/Articles/647921/,Mozilla Servo}
+@item
+@uref{http://atom.io,Atom/Electon}
+A possible start is @uref{https://atom.io/packages/term2,term2}.
+@item
+QtWebEngine
+@item
+@uref{http://webkitgtk.org/,WebKitGtk+}
+@end itemize
+
+@section Readline style hooks and improvements
+
+The idea is the line-editing mode would provide the
+functionality of readline or similar programs.
+
+@subsubheading Add history support in line-editing mode
+
+http://sdether.github.io/josh.js/ has readline and history emulation
+
+there is a history addition for node.js':  https://nodejs.org/api/readline.html
+
+@subsubheading Colorize output differently for prompt and input
+
+@subsubheading Readline hooks to recognize when it's running under DomTerm
+
+The idea is readline would delegate basic line editing
+(and re-display) to DomTerm, while DomTerm would call back
+to readline for command completion, history, etc.
+
+This has a couple of advantages over plain readline:
+One is to have mousing actually work (i.e. no more
+readline not being able to move the cursor on mouse-clicks).
+Another advantage is local editing, which is a benefit
+over slow links (such as satellites) or when you don't
+want to interrupt the server needlessly.
+
+Readline should at least behave as if the screen width were infinite,
+delegating line-wrapping to DomTerm.
+
+@subsubheading Customizable key sequences, as in readline
+
+@section Pretty-printing
+
+Add hooks for Lisp-style pretty-printing.  The idea is a pretty-printer
+woudl emit groups and "text blocks" and DomTerm would do line-breaking.
+Specifically, lines would be re-broken on window size change.
+
+@subsubheading Integrated pagination (like more/less)
+
+Emacs term mode does this.
+
+@subsubheading Graphics hooks
+
+Allow processes to send HTML and graphics to DomTerm.
+See some previous work: http://per.bothner.com/blog/2007/ReplPane/
+
+@subsubheading Allow printing images
+
+A REPL might want to "print" an image which we want to display.
+This could use a blob: or data: URL (neither of which are universally
+supported) or create a URL to a temporary file.
+
+@subsubheading Event forwarding to inferior
+
+A process may "print"/paint graphics with event handlers.
+For example a button.  On clicking the button, the click
+should be bundled as an event objects sent back to the inferior.
+
+@section Saved notebooks
+
+A "notebook" is a saved (and potentially executable)
+representation of a session.
+
+IPython/Jupyter has a
+@uref{https://ipython.org/ipython-doc/3/notebook/nbformat.html,JSON encoding for "notebooks"}.
+This is flexible and extensible, but requires special tools.
+
+The DomTerm notebook format should just be a simple html page.
+Essentially a serialization of the DOM.  The page may include
+some generated header information and metadata.  It may include
+references to JavaScript that would allow former execution,
+as well as viewing actions (like hide/unhide, wrap-to-fit, etc).
+This references should be simple and relative, so the actual
+JavaScript loaded can depend on context.
+
+The format must be XML-compatible (XHTML) so it can be
+parsed by XML tools such as XSLT.
+
+Specific format TBD.
+
+The html page must be viewable and look reasonable in a browser even
+if JavaScript library or style files are missing or JavaScript is
+disabled.
+
+A notebook may be include additional resources in other files,
+such as images.  If notebook  consists of multiple files,
+they should be bundled in a zip archive (like LibreOffice does).
+
+Tools to convert to and from Jupyter format would be nice,
+so we should avoid gratuitous conceptual incompatibility.
+
+@node DOM structure
+@chapter DOM structure
+
+The JavaScript code works by DOM manipulations of
+a top-level @code{div} element, and assume that element
+has a certain well-behaved form.
+
+@table @asis
+@item @var{domtern-element} ::= @code{<div class="domterm">} @var{domterm-toplevel} @code{</div>}
+A top-level ``DomTerm window'' is @code{<div>} element
+whose @code{class} is @code{domterm}.
+
+@item @var{domterm-toplevel} ::= @var{internal-div-elements} @var{block-content}@sup{*}
+
+You do need to create @var{domterm-toplevel} - it is created and managed by
+DomTerm, based on data from the client.
+
+Currently, the @var{block-content} is a single
+@code{<div class="interaction">} wrapping all the contents,
+but more structure will be supported.
+
+@item @var{internal-div-elements}
+One or more invisible @code{<div>} elements used by the implementation.
+
+@item @var{block-content} ::= @var{logical-line} | <div> @var{block-content}@sup{*} </div> | @var{opaque-line}
+
+@item @var{logical-line} := @var{<pre>} @var{line-content}@sup{*} @var{hard-nl} @code{</pre>} | @var{<p>} @var{line-content}@sup{*} @var{hard-nl} @code{</p>}
+A @var{logical-line} is one or more ``rows'' (separated by @var{soft-line}s),
+consistening of character and other @code{inline} data,
+ending with @var{hard-nl} representing an explicit newline.
+
+The intent is that @code{<pre>} and @code{<p>} are treated logically
+the same, but @code{<pre>} will be monospace,
+while @code{<p>} can use other fonts and styling.
+The line-breaking algorithm uses the width of the line,
+not the number of characters, so it should also work for @code{<p>} elements.
+Normal terminal output will create @code{<pre>} elements.
+
+@item @var{line-content} ::= @var{text} | @code{<span>} @var{line-content}@sup{*} @code{</span>} | @var{soft-nl} | @var{input-line} | @var{other-content}
+
+@item @var{hard-nl} ::= @code{<span line="hard">&#A;</span>}
+An explicit newline. Has a @code{"\n"} text node as its sole child.
+
+@item @var{soft-nl} ::= @code{<span line="soft"></span>}
+An implicit newline, inserted by DomTerm when a line overflows.
+Has no explicit text content, but CSS adds a @code{"\n"}
+as @code{before} content.
+CSS by default also add a continuation arrow.
+
+@item @var{input-line} ::= @code{<span id="input1" std="input" contenteditable="true">} @var{text} @code{</span>}
+The location of the input cursor.
+In char-mode the @var{text} is empty.  In line-mode contains
+the current input line.  Also used for previous input lines,
+but without @code{contenteditable} set.
+Referenced by the @code{inputLine} field of the DomTerm object.
+
+@item @var{opaque-line}
+A non-empty block-level element that isn't navigable
+at the level of rows and columns.
+For example a @code{<table>}.
+It is treated as a single empty line.
+@end table
+
+@node Wire byte protocol
+@chapter Wire byte protocol
+
+DomTerm mostly handles standard ansi/xterm escape sequences.
+
+@strong{The following are preliminary code sequences,
+which may change based on experience and feedback.}
+
+@emph{Notation:}
+Literal characters are written as quoted string literals with
+escape sequences as understoof by bash's @code{echo -e}.
+Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
+@code{"\xHH"} is the 8-bit characters whose value is HH (hexadecimal).
+
+@section Special sequences sent by client and handled by DomTerm
+
+@table @asis
+@item @code{"\e[72;" @var{html-text} "\a"}
+Insert HTML text.
+
+@item @code{"\e]74;" key "\a"}
+Simulate pressing @var{key}.  Used by auto-line mode.
+
+@item @code{"\e[12u"}
+Start of error output.
+DomTerm places the following text inside a @code{<span>} element
+whose @code{std} attribute has the value @code{"error"}.
+The default style is to display the text in red.
+
+@item @code{"\e[11u"}
+End of error output.
+
+@item @code{"\e[14u"}
+Start of prompt.
+DomTerm places the following text inside a @code{<span>} element
+whose @code{std} attribute has the value @code{"prompt"}.
+The default style is to display the text in green.
+
+You can place the following in your @code{~/.bashrc}
+to cause @code{bash} to emit these escape sequences:
+@example
+if [ "$TERM" = "domterm" ]
+then
+  PS1="\[\033[14u\]$PS1\[\033[13u\]"
+fi
+@end example
+
+@item @code{"\e[13u"}
+End of prompt.
+@end table
+
+@section Special sequences sent by DomTerm to client
+
+@table @asis
+@item @code{"\x92" @var{name} " " @var{data} "\n"}
+General format for reporting events,
+where @var{name} is the name of the event (an identifier).
+The @var{data} can be any text not including a @code{"\n"}
+(or other control character); JSON format is used in some cases.
+
+@item @code{"\x92" "WS " @var{rows} " " @var{cols} " " @var{height} " " @var{width} "\n"}
+Report window size from DomTerm to the client.
+
+@item @code{"\x92" "KEY " @var{kcode} " " @var{kchars} "\n"}
+Used by auto-line mode to report a key event to client.
+The @var{kcode} is a numeric key code,
+while @var{kchars} is as string literal (JSON-formatted)
+of the characters that are normally transmitted to the client.
+In auto-line mode, if the pty is in canonical mode, then @var{key}
+is returned to DomTerm (using @code{"\e]74;" @var{key} "\a"});
+otherwise @var{kchars} are sent to the pty.
+@end table
+
+@node Architecture notes
+@chapter Architecture notes
+
+@section Line vs character input modes
+
+In line input mode we can end up with double echoing:
+As you edit the input line, it is displayed.
+Then when the line is sent, the slave will normally echo the input.
+
+Ideally you'd want to integrate with the kernel
+terminal sub-system, to suppress echoing.   In lieu of
+that, line editing mode could delete the input line
+from the DOM before sending them to the inferior.
+To avoid annoying flashing, this is done lazily:
+DomTerm waits to remove the input line until it gets some
+output from the inferior (usually the echo).
+
+In addition to "char mode" and "line mode" (like the
+Emacs term mode) there is an "auto mode" which watches
+the states of the inferior pty to automatically switch
+between them.  In autoEditing mode, if we're currently
+in char mode, then a key event gets sent to the pty layer.
+If the pty is in non-canonical mode, the key event is
+sent to the server.  If the pty is in canonical mode, then
+a message is sent back to the front-end, which switches
+to line mode, and processes the event.
+
+@section The DomTerm object
+
+A DomTerm class encapsulates the
+the state of a terminal emulator / console.
+
+@section Line structure
+
+"Line" here refer to "visual line": A section of the DOM that should be
+treated as a line for cursor movement.  Line breaks may come from the
+client, or be inserted by the line break algorithm.
+
+The lineStarts array maps from a line number to the DOM location
+of the start of the corresponding line.
+
+The lineEnds array maps to the end of each line.
+Always points to a span node with the line attribute set.
+Normally lineEnds[i] == lineStarts[i+1]; however, sometimes
+lineStarts[i] is the start of a <div> or other block element.
+
+@section Colors and high-lighting
+
+@emph{This needs updating.}
+
+Escape sequences (for example @code{"\e[4m"} - "underlined", or
+@code{"\e[32m"} - "set foreground color to green") are translated to
+<span> elements with "@code{style}" attributes (for example
+`<span style="text-decoration:underline">` or `<span style="color: green">`).
+After creating such a `<span>` the current position is moved inside it.
+
+If we've previously processed "set foreground color to green", and we
+see a request for "underlined" it is easy to ceate a nested `<span>`
+for the latter.  But what if we then see "set foreground color to red"?
+We don't want to nest <span style="color: red">` inside
+<span style="color: green">` - that could lead to some deep and
+ugly nesting.  Instead, we move the cursor outside bot existing
+spans, and then create new spans for red and underlined.
+
+The `<span>` nodes are created lazily just before characters are
+inserted, by `_adjustStyle`, which compares the current active styles
+with the desired ones (set by `_pushStyle`).
+
+A possibly better approach would be to match each highlight style into
+a `class` attribute (for example `green-foreground-style` and
+`underlined-style`).  A default stylesheet can map each style class to
+the correspoding CSS rules.  This has the advantage that one could
+override the highlighting appearance with a custom style sheet.
+
+@section Line-breaking / pretty-printing
+
+For a terminal emulator we need to preserve (not collapse) whitespace,
+and (usually) we want to line-break in the middle of a word.
+
+These CSS properties come close:
+@example
+white-space: pre-wrap; word-break: break-all
+@end example
+This is simple and fast.  However:
+@itemize
+@item
+It doesn't help in inserting a visual indicator, like Emacs's arrow,
+  to indicate when a line was broken.
+@item
+It doesn't help managing the line table.
+@item
+It doesn't help with pretty-printing (for example grouping).
+@end itemize
+
+Hence we need to do the job ourselves.
+
+Define a DOM API for (LISP-style) pretty-printing.
+Line-breaking is re-calculated on page width change.
+
+@table @asis
+@item @code{<span line="fill">}
+@itemx @code{<span line="linear">}
+Line break types, as in Common Lisp.
+
+@item @code{<span class="group" ident=N">}
+@end table
+
+Derek Oppen algorithm
+
+Stable, Flexible, Peephole Pretty-Printing
+http://macbeth.cs.ucdavis.edu/ph-final.pdf

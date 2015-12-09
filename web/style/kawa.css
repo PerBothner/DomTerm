@@ -1,0 +1,244 @@
+/*
+ * Stylesheet for Kawa and Qexo web sites.
+ *
+ * Loosely based on W3C "Gold (right, fix) + navbar" stylesheet"
+ * Copyright © 2003 W3C® (MIT, ERCIM, Keio). All Rights Reserved.
+ * See http://www.w3.org/Consortium/Legal/ipr-notice.html#Copyright
+ * Author: Bert Bos <bert@w3.org>
+ */
+
+/* Colors, fonts and other basic stuff */
+
+body {
+  background: #fffff5;
+  color: #333;
+  font-family: verdana, helvetica, sans-serif;
+  line-height: 1.2; }
+h1 {
+  line-height: 1;
+  text-align: center;
+  font-variant: small-caps;
+  border-bottom: thin solid;
+  padding: 0 0.5em 0.2em 0.5em;
+  font-weight: normal }
+h1:first-line { 
+  border-bottom: none;		/* bug in Konqueror 3.1 */
+  font-style: italic }
+a {
+  border-style: none; }
+a:link {
+  color: #238} 
+a:visited {
+  color: #238} 
+h1, h3, h4 {
+  color: #000 }
+h1, h2, h3 {
+  color: #114;
+  font-weight: bold;
+  border: thin solid;
+  background-color: lightblue;
+  padding: 0.2ex 0.5em 0.2ex 0.5em;
+}
+h3 {
+  font-size: large;
+  margin: 1.5em 1em 1em 0;
+ }
+h3.subtitle {
+  font-weight: normal;
+  font-style: italic;
+  margin: 1em;
+  display: block;
+  text-align: center }
+h4 { font-size: medium; }
+h2 {
+  text-align: center;
+  line-height: 1;
+  text-transform: uppercase;
+  clear: both;
+  margin-top: 3em }
+div.section {
+  clear: both }
+pre {
+  text-align: left }		/* Safari 1.0b doesn't do this by default */
+li {
+  padding-left: 0;
+  margin-left: 0 }
+ul, ol {
+  padding-left: 0;
+  margin-left: 1.5em }
+address { 
+  text-align: right;
+  font-style: italic }
+p {
+  margin-top: 0.6ex;
+  margin-bottom: 0 }
+dd {
+  padding-left: 1.5em;
+  margin-bottom: 0.2ex;
+  margin-left: 0 }
+a:hover * {			/* Work-around for Konqueror 3.1 */
+  background: inherit }
+div.back {
+  clear: both }
+
+/* Some specific classes */
+
+span.date {
+  color: #999 }
+span.date:after {
+  content: "\A0\A0" }
+p.stb {				/* Small thematic break */
+  text-indent: 0;
+  margin-top: 0.6em }
+p.hint + p, p.alt-hint + p {
+  text-indent: 0;
+  margin-top: 1em }
+p.remark {
+  font-size: smaller}
+.hide {
+  display: none;
+  color: white }
+div.endmatter {
+  clear: both;
+  margin-top: 1em;
+  border-top: thin solid;
+  padding-top: 1em }
+/*
+ul.toc {
+  list-style: none }
+address img {
+  float: right;			/* Portrait of the author */
+  margin-left: 0.5em;
+  width: 4em }
+*/
+dl.compact {			/* A DL as a single para, with ¶ */
+  padding: 0;
+  margin-left: 0;
+  margin-right: 0 }
+dl.compact dt {
+  display: run-in;
+  font-weight: bold;
+  margin: 0;
+  padding: 0 }
+dl.compact dd {
+  margin: 0;
+  padding: 0 }
+dl dt {
+  padding: 0;
+  margin: 0;
+  xxtop-padding: 0;
+}
+dl dd {
+  padding-top: 0;
+  margin-top: 0;
+  margin-bottom: 1ex;
+  xxtop-padding: 0;
+}
+
+/* Give the body some margins to make room for the two menus */
+
+/*
+html {
+  margin: 0 }
+*/
+
+span.ignore { display: none }
+
+div.navcol { 
+  background: #ab7;
+}
+
+/* Local navigation menu, along the left or right side */
+
+div.navcol hr {			// Hide the HR inside the menu
+  display: none }
+
+div.navcol li {
+  display: block;
+  font-size: medium;
+  text-indent: 0;
+  text-align: left;
+  border: solid;
+  border-width: 1px 0px 0px 1px;
+  border-color: #AAA #666 #666 #AAA;
+  list-style: none }		// Remove triangle from H2
+div.navbar > ul {
+  padding: 0 }
+div#Menu p.navhead {
+  font-weight: bold }
+
+div.navcol ul
+{
+margin: 0;
+padding: 0;
+list-style-type: none;
+}
+
+div.navcol li { margin: 0 ; }
+div.navbar ul ul, div.navcol ul ul { margin-left: 0.6em; }
+
+div.navbar li { background-color: lightblue;  padding: 0px 4px;}
+div.navbar a { display: block; }
+
+div.navcol a {  text-decoration: none; }
+/* The following is redundant, but is needed for IE 6.0. */
+div.navheader ul a {  text-decoration: none; }
+
+div.navcol a:hover
+{
+color: #fff;
+background-color: #69C;
+}
+
+div.navheader table, div.navheader tr, div.navheader th { 
+  display: block;
+}
+
+div.navheader td { 
+  display: block;
+}
+
+div.navheader  { 
+  margin: 2ex 0;
+  background-color: lightblue;
+ }
+div.navheader {  border: 2px red } }
+div.navheader a { 
+  display: block;
+  text-decoration: underline;
+ }
+
+div.navcol *.logo { 
+  font-size: xx-large
+}
+div.logo {
+  width:138px;
+  margin:0px auto;
+}
+div.logo img { border: none; padding: 10px }
+
+code[class="literal"] strong { color: purple }
+p[class="synopsis"] code strong { color: purple }
+p[class="synopsis"] code[class="function"] { color: purple }
+p[class="synopsis"] code[class="varname"] { color: purple }
+
+p[class="synopsis"][kind="Procedure"] code[class="function"]:before,
+  p[class="synopsis"][kind="Predicate"] code[class="function"]:before,
+  p[class="synopsis"][kind="Constructor"] code[class="function"]:before,
+  p[class="synopsis"][kind="Syntax"] code[class="function"]:before
+{ content: "("; font-weight: bold; font-family: monospace; color: purple; }
+p[class="synopsis"][kind="Procedure"]:after,
+  p[class="synopsis"][kind="Predicate"]:after,
+  p[class="synopsis"][kind="Constructor"]:after,
+  p[class="synopsis"][kind="Syntax"]:after
+{ content: ")"; font-weight: bold; font-family: monospace; color: purple }
+
+p.synopsis span.kind { float: right; padding-left: 2em }
+p.synopsis span.kind:before { content: "[" }
+p.synopsis span.kind:after { content: "]" }
+p.synopsis > code { font-weight: bold; }
+blockquote { margin-left: 40px; margin-right: 40px }
+
+div[class="navcol"] div > ul > li { font-size: larger }
+
+/* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
