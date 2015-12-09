@@ -1045,7 +1045,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     this._rulerNode = rulerNode;
     helperNode.appendChild(rulerNode);
 
-    var wrapDummy = this._createLineNode("soft", "\n");
+    var wrapDummy = this._createLineNode("soft", null);
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
 
@@ -1425,6 +1425,10 @@ DomTerm.prototype._clearWrap = function() {
         // otherwise we have a non-standard line
         // Regardless, do:
         lineEnd.setAttribute("line", "hard");
+        var child = lineEnd.firstChild;
+        if (child)
+            lineEnd.removeChild(child);
+        lineEnd.appendChild(document.createTextNode("\n"));
     }
 };
 
@@ -2175,7 +2179,7 @@ DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebr
     }
 };
 DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, availWidth, rebreak) {
-    var lineNode = this._createLineNode("soft", "\n");
+    var lineNode = this._createLineNode("soft", null);
     textNode.parentNode.insertBefore(lineNode,
                                      textNode.nextSibling);
     var textData = textNode.data;

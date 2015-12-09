@@ -7,7 +7,7 @@ pre { padding: 0px; margin: 0px; }
 span[class="wrap"] {padding: 0px; margin: 0px; white-space: nowrap }
 span { padding: 0px; margin: 0px;}
 span[line="soft"] { padding: 0px; margin: 0px;}
-span[line="soft"]:before {content: "\2936"; }
+span[line="soft"]:after {content: "\A"; }
 span[std="prompt"] { margin: 0px; padding: 0px; border: 0px }
 input[std="input"] {
   border: 0px; margin: 0px; padding: 0px; right: 0px;
