@@ -180,6 +180,9 @@ function DomTerm(name, topNode) {
     this.savedCursorHome = null;
     this.savedHomeLine = -1;
 
+    this.history = new Array();
+    this.historyCursor = -1;
+
     if (topNode)
         this.initializeTerminal(topNode);
 }
@@ -1304,11 +1307,42 @@ DomTerm.prototype.getPendingInput = function() {
     return text;
 };
 
+DomTerm.prototype.historyAdd = function(str) {
+    if (this.historyCursor >= 0)
+        this.history[this.history.length-1] = str;
+    else
+        this.history.push(str);
+    this.historyCursor = -1;
+};
+
+DomTerm.prototype.historyMove = function(delta) {
+    var str = this.grabInput(this.inputLine);
+    if (this.historyCursor >= 0) {
+        this.history[this.historyCursor] = str;
+    } else {
+        this.historyCursor = this.history.length;
+        this.history.push(str);
+    }
+    var newIndex = this.historyCursor + delta;
+    if (newIndex < 0 || newIndex >= this.history.length)
+        return; // ERROR FIXME
+    this.historyCursor = newIndex;
+    str = this.history[newIndex];
+    var inputLine = this.inputLine;
+    for (var child = inputLine.firstChild; child != null; ) {
+        var next = child.nextSibling;
+        inputLine.removeChild(child);
+        child = next;
+    }
+    inputLine.appendChild(document.createTextNode(str));
+};
+
 DomTerm.prototype.handleEnter = function(event) {
     this._doDeferredDeletion();
     // For now we only support the normal case when outputBefore == inputLine.
     var oldInputLine = this.inputLine;
     var text = this.grabInput(oldInputLine);
+    this.historyAdd(text);
     var spanNode;
     oldInputLine.removeAttribute("contenteditable");
     var line = this.getCursorLine();
@@ -2475,6 +2509,12 @@ DomTerm.prototype.doLineEdit = function(key, str) {
         rng.sendkeys('{ArrowLeft}');
         rng.select();
         break;
+    case 38: /*Up*/
+        this.historyMove(-1);
+        break;
+    case 40: /*Down*/
+        this.historyMove(1);
+        break;
     case 39:
         rng.sendkeys('{ArrowRight}');
         rng.select();
@@ -2510,7 +2550,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (this.autoEditing)
                 this.lineEditing = false;
             this.processInputCharacters(this.keyDownToString(event));
-        } else if (this.useDoLineEdit) {
+        } else if (this.useDoLineEdit || key == 38/*Up*/ || key == 40/*Down*/) {
             var str = this.keyDownToString(event);
             if (str) {
                 event.preventDefault();

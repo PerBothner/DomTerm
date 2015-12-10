@@ -97,6 +97,8 @@ Optional @strong{input editing}.  In @dfn{character mode},
 each character is sent to the application, like a traditional terminal.
 In @dfn{line mode}, the browser does the editing, and send the input line
 to the client when Enter is typed.
+A history of previous lines is available, accessible
+with the Up/Down arrow keys.
 @dfn{Automatic mode} switches between character mode and line mode
 depending on whether the client is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
 
@@ -234,11 +236,11 @@ QtWebEngine
 The idea is the line-editing mode would provide the
 functionality of readline or similar programs.
 
-@subsubheading Add history support in line-editing mode
+@subsubheading Improved history support in line-editing mode
 
-http://sdether.github.io/josh.js/ has readline and history emulation
-
-there is a history addition for node.js':  https://nodejs.org/api/readline.html
+While DomTerm has basic history support (previous/next line),
+we should implement searching (ctrl-R in readline),
+as well as saving the history (in local storage).
 
 @subsubheading Readline hooks to recognize when it's running under DomTerm
 
