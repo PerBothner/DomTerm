@@ -240,8 +240,6 @@ http://sdether.github.io/josh.js/ has readline and history emulation
 
 there is a history addition for node.js':  https://nodejs.org/api/readline.html
 
-@subsubheading Colorize output differently for prompt and input
-
 @subsubheading Readline hooks to recognize when it's running under DomTerm
 
 The idea is readline would delegate basic line editing

@@ -1306,29 +1306,24 @@ DomTerm.prototype.getPendingInput = function() {
 
 DomTerm.prototype.handleEnter = function(event) {
     this._doDeferredDeletion();
-    // For now we only support the normal case when  outputSave == inputLine.
+    // For now we only support the normal case when outputBefore == inputLine.
     var oldInputLine = this.inputLine;
     var text = this.grabInput(oldInputLine);
     var spanNode;
-    if (this.clientDoesEcho) {
-        this._deferredForDeletion = oldInputLine;
-        spanNode = this.createSpanNode();
-        spanNode.setAttribute("class", "domterm-dummy");
-        oldInputLine.appendChild(spanNode);
-    }
     oldInputLine.removeAttribute("contenteditable");
     var line = this.getCursorLine();
-    var column = this.getCursorColumn();
     this.outputBefore = oldInputLine.nextSibling;
     this.outputContainer = oldInputLine.parentNode;
     this.inputLine = null; // To avoid confusing cursorLineStart
-    this.cursorLineStart(1);
+    if (! this.clientDoesEcho)
+        this.cursorLineStart(1);
     this.addInputLine();
     if (this.clientDoesEcho) {
-        this.outputBefore = spanNode;
+        this._deferredForDeletion = oldInputLine;
+        this.outputBefore = null;
         this.outputContainer = oldInputLine;
         this.currentCursorLine = line;
-        this.currentCursorColumn = column;
+        this.currentCursorColumn = -1;
     }
     return text;
 };
