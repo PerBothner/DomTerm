@@ -8,7 +8,6 @@ div[class="domterm"] { background-color: #fffff8 }
    Check with tests/256-colors.sh. */
 div[class="domterm"] pre { font-family: monospace }
 span[std="input"] { font-weight: bolder; color: blue }
-input[std="input"] { font-weight: bolder; }
 span[std="prompt"] { color: green; }
 span[std="error"] { color: red; }
 

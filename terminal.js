@@ -186,6 +186,8 @@ function DomTerm(name, topNode) {
 
 // For debugging (may be overridden)
 DomTerm.prototype.log = function(str) {
+    // JSON.stringify encodes escape as "\\u001b" which is hard to read.
+    str = str.replace(/\\u001b/g, "\\e");
     console.log(str);
 };
 
@@ -332,7 +334,7 @@ DomTerm.prototype.moveTo = function(goalLine, goalColumn) {
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     var line = this.getCursorLine();
     var column = this.getCursorColumn();
-    if (this.verbosity >= 2)
+    if (this.verbosity >= 3)
         this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
     // This moves current (and parent) forwards in the DOM tree
     // until we reach the desired (goalLine,goalColumn).
@@ -589,7 +591,8 @@ DomTerm.prototype.cursorRight = function(count) {
 DomTerm.prototype.cursorLeft = function(count) {
     if (count == 0)
         return;
-    var prev = this.outputBefore.previousSibling;
+    var prev = this.outputBefore ? this.outputBefore.previousSibling
+        : this.outputContainer.lastChild;
     // Optimize common case
     if (prev instanceof Text) {
         var tstr = prev.textContent;
@@ -661,7 +664,7 @@ DomTerm.prototype._clearStyle = function() {
     var std = this._currentStyleMap.get("std");
     this._currentStyleMap.clear();
     if (std != null)
-        this._currentStyleMap.set("sid", std);
+        this._currentStyleMap.set("std", std);
 };
 
 /** Adjust style at current position to match desired style.
@@ -1880,6 +1883,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 14:
             this._pushStyle("std", "prompt");
             break;
+        case 15:
+            this._pushStyle("std", "input");
+            this._adjustStyle();
+            break;
         }
         break;
    default:
@@ -2025,6 +2032,8 @@ DomTerm.prototype.insertString = function(str, kind) {
             switch (ch) {
             case 13: // '\r' carriage return
                 this.insertSimpleOutput(str, prevEnd, i, kind);
+                if (this._currentStyleMap.get("std") == "input")
+                    this._pushStyle("std", null);
                 //this.currentCursorColumn = column;
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && this.getCursorLine() !== this.scrollRegionBottom-1) {
@@ -2161,15 +2170,7 @@ DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebr
             beforePos = right;
         } else { // el instanceof Text
             this._normalize1(el);
-            var right;
-            if (el.nextSibling != null)
-                right = el.nextSibling.offsetLeft;
-            //else if (no previous line breaks in parent)
-            //  reight = el.parentNode.offsetLeft + el.parentNode.offsetWidth;
-            else {
-                var rects = el.parentNode.getClientRects();
-                right = rects[rects.length-1].right;
-            }
+            var right = this._offsetLeft(el.nextSibling, el.parentNode);
             if (right > availWidth) {
                 next = this._breakText(el, line, beforePos, right, availWidth, rebreak);
                 right = 0; // FIXME rest
@@ -2178,6 +2179,19 @@ DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebr
         el = next;
     }
 };
+
+DomTerm.prototype._offsetLeft = function(node, parent) {
+    var right;
+    if (node != null)
+        return node.offsetLeft;
+    //else if (no previous line breaks in parent)
+    //  return parent.offsetLeft + parent.offsetWidth;
+    else {
+        var rects = parent.getClientRects();
+        return rects[rects.length-1].right;
+    }
+}
+
 DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, availWidth, rebreak) {
     var lineNode = this._createLineNode("soft", null);
     textNode.parentNode.insertBefore(lineNode,
@@ -2284,11 +2298,12 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind)
         this.eraseCharactersRight(widthInColums, true);
     }
 
-    var beforePos = this.outputBefore.offsetLeft;
+    var beforePos = this._offsetLeft(this.outputBefore, this.outputContainer);
     var textNode = this.insertRawOutput(str);
     var absLine = this.homeLine+this.getCursorLine();
     while (textNode != null) {
-        var afterPos = this.outputBefore.offsetLeft;
+        var afterPos = this._offsetLeft(this.outputBefore,
+                                        this.outputContainer);
         var lineEnd = this.lineEnds[absLine];
         var clientWidth = this.initial.clientWidth;
         var availWidth = clientWidth - this.rightMarginWidth;

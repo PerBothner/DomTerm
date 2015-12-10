@@ -421,17 +421,24 @@ DomTerm places the following text inside a @code{<span>} element
 whose @code{std} attribute has the value @code{"prompt"}.
 The default style is to display the text in green.
 
+@item @code{"\e[13u"}
+End of prompt.
+
+@item @code{"\e[15u"}
+Start of an input line.
+This also implicitly ends a prompt.
+The input line is implicitly terminated by a @code{'\n'}
+(carriage return).
+
+This works fairly well with GNU readline. For example:
 You can place the following in your @code{~/.bashrc}
 to cause @code{bash} to emit these escape sequences:
 @example
 if [ "$TERM" = "domterm" ]
 then
-  PS1="\[\033[14u\]$PS1\[\033[13u\]"
+  PS1="\[\e[14u\]$PS1\[\e[15u\]"
 fi
 @end example
-
-@item @code{"\e[13u"}
-End of prompt.
 @end table
 
 @section Special sequences sent by DomTerm to client
