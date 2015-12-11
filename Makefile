@@ -32,10 +32,13 @@ webterminal/WebWriter.class: webterminal/WebWriter.java webterminal/WebTerminal.
 webterminal/ShellConsole.class: webterminal/ShellConsole.java webterminal/WebTerminal.class webterminal/WebWriter.class
 	$(JAVAC_WITH_PATH) webterminal/ShellConsole.java
 
-ptyconsole/PtyConsole.class: ptyconsole/PtyConsole.java webterminal/WebTerminal.class webterminal/WebWriter.class ptyconsole/PTY.class
-	$(JAVAC_WITH_PATH) ptyconsole/PtyConsole.java
+webterminal/Client.class: webterminal/Client.java
+	$(JAVAC_WITH_PATH) $<
 
-ptyconsole/App.class: ptyconsole/App.java ptyconsole/PtyConsole.class
+ptyconsole/PtyClient.class: ptyconsole/PtyClient.java webterminal/WebTerminal.class webterminal/WebWriter.class ptyconsole/PTY.class webterminal/Client.class
+	$(JAVAC_WITH_PATH) ptyconsole/PtyClient.java
+
+ptyconsole/App.class: ptyconsole/App.java ptyconsole/PtyClient.class
 	$(JAVAC_WITH_PATH) ptyconsole/App.java
 
 libpty.so:

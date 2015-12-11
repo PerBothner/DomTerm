@@ -59,7 +59,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
       implements javafx.event.EventHandler, org.w3c.dom.events.EventListener
                       /*implements KeyListener, ChangeListener*/ 
 {
-    public int verbosity = 0;
+    public Client client;
     public void log(String str) { System.err.println(str); }
     
     WebView webView;
@@ -111,6 +111,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
     Element inputLine;
 
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
+        if (client != null)
+            client.setWindowSize(nrows, ncols, pixw, pixh);
     }
 
     protected void enter(KeyEvent ke) {
@@ -160,6 +162,10 @@ public class WebTerminal extends VBox // FIXME should extend Control
         //addInputLine();
     }
 
+    public void setClient(Client client) {
+        this.client = client;
+    }
+
     public WebTerminal() {
         webView = new WebView();
         webEngine = webView.getEngine();
@@ -168,7 +174,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
                     if (newValue == State.SUCCEEDED) {
                         initialize();
                         if (initialOutput != null) {
-                            if (verbosity > 0)
+                            if (client != null && client.verbosity > 0)
                                 System.err.println("WT.changed newV:"+newValue+" initial:"+initialOutput+" jsW:"+jsWebTerminal+" outB:"+jsWebTerminal.getMember("outputBefore"));
                             jsWebTerminal.call("insertString", initialOutput);
                             initialOutput = null;
@@ -240,7 +246,18 @@ public class WebTerminal extends VBox // FIXME should extend Control
         setEditable(getInputLine(), editable);
     }
     
-    public void processInputCharacters(String text) {
+    public final void reportEvent(String name, String str) {
+        if (client != null)
+            client.reportEvent(name, str);
+    }
+
+    public final void processInputCharacters(String text) {
+        if (client != null)
+            client.processInputCharacters(text);
+    }
+
+    public void initialize0 () {
+        client.run(new WebWriter(this, 'O'));
     }
 
     private String initialOutput;
@@ -250,7 +267,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
        Platform.runLater(new Runnable() {
                 public void run() {
                     //jsWebTerminal = (JSObject) webEngine.executeScript("webTerminal");
-                    if (verbosity > 0)
+                    if (client != null && client.verbosity > 0)
                         System.err.println("insertOutput/later jsW:"+jsWebTerminal+" str:"+WTDebug.toQuoted(str));
                     if (jsWebTerminal == null)
                         initialOutput = initialOutput == null ? str

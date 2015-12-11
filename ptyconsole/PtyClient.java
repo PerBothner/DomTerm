@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2015 Per Bothner.
  * Copyright (c) 2011, 2014 Oracle and/or its affiliates.
  * All rights reserved. Use is subject to license terms.
  *
@@ -32,29 +33,59 @@
 
 package ptyconsole;
 
-import webterminal.*;
-import javafx.scene.Node;
-import javafx.scene.Scene;
-import javafx.scene.layout.*;
-import javax.net.ssl.*;
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.web.*;
-import javafx.stage.Stage;
+import webterminal.Client;
+import webterminal.WebWriter;
+import webterminal.WTDebug;
 import java.io.*;
 
-/** A control that wraps an application runing in a terminal emulator.
- */
-
-public class PtyConsole extends WebTerminal {
+public class PtyClient extends Client {
     Writer pin;
     Reader pout;
     PTY pty;
 
+    public PtyClient(String[] childArgs) {
+        pty = new PTY(childArgs, "domterm");
+        try {
+            pin = new OutputStreamWriter(pty.toChildInput);
+            pout = new InputStreamReader(pty.fromChildOutput, "UTF-8");
+        }
+        catch (Throwable ex) {
+            ex.printStackTrace();
+            System.exit(-1);
+        }
+    }
+
+    WebWriter out_stream;
+    @Override
+    public void run(WebWriter out) {
+        out_stream = out;
+        copyThread(pout, out);
+    }
+
+    void copyThread(final Reader fromInferior, final WebWriter toPane) {
+        Thread th = new Thread() {
+                char[] buffer = new char[1024];
+                public void run () {
+                    for (;;) {
+                        try {
+                            int count = fromInferior.read(buffer);
+                            if (count < 0)
+                                break;
+                            toPane.write(buffer, 0, count);
+                        } catch (Throwable ex) {
+                            ex.printStackTrace();
+                            System.exit(-1);
+                        }
+                    }
+                }
+            };
+        th.start();
+    }
+
+    @Override
     public void reportEvent(String name, String str) {
         if (verbosity > 0)
-            System.err.println("PtyConsole.reportEvent "+name+"["+WTDebug.toQuoted(str)+"]");
+            System.err.println("PtyClient.reportEvent "+name+"["+WTDebug.toQuoted(str)+"]");
         if (name.equals("KEY")) {
             int mode = pty.getTtyMode();
             boolean canonical = (mode & 1) != 0;
@@ -78,76 +109,9 @@ public class PtyConsole extends WebTerminal {
             System.exit(-1);
         }
     }
+
     @Override
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
         pty.setWindowSize(nrows, ncols, pixw, pixh);
-        super.setWindowSize(nrows, ncols, pixw, pixh);
-    }
-
-    @Override protected void enter (KeyEvent ke) {
-        /*
-        String text = handleEnter(ke);
-        if (pin != null) {
-            synchronized (pin) {
-                try {
-                    pin.write(text);
-                    pin.write("\r\n");
-                    pin.flush();
-                    //pin.notifyAll();
-                }
-                catch (Throwable ex) {
-                    ex.printStackTrace();
-                    System.exit(-1);
-                }
-            }
-        }
-        */
-    }
-
-    static String[] defaultArgs = { "/bin/bash" };
-
-    void start(String[] commandArgs) {
-        String[] childArgs =
-            commandArgs.length == 0 ? defaultArgs : commandArgs;
-        pty = new PTY(childArgs, "domterm");
-        try {
-            pin = new OutputStreamWriter(pty.toChildInput);
-            pout = new InputStreamReader(pty.fromChildOutput, "UTF-8");
-        }
-        catch (Throwable ex) {
-            ex.printStackTrace();
-            System.exit(-1);
-        }
-    }
-
-    protected void loadSucceeded() {
-        //setLineEditing(false);
-    }
-
-    WebWriter out_stream;
-    WebWriter err_stream;
-    public void initialize0 () {
-        out_stream = new WebWriter(this, 'O');
-        copyThread(pout, out_stream);
-    }
-
-    void copyThread(final Reader fromInferior, final WebWriter toPane) {
-        Thread th = new Thread() {
-                char[] buffer = new char[1024];
-                public void run () {
-                    for (;;) {
-                        try {
-                            int count = fromInferior.read(buffer);
-                            if (count < 0)
-                                break;
-                            toPane.write(buffer, 0, count);
-                        } catch (Throwable ex) {
-                            ex.printStackTrace();
-                            System.exit(-1);
-                        }
-                    }
-                }
-            };
-        th.start();
     }
 }

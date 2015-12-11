@@ -31,6 +31,7 @@
  */
 
 package ptyconsole;
+import webterminal.WebTerminal;
 import javax.net.ssl.*;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -63,11 +64,11 @@ import java.io.*;
 
 public class App extends Application
 {
-    PtyConsole console;
+    WebTerminal console;
     static String[] commandArgs;
 
     Scene createScene() {
-        console = new PtyConsole();
+        console = new WebTerminal();
         //VBox.setVgrow(console.webView, Priority.ALWAYS);
 
         //FIXME web.addChangeListener(WebEngine.DOCUMENT, this);
@@ -145,9 +146,13 @@ public class App extends Application
         return scene;
     }
 
+    static String[] defaultArgs = { "/bin/bash" };
+
     @Override public void start(Stage stage) {
         final Scene scene = createScene();
-        console.start(commandArgs);
+        String[] childArgs =
+            commandArgs.length == 0 ? defaultArgs : commandArgs;
+        console.setClient(new PtyClient(childArgs));
         console.setWindowSize(24, 80, 0, 0);
         stage.setTitle("Jfx-Terminal");
 
