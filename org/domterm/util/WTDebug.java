@@ -30,59 +30,62 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package webterminal;
+package org.domterm.util;
+import java.io.*;
+import org.w3c.dom.*;
 
-/** A Writer that inserts the written text into a WebTerminal.
- */
+/** Some debugging utilities. */
 
-public class WebWriter extends java.io.Writer
-{
-    protected WebTerminal terminal;
-
-    protected StringBuilder sbuf = new StringBuilder();
-    char kind;
-
-    /** Which port is this?
-     * @return 'O': if output; 'E': if error stream; 'P': if prompt text
-     */
-    public char getKind() { return kind; }
-
-    public WebWriter (WebTerminal terminal, char kind) {
-        this.terminal = terminal;
-        this.kind = kind;
+public class WTDebug {
+static 
+    PrintStream origErr;
+    public static void init() {
+        if (origErr == null)
+            origErr = System.err;
     }
 
-    public synchronized void write (int x) {
-        sbuf.append((char) x);
-        //WTDebug.println("after write1 "+WTDebug.toQuoted(String.valueOf(new char[]{(char)x})));
-        if (x == '\n')
-            flush();
+    static {
+        init();
     }
 
-    public void write (String str) {
-        sbuf.append(str);
-        //WTDebug.println("after writeS "+WTDebug.toQuoted(str));
-        flush();
+    public static void print(Object obj) {
+        origErr.print(""+obj);
     }
 
-    public synchronized void write (char[] data, int off, int len) {
-        sbuf.append(data, off, len);
-        //WTDebug.println("after writeN len:"+String.valueOf(data,off,len));
-        flush();
+    public static void println(Object obj) {
+        origErr.println(""+obj);
     }
 
-    public synchronized void flush() {
-        StringBuilder s = sbuf;
-        //WTDebug.println("WebWr.flush "+WTDebug.toQuoted(sbuf.toString()));
+    public static String pnode(org.w3c.dom.Node n) {
 
-        if (s.length() > 0) {
-            // FIXME optimize by passing sbuf to insertOutput?
-            terminal.insertOutput(s.toString(), kind);
-            s.setLength(0);
+        if (n == null) return "(null)";
+        if (n instanceof CharacterData)
+            return n.toString()+'\"'+toQuoted(((CharacterData)n).getData())+'\"'+"@"+Integer.toHexString(System.identityHashCode(n));
+        return n+"/"+n.getNodeName()+"@"+Integer.toHexString(System.identityHashCode(n));
+    }
+
+    public static String toQuoted(String str) {
+        int len = str.length();
+        StringBuilder buf = new StringBuilder();
+        for (int i = 0;  i < len;  i++) {
+            char ch = str.charAt(i);
+            if (ch == '\n')
+                buf.append("\\n");
+            else if (ch == '\r')
+                buf.append("\\r");
+            else if (ch == '\t')
+                buf.append("\\t");
+            else if (ch == '\033')
+                buf.append("\\E");
+            else if (ch < ' ' || ch >= 127)
+                buf.append("\\"+(char)(((ch>>6)&7)+'0')+(char)(((ch>>3)&7)+'0')+(char)((ch&7)+'0'));
+            else {
+                if (ch == '\"' || ch == '\'' || ch == '\\')
+                    buf.append('\\');
+                buf.append(ch);
+            }
         }
+        return buf.toString();
     }
 
-    public void close () {
-        flush();
-    }
 }

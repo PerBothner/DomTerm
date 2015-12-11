@@ -23,19 +23,19 @@ ptyconsole/PTY.class: ptyconsole/PTY.java
 ptyconsole/ptyconsole_PTY.h: ptyconsole/PTY.class
 	javah -d ptyconsole ptyconsole.PTY
 
-webterminal/WebTerminal.class: webterminal/WebTerminal.java
-	$(JAVAC_WITH_PATH) webterminal/WebTerminal.java
-
-webterminal/WebWriter.class: webterminal/WebWriter.java webterminal/WebTerminal.class
-	$(JAVAC_WITH_PATH) webterminal/WebWriter.java
-
-webterminal/ShellConsole.class: webterminal/ShellConsole.java webterminal/WebTerminal.class webterminal/WebWriter.class
-	$(JAVAC_WITH_PATH) webterminal/ShellConsole.java
-
-webterminal/Client.class: webterminal/Client.java
+org/domterm/javafx/WebTerminal.class: org/domterm/javafx/WebTerminal.java
 	$(JAVAC_WITH_PATH) $<
 
-ptyconsole/PtyClient.class: ptyconsole/PtyClient.java webterminal/WebTerminal.class webterminal/WebWriter.class ptyconsole/PTY.class webterminal/Client.class
+org/domterm/javafx/WebWriter.class: org/domterm/javafx/WebWriter.java org/domterm/javafx/WebTerminal.class
+	$(JAVAC_WITH_PATH) $<
+
+webterminal/ShellConsole.class: webterminal/ShellConsole.java org/domterm/javafx/WebTerminal.class org/domterm/javafx/WebWriter.class
+	$(JAVAC_WITH_PATH) webterminal/ShellConsole.java
+
+org/domtern/Client.class: org/domterm/Client.java
+	$(JAVAC_WITH_PATH) $<
+
+ptyconsole/PtyClient.class: ptyconsole/PtyClient.java org/domterm/javafx/WebTerminal.class org/domterm/javafx/WebWriter.class ptyconsole/PTY.class org/domterm/Client.class
 	$(JAVAC_WITH_PATH) ptyconsole/PtyClient.java
 
 ptyconsole/App.class: ptyconsole/App.java ptyconsole/PtyClient.class

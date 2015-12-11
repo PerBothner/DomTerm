@@ -30,8 +30,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package webterminal;
+package org.domterm.javafx;
 
+import org.domterm.*;
+import org.domterm.util.*;
 import javafx.scene.web.*;
 import org.w3c.dom.*;
 import org.w3c.dom.Node;
@@ -207,7 +209,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
      */
     protected String pageUrl() {
         String rname = USE_XHTML ? "repl.xml" : "repl.html";
-        java.net.URL rurl = WebTerminal.class.getResource(rname);
+        java.net.URL rurl = Client.class.getResource(rname);
         if (rurl == null)
             throw new RuntimeException("no initial web page "+rname);
         return rurl.toString();

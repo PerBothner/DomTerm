@@ -31,7 +31,7 @@
  */
 
 package ptyconsole;
-import webterminal.WebTerminal;
+import org.domterm.javafx.WebTerminal;
 import javax.net.ssl.*;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -154,7 +154,7 @@ public class App extends Application
             commandArgs.length == 0 ? defaultArgs : commandArgs;
         console.setClient(new PtyClient(childArgs));
         console.setWindowSize(24, 80, 0, 0);
-        stage.setTitle("Jfx-Terminal");
+        stage.setTitle("DomTerm");
 
         stage.setScene(scene);
         //stage.sizeToScene();

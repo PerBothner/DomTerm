@@ -33,9 +33,8 @@
 
 package ptyconsole;
 
-import webterminal.Client;
-import webterminal.WebWriter;
-import webterminal.WTDebug;
+import org.domterm.Client;
+import org.domterm.util.WTDebug;
 import java.io.*;
 
 public class PtyClient extends Client {
@@ -55,14 +54,14 @@ public class PtyClient extends Client {
         }
     }
 
-    WebWriter out_stream;
+    Writer out_stream;
     @Override
-    public void run(WebWriter out) {
+    public void run(Writer out) {
         out_stream = out;
         copyThread(pout, out);
     }
 
-    void copyThread(final Reader fromInferior, final WebWriter toPane) {
+    void copyThread(final Reader fromInferior, final Writer toPane) {
         Thread th = new Thread() {
                 char[] buffer = new char[1024];
                 public void run () {
@@ -90,7 +89,12 @@ public class PtyClient extends Client {
             int mode = pty.getTtyMode();
             boolean canonical = (mode & 1) != 0;
             if (canonical) {
-                out_stream.write("\033]74;"+str+"\007");
+                try {
+                    out_stream.write("\033]74;"+str+"\007");
+                } catch (IOException ex) {
+                    if (verbosity > 0)
+                        System.err.println("PtyClient caught "+ex);        
+                }
             } else {
                 int q = str.indexOf('"');
                 String kstr = Util.parseSimpleJsonString(str, q, str.length());
