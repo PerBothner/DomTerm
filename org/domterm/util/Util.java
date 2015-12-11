@@ -1,4 +1,4 @@
-package ptyconsole;
+package org.domterm.util;
 
 public class Util {
 

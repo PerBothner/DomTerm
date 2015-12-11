@@ -34,6 +34,7 @@
 package ptyconsole;
 
 import org.domterm.Client;
+import org.domterm.util.Util;
 import org.domterm.util.WTDebug;
 import java.io.*;
 

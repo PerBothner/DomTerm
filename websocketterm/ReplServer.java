@@ -10,7 +10,7 @@ import java.util.concurrent.*;
 import javax.websocket.*;
 import javax.websocket.server.*;
 import ptyconsole.PTY;
-import ptyconsole.Util;
+import org.domterm.util.Util;
 
 @ServerEndpoint("/replsrv")
 public class ReplServer {
