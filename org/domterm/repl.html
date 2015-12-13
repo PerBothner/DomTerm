@@ -5,23 +5,23 @@
 <!-- See http://architects.dzone.com/articles/sample-java-web-socket-client-->
 <title>Web-Terminal</title>
 <link rel="stylesheet" href="../../style/domterm-core.css">
-<link rel="stylesheet" title="Default (optional) DomTerm styling" href="../style/domterm-default.css">
+<link rel="stylesheet" title="Default (optional) DomTerm styling" href="../../style/domterm-default.css">
 <script type="text/javascript" src="../../ResizeSensor.js"> </script>
 <script type="text/javascript" src="../../bililiteRange.js"> </script>
 <script type="text/javascript" src="../../terminal.js"> </script>
 <script type="text/javascript">
 var termElement;
 var termInstance;
-function makeDomTerm(javaWebTerminal) {         
+function makeDomTerm() {         
     termElement = document.getElementById("term1");
     var term = new DomTerm("term1");
     term.processInputCharacters =
         function(str) { term.java.processInputCharacters(str); };
     term.reportEvent =
-        function(name, data) { term.java.reportEvent(name, data); };
+        function(name, data) { term.jclient.reportEvent(name, data); };
     term.setWindowSize =
         function(numRows, numColumns, availHeight, availWidth) {
-            term.java.setWindowSize(numRows, numColumns,
+            term.jclient.setWindowSize(numRows, numColumns,
                                     availHeight, availWidth); };
     term.log =
         function(str) {

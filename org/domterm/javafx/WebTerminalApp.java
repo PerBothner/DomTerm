@@ -66,8 +66,8 @@ public abstract class WebTerminalApp extends Application
 {
     WebTerminal console;
 
-    Scene createScene() {
-        console = new WebTerminal();
+    Scene createScene() throws java.lang.Exception {
+        console = new WebTerminal(makeClient());
         //VBox.setVgrow(console.webView, Priority.ALWAYS);
 
         //FIXME web.addChangeListener(WebEngine.DOCUMENT, this);
@@ -119,37 +119,39 @@ public abstract class WebTerminalApp extends Application
                 }
             });
 
-        Menu inputModeMenu = new Menu("input mode");
-        ToggleGroup inputModeGroup = new ToggleGroup();
-        RadioMenuItem charModeItem = new RadioMenuItem("character mode");
-        charModeItem.setToggleGroup(inputModeGroup);
-        RadioMenuItem lineModeItem = new RadioMenuItem("line mode");
-        lineModeItem.setToggleGroup(inputModeGroup);
-        RadioMenuItem autoModeItem = new RadioMenuItem("auto mode");
-        autoModeItem.setToggleGroup(inputModeGroup);
-        inputModeMenu.getItems().add(charModeItem);
-        inputModeMenu.getItems().add(lineModeItem);
-        inputModeMenu.getItems().add(autoModeItem);
-        autoModeItem.setSelected(true);
-        popup.getItems().add(inputModeMenu);
-        inputModeGroup.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
-                public void changed(ObservableValue<? extends Toggle> ov,
-                                    Toggle old_toggle, Toggle new_toggle) {
-                    if (new_toggle != null) {
-                        String text = ((RadioMenuItem)new_toggle).getText();
-                        console.setLineEditing(text.charAt(0));
-                        System.err.println("TOGGLE "+inputModeGroup+" new:"+new_toggle+" - "+text);
+
+        if (console.client.lineEditingMode != 'p') {
+            Menu inputModeMenu = new Menu("input mode");
+            ToggleGroup inputModeGroup = new ToggleGroup();
+            RadioMenuItem charModeItem = new RadioMenuItem("character mode");
+            charModeItem.setToggleGroup(inputModeGroup);
+            RadioMenuItem lineModeItem = new RadioMenuItem("line mode");
+            lineModeItem.setToggleGroup(inputModeGroup);
+            RadioMenuItem autoModeItem = new RadioMenuItem("auto mode");
+            autoModeItem.setToggleGroup(inputModeGroup);
+            inputModeMenu.getItems().add(charModeItem);
+            inputModeMenu.getItems().add(lineModeItem);
+            inputModeMenu.getItems().add(autoModeItem);
+            autoModeItem.setSelected(true);
+            popup.getItems().add(inputModeMenu);
+            inputModeGroup.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
+                    public void changed(ObservableValue<? extends Toggle> ov,
+                                        Toggle old_toggle, Toggle new_toggle) {
+                        if (new_toggle != null) {
+                            String text = ((RadioMenuItem)new_toggle).getText();
+                            console.setLineEditing(text.charAt(0));
+                            System.err.println("TOGGLE "+inputModeGroup+" new:"+new_toggle+" - "+text);
+                        }
                     }
-                }
-            });
+                });
+        }
         return scene;
     }
 
-    protected abstract Client makeClient();
+    protected abstract Client makeClient() throws java.lang.Exception;
 
-    @Override public void start(Stage stage) {
+    @Override public void start(Stage stage) throws java.lang.Exception {
         final Scene scene = createScene();
-        console.setClient(makeClient());
         console.setWindowSize(24, 80, 0, 0);
         stage.setTitle("DomTerm");
 
@@ -158,6 +160,13 @@ public abstract class WebTerminalApp extends Application
         stage.setWidth(700);
         stage.setHeight(500);
         stage.show();
+        System.err.println("WebTerminalApp/start !!!!! exit:"+Platform.isImplicitExit());
         console.initialize0(); // ???
+    }
+    public static boolean exitOnStop;
+    @Override public void stop() {
+        System.err.println("Application stop called");
+        if (exitOnStop)
+            System.exit(0);
     }
 }

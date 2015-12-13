@@ -30,20 +30,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package webterminal;
+package org.domterm.util;
 import java.io.*;
 
 /** A Simple OutputStream that decodes UTF-8 to a WebWriter.
  */
 
-public class WebOutputStream extends OutputStream {
-    WebWriter out;
+public class Utf8WriterOutputStream extends OutputStream {
+    Writer out;
     int partialChar;
     int bytesNeeded = 0;
 
-    public WebOutputStream(WebWriter out) { this.out = out;}
+    public Utf8WriterOutputStream(Writer out) { this.out = out;}
 
-    public void write(int b) {
+    public void write(int b) throws IOException {
         if (b >= 0) {
             partialChar = b;
             bytesNeeded = 0;
@@ -77,5 +77,5 @@ public class WebOutputStream extends OutputStream {
             out.write((char) ch);
         }
     }
-    public void flush() { out.flush(); }
+    public void flush() throws IOException { out.flush(); }
 }

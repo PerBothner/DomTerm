@@ -58,11 +58,12 @@ import java.util.ArrayList;
  * (br elements are only allowed in div or p elements.)
  */
 public class WebTerminal extends VBox // FIXME should extend Control
-      implements javafx.event.EventHandler, org.w3c.dom.events.EventListener
+    implements javafx.event.EventHandler,
+                 org.w3c.dom.events.EventListener
                       /*implements KeyListener, ChangeListener*/ 
 {
     public Client client;
-    public void log(String str) { System.err.println(str); }
+    public void log(String str) { WTDebug.println(str); }
     
     WebView webView;
     protected WebView getWebView() { return webView; } 
@@ -119,17 +120,11 @@ public class WebTerminal extends VBox // FIXME should extend Control
 
     protected void enter(KeyEvent ke) {
     }
-
-    public void handleEvent(org.w3c.dom.events.Event event) {
+    public void handle(javafx.event.Event ke) {
     }
 
-    public void handle(javafx.event.Event ke) {
-        /*
-        if (ke instanceof javafx.event.ActionEvent)
-            handle((javafx.event.ActionEvent) ke);
-        if (ke instanceof javafx.scene.input.KeyEvent)
-            handle((javafx.scene.input.KeyEvent) ke);
-        */
+    public void handleEvent(org.w3c.dom.events.Event event) {
+        System.err.println("WT.handleEvent "+event);
     }
 
   /*
@@ -168,7 +163,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
         this.client = client;
     }
 
-    public WebTerminal() {
+    public WebTerminal(Client client) {
+        setClient(client);
         webView = new WebView();
         webEngine = webView.getEngine();
         webEngine.getLoadWorker().stateProperty().addListener(new ChangeListener<State>() {
@@ -177,7 +173,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
                         initialize();
                         if (initialOutput != null) {
                             if (client != null && client.verbosity > 0)
-                                System.err.println("WT.changed newV:"+newValue+" initial:"+initialOutput+" jsW:"+jsWebTerminal+" outB:"+jsWebTerminal.getMember("outputBefore"));
+                                WTDebug.println("WT.changed newV:"+newValue+" initial:"+initialOutput+" jsW:"+jsWebTerminal+" outB:"+jsWebTerminal.getMember("outputBefore"));
                             jsWebTerminal.call("insertString", initialOutput);
                             initialOutput = null;
                         }
@@ -229,15 +225,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
         Object tmp = webEngine.executeScript("makeDomTerm()");
         jsWebTerminal = (JSObject) tmp;
         jsWebTerminal.setMember("java", this);
+        jsWebTerminal.setMember("jclient", client);
         webEngine.executeScript("initDomTerm()");
-
-        //((EventTarget) bodyNode).addEventListener("click", this, false);
-
-        //if (isLineEditing())             ((JSObject) bodyNode).call("focus");
-        // Element initial = documentNode.getElementById("initial"); FIXME LEAKS
-        //Element initial = (Element) bodyNode.getFirstChild();
-        //cursorHome = initial;
-        //outputContainer = initial;
     }
 
     protected void setEditable(Element element, boolean editable) {
@@ -258,7 +247,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
             client.processInputCharacters(text);
     }
 
-    public void initialize0 () {
+    public void initialize0 () throws Exception {
         client.run(new WebWriter(this, 'O'));
     }
 
@@ -270,7 +259,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
                 public void run() {
                     //jsWebTerminal = (JSObject) webEngine.executeScript("webTerminal");
                     if (client != null && client.verbosity > 0)
-                        System.err.println("insertOutput/later jsW:"+jsWebTerminal+" str:"+WTDebug.toQuoted(str));
+                        WTDebug.println("insertOutput/later jsW:"+jsWebTerminal+" str:"+WTDebug.toQuoted(str));
                     if (jsWebTerminal == null)
                         initialOutput = initialOutput == null ? str
                             : initialOutput + str;

@@ -43,16 +43,13 @@ public class App extends WebTerminalApp
 {
     static String[] commandArgs;
 
-    static String[] defaultArgs = { "/bin/bash" };
-
     protected Client makeClient() {
-        String[] childArgs =
-            commandArgs.length == 0 ? defaultArgs : commandArgs;
-        return new PtyClient(childArgs);
+        return new PtyClient(commandArgs);
     }
 
     public static void main(String[] args) throws Throwable {
         commandArgs = args;
+        exitOnStop = true;
         Application.launch(args);
     }
 

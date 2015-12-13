@@ -38,12 +38,25 @@ import org.domterm.util.Util;
 import org.domterm.util.WTDebug;
 import java.io.*;
 
+/** Runs a process inside a PTY.
+ * Requires OS-specific support for PTYs.
+ * (Only natively available on Unix-like systems.)
+ */
+
 public class PtyClient extends Client {
-    Writer pin;
-    Reader pout;
-    PTY pty;
+    public Writer pin;
+    public Reader pout;
+    public PTY pty;
+
+    static String[] defaultArgs = { "/bin/bash" };
+
+    public PtyClient() {
+        this(null);
+    }
 
     public PtyClient(String[] childArgs) {
+        if (childArgs == null || childArgs.length == 0)
+            childArgs = defaultArgs;
         pty = new PTY(childArgs, "domterm");
         try {
             pin = new OutputStreamWriter(pty.toChildInput);
@@ -55,54 +68,18 @@ public class PtyClient extends Client {
         }
     }
 
-    Writer out_stream;
     @Override
-    public void run(Writer out) {
-        out_stream = out;
-        copyThread(pout, out);
+    public void run(Writer out) throws Exception {
+        this.termWriter = out;
+        sendInputMode(lineEditingMode);
+        Util.copyThread(pout, false, out);
     }
 
-    void copyThread(final Reader fromInferior, final Writer toPane) {
-        Thread th = new Thread() {
-                char[] buffer = new char[1024];
-                public void run () {
-                    for (;;) {
-                        try {
-                            int count = fromInferior.read(buffer);
-                            if (count < 0)
-                                break;
-                            toPane.write(buffer, 0, count);
-                        } catch (Throwable ex) {
-                            ex.printStackTrace();
-                            System.exit(-1);
-                        }
-                    }
-                }
-            };
-        th.start();
+    @Override public boolean isCanonicalMode() {
+        int mode = pty.getTtyMode();
+        return (mode & 1) != 0;
     }
 
-    @Override
-    public void reportEvent(String name, String str) {
-        if (verbosity > 0)
-            System.err.println("PtyClient.reportEvent "+name+"["+WTDebug.toQuoted(str)+"]");
-        if (name.equals("KEY")) {
-            int mode = pty.getTtyMode();
-            boolean canonical = (mode & 1) != 0;
-            if (canonical) {
-                try {
-                    out_stream.write("\033]74;"+str+"\007");
-                } catch (IOException ex) {
-                    if (verbosity > 0)
-                        System.err.println("PtyClient caught "+ex);        
-                }
-            } else {
-                int q = str.indexOf('"');
-                String kstr = Util.parseSimpleJsonString(str, q, str.length());
-                processInputCharacters(kstr);
-            }
-        }
-    }
     @Override public void processInputCharacters(String text) {
         if (verbosity > 0)
             System.err.println("processInputCharacters["+WTDebug.toQuoted(text)+"]");

@@ -400,7 +400,7 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 @section Special sequences sent by client and handled by DomTerm
 
 @table @asis
-@item @code{"\e[72;" @var{html-text} "\a"}
+@item @code{"\e]72;" @var{html-text} "\a"}
 Insert HTML text.
 
 @item @code{"\e]74;" key "\a"}
@@ -439,6 +439,20 @@ then
   PS1="\[\e[14u\]$PS1\[\e[15u\]"
 fi
 @end example
+
+@item @code{"\e[20;97u"}
+@itemx @code{"\e[20;99u"}
+@itemx @code{"\e[20;108u"}
+@itemx @code{"\e[20;112u"}
+Set input editig mode.
+The value 99 (@code{'c'}) sets character mode;
+the value 108 (@code{'l'}) sets line-editing mode.
+The value 97 (@code{'a'}) set automatic mode,
+which switches between character mode and line-editing mode
+based on the mode of the inferior process (when using a PTY).
+The value 112 (@code{'p'} for "pipe") is like line-editing mode,
+but the inferiors doesn't echo info, so we have to do it.
+This mode is useful when the input is a pipe or some other non-tty stream.
 @end table
 
 @section Special sequences sent by DomTerm to client

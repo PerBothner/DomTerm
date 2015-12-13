@@ -66,7 +66,7 @@ function DomTerm(name, topNode) {
 
     // Use the doLineEdit when in lineEditing mode.
     // Because default this is only used in autoEditing mode, for the
-    // character when switching fro character to line mode,
+    // character when switching from character to line mode,
     // because doLineEdit is rather incomplete.
     // However, doLineEdit does open the possibility of user keymaps.
     this.useDoLineEdit = false;
@@ -644,8 +644,10 @@ DomTerm.prototype.cursorLeft = function(count) {
     }
 };
 
+// Should we treat LF as CR-LF ?
+// FIXME Perhaps we should just have the Client convert LF to CR-LF
 DomTerm.prototype.outputLFasCRLF = function() {
-    return this.lineEditing;
+    return ! this.clientDoesEcho;
 };
 
 /** Add a style property specifier to the _currentStyleMap.
@@ -1913,8 +1915,32 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._pushStyle("std", "prompt");
             break;
         case 15:
-            this._pushStyle("std", "input");
+            this._pushStyle("std", this.outputLFasCRLF() ? null : "input");
             this._adjustStyle();
+            break;
+        case 20: // set input mode
+            switch (this.getParameter(1, 112)) {
+            case 97 /*'a'*/: //auto
+                this.autoEditing = true;
+                this.lineEditing = true;
+                this.clientDoesEcho = true;
+                break;
+            case 99 /*'c'*/: //char
+                this.autoEditing = false;
+                this.lineEditing = false;
+                this.clientDoesEcho = true;
+                break;
+            case 108 /*'l'*/: //line
+                this.autoEditing = false;
+                this.lineEditing = true;
+                this.clientDoesEcho = true;
+                break;
+            case 112 /*'p'*/: //pipe
+                this.autoEditing = false;
+                this.lineEditing = true;
+                this.clientDoesEcho = false;
+                break;
+            }
             break;
         }
         break;
@@ -2573,7 +2599,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
 DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" inputLine:"+this.inputLine);
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" do-line-edit:"+this.useDoLineEdit+" inputLine:"+this.inputLine);
     if (this.lineEditing) {
         if (this.useDoLineEdit) {
             event.preventDefault();

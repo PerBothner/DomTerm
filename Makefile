@@ -26,13 +26,25 @@ ptyconsole/ptyconsole_PTY.h: ptyconsole/PTY.class
 org/domterm/javafx/WebTerminal.class: org/domterm/javafx/WebTerminal.java
 	$(JAVAC_WITH_PATH) $<
 
+org/domterm/javafx/WebTerminalApp.class: org/domterm/javafx/WebTerminalApp.java
+	$(JAVAC_WITH_PATH) $<
+
 org/domterm/javafx/WebWriter.class: org/domterm/javafx/WebWriter.java org/domterm/javafx/WebTerminal.class
 	$(JAVAC_WITH_PATH) $<
 
-webterminal/ShellConsole.class: webterminal/ShellConsole.java org/domterm/javafx/WebTerminal.class org/domterm/javafx/WebWriter.class
-	$(JAVAC_WITH_PATH) webterminal/ShellConsole.java
+org/domterm/javafx/RunProcess.class: org/domterm/javafx/RunProcess.java  org/domterm/javafx/WebTerminalApp.class org/domterm/javafx/WebTerminal.class org/domterm/javafx/WebWriter.class org/domterm/ProcessClient.class
+	$(JAVAC_WITH_PATH) org/domterm/javafx/RunProcess.java
 
-org/domtern/Client.class: org/domterm/Client.java
+org/domterm/Client.class: org/domterm/Client.java
+	$(JAVAC_WITH_PATH) $<
+
+org/domterm/ProcessClient.class: org/domterm/ProcessClient.java
+	$(JAVAC_WITH_PATH) $<
+
+org/domterm/javafx/RunClass.class: org/domterm/javafx/RunClass.java org/domterm/ClassClient.class
+	$(JAVAC_WITH_PATH) $<
+
+org/domterm/ClassClient.class: org/domterm/ClassClient.java
 	$(JAVAC_WITH_PATH) $<
 
 ptyconsole/PtyClient.class: ptyconsole/PtyClient.java org/domterm/javafx/WebTerminal.class org/domterm/javafx/WebWriter.class ptyconsole/PTY.class org/domterm/Client.class
@@ -53,11 +65,11 @@ run-pty: ptyconsole/App.class libpty.so d/domterm
 run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class org/domterm/util/Util.class libpty.so d/domterm
 	$(JAVA) -cp .:$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
 
-run-shell: webterminal/ShellConsole.class
-	$(JAVA_WITH_PATH) webterminal.ShellConsole
+run-shell: org/domterm/javafx/RunProcess.class org/domterm/ProcessClient.class
+	$(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf webterminal/*.class ptyconsole/*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html
+	-rm -rf webterminal/*.class ptyconsole/*.class org/domterm/*.class oerg/domterm*.*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html
 
 MAKEINFO = makeinfo
 srcdir = .
