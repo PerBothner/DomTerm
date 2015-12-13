@@ -69,7 +69,7 @@ run-shell: org/domterm/javafx/RunProcess.class org/domterm/ProcessClient.class
 	$(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf webterminal/*.class ptyconsole/*.class org/domterm/*.class oerg/domterm*.*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html
+	-rm -rf ptyconsole/*.class org/domterm/*.class oerg/domterm*.*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html
 
 MAKEINFO = makeinfo
 srcdir = .
