@@ -63,8 +63,8 @@ public class ClassClient extends Client {
 
     public void processInputCharacters(String text) {
         try {
-            pin.write(text.replaceAll("\r", ""));
-            pin.write("\n");
+            WTDebug.println("processInputCharacters '"+WTDebug.toQuoted(text)+"'");
+            pin.write(text.replaceAll("\r", "\n"));
             pin.flush();
         } catch (Throwable ex) {
             ex.printStackTrace();

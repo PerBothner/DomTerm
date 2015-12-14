@@ -11,7 +11,7 @@ import java.io.*;
 
 public class ProcessClient extends Client {
     Process process;
-    Writer pin;
+    private Writer pin;
     Reader pout;
     Reader perr;
  
@@ -48,10 +48,11 @@ public class ProcessClient extends Client {
 
     public void processInputCharacters(String text) {
         try {
-            WTDebug.println("PC.processInputCharacters "+WTDebug.toQuoted(text));
-            text = text.replaceAll("\r", "");
+            WTDebug.println("PC.processInputCharacters: '"+WTDebug.toQuoted(text)+"'");
+            if (text.length() == 0)
+                return;
+            text = text.replaceAll("\r", "\n");
             pin.write(text);
-            pin.write("\n");
             pin.flush();
         } catch (Throwable ex) {
             ex.printStackTrace();

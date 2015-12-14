@@ -1152,6 +1152,7 @@ DomTerm.prototype.addInputLine = function() {
     inputNode.setAttribute("id", id);
     inputNode.setAttribute("std", "input");
     inputNode.contentEditable = true;
+    inputNode.spellcheck = false;
     this.insertNode(inputNode);
 
     /*
@@ -2448,7 +2449,7 @@ DomTerm.prototype.processEnter = function(event) {
     var text = this.handleEnter(event);
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
-    this.processInputCharacters(text+"\r");
+    this.processInputCharacters(text+"\r"); // Or +"\n" FIXME
 };
 
 DomTerm.prototype.isApplicationMode = function() {

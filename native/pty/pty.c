@@ -30,7 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ptyconsole_PTY.h"
+#include "org_domterm_pty_PTY.h"
 #include <pty_fork.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -60,7 +60,7 @@ int log_to_stderr = 1;
 
 typedef JNIEnv *JNIEnvP;
 
-JNIEXPORT jint JNICALL Java_ptyconsole_PTY_init
+JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
 (JNIEnv *env, jobject UNUSED(pclas), jobjectArray args, jstring termname, jstring termdir)
 {
   int fdm;
@@ -112,7 +112,7 @@ JNIEXPORT jint JNICALL Java_ptyconsole_PTY_init
   return fdm;
 }
 
-JNIEXPORT void Java_ptyconsole_PTY_writeToChildInput__I_3BII
+JNIEXPORT void Java_org_domterm_pty_PTY_writeToChildInput__I_3BII
 (JNIEnvP env, jclass UNUSED(pclas), jint fdm, jbyteArray buf, jint start, jint length)
 {
   //fprintf(stderr, "writeToChildInputN\n"); fflush(stderr);
@@ -123,7 +123,7 @@ JNIEXPORT void Java_ptyconsole_PTY_writeToChildInput__I_3BII
     err_sys("failed to write to child");
 }
 
-JNIEXPORT void JNICALL Java_ptyconsole_PTY_writeToChildInput__II
+JNIEXPORT void JNICALL Java_org_domterm_pty_PTY_writeToChildInput__II
 (JNIEnvP UNUSED(env), jclass UNUSED(pclas), jint fdm, jint b)
 {
   //fprintf(stderr, "writeToChildInput1\n"); fflush(stderr);
@@ -133,7 +133,7 @@ JNIEXPORT void JNICALL Java_ptyconsole_PTY_writeToChildInput__II
     err_sys("failed to write to child");
 }
 
-JNIEXPORT jint JNICALL Java_ptyconsole_PTY_readFromChildOutput__I_3BII
+JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_readFromChildOutput__I_3BII
 (JNIEnvP env, jclass UNUSED(pclas), jint fdm, jbyteArray buf, jint start, jint length)
 {
   //fprintf(stderr, "before readFromChildOutputN fdm:%d start:%d\n", fdm, start); fflush(stderr);
@@ -161,7 +161,7 @@ JNIEXPORT jint JNICALL Java_PTY_readFromChildOutput__I
   return nread >= 0 ? buf : nread;
 }
 
-JNIEXPORT void JNICALL Java_ptyconsole_PTY_setWindowSize
+JNIEXPORT void JNICALL Java_org_domterm_pty_PTY_setWindowSize
 (JNIEnvP UNUSED(env), jclass UNUSED(pclas),
  jint fdm, jint nrows, jint ncols, jint pixw, jint pixh)
 {
@@ -175,11 +175,11 @@ JNIEXPORT void JNICALL Java_ptyconsole_PTY_setWindowSize
 }
 
 /*
- * Class:     ptyconsole_PTY
+ * Class:     org_domterm_pty_PTY
  * Method:    getTtyMode
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_ptyconsole_PTY_getTtyMode
+JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_getTtyMode
 (JNIEnvP UNUSED(env), jclass UNUSED(pclas), jint fdm)
 {
   struct termios term_master;

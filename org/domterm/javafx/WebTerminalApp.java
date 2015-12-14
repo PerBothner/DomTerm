@@ -151,6 +151,7 @@ public abstract class WebTerminalApp extends Application
     protected abstract Client makeClient() throws java.lang.Exception;
 
     @Override public void start(Stage stage) throws java.lang.Exception {
+        try {
         final Scene scene = createScene();
         console.setWindowSize(24, 80, 0, 0);
         stage.setTitle("DomTerm");
@@ -160,8 +161,11 @@ public abstract class WebTerminalApp extends Application
         stage.setWidth(700);
         stage.setHeight(500);
         stage.show();
-        System.err.println("WebTerminalApp/start !!!!! exit:"+Platform.isImplicitExit());
         console.initialize0(); // ???
+        } catch (Throwable ex) {
+            ex.printStackTrace();
+            throw new RuntimeException(ex);
+        }
     }
     public static boolean exitOnStop;
     @Override public void stop() {

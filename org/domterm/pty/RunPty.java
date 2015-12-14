@@ -30,7 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package ptyconsole;
+package org.domterm.pty;
 import org.domterm.*;
 import org.domterm.javafx.*;
 import javafx.application.Application;
@@ -39,7 +39,7 @@ import javafx.application.Application;
  * FIXME - needs a menubar with Edit menu and other settings.
  */
 
-public class App extends WebTerminalApp
+public class RunPty extends WebTerminalApp
 {
     static String[] commandArgs;
 

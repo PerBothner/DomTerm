@@ -9,10 +9,10 @@ import java.util.*;
 import java.util.concurrent.*;
 import javax.websocket.*;
 import javax.websocket.server.*;
-import ptyconsole.*;
+import org.domterm.*;
 import org.domterm.util.Util;
 import org.domterm.util.WTDebug;
-import org.domterm.*;
+import org.domterm.pty.*;
 
 @ServerEndpoint("/replsrv")
 public class ReplServer {
@@ -38,8 +38,13 @@ public class ReplServer {
 
     static Client createClient(Session session) throws Exception {
         Client client;
+        WTDebug.init();
         client = new PtyClient();
         //client = new ProcessClient();
+        //client = new ProcessClient(new String[] {"java", "kawa.repl", "--domterm", "--console"} );
+        //client = new ProcessClient(new String[] {"java", "-jar", "/home/bothner/Kawa/unmodified/kawa-2.1.1.jar", "--domterm", "--console"} );
+        //client = new ClassClient("kawa.repl",
+        //                         new String[] { "--domterm", "--console" });
 
         client.run(new ReplWriter(session));
         return client;
@@ -73,7 +78,7 @@ public class ReplServer {
     public void onMessage(Session session, String msg) {
         Client client = clientMap.get(session);
       if (verbose > 0)
-          System.out.println("received msg ["+quoteString(msg)+"] from "+session.getId());
+          WTDebug.println("received msg ["+quoteString(msg)+"] from "+session.getId());
       if (pending != null) {
           msg = pending + msg;
           pending = null;
@@ -112,13 +117,13 @@ public class ReplServer {
  public void open(Session session) throws Exception {
      Client client = createClient(session);
      clientMap.put(session, client);
-  System.out.println("New session opened: "+session.getId());
+     WTDebug.println("New session opened: "+session.getId());
  }
 
   @OnError
  public void error(Session session, Throwable t) {
       clientMap.remove(session);
-  System.err.println("Error on session "+session.getId());  
+      WTDebug.println("Error on session "+session.getId());  
  }
 
  @OnClose

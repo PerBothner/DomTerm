@@ -1,4 +1,5 @@
-JAVA_HOME = /opt/jdk1.8/
+JAVA_HOME = /opt/jdk1.8
+CC = gcc
 JAVA = java
 JAVAC = javac
 JAVAC_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVAC)
@@ -8,68 +9,82 @@ TYRUS_APIS = websocket-ri-archive-1.9/api
 TYRUS_EXTS = websocket-ri-archive-1.9/ext
 JLIBS = $(TYRUS_APIS)/javax.websocket-api-1.1.jar:$(TYRUS_LIBS)/tyrus-server-1.9.jar:$(TYRUS_LIBS)/tyrus-spi-1.9.jar:$(TYRUS_LIBS)/tyrus-core-1.9.jar:$(TYRUS_LIBS)/tyrus-container-grizzly-server-1.9.jar:$(TYRUS_EXTS)/grizzly-framework-2.3.15-gfa.jar:$(TYRUS_EXTS)/grizzly-http-server-2.3.15-gfa.jar:$(TYRUS_EXTS)/grizzly-http-2.3.15-gfa.jar:$(TYRUS_LIBS)/tyrus-container-grizzly-client-1.9.jar
 
-websocketterm/ReplServer.class: websocketterm/ReplServer.java
-	$(JAVAC) websocketterm/ReplServer.java -cp .:$(JLIBS)
+websocketterm/ReplServer.class: websocketterm/ReplServer.java domterm.jar
+	$(JAVAC) websocketterm/ReplServer.java -cp domterm.jar:$(JLIBS)
 
 websocketterm/WebSocketServer.class: websocketterm/WebSocketServer.java
 	$(JAVAC) websocketterm/WebSocketServer.java -cp .:$(JLIBS)
 
-org/domterm/util/Util.class: org/domterm/util/Util.java
-	$(JAVAC) $<
+native/pty/org_domterm_pty_PTY.h: domterm.jar
+	javah -d native/pty org.domterm.pty.PTY
 
-ptyconsole/PTY.class: ptyconsole/PTY.java
-	$(JAVAC) ptyconsole/PTY.java
+PTY_COMMON_PARAMS = -fno-strict-aliasing -fPIC -W -Wall  -Wno-unused -Wno-parentheses -fno-omit-frame-pointer
 
-ptyconsole/ptyconsole_PTY.h: ptyconsole/PTY.class
-	javah -d ptyconsole ptyconsole.PTY
+native/pty/pty.o: native/pty/pty.c native/pty/org_domterm_pty_PTY.h
+	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -c $< -o $@
 
-org/domterm/javafx/WebTerminal.class: org/domterm/javafx/WebTerminal.java
-	$(JAVAC_WITH_PATH) $<
+native/pty/pty_fork.o: native/pty/pty_fork.c
+	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -c $< -o $@
 
-org/domterm/javafx/WebTerminalApp.class: org/domterm/javafx/WebTerminalApp.java
-	$(JAVAC_WITH_PATH) $<
-
-org/domterm/javafx/WebWriter.class: org/domterm/javafx/WebWriter.java org/domterm/javafx/WebTerminal.class
-	$(JAVAC_WITH_PATH) $<
-
-org/domterm/javafx/RunProcess.class: org/domterm/javafx/RunProcess.java  org/domterm/javafx/WebTerminalApp.class org/domterm/javafx/WebTerminal.class org/domterm/javafx/WebWriter.class org/domterm/ProcessClient.class
-	$(JAVAC_WITH_PATH) org/domterm/javafx/RunProcess.java
-
-org/domterm/Client.class: org/domterm/Client.java
-	$(JAVAC_WITH_PATH) $<
-
-org/domterm/ProcessClient.class: org/domterm/ProcessClient.java
-	$(JAVAC_WITH_PATH) $<
-
-org/domterm/javafx/RunClass.class: org/domterm/javafx/RunClass.java org/domterm/ClassClient.class
-	$(JAVAC_WITH_PATH) $<
-
-org/domterm/ClassClient.class: org/domterm/ClassClient.java
-	$(JAVAC_WITH_PATH) $<
-
-ptyconsole/PtyClient.class: ptyconsole/PtyClient.java org/domterm/javafx/WebTerminal.class org/domterm/javafx/WebWriter.class ptyconsole/PTY.class org/domterm/Client.class
-	$(JAVAC_WITH_PATH) ptyconsole/PtyClient.java
-
-ptyconsole/App.class: ptyconsole/App.java ptyconsole/PtyClient.class
-	$(JAVAC_WITH_PATH) ptyconsole/App.java
-
-libpty.so:
-	cd ptyconsole && $(MAKE) all DIST_DIR=.. JDK_HOME=$(JAVA_HOME)
+libpty.so: native/pty/pty.o native/pty/pty_fork.o
+	$(CC) $(PTY_COMMON_PARAMS) -shared -o $@ $^
 
 d/domterm: d/domterm.ti
 	tic -o. $<
 
-run-pty: ptyconsole/App.class libpty.so d/domterm
-	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` ptyconsole.App
+run-pty: libpty.so d/domterm domterm.jar
+	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` org.domterm.pty.RunPty
 
-run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class org/domterm/util/Util.class libpty.so d/domterm
-	$(JAVA) -cp .:$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
+EXTRA_CLASSPATH =
+run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class org/domterm/util/Util.class libpty.so d/domterm domterm.jar
+	$(JAVA) -cp .:$(EXTRA_CLASSPATH):$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
 
-run-shell: org/domterm/javafx/RunProcess.class org/domterm/ProcessClient.class
-	$(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
+run-shell: domterm.jar
+	CLASSPATH=domterm.jar $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf ptyconsole/*.class org/domterm/*.class oerg/domterm*.*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html
+	-rm -rf org/classes.stamp tmp-for-jar org/domterm/*.class org/domterm/*.*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h
+
+DOMTERM_JAR_SOURCES = \
+  org/domterm/javafx/WebTerminalApp.java \
+  org/domterm/javafx/RunClass.java \
+  org/domterm/javafx/RunProcess.java \
+  org/domterm/javafx/WebWriter.java \
+  org/domterm/javafx/WebTerminal.java \
+  org/domterm/Client.java \
+  org/domterm/ClassClient.java \
+  org/domterm/util/Util.java \
+  org/domterm/util/WTDebug.java \
+  org/domterm/util/Utf8WriterOutputStream.java \
+  org/domterm/ProcessClient.java \
+  org/domterm/pty/PtyClient.java \
+  org/domterm/pty/RunPty.java \
+  org/domterm/pty/PTY.java
+
+org/classes.stamp: $(DOMTERM_JAR_SOURCES)
+	$(JAVAC_WITH_PATH) $?
+	touch org/classes.stamp
+
+tmp-repl.in: org/domterm/repl.html Makefile
+	sed -e '/domterm-core/i<style>' \
+	  -e '/domterm-default/a</style>' \
+	  -e 's|<link .*/style/\(.*\).css">|#include "style/\1.css"|' \
+	  -e '/<script type="text.javascript">/d' \
+	  -e '/domterm-default/a<script type="text/javascript">' \
+	  -e 's|<script .*src=.*/\(.*\).js.*>|#include "\1.js"|' \
+	  <org/domterm/repl.html >tmp-repl.in
+
+# JavaFX seems to have a problem loading .js files referenced from repl.html,
+# in a .jar, but inline javascript and css works.
+# So we use cpp to inline it into one by repl.html.
+# Ugly - hopefully we can figure out what is going on.
+domterm.jar: org/classes.stamp terminal.js tmp-repl.in
+	rm -rf tmp-for-jar
+	mkdir tmp-for-jar
+	tar cf - org/domterm/*.class org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
+	cpp -traditional-cpp -P <tmp-repl.in >tmp-for-jar/org/domterm/repl.html
+	cd tmp-for-jar && \
+	  jar cf ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html 
 
 MAKEINFO = makeinfo
 srcdir = .

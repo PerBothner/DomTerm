@@ -31,7 +31,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package ptyconsole;
+package org.domterm.pty;
 
 import org.domterm.Client;
 import org.domterm.util.Util;

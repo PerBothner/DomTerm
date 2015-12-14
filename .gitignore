@@ -2,4 +2,7 @@
 libpty.so
 *~
 build
-
+domterm.jar
+org/classes.stamp
+tmp-for-jar
+tmp-repl.in
