@@ -47,6 +47,7 @@ public class PtyClient extends Client {
     public Writer pin;
     public Reader pout;
     public PTY pty;
+    String[] childArgs;
 
     static String[] defaultArgs = { "/bin/bash" };
 
@@ -57,7 +58,14 @@ public class PtyClient extends Client {
     public PtyClient(String[] childArgs) {
         if (childArgs == null || childArgs.length == 0)
             childArgs = defaultArgs;
-        pty = new PTY(childArgs, "domterm");
+        this.childArgs = childArgs;
+    }
+
+    @Override
+    public void run(Writer out) throws Exception {
+        addVersionInfo("PtyClient");
+        pty = new PTY(childArgs, "domterm",
+                      new Object[] { "DOMTERM="+getVersionInfo() });
         try {
             pin = new OutputStreamWriter(pty.toChildInput);
             pout = new InputStreamReader(pty.fromChildOutput, "UTF-8");
@@ -66,10 +74,6 @@ public class PtyClient extends Client {
             ex.printStackTrace();
             System.exit(-1);
         }
-    }
-
-    @Override
-    public void run(Writer out) throws Exception {
         this.termWriter = out;
         sendInputMode(lineEditingMode);
         Util.copyThread(pout, false, out);
@@ -82,7 +86,7 @@ public class PtyClient extends Client {
 
     @Override public void processInputCharacters(String text) {
         if (verbosity > 0)
-            System.err.println("processInputCharacters["+WTDebug.toQuoted(text)+"]");
+            WTDebug.println("processInputCharacters["+WTDebug.toQuoted(text)+"]");
         try {
             pin.write(text);
             pin.flush();
@@ -94,6 +98,10 @@ public class PtyClient extends Client {
 
     @Override
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
-        pty.setWindowSize(nrows, ncols, pixw, pixh);
+        // We might get a call to setWindowSize before the PTY is
+        // allocated in the run method.  We get another call after PTY
+        // is allocated, so it appears ok to ignore it when pty is null.
+        if (pty != null)
+            pty.setWindowSize(nrows, ncols, pixw, pixh);
     }
 }

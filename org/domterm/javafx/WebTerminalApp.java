@@ -153,7 +153,6 @@ public abstract class WebTerminalApp extends Application
     @Override public void start(Stage stage) throws java.lang.Exception {
         try {
         final Scene scene = createScene();
-        console.setWindowSize(24, 80, 0, 0);
         stage.setTitle("DomTerm");
 
         stage.setScene(scene);

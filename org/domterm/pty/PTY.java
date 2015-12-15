@@ -46,7 +46,7 @@ public class PTY {
     public InputStream fromChildOutput;
     public OutputStream toChildInput;
 
-    public PTY(String[] args, String termname) {
+    public PTY(String[] args, String termname, Object[] moreEnv) {
         String ldpath = System.getProperty("java.library.path");
         int startpath = 0;
         String pathsep = System.getProperty("path.separator");
@@ -74,8 +74,17 @@ public class PTY {
         for (int i = 0; i < nargs;  i++) {
             bargs[i] = args[i].getBytes();
         }
-        System.err.println("before init termname:"+termname+" termdir:"+termdir+" filesep:"+filesep);
-        fdm = init(bargs, termname, termdir + filesep);
+        int nenv = moreEnv.length;
+        byte[][] benv = new byte[nenv+2][];
+        for (int i = 0; i < nenv; i++) {
+            Object earg = moreEnv[i];
+            if (earg instanceof String)
+                earg = ((String) earg).getBytes();
+            benv[i] = (byte[]) earg;
+        }
+        benv[nenv] = ("TERM="+termname).getBytes();
+        benv[nenv+1] = ("TERMINFO="+termdir+filesep).getBytes();
+        fdm = init(bargs, benv);
         toChildInput = new OutputStream() {
                 public void write(int b) {
                     writeToChildInput(fdm, b);
@@ -103,7 +112,7 @@ public class PTY {
     private static native int getTtyMode(int fdm);
     public int getTtyMode() { return getTtyMode(fdm); }
 
-    private static native int init(byte[][] args, String termname, String termdir);
+    private static native int init(byte[][] args, byte[][] moreEnv);
 
     private static native void writeToChildInput(int fdm, byte[] buf, int start, int length);
     private static native void writeToChildInput(int fdm, int b);

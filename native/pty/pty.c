@@ -61,7 +61,7 @@ int log_to_stderr = 1;
 typedef JNIEnv *JNIEnvP;
 
 JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
-(JNIEnv *env, jobject UNUSED(pclas), jobjectArray args, jstring termname, jstring termdir)
+(JNIEnv *env, jobject UNUSED(pclas), jobjectArray args, jobjectArray moreEnv)
 {
   int fdm;
   char            slave_name[20];
@@ -71,27 +71,6 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
 
   if (pid == 0) // child
     {
-      putenv("TERM=ansi");
-      if (termname != NULL)
-        {
-          int len = (*env)->GetStringLength(env, termname);
-          int blen = (*env)->GetStringUTFLength(env, termname);
-          char* buf = malloc(6+blen);
-          strncpy(buf, "TERM=", 5);
-          (*env)->GetStringUTFRegion(env, termname, 0, len, buf+5);
-          buf[5+blen]='\0';
-          putenv(buf);
-        }
-      if (termdir != NULL)
-        {
-          int len = (*env)->GetStringLength(env, termdir);
-          int blen = (*env)->GetStringUTFLength(env, termdir);
-          char* buf = malloc(10+blen);
-          strncpy(buf, "TERMINFO=", 9);
-          (*env)->GetStringUTFRegion(env, termdir, 0, len, buf+9);
-          buf[9+blen]='\0';
-          putenv(buf);
-        }
       // FIXME convert args instead of using command_args
       jsize nargs = (*env)->GetArrayLength(env, args);
       char** cargs = malloc(nargs+1);
@@ -107,6 +86,19 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
           cargs[i] = buf;
         }
       cargs[nargs] = NULL;
+
+      jsize nenv = (*env)->GetArrayLength(env, moreEnv);
+      char** eargs = malloc(nenv+1);
+      for (i = 0; i < nargs; i++)
+        {
+          jbyteArray arg =
+            (jbyteArray) (*env)->GetObjectArrayElement(env, moreEnv, i);
+          int alen = (*env)->GetArrayLength(env, arg);
+          char* buf = malloc(alen+1);
+          buf[alen] = 0;
+          (*env)->GetByteArrayRegion(env, arg, 0, alen, (jbyte*) buf);
+          putenv(buf);
+        }
       execvp(cargs[0], cargs);
     }
   return fdm;
