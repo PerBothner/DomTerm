@@ -221,34 +221,26 @@ public class WebTerminal extends VBox // FIXME should extend Control
     }
 
     protected void initialize() {
-        documentNode = webEngine.getDocument();
-        Object tmp = webEngine.executeScript("makeDomTerm()");
-        jsWebTerminal = (JSObject) tmp;
-        jsWebTerminal.setMember("java", this);
-        jsWebTerminal.setMember("jclient", client);
-        webEngine.executeScript("initDomTerm()");
-    }
-
-    protected void setEditable(Element element, boolean editable) {
-        ((JSObject) element).setMember("contentEditable", editable);
-    }
-    
-    protected void setEditable(boolean editable) {
-        setEditable(getInputLine(), editable);
-    }
-    
-    public final void reportEvent(String name, String str) {
-        if (client != null)
-            client.reportEvent(name, str);
+        try {
+            documentNode = webEngine.getDocument();
+            Object tmp = webEngine.executeScript("makeDomTerm()");
+            jsWebTerminal = (JSObject) tmp;
+            jsWebTerminal.setMember("java", this);
+            jsWebTerminal.setMember("jclient", client);
+            Object versionInfo = jsWebTerminal.getMember("versionInfo");
+            if (versionInfo != null)
+                client.addVersionInfo(versionInfo.toString());
+            webEngine.executeScript("initDomTerm()");
+            client.run(new WebWriter(this, 'O'));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw new RuntimeException(ex);
+        }
     }
 
     public final void processInputCharacters(String text) {
         if (client != null)
             client.processInputCharacters(text);
-    }
-
-    public void initialize0 () throws Exception {
-        client.run(new WebWriter(this, 'O'));
     }
 
     private String initialOutput;

@@ -18,6 +18,7 @@ import org.domterm.pty.*;
 public class ReplServer {
     Map<Session,Client> clientMap
         = new IdentityHashMap<Session,Client>();
+    Set<Client> pendingClients = new HashSet<Client>();
 
     static int verbose = 0;
  
@@ -46,7 +47,6 @@ public class ReplServer {
         //client = new ClassClient("kawa.repl",
         //                         new String[] { "--domterm", "--console" });
 
-        client.run(new ReplWriter(session));
         return client;
     }
 
@@ -85,6 +85,23 @@ public class ReplServer {
       }
       int i = 0;
       int len = msg.length();
+      int nl = -1;
+      if (len >= 10 && msg.charAt(0) == 0x92
+          && msg.substring(1, 9).equals("VERSION ")
+          && (nl = msg.indexOf('\n')) > 0) {
+          client.addVersionInfo(msg.substring(9, nl));
+          nl++;
+          len -= nl;
+          msg = msg.substring(nl);
+      }
+      if (pendingClients.remove(client)) {
+        //client.versionInfo = ...;
+          try {
+        client.versionInfo = client.versionInfo+";websocket-server";
+        client.run(new ReplWriter(session));
+          } catch (Throwable ex) {
+              ex.printStackTrace();}
+      }
       for (; i < len; i++) {
           // Octal 222 is 0x92 "Private Use 2".
           if (msg.charAt(i) == '\222') {
@@ -117,17 +134,17 @@ public class ReplServer {
  public void open(Session session) throws Exception {
      Client client = createClient(session);
      clientMap.put(session, client);
-     WTDebug.println("New session opened: "+session.getId());
+     pendingClients.add(client);
  }
 
-  @OnError
- public void error(Session session, Throwable t) {
-      clientMap.remove(session);
-      WTDebug.println("Error on session "+session.getId());  
- }
+    @OnError
+    public void error(Session session, Throwable t) {
+        clientMap.remove(session);
+        WTDebug.println("Error on session "+session.getId());  
+    }
 
- @OnClose
- public void closedConnection(Session session) { 
+    @OnClose
+    public void closedConnection(Session session) { 
   clientMap.remove(session);
   String msg = "session closed: "+session.getId();
   if (verbose > 0)

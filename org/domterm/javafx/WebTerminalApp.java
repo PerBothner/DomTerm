@@ -161,7 +161,6 @@ public abstract class WebTerminalApp extends Application
         stage.setWidth(700);
         stage.setHeight(500);
         stage.show();
-        console.initialize0(); // ???
         } catch (Throwable ex) {
             ex.printStackTrace();
             throw new RuntimeException(ex);

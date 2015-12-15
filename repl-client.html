@@ -27,7 +27,10 @@ function connect() {
     var bodyNode = document.getElementsByTagName("div")[0];
     wsocket = new WebSocket("ws://localhost:8025/websocket/replsrv");
     wsocket.onmessage = onMessage;
-    wsocket.onopen = function(e) { wt.initializeTerminal(bodyNode); };
+    wsocket.onopen = function(e) {
+        socketSendChars("\x92VERSION "+wt.versionInfo+"\n");
+        wt.initializeTerminal(bodyNode);
+    };
 }
 
 window.addEventListener("load", connect, false);

@@ -11,6 +11,8 @@ import java.io.*;
 public abstract class Client {
     public int verbosity = 0;
 
+    public String versionInfo;
+
     public char lineEditingMode = 'a';
     protected void sendInputMode(char mode) throws Exception {
         termWriter.write("\033[20;"+((int)mode)+"u");
@@ -43,7 +45,16 @@ public abstract class Client {
             } catch (Throwable ex) {
                 System.err.println("caught "+ex);
             }
+        } else if ("VERSION".equals(name)) {
+            addVersionInfo(str);
         }
+    }
+
+    public synchronized String getVersionInfo() { return versionInfo; }
+
+    public synchronized void addVersionInfo(String str) {
+        versionInfo = versionInfo == null || versionInfo.length() == 0 ? str
+            : versionInfo + ";" + str;
     }
 
     public abstract void processInputCharacters(String text);
