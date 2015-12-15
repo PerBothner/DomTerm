@@ -1,8 +1,10 @@
 *.class
+*.o
 libpty.so
 *~
 build
 domterm.jar
+native/pty/org_domterm_pty_PTY.h
 org/classes.stamp
 tmp-for-jar
 tmp-repl.in
