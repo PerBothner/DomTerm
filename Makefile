@@ -54,6 +54,7 @@ DOMTERM_JAR_SOURCES = \
   org/domterm/Client.java \
   org/domterm/ClassClient.java \
   org/domterm/util/ErrorPrintStream.java \
+  org/domterm/util/StringBufferedWriter.java \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
   org/domterm/util/Utf8WriterOutputStream.java \

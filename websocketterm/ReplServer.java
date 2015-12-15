@@ -10,6 +10,7 @@ import java.util.concurrent.*;
 import javax.websocket.*;
 import javax.websocket.server.*;
 import org.domterm.*;
+import org.domterm.util.StringBufferedWriter;
 import org.domterm.util.Util;
 import org.domterm.util.WTDebug;
 import org.domterm.pty.*;
@@ -22,19 +23,13 @@ public class ReplServer {
 
     static int verbose = 0;
  
-    static class ReplWriter extends Writer {
-         Session session;
-         ReplWriter(Session session) { this.session = session; }
-         public void write(char[] buffer, int start, int len)
-             throws IOException {
-             write(new String(buffer, start, len));
-         }
-         public synchronized void write(String str)
-             throws IOException {
+    static class ReplWriter extends StringBufferedWriter {
+        Session session;
+        ReplWriter(Session session) { super(true); this.session = session; }
+ 
+        protected void writeRaw(String str) throws IOException {
              session.getBasicRemote().sendText(str);
-         }
-         public void flush() { }
-         public void close() { }
+        }
      }
 
     static Client createClient(Session session) throws Exception {
