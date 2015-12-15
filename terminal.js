@@ -1363,6 +1363,9 @@ DomTerm.prototype.handleEnter = function(event) {
         this.outputContainer = oldInputLine;
         this.currentCursorLine = line;
         this.currentCursorColumn = -1;
+    } else {
+        this.outputBefore = this.inputLine;
+        this.outputContainer = this.inputLine.parentNode;
     }
     return text;
 };
