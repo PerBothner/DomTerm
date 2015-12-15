@@ -45,8 +45,7 @@ public class ReplServer {
         //client = new ProcessClient(new String[] {"java", "kawa.repl", "--domterm", "--console"} );
         //client = new ProcessClient(new String[] {"java", "-jar", "/home/bothner/Kawa/unmodified/kawa-2.1.1.jar", "--domterm", "--console"} );
         //client = new ClassClient("kawa.repl",
-        //                         new String[] { "--domterm", "--console" });
-
+        //                         new String[] { "--console" });
         return client;
     }
 

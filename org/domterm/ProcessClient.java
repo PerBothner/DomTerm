@@ -51,7 +51,8 @@ public class ProcessClient extends Client {
 
     public void processInputCharacters(String text) {
         try {
-            WTDebug.println("PC.processInputCharacters: '"+WTDebug.toQuoted(text)+"'");
+            if (verbosity >= 2)
+                WTDebug.println("ProcessClient.processInputCharacters: '"+WTDebug.toQuoted(text)+"'");
             if (text.length() == 0)
                 return;
             text = text.replaceAll("\r", "\n");

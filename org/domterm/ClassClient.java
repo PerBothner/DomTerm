@@ -37,11 +37,11 @@ public class ClassClient extends Client {
     public void run(Writer out) throws Exception {
         this.termWriter = out;
         sendInputMode('p');
+        addVersionInfo("ClassClient;err-handled");
         OutputStream outs = new Utf8WriterOutputStream(out);
         PrintStream outp = new PrintStream(new BufferedOutputStream(outs, 128), true);
         System.setOut(outp);
-        // FIXME System.setErr(new DomTermErrorStream(outp));
-        System.setErr(outp);
+        System.setErr(new ErrorPrintStream(outp));
 
         try {
             PipedOutputStream inputSink = new PipedOutputStream();
@@ -49,6 +49,11 @@ public class ClassClient extends Client {
             System.setIn(new PipedInputStream(inputSink));
         } catch (Throwable ex) {
             throw new RuntimeException(ex);
+        }
+        try {
+            System.setProperty("org.domterm", getVersionInfo());
+        } catch (Throwable ex) {
+            ex.printStackTrace();
         }
 
         (new Thread() {
@@ -63,7 +68,7 @@ public class ClassClient extends Client {
 
     public void processInputCharacters(String text) {
         try {
-            WTDebug.println("processInputCharacters '"+WTDebug.toQuoted(text)+"'");
+            //WTDebug.println("processInputCharacters '"+WTDebug.toQuoted(text)+"'");
             pin.write(text.replaceAll("\r", "\n"));
             pin.flush();
         } catch (Throwable ex) {

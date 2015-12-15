@@ -53,6 +53,7 @@ DOMTERM_JAR_SOURCES = \
   org/domterm/javafx/WebTerminal.java \
   org/domterm/Client.java \
   org/domterm/ClassClient.java \
+  org/domterm/util/ErrorPrintStream.java \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
   org/domterm/util/Utf8WriterOutputStream.java \
