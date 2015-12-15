@@ -28,7 +28,7 @@ public class ReplServer {
              throws IOException {
              write(new String(buffer, start, len));
          }
-         public void write(String str)
+         public synchronized void write(String str)
              throws IOException {
              session.getBasicRemote().sendText(str);
          }

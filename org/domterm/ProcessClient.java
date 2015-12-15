@@ -31,7 +31,6 @@ public class ProcessClient extends Client {
         String dir = System.getProperty("user.dir");
         if (dir != null)
             env.put("TERMINFO", dir+"/");
-        pbuilder.redirectErrorStream(true);
         process = pbuilder.start();
         pin = new OutputStreamWriter(process.getOutputStream());
         pout = new InputStreamReader(process.getInputStream());

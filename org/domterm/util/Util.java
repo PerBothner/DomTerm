@@ -18,6 +18,7 @@ public class Util {
         Thread th = new Thread() {
                 char[] buffer = new char[1024];
                 public void run () {
+                    //WTDebug.println("copyThread start err:"+errStream+" to:"+out.getClass().getName());
                     for (;;) {
                         try {
                             int count = fromInferior.read(buffer);
@@ -32,8 +33,9 @@ public class Util {
                                     out.write(END_ERR_MARKER, 0,
                                               END_ERR_MARKER.length);
                                 }
-                            } else
+                            } else {
                                 out.write(buffer, 0, count);
+                            }
                         } catch (Throwable ex) {
                             ex.printStackTrace();
                             System.exit(-1);

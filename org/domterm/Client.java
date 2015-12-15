@@ -48,8 +48,15 @@ public abstract class Client {
 
     public abstract void processInputCharacters(String text);
 
+    /** Characters written here call terminal.js's insertString method.
+     * Each write method should be synchronized (on the termWriter),
+     * so different messages don't appear out of order.
+     */
     protected Writer termWriter;
 
+    /** Initialize and run this client.
+     * @param out used to initialize termWriter - see note there.
+     */
     public abstract void run(Writer out) throws Exception;
 
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
