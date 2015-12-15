@@ -231,7 +231,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
             if (versionInfo != null)
                 client.addVersionInfo(versionInfo.toString());
             webEngine.executeScript("initDomTerm()");
-            client.run(new WebWriter(this, 'O'));
+            client.run(new WebWriter(this));
         } catch (Exception ex) {
             ex.printStackTrace();
             throw new RuntimeException(ex);
@@ -245,8 +245,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
 
     private String initialOutput;
 
-    // FIXME kind is ignored, for now
-    public void insertOutput(final String str, final char kind) {
+    public void insertOutput(final String str) {
        Platform.runLater(new Runnable() {
                 public void run() {
                     //jsWebTerminal = (JSObject) webEngine.executeScript("webTerminal");

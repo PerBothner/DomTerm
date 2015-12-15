@@ -40,16 +40,9 @@ public class WebWriter extends java.io.Writer
     protected WebTerminal terminal;
 
     protected StringBuilder sbuf = new StringBuilder();
-    char kind;
 
-    /** Which port is this?
-     * @return 'O': if output; 'E': if error stream; 'P': if prompt text
-     */
-    public char getKind() { return kind; }
-
-    public WebWriter (WebTerminal terminal, char kind) {
+    public WebWriter (WebTerminal terminal) {
         this.terminal = terminal;
-        this.kind = kind;
     }
 
     public synchronized void write (int x) {
@@ -77,7 +70,7 @@ public class WebWriter extends java.io.Writer
 
         if (s.length() > 0) {
             // FIXME optimize by passing sbuf to insertOutput?
-            terminal.insertOutput(s.toString(), kind);
+            terminal.insertOutput(s.toString());
             s.setLength(0);
         }
     }
