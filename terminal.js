@@ -2458,8 +2458,27 @@ DomTerm.prototype.processEnter = function(event) {
     this.processInputCharacters(text+"\r"); // Or +"\n" FIXME
 };
 
-DomTerm.prototype.arrowKeySequence = function(ch) {
-    return (this.applicationCursorKeysMode ? "\x1BO" : "\x1B[")+ch;
+/** param is either a numerical code, as as string (e.g. "15" for F5);
+    or "O" for ones that use SS3 (F1 to F4);
+    or "" for ones that use CSI or SS3 depending on application mode.
+*/
+DomTerm.prototype.specialKeySequence = function(param, last, event) {
+    var csi = "\x1B[";
+    var mods = 0;
+    if (event.shiftKey)
+        mods += 1;
+    if (event.altKey)
+        mods += 2;
+    if (event.ctrlKey)
+        mods += 4;
+    if (event.metaKey)
+        mods += 8;
+    if (mods > 0)
+        return csi+(param==""||param=="O"?"1":param)+";"+(mods+1)+last;
+    else if ((this.applicationCursorKeysMode && param == "") || param == "O")
+        return "\x1BO"+last;
+    else
+        return csi+param+last;
 };
 
 DomTerm.prototype.keyDownToString = function(event) {
@@ -2468,28 +2487,28 @@ DomTerm.prototype.keyDownToString = function(event) {
     case 8: /* Backspace */ return "\x7F";
     case 9: /* Tab */    return "\t";
     case 27: /* Esc */   return "\x1B";
-    case 33 /* PageUp*/: return "\x1B[5~";
-    case 34 /* PageDown*/:return"\x1B[6~";
-    case 35 /*End*/:     return this.arrowKeySequence("F");
-    case 36 /*Home*/:    return this.arrowKeySequence("H");
-    case 37 /*Left*/:  return this.arrowKeySequence("D");
-    case 38 /*Up*/:    return this.arrowKeySequence("A");
-    case 39 /*Right*/: return this.arrowKeySequence("C");
-    case 40 /*Down*/:  return this.arrowKeySequence("B");
-    case 45 /*Insert*/:  return "\x1B[2~";
-    case 46 /*Delete*/:  return "\x1B[3~"; // In some modes: 127;
-    case 112: /* F1 */   return "\x1BOP";
-    case 113: /* F2 */   return "\x1BOQ";
-    case 114: /* F3 */   return "\x1BOR";
-    case 115: /* F4 */   return "\x1BOS";
-    case 116: /* F5 */   return "\x1B[15~";
-    case 117: /* F6 */   return "\x1B[17~";
-    case 118: /* F7 */   return "\x1B[18~";
-    case 119: /* F8 */   return "\x1B[19~";
-    case 120: /* F9 */   return "\x1B[20~";
-    case 121: /* F10 */  return "\x1B[21~";
-    case 122: /* F11 */  return "\x1B[23~";
-    case 123: /* F12 */  return "\x1B[24~";
+    case 33 /* PageUp*/: return this.specialKeySequence("5", "~", event);
+    case 34 /* PageDown*/:return this.specialKeySequence("6", "~", event);
+    case 35 /*End*/:     return this.specialKeySequence("", "F", event);
+    case 36 /*Home*/:    return this.specialKeySequence("", "H", event);
+    case 37 /*Left*/:  return this.specialKeySequence("", "D", event);
+    case 38 /*Up*/:    return this.specialKeySequence("", "A", event);
+    case 39 /*Right*/: return this.specialKeySequence("", "C", event);
+    case 40 /*Down*/:  return this.specialKeySequence("", "B", event);
+    case 45 /*Insert*/:  return this.specialKeySequence("2", "~", event);
+    case 46 /*Delete*/:  return this.specialKeySequence("3", "~", event);
+    case 112: /* F1 */   return this.specialKeySequence("O", "P", event);
+    case 113: /* F2 */   return this.specialKeySequence("O", "Q", event);
+    case 114: /* F3 */   return this.specialKeySequence("O", "R", event);
+    case 115: /* F4 */   return this.specialKeySequence("O", "S", event);
+    case 116: /* F5 */   return this.specialKeySequence("15", "~", event);
+    case 117: /* F6 */   return this.specialKeySequence("17", "~", event);
+    case 118: /* F7 */   return this.specialKeySequence("18", "~", event);
+    case 119: /* F8 */   return this.specialKeySequence("19", "~", event);
+    case 120: /* F9 */   return this.specialKeySequence("20", "~", event);
+    case 121: /* F10 */  return this.specialKeySequence("21", "~", event);
+    case 122: /* F11 */  return this.specialKeySequence("23", "~", event);
+    case 123: /* F12 */  return this.specialKeySequence("24", "~", event);
     case 124: /* F13 */  return "\x1B[1;2P";
     case 125: /* F14 */  return "\x1B[1;2Q";
     case 126: /* F15 */  return "\x1B[1;2R";

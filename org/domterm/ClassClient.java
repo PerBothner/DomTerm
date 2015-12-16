@@ -41,7 +41,7 @@ public class ClassClient extends Client {
         OutputStream outs = new Utf8WriterOutputStream(out);
         PrintStream outp = new PrintStream(new BufferedOutputStream(outs, 128), true);
         System.setOut(outp);
-        System.setErr(new ErrorPrintStream(outp));
+        ErrorPrintStream.setSystemErr();
 
         try {
             PipedOutputStream inputSink = new PipedOutputStream();

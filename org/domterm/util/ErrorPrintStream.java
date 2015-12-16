@@ -32,6 +32,11 @@ public class ErrorPrintStream extends PrintStream {
         this.out = out;
     }
 
+    public static void setSystemErr() {
+        if (! (System.err instanceof ErrorPrintStream))
+            System.setErr(new ErrorPrintStream(System.out));
+    }
+
     @Override
     public void write(int b) {
         synchronized (out) {
