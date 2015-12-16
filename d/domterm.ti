@@ -1,18 +1,11 @@
 # tc:XX means the termcap equivalency is XX
 domterm|DomTerm terminal emulator,
 # initialialization
-# i1s [tc: i1]
-# is2 [tc: is]
-# is3 [tc: i3]
 # smcup [tc: ti] string to start programs using cup
-# rmcup [tc: te] string to end programs using cup
-# ??? Use alternative screen buffer
-#	smcup=\E[?47h,
-#	rmcup=\E[?47l,
-# xterm:
 # Save cursor as in DECSC and use Alternate Screen Buffer, clearing it first.
-#	smcup=\E[?1049h,
-#       rmcup=\E[?1049l,
+	smcup=\E[?1049h,
+# rmcup [tc: te] string to end programs using cup
+	rmcup=\E[?1049l,
 # soft terminal reset
 #       is2==\E[!p\E[?3;4l\E[4l\E>,
 #
@@ -54,6 +47,10 @@ domterm|DomTerm terminal emulator,
 	home=\E[H,
 # horizontal position #1, absolute (P) [tc: ch]
 	hpa=\E[%i%p1%dG,
+# Function keys
+        kf1=\EOP, kf2=\EOQ, kf3=\EOR, kf4=\EOS, kf5=\E[15~,
+        kf6=\E[17~, kf7=\E[18~, kf8=\E[19~, kf9=\E[20~, kf10=\E[21~,
+        kf11=\E[23~, kf12=\E[24~,
 # from TERM=ansi
 #        acsc=+\020\,\021-\030.^Y0\333`\004a\261f\370g\361h\260j\331k\277l\332m\300n\305o~p\304q\304r\304s_t\303u\264v\301w\302x\263y\363z\362{\343|\330}\234~\376,
         bel=^G, blink=\E[5m, bold=\E[1m, cbt=\E[Z, clear=\E[H\E[J,
@@ -115,17 +112,21 @@ domterm|DomTerm terminal emulator,
 #	invis=\E[8m,
 #	kbs=^?,
 # left-arrow key [tc: kl]
-#	kcub1=\EOD,
-#	kcud1=\EOB,
-#	kcuf1=\EOC,
-#	kcuu1=\EOA,
-#	kdch1=\E[3~,
-#	kend=\E[4~,
-#	khome=\E[1~,
+	kcub1=\EOD,
+# down-arrow key [tc: kd]
+	kcud1=\EOB,
+# right-arrow key [tc: kr]
+	kcuf1=\EOC,
+# up-arrow key [tc: ku]
+	kcuu1=\EOA,
+# end key [tc: @7]
+	kend=\EOF,
+# home key [tc: kh]
+	khome=\EOH,
 # delete-character key [tc: kD]
         kdch1=\E[3~,
 # insert-character key [tc: kI]
-#	kich1=\E[2~,
+	kich1=\E[2~,
 #	knp=\E[6~,
 #	kpp=\E[5~,
 #	op=\E[39;49m,
@@ -160,6 +161,10 @@ domterm|DomTerm terminal emulator,
 	setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
 # exit attribute mode (turn off all attributes] [tc: me]
 	sgr0=\E[m,
+# Enter 'keyboard transmit mode' [tc: ks]
+	smkx=\E[?1h\E=,
+# Leave 'keyboard transmit mode' [tc: ke]
+	rmkx=\E[?1l\E>,
 # enter insert mode [tc: im]
 #	smir=\E[4h,
 # enter underline mode [tc: us]

@@ -86,16 +86,9 @@ function DomTerm(name, topNode) {
     // Used to implement clientDoesEscho handling.
     this._deferredForDeletion = null;
 
-    // Cursor motion is relative to the start of this element
-    // (normally a div or pre).
-    // I.e. the cursor home location is the start of this element.
-    // "Erase screen" only erases in this element.
-    // Probably REDUNDANT/OBSOLETE - replace by lineStarts[homeLine] ?
-    this.cursorHome = null;
-
     this.topNode = null;
 
-    // ??? FIXME we want to get rid of this - use currentLogicalLine.
+    // ??? FIXME we want to get rid of this
     this.initial = null;
 
     // Current line number, 0-origin, relative to start of cursorHome.
@@ -109,9 +102,6 @@ function DomTerm(name, topNode) {
     this.savedCursorLine = 0;
     this.savedCursorColumn = 0;
 
-    // If inserting a character at this column width, insert a wrap-break.
-    this.wrapWidth = 80;
-
     this.rightMarginWidth = 0;
 
     // Number of vertical pixels available.
@@ -119,11 +109,6 @@ function DomTerm(name, topNode) {
     // Number of horizontal pixels available.
     // Doesn't count scrollbar or rightMarginWidth.
     this.availWidth = 0;
-
-    // This is the column width at which the next line implicitly starts.
-    // Compare with wrapWidth - if both are less than 9999999
-    // then they should normally be equal. */
-    this.columnWidth = 9999999;
 
     this.numRows = 24;
     this.numColumns = 80;
@@ -167,7 +152,7 @@ function DomTerm(name, topNode) {
 
     // Index of the 'home' position in the lineStarts table.
     // Cursor motion is relative to the start of this line
-    // (normally a div or pre).
+    // (normally a pre).
     // "Erase screen" only erases starting at this line.
     this.homeLine = 0;
 
@@ -175,12 +160,13 @@ function DomTerm(name, topNode) {
     this._currentStyleMap = new Map();
     this._currentStyleSpan = null;
 
+    this.applicationCursorKeysMode = false;
+    this.bracketedPasteMode = false;
+
     this.defaultBackgroundColor = "white";
     this.defaultForegroundColor = "black";
 
     this.usingAlternateScreenBuffer = false;
-    this.savedCursorHome = null;
-    this.savedHomeLine = -1;
 
     this.history = new Array();
     this.historyCursor = -1;
@@ -388,7 +374,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                 homeLine = lineCount - this.numRows;
                 goalLine -= homeLine - this.homeLine;
                 this.homeLine = homeLine;
-                this.cursorHome = this.lineStarts[homeLine];
             }
             /*
             while (homeLine < nextLine) {
@@ -398,7 +383,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                     break;
                 homeLine++;
                 var homeStart = this.lineStarts[homeLine];
-                this.cursorHome = homeStart;
             }
             */
         }
@@ -476,11 +460,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                     }
                     var ch = text.charCodeAt(i);
                     var nextColumn = this.updateColumn(ch, column);
-                    if (nextColumn > this.columnWidth) {
-                        line++;
-                        column = this.updateColumn(ch, 0);
-                    }
-                    else if (nextColumn == -1) {
+                    if (nextColumn == -1) {
                         //console.log("nextCol=-1 ch "+
                         if (line == goalLine) {
                             var nspaces = goalColumn-column;
@@ -975,29 +955,23 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         if (val) {
             // FIXME should scroll top of new buffer to top of window.
-            var buffer = document.createElement("pre");
-            this.savedCursorHome = this.cursorHome;
-            this.savedHomeLine = this.homeLine;
-            this.topNode.appendChild(buffer);
-            this.cursorHome = buffer;
-            this.outputContainer.removeChild(this.inputLine);
-            buffer.appendChild(this.inputLine);
-            this.outputContainer = buffer;
-            this.outputBefore = this.inputLine;
-            this.currentCursorColumn = 0;
-            this.currentCursorLine = 0;
-        } else { 
-            this.outputContainer.removeChild(this.inputLine);
-            this.cursorHome.parentNode.removeChild(this.cursorHome);
-            this.cursorHome = this.savedCursorHome;
-            this.homeLine = this.savedHomeLine;
-            this.cursorHome.appendChild(this.inputLine);
-            this.outputContainer = this.cursorHome;
-            this.outputBefore = this.inputLine;
-            this.savedCursorHome = null;
-            this.savedHomeLine = -1;
-            this.outputContainer = this.cursorHome;
-            this.resetCursorCache();
+            var nextLine = this.lineEnds.length;
+            var bufNode = this._createBuffer(this._altBufferName);
+            this.topNode.appendChild(bufNode);
+            bufNode.saveHomeLine = this.homeLine;
+            bufNode.saveInitial = this.initial;
+            var newLineNode = bufNode.firstChild;
+            this.homeLine = nextLine;
+            this.moveToIn(0, 0, false);
+            this.initial = bufNode;
+        } else {
+            var bufNode = this.initial;
+            this.initial = bufNode.saveInitial;
+            this.lineStarts.length = this.homeLine;
+            this.lineEnds.length = this.homeLine;
+            this.homeLine = bufNode.saveHomeLine;
+            this.moveToIn(0, 0, false);
+            bufNode.parentNode.removeChild(bufNode);
         }
         this.usingAlternateScreenBuffer = val;
         this.scrollRegionTop = 0;
@@ -1077,10 +1051,19 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
         }
     });
 
-    var mainNode = document.createElement("div");
-    mainNode.setAttribute("id", this.makeId("main"));
-    mainNode.setAttribute("class", "interaction");
+    this._mainBufferName = this.makeId("main")
+    this._altBufferName = this.makeId("alternate")
+
+    var mainNode = this._createBuffer(this._mainBufferName);
     topNode.appendChild(mainNode);
+
+    this.initial = mainNode;
+    var preNode = mainNode.firstChild;
+    this.outputContainer = preNode;
+    this.outputBefore = preNode.firstChild;
+    this.addInputLine();
+    this.outputBefore = this.inputLine;
+    this.pendingInput = this.inputLine;
 
     document.onkeydown =
         function(e) { dt.keyDownHandler(e ? e : window.event) };
@@ -1092,21 +1075,21 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                   e.preventDefault(); },
                              false);
 
-    this.initial = mainNode; //document.getElementById(mainName);
-    var preNode = document.createElement("pre");
-    mainNode.appendChild(preNode);
-    this.lineStarts[0] = preNode;
-    this.outputContainer = preNode;
-    this.cursorHome = preNode;
-    this.addInputLine();
-    this.outputBefore = this.inputLine;
-    this.pendingInput = this.inputLine;
-    var lineEnd = this._createLineNode("hard", "\n");
-    preNode.appendChild(lineEnd);
-    this.lineEnds[0] = lineEnd;
-
     this.measureWindow();
 
+};
+
+DomTerm.prototype._createBuffer = function(bufName) {
+    var bufNode = document.createElement("div");
+    bufNode.setAttribute("id", bufName);
+    bufNode.setAttribute("class", "interaction");
+    var preNode = document.createElement("pre");
+    bufNode.appendChild(preNode);
+    this.lineStarts.push(preNode);
+    var lineEnd = this._createLineNode("hard", "\n");
+    preNode.appendChild(lineEnd);
+    this.lineEnds.push(lineEnd);
+    return bufNode;
 };
 
 DomTerm.prototype.measureWindow = function()  {
@@ -1133,7 +1116,6 @@ DomTerm.prototype.measureWindow = function()  {
     this.availHeight = availHeight;
     this.availWidth = availWidth;
     this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
-    this.wrapWidth = this.numColumns;
 };
 
 DomTerm.prototype.reportEvent = function(name, data) {
@@ -1728,6 +1710,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
         if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Set (DECSET)
             switch (param) {
+            case 1:
+                // Application Cursor Keys (DECCKM).
+                this.applicationCursorKeysMode = true;
+                break;
             case 1000:
                 // Send Mouse X & Y on button press and release.
                 // This is the X11 xterm mouse protocol.   Sent by emacs.
@@ -1746,6 +1732,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.saveCursor();
                 this.setAlternateScreenBuffer(true);
                 break;
+            case 2004:
+                this.bracketedPasteMode = true;
+                break;
             }
         }
         else {
@@ -1761,6 +1750,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
         if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Reset (DECRST)
             switch (param) {
+            case 1:
+                // Normal Cursor Keys (DECCKM)
+                this.applicationCursorKeysMode = false;
+                break;
             case 47:
             case 1047:
                 // should clear first?
@@ -1772,6 +1765,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             case 1049:
                 this.setAlternateScreenBuffer(false);
                 this.restoreCursor();
+                break;
+            case 2004:
+                this.bracketedPasteMode = true;
                 break;
             }
         } else {
@@ -2032,6 +2028,10 @@ DomTerm.prototype.insertString = function(str, kind) {
             case 77 /*'M'*/: // Reverse index
                 this.insertLines(1); // FIXME
                 break;
+            //case 60 /*'<'*/: // Exit VT52 mode (Enter VT100 mode
+            //case 61 /*'='*/: // VT52 mode: Enter alternate keypad mode
+            //case 62 /*'>'*/: // VT52 mode: Enter alternate keypad mode
+            default: ;
             }
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             prevEnd = i + 1;
@@ -2316,7 +2316,6 @@ DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, ava
             homeLine = lineCount - this.numRows;
             //goalLine -= homeLine - this.homeLine;
             this.homeLine = homeLine;
-            this.cursorHome = this.lineStarts[homeLine];
         }
     } else {
         // insert soft wrap (re-use existing line, but make soft)
@@ -2454,15 +2453,13 @@ DomTerm.prototype.processEnter = function(event) {
     var text = this.handleEnter(event);
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
+    if (this.bracketedPasteMode)
+        text = "\x1B[200~" + text + "\x1B[201~";
     this.processInputCharacters(text+"\r"); // Or +"\n" FIXME
 };
 
-DomTerm.prototype.isApplicationMode = function() {
-    return true;
-};
-
 DomTerm.prototype.arrowKeySequence = function(ch) {
-    return (this.isApplicationMode() ? "\x1BO" : "\x1B[")+ch;
+    return (this.applicationCursorKeysMode ? "\x1BO" : "\x1B[")+ch;
 };
 
 DomTerm.prototype.keyDownToString = function(event) {
@@ -2473,8 +2470,8 @@ DomTerm.prototype.keyDownToString = function(event) {
     case 27: /* Esc */   return "\x1B";
     case 33 /* PageUp*/: return "\x1B[5~";
     case 34 /* PageDown*/:return"\x1B[6~";
-    case 35 /*End*/:     return "\x1B[4~";
-    case 36 /*Home*/:    return "\x1B[1~";
+    case 35 /*End*/:     return this.arrowKeySequence("F");
+    case 36 /*Home*/:    return this.arrowKeySequence("H");
     case 37 /*Left*/:  return this.arrowKeySequence("D");
     case 38 /*Up*/:    return this.arrowKeySequence("A");
     case 39 /*Right*/: return this.arrowKeySequence("C");
@@ -2525,6 +2522,8 @@ DomTerm.prototype.pasteText = function(str) {
         rng.text(str, 'end');
         rng.select();
     } else {
+        if (this.bracketedPasteMode)
+            str = "\x1B[200~" + str + "\x1B[201~";
         this.processInputCharacters(str);
     }
 };
