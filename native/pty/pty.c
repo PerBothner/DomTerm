@@ -73,7 +73,7 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
     {
       // FIXME convert args instead of using command_args
       jsize nargs = (*env)->GetArrayLength(env, args);
-      char** cargs = malloc(nargs+1);
+      char** cargs = malloc(sizeof(char*)*(nargs+1));
       int i;
       for (i = 0; i < nargs; i++)
         {
@@ -88,8 +88,7 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
       cargs[nargs] = NULL;
 
       jsize nenv = (*env)->GetArrayLength(env, moreEnv);
-      char** eargs = malloc(nenv+1);
-      for (i = 0; i < nargs; i++)
+      for (i = 0; i < nenv; i++)
         {
           jbyteArray arg =
             (jbyteArray) (*env)->GetObjectArrayElement(env, moreEnv, i);
