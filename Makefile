@@ -51,6 +51,7 @@ DOMTERM_JAR_SOURCES = \
   org/domterm/javafx/RunProcess.java \
   org/domterm/javafx/WebWriter.java \
   org/domterm/javafx/WebTerminal.java \
+  org/domterm/javafx/Main.java \
   org/domterm/Client.java \
   org/domterm/ClassClient.java \
   org/domterm/util/DomTermErrorStream.java \
@@ -86,7 +87,7 @@ domterm.jar: org/classes.stamp terminal.js tmp-repl.in
 	tar cf - org/domterm/*.class org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
 	cpp -traditional-cpp -P <tmp-repl.in >tmp-for-jar/org/domterm/repl.html
 	cd tmp-for-jar && \
-	  jar cf ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html 
+	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html 
 
 MAKEINFO = makeinfo
 srcdir = .
@@ -104,6 +105,8 @@ doc/DomTerm.xml: doc/DomTerm.texi
 	$(MAKEINFO) -I=doc --docbook doc/DomTerm.texi -o - | \
 	sed \
 	-e 's|_002d|-|g' \
+	-e 's|<emphasis></emphasis>||' \
+	-e 's|<inlinemediaobject><imageobject><imagedata fileref="\(.*\)" format="\(.*\)"></imagedata></imageobject></inlinemediaobject>|<ulink url="\1"><inlinemediaobject><imageobject><imagedata fileref="\1" format="\2"></imagedata></imageobject></inlinemediaobject></ulink>|' \
 	-e 's|<chapter label="" id="Top">|<chapter label="Top" id="Top"><?dbhtml filename="index.html"?>|' \
 	> doc/DomTerm.xml
 

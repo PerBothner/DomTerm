@@ -6,7 +6,6 @@ import javafx.application.Application;
 
 public class RunClass extends WebTerminalApp
 {
-    static Client mainClient;
     protected Client makeClient() throws java.lang.Exception {
         if (mainClient != null)
             return mainClient;

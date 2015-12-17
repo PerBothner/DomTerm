@@ -61,31 +61,37 @@ embedded in different modes and applications.
 @node Features
 @chapter Features and screenshots
 
-A @strong{full-featured terminal emulator}, like @code{xterm}.
+@c The @emph is a dummy to force the @image inside a paragraph
+@emph{}
+@image{images/domterm-2}
+@strong{full-featured terminal emulator}, like @code{xterm}.
 It supports most of the functionality of the
 pseudo-terminal-type @code{xterm-256color}, which is set by
 many GNU/Linux terminal emulators.
 Here you see the @code{mc} (Midnight Commander) file browser
 running in the stand-alone DomTerm application.
+@ifdocbook
+(Click on image to see the full-size screenshot.)
+@end ifdocbook
 
-@image{images/domterm-2}
-
+@c The @emph is a dummy to force the @image inside a paragraph
+@emph{}
+@image{images/domterm-1}
 A client @strong{can ``print'' images, graphics, and rich text}.
 Handles Unicode.
-Here you can output of HTML for images and rich text,
+Here you can see ``printing'' HTML for images and rich text,
 from the @uref{http://www.gnu.org/software/kawa/,Kawa} REPL.
 
-@image{images/domterm-1}
-
+@c The @emph is a dummy to force the @image inside a paragraph
+@emph{}
+@image{images/emacs-in-firefox-1}
 The guts of the implementation is portable JavaScript (@code{terminal.js}),
 which can be @strong{embedded} in multiple front-ends.
 The source includes a stand-alone terminal emulator,
 using the embedded JavaFX WebEngine browser.
 You can also use the included WebSockets server,
 and along with your HTML5 browser of choice.
-Here is Emacs displaying in a FireFox browser window.
-
-@image{images/emacs-in-firefox-1}
+Here is @strong{Emacs displaying in a FireFox browser window}.
 
 Applications of DomTerm include:
 @itemize

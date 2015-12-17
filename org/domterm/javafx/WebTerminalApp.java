@@ -62,9 +62,10 @@ import java.io.*;
  * FIXME - needs a menubar with Edit menu and other settings.
  */
 
-public abstract class WebTerminalApp extends Application
+public class WebTerminalApp extends Application
 {
     WebTerminal console;
+    public static boolean exitOnStop;
 
     Scene createScene() throws java.lang.Exception {
         console = new WebTerminal(makeClient());
@@ -148,7 +149,12 @@ public abstract class WebTerminalApp extends Application
         return scene;
     }
 
-    protected abstract Client makeClient() throws java.lang.Exception;
+    static Client mainClient;
+    protected Client makeClient() throws java.lang.Exception {
+        if (mainClient == null)
+            throw new RuntimeException("internal error - mainClient not set");
+        return mainClient;
+    }
 
     @Override public void start(Stage stage) throws java.lang.Exception {
         try {
@@ -165,7 +171,6 @@ public abstract class WebTerminalApp extends Application
             throw new RuntimeException(ex);
         }
     }
-    public static boolean exitOnStop;
     @Override public void stop() {
         System.err.println("Application stop called");
         if (exitOnStop)

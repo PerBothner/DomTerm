@@ -134,4 +134,6 @@ public class PTY {
     private static native void setWindowSize(int fdm, int nrows, int ncols, int pixw, int pixh);
 
     static { System.loadLibrary("pty"); }
+
+    public static void checkLoaded() { }
 }

@@ -242,3 +242,6 @@ blockquote { margin-left: 40px; margin-right: 40px }
 div[class="navcol"] div > ul > li { font-size: larger }
 
 /* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
+
+img { float: right; width: 35% }
+p { overflow:auto}
