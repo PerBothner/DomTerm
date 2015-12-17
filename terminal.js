@@ -1959,7 +1959,11 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     if (this.verbosity >= 2)
         this.log("handleOperatingSystemControl "+code+" '"+text+"'");
     if (code == 72) {
-        inputLine.insertAdjacentHTML("beforeBegin", text);
+        if (this.outputBefore != null)
+            this.outputBefore.insertAdjacentHTML("beforebegin", text);
+        else
+            this.outputContainer.insertAdjacentHTML("beforeend", text);
+        this.cursorColumn = -1;
     } else if (code == 74) {
         var sp = text.indexOf(' ');
         var key = parseInt(text.substring(0, sp), 10);
