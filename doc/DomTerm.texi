@@ -137,6 +137,8 @@ Future: Optional automatic pagination.
 
 The core of DomTerm is the JavaScript @code{terminal.js},
 but we also provides a few wrappers and applications that make use of it.
+Currently, these all use Java, but I expect non-Java wrappers
+to get written.
 
 @section Standalone terminal emulator
 
@@ -145,18 +147,58 @@ It uses PTYs so it only works on Unix-like systems.
 The prototype uses Java and the JavaFX WebView component (based on WebKit).
 It needs OpenJDK 1.8 but should otherwise not need anything else.
 
-To run the terminal emulator, first edit Makefile to set JAVA_HOME,
+To run the terminal emulator, first edit Makefile to set @code{JAVA_HOME},
 and then do:
 
 @example
 make run-pty
 @end example
 
-The code to set up the handshake between JavaScript and Java is not
-robust and sometimes fails.
+or equivalently:
+
+@example
+java -Djava.library.path=@var{libpath} -jar domterm.jar --pty
+@end example
+
+The @var{libpath} is the directory containing @code{libpty.so}.
+
+There is a bug with the initial communication - you may
+have to hit an extra Enter to get started.
 
 There is no "chrome" (menus, buttons, etc), so far.
-Right-clicking will bring up a popup menu.
+Right-clicking will bring up a popup menu
+This supports copy and paste, as well as switching the input mode
+between line, character, or auto mode.
+
+By default the command is @code{/bin/bash}.  You can override it by
+specifying a command after the @code{--pty} flag:
+
+@example
+java -Djava.library.path=@var{libpath} -jar domterm.jar --pty @var{command} @var{arg}...
+@end example
+
+@section A console for a Java Process object
+
+This is similar to the previous terminal emulator,
+but it is implemented using pipes connected to Java @code{Process} object.
+This means only line mode is supported.
+It should work on more platforms, including Windows, since it
+doesn't use a PTY.  It still uses JavaFX WebView.
+
+You can run it from @code{domterm.jar}:
+@example
+java -jar domterm.jar --process @var{command} @var{arg}...
+@end example
+
+@section Running a Java class connected to DomTerm
+
+This runs the @code{main} method of a specified Java class,
+but with the standard streams (input, output, and error)
+re-bound to a DomTerm window. (The latter still uses JavaFX WebView.)
+
+@example
+java -cp @var{my-application.jar}:domterm.jar org.domterm.javafx.RunClass @var{my.ClassName} @var{arg}...
+@end example
 
 @section Using WebSockets between a server and a browser
 

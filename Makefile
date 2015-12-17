@@ -33,7 +33,7 @@ d/domterm: d/domterm.ti
 	tic -o. $<
 
 run-pty: libpty.so d/domterm domterm.jar
-	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` org.domterm.pty.RunPty
+	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar domterm.jar --pty
 
 EXTRA_CLASSPATH =
 run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class org/domterm/util/Util.class libpty.so d/domterm domterm.jar
