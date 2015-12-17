@@ -10,7 +10,7 @@ import java.io.*;
  * is colored red.
  */
 
-public class ErrorPrintStream extends PrintStream {
+public class DomTermErrorStream extends PrintStream {
     public static final byte[] START_ERR_MARKER = {
         27 /* escape */,
         (byte) '[',
@@ -27,14 +27,14 @@ public class ErrorPrintStream extends PrintStream {
     };
     private PrintStream out;
 
-    public ErrorPrintStream(PrintStream out) {
+    public DomTermErrorStream(PrintStream out) {
         super(out, true);
         this.out = out;
     }
 
     public static void setSystemErr() {
-        if (! (System.err instanceof ErrorPrintStream))
-            System.setErr(new ErrorPrintStream(System.out));
+        if (! (System.err instanceof DomTermErrorStream))
+            System.setErr(new DomTermErrorStream(System.out));
     }
 
     @Override
