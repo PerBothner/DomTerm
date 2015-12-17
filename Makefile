@@ -90,11 +90,15 @@ domterm.jar: org/classes.stamp terminal.js tmp-repl.in
 
 MAKEINFO = makeinfo
 srcdir = .
-DOMTERM_HTMLDIR = doc/html
 XSLT = xsltproc
 DOCBOOK_XSL_DIR = /home/bothner/Software/docbook-xsl-1.78.1
-doc/DomTerm.html: doc/DomTerm.texi
-	$(MAKEINFO) -I$(srcdir) --html --no-node-files $< -o $(DOMTERM_HTMLDIR)
+doc/index.html: doc/DomTerm.texi
+	$(MAKEINFO) -I$(srcdir) --html --no-node-files $< -o doc
+
+DOC_IMAGES = \
+  doc/images/domterm-1.png \
+  doc/images/domterm-2.png \
+  doc/images/emacs-in-firefox-1.png
 
 doc/DomTerm.xml: doc/DomTerm.texi
 	$(MAKEINFO) -I=doc --docbook doc/DomTerm.texi -o - | \
@@ -123,6 +127,7 @@ web/index.html: doc/DomTerm.xml Makefile
 	  --stringparam chunk.separate.lots 1 \
 	  --stringparam chunk.tocs.and.lots 1 \
 	  doc/style/domterm.xsl doc/DomTerm.xml
+	cp $(DOC_IMAGES) web/images
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
 upload-web:

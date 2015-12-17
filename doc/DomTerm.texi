@@ -50,7 +50,7 @@ The core of the project is a JavaScript package that can be used and
 embedded in different modes and applications.
 
 @menu
-* Features:: Features and benefits
+* Features:: Features and screenshots
 * Applications::
 * To-do:: Ideas and projects for DomTerm
 * DOM structure::
@@ -59,17 +59,34 @@ embedded in different modes and applications.
 @end menu
 
 @node Features
-@chapter Features and benefits
-
-@emph{Screenshots needed!}
+@chapter Features and screenshots
 
 A @strong{full-featured terminal emulator}, like @code{xterm}.
-(Well, almost - it's still a bit rough.)
-The goal support all of the functionality of the
+It supports most of the functionality of the
 pseudo-terminal-type @code{xterm-256color}, which is set by
 many GNU/Linux terminal emulators.
+Here you see the @code{mc} (Midnight Commander) file browser
+running in the stand-alone DomTerm application.
 
-Can be @strong{embedded} in multiple front-ends.
+@image{images/domterm-2}
+
+A client @strong{can ``print'' images, graphics, and rich text}.
+Handles Unicode.
+Here you can output of HTML for images and rich text,
+from the @uref{http://www.gnu.org/software/kawa/,Kawa} REPL.
+
+@image{images/domterm-1}
+
+The guts of the implementation is portable JavaScript (@code{terminal.js}),
+which can be @strong{embedded} in multiple front-ends.
+The source includes a stand-alone terminal emulator,
+using the embedded JavaFX WebEngine browser.
+You can also use the included WebSockets server,
+and along with your HTML5 browser of choice.
+Here is Emacs displaying in a FireFox browser window.
+
+@image{images/emacs-in-firefox-1}
+
 Applications of DomTerm include:
 @itemize
 @item
@@ -81,9 +98,6 @@ A command console.
 @item
 A terminal emulator.
 @end itemize
-
-A client @strong{can ``print'' images, graphics, and rich text}.
-Handles Unicode.
 
 User @strong{preferences are controlled a CSS stylesheet},
 which can be changed by an application.

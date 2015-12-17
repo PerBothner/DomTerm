@@ -8,3 +8,12 @@ native/pty/org_domterm_pty_PTY.h
 org/classes.stamp
 tmp-for-jar
 tmp-repl.in
+doc/index.html
+doc/Applications.html
+doc/Architecture-notes.html
+doc/DOM-structure.html
+doc/Features.html
+doc/To_002ddo.html
+doc/Wire-byte-protocol.html
+doc/DomTerm.xml
+web/*.html
