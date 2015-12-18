@@ -36,8 +36,12 @@ run-pty: libpty.so d/domterm domterm.jar
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar domterm.jar --pty
 
 EXTRA_CLASSPATH =
-run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class org/domterm/util/Util.class libpty.so d/domterm domterm.jar
+old-run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class org/domterm/util/Util.class libpty.so d/domterm domterm.jar
 	$(JAVA) -cp .:$(EXTRA_CLASSPATH):$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
+
+SERVER_ARGS =
+run-server: libpty.so d/domterm domterm.jar
+	$(JAVA) -cp $(EXTRA_CLASSPATH):domterm.jar:java_websocket.jar -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
 
 run-shell: domterm.jar
 	CLASSPATH=domterm.jar $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
@@ -54,18 +58,19 @@ DOMTERM_JAR_SOURCES = \
   org/domterm/javafx/Main.java \
   org/domterm/Client.java \
   org/domterm/ClassClient.java \
+  org/domterm/ProcessClient.java \
   org/domterm/util/DomTermErrorStream.java \
   org/domterm/util/StringBufferedWriter.java \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
   org/domterm/util/Utf8WriterOutputStream.java \
-  org/domterm/ProcessClient.java \
+  org/domterm/websocket/DomServer.java \
   org/domterm/pty/PtyClient.java \
   org/domterm/pty/RunPty.java \
   org/domterm/pty/PTY.java
 
 org/classes.stamp: $(DOMTERM_JAR_SOURCES)
-	$(JAVAC_WITH_PATH) $?
+	$(JAVAC_WITH_PATH) -cp .:java_websocket.jar $?
 	touch org/classes.stamp
 
 tmp-repl.in: org/domterm/repl.html Makefile

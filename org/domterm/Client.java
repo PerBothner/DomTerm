@@ -71,6 +71,5 @@ public abstract class Client {
     public abstract void run(Writer out) throws Exception;
 
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
-        WTDebug.println("Cl.setWinSize");
     }
 }
