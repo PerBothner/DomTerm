@@ -81,6 +81,10 @@ A client @strong{can ``print'' images, graphics, and rich text}.
 Handles Unicode.
 Here you can see ``printing'' HTML for images and rich text,
 from the @uref{http://www.gnu.org/software/kawa/,Kawa} REPL.
+(The expressions starting with @code{#<} are
+@uref{http://www.gnu.org/software/kawa/XML-literals.html,XML literals},
+which evaluate to @code{Element} objects. ``Printing'' an @code{Element}
+inserts its HTML representation in the DomTerm output.)
 
 @c The @emph is a dummy to force the @image inside a paragraph
 @emph{}
@@ -161,6 +165,8 @@ java -Djava.library.path=@var{libpath} -jar domterm.jar --pty
 @end example
 
 The @var{libpath} is the directory containing @code{libpty.so}.
+It is also used to set the @code{TERMINFO} environment variable,
+hence the terminal description file should be @code{@var{libpath}/d/domterm}.
 
 There is a bug with the initial communication - you may
 have to hit an extra Enter to get started.
@@ -400,8 +406,12 @@ You do need to create @var{domterm-toplevel} - it is created and managed by
 DomTerm, based on data from the client.
 
 Currently, the @var{block-content} is a single
-@code{<div class="interaction">} wrapping all the contents,
-but more structure will be supported.
+@code{<div class="interaction">}
+with an @code{id} attribute of the form @code{@var{xxx}_main}.
+This is the Xterm ``normal screen buffer''.
+
+More structure will be supported, for example individual @code{<div>}
+to wrap each command and its output.
 
 @item @var{internal-div-elements}
 One or more invisible @code{<div>} elements used by the implementation.
@@ -444,6 +454,18 @@ at the level of rows and columns.
 For example a @code{<table>}.
 It is treated as a single empty line.
 @end table
+
+@subsubheading Alternate screen buffer
+
+Xterm supports an ``alternate screen buffer'' which is used
+by character-based programs like emacs.
+Selecting the alternate buffer creates a new @code{<div class="interaction>},
+with an @code{id} attribute of the form @code{@var{xxx}_alternate}.
+It is the sibling of the normal screen buffer
+(with @code{id} attribute of the form @code{@var{xxx}_normal}).
+This @code{<div>} contains one or more @var{logical-line}s.
+Returning to the normal screen deletes the @code{<div>} for the
+alternative screen, along with all of its contents.
 
 @node Wire byte protocol
 @chapter Wire byte protocol
