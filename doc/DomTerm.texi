@@ -211,24 +211,46 @@ java -cp @var{my-application.jar}:domterm.jar org.domterm.javafx.RunClass @var{m
 This allows you to use "any" modern browser as the client.
 This is nice for development, as you can use the browser's
 JavaScript console and debugger, DOM inspector, and so on.
-The browser talks to server using WebSockets.  The included
-server is a special-purpose server, and it uses PTYs.
+The browser talks to server using WebSockets.
 
-The server uses third-party Java libraries from the
-@uref{https://tyrus.java.net/,Tyrus project}.  These are @emph{not} covered
-by the DomTerm license.  (It might make sense to use @code{node.js}
-or @uref{http://vertx.io/,Vert.x} instead.)
+The included server uses @uref{http://java-websocket.org/,Java-WebServer},
+which is very compact and light-weight.
+The @code{java_websocket.jar} is checked in for convenience
+(though that may change).
 
-To start the server do:
-
+To run the server you can do:
 @example
-make run-server
+make run-server SERVER_ARGS=@var{server-args}
 @end example
+or equivalently:
+@example
+java -cp domterm.jar:java_websocket.jar -Djava.library.path=@var{libpath} org.domterm.websocket.DomServer @var{server-args}
+@end example
+The @var{libpath} is as above.  The optional @var{server-args} have the form:
+@example
+[--port @var{port-number}] [--pty | --process] [@var{command} @var{arg}...]
+@end example
+The @var{port-number} is the port to listen to; it defaults to 8025.
+The other flags similar to those for the standalone and console applications.
+The default is to use PTYs, if available or @code{--pty} is specified.
+The default for @var{command} is @code{/bin/bash}.
 
-then use a web brower to read @code{file:///path/to/DomTerm/repl-client.html}
+To connect to the server, 
+use a web brower to read @code{file:///path/to/DomTerm/repl-client.html}.
 
-The @code{websocketterm/ReplServer.java} uses standard JavaEE annotations,
-so it should be possibly to deploy it in an EE server like Glassfish.
+Each connection to the server creates a new process, but using the
+same @var{command} and @var{arg}s.
+(Multiple connections using @code{--process} will fail for some
+unknown reason.)
+
+(An older WebSocket server uses libraries from the
+@uref{https://tyrus.java.net/,Tyrus project}.
+These libraries are much bigger, but this implementation
+could be suitable for a JavaEE environment as it follows JSR-356.)
+
+(If using PTYs, which requires native code anyway, it may be better
+to use a server written in C or C++, such as
+@uref{https://libwebsockets.org/index.html,libwebsockets}.)
 
 @node To-do
 @chapter Ideas and projects for DomTerm
