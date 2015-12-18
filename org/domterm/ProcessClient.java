@@ -45,8 +45,8 @@ public class ProcessClient extends Client {
         perr = new InputStreamReader(process.getErrorStream());
         this.termWriter = out;
         sendInputMode(lineEditingMode);
-        Util.copyThread(pout, false, out);
-        Util.copyThread(perr, true, out);
+        Util.copyOutStreamThread(pout, out);
+        Util.copyErrStreamThread(perr, out);
     }
 
     public void processInputCharacters(String text) {
