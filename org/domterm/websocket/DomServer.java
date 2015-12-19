@@ -2,19 +2,15 @@ package org.domterm.websocket;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.*;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.lang.reflect.Method;
 
 import org.domterm.*;
 import org.domterm.util.StringBufferedWriter;
-import org.domterm.util.Util;
 import org.domterm.util.WTDebug;
 import org.domterm.pty.*;
 
 import org.java_websocket.WebSocket;
-import org.java_websocket.WebSocketImpl;
 import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;

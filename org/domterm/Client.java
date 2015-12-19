@@ -1,6 +1,5 @@
 package org.domterm;
 
-import org.domterm.util.WTDebug;
 import org.domterm.util.Util;
 import java.io.*;
 
