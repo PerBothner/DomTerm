@@ -18,8 +18,8 @@ import org.java_websocket.server.WebSocketServer;
 public class DomServer extends WebSocketServer {
     static int verbose = 0;
     Map<WebSocket,Client> clientMap
-        = new IdentityHashMap<WebSocket,Client>();
-    Set<Client> pendingClients = new HashSet<Client>();
+        = new IdentityHashMap<>();
+    Set<Client> pendingClients = new HashSet<>();
 
     // FIXME - should be per Client
     String pending = null;
@@ -30,6 +30,7 @@ public class DomServer extends WebSocketServer {
         WebSocket session;
         ReplWriter(WebSocket session) { super(true); this.session = session; }
  
+        @Override
         protected void writeRaw(String str) throws IOException {
              session.send(str);
         }
