@@ -17,7 +17,7 @@ span[std="error"] { color: red; }
   It also gives #7F7F7F for dark-gray.
  */
 /* The X: comments refers to xterm color names and their defaults */
-span.term-style[color="black"] { color: #000000); } /* X: 0=black */
+span.term-style[color="black"] { color: #000000; } /* X: 0=black */
 span.term-style[color="red"] { color: #CD0000; } /* X: 1=red3 */
 span.term-style[color="green"] { color: #00CD00; } /* X: 2=green3 */
 span.term-style[color="yellow"] { color: #CDCD00; } /* X: 3=yellow3*/
