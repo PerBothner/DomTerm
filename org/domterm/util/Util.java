@@ -12,48 +12,30 @@ public class Util {
         ESCAPE, '[', '1', '1', 'u'
     };
 
-    public static void copyErrStreamThread(final Reader fromInferior,
-                                           final Writer out) {
+    public static void copyThread(final Reader fromInferior,
+                                  boolean errStream,
+                                  final Writer out) {
         Thread th = new Thread() {
                 char[] buffer = new char[1024];
                 public void run () {
-                    //WTDebug.println("copyErrStreamThread start to:"+out.getClass().getName());
+                    //WTDebug.println("copyThread start err:"+errStream+" to:"+out.getClass().getName());
                     for (;;) {
                         try {
                             int count = fromInferior.read(buffer);
                             if (count < 0)
                                 break;
-                            //WTDebug.println("copyErrStreamThread "+count+": "+WTDebug.toQuoted(new String(buffer,0,count)));
-                            synchronized (out) {
-                                out.write(START_ERR_MARKER, 0,
-                                          START_ERR_MARKER.length);
+                            //WTDebug.println("copyThread "+count+": "+WTDebug.toQuoted(new String(buffer,0,count))+" err:"+errStream);
+                            if (errStream) {
+                                synchronized (out) {
+                                    out.write(START_ERR_MARKER, 0,
+                                              START_ERR_MARKER.length);
+                                    out.write(buffer, 0, count);
+                                    out.write(END_ERR_MARKER, 0,
+                                              END_ERR_MARKER.length);
+                                }
+                            } else {
                                 out.write(buffer, 0, count);
-                                out.write(END_ERR_MARKER, 0,
-                                          END_ERR_MARKER.length);
                             }
-                        } catch (Throwable ex) {
-                            ex.printStackTrace();
-                            System.exit(-1);
-                        }
-                    }
-                }
-            };
-        th.start();
-    }
-
-    public static void copyOutStreamThread(final Reader fromInferior,
-                                           final Writer out) {
-        Thread th = new Thread() {
-                char[] buffer = new char[1024];
-                public void run () {
-                    //WTDebug.println("copyOutStreamThread start to:"+out.getClass().getName());
-                    for (;;) {
-                        try {
-                            int count = fromInferior.read(buffer);
-                            if (count < 0)
-                                break;
-                            //WTDebug.println("copyOutStreamThread "+count+": "+WTDebug.toQuoted(new String(buffer,0,count)));
-                            out.write(buffer, 0, count);
                         } catch (Throwable ex) {
                             ex.printStackTrace();
                             System.exit(-1);
