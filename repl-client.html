@@ -1,41 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<!-- See http://architects.dzone.com/articles/sample-java-web-socket-client-->
-<title>DomTerm</title>
+<html><head><title>DomTerm</title>
 <link rel="stylesheet" href="style/domterm-core.css">
 <link rel="stylesheet" title="Default (optional) DomTerm styling" href="style/domterm-default.css">
 <script type="text/javascript" src="ResizeSensor.js"> </script>
 <script type="text/javascript" src="bililiteRange.js"> </script>
 <script type="text/javascript" src="terminal.js"> </script>
 <script type="text/javascript">
-var wt;
-var wsocket;
-
-function socketSendChars(str) {
-    wsocket.send(str);
-}
-           
-function onMessage(evt) {
-    wt.insertString(evt.data);
-}
-
 function connect() {
-    wt = new DomTerm("term1");
-    wt.processInputCharacters = socketSendChars;
-    var bodyNode = document.getElementsByTagName("div")[0];
-    wsocket = new WebSocket("ws://localhost:8025/websocket/replsrv");
-    wsocket.onmessage = onMessage;
+    var wt = new DomTerm("term1");
+    var wsocket = new WebSocket("ws://localhost:8025/websocket/replsrv");
+    wt.processInputCharacters = function(str) { wsocket.send(str); };
+    wsocket.onmessage = function(evt) {  wt.insertString(evt.data); }
+    var topNode = document.getElementById("term1");
     wsocket.onopen = function(e) {
-        socketSendChars("\x92VERSION "+wt.versionInfo+"\n");
-        wt.initializeTerminal(bodyNode);
-    };
+        wsocket.send("\x92VERSION "+wt.versionInfo+"\n");
+        wt.initializeTerminal(topNode); };
 }
-
 window.addEventListener("load", connect, false);
-
-</script>
-</head>
-<body><div class="domterm" id="term1"></div></body>
+</script></head>
+</body><div class="domterm" id="term1"></div></body>
 </html>
