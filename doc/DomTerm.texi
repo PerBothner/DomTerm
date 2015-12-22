@@ -316,7 +316,9 @@ Rather than using JavaFX WebView, some other toolkits to consider include:
 @uref{http://atom.io,Atom/Electon}
 A possible start is @uref{https://atom.io/packages/term2,term2}.
 @item
-QtWebEngine
+QtWebEngine seems promising for a general-purpose terminal emulator front-end:
+It supports WebSockets, tabs, remote debugging, is multi-platform,
+and is actively maintained.
 @item
 @uref{http://webkitgtk.org/,WebKitGtk+}
 @end itemize
@@ -419,18 +421,18 @@ has a certain well-behaved form.
 
 @table @asis
 @item @var{domtern-element} ::= @code{<div class="domterm">} @var{domterm-toplevel} @code{</div>}
-A top-level ``DomTerm window'' is @code{<div>} element
+A top-level ``DomTerm window'' is a @code{<div>} element
 whose @code{class} is @code{domterm}.
 
 @item @var{domterm-toplevel} ::= @var{internal-div-elements} @var{block-content}@sup{*}
 
-You do need to create @var{domterm-toplevel} - it is created and managed by
+You don't need to create @var{domterm-toplevel} - it is created and managed by
 DomTerm, based on data from the client.
 
 Currently, the @var{block-content} is a single
 @code{<div class="interaction">}
 with an @code{id} attribute of the form @code{@var{xxx}_main}.
-This is the Xterm ``normal screen buffer''.
+This is the xterm ``normal screen buffer''.
 
 More structure will be supported, for example individual @code{<div>}
 to wrap each command and its output.
@@ -481,7 +483,7 @@ It is treated as a single empty line.
 
 Xterm supports an ``alternate screen buffer'' which is used
 by character-based programs like emacs.
-Selecting the alternate buffer creates a new @code{<div class="interaction>},
+Switching to the alternate buffer creates a new @code{<div class="interaction>},
 with an @code{id} attribute of the form @code{@var{xxx}_alternate}.
 It is the sibling of the normal screen buffer
 (with @code{id} attribute of the form @code{@var{xxx}_normal}).
@@ -581,6 +583,9 @@ of the characters that are normally transmitted to the client.
 In auto-line mode, if the pty is in canonical mode, then @var{key}
 is returned to DomTerm (using @code{"\e]74;" @var{key} "\a"});
 otherwise @var{kchars} are sent to the pty.
+
+@item @code{"\x92" "VERSION " @var{version-info} "\n"}
+Sends @var{version-info} to the back-end.  Used during initialization.
 @end table
 
 @node Architecture notes
