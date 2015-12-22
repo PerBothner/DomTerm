@@ -1648,10 +1648,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 68 /*'D'*/:
         this.cursorLeft(this.getParameter(0, 1));
         break;
-    case 71 /*'G*/:
+    case 71 /*'G'*/:
         this.moveTo(this.getCursorLine(), this.getParameter(0, 1)-1);
         break;
-    case 72 /*'H*/:
+    case 72 /*'H'*/:
         this.moveTo(this.getParameter(0, 1)-1, this.getParameter(1, 1)-1);
         break;
     case 74 /*'J'*/:
@@ -1668,7 +1668,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 }
                 if (saveCol != 0) {
                     this.moveTo(saveLine, 0);
-                    this.raseCharactersRight(saveCol, false);
+                    this.eraseCharactersRight(saveCol, false);
                 }
             } else { // Erase all
                 this.moveTo(0, 0);
@@ -1796,6 +1796,12 @@ DomTerm.prototype.handleControlSequence = function(last) {
                     break;
                 case 22:
                     this._pushStyle("font-weight", null/*"normal"*/);
+                    break;
+                case 3:
+                    this._pushStyle("font-style", "italic");
+                    break;
+                case 23:
+                    this._pushStyle("font-style", null);
                     break;
                 case 4:
                     this._pushStyle("text-underline", "yes");
@@ -2162,7 +2168,7 @@ DomTerm.prototype.insertString = function(str, kind) {
         //this.currentCursorColumn = column;
     }
     if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
-        this.parameters[1] = this.parameters[1] + str.substring(prevEnv, i);
+        this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
     }
     if (true) { // FIXME only if "scrollWanted"
         var last = this.topNode.lastChild;
