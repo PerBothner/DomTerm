@@ -1,5 +1,9 @@
+
 JAVA_HOME = /opt/jdk1.8
-CC = gcc
+CC = @CC@
+CFLAGS = @CFLAGS@
+CPP = cpp
+SED = @SED@
 JAVA = java
 JAVAC = javac
 JAVAC_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVAC)
@@ -8,6 +12,10 @@ TYRUS_LIBS = websocket-ri-archive-1.9/lib
 TYRUS_APIS = websocket-ri-archive-1.9/api
 TYRUS_EXTS = websocket-ri-archive-1.9/ext
 JLIBS = $(TYRUS_APIS)/javax.websocket-api-1.1.jar:$(TYRUS_LIBS)/tyrus-server-1.9.jar:$(TYRUS_LIBS)/tyrus-spi-1.9.jar:$(TYRUS_LIBS)/tyrus-core-1.9.jar:$(TYRUS_LIBS)/tyrus-container-grizzly-server-1.9.jar:$(TYRUS_EXTS)/grizzly-framework-2.3.15-gfa.jar:$(TYRUS_EXTS)/grizzly-http-server-2.3.15-gfa.jar:$(TYRUS_EXTS)/grizzly-http-2.3.15-gfa.jar:$(TYRUS_LIBS)/tyrus-container-grizzly-client-1.9.jar
+
+@ENABLE_PTY_TRUE@ LIBPTY = libpty.so
+
+all: d/domterm domterm.jar $(LIBPTY)
 
 websocketterm/ReplServer.class: websocketterm/ReplServer.java domterm.jar
 	$(JAVAC) websocketterm/ReplServer.java -cp domterm.jar:$(JLIBS)
@@ -35,13 +43,13 @@ d/domterm: d/domterm.ti
 run-pty: libpty.so d/domterm domterm.jar
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar domterm.jar --pty
 
-EXTRA_CLASSPATH =
+EXTRA_CLASSPATH = @conf_classpath@
 old-run-server: websocketterm/WebSocketServer.class websocketterm/ReplServer.class org/domterm/util/Util.class libpty.so d/domterm domterm.jar
 	$(JAVA) -cp .:$(EXTRA_CLASSPATH):$(JLIBS) -Djava.library.path=`pwd` websocketterm.WebSocketServer
 
 SERVER_ARGS =
 run-server: libpty.so d/domterm domterm.jar
-	$(JAVA) -cp $(EXTRA_CLASSPATH):domterm.jar:java_websocket.jar -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
+	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
 
 run-shell: domterm.jar
 	CLASSPATH=domterm.jar $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
@@ -49,13 +57,24 @@ run-shell: domterm.jar
 clean:
 	-rm -rf org/classes.stamp tmp-for-jar org/domterm/*.class org/domterm/*.*.class websocketterm/*.class libpty.so build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h
 
+@WITH_JAVA_WEBSOCKET_TRUE@ WEBSOCKET_SOURCES = \
+@WITH_JAVA_WEBSOCKET_TRUE@   org/domterm/websocket/DomServer.java
+@ENABLE_PTY_TRUE@          PTY_SOURCES = \
+@ENABLE_PTY_TRUE@             org/domterm/pty/PtyClient.java \
+@ENABLE_PTY_TRUE@             org/domterm/pty/RunPty.java \
+@ENABLE_PTY_TRUE@             org/domterm/pty/PTY.java
+@WITH_JAVAFX_TRUE@         JAVAFX_SOURCES =\
+@WITH_JAVAFX_TRUE@            org/domterm/javafx/WebTerminalApp.java \
+@WITH_JAVAFX_TRUE@            org/domterm/javafx/RunClass.java \
+@WITH_JAVAFX_TRUE@            org/domterm/javafx/RunProcess.java \
+@WITH_JAVAFX_TRUE@            org/domterm/javafx/WebWriter.java \
+@WITH_JAVAFX_TRUE@            org/domterm/javafx/WebTerminal.java \
+@WITH_JAVAFX_TRUE@            org/domterm/javafx/Main.java
+
 DOMTERM_JAR_SOURCES = \
-  org/domterm/javafx/WebTerminalApp.java \
-  org/domterm/javafx/RunClass.java \
-  org/domterm/javafx/RunProcess.java \
-  org/domterm/javafx/WebWriter.java \
-  org/domterm/javafx/WebTerminal.java \
-  org/domterm/javafx/Main.java \
+  $(WEBSOCKET_SOURCES) \
+  $(PTY_SOURCES) \
+  $(JAVAFX_SOURCES) \
   org/domterm/Client.java \
   org/domterm/ClassClient.java \
   org/domterm/ProcessClient.java \
@@ -63,18 +82,14 @@ DOMTERM_JAR_SOURCES = \
   org/domterm/util/StringBufferedWriter.java \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
-  org/domterm/util/Utf8WriterOutputStream.java \
-  org/domterm/websocket/DomServer.java \
-  org/domterm/pty/PtyClient.java \
-  org/domterm/pty/RunPty.java \
-  org/domterm/pty/PTY.java
+  org/domterm/util/Utf8WriterOutputStream.java
 
 org/classes.stamp: $(DOMTERM_JAR_SOURCES)
-	$(JAVAC_WITH_PATH) -cp .:java_websocket.jar $?
+	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
 tmp-repl.in: org/domterm/repl.html Makefile
-	sed -e '/domterm-core/i<style>' \
+	$(SED) -e '/domterm-core/i<style>' \
 	  -e '/domterm-default/a</style>' \
 	  -e 's|<link .*/style/\(.*\).css">|#include "style/\1.css"|' \
 	  -e '/<script type="text.javascript">/d' \
@@ -90,7 +105,7 @@ domterm.jar: org/classes.stamp terminal.js tmp-repl.in
 	rm -rf tmp-for-jar
 	mkdir tmp-for-jar
 	tar cf - org/domterm/*.class org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
-	cpp -traditional-cpp -P <tmp-repl.in >tmp-for-jar/org/domterm/repl.html
+	$(CPP) -traditional-cpp -P <tmp-repl.in >tmp-for-jar/org/domterm/repl.html
 	cd tmp-for-jar && \
 	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html 
 
