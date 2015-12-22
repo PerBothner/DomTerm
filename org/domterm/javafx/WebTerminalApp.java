@@ -32,7 +32,7 @@
 
 package org.domterm.javafx;
 
-import org.domterm.Client;
+import org.domterm.Backend;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -121,7 +121,7 @@ public class WebTerminalApp extends Application
             });
 
 
-        if (console.client.lineEditingMode != 'p') {
+        if (console.backend.lineEditingMode != 'p') {
             Menu inputModeMenu = new Menu("input mode");
             ToggleGroup inputModeGroup = new ToggleGroup();
             RadioMenuItem charModeItem = new RadioMenuItem("character mode");
@@ -149,8 +149,8 @@ public class WebTerminalApp extends Application
         return scene;
     }
 
-    static Client mainClient;
-    protected Client makeClient() throws java.lang.Exception {
+    static Backend mainClient;
+    protected Backend makeClient() throws java.lang.Exception {
         if (mainClient == null)
             throw new RuntimeException("internal error - mainClient not set");
         return mainClient;

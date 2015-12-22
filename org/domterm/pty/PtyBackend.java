@@ -33,7 +33,7 @@
 
 package org.domterm.pty;
 
-import org.domterm.Client;
+import org.domterm.Backend;
 import org.domterm.util.Util;
 import org.domterm.util.WTDebug;
 import java.io.*;
@@ -43,7 +43,7 @@ import java.io.*;
  * (Only natively available on Unix-like systems.)
  */
 
-public class PtyClient extends Client {
+public class PtyBackend extends Backend {
     public Writer pin;
     public Reader pout;
     public PTY pty;
@@ -51,11 +51,11 @@ public class PtyClient extends Client {
 
     static String[] defaultArgs = { "/bin/bash" };
 
-    public PtyClient() {
+    public PtyBackend() {
         this(null);
     }
 
-    public PtyClient(String[] childArgs) {
+    public PtyBackend(String[] childArgs) {
         if (childArgs == null || childArgs.length == 0)
             childArgs = defaultArgs;
         this.childArgs = childArgs;

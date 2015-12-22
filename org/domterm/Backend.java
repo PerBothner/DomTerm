@@ -3,11 +3,11 @@ package org.domterm;
 import org.domterm.util.Util;
 import java.io.*;
 
-/** Encapsulates a client (inferior) and how we communicate with it.
+/** Encapsulates a back-end (inferior) and how we communicate with it.
  * Does not encapsulate a front-end (GUI or browser) or transport layer.
  */
 
-public abstract class Client {
+public abstract class Backend {
     public int verbosity = 0;
 
     public String versionInfo;
@@ -26,7 +26,7 @@ public abstract class Client {
                     termWriter.write("\033]74;"+str+"\007");
                 } catch (IOException ex) {
                     if (verbosity > 0)
-                        System.err.println("PtyClient caught "+ex);        
+                        System.err.println("PtyBackend caught "+ex);        
                 }
             } else {
                 int q = str.indexOf('"');
@@ -64,7 +64,7 @@ public abstract class Client {
      */
     protected Writer termWriter;
 
-    /** Initialize and run this client.
+    /** Initialize and run this back-end.
      * @param out used to initialize termWriter - see note there.
      */
     public abstract void run(Writer out) throws Exception;

@@ -62,7 +62,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
                  org.w3c.dom.events.EventListener
                       /*implements KeyListener, ChangeListener*/ 
 {
-    public Client client;
+    public Backend backend;
     public void log(String str) { WTDebug.println(str); }
     
     WebView webView;
@@ -114,8 +114,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
     Element inputLine;
 
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
-        if (client != null)
-            client.setWindowSize(nrows, ncols, pixw, pixh);
+        if (backend != null)
+            backend.setWindowSize(nrows, ncols, pixw, pixh);
     }
 
     protected void enter(KeyEvent ke) {
@@ -159,12 +159,12 @@ public class WebTerminal extends VBox // FIXME should extend Control
         //addInputLine();
     }
 
-    public void setClient(Client client) {
-        this.client = client;
+    public void setBackend(Backend backend) {
+        this.backend = backend;
     }
 
-    public WebTerminal(Client client) {
-        setClient(client);
+    public WebTerminal(Backend backend) {
+        setBackend(backend);
         webView = new WebView();
         webEngine = webView.getEngine();
         webEngine.getLoadWorker().stateProperty().addListener(new ChangeListener<State>() {
@@ -172,7 +172,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
                     if (newValue == State.SUCCEEDED) {
                         initialize();
                         if (initialOutput != null) {
-                            if (client != null && client.verbosity > 0)
+                            if (backend != null && backend.verbosity > 0)
                                 WTDebug.println("WT.changed newV:"+newValue+" initial:"+initialOutput+" jsW:"+jsWebTerminal+" outB:"+jsWebTerminal.getMember("outputBefore"));
                             jsWebTerminal.call("insertString", initialOutput);
                             initialOutput = null;
@@ -205,7 +205,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
      */
     protected String pageUrl() {
         String rname = USE_XHTML ? "repl.xml" : "repl.html";
-        java.net.URL rurl = Client.class.getResource(rname);
+        java.net.URL rurl = Backend.class.getResource(rname);
         if (rurl == null)
             throw new RuntimeException("no initial web page "+rname);
         return rurl.toString();
@@ -226,12 +226,12 @@ public class WebTerminal extends VBox // FIXME should extend Control
             Object tmp = webEngine.executeScript("makeDomTerm()");
             jsWebTerminal = (JSObject) tmp;
             jsWebTerminal.setMember("java", this);
-            jsWebTerminal.setMember("jclient", client);
+            jsWebTerminal.setMember("jclient", backend);
             Object versionInfo = jsWebTerminal.getMember("versionInfo");
             if (versionInfo != null)
-                client.addVersionInfo(versionInfo.toString());
+                backend.addVersionInfo(versionInfo.toString());
             webEngine.executeScript("initDomTerm()");
-            client.run(new WebWriter(this));
+            backend.run(new WebWriter(this));
         } catch (Exception ex) {
             ex.printStackTrace();
             throw new RuntimeException(ex);
@@ -239,8 +239,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
     }
 
     public final void processInputCharacters(String text) {
-        if (client != null)
-            client.processInputCharacters(text);
+        if (backend != null)
+            backend.processInputCharacters(text);
     }
 
     private String initialOutput;
@@ -249,7 +249,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
        Platform.runLater(new Runnable() {
                 public void run() {
                     //jsWebTerminal = (JSObject) webEngine.executeScript("webTerminal");
-                    if (client != null && client.verbosity > 0)
+                    if (backend != null && backend.verbosity > 0)
                         WTDebug.println("insertOutput/later jsW:"+jsWebTerminal+" str:"+WTDebug.toQuoted(str));
                     if (jsWebTerminal == null)
                         initialOutput = initialOutput == null ? str
