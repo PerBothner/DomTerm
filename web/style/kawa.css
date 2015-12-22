@@ -107,7 +107,7 @@ div.endmatter {
 ul.toc {
   list-style: none }
 address img {
-  float: right;			/* Portrait of the author */
+  float: right;
   margin-left: 0.5em;
   width: 4em }
 */
@@ -126,13 +126,11 @@ dl.compact dd {
 dl dt {
   padding: 0;
   margin: 0;
-  xxtop-padding: 0;
 }
 dl dd {
   padding-top: 0;
   margin-top: 0;
   margin-bottom: 1ex;
-  xxtop-padding: 0;
 }
 
 /* Give the body some margins to make room for the two menus */
@@ -150,7 +148,7 @@ div.navcol {
 
 /* Local navigation menu, along the left or right side */
 
-div.navcol hr {			// Hide the HR inside the menu
+div.navcol hr {			/* Hide the HR inside the menu */
   display: none }
 
 div.navcol li {
@@ -161,7 +159,7 @@ div.navcol li {
   border: solid;
   border-width: 1px 0px 0px 1px;
   border-color: #AAA #666 #666 #AAA;
-  list-style: none }		// Remove triangle from H2
+  list-style: none }		/* Remove triangle from H2 */
 div.navbar > ul {
   padding: 0 }
 div#Menu p.navhead {
@@ -202,7 +200,7 @@ div.navheader  {
   margin: 2ex 0;
   background-color: lightblue;
  }
-div.navheader {  border: 2px red } }
+div.navheader {  border: 2px red }
 div.navheader a { 
   display: block;
   text-decoration: underline;

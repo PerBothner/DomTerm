@@ -2,19 +2,15 @@ package org.domterm.websocket;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.*;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.lang.reflect.Method;
 
 import org.domterm.*;
 import org.domterm.util.StringBufferedWriter;
-import org.domterm.util.Util;
 import org.domterm.util.WTDebug;
 import org.domterm.pty.*;
 
 import org.java_websocket.WebSocket;
-import org.java_websocket.WebSocketImpl;
 import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
@@ -22,8 +18,8 @@ import org.java_websocket.server.WebSocketServer;
 public class DomServer extends WebSocketServer {
     static int verbose = 0;
     Map<WebSocket,Client> clientMap
-        = new IdentityHashMap<WebSocket,Client>();
-    Set<Client> pendingClients = new HashSet<Client>();
+        = new IdentityHashMap<>();
+    Set<Client> pendingClients = new HashSet<>();
 
     // FIXME - should be per Client
     String pending = null;
@@ -34,6 +30,7 @@ public class DomServer extends WebSocketServer {
         WebSocket session;
         ReplWriter(WebSocket session) { super(true); this.session = session; }
  
+        @Override
         protected void writeRaw(String str) throws IOException {
              session.send(str);
         }
