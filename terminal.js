@@ -960,9 +960,14 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.topNode.appendChild(bufNode);
             bufNode.saveHomeLine = this.homeLine;
             bufNode.saveInitial = this.initial;
+            bufNode.firstLine = nextLine;
             var newLineNode = bufNode.firstChild;
             this.homeLine = nextLine;
-            this.moveToIn(0, 0, false);
+            this.currentCursorLine = 0;
+            this.currentCursorColumn = 0;
+            this.outputContainer = newLineNode;
+            newLineNode.insertBefore(this.inputLine, newLineNode.firstChild);
+            this.outputBefore = this.inputLine;
             this.initial = bufNode;
         } else {
             var bufNode = this.initial;
@@ -2181,7 +2186,14 @@ DomTerm.prototype.insertString = function(str, kind) {
 
 DomTerm.prototype._breakAllLines = function(oldWidth) {
     var changed = false;
-    for (var line = 0;  line < this.lineStarts.length;  line++) {
+    var startLine = 0;
+    if (this.usingAlternateScreenBuffer) {
+        if (this.initial && this.initial.firstLine >= 0) // paranoia
+            startLine = this.initial.firstLine;
+        else
+            startLine = this.homeLine;
+    }
+    for (var line = startLine;  line < this.lineStarts.length;  line++) {
         // First remove any existing soft line breaks.
         var delta = 0;
         for (;;) {
@@ -2228,6 +2240,14 @@ DomTerm.prototype._breakAllLines = function(oldWidth) {
     }
     if (changed)
         this.resetCursorCache();
+    if (this.lineStarts.length - this.homeLine > this.numRows) {
+        var absLine = this.homeLine + this.currentCursorLine();
+        this.homeLine = this.lineStarts.length - this.numRows;
+        if (absLine < this.homeLine) {
+            this.resetCursorCache();
+            this.moveToIn(0, 0, false);
+        }
+    }
 }
 
 DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebreak) {
@@ -2658,6 +2678,8 @@ DomTerm.prototype.keyPressHandler = function(event) {
 // For debugging
 DomTerm.prototype._checkTree = function() {
     var node = this.initial;
+    if (node.saveInitial)
+        node = node.saveInitial;
     var dt = this;
     function error(str) {
         dt.log("ERROR: "+str);
@@ -2701,10 +2723,12 @@ DomTerm.prototype._checkTree = function() {
             }
             cur = cur.nextSibling;
         }
-   }
+    }
     if (istart != nlines || iend != nlines) {
         error("bad line table!");
     }
+    if (this.lineStarts.length - this.homeLine > this.numRows)
+        error("bad homeLine value!");
 };
 */
 
