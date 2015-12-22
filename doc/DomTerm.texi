@@ -51,6 +51,7 @@ embedded in different modes and applications.
 
 @menu
 * Features:: Features and screenshots
+* Downloading and building::
 * Applications::
 * To-do:: Ideas and projects for DomTerm
 * DOM structure::
@@ -135,6 +136,46 @@ Reports window resize to applicaton.
 Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
 
 Future: Optional automatic pagination.
+
+@node Downloading and building
+@chapter Downloading and building
+
+@section Getting the DomTerm source code
+
+The sources are in
+a @uref{https://github.com/PerBothner/DomTerm,GitHub repository}.
+To download the sources do:
+@example
+git clone https://github.com/PerBothner/DomTerm
+@end example
+
+@section Building from source
+
+Building the sample applications and libraries is a two-part process:
+
+First run the @code{configure} script:
+@example
+./configure @var{configure-options}
+@end example
+where @var{configure-options} can be:
+@table @code
+@item --with-java_websocket=/path/to/java_websocket.jar
+Build a WebSocket server, using Java WebServer.
+This allows using any modern browser as a front-end.
+@item --enable-pty
+Compile support for PTYs (pseudo-teletypes).
+This allows character mode: sending individual characters *rather than lines)
+from the front-end to the back-end.
+This is the default, except on Windows (which doesn't support PTYs).
+@item --with-javafx[=@var{library-name}]
+Use JavaFX to run standalone applications.
+The @code{@var{library-name}} if specified isis either the @code{JAVA_HOME}
+or a path to @code{jfxrt.jar}.
+@end table
+Then just:
+@example
+make
+@end example
 
 @node Applications
 @chapter Applications
