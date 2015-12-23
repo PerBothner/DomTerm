@@ -171,9 +171,39 @@ function DomTerm(name, topNode) {
     this.history = new Array();
     this.historyCursor = -1;
 
+    this._currentCommandGroup = null;
+    this._currentCommandOutput = null;
+    this._currentCommandHideable = false;
+
     if (topNode)
         this.initializeTerminal(topNode);
 }
+
+DomTerm.prototype.startCommandGroup = function() {
+    var container = this.outputContainer;
+    var containerTag = container.tagName;
+    if ((containerTag == "PRE" || containerTag == "P")
+        && container.firstChild == this.outputBefore) {
+        var commandGroup = document.createElement("div");
+        commandGroup.setAttribute("class", "command-group");
+        var oldGroup = this._currentCommandGroup;
+        if (oldGroup) {
+            oldGroup.parentNode.insertBefore(commandGroup, oldGroup.nextSibling);
+        } else {
+            container.parentNode.insertBefore(commandGroup, container);
+        }
+        commandGroup.appendChild(container);
+        // Remove old empty domterm-output container.
+        var oldOutput = this._currentCommandOutput;
+        if (oldOutput && oldOutput.firstChild == null
+            && oldOutput != this.outputContainer) { // paranoia
+            oldOutput.parentNode.removeChild(oldOutput);
+        }
+        this._currentCommandGroup = commandGroup;
+        this._currentCommandOutput = null;
+        this._currentCommandHideable = false;
+    }
+};
 
 // For debugging (may be overridden)
 DomTerm.prototype.log = function(str) {
@@ -363,7 +393,16 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                     break;
                 lastParent = p;
             }
-            lastParent.parentNode.appendChild(preNode);
+            if (lastParent.parentNode == this._currentCommandGroup) {
+                var commandOutput = document.createElement("div");
+                commandOutput.setAttribute("class", "command-output");
+                if (this._currentCommandHideable)
+                    commandOutput.setAttribute("domterm-hidden", "false");
+                this._currentCommandOutput = commandOutput;
+                this._currentCommandGroup.appendChild(commandOutput);
+                commandOutput.appendChild(preNode);
+            } else
+                lastParent.parentNode.appendChild(preNode);
             var next = this._createLineNode("hard", "\n");
             preNode.appendChild(next);
             this.lineStarts[lineCount] = preNode;
@@ -1121,6 +1160,57 @@ DomTerm.prototype.measureWindow = function()  {
     this.availHeight = availHeight;
     this.availWidth = availWidth;
     this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
+};
+
+DomTerm.prototype.showHideMarkers = [
+    // pairs of 'show'/'hide' markers, with 'show' (currently hidden) first
+    // "[show]", "[hide]",
+    "\u25B6", "\u25BC", // black right-pointing / down-pointing triangle
+    "\u25B8", "\u25BE", // black right-pointing / down-pointing small triangle
+    "\u25B7", "\u25BD", // white right-pointing / down-pointing triangle
+    "\u229E", "\u229F"  // squared plus / squared minus
+];
+
+DomTerm.prototype.showHideHandler = function(event) {
+    var target = event.target;
+    var child = target.firstChild;
+    if (target.tagName == "SPAN" && child instanceof Text) {
+        var oldText = child.data;
+        var markers = DomTerm.prototype.showHideMarkers; // FIXME
+        var i = markers.length;
+        while (i >= 0 && oldText != markers[i])
+            --i;
+        if (i < 0)
+            return;
+        var wasHidden = (i & 1) == 0;
+        var newText = markers[wasHidden ? i+1 : i-1];
+        child.data = newText;
+
+        // For all following-siblings of target,
+        // plus all following-siblings of target's parent
+        // (assuming parent is a PRE or P),
+        // flip the domterm-hidden attribute.
+        var node = target;
+        for (;;) {
+            var next = node.nextSibling;
+            if (next == null) {
+                var parent = node.parentNode;
+                if (parent == target.parentNode
+                    && (parent.tagName == "PRE" || parent.tagName == "P"))
+                    next = parent.nextSibling;
+            }
+            node = next;
+            if (node == null)
+                break;
+            if (node instanceof Element) {
+                var hidden = node.getAttribute("domterm-hidden");
+                if (hidden=="true")
+                    node.setAttribute("domterm-hidden", "false")
+                else if (hidden=="false")
+                    node.setAttribute("domterm-hidden", "true")
+            }
+        }
+    }
 };
 
 DomTerm.prototype.reportEvent = function(name, data) {
@@ -1925,11 +2015,34 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._adjustStyle();
             break;
         case 14:
+            var curOutput = this._currentCommandOutput;
+            if (curOutput
+                && curOutput.firstChild == this.outputContainer
+               && curOutput.firstChild == curOutput.lastChild) {
+                // This is a continuation prompt, for multiline input.
+                // Remove the _currentCommandOutput.
+                curOutput.parentNode.insertBefore(this.outputContainer, curOutput);
+                curOutput.parentNode.removeChild(curOutput);
+                if (this._currentCommandHideable)
+                    this.outputContainer.setAttribute("domterm-hidden", "false");
+            }
             this._pushStyle("std", "prompt");
             break;
         case 15:
             this._pushStyle("std", this.outputLFasCRLF() ? null : "input");
             this._adjustStyle();
+            break;
+        case 16:
+            this._pushStyle("std", "hider");
+            this._currentCommandHideable = true;
+            break;
+        case 17:
+            this._pushStyle("std", null);
+            this.outputContainer.addEventListener("click", this.showHideHandler, true);
+            this._adjustStyle();
+            break;
+        case 19:
+            this.startCommandGroup();
             break;
         case 20: // set input mode
             switch (this.getParameter(1, 112)) {

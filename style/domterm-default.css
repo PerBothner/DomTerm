@@ -10,6 +10,7 @@ div[class="domterm"] pre { font-family: monospace }
 span[std="input"] { font-weight: bolder; color: blue }
 span[std="prompt"] { color: green; }
 span[std="error"] { color: red; }
+span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
 
 /* http://en.wikipedia.org/wiki/ANSI_escape_code#Colors
   says xterm in July 2004 changed blue #0000CD to  #0000EE,
