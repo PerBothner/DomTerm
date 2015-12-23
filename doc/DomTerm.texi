@@ -520,6 +520,26 @@ For example a @code{<table>}.
 It is treated as a single empty line.
 @end table
 
+@anchor{command group}
+@subsubheading Command groups
+
+A @dfn{command group} is the set of input and output lines for a single
+user command.
+
+@table @asis
+@item @var{command-group} ::= @code{<div class="command-group">} @var{command-input-line}@sup{+} @var{command-output}@sup{?} @code{</div>}
+Usually there is a single @var{command-input-line},
+but there may be more than one if there are continuation lines.
+@item @var{command-input-line} ::= @code{<pre>} @code{<span std="prompt">} @var{prompt-text} @code{</span>} @code{<span std="input">} @var{input-text} @code{</span>} @code{</pre>}
+A @var{command-input-line} is @code{logical-line} which (at least normally)
+has the form of a prompt followed by the typed input command.
+@item @var{command-output} ::= @code{<div class="command-output">} @var{block-content}@sup{+} @code{</div>}
+The output from the command.
+Normally, each @var{block-content} is a @var{logical-line}.
+The @code{<div class="command-output">} element may have the
+@code{domterm-hidden} attribute if it is hideable.
+@end table
+
 @subsubheading Alternate screen buffer
 
 Xterm supports an ``alternate screen buffer'' which is used
@@ -588,6 +608,13 @@ then
   PS1="\[\e[14u\]$PS1\[\e[15u\]"
 fi
 @end example
+
+@item @code{"\e[19u"}
+
+Start a @ref{command group}.
+This command implicitly ends any existing command group.
+You can write this string before writing out
+an input prompt string.
 
 @item @code{"\e[20;97u"}
 @itemx @code{"\e[20;99u"}
