@@ -77,6 +77,14 @@ case ${with_javafx} in
     conf_classpath=${with_javafx}${CLASSPATH_SEPARATOR}$conf_classpath ;;
 esac
 
+if test -z "${JAVA_HOME}"
+then
+  javac_path=`command -v javac`
+  if test -n "${javac_path}"
+  then JAVA_HOME=`readlink -f $javac_path | sed -e 's#/bin/javac##'`
+  fi
+fi
+
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(SED)
@@ -86,6 +94,7 @@ AC_SUBST(WITH_JAVA_WEBSOCKET)
 AC_SUBST(WITH_JAVA_WEBSOCKET_TRUE)
 AC_SUBST(WITH_JAVAFX_TRUE)
 AC_SUBST(ENABLE_PTY_TRUE)
+AC_SUBST(JAVA_HOME)
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

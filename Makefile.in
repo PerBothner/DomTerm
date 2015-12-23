@@ -1,5 +1,4 @@
-
-JAVA_HOME = /opt/jdk1.8
+JAVA_HOME = @JAVA_HOME@
 CC = @CC@
 CFLAGS = @CFLAGS@
 CPP = cpp
@@ -61,8 +60,7 @@ clean:
 @WITH_JAVA_WEBSOCKET_TRUE@   org/domterm/websocket/DomServer.java
 @ENABLE_PTY_TRUE@          PTY_SOURCES = \
 @ENABLE_PTY_TRUE@             org/domterm/pty/PtyBackend.java \
-@ENABLE_PTY_TRUE@             org/domterm/pty/RunPty.java \
-@ENABLE_PTY_TRUE@             org/domterm/pty/PTY.java
+@ENABLE_PTY_TRUE@                org/domterm/pty/PTY.java
 @WITH_JAVAFX_TRUE@         JAVAFX_SOURCES =\
 @WITH_JAVAFX_TRUE@            org/domterm/javafx/WebTerminalApp.java \
 @WITH_JAVAFX_TRUE@            org/domterm/javafx/RunClass.java \
@@ -70,11 +68,14 @@ clean:
 @WITH_JAVAFX_TRUE@            org/domterm/javafx/WebWriter.java \
 @WITH_JAVAFX_TRUE@            org/domterm/javafx/WebTerminal.java \
 @WITH_JAVAFX_TRUE@            org/domterm/javafx/Main.java
+@WITH_JAVAFX_TRUE@@ENABLE_PTY_TRUE@ JAVAFX_PTY_SOURCES = \
+@WITH_JAVAFX_TRUE@@ENABLE_PTY_TRUE@    org/domterm/pty/RunPty.java
 
 DOMTERM_JAR_SOURCES = \
   $(WEBSOCKET_SOURCES) \
   $(PTY_SOURCES) \
   $(JAVAFX_SOURCES) \
+  $(JAVAFX_PTY_SOURCES) \
   org/domterm/Backend.java \
   org/domterm/ClassBackend.java \
   org/domterm/ProcessBackend.java \

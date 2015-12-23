@@ -3,6 +3,9 @@
 libpty.so
 *~
 build
+Makefile
+config.log
+config.status
 domterm.jar
 native/pty/org_domterm_pty_PTY.h
 org/classes.stamp
