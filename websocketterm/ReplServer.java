@@ -17,9 +17,9 @@ import org.domterm.pty.*;
 
 @ServerEndpoint("/replsrv")
 public class ReplServer {
-    Map<Session,Client> clientMap
-        = new IdentityHashMap<Session,Client>();
-    Set<Client> pendingClients = new HashSet<Client>();
+    Map<Session,Backend> backendMap
+        = new IdentityHashMap<Session,Backend>();
+    Set<Backend> pendingsBackends = new HashSet<Backend>();
 
     static int verbose = 0;
  
@@ -32,16 +32,16 @@ public class ReplServer {
         }
      }
 
-    static Client createClient(Session session) throws Exception {
-        Client client;
+    static Backend createBackend(Session session) throws Exception {
+        Backend backend;
         WTDebug.init();
-        client = new PtyClient();
-        //client = new ProcessClient();
-        //client = new ProcessClient(new String[] {"java", "kawa.repl", "--domterm", "--console"} );
-        //client = new ProcessClient(new String[] {"java", "-jar", "/home/bothner/Kawa/unmodified/kawa-2.1.1.jar", "--domterm", "--console"} );
-        //client = new ClassClient("kawa.repl",
+        backend = new PtyBackend();
+        //backend = new ProcessBackend();
+        //backend = new ProcessBackend(new String[] {"java", "kawa.repl", "--domterm", "--console"} );
+        //backend = new ProcessBackend(new String[] {"java", "-jar", "/home/bothner/Kawa/unmodified/kawa-2.1.1.jar", "--domterm", "--console"} );
+        //backend = new ClassBackend("kawa.repl",
         //                         new String[] { "--console" });
-        return client;
+        return backend;
     }
 
     /** for debugging */
@@ -70,7 +70,7 @@ public class ReplServer {
 
     @OnMessage
     public void onMessage(Session session, String msg) {
-        Client client = clientMap.get(session);
+        Backend backend = backendMap.get(session);
       if (verbose > 0)
           WTDebug.println("received msg ["+quoteString(msg)+"] from "+session.getId());
       if (pending != null) {
@@ -83,23 +83,22 @@ public class ReplServer {
       if (len >= 10 && msg.charAt(0) == 0x92
           && msg.substring(1, 9).equals("VERSION ")
           && (nl = msg.indexOf('\n')) > 0) {
-          client.addVersionInfo(msg.substring(9, nl));
+          backend.addVersionInfo(msg.substring(9, nl));
           nl++;
           len -= nl;
           msg = msg.substring(nl);
       }
-      if (pendingClients.remove(client)) {
-        //client.versionInfo = ...;
+      if (pendingsBackends.remove(backend)) {
           try {
-        client.versionInfo = client.versionInfo+";websocket-server";
-        client.run(new ReplWriter(session));
+        backend.versionInfo = backend.versionInfo+";websocket-server";
+        backend.run(new ReplWriter(session));
           } catch (Throwable ex) {
               ex.printStackTrace();}
       }
       for (; i < len; i++) {
           // Octal 222 is 0x92 "Private Use 2".
           if (msg.charAt(i) == '\222') {
-              client.processInputCharacters(msg.substring(0, i));
+              backend.processInputCharacters(msg.substring(0, i));
               int eol = msg.indexOf('\n', i+1);
               if (eol >= 0) {
                   int space = i+1;
@@ -108,7 +107,7 @@ public class ReplServer {
                   String cname = msg.substring(i+1, space);
                   while (space < eol && msg.charAt(space) == ' ')
                       space++;
-                  client.reportEvent(cname,
+                  backend.reportEvent(cname,
                                      msg.substring(space, eol));
                   msg = msg.substring(eol+1);
                   i = -1;
@@ -121,25 +120,25 @@ public class ReplServer {
               }
           }
       }
-      client.processInputCharacters(msg);
+      backend.processInputCharacters(msg);
  }
 
  @OnOpen
  public void open(Session session) throws Exception {
-     Client client = createClient(session);
-     clientMap.put(session, client);
-     pendingClients.add(client);
+     Backend backend = createBackend(session);
+     backendMap.put(session, backend);
+     pendingsBackends.add(backend);
  }
 
     @OnError
     public void error(Session session, Throwable t) {
-        clientMap.remove(session);
+        backendMap.remove(session);
         WTDebug.println("Error on session "+session.getId());  
     }
 
     @OnClose
     public void closedConnection(Session session) { 
-  clientMap.remove(session);
+  backendMap.remove(session);
   String msg = "session closed: "+session.getId();
   if (verbose > 0)
       new Error(msg).printStackTrace();

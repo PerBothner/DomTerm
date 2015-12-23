@@ -9,7 +9,7 @@ import java.io.*;
  * hence no Console (TTY) is available.
  */
 
-public class ProcessClient extends Client {
+public class ProcessBackend extends Backend {
     Process process;
     private Writer pin;
     Reader pout;
@@ -19,11 +19,11 @@ public class ProcessClient extends Client {
     public static String[] defaultCommandWithArgs
         = {"bash", "--noediting", "-i" };
 
-    public ProcessClient() throws java.lang.Exception {
+    public ProcessBackend() throws java.lang.Exception {
         this(defaultCommandWithArgs);
     }
 
-    public ProcessClient(String[] commandWithArgs) throws java.lang.Exception {
+    public ProcessBackend(String[] commandWithArgs) throws java.lang.Exception {
         if (commandWithArgs.length == 0)
             commandWithArgs = defaultCommandWithArgs;
         this.commandWithArgs = commandWithArgs;

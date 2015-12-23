@@ -5,23 +5,23 @@ import java.lang.reflect.Method;
 import java.io.*;
 import java.util.List;
 
-public class ClassClient extends Client {
+public class ClassBackend extends Backend {
 
     Method methodToRun;
     String[] restArgs;
     Writer pin;
 
-    public ClassClient(String className, String[] restArgs) throws Exception {
+    public ClassBackend(String className, String[] restArgs) throws Exception {
         this(getMainMethod(className), restArgs);
     }
 
-     public ClassClient(Method methodToRun, String[] restArgs) {
+     public ClassBackend(Method methodToRun, String[] restArgs) {
         this.methodToRun = methodToRun;
         this.restArgs = restArgs;
         lineEditingMode = 'l';
     }
 
-   public ClassClient(List<String> args) throws Exception {
+   public ClassBackend(List<String> args) throws Exception {
         this.methodToRun = getMainMethod(args.get(0));
         int nargs = args.size();
         this.restArgs = new String[nargs-1];

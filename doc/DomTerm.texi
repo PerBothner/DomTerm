@@ -78,7 +78,7 @@ running in the stand-alone DomTerm application.
 @c The @emph is a dummy to force the @image inside a paragraph
 @emph{}
 @image{images/domterm-1}
-A client @strong{can ``print'' images, graphics, and rich text}.
+A back-end @strong{can ``print'' images, graphics, and rich text}.
 Handles Unicode.
 Here you can see ``printing'' HTML for images and rich text,
 from the @uref{http://www.gnu.org/software/kawa/,Kawa} REPL.
@@ -113,7 +113,7 @@ A terminal emulator.
 User @strong{preferences are controlled a CSS stylesheet},
 which can be changed by an application.
 
-@strong{Uses a byte-protocol} to communicate with the client,
+@strong{Uses a byte-protocol} to communicate with the back-end,
 so can run in a browser (using web sockets);
 be embedded in an application;
 or run as a standard terminal emulator application.
@@ -121,11 +121,11 @@ or run as a standard terminal emulator application.
 Optional @strong{input editing}.  In @dfn{character mode},
 each character is sent to the application, like a traditional terminal.
 In @dfn{line mode}, the browser does the editing, and send the input line
-to the client when Enter is typed.
+to the back-end when Enter is typed.
 A history of previous lines is available, accessible
 with the Up/Down arrow keys.
 @dfn{Automatic mode} switches between character mode and line mode
-depending on whether the client is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
+depending on whether the back-end is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
 
 @strong{Smart line-wrapping}: Remembers which lines were too wide (and thus
 were wrapped).  Window size re-size will automatically re-do line-breaking.
@@ -468,7 +468,7 @@ whose @code{class} is @code{domterm}.
 @item @var{domterm-toplevel} ::= @var{internal-div-elements} @var{block-content}@sup{*}
 
 You don't need to create @var{domterm-toplevel} - it is created and managed by
-DomTerm, based on data from the client.
+DomTerm, based on data from the back-end.
 
 Currently, the @var{block-content} is a single
 @code{<div class="interaction">}
@@ -546,7 +546,7 @@ escape sequences as understoof by bash's @code{echo -e}.
 Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 @code{"\xHH"} is the 8-bit characters whose value is HH (hexadecimal).
 
-@section Special sequences sent by client and handled by DomTerm
+@section Special sequences sent by back-end and handled by DomTerm
 
 @table @asis
 @item @code{"\e]72;" @var{html-text} "\a"}
@@ -604,7 +604,7 @@ but the inferiors doesn't echo info, so we have to do it.
 This mode is useful when the input is a pipe or some other non-tty stream.
 @end table
 
-@section Special sequences sent by DomTerm to client
+@section Special sequences sent by DomTerm to back-end
 
 @table @asis
 @item @code{"\x92" @var{name} " " @var{data} "\n"}
@@ -614,13 +614,13 @@ The @var{data} can be any text not including a @code{"\n"}
 (or other control character); JSON format is used in some cases.
 
 @item @code{"\x92" "WS " @var{rows} " " @var{cols} " " @var{height} " " @var{width} "\n"}
-Report window size from DomTerm to the client.
+Report window size from DomTerm to the back-end.
 
 @item @code{"\x92" "KEY " @var{kcode} " " @var{kchars} "\n"}
-Used by auto-line mode to report a key event to client.
+Used by auto-line mode to report a key event to back-end.
 The @var{kcode} is a numeric key code,
 while @var{kchars} is as string literal (JSON-formatted)
-of the characters that are normally transmitted to the client.
+of the characters that are normally transmitted to the back-end.
 In auto-line mode, if the pty is in canonical mode, then @var{key}
 is returned to DomTerm (using @code{"\e]74;" @var{key} "\a"});
 otherwise @var{kchars} are sent to the pty.
@@ -665,7 +665,7 @@ the state of a terminal emulator / console.
 
 "Line" here refer to "visual line": A section of the DOM that should be
 treated as a line for cursor movement.  Line breaks may come from the
-client, or be inserted by the line break algorithm.
+back-end, or be inserted by the line break algorithm.
 
 The lineStarts array maps from a line number to the DOM location
 of the start of the corresponding line.

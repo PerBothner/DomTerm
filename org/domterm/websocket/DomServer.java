@@ -17,14 +17,14 @@ import org.java_websocket.server.WebSocketServer;
 
 public class DomServer extends WebSocketServer {
     static int verbose = 0;
-    Map<WebSocket,Client> clientMap
+    Map<WebSocket,Backend> backendMap
         = new IdentityHashMap<>();
-    Set<Client> pendingClients = new HashSet<>();
+    Set<Backend> pendingBackends = new HashSet<>();
 
-    // FIXME - should be per Client
+    // FIXME - should be per Backend
     String pending = null;
 
-    String[] clientArgs;
+    String[] backendArgs;
 
     static class ReplWriter extends StringBufferedWriter {
         WebSocket session;
@@ -36,15 +36,15 @@ public class DomServer extends WebSocketServer {
         }
      }
 
-    public DomServer(int port, String[] clientArgs)
+    public DomServer(int port, String[] backendArgs)
         throws UnknownHostException {
         super(new InetSocketAddress(port));
-        this.clientArgs = clientArgs;
+        this.backendArgs = backendArgs;
     }
 
-    public DomServer(InetSocketAddress address, String[] clientArgs) {
+    public DomServer(InetSocketAddress address, String[] backendArgs) {
         super(address);
-        this.clientArgs = clientArgs;
+        this.backendArgs = backendArgs;
     }
 
     public static void fatal(String message) {
@@ -52,9 +52,9 @@ public class DomServer extends WebSocketServer {
         System.exit(-1);
     }
 
-    Client createClient(WebSocket session, String[] args)
+    Backend createBackend(WebSocket session, String[] args)
         throws Exception {
-        Client client = null;
+        Backend backend = null;
         char mode = ' ';
         int i = 0;
         for (; i < args.length; i++) {
@@ -70,7 +70,7 @@ public class DomServer extends WebSocketServer {
         }
 
         WTDebug.init();
-        if (client == null) {
+        if (backend == null) {
             String[] restArgs = new String[args.length-i];
             System.arraycopy(args, i, restArgs, 0, restArgs.length);
             if (mode == 'T' || mode == ' ') {
@@ -87,22 +87,22 @@ public class DomServer extends WebSocketServer {
             }
             try {
                 if (mode == 'S')
-                    client = new ProcessClient(restArgs);
+                    backend = new ProcessBackend(restArgs);
                 else
-                    client = new PtyClient(restArgs);
+                    backend = new PtyBackend(restArgs);
              } catch (Throwable ex) {
                  fatal("caught "+ex);
              }
         }
-        return client;
+        return backend;
     }
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         try {
-            Client client = createClient(conn, clientArgs);
-            clientMap.put(conn, client);
-            pendingClients.add(client);
+            Backend backend = createBackend(conn, backendArgs);
+            backendMap.put(conn, backend);
+            pendingBackends.add(backend);
         } catch (Throwable ex) {
             WTDebug.println("onOpen caught "+ex);
             throw new RuntimeException(ex);
@@ -112,12 +112,12 @@ public class DomServer extends WebSocketServer {
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote ) {
         WTDebug.println("onClose called");
-        clientMap.remove(conn);
+        backendMap.remove(conn);
     }
 
     @Override
     public void onMessage(WebSocket conn, String msg) {
-        Client client = clientMap.get(conn);
+        Backend backend = backendMap.get(conn);
         if (verbose > 0)
             WTDebug.println("received msg ["+WTDebug.toQuoted(msg)+"] from "+conn);
       if (pending != null) {
@@ -130,22 +130,22 @@ public class DomServer extends WebSocketServer {
       if (len >= 10 && msg.charAt(0) == 0x92
           && msg.substring(1, 9).equals("VERSION ")
           && (nl = msg.indexOf('\n')) > 0) {
-          client.addVersionInfo(msg.substring(9, nl));
+          backend.addVersionInfo(msg.substring(9, nl));
           nl++;
           len -= nl;
           msg = msg.substring(nl);
       }
-      if (pendingClients.remove(client)) {
+      if (pendingBackends.remove(backend)) {
           try {
-        client.versionInfo = client.versionInfo+";Java-WebSocket-server";
-        client.run(new ReplWriter(conn));
+        backend.versionInfo = backend.versionInfo+";Java-WebSocket-server";
+        backend.run(new ReplWriter(conn));
           } catch (Throwable ex) {
               ex.printStackTrace();}
       }
       for (; i < len; i++) {
           // Octal 222 is 0x92 "Private Use 2".
           if (msg.charAt(i) == '\222') {
-              client.processInputCharacters(msg.substring(0, i));
+              backend.processInputCharacters(msg.substring(0, i));
               int eol = msg.indexOf('\n', i+1);
               if (eol >= 0) {
                   int space = i+1;
@@ -154,7 +154,7 @@ public class DomServer extends WebSocketServer {
                   String cname = msg.substring(i+1, space);
                   while (space < eol && msg.charAt(space) == ' ')
                       space++;
-                  client.reportEvent(cname,
+                  backend.reportEvent(cname,
                                      msg.substring(space, eol));
                   msg = msg.substring(eol+1);
                   i = -1;
@@ -167,7 +167,7 @@ public class DomServer extends WebSocketServer {
               }
           }
       }
-      client.processInputCharacters(msg);
+      backend.processInputCharacters(msg);
     }
 
     @Override
@@ -180,7 +180,7 @@ public class DomServer extends WebSocketServer {
     public void onError( WebSocket conn, Exception ex ) {
         WTDebug.println("onError called");
         ex.printStackTrace();
-        clientMap.remove(conn);
+        backendMap.remove(conn);
         if( conn != null ) {
             // some errors like port binding failed may not be assignable to a specific websocket
         }
@@ -205,11 +205,11 @@ public class DomServer extends WebSocketServer {
             } else
                 break;
         }
-        String[] clientArgs = new String[args.length-i];
-        System.arraycopy(args, i, clientArgs, 0, clientArgs.length);
+        String[] backendArgs = new String[args.length-i];
+        System.arraycopy(args, i, backendArgs, 0, backendArgs.length);
 
         try {
-            DomServer s = new DomServer(port, clientArgs);
+            DomServer s = new DomServer(port, backendArgs);
             s.start();
             System.out.println("DomTerm server started on port: "
                                + s.getPort());

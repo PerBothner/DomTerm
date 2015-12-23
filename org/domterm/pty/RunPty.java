@@ -43,8 +43,8 @@ public class RunPty extends WebTerminalApp
 {
     static String[] commandArgs;
 
-    protected Client makeClient() {
-        return new PtyClient(commandArgs);
+    protected Backend makeClient() {
+        return new PtyBackend(commandArgs);
     }
 
     public static void main(String[] args) throws Throwable {

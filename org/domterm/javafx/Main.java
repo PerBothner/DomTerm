@@ -17,8 +17,8 @@ public class Main {
         usage();
         System.exit(-1);
     }
-    static Client mainClient;
-    protected Client makeClient() throws java.lang.Exception {
+    static Backend mainClient;
+    protected Backend makeClient() throws java.lang.Exception {
         return mainClient;
     }
     public static void main(String[] args) {
@@ -32,14 +32,14 @@ public class Main {
                     usage("missing class name");
                 Method method = null;
                 try {
-                    method = ClassClient.getMainMethod(args[i+1]);
+                    method = ClassBackend.getMainMethod(args[i+1]);
                 } catch (Throwable ex) {
                     usage("caught "+ex);
                 }
                 System.err.println("found method "+method);
                 String[] restArgs = new String[args.length-i-2];
                 System.arraycopy(args, i+2, restArgs, 0, restArgs.length);
-                mainClient = new ClassClient(method, restArgs);
+                mainClient = new ClassBackend(method, restArgs);
                 break;
             } else if (arg.equals("--pty"))
                 mode = 'T';
@@ -67,9 +67,9 @@ public class Main {
             }
             try {
                 if (mode == 'S')
-                    mainClient = new ProcessClient(restArgs);
+                    mainClient = new ProcessBackend(restArgs);
                 else
-                    mainClient = new PtyClient(restArgs);
+                    mainClient = new PtyBackend(restArgs);
              } catch (Throwable ex) {
                  usage("caught "+ex);
              }

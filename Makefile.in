@@ -60,7 +60,7 @@ clean:
 @WITH_JAVA_WEBSOCKET_TRUE@ WEBSOCKET_SOURCES = \
 @WITH_JAVA_WEBSOCKET_TRUE@   org/domterm/websocket/DomServer.java
 @ENABLE_PTY_TRUE@          PTY_SOURCES = \
-@ENABLE_PTY_TRUE@             org/domterm/pty/PtyClient.java \
+@ENABLE_PTY_TRUE@             org/domterm/pty/PtyBackend.java \
 @ENABLE_PTY_TRUE@             org/domterm/pty/RunPty.java \
 @ENABLE_PTY_TRUE@             org/domterm/pty/PTY.java
 @WITH_JAVAFX_TRUE@         JAVAFX_SOURCES =\
@@ -75,9 +75,9 @@ DOMTERM_JAR_SOURCES = \
   $(WEBSOCKET_SOURCES) \
   $(PTY_SOURCES) \
   $(JAVAFX_SOURCES) \
-  org/domterm/Client.java \
-  org/domterm/ClassClient.java \
-  org/domterm/ProcessClient.java \
+  org/domterm/Backend.java \
+  org/domterm/ClassBackend.java \
+  org/domterm/ProcessBackend.java \
   org/domterm/util/DomTermErrorStream.java \
   org/domterm/util/StringBufferedWriter.java \
   org/domterm/util/Util.java \

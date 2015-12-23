@@ -7,9 +7,9 @@ import javafx.application.Application;
 
 public class RunProcess extends WebTerminalApp
 {
-    protected Client makeClient() throws java.lang.Exception {
+    protected Backend makeClient() throws java.lang.Exception {
         List<String> args = getParameters().getRaw();
-        return new ProcessClient(args.toArray(new String[args.size()]));
+        return new ProcessBackend(args.toArray(new String[args.size()]));
     }
 
     public static void main(String[] args) throws Throwable {
