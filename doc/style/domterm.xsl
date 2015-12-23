@@ -18,10 +18,10 @@
   </xsl:variable>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <link rel="stylesheet" title="DomTerm (navbar: fixed, left)"
-  href="{$href}style/domterm-l.css" media="screen, print, projection, tv"/>
+  href="{$href}style/domterm-l.css"  media="(min-width: 600px)"/>
 <link rel="alternate stylesheet" title="DomTerm (navbar: fixed, right)"
-  href="{$href}style/domterm-r.css" media="screen, print, projection, tv"/>
-<link rel="alternate stylesheet" title="Single column, top navigation" href="{$href}style/domterm-1col.css" type="text/css"  media="handheld, screen, print, projection, tv"/>
+  href="{$href}style/domterm-r.css" media="(min-width: 600px)"/>
+<link rel="alternate stylesheet" title="Single column, top navigation" href="{$href}style/domterm-1col.css"/>
 </xsl:template>
 
 <xsl:template name="body.attributes">
@@ -68,6 +68,7 @@
 </xsl:template>
 
 <xsl:template name="user.header.logo">
+  <div class="logo"><a href="index.html">DomTerm</a></div>
 </xsl:template>
 
 </xsl:stylesheet>
