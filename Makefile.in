@@ -152,6 +152,7 @@ web/index.html: doc/DomTerm.xml Makefile
 	  --stringparam chunk.separate.lots 1 \
 	  --stringparam chunk.tocs.and.lots 1 \
 	  doc/style/domterm.xsl doc/DomTerm.xml
+	mkdir -p web/images
 	cp $(DOC_IMAGES) web/images
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
