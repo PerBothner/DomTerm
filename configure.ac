@@ -1,6 +1,8 @@
 dnl Autoconf script for DomTerm
 AC_INIT([DomTerm],[0.2])
 
+AC_CONFIG_AUX_DIR(autotools-aux)
+AC_CANONICAL_HOST
 AC_EXEEXT
 AC_OBJEXT
 AC_PROG_CC
@@ -17,12 +19,19 @@ AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
 
 conf_classpath=
-
+echo host: $host
 pathsep="$PATH_SEPARATOR"
 case ${host} in
   *-*-mingw*|*-*-cygwin*) CLASSPATH_SEPARATOR=";" ;;
   *) CLASSPATH_SEPARATOR="$PATH_SEPARATOR"
 esac
+case ${host} in
+  *darwin*) JAVA_INCLUDE_SUBDIR=darwin;;
+  *-*-mingw*|*-*-cygwin*)  JAVA_INCLUDE_SUBDIR=win32;;
+  *linux*) JAVA_INCLUDE_SUBDIR=linux;;
+  *) ;;
+esac
+
 
 case "${enable_pty}" in
   yes)
@@ -95,6 +104,7 @@ AC_SUBST(WITH_JAVA_WEBSOCKET_TRUE)
 AC_SUBST(WITH_JAVAFX_TRUE)
 AC_SUBST(ENABLE_PTY_TRUE)
 AC_SUBST(JAVA_HOME)
+AC_SUBST(JAVA_INCLUDE_SUBDIR)
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

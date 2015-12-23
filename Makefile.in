@@ -5,6 +5,7 @@ CPP = cpp
 SED = @SED@
 JAVA = java
 JAVAC = javac
+JAVA_INCLUDE_SUBDIR = @JAVA_INCLUDE_SUBDIR@
 JAVAC_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVAC)
 JAVA_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVA)
 TYRUS_LIBS = websocket-ri-archive-1.9/lib
@@ -28,10 +29,10 @@ native/pty/org_domterm_pty_PTY.h: domterm.jar
 PTY_COMMON_PARAMS = -fno-strict-aliasing -fPIC -W -Wall  -Wno-unused -Wno-parentheses -fno-omit-frame-pointer
 
 native/pty/pty.o: native/pty/pty.c native/pty/org_domterm_pty_PTY.h
-	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -c $< -o $@
+	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) -c $< -o $@
 
 native/pty/pty_fork.o: native/pty/pty_fork.c
-	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -c $< -o $@
+	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) -c $< -o $@
 
 libpty.so: native/pty/pty.o native/pty/pty_fork.o
 	$(CC) $(PTY_COMMON_PARAMS) -shared -o $@ $^
