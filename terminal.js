@@ -829,10 +829,11 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
     }
     this.lineEnds[absLine+count] = this.lineEnds[absLine];
     for (var i = 0; i < count;  i++) {
-        // FIXME create new <pre> nodes
+        var preNode = document.createElement("pre");
         var newLine = this._createLineNode("hard", "\n");
-        this.outputContainer.insertBefore(newLine, pos);
-        this.lineEnds[absLine+i] = newLine;
+        preNode.appendChild(newLine);
+        this.outputContainer.insertBefore(preNode, pos);
+        this.lineEnds[absLine+i] = preNode;
         this.lineStarts[absLine+i+1] = newLine;
     }
     if (column != null)
@@ -907,9 +908,14 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
             }
         }
     }
-    if (start.parentNode == null) {
-        start = startPrevious ? startPrevious.nextSibling : null;
-        this.lineStarts[absLine] = start ? start : startParent.firstChild;
+    if (! this._isAnAncestor(start, this.topNode)) {
+        start = end;
+        for (;;) {
+            if (start.tagName == "PRE"|| start.tagName == "P")
+                break;
+            start = start.parentNode;
+        }
+        this.lineStarts[absLine] = start;
     }
     this.lineEnds[absLine] = end;
     var length = this.lineStarts.length;
@@ -999,7 +1005,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.topNode.appendChild(bufNode);
             bufNode.saveHomeLine = this.homeLine;
             bufNode.saveInitial = this.initial;
-            bufNode.firstLine = nextLine;
+            bufNode.saveLastLine = nextLine;
             var newLineNode = bufNode.firstChild;
             this.homeLine = nextLine;
             this.currentCursorLine = 0;
@@ -1011,8 +1017,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
         } else {
             var bufNode = this.initial;
             this.initial = bufNode.saveInitial;
-            this.lineStarts.length = this.homeLine;
-            this.lineEnds.length = this.homeLine;
+            this.lineStarts.length = bufNode.saveLastLine;
+            this.lineEnds.length = bufNode.saveLastLine;
             this.homeLine = bufNode.saveHomeLine;
             this.moveToIn(0, 0, false);
             bufNode.parentNode.removeChild(bufNode);
@@ -1476,38 +1482,17 @@ DomTerm.prototype.insertBreak = function() {
         this.currentCursorLine++;
 };
 
-/** Erase from the current position until stopNode.
- * If currently inside stopNode, erase to end of stopNode;
- * otherwise erase until start of stopNode.
- */
-DomTerm.prototype.eraseUntil = function(stopNode) {
-    this.deleteLinesIgnoreScroll(this.numRows-this.getCursorLine());
-    this._clearWrap();
-    /*
-    var current = this.outputBefore;
-    var parent = this.outputContainer;
-    if (current==this.inputLine && current != null)
-        current=current.nextSibling;
-    for (;;) {
-        if (current == stopNode)
-            break;
-        if (current == null) {
-            current = parent;
-            parent = current.parentNode;
-        } else {
-            var next = current.nextSibling;
-            parent.removeChild(current);
-            current = next;
+DomTerm.prototype.eraseBelow = function() {
+    var line = this.getCursorLine();
+    var numLines = line == 0 ? -1 : this.numRows-line;
+    if (this.usingAlternateScreenBuffer && line == 0) {
+        var scrolledLines = this.homeLine - this.initial.saveLastLine;
+        if (this.initial.saveHomeLine > 0) {
+            this.homeLine -= scrolledLines;
         }
     }
-    var line = this.homeLine + this.getCursorLine();
-    var lastEnd = this.lineEnds[line];
-    //console.log("updateLine homestart:%s curL:%s line:%s last:%s",  this.homeLine, this.getCursorLine(). line, lastEnd);
-    this.lineStarts.length = line+1;
-    this.lineEnds.length = line+1;
-    this.lineEnds[line]= lastEnd;
-    stopNode.appendChild(lastEnd);
-*/
+    this.deleteLinesIgnoreScroll(numLines);
+    this._clearWrap();
 };
 
 DomTerm.prototype._clearWrap = function() {
@@ -1751,8 +1736,8 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 74 /*'J'*/:
         param = this.getParameter(0, 0);
-        if (param == 0) // Erase below.
-            this.eraseUntil(this.topNode);
+        if (param == 0)
+            this.eraseBelow();
         else {
             var saveLine = this.getCursorLine();
             var saveCol = this.getCursorColumn();
@@ -1767,7 +1752,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 }
             } else { // Erase all
                 this.moveTo(0, 0);
-                this.eraseUntil(this.topNode);
+                this.eraseBelow();
             }
         }
         break;
@@ -2048,7 +2033,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             switch (this.getParameter(1, 112)) {
             case 97 /*'a'*/: //auto
                 this.autoEditing = true;
-                this.lineEditing = true;
+                this.lineEditing = false;
                 this.clientDoesEcho = true;
                 break;
             case 99 /*'c'*/: //char
@@ -2301,8 +2286,8 @@ DomTerm.prototype._breakAllLines = function(oldWidth) {
     var changed = false;
     var startLine = 0;
     if (this.usingAlternateScreenBuffer) {
-        if (this.initial && this.initial.firstLine >= 0) // paranoia
-            startLine = this.initial.firstLine;
+        if (this.initial && this.initial.saveLastLine >= 0) // paranoia
+            startLine = this.initial.saveLastLine;
         else
             startLine = this.homeLine;
     }
@@ -2802,6 +2787,9 @@ DomTerm.prototype._checkTree = function() {
     var istart = 0;
     var iend = 0;
     var nlines = this.lineStarts.length;
+    if (this.currentCursorLine >= 0
+        && this.homeLine + this.currentCursorLine >= nlines)
+        error("bad currentCursorLine");
     if (this.outputBefore
         && this.outputBefore.parentNode != this.outputContainer)
         error("bad outputContainer");
@@ -2822,10 +2810,12 @@ DomTerm.prototype._checkTree = function() {
             }
             if (istart < nlines && this.lineStarts[istart] == cur)
                 istart++;
+            else if (istart + 1 < nlines && this.lineStarts[istart+1] == cur)
+                error("line table out of order - missing line "+istart);
             if (iend < nlines && this.lineEnds[iend] == cur)
                 iend++;
             if (iend > istart || istart > iend+1)
-                error("LINE TABLE out of order");
+                error("line table out of order");
             parent = cur;
             cur = cur.firstChild;
         } else {
