@@ -1,7 +1,6 @@
 JAVA_HOME = @JAVA_HOME@
 CC = @CC@
 CFLAGS = @CFLAGS@
-CPP = cpp
 SED = @SED@
 JAVA = java
 JAVAC = javac
@@ -90,24 +89,27 @@ org/classes.stamp: $(DOMTERM_JAR_SOURCES)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
-tmp-repl.in: org/domterm/repl.html Makefile
-	$(SED) -e '/domterm-core/i<style>' \
-	  -e '/domterm-default/a</style>' \
-	  -e 's|<link .*/style/\(.*\).css">|#include "style/\1.css"|' \
-	  -e '/<script type="text.javascript">/d' \
-	  -e '/domterm-default/a<script type="text/javascript">' \
-	  -e 's|<script .*src=.*/\(.*\).js.*>|#include "\1.js"|' \
-	  <org/domterm/repl.html >tmp-repl.in
-
+tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html Makefile
 # JavaFX seems to have a problem loading .js files referenced from repl.html,
 # in a .jar, but inline javascript and css works.
-# So we use cpp to inline it into one by repl.html.
+# So we use use sed to inline it into one by repl.html.
 # Ugly - hopefully we can figure out what is going on.
-domterm.jar: org/classes.stamp terminal.js tmp-repl.in
-	rm -rf tmp-for-jar
-	mkdir tmp-for-jar
+	mkdir -p tmp-for-jar/org/domterm
+	$(SED) -e '/domterm-core/i<style>' \
+	  -e '/<link .*style.domterm-core.css">/rstyle/domterm-core.css' \
+	  -e '/<link .*style.domterm-default.css">/rstyle/domterm-default.css' \
+	  -e '/domterm-default/a</style>' \
+	  -e '/domterm-default/a<script type="text/javascript">' \
+	  -e '/<link .*style.*\.css">/d' \
+	  -e 's|<script type="text.javascript">||' \
+	  -e '/<script .*src=.*.ResizeSensor.js.*>/rResizeSensor.js' \
+	  -e '/<script .*src=.*.bililiteRange.js.*>/rbililiteRange.js' \
+	  -e '/<script .*src=.*.terminal.js.*>/rterminal.js' \
+	  -e 's|<script .*src=.*.*.js.*script>||' \
+	  <org/domterm/repl.html >$@
+
+domterm.jar: org/classes.stamp terminal.js tmp-for-jar/org/domterm/repl.html
 	tar cf - org/domterm/*.class org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
-	$(CPP) -traditional-cpp -P <tmp-repl.in >tmp-for-jar/org/domterm/repl.html
 	cd tmp-for-jar && \
 	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html 
 
