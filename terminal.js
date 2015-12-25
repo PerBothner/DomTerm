@@ -113,7 +113,7 @@ function DomTerm(name, topNode) {
     this.numRows = 24;
     this.numColumns = 80;
 
-    // First (top) line of scroll region, 0-origin.
+    // First (top) line of scroll region, 0-origin (relative to homeLine).
     this.scrollRegionTop = 0;
 
     // Last (bottom) line of scroll region, 1-origin.
@@ -691,6 +691,7 @@ DomTerm.prototype._clearStyle = function() {
     this._currentStyleMap.clear();
     if (std != null)
         this._currentStyleMap.set("std", std);
+    this._currentStyleSpan = null;
 };
 
 /** Adjust style at current position to match desired style.
@@ -816,37 +817,28 @@ DomTerm.prototype._adjustStyle = function() {
 DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
     var line = this.getCursorLine();
     var absLine = this.homeLine+line;
+    if (absLine > 0)
+        this._clearWrap(absLine-1);
     var column = this.getCursorColumn();
-    if (column != 0)
-        this.moveTo(line, 0);
-    var pos = this.outputBefore;
+    var oldStart = this.lineStarts[absLine];
+    var oldParent = oldStart.parentNode;
     var oldLength = this.lineStarts.length;
     this.lineStarts.length += count;
     this.lineEnds.length += count;
-    for (var i = oldLength-1-count; i > absLine+count; i--) {
+    for (var i = oldLength-1; i >= absLine; i--) {
         this.lineStarts[i+count] = this.lineStarts[i];
         this.lineEnds[i+count] = this.lineEnds[i];
     }
-    this.lineEnds[absLine+count] = this.lineEnds[absLine];
     for (var i = 0; i < count;  i++) {
         var preNode = document.createElement("pre");
         var newLine = this._createLineNode("hard", "\n");
         preNode.appendChild(newLine);
-        this.outputContainer.insertBefore(preNode, pos);
-        this.lineEnds[absLine+i] = preNode;
-        this.lineStarts[absLine+i+1] = newLine;
+        oldParent.insertBefore(preNode, oldStart);
+        this.lineStarts[absLine+i] = preNode;
+        this.lineEnds[absLine+i] = newLine;
     }
-    if (column != null)
-        this.moveTo(line, column);
-    /*
-    var text = document.createTextNode("\n".repeat(count));
-    if (this.outputBefore == this.inputLine && this.inputLine != null)
-        this.outputContainer.insertBefore(text, this.outputBefore.nextSibling);
-    else {
-        this.insertNode(text);
-        this.outputBefore = text;
-    }
-    */
+    this.resetCursorCache();
+    this.moveTo(line, column);
 };
 
 DomTerm.prototype._rootNode = function(node) {
@@ -872,11 +864,14 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
     console.log("deleteLinesIgnoreScroll %d", count);
     var line = this.getCursorLine();
     var absLine = this.homeLine+line;
+    if (absLine > 0)
+        this._clearWrap(absLine-1);
     var start = this.lineStarts[absLine];
     var startPrevious = start.previousSibling;
     var startParent = start.parentNode;
     var end;
-    if (count < 0 || absLine+count >= this.lineStarts.length) {
+    var all = count < 0 || absLine+count >= this.lineStarts.length;
+    if (all) {
         end = this.lineEnds[this.lineEnds.length-1];
         count = this.lineStarts.length - absLine;
     } else
@@ -908,22 +903,26 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
             }
         }
     }
-    if (! this._isAnAncestor(start, this.topNode)) {
-        start = end;
-        for (;;) {
-            if (start.tagName == "PRE"|| start.tagName == "P")
-                break;
-            start = start.parentNode;
+    if (all) {
+        if (! this._isAnAncestor(start, this.topNode)) {
+            start = end;
+            for (;;) {
+                if (start.tagName == "PRE"|| start.tagName == "P")
+                    break;
+                start = start.parentNode;
+            }
+            this.lineStarts[absLine] = start;
         }
-        this.lineStarts[absLine] = start;
     }
-    this.lineEnds[absLine] = end;
+    else
+        this.lineStarts[absLine] = this.lineStarts[absLine+count];
+    this.lineEnds[absLine] = all ? end : this.lineEnds[absLine+count];
     var length = this.lineStarts.length;
     for (var i = absLine+1;  i+count < length;  i++) {
         this.lineStarts[i] = this.lineStarts[i+count];
         this.lineEnds[i] = this.lineEnds[i+count];
     }
-    length -= count - 1;
+    length -= all ? count - 1 : count;
     this.lineStarts.length = length;
     this.lineEnds.length = length;
     // If inputLine was among deleted content, put it just before end.
@@ -1495,8 +1494,12 @@ DomTerm.prototype.eraseBelow = function() {
     this._clearWrap();
 };
 
-DomTerm.prototype._clearWrap = function() {
-    var absLine = this.homeLine+this.getCursorLine();
+/** clear line-wrap indicator from absLine to absLine+1.
+ *  The default for absLine is homeLine+getCursorLine().
+ */
+DomTerm.prototype._clearWrap = function(absLine) {
+    if (! absLine)
+        absLine = this.homeLine+this.getCursorLine();
     var lineEnd = this.lineEnds[absLine];
     if (lineEnd.getAttribute("line")=="soft") {
         // Try to convert soft line break to hard break, using a <div>
@@ -1976,7 +1979,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 114 /*'r'*/:
         this.scrollRegionTop = this.getParameter(0, 1) - 1;
-        this.scrollRegionBottom = this.getParameter(0, -1);
+        this.scrollRegionBottom = this.getParameter(1, -1);
         break;
     case 116 /*'t'*/: // Xterm window manipulation.
         switch (this.getParameter(0, 0)) {
@@ -2772,7 +2775,6 @@ DomTerm.prototype.keyPressHandler = function(event) {
     }
 };
 
-/*
 // For debugging
 DomTerm.prototype._checkTree = function() {
     var node = this.initial;
@@ -2833,7 +2835,6 @@ DomTerm.prototype._checkTree = function() {
     if (this.lineStarts.length - this.homeLine > this.numRows)
         error("bad homeLine value!");
 };
-*/
 
 // For debugging
 DomTerm.prototype.toQuoted = function(str) {
