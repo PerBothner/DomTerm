@@ -46,11 +46,9 @@
 #ifndef TIOCGWINSZ
 #include <sys/ioctl.h>
 #endif
-
-extern void err_sys(const char *fmt, ...);
+#include "apue.h"
 
 int log_to_stderr = 1;
-#define MAXLINE 512
 
 #ifdef __GNUC__
 #define UNUSED(VAR) __attribute__((unused)) VAR

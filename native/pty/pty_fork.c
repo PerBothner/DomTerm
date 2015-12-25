@@ -48,6 +48,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include "apue.h"
 
 #ifdef __CYGWIN__
 //added for compatibility with cygwin 1.5
@@ -60,7 +61,6 @@ int posix_openpt(int flags) {
 extern int grantpt(int);
 extern int unlockpt(int);
 extern char *ptsname(int);
-extern void err_sys(const char *fmt, ...);
 static void dup_fd(int pty_fd);
 static int ptm_open(void);
 static int pts_open(int masterfd);
