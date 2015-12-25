@@ -26,10 +26,21 @@ case ${host} in
   *) CLASSPATH_SEPARATOR="$PATH_SEPARATOR"
 esac
 case ${host} in
-  *darwin*) JAVA_INCLUDE_SUBDIR=darwin;;
-  *-*-mingw*|*-*-cygwin*)  JAVA_INCLUDE_SUBDIR=win32;;
-  *linux*) JAVA_INCLUDE_SUBDIR=linux;;
-  *) ;;
+  *darwin*)
+    JAVA_INCLUDE_SUBDIR=darwin
+    LIBEXT=.dylib
+    ;;
+  *-*-mingw*|*-*-cygwin*)
+    JAVA_INCLUDE_SUBDIR=win32
+    LIBEXT=.dll
+    ;;
+  *linux*)
+    JAVA_INCLUDE_SUBDIR=linux
+    LIBEXT=.so
+    ;;
+  *)
+    LIBEXT=.so
+    ;;
 esac
 
 
@@ -100,6 +111,7 @@ fi
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
+AC_SUBST(LIBEXT)
 AC_SUBST(SED)
 AC_SUBST(CLASSPATH_SEPARATOR)
 AC_SUBST(conf_classpath)

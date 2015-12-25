@@ -592,6 +592,7 @@ WITH_JAVA_WEBSOCKET_TRUE
 WITH_JAVA_WEBSOCKET
 conf_classpath
 CLASSPATH_SEPARATOR
+LIBEXT
 SED
 ac_ct_CXX
 CXXFLAGS
@@ -3056,10 +3057,21 @@ case ${host} in
   *) CLASSPATH_SEPARATOR="$PATH_SEPARATOR"
 esac
 case ${host} in
-  *darwin*) JAVA_INCLUDE_SUBDIR=darwin;;
-  *-*-mingw*|*-*-cygwin*)  JAVA_INCLUDE_SUBDIR=win32;;
-  *linux*) JAVA_INCLUDE_SUBDIR=linux;;
-  *) ;;
+  *darwin*)
+    JAVA_INCLUDE_SUBDIR=darwin
+    LIBEXT=.dylib
+    ;;
+  *-*-mingw*|*-*-cygwin*)
+    JAVA_INCLUDE_SUBDIR=win32
+    LIBEXT=.dll
+    ;;
+  *linux*)
+    JAVA_INCLUDE_SUBDIR=linux
+    LIBEXT=.so
+    ;;
+  *)
+    LIBEXT=.so
+    ;;
 esac
 
 
@@ -3127,6 +3139,7 @@ then
     fi
   fi
 fi
+
 
 
 
