@@ -217,17 +217,18 @@ DomTerm.prototype.log = function(str) {
 
 // States of escape sequences handler state machine.
 DomTerm.INITIAL_STATE = 0;
+/** We have seen ESC. */
 DomTerm.SEEN_ESC_STATE = 1;
 /** We have seen ESC '['. */
 DomTerm.SEEN_ESC_LBRACKET_STATE = 2;
 /** We have seen ESC '[' '?'. */
 DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
+/** We have seen ESC '[' '>'. */
+DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE = 4;
 /** We have seen ESC ']'. */
-DomTerm.SEEN_ESC_RBRACKET_STATE = 4;
+DomTerm.SEEN_ESC_RBRACKET_STATE = 5;
 /** We have seen ESC ']' numeric-parameter ';'. */
-DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 5;
-
-// FIXME StringBuilder curTextParameter;
+DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 6;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -1787,6 +1788,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this._clearWrap();
         break;
     case 83 /*'S'*/:
+        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            // Sixel/ReGIS graphics - not implemented
+            this.processResponseCharacters("\x1B[?0;3;0S");
+            break;
+        }
         this.scrollForward(this.getParameter(0, 1));
         break;
     case 84 /*'T'*/:
@@ -1794,6 +1800,15 @@ DomTerm.prototype.handleControlSequence = function(last) {
         if (curNumParameter >= 5)
             ; // FIXME Initiate mouse tracking.
         this.scrollReverse(curNumParameter);
+        break;
+    case 99 /*'c'*/:
+        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
+            // Send Device Attributes (Secondary DA).
+            this.processResponseCharacters("\x1B[>0;0;0c");
+        } else {
+            // Send Device Attributes (Primary DA)
+            this.processResponseCharacters("\x1B[?1;0c");
+        }
         break;
     case 100 /*'d'*/: // Line Position Absolute
         this.moveTo(this.getParameter(0, 1)-1, this.getCursorColumn());
@@ -1866,7 +1881,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         } else {
             switch (param) {
             case 4:
-                insertMode = false;
+                this.insertMode = false;
                 break;
             }
         }
@@ -2167,6 +2182,7 @@ DomTerm.prototype.insertString = function(str, kind) {
             break;
         case DomTerm.SEEN_ESC_LBRACKET_STATE:
         case DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE:
+        case DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE:
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
                 var cur = this.parameters[plen-1];
@@ -2175,7 +2191,10 @@ DomTerm.prototype.insertString = function(str, kind) {
             }
             else if (ch == 59 /*';'*/) {
                 this.parameters.push(null);
-            } else if (ch == 63 /*'?'*/)
+            }
+            else if (ch == 62 /*'>'*/)
+                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE;
+            else if (ch == 63 /*'?'*/)
                 this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE;
             else {
                 this.handleControlSequence(ch);
