@@ -1,6 +1,7 @@
-\input texinfo.tex      @c -*-texinfo-*-
+\input texinfo.tex      @c -*-texinfo -*-
 @c %**start of header
 @setfilename domterm.info
+@documentencoding UTF-8
 @settitle DomTerm - a terminal emulator and console using DOM and JavaScript
 
 @titlepage
@@ -540,6 +541,65 @@ The @code{<div class="command-output">} element may have the
 @code{domterm-hidden} attribute if it is hideable.
 @end table
 
+@anchor{Hide/show buttons}
+@subsubheading Hide/show buttons
+
+A hide/show button is a clickable toggle ``button'' that controls
+whether certain ``associated output'' is shown or hidden.
+For example the ``associated output'' of a shell command could be the
+set of output lines from the command.  Initially, the output is in
+the shown state, and the button displays a ``hide'' icon.
+Clicking the button will hide output lines, as well as changing the
+button to display a ``show'' icon.  Clicking the button again
+changes the icon to the ``hide'' icon and unhides the output lines.
+
+@table @asis
+@item @code{<span std="hider"} [@code{domterm-hiding="true"} or @code{"false"}]@code{>} @var{hide-icon} @code{</span>}
+This is a hide/show button.  The @var{hide-icon} is either empty or one of
+the strings with odd-numbered index in DomTerm's
+@code{showHideMarkers} property.
+The value of the @code{showHideMarkers} property is an array of strings,
+where the even-numbers elements are ``show'' icons, and
+the following odd-numbered elements are the corresponding ``hide'' icons.
+It is suggested (but not required) that these icons be single
+graphic characters.
+Good choices are @code{"\u25B6"} (@code{@U{25B6}} ``black right-pointing triangle'')
+for ``show'', and
+@code{"\u25BC"} (@code{@U{25BC}} ``black down-pointing triangle'') for ``hide''.
+
+The attribute @code{domterm-hiding} must be @code{"true"}
+or @code{"false"}; if missing it defaults to @code{"false"}.
+Its value is flipped on each click,
+
+If you are unsatisfied with the existing icon choices you can
+either set @code{showHideMarkers} to other strings,
+or you can use CSS to change the look of the icons.
+For example to use @code{[-]} and @code{[+]} use these CSS rules:
+@example
+span[std="hider"][domterm-hiding="true"]:after @{ content: "[+]" @}
+span[std="hider"]:after @{ content: "[-]" @}
+@end example
+In this case, you probably want the @var{hide-icon} text in
+the @code{<span>} to be empty.
+@end table
+
+The ``associated output'' for a hide/show button
+is the set of sibling elements following the button,
+as well as sibling elemets of the button's parent
+(assuming that parent is a @code{<pre>} or @code{<p>} element).
+Only elements that have the @code{domterm-hidden} attribute are affected.
+Hiding is done by changing the value the @code{domterm-hidden} from
+@code{"false"} to @code{"true"}; un-hiding changes it back to @code{"false"}.
+This is using a CSS style rule that sets the @code{display} property
+of an element to @code{none} when @code{domerm-hidden} is @code{true}
+
+A future extension would allow @emph{lazy} associated output:
+The initial state is hidden, and the back-end does not provide
+the output until it is requested, by clicking the hide/show button.
+Lazy output is useful for displaying and inspecting large
+(or even infinite) data structures, such as as a directory hierarchy
+or a complex object graph.
+
 @subsubheading Alternate screen buffer
 
 Xterm supports an ``alternate screen buffer'' which is used
@@ -599,35 +659,49 @@ This also implicitly ends a prompt.
 The input line is implicitly terminated by a @code{'\n'}
 (carriage return).
 
-This works fairly well with GNU readline. For example:
-You can place the following in your @code{~/.bashrc}
-to cause @code{bash} to emit these escape sequences:
-@example
-if [ "$TERM" = "domterm" ]
-then
-  PS1="\[\e[14u\]$PS1\[\e[15u\]"
-fi
-@end example
+@item @code{"\e[16u"}
+@itemx @code{"\e[17u"}
+
+Delimit a @ref{Hide/show buttons,hide/show "button"}, with @code{"\e[16u"} before
+and @code{"\e[17u"} after.
 
 @item @code{"\e[19u"}
 
 Start a @ref{command group}.
 This command implicitly ends any existing command group.
-You can write this string before writing out
+You can write this string before writing
 an input prompt string.
+@end table
 
+These escape sequences work pretty well in prompt strings,
+for example for GNU readline or a shell's @code{PS1} variable.
+You can place the following in your @code{~/.bashrc}
+to cause @code{bash} to emit these escape sequences:
+@example
+PS1='$ '   # or whatever you like
+if [ -n "$DOMTERM" ]
+then
+  PS1='\[\e[19u\e[16u\]▼\[\e[17u\e[14u\]'$PS1'\[\e[15u\]'
+fi
+@end example
+(The @code{"\["} and @code{"\]"} are bash syntax,
+and are equivalent to readline's @code{"\001"} and @code{"\002"}.
+They are used to indicate escape sequences that don't move the cursor,
+which is needed for readline to calculate the column position.)
+
+@table @asis
 @item @code{"\e[20;97u"}
 @itemx @code{"\e[20;99u"}
 @itemx @code{"\e[20;108u"}
 @itemx @code{"\e[20;112u"}
-Set input editig mode.
+Set input editing mode.
 The value 99 (@code{'c'}) sets character mode;
 the value 108 (@code{'l'}) sets line-editing mode.
 The value 97 (@code{'a'}) set automatic mode,
 which switches between character mode and line-editing mode
 based on the mode of the inferior process (when using a PTY).
 The value 112 (@code{'p'} for "pipe") is like line-editing mode,
-but the inferiors doesn't echo info, so we have to do it.
+but the inferiors doesn't echo the input, so we have to do it.
 This mode is useful when the input is a pipe or some other non-tty stream.
 @end table
 

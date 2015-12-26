@@ -177,6 +177,9 @@ function DomTerm(name, topNode) {
 
     if (topNode)
         this.initializeTerminal(topNode);
+    var dt = this;
+    this._showHideEventHandler =
+        function(evt) { dt._showHideHandler(evt); };
 }
 
 DomTerm.prototype.startCommandGroup = function() {
@@ -1176,20 +1179,27 @@ DomTerm.prototype.showHideMarkers = [
     "\u229E", "\u229F"  // squared plus / squared minus
 ];
 
-DomTerm.prototype.showHideHandler = function(event) {
+DomTerm.prototype._showHideHandler = function(event) {
     var target = event.target;
     var child = target.firstChild;
-    if (target.tagName == "SPAN" && child instanceof Text) {
-        var oldText = child.data;
-        var markers = DomTerm.prototype.showHideMarkers; // FIXME
+    if (target.tagName == "SPAN"
+        && (child instanceof Text | child == null)) {
+        var oldText = child == null ? "" : child.data;
+        var markers = this.showHideMarkers;
         var i = markers.length;
         while (i >= 0 && oldText != markers[i])
             --i;
-        if (i < 0)
-            return;
-        var wasHidden = (i & 1) == 0;
-        var newText = markers[wasHidden ? i+1 : i-1];
-        child.data = newText;
+        var wasHidden;
+        var oldHidingValue = target.getAttribute("domterm-hiding");
+        if (oldHidingValue)
+            wasHidden = oldHidingValue == "true";
+        else if (i < 0)
+            wasHidden = false;
+        else
+            wasHidden = (i & 1) == 0;
+        if (child && i >= 0)
+            child.data = markers[wasHidden ? i+1 : i-1];
+        target.setAttribute("domterm-hiding", wasHidden ? "false" : "true");
 
         // For all following-siblings of target,
         // plus all following-siblings of target's parent
@@ -2022,11 +2032,14 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 16:
             this._pushStyle("std", "hider");
+            this._adjustStyle(); // Force - even if empty
             this._currentCommandHideable = true;
             break;
         case 17:
             this._pushStyle("std", null);
-            this.outputContainer.addEventListener("click", this.showHideHandler, true);
+            this.outputContainer.addEventListener("click",
+                                                  this._showHideEventHandler,
+                                                  true);
             this._adjustStyle();
             break;
         case 19:

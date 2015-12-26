@@ -13,5 +13,4 @@ input[std="input"] {
   border: 0px; margin: 0px; padding: 0px; right: 0px;
   width: auto; left: auto;
 }
-span[domterm-hidden="true"], div[domterm-hidden="true"],
-  pre[domterm-hidden="true"], pre[domterm-hidden="true"] { display: none }
+*[domterm-hidden="true"] { display: none }
