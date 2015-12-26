@@ -136,6 +136,8 @@ Reports window resize to applicaton.
 
 Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
 
+You can ``print'' @ref{Hide/show buttons,hide/show buttons}.
+
 Future: Optional automatic pagination.
 
 @node Downloading and building
