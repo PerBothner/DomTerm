@@ -190,6 +190,11 @@ DomTerm.prototype.startCommandGroup = function() {
         var commandGroup = document.createElement("div");
         commandGroup.setAttribute("class", "command-group");
         var oldGroup = this._currentCommandGroup;
+        var oldOutput = this._currentCommandOutput;
+        if (oldGroup && ! this._isAnAncestor(container, oldGroup)) {
+            oldGroup = null;
+            oldOutput = null;
+        }
         if (oldGroup) {
             oldGroup.parentNode.insertBefore(commandGroup, oldGroup.nextSibling);
         } else {
@@ -197,7 +202,6 @@ DomTerm.prototype.startCommandGroup = function() {
         }
         commandGroup.appendChild(container);
         // Remove old empty domterm-output container.
-        var oldOutput = this._currentCommandOutput;
         if (oldOutput && oldOutput.firstChild == null
             && oldOutput != this.outputContainer) { // paranoia
             oldOutput.parentNode.removeChild(oldOutput);
@@ -377,6 +381,8 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         var homeLine = this.homeLine;
         var lineCount = this.lineStarts.length;
         var absLine = homeLine+goalLine;
+        // FIXME this doesn't handle _currentCommandGroup != null
+        // and absLine < lineCount
         while (absLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
@@ -833,16 +839,20 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count) {
         this.lineStarts[i+count] = this.lineStarts[i];
         this.lineEnds[i+count] = this.lineEnds[i];
     }
-    for (var i = 0; i < count;  i++) {
+    this._addBlankLines(count, absLine, oldParent, oldStart);
+    this.resetCursorCache();
+    this.moveTo(line, column);
+};
+
+DomTerm.prototype._addBlankLines = function(count, absLine, parent, oldStart) {
+     for (var i = 0; i < count;  i++) {
         var preNode = document.createElement("pre");
         var newLine = this._createLineNode("hard", "\n");
         preNode.appendChild(newLine);
-        oldParent.insertBefore(preNode, oldStart);
+        parent.insertBefore(preNode, oldStart);
         this.lineStarts[absLine+i] = preNode;
         this.lineEnds[absLine+i] = newLine;
     }
-    this.resetCursorCache();
-    this.moveTo(line, column);
 };
 
 DomTerm.prototype._rootNode = function(node) {
@@ -890,9 +900,11 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
             parent = cur;
             cur = cur.firstChild;
         } else if (cur == null) {
-            cur = parent.nextSibling;
-            if (! cur)
+            while (parent != null && parent.nextSibling == null)
+                parent = parent.parentNode;
+            if (! parent)
                 break;
+            cur = parent.nextSibling;
             parent = cur.parentNode;
         } else {
             var next = cur.nextSibling;
@@ -1136,12 +1148,16 @@ DomTerm.prototype._createBuffer = function(bufName) {
     var bufNode = document.createElement("div");
     bufNode.setAttribute("id", bufName);
     bufNode.setAttribute("class", "interaction");
-    var preNode = document.createElement("pre");
-    bufNode.appendChild(preNode);
-    this.lineStarts.push(preNode);
-    var lineEnd = this._createLineNode("hard", "\n");
-    preNode.appendChild(lineEnd);
-    this.lineEnds.push(lineEnd);
+    if (true)
+        this._addBlankLines(1, this.lineEnds.length, bufNode, null);
+    else {
+        var preNode = document.createElement("pre");
+        var lineEnd = this._createLineNode("hard", "\n");
+        preNode.appendChild(lineEnd);
+        bufNode.appendChild(preNode);
+        this.lineStarts.push(preNode);
+        this.lineEnds.push(lineEnd);
+    }
     return bufNode;
 };
 
@@ -1302,6 +1318,8 @@ DomTerm.prototype.updateCursorCache = function() {
     var col = 0;
     while (cur != goal) {
         if (cur == null) {
+            while (parent != null && parent.nextSibling == null)
+                parent = parent.parentNode;
             cur = parent.nextSibling;
             parent = parent.parentNode;
             if (cur == null || parent == null) // Shouldn't happen
@@ -1502,6 +1520,16 @@ DomTerm.prototype.eraseBelow = function() {
         }
     }
     this.deleteLinesIgnoreScroll(numLines);
+    // Here we delete the existing lines and then immediately put them back.
+    // The latter is desirable so scroll acts as expected - otherwise
+    // it is difficult to force the home line to the top of the window.
+    // Rather than delete+insert it might be more efficient to call
+    // eraseLineRight for each line, but that does not remove old
+    // command-groups and other <div> elements.
+    var linesNeeded = this.numRows-line-1;
+    if (linesNeeded > 0)
+        this._addBlankLines(linesNeeded, this.homeLine+line+1,
+                            this.initial, null);
     this._clearWrap();
 };
 
@@ -2374,7 +2402,7 @@ DomTerm.prototype._breakAllLines = function(oldWidth) {
     if (changed)
         this.resetCursorCache();
     if (this.lineStarts.length - this.homeLine > this.numRows) {
-        var absLine = this.homeLine + this.currentCursorLine();
+        var absLine = this.homeLine + this.getCursorLine();
         this.homeLine = this.lineStarts.length - this.numRows;
         if (absLine < this.homeLine) {
             this.resetCursorCache();
