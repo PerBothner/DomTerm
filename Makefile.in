@@ -109,11 +109,13 @@ doc/index.html: doc/DomTerm.texi
 DOC_IMAGES = \
   doc/images/domterm-1.png \
   doc/images/domterm-2.png \
+  doc/images/domterm-sh-svg.png \
+  doc/images/domterm-polygon-1.png \
   doc/images/emacs-in-firefox-1.png
 
 doc/DomTerm.xml: doc/DomTerm.texi
 	$(MAKEINFO) -I=doc --docbook doc/DomTerm.texi -o - | \
-	sed \
+	$(SED) \
 	-e 's|_002d|-|g' \
 	-e 's|<emphasis></emphasis>||' \
 	-e 's|<inlinemediaobject><imageobject><imagedata fileref="\(.*\)" format="\(.*\)"></imagedata></imageobject></inlinemediaobject>|<ulink url="\1"><inlinemediaobject><imageobject><imagedata fileref="\1" format="\2"></imagedata></imageobject></inlinemediaobject></ulink>|' \
@@ -140,7 +142,9 @@ web/index.html: doc/DomTerm.xml Makefile
 	  --stringparam chunk.separate.lots 1 \
 	  --stringparam chunk.tocs.and.lots 1 \
 	  doc/style/domterm.xsl doc/DomTerm.xml
-	mkdir -p web/images
+	$(SED) -s 's|<a name=".*"></a>Why|Why|' <web/index.html >web/tmp-index.html
+	mv web/tmp-index.html web/index.html
+	patch --no-backup-if-mismatch -p0 <doc/webdoc.patch
 	cp $(DOC_IMAGES) web/images
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org

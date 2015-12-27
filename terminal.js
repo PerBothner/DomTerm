@@ -1167,7 +1167,8 @@ DomTerm.prototype.measureWindow = function()  {
     var charWidth = ruler.offsetWidth/26.0;
     var charHeight = ruler.parentNode.offsetHeight;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
-    this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+charWidth+" chH:"+charHeight+" ht:"+availHeight);
+    if (this.verbosity >= 2)
+        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+charWidth+" chH:"+charHeight+" ht:"+availHeight);
     // We calculate rows from initial.clientWidth because we don't
     // want to include the scroll-bar.  On the other hand, for vertical
     // height we have to look at the parent of the topNode because
@@ -1184,7 +1185,8 @@ DomTerm.prototype.measureWindow = function()  {
     this.numColumns = numColumns;
     this.availHeight = availHeight;
     this.availWidth = availWidth;
-    this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
+    if (this.verbosity >= 2)
+        this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
 };
 
 DomTerm.prototype.showHideMarkers = [

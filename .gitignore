@@ -20,4 +20,5 @@ doc/To_002ddo.html
 doc/Wire-byte-protocol.html
 doc/DomTerm.xml
 web/*.html
+web/images/*.png
 autom4te.cache/*

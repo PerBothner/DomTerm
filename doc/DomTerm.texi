@@ -12,7 +12,9 @@
 @top DomTerm
 
 DomTerm is a combined terminal emulator and REPL console using web
-technlogies - i.e. JavaScript and DOM: Users can type commands which
+technologies - i.e. JavaScript
+and @uref{https://en.wikipedia.org/wiki/Document_Object_Model,DOM}:
+Users can type commands which
 gets sent to an application, which evaluates the command, and displays
 the results, typically in some kind of type-script format.
 
@@ -25,6 +27,7 @@ was based on similar concepts, but was mostly written in Java using
 
 @subheading Why another terminal emulator
 
+@emph{}@image{images/domterm-1}
 The goal of this project is to combine two related but
 separate tools: a terminal emulator, and a rich-text console,
 and do it properly.
@@ -35,9 +38,10 @@ and don't integrate rich text (images, math, variable-width text,
 variable-length lines, interaction) well.
 
 There are also various tools designed for REPL-style interaction,
-chat clients, etc. @uref{http://ipython.org/,IPython} is a popular example.
-However, they don't work as terminal emulators, or if they do, they
-do it by switching modes.
+chat clients, etc. Examples include @uref{http://ipython.org/,IPython}
+or the the JavaScript console of a web browser.
+However, they don't work as terminal emulators, or at best have
+limited functonality or require switching modes.
 
 For rich text applications it seems obvious to use web technologies:
 DOM and JavaScript.
@@ -66,29 +70,32 @@ embedded in different modes and applications.
 @c The @emph is a dummy to force the @image inside a paragraph
 @emph{}
 @image{images/domterm-2}
-@strong{full-featured terminal emulator}, like @code{xterm}.
-It supports most of the functionality of the
-pseudo-terminal-type @code{xterm-256color}, which is set by
-many GNU/Linux terminal emulators.
+A @strong{full-featured terminal emulator}, like @code{xterm}.
+It is mostly compatible with setting @code{TERM=xterm-256color},
+as many terminal emulators do.
 Here you see the @code{mc} (Midnight Commander) file browser
 running in the stand-alone DomTerm application.
 @ifdocbook
 (Click on image to see the full-size screenshot.)
 @end ifdocbook
+Emacs (shown later) and GNU readline also work well.
 
-@c The @emph is a dummy to force the @image inside a paragraph
-@emph{}
-@image{images/domterm-1}
+@emph{}@image{images/domterm-polygon-1}
 A back-end @strong{can ``print'' images, graphics, and rich text}.
-Handles Unicode.
-Here you can see ``printing'' HTML for images and rich text,
+Here you can see evaluating and ``printing''
+@code{Paintable} objects, which are graphical objects such as
+filled polygons.
 from the @uref{http://www.gnu.org/software/kawa/,Kawa} REPL.
+
+The front page screenshot shows ``printing'' HTML for images and rich text.
 (The expressions starting with @code{#<} are
 @uref{http://www.gnu.org/software/kawa/XML-literals.html,XML literals},
 which evaluate to @code{Element} objects. ``Printing'' an @code{Element}
 inserts its HTML representation in the DomTerm output.)
 
-@c The @emph is a dummy to force the @image inside a paragraph
+The image later (with the yellow circle) shows printing
+@uref{https://en.wikipedia.org/wiki/Scalable_Vector_Graphics,SVG}.
+
 @emph{}
 @image{images/emacs-in-firefox-1}
 The guts of the implementation is portable JavaScript (@code{terminal.js}),
@@ -128,15 +135,23 @@ with the Up/Down arrow keys.
 @dfn{Automatic mode} switches between character mode and line mode
 depending on whether the back-end is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
 
+@emph{}@image{images/domterm-sh-svg}
 @strong{Smart line-wrapping}: Remembers which lines were too wide (and thus
-were wrapped).  Window size re-size will automatically re-do line-breaking.
+were wrapped).
+The default style add markers to show when wrapping occurred,
+as seen in the nearby screenshot.
+Window size re-size will automatically re-do line-breaking.
 Copying the selection as text will only include hard newlines.
 Reports window resize to applicaton.
 (Future: structure-based line-breaking aka pretty-printing.)
 
-Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
+You can ``print'' @ref{Hide/show buttons,hide/show buttons},
+using certain escape sequences.
+The nearby screenshot shows the output of @code{ls -l} being hidden.
 
-You can ``print'' @ref{Hide/show buttons,hide/show buttons}.
+Handles Unicode.
+
+Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
 
 Future: Optional automatic pagination.
 
@@ -307,8 +322,8 @@ This means supporting all the ``base'' functionality
 of xterm as implemented by terminal emulators that
 set @code{TERM} tp @code{xterm-256color}.
 
-This includes handling mouse clicks and other mouse events
-compatibly with @code{xterm}.
+The most important missing functionality is handling mouse clicks and
+other mouse events compatibly with @code{xterm}.
 
 Other terminal emulators:
 
@@ -340,11 +355,13 @@ Fix paste in line-editing mode.
 
 Think about how to do multi-line paste.
 
-@section Better stand-line terminal enumator
+@section Better stand-line terminal emulator
 
 Should probably have a (hideable) top menubar (in additon to pop-up menu).
 
 Allow switching styles.
+
+Handle saving and truncating scrolled-out output.
 
 @subsection Support other embeddable browsers
 
