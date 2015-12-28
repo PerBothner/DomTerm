@@ -55,6 +55,8 @@ function DomTerm(name, topNode) {
     this.lineIdCounter = 0; // FIXME temporary debugging
 
     this.insertMode = false;
+    // If true, treat "\n" as "\r\n".
+    this.automaticNewlineMode = false;
 
     this.lineEditing = false;
 
@@ -161,6 +163,7 @@ function DomTerm(name, topNode) {
     this._currentStyleSpan = null;
 
     this.applicationCursorKeysMode = false;
+    this.originMode = false;
     this.bracketedPasteMode = false;
 
     this.defaultBackgroundColor = "white";
@@ -343,6 +346,9 @@ e
 oalLine
 */
 DomTerm.prototype.moveTo = function(goalLine, goalColumn) {
+    //FIXME figure out when this applies
+    //if (this.originMode)
+    //    goalLine += this.scrollRegionTop;
     if (goalLine < 0)
         goalLine = 0;
     else if (goalLine >= this.numRows)
@@ -673,12 +679,6 @@ DomTerm.prototype.cursorLeft = function(count) {
     if (count > 0) {
         this.moveTo(this.getCursorLine(), this.getCursorColumn()-count);
     }
-};
-
-// Should we treat LF as CR-LF ?
-// FIXME Perhaps we should just have the Client convert LF to CR-LF
-DomTerm.prototype.outputLFasCRLF = function() {
-    return ! this.clientDoesEcho;
 };
 
 /** Add a style property specifier to the _currentStyleMap.
@@ -1751,12 +1751,14 @@ DomTerm.prototype.getParameter = function(index, defaultValue) {
 
 DomTerm.prototype.handleControlSequence = function(last) {
     var param;
+    var oldState = this.controlSequenceState;
+    this.controlSequenceState = DomTerm.INITIAL_STATE;
     switch (last) {
     case 64 /*'@'*/:
         var saveInsertMode = this.insertMode;
         this.insertMode = true;
         param = this.getParameter(0, 1);
-        this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param,'O');
+        this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param);
         this.cursorLeft(param);
         this.insertMode = saveInsertMode;
         break;
@@ -1852,6 +1854,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 // Application Cursor Keys (DECCKM).
                 this.applicationCursorKeysMode = true;
                 break;
+            case 6:
+                this.originMode = true;
+                break;
             case 1000:
                 // Send Mouse X & Y on button press and release.
                 // This is the X11 xterm mouse protocol.   Sent by emacs.
@@ -1880,6 +1885,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             case 4:
                 this.insertMode = true;
                 break;
+            case 20:
+                this.automaticNewlineMode = true;
+                break;
             }
         }
         break;
@@ -1891,6 +1899,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             case 1:
                 // Normal Cursor Keys (DECCKM)
                 this.applicationCursorKeysMode = false;
+                break;
+            case 6:
+                this.originMode = true;
                 break;
             case 47:
             case 1047:
@@ -1912,6 +1923,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             switch (param) {
             case 4:
                 this.insertMode = false;
+                break;
+            case 20:
+                this.automaticNewlineMode = false;
                 break;
             }
         }
@@ -2027,8 +2041,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.processResponseCharacters("\x1B[0n");
             break;
         case 6:
-            this.processResponseCharacters("\x1B["+this.numRows
-                                           +";"+this.numColumns+"R");
+            var r = this.currentCursorRow();
+            var c = this.currentCursorColumn();
+            if (this.originMode)
+                r -= this.scrollRegionTop;
+            this.processResponseCharacters("\x1B["+r+";"+c+"R");
             break;
         }
         break;
@@ -2072,7 +2089,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._pushStyle("std", "prompt");
             break;
         case 15:
-            this._pushStyle("std", this.outputLFasCRLF() ? null : "input");
+            this._pushStyle("std", this.automaticNewlineMode ? null : "input");
             this._adjustStyle();
             break;
         case 16:
@@ -2113,11 +2130,18 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.clientDoesEcho = false;
                 break;
             }
+            this.automaticNewlineMode = ! this.clientDoesEcho;
             break;
         }
         break;
-   default:
-        ; // FIXME
+    default:
+        if (last < 32) {
+            // vttest depends on this behavior
+            this.insertString(String.fromCharCode(last));
+            if (last != 24 && last != 26 && last != 27)
+                this.controlSequenceState = oldState;
+        } else
+            ; // FIXME
     }
 };
 
@@ -2159,7 +2183,7 @@ DomTerm.prototype._doDeferredDeletion = function() {
     }
 }
 
-DomTerm.prototype.insertString = function(str, kind) {
+DomTerm.prototype.insertString = function(str) {
     if (this.verbosity >= 2)
         this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState);
     /*
@@ -2230,7 +2254,6 @@ DomTerm.prototype.insertString = function(str, kind) {
                 this.handleControlSequence(ch);
                 this.parameters.length = 1;
                 prevEnd = i + 1;
-                this.controlSequenceState = DomTerm.INITIAL_STATE;
             }
             continue;
 
@@ -2270,7 +2293,7 @@ DomTerm.prototype.insertString = function(str, kind) {
         case DomTerm.INITIAL_STATE:
             switch (ch) {
             case 13: // '\r' carriage return
-                this.insertSimpleOutput(str, prevEnd, i, kind);
+                this.insertSimpleOutput(str, prevEnd, i);
                 if (this._currentStyleMap.get("std") == "input")
                     this._pushStyle("std", null);
                 //this.currentCursorColumn = column;
@@ -2284,8 +2307,10 @@ DomTerm.prototype.insertString = function(str, kind) {
                 prevEnd = i + 1;
                 break;
             case 10: // '\n' newline
-                this.insertSimpleOutput(str, prevEnd, i, kind);
-                if (this.outputLFasCRLF()) {
+            case 11: // vertical tab
+            case 12: // form feed
+                this.insertSimpleOutput(str, prevEnd, i);
+                if (this.automaticNewlineMode) {
                     if (this.insertMode) {
                         this.insertRawOutput("\n"); // FIXME
                         if (this.currentCursorLine >= 0)
@@ -2304,35 +2329,48 @@ DomTerm.prototype.insertString = function(str, kind) {
                 prevEnd = i + 1;
                 break;
             case 27 /* Escape */:
-                this.insertSimpleOutput(str, prevEnd, i, kind);
+                this.insertSimpleOutput(str, prevEnd, i);
                 //this.currentCursorColumn = column;
                 prevEnd = i + 1;
                 this.controlSequenceState = DomTerm.SEEN_ESC_STATE;
                 continue;
             case 8 /*'\b'*/:
-                this.insertSimpleOutput(str, prevEnd, i, kind);
+                this.insertSimpleOutput(str, prevEnd, i);
                 this.cursorLeft(1);
                 prevEnd = i + 1; 
                 break;
             case 9 /*'\t'*/:
-                this.insertSimpleOutput(str, prevEnd, i, kind);
+                this.insertSimpleOutput(str, prevEnd, i);
                 var nextStop = this.nextTabCol(this.getCursorColumn());
                 this.cursorRight(nextStop-this.currentCursorColumn);
                 prevEnd = i + 1;
                 break;
             case 7 /*'\a'*/:
-                this.insertSimpleOutput(str, prevEnd, i, kind); 
+                this.insertSimpleOutput(str, prevEnd, i); 
                 //this.currentCursorColumn = column;
                 this.handleBell();
                 prevEnd = i + 1;
                 break;
+            case 24: case 26:
+                this.controlSequenceState = DomTerm.INITIAL_STATE;
+                break;
+            case 0: case 1: case 2:  case 3:
+            case 4: case 6:
+            case 16: case 17: case 18: case 19:
+            case 20: case 21: case 22: case 23: case 25:
+            case 28: case 29: case 30: case 31:
+            case 7: // ignore
+                this.insertSimpleOutput(str, prevEnd, i);
+                prevEnd = i + 1;
+                break;
             default:
+                // FIXME: handle ENQ SO SI
                 ;
             }
         }
     }
     if (this.controlSequenceState == DomTerm.INITIAL_STATE) {
-        this.insertSimpleOutput(str, prevEnd, i, kind);
+        this.insertSimpleOutput(str, prevEnd, i);
         //this.currentCursorColumn = column;
     }
     if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
@@ -2531,7 +2569,7 @@ DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, ava
         return rebreak ? lineNode.nextSibling : null;
 };
 
-DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex, kind) {
+DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     var sslen = endIndex - beginIndex;
     if (sslen == 0)
         return;

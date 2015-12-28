@@ -92,7 +92,6 @@ public class WebTerminal extends VBox // FIXME should extend Control
     public void pasteText(String str) {
          jsWebTerminal.call("pasteText", str);
     }
-   public boolean outputLFasCRLF() { return isLineEditing(); }
 
     /** Input lines that have not been processed yet.
      * In some modes we support enhanced type-ahead: Input lines are queued
