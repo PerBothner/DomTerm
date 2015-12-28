@@ -183,6 +183,12 @@ function DomTerm(name, topNode) {
     var dt = this;
     this._showHideEventHandler =
         function(evt) { dt._showHideHandler(evt); };
+    this._unforceWidthInColumns =
+        function(evt) {
+            dt.forceWidthInColumns(-1);
+            window.removeEventListener("resize",
+                                       dt._unforceWidthInColumns, true);
+        };
 }
 
 DomTerm.prototype.startCommandGroup = function() {
@@ -236,6 +242,8 @@ DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE = 4;
 DomTerm.SEEN_ESC_RBRACKET_STATE = 5;
 /** We have seen ESC ']' numeric-parameter ';'. */
 DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 6;
+/** We have seen ESC '#'. */
+DomTerm.SEEN_ESC_SHARP_STATE = 7;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -1161,6 +1169,22 @@ DomTerm.prototype._createBuffer = function(bufName) {
     return bufNode;
 };
 
+/* If browsers allows, should re-size actula window instead. FIXME */
+DomTerm.prototype.forceWidthInColumns = function(numCols) {
+    if (numCols <= 0) {
+        this.topNode.style.width = "";
+    } else {
+        // FIXME add sanity check?
+        var ruler = this._rulerNode;
+        var charWidth = ruler.offsetWidth/26.0;
+        var width = numCols * charWidth + this.rightMarginWidth
+            + (this.topNode.offsetWidth - this.topNode.clientWidth);
+        var topNode = this.topNode;
+        topNode.style.width = width+"px";
+        window.addEventListener("resize", this._unforceWidthInColumns, true);
+    }
+};
+
 DomTerm.prototype.measureWindow = function()  {
     var ruler = this._rulerNode;
     var rect = ruler.getBoundingClientRect()
@@ -1169,7 +1193,7 @@ DomTerm.prototype.measureWindow = function()  {
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
     if (this.verbosity >= 2)
         this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+charWidth+" chH:"+charHeight+" ht:"+availHeight);
-    // We calculate rows from initial.clientWidth because we don't
+    // We calculate columns from initial.clientWidth because we don't
     // want to include the scroll-bar.  On the other hand, for vertical
     // height we have to look at the parent of the topNode because
     // topNode may not have grown to full size yet.
@@ -1777,6 +1801,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 71 /*'G'*/:
         this.moveTo(this.getCursorLine(), this.getParameter(0, 1)-1);
         break;
+    case 102 /*'f'*/:
     case 72 /*'H'*/:
         this.moveTo(this.getParameter(0, 1)-1, this.getParameter(1, 1)-1);
         break;
@@ -1820,7 +1845,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this._clearWrap();
         break;
     case 83 /*'S'*/:
-        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // Sixel/ReGIS graphics - not implemented
             this.processResponseCharacters("\x1B[?0;3;0S");
             break;
@@ -1834,7 +1859,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this.scrollReverse(curNumParameter);
         break;
     case 99 /*'c'*/:
-        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
             // Send Device Attributes (Secondary DA).
             this.processResponseCharacters("\x1B[>0;0;0c");
         } else {
@@ -1847,12 +1872,15 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 104 /*'h'*/:
         param = this.getParameter(0, 0);
-        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Set (DECSET)
             switch (param) {
             case 1:
                 // Application Cursor Keys (DECCKM).
                 this.applicationCursorKeysMode = true;
+                break;
+            case 3:
+                this.forceWidthInColumns(132);
                 break;
             case 6:
                 this.originMode = true;
@@ -1893,12 +1921,15 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 108 /*'l'*/:
         param = this.getParameter(0, 0);
-        if (this.controlSequenceState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Reset (DECRST)
             switch (param) {
             case 1:
                 // Normal Cursor Keys (DECCKM)
                 this.applicationCursorKeysMode = false;
+                break;
+            case 3:
+                this.forceWidthInColumns(80);
                 break;
             case 6:
                 this.originMode = true;
@@ -2206,17 +2237,22 @@ DomTerm.prototype.insertString = function(str) {
         //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
         switch (this.controlSequenceState) {
         case DomTerm.SEEN_ESC_STATE:
+            this.insertSimpleOutput(str, prevEnd, i);
+            this.controlSequenceState = DomTerm.INITIAL_STATE;
             switch (ch) {
+            case 35 /*'#'*/:
+                this.controlSequenceState = DomTerm.SEEN_ESC_SHARP_STATE;
+                break;
             case 91 /*'['*/:
                 this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
-                continue;
+                break;
             case 93 /*']'*/:
                 this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
-                continue;
+                break;
             case 55 /*'7'*/: // DECSC
                 this.saveCursor(); // FIXME
                 break;
@@ -2231,7 +2267,6 @@ DomTerm.prototype.insertString = function(str) {
             //case 62 /*'>'*/: // VT52 mode: Enter alternate keypad mode
             default: ;
             }
-            this.controlSequenceState = DomTerm.INITIAL_STATE;
             prevEnd = i + 1;
             break;
         case DomTerm.SEEN_ESC_LBRACKET_STATE:
@@ -2290,6 +2325,24 @@ DomTerm.prototype.insertString = function(str) {
                 // Do nothing, for now.
             }
             continue;
+        case DomTerm.SEEN_ESC_SHARP_STATE: /* SCR */
+            switch (ch) {
+            case 56 /*'8'*/: // DEC Screen Alignment Test (DECALN)
+                this.moveTo(0, 0);
+                this.eraseBelow();
+                var Es = "E".repeat(this.numColumns);
+                for (var r = 0; ; ) {
+                    this.insertSimpleOutput(Es, 0, this.numColumns);
+                    if (++r >= this.numRows)
+                        break;
+                    this.cursorLineStart(1);
+                }
+                this.moveTo(0, 0);
+                break;
+            }
+            prevEnd = i + 1;
+            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            break;
         case DomTerm.INITIAL_STATE:
             switch (ch) {
             case 13: // '\r' carriage return
