@@ -21,6 +21,11 @@ the results, typically in some kind of type-script format.
 DomTerm is Free Software (open-source)
 available at @uref{https://github.com/PerBothner/DomTerm,https://github.com/PerBothner/DomTerm}.
 
+The name ``DomTerm'' refers to that it  works by manipulating the
+Document Object Model (DOM) of a browser: the nested structure of elements,
+text, and attributes.
+(Also, most other appropriate names were already taken...) 
+
 The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
 was based on similar concepts, but was mostly written in Java using
 @uref{https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm, Javafx WebView}.
@@ -342,6 +347,7 @@ anything we don't implement, or implement differently from xterm.
 @subsubheading  Use vttest for testing
 
 The xterm distribution includes @uref{http://invisible-island.net/vttest/,vttest}.
+Many of the tests work now, but there are more worth fixing.
 
 @subsubheading Improve copy and paste
 
@@ -648,6 +654,10 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 @section Special sequences sent by back-end and handled by DomTerm
 
 @table @asis
+@item @code{"\e[3J"}
+Erase the entire display, @emph{including} the scrollback buffer.
+(This is an undocumented xterm feature.)
+
 @item @code{"\e]72;" @var{html-text} "\a"}
 Insert HTML text.
 
@@ -741,6 +751,7 @@ Used by auto-line mode to report a key event to back-end.
 The @var{kcode} is a numeric key code,
 while @var{kchars} is as string literal (JSON-formatted)
 of the characters that are normally transmitted to the back-end.
+(If the events was a key-press event, the @var{kcode} is negated first.)
 In auto-line mode, if the pty is in canonical mode, then @var{key}
 is returned to DomTerm (using @code{"\e]74;" @var{key} "\a"});
 otherwise @var{kchars} are sent to the pty.
@@ -751,6 +762,109 @@ Sends @var{version-info} to the back-end.  Used during initialization.
 
 @node Architecture notes
 @chapter Architecture notes
+
+@example
+            --------------------
+ Front-end  |  Display and keyboard
+            |---------------
+            |  Browser engine (runs terminal.js)
+            |---------------
+            |  Communication stub
+            ---------------
+              ^
+              | Optional network
+              V
+            --------------------
+  Back-end  |  Communication stub
+            |---------------
+            |  Application
+            ---------------
+@end example
+
+The DomTerm architecture allows for multiple front-end
+implementations and multiple back-end implementations.
+The front-end runs the actual terminal emulator (written in JavaScript)
+and manages the display. The front-end can be a window or tab in a
+general-purpose browser like Firefox or Chrome, or it can be a
+special-purpose browser optimized for DomTerm. The latter would drop
+the URL bar, add a menu bar and other controls as more suitable
+to a terminal emulator, and tweak a few minor security restrictions.
+
+The back-end runs the actual application.
+The application can be a general-purpose shell, or a custom application,
+such as a programming language run-time or a chat server.
+The back-end can run the application under a PTY.
+Alternatively, the application can communicate using pipes,
+if you prefer to avoid PTYs or they are unavailable (as on Windows).
+
+The front-end and back-end can be combined in the same process,
+using an embeddable browser.
+The current @ref{Applications,sample applications}
+include a single-process terminal emulator that uses the JavaFX WebEngine,
+a JavaFX pop-up menu, and a PTY class.
+In this case the ``communication stub'' is WebEngine's
+bridge between JavaScript and Java, plus communicating with the PTY.
+A C/C++ application could similarly use QtWebEngine
+and its C++/JavaScript bridge.
+
+If the front-end and back-end are separate processes, they can
+communicate using a byte-stream protocol.
+Currently we stick to well-formed UTF8, because JavaScript's
+support for byte arrays is still weak.
+The protocol is based on the xterm protocol: text and escape sequences
+from the application to the front-end; keystrokes and encoded events
+sent the other way.  More complex data can be encoded using JSON.
+Most of protocol is handled by @code{terminal.js}.
+The communications stubs may generate or intercept some messages:
+For example a PTY stub will want to handle window size change events.
+
+These data streams can be layered on top of other protocols,
+such as telnet, ssh, or WebSocket.
+Using WebSocket is convenient because it is built in to modern browsers,
+so the entire front-end (except @code{terminal.js})
+is readily available.
+
+@section A roadmap
+
+This is my vision of how terminals should be done in 2016.
+
+The ``terminal emulator'' application that a user runs
+(for example by clicking an icon or from an existing command line)
+should be a small program that parses command-line arguments,
+then fires up (if necessary) a front-end process and a back-end process,
+and connects the two.
+This application would have an option to connect to an existing
+back-end session, supporting the functionality of GNU Screen.
+
+The default front-end (unless otherwise specified on the command line)
+is a custom web browser optimized for use as a terminal/console - for
+example it drops the URL bar, and instead automatically loads the
+terminal emulator web-app.  The front-end communicates with the backend using
+WebSockets. @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}
+seems like a promising base: It supports WebSockets, tabs, remote debugging,
+is multi-platform, and is actively maintained.
+
+The default backend would be a small WebSocket server that forks
+off a user process, by default using a PTY (when available), otherwise
+using pipes.
+It would be helpful if the back-end can also serve http/https, for
+serving the initial html page and JavaScript (unless those could be
+builtin to the front-end).  A builtin http server could also
+support images and other non-textual data, if you don't want to
+include it directly in the output,
+possibly using a @code{@uref{https://en.wikipedia.org/wiki/Data_URI_scheme,data}} URI.
+The @uref{https://libwebsockets.org/index.html,libwebsockets}
+library seems a possible base for a WebSockets+http server.
+
+More blue-sky, it would be nice if the terminal subsystem and/or the C library
+could have a special mode for PTYs running under DomTerm.
+For example, the terminal driver should not do canonical-mode
+input-line cooking, but should delegate that to DomTerm.
+(DomTerm approximates this by monitoring the terminal @code{canon}
+flag, but a more robust protocol would be better.)
+Type-ahead could also work better.
+It would also be nice to delimit output to standard error with the
+appropriate escape sequences.
 
 @section Line vs character input modes
 
@@ -793,7 +907,7 @@ of the start of the corresponding line.
 The lineEnds array maps to the end of each line.
 Always points to a span node with the line attribute set.
 Normally lineEnds[i] == lineStarts[i+1]; however, sometimes
-lineStarts[i] is the start of a <div> or other block element.
+lineStarts[i] is the start of a @code{<div>} or other block element.
 
 @section Colors and high-lighting
 
