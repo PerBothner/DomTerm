@@ -349,6 +349,16 @@ anything we don't implement, or implement differently from xterm.
 The xterm distribution includes @uref{http://invisible-island.net/vttest/,vttest}.
 Many of the tests work now, but there are more worth fixing.
 
+@subsubheading Support Sixel graphics
+
+@uref{https://en.wikipedia.org/wiki/Sixel,Sixel} is an old raster
+image format supported by DEC terminals and some programs, including xterm.
+It is interesting because some programs (such as gnuplot) can use Sixel
+to interleave graphics and text, without requiring separate windows.
+
+This @uref{http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/,JavaScript utility} may be useful in converting raster data (post-sixel-decoding) to PNG, which could the be displayed with a @code{data:} URI.
+Alternatively, a @code{<canvas>} element could be used.
+
 @subsubheading Improve copy and paste
 
 Handle exporting html to clipboard.
@@ -640,7 +650,9 @@ alternative screen, along with all of its contents.
 @node Wire byte protocol
 @chapter Wire byte protocol
 
-DomTerm mostly handles standard ansi/xterm escape sequences.
+DomTerm mostly handles standard @uref{https://en.wikipedia.org/wiki/ANSI_escape_code,ansi/xterm escape sequences}.
+This section documents DomTerm-specific extensions.
+(@emph{Future:} We should also document what xterm features aren't implemented.)
 
 @strong{The following are preliminary code sequences,
 which may change based on experience and feedback.}
