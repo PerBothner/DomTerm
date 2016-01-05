@@ -2269,29 +2269,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.startCommandGroup();
             break;
         case 20: // set input mode
-            switch (this.getParameter(1, 112)) {
-            case 97 /*'a'*/: //auto
-                this.autoEditing = true;
-                this.lineEditing = false;
-                this.clientDoesEcho = true;
-                break;
-            case 99 /*'c'*/: //char
-                this.autoEditing = false;
-                this.lineEditing = false;
-                this.clientDoesEcho = true;
-                break;
-            case 108 /*'l'*/: //line
-                this.autoEditing = false;
-                this.lineEditing = true;
-                this.clientDoesEcho = true;
-                break;
-            case 112 /*'p'*/: //pipe
-                this.autoEditing = false;
-                this.lineEditing = true;
-                this.clientDoesEcho = false;
-                break;
-            }
-            this.automaticNewlineMode = ! this.clientDoesEcho;
+            this.setInputMode(this.getParameter(1, 112));
             break;
         }
         break;
@@ -2959,6 +2937,45 @@ DomTerm.prototype.pasteText = function(str) {
     }
 };
 
+DomTerm.prototype.doPaste = function() {
+    this.inputLine.focus();
+    document.execCommand("paste", false);
+};
+
+DomTerm.prototype.doCopy = function() {
+    document.execCommand("copy", false, this.getSelectedText());
+};
+
+DomTerm.prototype.getSelectedText = function() {
+    return window.getSelection().toString();
+};
+
+DomTerm.prototype.setInputMode = function(mode) {
+    switch (mode) {
+    case 97 /*'a'*/: //auto
+        this.autoEditing = true;
+        this.lineEditing = false;
+        this.clientDoesEcho = true;
+        break;
+    case 99 /*'c'*/: //char
+        this.autoEditing = false;
+        this.lineEditing = false;
+        this.clientDoesEcho = true;
+        break;
+    case 108 /*'l'*/: //line
+        this.autoEditing = false;
+        this.lineEditing = true;
+        this.clientDoesEcho = true;
+        break;
+    case 112 /*'p'*/: //pipe
+        this.autoEditing = false;
+        this.lineEditing = true;
+        this.clientDoesEcho = false;
+        break;
+    }
+    this.automaticNewlineMode = ! this.clientDoesEcho;
+};
+
 DomTerm.prototype.doLineEdit = function(key, str) {
     this.log("doLineEdit "+key+" "+JSON.stringify(str));
     var rng = bililiteRange(this.inputLine).bounds('selection');
@@ -2995,14 +3012,19 @@ DomTerm.prototype.doLineEdit = function(key, str) {
     }
 };
 
-DomTerm.prototype.getSelectedText = function() {
-    return window.getSelection().toString();
-};
-
 DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" data:"+event.data+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
+        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
+    // Ctrl-Shift-C is Copy and Ctrl-Shift-V is Paste
+    if (event.ctrlKey && event.shiftKey && (key == 67 || key == 86)) {
+        if (key == 67)
+            this.doCopy();
+        else
+            this.doPaste();
+        event.preventDefault();
+        return;
+    }
     if (this.lineEditing) {
         if (key == 13) {
             event.preventDefault();
@@ -3039,7 +3061,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
 DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" data:"+event.data+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" do-line-edit:"+this.useDoLineEdit+" inputLine:"+this.inputLine);
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" do-line-edit:"+this.useDoLineEdit+" inputLine:"+this.inputLine);
     if (this.lineEditing) {
         if (this.useDoLineEdit) {
             event.preventDefault();

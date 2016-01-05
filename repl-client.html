@@ -8,6 +8,7 @@
 <script type="text/javascript">
 function connect() {
     var wt = new DomTerm("term1");
+    window.domterm1 = wt;
     var wsocket = new WebSocket("ws://localhost:8025/websocket/replsrv");
     wt.processInputCharacters = function(str) { wsocket.send(str); };
     wsocket.onmessage = function(evt) {  wt.insertString(evt.data); }

@@ -102,7 +102,7 @@ domterm.jar: org/classes.stamp terminal.js tmp-for-jar/org/domterm/repl.html
 	cd tmp-for-jar && \
 	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html
 
-xulapp/domterm-chrome.jar:
+xulapp/domterm-chrome.jar: terminal.js xulapp/chrome/content/domterm.xul
 	mkdir -p tmp-for-xul tmp-for-xul/chrome \
 	  tmp-for-xul/chrome/content tmp-for-xul/chrome/content
 	tar cf - *.js repl-client.html style/*.css |\
