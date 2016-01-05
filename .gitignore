@@ -7,8 +7,10 @@ Makefile
 config.log
 config.status
 domterm.jar
+xulapp/domterm-chrome.jar
 native/pty/org_domterm_pty_PTY.h
 org/classes.stamp
+tmp-for-xul
 tmp-for-jar
 tmp-repl.in
 doc/index.html

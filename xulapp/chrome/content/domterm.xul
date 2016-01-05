@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/global.css" type="text/css"?>
+<window id="main" title="DomTerm" width="800" height="600" 
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+  <popupset>
+    <menupopup id="mainmenu">
+      <!--<menuitem label="Cut"/>-->
+      <menuitem label="Copy"/>
+      <menuitem label="Paste"/>
+      <menu label="Input mode">
+        <menupopup>
+          <menuitem label="Line" type="radio" name="input-mode"/>
+          <menuitem label="Character mode" type="radio" name="input-mode"/>
+          <menuitem label="Auto mode" type="radio" name="input-mode" check="true"/>
+        </menupopup>
+      </menu>
+    </menupopup>
+  </popupset>
+<!-- <browser type="content" src="jar:chrome://domterm/content/domterm-client.jar!/terminal.js" flex="1" context="mainmenu">-->
+<!--<browser type="content" src="jar:domterm-client.jar!/repl-client.html" flex="1" context="mainmenu">-->
+  <browser type="content" src="repl-client.html" flex="1" context="mainmenu">
+  </browser>
+</window>

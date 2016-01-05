@@ -28,6 +28,9 @@ libpty@LIBEXT@: native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 d/domterm: d/domterm.ti
 	tic -o. $<
 
+make run-xul: xulapp/domterm-chrome.jar
+	firefox -app xulapp/application.ini
+
 run-pty: libpty@LIBEXT@ d/domterm domterm.jar
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar domterm.jar --pty
 
@@ -40,7 +43,7 @@ run-shell: domterm.jar
 	CLASSPATH=domterm.jar $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf org/classes.stamp tmp-for-jar org/domterm/*.class org/domterm/*.*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h
+	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*.*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm-chrome.jar
 
 @WITH_JAVA_WEBSOCKET_TRUE@ WEBSOCKET_SOURCES = \
 @WITH_JAVA_WEBSOCKET_TRUE@   org/domterm/websocket/DomServer.java
@@ -97,7 +100,15 @@ tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html Makefile
 domterm.jar: org/classes.stamp terminal.js tmp-for-jar/org/domterm/repl.html
 	tar cf - org/domterm/*.class org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
 	cd tmp-for-jar && \
-	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html 
+	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html
+
+xulapp/domterm-chrome.jar:
+	mkdir -p tmp-for-xul tmp-for-xul/chrome \
+	  tmp-for-xul/chrome/content tmp-for-xul/chrome/content
+	tar cf - *.js repl-client.html style/*.css |\
+	  (cd tmp-for-xul/chrome/content; tar xf -)
+	cp xulapp/chrome/content/domterm.xul tmp-for-xul/chrome/content
+	(cd tmp-for-xul; zip -r ../xulapp/domterm-chrome.jar chrome)
 
 MAKEINFO = makeinfo
 srcdir = .
