@@ -1446,15 +1446,15 @@ DomTerm.prototype.updateCursorCache = function() {
                 col++;
                 cur = cur.nextSibling;
                 continue;
-           } else if (tag == "A")
-                ; //
-            else if (tag == "SPAN" && cur.getAttribute("line")) {
+            } else if (tag == "A") {
+                ;
+            } else if (tag == "SPAN" && cur.getAttribute("line")) {
                 line++;
                 col = 0;
                 cur = cur.nextSibling;
-            } else if (tag == "P" || tag == "PRE" || tag == "DIV")
-                ; //
-            // FIXME handle line special
+            } else if (tag == "P" || tag == "PRE" || tag == "DIV") {
+                // FIXME handle line specially
+            }
             // isBreak
             parent = cur;
             cur = cur.firstChild;
@@ -1944,8 +1944,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 84 /*'T'*/:
         param = this.getParameter(0, 1);
-        if (curNumParameter >= 5)
-            ; // FIXME Initiate mouse tracking.
+        if (curNumParameter >= 5) {
+            // FIXME Initiate mouse tracking.
+        }
         this.scrollReverse(curNumParameter);
         break;
     case 97 /*'a'*/: // HPR
