@@ -1040,7 +1040,7 @@ DomTerm.prototype._insertLinesAt = function(count, line, regionBottom) {
         count = avail;
     if (count <= 0)
         return;
-    this.moveToIn(regionBottom-count, 0, true);
+    this.moveToIn(regionBottom-count-this.homeLine, 0, true);
     this.deleteLinesIgnoreScroll(count, false);
     if (count > this.numRows)
         count = this.numRows;
