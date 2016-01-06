@@ -39,7 +39,7 @@ SERVER_ARGS =
 run-server: libpty@LIBEXT@ d/domterm domterm.jar
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
 
-run-firefox: libpty@LIBEXT@ d/domterm domterm.jar
+run-firefox: libpty@LIBEXT@ domterm.jar d/domterm domterm.jar
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer --firefox $(SERVER_ARGS)
 
 run-shell: domterm.jar
