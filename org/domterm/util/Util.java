@@ -11,6 +11,9 @@ public class Util {
     public static final char[] END_ERR_MARKER = {
         ESCAPE, '[', '1', '1', 'u'
     };
+    public static final char[] EOF_MARKER = {
+        ESCAPE, '[', '9', '9', ';', '9', '9', 'u'
+    };
 
     public static void copyThread(final Reader fromInferior,
                                   boolean errStream,
@@ -22,8 +25,11 @@ public class Util {
                     for (;;) {
                         try {
                             int count = fromInferior.read(buffer);
-                            if (count < 0)
+                            if (count < 0) {
+                                out.write(EOF_MARKER, 0,
+                                          EOF_MARKER.length);
                                 break;
+                            }
                             //WTDebug.println("copyThread "+count+": "+WTDebug.toQuoted(new String(buffer,0,count))+" err:"+errStream);
                             if (errStream) {
                                 synchronized (out) {

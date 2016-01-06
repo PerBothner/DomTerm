@@ -744,6 +744,11 @@ based on the mode of the inferior process (when using a PTY).
 The value 112 (@code{'p'} for "pipe") is like line-editing mode,
 but the inferiors doesn't echo the input, so we have to do it.
 This mode is useful when the input is a pipe or some other non-tty stream.
+
+@item @code{"\e[99;99u"}
+End-of-file on the output stream.
+Calls the @code{eofSeen} method of @code{DomTerm},
+which may close the current window or other appropriate action.
 @end table
 
 @section Special sequences sent by DomTerm to back-end

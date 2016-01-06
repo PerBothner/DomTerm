@@ -195,6 +195,10 @@ function DomTerm(name, topNode) {
         };
 }
 
+DomTerm.prototype.eofSeen = function() {
+    window.close();
+};
+
 DomTerm.prototype.startCommandGroup = function() {
     var container = this.outputContainer;
     var containerTag = container.tagName;
@@ -2270,6 +2274,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 20: // set input mode
             this.setInputMode(this.getParameter(1, 112));
+            break;
+        case 99:
+            if (this.getParameter(1, 0) == 99)
+                this.eofSeen();
             break;
         }
         break;

@@ -64,7 +64,7 @@ public class PtyBackend extends Backend {
     @Override
     public void run(Writer out) throws Exception {
         addVersionInfo("PtyClient");
-        pty = new PTY(childArgs, "domterm",
+        pty = new PTY(childArgs, "xterm-256color",
                       new Object[] { "DOMTERM="+getVersionInfo() });
         try {
             pin = new OutputStreamWriter(pty.toChildInput);
