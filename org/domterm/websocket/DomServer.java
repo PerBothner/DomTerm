@@ -111,6 +111,15 @@ public class DomServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote ) {
+        if (runFirefox) {
+            try {
+                stop();
+                System.exit(0);
+            } catch (Throwable ex) {
+                System.err.println("caught "+ex);
+                System.exit(1);
+            }
+        }
         WTDebug.println("onClose called");
         backendMap.remove(conn);
     }
@@ -186,10 +195,11 @@ public class DomServer extends WebSocketServer {
         }
     }
 
+    static boolean runFirefox = false;
     public static void main (String[] args) {
         char mode = ' ';
         //int port = 8887; // 843 flash policy port
-        int port = 8025;
+        int port = -1;
         int i = 0;
         for (; i < args.length; i++) {
             String arg = args[i];
@@ -202,24 +212,35 @@ public class DomServer extends WebSocketServer {
                 } catch (Exception ex) {
                     fatal("bad port number '"+arg+"'");
                 }
+            } else if (arg.equals("--firefox")) {
+                runFirefox = true;
             } else
                 break;
         }
         String[] backendArgs = new String[args.length-i];
         System.arraycopy(args, i, backendArgs, 0, backendArgs.length);
-
+        if (port == -1)
+            port = runFirefox ? 0 : 8025;
         try {
             DomServer s = new DomServer(port, backendArgs);
             s.start();
-            System.out.println("DomTerm server started on port: "
-                               + s.getPort());
-            BufferedReader reader =
-                new BufferedReader(new InputStreamReader(System.in));
-            System.out.print("Please press a key to stop the server.");
-            reader.readLine();
-            System.err.println("ready to stop");
-            s.stop();
-            System.exit(0);
+            port = s.getPort();
+            if (runFirefox) {
+                Process process = Runtime.getRuntime()
+                    .exec(new String[] { "firefox", "-app",
+                                         "xulapp/application.ini",
+                                         "-wspath",
+                                         "ws://localhost:"+port });
+            } else {
+                System.out.println("DomTerm server started on port: "+port);
+                BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(System.in));
+                System.out.print("Please press a key to stop the server.");
+                reader.readLine();
+                System.err.println("ready to stop");
+                s.stop();
+                System.exit(0);
+            }
         } catch (Throwable ex) {
             ex.printStackTrace();
             throw new RuntimeException(ex);

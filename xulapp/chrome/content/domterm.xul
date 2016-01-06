@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-stylesheet href="chrome://global/skin/global.css" type="text/css"?>
 <window id="main" title="DomTerm" width="800" height="600" 
-    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" onload="init()">
   <popupset>
     <menupopup id="mainmenu">
       <!--<menuitem label="Cut"/>-->
@@ -16,11 +16,20 @@
       </menu>
     </menupopup>
   </popupset>
-  <browser id="browser" type="content" src="repl-client.html" flex="1" context="mainmenu">
+  <browser id="browser" type="content" src="repl-client.html?wait" flex="1" context="mainmenu">
   </browser>
   <script>
+    function init() {
+        var cmdLine = window.arguments[0];
+        cmdLine = cmdLine.QueryInterface(Components.interfaces.nsICommandLine);
+        var wspath = cmdLine.handleFlagWithParam("wspath", false);
+        getDomTermWindow().connect(wspath);
+        }
+    function getDomTermWindow() {
+        return document.getElementById("browser").contentWindow;
+    }
     function getDomTermObject() {
-        return document.getElementById("browser").contentWindow.domterm1;
+        return getDomTermWindow().domterm1;
     }
     function doCopy() {
         getDomTermObject().doCopy();
