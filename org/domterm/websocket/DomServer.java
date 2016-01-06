@@ -231,6 +231,7 @@ public class DomServer extends WebSocketServer {
                                          "xulapp/application.ini",
                                          "-wspath",
                                          "ws://localhost:"+port });
+                process.waitFor();
             } else {
                 System.out.println("DomTerm server started on port: "+port);
                 BufferedReader reader =

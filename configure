@@ -1287,8 +1287,8 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-java_websocket=/path/to/java_websocket.jar
-                          Build server using Java-WebServer
+  --with-java_websocket[=/path/to/java_websocket.jar]
+                          Build server using Java-WebServer (default true)
   --with-javafx[=jfxrt.jar]
                           Enable support for JavaFX
 
@@ -3092,11 +3092,11 @@ case "${enable_pty}" in
 esac
 
 case "${with_java_websocket}" in
-  yes)
+  yes | "")
     conf_classpath=java_websocket.jar${CLASSPATH_SEPARATOR}$conf_classpath
     WITH_JAVA_WEBSOCKET_TRUE=
     ;;
-  no | "")
+  no)
     WITH_JAVA_WEBSOCKET_TRUE='#'
     ;;
   *)

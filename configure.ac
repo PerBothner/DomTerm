@@ -10,7 +10,7 @@ AC_PROG_CXX
 AC_PROG_SED
 
 AC_ARG_WITH(java_websocket,
-  AS_HELP_STRING(--with-java_websocket=/path/to/java_websocket.jar,Build server using Java-WebServer))
+  AS_HELP_STRING(--with-java_websocket@<:@=/path/to/java_websocket.jar@:>@,Build server using Java-WebServer (default true)))
 
 AC_ARG_ENABLE(pty,
   AS_HELP_STRING(--enable-pty,Enable support for PTYs (default true except on Windows)))
@@ -61,11 +61,11 @@ case "${enable_pty}" in
 esac
 
 case "${with_java_websocket}" in
-  yes)
+  yes | "")
     conf_classpath=java_websocket.jar${CLASSPATH_SEPARATOR}$conf_classpath
     WITH_JAVA_WEBSOCKET_TRUE=
     ;;
-  no | "")
+  no)
     WITH_JAVA_WEBSOCKET_TRUE='#'
     ;;
   *)
