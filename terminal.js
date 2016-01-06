@@ -623,14 +623,18 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         parent = current;
         current = parent.firstChild;
     }
-    if (this.inputLine != null) {
-        parent.insertBefore(this.inputLine, current);
-        current = this.inputLine;
-    }
     this.outputContainer = parent;
     this.outputBefore = current;
+    this._moveInputLineToOutput();
     this.currentCursorLine = line;
     this.currentCursorColumn = column;
+};
+
+DomTerm.prototype._moveInputLineToOutput = function() {
+    if (this.inputLine != null) {
+        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
+        this.outputBefore = this.inputLine;
+    }
 };
 
 /** Move cursor to beginning of line, relative.
@@ -886,10 +890,7 @@ DomTerm.prototype._adjustStyle = function() {
         // styleSpan.firstChild is null unless we did the above optimization
         this.outputBefore = styleSpan.firstChild;
     }
-    if (inputLineMoved) {
-        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
-        this.outputBefore = this.inputLine;
-    }
+    this._moveInputLineToOutput();
 };
 
 DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
@@ -1045,10 +1046,7 @@ DomTerm.prototype._insertLinesAt = function(count, line, regionBottom) {
     if (count > this.numRows)
         count = this.numRows;
     this.insertLinesIgnoreScroll(count, line);
-    if (this.inputLine != null) { // FIXME move to helper procedure
-        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
-        this.outputBefore = this.inputLine;
-    }
+    this._moveInputLineToOutput();
 };
 
 DomTerm.prototype.insertLines = function(count) {
@@ -1066,10 +1064,7 @@ DomTerm.prototype._deleteLinesAt = function(count, line) {
     }
     this.resetCursorCache();
     this.moveToIn(line, 0, true);
-    if (this.inputLine != null) { // FIXME move to helper procedure
-        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
-        this.outputBefore = this.inputLine;
-    }
+    this._moveInputLineToOutput();
 };
 
  DomTerm.prototype.deleteLines = function(count) {
@@ -1121,8 +1116,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.currentCursorLine = 0;
             this.currentCursorColumn = 0;
             this.outputContainer = newLineNode;
-            newLineNode.insertBefore(this.inputLine, newLineNode.firstChild);
-            this.outputBefore = this.inputLine;
+            this.outputBefore = newLineNode.firstChild;
+            this._moveInputLineToOutput();
             this.initial = bufNode;
         } else {
             var bufNode = this.initial;
