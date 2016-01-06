@@ -33,7 +33,8 @@ public class ProcessBackend extends Backend {
     public void run(Writer out) throws Exception {
         ProcessBuilder pbuilder = new ProcessBuilder(commandWithArgs);
         java.util.Map<String, String> env = pbuilder.environment();
-        env.put("TERM", "domterm");
+        //env.put("TERM", "domterm");
+        env.put("TERM", "xterm-256color");
         addVersionInfo("ProcessClient;err-handled");
         env.put("DOMTERM", getVersionInfo());
         String dir = System.getProperty("user.dir");
