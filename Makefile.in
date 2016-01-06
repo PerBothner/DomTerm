@@ -34,7 +34,7 @@ make run-xul: xulapp/domterm-chrome.jar
 run-pty: libpty@LIBEXT@ d/domterm domterm.jar
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar domterm.jar --pty
 
-EXTRA_CLASSPATH = @conf_classpath@
+EXTRA_CLASSPATH =
 SERVER_ARGS =
 run-server: libpty@LIBEXT@ d/domterm domterm.jar
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
