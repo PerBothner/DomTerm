@@ -2291,16 +2291,27 @@ DomTerm.prototype.handleBell = function() {
     // Do nothing, for now.
 };
 
+DomTerm.prototype.setWindowTitle = function(title, option) {
+    document.title = title;
+};
+
 DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     if (this.verbosity >= 2)
         this.log("handleOperatingSystemControl "+code+" '"+text+"'");
-    if (code == 72) {
+    switch (code) {
+    case 0:
+    case 1:
+    case 2:
+        this.setWindowTitle(text, code);
+        break;
+    case 72:
         if (this.outputBefore != null)
             this.outputBefore.insertAdjacentHTML("beforebegin", text);
         else
             this.outputContainer.insertAdjacentHTML("beforeend", text);
         this.cursorColumn = -1;
-    } else if (code == 74) {
+        break;
+    case 74:
         var sp = text.indexOf(' ');
         var key = parseInt(text.substring(0, sp), 10);
         var kstr = JSON.parse(text.substring(sp+1));
@@ -2308,7 +2319,16 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this.log("OSC KEY k:"+key+" kstr:"+this.toQuoted(kstr));
         this.lineEditing = true;
         this.doLineEdit(key, kstr);
-    } else {
+        break;
+    case 7:
+        // text is pwd as URL: "file://HOST/PWD"
+        // Is printed by /etc/profile/vte.sh on Fedora
+        break;
+    case 777:
+        // text is "\u001b]777;COMMAND
+        // Is printed by /etc/profile/vte.sh on Fedora
+        break;
+    default:
         // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
     }
 };

@@ -24,7 +24,10 @@
         cmdLine = cmdLine.QueryInterface(Components.interfaces.nsICommandLine);
         var wspath = cmdLine.handleFlagWithParam("wspath", false);
         getDomTermWindow().connect(wspath);
-        }
+        getDomTermObject().setWindowTitle = function(title, option) {
+            document.title = title;
+        };
+    }
     function getDomTermWindow() {
         return document.getElementById("browser").contentWindow;
     }
