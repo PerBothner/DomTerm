@@ -226,8 +226,13 @@ public class DomServer extends WebSocketServer {
             s.start();
             port = s.getPort();
             if (runFirefox) {
+                String firefoxCommand = "firefox";
+                String firefoxMac =
+                    "/Applications/Firefox.app/Contents/MacOS/firefox";
+                if (new File(firefoxMac).exists())
+                    firefoxCommand = firefoxMac;
                 Process process = Runtime.getRuntime()
-                    .exec(new String[] { "firefox", "-app",
+                    .exec(new String[] { firefoxCommand, "-app",
                                          "xulapp/application.ini",
                                          "-wspath",
                                          "ws://localhost:"+port });

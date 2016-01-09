@@ -2914,6 +2914,9 @@ DomTerm.prototype.keyDownToString = function(event) {
     case 133: /* F22 */  return "\x1B[21;2~";
     case 134: /* F23 */  return "\x1B[23;2~";
     case 135: /* F24 */  return "\x1B[24;2~";
+    case 91: case 93: case 224:
+        // Command-key on MacOS (Chrome or Firefox)
+        return null;
     default:
         if (event.ctrlKey && key >=65 && key <= 90) {
             return String.fromCharCode(key-64);
