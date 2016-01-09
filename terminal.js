@@ -93,6 +93,10 @@ function DomTerm(name, topNode) {
     // ??? FIXME we want to get rid of this
     this.initial = null;
 
+    // Used if needed to add extra space at the bottom, for proper scrolling.
+    // See note in eraseDisplay.
+    this._vspacer = null;
+
     // Current line number, 0-origin, relative to start of cursorHome.
     // -1 if unknown. */
     this.currentCursorLine = -1;
@@ -213,11 +217,20 @@ DomTerm.prototype.startCommandGroup = function() {
             oldOutput = null;
         }
         if (oldGroup) {
-            oldGroup.parentNode.insertBefore(commandGroup, oldGroup.nextSibling);
-        } else {
-            container.parentNode.insertBefore(commandGroup, container);
+            var cur = container;
+            var parent = container.parentNode;
+            var oldBefore = oldGroup.nextSibling;
+            for (;;) {
+                this._moveNodes(cur, oldGroup.parentNode, oldBefore);
+                if (parent == oldGroup)
+                    break;
+                cur = parent.nextSibling;
+                parent = parent.parentNode;
+            }
         }
+        container.parentNode.insertBefore(commandGroup, container);
         commandGroup.appendChild(container);
+        // this._moveNodes(firstChild, newParent)
         // Remove old empty domterm-output container.
         if (oldOutput && oldOutput.firstChild == null
             && oldOutput != this.outputContainer) { // paranoia
@@ -286,6 +299,35 @@ DomTerm.prototype._setRegionTB = function(top, bottom) {
 DomTerm.prototype._setRegionLR = function(left, right) {
     this._regionLeft = left;
     this._regionRight = right < 0 ? this.numColumns : right;
+};
+
+DomTerm.prototype._homeOffset = function() {
+    var lineStart = this.lineStarts[this.homeLine];
+    var offset = lineStart.offsetTop;
+    if (lineStart.nodeNode == "SPAN")
+        offset += lineStart.offsetHeight;
+    return offset;
+};
+
+DomTerm.prototype._checkSpacer = function() {
+    var needed;
+    if (this.homeLine == 0)
+        needed = 0;
+    else {
+        var height = this._vspacer.offsetTop - this._homeOffset();
+        needed = this.availHeight - height;
+    }
+    this._adjustSpacer(needed);
+};
+DomTerm.prototype._adjustSpacer = function(needed) {
+    var vspacer = this._vspacer;
+    if (needed > 0) {
+        vspacer.style.height = needed + "px";
+        vspacer.dtHeight = needed;
+    } else if (vspacer.dtHeight != 0) {
+        vspacer.style.height = "";
+        vspacer.dtHeight = 0;
+    }
 };
 
 // Return column number following a tab at initial {@code col}.
@@ -390,6 +432,7 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     var line = this.currentCursorLine;
     var column = this.currentCursorColumn;
+    var checkSpacer = false;
     if (this.verbosity >= 3)
         this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
     // This moves current (and parent) forwards in the DOM tree
@@ -413,33 +456,34 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         while (absLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
-            var last = this.lineEnds[lineCount-1];
-            if (! last) {
-                this.log("bad last!");
-            }
-
             var preNode = document.createElement("pre");
+            checkSpacer = true;
             // preNode.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
-            var lastParent = last;
-            for (;;) {
-                var tag = lastParent.tagName;
-                if (tag == "PRE" || tag == "DIV" || tag == "P")
-                    break;
-                var p = lastParent.parentNode;
-                if (p == this.initial)
-                    break;
-                lastParent = p;
+            if (lineCount == this.homeLine)
+                parent = this.initial;
+            else {
+                var lastParent = this.lineEnds[lineCount-1];
+                for (;;) {
+                    if (this.isBlockNode(lastParent))
+                        break;
+                    var p = lastParent.parentNode;
+                    if (p == this.initial)
+                        break;
+                    lastParent = p;
+                }
+                if (lastParent.parentNode == this._currentCommandGroup) {
+                    var commandOutput = document.createElement("div");
+                    commandOutput.setAttribute("class", "command-output");
+                    if (this._currentCommandHideable)
+                        commandOutput.setAttribute("domterm-hidden", "false");
+                    this._currentCommandOutput = commandOutput;
+                    this._currentCommandGroup.appendChild(commandOutput);
+                    parent = commandOutput;
+                } else {
+                    parent = lastParent.parentNode;
+                }
             }
-            if (lastParent.parentNode == this._currentCommandGroup) {
-                var commandOutput = document.createElement("div");
-                commandOutput.setAttribute("class", "command-output");
-                if (this._currentCommandHideable)
-                    commandOutput.setAttribute("domterm-hidden", "false");
-                this._currentCommandOutput = commandOutput;
-                this._currentCommandGroup.appendChild(commandOutput);
-                commandOutput.appendChild(preNode);
-            } else
-                lastParent.parentNode.appendChild(preNode);
+            parent.appendChild(preNode);
             var next = this._createLineNode("hard", "\n");
             preNode.appendChild(next);
             this.lineStarts[lineCount] = preNode;
@@ -450,6 +494,8 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                 homeLine = lineCount - this.numRows;
                 goalLine -= homeLine - this.homeLine;
                 this.homeLine = homeLine;
+                this._adjustSpacer(0);
+                checkSpacer = false;
             }
             /*
             while (homeLine < nextLine) {
@@ -628,6 +674,8 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     this._moveInputLineToOutput();
     this.currentCursorLine = line;
     this.currentCursorColumn = column;
+    if (checkSpacer)
+        this._checkSpacer();
 };
 
 DomTerm.prototype._moveInputLineToOutput = function() {
@@ -973,7 +1021,7 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count, restoreCursor) {
     //if (end && cur && end.parentNode == this.outputContainer) {
     var inputLine = this.inputLine;
     var inputRoot = this._rootNode(inputLine);
-    while (cur != end) {
+    for (;;) {
         if (cur == null) {
             while (parent != null && parent.nextSibling == null)
                 parent = parent.parentNode;
@@ -981,6 +1029,8 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count, restoreCursor) {
                 break;
             cur = parent.nextSibling;
             parent = cur.parentNode;
+        } else if (cur == end) {
+            break;
         } else if (end != null && this._isAnAncestor(end, cur)) {
             parent = cur;
             cur = cur.firstChild;
@@ -1041,7 +1091,7 @@ DomTerm.prototype._insertLinesAt = function(count, line, regionBottom) {
         count = avail;
     if (count <= 0)
         return;
-    this.moveToIn(regionBottom-count-this.homeLine, 0, true);
+    this.moveToIn(regionBottom-count, 0, true);
     this.deleteLinesIgnoreScroll(count, false);
     if (count > this.numRows)
         count = this.numRows;
@@ -1107,7 +1157,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             // FIXME should scroll top of new buffer to top of window.
             var nextLine = this.lineEnds.length;
             var bufNode = this._createBuffer(this._altBufferName);
-            this.topNode.appendChild(bufNode);
+            this.topNode.insertBefore(bufNode, this._vspacer);
             bufNode.saveHomeLine = this.homeLine;
             bufNode.saveInitial = this.initial;
             bufNode.saveLastLine = nextLine;
@@ -1149,7 +1199,6 @@ DomTerm.prototype.isObjectElement = function(node) {
 };
 
 DomTerm.prototype.isBlockNode = function(node) {
-    if (! (node instanceof Element)) return false;
     var tag = node.tagName;
     return "P" == tag || "DIV" == tag || "PRE" == tag;
 };
@@ -1210,6 +1259,11 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
 
     var mainNode = this._createBuffer(this._mainBufferName);
     topNode.appendChild(mainNode);
+    var vspacer = document.createElement("div");
+    vspacer.setAttribute("class", "domterm-spacer");
+    vspacer.dtHeight = 0;
+    topNode.appendChild(vspacer);
+    this._vspacer = vspacer;
 
     this.initial = mainNode;
     var preNode = mainNode.firstChild;
@@ -1230,7 +1284,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                              false);
 
     this.measureWindow();
-
 };
 
 DomTerm.prototype._createBuffer = function(bufName) {
@@ -1402,8 +1455,7 @@ DomTerm.prototype.updateCursorCache = function() {
     else {
         var n = goal;
         while (n) {
-            var tag = n.nodeName;
-            if (tag == "PRE" || tag == "P" || tag == "DIV")
+            if (this.isBlockNode(n))
                 break;
             n = n.parentNode;
         }
@@ -1450,7 +1502,6 @@ DomTerm.prototype.updateCursorCache = function() {
             } else if (tag == "SPAN" && cur.getAttribute("line")) {
                 line++;
                 col = 0;
-                cur = cur.nextSibling;
             } else if (tag == "P" || tag == "PRE" || tag == "DIV") {
                 // FIXME handle line specially
             }
@@ -1620,17 +1671,75 @@ DomTerm.prototype.insertBreak = function() {
         this.currentCursorLine++;
 };
 
-DomTerm.prototype.eraseBelow = function() {
-    var line = this.getCursorLine();
-    var numLines = this.lineStarts.length - line;
-    if (this.usingAlternateScreenBuffer && line == 0) {
-        if (this.initial.saveHomeLine > 0) {
-            this.homeLine = this.initial.saveLastLine;
+DomTerm.prototype.eraseDisplay = function(param) {
+    var saveLine = this.getCursorLine();
+    var saveCol = this.getCursorColumn();
+    if (param == 0 && saveLine == 0 && saveCol == 0)
+        param = 2;
+    // When we erase the whole screen, we want to scroll the display so
+    // the home line is the top of the visible screen.  This cannot be
+    // done by erasing individual lines, because there may be partial lines
+    // (if numRows*charHeight < availHeight in measureWindow's calculation),
+    // and we don't want those to be visible.
+    // There could also be lines that have non-standard height.
+    // Hence the need for the adjustable _vspacer.
+    // When we erase only part of the display, we want to leave the rest
+    // alone, without scrolling.
+    switch (param) {
+    case 1: // Erase above
+        for (var line = 0;  line < saveLine;  line++) {
+            this.moveToIn(line, 0, true);
+            this.eraseLineRight();
         }
+        if (saveCol != 0) {
+            this.moveToIn(saveLine, 0, true);
+            this.eraseCharactersRight(saveCol+1, false);
+        }
+        break;
+    case 3: // Delete saved scrolled-off lines - xterm extension
+        var saveHome = this.homeLine;
+        this.homeLine =
+            this.usingAlternateScreenBuffer ? this.initial.saveLastLine
+            : 0;
+        var removed = saveHome - this.homeLine;
+        if (removed > 0) {
+            this.resetCursorCache();
+            this.moveToIn(0, 0, false);
+            this.deleteLinesIgnoreScroll(removed, false);
+            this.resetCursorCache();
+        }
+        break;
+    default:
+        var startLine = param == 0 ? saveLine : 0;
+        if (this.usingAlternateScreenBuffer && startLine == 0
+            && param == 2 && this.initial.saveHomeLine > 0) {
+            // FIXME maybe this is a bad idea
+            var saveHome = this.homeLine;
+            this.homeLine = this.initial.saveLastLine;
+            var homeAdjust = saveHome - this.homeLine;
+            this.resetCursorCache();
+            saveLine -= homeAdjust;
+            startLine -= homeAdjust;
+        }
+        var count = this.lineStarts.length-startLine-this.homeLine;
+        if (param == 0) {
+            this.eraseCharactersRight(-1, true);
+            count--;
+            while (--count >= 0) {
+                startLine++;
+                this.moveToIn(startLine, 0, false);
+                this.eraseCharactersRight(-1, true);
+            }
+        }
+        else if (count > 0) {
+            this.moveToIn(startLine, 0, false);
+            this.deleteLinesIgnoreScroll(count, false);
+            this.resetCursorCache();
+        }
+        break;
     }
-    this._insertLinesAt(this.numRows-line, line, this.numRows);
-    this.resetCursorCache();
-    this._clearWrap();
+    this.moveToIn(saveLine, saveCol, true);
+    this._checkSpacer();
 };
 
 /** clear line-wrap indicator from absLine to absLine+1.
@@ -1685,11 +1794,13 @@ DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
     }
 };
 
-DomTerm.prototype._moveNodes = function(firstChild, newParent) {
+DomTerm.prototype._moveNodes = function(firstChild, newParent, newBefore) {
+    if (! newBefore)
+        newBefore = null;
     for (var child = firstChild; child != null; ) {
         var next = child.nextSibling;
         child.parentNode.removeChild(child);
-        newParent.appendChild(child);
+        newParent.insertBefore(child, newBefore);
         child = next;
     }
 };
@@ -1886,35 +1997,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                       this.originMode);
         break;
     case 74 /*'J'*/:
-        param = this.getParameter(0, 0);
-        var saveLine = this.getCursorLine();
-        if (param == 2 || param == 3 || (param == 0 && saveLine == 0)) {
-            if (this.usingAlternateScreenBuffer) {
-                if (this.initial.saveHomeLine > 0) {
-                    this.homeLine = this.initial.saveLastLine;
-                }
-            }
-            else if (param == 3)
-                this.homeLine = 0;
-            this.resetCursorCache();
-            var bottom = this.lineStarts.length;
-            this._insertLinesAt(bottom - this.homeLine, 0, bottom);
-            this.moveToIn(saveLine, 0, true);
-        }
-        else if (param == 0)
-            this.eraseBelow();
-        else if (param == 1) { // Erase above
-            var saveCol = this.getCursorColumn();
-            for (var line = 0;  line < saveLine;  line++) {
-                this.moveToIn(line, 0, true);
-                this.eraseLineRight();
-            }
-            if (saveCol != 0) {
-                this.moveToIn(saveLine, 0, true);
-                this.eraseCharactersRight(saveCol+1, false);
-            }
-            this.moveToIn(saveLine, 0, true);
-        }
+        this.eraseDisplay(this.getParameter(0, 0));
         break;
     case 75 /*'K'*/:
         param = this.getParameter(0, 0);
@@ -2472,7 +2555,7 @@ DomTerm.prototype.insertString = function(str) {
                 this._setRegionTB(0, -1);
                 this._setRegionLR(0, -1);
                 this.moveToIn(0, 0, true);
-                this.eraseBelow();
+                this.eraseDisplay(0);
                 var Es = "E".repeat(this.numColumns);
                 for (var r = 0; ; ) {
                     this.insertSimpleOutput(Es, 0, this.numColumns);
@@ -3003,7 +3086,8 @@ DomTerm.prototype.setInputMode = function(mode) {
 };
 
 DomTerm.prototype.doLineEdit = function(key, str) {
-    this.log("doLineEdit "+key+" "+JSON.stringify(str));
+    if (this.verbosity >= 2)
+        this.log("doLineEdit "+key+" "+JSON.stringify(str));
     var rng = bililiteRange(this.inputLine).bounds('selection');
     switch (key) {
     case 13: // key-down event
@@ -3108,7 +3192,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
     }
 };
 
-// For debugging
+// For debugging: Checks a bunch of invariants
 DomTerm.prototype._checkTree = function() {
     var node = this.initial;
     if (node.saveInitial)
@@ -3128,6 +3212,10 @@ DomTerm.prototype._checkTree = function() {
     if (this.outputBefore
         && this.outputBefore.parentNode != this.outputContainer)
         error("bad outputContainer");
+    if (! this._isAnAncestor(this.outputContainer, this.initial))
+        error("outputContainer not in initial");
+    if (! this._isAnAncestor(this.lineStarts[this.homeLine], this.initial))
+        error("homeLine not in initial");
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
             if (this.currentCursorLine >= 0)
@@ -3167,6 +3255,13 @@ DomTerm.prototype._checkTree = function() {
     }
     if (this.lineStarts.length - this.homeLine > this.numRows)
         error("bad homeLine value!");
+    if (this.usingAlternateScreenBuffer) {
+        var main = this.initial.saveInitial;
+        if (! main)
+            error("saveInitial of alternate-screenbuffer not set");
+        if (this._isAnAncestor(this.initial, main))
+            error("alternate-screenbuffer nested in main-screenbuffer");
+    }
 };
 
 // For debugging

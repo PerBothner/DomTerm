@@ -705,11 +705,13 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 
 @table @asis
 @item @code{"\e[3J"}
-Erase the entire display, @emph{including} the scrollback buffer.
-(This is an undocumented xterm feature.)
+Erase the scrollback buffer (i.e. any lines above the home line).
+(This is an xterm feature.)
 
 @item @code{"\e]72;" @var{html-text} "\a"}
 Insert HTML text.
+@strong{Warning:} This will probably change to require a cookie,
+similar to @uref{http://code.mindmeldr.com/graphterm/extend.html,GraphTerm}.
 
 @item @code{"\e]74;" key "\a"}
 Simulate pressing @var{key}.  Used by auto-line mode.
