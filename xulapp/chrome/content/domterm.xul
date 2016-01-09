@@ -1,17 +1,48 @@
 <?xml version="1.0"?>
 <?xml-stylesheet href="chrome://global/skin/global.css" type="text/css"?>
 <window id="main" title="DomTerm" width="800" height="600" 
-    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" onload="init()">
+        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" onload="init()">
+  <menubar id="menubar" hidden="false">
+    <menu label="File" id="file-menu">
+      <menupopup>
+        <menuitem label="Quit" oncommand="doQuit()"/>
+      </menupopup>
+    </menu>
+    <menu label = "Edit" id="edit-menu">
+      <menupopup>
+        <menuitem label="Copy" oncommand="doCopy()"/>
+        <menuitem label="Paste" oncommand="doPaste()"/>
+      </menupopup>
+    </menu>
+    <menu label = "View" id="view-menu">
+      <menupopup>
+        <menuitem label="Show Menubar" type="checkbox" checked="true" oncommand="changeMenubarState();" id="menubar-show-menubar"/>
+        <!-- Not working yet: <menuitem label="Full Screen" type="checkbox" checked="false" oncommand="changeFullScreenMode();"/>-->
+      </menupopup>
+    </menu>
+    <menu label = "Terminal" id="terminal-menu">
+      <menupopup>
+        <menu id="input-mode-menu" label="Input mode">
+          <menupopup>
+            <menuitem id="menubar-inputmode-line" label="Line" type="radio" name="menubar-input-mode" oncommand="setInputMode(108)"/>
+            <menuitem id="menubar-inputmode-char" label="Character mode" type="radio" name="menubar-input-mode" oncommand="setInputMode(99)"/>
+            <menuitem id="menubar-inputmode-auto" label="Auto mode" type="radio" name="menubar-input-mode" checked="true" oncommand="setInputMode(97)"/>
+          </menupopup>
+        </menu>
+      </menupopup>
+    </menu>
+  </menubar>
   <popupset>
     <menupopup id="mainmenu">
       <!--<menuitem label="Cut"/>-->
+      <menuitem label="Show Menubar" type="checkbox" checked="true" oncommand="changeMenubarState();" id="context-show-menubar"/>
       <menuitem label="Copy" oncommand="doCopy()"/>
       <menuitem label="Paste" oncommand="doPaste()"/>
-      <menu label="Input mode">
+      <menu id="input-mode-menu" label="Input mode">
         <menupopup>
-          <menuitem label="Line" type="radio" name="input-mode" oncommand="setInputMode(108)"/>
-          <menuitem label="Character mode" type="radio" name="input-mode" oncommand="setInputMode(99)"/>
-          <menuitem label="Auto mode" type="radio" name="input-mode" checked="true" oncommand="setInputMode(97)"/>
+          <menuitem id="context-inputmode-line" label="Line" type="radio" name="context-input-mode" oncommand="setInputMode(108)"/>
+          <menuitem id="context-inputmode-char"  label="Character mode" type="radio" name="context-input-mode" oncommand="setInputMode(99)"/>
+          <menuitem id="context-inputmode-auto"  label="Auto mode" type="radio" name="context-input-mode" checked="true" oncommand="setInputMode(97)"/>
         </menupopup>
       </menu>
     </menupopup>
@@ -34,6 +65,15 @@
     function getDomTermObject() {
         return getDomTermWindow().domterm1;
     }
+    function changeMenubarState() {
+        var menubar = document.getElementById("menubar");
+        var hidden = menubar.hidden;
+        document.getElementById("menubar").hidden = ! hidden;
+        var inMenubar = document.getElementById("menubar-show-menubar");
+        var inContext = document.getElementById("context-show-menubar");
+        inMenubar.setAttribute("checked", hidden ? "true" : "false");
+        inContext.setAttribute("checked", hidden ? "true" : "false");
+    }
     function doCopy() {
         getDomTermObject().doCopy();
     }
@@ -41,7 +81,18 @@
         getDomTermObject().doPaste();
     }
     function setInputMode(mode) {
+        var modeword;
+        switch (mode) {
+        case 108: modeword="line"; break;
+        case 99: modeword="char"; break;
+        case 97: modeword="auto"; break
+        }
         getDomTermObject().setInputMode(mode);
+        var inMenubar = document.getElementById("menubar-inputmode-"+modeword);
+        var inContext = document.getElementById("context-inputmode-"+modeword);
+        inMenubar.setAttribute("checked", "true");
+        inContext.setAttribute("checked", "true");
     }
+    function doQuit() { window.close(); }
   </script>
 </window>
