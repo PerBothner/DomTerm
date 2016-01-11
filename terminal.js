@@ -34,6 +34,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/** [The following was helpful, including code and comment snippets.]
+ * term.js - an xterm emulator
+ * Copyright (c) 2012-2013, Christopher Jeffrey (MIT License)
+ * https://github.com/chjj/term.js
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * Originally forked from (with the author's permission):
+ *   Fabrice Bellard's javascript vt100 for jslinux:
+ *   http://bellard.org/jslinux/
+ *   Copyright (c) 2011 Fabrice Bellard
+ *   The original design remains. The terminal itself
+ *   has been extended to include xterm CSI codes, among
+ *   other features.
+ */
 "use strict";
 
 function DomTerm(name, topNode) {
@@ -182,6 +213,12 @@ function DomTerm(name, topNode) {
     this.history = new Array();
     this.historyCursor = -1;
 
+    // If non-null: A function that maps charCodes to replacement strings.
+    // (If the function returns null, uses the input unmodified.)
+    this.charMapper = null;
+    this._Gcharsets = [null, null, null, null];
+    this._Glevel = 0;
+
     this._currentCommandGroup = null;
     this._currentCommandOutput = null;
     this._currentCommandHideable = false;
@@ -265,6 +302,12 @@ DomTerm.SEEN_ESC_RBRACKET_STATE = 5;
 DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 6;
 /** We have seen ESC '#'. */
 DomTerm.SEEN_ESC_SHARP_STATE = 7;
+DomTerm.SEEN_ESC_CHARSET0 = 8;
+DomTerm.SEEN_ESC_CHARSET1 = 9;
+DomTerm.SEEN_ESC_CHARSET2 = 10;
+DomTerm.SEEN_ESC_CHARSET3 = 11;
+DomTerm.SEEN_ESC_SS2 = 12;
+DomTerm.SEEN_ESC_SS3 = 13;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -2378,6 +2421,31 @@ DomTerm.prototype.setWindowTitle = function(title, option) {
     document.title = title;
 };
 
+DomTerm.prototype._selectGcharset = function(g, whenShifted/*igored*/) {
+    this._Glevel = g;
+    this.charMapper = this._Gcharsets[g];
+};
+
+// DEC Special Character and Line Drawing Set.
+// http://vt100.net/docs/vt102-ug/table5-13.html
+// A lot of curses apps use this if they see TERM=xterm.
+// testing: echo -e '\e(0a\e(B'
+// The xterm output sometimes seems to conflict with the
+// reference above. xterm seems in line with the reference
+// when running vttest however.
+// The table below now uses xterm's output from vttest.
+DomTerm.charsetSCLD = function(ch) {
+    if (ch >= 96 && ch <= 126)
+        return "\u25c6\u2592\u2409\u240c\u240d\u240a\u00b0\u00b1\u2424\u240b\u2518\u2510\u250c\u2514\u253c\u23ba\u23bb\u2500\u23bc\u23bd\u251c\u2524\u2534\u252c\u2502\u2264\u2265\u03c0\u2260\u00a3\u00b7".charAt(ch-96);
+    return null;
+};
+DomTerm.charsetUK = function(ch) {
+    // Convert '#' to pound (sterling) sign
+    if (ch==35)
+        return "\xa3";
+    return null;
+};
+
 DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     if (this.verbosity >= 2)
         this.log("handleOperatingSystemControl "+code+" '"+text+"'");
@@ -2408,7 +2476,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         // Is printed by /etc/profile/vte.sh on Fedora
         break;
     case 777:
-        // text is "\u001b]777;COMMAND
+        // text is "\u001b]777;COMMAND"
         // Is printed by /etc/profile/vte.sh on Fedora
         break;
     default:
@@ -2450,7 +2518,8 @@ DomTerm.prototype.insertString = function(str) {
     for (; i < slen; i++) {
         var ch = str.charCodeAt(i);
         //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
-        switch (this.controlSequenceState) {
+        var state = this.controlSequenceState;
+        switch (state) {
         case DomTerm.SEEN_ESC_STATE:
             this.insertSimpleOutput(str, prevEnd, i);
             this.controlSequenceState = DomTerm.INITIAL_STATE;
@@ -2458,16 +2527,24 @@ DomTerm.prototype.insertString = function(str) {
             case 35 /*'#'*/:
                 this.controlSequenceState = DomTerm.SEEN_ESC_SHARP_STATE;
                 break;
-            case 91 /*'['*/:
-                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_STATE;
-                this.parameters.length = 1;
-                this.parameters[0] = null;
+            case 40 /*'('*/: // Designate G0 Character Set (ISO 2022, VT100)
+                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET0;
                 break;
-            case 93 /*']'*/:
-                this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_STATE;
-                this.parameters.length = 1;
-                this.parameters[0] = null;
+            case 41 /*')'*/: // Designate G1 Character Set
+            case 45 /*'-'*/:
+                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET1;
                 break;
+            case 42 /*'*'*/: // Designate G2 Character Set
+            case 46 /*'.'*/:
+                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET2;
+                break;
+            case 43 /*'+'*/: // Designate G3 Character Set
+                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET3;
+                break;
+            case 47 /*'/'*/: // Designate G3 Character Set (VT300).
+                // These work for 96-character sets only.
+                // followed by A:  -> ISO Latin-1 Supplemental.
+                break; // FIXME - not implemented
             case 55 /*'7'*/: // DECSC
                 this.saveCursor(); // FIXME
                 break;
@@ -2485,6 +2562,29 @@ DomTerm.prototype.insertString = function(str) {
                 if (line == this._regionTop)
                     this.scrollReverse(1);
                 this.cursorDown(-1);
+                break;
+            case 78 /*'N'*/: // SS2
+            case 79 /*'O'*/: // SS3
+                this.controlSequenceState = ch - 78 + DomTerm.SEEN_ESC_SS2;
+                break;
+            case 91 /*'['*/:
+                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_STATE;
+                this.parameters.length = 1;
+                this.parameters[0] = null;
+                break;
+            case 93 /*']'*/:
+                this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_STATE;
+                this.parameters.length = 1;
+                this.parameters[0] = null;
+                break;
+            case 110 /*'n'*/: // LS2
+            case 111 /*'o'*/: // LS3
+                this._selectGcharset(ch-108, false);
+                break;
+            case 126 /*'~'*/: // LS1R
+            case 125 /*'}'*/: // LS2R
+            case 124 /*'|'*/: // LS3R
+                this._selectGcharset(127-ch, true); // Not implemented
                 break;
             //case 60 /*'<'*/: // Exit VT52 mode (Enter VT100 mode
             //case 61 /*'='*/: // VT52 mode: Enter alternate keypad mode
@@ -2549,6 +2649,28 @@ DomTerm.prototype.insertString = function(str) {
                 // Do nothing, for now.
             }
             continue;
+        case DomTerm.SEEN_ESC_CHARSET0:
+        case DomTerm.SEEN_ESC_CHARSET1:
+        case DomTerm.SEEN_ESC_CHARSET2:
+        case DomTerm.SEEN_ESC_CHARSET3:
+            var cs;
+            switch (ch) {
+            case 48 /*'0'*/: // DEC Special Character and Line Drawing Set.
+                cs = DomTerm.charsetSCLD;
+                break;
+            case 65 /*'A'*/: // UK
+                cs = DomTerm.charsetUK;
+                break;
+            case 66 /*'B'*/: // United States (USASCII).
+            default:
+                cs = null;
+            };
+            var g = state-DomTerm.SEEN_ESC_CHARSET0;
+            this._Gcharsets[g] = cs;
+            this._selectGcharset(this._Glevel, false);
+            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            prevEnd = i + 1;
+            break;
         case DomTerm.SEEN_ESC_SHARP_STATE: /* SCR */
             switch (ch) {
             case 56 /*'8'*/: // DEC Screen Alignment Test (DECALN)
@@ -2567,6 +2689,19 @@ DomTerm.prototype.insertString = function(str) {
                 break;
             }
             prevEnd = i + 1;
+            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            break;
+        case DomTerm.SEEN_ESC_SS2:
+        case DomTerm.SEEN_ESC_SS3:
+            var mapper = this._Gcharsets[state-DomTerm.SEEN_ESC_SS2+2];
+            prevEnv = i;
+            if (mapper != null) {
+                var chm = this.charMapper(ch);
+                if (chm != null) {
+                    this.insertSimpleOutput(chm, 0, chm.length);
+                    prevEnd = i + 1;
+                }
+            }
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             break;
         case DomTerm.INITIAL_STATE:
@@ -2619,6 +2754,13 @@ DomTerm.prototype.insertString = function(str) {
             case 24: case 26:
                 this.controlSequenceState = DomTerm.INITIAL_STATE;
                 break;
+            case 14 /*SO*/:
+                this._selectGcharset(1, false);
+                break;
+            case 15 /*SI*/:
+                this._selectGcharset(0, false);
+                break;
+            case 5 /*ENQ*/: // FIXME
             case 0: case 1: case 2:  case 3:
             case 4: case 6:
             case 16: case 17: case 18: case 19:
@@ -2629,8 +2771,15 @@ DomTerm.prototype.insertString = function(str) {
                 prevEnd = i + 1;
                 break;
             default:
-                // FIXME: handle ENQ SO SI
-                ;
+                if (this.charMapper != null) {
+                    var chm = this.charMapper(ch);
+                    if (chm != null) {
+                        this.insertSimpleOutput(str, prevEnd, i);
+                        this.insertSimpleOutput(chm, 0, chm.length);
+                        prevEnd = i + 1;
+                        break;
+                    }
+                }
             }
         }
     }
