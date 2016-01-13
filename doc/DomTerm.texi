@@ -710,8 +710,15 @@ Erase the scrollback buffer (i.e. any lines above the home line).
 
 @item @code{"\e]72;" @var{html-text} "\a"}
 Insert HTML text.
-@strong{Warning:} This will probably change to require a cookie,
-similar to @uref{http://code.mindmeldr.com/graphterm/extend.html,GraphTerm}.
+
+The HTML is sanity-checked for safety.
+It needs to be well-formed XML; thus to write a horizontal line
+you must write @code{<hr/>} (with the extra ``@code{/}'').
+
+The actual policy for allowed elements and attributes
+can be changed by overwriting the @code{elementInfo}
+and @code{allowAttribute} functions in @code{terminal.js}.
+The default policy is a work-in-progress.
 
 @item @code{"\e]74;" key "\a"}
 Simulate pressing @var{key}.  Used by auto-line mode.

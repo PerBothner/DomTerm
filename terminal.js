@@ -2446,6 +2446,295 @@ DomTerm.charsetUK = function(ch) {
     return null;
 };
 
+DomTerm.prototype._unsafeInsertHTML = function(text) {
+    this.log("_unsafeInsertHTML "+JSON.stringify(text));
+    if (this.outputBefore != null)
+        this.outputBefore.insertAdjacentHTML("beforebegin", text);
+    else
+        this.outputContainer.insertAdjacentHTML("beforeend", text);
+};
+
+// Bit 0 (value 1): Allow in inserted HTML
+// Bit 1 (value 2): Some attributes may need scrubbing
+// Bit 2 (value 4): "Phrasing [inline] content"
+// Bit 3 (value 8): Allow in SVG
+DomTerm.prototype.elementInfo = function(tag, parents) {
+    var v = DomTerm.HTMLinfo.hasOwnProperty(tag) ? DomTerm.HTMLinfo[tag] : 0;
+
+    if ((v & 8) == 8) { // If allow in SVG, check parents for svg
+        for (var i = parents.length; --i >= 0; ) {
+            if (parents[i] == "svg") {
+                v |= 1;
+                break;
+            }
+        }
+    }
+    return v;
+};
+
+DomTerm.prototype.allowAttribute = function(name, value, einfo, parents) {
+    //Should "style" be allowed?  Or further scrubbed?
+    //It is required for SVG. FIXME.
+    //if (name=="style")
+    //    return false;
+    if (name.startsWith("on"))
+        return false;
+    if ((einfo & 2) != 0) {
+        if (name=="href" || name=="src") {
+            // scrub for "javascript:"
+            var amp = value.indexOf("&");
+            var colon = value.indexOf(":");
+            if (amp >= 0 && amp <= 11 && (colon < 0 || amp <= colon))
+                return false;
+            if (value.startsWith("javascript:"))
+                return false;
+        }
+    }
+    return true;
+};
+
+DomTerm.HTMLinfo = {
+    "a": 7, // need to check "href" for "javascript:"
+    "abbr": 5,
+    "altGlyph": 12,
+    "altGlyphDef": 12,
+    "altGlyphItem": 12,
+    "animate": 12,
+    "animateColor": 12,
+    "animateMotion": 12,
+    "animateTransform": 12,
+    "b": 5,
+    "circle": 12,
+    "cite": 5,
+    "clipPath": 12,
+    "code": 5,
+    "color-profile": 12,
+    "cursor": 12,
+    "dfn": 5,
+    "defs": 12,
+    "desc": 12,
+    "div": 1,
+    "ellipse": 12,
+    "em": 5,
+    "feBlend": 12,
+    "feColorMatrix": 12,
+    "feComponentTransfer": 12,
+    "feComposite": 12,
+    "feConvolveMatrix": 12,
+    "feDiffuseLighting": 12,
+    "feDisplacementMap": 12,
+    "feDistantLight": 12,
+    "feFlood": 12,
+    "feFuncA": 12,
+    "feFuncB": 12,
+    "feFuncG": 12,
+    "feFuncR": 12,
+    "feGaussianBlur": 12,
+    "feImage": 12,
+    "feMerge": 12,
+    "feMergeNode": 12,
+    "feMorphology": 12,
+    "feOffset": 12,
+    "fePointLight": 12,
+    "feSpecularLighting": 12,
+    "feSpotLight": 12,
+    "feTile": 12,
+    "feTurbulence": 12,
+    "filter": 12,
+    "font": 12,
+    "font-face": 12,
+    "font-face-format": 12,
+    "font-face-name": 12,
+    "font-face-src": 12,
+    "font-face-uri": 12,
+    "foreignObject": 12,
+    "g": 12,
+    "glyph": 12,
+    "glyphRef": 12,
+    "hkern": 12,
+    "hr": 1,
+    "i": 5,
+    "image": 12, // FIXME
+    "img": 7, // need to check "src" for "javascript:"
+    "line": 12,
+    "linearGradient": 12,
+    "mark": 5,
+    "marker": 12,
+    "mask": 12,
+    "metadata": 12,
+    "missing-glyph": 12,
+    "mpath": 12,
+    "p": 1,
+    "path": 12,
+    "pattern": 12,
+    "polygon": 12,
+    "polyline": 12,
+    "pre": 1,
+    "q": 5,
+    "radialGradient": 12,
+    "rect": 12,
+    "samp": 5,
+    "script": 12, // ?
+    "script": 0,
+    "set": 12,
+    "small": 5,
+    "span": 5,
+    "stop": 12,
+    "strong": 5,
+    "style": 12,
+    "sub": 5,
+    "sup": 5,
+    "svg": 13,
+    "switch": 12,
+    "symbol": 12,
+    "text": 12,
+    "textPath": 12,
+    "title": 12,
+    "tref": 12,
+    "tspan": 12,
+    "u": 5,
+    "use": 12,
+    "view": 12,
+    "var": 5,
+    "vkern": 12,
+    
+    // Phrasing content:
+    //area (if it is a descendant of a map element) audio bdi bdo br button canvas data datalist del embed iframe input ins kbd keygen label map math meter noscript object output progress q ruby s select svg template textarea time u  video wbr text
+};
+
+DomTerm.prototype._scrubAndInsertHTML = function(str) {
+    var len = str.length;
+    var start = 0;
+    var ok = 0;
+    var i = 0;
+    var activeTags = new Array();
+    loop:
+    for (;;) {
+        if (i == len) {
+            ok = i;
+            break;
+        }
+        var ch = str.charCodeAt(i++);
+        switch (ch) {
+        case 38 /*'&'*/:
+            ok = i-1;
+            for (;;) {
+                if (i == len)
+                    break loop;
+                ch = str.charCodeAt(i++);
+                if (ch == 59) //';'
+                    break;
+                if (! ((ch >= 65 && ch <= 90)  // 'A'..'Z'
+                       || (ch >= 97 && ch <= 122) // 'a'..'z'
+                       || (ch >= 48 && ch <= 57) // '0'..'9'
+                       || (ch == 35 && i==ok+2))) // initial '#'
+                    break loop;
+            }
+            break;
+        case 62: // '>'
+            ok = i-1;
+            break;
+        case 60 /*'<'*/:
+            ok = i-1;
+            if (i + 1 == len)
+                break loop; // invalid
+            ch = str.charCodeAt(i++);
+            var end = ch == 47; // '/';
+            if (end)
+                ch = str.charCodeAt(i++);
+            for (;;) {
+                if (i == len)
+                    break loop; // invalid
+                ch = str.charCodeAt(i++);
+                if (! ((ch >= 65 && ch <= 90)  // 'A'..'Z'
+                       || (ch >= 97 && ch <= 122) // 'a'..'z'
+                       || (ch >= 48 && ch <= 57) // '0'..'9'
+                       || (ch == 35 && i==ok+2))) // initial '#'
+                    break;
+            }
+            if (end) {
+                if (ch != 62) // '>'
+                    break loop; // invalid
+                var tag = str.substring(ok+2,i-1);
+                if (activeTags.length == 0) {
+                    // FIXME check current context
+                    break loop;
+                } else if (activeTags.pop() == tag) {
+                    ok = i;
+                    continue;
+                } else
+                    break loop; // invalid - tag mismatch                    
+            } else {
+                var tag = str.substring(ok+1,i-1);
+                var einfo = this.elementInfo(tag, activeTags);
+                if ((einfo & 1) == 0)
+                    break loop;
+                activeTags.push(tag);
+                // we've seen start tag - now check for attributes
+                for (;;) {
+                    while (ch == 32 && i < len)
+                        ch = str.charCodeAt(i++);
+                    var attrstart = i-1;
+                    while (ch != 61 && ch != 62 && ch != 47) { //' =' '>' '/'
+                        if (i == len || ch == 60 || ch == 38) //'<' or '&'
+                            break loop; // invalid
+                        ch = str.charCodeAt(i++);
+                    }
+                    var attrend = i-1;
+                    if (attrstart == attrend) {
+                        if (ch == 62 || ch == 47) // '>' or '/'
+                            break;
+                        else
+                            break loop; // invalid - junk in element start
+                    }
+                    if (ch != 61) // '='
+                        break loop; // invalid - name not followed by '='
+                    var attrname = str.substring(attrstart,attrend);
+                    if (i == len)
+                        break loop; // invalid
+                    var quote = i == len ? -1 : str.charCodeAt(i++);
+                    if (quote != 34 && quote != 39) // '"' or '\''
+                        break loop; // invalid
+                    var valstart = i;
+                    for (;;) {
+                        if (i+1 >= len) //i+1 to allow for '/' or '>'
+                            break loop; // invalid
+                        ch = str.charCodeAt(i++);
+                        if (ch == quote)
+                            break;
+                    }
+                    var attrvalue = str.substring(valstart,i-1);
+                    if (! this.allowAttribute(attrname, attrvalue,
+                                              einfo, activeTags))
+                        break loop;
+                    ch = str.charCodeAt(i++); // safe because of prior i+1
+
+                }
+                while (ch == 32 && i < len)
+                    ch = str.charCodeAt(i++);
+                if (ch == 47) { // '/'
+                    if (i == len || str.charCodeAt(i++) != 62) // '>'
+                        break loop; // invalid
+                    activeTags.pop();
+                } else if (ch != 62) // '>'
+                    break loop; // invalid
+                ok = i;
+            }
+            break;
+        }
+    }
+    if (ok > start) {
+        this._unsafeInsertHTML(str.substring(start, ok));
+    }
+    if (ok < len) {
+        var span = this.createSpanNode();
+        span.setAttribute("style", "background-color: #fbb");
+        this.insertNode(span);
+        span.appendChild(document.createTextNode(str.substring(ok, len)));
+    }
+};
+
+
 DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     if (this.verbosity >= 2)
         this.log("handleOperatingSystemControl "+code+" '"+text+"'");
@@ -2456,10 +2745,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this.setWindowTitle(text, code);
         break;
     case 72:
-        if (this.outputBefore != null)
-            this.outputBefore.insertAdjacentHTML("beforebegin", text);
-        else
-            this.outputContainer.insertAdjacentHTML("beforeend", text);
+        this._scrubAndInsertHTML(text);
         this.cursorColumn = -1;
         break;
     case 74:
