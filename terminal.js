@@ -2493,6 +2493,9 @@ DomTerm.prototype.allowAttribute = function(name, value, einfo, parents) {
     return true;
 };
 
+//FIXME Study the following:
+//https://www.owasp.org/index.php/XSS_Filter_Evasion_Cheat_Sheet
+
 DomTerm.HTMLinfo = {
     "a": 7, // need to check "href" for "javascript:"
     "abbr": 5,
