@@ -1,0 +1,20 @@
+{
+    "name": "DomTerm!",
+    "description": "DomTerm-in-Chrome.",
+    "version": "0.1",
+    "manifest_version": 2,
+
+    "permissions": [
+        "clipboardRead",
+        "clipboardWrite",
+        "contextMenus",
+        {"socket": [
+            "tcp-connect",
+            "tcp-listen"]}],
+
+    "app": {
+        "background": {
+            "scripts": ["webapp/background.js"]
+        }
+    }
+}

@@ -1325,7 +1325,19 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                   dt.pasteText(e.clipboardData.getData("text"));
                                   e.preventDefault(); },
                              false);
-
+    if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
+        chrome.contextMenus.onClicked.addListener(function(info) {
+            switch (info.menuItemId) {
+            case "context-paste":
+                dt.doPaste();
+                break;
+            case "context-copy":
+                dt.doCopy();
+                break;
+            }
+            dt.log("context menu even info:"+info);
+        });
+    }
     this.measureWindow();
 };
 
