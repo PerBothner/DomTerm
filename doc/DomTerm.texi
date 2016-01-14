@@ -236,9 +236,9 @@ assuming it works for you.  You can start it with this command:
 make run-firefox
 @end example
 
-The user interface is a ``chrome-less'' Firefox browser window.
-There is no location bar, or menubar.
-However, there is a context menu, which you get by right-clicking.
+The user interface is a ``chrome-less'' Firefox browser window,
+with a custom menubar, and custom
+context menu (what you get by right-clicking).
 
 This starts a @code{bash} shell, running in a PTY,
 running along with a WebSocket server.  It also starts up
@@ -246,6 +246,47 @@ a chrome-less Firefox window, and automatically connects them.
 
 Java is currently required for the WebSocket server, but
 there are plans to replace that.
+
+This is potentially a very nice terminal emulator.  However,
+Firefox currently has undisagnosed performance issues when
+many lines are written quickly.  (Chrome handles that better.)
+Also, it is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
+which is being phased out.
+
+@section Standalone terminal emulator as a Chrome application
+
+This is very similar to using Firefox, but uses the Google Chrome browser.
+This works well and the performance is good.
+There are two ways you can do it.
+
+The most convenient method just starts DomTerm
+in a fresh chrome-less window (with no menubar or toolbar),
+using the @code{--app=} option.  Doing the following
+does the work for you: it starts both the WebSocket server,
+the application (bash), and the Chrome browser window,
+and connects them together:
+
+@example
+make run-chrome
+@end example
+
+This method provides no menubar or context-menu customization (so far).
+Furthmore, @code{paste} doesn't work yet (though @code{copy} does).
+
+It is also possible to start DomTerm as an actual
+@uref{https://developer.chrome.com/apps/,Chrome app}.
+This has working @code{paste} and the beginnings of a custom context-menu.
+However, it is not as convenient or robust.
+First you have to start up the server:
+@example
+make run-server
+@end example
+Then you have to start Chrome in a separate window:
+@example
+google-chrome --new-window --load-and-launch-app=/path/to/DomTerm/
+@end example
+
+(Help/advice for doing this better would be welcome.)
 
 @section Standalone terminal emulator using JavaFX WebView
 
