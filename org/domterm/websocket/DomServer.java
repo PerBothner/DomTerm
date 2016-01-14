@@ -111,7 +111,7 @@ public class DomServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote ) {
-        if (runFirefox) {
+        if (runBrowser > 0) {
             try {
                 stop();
                 System.exit(0);
@@ -194,10 +194,14 @@ public class DomServer extends WebSocketServer {
             // some errors like port binding failed may not be assignable to a specific websocket
         }
     }
+    static String domtermPath;
 
-    static boolean runFirefox = false;
+    // 1: run Firefox in -app mode
+    // 2: run Chrome in --app mode
+    static int runBrowser = 0;
     public static void main (String[] args) {
         char mode = ' ';
+        domtermPath = System.getProperty("java.library.path");
         //int port = 8887; // 843 flash policy port
         int port = -1;
         int i = 0;
@@ -212,20 +216,24 @@ public class DomServer extends WebSocketServer {
                 } catch (Exception ex) {
                     fatal("bad port number '"+arg+"'");
                 }
+            } else if (arg.startsWith("--domterm-path=")) {
+                domtermPath = arg.substring(15);
             } else if (arg.equals("--firefox")) {
-                runFirefox = true;
+                runBrowser = 1;
+            } else if (arg.equals("--chrome")) {
+                runBrowser = 2;
             } else
                 break;
         }
         String[] backendArgs = new String[args.length-i];
         System.arraycopy(args, i, backendArgs, 0, backendArgs.length);
         if (port == -1)
-            port = runFirefox ? 0 : 8025;
+            port = runBrowser > 0 ? 0 : 8025;
         try {
             DomServer s = new DomServer(port, backendArgs);
             s.start();
             port = s.getPort();
-            if (runFirefox) {
+            if (runBrowser == 1) {
                 String firefoxCommand = "firefox";
                 String firefoxMac =
                     "/Applications/Firefox.app/Contents/MacOS/firefox";
@@ -237,7 +245,14 @@ public class DomServer extends WebSocketServer {
                                          "-wspath",
                                          "ws://localhost:"+port });
                 process.waitFor();
-            } else {
+            } else if (runBrowser == 2) {
+                String chromeCommand = "google-chrome";
+                String appArg = "--app=file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
+                System.err.println("call "+chromeCommand+" with "+appArg);
+                Process process = Runtime.getRuntime()
+                    .exec(new String[] { chromeCommand, appArg });
+                process.waitFor();
+           } else {
                 System.out.println("DomTerm server started on port: "+port);
                 BufferedReader reader =
                     new BufferedReader(new InputStreamReader(System.in));

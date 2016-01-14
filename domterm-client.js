@@ -10,7 +10,11 @@ function connect(wspath) {
         wt.initializeTerminal(topNode); };
 }
 function loadHandler(event) {
-    if (location.search.search(/wait/) < 0)
+    var query = location.search;
+    var ws = query.match(/ws=([^&]*)/);
+    if (ws)
+        connect("ws:"+ws[1]);
+    else if (query.search(/wait/) < 0)
         connect("ws://localhost:8025/websocket/replsrv");
 }
 window.addEventListener("load", loadHandler, false);

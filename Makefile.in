@@ -42,6 +42,9 @@ run-server: libpty@LIBEXT@ d/domterm domterm.jar
 run-firefox: libpty@LIBEXT@ domterm.jar d/domterm xulapp/domterm-chrome.jar
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer --firefox $(SERVER_ARGS)
 
+run-chrome: libpty.so domterm.jar d/domterm xulapp/domterm-chrome.jar
+	$(JAVA) -cp $(EXTRA_CLASSPATH):domterm.jar:java_websocket.jar: -Djava.library.path=`pwd` org.domterm.websocket.DomServer --chrome $(SERVER_ARGS)
+
 run-shell: domterm.jar
 	CLASSPATH=domterm.jar $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
