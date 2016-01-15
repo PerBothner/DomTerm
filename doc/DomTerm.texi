@@ -989,7 +989,7 @@ The default action is to do nothing.
 @defun handleLink (event, href)
 Called on a click event on a @code{<a>} link element.
 The default action is to call @code{preventDefault} on the @var{event},
-and then call @code{reportEvent} with an @code{"ALINK} type event.
+and then call @code{reportEvent} with an @code{"ALINK"} type event.
 (We can't let the browser do its default action since that would
 replace the current DomTerm page.)
 @end defun
