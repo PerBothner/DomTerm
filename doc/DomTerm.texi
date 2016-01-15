@@ -24,13 +24,16 @@ Users can type commands which
 gets sent to an application, which evaluates the command, and displays
 the results, typically in some kind of type-script format.
 
-DomTerm is Free Software (open-source)
-available at @uref{https://github.com/PerBothner/DomTerm,https://github.com/PerBothner/DomTerm}.
+This @uref{https://lwn.net/Articles/670062/,LWN article} provides
+background, motivation, and a summary of the functionality.
 
 The name ``DomTerm'' refers to that it  works by manipulating the
 Document Object Model (DOM) of a browser: the nested structure of elements,
 text, and attributes.
 (Also, most other appropriate names were already taken...) 
+
+DomTerm is Free Software (open-source)
+available at @uref{https://github.com/PerBothner/DomTerm,https://github.com/PerBothner/DomTerm}.
 
 The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
 was based on similar concepts, but was mostly written in Java using
