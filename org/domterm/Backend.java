@@ -1,7 +1,11 @@
 package org.domterm;
 
 import org.domterm.util.Util;
+import java.awt.Desktop;
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+
 
 /** Encapsulates a back-end (inferior) and how we communicate with it.
  * Does not encapsulate a front-end (GUI or browser) or transport layer.
@@ -43,6 +47,23 @@ public abstract class Backend {
                 setWindowSize(i1, i2, i3, i3);
             } catch (Throwable ex) {
                 System.err.println("caught "+ex);
+            }
+        } else if ("ALINK".equals(name)) {
+            int q = str.indexOf('"');
+            String href = Util.parseSimpleJsonString(str, q, str.length());
+            if (Desktop.isDesktopSupported()) {
+                URI uri;
+                try {
+                    uri = new URI(href);
+                } catch (URISyntaxException ex) {
+                    // FIXME should do better
+                    uri = URI.create("http:invalid-URI-syntax-in-link");
+                }
+                try {
+                    Desktop.getDesktop().browse(uri);
+                } catch (Throwable ex) {
+                    // ???
+                }
             }
         } else if ("VERSION".equals(name)) {
             addVersionInfo(str);

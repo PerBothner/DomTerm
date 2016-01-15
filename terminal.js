@@ -1324,6 +1324,14 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                               function(e) {
                                   dt.pasteText(e.clipboardData.getData("text"));
                                   e.preventDefault(); },
+                              false);
+    topNode.addEventListener("click",
+                             function(e) {
+                                 var target = e.target;
+                                 if (target instanceof Element
+                                     && target.nodeName == "A")
+                                     dt.handleLink(e, target.getAttribute("href"));
+                             },
                              false);
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
         chrome.contextMenus.onClicked.addListener(function(info) {
@@ -2427,6 +2435,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
 
 DomTerm.prototype.handleBell = function() {
     // Do nothing, for now.
+};
+
+DomTerm.prototype.handleLink = function(event, href) {
+    event.preventDefault();
+    this.reportEvent("ALINK", JSON.stringify(href));
 };
 
 DomTerm.prototype.setWindowTitle = function(title, option) {
