@@ -150,7 +150,7 @@ web/index.html: doc/DomTerm.xml Makefile
 	  --stringparam use.id.as.filename 1 \
 	  --stringparam chunker.output.indent yes \
 	  --stringparam chunk.first.sections 1 \
-	  --stringparam chunk.section.depth 0 \
+	  --stringparam chunk.section.depth 1 \
 	  --stringparam chapter.autolabel 0 \
 	  --stringparam chunk.fast 1 \
 	  --stringparam toc.max.depth 4 \

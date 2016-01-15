@@ -4,6 +4,12 @@
 @documentencoding UTF-8
 @settitle DomTerm - a terminal emulator and console using DOM and JavaScript
 
+@syncodeindex fn cp
+@syncodeindex vr cp
+@syncodeindex pg cp
+@codequoteundirected on
+@codequotebacktick on
+
 @titlepage
 @title DomTerm - a terminal emulator and console using DOM and JavaScript
 @end titlepage
@@ -63,10 +69,8 @@ embedded in different modes and applications.
 * Features:: Features and screenshots
 * Downloading and building::
 * Applications::
-* To-do:: Ideas and projects for DomTerm
-* DOM structure::
-* Wire byte protocol::
-* Architecture notes::
+* To do:: Ideas and projects for DomTerm
+* Technical documentation::
 @end menu
 
 @node Features
@@ -163,7 +167,7 @@ Future: Optional automatic pagination.
 @node Downloading and building
 @chapter Downloading and building
 
-@section Getting the DomTerm source code
+@subheading Getting the DomTerm source code
 
 The sources are in
 a @uref{https://github.com/PerBothner/DomTerm,GitHub repository}.
@@ -172,7 +176,7 @@ To download the sources do:
 git clone https://github.com/PerBothner/DomTerm
 @end example
 
-@section Building from source
+@subheading Building from source
 
 The core part of DomTerm is the JavaScript code @code{terminal.js},
 which defines the @code{DomTerm} class.
@@ -225,7 +229,7 @@ but we also provides a few wrappers and applications that make use of it.
 Currently, these all use Java, but I expect non-Java wrappers
 to get written.
 
-@section Standalone terminal emulator as a Firefox application
+@subheading Standalone terminal emulator as a Firefox application
 
 This is also a prototype of a stand-alone terminal emulator program.
 It uses PTYs so it only works on Unix-like systems.
@@ -253,7 +257,7 @@ many lines are written quickly.  (Chrome handles that better.)
 Also, it is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
 which is being phased out.
 
-@section Standalone terminal emulator as a Chrome application
+@subheading Standalone terminal emulator as a Chrome application
 
 This is very similar to using Firefox, but uses the Google Chrome browser.
 This works well and the performance is good.
@@ -288,7 +292,7 @@ google-chrome --new-window --load-and-launch-app=/path/to/DomTerm/
 
 (Help/advice for doing this better would be welcome.)
 
-@section Standalone terminal emulator using JavaFX WebView
+@subheading Standalone terminal emulator using JavaFX WebView
 
 This is also a prototype of a stand-alone terminal emulator program.
 It uses PTYs so it only works on Unix-like systems.
@@ -326,7 +330,7 @@ specifying a command after the @code{--pty} flag:
 java -Djava.library.path=@var{libpath} -jar domterm.jar --pty @var{command} @var{arg}...
 @end example
 
-@section A console for a Java Process object
+@subheading A console for a Java Process object
 
 This is similar to the previous terminal emulator,
 but it is implemented using pipes connected to Java @code{Process} object.
@@ -339,7 +343,7 @@ You can run it from @code{domterm.jar}:
 java -jar domterm.jar --process @var{command} @var{arg}...
 @end example
 
-@section Running a Java class connected to DomTerm
+@subheading Running a Java class connected to DomTerm
 
 This runs the @code{main} method of a specified Java class,
 but with the standard streams (input, output, and error)
@@ -349,7 +353,7 @@ re-bound to a DomTerm window. (The latter still uses JavaFX WebView.)
 java -cp @var{my-application.jar}:domterm.jar org.domterm.javafx.RunClass @var{my.ClassName} @var{arg}...
 @end example
 
-@section Using WebSockets between a server and a browser
+@subheading Using WebSockets between a server and a browser
 
 This allows you to use "any" modern browser as the client.
 This is nice for development, as you can use the browser's
@@ -395,10 +399,10 @@ could be suitable for a JavaEE environment as it follows JSR-356.)
 to use a server written in C or C++, such as
 @uref{https://libwebsockets.org/index.html,libwebsockets}.)
 
-@node To-do
+@node To do
 @chapter Ideas and projects for DomTerm
 
-@section Basic terminal emulator functionality
+@subheading Basic terminal emulator functionality
 
 @subsubheading Make robust enough for actual use
 
@@ -450,7 +454,7 @@ Fix paste in line-editing mode.
 
 Think about how to do multi-line paste.
 
-@section Better stand-line terminal emulator
+@subheading Better stand-line terminal emulator
 
 Should probably have a (hideable) top menubar (in additon to pop-up menu).
 
@@ -458,7 +462,7 @@ Allow switching styles.
 
 Handle saving and truncating scrolled-out output.
 
-@subsection Support other embeddable browsers
+@subheading Support other embeddable browsers
 
 Evaluate using other ligher-weight (?) toolkits than JavaFx WebView.
 
@@ -479,7 +483,7 @@ and is actively maintained.
 @uref{http://webkitgtk.org/,WebKitGtk+}
 @end itemize
 
-@section Readline style hooks and improvements
+@subheading Readline style hooks and improvements
 
 The idea is the line-editing mode would provide the
 functionality of readline or similar programs.
@@ -508,7 +512,7 @@ delegating line-wrapping to DomTerm.
 
 @subsubheading Customizable key sequences, as in readline
 
-@section Pretty-printing
+@subheading Pretty-printing
 
 Add hooks for Lisp-style pretty-printing.  The idea is a pretty-printer
 woudl emit groups and "text blocks" and DomTerm would do line-breaking.
@@ -535,7 +539,7 @@ A process may "print"/paint graphics with event handlers.
 For example a button.  On clicking the button, the click
 should be bundled as an event objects sent back to the inferior.
 
-@section Saved notebooks
+@subheading Saved notebooks
 
 A "notebook" is a saved (and potentially executable)
 representation of a session.
@@ -568,8 +572,18 @@ they should be bundled in a zip archive (like LibreOffice does).
 Tools to convert to and from Jupyter format would be nice,
 so we should avoid gratuitous conceptual incompatibility.
 
+@node Technical documentation
+@chapter Technical documentation
+
+@menu
+* DOM structure::
+* Wire byte protocol::
+* The DomTerm JavaScript class::
+* Architecture notes::
+@end menu
+
 @node DOM structure
-@chapter DOM structure
+@section DOM structure
 
 The JavaScript code works by DOM manipulations of
 a top-level @code{div} element, and assume that element
@@ -727,7 +741,7 @@ Returning to the normal screen deletes the @code{<div>} for the
 alternative screen, along with all of its contents.
 
 @node Wire byte protocol
-@chapter Wire byte protocol
+@section Wire byte protocol
 
 DomTerm mostly handles standard @uref{https://en.wikipedia.org/wiki/ANSI_escape_code,ansi/xterm escape sequences}.
 This section documents DomTerm-specific extensions.
@@ -742,7 +756,7 @@ escape sequences as understoof by bash's @code{echo -e}.
 Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 @code{"\xHH"} is the 8-bit characters whose value is HH (hexadecimal).
 
-@section Special sequences sent by back-end and handled by DomTerm
+@subsection Special sequences sent by back-end and handled by DomTerm
 
 @table @asis
 @item @code{"\e[3J"}
@@ -839,7 +853,7 @@ Calls the @code{eofSeen} method of @code{DomTerm},
 which may close the current window or other appropriate action.
 @end table
 
-@section Special sequences sent by DomTerm to back-end
+@subsection Special sequences sent by DomTerm to back-end
 
 @table @asis
 @item @code{"\x92" @var{name} " " @var{data} "\n"}
@@ -865,8 +879,119 @@ otherwise @var{kchars} are sent to the pty.
 Sends @var{version-info} to the back-end.  Used during initialization.
 @end table
 
+@node The DomTerm JavaScript class
+@section The DomTerm JavaScript class
+
+A DomTerm instance encapsulates the
+state of a terminal emulator / console.
+
+Functions and properties not documented here should be considered
+internal and (more) likely to change.
+
+@deftypefun new DomType (@var{name})
+Create a new DomTerm instance.
+The parameter @var{name} is a string.
+If you have multiple DomTerm instances, it is a good idea
+for the names to unique, but currently nothing depends on that.
+@end deftypefun
+
+@defun initializeTerminal (element)
+Initialize the DomTerm, and associate it with the give @var{element}
+(which should be a @code{<div>} element that has @code{class="domterm"}).
+This creates the @uref{DOM structure,sub-structure} of child elements
+of @var{element}.
+@end defun
+
+@defun insertString (str)
+Interpret and insert the characters of @var{str}.
+If may have ANSI/xterm @ref{Wire byte protocol,escape sequences}.
+This method is called by the DomTerm client code.
+@end defun
+
+@defun processInputCharacters (str)
+Send @var{str} to the client,
+where @var{str} consists of typed characters and other events.
+This is a callback function that must be set by the client.
+This is called by the DomTerm code in @code{terminal.js}.
+@end defun
+
+@defun reportEvent (name, data)
+Called by DomTerm to notify the client that some (non-character) event happened.
+The default action calls @code{processInputCharacter}
+with a special sequence starting with @code{"\x92"} followed
+by the @var{name}, space, the @var{data} and a newline.
+@end defun
+
+@defun setWindowSize (numRows, numColumns, availHeight, availWidth)
+Called by DomTerm when the window changes size, or the (font) style changes
+so the number of rows or columns has changed.
+Is used to notify the client.  The default behavior is to
+call @code{reportEvent} with a @code{"WS"} event type.
+@end defun
+
+@defun doPaste ()
+Handles a @code{paste} operation.
+May be called by client code.
+May also be overridden if needed; the default uses @code{execCommand},
+which triggers a @code{paste} event.
+It is called by DomTerm if the user types Ctrl-Shift-V.
+@end defun
+
+@defun pasteText (text)
+Called by the @code{paste} event handler.
+Actually handle a paste event.
+@end defun
+
+@defun doCopy ()
+Handles a @code{copy} operation.
+May be called by client code.
+May also be overridden if needed; the default uses @code{execCommand}.
+It is called by DomTerm if the user types Ctrl-Shift-C.
+@end defun
+
+@defun setInputMode (mode)
+Set the input editing mode.
+The value 99 (@code{'c'}) sets character mode
+(each keystroke is sent to the client);
+the value 108 (@code{'l')} sets line mode
+(local line editing with a complete line sent on enter);
+the value 97 (@code{'a'}) sets automatic mode
+(switch between line and character modes depending on client pty state);
+the value 112 (@code{'p'}) sets pipe mode
+(like line mode but with local echoing).
+@end defun
+
+@defun doLineEdit (key, str)
+Handle keyboard event when doing input line editing ourselves,
+rather than depending on the default action.
+This is used  if the @code{useDoLineEdit} property is set.
+It is also used for the first character in automatic input editing mode.
+(In that case we can't use the browser default action, since we
+first have to check the input mode of the client.)
+@end defun
+
+@defun handleBell ()
+Called when ctrl-G (the @code{bell} character) is seen.
+The default action is to do nothing.
+@end defun
+
+@defun setWindowTitle (title, option)
+Set the title of the containing window.
+Called by DomTerm when it sees certain @code{xterm}-style escape sequences.
+The @var{option} controls whether the icon name should be set;
+it is currently ignored.
+@end defun
+
+@defun elementInfo (tag, parents)
+Overridable function called by the HTML sanitizer.
+@end defun
+
+@defun allowAttribute (name, value elementInfo, parents)
+Overridable function called by the HTML sanitizer.
+@end defun
+
 @node Architecture notes
-@chapter Architecture notes
+@section Architecture notes
 
 @example
             --------------------
@@ -929,7 +1054,7 @@ Using WebSocket is convenient because it is built in to modern browsers,
 so the entire front-end (except @code{terminal.js})
 is readily available.
 
-@section A roadmap
+@subsection A roadmap
 
 This is my vision of how terminals should be done in 2016.
 
@@ -971,7 +1096,7 @@ Type-ahead could also work better.
 It would also be nice to delimit output to standard error with the
 appropriate escape sequences.
 
-@section Line vs character input modes
+@subsection Line vs character input modes
 
 In line input mode we can end up with double echoing:
 As you edit the input line, it is displayed.
@@ -995,12 +1120,7 @@ sent to the server.  If the pty is in canonical mode, then
 a message is sent back to the front-end, which switches
 to line mode, and processes the event.
 
-@section The DomTerm object
-
-A DomTerm class encapsulates the
-the state of a terminal emulator / console.
-
-@section Line structure
+@subsection Line structure
 
 "Line" here refer to "visual line": A section of the DOM that should be
 treated as a line for cursor movement.  Line breaks may come from the
@@ -1014,7 +1134,7 @@ Always points to a span node with the line attribute set.
 Normally lineEnds[i] == lineStarts[i+1]; however, sometimes
 lineStarts[i] is the start of a @code{<div>} or other block element.
 
-@section Colors and high-lighting
+@subsection Colors and high-lighting
 
 @emph{This needs updating.}
 
@@ -1042,7 +1162,7 @@ a `class` attribute (for example `green-foreground-style` and
 the correspoding CSS rules.  This has the advantage that one could
 override the highlighting appearance with a custom style sheet.
 
-@section Line-breaking / pretty-printing
+@subsection Line-breaking / pretty-printing
 
 For a terminal emulator we need to preserve (not collapse) whitespace,
 and (usually) we want to line-break in the middle of a word.
