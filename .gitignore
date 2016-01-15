@@ -17,8 +17,11 @@ doc/index.html
 doc/Applications.html
 doc/Architecture-notes.html
 doc/DOM-structure.html
+doc/Downloading-and-building.html
 doc/Features.html
-doc/To_002ddo.html
+doc/Technical-documentation.html
+doc/The-DomTerm-JavaScript-class.html
+doc/To-do.html
 doc/Wire-byte-protocol.html
 doc/DomTerm.xml
 web/*.html
