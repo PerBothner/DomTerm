@@ -3386,15 +3386,6 @@ DomTerm.prototype.processInputCharacters = function(str) {
     this.log("processInputCharacters called with %s characters", str.length);
 };
 
-function dtest(x) {
-    return "[dtest: "+x+"]";
-}
-
-DomTerm.prototype.wtest = function (x) {
-    this.log("called wtest");
-    return dtest(x);
-};
-
 DomTerm.prototype.processEnter = function() {
     var text = this.handleEnter();
     if (this.verbosity >= 2)
