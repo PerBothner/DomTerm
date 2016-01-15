@@ -247,6 +247,9 @@ public class DomServer extends WebSocketServer {
                 process.waitFor();
             } else if (runBrowser == 2) {
                 String chromeCommand = "google-chrome";
+                String chromeBin = System.getenv("CHROME_BIN");
+                if (chromeBin != null && new File(chromeBin).exists())
+                    chromeCommand = chromeBin;
                 String appArg = "--app=file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
                 System.err.println("call "+chromeCommand+" with "+appArg);
                 Process process = Runtime.getRuntime()
