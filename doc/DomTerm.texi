@@ -875,6 +875,14 @@ In auto-line mode, if the pty is in canonical mode, then @var{key}
 is returned to DomTerm (using @code{"\e]74;" @var{key} "\a"});
 otherwise @var{kchars} are sent to the pty.
 
+@item @code{"\x92" "ALINK " @var{href} "\n"}
+Sent by the DomTerm browser when the user clicks on an @code{<a>} link.
+The backend should open @var{href} (which is JSON-encoded)
+in the default browser of the user's desktop.
+(In the future to better support remote desktops, the backend
+should support a proxy server: The @var{href} should be resolved
+based on the backend's environment.)
+
 @item @code{"\x92" "VERSION " @var{version-info} "\n"}
 Sends @var{version-info} to the back-end.  Used during initialization.
 @end table
@@ -973,6 +981,14 @@ first have to check the input mode of the client.)
 @defun handleBell ()
 Called when ctrl-G (the @code{bell} character) is seen.
 The default action is to do nothing.
+@end defun
+
+@defun handleLink (event, href)
+Called on a click event on a @code{<a>} link element.
+The default action is to call @code{preventDefault} on the @var{event},
+and then call @code{reportEvent} with an @code{"ALINK} type event.
+(We can't let the browser do its default action since that would
+replace the current DomTerm page.)
 @end defun
 
 @defun setWindowTitle (title, option)
