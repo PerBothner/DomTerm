@@ -16,7 +16,7 @@ public class Util {
     };
 
     public static void copyThread(final Reader fromInferior,
-                                  boolean errStream,
+                                  final boolean errStream,
                                   final Writer out) {
         Thread th = new Thread() {
                 char[] buffer = new char[1024];
