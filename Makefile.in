@@ -28,9 +28,6 @@ libpty@LIBEXT@: native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 d/domterm: d/domterm.ti
 	tic -o. $<
 
-make run-xul: xulapp/domterm-chrome.jar
-	firefox -app xulapp/application.ini
-
 run-pty: libpty@LIBEXT@ d/domterm domterm.jar
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar domterm.jar --pty
 
@@ -39,6 +36,13 @@ SERVER_ARGS =
 run-server: libpty@LIBEXT@ d/domterm domterm.jar
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
 
+# Start up DomTerm as a Firefox/XUL app. Requires already-running server.
+# (See also run-firefox.)
+make run-xul: xulapp/domterm-chrome.jar
+	firefox -app xulapp/application.ini
+
+# Start up DomTerm as a Firefox/XUL-based terminal emulator.
+# (Like run-xul, but automatically runs server and connects to it.)
 run-firefox: libpty@LIBEXT@ domterm.jar d/domterm xulapp/domterm-chrome.jar
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer --firefox $(SERVER_ARGS)
 
