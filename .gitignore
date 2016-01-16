@@ -1,6 +1,7 @@
 *.class
 *.o
 libpty.so
+libpty.dylib
 *~
 build
 Makefile
