@@ -919,6 +919,16 @@ If may have ANSI/xterm @ref{Wire byte protocol,escape sequences}.
 This method is called by the DomTerm client code.
 @end defun
 
+@defun eofSeen ()
+This method is called by the DomTerm client code
+to notify DomTerm that the client has terminated.
+The backend repeatedly calls @code{insertString} and then
+finally calls @code{eofSeen} to signal end-of-file.
+
+This function may be overridden.
+The default action is to call the @code{close} function of the current window.
+@end defun
+
 @defun processInputCharacters (str)
 Send @var{str} to the client,
 where @var{str} consists of typed characters and other events.
