@@ -59,11 +59,19 @@ public abstract class Backend {
                     // FIXME should do better
                     uri = URI.create("http:invalid-URI-syntax-in-link");
                 }
-                try {
-                    Desktop.getDesktop().browse(uri);
-                } catch (Throwable ex) {
-                    // ???
-                }
+                final URI furi = uri;
+                // Need to run Desktop.browse in a separate thread
+                // if we're running in a JavaFX thread.  That appears to be
+                // a JavaFX bug, but this seems a harmless workaround.
+                (new Thread() {
+                    public void run() {
+                        try {
+                            Desktop.getDesktop().browse(furi);
+                        } catch (Throwable ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                    }).start();
             }
         } else if ("VERSION".equals(name)) {
             addVersionInfo(str);
