@@ -88,7 +88,7 @@ org/classes.stamp: $(DOMTERM_JAR_SOURCES)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
-tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html Makefile
+tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html terminal.js Makefile
 # JavaFX seems to have a problem loading .js files referenced from repl.html,
 # in a .jar, but inline javascript and css works.
 # So we use use sed to inline it into one by repl.html.
