@@ -1,0 +1,28 @@
+thisfile=`which $0`
+while test -L "$thisfile"; do thisfile=$(readlink -f "$thisfile"); done
+DOMTERM_DIR=`echo $(dirname $thisfile) | sed -e 's|/bin$||'`
+JAVA=${JAVA-java}
+EXTRA_ARG=""
+case "$1" in
+  "--help"|"-help")
+  echo 'DomTerm terminal emulator.'
+  echo 'With no arguments runs a shell (bash) using Firefox/XUL in a PTY.'
+  echo 'Usage: domterm [--firefox|--chrome|--javafx] [command arg...]'
+  echo 'Run [command arg...] (by default bash) in a PTY.'
+  echo '--firefox - use FireFox/XUL (this is currently the default)'
+  echo '--chrome - use the Google Chrome browser in --app mode'
+  echo '--javafx - use JavaFX WebView'
+  echo 'Set JAVA in environment if java is not in the PATH.'
+  exit 0
+  ;;
+  "--firefox" | "--chrome")
+  ;;
+  "--javafx")
+  shift
+  exec $JAVA -Djava.library.path="$DOMTERM_DIR" -cp $DOMTERM_DIR/domterm.jar:$CLASSPATH org.domterm.javafx.Main "$@"
+  ;;
+  *)
+  EXTRA_ARG="--firefox"
+  ;;
+esac
+exec $JAVA -cp "$DOMTERM_DIR/domterm.jar:$DOMTERM_DIR/java_websocket.jar:$CLASSPATH" -Djava.library.path="$DOMTERM_DIR" org.domterm.websocket.DomServer $EXTRA_ARG "$@"

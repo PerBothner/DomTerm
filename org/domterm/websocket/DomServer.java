@@ -241,7 +241,7 @@ public class DomServer extends WebSocketServer {
                     firefoxCommand = firefoxMac;
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { firefoxCommand, "-app",
-                                         "xulapp/application.ini",
+                                         domtermPath+"/xulapp/application.ini",
                                          "-wspath",
                                          "ws://localhost:"+port });
                 process.waitFor();
@@ -251,7 +251,6 @@ public class DomServer extends WebSocketServer {
                 if (chromeBin != null && new File(chromeBin).exists())
                     chromeCommand = chromeBin;
                 String appArg = "--app=file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
-                System.err.println("call "+chromeCommand+" with "+appArg);
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { chromeCommand, appArg });
                 process.waitFor();
