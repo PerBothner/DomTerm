@@ -99,18 +99,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
      * earlier command, as well as prompt text for a later command, to
      * be inserted before a later input-line.
      */
-    Node pendingInput;
-
-    /** The current input line.
-     * Note there is always a current (active) input line, even if the
-     * inferior isn't ready for it, and hasn't emitted a prompt.
-     * This is to support type-ahead, as well as application code
-     * reading from standard input.
-     * @return the currently active input line
-     */
-    public Element getInputLine() { return inputLine; }
-    public void setInputLine(Element inputLine) { this.inputLine = inputLine; }
-    Element inputLine;
+    //Node pendingInput;
 
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
         if (backend != null)
@@ -155,7 +144,6 @@ public class WebTerminal extends VBox // FIXME should extend Control
     public Document getDocumentNode() { return documentNode; }
 
     protected void loadSucceeded() {
-        //addInputLine();
     }
 
     public void setBackend(Backend backend) {
