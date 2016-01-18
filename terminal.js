@@ -476,8 +476,7 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
  * @param addSpaceAsNeeded if we should add blank lines or spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine
  */
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
-    if (this.inputFollowsOutput)
-        this._removeInputLine();
+    this._removeInputLine();
     var line = this.currentCursorLine;
     var column = this.currentCursorColumn;
     var checkSpacer = false;
@@ -712,11 +711,20 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
 };
 
 DomTerm.prototype._removeInputLine = function() {
-    var inputParent = this.inputLine.parentNode;
-    if (inputParent != null) {
-        if (this.outputBefore==this.inputLine)
-            this.outputBefore = this.outputBefore.nextSibling;
-        inputParent.removeChild(this.inputLine);
+    if (this.inputFollowsOutput && this.inputLine) {
+        var inputParent = this.inputLine.parentNode;
+        if (inputParent != null) {
+            if (this.outputBefore==this.inputLine)
+                this.outputBefore = this.outputBefore.nextSibling;
+            inputParent.removeChild(this.inputLine);
+        }
+    }
+};
+
+DomTerm.prototype._restoreInputLine = function() {
+    if (this.inputFollowsOutput && this.outputBefore != this.inputLine) {
+        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
+        this.outputBefore = this.inputLine;
     }
 };
 
@@ -832,8 +840,7 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
                 this.outputContainer.insertBefore(nafter, following);
                 if (! inputOk) {
                     this.outputBefore = nafter;
-                    if (this.inputFollowsOutput)
-                        this._removeInputLine();
+                    this._removeInputLine();
                 }
             }
             if (this.currentCursorColumn > 0)
@@ -1690,20 +1697,20 @@ DomTerm.prototype.handleEnter = function() {
     var line = this.getCursorLine();
     this.outputBefore = oldInputLine.nextSibling;
     this.outputContainer = oldInputLine.parentNode;
-    this.inputLine = null; // To avoid confusing cursorLineStart
-    if (! this.clientDoesEcho)
+    if (! this.clientDoesEcho) {
+        this.inputFollowsOutput = false;
+        this.inputLine = null; // To avoid confusing cursorLineStart
         this.cursorLineStart(1);
+        this.inputFollowsOutput = true;
+    }
     this.addInputLine();
     if (this.clientDoesEcho) {
         this._deferredForDeletion = oldInputLine;
-        this.outputBefore = null;
-        this.outputContainer = oldInputLine;
         this.currentCursorLine = line;
         this.currentCursorColumn = -1;
-    } else {
-        this.outputBefore = this.inputLine;
-        this.outputContainer = this.inputLine.parentNode;
     }
+    this.outputBefore = this.inputLine;
+    this.outputContainer = this.inputLine.parentNode;
     return text;
 };
 
@@ -3108,10 +3115,7 @@ DomTerm.prototype.insertString = function(str) {
     if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
     }
-    if (this.inputFollowsOutput && this.outputBefore != this.inputLine) {
-        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
-        this.outputBefore = this.inputLine;
-    }
+    this._restoreInputLine();
     if (true) { // FIXME only if "scrollWanted"
         var last = this.topNode.lastChild;
         var lastBottom = last.offsetTop + last.offsetHeight;
@@ -3189,8 +3193,9 @@ DomTerm.prototype._breakAllLines = function(oldWidth) {
 
 DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebreak) {
     for (var el = start; el != null;  ) {
-        var next = el.nextSibling;
+        var next;
         if (el instanceof Element) {
+            next = el.nextSibling;
             var right = beforePos + el.offsetWidth;
             if (right > availWidth) {
                 right = this._breakLine(el.firstChild, line, beforePos, availWidth, rebreak);
@@ -3198,6 +3203,7 @@ DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebr
             beforePos = right;
         } else { // el instanceof Text
             this._normalize1(el);
+            next = el.nextSibling;
             var right = this._offsetLeft(el.nextSibling, el.parentNode);
             if (right > availWidth) {
                 next = this._breakText(el, line, beforePos, right, availWidth, rebreak);
@@ -3602,6 +3608,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         return;
     }
     if (this.lineEditing) {
+        this.inputLine.focus();
         if (key == 13) {
             event.preventDefault();
             this.processEnter();
