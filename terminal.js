@@ -175,6 +175,9 @@ function DomTerm(name, topNode) {
 
     this.inputLine = null;
 
+    // True if inputLine should move with outputBefore.
+    this.inputFollowsOutput = true;
+
     this.inputLineNumber = 0;
 
     this.parameters = new Array();
@@ -473,6 +476,8 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
  * @param addSpaceAsNeeded if we should add blank lines or spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine
  */
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
+    if (this.inputFollowsOutput)
+        this._removeInputLine();
     var line = this.currentCursorLine;
     var column = this.currentCursorColumn;
     var checkSpacer = false;
@@ -570,20 +575,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     }
     if (column != goalColumn) {
         var lineEnd = this.lineEnds[this.homeLine+line];
-
-        // Temporarily remove inputLine from tree.
-        if (this.inputLine != null) {
-            var inputParent = this.inputLine.parentNode;
-            if (inputParent != null) {
-                if (this.outputBefore==this.inputLine)
-                    this.outputBefore = this.outputBefore.nextSibling;
-                if (current==this.inputLine)
-                    current = current.nextSibling;
-                inputParent.removeChild(this.inputLine);
-                // Removing input line may leave 2 Text nodes adjacent.
-                // These are merged below.
-            }
-        }
         // At this point we're at the correct line; scan to the desired column.
         mainLoop:
         while (column < goalColumn) {
@@ -674,7 +665,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                     if (! ch)
                         console.log("setting current to null 2");
                     current = ch;
-                    //if (parent==null||(current!=null&&parent!=current.parentNode))                    throw new Error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
                     continue;
                 }
                 // Otherwise go to the parent's sibling - but this gets complicated.
@@ -714,17 +704,19 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     }
     this.outputContainer = parent;
     this.outputBefore = current;
-    this._moveInputLineToOutput();
+    this._removeInputLine();
     this.currentCursorLine = line;
     this.currentCursorColumn = column;
     if (checkSpacer)
         this._checkSpacer();
 };
 
-DomTerm.prototype._moveInputLineToOutput = function() {
-    if (this.inputLine != null) {
-        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
-        this.outputBefore = this.inputLine;
+DomTerm.prototype._removeInputLine = function() {
+    var inputParent = this.inputLine.parentNode;
+    if (inputParent != null) {
+        if (this.outputBefore==this.inputLine)
+            this.outputBefore = this.outputBefore.nextSibling;
+        inputParent.removeChild(this.inputLine);
     }
 };
 
@@ -827,12 +819,22 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
                 prev.deleteData(len-tcount, tcount);
             count -= tcols;
 
-            var following = this.outputBefore.nextSibling;
+            var following = this.outputBefore;
+            var inputOk = this.inputLine == following
+                && this.inputFollowsOutput
+                && this.inputLine.firstChild == null;
+            if (inputOk)
+                following = following.nextSibling;
             if (following && following.nodeType == 3/*TEXT_NODE*/) {
                 following.replaceData(0, 0, after);
             } else {
                 var nafter = document.createTextNode(after);
                 this.outputContainer.insertBefore(nafter, following);
+                if (! inputOk) {
+                    this.outputBefore = nafter;
+                    if (this.inputFollowsOutput)
+                        this._removeInputLine();
+                }
             }
             if (this.currentCursorColumn > 0)
                 this.currentCursorColumn -= tcols;
@@ -981,7 +983,7 @@ DomTerm.prototype._adjustStyle = function() {
         // styleSpan.firstChild is null unless we did the above optimization
         this.outputBefore = styleSpan.firstChild;
     }
-    this._moveInputLineToOutput();
+    this._removeInputLine();
 };
 
 DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
@@ -1139,7 +1141,7 @@ DomTerm.prototype._insertLinesAt = function(count, line, regionBottom) {
     if (count > this.numRows)
         count = this.numRows;
     this.insertLinesIgnoreScroll(count, line);
-    this._moveInputLineToOutput();
+    this._removeInputLine();
 };
 
 DomTerm.prototype.insertLines = function(count) {
@@ -1157,7 +1159,7 @@ DomTerm.prototype._deleteLinesAt = function(count, line) {
     }
     this.resetCursorCache();
     this.moveToIn(line, 0, true);
-    this._moveInputLineToOutput();
+    this._removeInputLine();
 };
 
  DomTerm.prototype.deleteLines = function(count) {
@@ -1210,7 +1212,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.currentCursorColumn = 0;
             this.outputContainer = newLineNode;
             this.outputBefore = newLineNode.firstChild;
-            this._moveInputLineToOutput();
+            this._removeInputLine();
             this.initial = bufNode;
         } else {
             var bufNode = this.initial;
@@ -1880,8 +1882,8 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
     var current = this.outputBefore;
     var parent = this.outputContainer;
     var lineEnd = this.lineEnds[this.homeLine+this.getCursorLine()];
-    if (current==this.inputLine && current != null)
-        current=current.nextSibling;
+    var previous = current == null ? parent.lastChild
+        : current.previousSibling;
     var curColumn = -1;
     while (current != lineEnd && todo > 0) {
         if (current == null) {
@@ -1943,6 +1945,8 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
             current = current.nextSibling;
         }
     }
+    this.outputBefore = previous != null ? previous.nextSibling
+        : this.outputContainer.firstChild;
 };
 
 
@@ -3104,6 +3108,10 @@ DomTerm.prototype.insertString = function(str) {
     if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
     }
+    if (this.inputFollowsOutput && this.outputBefore != this.inputLine) {
+        this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
+        this.outputBefore = this.inputLine;
+    }
     if (true) { // FIXME only if "scrollWanted"
         var last = this.topNode.lastChild;
         var lastBottom = last.offsetTop + last.offsetHeight;
@@ -3286,6 +3294,10 @@ DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, ava
         }
         this.lineEnds[line] = lineNode;
         this.lineStarts[line+1] = lineNode;
+        if (lineEnd == this.outputBefore) {
+            this.outputBefore = lineEnd.nextSibling;
+            this.outputContainer = lineEnd.parentNode;
+        }
         lineEnd.parentNode.removeChild(lineEnd);
     }
     if (goodLength < textLength) {
@@ -3318,8 +3330,8 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     }
 
     var beforePos = this._offsetLeft(this.outputBefore, this.outputContainer);
-    var textNode = this.insertRawOutput(str);
     var absLine = this.homeLine+this.getCursorLine();
+    var textNode = this.insertRawOutput(str);
     while (textNode != null) {
         var afterPos = this._offsetLeft(this.outputBefore,
                                         this.outputContainer);
@@ -3666,10 +3678,16 @@ DomTerm.prototype._checkTree = function() {
     if (this.outputBefore
         && this.outputBefore.parentNode != this.outputContainer)
         error("bad outputContainer");
+    if (this.inputFollowsOutput && this.inputLine.parentNode
+        && this.outputBefore != this.inputLine)
+        error("bad inputLine");
     if (! this._isAnAncestor(this.outputContainer, this.initial))
         error("outputContainer not in initial");
     if (! this._isAnAncestor(this.lineStarts[this.homeLine], this.initial))
         error("homeLine not in initial");
+    if (this.outputContainer.nodeName == "PRE" && this.outputBefore == null)
+        // should point at ending line node instead.
+        error("null outputBefore in <pre>");
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
             if (this.currentCursorLine >= 0)
