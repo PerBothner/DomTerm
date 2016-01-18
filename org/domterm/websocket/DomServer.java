@@ -61,7 +61,9 @@ public class DomServer extends WebSocketServer {
             String arg = args[i];
             if (arg.equals("--pty"))
                 mode = 'T';
-            else if (arg.equals("--shell") || arg.equals("--process"))
+            else if (arg.equals("--shell")
+                     || arg.equals("--pipe")
+                     || arg.equals("--process"))
                 mode = 'S';
             else if (arg.length() == 0 || arg.charAt(0) == '-')
                 fatal("unknown argument '"+arg+"'");

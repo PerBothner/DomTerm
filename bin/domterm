@@ -7,11 +7,13 @@ case "$1" in
   "--help"|"-help")
   echo 'DomTerm terminal emulator.'
   echo 'With no arguments runs a shell (bash) using Firefox/XUL in a PTY.'
-  echo 'Usage: domterm [--firefox|--chrome|--javafx] [command arg...]'
+  echo 'Usage: domterm [--firefox|--chrome|--javafx] [--pty|--pipe] [command arg...]'
   echo 'Run [command arg...] (by default bash) in a PTY.'
-  echo '--firefox - use FireFox/XUL (this is currently the default)'
+  echo '--firefox - use FireFox/XUL [this is currently the default]'
   echo '--chrome - use the Google Chrome browser in --app mode'
   echo '--javafx - use JavaFX WebView'
+  echo '--pty - use a PTY (pseudo-teletype) [default on Unix-like systems]'
+  echo '--pipe - connect using a pipe'
   echo 'Set JAVA in environment if java is not in the PATH.'
   exit 0
   ;;
