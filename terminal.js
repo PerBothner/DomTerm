@@ -1686,11 +1686,10 @@ DomTerm.prototype.historyMove = function(delta) {
     inputLine.appendChild(document.createTextNode(str));
 };
 
-DomTerm.prototype.handleEnter = function() {
+DomTerm.prototype.handleEnter = function(text) {
     this._doDeferredDeletion();
     // For now we only support the normal case when outputBefore == inputLine.
     var oldInputLine = this.inputLine;
-    var text = this.grabInput(oldInputLine);
     this.historyAdd(text);
     var spanNode;
     oldInputLine.removeAttribute("contenteditable");
@@ -3412,18 +3411,25 @@ DomTerm.prototype.processResponseCharacters = function(str) {
     this.processInputCharacters(str);
 };
 
+DomTerm.prototype.reportText = function(text, suffix) {
+    if (this.bracketedPasteMode)
+        text = "\x1B[200~" + text + "\x1B[201~";
+    if (suffix)
+        text = text + suffix;
+    this.processInputCharacters(text);
+};
+
 /** This function should be overidden. */
 DomTerm.prototype.processInputCharacters = function(str) {
     this.log("processInputCharacters called with %s characters", str.length);
 };
 
 DomTerm.prototype.processEnter = function() {
-    var text = this.handleEnter();
+    var text = this.grabInput(this.inputLine);
+    this.handleEnter(text);
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
-    if (this.bracketedPasteMode)
-        text = "\x1B[200~" + text + "\x1B[201~";
-    this.processInputCharacters(text+"\n");
+    this.reportText(text, "\n");
 };
 
 /** param is either a numerical code, as as string (e.g. "15" for F5);
@@ -3512,9 +3518,7 @@ DomTerm.prototype.pasteText = function(str) {
         rng.text(str, 'end');
         rng.select();
     } else {
-        if (this.bracketedPasteMode)
-            str = "\x1B[200~" + str + "\x1B[201~";
-        this.processInputCharacters(str);
+        this.reportText(str);
     }
 };
 
