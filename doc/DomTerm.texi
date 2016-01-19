@@ -798,10 +798,19 @@ The default style is to display the text in green.
 
 @item @code{"\e[13u"}
 End of prompt.
+The prompt is included in selections that surround it.
+
+@item @code{"\e[18u"}
+End of non-selectable prompt.
+The prompt is not part of the text content of the document,
+and is not included in selections.
+The prompt string must be plain text with no styling.
+You can use this for all prompts, but it is especially recommended
+for continuation lines, such as the shell's @code{PS2} prompt.
 
 @item @code{"\e[15u"}
 Start of an input line.
-This also implicitly ends a prompt.
+This also implicitly ends a (selectable) prompt.
 The input line is implicitly terminated by a @code{'\n'}
 (carriage return).
 
@@ -828,6 +837,7 @@ PS1='$ '   # or whatever you like
 if [ -n "$DOMTERM" ]
 then
   PS1='\[\e[19u\e[16u\]▼\[\e[17u\e[14u\]'$PS1'\[\e[15u\]'
+  PS2='\[\e[14u\]'$PS2'\[\e[18u\]'
 fi
 @end example
 (The @code{"\["} and @code{"\]"} are bash syntax,

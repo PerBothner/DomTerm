@@ -2385,7 +2385,15 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 12:
             this._pushStyle("std", "error");
             break;
-        case 13:
+        case 18: // End non-selectable prompt
+            var container = this.outputContainer;
+            var content = container.textContent;
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            this.outputContainer.setAttribute("value", content);
+            // ... fall through ...
+        case 13: // End (selectable) prompt
             this._pushStyle("std", null);
             // Force inputLine outside prompt
             this._adjustStyle();
