@@ -1,7 +1,9 @@
 package org.domterm.util;
 import java.io.*;
 
-public class Util {
+public final class Util {
+
+    private Util() {}
 
     public static final int ESCAPE = 27;
 

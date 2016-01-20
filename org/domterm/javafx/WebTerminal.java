@@ -48,8 +48,6 @@ import javafx.scene.input.KeyCode;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Worker.State;
-import java.util.List;
-import java.util.ArrayList;
 
 /** Implements a "rich-term" console/terminal based on a WebView.
  *
