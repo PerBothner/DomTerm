@@ -1,7 +1,6 @@
 package org.domterm.javafx;
 
 import org.domterm.*;
-import java.util.List;
 import javafx.application.Application;
 
 public class RunClass extends WebTerminalApp
