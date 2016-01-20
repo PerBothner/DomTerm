@@ -1,7 +1,11 @@
 thisfile=`which $0`
 while test -L "$thisfile"; do thisfile=$(readlink -f "$thisfile"); done
 DOMTERM_DIR=`echo $(dirname $thisfile) | sed -e 's|/bin$||'`
-JAVA=${JAVA-java}
+if test -n "$JAVA_HOME"; then
+    JAVA="${JAVA_HOME}/bin/java"
+else
+    JAVA=${JAVA-java}
+fi
 EXTRA_ARG=""
 case "$1" in
   "--help"|"-help")
@@ -14,7 +18,7 @@ case "$1" in
   echo '--javafx - use JavaFX WebView'
   echo '--pty - use a PTY (pseudo-teletype) [default on Unix-like systems]'
   echo '--pipe - connect using a pipe'
-  echo 'Set JAVA in environment if java is not in the PATH.'
+  echo 'Set JAVA or JAVA_HOME in environment if java is not in the PATH.'
   exit 0
   ;;
   "--firefox" | "--chrome")
