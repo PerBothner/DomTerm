@@ -1,0 +1,56 @@
+#!/bin/bash
+# Print contents of named image to domterm terminal.  See --help.
+
+LAST_ECHO_ARG="-e"
+ATTRIBUTES=""
+
+while true
+do
+case $1 in
+"-n")
+  LAST_ECHO_ARG="${LAST_ECHO_ARG}n"
+  shift
+  ;;
+"--width="* | "--height="* | "--border="* | "--align="* \
+    | "--vspace="* | "--hspace="* | "--alt="* | "--longdesc="* \
+    | "--class="* )
+  attrname=`echo $1 | sed -e 's|--\(.*\)=.*|\1|'`
+  attrvalue=`echo $1 | sed -e 's|--[a-z]*=\(.*\)|\1|'`
+  ATTRIBUTES="$ATTRIBUTES $attrname='$attrvalue'"
+  shift
+  ;;
+"--help"|"-help"|"")
+  echo 'Usage: imgcat [-n] [--ATTRNAME=ATTRVALUE]... FILENAME'
+  echo '"Print" the contents of the named image file to domterm.'
+  echo 'This uses a "data:" URI with the file contents sent directly to domterm.'
+  echo '-n - do not append a newline'
+  echo '--ATTRNAME=ATTRVALUE - specify the given attribute; for example: --height=200'
+  echo 'Valid ATTRNAMEs: alt, longdesc, height, width, border, hspace, vspace, class'
+  exit -1
+  ;;
+"-"*)
+  echo 'imgcat: Unrecognized option "'$1'"'
+  exec $0 --help
+  ;;
+*)
+  case "$DOMTERM" in
+  "")
+    echo 'imgcat: Refusing to run unless DOMTERM environment variable is set.'
+    exit -1
+    ;;
+  esac
+  FILENAME="$1"
+  if test -f "$FILENAME" && test -r "$FILENAME"
+  then true
+  else
+     echo "imgcat: No such file: $FILENAME"
+     exit -1
+  fi
+  MIMETYPE=`file --brief --mime-type "$1"`
+  echo -en "\e]72;<img${ATTRIBUTES} src='data:${MIMETYPE};base64,"
+  base64 $FILENAME
+  echo $LAST_ECHO_ARG "'/>\a"
+  exit 0
+  ;;
+esac
+done
