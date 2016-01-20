@@ -216,7 +216,7 @@ make
 
 To test it, you can try:
 @example
-make run-firefox
+bin/domterm
 @end example
 This starts up a useable terminal emulator in a fresh window.
 (It starts up a @code{bash} shell, running in a PTY,
@@ -232,175 +232,147 @@ but we also provides a few wrappers and applications that make use of it.
 Currently, these all use Java, but I expect non-Java wrappers
 to get written.
 
-@subheading Standalone terminal emulator as a Firefox application
+@subheading The domterm terminal emulator command
 
-This is also a prototype of a stand-alone terminal emulator program.
-It uses PTYs so it only works on Unix-like systems.
-This is currently the preferred way of using DomTerm,
-assuming it works for you.  You can start it with this command:
+The @code{domterm} script (in the @code{bin} directory) is a convenient
+way to start up a standalone terminal emulator.
+By default it runs a shell (@code{bash}), but there are a number of options.
 
-@example
-make run-firefox
-@end example
+@display
+@code{domterm} [@var{frontend}] [@var{backend-arguments}]
+@end display
 
-The user interface is a ``chrome-less'' Firefox browser window,
-with a custom menubar, and custom
-context menu (what you get by right-clicking).
+The @var{frontend} argument specifies the front-end or user interface
+application - i.e. some kind of browser.
+The @var{backend-arguments} specify which command is run and how it is run.
 
-This starts a @code{bash} shell, running in a PTY,
-running along with a WebSocket server.  It also starts up
-a chrome-less Firefox window, and automatically connects them.
+@subsubheading Front-end (user interface) options
 
-Java is currently required for the WebSocket server, but
-there are plans to replace that.
+The @var{frontend} is one of the following:
+@table @asis
+@item @code{--firefox}
+This is currently the default.
+The user interface is a “chrome-less” Firefox browser window, with
+a custom menubar, and custom context menu (what you get by right-clicking).
+The script also starts up a WebSocket server, and connects them.
 
-This is potentially a very nice terminal emulator.  However,
-Firefox currently has undisagnosed performance issues when
-many lines are written quickly.  (Chrome handles that better.)
-Also, it is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
+This is potentially a very nice terminal emulator,
+though there are some performance issues.
+This option has the best user interface and features that work well.
+It is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
 which is being phased out.
-
-@subheading Standalone terminal emulator as a Chrome application
-
+@item @code{--chrome}
 This is very similar to using Firefox, but uses the Google Chrome browser.
+The latter is started using the @code{--app=} option,
+so you get a fresh chrome-less window (with no menubar or toolbar).
+
 This works well and the performance is good.
-There are two ways you can do it.
-
-The most convenient method just starts DomTerm
-in a fresh chrome-less window (with no menubar or toolbar),
-using the @code{--app=} option.  Doing the following
-does the work for you: it starts both the WebSocket server,
-the application (bash), and the Chrome browser window,
-and connects them together:
-
-@example
-make run-chrome
-@end example
-
 This method provides no menubar or context-menu customization (so far).
-Furthmore, @code{paste} doesn't work yet (though @code{copy} does).
+Furthermore, @code{paste} doesn't work yet (though @code{copy} does).
 
-It is also possible to start DomTerm as an actual
-@uref{https://developer.chrome.com/apps/,Chrome app}.
-This has working @code{paste} and the beginnings of a custom context-menu.
-However, it is not as convenient or robust.
-First you have to start up the server:
-@example
-make run-server
-@end example
-Then you have to start Chrome in a separate window:
-@example
-google-chrome --new-window --load-and-launch-app=/path/to/DomTerm/
-@end example
+@item @code{--javafx}
+This uses Java and the JavaFX WebView browser component (based on WebKit).
+It needs OpenJDK 1.8 (or JDK 7 with JavaFX) but should otherwise
+not need anything else.  Instead of a WebSocket server,
+it uses JavaFX's Java/JavaScript bridge.
 
-(Help/advice for doing this better would be welcome.)
+The UI (written in Java using the JavaFX toolkit) is minimal,
+but right-clicking will bring up a popup menu.
+This supports copy and paste, as well as
+switching the input mode between line, character, or auto mode.
 
-@subheading Standalone terminal emulator using JavaFX WebView
+There are some glitches, and since JavaFX is not being actively
+developed, this port is not a priority.
 
-This is also a prototype of a stand-alone terminal emulator program.
-It uses PTYs so it only works on Unix-like systems.
-The prototype uses Java and the JavaFX WebView component (based on WebKit).
-It needs OpenJDK 1.8 but should otherwise not need anything else.
+@item @code{--port} @var{portnum}
+Start a WebSocket server, listening on the specified @var{portnum}.
+(A @var{portnum} of 0 lets the system choose an available port,
+which is printed out.  The default for @code{repl-client.html} is @code{8025}.)
 
-To run the terminal emulator do:
-
-@example
-make run-pty
-@end example
-
-or equivalently:
-
-@example
-java -Djava.library.path=@var{libpath} -jar domterm.jar --pty
-@end example
-
-The @var{libpath} is the directory containing @code{libpty.so}.
-It is also used to set the @code{TERMINFO} environment variable,
-hence the terminal description file should be @code{@var{libpath}/d/domterm}.
-
-There is a bug with the initial communication - you may
-have to hit an extra Enter to get started.
-
-There is no "chrome" (menus, buttons, etc), so far.
-Right-clicking will bring up a popup menu
-This supports copy and paste, as well as switching the input mode
-between line, character, or auto mode.
-
-By default the command is @code{/bin/bash}.  You can override it by
-specifying a command after the @code{--pty} flag:
-
-@example
-java -Djava.library.path=@var{libpath} -jar domterm.jar --pty @var{command} @var{arg}...
-@end example
-
-@subheading A console for a Java Process object
-
-This is similar to the previous terminal emulator,
-but it is implemented using pipes connected to Java @code{Process} object.
-This means only line mode is supported.
-It should work on more platforms, including Windows, since it
-doesn't use a PTY.  It still uses JavaFX WebView.
-
-You can run it from @code{domterm.jar}:
-@example
-java -jar domterm.jar --process @var{command} @var{arg}...
-@end example
-
-@subheading Running a Java class connected to DomTerm
-
-This runs the @code{main} method of a specified Java class,
-but with the standard streams (input, output, and error)
-re-bound to a DomTerm window. (The latter still uses JavaFX WebView.)
-
-@example
-java -cp @var{my-application.jar}:domterm.jar org.domterm.javafx.RunClass @var{my.ClassName} @var{arg}...
-@end example
-
-@subheading Using WebSockets between a server and a browser
+No front-end is started automatically.
+Instead, you load @code{repl-client.html} in your preferred web browser,
+and it connects to the server.
+If the server is listening on port @var{portnum} (rather than port 8025),
+browse to @code{file:///path/to/DomTerm/repl-client.html?ws=//localhost:@var{portnum}}.
 
 This allows you to use "any" modern browser as the client.
 This is nice for development, as you can use the browser's
 JavaScript console and debugger, DOM inspector, and so on.
-The browser talks to server using WebSockets.
+The browser talks to server using WebSockets,
+which modern browsers have built-in.
 
-The included server uses @uref{http://java-websocket.org/,Java-WebServer},
-which is very compact and light-weight.
-The @code{java_websocket.jar} is checked in for convenience
-(though that may change).
-
-To run the server you can do:
-@example
-make run-server SERVER_ARGS=@var{server-args}
-@end example
-or equivalently:
-@example
-java -cp domterm.jar:java_websocket.jar -Djava.library.path=@var{libpath} org.domterm.websocket.DomServer @var{server-args}
-@end example
-The @var{libpath} is as above.  The optional @var{server-args} have the form:
-@example
-[--port @var{port-number}] [--pty | --process] [@var{command} @var{arg}...]
-@end example
-The @var{port-number} is the port to listen to; it defaults to 8025.
-The other flags similar to those for the standalone and console applications.
-The default is to use PTYs, if available or @code{--pty} is specified.
-The default for @var{command} is @code{/bin/bash}.
-
-To connect to the server, 
-use a web brower to read @code{file:///path/to/DomTerm/repl-client.html}.
-
-Each connection to the server creates a new process, but using the
-same @var{command} and @var{arg}s.
-(Multiple connections using @code{--process} will fail for some
-unknown reason.)
-
-(An older WebSocket server uses libraries from the
-@uref{https://tyrus.java.net/,Tyrus project}.
-These libraries are much bigger, but this implementation
-could be suitable for a JavaEE environment as it follows JSR-356.)
-
-(If using PTYs, which requires native code anyway, it may be better
-to use a server written in C or C++, such as
 @uref{https://libwebsockets.org/index.html,libwebsockets}.)
+@end table
+
+@subsubheading Back-end (command) options
+
+The @var{backend-arguments} are one of:
+@display
+[@code{--pty}|@code{--pipe}] [@var{command} @var{arg}...]
+@code{--class} @var{classname} @var{arg}...
+@end display
+
+You can specify some other @var{command} and @var{arg} in
+place of the default @code{/bin/bash}.
+
+Specifically:
+
+@table @asis
+@item @code{--pty} [@var{command} @var{arg}...]
+This is the default on Unix-like systems (MacOs, GNU/Linux, BSD).
+It runs @var{command} under a PTY.
+Communication is by default character-by-character, but
+can also be line-based.
+@item @code{--pipe} [@var{command} @var{arg}...]
+The input/output of the @var{command} is connected to DomTerm using
+pipes.  Data communication is normally on a line-by-line basis.
+(It is also possible to send single keystroke message.)
+The implementations uses a Java @code{Process} object.
+This should work on Windows, though it has not yet been tested.
+
+@item @code{--class} @var{classname} @var{arg}...
+This runs the @code{main} method of a specified Java class,
+but with the standard streams (input, output, and error)
+re-bound to a DomTerm window.
+
+@example
+CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}...
+@end example
+
+@end table
+
+@subheading Utilities
+
+@subsubheading hcat: Print HTM:
+
+A simple script for embedding HTML content - just pipe to to stdin:
+
+@example
+echo 'E = mc<sup>2</sup>' | hcat
+@end example
+displays @code{E = mc@sup{2}}.
+
+@subsubheading imgcat: Send an image file to DomTerm
+
+This script ``prints'' the contents of the named image file to domterm.
+This uses a ``@code{data:}'' URI with the file contents sent directly to domterm, so it works when working remotely.
+
+@example
+@code{imgcat} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
+@end example
+
+The @var{filename} must be a file that can be displayed
+by an HTML @code{<img>} element, most commonly a @code{png} or @code{jpg} file.
+
+@table @asis
+@item @code{-@var{n}}
+Do not append a newline.
+@item @code{--@var{attrname}=@var{attrvalue}}
+Specify the given attribute; for example: @code{--height=200}.
+Valid @var{attrnames} are the following, which
+are specified in the HTML specification:
+@code{alt}, @code{longdesc}, @code{height}, @code{width}, @code{border}, @code{hspace}, @code{vspace}, @code{class}.
+@end table
 
 @node To do
 @chapter Ideas and projects for DomTerm
@@ -467,9 +439,7 @@ Handle saving and truncating scrolled-out output.
 
 @subheading Support other embeddable browsers
 
-Evaluate using other ligher-weight (?) toolkits than JavaFx WebView.
-
-Rather than using JavaFX WebView, some other toolkits to consider include:
+Some toolkits to explore for integrated browser/application:
 @itemize
 @item
 @uref{https://bitbucket.org/chromiumembedded/cef,Chromium Embedded Framework}
@@ -478,6 +448,8 @@ Rather than using JavaFX WebView, some other toolkits to consider include:
 @item
 @uref{http://atom.io,Atom/Electon}
 A possible start is @uref{https://atom.io/packages/term2,term2}.
+@item
+@uref{http://nwjs.io/,NW.js} (formerly node-webkit).
 @item
 QtWebEngine seems promising for a general-purpose terminal emulator front-end:
 It supports WebSockets, tabs, remote debugging, is multi-platform,
@@ -1134,6 +1106,43 @@ flag, but a more robust protocol would be better.)
 Type-ahead could also work better.
 It would also be nice to delimit output to standard error with the
 appropriate escape sequences.
+
+@subsection WebSocket server
+
+The included server uses @uref{http://java-websocket.org/,Java-WebServer},
+which is very compact and light-weight.
+The @code{java_websocket.jar} is checked in for convenience
+(though that may change).
+
+Each connection to the server creates a new process, but using the
+same @var{command} and @var{arg}s.
+(Multiple connections using @code{--process} will fail for some
+unknown reason.)
+
+(An older WebSocket server uses libraries from the
+@uref{https://tyrus.java.net/,Tyrus project}.
+These libraries are much bigger, but this implementation
+could be suitable for a JavaEE environment as it follows JSR-356.)
+
+(If using PTYs, which requires native code anyway, it may be better
+to use a server written in C or C++, such as
+
+@subheading Standalone terminal emulator as a Chrome application (in-progress)
+
+It is possible to start DomTerm as an actual
+@uref{https://developer.chrome.com/apps/,Chrome app}.
+This has working @code{paste} and the beginnings of a custom context-menu.
+However, it is not as convenient or robust.
+First you have to start up the server:
+@example
+make run-server
+@end example
+Then you have to start Chrome in a separate window:
+@example
+google-chrome --new-window --load-and-launch-app=/path/to/DomTerm/
+@end example
+
+(Help/advice for doing this better would be welcome.)
 
 @subsection Line vs character input modes
 

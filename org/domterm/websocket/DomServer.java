@@ -54,6 +54,7 @@ public class DomServer extends WebSocketServer {
 
     Backend createBackend(WebSocket session, String[] args)
         throws Exception {
+        WTDebug.init();
         Backend backend = null;
         char mode = ' ';
         int i = 0;
@@ -65,13 +66,26 @@ public class DomServer extends WebSocketServer {
                      || arg.equals("--pipe")
                      || arg.equals("--process"))
                 mode = 'S';
+            else if (arg.equals("--class")) {
+                if (i + 1 == args.length)
+                    fatal("missing class name");
+                java.lang.reflect.Method method = null;
+                String cname = args[i+1];
+                try {
+                    method = ClassBackend.getMainMethod(cname);
+                } catch (Throwable ex) {
+                    fatal("caught "+ex+" trying to load class "+cname);
+                }
+                String[] restArgs = new String[args.length-i-2];
+                System.arraycopy(args, i+2, restArgs, 0, restArgs.length);
+                return new ClassBackend(method, restArgs);
+            }
             else if (arg.length() == 0 || arg.charAt(0) == '-')
                 fatal("unknown argument '"+arg+"'");
             else
                 break;
         }
 
-        WTDebug.init();
         if (backend == null) {
             String[] restArgs = new String[args.length-i];
             System.arraycopy(args, i, restArgs, 0, restArgs.length);

@@ -43,7 +43,8 @@ public class Main {
                 break;
             } else if (arg.equals("--pty"))
                 mode = 'T';
-            else if (arg.equals("--shell") || arg.equals("--process"))
+            else if (arg.equals("--shell") || arg.equals("--process")
+                     || args.equals("--pipe"))
                 mode = 'S';
             else if (arg.length() == 0 || arg.charAt(0) == '-')
                 usage("unknown argument '"+arg+"'");
