@@ -818,10 +818,10 @@ They are used to indicate escape sequences that don't move the cursor,
 which is needed for readline to calculate the column position.)
 
 @table @asis
-@item @code{"\e[20;97u"}
-@itemx @code{"\e[20;99u"}
-@itemx @code{"\e[20;108u"}
-@itemx @code{"\e[20;112u"}
+@item @code{"\e[80;97u"}
+@itemx @code{"\e[80;99u"}
+@itemx @code{"\e[80;108u"}
+@itemx @code{"\e[80;112u"}
 Set input editing mode.
 The value 99 (@code{'c'}) sets character mode;
 the value 108 (@code{'l'}) sets line-editing mode.

@@ -2431,7 +2431,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 19:
             this.startCommandGroup();
             break;
-        case 20: // set input mode
+        case 80: // set input mode
             this.setInputMode(this.getParameter(1, 112));
             break;
         case 99:
