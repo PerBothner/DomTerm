@@ -18,7 +18,7 @@ public abstract class Backend {
 
     public char lineEditingMode = 'a';
     protected void sendInputMode(char mode) throws Exception {
-        termWriter.write("\033[20;"+((int)mode)+"u");
+        termWriter.write("\033[80;"+((int)mode)+"u");
     }
 
     public boolean isCanonicalMode() { return true; }
