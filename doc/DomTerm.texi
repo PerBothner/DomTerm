@@ -343,14 +343,14 @@ CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}.
 
 @subheading Utilities
 
-@subsubheading hcat: Print HTM:
+@subsubheading hcat: Print HTML
 
 A simple script for embedding HTML content - just pipe to to stdin:
 
 @example
 echo 'E = mc<sup>2</sup>' | hcat
 @end example
-displays @code{E = mc@sup{2}}.
+displays: @code{E = mc@sup{2}}.
 
 @subsubheading imgcat: Send an image file to DomTerm
 
