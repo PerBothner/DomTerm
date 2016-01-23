@@ -3548,7 +3548,7 @@ DomTerm.prototype.doPaste = function() {
 };
 
 DomTerm.prototype.doCopy = function() {
-    document.execCommand("copy", false, this.getSelectedText());
+    document.execCommand("copy", false);
 };
 
 DomTerm.prototype.getSelectedText = function() {
