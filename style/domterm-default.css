@@ -6,7 +6,7 @@ div[class="domterm"] { background-color: #fffff8 }
    However, the first four in that list cause some vertical spacing issues,
    including background-color not being full-height.
    Check with tests/256-colors.sh. */
-div[class="domterm"] pre { font-family: monospace }
+//div.domterm-pre { font-family: monospace } // This is the default
 span[std="input"] { font-weight: bolder; color: blue }
 span[std="prompt"] { color: green; }
 span[std="error"] { color: red; }

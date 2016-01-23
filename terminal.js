@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Per Bothner.
+ * Copyright (c) 2015, 2016 Per Bothner.
  *
  * Converted to JavaScript from WebTerminal.java, which has the license:
  *
@@ -246,7 +246,8 @@ DomTerm.prototype.eofSeen = function() {
 DomTerm.prototype.startCommandGroup = function() {
     var container = this.outputContainer;
     var containerTag = container.tagName;
-    if ((containerTag == "PRE" || containerTag == "P")
+    if ((containerTag == "PRE" || containerTag == "P"
+         || (containerTag == "DIV" && container.getAttribute("class") == "domterm-pre"))
         && container.firstChild == this.outputBefore) {
         var commandGroup = document.createElement("div");
         commandGroup.setAttribute("class", "command-group");
@@ -503,7 +504,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         while (absLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
-            var preNode = document.createElement("pre");
+            var preNode = this._createPreNode();
             checkSpacer = true;
             // preNode.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
             if (lineCount == this.homeLine)
@@ -900,7 +901,7 @@ DomTerm.prototype._adjustStyle = function() {
     if (inStyleSpan) {
         if (this.outputBefore) {
             // split into new child
-            var restSpan = this.createSpanNode();
+            var restSpan = this._createSpanNode();
             parentSpan.parentNode.insertBefore(restSpan,
                                                parentSpan.nextSibling);
             // Copy attributes
@@ -911,7 +912,7 @@ DomTerm.prototype._adjustStyle = function() {
         this.outputBefore = parentSpan.nextSibling;
     }
     if (this._currentStyleMap.size != 0) {
-        var styleSpan = this.createSpanNode();
+        var styleSpan = this._createSpanNode();
         styleSpan.setAttribute("class", "term-style");
         var styleAttr = null;
         var decoration = null;
@@ -1019,8 +1020,8 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
 };
 
 DomTerm.prototype._addBlankLines = function(count, absLine, parent, oldStart) {
-     for (var i = 0; i < count;  i++) {
-        var preNode = document.createElement("pre");
+    for (var i = 0; i < count;  i++) {
+        var preNode = this._createPreNode();
         var newLine = this._createLineNode("hard", "\n");
         preNode.appendChild(newLine);
         parent.insertBefore(preNode, oldStart);
@@ -1103,7 +1104,8 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count, restoreCursor) {
         if (! this._isAnAncestor(start, this.topNode)) {
             start = end;
             for (;;) {
-                if (start.tagName == "PRE"|| start.tagName == "P")
+                if (start.tagName == "PRE"|| start.tagName == "P"
+                    || start.tagName == "DIV")
                     break;
                 start = start.parentNode;
             }
@@ -1186,7 +1188,16 @@ DomTerm.prototype.scrollReverse = function(count) {
     this.moveToIn(line, 0, true);
 };
 
-DomTerm.prototype.createSpanNode = function() {
+DomTerm.prototype._createPreNode = function() {
+    //return document.createElement("pre");
+    // Prefer <div> over <pre> because Firefox adds extra lines when doing a Copy
+    // spanning multiple <pre> nodes.
+    var n = document.createElement("div");
+    n.setAttribute("class", "domterm-pre");
+    return n;
+};
+
+DomTerm.prototype._createSpanNode = function() {
     return document.createElement("span");
 };
 
@@ -1272,7 +1283,7 @@ DomTerm.prototype.isSpanNode = function(node) {
 DomTerm.prototype.initializeTerminal = function(topNode) {
     var wt = this;
     this.topNode = topNode;
-    var helperNode = document.createElement("pre");
+    var helperNode = this._createPreNode();
     helperNode.setAttribute("id", this.makeId("helper"));
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
     topNode.insertBefore(helperNode, topNode.firstChild);
@@ -1365,7 +1376,7 @@ DomTerm.prototype._createBuffer = function(bufName) {
     if (true)
         this._addBlankLines(1, this.lineEnds.length, bufNode, null);
     else {
-        var preNode = document.createElement("pre");
+        var preNode = this._createPreNode();
         var lineEnd = this._createLineNode("hard", "\n");
         preNode.appendChild(lineEnd);
         bufNode.appendChild(preNode);
@@ -1454,7 +1465,7 @@ DomTerm.prototype._showHideHandler = function(event) {
 
         // For all following-siblings of target,
         // plus all following-siblings of target's parent
-        // (assuming parent is a PRE or P),
+        // (assuming parent is a PRE or P or DIV),
         // flip the domterm-hidden attribute.
         var node = target;
         for (;;) {
@@ -1462,7 +1473,8 @@ DomTerm.prototype._showHideHandler = function(event) {
             if (next == null) {
                 var parent = node.parentNode;
                 if (parent == target.parentNode
-                    && (parent.tagName == "PRE" || parent.tagName == "P"))
+                    && (parent.tagName == "PRE" || parent.tagName == "P"
+                        || parent.tagName == "DIV"))
                     next = parent.nextSibling;
             }
             node = next;
@@ -1492,7 +1504,7 @@ DomTerm.prototype.setWindowSize = function(numRows, numColumns,
 };
 
 DomTerm.prototype.addInputLine = function() {
-    var inputNode = this.createSpanNode();
+    var inputNode = this._createSpanNode();
     var id = this.makeId("I"+(++this.inputLineNumber));
     inputNode.setAttribute("id", id);
     inputNode.setAttribute("std", "input");
@@ -1839,7 +1851,7 @@ DomTerm.prototype._clearWrap = function(absLine) {
             parent = parent.parentNode;
             pname = parent.nodeName;
         }
-        if (pname == "PRE" || pname == "P") {
+        if (pname == "PRE" || pname == "P" || pname == "DIV") {
             var newBlock = document.createElement(pname);
             this._copyAttributes(parent, newBlock);
             this._moveNodes(lineEnd.nextSibling, newBlock);
@@ -2773,7 +2785,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
         this._unsafeInsertHTML(str.substring(start, ok));
     }
     if (ok < len) {
-        var span = this.createSpanNode();
+        var span = this._createSpanNode();
         span.setAttribute("style", "background-color: #fbb");
         this.insertNode(span);
         span.appendChild(document.createTextNode(str.substring(ok, len)));
@@ -3704,9 +3716,6 @@ DomTerm.prototype._checkTree = function() {
         error("outputContainer not in initial");
     if (! this._isAnAncestor(this.lineStarts[this.homeLine], this.initial))
         error("homeLine not in initial");
-    if (this.outputContainer.nodeName == "PRE" && this.outputBefore == null)
-        // should point at ending line node instead.
-        error("null outputBefore in <pre>");
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
             if (this.currentCursorLine >= 0)
@@ -3719,9 +3728,6 @@ DomTerm.prototype._checkTree = function() {
             cur = parent.nextSibling;
             parent = parent.parentNode;
         } else if (cur instanceof Element) {
-            if (cur.nodeName == "PRE" && cur.firstChild == null) {
-                error("EMPTY <pre>!");
-            }
             if (istart < nlines && this.lineStarts[istart] == cur)
                 istart++;
             else if (istart + 1 < nlines && this.lineStarts[istart+1] == cur)

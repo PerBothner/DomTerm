@@ -585,19 +585,24 @@ to wrap each command and its output.
 @item @var{internal-div-elements}
 One or more invisible @code{<div>} elements used by the implementation.
 
-@item @var{block-content} ::= @var{logical-line} | <div> @var{block-content}@sup{*} </div> | @var{opaque-line}
+@item @var{block-content} ::= @var{logical-line} | @code{<div>} @var{block-content}@sup{*} @code{</div>} | @var{opaque-line}
 
-@item @var{logical-line} := @var{<pre>} @var{line-content}@sup{*} @var{hard-nl} @code{</pre>} | @var{<p>} @var{line-content}@sup{*} @var{hard-nl} @code{</p>}
+@item @var{logical-line} := @code{<div class="domterm-pre">} @var{line-content}@sup{*} @var{hard-nl} @code{</pre>}
+  | @code{<pre>} @var{line-content}@sup{*} @var{hard-nl} @code{</pre>}
+  | @code{<p>} @var{line-content}@sup{*} @var{hard-nl} @code{</p>}
 A @var{logical-line} is one or more ``rows'' (separated by @var{soft-line}s),
-consistening of character and other @code{inline} data,
+consisting of character and other @code{inline} data,
 ending with @var{hard-nl} representing an explicit newline.
 
-The intent is that @code{<pre>} and @code{<p>} are treated logically
-the same, but @code{<pre>} will be monospace,
+The intent is that @code{<div class="domterm-pre">}, @code{<pre>} and @code{<p>} are treated logically
+the same, but @code{<div class="domterm-pre">} (or @code{<pre>}) will be monospace,
 while @code{<p>} can use other fonts and styling.
 The line-breaking algorithm uses the width of the line,
 not the number of characters, so it should also work for @code{<p>} elements.
-Normal terminal output will create @code{<pre>} elements.
+
+Normal terminal output will create @code{<div class="domterm-pre">} elements,
+rather than @code{<pre>}, because @code{Copy} command on some browsers (at least
+current Firefox) adds extra newlines.
 
 @item @var{line-content} ::= @var{text} | @code{<span>} @var{line-content}@sup{*} @code{</span>} | @var{soft-nl} | @var{input-line} | @var{other-content}
 
