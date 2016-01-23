@@ -1,3 +1,4 @@
+#!/bin/bash
 thisfile=`which $0`
 while test -L "$thisfile"; do thisfile=$(readlink -f "$thisfile"); done
 DOMTERM_DIR=`echo $(dirname $thisfile) | sed -e 's|/bin$||'`
