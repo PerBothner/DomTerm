@@ -298,20 +298,22 @@ DomTerm.SEEN_ESC_STATE = 1;
 DomTerm.SEEN_ESC_LBRACKET_STATE = 2;
 /** We have seen ESC '[' '?'. */
 DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
+/** We have seen ESC '[' '!'. */
+DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE = 4;
 /** We have seen ESC '[' '>'. */
-DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE = 4;
+DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE = 5;
 /** We have seen ESC ']'. */
-DomTerm.SEEN_ESC_RBRACKET_STATE = 5;
+DomTerm.SEEN_ESC_RBRACKET_STATE = 6;
 /** We have seen ESC ']' numeric-parameter ';'. */
-DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 6;
+DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 7;
 /** We have seen ESC '#'. */
-DomTerm.SEEN_ESC_SHARP_STATE = 7;
-DomTerm.SEEN_ESC_CHARSET0 = 8;
-DomTerm.SEEN_ESC_CHARSET1 = 9;
-DomTerm.SEEN_ESC_CHARSET2 = 10;
-DomTerm.SEEN_ESC_CHARSET3 = 11;
-DomTerm.SEEN_ESC_SS2 = 12;
-DomTerm.SEEN_ESC_SS3 = 13;
+DomTerm.SEEN_ESC_SHARP_STATE = 8;
+DomTerm.SEEN_ESC_CHARSET0 = 9;
+DomTerm.SEEN_ESC_CHARSET1 = 10;
+DomTerm.SEEN_ESC_CHARSET2 = 11;
+DomTerm.SEEN_ESC_CHARSET3 = 12;
+DomTerm.SEEN_ESC_SS2 = 13;
+DomTerm.SEEN_ESC_SS3 = 14;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -2371,6 +2373,12 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         }
         break;
+    case 112 /*'p'*/:
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE) {
+            // Soft terminal reset (DECSTR)
+            this.resetTerminal(False, False);
+        }
+        break;
     case 114 /*'r'*/: // DECSTBM - set scrolling region
         var top = this.getParameter(0, 1);
         var bot = this.getParameter(1, -1);
@@ -2474,6 +2482,17 @@ DomTerm.prototype.handleLink = function(event, href) {
 
 DomTerm.prototype.setWindowTitle = function(title, option) {
     document.title = title;
+};
+
+DomTerm.prototype.resetTerminal = function(full, saved) {
+    // Corresponds to xterm's ReallyReset function
+    this._setRegionTB(0, -1);
+    this._setRegionLR(0, -1);
+    this.originMode = false;
+    this.bracketedPasteMode = false;
+    this.wraparoundMode = 2;
+    this.forceWidthInColumns(-1);
+    // FIXME a bunch more
 };
 
 DomTerm.prototype._selectGcharset = function(g, whenShifted/*igored*/) {
@@ -2921,6 +2940,9 @@ DomTerm.prototype.insertString = function(str) {
                 this.parameters.length = 1;
                 this.parameters[0] = null;
                 break;
+            case 99 /*'c'*/: // Full Reset (RIS)
+                this.resetTerminal(True, True);
+                break;
             case 110 /*'n'*/: // LS2
             case 111 /*'o'*/: // LS3
                 this._selectGcharset(ch-108, false);
@@ -2939,6 +2961,7 @@ DomTerm.prototype.insertString = function(str) {
             break;
         case DomTerm.SEEN_ESC_LBRACKET_STATE:
         case DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE:
+        case DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE:
         case DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE:
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
@@ -2953,6 +2976,8 @@ DomTerm.prototype.insertString = function(str) {
                 this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE;
             else if (ch == 63 /*'?'*/)
                 this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE;
+            else if (ch == 33 /*'!'*/)
+                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE;
             else {
                 this.handleControlSequence(ch);
                 this.parameters.length = 1;
