@@ -3285,12 +3285,11 @@ DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, ava
             goodWidth = nextPos;
         }
     }
-    if (goodLength == 0) {
-        this.log("BAD goodLength!");
-    }
-    if (textNode.data.length != goodLength)
+    if (goodLength == 0)
+        textNode.parentNode.removeChild(textNode);
+    else if (textNode.data.length != goodLength)
         textNode.data = textData.substring(0, goodLength);
-    // ASSUME textNode.data == textData.subString(0, goodLength);
+    // textNode.data == textData.subString(0,goodLength) || goodLength == 0;
     var lineCount = this.lineStarts.length;
     var lineEnd = this.lineEnds[line];
     if (rebreak || lineCount == line + 1) {
@@ -3326,8 +3325,14 @@ DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, ava
         lineEnd.parentNode.removeChild(lineEnd);
     }
     if (goodLength < textLength) {
-        var restString = textData.substring(goodLength);
-        var rest = document.createTextNode(restString);
+        var rest;
+        if (goodLength == 0) {
+            textNode.data = textData;
+            rest = textNode;
+        } else {
+            var restString = textData.substring(goodLength);
+            rest = document.createTextNode(restString);
+        }
         lineNode.parentNode.insertBefore(rest, lineNode.nextSibling);
         return rest;
     } else
