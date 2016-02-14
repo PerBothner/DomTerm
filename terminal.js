@@ -776,13 +776,13 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
         left = 0;
     else if (before == this.numColumns && (this.wraparoundMode != 3))
         count++;
-    before -= count;
-    if (before < left) {
+    var goal = before - count;
+    if (goal < left) {
         // logic based on the CursorBack procedure in xterm.
         var line = this.getCursorLine();
         if (maybeWrap) {
             var width = this._regionRight - left;
-            var offset = width * line + before - left;
+            var offset = width * line + goal - left;
             if (offset < 0) {
                 var length = width * this.numRows;
                 offset = -offset;
@@ -851,8 +851,7 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
         }
     }
     if (count > 0) {
-        this.cursorSet(this.getCursorLine(), before-count,
-                       false);
+        this.cursorSet(this.getCursorLine(), goal, false);
     }
 };
 
