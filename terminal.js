@@ -213,8 +213,10 @@ function DomTerm(name, topNode) {
 
     this.usingAlternateScreenBuffer = false;
 
-    this.history = new Array();
+    this.history = null;
     this.historyCursor = -1;
+    this.historyStorageKey = "DomTerm.history";
+    this.historyStorageMax = 200;
 
     // If non-null: A function that maps charCodes to replacement strings.
     // (If the function returns null, uses the input unmodified.)
@@ -240,6 +242,8 @@ function DomTerm(name, topNode) {
 }
 
 DomTerm.prototype.eofSeen = function() {
+    this.historySave();
+    this.history.length = 0;
     window.close();
 };
 
@@ -1282,7 +1286,16 @@ DomTerm.prototype.isSpanNode = function(node) {
 };
 
 DomTerm.prototype.initializeTerminal = function(topNode) {
-    var wt = this;
+    try {
+        if (window.localStorage) {
+            var v = localStorage[this.historyStorageKey];
+            if (v)
+                this.history = JSON.parse(v);
+        }
+    } catch (e) { }
+    if (! this.history)
+        this.history = new Array();
+
     this.topNode = topNode;
     var helperNode = this._createPreNode();
     helperNode.setAttribute("id", this.makeId("helper"));
@@ -1346,6 +1359,8 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                   dt.pasteText(e.clipboardData.getData("text"));
                                   e.preventDefault(); },
                               false);
+    window.addEventListener("unload",
+                            function(event) { dt.historySave(); });
     topNode.addEventListener("click",
                              function(e) {
                                  var target = e.target;
@@ -1697,6 +1712,16 @@ DomTerm.prototype.historyMove = function(delta) {
         child = next;
     }
     inputLine.appendChild(document.createTextNode(str));
+};
+
+DomTerm.prototype.historySave = function() {
+    var h = this.history;
+    if (window.localStorage && h && h.length > 0) {
+        var first = h.length - this.historyStorageMax;
+        if (first > 0)
+            h = h.slice(first);
+        localStorage[this.historyStorageKey] = JSON.stringify(h);
+    }
 };
 
 DomTerm.prototype.handleEnter = function(text) {
