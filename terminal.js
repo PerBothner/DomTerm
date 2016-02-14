@@ -2260,7 +2260,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.restoreCursor();
                 break;
             case 2004:
-                this.bracketedPasteMode = true;
+                this.bracketedPasteMode = false;
                 break;
             }
         } else {
