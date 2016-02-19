@@ -3598,11 +3598,11 @@ DomTerm.prototype.pasteText = function(str) {
 
 DomTerm.prototype.doPaste = function() {
     this.inputLine.focus();
-    document.execCommand("paste", false);
+    return document.execCommand("paste", false);
 };
 
 DomTerm.prototype.doCopy = function() {
-    document.execCommand("copy", false);
+    return document.execCommand("copy", false);
 };
 
 DomTerm.prototype.getSelectedText = function() {
@@ -3678,11 +3678,10 @@ DomTerm.prototype.keyDownHandler = function(event) {
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
     // Ctrl-Shift-C is Copy and Ctrl-Shift-V is Paste
     if (event.ctrlKey && event.shiftKey && (key == 67 || key == 86)) {
-        if (key == 67)
-            this.doCopy();
-        else
-            this.doPaste();
-        event.preventDefault();
+        // Google Chrome doesn't allow execCommand("paste") but Ctrl-Shift-V
+        // works by default.  In Firefox, it's the other way round.
+        if (key == 67 ? this.doCopy() : this.doPaste())
+            event.preventDefault();
         return;
     }
     if (this.lineEditing) {
