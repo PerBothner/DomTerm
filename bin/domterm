@@ -1,12 +1,6 @@
 #!/bin/bash
-thisfile=`type -p $0`
-case "$thisfile" in
-  "") echo "installation error - can't find path to $0"; exit -1 ;;
-  /*) ;;
-  *) thisfile="$PWD/$thisfile"  ;;
-esac         
-while test -L "$thisfile"; do thisfile=$(readlink -f "$thisfile"); done
-DOMTERM_DIR=`echo $(dirname $thisfile) | sed -e 's|/bin$||'`
+
+DOMTERM_DIR=$(dirname "$0")/..
 if test -n "$JAVA_HOME"; then
     JAVA="${JAVA_HOME}/bin/java"
 else
