@@ -150,6 +150,9 @@ public class WebTerminalApp extends Application
     }
 
     static Backend mainClient;
+    public static void setDefaultBackend(Backend backend) {
+        mainClient = backend;
+    }
     protected Backend makeClient() throws java.lang.Exception {
         if (mainClient == null)
             throw new RuntimeException("internal error - mainClient not set");

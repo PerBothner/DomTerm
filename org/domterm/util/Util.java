@@ -7,23 +7,24 @@ public final class Util {
 
     public static final int ESCAPE = 27;
 
-    public static final char[] START_ERR_MARKER = {
-        ESCAPE, '[', '1', '2', 'u'
-    };
-    public static final char[] END_ERR_MARKER = {
-        ESCAPE, '[', '1', '1', 'u'
-    };
     public static final char[] EOF_MARKER = {
         ESCAPE, '[', '9', '9', ';', '9', '9', 'u'
     };
 
+    public static void copyThread(Reader fromInferior,
+                                  boolean errStream,
+                                  Writer out) {
+        if (errStream)
+            out = new DomTermErrorWriter(out);
+        copyThread(fromInferior, out);
+    }
+
     public static void copyThread(final Reader fromInferior,
-                                  final boolean errStream,
                                   final Writer out) {
         Thread th = new Thread() {
                 char[] buffer = new char[1024];
                 public void run () {
-                    //WTDebug.println("copyThread start err:"+errStream+" to:"+out.getClass().getName());
+                    //WTDebug.println("copyThread start to:"+out.getClass().getName());
                     for (;;) {
                         try {
                             int count = fromInferior.read(buffer);
@@ -32,18 +33,8 @@ public final class Util {
                                           EOF_MARKER.length);
                                 break;
                             }
-                            //WTDebug.println("copyThread "+count+": "+WTDebug.toQuoted(new String(buffer,0,count))+" err:"+errStream);
-                            if (errStream) {
-                                synchronized (out) {
-                                    out.write(START_ERR_MARKER, 0,
-                                              START_ERR_MARKER.length);
-                                    out.write(buffer, 0, count);
-                                    out.write(END_ERR_MARKER, 0,
-                                              END_ERR_MARKER.length);
-                                }
-                            } else {
-                                out.write(buffer, 0, count);
-                            }
+                            //WTDebug.println("copyThread "+count+": "+WTDebug.toQuoted(new String(buffer,0,count)));
+                            out.write(buffer, 0, count);
                         } catch (Throwable ex) {
                             ex.printStackTrace();
                             System.exit(-1);

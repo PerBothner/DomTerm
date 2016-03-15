@@ -8,6 +8,8 @@ import java.io.*;
  * These cause DomTerm to place the error output inside
  * a {@code <span std="err">} element, which by default
  * is colored red.
+ *
+ * Similar to DomTermErrorWriter, but at the byte level
  */
 
 public class DomTermErrorStream extends PrintStream {
