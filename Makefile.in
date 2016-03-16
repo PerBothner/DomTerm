@@ -96,6 +96,7 @@ tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html terminal.js Makefile
 	mkdir -p tmp-for-jar/org/domterm
 	$(SED) -e '/domterm-core/i<style>' \
 	  -e '/<link .*style.domterm-core.css">/rstyle/domterm-core.css' \
+	  -e '/<link .*style.domterm-standard.css">/rstyle/domterm-standard.css' \
 	  -e '/<link .*style.domterm-default.css">/rstyle/domterm-default.css' \
 	  -e '/domterm-default/a</style>' \
 	  -e '/domterm-default/a<script type="text/javascript">' \
