@@ -47,6 +47,12 @@ public final class Util {
 
     /** Parse a string formatted using JSON.stringify */
     public static String parseSimpleJsonString(String str, int start, int end) {
+        return parseSimpleJsonString(str, start, end, null);
+    }
+
+    /** Parse a string formatted using JSON.stringify */
+    public static String parseSimpleJsonString(String str, int start, int end,
+                                               int[] endPointer) {
         StringBuilder buf = new StringBuilder();
         char ch0 = 0;
         int i = start;
@@ -61,8 +67,11 @@ public final class Util {
         }
         for (; i < end; ) {
             char ch = str.charAt(i++);
-            if (ch == ch0)
+            if (ch == ch0) {
+                if (endPointer != null)
+                    endPointer[0] = i;
                 break;
+            }
             if (ch == '\\') {
                 if (i == end)
                     return null;
