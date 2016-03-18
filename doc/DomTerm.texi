@@ -384,10 +384,10 @@ the domterm document, one per line:
 
 @example
 $ dtstyle --list
-0: enabled  - "chrome://domterm/content/style/domterm-core.css"
-1: enabled  - "chrome://domterm/content/style/domterm-standard.css"
-2: enabled  "Default DomTerm styling" "chrome://domterm/content/style/domterm-default.css"
-3: enabled "<temporary>" -
+0: enabled  - "style/domterm-core.css"
+1: enabled  - "style/domterm-standard.css"
+2: enabled  "Default DomTerm styling" "style/domterm-default.css"
+3: enabled  - "(temporary-styles)"
 @end example
 After the sequence number, either @code{enabled} or @code{disabled}
 specified whether the stylesheet is disabled.
