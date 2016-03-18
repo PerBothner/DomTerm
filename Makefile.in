@@ -81,6 +81,7 @@ DOMTERM_JAR_SOURCES = \
   org/domterm/util/DomTermErrorStream.java \
   org/domterm/util/DomTermErrorWriter.java \
   org/domterm/util/StringBufferedWriter.java \
+  org/domterm/util/StyleSheets.java \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
   org/domterm/util/Utf8WriterOutputStream.java
@@ -95,13 +96,17 @@ tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html terminal.js Makefile
 # So we use use sed to inline it into one by repl.html.
 # Ugly - hopefully we can figure out what is going on.
 	mkdir -p tmp-for-jar/org/domterm
-	$(SED) -e '/domterm-core/i<style>' \
+	$(SED) \
+	  -e '/<link .*style.domterm-standard.css">/i</style>' \
+	  -e '/<link .*style.domterm-default.css">/i</style>' \
+	  -e '/ResizeSensor.js/i</style>' \
+	  -e '/ResizeSensor.js/i<script>' \
 	  -e '/<link .*style.domterm-core.css">/rstyle/domterm-core.css' \
 	  -e '/<link .*style.domterm-standard.css">/rstyle/domterm-standard.css' \
 	  -e '/<link .*style.domterm-default.css">/rstyle/domterm-default.css' \
+	  -e 's/<link rel="stylesheet"\(.*\) href=".*"/<style\1/' \
 	  -e '/domterm-default/a</style>' \
 	  -e '/domterm-default/a<script type="text/javascript">' \
-	  -e '/<link .*style.*\.css">/d' \
 	  -e 's|<script type="text.javascript">||' \
 	  -e '/<script .*src=.*.ResizeSensor.js.*>/rResizeSensor.js' \
 	  -e '/<script .*src=.*.bililiteRange.js.*>/rbililiteRange.js' \
@@ -168,6 +173,7 @@ web/index.html: doc/DomTerm.xml Makefile
 	$(SED) -s 's|<a name=".*"></a>Why|Why|' <web/index.html >web/tmp-index.html
 	mv web/tmp-index.html web/index.html
 	patch --no-backup-if-mismatch -p0 <doc/webdoc.patch
+	mkdir -p web/images
 	cp $(DOC_IMAGES) web/images
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org

@@ -345,6 +345,73 @@ CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}.
 
 @end table
 
+@subheading dtstyle - Changing styles
+
+The @code{dtstyle} command is useful for managing and
+modifying the currently active stylesheets.
+It takes various options.
+
+@table @asis
+@item @code{--add-rule} @code{"}@var{style-rule}@code{"}
+
+If called for the first time, create and install a temporary
+stylesheet (with name @code{<temporary>}.
+Add the @var{style-rule} to the temporary stylesheet.
+
+To change the background color to pink:
+@example
+$ dtstyle --add-rule "div.domterm @{ background-color: pink @}"
+@end example
+
+Inverse video:
+@example
+$ dtstyle --add-rule "div.domterm @{ background-color: black; color: white @}"
+@end example
+
+Setting a background image:
+@example
+$ dtstyle --add-rule "div.domterm @{background-image: url('file:/usr/share/backgrounds/gnome/Mirror.jpg')@}"
+@end example
+
+Changing font size:
+@example
+$ dtstyle --add-rule "body @{ font-size: 14pt @}"
+@end example
+
+@item @code{--list}
+List on the standard output the set of stylesheets associated with
+the domterm document, one per line:
+
+@example
+$ dtstyle --list
+0: enabled  - "chrome://domterm/content/style/domterm-core.css"
+1: enabled  - "chrome://domterm/content/style/domterm-standard.css"
+2: enabled  "Default DomTerm styling" "chrome://domterm/content/style/domterm-default.css"
+3: enabled "<temporary>" -
+@end example
+After the sequence number, either @code{enabled} or @code{disabled}
+specified whether the stylesheet is disabled.
+If the stylesheet has a @code{title}, if is shown next (in json format);
+otherwise @code{-} is printed.
+If the stylesheet has the @code{href} attribute, if is shown next
+(in json format); otherwise @code{-} is printed.
+
+@item @code{--print} @var{index}
+Print out the style rules of the specified stylesheet,
+which is an @var{index} in the @code{--list} output.
+
+@item @code{--enable} @var{index}
+@itemx @code{--disable} @var{index}
+Disable or enable the specified stylesheet.
+A @var{index} is an integer index into the
+list as shown by @code{--list}.
+
+@example
+$ dtstyle --disable 2
+@end example
+
+@end table
+
 @subheading Utilities
 
 @subsubheading hcat: Print HTML
@@ -846,6 +913,42 @@ This mode is useful when the input is a pipe or some other non-tty stream.
 End-of-file on the output stream.
 Calls the @code{eofSeen} method of @code{DomTerm},
 which may close the current window or other appropriate action.
+@end table
+
+@subsubsection Stylesheet manipulation
+
+@table @asis
+@item @code{"\e]90;\a"}
+
+A request to return the a list od the stylesheets in the document.
+
+Result to client: @code{"\x9D"} @var{stylesheets} @var{"\n"}
+
+Each stylesheet is a JSON-formatted string, separated by @code{"\t"},
+suitable for printing by @code{dtstyle --list}.
+
+@item @code{\e]91;"} @var{index} @code{"\a"}
+Disable the stylesheet that has index @var{index} in the list of
+stylesheets in the document.
+
+Result to client: @code{"\x9D"} @var{message} @var{"\n"}
+where @var{message} is empty if there was no problem,
+and is otherwise an error message.
+
+@item @code{\e]92;"} @var{index} @code{"\a"}
+As above, but enable the specified stylesheet.
+
+@item @code{\e]93;"} @var{index} @code{"\a"}
+Return the contents of the specified stylesheet.
+
+On success the result is @code{"\x9D"} @var{rule}@sup{*} @code{"\x9D"}
+where each is a JSON-quoted string.
+On failure, the result is a (non-quoted) error message.
+
+@item @code{\e]94;"} @var{rule} @code{"\a"}
+If necessary, create a new temporary stylesheet,
+and add the specified JSON-quoted rule to the end of it.
+
 @end table
 
 @subsection Special sequences sent by DomTerm to back-end

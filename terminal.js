@@ -2866,6 +2866,22 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         // text is "\u001b]777;COMMAND"
         // Is printed by /etc/profile/vte.sh on Fedora
         break;
+    case 90:
+        this.reportStylesheets();
+        break;
+    case 91:
+    case 92:
+        var r = this.maybeDisableStyleSheet(text, code==91);
+        this.processResponseCharacters("\x9D" + r + "\n");
+        break;
+    case 93:
+        var r = this.printStyleSheet(text);
+        this.processResponseCharacters("\x9D" + r + "\n");
+        break;
+    case 94:
+        this.addStyleRule(JSON.parse(text));
+        this.measureWindow();
+        break;
     default:
         // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
     }
@@ -3607,6 +3623,119 @@ DomTerm.prototype.doCopy = function() {
 
 DomTerm.prototype.getSelectedText = function() {
     return window.getSelection().toString();
+};
+
+DomTerm.prototype.listStylesheets = function() {
+    var styleSheets = document.styleSheets;
+    var result = new Array();
+    var numStyleSheets = styleSheets.length;
+    for (var i = 0; i < numStyleSheets; i++) {
+        var styleSheet = styleSheets[i];
+        var title = styleSheet.title;
+        var href = styleSheet.ownerNode.getAttribute("href");
+        var line = styleSheet.disabled ? "disabled " : "enabled  ";
+        line += title ? JSON.stringify(title) : "-";
+        line += " ";
+        line += href ? JSON.stringify(href) : "-";
+        result[i] = line;
+    }
+    return result;
+};
+
+DomTerm.prototype.reportStylesheets = function() {
+    this.processResponseCharacters("\x9D" + this.listStylesheets().join("\t")
+                                   + "\n");
+};
+
+DomTerm.prototype.printStyleSheet = function(specifier) {
+    var styleSheet = this.findStyleSheet(specifier);
+    if (typeof styleSheet == "string")
+        return styleSheet; // error message
+    var rules = styleSheet.cssRules;
+    if (! rules)
+        return "stylesheet rules not available";
+    var count = rules.length;
+    var result = "";
+    for (var i = 0; i < count; i++) {
+        if (i > 0)
+            result = result + " ";
+        result = result + JSON.stringify(rules[i].cssText);
+    }
+    return result;
+};
+
+DomTerm.prototype.createStyleSheet = function() {
+    var head = document.getElementsByTagName("head")[0];
+    var style = document.createElement("style");
+    head.appendChild(style);
+    return style.sheet;
+    //var styleSheets = document.styleSheets;
+    //return styleSheets[styleSheets.length-1];
+}
+
+DomTerm.prototype.getTemporaryStyleSheet = function() {
+    var styleSheet = this.temporaryStyleSheet;
+    if (! styleSheet) {
+        styleSheet = this.createStyleSheet();
+        styleSheet.ownerNode.setAttribute("href", "(temporary-styles)");
+        this.temporaryStyleSheet = styleSheet;
+    }
+    return styleSheet;
+};
+
+DomTerm.prototype.addStyleRule = function(styleRule) {
+    var styleSheet = this.getTemporaryStyleSheet();
+    styleSheet.insertRule(styleRule, styleSheet.cssRules.length);
+};
+
+/** Look for a styleshet named by the specifier.
+ * Return a CSSStyleSheet if found or a string (error message) ptherwise.
+*/
+DomTerm.prototype.findStyleSheet = function(specifier) {
+    if (! specifier || typeof specifier != "string")
+        return "invalid stylesheet specifier";
+    var styleSheets = document.styleSheets;
+    var styleSheet;
+    var index = Number(specifier);
+    if (index) {
+        if (index < 0 || index >= styleSheets.length)
+            return "invalid stylesheet index";
+        return styleSheet = styleSheets[index];
+    } else {
+        var exactMatch = -1;
+        var ignoreCaseMatch = -1;
+        var substringMatch = -1;
+        var specifierLc = specifier.toLowerCase();
+        for (var i = styleSheets.length; --i >= 0; ) {
+            styleSheet = styleSheets[i];
+            if (styleSheet.title) {
+                if (styleSheet.title == specifier)
+                    exactMatch = exactMatch == -1 ? i : -2;
+                var titleLc = styleSheet.title.toLowerCase();
+                if (titleLc == specifierLc)
+                    ignoreCaseMatch = ignoreCaseMatch == -1 ? i : -2;
+                if (titleLc.indexOf(specifierLc) >= 0)
+                    substringMatch = substringMatch == -1 ? i : -2;
+            }
+        }
+        if (exactMatch >= 0)
+            return styleSheets[exactMatch];
+        if (ignoreCaseMatch >= 0)
+            return styleSheets[ignoreCaseMatch];
+        if (substringMatch >= 0)
+            return styleSheets[substringMatch];
+        if (exactMatch == -2 || ignoreCaseMatch == -2 || substringMatch == -2)
+            return "ambiguous stylesheet specifier";
+        return "no matching stylesheet";
+    }
+};
+
+DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
+    var styleSheet = this.findStyleSheet(specifier);
+    if (typeof styleSheet == "string")
+        return styleSheet;
+    styleSheet.disabled = disable;
+    return "";
 };
 
 DomTerm.prototype.setInputMode = function(mode) {

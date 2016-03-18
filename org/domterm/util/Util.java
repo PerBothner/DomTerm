@@ -45,6 +45,38 @@ public final class Util {
         th.start();
     }
 
+    public static String toJson(String str) {
+        int len = str.length();
+        StringBuilder buf = new StringBuilder();
+        buf.append('\"');
+        for (int i = 0;  i < len;  i++) {
+            char ch = str.charAt(i);
+            if (ch == '\n')
+                buf.append("\\n");
+            else if (ch == '\r')
+                buf.append("\\r");
+            else if (ch == '\t')
+                buf.append("\\t");
+            else if (ch == '\b')
+                buf.append("\\b");
+            else if (ch < ' ' || ch >= 127) {
+                String hex = Integer.toHexString((int) ch);
+                int slen = hex.length();
+                if (slen == 1) hex = "000" + hex;
+                else if (slen == 2) hex = "00" + hex;
+                else if (slen == 3) hex = "0" + hex;
+                buf.append("\\u");
+                buf.append(hex);
+            } else {
+                if (ch == '\"' || ch == '\\')
+                    buf.append('\\');
+                buf.append(ch);
+            }
+        }
+        buf.append('\"');
+        return buf.toString();
+    }
+
     /** Parse a string formatted using JSON.stringify */
     public static String parseSimpleJsonString(String str, int start, int end) {
         return parseSimpleJsonString(str, start, end, null);
