@@ -189,8 +189,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
      * @return the URL of the initial page resource as a String
      */
     protected String pageUrl() {
-        String rname = USE_XHTML ? "repl.xml" : "repl.html";
-        java.net.URL rurl = Backend.class.getResource(rname);
+        String rname = "jfx-term.html";
+        java.net.URL rurl = Backend.class.getClassLoader().getResource(rname);
         if (rurl == null)
             throw new RuntimeException("no initial web page "+rname);
         return rurl.toString();

@@ -90,12 +90,11 @@ org/classes.stamp: $(DOMTERM_JAR_SOURCES)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
-tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html terminal.js Makefile
+tmp-for-jar/jfx-term.html: jfx-term.html terminal.js Makefile
 # JavaFX seems to have a problem loading .js files referenced from repl.html,
 # in a .jar, but inline javascript and css works.
 # So we use use sed to inline it into one by repl.html.
 # Ugly - hopefully we can figure out what is going on.
-	mkdir -p tmp-for-jar/org/domterm
 	$(SED) \
 	  -e '/<link .*style.domterm-standard.css">/i</style>' \
 	  -e '/<link .*style.domterm-default.css">/i</style>' \
@@ -112,12 +111,14 @@ tmp-for-jar/org/domterm/repl.html: org/domterm/repl.html terminal.js Makefile
 	  -e '/<script .*src=.*.bililiteRange.js.*>/rbililiteRange.js' \
 	  -e '/<script .*src=.*.terminal.js.*>/rterminal.js' \
 	  -e 's|<script .*src=.*.*.js.*script>||' \
-	  <org/domterm/repl.html >$@
+	  <jfx-term.html >$@
 
-domterm.jar: org/classes.stamp terminal.js tmp-for-jar/org/domterm/repl.html
-	tar cf - org/domterm/*.class org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
+domterm.jar: org/classes.stamp terminal.js
+	mkdir -p tmp-for-jar
+@ENABLE_PTY_TRUE@	$(MAKE) tmp-for-jar/jfx-term.html
+	tar cf - org/domterm/*.class *.js style/*.css org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
 	cd tmp-for-jar && \
-	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class org/domterm/repl.html
+	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class jfx-term.html *.js style/*.css
 
 xulapp/domterm-chrome.jar: terminal.js xulapp/chrome/content/domterm.xul
 	mkdir -p tmp-for-xul tmp-for-xul/chrome \
