@@ -28,8 +28,8 @@ public class StyleSheets {
                 maybeDisable(args[i++], false);
             else if (arg.equals("--add-rule") && i < args.length)
                 addRule(args[i++]);
-            else if (arg.equals("--add-stylesheet") && i < args.length)
-                addStyleSheet(args[i++]);
+            else if (arg.equals("--load-stylesheet") && i + 1 < args.length)
+                loadStyleSheet(args[i++], args[i++]);
             else if (arg.equals("--print") && i < args.length)
                 printStyleSheet(args[i++]);
             else
@@ -61,7 +61,35 @@ public class StyleSheets {
         console.flush();
     }
 
-    public static void addStyleSheet(String href) {
+    public static void loadStyleSheet(String name, String fname) throws IOException {
+        Reader in;
+        char[] buf = new char[2048];
+        int count = 0;
+        if (fname.equals("-")) {
+            in = new InputStreamReader(System.in);
+        } else {
+            in = new FileReader(fname);
+        }
+        for (;;) {
+            int avail = buf.length - count;
+            if (avail < 512) {
+                char[] nbuf = new char[(buf.length * 3) >> 1];
+                System.arraycopy(buf, 0, nbuf, 0, count);
+                buf = nbuf;
+                avail = buf.length - count;
+            }
+            int i = in.read(buf, count, avail);
+            if (i < 0)
+                break;
+            count += i;
+        }
+        String value = new String(buf, 0, count);
+        String command = "\u001B]95;"+Util.toJson(name)+","+Util.toJson(value)+"\007";
+        String str = requestReponse(command);
+        if (str != null && str.length() > 0) {
+            System.err.println(str);
+            System.exit(-1);
+        }
     }
 
     public static void printStyleSheet(String specifier) throws IOException {

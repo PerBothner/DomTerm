@@ -2882,6 +2882,12 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this.addStyleRule(JSON.parse(text));
         this.measureWindow();
         break;
+    case 95:
+        var args = JSON.parse("["+text+"]");
+        var r = this.loadStyleSheet(args[0], args[1]);
+        this.processResponseCharacters("\x9D" + r + "\n");
+        this.measureWindow();
+        break;
     default:
         // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
     }
@@ -3633,6 +3639,8 @@ DomTerm.prototype.listStylesheets = function() {
         var styleSheet = styleSheets[i];
         var title = styleSheet.title;
         var href = styleSheet.ownerNode.getAttribute("href");
+        if (! href)
+             href = styleSheet.ownerNode.getAttribute("name");
         var line = styleSheet.disabled ? "disabled " : "enabled  ";
         line += title ? JSON.stringify(title) : "-";
         line += " ";
@@ -3675,9 +3683,9 @@ DomTerm.prototype.createStyleSheet = function() {
 
 DomTerm.prototype.getTemporaryStyleSheet = function() {
     var styleSheet = this.temporaryStyleSheet;
-    if (! styleSheet) {
+    if (! styleSheet || ! styleSheet.parentNode) {
         styleSheet = this.createStyleSheet();
-        styleSheet.ownerNode.setAttribute("href", "(temporary-styles)");
+        styleSheet.ownerNode.setAttribute("name", "(temporary-styles)");
         this.temporaryStyleSheet = styleSheet;
     }
     return styleSheet;
@@ -3686,6 +3694,37 @@ DomTerm.prototype.getTemporaryStyleSheet = function() {
 DomTerm.prototype.addStyleRule = function(styleRule) {
     var styleSheet = this.getTemporaryStyleSheet();
     styleSheet.insertRule(styleRule, styleSheet.cssRules.length);
+};
+
+DomTerm.prototype.loadStyleSheet = function(name, value) {
+    var styleSheets = document.styleSheets;
+    var i = styleSheets.length;
+    var ownerNode;
+    for (;;) {
+        if (--i < 0) {
+            ownerNode = null;
+            break;
+        }
+        var ownerNode = styleSheets[i].ownerNode;
+        if (ownerNode && ownerNode.getAttribute("name") == name)
+            break;
+    }
+    var parent;
+    var following;
+    if (ownerNode == null) {
+        parent = document.getElementsByTagName("head")[0];
+        following = null;
+        i = styleSheets.length;
+    } else {
+        parent = ownerNode.parentNode;
+        following = ownerNode.nextSibling;
+        parent.removeChild(ownerNode);
+    }
+    ownerNode = document.createElement("style");
+    ownerNode.setAttribute("name", name);
+    ownerNode.appendChild(document.createTextNode(value));
+    parent.insertBefore(ownerNode, following);
+    return i;
 };
 
 /** Look for a styleshet named by the specifier.

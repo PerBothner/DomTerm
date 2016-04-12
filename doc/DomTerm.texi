@@ -352,13 +352,15 @@ modifying the currently active stylesheets.
 It takes various options.
 
 @table @asis
-@item @code{--add-rule} @code{"}@var{style-rule}@code{"}
+@item @code{--add-rule} @var{style-rule}
 
 If called for the first time, create and install a temporary
-stylesheet (with name @code{<temporary>}.
+stylesheet.
+This temporary stylesheet has a @code{name} attribute
+with the value @code{"(temporary-styles)"}.
 Add the @var{style-rule} to the temporary stylesheet.
 
-To change the background color to pink:
+For example, to change the background color to pink:
 @example
 $ dtstyle --add-rule "div.domterm @{ background-color: pink @}"
 @end example
@@ -378,6 +380,18 @@ Changing font size:
 $ dtstyle --add-rule "body @{ font-size: 14pt @}"
 @end example
 
+@item @code{--load-stylesheet} @var{name} @var{filename}
+
+Replace or create a new stylesheet with the given @var{name}.
+The content of the stylesheet are read from the given @var{filename}.
+If the @var{filename} is @code{-} then standard input is used.
+
+The @var{name} is used to set the non-standard @code{name} attribute
+of the created @code{<style>} element.  If there is an existing stylesheet
+with a matching @code{name} attribute, then that stylesheet is replaced;
+otherwise a new stylesheet is created.
+The @var{name} attribute is displayed by the @code{dtstyle --list} command.
+
 @item @code{--list}
 List on the standard output the set of stylesheets associated with
 the domterm document, one per line:
@@ -393,8 +407,10 @@ After the sequence number, either @code{enabled} or @code{disabled}
 specified whether the stylesheet is disabled.
 If the stylesheet has a @code{title}, if is shown next (in json format);
 otherwise @code{-} is printed.
-If the stylesheet has the @code{href} attribute, if is shown next
-(in json format); otherwise @code{-} is printed.
+If the stylesheet has the @code{href} attribute, it is shown next
+(in json format);
+otherwise, if it has the @code{code} attribute, that is shown;
+otherwise @code{-} is printed.
 
 @item @code{--print} @var{index}
 Print out the style rules of the specified stylesheet,
@@ -920,9 +936,9 @@ which may close the current window or other appropriate action.
 @table @asis
 @item @code{"\e]90;\a"}
 
-A request to return the a list od the stylesheets in the document.
+A request to return a list of the stylesheets in the document.
 
-Result to client: @code{"\x9D"} @var{stylesheets} @var{"\n"}
+Result to client: @code{"\x9D"} @var{stylesheets} @code{"\n"}
 
 Each stylesheet is a JSON-formatted string, separated by @code{"\t"},
 suitable for printing by @code{dtstyle --list}.
@@ -931,7 +947,7 @@ suitable for printing by @code{dtstyle --list}.
 Disable the stylesheet that has index @var{index} in the list of
 stylesheets in the document.
 
-Result to client: @code{"\x9D"} @var{message} @var{"\n"}
+Result to client: @code{"\x9D"} @var{message} @code{"\n"}
 where @var{message} is empty if there was no problem,
 and is otherwise an error message.
 
@@ -948,6 +964,18 @@ On failure, the result is a (non-quoted) error message.
 @item @code{\e]94;"} @var{rule} @code{"\a"}
 If necessary, create a new temporary stylesheet,
 and add the specified JSON-quoted rule to the end of it.
+
+@item @code{\e]95;"} @var{name} @code{","} @var{styles} @code{"\a"}
+
+Create or replace a stylesheet with the given @var{name}.
+If there is a @code{<style>} with a @code{name} attribute equal to @var{name},
+it is replaced; otherwise a new one is created, with its @code{name} set to @var{name}.
+The @var{styles} is the literal contents of the new stylesheet;
+it becomes the child of the @code{<style>} element (as a single text node).
+Both @var{name} and @var{styles} are strings in quoted (JSON) format.
+
+Result to client: @code{"\x9D"} @var{index} @code{"\n"} where
+@var{index} is the index of the replaced or created stylesheet.
 
 @end table
 
