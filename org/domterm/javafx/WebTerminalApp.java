@@ -150,6 +150,7 @@ public class WebTerminalApp extends Application
     }
 
     static Backend mainClient;
+    static String defaultTitle = "DomTerm";
     public static void setDefaultBackend(Backend backend) {
         mainClient = backend;
     }
@@ -162,7 +163,7 @@ public class WebTerminalApp extends Application
     @Override public void start(Stage stage) throws java.lang.Exception {
         try {
         final Scene scene = createScene();
-        stage.setTitle("DomTerm");
+        stage.setTitle(defaultTitle);
 
         stage.setScene(scene);
         //stage.sizeToScene();
@@ -180,9 +181,10 @@ public class WebTerminalApp extends Application
             System.exit(0);
     }
 
-    public static void startApp(Backend backend, String[] args) {
+    public static void startApp(Backend backend, String title, String[] args) {
         WebTerminalApp.exitOnStop = true;
         WebTerminalApp.setDefaultBackend(backend);
+        WebTerminalApp.defaultTitle = title;
         if (args == null)
             args = new String[0];
         Application.launch(WebTerminalApp.class, args);
