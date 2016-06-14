@@ -21,6 +21,10 @@ public abstract class Backend {
         termWriter.write("\033[80;"+((int)mode)+"u");
     }
 
+    protected void setAutomaticNewline(boolean v) throws Exception {
+        termWriter.write(v ? "\033[20h" : "\033[20l");
+    }
+
     public boolean isCanonicalMode() { return true; }
 
     public void reportEvent(String name, String str) {
