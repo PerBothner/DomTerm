@@ -179,4 +179,12 @@ public class WebTerminalApp extends Application
         if (exitOnStop)
             System.exit(0);
     }
+
+    public static void startApp(Backend backend, String[] args) {
+        WebTerminalApp.exitOnStop = true;
+        WebTerminalApp.setDefaultBackend(backend);
+        if (args == null)
+            args = new String[0];
+        Application.launch(WebTerminalApp.class, args);
+    }
 }
