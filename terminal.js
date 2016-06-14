@@ -3207,13 +3207,17 @@ DomTerm.prototype.insertString = function(str) {
     }
     this._restoreInputLine();
     if (true) { // FIXME only if "scrollWanted"
-        var last = this.topNode.lastChild;
-        var lastBottom = last.offsetTop + last.offsetHeight;
-        if (lastBottom > this.topNode.scrollTop + this.availHeight)
-            this.topNode.scrollTop = lastBottom - this.availHeight;
+        this._scrollIfNeeded();
     }
     this.inputLine.focus();
 };
+
+DomTerm.prototype._scrollIfNeeded = function() {
+    var last = this.topNode.lastChild;
+    var lastBottom = last.offsetTop + last.offsetHeight;
+    if (lastBottom > this.topNode.scrollTop + this.availHeight)
+        this.topNode.scrollTop = lastBottom - this.availHeight;
+}
 
 DomTerm.prototype._breakAllLines = function(oldWidth) {
     var changed = false;
