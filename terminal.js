@@ -1684,10 +1684,13 @@ DomTerm.prototype.getPendingInput = function() {
     return text;
 };
 
-DomTerm.prototype.historyAdd = function(str) {
-    if (this.historyCursor >= 0)
+DomTerm.prototype.historyAdd = function(str, append) {
+    if (this.historyCursor >= 0) // FIX consider append
         this.history[this.history.length-1] = str;
-    else
+    else if (append && this.history.length >= 0) {
+        this.history[this.history.length-1] =
+            this.history[this.history.length-1] + '\n' + str;
+    } else
         this.history.push(str);
     this.historyCursor = -1;
 };
@@ -1712,6 +1715,7 @@ DomTerm.prototype.historyMove = function(delta) {
         child = next;
     }
     inputLine.appendChild(document.createTextNode(str));
+    this._scrollIfNeeded();
 };
 
 DomTerm.prototype.historySave = function() {
@@ -1728,7 +1732,7 @@ DomTerm.prototype.handleEnter = function(text) {
     this._doDeferredDeletion();
     // For now we only support the normal case when outputBefore == inputLine.
     var oldInputLine = this.inputLine;
-    this.historyAdd(text);
+    this.historyAdd(text, oldInputLine.getAttribute("continuation") == "true");
     var spanNode;
     oldInputLine.removeAttribute("contenteditable");
     var line = this.getCursorLine();
@@ -2443,6 +2447,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._adjustStyle();
             break;
         case 14:
+        case 24:
             var curOutput = this._currentCommandOutput;
             if (curOutput
                 && curOutput.firstChild == this.outputContainer
@@ -2455,6 +2460,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
                     this.outputContainer.setAttribute("domterm-hidden", "false");
             }
             this._pushStyle("std", "prompt");
+            if (param == 24)
+                this.inputLine.setAttribute("continuation", "true");
+            else
+                this.inputLine.removeAttribute("continuation");
             break;
         case 15:
             this._pushStyle("std", this.automaticNewlineMode ? null : "input");
@@ -3824,12 +3833,6 @@ DomTerm.prototype.doLineEdit = function(key, str) {
         rng.sendkeys('{ArrowLeft}');
         rng.select();
         break;
-    case 38: /*Up*/
-        this.historyMove(-1);
-        break;
-    case 40: /*Down*/
-        this.historyMove(1);
-        break;
     case 39:
         rng.sendkeys('{ArrowRight}');
         rng.select();
@@ -3870,7 +3873,17 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (this.autoEditing)
                 this.lineEditing = false;
             this.processInputCharacters(this.keyDownToString(event));
-        } else if (this.useDoLineEdit || key == 38/*Up*/ || key == 40/*Down*/) {
+        } else if (key == 38/*Up*/) {
+            if (this._atTopInputLine()) {
+                event.preventDefault();
+                this.historyMove(-1);
+            }
+        } else if (key == 40/*Down*/) {
+            if (this._atBottomInputLine()) {
+                event.preventDefault();
+                this.historyMove(1);
+            }
+        } else if (this.useDoLineEdit) {
             var str = this.keyDownToString(event);
             if (str) {
                 event.preventDefault();
@@ -3984,6 +3997,35 @@ DomTerm.prototype._checkTree = function() {
         if (this._isAnAncestor(this.initial, main))
             error("alternate-screenbuffer nested in main-screenbuffer");
     }
+};
+
+DomTerm.prototype._atBottomInputLine = function() {
+    var r1 = window.getSelection().getRangeAt(0);
+    var r2 = document.createRange();
+    r2.selectNode(this.inputLine);
+    return this._countLinesBetween(r1.endContainer, r1.endOffset,
+                                   r2.endContainer, r2.endOffset) <= 0;
+};
+DomTerm.prototype._atTopInputLine = function() {
+    var r = window.getSelection().getRangeAt(0);
+    return this._countLinesBetween(this.inputLine, 0,
+                                   r.endContainer, r.endOffset) <= 0;
+};
+
+DomTerm.prototype._countLinesBetween = function(startNode, startOffset,
+                                                endNode, endOffset) {
+    var range = document.createRange();
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    // FIXME rather expensive - but it doesn't matter for short inputs
+    var textBefore = range.cloneContents().textContent;
+    var textLength = textBefore.length;
+    var count = 0;
+    for (var i = 0; i < textLength;  i++) {
+        if (textBefore.charCodeAt(i) == 10)
+            count++
+    }
+    return count;
 };
 
 // For debugging
