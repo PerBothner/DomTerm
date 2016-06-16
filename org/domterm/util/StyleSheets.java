@@ -61,6 +61,10 @@ public class StyleSheets {
         console.flush();
     }
 
+    public static String loadStyleSheetRequest(String name, String value) {
+        return "\u001B]95;"+Util.toJson(name)+","+Util.toJson(value)+"\007";
+    }
+
     public static void loadStyleSheet(String name, String fname) throws IOException {
         Reader in;
         char[] buf = new char[2048];
@@ -84,7 +88,7 @@ public class StyleSheets {
             count += i;
         }
         String value = new String(buf, 0, count);
-        String command = "\u001B]95;"+Util.toJson(name)+","+Util.toJson(value)+"\007";
+        String command = loadStyleSheetRequest(name, value);
         String str = requestReponse(command);
         if (str != null && str.length() > 0) {
             System.err.println(str);
