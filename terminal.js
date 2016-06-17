@@ -244,6 +244,10 @@ function DomTerm(name, topNode) {
 DomTerm.prototype.eofSeen = function() {
     this.historySave();
     this.history.length = 0;
+    this.close();
+};
+
+DomTerm.prototype.close = function() {
     window.close();
 };
 
@@ -1512,6 +1516,11 @@ DomTerm.prototype.reportEvent = function(name, data) {
     // FIXME should encode data
     this.processInputCharacters("\x92"+name+" "+data+"\n");
 };
+
+DomTerm.prototype.reportKeyEvent = function(key, str) {
+    this.reportEvent("KEY", ""+key+" "+JSON.stringify(str));
+};
+
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
                                            availHeight, availWidth) {
     if (this.verbosity >= 2)
@@ -3867,12 +3876,14 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (this.autoEditing)
                 this.lineEditing = false;
         }
-        else if (key == 68 && event.ctrlKey
-                 && this.grabInput(this.inputLine).length == 0) {
-            this.log("ctrl-D");
+        else if (event.ctrlKey
+                 && (key == 67 // ctrl-C
+                     || (key == 68 // ctrl-D
+                         && this.grabInput(this.inputLine).length == 0))) {
+            event.preventDefault();
             if (this.autoEditing)
                 this.lineEditing = false;
-            this.processInputCharacters(this.keyDownToString(event));
+            this.reportKeyEvent(key, this.keyDownToString(event));
         } else if (key == 38/*Up*/) {
             if (this._atTopInputLine()) {
                 event.preventDefault();
@@ -3896,7 +3907,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         if (str) {
             event.preventDefault();
             if (this.autoEditing)
-                this.reportEvent("KEY", ""+key+" "+JSON.stringify(str));
+                this.reportKeyEvent(key, str);
             else
                 this.processInputCharacters(str);
         }
@@ -3919,7 +3930,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
             && ! (event.ctrlKey && key >= 97 && key <= 122)) {
             var str = String.fromCharCode(key);
             if (this.autoEditing)
-                this.reportEvent("KEY", ""+(-key)+" "+JSON.stringify(str));
+                this.reportKeyEvent(-key, str);
             else
                 this.processInputCharacters(str);
         }

@@ -103,6 +103,11 @@ public class WebTerminal extends VBox // FIXME should extend Control
         if (backend != null)
             backend.setWindowSize(nrows, ncols, pixw, pixh);
     }
+    public void close() {
+        WebTerminalApp app = WebTerminalApp.instance;
+        if (app != null && app.mainClient == backend)
+            app.stop();
+    }
 
     protected void enter(KeyEvent ke) {
     }

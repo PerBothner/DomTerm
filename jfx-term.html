@@ -24,6 +24,7 @@ function makeDomTerm() {
         function(numRows, numColumns, availHeight, availWidth) {
             term.jclient.setWindowSize(numRows, numColumns,
                                     availHeight, availWidth); };
+    term.close = function() { if (term && term.java) term.java.close(); }
     term.log =
         function(str) {
             if (term && term.java) term.java.log(str); }

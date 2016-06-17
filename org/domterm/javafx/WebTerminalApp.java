@@ -146,11 +146,13 @@ public class WebTerminalApp extends Application
                     }
                 });
         }
+        instance = this;
         return scene;
     }
 
     static Backend mainClient;
     static String defaultTitle = "DomTerm";
+    static WebTerminalApp instance;
     public static void setDefaultBackend(Backend backend) {
         mainClient = backend;
     }
