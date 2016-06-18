@@ -48,9 +48,6 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.DataFormat;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -99,12 +96,7 @@ public class WebTerminalApp extends Application
         popup.getItems().add(copyItem);
         copyItem.setOnAction(new EventHandler<ActionEvent>() {
                 public void handle(ActionEvent t) {
-                    String selected = console.getSelectedText();
-                    System.err.println("selected: ["+selected+"] event:"+t);
-                    ClipboardContent content = new ClipboardContent();
-                    content.putString(selected);
-                    Clipboard.getSystemClipboard().setContent(content);
-                    //console.webEngine.executeScript("document.execCommand('copy')");
+                    console.doCopy();
                 }
             });
 
@@ -112,11 +104,7 @@ public class WebTerminalApp extends Application
         popup.getItems().add(pasteItem);
         pasteItem.setOnAction(new EventHandler<ActionEvent>() {
                 public void handle(ActionEvent t) {
-                    String content = (String) Clipboard.getSystemClipboard().getContent(DataFormat.PLAIN_TEXT);
-                    System.err.println("pasted: ["+content+"] event:"+t);
-                    if (content != null) {
-                        console.pasteText(content);
-                    }
+                    console.doPaste();
                 }
             });
 

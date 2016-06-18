@@ -29,7 +29,11 @@ public abstract class Backend {
 
     public void reportEvent(String name, String str) {
         if (name.equals("KEY")) {
-            if (termWriter != null && isCanonicalMode()) {
+            int q = str.indexOf('"');
+            String kstr = Util.parseSimpleJsonString(str, q, str.length());
+            if (termWriter != null && isCanonicalMode()
+                && (kstr.length() != 1
+                    || (kstr.charAt(0) != 3 && kstr.charAt(0) != 4))) {
                 try {
                     termWriter.write("\033]74;"+str+"\007");
                 } catch (IOException ex) {
@@ -37,8 +41,6 @@ public abstract class Backend {
                         System.err.println("PtyBackend caught "+ex);        
                 }
             } else {
-                int q = str.indexOf('"');
-                String kstr = Util.parseSimpleJsonString(str, q, str.length());
                 processInputCharacters(kstr);
             }
         } else if ("WS".equals(name)) {

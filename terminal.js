@@ -3883,7 +3883,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             if (this.autoEditing)
                 this.lineEditing = false;
-            this.reportKeyEvent(key, this.keyDownToString(event));
+            this.reportKeyEvent(64 - key, // crl-C -> -3; ctrl-D -> -4
+                                this.keyDownToString(event));
         } else if (key == 38/*Up*/) {
             if (this._atTopInputLine()) {
                 event.preventDefault();

@@ -44,6 +44,8 @@ import netscape.javascript.JSObject;
 import javafx.application.Platform;
 import javafx.scene.control.Control;
 import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
 import javafx.scene.input.KeyCode;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -89,6 +91,19 @@ public class WebTerminal extends VBox // FIXME should extend Control
     }
     public void pasteText(String str) {
          jsWebTerminal.call("pasteText", str);
+    }
+    public void doCopy() {
+        String selected = getSelectedText();
+        ClipboardContent content = new ClipboardContent();
+        content.putString(selected);
+        Clipboard.getSystemClipboard().setContent(content);
+    }
+    public void doPaste () {
+        String content = (String) Clipboard.getSystemClipboard()
+            .getContent(DataFormat.PLAIN_TEXT);
+        if (content != null) {
+            pasteText(content);
+        }
     }
 
     /** Input lines that have not been processed yet.
