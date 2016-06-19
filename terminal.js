@@ -2563,7 +2563,8 @@ DomTerm.charsetUK = function(ch) {
 };
 
 DomTerm.prototype._unsafeInsertHTML = function(text) {
-    this.log("_unsafeInsertHTML "+JSON.stringify(text));
+    if (this.verbosity >= 1)
+        this.log("_unsafeInsertHTML "+JSON.stringify(text));
     if (this.outputBefore != null)
         this.outputBefore.insertAdjacentHTML("beforebegin", text);
     else
@@ -2842,14 +2843,14 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
             break;
         }
     }
-    if (ok > start) {
-        this._unsafeInsertHTML(str.substring(start, ok));
-    }
     if (ok < len) {
         var span = this._createSpanNode();
         span.setAttribute("style", "background-color: #fbb");
         this.insertNode(span);
         span.appendChild(document.createTextNode(str.substring(ok, len)));
+    }
+    else if (ok > start) {
+        this._unsafeInsertHTML(str.substring(start, ok));
     }
 };
 
