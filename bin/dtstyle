@@ -13,5 +13,5 @@ else
     JAVA=${JAVA-java}
 fi
 stty -F /dev/tty -echo
-$JAVA org.domterm.util.StyleSheets "$@"
+$JAVA -cp "$DOMTERM_DIR/domterm.jar" org.domterm.util.StyleSheets "$@"
 stty -F /dev/tty echo
