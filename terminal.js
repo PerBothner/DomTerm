@@ -1729,12 +1729,14 @@ DomTerm.prototype.historyMove = function(delta) {
 
 DomTerm.prototype.historySave = function() {
     var h = this.history;
-    if (window.localStorage && h && h.length > 0) {
-        var first = h.length - this.historyStorageMax;
-        if (first > 0)
-            h = h.slice(first);
-        localStorage[this.historyStorageKey] = JSON.stringify(h);
-    }
+    try {
+        if (h.length > 0 && window.localStorage) {
+            var first = h.length - this.historyStorageMax;
+            if (first > 0)
+                h = h.slice(first);
+            localStorage[this.historyStorageKey] = JSON.stringify(h);
+        }
+    } catch (e) { }  
 };
 
 DomTerm.prototype.handleEnter = function(text) {
