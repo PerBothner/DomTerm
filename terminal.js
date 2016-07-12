@@ -2477,7 +2477,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.inputLine.removeAttribute("continuation");
             break;
         case 15:
-            this._pushStyle("std", this.automaticNewlineMode ? null : "input");
+            this._pushStyle("std", "input");
             this._adjustStyle();
             break;
         case 16:
@@ -3144,12 +3144,12 @@ DomTerm.prototype.insertString = function(str) {
             switch (ch) {
             case 13: // '\r' carriage return
                 this.insertSimpleOutput(str, prevEnd, i);
-                if (this._currentStyleMap.get("std") == "input")
-                    this._pushStyle("std", null);
                 //this.currentCursorColumn = column;
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && this.getCursorLine() !== this._regionBottom-1) {
+                    if (this._currentStyleMap.get("std") == "input")
+                        this._pushStyle("std", null);
                     this.cursorLineStart(1);
                     i++;
                 } else {
@@ -3161,6 +3161,8 @@ DomTerm.prototype.insertString = function(str) {
             case 11: // vertical tab
             case 12: // form feed
                 this.insertSimpleOutput(str, prevEnd, i);
+                if (this._currentStyleMap.get("std") == "input")
+                    this._pushStyle("std", null);
                 this.cursorNewLine(this.automaticNewlineMode);
                 prevEnd = i + 1;
                 break;
