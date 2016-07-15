@@ -31,10 +31,12 @@ public class DomTermErrorWriter extends FilterWriter {
 
     @Override
     public void write(char cbuf[], int off, int len) throws IOException {
-        synchronized (out) {
-            out.write(START_ERR_MARKER, 0, START_ERR_MARKER.length);
-            out.write(cbuf, off, len);
-            out.write(END_ERR_MARKER, 0, END_ERR_MARKER.length);
+        if (len > 0) {
+            synchronized (out) {
+                out.write(START_ERR_MARKER, 0, START_ERR_MARKER.length);
+                out.write(cbuf, off, len);
+                out.write(END_ERR_MARKER, 0, END_ERR_MARKER.length);
+            }
         }
     }
 

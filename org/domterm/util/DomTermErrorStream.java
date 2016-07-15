@@ -52,11 +52,13 @@ public class DomTermErrorStream extends PrintStream {
 
     @Override
     public void write(byte buf[], int off, int len) {
-        synchronized (out) {
-            out.write(START_ERR_MARKER, 0, START_ERR_MARKER.length);
-            out.write(buf, off, len);
-            out.write(END_ERR_MARKER, 0, END_ERR_MARKER.length);
-            out.flush();
+        if (len > 0) {
+            synchronized (out) {
+                out.write(START_ERR_MARKER, 0, START_ERR_MARKER.length);
+                out.write(buf, off, len);
+                out.write(END_ERR_MARKER, 0, END_ERR_MARKER.length);
+                out.flush();
+            }
         }
     }
 }
