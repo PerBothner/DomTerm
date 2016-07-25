@@ -122,20 +122,20 @@ int pts_open(int masterfd) {
     return slavefd;
 }
 
+static struct termios termios;
+static struct winsize wsize;
+
 pid_t pty_fork(int *ptrfdm) {
     pid_t pid;
     char* name;
     int master_fd, pty_fd;
-    struct termios termios;
-    struct termios* ptermios = NULL;
-    struct winsize wsize;
+    struct termios* ptermios = &termios;
     struct winsize* pwinsize = NULL;
 
     // If we are in a terminal - get its params and set them to
     // a newly allocated one...
 
     if (isatty(STDIN_FILENO)) {
-        ptermios = &termios;
         if (tcgetattr(STDIN_FILENO, ptermios) == -1) {
             err_sys("tcgetattr failed");
         }
@@ -145,7 +145,14 @@ pid_t pty_fork(int *ptrfdm) {
             err_sys("ioctl(TIOCGWINSZ) failed");
         }
     }
-
+    ptermios->c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK;
+#ifdef ECHOKE
+    ptermios->c_lflag |= ECHOKE | IEXTEN;
+#endif
+#ifdef ECHOCTL
+    ptermios->c_lflag |= ECHOCTL | IEXTEN;
+#endif
+    
     if ((master_fd = ptm_open()) < 0) {
         err_sys("ERROR: ptm_open() failed [%d]\n", master_fd);
     }
@@ -172,10 +179,8 @@ pid_t pty_fork(int *ptrfdm) {
             err_sys("can't open slave pty");
         }
 
-        if (ptermios != NULL) {
-            if (tcsetattr(pty_fd, TCSANOW, ptermios) == -1) {
-                err_sys("tcsetattr(TCSANOW) failed");
-            }
+        if (tcsetattr(pty_fd, TCSANOW, ptermios) == -1) {
+            err_sys("tcsetattr(TCSANOW) failed");
         }
 
         if (pwinsize != NULL) {
