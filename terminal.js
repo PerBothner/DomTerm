@@ -199,6 +199,7 @@ function DomTerm(name, topNode) {
 
     // A stack of currently active "style" strings.
     this._currentStyleMap = new Map();
+    // A span whose style is "correct" for _currentStyleMap.
     this._currentStyleSpan = null;
 
     this.applicationCursorKeysMode = false;
@@ -656,10 +657,22 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
             // If there is a child, go the the first child next.
             var ch;
             if (current != null) {
+                var valueAttr = ! (current instanceof Element) ? null
+                    : current.getAttribute("value");
                 if (current instanceof Element
                     && this.isObjectElement(current))
                     column += 1;
-                else {
+                else if (valueAttr
+                         && current.getAttribute("std")=="prompt") {
+                    var w = this.widthInColumns(valueAttr, 0, valueAttr.length);
+                    column += w;
+                    if (column > goalColumn) {
+                        column -= w;
+                        current.insertBefore(document.createTextNode(valueAttr),
+                                             current.firstChild);
+                        current.removeAttribute("value");
+                    }
+                } else {
                     ch = current.firstChild;
                     if (ch != null) {
                         parent = current;
@@ -1613,6 +1626,12 @@ DomTerm.prototype.updateCursorCache = function() {
                 col = 0;
             } else if (tag == "P" || tag == "PRE" || tag == "DIV") {
                 // FIXME handle line specially
+            } else if (cur.getAttribute("std")=="prompt") {
+                var valueAttr = cur.getAttribute("value");
+                if (valueAttr) {
+                    var w = this.widthInColumns(valueAttr, 0, valueAttr.length);
+                    col += w;
+                }
             }
             // isBreak
             parent = cur;
@@ -1951,6 +1970,12 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
             current = parent.nextSibling;
             parent = parent.parentNode;
         } else if (current instanceof Element) {
+            var valueAttr = current.getAttribute("value");
+            if (valueAttr && current.getAttribute("std")=="prompt") {
+                current.insertBefore(document.createTextNode(valueAttr),
+                                     current.firstChild);
+                current.removeAttribute("value");
+            }
             parent = current;
             current = current.firstChild;
         } else if (current instanceof Text) {
