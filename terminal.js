@@ -2020,6 +2020,10 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
                 while (parent.firstChild == null && parent != this.initial) {
                     current = parent;
                     parent = parent.parentNode;
+                    if (current == this.outputContainer) {
+                        this.outputContainer = parent;
+                        previous = current.previousSibling;
+                    }
                     next = current.nextSibling;
                     parent.removeChild(current);
                 }
@@ -3986,8 +3990,9 @@ DomTerm.prototype._checkTree = function() {
     if (this.currentCursorLine >= 0
         && this.homeLine + this.currentCursorLine >= nlines)
         error("bad currentCursorLine");
-    if (this.outputBefore
-        && this.outputBefore.parentNode != this.outputContainer)
+    if ((this.outputBefore
+         && this.outputBefore.parentNode != this.outputContainer)
+        || this.outputContainer.parentNode == null)
         error("bad outputContainer");
     if (this.inputFollowsOutput && this.inputLine.parentNode
         && this.outputBefore != this.inputLine)
