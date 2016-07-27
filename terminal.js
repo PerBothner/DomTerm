@@ -468,7 +468,7 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
         rowLimit = this._regionBottom;
         colLimit = this._regionRight;
     } else {
-        rowLimit = this._numRows;
+        rowLimit = this.numRows;
         colLimit = this.numColumns;
     }
     if (line < 0)
