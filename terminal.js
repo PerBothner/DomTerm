@@ -147,6 +147,9 @@ function DomTerm(name, topNode) {
     // Doesn't count scrollbar or rightMarginWidth.
     this.availWidth = 0;
 
+    this.charWidth = 1;  // Width of a character in pixels
+    this.charHeight = 1; // Height of a character in pixels
+
     this.numRows = 24;
     this.numColumns = 80;
 
@@ -209,6 +212,16 @@ function DomTerm(name, topNode) {
     this.wraparoundMode = 2;
     this.bracketedPasteMode = false;
 
+    // One of: 0 (no mouse handling); 9 (X10); 1000 (VT200);
+    //   1001 (VT200_HIGHLIGHT); 1002 (BTN_EVENT); 1003 (ANY_EVENT)
+    this._mouseMode = 0;
+
+    // How mouse coordinates are encoded in the response:
+    // 0 - old single-byte; 1005 (UTF8-EXT); 1006 (SGR_EXT); 1015 (URXVT_EXT)
+    this._mouseCoordEncoding = 0;
+
+    this.saved_DEC_private_mode_flags = null;
+
     this.defaultBackgroundColor = "white";
     this.defaultForegroundColor = "black";
 
@@ -240,6 +253,8 @@ function DomTerm(name, topNode) {
             window.removeEventListener("resize",
                                        dt._unforceWidthInColumns, true);
         };
+    this._mouseEventHandler =
+        function(evt) { dt._mouseHandler(evt); };
 }
 
 DomTerm.prototype.eofSeen = function() {
@@ -1439,19 +1454,19 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
 DomTerm.prototype.measureWindow = function()  {
     var ruler = this._rulerNode;
     var rect = ruler.getBoundingClientRect()
-    var charWidth = ruler.offsetWidth/26.0;
-    var charHeight = ruler.parentNode.offsetHeight;
+    this.charWidth = ruler.offsetWidth/26.0;
+    this.charHeight = ruler.parentNode.offsetHeight;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
     if (this.verbosity >= 2)
-        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+charWidth+" chH:"+charHeight+" ht:"+availHeight);
+        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
     // We calculate columns from initial.clientWidth because we don't
     // want to include the scroll-bar.  On the other hand, for vertical
     // height we have to look at the parent of the topNode because
     // topNode may not have grown to full size yet.
     var availHeight = this.topNode.parentNode.clientHeight;
     var availWidth = this.initial.clientWidth - this.rightMarginWidth;
-    var numRows = Math.floor(availHeight / charHeight);
-    var numColumns = Math.floor(availWidth / charWidth);
+    var numRows = Math.floor(availHeight / this.charHeight);
+    var numColumns = Math.floor(availWidth / this.charWidth);
     if (numRows != this.numRows || numColumns != this.numColumns
         || availHeight != this.availHeight || availWidth != this.availWidth) {
         this.setWindowSize(numRows, numColumns, availHeight, availWidth);
@@ -1463,6 +1478,107 @@ DomTerm.prototype.measureWindow = function()  {
     this.availWidth = availWidth;
     if (this.verbosity >= 2)
         this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
+};
+
+DomTerm.prototype._mouseHandler = function(ev) {
+    var x = ev.pageX;
+    var y = ev.pageY;
+    var n = this.lineStarts[this.homeLine];
+    var homex = 0, homey = 0;
+    while (n != null) {
+        homex += n.offsetLeft;
+        homey += n.offsetTop;
+        n = n.offsetParent;
+    }
+    homex -= this.topNode.scrollLeft;
+    homey -= this.topNode.scrollTop;
+    x -= homex;
+    y -= homey;
+    var row = Math.floor(y / this.charHeight);
+    var col = Math.floor(x / this.charWidth);
+    var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
+
+    var final = "M";
+    var button = Math.min(ev.which - 1, 2) | mod;
+    switch (ev.type) {
+    case 'mousedown':
+        if (this._mouseMode >= 1002)
+            this.topNode.addEventListener("mousemove",
+                                          this._mouseEventHandler);
+        break;
+    case 'mouseup':
+        if (this._mouseMode >= 1002)
+            this.topNode.removeEventListener("mousemove",
+                                             this._mouseEventHandler);
+        switch (this._mouseCoordEncoding) {
+        case 1006: case 1015:
+            final = "m";
+            break;
+        default:
+            button = 3;
+        }
+        break;
+    case 'mousemove':
+        if (row == this.mouseRow && col == this.mouseCol)
+            return;
+        button += 32;
+        break;
+    case 'wheel':
+        button = (ev.deltaY ? (ev.deltaY <= 0 ? 64 : 65)
+                  : (ev.wheelDeltaY > 0 ? 64 : 65));
+        break;
+    default:
+        return;
+    }
+
+    if (this.verbosity >= 2)
+        this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" h:"+homex+"/"+homey+" xy:"+x+"/"+y+" row:"+row+" col:"+col+" button:"+button+" mode:"+this._mouseMode+" ext_coord:"+this._mouseCoordEncoding);
+
+    if (button < 0 || col < 0 || col >= this.numColumns
+        || row < 0 || row >= this.numRows)
+        return;
+
+    function encodeButton(button, dt) {
+        var value = button;
+        switch (dt._mouseCoordEncoding) {
+        case 1005: // FIXME
+        default:
+            return String.fromCharCode(value+32);
+        case 1015:
+            value += 32;
+            // fall through
+        case 1006: // SGR
+            return ""+value;
+        }
+    }
+    function encodeCoordinate(val, prependSeparator, dt) {
+        // Note val is 0-origin, to match xterm's EmitMousePosition
+        switch (dt._mouseCoordEncoding) {
+        case 1005:
+            // FIXME UTF8 encoding
+        default:
+            return String.fromCharCode(val == 255-32 ? 0 : val + 33);
+        case 1006: case 1015:
+            return (prependSeparator?";":"")+(val+1);
+        }
+    }
+    var result = "\x1b[";
+    switch (this._mouseCoordEncoding) {
+    case 1006: result += "<"; break;
+    case 1015: break;
+    default:
+        result += "M";
+        final = "";
+        break;
+    }
+    this.mouseRow = row;
+    this.mouseCol = col;
+    result += encodeButton(button, this);
+    result += encodeCoordinate(col, true, this);
+    result += encodeCoordinate(row, true, this);
+    result += final;
+    ev.preventDefault();
+    this.processResponseCharacters(result);
 };
 
 DomTerm.prototype.showHideMarkers = [
@@ -2113,6 +2229,89 @@ DomTerm.prototype.getParameter = function(index, defaultValue) {
     return arr.length > index && arr[index] ? arr[index] : defaultValue;
 }
 
+DomTerm.prototype.get_DEC_private_mode = function(param) {
+    switch (param) {
+    case 1: return this.applicationCursorKeysMode;
+    case 3: return this.numColumsn == 132;
+    case 6: return this.originMode;
+    case 7: return (this.wraparoundMode & 2) != 0;
+    case 45: return (this.wraparoundMode & 1) != 0;
+    case 47: // fall though
+    case 1047: return this.usingAlternateScreenBuffer;
+    case 1048: return this.savedCursorLine > 0;
+    case 1049: return this.usingAlternateScreenBuffer;
+    case 2004: return this.bracketedPasteMode;
+    case 9: case 1000: case 1001: case 1002: case 1003:
+        return this._mouseMode == param;
+    case 1005: case 1006: case 1015:
+        return this._mouseCoordEncoding == param;
+    }
+}
+/** Do DECSET or related option.
+ */
+DomTerm.prototype.set_DEC_private_mode = function(param, value) {
+    switch (param) {
+    case 1:
+        // Application Cursor Keys (DECCKM).
+        this.applicationCursorKeysMode = value;
+        break;
+    case 3:
+        this.forceWidthInColumns(value ? 132 : 80);
+        break;
+    case 6:
+        this.originMode = value;
+        break;
+    case 7:
+        if (value)
+            this.wraparoundMode |= 2;
+        else
+            this.wraparoundMode &= ~2;
+        break;
+    case 45:
+        if (value)
+            this.wraparoundMode |= 1;
+        else
+            this.wraparoundMode &= ~1;
+        break;
+    case 9: case 1000: case 1001: case 1002: case 1003:
+        var handler = this._mouseEventHandler;
+        if (value) {
+            this.topNode.addEventListener("mousedown", handler);
+            this.topNode.addEventListener("mouseup", handler);
+            this.topNode.addEventListener("wheel", handler);
+        } else {
+            this.topNode.removeEventListener("mousedown", handler);
+            this.topNode.removeEventListener("mouseup", handler);
+            this.topNode.removeEventListener("wheel", handler);
+        }
+        return this._mouseMode = value ? param : 0;
+    case 1005: case 1006: case 1015:
+        return this._mouseCoordEncoding = value ? param : 0;
+    case 47:
+    case 1047:
+        this.setAlternateScreenBuffer(value);
+        break;
+    case 1048:
+        if (value)
+            this.saveCursor();
+        else
+            this.restoreCursor();
+        break;
+    case 1049:
+        if (value) {
+            this.saveCursor();
+            this.setAlternateScreenBuffer(true);
+        } else {
+            this.setAlternateScreenBuffer(false);
+            this.restoreCursor();
+        }
+        break;
+    case 2004:
+        this.bracketedPasteMode = value;
+        break;
+    }
+};
+
 DomTerm.prototype.handleControlSequence = function(last) {
     var param;
     var oldState = this.controlSequenceState;
@@ -2219,45 +2418,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         param = this.getParameter(0, 0);
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Set (DECSET)
-            switch (param) {
-            case 1:
-                // Application Cursor Keys (DECCKM).
-                this.applicationCursorKeysMode = true;
-                break;
-            case 3:
-                this.forceWidthInColumns(132);
-                break;
-            case 6:
-                this.originMode = true;
-                break;
-            case 7:
-                this.wraparoundMode |= 2;
-                break;
-            case 45:
-                this.wraparoundMode |= 1;
-                break;
-            case 1000:
-                // Send Mouse X & Y on button press and release.
-                // This is the X11 xterm mouse protocol.   Sent by emacs.
-                break; // FIXME
-            case 1006:
-                // Enable SGR Mouse Mode.  Sent by emacs.
-                break; // FIXME
-            case 47:
-            case 1047:
-                this.setAlternateScreenBuffer(true);
-                break;
-            case 1048:
-                this.saveCursor();
-                break;
-            case 1049:
-                this.saveCursor();
-                this.setAlternateScreenBuffer(true);
-                break;
-            case 2004:
-                this.bracketedPasteMode = true;
-                break;
-            }
+            this.set_DEC_private_mode(param, true);
         }
         else {
             switch (param) {
@@ -2274,39 +2435,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         param = this.getParameter(0, 0);
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Reset (DECRST)
-            switch (param) {
-            case 1:
-                // Normal Cursor Keys (DECCKM)
-                this.applicationCursorKeysMode = false;
-                break;
-            case 3:
-                this.forceWidthInColumns(80);
-                break;
-            case 6:
-                this.originMode = false;
-                break;
-            case 7:
-                this.wraparoundMode &= ~2;
-                break;
-            case 45:
-                this.wraparoundMode &= ~1;
-                break;
-            case 47:
-            case 1047:
-                // should clear first?
-                this.setAlternateScreenBuffer(false);
-                break;
-            case 1048:
-                this.restoreCursor();
-                break;
-            case 1049:
-                this.setAlternateScreenBuffer(false);
-                this.restoreCursor();
-                break;
-            case 2004:
-                this.bracketedPasteMode = false;
-                break;
-            }
+            this.set_DEC_private_mode(param, false);
         } else {
             switch (param) {
             case 4:
@@ -2447,7 +2576,18 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.resetTerminal(False, False);
         }
         break;
-    case 114 /*'r'*/: // DECSTBM - set scrolling region
+    case 114 /*'r'*/:
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            // Restore DEC Private Mode Values.
+            if (this.saved_DEC_private_mode_flags == null)
+                break;
+            for (var i = 0; i < numParameters; i++) {
+                param = this.getParameter(i, -1);
+                var saved = this.saved_DEC_private_mode_flags[param];
+                this.set_DEC_private_mode(param, saved);
+            }
+        }
+        // DECSTBM - set scrolling region
         var top = this.getParameter(0, 1);
         var bot = this.getParameter(1, -1);
         if (bot > this.numRows || bot <= 0)
@@ -2455,6 +2595,19 @@ DomTerm.prototype.handleControlSequence = function(last) {
         if (bot > top) {
             this._setRegionTB(top - 1, bot);
             this.cursorSet(0, 0, this.originMode);
+        }
+        break;
+    case 115 /*'s'*/:
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            // Save DEC Private Mode Values.
+            if (this.saved_DEC_private_mode_flags == null)
+                this.saved_DEC_private_mode_flags = new Array();
+            for (var i = 0; i < numParameters; i++) {
+                param = this.getParameter(i, -1);
+                this.saved_DEC_private_mode_flags[param]
+                    = this.get_DEC_private_mode(param);
+            }
+            break;
         }
         break;
     case 116 /*'t'*/: // Xterm window manipulation.
@@ -2533,6 +2686,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         }
         break;
+    case 120 /*'x'*/: // Request Terminal Parameters (DECREQTPARM)
+        this.processResponseCharacters("\x1B["+(this.getParameter(0, 0)+2)+";1;1;128;128;1;0x");
+        break;
     default:
         if (last < 32) {
             // vttest depends on this behavior
@@ -2565,6 +2721,8 @@ DomTerm.prototype.resetTerminal = function(full, saved) {
     this.bracketedPasteMode = false;
     this.wraparoundMode = 2;
     this.forceWidthInColumns(-1);
+    this._mouseMode = 0;
+    this._mouseCoordEncoding = 0;
     // FIXME a bunch more
 };
 
@@ -3476,7 +3634,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         str = str.substring(beginIndex, endIndex);
         slen = endIndex - beginIndex;
     }
-    if (this.verbosity >= 2)
+    if (this.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str)+"'");
     if (this._currentStyleSpan != this.outputContainer)
         this._adjustStyle();
@@ -3522,7 +3680,7 @@ DomTerm.prototype.insertRawOutput = function( str) {
     /*
     var strRect = this.outputContainer.getBoundingClientRect();
     var topRect = this.topNode.getBoundingClientRect();
-    if (strRect.right > topRect.right - charWidth) {
+    if (strRect.right > topRect.right - this.charWidth) {
     }
     */
     return node;
@@ -3560,6 +3718,8 @@ DomTerm.prototype.insertNode = function (node) {
 * By default just calls processInputCharacters.
 */
 DomTerm.prototype.processResponseCharacters = function(str) {
+    if (this.verbosity >= 3)
+        this.log("processResponse: "+JSON.stringify(str));
     this.processInputCharacters(str);
 };
 
