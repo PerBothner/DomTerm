@@ -1,4 +1,4 @@
-/* Styling that is required for DomTem to work sanely.
+/* Styling that is required for DomTerm to work sanely.
  * "True" optional styling should go in domterm-default.css.
  */
 html, body { width: 100%; height: 100% ; margin: 0px; overflow: hidden }
@@ -9,7 +9,7 @@ pre { padding: 0px; margin: 0px; }
  * The reason is that <Copy> on some browsers adds *two* newlines between adjacent
  * <pre> nodes.  This appears intentional, as it matches the new innerText spec. */
 div.domterm-pre {
-    padding: 0px; margin: 0px; font-family: monospace; display: pre;
+    padding: 0px; margin: 0px; font-family: monospace;
     display: block; unicode-bidi: embed; white-space: pre }
 span[class="wrap"] {padding: 0px; margin: 0px; white-space: nowrap }
 span { padding: 0px; margin: 0px;}
