@@ -4068,9 +4068,13 @@ DomTerm.prototype.keyDownHandler = function(event) {
         this.inputLine.focus();
         if (key == 13) {
             event.preventDefault();
-            this.processEnter();
-            if (this.autoEditing)
-                this.lineEditing = false;
+            if (event.shiftKey) {
+                this.pasteText("\n");
+            } else {
+                this.processEnter();
+                if (this.autoEditing)
+                    this.lineEditing = false;
+            }
         }
         else if (event.ctrlKey
                  && (key == 67 // ctrl-C
