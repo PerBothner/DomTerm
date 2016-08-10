@@ -81,7 +81,12 @@ public class PtyBackend extends Backend {
 
     @Override public boolean isCanonicalMode() {
         int mode = pty.getTtyMode();
-        return (mode & 1) != 0;
+        return (mode & 0000002) != 0;
+    }
+
+    @Override public boolean isEchoingMode() {
+        int mode = pty.getTtyMode();
+        return (mode & 0000010) != 0;
     }
 
     @Override public void processInputCharacters(String text) {

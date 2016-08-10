@@ -26,6 +26,7 @@ public abstract class Backend {
     }
 
     public boolean isCanonicalMode() { return true; }
+    public boolean isEchoingMode() { return true; }
 
     public void reportEvent(String name, String str) {
         if (name.equals("KEY")) {
@@ -35,7 +36,8 @@ public abstract class Backend {
                 && (kstr.length() != 1
                     || (kstr.charAt(0) != 3 && kstr.charAt(0) != 4))) {
                 try {
-                    termWriter.write("\033]74;"+str+"\007");
+                    int cmd = isEchoingMode() ? 74 : 73;
+                    termWriter.write("\033]"+cmd+";"+str+"\007");
                 } catch (IOException ex) {
                     if (verbosity > 0)
                         System.err.println("PtyBackend caught "+ex);        

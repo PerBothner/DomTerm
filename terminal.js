@@ -92,17 +92,19 @@ function DomTerm(name, topNode) {
     this.lineEditing = false;
 
     // If true, we automatically switching lineEditing depending
-    // on slate pty's canon mode.  TODO
+    // on slave pty's canon mode.
     this.autoEditing = true;
 
     this.verbosity = 0;
 
-    this.versionInfo = "version=0.2";
+    this.versionInfo = "version=0.3";
 
     // Use the doLineEdit when in lineEditing mode.
-    // Because default this is only used in autoEditing mode, for the
-    // character when switching from character to line mode,
-    // because doLineEdit is rather incomplete.
+    // By default this is only used in autoEditing mode: It is needed
+    // for the first character when switching from character to line mode,
+    // and it is needed in line-editing no-echo ("password") mode.
+    // Otherwise (for now) we use the builtin contentEditable actions,
+    // because doLineEdit's functionalty is relatively incomplete.
     // However, doLineEdit does open the possibility of user keymaps.
     this.useDoLineEdit = false;
 
@@ -1645,6 +1647,8 @@ DomTerm.prototype._showHideHandler = function(event) {
 DomTerm.prototype.reportEvent = function(name, data) {
     // 0x92 is "Private Use 2".
     // FIXME should encode data
+    if (this.verbosity >= 2)
+        this.log("reportEvent "+name+" "+data);
     this.processInputCharacters("\x92"+name+" "+data+"\n");
 };
 
@@ -1654,8 +1658,6 @@ DomTerm.prototype.reportKeyEvent = function(key, str) {
 
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
                                            availHeight, availWidth) {
-    if (this.verbosity >= 2)
-        this.log("windowSizeChanged numRows:"+numRows+" numCols:"+numColumns);
     this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
 };
 
@@ -3059,6 +3061,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this._scrubAndInsertHTML(text);
         this.cursorColumn = -1;
         break;
+    case 73:
     case 74:
         var sp = text.indexOf(' ');
         var key = parseInt(text.substring(0, sp), 10);
@@ -3066,6 +3069,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         if (this.verbosity >= 2)
             this.log("OSC KEY k:"+key+" kstr:"+this.toQuoted(kstr));
         this.lineEditing = true;
+        if (code == 73 && this.inputLine)
+            this.inputLine.setAttribute("domterm-hidden", "true");
         this.doLineEdit(key, kstr);
         break;
     case 7:
@@ -4019,6 +4024,7 @@ DomTerm.prototype.setInputMode = function(mode) {
         break;
     }
     this.automaticNewlineMode = ! this.clientDoesEcho;
+    this.useDoLineEdit = this.autoEditing;
 };
 
 DomTerm.prototype.doLineEdit = function(key, str) {

@@ -174,8 +174,14 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_getTtyMode
   struct termios term_master;
   if (tcgetattr(fdm, &term_master) < 0)
     return -1;
+#if ICANON==0000002 && ECHO==0000010
+  return (jint) term_master.c_lflag;
+#else
   jint result = 0;
   if ((term_master.c_lflag & ICANON) != 0)
-    result |= 1;
+    result |= 0000002;
+  if ((term_master.c_lflag & ECHO) != 0)
+    result |= 0000010;
   return result;
+#endif
 }

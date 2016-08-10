@@ -843,8 +843,10 @@ can be changed by overwriting the @code{elementInfo}
 and @code{allowAttribute} functions in @code{terminal.js}.
 The default policy is a work-in-progress.
 
-@item @code{"\e]74;" key "\a"}
+@item @code{"\e]73;" key "\a"}
+@itemx @code{"\e]74;" key "\a"}
 Simulate pressing @var{key}.  Used by auto-line mode.
+The @code{73} variant supresses echo.
 
 @item @code{"\e[12u"}
 Start of error output.
