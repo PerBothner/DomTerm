@@ -1253,6 +1253,7 @@ DomTerm.prototype._createLineNode = function(kind, text) {
  
 DomTerm.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
+        this._setRegionTB(0, -1);
         if (val) {
             // FIXME should scroll top of new buffer to top of window.
             var nextLine = this.lineEnds.length;
@@ -1263,12 +1264,14 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             bufNode.saveLastLine = nextLine;
             var newLineNode = bufNode.firstChild;
             this.homeLine = nextLine;
-            this.currentCursorLine = 0;
-            this.currentCursorColumn = 0;
             this.outputContainer = newLineNode;
             this.outputBefore = newLineNode.firstChild;
             this._removeInputLine();
             this.initial = bufNode;
+            var line = this.getCursorLine();
+            var col = this.getCursorColumn();
+            this.resetCursorCache();
+            this.moveToIn(line, col, true);
         } else {
             var bufNode = this.initial;
             this.initial = bufNode.saveInitial;
@@ -1279,7 +1282,6 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             bufNode.parentNode.removeChild(bufNode);
         }
         this.usingAlternateScreenBuffer = val;
-        this._setRegionTB(0, -1);
     }
 };
 
