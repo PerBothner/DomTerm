@@ -11,6 +11,7 @@ import org.domterm.util.WTDebug;
 import org.domterm.pty.*;
 
 import org.java_websocket.WebSocket;
+import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
@@ -32,7 +33,11 @@ public class DomServer extends WebSocketServer {
  
         @Override
         protected void writeRaw(String str) throws IOException {
-             session.send(str);
+            try {
+                session.send(str);
+            } catch (WebsocketNotConnectedException ex) {
+                // Nothing to do.
+            }
         }
      }
 
@@ -127,16 +132,8 @@ public class DomServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote ) {
-        if (runBrowser > 0) {
-            try {
-                stop();
-                System.exit(0);
-            } catch (Throwable ex) {
-                System.err.println("caught "+ex);
-                System.exit(1);
-            }
-        }
-        WTDebug.println("onClose called");
+        if (verbose > 0)
+            WTDebug.println("onClose called");
         backendMap.remove(conn);
     }
 
@@ -214,6 +211,7 @@ public class DomServer extends WebSocketServer {
 
     // 1: run Firefox in -app mode
     // 2: run Chrome in --app mode
+    // 2: run qtdomterm
     static int runBrowser = 0;
     public static void main (String[] args) {
         char mode = ' ';
@@ -238,6 +236,8 @@ public class DomServer extends WebSocketServer {
                 runBrowser = 1;
             } else if (arg.equals("--chrome")) {
                 runBrowser = 2;
+            } else if (arg.equals("--qtdomterm")) {
+                runBrowser = 3;
             } else
                 break;
         }
@@ -249,7 +249,7 @@ public class DomServer extends WebSocketServer {
             DomServer s = new DomServer(port, backendArgs);
             s.start();
             port = s.getPort();
-            if (runBrowser == 1) {
+            if (runBrowser == 1) { // --firefox
                 String firefoxCommand = "firefox";
                 String firefoxMac =
                     "/Applications/Firefox.app/Contents/MacOS/firefox";
@@ -261,7 +261,7 @@ public class DomServer extends WebSocketServer {
                                          "-wspath",
                                          "ws://localhost:"+port });
                 process.waitFor();
-            } else if (runBrowser == 2) {
+            } else if (runBrowser == 2) { // --chrome
                 String chromeCommand = "google-chrome";
                 String chromeBin = System.getenv("CHROME_BIN");
                 if (chromeBin != null && new File(chromeBin).exists())
@@ -270,16 +270,22 @@ public class DomServer extends WebSocketServer {
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { chromeCommand, appArg });
                 process.waitFor();
-           } else {
+            } else if (runBrowser == 3) { // --qtdomterm
+                String command = domtermPath+"/qtdomterm/qtdomterm";
+                String appArg = "file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
+                Process process = Runtime.getRuntime()
+                    .exec(new String[] { command, appArg });
+                process.waitFor();
+            } else {
                 System.out.println("DomTerm server started on port: "+port);
                 BufferedReader reader =
                     new BufferedReader(new InputStreamReader(System.in));
                 System.out.print("Please press a key to stop the server.");
                 reader.readLine();
                 System.err.println("ready to stop");
-                s.stop();
-                System.exit(0);
             }
+            s.stop();
+            System.exit(0);
         } catch (Throwable ex) {
             ex.printStackTrace();
             throw new RuntimeException(ex);

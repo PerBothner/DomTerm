@@ -475,13 +475,11 @@ set @code{TERM} tp @code{xterm-256color}.
 Error recovery and state transitions should follow
 @uref{http://www.vt100.net/emu/dec_ansi_parser,this}.
 
-The most important missing functionality is handling mouse clicks and
-other mouse events compatibly with @code{xterm}.
-
 Other terminal emulators:
 
 @uref{https://github.com/chjj/term.js/,term.js}
-has quite complete terminal emulation and even better documentation.
+and the new fork @uref{https://github.com/sourcelair/xterm.js,xterm.js}
+have quite complete terminal emulation and even better documentation.
 Howewver, it's based on a simple 2-d array (char value and attributes
 encoded as an integer).
 
@@ -634,6 +632,33 @@ they should be bundled in a zip archive (like LibreOffice does).
 
 Tools to convert to and from Jupyter format would be nice,
 so we should avoid gratuitous conceptual incompatibility.
+
+@subheading screen program functionality
+
+@subsubheading Screen multipllexing
+
+The multiplexing functionality of GNU screen is fairly easily:
+Basically we could implement the mutliple tabs, as in many
+browsers and and some terminal managers.
+
+@ssubsubheading Detachable sessions
+
+Detachable sessions is a bit harder.  That means that a front-end
+can disconnect from a session, while the session (child process) persists.
+The same or a different front-end can later re-attach to the session
+The priblem is remembering and being able to re-create the front-end state.
+Handling explicit detach can be done by having the front-end serialize
+the important aspects of state, and send it back to the back-end.
+On a re-attach, the back-en can send the saved front-end state back
+to the front-end.
+
+However, this doesn't not handle unexpected detaches, as when the
+connection dies.  To support this, the back-end has to know the
+critical parts of the front-end state.  This means the back-end
+has to track the front-end state by simulating the actions of
+the various escape sections.  One way to do that is to use a
+@uref{https://gist.github.com/evandrix/3694955#file-readme-md,``headless'' web server}, such as @uref{http://htmlunit.sourceforge.net/HtmlUnit}
+or (the presumably more heavy-duty) @uref{http://phantomjs.org/,PhantomJS}.
 
 @node Technical documentation
 @chapter Technical documentation

@@ -30,7 +30,7 @@ case "$1" in
   echo 'Set JAVA or JAVA_HOME in environment if java is not in the PATH.'
   exit 0
   ;;
-  "--firefox" | "--chrome" | "--port")
+  "--firefox" | "--chrome" | "--qtwebengine" | "--port")
   ;;
   "--javafx")
   shift
