@@ -18,6 +18,9 @@ AC_ARG_ENABLE(pty,
 AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
 
+AC_ARG_WITH(qtwebengine,
+  AS_HELP_STRING(--with-qtwebengine@<:@=jfxrt.jar@:>@,Build QtWebEngine front-end))
+
 conf_classpath=
 echo host: $host
 pathsep="$PATH_SEPARATOR"
@@ -58,6 +61,15 @@ case "${enable_pty}" in
     fi
     ;;
     *) ;;
+esac
+
+case "${with_qtwebengine}" in
+  yes | "")
+    WITH_QTWEBENGINE_TRUE=''
+    ;;
+  *)
+    WITH_QTWEBENGINE_TRUE='#'
+    ;;
 esac
 
 case "${with_java_websocket}" in
@@ -117,6 +129,7 @@ AC_SUBST(CLASSPATH_SEPARATOR)
 AC_SUBST(conf_classpath)
 AC_SUBST(WITH_JAVA_WEBSOCKET)
 AC_SUBST(WITH_JAVA_WEBSOCKET_TRUE)
+AC_SUBST(WITH_QTWEBENGINE_TRUE)
 AC_SUBST(WITH_JAVAFX_TRUE)
 AC_SUBST(ENABLE_PTY_TRUE)
 AC_SUBST(JAVA_HOME)

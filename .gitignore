@@ -28,3 +28,9 @@ doc/DomTerm.xml
 web/*.html
 web/images/*.png
 autom4te.cache/*
+bin/qtdomterm
+qtdomterm/moc_*.cpp
+qtdomterm/moc_predefs.h
+qtdomterm/webview.moc
+qtdomterm/ui_settings.h
+qtdomterm/qrc_data.cpp

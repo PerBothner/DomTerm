@@ -51,3 +51,5 @@ EXAMPLE_FILES = \
 # install
 target.path = ../bin
 INSTALLS += target
+
+DESTDIR = ../bin

@@ -588,6 +588,7 @@ JAVA_INCLUDE_SUBDIR
 JAVA_HOME
 ENABLE_PTY_TRUE
 WITH_JAVAFX_TRUE
+WITH_QTWEBENGINE_TRUE
 WITH_JAVA_WEBSOCKET_TRUE
 WITH_JAVA_WEBSOCKET
 conf_classpath
@@ -656,6 +657,7 @@ enable_option_checking
 with_java_websocket
 enable_pty
 with_javafx
+with_qtwebengine
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1291,6 +1293,8 @@ Optional Packages:
                           Build server using Java-WebServer (default true)
   --with-javafx[=jfxrt.jar]
                           Enable support for JavaFX
+  --with-qtwebengine[=jfxrt.jar]
+                          Build QtWebEngine front-end
 
 Some influential environment variables:
   CC          C compiler command
@@ -3049,6 +3053,13 @@ if test "${with_javafx+set}" = set; then :
 fi
 
 
+
+# Check whether --with-qtwebengine was given.
+if test "${with_qtwebengine+set}" = set; then :
+  withval=$with_qtwebengine;
+fi
+
+
 conf_classpath=
 echo host: $host
 pathsep="$PATH_SEPARATOR"
@@ -3089,6 +3100,15 @@ case "${enable_pty}" in
     fi
     ;;
     *) ;;
+esac
+
+case "${with_qtwebengine}" in
+  yes | "")
+    WITH_QTWEBENGINE_TRUE=''
+    ;;
+  *)
+    WITH_QTWEBENGINE_TRUE='#'
+    ;;
 esac
 
 case "${with_java_websocket}" in
@@ -3139,6 +3159,7 @@ then
     fi
   fi
 fi
+
 
 
 

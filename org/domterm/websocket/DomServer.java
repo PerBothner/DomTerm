@@ -236,7 +236,8 @@ public class DomServer extends WebSocketServer {
                 runBrowser = 1;
             } else if (arg.equals("--chrome")) {
                 runBrowser = 2;
-            } else if (arg.equals("--qtdomterm")) {
+            } else if (arg.equals("--qtdomterm")
+                       || arg.equals("--qtwebengine")) {
                 runBrowser = 3;
             } else
                 break;
@@ -271,7 +272,7 @@ public class DomServer extends WebSocketServer {
                     .exec(new String[] { chromeCommand, appArg });
                 process.waitFor();
             } else if (runBrowser == 3) { // --qtdomterm
-                String command = domtermPath+"/qtdomterm/qtdomterm";
+                String command = domtermPath+"/bin/qtdomterm";
                 String appArg = "file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { command, appArg });
