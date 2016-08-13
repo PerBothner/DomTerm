@@ -255,15 +255,14 @@ void BrowserMainWindow::setupMenu()
     editMenu->addSeparator();
 
     QAction *m_find = editMenu->addAction(tr("&Find"));
-    m_find->setShortcuts(QKeySequence::Find);
+    m_find->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F));
     connect(m_find, SIGNAL(triggered()), this, SLOT(slotEditFind()));
-
     QAction *m_findNext = editMenu->addAction(tr("&Find Next"));
-    m_findNext->setShortcuts(QKeySequence::FindNext);
+    //m_findNext->setShortcuts(QKeySequence::FindNext);
     connect(m_findNext, SIGNAL(triggered()), this, SLOT(slotEditFindNext()));
 
     QAction *m_findPrevious = editMenu->addAction(tr("&Find Previous"));
-    m_findPrevious->setShortcuts(QKeySequence::FindPrevious);
+    //m_findPrevious->setShortcuts(QKeySequence::FindPrevious);
     connect(m_findPrevious, SIGNAL(triggered()), this, SLOT(slotEditFindPrevious()));
     editMenu->addSeparator();
 
@@ -284,10 +283,6 @@ void BrowserMainWindow::setupMenu()
     shortcuts.append(Qt::Key_Escape);
     m_stop->setShortcuts(shortcuts);
     m_tabWidget->addWebAction(m_stop, QWebEnginePage::Stop);
-
-    m_reload = viewMenu->addAction(tr("Reload Page"));
-    m_reload->setShortcuts(QKeySequence::Refresh);
-    m_tabWidget->addWebAction(m_reload, QWebEnginePage::Reload);
 
     viewMenu->addAction(tr("Zoom &In"), this, SLOT(slotViewZoomIn()), QKeySequence(Qt::CTRL | Qt::Key_Plus));
     viewMenu->addAction(tr("Zoom &Out"), this, SLOT(slotViewZoomOut()), QKeySequence(Qt::CTRL | Qt::Key_Minus));
