@@ -1350,21 +1350,14 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     this._wrapDummy = wrapDummy;
 
     var dt = this;
-    this._resizeHandler = null;
     // FIXME we want the resize-sensor to be a child of helperNode
     new ResizeSensor(topNode, function () {
-        // See https://developer.mozilla.org/en-US/docs/Web/Events/resize#Example
-        if (! dt._resizeHandler) {
-            dt._resizeHandler = setTimeout(function() {
-                dt._resizeHandler = null;
-                if (dt.verbosity > 0)
-                    dt.log("ResizeSensor called"); 
-                var oldWidth = dt.availWidth;
-                dt.measureWindow();
-                if (dt.availWidth != oldWidth)
-                    dt._breakAllLines(oldWidth);
-            }, 100 /* milli-seconds */);
-        }
+        if (dt.verbosity > 0)
+            dt.log("ResizeSensor called"); 
+        var oldCols = dt.numColumns;
+        dt.measureWindow();
+        if (dt.numColumns != oldCols)
+            dt._breakAllLines();
     });
 
     this._mainBufferName = this.makeId("main")
@@ -3434,7 +3427,7 @@ DomTerm.prototype._scrollIfNeeded = function() {
         this.topNode.scrollTop = lastBottom - this.availHeight;
 }
 
-DomTerm.prototype._breakAllLines = function(oldWidth) {
+DomTerm.prototype._breakAllLines = function() {
     var changed = false;
     var startLine = 0;
     if (this.usingAlternateScreenBuffer) {
@@ -3648,7 +3641,9 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         widthInColums = this.widthInColumns(str, 0, slen);
         this.eraseCharactersRight(widthInColums, true);
     }
-
+    // Calculating _offsetLeft is *very* expensive when interleaved with
+    // DOM updates.  Instead, we should do as many insertions as possible
+    // before we check for possible line wrapping.  FIXME
     var beforePos = this._offsetLeft(this.outputBefore, this.outputContainer);
     var absLine = this.homeLine+this.getCursorLine();
     var textNode = this.insertRawOutput(str);
