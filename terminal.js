@@ -766,6 +766,7 @@ DomTerm.prototype._restoreInputLine = function() {
     if (this.inputFollowsOutput && this.outputBefore != this.inputLine) {
         this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
         this.outputBefore = this.inputLine;
+        this.inputLine.focus();
     }
 };
 
@@ -1110,7 +1111,6 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count, restoreCursor) {
         end = this.lineStarts[absLine+count];
     var cur = this.outputBefore;
     var parent = this.outputContainer;
-    //if (end && cur && end.parentNode == this.outputContainer) {
     var inputLine = this.inputLine;
     var inputRoot = this._rootNode(inputLine);
     for (;;) {
@@ -1457,7 +1457,6 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
 
 DomTerm.prototype.measureWindow = function()  {
     var ruler = this._rulerNode;
-    var rect = ruler.getBoundingClientRect()
     this.charWidth = ruler.offsetWidth/26.0;
     this.charHeight = ruler.parentNode.offsetHeight;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
@@ -1481,7 +1480,7 @@ DomTerm.prototype.measureWindow = function()  {
     this.availHeight = availHeight;
     this.availWidth = availWidth;
     if (this.verbosity >= 2)
-        this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" rect:.l:"+rect.left+" r:"+rect.right+" r.t:"+rect.top+" r.b:"+rect.bottom+" numCols:"+this.numColumns+" numRows:"+this.numRows);
+        this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" numCols:"+this.numColumns+" numRows:"+this.numRows);
 };
 
 DomTerm.prototype._mouseHandler = function(ev) {
@@ -3426,7 +3425,6 @@ DomTerm.prototype.insertString = function(str) {
     if (true) { // FIXME only if "scrollWanted"
         this._scrollIfNeeded();
     }
-    this.inputLine.focus();
 };
 
 DomTerm.prototype._scrollIfNeeded = function() {
