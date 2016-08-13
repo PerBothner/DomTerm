@@ -213,7 +213,18 @@ This is the default, except on Windows (which doesn't support PTYs).
 Use JavaFX to run standalone applications.
 The @code{@var{library-name}} if specified is either the @code{JAVA_HOME}
 or a path to @code{jfxrt.jar}.
+@item --with-qtwebengine
+Use Qt and @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}
+to build @code{qtdomterm}, an advanced front-end that
+supports multiple tabs, screen re-sizing, and other nice features.
+
+For this you need the Qt development tools including QtWebEngine installed.
+
+This still requires the Java-based websocket server, but the
+plan is to replace that with native C/C++ code
+using @uref{http://doc.qt.io/qt-5/qwebchannel.html,@code{QWebChannel}}.
 @end table
+
 Then just:
 @example
 make
@@ -266,6 +277,16 @@ though there are some performance issues.
 This option has the best user interface and features that work well.
 It is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
 which is being phased out.
+@item @code{--qtwebengine}
+This is likely to become the default.
+It works pretty well and has good prospects for further improvements.
+The user interface is the @code{qtdomterm} program,
+which uses the @code{QtWebEngine} embeddable browser.
+Current Features include multiple tabs, and easy zooming (font-re-sizing).
+
+The @code{qtdomterm} program currently requires a separate
+WebSocket server, which is started automatically.
+
 @item @code{--chrome}
 This is very similar to using Firefox, but uses the Google Chrome browser.
 The latter is started using the @code{--app=} option,
@@ -588,12 +609,6 @@ Emacs term mode does this.
 Allow processes to send HTML and graphics to DomTerm.
 See some previous work: http://per.bothner.com/blog/2007/ReplPane/
 
-@subsubheading Allow printing images
-
-A REPL might want to "print" an image which we want to display.
-This could use a blob: or data: URL (neither of which are universally
-supported) or create a URL to a temporary file.
-
 @subsubheading Event forwarding to inferior
 
 A process may "print"/paint graphics with event handlers.
@@ -633,26 +648,18 @@ they should be bundled in a zip archive (like LibreOffice does).
 Tools to convert to and from Jupyter format would be nice,
 so we should avoid gratuitous conceptual incompatibility.
 
-@subheading screen program functionality
+@subheading Detachable and remote sessions
 
-@subsubheading Screen multipllexing
-
-The multiplexing functionality of GNU screen is fairly easily:
-Basically we could implement the mutliple tabs, as in many
-browsers and and some terminal managers.
-
-@ssubsubheading Detachable sessions
-
-Detachable sessions is a bit harder.  That means that a front-end
+Detachable sessions means that a front-end
 can disconnect from a session, while the session (child process) persists.
 The same or a different front-end can later re-attach to the session
-The priblem is remembering and being able to re-create the front-end state.
+The problem is remembering and being able to re-create the front-end state.
 Handling explicit detach can be done by having the front-end serialize
 the important aspects of state, and send it back to the back-end.
 On a re-attach, the back-en can send the saved front-end state back
 to the front-end.
 
-However, this doesn't not handle unexpected detaches, as when the
+However, this doesn't handle unexpected detaches, as when the
 connection dies.  To support this, the back-end has to know the
 critical parts of the front-end state.  This means the back-end
 has to track the front-end state by simulating the actions of
@@ -1396,6 +1403,8 @@ It doesn't help in inserting a visual indicator, like Emacs's arrow,
 It doesn't help managing the line table.
 @item
 It doesn't help with pretty-printing (for example grouping).
+@item
+Chrome (version 52) seems to have from problems with @code{break-all}.
 @end itemize
 
 Hence we need to do the job ourselves.
