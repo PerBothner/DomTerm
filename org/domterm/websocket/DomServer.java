@@ -273,7 +273,7 @@ public class DomServer extends WebSocketServer {
                 process.waitFor();
             } else if (runBrowser == 3) { // --qtdomterm
                 String command = domtermPath+"/bin/qtdomterm";
-                String appArg = "file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
+                String appArg = "qrc:index.html?ws=ws://localhost:"+port+"/";
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { command, appArg });
                 process.waitFor();

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>DomTerm</title>
+<link rel="stylesheet" href="qrc:style/domterm-core.css">
+<link rel="stylesheet" href="qrc:style/domterm-standard.css">
+<link rel="stylesheet" href="qrc:style/domterm-default.css">
+<script type="text/javascript" src="qrc:ResizeSensor.js"> </script>
+<script type="text/javascript" src="qrc:bililiteRange.js"> </script>
+<script type="text/javascript" src="qrc:terminal.js"> </script>
+<script type="text/javascript">
+function loadHandler(event) {
+    var wt = new DomTerm("term1");
+    window.domterm1 = wt;
+    var topNode = document.getElementById("term1");
+
+    var query = location.search;
+    var ws = query.match(/ws=([^&]*)/);
+    if (ws) {
+        var wsocket = new WebSocket(ws[1]);
+        wt.processInputCharacters = function(str) { wsocket.send(str); };
+        wsocket.onmessage = function(evt) {  wt.insertString(evt.data); }
+        var topNode = document.getElementById("term1");
+        wsocket.onopen = function(e) {
+        wsocket.send("\x92VERSION "+wt.versionInfo+"\n");
+        wt.initializeTerminal(topNode); };
+    }
+}
+window.addEventListener("load", loadHandler, false);
+</script>
+</head>
+<body><div class="domterm" id="term1"></div>DOMTERM2</body>
+</html>

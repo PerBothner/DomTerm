@@ -1,5 +1,11 @@
 <!DOCTYPE RCC><RCC version="1.0">
-<qresource>
-
-</qresource>
+    <qresource prefix="/">
+        <file>index.html</file>
+        <file>terminal.js</file>
+        <file>ResizeSensor.js</file>
+        <file>bililiteRange.js</file>
+        <file>style/domterm-core.css</file>
+        <file>style/domterm-standard.css</file>
+        <file>style/domterm-default.css</file>
+    </qresource>
 </RCC>
