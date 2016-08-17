@@ -2859,6 +2859,7 @@ DomTerm.HTMLinfo = {
     "hkern": 12,
     "hr": 1,
     "i": 5,
+    // "iframe": 1, // ??? maybe
     "image": 12, // FIXME
     "img": 7, // need to check "src" for "javascript:"
     "line": 12,
@@ -2977,7 +2978,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                 activeTags.push(tag);
                 // we've seen start tag - now check for attributes
                 for (;;) {
-                    while (ch == 32 && i < len)
+                    while (ch <= 32 && i < len)
                         ch = str.charCodeAt(i++);
                     var attrstart = i-1;
                     while (ch != 61 && ch != 62 && ch != 47) { //' =' '>' '/'
@@ -2997,7 +2998,9 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                     var attrname = str.substring(attrstart,attrend);
                     if (i == len)
                         break loop; // invalid
-                    var quote = i == len ? -1 : str.charCodeAt(i++);
+                    for (ch = 32; ch <= 32 && i < len; )
+                        ch = str.charCodeAt(i++);
+                    var quote = i == len ? -1 : ch;
                     if (quote != 34 && quote != 39) // '"' or '\''
                         break loop; // invalid
                     var valstart = i;
@@ -4017,7 +4020,7 @@ DomTerm.prototype.setInputMode = function(mode) {
         break;
     }
     this.automaticNewlineMode = ! this.clientDoesEcho;
-    this.useDoLineEdit = this.autoEditing;
+    this.useDoLineEdit = this.autoEditing; // ???
 };
 
 DomTerm.prototype.doLineEdit = function(key, str) {
