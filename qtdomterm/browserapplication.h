@@ -94,13 +94,17 @@ public:
 #if defined(Q_OS_OSX)
     bool event(QEvent *event);
 #endif
+    QString getCommandLineUrlArgument() const;
 
 public slots:
     BrowserMainWindow *newMainWindow();
     void restoreLastSession();
-    void lastWindowClosed();
     void quitBrowser();
     void setPrivateBrowsing(bool);
+    const QString program() { return m_program; }
+    QStringList arguments() { return m_arguments; }
+    const QString wsconnect() const { return m_wsconnect; }
+    bool should_connect() const { return ! m_wsconnect.isEmpty(); }
 
 signals:
     void privateBrowsingChanged(bool);
@@ -113,7 +117,6 @@ private slots:
 private:
     void clean();
     void installTranslator(const QString &name);
-    QString getCommandLineUrlArgument() const;
 
     static QNetworkAccessManager *s_networkAccessManager;
 
@@ -126,6 +129,11 @@ private:
 
     QAuthenticator m_lastAuthenticator;
     QAuthenticator m_lastProxyAuthenticator;
+    QString m_workdir;
+    QString m_program;
+    QStringList m_arguments;
+    QString m_wsconnect;
+
 };
 
 #endif // BROWSERAPPLICATION_H

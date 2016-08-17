@@ -273,9 +273,9 @@ public class DomServer extends WebSocketServer {
                 process.waitFor();
             } else if (runBrowser == 3) { // --qtdomterm
                 String command = domtermPath+"/bin/qtdomterm";
-                String appArg = "qrc:index.html?ws=ws://localhost:"+port+"/";
                 Process process = Runtime.getRuntime()
-                    .exec(new String[] { command, appArg });
+                    .exec(new String[] { command,
+                                         "--connect", "localhost:"+port });
                 process.waitFor();
             } else {
                 System.out.println("DomTerm server started on port: "+port);

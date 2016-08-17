@@ -54,6 +54,8 @@
 #include "tabwidget.h"
 #include "webview.h"
 
+#include <getopt.h>
+
 #include <QtCore/QBuffer>
 #include <QtCore/QDir>
 #include <QtCore/QLibraryInfo>
@@ -77,6 +79,75 @@
 #include <QWebEngineScriptCollection>
 
 #include <QtCore/QDebug>
+
+const char* QTDOMTERM_VERSION = "0.2";
+
+const char* const short_options = "vhw:e:c:";
+
+const struct option long_options[] = {
+    {"version", 0, NULL, 'v'},
+    {"help",    0, NULL, 'h'},
+    {"workdir", 1, NULL, 'w'},
+    {"execute", 1, NULL, 'e'},
+    {"connect", 1, NULL, 'c'},
+    {NULL,      0, NULL,  0}
+};
+
+void print_usage_and_exit(int code)
+{
+    printf("QtDomTerm %s\n", QTDOMTERM_VERSION);
+    puts("Usage: qtdomterm [OPTION]...\n");
+    //puts("  -d,  --drop               Start in \"dropdown mode\" (like Yakuake or Tilda)");
+    puts("  -e,  --execute <command>  Execute command instead of shell");
+    puts("  -c,  --connect HOST:PORT  Connect to websocket server");
+    puts("  -h,  --help               Print this help");
+    puts("  -v,  --version            Prints application version and exits");
+    puts("  -w,  --workdir <dir>      Start session with specified work directory");
+    puts("\nHomepage: <https://domterm.org>");
+    exit(code);
+}
+
+void print_version_and_exit(int code=0)
+{
+    printf("%s\n", QTDOMTERM_VERSION);
+    exit(code);
+}
+
+void parse_args(int argc, char* argv[], QString& workdir, QString & shell_command, QStringList& arguments, QString& wsconnect)
+{
+    int next_option;
+    do{
+        next_option = getopt_long(argc, argv, short_options, long_options, NULL);
+        switch(next_option)
+        {
+            case 'h':
+                print_usage_and_exit(0);
+            case 'w':
+                workdir = QString(optarg);
+                break;
+            case 'c':
+                wsconnect = QString(optarg);
+                break;
+            case 'e':
+                shell_command = QString(optarg);
+                // #15 "Raw" -e params
+                // Passing "raw" params (like konsole -e mcedit /tmp/tmp.txt") is more preferable - then I can call QString("qterminal -e ") + cmd_line in other programs
+                arguments += shell_command;
+                while (optind < argc)
+                {
+                    printf("arg: %d - %s\n", optind, argv[optind]);
+                    arguments += QString(argv[optind++]);
+                }
+                break;
+            case '?':
+                print_usage_and_exit(1);
+            case 'v':
+                print_version_and_exit();
+        }
+    }
+    while(next_option != -1);
+}
+
 
 QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
 
@@ -122,10 +193,12 @@ BrowserApplication::BrowserApplication(int &argc, char **argv)
     , m_privateBrowsing(false)
 {
     QCoreApplication::setOrganizationName(QLatin1String("Qt"));
-    QCoreApplication::setApplicationName(QLatin1String("demobrowser"));
+    QCoreApplication::setApplicationName(QLatin1String("qtdomterm"));
     QCoreApplication::setApplicationVersion(QLatin1String("0.1"));
     QString serverName = QCoreApplication::applicationName()
         + QString::fromLatin1(QT_VERSION_STR).remove('.') + QLatin1String("webengine");
+
+    parse_args(argc, argv, m_workdir, m_program, m_arguments, m_wsconnect);
     QLocalSocket socket;
     socket.connectToServer(serverName);
     if (socket.waitForConnected(500)) {
@@ -159,7 +232,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv)
     }
 #endif
 
-    QDesktopServices::setUrlHandler(QLatin1String("http"), this, "openUrl");
     QString localSysName = QLocale::system().name();
 
     installTranslator(QLatin1String("qt_") + localSysName);
@@ -168,11 +240,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv)
     settings.beginGroup(QLatin1String("sessions"));
     m_lastSession = settings.value(QLatin1String("lastSession")).toByteArray();
     settings.endGroup();
-
-#if defined(Q_OS_OSX)
-    connect(this, SIGNAL(lastWindowClosed()),
-            this, SLOT(lastWindowClosed()));
-#endif
 
     QTimer::singleShot(0, this, SLOT(postLaunch()));
 }
@@ -184,16 +251,6 @@ BrowserApplication::~BrowserApplication()
         delete window;
     }
     delete s_networkAccessManager;
-}
-
-void BrowserApplication::lastWindowClosed()
-{
-#if defined(Q_OS_OSX)
-    clean();
-    BrowserMainWindow *mw = new BrowserMainWindow;
-    mw->slotHome();
-    m_mainWindows.prepend(mw);
-#endif
 }
 
 BrowserApplication *BrowserApplication::instance()
@@ -237,20 +294,7 @@ void BrowserApplication::postLaunch()
     QWebEngineSettings::setOfflineStoragePath(directory);
 #endif
 
-    setWindowIcon(QIcon(QLatin1String(":demobrowser.svg")));
-
     loadSettings();
-
-    // newMainWindow() needs to be called in main() for this to happen
-    if (m_mainWindows.count() > 0) {
-        const QString url = getCommandLineUrlArgument();
-        if (!url.isEmpty()) {
-            mainWindow()->loadPage(url);
-        } else {
-            mainWindow()->slotHome();
-        }
-
-    }
 }
 
 void BrowserApplication::loadSettings()
@@ -406,14 +450,13 @@ void BrowserApplication::installTranslator(const QString &name)
 QString BrowserApplication::getCommandLineUrlArgument() const
 {
     const QStringList args = QCoreApplication::arguments();
-    if (args.count() > 1) {
-        const QString lastArg = args.last();
-        const bool isValidUrl = QUrl::fromUserInput(lastArg).isValid();
-        if (isValidUrl)
-            return lastArg;
+    const QString ws = wsconnect();
+    QString url = "qrc:/index.html";
+    if (! ws.isEmpty()) {
+        url += "?ws=ws://";
+        url += ws;
     }
-
-     return QString();
+    return url;
 }
 
 #if defined(Q_OS_OSX)
@@ -479,8 +522,9 @@ void BrowserApplication::newLocalSocketConnection()
         settings.endGroup();
         if (openLinksIn == 1)
             newMainWindow();
-        else
+        else {
             mainWindow()->tabWidget()->newTab();
+        }
         openUrl(url);
     }
     delete socket;

@@ -409,19 +409,8 @@ WebView *TabWidget::currentWebView() const
 WebView *TabWidget::webView(int index) const
 {
     QWidget *widget = this->widget(index);
-    if (WebView *webView = qobject_cast<WebView*>(widget)) {
+    if (WebView *webView = qobject_cast<WebView*>(widget))
         return webView;
-    } else {
-        // optimization to delay creating the first webview
-        if (count() == 1) {
-            TabWidget *that = const_cast<TabWidget*>(this);
-            that->setUpdatesEnabled(false);
-            that->newTab();
-            that->closeTab(0);
-            that->setUpdatesEnabled(true);
-            return currentWebView();
-        }
-    }
     return 0;
 }
 
@@ -455,21 +444,6 @@ void TabWidget::setupPage(QWebEnginePage* page)
 
 WebView *TabWidget::newTab(bool makeCurrent)
 {
-    // optimization to delay creating the more expensive WebView, history, etc
-    if (count() == 0) {
-        QWidget *emptyWidget = new QWidget;
-        QPalette p = emptyWidget->palette();
-        p.setColor(QPalette::Window, palette().color(QPalette::Base));
-        emptyWidget->setPalette(p);
-        emptyWidget->setAutoFillBackground(true);
-        disconnect(this, SIGNAL(currentChanged(int)),
-            this, SLOT(currentChanged(int)));
-        addTab(emptyWidget, tr("(Untitled)"));
-        connect(this, SIGNAL(currentChanged(int)),
-            this, SLOT(currentChanged(int)));
-        return 0;
-    }
-
     // webview
     WebView *newWebView = new WebView;
     newWebView->setPage(new WebPage(m_profile, newWebView));
@@ -479,7 +453,7 @@ WebView *TabWidget::newTab(bool makeCurrent)
             this, SLOT(webViewTitleChanged(QString)));
     connect(newWebView, SIGNAL(urlChanged(QUrl)),
             this, SLOT(webViewUrlChanged(QUrl)));
-
+    connect(newWebView, SIGNAL(finished()),this, SLOT(requestCloseTab()));
 
     addTab(newWebView, tr("(Untitled)"));
     if (makeCurrent)
@@ -490,6 +464,7 @@ WebView *TabWidget::newTab(bool makeCurrent)
     if (count() == 1)
         currentChanged(currentIndex());
     emit tabsChanged();
+    newWebView->setUrl(BrowserApplication::instance()->getCommandLineUrlArgument());
     return newWebView;
 }
 
@@ -524,8 +499,11 @@ void TabWidget::closeOtherTabs(int index)
 
 void TabWidget::cloneTab()
 {
-    WebView *tab = newTab(true);
-    tab->setUrl(webView(0)->url());
+    newTab(true);
+}
+void TabWidget::requestCloseTab()
+{
+  requestCloseTab(-1);
 }
 
 // When index is -1 index chooses the current tab

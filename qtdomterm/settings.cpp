@@ -112,10 +112,6 @@ void SettingsDialog::loadDefaults()
 void SettingsDialog::loadFromSettings()
 {
     QSettings settings;
-    settings.beginGroup(QLatin1String("MainWindow"));
-    const QString defaultHome = QLatin1String(BrowserMainWindow::defaultHome);
-    homeLineEdit->setText(settings.value(QLatin1String("home"), defaultHome).toString());
-    settings.endGroup();
 
     settings.beginGroup(QLatin1String("general"));
     openLinksIn->setCurrentIndex(settings.value(QLatin1String("openLinksIn"), openLinksIn->currentIndex()).toInt());

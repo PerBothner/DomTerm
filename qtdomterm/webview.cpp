@@ -52,6 +52,7 @@
 #include "browsermainwindow.h"
 #include "tabwidget.h"
 #include "webview.h"
+#include "backend.h"
 
 #include <QtGui/QClipboard>
 #include <QtNetwork/QNetworkReply>
@@ -59,6 +60,7 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QVBoxLayout>
 #include <QtGui/QMouseEvent>
+#include <QWebChannel>
 
 //#include <QWebEngineContextMenuData>
 
@@ -274,6 +276,24 @@ void WebView::setPage(WebPage *_page)
 #if defined(QWEBENGINEPAGE_UNSUPPORTEDCONTENT)
     page()->setForwardUnsupportedContent(true);
 #endif
+    BrowserApplication * app = BrowserApplication::instance();
+    if (! app->should_connect()) {
+        QWebChannel *channel = new QWebChannel(this);
+        m_backend = new Backend(this);
+        connect(m_backend, SIGNAL(finished()), this, SIGNAL(finished()));
+        QString program = app->program();
+        if (program.isEmpty()) {
+            const char *shell = getenv("SHELL");
+            if (shell == nullptr)
+                shell = "/bin/sh";
+         program = shell;
+        }
+        m_backend->setProgram(program);
+        m_backend->setArguments(app->arguments());
+        channel->registerObject(QStringLiteral("backend"), m_backend);
+        page()->setWebChannel(channel);
+        //   m_backend->run();
+    }
 }
 
 void WebView::contextMenuEvent(QContextMenuEvent *event)

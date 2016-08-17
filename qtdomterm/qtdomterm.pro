@@ -1,15 +1,16 @@
 TEMPLATE = app
 TARGET = qtdomterm
-QT += webenginewidgets network widgets
+QT += webenginewidgets network widgets webchannel
 CONFIG += c++11
 
 qtHaveModule(uitools):!embedded: QT += uitools
-else: DEFINES += QT_NO_UITOOLS
+else: DEFINES += QT_NO_UITOOLS HAVE_POSIX_OPENPT
 
 FORMS += \
     settings.ui
 
 HEADERS += \
+    backend.h Pty.h kptydevice.h  kpty.h  kpty_p.h  kptyprocess.h kprocess.h \
     browserapplication.h \
     browsermainwindow.h \
     fullscreennotification.h \
@@ -19,6 +20,7 @@ HEADERS += \
     webview.h
 
 SOURCES += \
+    backend.cpp Pty.cpp kpty.cpp  kptydevice.cpp  kptyprocess.cpp kprocess.cpp \
     browserapplication.cpp \
     browsermainwindow.cpp \
     fullscreennotification.cpp \

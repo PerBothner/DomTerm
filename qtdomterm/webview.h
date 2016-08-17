@@ -61,7 +61,9 @@ class QNetworkReply;
 class QSslError;
 QT_END_NAMESPACE
 
+class Backend;
 class BrowserMainWindow;
+
 class WebPage : public QWebEnginePage {
     Q_OBJECT
 public:
@@ -101,7 +103,10 @@ public:
 
     inline int progress() const { return m_progress; }
 
-protected:
+signals:
+    void finished();
+
+ protected:
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void contextMenuEvent(QContextMenuEvent *event);
@@ -116,6 +121,7 @@ private:
     QUrl m_initialUrl;
     int m_progress;
     WebPage *m_page;
+    Backend *m_backend;
 };
 
 #endif

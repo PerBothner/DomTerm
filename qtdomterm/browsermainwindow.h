@@ -75,8 +75,6 @@ public:
     ~BrowserMainWindow();
     QSize sizeHint() const;
 
-    static const char *defaultHome;
-
 public:
     TabWidget *tabWidget() const;
     WebView *currentTab() const;
@@ -86,7 +84,6 @@ public:
 
 public slots:
     void loadPage(const QString &url);
-    void slotHome();
 
 protected:
     void closeEvent(QCloseEvent *event);

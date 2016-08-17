@@ -200,7 +200,8 @@ public slots:
     void loadUrlInCurrentTab(const QUrl &url);
     WebView *newTab(bool makeCurrent = true);
     void cloneTab();
-    void requestCloseTab(int index = -1);
+    void requestCloseTab();
+    void requestCloseTab(int index);
     void closeTab(int index);
     void closeOtherTabs(int index);
     void reloadTab(int index = -1);
