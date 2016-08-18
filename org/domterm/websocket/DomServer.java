@@ -65,7 +65,7 @@ public class DomServer extends WebSocketServer {
         int i = 0;
         for (; i < args.length; i++) {
             String arg = args[i];
-            if (arg.equals("--pty"))
+            if (arg.equals("--pty") || arg.equals("-e"))
                 mode = 'T';
             else if (arg.equals("--shell")
                      || arg.equals("--pipe")

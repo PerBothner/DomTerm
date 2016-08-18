@@ -82,7 +82,7 @@
 
 const char* QTDOMTERM_VERSION = "0.2";
 
-const char* const short_options = "vhw:e:c:";
+const char* const short_options = "+vhw:e:c:";
 
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
@@ -115,11 +115,11 @@ void print_version_and_exit(int code=0)
 
 void parse_args(int argc, char* argv[], QString& workdir, QString & shell_command, QStringList& arguments, QString& wsconnect)
 {
-    int next_option;
-    do{
-        next_option = getopt_long(argc, argv, short_options, long_options, NULL);
-        switch(next_option)
-        {
+    for (;;) {
+        int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
+        switch(next_option) {
+            case -1:
+                goto post_args;
             case 'h':
                 print_usage_and_exit(0);
             case 'w':
@@ -129,25 +129,23 @@ void parse_args(int argc, char* argv[], QString& workdir, QString & shell_comman
                 wsconnect = QString(optarg);
                 break;
             case 'e':
-                shell_command = QString(optarg);
-                // #15 "Raw" -e params
-                // Passing "raw" params (like konsole -e mcedit /tmp/tmp.txt") is more preferable - then I can call QString("qterminal -e ") + cmd_line in other programs
-                arguments += shell_command;
-                while (optind < argc)
-                {
-                    printf("arg: %d - %s\n", optind, argv[optind]);
-                    arguments += QString(argv[optind++]);
-                }
-                break;
+                optind--;
+                goto post_args;
             case '?':
                 print_usage_and_exit(1);
             case 'v':
                 print_version_and_exit();
         }
     }
-    while(next_option != -1);
+ post_args:
+    if (optind < argc) {
+        shell_command = QString(argv[optind]);
+        arguments += shell_command;
+        while (++optind < argc) {
+            arguments += QString(argv[optind]);
+        }
+    }
 }
-
 
 QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
 
