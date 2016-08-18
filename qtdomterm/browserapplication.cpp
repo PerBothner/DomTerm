@@ -90,6 +90,9 @@ const struct option long_options[] = {
     {"workdir", 1, NULL, 'w'},
     {"execute", 1, NULL, 'e'},
     {"connect", 1, NULL, 'c'},
+    // The foolowing option is handled internally in QtWebEngine.
+    // We just need to pass it through without complaint to the QApplication.
+    {"remote-debugging-port", 1, NULL, 0},
     {NULL,      0, NULL,  0}
 };
 
