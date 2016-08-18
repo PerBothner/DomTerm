@@ -2056,12 +2056,17 @@ DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
 DomTerm.prototype._moveNodes = function(firstChild, newParent, newBefore) {
     if (! newBefore)
         newBefore = null;
+    var oldParent = firstChild ? firstChild.parentNode : null;
     for (var child = firstChild; child != null; ) {
         var next = child.nextSibling;
         child.parentNode.removeChild(child);
         newParent.insertBefore(child, newBefore);
         child = next;
     }
+    if (oldParent == this.outputContainer
+        &&  (this.outputBefore == null
+             || this.outputBefore.parentNode != oldParent))
+        this.outputContainer = newParent;
 };
 
 /** Erase or delete characters in the current line.
@@ -3742,7 +3747,7 @@ DomTerm.prototype.reportText = function(text, suffix) {
 
 /** This function should be overidden. */
 DomTerm.prototype.processInputCharacters = function(str) {
-    this.log("processInputCharacters called with %s characters", str.length);
+    this.log("processInputCharacters called with "+str.length+" characters");
 };
 
 DomTerm.prototype.processEnter = function() {
