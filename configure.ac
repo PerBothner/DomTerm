@@ -9,6 +9,9 @@ AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_SED
 
+AC_ARG_WITH(java,
+  AS_HELP_STRING(--without-java,Build Java help library))
+
 AC_ARG_WITH(java_websocket,
   AS_HELP_STRING(--with-java_websocket@<:@=/path/to/java_websocket.jar@:>@,Build server using Java-WebServer (default true)))
 
@@ -47,28 +50,21 @@ case ${host} in
 esac
 
 
-case "${enable_pty}" in
-  yes)
-    ENABLE_PTY_TRUE=''
-    ;;
-  no)
-    ENABLE_PTY_TRUE='#'
-    ;;
-  "")
-    if test "$CLASSPATH_SEPARATOR" = ";"
-    then ENABLE_PTY_TRUE='#'
-    else ENABLE_PTY_TRUE=''
-    fi
-    ;;
-    *) ;;
-esac
-
 case "${with_qtwebengine}" in
   yes | "")
     WITH_QTWEBENGINE_TRUE=''
     ;;
   *)
     WITH_QTWEBENGINE_TRUE='#'
+    ;;
+esac
+
+case "${with_java}" in
+  no)
+    WITH_JAVA_TRUE='#'
+    ;;
+  *)
+    WITH_JAVA_TRUE=
     ;;
 esac
 
@@ -109,6 +105,22 @@ case ${with_javafx} in
     conf_classpath=${with_javafx}${CLASSPATH_SEPARATOR}$conf_classpath ;;
 esac
 
+case "${enable_pty}" in
+  yes)
+    ENABLE_PTY_TRUE=''
+    ;;
+  no)
+    ENABLE_PTY_TRUE='#'
+    ;;
+  "")
+    if test "$CLASSPATH_SEPARATOR" = ";" || test "$WITH_JAVA_TRUE" = '#'
+    then ENABLE_PTY_TRUE='#'
+    else ENABLE_PTY_TRUE=''
+    fi
+    ;;
+    *) ;;
+esac
+
 if test -z "${JAVA_HOME}"
 then
   if test -x /usr/libexec/java_home
@@ -131,6 +143,7 @@ AC_SUBST(WITH_JAVA_WEBSOCKET)
 AC_SUBST(WITH_JAVA_WEBSOCKET_TRUE)
 AC_SUBST(WITH_QTWEBENGINE_TRUE)
 AC_SUBST(WITH_JAVAFX_TRUE)
+AC_SUBST(WITH_JAVA_TRUE)
 AC_SUBST(ENABLE_PTY_TRUE)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)

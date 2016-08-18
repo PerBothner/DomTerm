@@ -11,8 +11,9 @@ JAVA_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVA)
 
 @ENABLE_PTY_TRUE@ LIBPTY = libpty@LIBEXT@
 @WITH_QTWEBENGINE_TRUE@ QTDOMTERM = bin/qtdomterm
+@WITH_JAVA_TRUE@ DOMTERM_JAR = domterm.jar
 
-all: d/domterm domterm.jar $(LIBPTY) xulapp/domterm-chrome.jar $(QTDOMTERM)
+all: d/domterm $(DOMTERM_JAR) $(LIBPTY) xulapp/domterm-chrome.jar $(QTDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: domterm.jar
 	javah -d native/pty org.domterm.pty.PTY
@@ -55,7 +56,7 @@ run-shell: domterm.jar
 	CLASSPATH=domterm.jar $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*.*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm-chrome.jar
+	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm-chrome.jar
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
 	-rm -f qtdomterm/data/terminal.js qtdomterm/data/ResizeSensor.js qtdomterm/data/bililiteRange.js \
