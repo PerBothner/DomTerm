@@ -99,14 +99,18 @@ function DomTerm(name, topNode) {
 
     this.versionInfo = "version=0.3";
 
-    // Use the doLineEdit when in lineEditing mode.
-    // By default this is only used in autoEditing mode: It is needed
-    // for the first character when switching from character to line mode,
-    // and it is needed in line-editing no-echo ("password") mode.
+    // Use the doLineEdit function when in lineEditing mode.
+    // By default this is only used in autoEditing mode, in two cases:
+    // (1) for the first character when switching from character to line mode.
+    // (This is because we have check the backend pty for its status before
+    // we can switch to lineEditing mode.)
+    // (2) in cononical no-echo ("password") mode, because at least Chrome's
+    // default actions does not edit a non-visible contentEditable field.
     // Otherwise (for now) we use the builtin contentEditable actions,
     // because doLineEdit's functionalty is relatively incomplete.
     // However, doLineEdit does open the possibility of user keymaps.
     this.useDoLineEdit = false;
+    this._usingDoLineEdit = false;
 
     // True if a client performs echo on lines sent to it.
     // In that case, when lineEditing is true, when a completed
@@ -3064,8 +3068,10 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         if (this.verbosity >= 2)
             this.log("OSC KEY k:"+key+" kstr:"+this.toQuoted(kstr));
         this.lineEditing = true;
-        if (code == 73 && this.inputLine)
-            this.inputLine.setAttribute("domterm-hidden", "true");
+        if (code == 73 && this.inputLine) {
+            this.inputLine.setAttribute("domterm-noecho", "true");
+            this._usingDoLineEdit = true;
+        }
         this.doLineEdit(key, kstr);
         break;
     case 7:
@@ -4020,7 +4026,6 @@ DomTerm.prototype.setInputMode = function(mode) {
         break;
     }
     this.automaticNewlineMode = ! this.clientDoesEcho;
-    this.useDoLineEdit = this.autoEditing; // ???
 };
 
 DomTerm.prototype.doLineEdit = function(key, str) {
@@ -4074,8 +4079,10 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 this.pasteText("\n");
             } else {
                 this.processEnter();
-                if (this.autoEditing)
+                if (this.autoEditing) {
                     this.lineEditing = false;
+                    this._usingDoLineEdit = this.useDoLineEdit;
+                }
             }
         }
         else if (event.ctrlKey
@@ -4097,7 +4104,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 event.preventDefault();
                 this.historyMove(1);
             }
-        } else if (this.useDoLineEdit) {
+        } else if (this._usingDoLineEdit) {
             var str = this.keyDownToString(event);
             if (str) {
                 event.preventDefault();
@@ -4120,9 +4127,9 @@ DomTerm.prototype.keyDownHandler = function(event) {
 DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" do-line-edit:"+this.useDoLineEdit+" inputLine:"+this.inputLine);
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" do-line-edit:"+this._usingDoLineEdit+" inputLine:"+this.inputLine);
     if (this.lineEditing) {
-        if (this.useDoLineEdit) {
+        if (this._usingDoLineEdit) {
             event.preventDefault();
             var str = String.fromCharCode(key);
             this.doLineEdit(-key, str);

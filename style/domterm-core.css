@@ -22,3 +22,4 @@ input[std="input"] {
   width: auto; left: auto;
 }
 *[domterm-hidden="true"] { display: none }
+*[domterm-noecho="true"] { visibility: hidden }
