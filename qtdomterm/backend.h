@@ -20,6 +20,7 @@ public:
     explicit Backend(QObject *parent = 0);
     ~Backend();
     void dowrite(const QString &text);
+    void setInputMode(char mode);
 
    /**
      * Sets the command line arguments which the session's program will be passe

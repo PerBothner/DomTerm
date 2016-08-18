@@ -149,6 +149,7 @@ private:
     QString m_lastSearch;
     QString m_printerOutputFileName;
     friend class BrowserApplication;
+    friend class WebView;
 };
 
 #endif // BROWSERMAINWINDOW_H

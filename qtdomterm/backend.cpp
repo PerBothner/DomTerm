@@ -110,6 +110,11 @@ void Backend::dowrite(const QString &text)
     emit write(text);
 }
 
+void Backend::setInputMode(char mode)
+{
+    dowrite("\033[80;" + QString::number((int) mode) + "u");
+}
+
 void Backend::run()
 {
     if (!_initialWorkingDir.isEmpty()) {

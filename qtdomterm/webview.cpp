@@ -137,11 +137,11 @@ public:
     QWebEnginePage* page() const { return m_view->page(); }
 
 private Q_SLOTS:
-    void setUrl(const QUrl &url)
+    void setUrl(const QUrl &/*url*/)
     {
     }
 
-    void adjustGeometry(const QRect &newGeometry)
+    void adjustGeometry(const QRect &/*newGeometry*/)
     {
     }
 
@@ -265,6 +265,26 @@ WebView::WebView(QWidget* parent)
         qInfo() << "Render process exited with code" << statusCode << status;
         QTimer::singleShot(0, [this] { reload(); });
     });
+
+    inputModeGroup = new QActionGroup(this);
+    inputModeGroup->setExclusive(true);
+    charInputMode = new QAction(tr("&Char mode"), inputModeGroup);
+    lineInputMode = new QAction(tr("&Line mode"), inputModeGroup);
+    autoInputMode = new QAction(tr("&Auto mode"), inputModeGroup);
+    inputModeGroup->addAction(charInputMode);
+    inputModeGroup->addAction(lineInputMode);
+    inputModeGroup->addAction(autoInputMode);
+    inputModeMenu = new QMenu(tr("&Input mode"), this);
+    int nmodes = 3;
+    for (int i = 0; i < nmodes; i++) {
+        QAction *action = inputModeGroup->actions().at(i);
+        action->setCheckable(true);
+        inputModeMenu->addAction(action);
+    }
+    autoInputMode->setChecked(true);
+    selectedInputMode = autoInputMode;
+    connect(inputModeGroup, &QActionGroup::triggered,
+            this, &WebView::changeInputMode);
 }
 
 void WebView::setPage(WebPage *_page)
@@ -296,6 +316,24 @@ void WebView::setPage(WebPage *_page)
     }
 }
 
+void WebView::changeInputMode(QAction* action)
+{
+    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
+    if(!inputMode)
+        qFatal("scrollPosition is NULL");
+    int index = inputMode->actions().indexOf(action);
+
+    if (action != selectedInputMode) {
+        selectedInputMode->setChecked(false);
+        action->setChecked(true);
+        selectedInputMode = action;
+        char mode = action == charInputMode ? 'c'
+          : action == lineInputMode ? 'l'
+          : 'a';
+        backend()->setInputMode(mode);
+    }
+}
+
 void WebView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu *menu;
@@ -314,13 +352,9 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
         menu->addAction(page()->action(QWebEnginePage::Paste));
         menu->addAction(page()->action(QWebEnginePage::Copy));
 
-        menu->addAction(page()->action(QWebEnginePage::OpenLinkInThisWindow));
-        menu->addAction(page()->action(QWebEnginePage::OpenLinkInNewWindow));
-        menu->addAction(page()->action(QWebEnginePage::OpenLinkInNewTab));
-        //menu->addAction(page()->action(QWebEnginePage::OpenLinkInNewBackgroundTab));
-        menu->addSeparator();
-        menu->addAction(page()->action(QWebEnginePage::DownloadLinkToDisk));
-        menu->addAction(page()->action(QWebEnginePage::CopyLinkToClipboard));
+        menu->addAction(webPage()->mainWindow()->m_viewMenubar);
+
+        menu->addMenu(inputModeMenu);
     } else {
         menu = page()->createStandardContextMenu();
     }
@@ -373,7 +407,7 @@ QUrl WebView::url() const
     return m_initialUrl;
 }
 
-void WebView::onIconChanged(const QIcon &icon)
+void WebView::onIconChanged(const QIcon &/*icon*/)
 {
 }
 

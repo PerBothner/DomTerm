@@ -55,6 +55,7 @@
 #include <QWebEngineView>
 
 QT_BEGIN_NAMESPACE
+class QActionGroup;
 class QMouseEvent;
 class QNetworkProxy;
 class QNetworkReply;
@@ -96,13 +97,15 @@ class WebView : public QWebEngineView {
 public:
     WebView(QWidget *parent = 0);
     WebPage *webPage() const { return m_page; }
+    Backend *backend() const { return m_backend; }
     void setPage(WebPage *page);
 
     void loadUrl(const QUrl &url);
     QUrl url() const;
 
     inline int progress() const { return m_progress; }
-
+public slots:
+    void changeInputMode(QAction*);
 signals:
     void finished();
 
@@ -122,6 +125,13 @@ private:
     int m_progress;
     WebPage *m_page;
     Backend *m_backend;
+
+    QAction *charInputMode;
+    QAction *lineInputMode;
+    QAction *autoInputMode;
+    QActionGroup* inputModeGroup;
+    QAction *selectedInputMode;
+    QMenu *inputModeMenu;
 };
 
 #endif
