@@ -24,6 +24,9 @@ Users can type commands which
 gets sent to an application, which evaluates the command, and displays
 the results, typically in some kind of type-script format.
 
+The @code{qtdomterm} application is self-contained terminal emulator
+based on DomTerm and QtWebEngine.
+
 This @uref{https://lwn.net/Articles/670062/,LWN article} provides
 background, motivation, and a summary of the functionality.
 
@@ -184,9 +187,18 @@ git clone https://github.com/PerBothner/DomTerm
 The core part of DomTerm is the JavaScript code @code{terminal.js},
 which defines the @code{DomTerm} class.
 You can use @code{terminal.js} in your own application.
-However, there is also some utility code, include two standalone
-terminal emulators.  These currently require Java (OpenJDK
-works fine), though there are plans for a Java-less terminal emulator.
+However, there is also some utility code, include standalone
+terminal emulator applications.
+
+The recommended terminal emulator program is @code{qtdomterm}.
+It uses the C++-based @uref{https://www.qt.io/,Qt toolkit}
+including @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}.
+Needed packages are included with Fedora 24.
+(Reports of attempt to build or use qtdomterm on other platforms
+would be welcome.)
+
+Alternatively,
+you can use easier-to-install Java-based terminal emulators.
 
 Building the sample applications and libraries is a two-part process:
 
@@ -206,23 +218,21 @@ The default jar path references the @code{java_websocket.jar}
 bundled with the DomTerm sources.
 @item --enable-pty
 Compile support for PTYs (pseudo-teletypes).
-This allows character mode: sending individual characters *rather than lines)
+This allows character mode: sending individual characters (rather than lines)
 from the front-end to the back-end.
 This is the default, except on Windows (which doesn't support PTYs).
 @item --with-javafx[=@var{library-name}]
 Use JavaFX to run standalone applications.
 The @code{@var{library-name}} if specified is either the @code{JAVA_HOME}
 or a path to @code{jfxrt.jar}.
+@item --without-java
+Disable building anything that depends on Java.
 @item --with-qtwebengine
 Use Qt and @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}
 to build @code{qtdomterm}, an advanced front-end that
 supports multiple tabs, screen re-sizing, and other nice features.
 
 For this you need the Qt development tools including QtWebEngine installed.
-
-This still requires the Java-based websocket server, but the
-plan is to replace that with native C/C++ code
-using @uref{http://doc.qt.io/qt-5/qwebchannel.html,@code{QWebChannel}}.
 @end table
 
 Then just:
@@ -230,28 +240,73 @@ Then just:
 make
 @end example
 
-To test it, you can try:
+To test it, you can try either:
 @example
 bin/domterm
 @end example
-This starts up a useable terminal emulator in a fresh window.
-(It starts up a @code{bash} shell, running in a PTY,
+or
+@example
+bin/qtdomterm
+@end example
+Either starts up a useable terminal emulator in a fresh window.
+The former starts up a @code{bash} shell, running in a PTY,
 with a WebSocket server.  It also starts a stripped-down Firefox window,
 with no location bar or a menubar, using that for the input and output
-of the @code{bash} shell.)
+of the @code{bash} shell.
+The latter (obviously) runs qtdomterm.
+
+The @code{qtdomterm} executable has no external dependencies
+(besides the Qt libraries), and you can copy to wherever you want it.
 
 @node Applications
 @chapter Applications
 
 The core of DomTerm is the JavaScript @code{terminal.js},
 but we also provides a few wrappers and applications that make use of it.
-Currently, these all use Java, but I expect non-Java wrappers
-to get written.
+
+@subheading The qtdomterm terminal emulator
+
+You start and use @code{qtdomterm} just like other
+terminal emulators such as @code{xterm}.
+In addition to the regular DomTerm features (colors, stylesheets,
+mouse-handling, embedded graphics, etc)
+it also supports multiple tabs and windows, convenient text zooming,
+and remote debugging,
+
+@display
+@code{qtdomterm} [@var{options}] [[@code{-e}] @var{command} @var{argument} ...]
+@end display
+
+This runs the @var{command}, with the specified @var{argument}s,
+in a sub-preocess using a pty.
+The @var{command} defaults to the value of the @code{SHELL}
+environment variable.
+
+The @var{options} include:
+@table @asis
+@item @code{--connect} @var{host}@code{:}@var{port}
+This does not start an inferior @var{command}.
+Instead it connects to an already-running WebSocket server,
+as you might start with @code{domterm --port @var{port} [@var{command}]}.
+
+This is one way to run commands on a remote server.
+
+@item @code{--help}
+Print a help message with options, and then exits.
+@item @code{--version}
+Print the version number, and then exits.
+@item @code{--remote-debugging-port=@var{debug-port}}
+Allow @uref{http://doc.qt.io/qt-5/qtwebengine-debugging.html,remote debugging}
+(using a Chromium-based browser, such as Google Chrome).
+This is useful for debugging DomTerm itself, as well as any
+inspecting any unusual HTML, CSS, or JavaScript you might throw at it.
+@end table
 
 @subheading The domterm terminal emulator command
 
 The @code{domterm} script (in the @code{bin} directory) is a convenient
 way to start up a standalone terminal emulator.
+It depends on Java, but does not depend on Qt.
 By default it runs a shell (@code{bash}), but there are a number of options.
 
 @display
@@ -273,19 +328,13 @@ a custom menubar, and custom context menu (what you get by right-clicking).
 The script also starts up a WebSocket server, and connects them.
 
 This is potentially a very nice terminal emulator,
-though there are some performance issues.
-This option has the best user interface and features that work well.
-It is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
+though it is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
 which is being phased out.
-@item @code{--qtwebengine}
-This is likely to become the default.
-It works pretty well and has good prospects for further improvements.
-The user interface is the @code{qtdomterm} program,
-which uses the @code{QtWebEngine} embeddable browser.
-Current Features include multiple tabs, and easy zooming (font-re-sizing).
-
-The @code{qtdomterm} program currently requires a separate
-WebSocket server, which is started automatically.
+@item @code{--qtdomterm}
+@itemx @code{--qtwebengine}
+Either option (they do the same thing)
+runs @code{qtdomterm} with the @code{--connect} option,
+after starting up a websockets server.
 
 @item @code{--chrome}
 This is very similar to using Firefox, but uses the Google Chrome browser.
@@ -325,15 +374,13 @@ This is nice for development, as you can use the browser's
 JavaScript console and debugger, DOM inspector, and so on.
 The browser talks to server using WebSockets,
 which modern browsers have built-in.
-
-@uref{https://libwebsockets.org/index.html,libwebsockets}.)
 @end table
 
 @subsubheading Back-end (command) options
 
 The @var{backend-arguments} are one of:
 @display
-[@code{--pty}|@code{--pipe}] [@var{command} @var{arg}...]
+[@code{--pty}|@code{--pipe}|@code{-e}] [@var{command} @var{arg}...]
 @code{--class} @var{classname} @var{arg}...
 @end display
 
@@ -343,7 +390,8 @@ place of the default @code{/bin/bash}.
 Specifically:
 
 @table @asis
-@item @code{--pty} [@var{command} @var{arg}...]
+@item @code{-e} [@var{command} @var{arg}...]
+@itemx @code{--pty} [@var{command} @var{arg}...]
 This is the default on Unix-like systems (MacOs, GNU/Linux, BSD).
 It runs @var{command} under a PTY.
 Communication is by default character-by-character, but
@@ -492,6 +540,7 @@ are specified in the HTML specification:
 This means supporting all the ``base'' functionality
 of xterm as implemented by terminal emulators that
 set @code{TERM} tp @code{xterm-256color}.
+At this point we're pretty close to that.
 
 Error recovery and state transitions should follow
 @uref{http://www.vt100.net/emu/dec_ansi_parser,this}.
@@ -536,11 +585,22 @@ Fix paste in line-editing mode.
 
 Think about how to do multi-line paste.
 
-@subheading Better stand-line terminal emulator
+@subsubheading Speed up line-breaking
 
-Should probably have a (hideable) top menubar (in additon to pop-up menu).
+While DomTerm is quite responsive, dumping a lot of output
+(such as @code{cat}'ing a large file) is very slow.
+The biggest problem is line-breaking: checking
+(in the @code{_breakText} procedure) whether a long-line needs to be wrapped.
+The problem is we call @code{Node.offsetLeft} too many times.
+This is expensive because it forces the browser to layout the
+DOM tree as it currently is - and then we add more elements,
+call @code{offsetLeft}, which forces the browser to do the whole thing again.
+The calls to @code{offsetLeft} need to be batched - @emph{after} we have
+inserted as many lines as possible.
 
-Allow switching styles.
+@subheading Improve standalone terminal emulator
+
+In @code{qtdomterm} add actions to load and update CSS stylesheets,
 
 Handle saving and truncating scrolled-out output.
 
@@ -557,10 +617,6 @@ Some toolkits to explore for integrated browser/application:
 A possible start is @uref{https://atom.io/packages/term2,term2}.
 @item
 @uref{http://nwjs.io/,NW.js} (formerly node-webkit).
-@item
-QtWebEngine seems promising for a general-purpose terminal emulator front-end:
-It supports WebSockets, tabs, remote debugging, is multi-platform,
-and is actively maintained.
 @item
 @uref{http://webkitgtk.org/,WebKitGtk+}
 @end itemize
@@ -597,7 +653,7 @@ delegating line-wrapping to DomTerm.
 @subheading Pretty-printing
 
 Add hooks for Lisp-style pretty-printing.  The idea is a pretty-printer
-woudl emit groups and "text blocks" and DomTerm would do line-breaking.
+would emit groups and "text blocks" and DomTerm would do line-breaking.
 Specifically, lines would be re-broken on window size change.
 
 @subsubheading Integrated pagination (like more/less)
@@ -1252,14 +1308,6 @@ and connects the two.
 This application would have an option to connect to an existing
 back-end session, supporting the functionality of GNU Screen.
 
-The default front-end (unless otherwise specified on the command line)
-is a custom web browser optimized for use as a terminal/console - for
-example it drops the URL bar, and instead automatically loads the
-terminal emulator web-app.  The front-end communicates with the backend using
-WebSockets. @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}
-seems like a promising base: It supports WebSockets, tabs, remote debugging,
-is multi-platform, and is actively maintained.
-
 The default backend would be a small WebSocket server that forks
 off a user process, by default using a PTY (when available), otherwise
 using pipes.
@@ -1301,23 +1349,6 @@ could be suitable for a JavaEE environment as it follows JSR-356.)
 
 (If using PTYs, which requires native code anyway, it may be better
 to use a server written in C or C++, such as
-
-@subheading Standalone terminal emulator as a Chrome application (in-progress)
-
-It is possible to start DomTerm as an actual
-@uref{https://developer.chrome.com/apps/,Chrome app}.
-This has working @code{paste} and the beginnings of a custom context-menu.
-However, it is not as convenient or robust.
-First you have to start up the server:
-@example
-make run-server
-@end example
-Then you have to start Chrome in a separate window:
-@example
-google-chrome --new-window --load-and-launch-app=/path/to/DomTerm/
-@end example
-
-(Help/advice for doing this better would be welcome.)
 
 @subsection Line vs character input modes
 
