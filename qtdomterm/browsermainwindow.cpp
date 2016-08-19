@@ -304,8 +304,8 @@ void BrowserMainWindow::setupMenu()
 #endif
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-    helpMenu->addAction(tr("About &Qt"), qApp, SLOT(aboutQt()));
-    helpMenu->addAction(tr("About &Demo Browser"), this, SLOT(slotAboutApplication()));
+    //helpMenu->addAction(tr("About &Qt"), qApp, SLOT(aboutQt()));
+    helpMenu->addAction(tr("About QtDomTerm"), this, SLOT(slotAboutApplication()));
 }
 
 void BrowserMainWindow::slotViewMenubar()
@@ -364,11 +364,9 @@ void BrowserMainWindow::slotAboutApplication()
 {
     QMessageBox::about(this, tr("About"), tr(
         "Version %1"
-        "<p>This demo demonstrates the facilities "
-        "of Qt WebEngine in action, providing an example "
-        "browser for you to experiment with.<p>"
-        "<p>Qt WebEngine is based on the Chromium open source project "
-        "developed at <a href=\"http://www.chromium.org/\">http://www.chromium.org/</a>."
+        "<p>QtDomTerm is a terminal emulator based on DomTerm and QtWebEngine. "
+        "<p>Copyright 2016 Per Bothner."
+        "<p>The DomTerm home page is <a href=\"http://domterm.org/\">http://domterm.org/</a>."
         ).arg(QCoreApplication::applicationVersion()));
 }
 

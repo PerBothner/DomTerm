@@ -193,9 +193,9 @@ BrowserApplication::BrowserApplication(int &argc, char **argv)
     , m_privateProfile(0)
     , m_privateBrowsing(false)
 {
-    QCoreApplication::setOrganizationName(QLatin1String("Qt"));
-    QCoreApplication::setApplicationName(QLatin1String("qtdomterm"));
-    QCoreApplication::setApplicationVersion(QLatin1String("0.1"));
+    QCoreApplication::setOrganizationName(QLatin1String("DomTerm"));
+    QCoreApplication::setApplicationName(QLatin1String("QtDomTerm"));
+    QCoreApplication::setApplicationVersion(QLatin1String(QTDOMTERM_VERSION));
     QString serverName = QCoreApplication::applicationName()
         + QString::fromLatin1(QT_VERSION_STR).remove('.') + QLatin1String("webengine");
 
