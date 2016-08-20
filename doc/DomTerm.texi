@@ -321,6 +321,18 @@ The @var{backend-arguments} specify which command is run and how it is run.
 
 The @var{frontend} is one of the following:
 @table @asis
+@item @code{--browser}
+@itemx @code{--browser=}@var{program}
+
+Creates a new window or tab in your preferred desktop browser.
+
+If @var{program} is specified, instead creates a window
+in the specified browser, where @var{program} is the name
+of a browser program that takes a single URL argument.
+
+The window is created after starting up a backend, and a WebSocket server
+for the browser to listen to.
+
 @item @code{--firefox}
 This is currently the default.
 The user interface is a “chrome-less” Firefox browser window, with
