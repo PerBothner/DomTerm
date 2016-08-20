@@ -17,9 +17,11 @@ case "$1" in
   "--help"|"-help")
   echo 'DomTerm terminal emulator.'
   echo 'With no arguments runs a shell (bash) using Firefox/XUL in a PTY.'
-  echo 'Usage: domterm [foreground-arguments] [--pty|--pipe] [command arg...]'
+  echo 'Usage: domterm [foreground-arguments] [-e|--pty|--pipe] [command arg...]'
   echo 'Run [command arg...] (by default bash) in a PTY.'
   echo 'The foregound-arguments control the UI to use:'
+  echo '--browser - create a window in your preferred browser'
+  echo '--browser[=COMMAND] - same, but used specified browser COMMAND'
   echo '--firefox - use FireFox/XUL [this is currently the default]'
   echo '--chrome - use the Google Chrome browser in --app mode'
   echo '--javafx - use JavaFX WebView'

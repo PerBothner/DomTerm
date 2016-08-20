@@ -1,9 +1,11 @@
 package org.domterm.websocket;
 
+import java.awt.Desktop;
 import java.io.*;
 import java.util.*;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.net.URI;
 
 import org.domterm.*;
 import org.domterm.util.StringBufferedWriter;
@@ -135,6 +137,8 @@ public class DomServer extends WebSocketServer {
         if (verbose > 0)
             WTDebug.println("onClose called");
         backendMap.remove(conn);
+        if (runBrowser >= 0)
+            System.exit(0);
     }
 
     @Override
@@ -212,9 +216,10 @@ public class DomServer extends WebSocketServer {
     // 1: run Firefox in -app mode
     // 2: run Chrome in --app mode
     // 2: run qtdomterm
-    static int runBrowser = 0;
+    static int runBrowser = -1;
     public static void main (String[] args) {
         char mode = ' ';
+        String browserCommand = null;
         domtermPath = System.getProperty("java.library.path");
         //int port = 8887; // 843 flash policy port
         int port = -1;
@@ -232,6 +237,11 @@ public class DomServer extends WebSocketServer {
                 }
             } else if (arg.startsWith("--domterm-path=")) {
                 domtermPath = arg.substring(15);
+            } else if (arg.equals("--browser")) {
+                runBrowser = 0;
+            } else if (arg.startsWith("--browser=")) {
+                runBrowser = 0;
+                browserCommand = arg.substring(10);
             } else if (arg.equals("--firefox")) {
                 runBrowser = 1;
             } else if (arg.equals("--chrome")) {
@@ -245,12 +255,23 @@ public class DomServer extends WebSocketServer {
         String[] backendArgs = new String[args.length-i];
         System.arraycopy(args, i, backendArgs, 0, backendArgs.length);
         if (port == -1)
-            port = runBrowser > 0 ? 0 : 8025;
+            port = runBrowser >= 0 ? 0 : 8025;
         try {
             DomServer s = new DomServer(port, backendArgs);
             s.start();
             port = s.getPort();
-            if (runBrowser == 1) { // --firefox
+            if (runBrowser == 0) { // desktop --browser
+                String href =
+                    "file://"+domtermPath
+                    +"/repl-client.html#ws=//localhost:"+port+"/";
+                URI uri = new URI(href);
+                if (browserCommand == null)
+                    Desktop.getDesktop().browse(uri);
+                else {
+                    Process process = Runtime.getRuntime()
+                        .exec(new String[] { browserCommand, href });
+                }
+            } else if (runBrowser == 1) { // --firefox
                 String firefoxCommand = "firefox";
                 String firefoxMac =
                     "/Applications/Firefox.app/Contents/MacOS/firefox";
@@ -261,7 +282,6 @@ public class DomServer extends WebSocketServer {
                                          domtermPath+"/xulapp/application.ini",
                                          "-wspath",
                                          "ws://localhost:"+port });
-                process.waitFor();
             } else if (runBrowser == 2) { // --chrome
                 String chromeCommand = "google-chrome";
                 String chromeBin = System.getenv("CHROME_BIN");
@@ -270,7 +290,7 @@ public class DomServer extends WebSocketServer {
                 String appArg = "--app=file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { chromeCommand, appArg });
-                process.waitFor();
+                //process.waitFor();
             } else if (runBrowser == 3) { // --qtdomterm
                 String command = domtermPath+"/bin/qtdomterm";
                 Process process = Runtime.getRuntime()
@@ -283,7 +303,12 @@ public class DomServer extends WebSocketServer {
                     new BufferedReader(new InputStreamReader(System.in));
                 System.out.print("Please press a key to stop the server.");
                 reader.readLine();
-                System.err.println("ready to stop");
+            }
+            if (runBrowser >= 0) {
+                Object monitor = new Object();
+                synchronized (monitor) {
+                    monitor.wait();
+                }
             }
             s.stop();
             System.exit(0);

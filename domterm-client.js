@@ -12,6 +12,8 @@ function connect(wspath) {
 function loadHandler(event) {
     var query = location.search;
     var ws = query.match(/ws=([^&]*)/);
+    if (! ws)
+        ws = location.hash.match(/ws=([^&]*)/);
     if (ws)
         connect("ws:"+ws[1]);
     else if (query.search(/wait/) < 0)
