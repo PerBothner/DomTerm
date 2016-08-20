@@ -68,6 +68,8 @@
 #include <QtUiTools/QUiLoader>
 #endif  //QT_NO_UITOOLS
 
+#include <QTextStream>
+#include <QIODevice>
 #include <QtCore/QDebug>
 #include <QtCore/QBuffer>
 #include <QtCore/QTimer>
@@ -312,7 +314,6 @@ void WebView::setPage(WebPage *_page)
         m_backend->setArguments(app->arguments());
         channel->registerObject(QStringLiteral("backend"), m_backend);
         page()->setWebChannel(channel);
-        //   m_backend->run();
     }
 }
 
@@ -321,8 +322,6 @@ void WebView::changeInputMode(QAction* action)
     QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
     if(!inputMode)
         qFatal("scrollPosition is NULL");
-    int index = inputMode->actions().indexOf(action);
-
     if (action != selectedInputMode) {
         selectedInputMode->setChecked(false);
         action->setChecked(true);

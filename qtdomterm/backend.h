@@ -21,6 +21,7 @@ public:
     ~Backend();
     void dowrite(const QString &text);
     void setInputMode(char mode);
+    void loadStylesheet(const QString& stylesheet, const QString& name);
 
    /**
      * Sets the command line arguments which the session's program will be passe
@@ -101,6 +102,7 @@ public slots:
     void processInputCharacters(const QString &text);
     void reportEvent(const QString &name, const QString &data);
     void setWindowSize(int nrows, int ncols, int pixw, int pixh);
+    void reloadStylesheet();
     void log(const QString& message);
 
     /**
@@ -127,6 +129,7 @@ public slots:
 private slots:
     void done(int);
     QString parseSimpleJsonString(QString str, int start, int end);
+    QString toJsonQuoted(QString str);
     void onReceiveBlock( const char * buffer, int len );
     KPtyDevice *pty() const;
 private:
@@ -144,7 +147,8 @@ private:
     QString        _userTitle;
 
     QString        _initialWorkingDir;
-    QString         _domtermVersion;
+    QString        _domtermVersion;
+    bool           _stylesheetLoaded;
 };
 
 #endif

@@ -128,7 +128,8 @@ void SettingsDialog::loadFromSettings()
 
     enableJavascript->setChecked(settings.value(QLatin1String("enableJavascript"), enableJavascript->isChecked()).toBool());
     enablePlugins->setChecked(settings.value(QLatin1String("enablePlugins"), enablePlugins->isChecked()).toBool());
-    userStyleSheet->setPlainText(settings.value(QLatin1String("userStyleSheet")).toString());
+    userStyleSheetFile->setText(settings.value(QLatin1String("userStyleSheetFile")).toString());
+    userStyleSheetRules->setPlainText(settings.value(QLatin1String("userStyleSheetRules")).toString());
     enableScrollAnimator->setChecked(settings.value(QLatin1String("enableScrollAnimator"), enableScrollAnimator->isChecked()).toBool());
     httpUserAgent->setText(settings.value(QLatin1String("httpUserAgent"), httpUserAgent->text()).toString());
     httpAcceptLanguage->setText(settings.value(QLatin1String("httpAcceptLanguage"), httpAcceptLanguage->text()).toString());
@@ -143,16 +144,6 @@ void SettingsDialog::loadFromSettings()
     QString pdataPath = settings.value(QLatin1String("persistentDataPath"), persistentDataPath->text()).toString();
     persistentDataPath->setText(pdataPath);
 
-    settings.endGroup();
-
-    // Proxy
-    settings.beginGroup(QLatin1String("proxy"));
-    proxySupport->setChecked(settings.value(QLatin1String("enabled"), false).toBool());
-    proxyType->setCurrentIndex(settings.value(QLatin1String("type"), 0).toInt());
-    proxyHostName->setText(settings.value(QLatin1String("hostName")).toString());
-    proxyPort->setValue(settings.value(QLatin1String("port"), 1080).toInt());
-    proxyUserName->setText(settings.value(QLatin1String("userName")).toString());
-    proxyPassword->setText(settings.value(QLatin1String("password")).toString());
     settings.endGroup();
 }
 
@@ -188,7 +179,8 @@ void SettingsDialog::saveToSettings()
     settings.setValue(QLatin1String("enableJavascript"), enableJavascript->isChecked());
     settings.setValue(QLatin1String("enablePlugins"), enablePlugins->isChecked());
     settings.setValue(QLatin1String("enableScrollAnimator"), enableScrollAnimator->isChecked());
-    settings.setValue(QLatin1String("userStyleSheet"), userStyleSheet->toPlainText());
+    settings.setValue(QLatin1String("userStyleSheetFile"), userStyleSheetFile->text());
+    settings.setValue(QLatin1String("userStyleSheetRules"), userStyleSheetRules->toPlainText());
     settings.setValue(QLatin1String("httpUserAgent"), httpUserAgent->text());
     settings.setValue(QLatin1String("httpAcceptLanguage"), httpAcceptLanguage->text());
     settings.endGroup();
@@ -202,16 +194,6 @@ void SettingsDialog::saveToSettings()
     QString pdataPath = persistentDataPath->text();
     settings.setValue(QLatin1String("persistentDataPath"), pdataPath);
 
-    settings.endGroup();
-
-    // proxy
-    settings.beginGroup(QLatin1String("proxy"));
-    settings.setValue(QLatin1String("enabled"), proxySupport->isChecked());
-    settings.setValue(QLatin1String("type"), proxyType->currentIndex());
-    settings.setValue(QLatin1String("hostName"), proxyHostName->text());
-    settings.setValue(QLatin1String("port"), proxyPort->text());
-    settings.setValue(QLatin1String("userName"), proxyUserName->text());
-    settings.setValue(QLatin1String("password"), proxyPassword->text());
     settings.endGroup();
 
     BrowserApplication::instance()->loadSettings();

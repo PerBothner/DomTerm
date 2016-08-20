@@ -51,12 +51,34 @@
 #include "browserapplication.h"
 
 #include <qtwebenginewidgetsglobal.h>
+#include <string.h>
+#include <getopt.h>
 
 int main(int argc, char **argv)
 {
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     Q_INIT_RESOURCE(data);
-    BrowserApplication application(argc, argv);
+
+    // The QApplication constructor recognizes and removes a --stylesheet
+    // option, before parseArgs can see it.  So we pre-extract it.
+    char *styleSheet = NULL;
+    for (;;) {
+        if (optind < argc && strcmp(argv[optind], "-stylesheet") == 0)
+            argv[optind] = "--stylesheet";
+        int next_option =
+            getopt_long(argc, argv, short_options, long_options, NULL);
+        if (next_option < 0)
+            break;
+        if (next_option == 'S') {
+            styleSheet = optarg;
+            // Let QApplication see a stylesheet specified with -S.
+            if (strcmp(argv[optind-2], "-S") == 0)
+                argv[optind-2] = "--stylesheet";
+        }
+    }
+    optind = 1;
+
+    BrowserApplication application(argc, argv, styleSheet);
     if (!application.isTheOnlyBrowser())
         return 0;
 

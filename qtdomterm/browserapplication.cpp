@@ -77,12 +77,13 @@
 #include <QWebEngineSettings>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
+#include <QFileSystemWatcher>
 
 #include <QtCore/QDebug>
 
 const char* QTDOMTERM_VERSION = "0.2";
 
-const char* const short_options = "+vhw:e:c:";
+const char* const short_options = "+vhw:e:c:S:";
 
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
@@ -90,7 +91,8 @@ const struct option long_options[] = {
     {"workdir", 1, NULL, 'w'},
     {"execute", 1, NULL, 'e'},
     {"connect", 1, NULL, 'c'},
-    // The foolowing option is handled internally in QtWebEngine.
+    {"stylesheet", 1, NULL, 'S'},
+    // The following option is handled internally in QtWebEngine.
     // We just need to pass it through without complaint to the QApplication.
     {"remote-debugging-port", 1, NULL, 0},
     {NULL,      0, NULL,  0}
@@ -106,6 +108,7 @@ void print_usage_and_exit(int code)
     puts("  -h,  --help               Print this help");
     puts("  -v,  --version            Prints application version and exits");
     puts("  -w,  --workdir <dir>      Start session with specified work directory");
+    puts("  -S,  --stylesheet <name>  Name of extra CSS stylesheet file");
     puts("\nHomepage: <https://domterm.org>");
     exit(code);
 }
@@ -116,8 +119,9 @@ void print_version_and_exit(int code=0)
     exit(code);
 }
 
-void parse_args(int argc, char* argv[], QString& workdir, QString & shell_command, QStringList& arguments, QString& wsconnect)
+void BrowserApplication::parseArgs(int argc, char* argv[])
 {
+    QStringList args = arguments();
     for (;;) {
         int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
         switch(next_option) {
@@ -126,10 +130,14 @@ void parse_args(int argc, char* argv[], QString& workdir, QString & shell_comman
             case 'h':
                 print_usage_and_exit(0);
             case 'w':
-                workdir = QString(optarg);
+                m_workdir = QString(optarg);
                 break;
             case 'c':
-                wsconnect = QString(optarg);
+                m_wsconnect = QString(optarg);
+                break;
+            case 'S':
+                // Shouldn't happen - main turns -S to --stylesheet,
+                // and the QApplication contructor removes the latter.
                 break;
             case 'e':
                 optind--;
@@ -142,56 +150,23 @@ void parse_args(int argc, char* argv[], QString& workdir, QString & shell_comman
     }
  post_args:
     if (optind < argc) {
-        shell_command = QString(argv[optind]);
-        arguments += shell_command;
+        m_program = QString(argv[optind]);
+        m_arguments.clear();
+        m_arguments += m_program;
         while (++optind < argc) {
-            arguments += QString(argv[optind]);
+            m_arguments += QString(argv[optind]);
         }
     }
 }
 
 QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
 
-static void setUserStyleSheet(QWebEngineProfile *profile, const QString &styleSheet, BrowserMainWindow *mainWindow = 0)
-{
-    Q_ASSERT(profile);
-    QString scriptName(QStringLiteral("userStyleSheet"));
-    QWebEngineScript script;
-    QList<QWebEngineScript> styleSheets = profile->scripts()->findScripts(scriptName);
-    if (!styleSheets.isEmpty())
-        script = styleSheets.first();
-    Q_FOREACH (const QWebEngineScript &s, styleSheets)
-        profile->scripts()->remove(s);
-
-    if (script.isNull()) {
-        script.setName(scriptName);
-        script.setInjectionPoint(QWebEngineScript::DocumentReady);
-        script.setRunsOnSubFrames(true);
-        script.setWorldId(QWebEngineScript::ApplicationWorld);
-    }
-    QString source = QString::fromLatin1("(function() {"\
-                                         "var css = document.getElementById(\"_qt_testBrowser_userStyleSheet\");"\
-                                         "if (css == undefined) {"\
-                                         "    css = document.createElement(\"style\");"\
-                                         "    css.type = \"text/css\";"\
-                                         "    css.id = \"_qt_testBrowser_userStyleSheet\";"\
-                                         "    document.head.appendChild(css);"\
-                                         "}"\
-                                         "css.innerText = \"%1\";"\
-                                         "})()").arg(styleSheet);
-    script.setSourceCode(source);
-    profile->scripts()->insert(script);
-    // run the script on the already loaded views
-    // this has to be deferred as it could mess with the storage initialization on startup
-    if (mainWindow)
-        QMetaObject::invokeMethod(mainWindow, "runScriptOnOpenViews", Qt::QueuedConnection, Q_ARG(QString, source));
-}
-
-BrowserApplication::BrowserApplication(int &argc, char **argv)
+BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet)
     : QApplication(argc, argv)
     , m_localServer(0)
     , m_privateProfile(0)
     , m_privateBrowsing(false)
+    , sawStyleSheetCommandLineOption(false)
 {
     QCoreApplication::setOrganizationName(QLatin1String("DomTerm"));
     QCoreApplication::setApplicationName(QLatin1String("QtDomTerm"));
@@ -199,7 +174,14 @@ BrowserApplication::BrowserApplication(int &argc, char **argv)
     QString serverName = QCoreApplication::applicationName()
         + QString::fromLatin1(QT_VERSION_STR).remove('.') + QLatin1String("webengine");
 
-    parse_args(argc, argv, m_workdir, m_program, m_arguments, m_wsconnect);
+    if (styleSheet != NULL) {
+        m_stylesheetFilename = QString(styleSheet);
+        sawStyleSheetCommandLineOption = true;
+    }
+    m_fileSystemWatcher = new QFileSystemWatcher(this);
+
+    parseArgs(argc, argv);
+
     QLocalSocket socket;
     socket.connectToServer(serverName);
     if (socket.waitForConnected(500)) {
@@ -327,26 +309,16 @@ void BrowserApplication::loadSettings()
 
     defaultSettings->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
 
-    QString css = settings.value(QLatin1String("userStyleSheet")).toString();
-    setUserStyleSheet(defaultProfile, css, mainWindow());
+    if (! sawStyleSheetCommandLineOption) {
+        m_stylesheetFilename = settings.value(QLatin1String("userStyleSheetFile")).toString();
+        m_stylesheetRules = settings.value(QLatin1String("userStyleSheetRules")).toString();
+        emit reloadStyleSheet();
+    }
+    if (! m_stylesheetFilename.isEmpty())
+        m_fileSystemWatcher->addPath(m_stylesheetFilename);
 
     defaultProfile->setHttpUserAgent(settings.value(QLatin1String("httpUserAgent")).toString());
     defaultProfile->setHttpAcceptLanguage(settings.value(QLatin1String("httpAcceptLanguage")).toString());
-    /*
-    switch (settings.value(QLatin1String("faviconDownloadMode"), 1).toInt()) {
-    case 0:
-        defaultSettings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, false);
-        break;
-    case 1:
-        defaultSettings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, true);
-        defaultSettings->setAttribute(QWebEngineSettings::TouchIconsEnabled, false);
-        break;
-    case 2:
-        defaultSettings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, true);
-        defaultSettings->setAttribute(QWebEngineSettings::TouchIconsEnabled, true);
-        break;
-    }
-    */
 
     settings.endGroup();
 

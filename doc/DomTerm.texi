@@ -1056,6 +1056,7 @@ If necessary, create a new temporary stylesheet,
 and add the specified JSON-quoted rule to the end of it.
 
 @item @code{\e]95;"} @var{name} @code{","} @var{styles} @code{"\a"}
+@itemx @code{\e]96;"} @var{name} @code{","} @var{styles} @code{"\a"}
 
 Create or replace a stylesheet with the given @var{name}.
 If there is a @code{<style>} with a @code{name} attribute equal to @var{name},
@@ -1064,8 +1065,10 @@ The @var{styles} is the literal contents of the new stylesheet;
 it becomes the child of the @code{<style>} element (as a single text node).
 Both @var{name} and @var{styles} are strings in quoted (JSON) format.
 
-Result to client: @code{"\x9D"} @var{index} @code{"\n"} where
-@var{index} is the index of the replaced or created stylesheet.
+If the code is @code{96}, no response is sent.
+If the code is @code{95}, the result to the client is
+@code{"\x9D"} @var{index} @code{"\n"} where @var{index}
+is the index of the replaced or created stylesheet.
 
 @end table
 

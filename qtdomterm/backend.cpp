@@ -28,6 +28,7 @@
 #include "backend.h"
 #include "Pty.h"
 #include "kptyprocess.h"
+#include "browserapplication.h"
 
 #include <termios.h>
 
@@ -37,6 +38,7 @@
 #include <QtDebug>
 #include <QDesktopServices>
 #include <QTimer>
+#include <QFileSystemWatcher>
 
 Backend::Backend(QObject *parent)
   :  QObject(parent),
@@ -115,8 +117,44 @@ void Backend::setInputMode(char mode)
     dowrite("\033[80;" + QString::number((int) mode) + "u");
 }
 
+void Backend::loadStylesheet(const QString& stylesheet, const QString& name)
+{
+    dowrite("\033]96;"+toJsonQuoted(name)
+            +","+toJsonQuoted(stylesheet)+"\007");
+}
+
+void Backend::reloadStylesheet()
+{
+    QString name = QString::fromLatin1("preferences");
+    QString stylesheetFilename =
+        BrowserApplication::instance()->stylesheetFilename();
+    QString stylesheetExtraRules =
+        BrowserApplication::instance()->stylesheetRules();
+    QString contents;
+    if (! stylesheetFilename.isEmpty()) {
+        QFile file(stylesheetFilename);
+        if (file.open(QFile::ReadOnly | QFile::Text)) {
+            QTextStream text(&file);
+            contents = text.readAll();
+        }
+    }
+    contents += stylesheetExtraRules;
+    if (! contents.isEmpty() || _stylesheetLoaded) {
+        loadStylesheet(contents, name);
+    }
+    _stylesheetLoaded = ! contents.isEmpty();
+}
+
 void Backend::run()
 {
+    reloadStylesheet();
+    connect(BrowserApplication::instance()->fileSystemWatcher(),
+            &QFileSystemWatcher::fileChanged,
+            this, &Backend::reloadStylesheet);
+    connect(BrowserApplication::instance(),
+            &BrowserApplication::reloadStyleSheet,
+            this, &Backend::reloadStylesheet);
+
     if (!_initialWorkingDir.isEmpty()) {
         _shellProcess->setWorkingDirectory(_initialWorkingDir);
     } else {
@@ -144,7 +182,7 @@ void Backend::run()
    emit started();
 }
 
-void Backend::setUserTitle( int what, const QString & caption )
+void Backend::setUserTitle(int /*what*/, const QString & /*caption*/)
 {
 #if 0
     //set to true if anything is actually changed (eg. old _nameTitle != new _nameTitle )
@@ -327,7 +365,11 @@ void Backend::reportEvent(const QString &name, const QString &data)
 }
 void Backend::log(const QString& message)
 {
-    //fprintf(stderr, "log called %s\n", message.toUtf8().constData()); fflush(stderr);
+    if (false) {
+        //message = toJsonQuoted(message);
+        fprintf(stderr, "log called %s\n", message.toUtf8().constData());
+        fflush(stderr);
+    }
 }
 
 void Backend::setWindowSize(int nrows, int ncols, int /*pixw*/, int /*pixh*/)
@@ -396,5 +438,39 @@ QString Backend::parseSimpleJsonString(QString str, int start, int end)
         }
         buf += ch;
     }
+    return buf;
+}
+
+QString Backend::toJsonQuoted(QString str)
+{
+    QString buf;
+    int len = str.length();
+    buf += '\"';
+    for (int i = 0;  i < len;  i++) {
+        QChar qch = str[i];
+        int ch = qch.unicode();
+        if (ch == '\n')
+           buf += "\\n";
+        else if (ch == '\r')
+            buf += "\\r";
+        else if (ch == '\t')
+            buf += "\\t";
+        else if (ch == '\b')
+            buf += "\\b";
+        else if (ch < ' ' || ch >= 127) {
+            buf += "\\u";
+            QString hex = QString::number(ch, 16);
+            int slen = hex.length();
+            if (slen == 1) buf += "000";
+            else if (slen == 2) buf += "00";
+            else if (slen == 3) buf += "0";
+            buf += hex;
+        } else {
+            if (ch == '\"' || ch == '\\')
+                buf += '\\';
+            buf += qch;
+        }
+    }
+    buf += '\"';
     return buf;
 }

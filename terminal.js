@@ -3104,9 +3104,11 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this.measureWindow();
         break;
     case 95:
+    case 96:
         var args = JSON.parse("["+text+"]");
         var r = this.loadStyleSheet(args[0], args[1]);
-        this.processResponseCharacters("\x9D" + r + "\n");
+        if (code == 95)
+            this.processResponseCharacters("\x9D" + r + "\n");
         this.measureWindow();
         break;
     default:

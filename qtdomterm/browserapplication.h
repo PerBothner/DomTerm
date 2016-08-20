@@ -64,7 +64,11 @@ QT_BEGIN_NAMESPACE
 class QLocalServer;
 class QNetworkAccessManager;
 class QWebEngineProfile;
+class QFileSystemWatcher;
 QT_END_NAMESPACE
+
+extern const char* const short_options;
+extern const struct option long_options[];
 
 class BrowserMainWindow;
 class CookieJar;
@@ -73,7 +77,7 @@ class BrowserApplication : public QApplication
     Q_OBJECT
 
 public:
-    BrowserApplication(int &argc, char **argv);
+    BrowserApplication(int &argc, char **argv, char *styleSheet);
     ~BrowserApplication();
     static BrowserApplication *instance();
     void loadSettings();
@@ -83,6 +87,7 @@ public:
     QList<BrowserMainWindow*> mainWindows();
     QIcon icon(const QUrl &url) const;
     QIcon defaultIcon() const;
+    QFileSystemWatcher* fileSystemWatcher() { return m_fileSystemWatcher; }
 
     void saveSession();
     bool canRestoreSession() const;
@@ -103,11 +108,14 @@ public slots:
     void setPrivateBrowsing(bool);
     const QString program() { return m_program; }
     QStringList arguments() { return m_arguments; }
+    const QString stylesheetFilename() { return m_stylesheetFilename; }
+    const QString stylesheetRules() { return m_stylesheetRules; }
     const QString wsconnect() const { return m_wsconnect; }
     bool should_connect() const { return ! m_wsconnect.isEmpty(); }
 
 signals:
     void privateBrowsingChanged(bool);
+    void reloadStyleSheet();
 
 private slots:
     void postLaunch();
@@ -117,7 +125,7 @@ private slots:
 private:
     void clean();
     void installTranslator(const QString &name);
-
+    void parseArgs(int argc, char* argv[]);
     static QNetworkAccessManager *s_networkAccessManager;
 
     QList<QPointer<BrowserMainWindow> > m_mainWindows;
@@ -133,7 +141,10 @@ private:
     QString m_program;
     QStringList m_arguments;
     QString m_wsconnect;
-
+    QString m_stylesheetFilename;
+    QString m_stylesheetRules;
+    QFileSystemWatcher *m_fileSystemWatcher;
+    bool sawStyleSheetCommandLineOption;
 };
 
 #endif // BROWSERAPPLICATION_H
