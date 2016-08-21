@@ -51,7 +51,7 @@ esac
 
 
 case "${with_qtwebengine}" in
-  yes | "")
+  yes)
     WITH_QTWEBENGINE_TRUE=''
     ;;
   *)
@@ -118,7 +118,7 @@ case "${enable_pty}" in
     else ENABLE_PTY_TRUE=''
     fi
     ;;
-    *) ;;
+  *) ;;
 esac
 
 if test -z "${JAVA_HOME}"
