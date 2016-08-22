@@ -2954,6 +2954,23 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
             if (i + 1 == len)
                 break loop; // invalid
             ch = str.charCodeAt(i++);
+            if (ch == 33 && i + 1 < len
+                && str.charCodeAt(i) == 45 && str.charCodeAt(i+1) == 45) {
+                // Saw comment start "<!--". Look for "-->".
+                i += 2;
+                for (; ; i++) {
+                    if (i + 2 >= len)
+                        break loop; // invalid
+                    if (str.charCodeAt(i) == 45
+                        && str.charCodeAt(i+1) == 45
+                        && str.charCodeAt(i+2) == 62) {
+                        i += 3;
+                        ok = i;
+                        break;
+                    }
+                }
+                break;
+            }
             var end = ch == 47; // '/';
             if (end)
                 ch = str.charCodeAt(i++);
