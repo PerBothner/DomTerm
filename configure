@@ -3167,14 +3167,17 @@ case "${enable_pty}" in
   *) ;;
 esac
 
-if test -z "${JAVA_HOME}"
+if test -z "${WITH_JAVA_TRUE}"
 then
-  if test -x /usr/libexec/java_home
-  then JAVA_HOME=`/usr/libexec/java_home`
-  else
-    javac_path=`command -v javac`
-    if test -n "${javac_path}"
-    then JAVA_HOME=`readlink -f $javac_path | sed -e 's#/bin/javac##'`
+  if test '(' -z "${JAVA_HOME}" ')' -o '(' '!' -f "${JAVA_HOME}/bin/javac" ')'
+  then
+    if test -x /usr/libexec/java_home
+    then JAVA_HOME=`/usr/libexec/java_home`
+    else
+      javac_path=`command -v javac`
+      if test -n "${javac_path}"
+      then JAVA_HOME=`readlink -f $javac_path | sed -e 's#/bin/javac##'`
+      fi
     fi
   fi
 fi
