@@ -76,6 +76,9 @@ function DomTerm(name, topNode) {
     // Generated named have the format:  name + "__" + something.
     this.name = name;
 
+    this.windowName = null;
+    this.iconName = null;
+    
     // Input lines that have not been processed yet.
     // In some modes we support enhanced type-ahead: Input lines are queued
     // up and only released when requested.  This allows output from an
@@ -1337,6 +1340,9 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
         this.history = new Array();
 
     this.topNode = topNode;
+    var name = topNode.name;
+    if (name)
+        this.setSessionName(name);
     var helperNode = this._createPreNode();
     helperNode.setAttribute("id", this.makeId("helper"));
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
@@ -2714,9 +2720,49 @@ DomTerm.prototype.handleLink = function(event, href) {
     this.reportEvent("ALINK", JSON.stringify(href));
 };
 
+// Set the "session name" which is the "name" attribute of the toplevel div.
+// It can be used in stylesheets as well as the window title.
+DomTerm.prototype.setSessionName = function(title) {
+    this.topNode.setAttribute("name", title);;
+}
+
 DomTerm.prototype.setWindowTitle = function(title, option) {
-    document.title = title;
+    switch (option) {
+    case 0:
+        this.windowName = title;
+        this.iconName = title;
+        break;
+    case 1:
+        this.iconName = title;
+        break;
+    case 2:        
+        this.windowName = title;
+        break;
+    case 30:
+        this.setSessionName(title);
+        break;
+    }
+    this.updateWindowTitle(this.formatWindowTitle());
 };
+
+DomTerm.prototype.formatWindowTitle = function() {
+    var str = this.windowName ? this.windowName
+        : this.iconName ? this.iconName
+        : "";
+    var sessionName = this.topNode.getAttribute("name");
+    if (! sessionName)
+        sessionName = this.name;
+    if (sessionName) {
+        if (str)
+            str += " ";
+        str += "[" + sessionName + "]";
+    }
+    return str;
+}
+
+DomTerm.prototype.updateWindowTitle = function(str) {
+    document.title = str;
+}
 
 DomTerm.prototype.resetTerminal = function(full, saved) {
     // Corresponds to xterm's ReallyReset function
@@ -3076,6 +3122,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 0:
     case 1:
     case 2:
+    case 30:
         this.setWindowTitle(text, code);
         break;
     case 72:

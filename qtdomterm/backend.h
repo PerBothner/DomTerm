@@ -21,6 +21,8 @@ public:
     ~Backend();
     void dowrite(const QString &text);
     void setInputMode(char mode);
+    void setSessionName(const QString& name);
+    void loadSessionName();
     void loadStylesheet(const QString& stylesheet, const QString& name);
 
    /**
@@ -71,14 +73,6 @@ tle
    /** Sends the specified @p signal to the terminal process. */
     bool sendSignal(int signal);
 
-    /**
-     * Specifies whether to close the session automatically when the terminal
-     * process terminates.
-     */
-    void setAutoClose(bool b) {
-        _autoClose = b;
-    }
-
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
 
@@ -90,9 +84,6 @@ signals:
      * Emitted when the terminal process exits.
      */
     void finished();
-
-    /** Emitted when the session's title has changed. */
-    void titleChanged(); // FIXME currently not used
 
     /*!
         This signal is emitted from the C++ side and the text displayed on the HTML client side.
@@ -138,7 +129,6 @@ private:
     QStringList    _arguments;
 
     QStringList    _environment;
-    bool           _autoClose;
     bool           _wantedClose;
     int            _sessionId;
 

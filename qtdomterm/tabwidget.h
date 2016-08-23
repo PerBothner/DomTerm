@@ -162,7 +162,7 @@ signals:
     void lastTabClosed();
 
     // current tab signals
-    void setCurrentTitle(const QString &url);
+    void setCurrentTitle(const QString &title);
     void linkHovered(const QString &link);
     void loadProgress(int progress);
     void geometryChangeRequested(const QRect &geometry);
@@ -217,7 +217,6 @@ private slots:
     void webViewLoadStarted();
     void webViewIconChanged(const QIcon &icon);
     void webViewTitleChanged(const QString &title);
-    void webViewUrlChanged(const QUrl &url);
     void windowCloseRequested();
     void moveTab(int fromIndex, int toIndex);
     void fullScreenRequested(QWebEngineFullScreenRequest request);

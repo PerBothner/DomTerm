@@ -264,7 +264,15 @@ The @code{qtdomterm} executable has no external dependencies
 The core of DomTerm is the JavaScript @code{terminal.js},
 but we also provides a few wrappers and applications that make use of it.
 
-@subheading The qtdomterm terminal emulator
+@menu
+* qtdomterm application::
+* domterm script::
+* dtstyle - Changing styles::
+* Utility scripts::
+@end menu
+
+@node qtdomterm appliction
+@section The qtdomterm terminal emulator
 
 You start and use @code{qtdomterm} just like other
 terminal emulators such as @code{xterm}.
@@ -295,6 +303,11 @@ This is one way to run commands on a remote server.
 Print a help message with options, and then exits.
 @item @code{--version}
 Print the version number, and then exits.
+@item @code{--stylesheet} @var{file}
+@itemx @code{-S} @var{file}
+Specify the name of a CSS stylesheet file.
+This file is used to style @emph{both} the DomTerm elements
+and the Qt user interface ``chrome''.  See below.
 @item @code{--remote-debugging-port=@var{debug-port}}
 Allow @uref{http://doc.qt.io/qt-5/qtwebengine-debugging.html,remote debugging}
 (using a Chromium-based browser, such as Google Chrome).
@@ -302,7 +315,54 @@ This is useful for debugging DomTerm itself, as well as any
 inspecting any unusual HTML, CSS, or JavaScript you might throw at it.
 @end table
 
-@subheading The domterm terminal emulator command
+@subheading Changing styles
+
+If you select @code{Edit} / @code{Preferences} / @code{Appearance} you can
+select a CSS stylesheet file, as well as additional style rules.
+This can be used to customize the appears of the terminal window.
+These preferences are saved.  If the file changes, it is automatically reloaded.
+
+The command-line option @code{--stylesheet} overrides the
+preferences (both the stylesheet file and the additional rules),
+which are ignored.
+The specified stylesheet is also used for Qt widget ``chrome'' - i.e.
+not the contents of the terminal window, but everything else.
+
+Suppose we start qtdomterm with the option @code{--stylesheet=mystyles.css}
+abd the file @code{mystyles.css} contains:
+
+@example
+div.domterm @{ background-color: #FEE @}
+div.domterm span[std="input"] @{ background-color: #DDF @}
+QMenu @{ color: green; @}
+@end example
+
+The two @code{div.domterm} rules apply to the DomTerm window.
+The first rule sets the general background to a light pink,
+while the second rule sets to that to input lines to a link blue.
+The third line line applies to QMenu widgets used in the
+user interfaces: It specifies to use green for menu text.
+See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
+
+@subheading Session names and session-specific styles
+
+Each session has a name, which by default has the form @code{"domterm-@var{N}"}
+where @var{N} is an integer.  You can also override it with an escape sequence.
+The session name is usually shown in the window title bar,
+in the format @code{"@var{window-title} [@var{session-name}]"}.
+The session name is used to set the @code{name}
+attribute of the top domterm element,
+so you can use it to select differnt rules for different sessions.
+For example the following selects different background colors.
+
+@example
+div.domterm @{ background-color: #FFE @}
+div.domterm[name="domterm-1"] @{ background-color: #FEE @}
+div.domterm[name="domterm-2"] @{ background-color: #EEF @}
+@end example
+
+@node domterm script
+@section The domterm terminal emulator command
 
 The @code{domterm} script (in the @code{bin} directory) is a convenient
 way to start up a standalone terminal emulator.
@@ -426,7 +486,8 @@ CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}.
 
 @end table
 
-@subheading dtstyle - Changing styles
+@node dtstyle - Changing styles
+@section dtstyle - Changing styles
 
 The @code{dtstyle} command is useful for managing and
 modifying the currently active stylesheets.
@@ -509,7 +570,8 @@ $ dtstyle --disable 2
 
 @end table
 
-@subheading Utilities
+@node Utility scripts
+@section Utility scripts
 
 @subsubheading hcat: Print HTML
 
@@ -931,6 +993,20 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 Erase the scrollback buffer (i.e. any lines above the home line).
 (This is an xterm feature.)
 
+@item @code{"\e]30;" @var{name} "\a"}
+Sets the ``session name'' to @var{name}, which is shown in the window title.
+Specifically sets the @code{name} attribute of the top-level
+domterm @code{<div>} node to @var{name}.  This can be used
+to enable stylesheet rules to only apply to specfic DomTerm windows.
+If an active CSS stylesheet contains:
+
+@example
+div.domterm[name="@var{name}"] @{ @var{rules} @}
+@end example
+
+then the @var{rules} are only active for a DomTerm element whose
+session name is @var{name}.
+
 @item @code{"\e]72;" @var{html-text} "\a"}
 Insert HTML text.
 
@@ -1235,8 +1311,17 @@ replace the current DomTerm page.)
 @defun setWindowTitle (title, option)
 Set the title of the containing window.
 Called by DomTerm when it sees certain @code{xterm}-style escape sequences.
-The @var{option} controls whether the icon name should be set;
-it is currently ignored.
+Calls @code{updateWindowTitle(formatWindowTitle())}.
+@end defun
+
+@defun formatWindowTitle ()
+Returns a suitable string for a window title,
+based on various properies.
+@end defun
+
+@defun updateWindowTitle (title)
+Actualy set the window title - which is usually the
+reuslt of @code{formatWindowTitle()}.
 @end defun
 
 @defun elementInfo (tag, parents)

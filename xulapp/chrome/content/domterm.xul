@@ -56,9 +56,9 @@
         var wspath = cmdLine.handleFlagWithParam("wspath", false);
         getDomTermWindow().connect(wspath);
         var dt = getDomTermObject();
-        dt.setWindowTitle = function(title, option) {
+        dt.updateWindowTitle = function(title) {
             document.title = title;
-        };
+            };
         dt.close = function() { doQuit(); }
     }
     function getDomTermWindow() {

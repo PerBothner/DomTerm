@@ -15,6 +15,8 @@ public abstract class Backend {
     public int verbosity = 0;
 
     public String versionInfo;
+    static int counter;
+    static synchronized int incrementCounter() { return ++counter; }
 
     public char lineEditingMode = 'a';
     protected void sendInputMode(char mode) throws Exception {
@@ -23,6 +25,15 @@ public abstract class Backend {
 
     protected void setAutomaticNewline(boolean v) throws Exception {
         termWriter.write(v ? "\033[20h" : "\033[20l");
+    }
+    public void sendSessionName() throws Exception {
+        sendSessionName(generateSessionName());
+    }
+    protected void sendSessionName(String name) throws Exception {
+        termWriter.write("\033]30;"+name+"\007");
+    }
+    protected String generateSessionName() {
+        return "domterm-"+incrementCounter();
     }
 
     public boolean isCanonicalMode() { return true; }
@@ -40,7 +51,7 @@ public abstract class Backend {
                     termWriter.write("\033]"+cmd+";"+str+"\007");
                 } catch (IOException ex) {
                     if (verbosity > 0)
-                        System.err.println("PtyBackend caught "+ex);        
+                        System.err.println("Backend caught "+ex);        
                 }
             } else {
                 processInputCharacters(kstr);

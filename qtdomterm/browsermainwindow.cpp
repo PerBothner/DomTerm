@@ -108,8 +108,8 @@ BrowserMainWindow::BrowserMainWindow(QWidget *parent, Qt::WindowFlags flags)
 
     connect(m_tabWidget, SIGNAL(loadPage(QString)),
         this, SLOT(loadPage(QString)));
-    connect(m_tabWidget, SIGNAL(setCurrentTitle(QString)),
-        this, SLOT(slotUpdateWindowTitle(QString)));
+    connect(m_tabWidget, &TabWidget::setCurrentTitle,
+            this, &BrowserMainWindow::slotUpdateWindowTitle);
     connect(m_tabWidget, SIGNAL(geometryChangeRequested(QRect)),
             this, SLOT(geometryChangeRequested(QRect)));
     connect(m_tabWidget, SIGNAL(menuBarVisibilityChangeRequested(bool)),
@@ -352,11 +352,7 @@ void BrowserMainWindow::slotUpdateWindowTitle(const QString &title)
     if (title.isEmpty()) {
         setWindowTitle(tr("QtDomTerm"));
     } else {
-#if defined(Q_OS_OSX)
         setWindowTitle(title);
-#else
-        setWindowTitle(tr("%1 - QtDomTerm", "Page title and Browser name").arg(title));
-#endif
     }
 }
 

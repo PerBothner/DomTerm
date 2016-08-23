@@ -131,7 +131,6 @@ public:
         m_view->setFocus();
 
         connect(m_view, &WebView::titleChanged, this, &QWidget::setWindowTitle);
-        connect(m_view, &WebView::urlChanged, this, &PopupWindow::setUrl);
         connect(page(), &WebPage::geometryChangeRequested, this, &PopupWindow::adjustGeometry);
         connect(page(), &WebPage::windowCloseRequested, this, &QWidget::close);
     }
@@ -314,6 +313,7 @@ void WebView::setPage(WebPage *_page)
         m_backend->setArguments(app->arguments());
         channel->registerObject(QStringLiteral("backend"), m_backend);
         page()->setWebChannel(channel);
+        m_backend->setSessionName(app->generateSessionName());
     }
 }
 

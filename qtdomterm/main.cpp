@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     char *styleSheet = NULL;
     for (;;) {
         if (optind < argc && strcmp(argv[optind], "-stylesheet") == 0)
-            argv[optind] = "--stylesheet";
+          argv[optind] = (char*) "--stylesheet";
         int next_option =
             getopt_long(argc, argv, short_options, long_options, NULL);
         if (next_option < 0)
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
             styleSheet = optarg;
             // Let QApplication see a stylesheet specified with -S.
             if (strcmp(argv[optind-2], "-S") == 0)
-                argv[optind-2] = "--stylesheet";
+                argv[optind-2] = (char*) "--stylesheet";
         }
     }
     optind = 1;

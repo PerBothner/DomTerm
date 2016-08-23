@@ -451,8 +451,6 @@ WebView *TabWidget::newTab(bool makeCurrent)
             this, SLOT(webViewLoadStarted()));
     connect(newWebView, SIGNAL(titleChanged(QString)),
             this, SLOT(webViewTitleChanged(QString)));
-    connect(newWebView, SIGNAL(urlChanged(QUrl)),
-            this, SLOT(webViewUrlChanged(QUrl)));
     connect(newWebView, SIGNAL(finished()),this, SLOT(requestCloseTab()));
 
     addTab(newWebView, tr("(Untitled)"));
@@ -586,16 +584,6 @@ void TabWidget::webViewTitleChanged(const QString &title)
     }
     if (currentIndex() == index)
         emit setCurrentTitle(title);
-}
-
-void TabWidget::webViewUrlChanged(const QUrl &url)
-{
-    WebView *webView = qobject_cast<WebView*>(sender());
-    int index = webViewIndex(webView);
-    if (-1 != index) {
-        m_tabBar->setTabData(index, url);
-    }
-    emit tabsChanged();
 }
 
 void TabWidget::aboutToShowRecentTabsMenu()

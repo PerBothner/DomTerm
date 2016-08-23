@@ -43,7 +43,6 @@
 Backend::Backend(QObject *parent)
   :  QObject(parent),
      _shellProcess(0),
-     _autoClose(true),
      _wantedClose(false)
 {
     addDomtermVersion("QtDomTerm");
@@ -117,6 +116,16 @@ void Backend::setInputMode(char mode)
     dowrite("\033[80;" + QString::number((int) mode) + "u");
 }
 
+void Backend::setSessionName(const QString& name)
+{
+   _nameTitle = name;
+}
+
+void Backend::loadSessionName()
+{
+    dowrite("\033]30;"+_nameTitle+"\007");
+}
+
 void Backend::loadStylesheet(const QString& stylesheet, const QString& name)
 {
     dowrite("\033]96;"+toJsonQuoted(name)
@@ -148,6 +157,7 @@ void Backend::reloadStylesheet()
 void Backend::run()
 {
     reloadStylesheet();
+    loadSessionName();
     connect(BrowserApplication::instance()->fileSystemWatcher(),
             &QFileSystemWatcher::fileChanged,
             this, &Backend::reloadStylesheet);
@@ -188,7 +198,7 @@ void Backend::setUserTitle(int /*what*/, const QString & /*caption*/)
     //set to true if anything is actually changed (eg. old _nameTitle != new _nameTitle )
     bool modified = false;
 
-    // (btw: what=0 changes _userTitle and icon, what=1 only icon, what=2 only _nameTitle
+    // (btw: what=0 changes _userTitle and icon, what=1 only icon, what=2 only _userTitle
     if ((what == 0) || (what == 2)) {
         _isTitleChanged = true;
         if ( _userTitle != caption ) {
@@ -292,7 +302,6 @@ bool Backend::sendSignal(int signal)
 
 void Backend::close()
 {
-    _autoClose = true;
     _wantedClose = true;
     if (!_shellProcess->isRunning() || !sendSignal(SIGHUP)) {
         // Forced close.
@@ -302,12 +311,6 @@ void Backend::close()
 
 void Backend::done(int exitStatus)
 {
-    if (!_autoClose) {
-        _userTitle = ("This session is done. Finished");
-        emit titleChanged();
-        return;
-    }
-
     QString message;
     if (!_wantedClose || exitStatus != 0) {
 

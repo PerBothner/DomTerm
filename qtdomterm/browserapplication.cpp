@@ -167,7 +167,9 @@ BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet)
     , m_privateProfile(0)
     , m_privateBrowsing(false)
     , sawStyleSheetCommandLineOption(false)
+    , nextSessionNameIndex(1)
 {
+    nameTemplate = QLatin1String("domterm-%1");
     QCoreApplication::setOrganizationName(QLatin1String("DomTerm"));
     QCoreApplication::setApplicationName(QLatin1String("QtDomTerm"));
     QCoreApplication::setApplicationVersion(QLatin1String(QTDOMTERM_VERSION));
@@ -314,8 +316,11 @@ void BrowserApplication::loadSettings()
         m_stylesheetRules = settings.value(QLatin1String("userStyleSheetRules")).toString();
         emit reloadStyleSheet();
     }
-    if (! m_stylesheetFilename.isEmpty())
+    if (! m_stylesheetFilename.isEmpty()) {
         m_fileSystemWatcher->addPath(m_stylesheetFilename);
+        connect(m_fileSystemWatcher, &QFileSystemWatcher::fileChanged,
+                this, &BrowserApplication::reloadStylesheet);
+    }
 
     defaultProfile->setHttpUserAgent(settings.value(QLatin1String("httpUserAgent")).toString());
     defaultProfile->setHttpAcceptLanguage(settings.value(QLatin1String("httpAcceptLanguage")).toString());
@@ -411,6 +416,24 @@ void BrowserApplication::restoreLastSession()
 bool BrowserApplication::isTheOnlyBrowser() const
 {
     return (m_localServer != 0);
+}
+
+QString BrowserApplication::generateSessionName()
+{
+    return nameTemplate.arg(nextSessionNameIndex++);
+}
+
+void BrowserApplication::reloadStylesheet()
+{
+    QString filename = stylesheetFilename();
+    if (! filename.isEmpty()) {
+        QFile file(filename);
+        if (file.open(QFile::ReadOnly | QFile::Text)) {
+            QTextStream text(&file);
+            setStyleSheet(text.readAll());
+        }
+    }
+  fprintf(stderr, "BrowserApplication::reloadStylesheet CALLED\n");
 }
 
 void BrowserApplication::installTranslator(const QString &name)

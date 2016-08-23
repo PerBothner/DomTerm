@@ -85,7 +85,8 @@ public class DomServer extends WebSocketServer {
                 }
                 String[] restArgs = new String[args.length-i-2];
                 System.arraycopy(args, i+2, restArgs, 0, restArgs.length);
-                return new ClassBackend(method, restArgs);
+                backend = new ClassBackend(method, restArgs);
+                break;
             }
             else if (arg.length() == 0 || arg.charAt(0) == '-')
                 fatal("unknown argument '"+arg+"'");
@@ -165,6 +166,7 @@ public class DomServer extends WebSocketServer {
           try {
         backend.versionInfo = backend.versionInfo+";Java-WebSocket-server";
         backend.run(new ReplWriter(conn));
+        backend.sendSessionName();
           } catch (Throwable ex) {
               ex.printStackTrace();}
       }

@@ -92,6 +92,7 @@ public:
     void saveSession();
     bool canRestoreSession() const;
     bool privateBrowsing() const { return m_privateBrowsing; }
+    QString generateSessionName();
 
     static CookieJar *cookieJar();
     static QNetworkAccessManager *networkAccessManager();
@@ -112,6 +113,7 @@ public slots:
     const QString stylesheetRules() { return m_stylesheetRules; }
     const QString wsconnect() const { return m_wsconnect; }
     bool should_connect() const { return ! m_wsconnect.isEmpty(); }
+    void reloadStylesheet();
 
 signals:
     void privateBrowsingChanged(bool);
@@ -145,6 +147,8 @@ private:
     QString m_stylesheetRules;
     QFileSystemWatcher *m_fileSystemWatcher;
     bool sawStyleSheetCommandLineOption;
+    QString nameTemplate;
+    int nextSessionNameIndex;
 };
 
 #endif // BROWSERAPPLICATION_H
