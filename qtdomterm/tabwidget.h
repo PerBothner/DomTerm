@@ -61,6 +61,7 @@ class QWebEngineProfile;
 class QWebEngineView;
 QT_END_NAMESPACE
 
+class Backend;
 /*
     Tab bar with a few more features such as a context menu and shortcuts
  */
@@ -178,11 +179,13 @@ public:
     void addWebAction(QAction *action, QWebEnginePage::WebAction webAction);
     QAction *newTabAction() const;
     QAction *closeTabAction() const;
+    QAction *saveAsAction() const { return m_saveAsAction; }
     QAction *recentlyClosedTabsAction() const;
     QAction *nextTabAction() const;
     QAction *previousTabAction() const;
 
     WebView *currentWebView() const;
+    Backend *currentBackend() const;
     WebView *webView(int index) const;
     int webViewIndex(WebView *webView) const;
 
@@ -202,6 +205,7 @@ public slots:
     void cloneTab();
     void requestCloseTab();
     void requestCloseTab(int index);
+    void requestSaveAs();
     void closeTab(int index);
     void closeOtherTabs(int index);
     void reloadTab(int index = -1);
@@ -230,6 +234,7 @@ private:
     QAction *m_closeTabAction;
     QAction *m_nextTabAction;
     QAction *m_previousTabAction;
+    QAction *m_saveAsAction;
 
     QMenu *m_recentlyClosedTabsMenu;
     static const int m_recentlyClosedTabsSize = 10;

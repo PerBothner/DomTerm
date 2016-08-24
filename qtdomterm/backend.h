@@ -22,6 +22,7 @@ public:
     void dowrite(const QString &text);
     void setInputMode(char mode);
     void setSessionName(const QString& name);
+    void requestHtmlData();
     void loadSessionName();
     void loadStylesheet(const QString& stylesheet, const QString& name);
 
@@ -75,6 +76,7 @@ tle
 
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
+    QString getSavedHtml() { return _savedHtml; }
 
 signals:
     /** Emitted when the terminal process starts. */
@@ -139,6 +141,7 @@ private:
     QString        _initialWorkingDir;
     QString        _domtermVersion;
     bool           _stylesheetLoaded;
+    QString        _savedHtml;
 };
 
 #endif

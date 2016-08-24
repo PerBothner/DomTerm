@@ -94,6 +94,8 @@ public abstract class Backend {
             }
         } else if ("VERSION".equals(name)) {
             addVersionInfo(str);
+        } else if ("GET-HTML".equals(name)) {
+            System.err.println("GET-HTML: "+str);
         }
     }
 

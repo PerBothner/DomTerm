@@ -59,10 +59,10 @@ clean:
 	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm-chrome.jar
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
-	-rm -f qtdomterm/data/terminal.js qtdomterm/data/ResizeSensor.js qtdomterm/data/bililiteRange.js \
-	  qtdomterm/data/style/domterm-core.css \
-	  qtdomterm/data/style/domterm-standard.css \
-	  qtdomterm/data/style/domterm-default.css
+	-rm -f qtdomterm/data/hlib/terminal.js qtdomterm/data/hlib/ResizeSensor.js qtdomterm/data/hlib/FileSaver.js qtdomterm/data/hlib/bililiteRange.js \
+	  qtdomterm/data/hlib/domterm-core.css \
+	  qtdomterm/data/hlib/domterm-standard.css \
+	  qtdomterm/data/hlib/domterm-default.css
 
 @WITH_JAVA_WEBSOCKET_TRUE@ WEBSOCKET_SOURCES = \
 @WITH_JAVA_WEBSOCKET_TRUE@   org/domterm/websocket/DomServer.java
@@ -99,40 +99,41 @@ org/classes.stamp: $(DOMTERM_JAR_SOURCES)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
-tmp-for-jar/jfx-term.html: jfx-term.html terminal.js Makefile
+tmp-for-jar/jfx-term.html: jfx-term.html hlib/terminal.js Makefile
 # JavaFX seems to have a problem loading .js files referenced from repl.html,
 # in a .jar, but inline javascript and css works.
 # So we use use sed to inline it into one by repl.html.
 # Ugly - hopefully we can figure out what is going on.
 	$(SED) \
-	  -e '/<link .*style.domterm-standard.css">/i</style>' \
-	  -e '/<link .*style.domterm-default.css">/i</style>' \
+	  -e '/<link .*hlib.domterm-standard.css">/i</style>' \
+	  -e '/<link .*hlib.domterm-default.css">/i</style>' \
 	  -e '/ResizeSensor.js/i</style>' \
 	  -e '/ResizeSensor.js/i<script>' \
-	  -e '/<link .*style.domterm-core.css">/rstyle/domterm-core.css' \
-	  -e '/<link .*style.domterm-standard.css">/rstyle/domterm-standard.css' \
-	  -e '/<link .*style.domterm-default.css">/rstyle/domterm-default.css' \
+	  -e '/<link .*hlib.domterm-core.css">/rhlib/domterm-core.css' \
+	  -e '/<link .*hlib.domterm-standard.css">/rhlib/domterm-standard.css' \
+	  -e '/<link .*hlib.domterm-default.css">/rhlib/domterm-default.css' \
 	  -e 's/<link rel="stylesheet"\(.*\) href=".*"/<style\1/' \
 	  -e '/domterm-default/a</style>' \
 	  -e '/domterm-default/a<script type="text/javascript">' \
 	  -e 's|<script type="text.javascript">||' \
-	  -e '/<script .*src=.*.ResizeSensor.js.*>/rResizeSensor.js' \
-	  -e '/<script .*src=.*.bililiteRange.js.*>/rbililiteRange.js' \
-	  -e '/<script .*src=.*.terminal.js.*>/rterminal.js' \
+	  -e '/<script .*src=.*.ResizeSensor.js.*>/rhlib/ResizeSensor.js' \
+	  -e '/<script .*src=.*.FileSaver.js.*>/rhlib/FileSaver.js' \
+	  -e '/<script .*src=.*.bililiteRange.js.*>/rhlib/bililiteRange.js' \
+	  -e '/<script .*src=.*.terminal.js.*>/rhlib/terminal.js' \
 	  -e 's|<script .*src=.*.*.js.*script>||' \
 	  <jfx-term.html >$@
 
-domterm.jar: org/classes.stamp terminal.js
+domterm.jar: org/classes.stamp hlib/terminal.js
 	mkdir -p tmp-for-jar
 @ENABLE_PTY_TRUE@	$(MAKE) tmp-for-jar/jfx-term.html
-	tar cf - org/domterm/*.class *.js style/*.css org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
+	tar cf - org/domterm/*.class hlib/*.js hlib/*.css org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
 	cd tmp-for-jar && \
-	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class jfx-term.html *.js style/*.css
+	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class jfx-term.html hlib/*.js hlib/*.css
 
-xulapp/domterm-chrome.jar: terminal.js xulapp/chrome/content/domterm.xul
+xulapp/domterm-chrome.jar: hlib/terminal.js xulapp/chrome/content/domterm.xul
 	mkdir -p tmp-for-xul tmp-for-xul/chrome \
 	  tmp-for-xul/chrome/content tmp-for-xul/chrome/content
-	tar cf - *.js repl-client.html style/*.css |\
+	tar cf - hlib/*.js repl-client.html hlib/*.css |\
 	  (cd tmp-for-xul/chrome/content; tar xf -)
 	cp xulapp/chrome/content/domterm.xul tmp-for-xul/chrome/content
 	(cd tmp-for-xul; zip -r ../xulapp/domterm-chrome.jar chrome)
@@ -191,32 +192,36 @@ upload-web: web/index.html
 	cd web && \
 	  rsync -v -r -u -l -p -t --relative . $(WEB_SERVER_ROOT)
 
-qtdomterm/data/terminal.js:
-	cd qtdomterm/data && $(LN_S) ../../terminal.js .
+qtdomterm/data/hlib/terminal.js:
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/terminal.js .
 
-qtdomterm/data/ResizeSensor.js:
-	cd qtdomterm/data && $(LN_S) ../../ResizeSensor.js .
+qtdomterm/data/hlib/ResizeSensor.js:
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/ResizeSensor.js .
 
-qtdomterm/data/bililiteRange.js:
-	cd qtdomterm/data && $(LN_S) ../../bililiteRange.js .
+qtdomterm/data/hlib/FileSaver.js:
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/FileSaver.js .
 
-qtdomterm/data/style/domterm-core.css:
-	mkdir -p qtdomterm/data/style
-	cd qtdomterm/data/style && $(LN_S) ../../../style/domterm-core.css .
+qtdomterm/data/hlib/bililiteRange.js:
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/bililiteRange.js .
 
-qtdomterm/data/style/domterm-standard.css:
-	mkdir -p qtdomterm/data/style
-	cd qtdomterm/data/style && $(LN_S) ../../../style/domterm-standard.css .
+qtdomterm/data/hlib/domterm-core.css:
+	mkdir -p qtdomterm/data/hlib
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-core.css .
 
-qtdomterm/data/style/domterm-default.css:
-	mkdir -p qtdomterm/data/style
-	cd qtdomterm/data/style && $(LN_S) ../../../style/domterm-default.css .
+qtdomterm/data/hlib/domterm-standard.css:
+	mkdir -p qtdomterm/data/hlib
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-standard.css .
+
+qtdomterm/data/hlib/domterm-default.css:
+	mkdir -p qtdomterm/data/hlib
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-default.css .
 
 bin/qtdomterm: \
-  qtdomterm/data/terminal.js \
-  qtdomterm/data/ResizeSensor.js \
-  qtdomterm/data/bililiteRange.js \
-  qtdomterm/data/style/domterm-core.css \
-  qtdomterm/data/style/domterm-standard.css \
-  qtdomterm/data/style/domterm-default.css
+  qtdomterm/data/hlib/terminal.js \
+  qtdomterm/data/hlib/ResizeSensor.js \
+  qtdomterm/data/hlib/FileSaver.js \
+  qtdomterm/data/hlib/bililiteRange.js \
+  qtdomterm/data/hlib/domterm-core.css \
+  qtdomterm/data/hlib/domterm-standard.css \
+  qtdomterm/data/hlib/domterm-default.css
 	cd qtdomterm && qmake-qt5 -makefile && $(MAKE)

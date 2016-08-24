@@ -48,107 +48,44 @@
 **
 ****************************************************************************/
 
-#ifndef BROWSERMAINWINDOW_H
-#define BROWSERMAINWINDOW_H
+#ifndef SAVEPAGEDIALOG_H
+#define SAVEPAGEDIALOG_H
 
-#include <QtWidgets/QMainWindow>
-#include <QtGui/QIcon>
-#include <QtCore/QUrl>
+#include <QtWidgets/QDialog>
+#include <QtWebEngineWidgets/QWebEngineDownloadItem>
 
 QT_BEGIN_NAMESPACE
-class QWebEngineFrame;
+namespace Ui {
+class SavePageDialog;
+}
 QT_END_NAMESPACE
 
-class TabWidget;
-class WebView;
-
-/*!
-    The MainWindow of the Browser Application.
-
-    Handles the tab widget and all the actions
- */
-class BrowserMainWindow : public QMainWindow {
+class SavePageDialog : public QDialog
+{
     Q_OBJECT
 
 public:
-    BrowserMainWindow(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-    ~BrowserMainWindow();
-    QSize sizeHint() const;
+    explicit SavePageDialog(QWidget *parent,
+                            //QWebEngineDownloadItem::SavePageFormat format,
+                            const QString &filePath);
+    ~SavePageDialog();
 
-public:
-    TabWidget *tabWidget() const;
-    WebView *currentTab() const;
-    QByteArray saveState(bool withTabs = true) const;
-    bool restoreState(const QByteArray &state);
-    Q_INVOKABLE void runScriptOnOpenViews(const QString &);
-
-public slots:
-    void loadPage(const QString &url);
-
-protected:
-    void closeEvent(QCloseEvent *event);
+    //QWebEngineDownloadItem::SavePageFormat pageFormat() const;
+    QString filePath() const;
 
 private slots:
-    void save();
-
-    void slotUpdateWindowTitle(const QString &title = QString());
-
-    void loadUrl(const QUrl &url);
-    void slotPreferences();
-
-    void slotFileNew();
-    void slotFileOpen();
-    void slotPrivateBrowsing();
-    void slotEditFind();
-    void slotEditFindNext();
-    void slotEditFindPrevious();
-    void slotViewZoomIn();
-    void slotViewZoomOut();
-    void slotViewResetZoom();
-    void slotViewMenubar();
-    void slotViewFullScreen(bool enable);
-
-    void slotToggleInspector(bool enable);
-    void slotAboutApplication();
-
-    void slotAboutToShowWindowMenu();
-    void slotOpenActionUrl(QAction *action);
-    void slotShowWindow();
-    void slotSwapFocus();
-
-#if defined(QWEBENGINEPAGE_PRINT)
-    void printRequested(QWebEngineFrame *frame);
-#endif
-    void geometryChangeRequested(const QRect &geometry);
-    void updateMenubarActionText(bool visible);
+    void on_chooseFilePathButton_clicked();
+    void on_formatComboBox_currentIndexChanged(int idx);
 
 private:
-    void loadDefaultState();
-    void setupMenu();
-    void handleFindTextResult(bool found);
+    //static int formatToIndex(QWebEngineDownloadItem::SavePageFormat format);
+    //static QWebEngineDownloadItem::SavePageFormat indexToFormat(int idx);
+    static QString suffixOfFormat(/*QWebEngineDownloadItem::SavePageFormat format*/);
+    void setFilePath(const QString &filePath);
+    void ensureFileSuffix(/*QWebEngineDownloadItem::SavePageFormat format*/);
 
-private:
-    TabWidget *m_tabWidget;
-
-    QAction *m_historyBack;
-    QMenu *m_historyBackMenu;
-    QAction *m_historyForward;
-    QMenu *m_historyForwardMenu;
-    QMenu *m_windowMenu;
-
-    QAction *m_stop;
-    QAction *m_reload;
-    QAction *m_stopReload;
-    QAction *m_viewMenubar;
-    QAction *m_restoreLastSession;
-
-    QIcon m_reloadIcon;
-    QIcon m_stopIcon;
-
-    QString m_lastSearch;
-    QString m_printerOutputFileName;
-    friend class BrowserApplication;
-    friend class WebView;
+    //static const QWebEngineDownloadItem::SavePageFormat m_indexToFormatTable[];
+    Ui::SavePageDialog *ui;
 };
 
-#endif // BROWSERMAINWINDOW_H
+#endif // SAVEPAGEDIALOG_H

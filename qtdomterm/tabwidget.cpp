@@ -53,6 +53,8 @@
 #include "browserapplication.h"
 #include "browsermainwindow.h"
 #include "fullscreennotification.h"
+#include "savepagedialog.h"
+#include "backend.h"
 #include "webview.h"
 
 #include <QWebEngineProfile>
@@ -238,6 +240,7 @@ TabWidget::TabWidget(QWidget *parent)
     , m_closeTabAction(0)
     , m_nextTabAction(0)
     , m_previousTabAction(0)
+    , m_saveAsAction(0)
     , m_recentlyClosedTabsMenu(0)
     , m_tabBar(new TabBar(this))
     , m_profile(QWebEngineProfile::defaultProfile())
@@ -295,8 +298,33 @@ TabWidget::TabWidget(QWidget *parent)
     m_recentlyClosedTabsAction->setMenu(m_recentlyClosedTabsMenu);
     m_recentlyClosedTabsAction->setEnabled(false);
 
+    m_saveAsAction = new QAction(tr("Save As"), this);
+    m_saveAsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+    connect(m_saveAsAction, SIGNAL(triggered()), this, SLOT(requestSaveAs()));
+
     connect(this, SIGNAL(currentChanged(int)),
             this, SLOT(currentChanged(int)));
+}
+
+void TabWidget::requestSaveAs()
+{
+    //QWebEngineDownloadItem::SavePageFormat format = QWebEngineDownloadItem::SingleHtmlSaveFormat;
+    currentBackend()->requestHtmlData();
+    QString filePath;
+    SavePageDialog dlg(this, /*format,*/ filePath);
+    if (dlg.exec() != SavePageDialog::Accepted)
+        return;
+    filePath = dlg.filePath();
+    QString html = currentBackend()->getSavedHtml();
+    //fprintf(stderr, "save to %s\ncontents: %s\n", filePath.toUtf8().data(),
+    //  html.toUtf8().data());
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+      file.write(html.toUtf8());
+      file.close();
+    } else {
+      // REPORT ERROR FIXME!
+    }
 }
 
 void TabWidget::clear()
@@ -404,6 +432,12 @@ QAction *TabWidget::previousTabAction() const
 WebView *TabWidget::currentWebView() const
 {
     return webView(currentIndex());
+}
+
+Backend *TabWidget::currentBackend() const
+{
+  WebView *webView = currentWebView();
+  return webView == nullptr ? nullptr : webView->backend();
 }
 
 WebView *TabWidget::webView(int index) const

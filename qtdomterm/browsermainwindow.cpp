@@ -222,11 +222,7 @@ void BrowserMainWindow::setupMenu()
     fileMenu->addSeparator();
     fileMenu->addAction(m_tabWidget->closeTabAction());
     fileMenu->addSeparator();
-
-    QAction *action = fileMenu->addAction(tr("Private &Browsing..."), this, SLOT(slotPrivateBrowsing()));
-    action->setCheckable(true);
-    action->setChecked(BrowserApplication::instance()->privateBrowsing());
-    connect(BrowserApplication::instance(), SIGNAL(privateBrowsingChanged(bool)), action, SLOT(setChecked(bool)));
+    fileMenu->addAction(m_tabWidget->saveAsAction());
     fileMenu->addSeparator();
 
 #if defined(Q_OS_OSX)
@@ -334,11 +330,6 @@ void BrowserMainWindow::loadUrl(const QUrl &url)
         return;
 
     m_tabWidget->loadUrlInCurrentTab(url);
-}
-
-void BrowserMainWindow::slotFileSaveAs()
-{
-    // not implemented yet.
 }
 
 void BrowserMainWindow::slotPreferences()

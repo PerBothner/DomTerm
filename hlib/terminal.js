@@ -65,6 +65,31 @@
  *   has been extended to include xterm CSI codes, among
  *   other features.
  */
+
+/** [DOMToString was useful for the _formatDOM code.]
+Copyright (c) 2009 Brett Zamir
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+    */
 "use strict";
 
 function DomTerm(name, topNode) {
@@ -512,7 +537,13 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
  * @param addSpaceAsNeeded if we should add blank lines or spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine
  */
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
-    this._removeInputLine();
+    //Only if char-edit? FIXME
+    if (true)
+        this._removeInputLine();
+    else {
+        // var moveInput = this.inputFollowsOutput && this.inputLine
+        // && this.outputBefore==this.inputLine;
+    }
     var line = this.currentCursorLine;
     var column = this.currentCursorColumn;
     var checkSpacer = false;
@@ -749,9 +780,15 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         parent = current;
         current = parent.firstChild;
     }
+    /*
+    if (moveInput) {
+        parent.insertBefore(this.inputLine, current);
+        current = this.inputLine;
+    }
+*/
     this.outputContainer = parent;
     this.outputBefore = current;
-    this._removeInputLine();
+    //this._removeInputLine();
     this.currentCursorLine = line;
     this.currentCursorColumn = column;
     if (checkSpacer)
@@ -2723,8 +2760,12 @@ DomTerm.prototype.handleLink = function(event, href) {
 // Set the "session name" which is the "name" attribute of the toplevel div.
 // It can be used in stylesheets as well as the window title.
 DomTerm.prototype.setSessionName = function(title) {
-    this.topNode.setAttribute("name", title);;
+    this.topNode.setAttribute("name", title);
 }
+
+DomTerm.prototype.sessionName = function() {
+    return this.topNode.getAttribute("name");
+};
 
 DomTerm.prototype.setWindowTitle = function(title, option) {
     switch (option) {
@@ -2749,7 +2790,7 @@ DomTerm.prototype.formatWindowTitle = function() {
     var str = this.windowName ? this.windowName
         : this.iconName ? this.iconName
         : "";
-    var sessionName = this.topNode.getAttribute("name");
+    var sessionName = this.sessionName();
     if (! sessionName)
         sessionName = this.name;
     if (sessionName) {
@@ -3175,9 +3216,103 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this.processResponseCharacters("\x9D" + r + "\n");
         this.measureWindow();
         break;
+    case 102:
+        this.reportEvent("GET-HTML", JSON.stringify(this.getAsHTML()));
+        break;
     default:
         // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
     }
+};
+
+var escapeMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+};
+
+DomTerm.prototype.getAsHTML = function() {
+    var string = "";
+
+    function  escapeText(text) {
+        // Assume single quote is not used in atributes
+        return text.replace(/[&<>"]/g, function(m) { return escapeMap[m]; });
+    };
+
+    function formatDOM(node) {
+        var children, i = 0;
+        switch (node.nodeType) {
+        case 1: // element
+            var tagName = node.tagName.toLowerCase();
+            var tagAttributes = node.attributes;
+            var prefix = node.prefix;
+            var id = node.getAttribute("id");
+            var cls = node.getAttribute("class");
+
+            if (tagName == "div") {
+                if (id == "domterm__helper" || cls == "domterm-spacer"
+                    || cls == "resize-sensor")
+                    break;
+            }
+
+            var s = '<' + tagName;
+            var skip = false;
+            if (tagAttributes.length) {
+                for (i = 0; i < tagAttributes.length; i++) {
+                    var aname = tagAttributes[i].nodeName;
+                    var avalue = tagAttributes[i].nodeValue;
+                    if ((tagName == "link" && aname == "href")
+                        || (tagName == "script" && aname == "src")) {
+                        avalue = avalue.replace("qrc:", "");
+                        if (avalue == "hlib/domterm-client.js")
+                            avalue = "hlib/domterm-saved.js";
+                        if (value == "hlib/qwebchannel.js"
+                            || value == "hlib/FileSaver.js"
+                            || value == "hlib/bililiteRange.js")
+                            skip = true;
+                    }
+                    s += ' ' + aname+ // .toLowerCase() +
+                        '="' + escapeText(avalue) + '"';
+                }
+            }
+            if (skip)
+                break;
+            string += s;
+            if (!node.firstChild) {
+                string += ' />';
+            } else {
+                string += '>';
+                children = node.childNodes;
+                for (i = 0; i < children.length; i++) {
+                    formatDOM(children[i]); // , namespaces
+                }
+                string += '<\/' + tagName + '>';
+            }
+            if (tagName == 'div' || tagName == 'p' || tagName == 'body'
+                || tagName == 'pre')
+                string += '\n';
+            break;
+        case 2: // ATTRIBUTE (should only get here if passing in an attribute node)
+            string += ' ' + node.name+ // .toLowerCase() +
+            '="' + escapeText(node.value) + '"'; // .toLowerCase()
+            break;
+        case 3: // TEXT
+            string += escapeText(node.nodeValue);
+            break;
+        case 4: // CDATA
+            if (node.nodeValue.indexOf(']]'+'>') !== -1) {
+                invalidStateError();
+            }
+            string += '<'+'![CDATA[';
+            string += node.nodeValue;
+            string += ']]'+'>';
+            break;
+        };
+    };
+
+    formatDOM(document.documentElement);
+    return string;
 };
 
 DomTerm.prototype._doDeferredDeletion = function() {
@@ -3923,6 +4058,13 @@ DomTerm.prototype.doCopy = function() {
     return document.execCommand("copy", false);
 };
 
+DomTerm.prototype.doSaveAs = function() {
+    var fname = this._pickFile();
+    if (fname) {
+        this._writeFile(this.getAsHTML(), fname);
+    }
+};
+
 DomTerm.prototype.getSelectedText = function() {
     return window.getSelection().toString();
 };
@@ -4130,17 +4272,38 @@ DomTerm.prototype.doLineEdit = function(key, str) {
     }
 };
 
+DomTerm.prototype._writeFile = function(data, filePath) {
+    saveAs(new Blob([data], {type: "text/html;charset=utf-8"}),
+           filePath);
+};
+DomTerm.prototype._pickFile = function() {
+    var fname = this.sessionName()+".html";
+    return prompt("save contents as: ", fname);
+};
+
 DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
     // Ctrl-Shift-C is Copy and Ctrl-Shift-V is Paste
-    if (event.ctrlKey && event.shiftKey && (key == 67 || key == 86)) {
-        // Google Chrome doesn't allow execCommand("paste") but Ctrl-Shift-V
-        // works by default.  In Firefox, it's the other way round.
-        if (key == 67 ? this.doCopy() : this.doPaste())
+    if (event.ctrlKey && event.shiftKey) {
+        if (key == 67) {
+            if (this.doCopy())
+                event.preventDefault();
+            return;
+        }
+        if (key == 86) {
+            // Google Chrome doesn't allow execCommand("paste") but Ctrl-Shift-V
+            // works by default.  In Firefox, it's the other way round.
+            if (this.doPaste())
+                event.preventDefault();
+            return;
+        }
+        if (key == 83) { // Control-Shift-S
+            this.doSaveAs();
             event.preventDefault();
-        return;
+            return;
+        }
     }
     if (this.lineEditing) {
         this.inputLine.focus();

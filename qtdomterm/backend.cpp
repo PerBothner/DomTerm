@@ -121,6 +121,11 @@ void Backend::setSessionName(const QString& name)
    _nameTitle = name;
 }
 
+void Backend::requestHtmlData()
+{
+    dowrite("\033]102;\007");
+}
+
 void Backend::loadSessionName()
 {
     dowrite("\033]30;"+_nameTitle+"\007");
@@ -362,6 +367,11 @@ void Backend::reportEvent(const QString &name, const QString &data)
     } else if (name=="ALINK") {
         QUrl url = parseSimpleJsonString(data, 0, data.length());
         QDesktopServices::openUrl(url);
+    } else if (name=="GET-HTML") {
+      int q = data.indexOf('"');
+      QString html = parseSimpleJsonString(data, q, data.length());
+      //fprintf(stderr, "reporttEvent name %s data %s canon:%d\n",     name.toUtf8().constData(), data.toUtf8().constData(), (int) isCanonicalMode()); fflush(stderr);
+      _savedHtml = html;
     } else {
         // unknown
     }
