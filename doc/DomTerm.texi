@@ -754,8 +754,6 @@ inserted as many lines as possible.
 
 @subheading Improve standalone terminal emulator
 
-In @code{qtdomterm} add actions to load and update CSS stylesheets,
-
 Handle saving and truncating scrolled-out output.
 
 @subheading Support other embeddable browsers
@@ -803,6 +801,15 @@ Readline should at least behave as if the screen width were infinite,
 delegating line-wrapping to DomTerm.
 
 @subsubheading Customizable key sequences, as in readline
+
+@subheading Builtin pager
+
+Implement a @code{less}-style pager,
+similar to the way Emacs @code{term} mode does it.
+
+When enabled, after a full screen of output without user interaction,
+further output is queued until the user requests more output.
+This should be integrated with searching in the buffer.
 
 @subheading Pretty-printing
 
