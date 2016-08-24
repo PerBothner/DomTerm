@@ -111,6 +111,8 @@ function DomTerm(name, topNode) {
     // be inserted before a later input-line.
     this.pendingInput = null;
 
+    this._deferredLinebreaksStart = -1;
+
     this.lineIdCounter = 0; // FIXME temporary debugging
 
     this.insertMode = false;
@@ -2364,6 +2366,8 @@ DomTerm.prototype.handleControlSequence = function(last) {
     var param;
     var oldState = this.controlSequenceState;
     this.controlSequenceState = DomTerm.INITIAL_STATE;
+    if (last != 109 /*'m'*/)
+        this._breakDeferredLines();
     switch (last) {
     case 64 /*'@'*/:
         var saveInsertMode = this.insertMode;
@@ -3354,6 +3358,9 @@ DomTerm.prototype.insertString = function(str) {
         case DomTerm.SEEN_ESC_STATE:
             this.insertSimpleOutput(str, prevEnd, i);
             this.controlSequenceState = DomTerm.INITIAL_STATE;
+            if (ch != 91 /*'['*/ && ! (ch >= 40 && ch <= 47)
+                && ! (ch >= 78 && ch <= 79))
+                this._breakDeferredLines();
             switch (ch) {
             case 35 /*'#'*/:
                 this.controlSequenceState = DomTerm.SEEN_ESC_SHARP_STATE;
@@ -3629,10 +3636,19 @@ DomTerm.prototype.insertString = function(str) {
     if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
     }
-    this._restoreInputLine();
-    if (true) { // FIXME only if "scrollWanted"
-        this._scrollIfNeeded();
-    }
+
+    var dt = this;
+    var update = function() {
+        dt._breakDeferredLines();
+        // FIXME only if "scrollWanted"
+        dt._scrollIfNeeded();
+        dt._restoreInputLine();
+        //dt.inputLine.focus();
+    };
+    if (window.requestAnimationFrame)
+        requestAnimationFrame(update);
+    else
+        setTimeout(update, 20);
 };
 
 DomTerm.prototype._scrollIfNeeded = function() {
@@ -3642,15 +3658,25 @@ DomTerm.prototype._scrollIfNeeded = function() {
         this.topNode.scrollTop = lastBottom - this.availHeight;
 }
 
-DomTerm.prototype._breakAllLines = function() {
-    var changed = false;
-    var startLine = 0;
-    if (this.usingAlternateScreenBuffer) {
-        if (this.initial && this.initial.saveLastLine >= 0) // paranoia
-            startLine = this.initial.saveLastLine;
-        else
-            startLine = this.homeLine;
+DomTerm.prototype._breakDeferredLines = function() {
+    var start = this._deferredLinebreaksStart;
+    if (start >= 0) {
+        this._breakAllLines(start);
+        this._deferredLinebreaksStart = -1;
     }
+};
+
+DomTerm.prototype._breakAllLines = function(startLine) {
+    if (startLine === undefined || startLine < 0) {
+        startLine = 0;
+        if (this.usingAlternateScreenBuffer) {
+            if (this.initial && this.initial.saveLastLine >= 0) // paranoia
+                startLine = this.initial.saveLastLine;
+            else
+                startLine = this.homeLine;
+        }
+    }
+    var changed = false;
     for (var line = startLine;  line < this.lineStarts.length;  line++) {
         // First remove any existing soft line breaks.
         var delta = 0;
@@ -3851,31 +3877,15 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         this.log("insertSimple '"+this.toQuoted(str)+"'");
     if (this._currentStyleSpan != this.outputContainer)
         this._adjustStyle();
+    var absLine = this.homeLine+this.getCursorLine();
+    if (this._deferredLinebreaksStart < 0)
+        this._deferredLinebreaksStart = absLine;
     var widthInColums = -1;
-    if (! this.insertMode) {
+    if (! this.insertMode) { // FIXME optimize if end of line
         widthInColums = this.widthInColumns(str, 0, slen);
         this.eraseCharactersRight(widthInColums, true);
     }
-    // Calculating _offsetLeft is *very* expensive when interleaved with
-    // DOM updates.  Instead, we should do as many insertions as possible
-    // before we check for possible line wrapping.  FIXME
-    var beforePos = this._offsetLeft(this.outputBefore, this.outputContainer);
-    var absLine = this.homeLine+this.getCursorLine();
-    var textNode = this.insertRawOutput(str);
-    while (textNode != null) {
-        var afterPos = this._offsetLeft(this.outputBefore,
-                                        this.outputContainer);
-        var lineEnd = this.lineEnds[absLine];
-        var clientWidth = this.initial.clientWidth;
-        var availWidth = clientWidth - this.rightMarginWidth;
-        if (afterPos > availWidth && this.wraparoundMode >= 2) {
-            // wrap needed:
-            textNode = this._breakText(textNode, absLine, beforePos, afterPos, availWidth, false);
-            absLine++;
-            widthInColums = -1;
-        } else
-            textNode = null;
-    }
+    this.insertRawOutput(str);
     this.currentCursorLine = absLine - this.homeLine;
     this.currentCursorColumn =
         this.currentCursorColumn < 0 || widthInColums < 0 ? -1
@@ -3952,6 +3962,7 @@ DomTerm.prototype.processInputCharacters = function(str) {
 };
 
 DomTerm.prototype.processEnter = function() {
+    this._restoreInputLine();
     var text = this.grabInput(this.inputLine);
     this.handleEnter(text);
     if (this.verbosity >= 2)
@@ -4244,12 +4255,14 @@ DomTerm.prototype.setInputMode = function(mode) {
 DomTerm.prototype.doLineEdit = function(key, str) {
     if (this.verbosity >= 2)
         this.log("doLineEdit "+key+" "+JSON.stringify(str));
+    if (key == -13      // key-press event
+        || key == 13) { // key-down event
+        this.processEnter();
+        return;
+    }
+    this._restoreInputLine();
     var rng = bililiteRange(this.inputLine).bounds('selection');
     switch (key) {
-    case 13: // key-down event
-    case -13: // key-press event
-        this.processEnter();
-        break;
     case 8:
         rng.sendkeys('{Backspace}');
         rng.select();

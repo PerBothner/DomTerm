@@ -739,19 +739,6 @@ Fix paste in line-editing mode.
 
 Think about how to do multi-line paste.
 
-@subsubheading Speed up line-breaking
-
-While DomTerm is quite responsive, dumping a lot of output
-(such as @code{cat}'ing a large file) is very slow.
-The biggest problem is line-breaking: checking
-(in the @code{_breakText} procedure) whether a long-line needs to be wrapped.
-The problem is we call @code{Node.offsetLeft} too many times.
-This is expensive because it forces the browser to layout the
-DOM tree as it currently is - and then we add more elements,
-call @code{offsetLeft}, which forces the browser to do the whole thing again.
-The calls to @code{offsetLeft} need to be batched - @emph{after} we have
-inserted as many lines as possible.
-
 @subheading Improve standalone terminal emulator
 
 Handle saving and truncating scrolled-out output.

@@ -37,7 +37,7 @@ n.normalize();
 var canNormalize = n.firstChild.length == 3;
 
 
-window.bililiteRange = function(el, debug){
+bililiteRange = function(el, debug){
 	var ret;
 	if (debug){
 		ret = new NothingRange(); // Easier to force it to use the no-selection type than to try to find an old browser
@@ -86,7 +86,7 @@ window.bililiteRange = function(el, debug){
 	// this._bounds directly
 	if (!('bililiteRangeSelection' in el)){
 		// start tracking the selection
-		var trackSelection = function(evt){
+		function trackSelection(evt){
 			if (evt && evt.which == 9){
 				// do tabs my way, by restoring the selection
 				// there's a flash of the browser's selection, but I don't see a way of avoiding that
