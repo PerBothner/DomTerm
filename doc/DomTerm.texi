@@ -75,6 +75,7 @@ embedded in different modes and applications.
 * Features:: Features and screenshots
 * Downloading and building::
 * Applications::
+* Tips:: Tips and solutions
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
 @end menu
@@ -344,23 +345,6 @@ The third line line applies to QMenu widgets used in the
 user interfaces: It specifies to use green for menu text.
 See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
 
-@subheading Session names and session-specific styles
-
-Each session has a name, which by default has the form @code{"domterm-@var{N}"}
-where @var{N} is an integer.  You can also override it with an escape sequence.
-The session name is usually shown in the window title bar,
-in the format @code{"@var{window-title} [@var{session-name}]"}.
-The session name is used to set the @code{name}
-attribute of the top domterm element,
-so you can use it to select differnt rules for different sessions.
-For example the following selects different background colors.
-
-@example
-div.domterm @{ background-color: #FFE @}
-div.domterm[name="domterm-1"] @{ background-color: #FEE @}
-div.domterm[name="domterm-2"] @{ background-color: #EEF @}
-@end example
-
 @node domterm script
 @section The domterm terminal emulator command
 
@@ -603,6 +587,102 @@ Valid @var{attrnames} are the following, which
 are specified in the HTML specification:
 @code{alt}, @code{longdesc}, @code{height}, @code{width}, @code{border}, @code{hspace}, @code{vspace}, @code{class}.
 @end table
+
+@node Tips
+@chapter Tips and solutions
+
+This page covers various topics, and may evolve to
+a Frequently-Asked-Questions page.
+
+Notes about ``@emph{Front-end support}'' discuss how
+different front-ends may support some features differently.
+
+@subheading Copy and Paste
+
+In character mode the ``standard'' keyboard shortcuts for copy and paste
+(ctrl-C and ctrl-V) are sent to the backend program.
+So instead DomTerm uses ctrl-shift-C to copy the selection to the clipboard,
+and ctrl-shift-V to paste the contents of the clipboard.
+
+Some front-end also have menu entries for copy and paste.
+
+@emph{Front-end support}:
+Middle-button paste (i.e. cliicking the middle button pastes the
+contents of the @emph{selection}, rather than the clipboard)
+works on qtdomterm, and chrome-based browsers.
+It does not work on the Firefox/XUL application or in a Firefox
+browser window.
+
+@subheading Save the console contents as HTML
+
+Use the keyboard shortcut ctrl-shift-S to save the contents
+of the DomTerm console as an HTML file.
+Both qtdomterm and the Firefox/XUL front-end also offer menu entries for this.
+
+The saved file should be viewed with various css stylesheet
+files in the @code{hlib} subdirectory.  You can create a symlink
+to the @code{hlib} subdirectory in the DomTerm distribution.
+The saved file also optionally makes use of some JavaScript,
+in the same directory.
+The JavaScript isn't essential, but it enables features like
+hide/show buttons.
+
+Images will preserve their URLs, so relative URLs may need to be fixed.
+``Embedded'' images using a @code{date:} URL (including those
+loaded with the @code{imgcat} program) will be saved embedded,
+and Just Work.
+
+The resulting file is actually an XHTML file, so you can use
+XML tools to extract parts from or transform the output.
+
+@emph{Front-end support}: The qtdomterm and the Firefox/XUL applications
+bring up a file chooser, and let you save the file in any writable directory.
+Other front-end bring up a prompt pop-up and only allow
+saving to the Downloads area.
+The JavaFX front-end currently does not support saving.
+
+Note that if DomTerm is running in a browser window,
+the browser's @code{Save page as ...} command is not useful.
+It will save the original bare web page, before any DomTerm interactions
+or other JavaScript modification.
+
+@subheading Changing appearance with CSS stylesheets
+
+You can @code{@ref{dtstyle - Changing styles,dtstyle}} application
+in a DomTerm window to change its appearance.
+
+On @code{@ref{qtdomterm appliction,qtdomterm}} you can use
+the @code{--stylesheet} option
+or the @code{Edit} / @code{Preferences} / @code{Appearance} menu entry.
+
+@subheading Session names and session-specific styles
+
+Each ``session'' (terminal window) has a name,
+which by default has the form @code{"domterm-@var{N}"}
+where @var{N} is an integer.
+The session name is usually shown in the window title bar,
+in the format @code{"@var{window-title} [@var{session-name}]"}.
+
+You can change the session name by ``printing'' a certain escape sequence.
+For example (using bash):
+@example
+echo -en "\e]30;@var{session-name}\007"
+@end example
+
+The @code{qtdomterm} application will give each ssession a
+fresh name of the form @code{domterm-@var{N}}.
+The Java WebSockets server will do the same.
+
+The session name is used to set the @code{name}
+attribute of the top domterm element,
+so you can use it to select differnt rules for different sessions.
+For example the following selects different background colors.
+
+@example
+div.domterm @{ background-color: #FFE @}
+div.domterm[name="domterm-1"] @{ background-color: #FEE @}
+div.domterm[name="domterm-2"] @{ background-color: #EEF @}
+@end example
 
 @node To do
 @chapter Ideas and projects for DomTerm
@@ -1371,7 +1451,7 @@ if you prefer to avoid PTYs or they are unavailable (as on Windows).
 
 The front-end and back-end can be combined in the same process,
 using an embeddable browser.
-The current @ref{Applications,sample applications}
+he current @ref{Applications,sample applications}
 include a single-process terminal emulator that uses the JavaFX WebEngine,
 a JavaFX pop-up menu, and a PTY class.
 In this case the ``communication stub'' is WebEngine's
