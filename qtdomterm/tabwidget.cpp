@@ -309,15 +309,14 @@ TabWidget::TabWidget(QWidget *parent)
 void TabWidget::requestSaveAs()
 {
     //QWebEngineDownloadItem::SavePageFormat format = QWebEngineDownloadItem::SingleHtmlSaveFormat;
-    currentBackend()->requestHtmlData();
-    QString filePath;
+    Backend* backend = currentBackend();
+    backend->requestHtmlData();
+    QString filePath = backend->sessionName() + ".html";
     SavePageDialog dlg(this, /*format,*/ filePath);
     if (dlg.exec() != SavePageDialog::Accepted)
         return;
     filePath = dlg.filePath();
     QString html = currentBackend()->getSavedHtml();
-    //fprintf(stderr, "save to %s\ncontents: %s\n", filePath.toUtf8().data(),
-    //  html.toUtf8().data());
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
       file.write(html.toUtf8());

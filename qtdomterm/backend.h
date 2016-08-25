@@ -21,6 +21,7 @@ public:
     ~Backend();
     void dowrite(const QString &text);
     void setInputMode(char mode);
+    QString sessionName() { return _nameTitle; }
     void setSessionName(const QString& name);
     void requestHtmlData();
     void loadSessionName();

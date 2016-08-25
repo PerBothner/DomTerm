@@ -2765,6 +2765,7 @@ DomTerm.prototype.handleLink = function(event, href) {
 // It can be used in stylesheets as well as the window title.
 DomTerm.prototype.setSessionName = function(title) {
     this.topNode.setAttribute("name", title);
+    this.reportEvent("SESSION-NAME", JSON.stringify(title));
 }
 
 DomTerm.prototype.sessionName = function() {
@@ -3271,9 +3272,9 @@ DomTerm.prototype.getAsHTML = function() {
                         avalue = avalue.replace("qrc:", "");
                         if (avalue == "hlib/domterm-client.js")
                             avalue = "hlib/domterm-saved.js";
-                        if (value == "hlib/qwebchannel.js"
-                            || value == "hlib/FileSaver.js"
-                            || value == "hlib/bililiteRange.js")
+                        if (avalue == "hlib/qwebchannel.js"
+                            || avalue == "hlib/FileSaver.js"
+                            || avalue == "hlib/bililiteRange.js")
                             skip = true;
                     }
                     s += ' ' + aname+ // .toLowerCase() +
@@ -4287,7 +4288,7 @@ DomTerm.prototype.doLineEdit = function(key, str) {
 
 DomTerm.prototype._writeFile = function(data, filePath) {
     saveAs(new Blob([data], {type: "text/html;charset=utf-8"}),
-           filePath);
+           filePath, false);
 };
 DomTerm.prototype._pickFile = function() {
     var fname = this.sessionName()+".html";

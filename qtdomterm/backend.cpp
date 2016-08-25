@@ -367,6 +367,8 @@ void Backend::reportEvent(const QString &name, const QString &data)
     } else if (name=="ALINK") {
         QUrl url = parseSimpleJsonString(data, 0, data.length());
         QDesktopServices::openUrl(url);
+    } if (name=="SESSION-NAME") {
+        setSessionName(parseSimpleJsonString(data, 0, data.length()));
     } else if (name=="GET-HTML") {
       int q = data.indexOf('"');
       QString html = parseSimpleJsonString(data, q, data.length());
