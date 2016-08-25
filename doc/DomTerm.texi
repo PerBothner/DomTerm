@@ -625,10 +625,11 @@ to the @code{hlib} subdirectory in the DomTerm distribution.
 The saved file also optionally makes use of some JavaScript,
 in the same directory.
 The JavaScript isn't essential, but it enables features like
-hide/show buttons.
+hide/show buttons and dynamic line-(re-)breaking.
 
-Images will preserve their URLs, so relative URLs may need to be fixed.
-``Embedded'' images using a @code{date:} URL (including those
+Images will preserve their URLs.
+Relative URLs may need to be fixed, but absolute ones should be fine.
+``Embedded'' images using a @code{data:} URL (including those
 loaded with the @code{imgcat} program) will be saved embedded,
 and Just Work.
 
