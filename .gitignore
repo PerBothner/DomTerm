@@ -34,8 +34,8 @@ qtdomterm/moc_predefs.h
 qtdomterm/webview.moc
 qtdomterm/ui_*.h
 qtdomterm/qrc_data.cpp
-qtdomterm/data/ResizeSensor.js
+qtdomterm/data/hlib/ResizeSensor.js
+qtdomterm/data/hlib/FileSaver.js
 qtdomterm/data/hlib/bililiteRange.js
 qtdomterm/data/hlib/terminal.js
-qtdomterm/data/hlib
-
+qtdomterm/data/hlib/*.css
