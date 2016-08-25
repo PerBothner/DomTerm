@@ -685,6 +685,16 @@ div.domterm[name="domterm-1"] @{ background-color: #FEE @}
 div.domterm[name="domterm-2"] @{ background-color: #EEF @}
 @end example
 
+@subheading Adding qtdomterm to the desktop
+
+@subsubheading On Gnome
+
+Copy @code{qtdomterm.desktop} to either
+@code{usr/share/applications} (if @code{qtdomterm} is installed
+in @code{/usr/bin} and you want it accessible to everyone),
+or in @code{~/.local/share/applications} (if you only wish to make
+accessible to a single user).
+
 @node To do
 @chapter Ideas and projects for DomTerm
 
