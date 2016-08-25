@@ -3,7 +3,13 @@ function loadHandler(event) {
     var dt = new DomTerm("domterm");
     window.domterm1 = dt;
     var topNode = document.getElementById("domterm");
-    //wt.initializeTerminal(topNode);
+    dt.setWindowSize = function(numRows, numColumns,
+                                availHeight, availWidth) {
+    };
+
+    dt._restoreLineTables(topNode, 0);
+    dt._initializeDomTerm(topNode);
+
     topNode.addEventListener("click",
                              function(e) {
                                  var target = e.target;

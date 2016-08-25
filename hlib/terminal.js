@@ -498,6 +498,23 @@ DomTerm.prototype.widthInColumns = function(str, start, end) {
     return w;
 };
 
+DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
+    var start = null;
+    var dt = this;
+    function checkElement(el) {
+        var tag = el.tagName;
+        if (tag == "DIV" || tag == "PRE" || tag == "P")
+            start = el;
+        else if (tag == "SPAN" && el.getAttribute("line")) {
+            dt.lineStarts[startLine] = start;
+            dt.lineEnds[startLine] = el;
+            start = el;
+            startLine++;
+        }
+    };
+    this._forEachElementIn(startNode, checkElement)
+}
+
 DomTerm.prototype.saveCursor = function() {
     this.savedCursorLine = this.getCursorLine();
     this.savedCursorColumn = this.getCursorColumn();
@@ -1367,21 +1384,12 @@ DomTerm.prototype.isSpanNode = function(node) {
     return "SPAN" == tag;
 };
 
-DomTerm.prototype.initializeTerminal = function(topNode) {
-    try {
-        if (window.localStorage) {
-            var v = localStorage[this.historyStorageKey];
-            if (v)
-                this.history = JSON.parse(v);
-        }
-    } catch (e) { }
-    if (! this.history)
-        this.history = new Array();
-
+DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.topNode = topNode;
     var name = topNode.name;
     if (name)
         this.setSessionName(name);
+
     var helperNode = this._createPreNode();
     helperNode.setAttribute("id", this.makeId("helper"));
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
@@ -1408,6 +1416,21 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
         if (dt.numColumns != oldCols)
             dt._breakAllLines();
     });
+    this.measureWindow();
+};
+
+DomTerm.prototype.initializeTerminal = function(topNode) {
+    try {
+        if (window.localStorage) {
+            var v = localStorage[this.historyStorageKey];
+            if (v)
+                this.history = JSON.parse(v);
+        }
+    } catch (e) { }
+    if (! this.history)
+        this.history = new Array();
+
+    this._initializeDomTerm(topNode);
 
     this._mainBufferName = this.makeId("main")
     this._altBufferName = this.makeId("alternate")
@@ -1428,6 +1451,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     this.outputBefore = this.inputLine;
     this.pendingInput = this.inputLine;
 
+    var dt = this;
     document.onkeydown =
         function(e) { dt.keyDownHandler(e ? e : window.event) };
     document.onkeypress =
@@ -1460,7 +1484,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
             dt.log("context menu even info:"+info);
         });
     }
-    this.measureWindow();
 };
 
 DomTerm.prototype._createBuffer = function(bufName) {
@@ -1504,12 +1527,8 @@ DomTerm.prototype.measureWindow = function()  {
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
     if (this.verbosity >= 2)
         this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
-    // We calculate columns from initial.clientWidth because we don't
-    // want to include the scroll-bar.  On the other hand, for vertical
-    // height we have to look at the parent of the topNode because
-    // topNode may not have grown to full size yet.
     var availHeight = this.topNode.parentNode.clientHeight;
-    var availWidth = this.initial.clientWidth - this.rightMarginWidth;
+    var availWidth = this.topNode.clientWidth - this.rightMarginWidth;
     var numRows = Math.floor(availHeight / this.charHeight);
     var numColumns = Math.floor(availWidth / this.charWidth);
     if (numRows != this.numRows || numColumns != this.numColumns
@@ -1723,6 +1742,30 @@ DomTerm.prototype.addInputLine = function() {
     //inputNode.appendChild(dummyText);
 
     this.inputLine = inputNode;
+};
+
+DomTerm.prototype._forEachElementIn = function(node, func) {
+    for (var cur = node.firstChild; ;) {
+        if (cur == null || cur == node)
+            break;
+        if (cur instanceof Element)
+            func(cur);
+        if (cur instanceof Element && cur.firstChild) {
+            cur = cur.firstChild;
+        } else if (cur.nextSibling)
+            cur = cur.nextSibling;
+        else {
+            for (;;) {
+                cur = cur.parentNode;
+                if (cur == node)
+                    break;
+                if (cur.nextSibling) {
+                    cur = cur.nextSibling;
+                    break;
+                }
+            }
+        }
+    }
 };
 
 DomTerm.prototype.resetCursorCache = function() {
@@ -3267,8 +3310,10 @@ DomTerm.prototype.getAsHTML = function() {
                 for (i = 0; i < tagAttributes.length; i++) {
                     var aname = tagAttributes[i].nodeName;
                     var avalue = tagAttributes[i].nodeValue;
-                    if ((tagName == "link" && aname == "href")
-                        || (tagName == "script" && aname == "src")) {
+                    if (aname=="line" && avalue=="soft" && tagName=="span")
+                        skip = true;
+                    else if ((tagName == "link" && aname == "href")
+                             || (tagName == "script" && aname == "src")) {
                         avalue = avalue.replace("qrc:", "");
                         if (avalue == "hlib/domterm-client.js")
                             avalue = "hlib/domterm-saved.js";
