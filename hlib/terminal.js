@@ -3748,14 +3748,16 @@ DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebr
         } else { // el instanceof Text
             this._normalize1(el);
             next = el.nextSibling;
-            var right = this._offsetLeft(el.nextSibling, el.parentNode);
+            var right = this._offsetLeft(next, el.parentNode);
             if (right > availWidth) {
                 next = this._breakText(el, line, beforePos, right, availWidth, rebreak);
                 right = 0; // FIXME rest
             }
+            beforePos = right;
         }
         el = next;
     }
+    return beforePos;
 };
 
 DomTerm.prototype._offsetLeft = function(node, parent) {
@@ -3770,6 +3772,11 @@ DomTerm.prototype._offsetLeft = function(node, parent) {
     }
 }
 
+/* Called on a text node that "sticks out too far".
+ * We need to find a break point.
+ * Returns the following node *after* the break; this is normally
+ * a new text node with the data that didn't fir.
+ */
 DomTerm.prototype._breakText = function(textNode, line, beforePos, afterPos, availWidth, rebreak) {
     var lineNode = this._createLineNode("soft", null);
     textNode.parentNode.insertBefore(lineNode,
