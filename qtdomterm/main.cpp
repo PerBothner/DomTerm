@@ -53,15 +53,116 @@
 #include <qtwebenginewidgetsglobal.h>
 #include <string.h>
 #include <getopt.h>
+#include <QProcessEnvironment>
+#include <QDir>
+
+const char* const short_options = "+vhw:e:c:S:";
+
+const struct option long_options[] = {
+    {"version", 0, NULL, 'v'},
+    {"help",    0, NULL, 'h'},
+    {"workdir", 1, NULL, 'w'},
+    {"execute", 1, NULL, 'e'},
+    {"connect", 1, NULL, 'c'},
+    {"stylesheet", 1, NULL, 'S'},
+    // The following option is handled internally in QtWebEngine.
+    // We just need to pass it through without complaint to the QApplication.
+    {"remote-debugging-port", 1, NULL, 0},
+    {NULL,      0, NULL,  0}
+};
+
+void print_usage_and_exit(int code)
+{
+    printf("QtDomTerm %s\n", QTDOMTERM_VERSION);
+    puts("Usage: qtdomterm [OPTION]...\n");
+    //puts("  -d,  --drop               Start in \"dropdown mode\" (like Yakuake or Tilda)");
+    puts("  -e,  --execute <command>  Execute command instead of shell");
+    puts("  -c,  --connect HOST:PORT  Connect to websocket server");
+    puts("  -h,  --help               Print this help");
+    puts("  -v,  --version            Prints application version and exits");
+    puts("  -w,  --workdir <dir>      Start session with specified work directory");
+    puts("  -S,  --stylesheet <name>  Name of extra CSS stylesheet file");
+    puts("\nHomepage: <https://domterm.org>");
+    exit(code);
+}
+
+void print_version_and_exit(int code=0)
+{
+    printf("%s\n", QTDOMTERM_VERSION);
+    exit(code);
+}
+
+void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
+{
+    for (;;) {
+        int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
+        switch(next_option) {
+            case -1:
+                goto post_args;
+            case 'h':
+                print_usage_and_exit(0);
+            case 'w':
+                processOptions->workdir = QString(optarg);
+                break;
+            case 'c':
+                processOptions->wsconnect = QString(optarg);
+                break;
+            case 'S':
+                // Shouldn't happen - main turns -S to --stylesheet,
+                // and the QApplication contructor removes the latter.
+                break;
+            case 'e':
+                optind--;
+                goto post_args;
+            case '?':
+                print_usage_and_exit(1);
+            case 'v':
+                print_version_and_exit();
+        }
+    }
+ post_args:
+    QStringList arguments;
+    QString program;
+    if (optind < argc) {
+        program = QString(argv[optind]);
+
+    } else {
+        const char *shell = getenv("SHELL");
+        if (shell == nullptr)
+            shell = "/bin/sh";
+        program = shell;
+    }
+    processOptions->program = program;
+    arguments += program;
+    while (++optind < argc) {
+        arguments += QString(argv[optind]);
+    }
+    processOptions->arguments = arguments;
+    if (processOptions->workdir.isEmpty())
+        processOptions->workdir = QDir::currentPath();
+
+    const QString ws = processOptions->wsconnect;
+    QString url = "qrc:/index.html";
+    if (! ws.isEmpty()) {
+        url += "?ws=ws://";
+        url += ws;
+    }
+    processOptions->url = url;
+}
 
 int main(int argc, char **argv)
 {
+    ProcessOptions* processOptions = new ProcessOptions();
+    QSharedDataPointer<ProcessOptions> processOptionsPtr(processOptions);
+    processOptions->environment = QProcessEnvironment::systemEnvironment().toStringList();
+
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     Q_INIT_RESOURCE(data);
 
     // The QApplication constructor recognizes and removes a --stylesheet
     // option, before parseArgs can see it.  So we pre-extract it.
     char *styleSheet = NULL;
+    parseArgs(argc, argv, processOptions);
     for (;;) {
         if (optind < argc && strcmp(argv[optind], "-stylesheet") == 0)
           argv[optind] = (char*) "--stylesheet";
@@ -78,10 +179,10 @@ int main(int argc, char **argv)
     }
     optind = 1;
 
-    BrowserApplication application(argc, argv, styleSheet);
+    BrowserApplication application(argc, argv, styleSheet, processOptionsPtr);
     if (!application.isTheOnlyBrowser())
         return 0;
 
-    application.newMainWindow();
+    application.newMainWindow(processOptionsPtr);
     return application.exec();
 }

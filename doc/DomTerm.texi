@@ -695,6 +695,40 @@ in @code{/usr/bin} and you want it accessible to everyone),
 or in @code{~/.local/share/applications} (if you only wish to make
 accessible to a single user).
 
+@subheading Environment variables set
+
+The DomTerm back-ends set various enviromnent variable
+when they start up a process.
+
+@code{TERM} is set to @code{"xterm-256color"}.
+@code{COLORTERM} is set to @code{"truecolor"}.
+
+The @code{DOMTERM} variable is set to a semicolon-separate
+list of information about DomTerm and how it was invoked.
+The specific list is subject to change.
+
+An example when running on @code{qtdomterm}:
+@example
+QtDomTerm;version=0.4;tty=/dev/pts/3
+@end example
+The XUL front-end (FireFox in app mode) may yield:
+@example
+version=0.4;Java-WebSocket-server;PtyClient;tty=/dev/pts/1
+@end example
+
+Checking the @code{DOMTERM} variable is the normal way to
+check if we're running in a DomTerm terminal.  It is not
+foolproof, since you could (for example) spawn off an @code{xterm},
+which would not reset the @code{DOMTERM} variable.
+To make it more robust, you can compare the output of the
+@code{tty} command or the @code{ttyname} function with the
+value specified after @code{tty=}.
+However, @code{tty=} might not be specified unless runnng under a pty.
+
+@code{WINDOWID} is not set - in fact @code{qtdomterm} unsets it.
+There seem to be some problems setting it with Qt.
+This variable is not set by Wayland.
+
 @node To do
 @chapter Ideas and projects for DomTerm
 
@@ -753,6 +787,11 @@ Think about how to do multi-line paste.
 @subheading Improve standalone terminal emulator
 
 Handle saving and truncating scrolled-out output.
+
+While @code{qtdomterm} supports tabs, moving a tab from from
+one window to another window does not work.
+
+Implement ``drop-down'' mode.
 
 @subheading Support other embeddable browsers
 

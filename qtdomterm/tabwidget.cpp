@@ -477,8 +477,12 @@ void TabWidget::setupPage(QWebEnginePage* page)
 
 WebView *TabWidget::newTab(bool makeCurrent)
 {
+   return newTab(currentWebView()->m_processOptions, makeCurrent);
+}
+WebView *TabWidget::newTab(QSharedDataPointer<ProcessOptions> processOptions, bool makeCurrent)
+{
     // webview
-    WebView *newWebView = new WebView;
+    WebView *newWebView = new WebView(processOptions);
     newWebView->setPage(new WebPage(m_profile, newWebView));
     connect(newWebView, SIGNAL(loadStarted()),
             this, SLOT(webViewLoadStarted()));
@@ -495,7 +499,7 @@ WebView *TabWidget::newTab(bool makeCurrent)
     if (count() == 1)
         currentChanged(currentIndex());
     emit tabsChanged();
-    newWebView->setUrl(BrowserApplication::instance()->getCommandLineUrlArgument());
+    newWebView->setUrl(processOptions->url);
     return newWebView;
 }
 
@@ -694,61 +698,6 @@ void TabWidget::previousTab()
     if (next < 0)
         next = count() - 1;
     setCurrentIndex(next);
-}
-
-static const qint32 TabWidgetMagic = 0xaa;
-
-QByteArray TabWidget::saveState() const
-{
-    int version = 1;
-    QByteArray data;
-    QDataStream stream(&data, QIODevice::WriteOnly);
-
-    stream << qint32(TabWidgetMagic);
-    stream << qint32(version);
-
-    QStringList tabs;
-    for (int i = 0; i < count(); ++i) {
-        if (WebView *tab = qobject_cast<WebView*>(widget(i))) {
-            tabs.append(tab->url().toString());
-        } else {
-            tabs.append(QString::null);
-        }
-    }
-    stream << tabs;
-    stream << currentIndex();
-    return data;
-}
-
-bool TabWidget::restoreState(const QByteArray &state)
-{
-    int version = 1;
-    QByteArray sd = state;
-    QDataStream stream(&sd, QIODevice::ReadOnly);
-    if (stream.atEnd())
-        return false;
-
-    qint32 marker;
-    qint32 v;
-    stream >> marker;
-    stream >> v;
-    if (marker != TabWidgetMagic || v != version)
-        return false;
-
-    QStringList openTabs;
-    stream >> openTabs;
-
-    for (int i = 0; i < openTabs.count(); ++i) {
-        if (i != 0)
-            newTab();
-        loadPage(openTabs.at(i));
-    }
-
-    int currentTab;
-    stream >> currentTab;
-    setCurrentIndex(currentTab);
-
-    return true;
 }
 
 WebActionMapper::WebActionMapper(QAction *root, QWebEnginePage::WebAction webAction, QObject *parent)

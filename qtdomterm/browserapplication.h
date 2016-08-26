@@ -67,17 +67,20 @@ class QWebEngineProfile;
 class QFileSystemWatcher;
 QT_END_NAMESPACE
 
-extern const char* const short_options;
-extern const struct option long_options[];
+#include "processoptions.h"
+
+#define QTDOMTERM_VERSION "0.4"
 
 class BrowserMainWindow;
 class CookieJar;
+
 class BrowserApplication : public QApplication
 {
     Q_OBJECT
 
 public:
-    BrowserApplication(int &argc, char **argv, char *styleSheet);
+    BrowserApplication(int &argc, char **argv, char *styleSheet,
+                       QSharedDataPointer<ProcessOptions> processOptions);
     ~BrowserApplication();
     static BrowserApplication *instance();
     void loadSettings();
@@ -89,8 +92,6 @@ public:
     QIcon defaultIcon() const;
     QFileSystemWatcher* fileSystemWatcher() { return m_fileSystemWatcher; }
 
-    void saveSession();
-    bool canRestoreSession() const;
     bool privateBrowsing() const { return m_privateBrowsing; }
     QString generateSessionName();
 
@@ -100,19 +101,13 @@ public:
 #if defined(Q_OS_OSX)
     bool event(QEvent *event);
 #endif
-    QString getCommandLineUrlArgument() const;
 
 public slots:
-    BrowserMainWindow *newMainWindow();
-    void restoreLastSession();
+    BrowserMainWindow *newMainWindow(QSharedDataPointer<ProcessOptions> processOption);
     void quitBrowser();
     void setPrivateBrowsing(bool);
-    const QString program() { return m_program; }
-    QStringList arguments() { return m_arguments; }
     const QString stylesheetFilename() { return m_stylesheetFilename; }
     const QString stylesheetRules() { return m_stylesheetRules; }
-    const QString wsconnect() const { return m_wsconnect; }
-    bool should_connect() const { return ! m_wsconnect.isEmpty(); }
     void reloadStylesheet();
 
 signals:
@@ -127,22 +122,16 @@ private slots:
 private:
     void clean();
     void installTranslator(const QString &name);
-    void parseArgs(int argc, char* argv[]);
     static QNetworkAccessManager *s_networkAccessManager;
 
     QList<QPointer<BrowserMainWindow> > m_mainWindows;
     QLocalServer *m_localServer;
-    QByteArray m_lastSession;
     QWebEngineProfile *m_privateProfile;
     bool m_privateBrowsing;
     mutable QIcon m_defaultIcon;
 
     QAuthenticator m_lastAuthenticator;
     QAuthenticator m_lastProxyAuthenticator;
-    QString m_workdir;
-    QString m_program;
-    QStringList m_arguments;
-    QString m_wsconnect;
     QString m_stylesheetFilename;
     QString m_stylesheetRules;
     QFileSystemWatcher *m_fileSystemWatcher;

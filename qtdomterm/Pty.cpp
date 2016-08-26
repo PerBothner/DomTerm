@@ -156,7 +156,7 @@ void Pty::addEnvironmentVariables(const QStringList& environment)
 int Pty::start(const QString& program,
                const QStringList& programArguments,
                const QStringList& environment,
-               ulong winid,
+               ulong /*winid*/,
                bool addToUtmp
                //const QString& dbusService,
                //const QString& dbusSession
@@ -170,22 +170,10 @@ int Pty::start(const QString& program,
   Q_ASSERT(programArguments.count() >= 1);
   setProgram(program.toLatin1(),programArguments.mid(1));
 
-  addEnvironmentVariables(environment);
-
-  setEnv("WINDOWID", QString::number(winid));
-
-  // unless the LANGUAGE environment variable has been set explicitly
-  // set it to a null string
-  // this fixes the problem where KCatalog sets the LANGUAGE environment
-  // variable during the application's startup to something which
-  // differs from LANG,LC_* etc. and causes programs run from
-  // the terminal to display messages in the wrong language
-  //
-  // this can happen if LANG contains a language which KDE
-  // does not have a translation for
-  //
-  // BR:149300
-  setEnv("LANGUAGE",QString(),false /* do not overwrite existing value if any */);
+  //addEnvironmentVariables(environment);
+  // FIXME remove WINDOWID
+  setEnvironment(environment);
+  unsetEnv("WINDOWID");
 
   setUseUtmp(addToUtmp);
 

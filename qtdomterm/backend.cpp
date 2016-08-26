@@ -25,11 +25,6 @@
     02110-1301  USA.
 */
 
-#include "backend.h"
-#include "Pty.h"
-#include "kptyprocess.h"
-#include "browserapplication.h"
-
 #include <termios.h>
 
 #include <QDir>
@@ -40,8 +35,15 @@
 #include <QTimer>
 #include <QFileSystemWatcher>
 
-Backend::Backend(QObject *parent)
+#include "backend.h"
+#include "Pty.h"
+#include "kptyprocess.h"
+#include "browserapplication.h"
+
+Backend::Backend(QSharedDataPointer<ProcessOptions> processOptions,
+                 QObject *parent)
   :  QObject(parent),
+     _processOptions(processOptions),
      _shellProcess(0),
      _wantedClose(false)
 {
@@ -73,37 +75,24 @@ void Backend::onReceiveBlock( const char * buf, int len )
     //  qDebug() << "onReceiveBlock: " << QString::fromLatin1(buf, len) << "\n";
 }
 
-void Backend::setProgram(const QString & program)
+QString Backend::program() const
 {
-    //_program = ShellCommand::expand(program);
-    _program = program;
-}
-void Backend::setInitialWorkingDirectory(const QString & dir)
-{
-    //_initialWorkingDir = ShellCommand::expand(dir);
-    _initialWorkingDir = dir;
+    return _processOptions->program;
 }
 
+QStringList Backend::arguments() const
+{
+    return _processOptions->arguments;
+}
 
 QStringList Backend::environment() const
 {
-    return _environment;
+    return _processOptions->environment;
 }
 
-void Backend::setEnvironment(const QStringList & environment)
+QString Backend::initialWorkingDirectory() const
 {
-    _environment = environment;
-}
-
-void Backend::addEnvironment(const QString & var)
-{
-    _environment += var;
-}
-
-void Backend::setArguments(const QStringList & arguments)
-{
-    //_arguments = ShellCommand::expand(arguments);
-    _arguments = arguments;
+    return _processOptions->workdir;
 }
 
 void Backend::dowrite(const QString &text)
@@ -170,25 +159,25 @@ void Backend::run()
             &BrowserApplication::reloadStyleSheet,
             this, &Backend::reloadStylesheet);
 
-    if (!_initialWorkingDir.isEmpty()) {
-        _shellProcess->setWorkingDirectory(_initialWorkingDir);
-    } else {
-        QString cwd = QDir::currentPath();
-        _shellProcess->setWorkingDirectory(cwd);
-    }
+    _shellProcess->setWorkingDirectory(initialWorkingDirectory());
 
-    addEnvironment("TERM=xterm-256color");
+    QStringList env = environment();
+    env += "TERM=xterm-256color";
+    env += "COLORTERM=truecolor";
+    const char *ttyName = pty()->ttyName();
     QString domtermVar = "DOMTERM=";
     domtermVar += domtermVersion();
-    addEnvironment(domtermVar);
+    domtermVar += ";tty=";
+    domtermVar += ttyName;
+    env += domtermVar;
 
-    QString exec = _program;
+    QString exec = program();
     /* if we do all the checking if this shell exists then we use it ;)
      * Dont know about the arguments though.. maybe youll need some more checking im not sure
      * However this works on Arch and FreeBSD now.
      */
-    int result = _shellProcess->start(exec, _arguments,
-                                      _environment, 0, false);
+    int result = _shellProcess->start(exec, arguments(),
+                                      env, 0, false);
 
     if (result < 0) {
         qDebug() << "CRASHED! result: " << result;
@@ -488,4 +477,9 @@ QString Backend::toJsonQuoted(QString str)
     }
     buf += '\"';
     return buf;
+}
+
+ProcessOptions* Backend::processOptions()
+{
+    return _processOptions.data();
 }

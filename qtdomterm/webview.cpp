@@ -117,11 +117,12 @@ bool WebPage::certificateError(const QWebEngineCertificateError &error)
     return false;
 }
 
+#if 0
 class PopupWindow : public QWidget {
     Q_OBJECT
 public:
-    PopupWindow(QWebEngineProfile *profile)
-        : m_view(new WebView(this))
+    PopupWindow(QSharedDataPointer<ProcessOptions> processOptions, QWebEngineProfile *profile)
+      : m_view(new WebView(processOptions, this))
     {
         m_view->setPage(new WebPage(profile, m_view));
         QVBoxLayout *layout = new QVBoxLayout;
@@ -150,26 +151,9 @@ private:
     WebView *m_view;
 
 };
+#endif
 
 #include "webview.moc"
-
-QWebEnginePage *WebPage::createWindow(QWebEnginePage::WebWindowType type)
-{
-    if (type == QWebEnginePage::WebBrowserTab) {
-        return mainWindow()->tabWidget()->newTab()->page();
-        //} else if (type == QWebEnginePage::WebBrowserBackgroundTab) {
-        //   return mainWindow()->tabWidget()->newTab(false)->page();
-    } else if (type == QWebEnginePage::WebBrowserWindow) {
-        BrowserApplication::instance()->newMainWindow();
-        BrowserMainWindow *mainWindow = BrowserApplication::instance()->mainWindow();
-        return mainWindow->currentTab()->page();
-    } else {
-        PopupWindow *popup = new PopupWindow(profile());
-        popup->setAttribute(Qt::WA_DeleteOnClose);
-        popup->show();
-        return popup->page();
-    }
-}
 
 #if !defined(QT_NO_UITOOLS)
 QObject *WebPage::createPlugin(const QString &classId, const QUrl &url, const QStringList &paramNames, const QStringList &paramValues)
@@ -236,8 +220,10 @@ void WebPage::handleUnsupportedContent(QNetworkReply *reply)
 }
 #endif
 
-WebView::WebView(QWidget* parent)
+WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
+                 QWidget* parent)
     : QWebEngineView(parent)
+    , m_processOptions(processOptions)
     , m_progress(0)
     , m_page(0)
 {
@@ -298,19 +284,10 @@ void WebView::setPage(WebPage *_page)
     page()->setForwardUnsupportedContent(true);
 #endif
     BrowserApplication * app = BrowserApplication::instance();
-    if (! app->should_connect()) {
+    if (! m_processOptions->should_connect()) {
         QWebChannel *channel = new QWebChannel(this);
-        m_backend = new Backend(this);
+        m_backend = new Backend(m_processOptions, this);
         connect(m_backend, SIGNAL(finished()), this, SIGNAL(finished()));
-        QString program = app->program();
-        if (program.isEmpty()) {
-            const char *shell = getenv("SHELL");
-            if (shell == nullptr)
-                shell = "/bin/sh";
-         program = shell;
-        }
-        m_backend->setProgram(program);
-        m_backend->setArguments(app->arguments());
         channel->registerObject(QStringLiteral("backend"), m_backend);
         page()->setWebChannel(channel);
         m_backend->setSessionName(app->generateSessionName());

@@ -54,6 +54,7 @@
 #include "settings.h"
 #include "tabwidget.h"
 #include "webview.h"
+#include "processoptions.h"
 
 #include <QtCore/QSettings>
 
@@ -86,7 +87,7 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
     return wrapper;
 }
 
-BrowserMainWindow::BrowserMainWindow(QWidget *parent, Qt::WindowFlags flags)
+BrowserMainWindow::BrowserMainWindow(QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
     , m_tabWidget(new TabWidget(this))
     , m_historyBack(0)
@@ -119,7 +120,7 @@ BrowserMainWindow::BrowserMainWindow(QWidget *parent, Qt::WindowFlags flags)
 
     slotUpdateWindowTitle();
     loadDefaultState();
-    m_tabWidget->newTab();
+    m_tabWidget->newTab(processOptions);
 }
 
 BrowserMainWindow::~BrowserMainWindow()
@@ -131,7 +132,6 @@ void BrowserMainWindow::loadDefaultState()
     QSettings settings;
     settings.beginGroup(QLatin1String("BrowserMainWindow"));
     QByteArray data = settings.value(QLatin1String("defaultState")).toByteArray();
-    restoreState(data);
     settings.endGroup();
 }
 
@@ -140,65 +140,6 @@ QSize BrowserMainWindow::sizeHint() const
     QRect desktopRect = QApplication::desktop()->screenGeometry();
     QSize size = desktopRect.size() * qreal(0.9);
     return size;
-}
-
-void BrowserMainWindow::save()
-{
-    BrowserApplication::instance()->saveSession();
-
-    QSettings settings;
-    settings.beginGroup(QLatin1String("BrowserMainWindow"));
-    QByteArray data = saveState(false);
-    settings.setValue(QLatin1String("defaultState"), data);
-    settings.endGroup();
-}
-
-static const qint32 BrowserMainWindowMagic = 0xba;
-
-QByteArray BrowserMainWindow::saveState(bool withTabs) const
-{
-    int version = 2;
-    QByteArray data;
-    QDataStream stream(&data, QIODevice::WriteOnly);
-
-    stream << qint32(BrowserMainWindowMagic);
-    stream << qint32(version);
-
-    stream << size();
-    if (withTabs)
-        stream << tabWidget()->saveState();
-    else
-        stream << QByteArray();
-    return data;
-}
-
-bool BrowserMainWindow::restoreState(const QByteArray &state)
-{
-    int version = 2;
-    QByteArray sd = state;
-    QDataStream stream(&sd, QIODevice::ReadOnly);
-    if (stream.atEnd())
-        return false;
-
-    qint32 marker;
-    qint32 v;
-    stream >> marker;
-    stream >> v;
-    if (marker != BrowserMainWindowMagic || v != version)
-        return false;
-
-    QSize size;
-    QByteArray tabState;
-
-    stream >> size;
-    stream >> tabState;
-
-    resize(size);
-
-    if (!tabWidget()->restoreState(tabState))
-        return false;
-
-    return true;
 }
 
 void BrowserMainWindow::runScriptOnOpenViews(const QString &source)
@@ -359,7 +300,7 @@ void BrowserMainWindow::slotAboutApplication()
 
 void BrowserMainWindow::slotFileNew()
 {
-    BrowserApplication::instance()->newMainWindow();
+    BrowserApplication::instance()->newMainWindow(tabWidget()->currentWebView()->m_processOptions);
 }
 
 void BrowserMainWindow::slotFileOpen()

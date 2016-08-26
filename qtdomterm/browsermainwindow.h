@@ -61,6 +61,7 @@ QT_END_NAMESPACE
 
 class TabWidget;
 class WebView;
+class ProcessOptions;
 
 /*!
     The MainWindow of the Browser Application.
@@ -71,15 +72,13 @@ class BrowserMainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    BrowserMainWindow(QWidget *parent = 0, Qt::WindowFlags flags = 0);
+    BrowserMainWindow(QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent = 0, Qt::WindowFlags flags = 0);
     ~BrowserMainWindow();
     QSize sizeHint() const;
 
 public:
     TabWidget *tabWidget() const;
     WebView *currentTab() const;
-    QByteArray saveState(bool withTabs = true) const;
-    bool restoreState(const QByteArray &state);
     Q_INVOKABLE void runScriptOnOpenViews(const QString &);
 
 public slots:
@@ -89,8 +88,6 @@ protected:
     void closeEvent(QCloseEvent *event);
 
 private slots:
-    void save();
-
     void slotUpdateWindowTitle(const QString &title = QString());
 
     void loadUrl(const QUrl &url);
@@ -140,7 +137,6 @@ private:
     QAction *m_reload;
     QAction *m_stopReload;
     QAction *m_viewMenubar;
-    QAction *m_restoreLastSession;
 
     QIcon m_reloadIcon;
     QIcon m_stopIcon;

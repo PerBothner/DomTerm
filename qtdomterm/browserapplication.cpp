@@ -78,90 +78,11 @@
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 #include <QFileSystemWatcher>
-
 #include <QtCore/QDebug>
-
-const char* QTDOMTERM_VERSION = "0.2";
-
-const char* const short_options = "+vhw:e:c:S:";
-
-const struct option long_options[] = {
-    {"version", 0, NULL, 'v'},
-    {"help",    0, NULL, 'h'},
-    {"workdir", 1, NULL, 'w'},
-    {"execute", 1, NULL, 'e'},
-    {"connect", 1, NULL, 'c'},
-    {"stylesheet", 1, NULL, 'S'},
-    // The following option is handled internally in QtWebEngine.
-    // We just need to pass it through without complaint to the QApplication.
-    {"remote-debugging-port", 1, NULL, 0},
-    {NULL,      0, NULL,  0}
-};
-
-void print_usage_and_exit(int code)
-{
-    printf("QtDomTerm %s\n", QTDOMTERM_VERSION);
-    puts("Usage: qtdomterm [OPTION]...\n");
-    //puts("  -d,  --drop               Start in \"dropdown mode\" (like Yakuake or Tilda)");
-    puts("  -e,  --execute <command>  Execute command instead of shell");
-    puts("  -c,  --connect HOST:PORT  Connect to websocket server");
-    puts("  -h,  --help               Print this help");
-    puts("  -v,  --version            Prints application version and exits");
-    puts("  -w,  --workdir <dir>      Start session with specified work directory");
-    puts("  -S,  --stylesheet <name>  Name of extra CSS stylesheet file");
-    puts("\nHomepage: <https://domterm.org>");
-    exit(code);
-}
-
-void print_version_and_exit(int code=0)
-{
-    printf("%s\n", QTDOMTERM_VERSION);
-    exit(code);
-}
-
-void BrowserApplication::parseArgs(int argc, char* argv[])
-{
-    QStringList args = arguments();
-    for (;;) {
-        int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
-        switch(next_option) {
-            case -1:
-                goto post_args;
-            case 'h':
-                print_usage_and_exit(0);
-            case 'w':
-                m_workdir = QString(optarg);
-                break;
-            case 'c':
-                m_wsconnect = QString(optarg);
-                break;
-            case 'S':
-                // Shouldn't happen - main turns -S to --stylesheet,
-                // and the QApplication contructor removes the latter.
-                break;
-            case 'e':
-                optind--;
-                goto post_args;
-            case '?':
-                print_usage_and_exit(1);
-            case 'v':
-                print_version_and_exit();
-        }
-    }
- post_args:
-    if (optind < argc) {
-        m_program = QString(argv[optind]);
-        m_arguments.clear();
-        m_arguments += m_program;
-        while (++optind < argc) {
-            m_arguments += QString(argv[optind]);
-        }
-    }
-}
 
 QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
 
-BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet)
+BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet,QSharedDataPointer<ProcessOptions> processOptions)
     : QApplication(argc, argv)
     , m_localServer(0)
     , m_privateProfile(0)
@@ -182,14 +103,11 @@ BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet)
     }
     m_fileSystemWatcher = new QFileSystemWatcher(this);
 
-    parseArgs(argc, argv);
-
     QLocalSocket socket;
     socket.connectToServer(serverName);
     if (socket.waitForConnected(500)) {
-        QTextStream stream(&socket);
-        stream << getCommandLineUrlArgument();
-        stream.flush();
+        QDataStream stream(&socket);
+        stream << *processOptions;
         socket.waitForBytesWritten();
         return;
     }
@@ -220,11 +138,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet)
     QString localSysName = QLocale::system().name();
 
     installTranslator(QLatin1String("qt_") + localSysName);
-
-    QSettings settings;
-    settings.beginGroup(QLatin1String("sessions"));
-    m_lastSession = settings.value(QLatin1String("lastSession")).toByteArray();
-    settings.endGroup();
 
     QTimer::singleShot(0, this, SLOT(postLaunch()));
 }
@@ -360,59 +273,6 @@ void BrowserApplication::clean()
             m_mainWindows.removeAt(i);
 }
 
-void BrowserApplication::saveSession()
-{
-    if (m_privateBrowsing)
-        return;
-
-    clean();
-
-    QSettings settings;
-    settings.beginGroup(QLatin1String("sessions"));
-
-    QByteArray data;
-    QBuffer buffer(&data);
-    QDataStream stream(&buffer);
-    buffer.open(QIODevice::ReadWrite);
-
-    stream << m_mainWindows.count();
-    for (int i = 0; i < m_mainWindows.count(); ++i)
-        stream << m_mainWindows.at(i)->saveState();
-    settings.setValue(QLatin1String("lastSession"), data);
-    settings.endGroup();
-}
-
-bool BrowserApplication::canRestoreSession() const
-{
-    return !m_lastSession.isEmpty();
-}
-
-void BrowserApplication::restoreLastSession()
-{
-    QList<QByteArray> windows;
-    QBuffer buffer(&m_lastSession);
-    QDataStream stream(&buffer);
-    buffer.open(QIODevice::ReadOnly);
-    int windowCount;
-    stream >> windowCount;
-    for (int i = 0; i < windowCount; ++i) {
-        QByteArray windowState;
-        stream >> windowState;
-        windows.append(windowState);
-    }
-    for (int i = 0; i < windows.count(); ++i) {
-        BrowserMainWindow *newWindow = 0;
-        if (m_mainWindows.count() == 1
-            && mainWindow()->tabWidget()->count() == 1
-            && mainWindow()->currentTab()->url() == QUrl()) {
-            newWindow = mainWindow();
-        } else {
-            newWindow = newMainWindow();
-        }
-        newWindow->restoreState(windows.at(i));
-    }
-}
-
 bool BrowserApplication::isTheOnlyBrowser() const
 {
     return (m_localServer != 0);
@@ -433,7 +293,6 @@ void BrowserApplication::reloadStylesheet()
             setStyleSheet(text.readAll());
         }
     }
-  fprintf(stderr, "BrowserApplication::reloadStylesheet CALLED\n");
 }
 
 void BrowserApplication::installTranslator(const QString &name)
@@ -441,18 +300,6 @@ void BrowserApplication::installTranslator(const QString &name)
     QTranslator *translator = new QTranslator(this);
     translator->load(name, QLibraryInfo::location(QLibraryInfo::TranslationsPath));
     QApplication::installTranslator(translator);
-}
-
-QString BrowserApplication::getCommandLineUrlArgument() const
-{
-    const QStringList args = QCoreApplication::arguments();
-    const QString ws = wsconnect();
-    QString url = "qrc:/index.html";
-    if (! ws.isEmpty()) {
-        url += "?ws=ws://";
-        url += ws;
-    }
-    return url;
 }
 
 #if defined(Q_OS_OSX)
@@ -486,9 +333,9 @@ void BrowserApplication::openUrl(const QUrl &url)
     mainWindow()->loadPage(url.toString());
 }
 
-BrowserMainWindow *BrowserApplication::newMainWindow()
+BrowserMainWindow *BrowserApplication::newMainWindow(QSharedDataPointer<ProcessOptions> processOptions)
 {
-    BrowserMainWindow *browser = new BrowserMainWindow();
+    BrowserMainWindow *browser = new BrowserMainWindow(processOptions);
     m_mainWindows.prepend(browser);
     browser->show();
     return browser;
@@ -497,8 +344,8 @@ BrowserMainWindow *BrowserApplication::newMainWindow()
 BrowserMainWindow *BrowserApplication::mainWindow()
 {
     clean();
-    if (m_mainWindows.isEmpty())
-        newMainWindow();
+    //if (m_mainWindows.isEmpty())
+    //    newMainWindow();
     return m_mainWindows[0];
 }
 
@@ -508,18 +355,19 @@ void BrowserApplication::newLocalSocketConnection()
     if (!socket)
         return;
     socket->waitForReadyRead(1000);
-    QTextStream stream(socket);
-    QString url;
-    stream >> url;
+    QDataStream stream(socket);
+    QSharedDataPointer<ProcessOptions> processOptions(new ProcessOptions());
+    stream >> *processOptions;
+    QString url = processOptions->url;
     if (!url.isEmpty()) {
         QSettings settings;
         settings.beginGroup(QLatin1String("general"));
         int openLinksIn = settings.value(QLatin1String("openLinksIn"), 0).toInt();
         settings.endGroup();
         if (openLinksIn == 1)
-            newMainWindow();
+            newMainWindow(processOptions);
         else {
-            mainWindow()->tabWidget()->newTab();
+            mainWindow()->tabWidget()->newTab(processOptions);
         }
         openUrl(url);
     }
@@ -575,3 +423,28 @@ void BrowserApplication::setPrivateBrowsing(bool privateBrowsing)
     }
     emit privateBrowsingChanged(privateBrowsing);
 }
+
+ProcessOptions::ProcessOptions()
+{
+}
+QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state)
+{
+    stream << state.url;
+    stream << state.environment;
+    stream << state.workdir;
+    stream << state.program;
+    stream << state.arguments;
+    stream << state.wsconnect;
+    return stream;
+}
+QDataStream& operator>>(QDataStream& stream, ProcessOptions& state)
+{
+    stream >> state.url;
+    stream >> state.environment;
+    stream >> state.workdir;
+    stream >> state.program;
+    stream >> state.arguments;
+    stream >> state.wsconnect;
+    return stream;
+}
+

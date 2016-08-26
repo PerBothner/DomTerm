@@ -59,10 +59,10 @@ int log_to_stderr = 1;
 typedef JNIEnv *JNIEnvP;
 
 JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
-(JNIEnv *env, jobject UNUSED(pclas), jobjectArray args, jobjectArray moreEnv)
+(JNIEnv *env, jobject UNUSED(pclas), jobjectArray args,
+ jbyteArray termvar, jbyteArray versionInfo)
 {
   int fdm;
-  char            slave_name[20];
   pid_t pid;
 
   pid = pty_fork(&fdm);
@@ -85,17 +85,38 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
         }
       cargs[nargs] = NULL;
 
-      jsize nenv = (*env)->GetArrayLength(env, moreEnv);
-      for (i = 0; i < nenv; i++)
+      int alen = (*env)->GetArrayLength(env, termvar);
+      char* buf = malloc(alen+1);
+      buf[alen] = 0;
+      (*env)->GetByteArrayRegion(env, termvar, 0, alen, (jbyte*) buf);
+      putenv(buf);
+      putenv("COLORTERM=truecolor");
+      if (getenv("WINDOWID") != NULL)
+         putenv("WINDOWID=0");
+
+      char* dinit = "DOMTERM=";
+      char* pinit = ";tty=";
+      char* ttyName = ttyname(0);
+      size_t dlen = strlen(dinit);
+      size_t plen = strlen(pinit);
+      jint vlen = (*env)->GetArrayLength(env, versionInfo);
+      int tlen = ttyName == NULL ? 0 : strlen(ttyName); 
+      int mlen = dlen + vlen + (tlen > 0 ? plen + tlen : 0);
+      buf = malloc(mlen+1);
+      strcpy(buf, dinit);
+      int offset = dlen;
+      (*env)->GetByteArrayRegion(env, versionInfo, 0, vlen,
+                                 (jbyte*) (buf + offset));
+      offset += vlen;
+      if (tlen > 0)
         {
-          jbyteArray arg =
-            (jbyteArray) (*env)->GetObjectArrayElement(env, moreEnv, i);
-          int alen = (*env)->GetArrayLength(env, arg);
-          char* buf = malloc(alen+1);
-          buf[alen] = 0;
-          (*env)->GetByteArrayRegion(env, arg, 0, alen, (jbyte*) buf);
-          putenv(buf);
+          strcpy(buf+offset, pinit);
+          offset += plen;
+          strcpy(buf+offset, ttyName);
         }
+      buf[mlen] = '\0';
+      putenv(buf);
+
       execvp(cargs[0], cargs);
     }
   return fdm;

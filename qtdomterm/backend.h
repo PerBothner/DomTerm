@@ -7,8 +7,10 @@
 
 #include <QObject>
 #include <QString>
+#include <QSharedDataPointer>
 
 class KPtyDevice;
+class ProcessOptions;
 namespace Konsole {
     class Pty;
 }
@@ -17,7 +19,8 @@ class Backend : public QObject
 {
     Q_OBJECT
 public:
-    explicit Backend(QObject *parent = 0);
+    explicit Backend(QSharedDataPointer<ProcessOptions> processOptions,
+                     QObject *parent = 0);
     ~Backend();
     void dowrite(const QString &text);
     void setInputMode(char mode);
@@ -27,40 +30,18 @@ public:
     void loadSessionName();
     void loadStylesheet(const QString& stylesheet, const QString& name);
 
-   /**
-     * Sets the command line arguments which the session's program will be passe
-d when
-     * run() is called.
-     */
-    void setArguments(const QStringList & arguments);
-    /** Sets the program to be executed when run() is called. */
-    void setProgram(const QString & program);
+    QString program() const;
+    QStringList arguments() const;
 
     /** Returns the session's current working directory. */
-    QString initialWorkingDirectory() {
-        return _initialWorkingDir;
-    }
+    QString initialWorkingDirectory() const;
 
-    /**
-     * Sets the initial working directory for the session when it is run
-     * This has no effect once the session has been started.
-     */
-    void setInitialWorkingDirectory( const QString & dir );
-
+    ProcessOptions* processOptions();
     /**
      * Returns the environment of this session as a list of strings like
      * VARIABLE=VALUE
      */
     QStringList environment() const;
-
-    /**
-     * Sets the environment for this session.
-     * @p environment should be a list of strings like
-     * VARIABLE=VALUE
-     */
-    void setEnvironment(const QStringList & environment);
-
-    void addEnvironment(const QString& var);
 
     /**
      * Return the session title set by the user (ie. the program running
@@ -127,11 +108,9 @@ private slots:
     void onReceiveBlock( const char * buffer, int len );
     KPtyDevice *pty() const;
 private:
+    QSharedDataPointer<ProcessOptions> _processOptions;
     Konsole::Pty     *_shellProcess;
-    QString        _program;
-    QStringList    _arguments;
 
-    QStringList    _environment;
     bool           _wantedClose;
     int            _sessionId;
 
@@ -139,7 +118,6 @@ private:
     QString        _displayTitle;
     QString        _userTitle;
 
-    QString        _initialWorkingDir;
     QString        _domtermVersion;
     bool           _stylesheetLoaded;
     QString        _savedHtml;

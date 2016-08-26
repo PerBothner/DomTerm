@@ -62,6 +62,8 @@ class QWebEngineView;
 QT_END_NAMESPACE
 
 class Backend;
+#include "processoptions.h"
+
 /*
     Tab bar with a few more features such as a context menu and shortcuts
  */
@@ -189,9 +191,6 @@ public:
     WebView *webView(int index) const;
     int webViewIndex(WebView *webView) const;
 
-    QByteArray saveState() const;
-    bool restoreState(const QByteArray &state);
-
     void setProfile(QWebEngineProfile *profile);
 
 protected:
@@ -202,6 +201,7 @@ protected:
 public slots:
     void loadUrlInCurrentTab(const QUrl &url);
     WebView *newTab(bool makeCurrent = true);
+    WebView *newTab(QSharedDataPointer<ProcessOptions> processOptions, bool makeCurrent = true);
     void cloneTab();
     void requestCloseTab();
     void requestCloseTab(int index);

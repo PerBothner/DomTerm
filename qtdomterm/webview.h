@@ -64,6 +64,8 @@ QT_END_NAMESPACE
 
 class Backend;
 class BrowserMainWindow;
+class ProcessOptions;
+#include "processoptions.h"
 
 class WebPage : public QWebEnginePage {
     Q_OBJECT
@@ -72,7 +74,6 @@ public:
     BrowserMainWindow *mainWindow();
 
 protected:
-    QWebEnginePage *createWindow(QWebEnginePage::WebWindowType type) Q_DECL_OVERRIDE;
 #if !defined(QT_NO_UITOOLS)
     QObject *createPlugin(const QString &classId, const QUrl &url, const QStringList &paramNames, const QStringList &paramValues);
 #endif
@@ -95,7 +96,9 @@ class WebView : public QWebEngineView {
     Q_OBJECT
 
 public:
-    WebView(QWidget *parent = 0);
+    WebView(QSharedDataPointer<ProcessOptions> processOptions,
+            QWidget *parent = 0);
+    QSharedDataPointer<ProcessOptions> m_processOptions;
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
     void setPage(WebPage *page);
