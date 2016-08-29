@@ -203,7 +203,15 @@ you can use easier-to-install Java-based terminal emulators.
 
 Building the sample applications and libraries is a two-part process:
 
-First run the @code{configure} script:
+If building from the @code{git} respository,
+first do:
+@example
+autoreconf
+@end example
+This runs the GNU autotools (@code{aclocal}, @code{autoconf},
+and @code{automake}.
+
+Then run the @code{configure} script:
 @example
 ./configure @var{configure-options}
 @end example
@@ -687,9 +695,9 @@ div.domterm[name="domterm-2"] @{ background-color: #EEF @}
 
 @subheading Adding qtdomterm to the desktop
 
-@subsubheading On Gnome
+@subsubheading On Gnome or KDE
 
-Copy @code{qtdomterm.desktop} to either
+Copy @code{qtdomterm/qtdomterm.desktop} to either
 @code{usr/share/applications} (if @code{qtdomterm} is installed
 in @code{/usr/bin} and you want it accessible to everyone),
 or in @code{~/.local/share/applications} (if you only wish to make
@@ -775,6 +783,12 @@ to interleave graphics and text, without requiring separate windows.
 
 This @uref{http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/,JavaScript utility} may be useful in converting raster data (post-sixel-decoding) to PNG, which could the be displayed with a @code{data:} URI.
 Alternatively, a @code{<canvas>} element could be used.
+
+@subsubheading Recognize URLs in console
+
+A ``word'' that has the form of a URL @emph{or} that start with ``@code{www.}''
+should be handled as an ``implicit link'':  Hovering over them styles
+them as links, and clicking them opens the URL.
 
 @subsubheading Improve copy and paste
 
@@ -1002,6 +1016,41 @@ at the level of rows and columns.
 For example a @code{<table>}.
 It is treated as a single empty line.
 @end table
+
+@subsubheading Lines and columns
+
+This secton discusses the mapping between the nested DOM structure
+and the terminal's lines and columns.
+
+In a well-formed tree, all line-breaks have the form
+of @code{<span>} element with a @code{line} attribute.
+The child of a @code{<span>} element is either a text node
+consisting of only a newline, or there are no children
+(and a newline is added using CSS styling).  Either way it is
+treated as a single line-break.
+
+Inserting HTML may also include @code{<br>} elements and text
+containing newlines.  These are not handled consistently.
+Ideally, we should convert newlines in @code{pre}-style elements
+to @code{<span line="hard">} elements.
+
+The last child of a non-empty block-level element (@code{<div>}, @code{<pre>}
+etc) should be either another block-level element or a line-break.
+(We could also allow a @code{<span>} whose last element is a line-break,
+but isn't clear if this is useful or desirable.)
+Inserting HTML should insert if needed final line-break (though
+it currently doesn't).  Alternatively, we can treat a missing line-break
+as an implicit line-break; currently this is not handled consistently.
+
+A ``line'' is then the text and elements between two
+(exlicit or implicit) line-breaks.
+
+``Opaque elements'' include @code{<img>}, @code{<svg>},
+@code{<object>}, and @code{<iframe>}.  These are treated
+as single character, taking up a single ``column''.
+
+The ``characters'' of a line are those in text nodes in the line, plus
+opaque elements.
 
 @anchor{command group}
 @subsubheading Command groups
