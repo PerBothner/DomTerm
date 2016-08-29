@@ -1,6 +1,4 @@
 JAVA_HOME = @JAVA_HOME@
-CC = @CC@
-CFLAGS = @CFLAGS@
 SED = @SED@
 JAVA = java
 JAVAC = javac
@@ -9,9 +7,15 @@ JAVA_INCLUDE_SUBDIR = @JAVA_INCLUDE_SUBDIR@
 JAVAC_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVAC)
 JAVA_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVA)
 
-@ENABLE_PTY_TRUE@ LIBPTY = libpty@LIBEXT@
-@WITH_QTWEBENGINE_TRUE@ QTDOMTERM = bin/qtdomterm
-@WITH_JAVA_TRUE@ DOMTERM_JAR = domterm.jar
+if ENABLE_PTY
+LIBPTY = libpty@LIBEXT@
+endif
+if WITH_QTWEBENGINE
+QTDOMTERM = bin/qtdomterm
+endif
+if WITH_JAVA
+DOMTERM_JAR = domterm.jar
+endif
 
 all: d/domterm $(DOMTERM_JAR) $(LIBPTY) xulapp/domterm-chrome.jar $(QTDOMTERM)
 
@@ -64,26 +68,18 @@ clean:
 	  qtdomterm/data/hlib/domterm-standard.css \
 	  qtdomterm/data/hlib/domterm-default.css
 
-@WITH_JAVA_WEBSOCKET_TRUE@ WEBSOCKET_SOURCES = \
-@WITH_JAVA_WEBSOCKET_TRUE@   org/domterm/websocket/DomServer.java
-@ENABLE_PTY_TRUE@          PTY_SOURCES = \
-@ENABLE_PTY_TRUE@             org/domterm/pty/PtyBackend.java \
-@ENABLE_PTY_TRUE@                org/domterm/pty/PTY.java
-@WITH_JAVAFX_TRUE@         JAVAFX_SOURCES =\
-@WITH_JAVAFX_TRUE@            org/domterm/javafx/WebTerminalApp.java \
-@WITH_JAVAFX_TRUE@            org/domterm/javafx/RunClass.java \
-@WITH_JAVAFX_TRUE@            org/domterm/javafx/RunProcess.java \
-@WITH_JAVAFX_TRUE@            org/domterm/javafx/WebWriter.java \
-@WITH_JAVAFX_TRUE@            org/domterm/javafx/WebTerminal.java \
-@WITH_JAVAFX_TRUE@            org/domterm/javafx/Main.java
-@WITH_JAVAFX_TRUE@@ENABLE_PTY_TRUE@ JAVAFX_PTY_SOURCES = \
-@WITH_JAVAFX_TRUE@@ENABLE_PTY_TRUE@    org/domterm/pty/RunPty.java
+websocket_sources = org/domterm/websocket/DomServer.java
+pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
+javafx_sources =\
+    org/domterm/javafx/WebTerminalApp.java \
+    org/domterm/javafx/RunClass.java \
+    org/domterm/javafx/RunProcess.java \
+    org/domterm/javafx/WebWriter.java \
+    org/domterm/javafx/WebTerminal.java \
+    org/domterm/javafx/Main.java
+javafx_pty_sources = org/domterm/pty/RunPty.java
 
-DOMTERM_JAR_SOURCES = \
-  $(WEBSOCKET_SOURCES) \
-  $(PTY_SOURCES) \
-  $(JAVAFX_SOURCES) \
-  $(JAVAFX_PTY_SOURCES) \
+domterm_jar_sources = \
   org/domterm/Backend.java \
   org/domterm/ClassBackend.java \
   org/domterm/ProcessBackend.java \
@@ -94,8 +90,20 @@ DOMTERM_JAR_SOURCES = \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
   org/domterm/util/Utf8WriterOutputStream.java
+if WITH_JAVA_WEBSOCKET
+  domterm_jar_sources += $(websocket_sources)
+endif
+if ENABLE_PTY
+  domterm_jar_sources += $(pty_sources)
+endif
+if WITH_JAVAFX
+  domterm_jar_sources += $(javafx_sources)
+if WITH_JAVAFX
+  domterm_jar_sources += $(javafx_pty_sources)
+endif
+endif
 
-org/classes.stamp: $(DOMTERM_JAR_SOURCES)
+org/classes.stamp: $(domterm_jar_sources)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
@@ -224,4 +232,4 @@ bin/qtdomterm: \
   qtdomterm/data/hlib/domterm-core.css \
   qtdomterm/data/hlib/domterm-standard.css \
   qtdomterm/data/hlib/domterm-default.css
-	cd qtdomterm && qmake-qt5 -makefile && $(MAKE)
+	cd qtdomterm && qmake-qt5 -makefile PREFIX=$(prefix) && $(MAKE)

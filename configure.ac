@@ -2,6 +2,7 @@ dnl Autoconf script for DomTerm
 AC_INIT([DomTerm],[0.2])
 
 AC_CONFIG_AUX_DIR(autotools-aux)
+AM_INIT_AUTOMAKE([foreign])
 AC_CANONICAL_HOST
 AC_EXEEXT
 AC_OBJEXT
@@ -49,51 +50,30 @@ case ${host} in
     ;;
 esac
 
+AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 
-case "${with_qtwebengine}" in
-  yes)
-    WITH_QTWEBENGINE_TRUE=''
-    ;;
-  *)
-    WITH_QTWEBENGINE_TRUE='#'
-    ;;
-esac
+AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
 
-case "${with_java}" in
-  no)
-    WITH_JAVA_TRUE='#'
-    ;;
-  *)
-    WITH_JAVA_TRUE=
-    ;;
-esac
-
+if test "$with_java" = "no" && test -z "${with_java_websocket}"
+then
+  with_java_websocket="no"
+fi
 case "${with_java_websocket}" in
   yes | "")
     conf_classpath=java_websocket.jar${CLASSPATH_SEPARATOR}$conf_classpath
-    WITH_JAVA_WEBSOCKET_TRUE=
     ;;
   no)
-    WITH_JAVA_WEBSOCKET_TRUE='#'
     ;;
   *)
     conf_classpath=${with_java_websocket}${CLASSPATH_SEPARATOR}$conf_classpath
-    WITH_JAVA_WEBSOCKET_TRUE=
     ;;
 esac
+AM_CONDITIONAL(WITH_JAVA_WEBSOCKET, test "$with_java_websocket" != "no")
 
 case ${with_javafx} in
-  yes)
-    WITH_JAVAFX_TRUE=''
-    ;;
-  no)
-    WITH_JAVAFX_TRUE='#'
-    ;;
-  "")
-    WITH_JAVAFX_TRUE='#'
+  "yes" | "no" | "")
     ;;
   *)
-    WITH_JAVAFX_TRUE='#'
     if test -f "${with_javafx}" ; then true
     elif test -f "${with_javafx}/rt/lib/jfxrt.jar"
     then with_javafx="${with_javafx}/rt/lib/jfxrt.jar"
@@ -104,24 +84,17 @@ case ${with_javafx} in
     fi
     conf_classpath=${with_javafx}${CLASSPATH_SEPARATOR}$conf_classpath ;;
 esac
+AM_CONDITIONAL(WITH_JAVAFX, test "$with_javafx" != "" -a "$with_javafx" != "no")
 
-case "${enable_pty}" in
-  yes)
-    ENABLE_PTY_TRUE=''
-    ;;
-  no)
-    ENABLE_PTY_TRUE='#'
-    ;;
-  "")
-    if test "$CLASSPATH_SEPARATOR" = ";" || test "$WITH_JAVA_TRUE" = '#'
-    then ENABLE_PTY_TRUE='#'
-    else ENABLE_PTY_TRUE=''
-    fi
-    ;;
-  *) ;;
-esac
+if test -z "$enable_pty"; then
+  if test "$CLASSPATH_SEPARATOR" = ";" || test "$with_java" = "no"
+  then enable_pty="no"
+  else enable_pty="yes"
+  fi
+fi
+AM_CONDITIONAL(ENABLE_PTY, test "$enable_pty" = "yes")
 
-if test -z "${WITH_JAVA_TRUE}"
+if test "$with_java" != "no"
 then
   if test '(' -z "${JAVA_HOME}" ')' -o '(' '!' -f "${JAVA_HOME}/bin/javac" ')'
   then
@@ -142,12 +115,6 @@ AC_SUBST(LIBEXT)
 AC_SUBST(SED)
 AC_SUBST(CLASSPATH_SEPARATOR)
 AC_SUBST(conf_classpath)
-AC_SUBST(WITH_JAVA_WEBSOCKET)
-AC_SUBST(WITH_JAVA_WEBSOCKET_TRUE)
-AC_SUBST(WITH_QTWEBENGINE_TRUE)
-AC_SUBST(WITH_JAVAFX_TRUE)
-AC_SUBST(WITH_JAVA_TRUE)
-AC_SUBST(ENABLE_PTY_TRUE)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
 

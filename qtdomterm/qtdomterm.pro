@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = qtdomterm
+TARGET = ../bin/qtdomterm
 QT += webenginewidgets network widgets webchannel
 CONFIG += c++11
 
@@ -53,8 +53,19 @@ mac {
 EXAMPLE_FILES = \
     Info_mac.plist qtdomterm.icns qtdomterm.ico qtdomterm.rc
 
-# install
-target.path = ../bin
-INSTALLS += target
+#DESTDIR = ../bin
 
-DESTDIR = ../bin
+unix {
+    isEmpty(PREFIX) {
+        PREFIX = /usr/local
+    }
+    BINDIR = $$PREFIX/bin
+
+    target.path = $$BINDIR
+
+    DATADIR = $$PREFIX/share
+    shortcut.path = $$DATADIR/applications
+    shortcut.files = qtdomterm.desktop
+
+    INSTALLS += target shortcut
+}

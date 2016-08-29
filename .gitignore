@@ -4,7 +4,10 @@ libpty.so
 libpty.dylib
 *~
 build
+configure
+Makefile.in
 Makefile
+aclocal.m4
 config.log
 config.status
 domterm.jar
