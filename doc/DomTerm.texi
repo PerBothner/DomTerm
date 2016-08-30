@@ -737,6 +737,50 @@ However, @code{tty=} might not be specified unless runnng under a pty.
 There seem to be some problems setting it with Qt.
 This variable is not set by Wayland.
 
+@subheading Setting the Bash shell prompt
+
+You can place the following in your @code{~/.bashrc}
+to take advantage of DomTerm features:
+
+@example
+if [ "$PS1" != "" ]
+then
+  # Optionally override the system default - for all terminals
+  PS1='$ ' # or whatever
+
+  # Check if the DOMTERM variable includes the string "tty=@var{ttyname}"
+  # where @var{ttyname} is the output from the tty command
+  case ";$DOMTERM;" in
+    *";tty=`tty`;"*) ;;
+    *";tty="*) unset DOMTERM;;
+  esac
+
+  if [ -n "$DOMTERM" ]
+  then
+    # Add some DomTerm-specific escape sequences
+    PS1='\[\e[19u\e[16u\]▼\[\e[17u\e[14u\]'$PS1'\[\e[15u\]'
+    PS2='\[\e[14u\]'$PS2'\[\e[18u\]'
+  fi
+fi
+@end example
+
+This causes the prompt to have the @code{prompt} style
+(specifically to be in a @code{<span std="prompt">} element),
+while the remainder of the current line gets the @code{input} style
+(specifically, in a @code{<span std="input">} element).
+The appearance of these styles can be customized with CSS stylesheets.
+
+Furthermore, this prompt enables a @ref{Hide/show buttons,hide/show button}
+(click on the @code{▼} character), which hides/shows the output
+from the command.
+
+See the @ref{Wire byte protocol} section for the details.
+
+(The @code{"\["} and @code{"\]"} are bash syntax,
+and are equivalent to readline's @code{"\001"} and @code{"\002"}.
+They are used to indicate escape sequences that don't move the cursor,
+which is needed for readline to calculate the column position.)
+
 @node To do
 @chapter Ideas and projects for DomTerm
 
@@ -1242,26 +1286,7 @@ Start a @ref{command group}.
 This command implicitly ends any existing command group.
 You can write this string before writing
 an input prompt string.
-@end table
 
-These escape sequences work pretty well in prompt strings,
-for example for GNU readline or a shell's @code{PS1} variable.
-You can place the following in your @code{~/.bashrc}
-to cause @code{bash} to emit these escape sequences:
-@example
-PS1='$ '   # or whatever you like
-if [ -n "$DOMTERM" ]
-then
-  PS1='\[\e[19u\e[16u\]▼\[\e[17u\e[14u\]'$PS1'\[\e[15u\]'
-  PS2='\[\e[14u\]'$PS2'\[\e[18u\]'
-fi
-@end example
-(The @code{"\["} and @code{"\]"} are bash syntax,
-and are equivalent to readline's @code{"\001"} and @code{"\002"}.
-They are used to indicate escape sequences that don't move the cursor,
-which is needed for readline to calculate the column position.)
-
-@table @asis
 @item @code{"\e[80;97u"}
 @itemx @code{"\e[80;99u"}
 @itemx @code{"\e[80;108u"}
