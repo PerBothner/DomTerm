@@ -565,7 +565,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     }
     var line = this.currentCursorLine;
     var column = this.currentCursorColumn;
-    var checkSpacer = false;
     if (this.verbosity >= 3)
         this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
     // This moves current (and parent) forwards in the DOM tree
@@ -590,7 +589,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
             if (! addSpaceAsNeeded)
                 return;
             var preNode = this._createPreNode();
-            checkSpacer = true;
             // preNode.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
             if (lineCount == this.homeLine)
                 parent = this.initial;
@@ -628,7 +626,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                 goalLine -= homeLine - this.homeLine;
                 this.homeLine = homeLine;
                 this._adjustSpacer(0);
-                checkSpacer = false;
             }
             /*
             while (homeLine < nextLine) {
@@ -810,8 +807,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     //this._removeInputLine();
     this.currentCursorLine = line;
     this.currentCursorColumn = column;
-    if (checkSpacer)
-        this._checkSpacer();
 };
 
 DomTerm.prototype._removeInputLine = function() {
@@ -1355,14 +1350,15 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
  * These are treated as black boxes similar to a single
  * 1-column character.
  * @param node an Element we want to check
- * @return true iff the {@code node} shoudl be treated as a
+ * @return true iff the {@code node} should be treated as a
  *  block-box embedded object.
  *  For now returns true for {@code img}, {@code a}, and {@code object}.
  *  (We should perhaps treat {@code a} as text.)
  */
 DomTerm.prototype.isObjectElement = function(node) {
     var tag = node.tagName;
-    return "A" == tag || "OBJECT" == tag || "IMG" == tag;
+    return "OBJECT" == tag ||
+        "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
 };
 
 DomTerm.prototype.isBlockNode = function(node) {
@@ -1526,7 +1522,7 @@ DomTerm.prototype.measureWindow = function()  {
     this.charHeight = ruler.parentNode.offsetHeight;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
     if (this.verbosity >= 2)
-        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.initial.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
+        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
     var availHeight = this.topNode.parentNode.clientHeight;
     var availWidth = this.topNode.clientWidth - this.rightMarginWidth;
     var numRows = Math.floor(availHeight / this.charHeight);
@@ -1804,7 +1800,7 @@ DomTerm.prototype.updateCursorCache = function() {
         parent = parent.parentNode;
     }
     var col = 0;
-    while (cur != goal) {
+    while (cur != goal || (goal == null && parent != this.outputContainer)) {
         if (cur == null) {
             while (parent != null && parent.nextSibling == null)
                 parent = parent.parentNode;
@@ -1814,20 +1810,16 @@ DomTerm.prototype.updateCursorCache = function() {
                 break;
         } else if (cur instanceof Element) {
             var tag = cur.nodeName;
-            if (tag == "BR") {
+            if (tag == "BR"
+                || (tag == "SPAN" && cur.getAttribute("line"))) {
                 line++;
                 col = 0;
                 cur = cur.nextSibling;
                 continue;
-            } else if (tag == "OBJECT" || tag == "IMG") {
+            } else if (this.isObjectElement(cur)) {
                 col++;
                 cur = cur.nextSibling;
                 continue;
-            } else if (tag == "A") {
-                ;
-            } else if (tag == "SPAN" && cur.getAttribute("line")) {
-                line++;
-                col = 0;
             } else if (tag == "P" || tag == "PRE" || tag == "DIV") {
                 // FIXME handle line specially
             } else if (cur.getAttribute("std")=="prompt") {
@@ -2086,7 +2078,6 @@ DomTerm.prototype.eraseDisplay = function(param) {
         break;
     }
     this.moveToIn(saveLine, saveCol, true);
-    this._checkSpacer();
 };
 
 /** clear line-wrap indicator from absLine to absLine+1.
@@ -3402,7 +3393,6 @@ DomTerm.prototype.insertString = function(str) {
         var state = this.controlSequenceState;
         switch (state) {
         case DomTerm.SEEN_ESC_STATE:
-            this.insertSimpleOutput(str, prevEnd, i);
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             if (ch != 91 /*'['*/ && ! (ch >= 40 && ch <= 47)
                 && ! (ch >= 78 && ch <= 79))
@@ -3601,12 +3591,14 @@ DomTerm.prototype.insertString = function(str) {
                 //this.currentCursorColumn = column;
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
-                    && this.getCursorLine() !== this._regionBottom-1) {
+                    && (this._deferredLinebreaksStart >= 0
+                        || this.getCursorLine() != this._regionBottom-1)) {
                     if (this._currentStyleMap.get("std") == "input")
                         this._pushStyle("std", null);
                     this.cursorLineStart(1);
                     i++;
                 } else {
+                    this._breakDeferredLines();
                     this.cursorLineStart(0);
                 }
                 prevEnd = i + 1;
@@ -3615,6 +3607,7 @@ DomTerm.prototype.insertString = function(str) {
             case 11: // vertical tab
             case 12: // form feed
                 this.insertSimpleOutput(str, prevEnd, i);
+                this._breakDeferredLines();
                 if (this._currentStyleMap.get("std") == "input")
                     this._pushStyle("std", null);
                 this.cursorNewLine(this.automaticNewlineMode);
@@ -3628,11 +3621,13 @@ DomTerm.prototype.insertString = function(str) {
                 continue;
             case 8 /*'\b'*/:
                 this.insertSimpleOutput(str, prevEnd, i);
+                this._breakDeferredLines();
                 this.cursorLeft(1);
                 prevEnd = i + 1; 
                 break;
             case 9 /*'\t'*/:
                 this.insertSimpleOutput(str, prevEnd, i);
+                this._breakDeferredLines();
                 var nextStop = this.nextTabCol(this.getCursorColumn());
                 this.cursorRight(nextStop-this.currentCursorColumn);
                 prevEnd = i + 1;
@@ -3688,8 +3683,8 @@ DomTerm.prototype.insertString = function(str) {
         dt._breakDeferredLines();
         // FIXME only if "scrollWanted"
         dt._scrollIfNeeded();
+        dt._checkSpacer();
         dt._restoreInputLine();
-        //dt.inputLine.focus();
     };
     if (window.requestAnimationFrame)
         requestAnimationFrame(update);
@@ -3708,6 +3703,18 @@ DomTerm.prototype._breakDeferredLines = function() {
     var start = this._deferredLinebreaksStart;
     if (start >= 0) {
         this._breakAllLines(start);
+        if ((this._regionTop > 0 || this._regionBottom < this.numRows)
+            && this.getCursorLine() == this._regionBottom-1) {
+            // scroll if needed
+            var lines = this.getCursorLine() - this._regionTop + 1;
+            var regionHeight = this._regionBottom - this._regionTop;
+            var scrollCount = lines - regionHeight;
+            if (scrollCount > 0) {
+                this.moveToIn(this._regionTop, 0, true);
+                this.deleteLinesIgnoreScroll(scrollCount, false);
+                this.moveToIn(this._regionBottom - 1, 0, true);
+            }
+        }
         this._deferredLinebreaksStart = -1;
     }
 };
@@ -3757,12 +3764,12 @@ DomTerm.prototype._breakAllLines = function(startLine) {
         if (end.offsetLeft > this.availWidth) {
             var start = this.lineStarts[line];
             changed = true; // FIXME needlessly conservative
-            if (this.isBlockNode(start)) {
-                var oldCount = this.lineEnds.length;
-                this._breakLine(start.firstChild, line, 0, this.availWidth, true);
-                var newCount = this.lineEnds.length;
-                line += newCount - oldCount;
-            }
+            var first = this.isBlockNode(start) ? start.firstChild
+                : start.nextSibling;
+            var oldCount = this.lineEnds.length;
+            this._breakLine(first, line, 0, this.availWidth, true);
+            var newCount = this.lineEnds.length;
+            line += newCount - oldCount;
             // else if start is a "hard" line FIXME
             // (Normally that is not the case but see ESC [ K handling.)
         }
@@ -3797,6 +3804,7 @@ DomTerm.prototype._breakLine = function(start, line, beforePos, availWidth, rebr
             if (right > availWidth) {
                 next = this._breakText(el, line, beforePos, right, availWidth, rebreak);
                 right = 0; // FIXME rest
+                line++;
             }
             beforePos = right;
         }
