@@ -1452,6 +1452,9 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
         function(e) { dt.keyDownHandler(e ? e : window.event) };
     document.onkeypress =
         function(e) { dt.keyPressHandler(e ? e : window.event) };
+    document.addEventListener("input",
+                              function(e) { dt.inputHandler(e ? e : window.event); },
+                              false);
     document.addEventListener("paste",
                               function(e) {
                                   dt.pasteText(e.clipboardData.getData("text"));
@@ -4454,6 +4457,21 @@ DomTerm.prototype.keyPressHandler = function(event) {
                 this.processInputCharacters(str);
         }
         event.preventDefault();
+    }
+};
+
+DomTerm.prototype.inputHandler = function(event) {
+    if (this.verbosity >= 2)
+        this.log("input "+event+ " which:"+event.which+" data:'"+event.data);
+    if (event.target == this.inputLine && ! this.lineEditing) {
+        var text = this.grabInput(this.inputLine);
+        var ch = this.inputLine.firstChild;
+        while (ch != null) {
+            var next = ch.nextSibling;
+            this.inputLine.removeChild(ch);
+            ch = next;
+        }
+        this.reportText(text);
     }
 };
 
