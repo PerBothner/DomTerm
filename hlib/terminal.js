@@ -4395,12 +4395,13 @@ DomTerm.prototype.keyDownHandler = function(event) {
         }
         else if (event.ctrlKey
                  && (key == 67 // ctrl-C
+                     || key == 90 // ctrl-Z
                      || (key == 68 // ctrl-D
                          && this.grabInput(this.inputLine).length == 0))) {
             event.preventDefault();
             if (this.autoEditing)
                 this.lineEditing = false;
-            this.reportKeyEvent(64 - key, // crl-C -> -3; ctrl-D -> -4
+            this.reportKeyEvent(64 - key, // ctrl-C -> -3; ctrl-D -> -4
                                 this.keyDownToString(event));
         } else if (key == 38/*Up*/) {
             if (this._atTopInputLine()) {

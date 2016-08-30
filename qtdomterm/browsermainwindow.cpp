@@ -93,7 +93,6 @@ BrowserMainWindow::BrowserMainWindow(QSharedDataPointer<ProcessOptions> processO
     , m_historyBack(0)
     , m_historyForward(0)
     , m_stop(0)
-    , m_reload(0)
 {
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
@@ -174,13 +173,6 @@ void BrowserMainWindow::setupMenu()
 
     // Edit
     QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
-    QAction *m_undo = editMenu->addAction(tr("&Undo"));
-    m_undo->setShortcuts(QKeySequence::Undo);
-    m_tabWidget->addWebAction(m_undo, QWebEnginePage::Undo);
-    QAction *m_redo = editMenu->addAction(tr("&Redo"));
-    m_redo->setShortcuts(QKeySequence::Redo);
-    m_tabWidget->addWebAction(m_redo, QWebEnginePage::Redo);
-    editMenu->addSeparator();
     QAction *m_copy = editMenu->addAction(tr("&Copy"));
     m_copy->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
     m_tabWidget->addWebAction(m_copy, QWebEnginePage::Copy);
@@ -314,33 +306,6 @@ void BrowserMainWindow::slotFileOpen()
     loadPage(file);
 }
 
-void BrowserMainWindow::slotPrivateBrowsing()
-{
-    if (!BrowserApplication::instance()->privateBrowsing()) {
-        QString title = tr("Are you sure you want to turn on private browsing?");
-        QString text = tr("<b>%1</b><br><br>"
-            "This action will reload all open tabs.<br>"
-            "When private browsing in turned on,"
-            " webpages are not added to the history,"
-            " items are automatically removed from the Downloads window," \
-            " new cookies are not stored, current cookies can't be accessed," \
-            " site icons wont be stored, session wont be saved, " \
-            " and searches are not added to the pop-up menu in the Google search box." \
-            "  Until you close the window, you can still click the Back and Forward buttons" \
-            " to return to the webpages you have opened.").arg(title);
-
-        QMessageBox::StandardButton button = QMessageBox::question(this, QString(), text,
-                               QMessageBox::Ok | QMessageBox::Cancel,
-                               QMessageBox::Ok);
-
-        if (button == QMessageBox::Ok)
-            BrowserApplication::instance()->setPrivateBrowsing(true);
-    } else {
-        // TODO: Also ask here
-        BrowserApplication::instance()->setPrivateBrowsing(false);
-    }
-}
-
 void BrowserMainWindow::closeEvent(QCloseEvent *event)
 {
     if (m_tabWidget->count() > 1) {
@@ -424,15 +389,6 @@ void BrowserMainWindow::slotToggleInspector(bool enable)
 {
 #if defined(QWEBENGINEINSPECTOR)
     QWebEngineSettings::globalSettings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, enable);
-    if (enable) {
-        int result = QMessageBox::question(this, tr("Web Inspector"),
-                                           tr("The web inspector will only work correctly for pages that were loaded after enabling.\n"
-                                           "Do you want to reload all pages?"),
-                                           QMessageBox::Yes | QMessageBox::No);
-        if (result == QMessageBox::Yes) {
-            m_tabWidget->reloadAllTabs();
-        }
-    }
 #else
     Q_UNUSED(enable);
 #endif

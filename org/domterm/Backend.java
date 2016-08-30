@@ -43,9 +43,10 @@ public abstract class Backend {
         if (name.equals("KEY")) {
             int q = str.indexOf('"');
             String kstr = Util.parseSimpleJsonString(str, q, str.length());
+            int k0 = kstr.length() == 1 ? kstr.charAt(0) : -1;
             if (termWriter != null && isCanonicalMode()
-                && (kstr.length() != 1
-                    || (kstr.charAt(0) != 3 && kstr.charAt(0) != 4))) {
+                // neither ctrl-C, ctrl-D, or ctrl-Z
+                && k0 != 3 && k0 != 4 && k0 != 26) {
                 try {
                     int cmd = isEchoingMode() ? 74 : 73;
                     termWriter.write("\033]"+cmd+";"+str+"\007");

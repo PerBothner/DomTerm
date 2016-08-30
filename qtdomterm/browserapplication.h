@@ -92,7 +92,6 @@ public:
     QIcon defaultIcon() const;
     QFileSystemWatcher* fileSystemWatcher() { return m_fileSystemWatcher; }
 
-    bool privateBrowsing() const { return m_privateBrowsing; }
     QString generateSessionName();
 
     static CookieJar *cookieJar();
@@ -105,13 +104,11 @@ public:
 public slots:
     BrowserMainWindow *newMainWindow(QSharedDataPointer<ProcessOptions> processOption);
     void quitBrowser();
-    void setPrivateBrowsing(bool);
     const QString stylesheetFilename() { return m_stylesheetFilename; }
     const QString stylesheetRules() { return m_stylesheetRules; }
     void reloadStylesheet();
 
 signals:
-    void privateBrowsingChanged(bool);
     void reloadStyleSheet();
 
 private slots:
@@ -127,7 +124,6 @@ private:
     QList<QPointer<BrowserMainWindow> > m_mainWindows;
     QLocalServer *m_localServer;
     QWebEngineProfile *m_privateProfile;
-    bool m_privateBrowsing;
     mutable QIcon m_defaultIcon;
 
     QAuthenticator m_lastAuthenticator;

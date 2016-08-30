@@ -250,7 +250,6 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
         }
 
         qInfo() << "Render process exited with code" << statusCode << status;
-        QTimer::singleShot(0, [this] { reload(); });
     });
 
     inputModeGroup = new QActionGroup(this);

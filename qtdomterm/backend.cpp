@@ -338,7 +338,8 @@ void Backend::reportEvent(const QString &name, const QString &data)
         int q = data.indexOf('"');
         QString kstr = parseSimpleJsonString(data, q, data.length());
         int kstr0 = kstr.length() != 1 ? -1 : kstr[0].unicode();
-        if (isCanonicalMode() && kstr0 != 3 && kstr0 != 4) {
+        if (isCanonicalMode()
+            && kstr0 != 3 && kstr0 != 4 && kstr0 != 26) {
             QString response = "\033]";
             response += isEchoingMode() ? "74" : "73";
             response += ";";

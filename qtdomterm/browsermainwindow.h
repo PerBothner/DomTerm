@@ -95,7 +95,6 @@ private slots:
 
     void slotFileNew();
     void slotFileOpen();
-    void slotPrivateBrowsing();
     void slotEditFind();
     void slotEditFindNext();
     void slotEditFindPrevious();
@@ -134,8 +133,6 @@ private:
     QMenu *m_windowMenu;
 
     QAction *m_stop;
-    QAction *m_reload;
-    QAction *m_stopReload;
     QAction *m_viewMenubar;
 
     QIcon m_reloadIcon;

@@ -86,7 +86,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet,
     : QApplication(argc, argv)
     , m_localServer(0)
     , m_privateProfile(0)
-    , m_privateBrowsing(false)
     , sawStyleSheetCommandLineOption(false)
     , nextSessionNameIndex(1)
 {
@@ -401,27 +400,6 @@ QIcon BrowserApplication::defaultIcon() const
     if (m_defaultIcon.isNull())
         m_defaultIcon = QIcon(QLatin1String(":defaulticon.png"));
     return m_defaultIcon;
-}
-
-void BrowserApplication::setPrivateBrowsing(bool privateBrowsing)
-{
-    if (m_privateBrowsing == privateBrowsing)
-        return;
-    m_privateBrowsing = privateBrowsing;
-    if (privateBrowsing) {
-        if (!m_privateProfile)
-            m_privateProfile = new QWebEngineProfile(this);
-        Q_FOREACH (BrowserMainWindow* window, mainWindows()) {
-            window->tabWidget()->setProfile(m_privateProfile);
-        }
-    } else {
-        Q_FOREACH (BrowserMainWindow* window, mainWindows()) {
-            window->tabWidget()->setProfile(QWebEngineProfile::defaultProfile());
-            window->m_lastSearch = QString::null;
-            window->tabWidget()->clear();
-        }
-    }
-    emit privateBrowsingChanged(privateBrowsing);
 }
 
 ProcessOptions::ProcessOptions()

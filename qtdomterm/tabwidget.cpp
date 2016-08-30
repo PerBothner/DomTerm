@@ -132,16 +132,9 @@ void TabBar::contextMenuRequested(const QPoint &position)
         action = menu.addAction(tr("Close &Other Tabs"),
                 this, SLOT(closeOtherTabs()));
         action->setData(index);
-
-        menu.addSeparator();
-
-        action = menu.addAction(tr("Reload Tab"),
-                this, SLOT(reloadTab()), QKeySequence::Refresh);
-        action->setData(index);
     } else {
         menu.addSeparator();
     }
-    menu.addAction(tr("Reload All Tabs"), this, SIGNAL(reloadAllTabs()));
     menu.exec(QCursor::pos());
 }
 
@@ -212,27 +205,6 @@ void TabBar::mouseMoveEvent(QMouseEvent *event)
     QTabBar::mouseMoveEvent(event);
 }
 
-// When index is -1 index chooses the current tab
-void TabWidget::reloadTab(int index)
-{
-    if (index < 0)
-        index = currentIndex();
-    if (index < 0 || index >= count())
-        return;
-
-    QWidget *widget = this->widget(index);
-    if (WebView *tab = qobject_cast<WebView*>(widget))
-        tab->reload();
-}
-
-void TabBar::reloadTab()
-{
-    if (QAction *action = qobject_cast<QAction*>(sender())) {
-        int index = action->data().toInt();
-        emit reloadTab(index);
-    }
-}
-
 TabWidget::TabWidget(QWidget *parent)
     : QTabWidget(parent)
     , m_recentlyClosedTabsAction(0)
@@ -253,8 +225,6 @@ TabWidget::TabWidget(QWidget *parent)
     connect(m_tabBar, SIGNAL(closeTab(int)), this, SLOT(requestCloseTab(int)));
     connect(m_tabBar, SIGNAL(cloneTab()), this, SLOT(cloneTab()));
     connect(m_tabBar, SIGNAL(closeOtherTabs(int)), this, SLOT(closeOtherTabs(int)));
-    connect(m_tabBar, SIGNAL(reloadTab(int)), this, SLOT(reloadTab(int)));
-    connect(m_tabBar, SIGNAL(reloadAllTabs()), this, SLOT(reloadAllTabs()));
     connect(m_tabBar, SIGNAL(tabMoved(int,int)), this, SLOT(moveTab(int,int)));
     connect(m_tabBar, SIGNAL(tabBarDoubleClicked(int)), this, SLOT(handleTabBarDoubleClicked(int)));
     setTabBar(m_tabBar);
@@ -501,16 +471,6 @@ WebView *TabWidget::newTab(QSharedDataPointer<ProcessOptions> processOptions, bo
     emit tabsChanged();
     newWebView->setUrl(processOptions->url);
     return newWebView;
-}
-
-void TabWidget::reloadAllTabs()
-{
-    for (int i = 0; i < count(); ++i) {
-        QWidget *tabWidget = widget(i);
-        if (WebView *tab = qobject_cast<WebView*>(tabWidget)) {
-            tab->reload();
-        }
-    }
 }
 
 void TabWidget::windowCloseRequested()

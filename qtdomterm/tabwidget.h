@@ -76,8 +76,6 @@ signals:
     void cloneTab();
     void closeTab(int index);
     void closeOtherTabs(int index);
-    void reloadTab(int index);
-    void reloadAllTabs();
     void tabMoveRequested(int fromIndex, int toIndex);
 
 public:
@@ -91,7 +89,6 @@ private slots:
     void selectTabAction();
     void closeTab();
     void closeOtherTabs();
-    void reloadTab();
     void contextMenuRequested(const QPoint &position);
 
 private:
@@ -208,8 +205,6 @@ public slots:
     void requestSaveAs();
     void closeTab(int index);
     void closeOtherTabs(int index);
-    void reloadTab(int index = -1);
-    void reloadAllTabs();
     void nextTab();
     void previousTab();
 
