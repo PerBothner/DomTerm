@@ -1997,7 +1997,7 @@ DomTerm.prototype.appendText = function(parent, data) {
 DomTerm.prototype._normalize1 = function(tnode) {
     for (;;) {
         var next = tnode.nextSibling;
-        if (! (next instanceof Text))
+        if (! (next instanceof Text) || next == this.outputBefore)
             return;
         tnode.appendData(next.data);
         tnode.parentNode.removeChild(next)
