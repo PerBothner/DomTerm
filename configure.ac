@@ -23,7 +23,7 @@ AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
 
 AC_ARG_WITH(qtwebengine,
-  AS_HELP_STRING(--with-qtwebengine@<:@=jfxrt.jar@:>@,Build QtWebEngine front-end))
+  AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
 conf_classpath=
 echo host: $host
