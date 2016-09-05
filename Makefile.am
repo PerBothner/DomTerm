@@ -232,4 +232,4 @@ bin/qtdomterm: \
   qtdomterm/data/hlib/domterm-core.css \
   qtdomterm/data/hlib/domterm-standard.css \
   qtdomterm/data/hlib/domterm-default.css
-	cd qtdomterm && qmake-qt5 -makefile PREFIX=$(prefix) && $(MAKE)
+	cd qtdomterm && $(QMAKE) -makefile PREFIX=$(prefix) && $(MAKE)
