@@ -21,8 +21,8 @@ import org.java_websocket.server.WebSocketServer;
 public class DomServer extends WebSocketServer {
     static int verbose = 0;
     Map<WebSocket,Backend> backendMap
-        = new IdentityHashMap<>();
-    Set<Backend> pendingBackends = new HashSet<>();
+        = new IdentityHashMap();
+    Set<Backend> pendingBackends = new HashSet();
 
     // FIXME - should be per Backend
     String pending = null;
