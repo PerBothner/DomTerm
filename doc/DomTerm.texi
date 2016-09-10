@@ -833,6 +833,7 @@ Alternatively, a @code{<canvas>} element could be used.
 A ``word'' that has the form of a URL @emph{or} that start with ``@code{www.}''
 should be handled as an ``implicit link'':  Hovering over them styles
 them as links, and clicking them opens the URL.
+The same should be done with email addresses.
 
 @subsubheading Improve copy and paste
 
