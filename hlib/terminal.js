@@ -413,7 +413,7 @@ DomTerm.prototype._setRegionLR = function(left, right) {
 DomTerm.prototype._homeOffset = function() {
     var lineStart = this.lineStarts[this.homeLine];
     var offset = lineStart.offsetTop;
-    if (lineStart.nodeNode == "SPAN")
+    if (lineStart.nodeName == "SPAN")
         offset += lineStart.offsetHeight;
     return offset;
 };
