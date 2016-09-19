@@ -1188,6 +1188,44 @@ This @code{<div>} contains one or more @var{logical-line}s.
 Returning to the normal screen deletes the @code{<div>} for the
 alternative screen, along with all of its contents.
 
+@subsubheading Pretty-printing and line-breaking
+
+@table @asis
+@item @code{<span class="pprint-group">} @var{contents} @code{</span>}
+
+A ``logical block'' of content that should be printed together,
+on the same line, if possible.
+If there is a prefix, it precedes the @code{"pprint-group"} element.
+If there is a per-line prefix,
+it is in a @code{<span class="pprint-prefix">} preceding element.
+If there is a block suffix, it follows the @code{"pprint-group"} element.
+
+@item @code{<span class="pprint-prefix">} @var{per-line-prefix} @code{</span>}
+A pre-line prefix.  This must be the previous sibling
+of a @code{<span class="pprint-group">} element.
+It is displayed just before the logical group, and also
+for each continuation line, at the same indentation.
+
+@item @code{<span class="pprint-indent" delta="@var{num-chars}" />}
+@itemx @code{<span class="pprint-indent" block-delta="@var{num-chars}" />}
+@itemx @code{<span class="pprint-indent" indentation="@var{text}" />}
+
+Add extra indentation to following continuation lines.
+A @code{delta="@var{num-chars}"} changes the indentation
+to @var{num-chars} characters relative to the current horizontal position.
+A @code{block-delta="@var{num-chars}"} changes the indentation to
+@var{num-chars} characters relative to the start of the current logical block.
+Specifying@code{ indentation="@var{text}"} specifies @var{text}
+as an extra per-line prefix.
+The extra indentation is reset at the end of the logical block.
+
+@item @code{<span line="@var{kind}" />}
+Represents a conditional newline of the specified @var{kind},
+which can be @code{fill}, @code{linear},
+@code{miser} (currently the same as @code{fill}),
+or @code{required}.
+@end table
+
 @node Wire byte protocol
 @section Wire byte protocol
 
@@ -1801,19 +1839,3 @@ Chrome (version 52) seems to have from problems with @code{break-all}.
 @end itemize
 
 Hence we need to do the job ourselves.
-
-Define a DOM API for (LISP-style) pretty-printing.
-Line-breaking is re-calculated on page width change.
-
-@table @asis
-@item @code{<span line="fill">}
-@itemx @code{<span line="linear">}
-Line break types, as in Common Lisp.
-
-@item @code{<span class="group" ident=N">}
-@end table
-
-Derek Oppen algorithm
-
-Stable, Flexible, Peephole Pretty-Printing
-http://macbeth.cs.ucdavis.edu/ph-final.pdf
