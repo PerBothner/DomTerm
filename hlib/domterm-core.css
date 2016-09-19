@@ -14,7 +14,6 @@ div.domterm-pre {
 span[class="wrap"] {padding: 0px; margin: 0px; white-space: nowrap }
 span { padding: 0px; margin: 0px;}
 span[line="soft"] { padding: 0px; margin: 0px;}
-span[line="soft"]:after {content: "\A"; }
 span[std="prompt"] { margin: 0px; padding: 0px; border: 0px }
 span[std="prompt"][value]:before { content: attr(value) }
 input[std="input"] {
@@ -23,3 +22,9 @@ input[std="input"] {
 }
 *[domterm-hidden="true"] { display: none }
 *[domterm-noecho="true"] { visibility: hidden }
+
+span[line][breaking="yes"]:before {content: "\A"; }
+span.indentation[value]:after { content: attr(value); }
+span[line][breaking="always"][before-break]:before {content: value(before-break); }
+span[line][breaking="yes"][before-break]:before {content: value(before-break) "\A"; }
+span[line="soft"][before-break]:before {content: attr(before-break) "\A"; }

@@ -9,6 +9,7 @@ function loadHandler(event) {
 
     dt._restoreLineTables(topNode, 0);
     dt._initializeDomTerm(topNode);
+    dt._breakAllLines();
 
     topNode.addEventListener("click",
                              function(e) {

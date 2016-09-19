@@ -1359,6 +1359,69 @@ is the index of the replaced or created stylesheet.
 
 @end table
 
+@subsubsection Pretty-printing
+
+"Pretty-printing" refers to breaking a text info multiple lines
+in a way to minimize the number of lines needed while preserving
+logical structure and adding helpful indentation.
+DomTerm implements the features and concepts
+of the @uref{https://dspace.mit.edu/bitstream/handle/1721.1/6503/AIM-1102.pdf,Common Lisp pretty-printing} feature.
+The following uses the latter's terminology.
+Doing line-breaking in DomTerm means it can
+dynamically adjust for varying line width.
+
+@table @asis
+@item @code{"\e]110\a"}
+@itemx @code{"\e]110;"} @var{per-line-prefix} @code{"\a"}
+Start a logical block, followed by sections of the output
+that logically belong together, and that DomTerm will
+try to group on the same line.
+If the group needs to be broken into multiple lines,
+continuation lines will be indented to the current horizontal position.
+
+If there is a ``prefix'' before the group,
+send it to DomTerm before this command.
+On the other hand, if there is a @var{per-line-prefix}
+(a JSON-quoted string) it will written both at the current position,
+and at the same position in any continuation lines.
+
+@item @code{"\e]111\a"}
+End a logical block.
+If there is a "suffix", send it to DomTerm after this command.
+
+@item @code{"\e]112;"} @var{amount} @code{"\a"}
+
+Adjust identation of future lines (in the current block).
+The @var{amount} is measured in characters, and is relative to the
+current position.  A negative @var{amount} is allowed, as long as you
+don't end up to the left of any per-line prefixes.
+
+@item @code{"\e]113;"} @var{amount} @code{"\a"}
+
+Similar to the @code{112} command, but @var{amount}
+is relative to the start of the current block (after any per-line prefix).
+
+@item @code{"\e]114;"} @var{prefix} @code{"\a"}
+
+Adds an extra per-line prefix for future lines,
+specified by @var{prefix}, a JSON-quoted string.
+
+@item @code{"\e]115\a"}
+
+Add a ``fill''-type conditional newline.
+
+@item @code{"\e]116\a"}
+
+Add a ``linear''-type conditional newline.
+
+@item @code{"\e]117\a"}
+
+Add a ``miser''-type conditional newline
+(which is currently treated the same as a ``fill'' newline).
+
+@end table
+
+
 @subsection Special sequences sent by DomTerm to back-end
 
 @table @asis
@@ -1412,7 +1475,7 @@ for the names to unique, but currently nothing depends on that.
 @defun initializeTerminal (element)
 Initialize the DomTerm, and associate it with the give @var{element}
 (which should be a @code{<div>} element that has @code{class="domterm"}).
-This creates the @uref{DOM structure,sub-structure} of child elements
+This creates the @ref{DOM structure,sub-structure} of child elements
 of @var{element}.
 @end defun
 
