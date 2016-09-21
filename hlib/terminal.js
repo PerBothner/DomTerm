@@ -1011,6 +1011,33 @@ DomTerm.prototype._clearStyle = function() {
     this._currentStyleSpan = null;
 };
 
+DomTerm.prototype._popStyleSpan = function() {
+    var parentSpan = this.outputContainer;
+    if (this.outputBefore) {
+        // split into new child
+        var restSpan = this._createSpanNode();
+        parentSpan.parentNode.insertBefore(restSpan,
+                                           parentSpan.nextSibling);
+        // Copy attributes
+        this._copyAttributes(parentSpan, restSpan);
+        this._moveNodes(this.outputBefore, restSpan);
+    }
+    this.outputContainer = parentSpan.parentNode;
+    this.outputBefore = parentSpan.nextSibling;
+    this._currentStyleSpan = null;
+};
+
+DomTerm._styleAttributes = ["style", "std", "color", "background-color",
+                            "font-weight", "text-decoration"];
+DomTerm._styleSpansMatch = function(newSpan, oldSpan) {
+    for (var i = DomTerm._styleAttributes.length; --i >= 0; ) {
+        var attrName = DomTerm._styleAttributes[i];
+        if (newSpan.getAttribute(attrName) !== oldSpan.getAttribute(attrName))
+            return false;
+    }
+    return true;
+};
+
 /** Adjust style at current position to match desired style.
  * The desired style is a specified by the _currentStyleMap.
  * This usually means adding {@code <span style=...>} nodes around the
@@ -1021,31 +1048,18 @@ DomTerm.prototype._clearStyle = function() {
  */
 DomTerm.prototype._adjustStyle = function() {
     var parentSpan = this.outputContainer;
-    if (this._currentStyleSpan == parentSpan)
-        return;
     var inStyleSpan = parentSpan.getAttribute("class") == "term-style";
     if (this._currentStyleMap.size == 0 && ! inStyleSpan) {
         this._currentStyleSpan = parentSpan;
         return;
     }
-    var inputLineMoved = false;
+    this._removeInputLine();
     if (this.inputLine == this.outputBefore) {
         this.outputBefore = this.outputBefore.nextSibling;
         parentSpan.removeChild(this.inputLine);
-        inputLineMoved = true;
     }
     if (inStyleSpan) {
-        if (this.outputBefore) {
-            // split into new child
-            var restSpan = this._createSpanNode();
-            parentSpan.parentNode.insertBefore(restSpan,
-                                               parentSpan.nextSibling);
-            // Copy attributes
-            this._copyAttributes(parentSpan, restSpan);
-            this._moveNodes(this.outputBefore, restSpan);
-        }
-        this.outputContainer = parentSpan.parentNode;
-        this.outputBefore = parentSpan.nextSibling;
+        this._popStyleSpan();
     }
     if (this._currentStyleMap.size != 0) {
         var styleSpan = this._createSpanNode();
@@ -1108,26 +1122,27 @@ DomTerm.prototype._adjustStyle = function() {
             styleSpan.setAttribute("style", styleAttr);
         if (decoration)
             styleSpan.setAttribute("text-decoration", decoration);
-        /* Possibly optimization: FIXME
-           This optimization only works if before a matching style span;
-           should also do it if we were inStyleSpan.
-           if (this.outputBefore is a span whose attributes
-           match the new styleSpan)
-           styleSpan = this.outputBefore;
-           else
-           [Maybe do the match at the same time as setAttribute using:
-           function styleSet(newSpan, attrName, attrValue, oldSpan) {
-               newSpan.setAttribute(attrName. attrValue);
-               return oldSpan && oldSpan.getAttribute(attrName)==attrValue;
-           }]
-        */
-        this.outputContainer.insertBefore(styleSpan, this.outputBefore);
+
+        var previous = this.outputBefore ? this.outputBefore.previousSibling
+            : this.outputContainer.lastChild;
+        if (previous instanceof Element
+            && previous.getAttribute("class") == "term-style"
+            && DomTerm._styleSpansMatch(styleSpan, previous)) {
+            this.outputBefore = null;
+            styleSpan = previous;
+        } else {
+            if (this.outputBefore instanceof Element
+                && this.outputBefore.getAttribute("class") == "term-style"
+                && DomTerm._styleSpansMatch(styleSpan, this.outputBefore)) {
+                styleSpan = this.outputBefore;
+            } else {
+                this.outputContainer.insertBefore(styleSpan, this.outputBefore);
+            }
+            this.outputBefore = styleSpan.firstChild;
+        }
         this._currentStyleSpan = styleSpan;
         this.outputContainer = styleSpan;
-        // styleSpan.firstChild is null unless we did the above optimization
-        this.outputBefore = styleSpan.firstChild;
     }
-    this._removeInputLine();
 };
 
 DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
@@ -1439,6 +1454,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     helperNode.appendChild(rulerNode);
 
     var wrapDummy = this._createLineNode("soft", null);
+    wrapDummy.setAttribute("breaking", "yes");
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
 
@@ -2263,7 +2279,9 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
                 tnode.deleteData(0, i);
             else  {
                 parent.removeChild(current);
-                while (parent.firstChild == null && parent != this.initial) {
+                while (parent.firstChild == null
+                       && parent != this.initial
+                       && parent != this._currentStyleSpan) {
                     current = parent;
                     parent = parent.parentNode;
                     if (current == this.outputContainer) {
@@ -2892,6 +2910,7 @@ DomTerm.prototype.updateWindowTitle = function(str) {
 
 DomTerm.prototype.resetTerminal = function(full, saved) {
     // Corresponds to xterm's ReallyReset function
+    this.controlSequenceState = DomTerm.INITIAL_STATE;
     this._setRegionTB(0, -1);
     this._setRegionLR(0, -1);
     this.originMode = false;
@@ -2900,6 +2919,13 @@ DomTerm.prototype.resetTerminal = function(full, saved) {
     this.forceWidthInColumns(-1);
     this._mouseMode = 0;
     this._mouseCoordEncoding = 0;
+    this._Glevel = 0;
+    this._currentCommandGroup = null;
+    this._currentCommandOutput = null;
+    this._currentCommandHideable = false;
+    this._currentPprintGroup = null;
+    this._needSectionEndFence = null;
+
     // FIXME a bunch more
 };
 
@@ -3307,7 +3333,10 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this.reportEvent("GET-HTML", JSON.stringify(this.getAsHTML()));
         break;
     case 110: // start prettyprinting-group
-        this._adjustStyle();
+        if (this._currentStyleSpan == this.outputContainer
+            && this.outputContainer.getAttribute("class") == "term-style")
+            this._popStyleSpan();
+        //this._adjustStyle();
         var ppgroup = this._createSpanNode();
         ppgroup.setAttribute("class", "pprint-group");
         text = text.trim();
@@ -3321,14 +3350,17 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         }
         this.pushIntoElement(ppgroup);
         this._pushPprintGroup(ppgroup);
-        this._currentStyleSpan = this.outputContainer;
         break;
     case 111: // end prettyprinting-group
-        var styleOk = this._currentStyleSpan == this.outputContainer;
-        this.popFromElement();
-        this._popPprintGroup();
-        if (styleOk)
-            this._currentStyleSpan = this.outputContainer;
+        if (this._currentPprintGroup != null) {
+            for (;;) {
+                var isGroup = this.outputContainer == this._currentPprintGroup;
+                this.popFromElement();
+                if (isGroup)
+                    break;
+            }
+            this._popPprintGroup();
+        }
         break;
     case 112: // adjust indentation relative to current position
     case 113: // adjust indentation relative to block start
@@ -3357,6 +3389,26 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             : code == 116 ? "linear"
             : code == 117 ? "miser" : "required";
         var line = this._createLineNode(kind);
+        text = text.trim();
+        if (text.length > 0) {
+            try {
+                var strings = JSON.parse("["+text+"]");
+                if (strings[0]) {
+                    line.setAttribute("pre-break", strings[0]);
+                }
+                if (strings[1]) {
+                    line.setAttribute("post-break", strings[1]);
+                }
+                if (strings[2]) {
+                    var nonbreak = this._createSpanNode();
+                    nonbreak.setAttribute("class", "pprint-non-break");
+                    nonbreak.appendChild(document.createTextNode(strings[2]));
+                    line.appendChild(nonbreak);
+                }
+            } catch (e) {
+                this.log("bad line-break specifier '"+text+"' - caught "+e);
+            }
+        }
         this.insertNode(line);
         this._setPendingSectionEnds(line);
         line._needSectionEndNext = this._needSectionEndList;
@@ -3368,6 +3420,14 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
 };
 
 DomTerm.prototype._setPendingSectionEnds = function(end) {
+    if (this._needSectionEndList) {
+        var absLine = this.homeLine+this.getCursorLine();
+        while (this.lineStarts[absLine].nodeName=="SPAN")
+            absLine--;
+        if (this._deferredLinebreaksStart < 0
+            || this._deferredLinebreaksStart > absLine)
+            this._deferredLinebreaksStart = absLine;
+    }
     for (var pending = this._needSectionEndList;
          pending != this._needSectionEndFence; ) {
         var next = pending._needSectionEndNext;
@@ -3646,15 +3706,12 @@ DomTerm.prototype.insertString = function(str) {
                 cur = cur ? 10 * cur : 0;
                 this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
             }
-            else if (ch == 59 /*';'*/ || ch == 7 || ch == 0) {
+            else if (ch == 59 /*';'*/ || ch == 7 || ch == 0 || ch == 27) {
                 this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE;
-                //prevEnd = indexTextEnd(str, i);
                 this.parameters.push("");
-                prevEnd = i + 1;
-                //this.parameters.push(str.substring(i, prevEnd));
-                //i = prevEnd;
                 if (ch != 59)
                     i--; // re-read 7 or 0
+                prevEnd = i + 1;
             } else {
                 this.parameters.length = 1;
                 prevEnd = i + 1;
@@ -3662,13 +3719,15 @@ DomTerm.prototype.insertString = function(str) {
             }
             continue;
         case DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE:
-            if (ch == 7 || ch == 0) {
+            if (ch == 7 || ch == 0 || ch == 27) {
                 this.parameters[1] =
                     this.parameters[1] + str.substring(prevEnd, i);
                 this.handleOperatingSystemControl(this.parameters[0], this.parameters[1]);
                 this.parameters.length = 1;
                 prevEnd = i + 1;
-                this.controlSequenceState = DomTerm.INITIAL_STATE;
+                this.controlSequenceState =
+                    ch == 27 ? DomTerm.SEEN_ESC_STATE
+                    : DomTerm.INITIAL_STATE;
             } else {
                 // Do nothing, for now.
             }
@@ -3846,6 +3905,7 @@ DomTerm.prototype._scrollIfNeeded = function() {
 DomTerm.prototype._breakDeferredLines = function() {
     var start = this._deferredLinebreaksStart;
     if (start >= 0) {
+        this._deferredLinebreaksStart = -1;
         this._breakAllLines(start);
         if ((this._regionTop > 0 || this._regionBottom < this.numRows)
             && this.getCursorLine() == this._regionBottom-1) {
@@ -3859,7 +3919,6 @@ DomTerm.prototype._breakDeferredLines = function() {
                 this.moveToIn(this._regionBottom - 1, 0, true);
             }
         }
-        this._deferredLinebreaksStart = -1;
     }
 };
 
@@ -3873,11 +3932,13 @@ DomTerm.prototype._breakAllLines = function(startLine) {
 
     function addIndentation(dt, el) {
         var n = indentation.length;
-        if (n > 12) {
-            dt.log("excessive indentation!");
-        }
         var curPosition = 0;
         var goalPosition = 0;
+        var insertPosition = el.lastChild;
+        if (insertPosition == null
+            || insertPosition.nodeName != "SPAN"
+            || insertPosition.getAttribute("class") != "pprint-post-break")
+            insertPosition = null;
         for (var i = 0; ;  ) {
             var indent = i == n ? null : indentation[i++];
             if ((indent == null || indent instanceof Element)
@@ -3886,14 +3947,14 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 span.setAttribute("class", "pprint-indentation");
                 span.setAttribute("style",
                                   "padding-left: "+(goalPosition-curPosition)+"px");
-                el.appendChild(span);
+                el.insertBefore(span, insertPosition);
                 curPosition = goalPosition;
             }
             if (indent == null)
                 break;
             if (indent instanceof Element) {
                 indent = indent.cloneNode();
-                el.appendChild(indent);
+                el.insertBefore(indent, insertPosition);
                 curPosition = el.offsetLeft + offsetWidth;
                 goalPosition = curPosition;
             } else if (indent == 0)
@@ -3901,6 +3962,12 @@ DomTerm.prototype._breakAllLines = function(startLine) {
             else if (indent == 1)
                 goalPosition += indentation[i++];
         }
+        if (el.getAttribute("line") != "soft"
+            && el.getAttribute("pre-break") == null
+            && (el.firstChild == null
+                || el.firstChild.nodeName != "SPAN"
+                || el.firstChild.getAttribute("class") != "pprint-pre-break"))
+            el.setAttribute("pre-break", ""); // Needed for CSS
         el.setAttribute("breaking", "yes");
     };
 
@@ -3931,9 +3998,6 @@ DomTerm.prototype._breakAllLines = function(startLine) {
      */
     function breakText(dt, textNode, line, beforePos, afterPos, availWidth) {
         var lineNode = dt._createLineNode("soft", null);
-        if (textNode.parentNode.nodeName=="BODY") {
-            dt.log("insetring into BODY!");
-        }
         textNode.parentNode.insertBefore(lineNode,
                                          textNode.nextSibling);
         var textData = textNode.data;
@@ -4009,21 +4073,19 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 next = el.nextSibling;
                 var right = dt._offsetLeft(next, el.parentNode);
                 if (right > availWidth) {
-                    if (right > availWidth) {
-                        beforePos = 0; // FIXME
-                        if (el instanceof Text) {
-                            el = breakText(dt, el, line, beforePos, right, availWidth);
-                            addIndentation(dt, el);
-                            next = el.rightSibling;
-                            right = 0; // FIXME rest
-                            line++;
-                        } else { // dt.isObjectElement(el)
-                            // FIXME insert a "soft" break before el 
-                            var lineNode = dt._createLineNode("soft", null);
-                            el.parentNode.insertBefore(lineNode, el);
-                        }
-                        dobreak = true;
+                    beforePos = 0; // FIXME
+                    if (el instanceof Text) {
+                        el = breakText(dt, el, line, beforePos, right, availWidth);
+                        addIndentation(dt, el);
+                        next = el.rightSibling;
+                        right = 0; // FIXME rest
+                        line++;
+                    } else { // dt.isObjectElement(el)
+                        // FIXME insert a "soft" break before el 
+                        var lineNode = dt._createLineNode("soft", null);
+                        el.parentNode.insertBefore(lineNode, el);
                     }
+                    dobreak = true;
                 }
             } else if (el.nodeName == "SPAN"
                        && (lineAttr = el.getAttribute("line")) != null) {
@@ -4046,6 +4108,8 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                     dobreak = true;
                 else if (lineAttr == "fill" || lineAttr == "miser") {
                     var sectionEnd = el.sectionEnd;
+                    if (! sectionEnd)
+                        sectionEnd = dt.lineEnds[line];
                     if (sectionEnd && sectionEnd.offsetLeft > availWidth
                         || line > sectionStartLine)
                         dobreak = true;
@@ -4115,10 +4179,6 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                         pprintGroup = pprintGroup.outerPprintGroup;
                         sectionStartLine = el.saveSectionStartLine;
                     }
-                    if (el == dt.initial || el == dt.topNode) {
-                        dt.log("bad breakLine loop!");
-                        break;
-                    }
                     var next = el.nextSibling;
                     if (next != null) {
                         el = next;
@@ -4139,17 +4199,15 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 startLine = this.homeLine;
         }
     }
+
     var delta = 0;
     // First remove any existing soft line breaks.
-    for (var line = startLine;  line < this.lineStarts.length;  line++) {
+    for (var line = startLine+1;  line < this.lineStarts.length;  line++) {
         var lineStart = this.lineStarts[line];
-        var lineEnd = this.lineEnds[line];
         if (delta > 0) {
-            this.lineStarts[line-delta] = lineStart;
+            this.lineStarts[line-delta] = this.lineStarts[line];
             this.lineEnds[line-delta-1] = this.lineEnds[line-1];
         }
-        lineEnd.breakInSectionEndingHere = false;
-        // FIXME just use lineEnd not lineStart
         if (! this.isSpanNode(lineStart))
             continue;
         var lineAttr = lineStart.getAttribute("line");
@@ -4157,10 +4215,13 @@ DomTerm.prototype._breakAllLines = function(startLine) {
             continue;
         if (lineStart.getAttribute("breaking")=="yes") {
             lineStart.removeAttribute("breaking");
-            var lastChild;
-            while ((lastChild = lineStart.lastChild) != null
-                   && lastChild.getAttribute("class") == "pprint-indentation")
-                lineStart.removeChild(lastChild);
+            for (var child = lineStart.firstChild;
+                 child != null; ) {
+                var next = child.nextSibling;
+                if (child.getAttribute("class") == "pprint-indentation")
+                    lineStart.removeChild(child);
+                child = next;
+            }
         }
         if (lineAttr != "hard" && lineAttr != "br") {
             // Remove "soft" line breaks from DOM
@@ -4188,9 +4249,6 @@ DomTerm.prototype._breakAllLines = function(startLine) {
 
     for (var line = startLine;  line < this.lineStarts.length;  line++) {
         var end = this.lineEnds[line];
-        if (! end) {
-            console.log("bad line "+line+" of "+ this.lineEnds.length);
-        }
         if (end.offsetLeft > this.availWidth) {
             var start = this.lineStarts[line];
             changed = true; // FIXME needlessly conservative
@@ -4235,7 +4293,8 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     }
     if (this.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str)+"'");
-    this._adjustStyle();
+    if (this._currentStyleSpan != this.outputContainer)
+        this._adjustStyle();
     var absLine = this.homeLine+this.getCursorLine();
     if (this._deferredLinebreaksStart < 0)
         this._deferredLinebreaksStart = absLine;

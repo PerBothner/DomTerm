@@ -152,14 +152,16 @@ with the Up/Down arrow keys.
 depending on whether the back-end is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
 
 @emph{}@image{images/domterm-sh-svg}
-@strong{Smart line-wrapping}: Remembers which lines were too wide (and thus
+@strong{Smart line-wrapping}:
+Remembers which lines were too wide (and thus
 were wrapped).
 The default style add markers to show when wrapping occurred,
 as seen in the nearby screenshot.
 Window size re-size will automatically re-do line-breaking.
 Copying the selection as text will only include hard newlines.
 Reports window resize to applicaton.
-(Future: structure-based line-breaking aka pretty-printing.)
+@strong{Dynamic pretty-printing} uses special commands to group
+logical blocks, and attempts to keep the ext of a block on a single line.
 
 You can ``print'' @ref{Hide/show buttons,hide/show buttons},
 using certain escape sequences.
@@ -898,7 +900,7 @@ delegating line-wrapping to DomTerm.
 
 @subsubheading Customizable key sequences, as in readline
 
-@subheading Builtin pager
+@subsubheading Integrated pagination (like more/less)
 
 Implement a @code{less}-style pager,
 similar to the way Emacs @code{term} mode does it.
@@ -906,16 +908,6 @@ similar to the way Emacs @code{term} mode does it.
 When enabled, after a full screen of output without user interaction,
 further output is queued until the user requests more output.
 This should be integrated with searching in the buffer.
-
-@subheading Pretty-printing
-
-Add hooks for Lisp-style pretty-printing.  The idea is a pretty-printer
-would emit groups and "text blocks" and DomTerm would do line-breaking.
-Specifically, lines would be re-broken on window size change.
-
-@subsubheading Integrated pagination (like more/less)
-
-Emacs term mode does this.
 
 @subsubheading Graphics hooks
 
@@ -1224,6 +1216,26 @@ Represents a conditional newline of the specified @var{kind},
 which can be @code{fill}, @code{linear},
 @code{miser} (currently the same as @code{fill}),
 or @code{required}.
+
+@item @var{indentation} ::= @code{<span class="pprint-indentation">..</span>}
+These represent actual calculated indentatation.
+They are only inserted when if a line-break is inserted,
+and removed if the line-break is removed.
+
+@item @code{<span line="@var{kind}" @var{line-attribute}... > [@var{pre-break-child}] [@var{non-break-child}] [@var{indentation}] [@var{post-break-child}] </span>}
+@itemx @code{@var{line-attribute} ::= breaking="yes|no" | pre-break="@var{pre-break-text}" | post-break="@var{post-break-text}"}
+@itemx @code{@var{pre-break-child} ::= <span class="pprint-pre-break">@var{contents}</span>}
+@itemx @code{@var{post-break-child} ::= <span class="pprint-post-break">@var{contents}</span>}
+@itemx @code{@var{non-break-child} ::= <span class="pprint-non-break">@var{contents}</span>}
+A generalized optional line-break.  You can specify contents to
+insert @emph{before} the break (when there is a break) either with
+a @code{pre-break} attribute or with a @code{pprint-pre-break} element.
+Similarly, content after the break
+can be specified using either a @code{post-break} attribute
+or a @code{pprint-post-break} element.
+(The @var{indentation}, if any is automatically inserted before the post-break-content.)
+To specify contents to be used when there is no break,
+use a @code{pprint-non-break} element.
 @end table
 
 @node Wire byte protocol
@@ -1457,8 +1469,34 @@ Add a ``linear''-type conditional newline.
 Add a ``miser''-type conditional newline
 (which is currently treated the same as a ``fill'' newline).
 
-@end table
+@item @code{"\e]118\a"}
 
+A required newline.
+This should be used (rather than a plain newline)
+when inside a logical-block.
+
+@item @code{"\e]115;"}@var{prebreak}@code{","}@var{postbreak}@code{","}@var{nonbreak} @code{"\a"}
+@itemx @code{"\e]116;"}@var{prebreak}@code{","}@var{postbreak}@code{","}@var{nonbreak} @code{"\a"}
+@itemx @code{"\e]117;"}@var{prebreak}@code{","}@var{postbreak}@code{","}@var{nonbreak} @code{"\a"}
+@itemx @code{"\e]118;"}@var{prebreak}@code{","}@var{postbreak}@code{","}@var{nonbreak} @code{"\a"}
+
+Line-breaks of the types given above, but with specific strings to be used.
+Each string is JSON-quoted.
+The @var{nonbreak} string is used if the line is not broken here.
+If there is a break, the @var{prebreak} string is used before the break,
+and the @var{postbreak} string is used after the break (following any indentatioon and per-line prefixes).
+
+For example to insert a hyphenation point, you might
+write:
+@example
+\e]115;"-","",""\a
+@end example
+German used to have a rule where ``ck'' would be hyphenated as ``k-k'',
+as in Zucker (suger):
+@example
+Zu\e]115;"-k","k","ck"\aer
+@end example
+@end table
 
 @subsection Special sequences sent by DomTerm to back-end
 

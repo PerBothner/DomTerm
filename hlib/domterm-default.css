@@ -1,5 +1,6 @@
 /* Optional - user-overridable styling */
-span[line="soft"]:before {content: "\2936" "\A"; }
+
+span[breaking="yes"][line="soft"]:before {content: "\2936" "\A"; }
 /* Suggested by Tufte CSS - less harsh than pure white. */
 div.domterm { background-color: #fffff8 }
 /* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
