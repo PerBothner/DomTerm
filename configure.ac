@@ -52,10 +52,7 @@ esac
 
 AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 
-if test "$with_qtwebengine" = "yes"
-then
-  AC_CHECK_PROGS(QMAKE, [qmake-qt5, qmake])
-fi
+AC_CHECK_PROGS(QMAKE, qmake-qt5 qmake, qmake)
 
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
 
