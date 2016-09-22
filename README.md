@@ -11,7 +11,7 @@ Recent advances:
 
 * There is now a DomTerm mailing list at domterm-discuss@domterm.org
 with an [information page](http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org)
-and [archives](http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org).
+and [archives](http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/).
 
 * The qtdomterm application is designed to replace your favorite
 standalone terminal emulator program. It uses QtWebEngine.

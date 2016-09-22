@@ -42,6 +42,29 @@ The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
 was based on similar concepts, but was mostly written in Java using
 @uref{https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm, Javafx WebView}.
 
+@subheading Recent advances:
+
+@itemize
+@item
+There is now a DomTerm mailing list at @email{domterm-discuss@@domterm.org}
+with an @uref{http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,information page}
+and @uref{http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archives}.
+
+@item
+The qtdomterm application is designed to replace your favorite
+standalone terminal emulator program. It uses QtWebEngine.
+
+@item
+Mouse support using xterm protocols.
+
+@item
+You can save the console file as an offline-readable (x)html-file.
+
+@item
+Pretty-printing (Common Lisp style) is now handled by DomTerm.
+This means automatic re-flow on window re-size.
+@end itemize
+
 @subheading Why another terminal emulator
 
 @emph{}@image{images/domterm-1}
