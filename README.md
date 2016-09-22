@@ -6,3 +6,19 @@ gets sent to an application, which evaluates the command, and displays
 the results, typically in some kind of type-script format.
 
 See the [home page](http://domterm.org/) for more information.
+
+Recent advances:
+
+* There is now a DomTerm mailing list at domterm-discuss@domterm.org
+with an [information page](http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org)
+and [archives](http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org).
+
+* The qtdomterm application is designed to replace your favorite
+standalone terminal emulator program. It uses QtWebEngine.
+
+* Mouse support using xterm protocols.
+
+* You can save the console file as an offline-readable (x)html-file.
+
+* Pretty-printing (Common Lisp style) is now handled by DomTerm.
+This means automatic re-flow on window re-size.
