@@ -52,6 +52,11 @@ esac
 
 AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 
+if test "$with_qtwebengine" = "yes"
+then
+  AC_CHECK_PROGS(QMAKE, [qmake-qt5, qmake])
+fi
+
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
 
 if test "$with_java" = "no" && test -z "${with_java_websocket}"
