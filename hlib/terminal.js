@@ -1201,8 +1201,7 @@ DomTerm.prototype._isAnAncestor = function(node, ancestor) {
 };
 
 DomTerm.prototype.deleteLinesIgnoreScroll = function(count, restoreCursor) {
-    var line = this.getCursorLine();
-    var absLine = this.homeLine+line;
+    var abdLine = this.getAbsCursorLine();
     if (absLine > 0)
         this._clearWrap(absLine-1);
     var start = this.lineStarts[absLine];
@@ -1927,6 +1926,10 @@ DomTerm.prototype.getCursorLine = function() {
     return this.currentCursorLine;
 };
 
+DomTerm.prototype.getAbsCursorLine = function() {
+    return this.homeLine+this.getCursorLine();
+};
+
 /** Get column of current cursor position.
  * This is 0-origin (i.e. 0 is the left column), relative to cursorHome. */
 DomTerm.prototype.getCursorColumn = function() {
@@ -2143,11 +2146,11 @@ DomTerm.prototype.eraseDisplay = function(param) {
 };
 
 /** clear line-wrap indicator from absLine to absLine+1.
- *  The default for absLine is homeLine+getCursorLine().
+ *  The default for absLine is getAbsCursorLine().
  */
 DomTerm.prototype._clearWrap = function(absLine) {
     if (! absLine)
-        absLine = this.homeLine+this.getCursorLine();
+        absLine = this.getAbsCursorLine();
     var lineEnd = this.lineEnds[absLine];
     if (lineEnd.getAttribute("line")=="soft") {
         // Try to convert soft line break to hard break, using a <div>
@@ -2221,7 +2224,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
     // Note that the traversal logic is similar to move.
     var current = this.outputBefore;
     var parent = this.outputContainer;
-    var lineEnd = this.lineEnds[this.homeLine+this.getCursorLine()];
+    var lineEnd = this.lineEnds[this.getAbsCursorLine()];
     var previous = current == null ? parent.lastChild
         : current.previousSibling;
     var curColumn = -1;
@@ -3411,6 +3414,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         }
         this.insertNode(line);
         this._setPendingSectionEnds(line);
+        if (kind=="required")
+            this.lineStarts[this.getAbsCursorLine()].alwaysMeasureForBreak = true;
         line._needSectionEndNext = this._needSectionEndList;
         this._needSectionEndList = line;
         break;
@@ -3421,7 +3426,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
 
 DomTerm.prototype._setPendingSectionEnds = function(end) {
     if (this._needSectionEndList) {
-        var absLine = this.homeLine+this.getCursorLine();
+        var absLine = this.getAbsCursorLine();
         while (this.lineStarts[absLine].nodeName=="SPAN")
             absLine--;
         if (this._deferredLinebreaksStart < 0
@@ -4248,9 +4253,9 @@ DomTerm.prototype._breakAllLines = function(startLine) {
     }
 
     for (var line = startLine;  line < this.lineStarts.length;  line++) {
+        var start = this.lineStarts[line];
         var end = this.lineEnds[line];
-        if (end.offsetLeft > this.availWidth) {
-            var start = this.lineStarts[line];
+        if (start.alwaysMeasureForBreak || end.offsetLeft > this.availWidth) {
             changed = true; // FIXME needlessly conservative
             var first = this.isBlockNode(start) ? start.firstChild
                 : start.nextSibling;
@@ -4260,7 +4265,7 @@ DomTerm.prototype._breakAllLines = function(startLine) {
     if (changed)
         this.resetCursorCache();
     if (this.lineStarts.length - this.homeLine > this.numRows) {
-        var absLine = this.homeLine + this.getCursorLine();
+        var absLine = this.getAbsCursorLine();
         this.homeLine = this.lineStarts.length - this.numRows;
         if (absLine < this.homeLine) {
             this.resetCursorCache();
@@ -4295,7 +4300,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         this.log("insertSimple '"+this.toQuoted(str)+"'");
     if (this._currentStyleSpan != this.outputContainer)
         this._adjustStyle();
-    var absLine = this.homeLine+this.getCursorLine();
+    var absLine = this.getAbsCursorLine();
     if (this._deferredLinebreaksStart < 0)
         this._deferredLinebreaksStart = absLine;
     var widthInColums = -1;
