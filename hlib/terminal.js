@@ -1201,7 +1201,7 @@ DomTerm.prototype._isAnAncestor = function(node, ancestor) {
 };
 
 DomTerm.prototype.deleteLinesIgnoreScroll = function(count, restoreCursor) {
-    var abdLine = this.getAbsCursorLine();
+    var absLine = this.getAbsCursorLine();
     if (absLine > 0)
         this._clearWrap(absLine-1);
     var start = this.lineStarts[absLine];
