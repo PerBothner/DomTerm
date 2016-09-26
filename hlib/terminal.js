@@ -3576,6 +3576,15 @@ DomTerm.prototype._doDeferredDeletion = function() {
     }
 }
 
+DomTerm.prototype.insertBytes = function(bytes) {
+    if (this.verbosity >= 2)
+        this.log("insertBytes "+typeof bytes);
+    if (this.decoder == null)
+        this.decoder = new TextDecoder(); //label = "utf-8");
+    var str = this.decoder.decode(bytes, {stream:true});
+    this.insertString(str);
+}
+
 DomTerm.prototype.insertString = function(str) {
     if (this.verbosity >= 2)
         this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState);
@@ -4381,7 +4390,8 @@ DomTerm.prototype.reportText = function(text, suffix) {
 
 /** This function should be overidden. */
 DomTerm.prototype.processInputCharacters = function(str) {
-    this.log("processInputCharacters called with "+str.length+" characters");
+    if (this.verbosity >= 2)
+        this.log("processInputCharacters called with "+str.length+" characters");
 };
 
 DomTerm.prototype.processEnter = function() {
