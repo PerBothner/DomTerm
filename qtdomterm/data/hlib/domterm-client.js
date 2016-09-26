@@ -25,12 +25,6 @@ function loadHandler(event) {
                 function(str) { if (backend) backend.processInputCharacters(str); };
             wt.reportEvent =
                 function(name, data) { if (backend) backend.reportEvent(name, data); };
-	    wt.setWindowSize =
-                function(numRows, numColumns, availHeight, availWidth) {
-                    if (backend)
-                        backend.setWindowSize(numRows, numColumns,
-                                              availHeight, availWidth);
-            };
             wt.log =
                 function(str) {
                     if (backend) backend.log(str); };
