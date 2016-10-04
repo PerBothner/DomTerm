@@ -22,7 +22,6 @@ public:
     explicit Backend(QSharedDataPointer<ProcessOptions> processOptions,
                      QObject *parent = 0);
     ~Backend();
-    void dowrite(const QString &text);
     void setInputMode(char mode);
     QString sessionName() { return _nameTitle; }
     void setSessionName(const QString& name);
@@ -69,10 +68,9 @@ signals:
      */
     void finished();
 
-    /*!
-        This signal is emitted from the C++ side and the text displayed on the HTML client side.
-    */
-    void write(const QString &text);
+    void writeInputMode(int mode);
+    void writeEncoded(int nbytes, const QString &encodedBytes);
+    void writeOperatingSystemControl(int code, const QString& text);
 public slots:
     void processInputCharacters(const QString &text);
     void reportEvent(const QString &name, const QString &data);

@@ -25,12 +25,50 @@ function loadHandler(event) {
                 function(str) { if (backend) backend.processInputCharacters(str); };
             wt.reportEvent =
                 function(name, data) { if (backend) backend.reportEvent(name, data); };
+            /*
             wt.log =
                 function(str) {
                     if (backend) backend.log(str); };
+            */
             wt.close = function() { if (backend) backend.close(); }
+            backend.writeInputMode.connect(function(mode) {
+                wt.setInputMode(mode);
+            });
+            backend.writeOperatingSystemControl.connect(function(code, text) {
+                wt.handleOperatingSystemControl(code, text);
+            });
+            // Decode encoding done by Backend::onReceiveBlock
+            // See backend.cpp.
+            backend.writeEncoded.connect(function(length, encoded) {
+                var bytes = new Uint8Array(length);
+                var j = 0;
+                for (var i = 0; i < length; ) {
+                    var ch = encoded.charCodeAt(j++);
+                    if (ch >= 32 || (ch >= 8 && ch <= 13))
+                        bytes[i++] = ch;
+                    else if (ch == 14)
+                        bytes[i++] = 27;
+                    else if (ch == 15) {
+                        bytes[i++] = 0xC0 | (encoded.charCodeAt(j++) - 48);
+                        bytes[i++] = 0x80 | (encoded.charCodeAt(j++) - 48);
+                    } else if (ch >= 16 && ch < 32) {
+                        bytes[i++] = 0xE0 | (ch-16);
+                        bytes[i++] = 0x80 | (encoded.charCodeAt(j++) - 48);
+                        bytes[i++] = 0x80 | (encoded.charCodeAt(j++) - 48);
+                    } else if (ch > 4) {
+                        bytes[i++] = 0xC0 | (ch - 4);
+                        bytes[i++] = 0x80 | (encoded.charCodeAt(j++) - 48);
+                    } else
+                        bytes[i++] =
+                          (ch << 6) | (encoded.charCodeAt(j++) - 48)
+                }
+                wt.insertBytes(bytes);
+            });
+
+            /*
             backend.write.connect(function (msg) {
                 wt.insertString(msg); });
+            */
             backend.run();
     });
 }
