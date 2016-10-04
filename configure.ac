@@ -111,6 +111,8 @@ then
   fi
 fi
 
+DOMTERM_VERSION=`<$srcdir/hlib/terminal.js sed -n -e 's/.*this.versionString = "\(0.43\)".*$/\1/p'`
+
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(LIBEXT)
@@ -119,6 +121,7 @@ AC_SUBST(CLASSPATH_SEPARATOR)
 AC_SUBST(conf_classpath)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
+AC_SUBST(DOMTERM_VERSION)
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile qtdomterm/dt_version.h])
 AC_OUTPUT

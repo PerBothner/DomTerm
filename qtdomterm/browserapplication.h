@@ -69,7 +69,7 @@ QT_END_NAMESPACE
 
 #include "processoptions.h"
 
-#define QTDOMTERM_VERSION "0.4"
+#include "dt_version.h"
 
 class BrowserMainWindow;
 class CookieJar;
