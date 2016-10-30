@@ -1036,8 +1036,8 @@ One or more invisible @code{<div>} elements used by the implementation.
 @item @var{block-content} ::= @var{logical-line} | @code{<div>} @var{block-content}@sup{*} @code{</div>} | @var{opaque-line}
 
 @item @var{logical-line} := @code{<div class="domterm-pre">} @var{line-content}@sup{*} @var{hard-nl} @code{</pre>}
-  | @code{<pre>} @var{line-content}@sup{*} @var{hard-nl} @code{</pre>}
-  | @code{<p>} @var{line-content}@sup{*} @var{hard-nl} @code{</p>}
+@itemx @ @  | @code{<pre>} @var{line-content}@sup{*} @var{hard-nl} @code{</pre>}
+@itemx @ @  | @code{<p>} @var{line-content}@sup{*} @var{hard-nl} @code{</p>}
 A @var{logical-line} is one or more ``rows'' (separated by @var{soft-line}s),
 consisting of character and other @code{inline} data,
 ending with @var{hard-nl} representing an explicit newline.
@@ -1079,7 +1079,7 @@ It is treated as a single empty line.
 
 @subsubheading Lines and columns
 
-This secton discusses the mapping between the nested DOM structure
+This section discusses the mapping between the nested DOM structure
 and the terminal's lines and columns.
 
 In a well-formed tree, all line-breaks have the form
@@ -1103,7 +1103,7 @@ it currently doesn't).  Alternatively, we can treat a missing line-break
 as an implicit line-break; currently this is not handled consistently.
 
 A ``line'' is then the text and elements between two
-(exlicit or implicit) line-breaks.
+(explicit or implicit) line-breaks.
 
 ``Opaque elements'' include @code{<img>}, @code{<svg>},
 @code{<object>}, and @code{<iframe>}.  These are treated
