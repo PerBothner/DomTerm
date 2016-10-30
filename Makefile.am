@@ -21,6 +21,7 @@ all: d/domterm $(DOMTERM_JAR) $(LIBPTY) xulapp/domterm-chrome.jar $(QTDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: domterm.jar
 	javah -d native/pty org.domterm.pty.PTY
+	touch native/pty/org_domterm_pty_PTY.h
 
 PTY_COMMON_PARAMS = -fno-strict-aliasing -fPIC -W -Wall  -Wno-unused -Wno-parentheses -fno-omit-frame-pointer
 
