@@ -12,3 +12,30 @@ span[std="input"] { background-color: #FFFFD0 } /* a pale yellow */
 span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
+span[caret="block"][std="input"] {
+    background-color: black; color: white
+}
+span[caret="blinking-block"][std="input"] {
+    animation: blinking-block 1.5s steps(1) 0s 20;
+    background-color: black; color: white
+}
+span[caret="underline"][std="input"] {
+    text-decoration: underline
+}
+span[caret="blinking-underline"][std="input"] {
+    animation: blinking-underline 1.5s steps(1) 0s 20;
+    text-decoration: underline
+}
+span[caret][std="input"][value]:after {
+    content: attr(value);
+}
+@keyframes blinking-block {
+    0% { }
+    30% {background-color: inherit; color: inherit }
+    100% {}
+}
+@keyframes blinking-underline {
+    0% {}
+    30% { text-decoration: inherit }
+    100% {}
+}

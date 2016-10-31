@@ -121,13 +121,15 @@ function DomTerm(name, topNode) {
 
     this.lineEditing = false;
 
+    this.caretStyle = 1; // only if *not* inputEditing
+
     // If true, we automatically switching lineEditing depending
     // on slave pty's canon mode.
     this.autoEditing = true;
 
     this.verbosity = 0;
 
-    this.versionString = "0.43";
+    this.versionString = "0.44";
     this.versionInfo = "version="+this.version;
 
     // Use the doLineEdit function when in lineEditing mode.
@@ -370,18 +372,20 @@ DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
 DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE = 4;
 /** We have seen ESC '[' '>'. */
 DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE = 5;
+/** We have seen ESC '[' ' '. */
+DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE = 6;
 /** We have seen ESC ']'. */
-DomTerm.SEEN_ESC_RBRACKET_STATE = 6;
+DomTerm.SEEN_ESC_RBRACKET_STATE = 7;
 /** We have seen ESC ']' numeric-parameter ';'. */
-DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 7;
+DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 8;
 /** We have seen ESC '#'. */
-DomTerm.SEEN_ESC_SHARP_STATE = 8;
-DomTerm.SEEN_ESC_CHARSET0 = 9;
-DomTerm.SEEN_ESC_CHARSET1 = 10;
-DomTerm.SEEN_ESC_CHARSET2 = 11;
-DomTerm.SEEN_ESC_CHARSET3 = 12;
-DomTerm.SEEN_ESC_SS2 = 13;
-DomTerm.SEEN_ESC_SS3 = 14;
+DomTerm.SEEN_ESC_SHARP_STATE = 9;
+DomTerm.SEEN_ESC_CHARSET0 = 10;
+DomTerm.SEEN_ESC_CHARSET1 = 11;
+DomTerm.SEEN_ESC_CHARSET2 = 12;
+DomTerm.SEEN_ESC_CHARSET3 = 13;
+DomTerm.SEEN_ESC_SS2 = 14;
+DomTerm.SEEN_ESC_SS3 = 15;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -725,8 +729,6 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
             } else
                 this.log("- bad lineStart");
         }
-        if (!current)
-            console.log("null current after init moveTo line");
         line = goalLine;
         column = 0;
     }
@@ -736,7 +738,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         mainLoop:
         while (column < goalColumn) {
             if (parent==null||(current!=null&&parent!=current.parentNode))
-                this.log("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
+                this.log("BAD PARENT "+parent+" OF "+current);
             if (current == lineEnd) {
                 if (addSpaceAsNeeded) {
                     var str = DomTerm.makeSpaces(goalColumn-column);
@@ -876,11 +878,45 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         current = this.inputLine;
     }
 */
+    var oldBefore = this.outputBefore;
     this.outputContainer = parent;
     this.outputBefore = current;
+    if (oldBefore != current && oldBefore instanceof Text
+        && oldBefore.previousSibling instanceof Text)
+        this._normalize1(oldBefore.previousSibling);
     //this._removeInputLine();
     this.currentCursorLine = line;
     this.currentCursorColumn = column;
+};
+
+DomTerm.prototype._followingText = function() {
+    var cur = this.outputBefore;
+    for (;;) {
+        if (cur instanceof Text)
+            return cur;
+        else if (cur instanceof Element) {
+            var line = cur.getAttribute("line");
+            if (line != null)
+                return null;
+            if (cur.getAttribute("line") != null)
+                return cur;
+            if (cur.firstChild)
+                cur = cur.firstChild;
+            else {
+                for (;;) {
+                    if (cur == null)
+                        return null;
+                    if (cur.nextSibling) {
+                        cur = cur.nextSibling;
+                        break;
+                    }
+                    cur = cur.parentNode;
+                }
+            }
+        }
+        else
+            return null;
+    }
 };
 
 DomTerm.prototype._removeInputLine = function() {
@@ -890,14 +926,68 @@ DomTerm.prototype._removeInputLine = function() {
             if (this.outputBefore==this.inputLine)
                 this.outputBefore = this.outputBefore.nextSibling;
             inputParent.removeChild(this.inputLine);
+            if (this.inputLine.getAttribute("caret")) {
+                var child = this.inputLine.firstChild;
+                this.inputLine.removeAttribute("caret");
+                if (child instanceof Text) {
+                    var text = this._followingText();
+                    if (text instanceof Text) {
+                        text.insertData(0, child.data);
+                        this.inputLine.removeChild(child);
+                    }
+                }
+            }
         }
     }
+};
+
+DomTerm.prototype.setCaretStyle = function(style) {
+    this.caretStyle = style;
+};
+
+DomTerm.prototype.useStyledCaret = function() {
+    return this.caretStyle < 5;
 };
 
 DomTerm.prototype._restoreInputLine = function() {
     if (this.inputFollowsOutput && this.outputBefore != this.inputLine) {
         this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
         this.outputBefore = this.inputLine;
+        if (this.useStyledCaret() && ! this.lineEditing) {
+            if (! (this.inputLine.firstChild instanceof Text)
+                || this.inputLine.firstChild.data.length == 0) {
+                var text = this._followingText();
+                if (text instanceof Text && text.data.length > 0) {
+                    var tdata = text.data;
+                    var sz = 1;
+                    if (tdata.length >= 2) {
+                        var ch0 = tdata.charCodeAt(0);
+                        var ch1 = tdata.charCodeAt(1);
+                        if (ch0 >= 0xD800 && ch0 <= 0xDBFF
+                            && ch1 >= 0xDC00 && ch1 <= DFFF)
+                            sz = 2;
+                    }
+                    var ch = tdata.substring(0, sz);
+                    this.inputLine.appendChild(document.createTextNode(ch));
+                    text.deleteData(0, sz);
+                    this.inputLine.removeAttribute("value");
+                }
+                else
+                    this.inputLine.setAttribute("value", " ");
+            }
+            var cstyle;
+            switch (this.caretStyle) {
+            default:
+                cstyle = "blinking-block"; break;
+            case 2:
+                cstyle = "block"; break;
+            case 3:
+                cstyle = "blinking-underline"; break;
+            case 4:
+                cstyle = "underline"; break;
+            }
+            this.inputLine.setAttribute("caret", cstyle);
+        }
         this.inputLine.focus();
     }
 };
@@ -1500,7 +1590,8 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     wrapDummy.setAttribute("breaking", "yes");
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
-
+   // if (! this.useStyledCaret())
+        topNode.focus();
     var dt = this;
     // FIXME we want the resize-sensor to be a child of helperNode
     new ResizeSensor(topNode, function () {
@@ -1821,6 +1912,8 @@ DomTerm.prototype.setWindowSize = function(numRows, numColumns,
 };
 
 DomTerm.prototype.addInputLine = function() {
+    if (this.inputLine)
+        this.inputLine.removeAttribute("caret");
     var inputNode = this._createSpanNode();
     var id = this.makeId("I"+(++this.inputLineNumber));
     inputNode.setAttribute("id", id);
@@ -2774,6 +2867,12 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.resetTerminal(False, False);
         }
         break;
+    case 113 /*'q'*/:
+        if (oldState == DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE) {
+            // Set cursor style (DECSCUSR, VT520).
+            this.setCaretStyle(this.getParameter(0, 0));
+        }
+        break;
     case 114 /*'r'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // Restore DEC Private Mode Values.
@@ -3654,6 +3753,8 @@ DomTerm.prototype.insertString = function(str) {
         return i;
     };
     */
+    if (this.useStyledCaret())
+        this._removeInputLine();
     this._doDeferredDeletion();
     var slen = str.length;
     var i = 0;
@@ -3745,6 +3846,7 @@ DomTerm.prototype.insertString = function(str) {
         case DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE:
         case DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE:
         case DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE:
+        case DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE:
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
                 var cur = this.parameters[plen-1];
@@ -3760,6 +3862,8 @@ DomTerm.prototype.insertString = function(str) {
                 this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE;
             else if (ch == 33 /*'!'*/)
                 this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE;
+            else if (ch == 32/*' '*/)
+                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE;
             else {
                 this.handleControlSequence(ch);
                 this.parameters.length = 1;
@@ -4549,7 +4653,8 @@ DomTerm.prototype.pasteText = function(str) {
 };
 
 DomTerm.prototype.doPaste = function() {
-    this.inputLine.focus();
+    if (! this.useStyledCaret())
+        this.inputLine.focus();
     return document.execCommand("paste", false);
 };
 
@@ -4821,7 +4926,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
         }
     }
     if (this.lineEditing) {
-        this.inputLine.focus();
+        if (! this.useStyledCaret())
+            this.inputLine.focus();
         if (key == 13) {
             event.preventDefault();
             if (event.shiftKey) {

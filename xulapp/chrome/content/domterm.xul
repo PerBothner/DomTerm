@@ -30,6 +30,7 @@
             <menuitem id="menubar-inputmode-auto" label="Auto mode" type="radio" name="menubar-input-mode" checked="true" oncommand="setInputMode(97)"/>
           </menupopup>
         </menu>
+        <menuitem id="menubar-block-caret"  type="checkbox" checked="true" label="Block caret (char mode only)" oncommand="changeCaret()"/>
       </menupopup>
     </menu>
   </menubar>
@@ -93,6 +94,13 @@
     }
     function getDomTermObject() {
         return getDomTermWindow().domterm1;
+    }
+    function changeCaret() {
+    var blockCaretItem = document.getElementById("menubar-block-caret");
+        // The value returned by getAttribute appears to be backwards?
+        var block = blockCaretItem.getAttribute("checked") == "true";
+        getDomTermObject().setCaretStyle(block? 2 : 5);
+        blockCaretItem.setAttribute("checked", block ? "true" : "false");
     }
     function changeMenubarState() {
         var menubar = document.getElementById("menubar");
