@@ -2958,6 +2958,8 @@ DomTerm.prototype.updateWindowTitle = function(str) {
 
 DomTerm.prototype.resetTerminal = function(full, saved) {
     // Corresponds to xterm's ReallyReset function
+    if (saved)
+        this.eraseDisplay(saved);
     this.controlSequenceState = DomTerm.INITIAL_STATE;
     this._setRegionTB(0, -1);
     this._setRegionLR(0, -1);
