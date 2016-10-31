@@ -341,6 +341,7 @@ DomTerm.prototype.startCommandGroup = function() {
         // this._moveNodes(firstChild, newParent)
         // Remove old empty domterm-output container.
         if (oldOutput && oldOutput.firstChild == null
+            && oldOutput.parentNode != null
             && oldOutput != this.outputContainer) { // paranoia
             oldOutput.parentNode.removeChild(oldOutput);
         }
@@ -1509,6 +1510,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         dt.measureWindow();
         if (dt.numColumns != oldCols)
             dt._breakAllLines();
+        dt._scrollIfNeeded();
     });
     this.measureWindow();
 };
