@@ -517,15 +517,49 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
     for (var cur = startNode.firstChild; ;) {
         if (cur == null || cur == startNode)
             break;
+        var descend = false;
+        var pendingDelete = null;
+        if (cur instanceof Text) {
+            var data = cur.data;
+            var dlen = data.length;
+            if (data == "\n" && cur.previousSibling) {
+                var prevName = cur.previousSibling.nodeName;
+                if (prevName == "DIV" || prevName == "P" || prevName == "BODY"
+                    || prevName == "PRE") {
+                    pendingDelete = cur;
+                    dlen = 0;
+                }
+            }
+            for (var i = 0; i < dlen; i++) {
+                if (data.charCodeAt(i) == 10) {
+                    if (i > 0)
+                        cur.parentNode.insertBefore(document.createTextNode(data.substring(0,i)), cur);
+                    var line = this._createLineNode("hard", "\n");
+                    cur.parentNode.insertBefore(line, cur);
+                    if (i+1 == dlen)
+                        cur.parentNode.removeChild(cur);
+                    else {
+                        cur.deleteData(i+1);
+                    }
+                    cur = line; // continue with Element case below
+                    break;
+                }
+            }
+        }
         if (cur instanceof Element) {
             var tag = cur.tagName;
+            if (cur.firstChild)
+                descend = true;
             if (tag == "DIV" || tag == "PRE" || tag == "P")
                 start = cur;
             else if (tag == "SPAN") {
                 var line = cur.getAttribute("line");
                 var cls =  cur.getAttribute("class");
                 if (line) {
+                    descend = false;
                     cur.outerPprintGroup = this._currentPprintGroup;
+                    //this.currentCursorLine = startLine;
+                    //this.currentCursorColumn = -1;
                     this._setPendingSectionEnds(cur);
                     if (line == "hard" || line == "br") {
                         this.lineStarts[startLine] = start;
@@ -542,7 +576,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
             }
         }
 
-        if (cur instanceof Element && cur.firstChild) {
+        if (descend) {
             cur = cur.firstChild;
         } else {
             for (;;) {
@@ -558,6 +592,8 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                 if (cur == startNode)
                     break;
             }
+            if (pendingDelete)
+                pendingDelete.parentNode.removeChild(pendingDelete);
         }
     }
 };
@@ -1038,6 +1074,12 @@ DomTerm._styleSpansMatch = function(newSpan, oldSpan) {
     }
     return true;
 };
+/** A saved session file has "domterm-noscript" in the "class" attribute.
+ * When viewing the session file, JavaScript removes the "domterm-noscript".
+ * A CSS selector "domterm-noscript" is used for fall-back styling for
+ * the non-JavaScript case. */
+DomTerm._savedSessionClassNoScript = "domterm domterm-saved-session domterm-noscript";
+DomTerm._savedSessionClass = "domterm domterm-saved-session";
 
 /** Adjust style at current position to match desired style.
  * The desired style is a specified by the _currentStyleMap.
@@ -3414,6 +3456,14 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             }
         }
         this.insertNode(line);
+        if (this._needSectionEndList) {
+            var absLine = this.getAbsCursorLine();
+            while (this.lineStarts[absLine].nodeName=="SPAN")
+                absLine--;
+            if (this._deferredLinebreaksStart < 0
+                || this._deferredLinebreaksStart > absLine)
+                this._deferredLinebreaksStart = absLine;
+        }
         this._setPendingSectionEnds(line);
         if (kind=="required")
             this.lineStarts[this.getAbsCursorLine()].alwaysMeasureForBreak = true;
@@ -3426,14 +3476,6 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
 };
 
 DomTerm.prototype._setPendingSectionEnds = function(end) {
-    if (this._needSectionEndList) {
-        var absLine = this.getAbsCursorLine();
-        while (this.lineStarts[absLine].nodeName=="SPAN")
-            absLine--;
-        if (this._deferredLinebreaksStart < 0
-            || this._deferredLinebreaksStart > absLine)
-            this._deferredLinebreaksStart = absLine;
-    }
     for (var pending = this._needSectionEndList;
          pending != this._needSectionEndFence; ) {
         var next = pending._needSectionEndNext;
@@ -3471,7 +3513,7 @@ var escapeMap = {
 };
 
 DomTerm.prototype.getAsHTML = function() {
-    var string = "";
+    var string = "<!DOCTYPE html>\n";
 
     function  escapeText(text) {
         // Assume single quote is not used in atributes
@@ -3503,8 +3545,16 @@ DomTerm.prototype.getAsHTML = function() {
                 for (i = 0; i < tagAttributes.length; i++) {
                     var aname = tagAttributes[i].nodeName;
                     var avalue = tagAttributes[i].nodeValue;
-                    if (aname=="line" && avalue=="soft" && tagName=="span")
-                        skip = true;
+                    if (aname=="line" && tagName=="span") {
+                        if (avalue=="soft")
+                            skip = true;
+                        else if (avalue == "hard") {
+                            string += "\n";
+                            skip = true;
+                        }
+                    } else if (aname == "class" && avalue == "domterm"
+                             && tagName == "div")
+                        avalue = DomTerm._savedSessionClassNoScript;
                     else if ((tagName == "link" && aname == "href")
                              || (tagName == "script" && aname == "src")) {
                         avalue = avalue.replace("qrc:", "");

@@ -3,6 +3,8 @@ function loadHandler(event) {
     var dt = new DomTerm("domterm");
     window.domterm1 = dt;
     var topNode = document.getElementById("domterm");
+    if (topNode.getAttribute("class") == DomTerm._savedSessionClassNoScript)
+        topNode.setAttribute("class", DomTerm._savedSessionClass);
     dt.setWindowSize = function(numRows, numColumns,
                                 availHeight, availWidth) {
     };
