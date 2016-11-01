@@ -4271,13 +4271,15 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                     if (el instanceof Text) {
                         var lineNode = dt._createLineNode("soft", null);
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
-                        dt._breakString(el, lineNode, beforePos, right,
-                                        availWidth);
+                        var rest = dt._breakString(el, lineNode, beforePos,
+                                                   right, availWidth);
                         insertIntoLines(dt, lineNode);
                         el = lineNode;
                         startOffset = el.measureLeft;
                         startOffset -= addIndentation(dt, el);
-                        next = el.rightSibling;
+                        rest = document.createTextNode(rest);
+                        el.parentNode.insertBefore(rest, el.nextSibling);
+                        next = rest;
                         right = 0; // FIXME rest
                         line++;
                     } else { // dt.isObjectElement(el)
