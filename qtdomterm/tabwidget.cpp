@@ -213,6 +213,7 @@ TabWidget::TabWidget(QWidget *parent)
     , m_nextTabAction(0)
     , m_previousTabAction(0)
     , m_saveAsAction(0)
+    , m_changeCaretAction(0)
     , m_recentlyClosedTabsMenu(0)
     , m_tabBar(new TabBar(this))
     , m_profile(QWebEngineProfile::defaultProfile())
@@ -272,6 +273,10 @@ TabWidget::TabWidget(QWidget *parent)
     m_saveAsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
     connect(m_saveAsAction, SIGNAL(triggered()), this, SLOT(requestSaveAs()));
 
+    m_changeCaretAction = new QAction(tr("Block caret (char mode only)"), this);
+    m_changeCaretAction->setCheckable(true);
+    connect(m_changeCaretAction, SIGNAL(triggered(bool)), this, SLOT(requestChangeCaret(bool)));
+
     connect(this, SIGNAL(currentChanged(int)),
             this, SLOT(currentChanged(int)));
 }
@@ -296,6 +301,14 @@ void TabWidget::requestSaveAs()
     }
 }
 
+void TabWidget::requestChangeCaret(bool set)
+{
+    Backend* backend = currentBackend();
+    backend->requestChangeCaret(set);
+    WebView *webView = currentWebView();
+    webView->setBlockCaret(set);
+}
+
 void TabWidget::clear()
 {
     // clear the recently closed tabs
@@ -318,6 +331,8 @@ void TabWidget::currentChanged(int index)
     WebView *webView = this->webView(index);
     if (!webView)
         return;
+
+    changeCaretAction()->setChecked(webView->blockCaret());
 
     connect(webView->page(), SIGNAL(linkHovered(const QString&)),
             this, SIGNAL(linkHovered(const QString&)));

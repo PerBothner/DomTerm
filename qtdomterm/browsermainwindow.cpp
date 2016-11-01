@@ -143,7 +143,7 @@ QSize BrowserMainWindow::sizeHint() const
 
 void BrowserMainWindow::runScriptOnOpenViews(const QString &source)
 {
-    for (int i =0; i < tabWidget()->count(); ++i)
+    for (int i = 0; i < tabWidget()->count(); ++i)
         tabWidget()->webView(i)->page()->runJavaScript(source);
 }
 
@@ -231,6 +231,9 @@ void BrowserMainWindow::setupMenu()
     a->setCheckable(true);
 #endif
 #endif
+
+    QMenu *terminalMenu = menuBar()->addMenu(tr("&Terminal"));
+    terminalMenu->addAction(m_tabWidget->changeCaretAction());
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     //helpMenu->addAction(tr("About &Qt"), qApp, SLOT(aboutQt()));

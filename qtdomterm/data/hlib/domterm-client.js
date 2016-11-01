@@ -34,6 +34,9 @@ function loadHandler(event) {
             backend.writeInputMode.connect(function(mode) {
                 wt.setInputMode(mode);
             });
+            backend.writeSetCaretStyle.connect(function(mode) {
+                wt.setCaretStyle(mode);
+            });
             backend.writeOperatingSystemControl.connect(function(code, text) {
                 wt.handleOperatingSystemControl(code, text);
             });

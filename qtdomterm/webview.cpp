@@ -226,6 +226,7 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
     , m_processOptions(processOptions)
     , m_progress(0)
     , m_page(0)
+    , m_blockCaret(true)
 {
     connect(this, SIGNAL(loadProgress(int)),
             this, SLOT(setProgress(int)));

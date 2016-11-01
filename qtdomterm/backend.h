@@ -26,6 +26,7 @@ public:
     QString sessionName() { return _nameTitle; }
     void setSessionName(const QString& name);
     void requestHtmlData();
+    void requestChangeCaret(bool);
     void loadSessionName();
     void loadStylesheet(const QString& stylesheet, const QString& name);
 
@@ -69,6 +70,7 @@ signals:
     void finished();
 
     void writeInputMode(int mode);
+    void writeSetCaretStyle(int style);
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
 public slots:

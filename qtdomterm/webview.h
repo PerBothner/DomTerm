@@ -102,6 +102,8 @@ public:
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
     void setPage(WebPage *page);
+    bool blockCaret() { return m_blockCaret; }
+    void setBlockCaret(bool set) { m_blockCaret = set; }
 
     void loadUrl(const QUrl &url);
     QUrl url() const;
@@ -128,6 +130,7 @@ private:
     int m_progress;
     WebPage *m_page;
     Backend *m_backend;
+    bool m_blockCaret;
 
     QAction *charInputMode;
     QAction *lineInputMode;

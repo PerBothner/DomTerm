@@ -179,6 +179,7 @@ public:
     QAction *newTabAction() const;
     QAction *closeTabAction() const;
     QAction *saveAsAction() const { return m_saveAsAction; }
+    QAction *changeCaretAction() const { return m_changeCaretAction; }
     QAction *recentlyClosedTabsAction() const;
     QAction *nextTabAction() const;
     QAction *previousTabAction() const;
@@ -203,6 +204,7 @@ public slots:
     void requestCloseTab();
     void requestCloseTab(int index);
     void requestSaveAs();
+    void requestChangeCaret(bool);
     void closeTab(int index);
     void closeOtherTabs(int index);
     void nextTab();
@@ -230,6 +232,7 @@ private:
     QAction *m_nextTabAction;
     QAction *m_previousTabAction;
     QAction *m_saveAsAction;
+    QAction *m_changeCaretAction;
 
     QMenu *m_recentlyClosedTabsMenu;
     static const int m_recentlyClosedTabsSize = 10;
