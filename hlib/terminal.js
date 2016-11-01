@@ -2283,6 +2283,25 @@ DomTerm.prototype.eraseDisplay = function(param) {
     this.moveToIn(saveLine, saveCol, true);
 };
 
+/** set line-wrap indicator from absLine to absLine+1.
+ */
+DomTerm.prototype._forceWrap = function(absLine) {
+    var end = this.lineEnds[absLine];
+    var nextLine = this.lineStarts[absLine+1];
+    if (nextLine != end) {
+        // nextLine must be block-content
+        this._moveNodes(nextLine.firstChild, end.parentNode, end.nextSibling);
+        nextLine.parentNode.removeChild(nextLine);
+        this.lineStarts[absLine+1] = end;
+    }
+    if (end.getAttribute("line") != "soft") {
+        end.setAttribute("line", "soft");
+        end.setAttribute("breaking", "yes");
+        while (end.firstChild != null)
+            end.removeChild(end.firstChild);
+    }
+};
+
 /** clear line-wrap indicator from absLine to absLine+1.
  *  The default for absLine is getAbsCursorLine().
  */
@@ -2306,6 +2325,8 @@ DomTerm.prototype._clearWrap = function(absLine) {
                 parent.parentNode.insertBefore(newSpan, parent.nextSibling);
             }
             parent.parentNode.insertBefore(lineEnd, parent.nextSibling);
+            if (lineEnd == this.outputBefore)
+                this.outputContainer = parent.parentNode;
             parent = parent.parentNode;
             pname = parent.nodeName;
         }
@@ -2319,6 +2340,7 @@ DomTerm.prototype._clearWrap = function(absLine) {
         // otherwise we have a non-standard line
         // Regardless, do:
         lineEnd.setAttribute("line", "hard");
+        lineEnd.removeAttribute("breaking");
         var child = lineEnd.firstChild;
         if (child)
             lineEnd.removeChild(child);
@@ -2399,6 +2421,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
                         todo--;
                     }
                     else if (ch == 13/*'\r'*/ || ch == 10/*'\n'*/ || ch == 12/*'\f'*/) {
+                        // shouldn't normally happen - we get to lineEnd first
                         todo = 0;
                         break;
                     }
@@ -2440,6 +2463,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
     }
     this.outputBefore = previous != null ? previous.nextSibling
         : this.outputContainer.firstChild;
+    return todo <= 0;
 };
 
 
@@ -4096,11 +4120,9 @@ DomTerm.prototype._breakDeferredLines = function() {
 };
 
 DomTerm.prototype._breakAllLines = function(startLine) {
-
     // The indentation array is a stack of the following:
-    // - a <span> node containing pre-line prefixes
-    // - the integer 0 followed by an absolute x-position (in pixels)
-    // - the integer 1 followed by a relative width (in pixels)
+    // - a <span> node containing pre-line prefixes; or
+    // - an absolute x-position (in pixels)
     var indentation = new Array();
 
     function addIndentation(dt, el) {
@@ -4128,12 +4150,11 @@ DomTerm.prototype._breakAllLines = function(startLine) {
             if (indent instanceof Element) {
                 indent = indent.cloneNode();
                 el.insertBefore(indent, insertPosition);
-                curPosition = el.offsetLeft + offsetWidth;
+                curPosition = el.offsetLeft + el.offsetWidth;
                 goalPosition = curPosition;
-            } else if (indent == 0)
-                goalPosition = indentation[i++];
-            else if (indent == 1)
-                goalPosition += indentation[i++];
+            }
+            else
+                goalPosition = indent;
         }
         if (el.getAttribute("line") != "soft"
             && el.getAttribute("pre-break") == null
@@ -4142,6 +4163,7 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 || el.firstChild.getAttribute("class") != "pprint-pre-break"))
             el.setAttribute("pre-break", ""); // Needed for CSS
         el.setAttribute("breaking", "yes");
+        return curPosition;
     };
 
     function insertIntoLines(dt, el) {
@@ -4165,75 +4187,67 @@ DomTerm.prototype._breakAllLines = function(startLine) {
         }
     };
 
-    /* Called on a text node that "sticks out too far".
-     * We need to find a break point.
-     * Returns the inserted line break node.
-     */
-    function breakText(dt, textNode, line, beforePos, afterPos, availWidth) {
-        var lineNode = dt._createLineNode("soft", null);
-        textNode.parentNode.insertBefore(lineNode,
-                                         textNode.nextSibling);
-        var textData = textNode.data;
-        var textLength = textData.length;
-        var goodLength = 0; // Can sometimes do better FIXME
-        // number of chars known to require wrapping
-        var badLength = textLength;
-        // Width in pixels corresponding to goodLength:
-        var goodWidth = beforePos;
-        // Width in pixels corresponding to badLength:
-        //var afterPos = right; // FIXME combine
-        var badWidth = afterPos;
-        // Binary search for split point
-        while (goodLength + 1 < badLength) {
-            // instead of the midpoint between goodLength and badLength
-            // we try to find the fraction of the string corresponding
-            // to available width.
-            var nextTry =
-                goodLength
-                + Math.round((badLength - goodLength)
-                             * (availWidth - goodWidth)
-                             / (badWidth - goodWidth));
-            // Some paranoia:
-            if (nextTry <= goodLength)
-                nextTry = goodLength + 1;
-            else if (nextTry >= badLength)
-                nextTry = badLength - 1;
-            // FIXME check for split surrogate pair
-            textNode.data = textData.substring(0, nextTry);
-            var nextPos = lineNode.offsetLeft;
-            if (nextPos > availWidth) {
-                badLength = nextTry;
-                badWidth = nextPos
-            } else {
-                goodLength = nextTry;
-                goodWidth = nextPos;
-            }
-        }
-        if (goodLength == 0)
-            textNode.parentNode.removeChild(textNode);
-        else if (textNode.data.length != goodLength)
-            textNode.data = textData.substring(0, goodLength);
-        insertIntoLines(dt, lineNode);
-
-        if (goodLength < textLength) {
-            var rest;
-            if (goodLength == 0) {
-                textNode.data = textData;
-                rest = textNode;
-            } else {
-                var restString = textData.substring(goodLength);
-                rest = document.createTextNode(restString);
-            }
-            lineNode.parentNode.insertBefore(rest, lineNode.nextSibling);
-            //return rest;
-        }
-        //else
-        //return lineNode.nextSibling;
-        return lineNode;
-    };
-
     function breakLine (dt, start, beforePos, availWidth) {
         var pprintGroup = null; // FIXME if starting inside a group
+
+        // Using two passes is an optimization, because mixing offsetLeft
+        // calls with DOM mutation is very expensive.
+        // First pass - measure (call offsetLet) but do not change DOM
+        for (var el = start; el != null; ) {
+            var lineAttr;
+            var skipChildren = false;
+            if (el instanceof Text || dt.isObjectElement(el)) {
+                skipChildren = true;
+                next = el.nextSibling;
+            } else if (el.nodeName == "SPAN"
+                       && (lineAttr = el.getAttribute("line")) != null) {
+                skipChildren = true;
+                if ((lineAttr == "hard" || lineAttr == "soft")
+                    && el.outerPprintGroup == null)
+                    break;
+                if (lineAttr == "linear") {
+                    var group = el.outerPprintGroup;
+                    var sectionEnd = group.sectionEnd;
+                    if (! sectionEnd)
+                        sectionEnd = dt.lineEnds[line];
+                } else if (lineAttr == "hard" || lineAttr == "required")
+                    ;
+                else if (lineAttr == "fill" || lineAttr == "miser") {
+                }
+            } else if (el.getAttribute("class") == "pprint-indent") {
+                skipChildren = true;
+                el.pprintGroup = pprintGroup;
+            } else if (el.getAttribute("class") == "pprint-group") {
+                pprintGroup = el;
+            }
+            if (el instanceof Element) {
+                el.measureLeft = el.offsetLeft;
+                el.measureWidth = el.offsetWidth;
+            }
+            if (el.firstChild != null && ! skipChildren)
+                el = el.firstChild;
+            else {
+                for (;;) {
+                    if (el == null)
+                        break;
+                    if (el == pprintGroup) { // pop pprint-group
+                        pprintGroup = pprintGroup.outerPprintGroup;
+                    }
+                    var next = el.nextSibling;
+                    if (next != null) {
+                        el = next;
+                        break;
+                    }
+                    el = el.parentNode;
+                }
+            }
+        }
+        var end = dt.lineEnds[line];
+        end.measureLeft = end.offsetLeft;
+        end.measureWidth = end.offsetWidth;
+
+        // second pass - edit DOM, but don't look at offsetLeft
+        var startOffset = 0;
         var sectionStartLine = line;
         for (var el = start; el != null; ) {
             var lineAttr;
@@ -4244,12 +4258,25 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 if (el instanceof Text)
                     dt._normalize1(el);
                 next = el.nextSibling;
-                var right = dt._offsetLeft(next, el.parentNode);
+                var right;
+                if (next instanceof Element)
+                    right = next.measureLeft;
+                else {
+                    var parent = el.parentNode;
+                    right = parent.measureLeft+parent.measureWidth;
+                }
+                right = right - startOffset;
                 if (right > availWidth) {
                     beforePos = 0; // FIXME
                     if (el instanceof Text) {
-                        el = breakText(dt, el, line, beforePos, right, availWidth);
-                        addIndentation(dt, el);
+                        var lineNode = dt._createLineNode("soft", null);
+                        el.parentNode.insertBefore(lineNode, el.nextSibling);
+                        dt._breakString(el, lineNode, beforePos, right,
+                                        availWidth);
+                        insertIntoLines(dt, lineNode);
+                        el = lineNode;
+                        startOffset = el.measureLeft;
+                        startOffset -= addIndentation(dt, el);
                         next = el.rightSibling;
                         right = 0; // FIXME rest
                         line++;
@@ -4275,7 +4302,7 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                         el.outerPprintGroup == null ? sectionStartLine
                         : el.outerPprintGroup.saveSectionStartLine;
                     if (line > containingSectionStartLine
-                        || sectionEnd.offsetLeft > availWidth)
+                        || (sectionEnd.measureLeft - startOffset) > availWidth)
                         dobreak = true;
                 } else if (lineAttr == "hard" || lineAttr == "required")
                     dobreak = true;
@@ -4283,12 +4310,13 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                     var sectionEnd = el.sectionEnd;
                     if (! sectionEnd)
                         sectionEnd = dt.lineEnds[line];
-                    if (sectionEnd && sectionEnd.offsetLeft > availWidth
+                    if (sectionEnd && (sectionEnd.measureLeft - startOffset) > availWidth
                         || line > sectionStartLine)
                         dobreak = true;
                 }
                 if (dobreak) {
-                    addIndentation(dt, el);
+                    startOffset = el.measureLeft + el.measureWidth;
+                    startOffset -= addIndentation(dt, el);
                     if (lineAttr != "hard") {
                         insertIntoLines(dt, el);
                         line++;
@@ -4301,12 +4329,11 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 var delta = el.getAttribute("delta");
                 var blockDelta = el.getAttribute("block-delta");
                 if (delta) {
-                    indentation.push(1);
-                    indentation.push(dt.charWidth * Number(delta));
+                    indentation.push(el.measureLeft - startOffset
+                                     + (dt.charWidth * Number(delta)));
                 } else if (blockDelta) {
                     var startBlockPosition = pprintGroup == null ? 0
-                        : pprintGroup.offsetLeft;
-                    indentation.push(0);
+                        : (pprintGroup.measureLeft - startOffset);
                     indentation.push(startBlockPosition
                                      + (dt.charWidth * Number(blockDelta)));
                 }
@@ -4317,7 +4344,6 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                     indentation.push(span);
                 }
             } else if (el.getAttribute("class") == "pprint-group") {
-                var newIdentationWidth = el.offsetLeft;
                 var previous = el.previousSibling;
                 el.indentLengthBeforeBlock = indentation.length;
                 el.saveSectionStartLine = sectionStartLine;
@@ -4328,12 +4354,10 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                     var span = dt._createSpanNode();
                     span.setAttribute("class", "indentation");
                     span.setAttribute("value", extra);
-                    indentation.push(0);
-                    indentation.push(previous.offsetLeft);
+                    indentation.push(previous.measureLeft - startOffset);
                     indentation.push(span);
                 }
-                indentation.push(0);
-                indentation.push(el.offsetLeft);
+                indentation.push(el.measureLeft - startOffset);
                 pprintGroup = el;
                 el.breakSeen = false;
             }
@@ -4442,17 +4466,60 @@ DomTerm.prototype._breakAllLines = function(startLine) {
     }
 }
 
-DomTerm.prototype._offsetLeft = function(node, parent) {
-    var right;
-    if (node != null)
-        return node.offsetLeft;
-    //else if (no previous line breaks in parent)
-    //  return parent.offsetLeft + parent.offsetWidth;
-    else {
-        var rects = parent.getClientRects();
-        return rects[rects.length-1].right;
+DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPos, availWidth) {
+    var dt = this;
+    var textData = textNode.data;
+    var textLength = textData.length;
+    var goodLength = 0; // Can sometimes do better FIXME
+    // number of chars known to require wrapping
+    var badLength = textLength;
+    // Width in pixels corresponding to goodLength:
+    var goodWidth = beforePos;
+    // Width in pixels corresponding to badLength:
+    //var afterPos = right; // FIXME combine
+    var badWidth = afterPos;
+    // Binary search for split point
+    while (goodLength + 1 < badLength) {
+        // instead of the midpoint between goodLength and badLength
+        // we try to find the fraction of the string corresponding
+        // to available width.
+        var nextTry =
+            goodLength
+            + Math.round((badLength - goodLength)
+                         * (availWidth - goodWidth)
+                         / (badWidth - goodWidth));
+        // Some paranoia:
+        if (nextTry <= goodLength)
+            nextTry = goodLength + 1;
+        else if (nextTry >= badLength)
+            nextTry = badLength - 1;
+        // FIXME check for split surrogate pair
+        textNode.data = textData.substring(0, nextTry);
+        var nextPos = lineNode.offsetLeft;
+        if (nextPos > availWidth) {
+            badLength = nextTry;
+            badWidth = nextPos
+        } else {
+            goodLength = nextTry;
+            goodWidth = nextPos;
+        }
     }
-}
+    if (goodLength == 0)
+        textNode.parentNode.removeChild(textNode);
+    else if (textNode.data.length != goodLength)
+        textNode.data = textData.substring(0, goodLength);
+
+    if (goodLength < textLength) {
+        var rest;
+        if (goodLength == 0) {
+            textNode.data = "";
+            return textData;
+        } else {
+            return textData.substring(goodLength);
+        }
+    }
+    return "";
+};
 
 DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     var sslen = endIndex - beginIndex;
@@ -4469,21 +4536,49 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     if (this._currentStyleSpan != this.outputContainer)
         this._adjustStyle();
     var absLine = this.getAbsCursorLine();
-    if (this._deferredLinebreaksStart < 0)
-        this._deferredLinebreaksStart = absLine;
     var widthInColums = -1;
+    var fits = true;
     if (! this.insertMode) { // FIXME optimize if end of line
         widthInColums = this.widthInColumns(str, 0, slen);
-        this.eraseCharactersRight(widthInColums, true);
+        fits = this.eraseCharactersRight(widthInColums, true);
     }
-    this.insertRawOutput(str);
+    if (! fits && absLine < this.lineStarts.length - 1) {
+        this._breakDeferredLines();
+        // maybe adjust line/absLine? FIXME
+        for (;;) {
+            var textNode = this.insertRawOutput(str);
+            if (this.getCursorColumn() + widthInColums <= this.numColumns)
+                break;
+            var right = this.availWidth;
+            str = this._breakString(textNode, this.lineEnds[absLine], 0, right, this.availWidth);
+            //current is after inserted textNode;
+            this.cursorLineStart(1);
+            this._forceWrap(absLine);
+            absLine++;
+            slen = str.length;
+            widthInColums = this.widthInColumns(str, 0, slen);
+            this.eraseCharactersRight(widthInColums, true);
+        }
+    }
+    else {
+        this.insertRawOutput(str);
+        // Contending optimizations:
+        // If we're on the last line, we may be doing bulk output,
+        // so avoid acessing offsetLeft (expensive because it forces layout).
+        // If we're not on the last, we may be doing cursor adressing,
+        // and we want to avoid calling _breakAllLines needlessly.
+        if (this._deferredLinebreaksStart < 0
+            && (absLine == this.lineEnds.length - 1
+                || this.lineEnds[absLine].offsetLeft > this.availWidth))
+            this._deferredLinebreaksStart = absLine;
+    }
     this.currentCursorLine = absLine - this.homeLine;
     this.currentCursorColumn =
         this.currentCursorColumn < 0 || widthInColums < 0 ? -1
         : this.currentCursorColumn + widthInColums;
 };
 
-DomTerm.prototype.insertRawOutput = function( str) {
+DomTerm.prototype.insertRawOutput = function(str) {
     var node
         = this.outputBefore != null ? this.outputBefore.previousSibling
         : this.outputContainer.lastChild;
@@ -4523,7 +4618,7 @@ DomTerm.prototype.popFromElement = function() {
 
 /** Insert a node at (before) current position.
  * Caller needs to update cursor cache or call resetCursorCache.
- * The node to be inserted at current output position.
+ * The node to be inserted before current output position.
  *   (Should not have any parents or siblings.)
  */
 DomTerm.prototype.insertNode = function (node) {
