@@ -2,14 +2,12 @@ function loadHandler(event) {
     var wt = new DomTerm("term1");
     window.domterm1 = wt;
     var topNode = document.getElementById("domterm");
-
     var query = location.search;
     var ws = query.match(/ws=([^&]*)/);
     if (ws) {
         var wsocket = new WebSocket(ws[1]);
         wt.processInputCharacters = function(str) { wsocket.send(str); };
         wsocket.onmessage = function(evt) {  wt.insertString(evt.data); }
-        var topNode = document.getElementById("term1");
         wsocket.onopen = function(e) {
             wsocket.send("\x92VERSION QtDomTerm;"+wt.versionInfo+"\n");
             wt.initializeTerminal(topNode); };
