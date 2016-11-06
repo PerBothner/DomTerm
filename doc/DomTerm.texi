@@ -58,6 +58,9 @@ standalone terminal emulator program. It uses QtWebEngine.
 Mouse support using xterm protocols.
 
 @item
+Switchable caret styles (using xterm escape sequences).
+
+@item
 You can save the console file as an offline-readable (x)html-file.
 
 @item
