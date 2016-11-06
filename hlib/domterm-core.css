@@ -11,7 +11,9 @@ pre { padding: 0px; margin: 0px; }
  * <pre> nodes.  This appears intentional, as it matches the new innerText spec. */
 div.domterm-pre {
     padding: 0px; margin: 0px; font-family: monospace;
-    display: block; unicode-bidi: embed; white-space: pre }
+    unicode-bidi: embed; white-space: pre }
+div.domterm-pre { display: block; }
+div.domterm-pre[domterm-hidden="true"] { display: none; visibility: hidden  }
 div.domterm.domterm-noscript div.domterm-pre { white-space: pre-wrap }
 span[class="wrap"] {padding: 0px; margin: 0px; white-space: nowrap }
 span { padding: 0px; margin: 0px;}
