@@ -48,7 +48,7 @@ public class Utf8WriterOutputStream extends OutputStream {
             partialChar = b;
             bytesNeeded = 0;
         }
-        else if ((b & 0xC0) == 0x40) { // continuation byte
+        else if ((b & 0xC0) == 0x80) { // continuation byte
             partialChar = (partialChar << 6) | (b & 0x3F);
             bytesNeeded--;
         }
