@@ -46,7 +46,7 @@ run-server: libpty@LIBEXT@ d/domterm domterm.jar
 
 # Start up DomTerm as a Firefox/XUL app. Requires already-running server.
 # (See also run-firefox.)
-make run-xul: xulapp/domterm-chrome.jar
+run-xul: xulapp/domterm-chrome.jar
 	firefox -app xulapp/application.ini
 
 # Start up DomTerm as a Firefox/XUL-based terminal emulator.
@@ -132,12 +132,14 @@ tmp-for-jar/jfx-term.html: jfx-term.html hlib/terminal.js Makefile
 	  -e 's|<script .*src=.*.*.js.*script>||' \
 	  <jfx-term.html >$@
 
+PLAIN_COPY_TO_JAR = repl-client.html hlib/*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
+
 domterm.jar: org/classes.stamp hlib/terminal.js
 	mkdir -p tmp-for-jar
 @ENABLE_PTY_TRUE@	$(MAKE) tmp-for-jar/jfx-term.html
-	tar cf - org/domterm/*.class hlib/*.js hlib/*.css org/domterm/*/*.class | (cd tmp-for-jar; tar xf -)
+	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 	cd tmp-for-jar && \
-	  jar cmf ../domterm-jar-manifest ../domterm.jar org/domterm/*.class org/domterm/*/*.class jfx-term.html hlib/*.js hlib/*.css
+	  jar cmf ../domterm-jar-manifest ../domterm.jar $(PLAIN_COPY_TO_JAR) jfx-term.html
 
 xulapp/domterm-chrome.jar: hlib/terminal.js xulapp/chrome/content/domterm.xul
 	mkdir -p tmp-for-xul tmp-for-xul/chrome \
