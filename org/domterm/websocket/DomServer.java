@@ -41,6 +41,13 @@ public class DomServer extends WebSocketServer {
                 // Nothing to do.
             }
         }
+        public void close() throws IOException {
+            if (session != null) {
+                write("\033[99;99u");
+                super.close();
+                session = null;
+            }
+        }
      }
 
     public DomServer(int port, String[] backendArgs)
