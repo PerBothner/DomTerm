@@ -66,10 +66,13 @@ public class DomServer extends WebSocketServer {
         System.exit(-1);
     }
 
-    Backend createBackend(WebSocket session, String[] args)
-        throws Exception {
+    protected Backend createBackend(WebSocket session) throws Exception {
+        return createBackend();
+    }
+    protected Backend createBackend() throws Exception {
         WTDebug.init();
         Backend backend = null;
+        String[] args = backendArgs;
         char mode = ' ';
         int i = 0;
         for (; i < args.length; i++) {
@@ -131,7 +134,7 @@ public class DomServer extends WebSocketServer {
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         try {
-            Backend backend = createBackend(conn, backendArgs);
+            Backend backend = createBackend(conn);
             backendMap.put(conn, backend);
             pendingBackends.add(backend);
         } catch (Throwable ex) {
