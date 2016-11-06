@@ -237,7 +237,7 @@ first do:
 autoreconf
 @end example
 This runs the GNU autotools (@code{aclocal}, @code{autoconf},
-and @code{automake}.
+and @code{automake}).
 
 Then run the @code{configure} script:
 @example
@@ -253,6 +253,8 @@ which allows using any modern browser as a front-end.
 This option is enabled by default.
 The default jar path references the @code{java_websocket.jar}
 bundled with the DomTerm sources.
+
+This options adds the classes in @code{java_websocket.jar} to @code{domterm.jar}.
 @item --enable-pty
 Compile support for PTYs (pseudo-teletypes).
 This allows character mode: sending individual characters (rather than lines)

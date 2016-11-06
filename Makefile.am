@@ -138,8 +138,11 @@ domterm.jar: org/classes.stamp hlib/terminal.js
 	mkdir -p tmp-for-jar
 @ENABLE_PTY_TRUE@	$(MAKE) tmp-for-jar/jfx-term.html
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
+if WITH_JAVA_WEBSOCKET
+	cd tmp-for-jar && unzip -o ../java_websocket.jar 'org/java_websocket/*.class'
+endif
 	cd tmp-for-jar && \
-	  jar cmf ../domterm-jar-manifest ../domterm.jar $(PLAIN_COPY_TO_JAR) jfx-term.html
+	  jar cmf ../domterm-jar-manifest ../domterm.jar .
 
 xulapp/domterm-chrome.jar: hlib/terminal.js xulapp/chrome/content/domterm.xul
 	mkdir -p tmp-for-xul tmp-for-xul/chrome \
