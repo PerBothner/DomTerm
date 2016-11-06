@@ -122,4 +122,7 @@ public abstract class Backend {
 
     public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
     }
+
+    public void close(boolean isLast) {
+    }
 }

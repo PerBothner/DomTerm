@@ -137,7 +137,9 @@ public class DomServer extends WebSocketServer {
     public void onClose(WebSocket conn, int code, String reason, boolean remote ) {
         if (verbose > 0)
             WTDebug.println("onClose called");
+        Backend backend = backendMap.get(conn);
         backendMap.remove(conn);
+        backend.close(backendMap.isEmpty());
         if (runBrowser >= 0)
             System.exit(0);
     }
