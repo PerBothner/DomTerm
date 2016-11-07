@@ -168,7 +168,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
         this.backend = backend;
     }
 
-    public WebTerminal(Backend backend) {
+    public WebTerminal(final Backend backend) {
         setBackend(backend);
         webView = new WebView();
         webEngine = webView.getEngine();

@@ -70,10 +70,10 @@ public class WebTerminalApp extends Application
 
         //FIXME web.addChangeListener(WebEngine.DOCUMENT, this);
 
-        VBox pane = console;
+        final VBox pane = console;
         Scene scene = new Scene(pane);
 
-        ContextMenu popup = new ContextMenu();
+        final ContextMenu popup = new ContextMenu();
         pane.addEventHandler(MouseEvent.MOUSE_CLICKED,
                              new EventHandler<MouseEvent>() {
                                  @Override public void handle(MouseEvent e) {
@@ -129,7 +129,6 @@ public class WebTerminalApp extends Application
                         if (new_toggle != null) {
                             String text = ((RadioMenuItem)new_toggle).getText();
                             console.setLineEditing(text.charAt(0));
-                            System.err.println("TOGGLE "+inputModeGroup+" new:"+new_toggle+" - "+text);
                         }
                     }
                 });
