@@ -262,8 +262,10 @@ from the front-end to the back-end.
 This is the default, except on Windows (which doesn't support PTYs).
 @item --with-javafx[=@var{library-name}]
 Use JavaFX to run standalone applications.
-The @code{@var{library-name}} if specified is either the @code{JAVA_HOME}
-or a path to @code{jfxrt.jar}.
+The @code{@var{library-name}} does not need to be specified if using Java SE 8.
+It may be needed for OpenJDK or Java SE 7,
+in which case it is either a path to @code{jfxrt.jar},
+or (for convenience if using Java SE 7) the @code{JAVA_HOME}.
 @item --without-java
 Disable building anything that depends on Java.
 @item --with-qtwebengine
