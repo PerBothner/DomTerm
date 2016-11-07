@@ -134,6 +134,8 @@ public class DomServer extends WebSocketServer {
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         try {
+            if (verbose > 0)
+                WTDebug.println("received onOpen from "+conn);
             Backend backend = createBackend(conn);
             backendMap.put(conn, backend);
             pendingBackends.add(backend);
@@ -141,6 +143,10 @@ public class DomServer extends WebSocketServer {
             WTDebug.println("onOpen caught "+ex);
             throw new RuntimeException(ex);
         }
+    }
+
+    public static void setExitOnClose(boolean exitOnClose) {
+        runBrowser = exitOnClose ? 0 : -1;
     }
 
     @Override
