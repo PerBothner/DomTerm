@@ -2952,11 +2952,16 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 18: // End non-selectable prompt
             var container = this.outputContainer;
-            var content = container.textContent;
-            while (container.firstChild) {
-                container.removeChild(container.firstChild);
+            if (container.nodeName == "SPAN"
+                && container.getAttribute("std")=="prompt") {
+                var content = container.textContent;
+                if (content != "") {
+                    while (container.firstChild) {
+                        container.removeChild(container.firstChild);
+                    }
+                    this.outputContainer.setAttribute("value", content);
+                }
             }
-            this.outputContainer.setAttribute("value", content);
             // ... fall through ...
         case 13: // End (selectable) prompt
             this._pushStyle("std", null);
