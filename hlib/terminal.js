@@ -815,9 +815,12 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                     column += w;
                     if (column > goalColumn) {
                         column -= w;
-                        current.insertBefore(document.createTextNode(valueAttr),
-                                             current.firstChild);
+                        var t = document.createTextNode(valueAttr);
+                        current.insertBefore(t, current.firstChild);
                         current.removeAttribute("value");
+                        parent = current;
+                        current = t;
+                        continue;
                     }
                 } else {
                     ch = current.firstChild;
