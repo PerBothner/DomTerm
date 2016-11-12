@@ -189,8 +189,8 @@ Reports window resize to applicaton.
 @strong{Dynamic pretty-printing} uses special commands to group
 logical blocks, and attempts to keep the ext of a block on a single line.
 
-You can ``print'' @ref{Hide/show buttons,hide/show buttons},
-using certain escape sequences.
+``Print'' @ref{Hide/show buttons,hide/show buttons},
+using certain escape sequences enables @strong{text folding}.
 The nearby screenshot shows the output of @code{ls -l} being hidden.
 
 Handles Unicode.
@@ -802,7 +802,8 @@ while the remainder of the current line gets the @code{input} style
 (specifically, in a @code{<span std="input">} element).
 The appearance of these styles can be customized with CSS stylesheets.
 
-Furthermore, this prompt enables a @ref{Hide/show buttons,hide/show button}
+Furthermore, this prompt enables text folding:
+a @ref{Hide/show buttons,hide/show button}
 (click on the @code{▼} character), which hides/shows the output
 from the command.
 
