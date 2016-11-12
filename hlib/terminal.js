@@ -1134,31 +1134,66 @@ DomTerm.prototype._pushStyle = function(styleName, styleValue) {
     this._currentStyleSpan = null;
 };
 
+DomTerm.prototype._getStdMode = function() {
+    for (var stdElement = this.outputContainer;
+         stdElement instanceof Element;
+         stdElement = stdElement.parentNode) {
+        if (stdElement.getAttribute("std"))
+            return stdElement;
+    }
+    return null;
+};
+
+DomTerm.prototype._pushStdMode = function(styleValue) {
+    var stdElement = this._getStdMode();
+    if (stdElement == null ? styleValue == null
+        : stdElement.getAttribute("std") == styleValue)
+        return;
+    if (stdElement != null) {
+        var cur = this.outputBefore;
+        var parent = this.outputContainer;
+        while (parent != stdElement.parentNode) {
+            if (cur != null)
+                this._splitNode(parent, cur);
+            var nextp = parent.parentNode;
+            cur = parent.nextSibling;
+            parent = nextp;
+        }
+        this.outputBefore = stdElement.nextSibling;
+        this.outputContainer = stdElement.parentNode;
+    }
+    if (styleValue != null) {
+        stdElement = this._createSpanNode();
+        stdElement.setAttribute("std", styleValue);
+        this._pushIntoElement(stdElement);
+    }
+};
+
 DomTerm.prototype._clearStyle = function() {
-    var std = this._currentStyleMap.get("std");
     this._currentStyleMap.clear();
-    if (std != null)
-        this._currentStyleMap.set("std", std);
     this._currentStyleSpan = null;
+};
+
+DomTerm.prototype._splitNode = function(node, splitPoint) {
+    var newNode = document.createElement(node.nodeName);
+    this._copyAttributes(node, newNode);
+    this._moveNodes(splitPoint, newNode);
+    node.parentNode.insertBefore(newNode, node.nextSibling);
+    return newNode;
 };
 
 DomTerm.prototype._popStyleSpan = function() {
     var parentSpan = this.outputContainer;
     if (this.outputBefore) {
         // split into new child
-        var restSpan = this._createSpanNode();
-        parentSpan.parentNode.insertBefore(restSpan,
-                                           parentSpan.nextSibling);
-        // Copy attributes
-        this._copyAttributes(parentSpan, restSpan);
-        this._moveNodes(this.outputBefore, restSpan);
+        this._splitNode(parentSpan, this.outputBefore);
     }
     this.outputContainer = parentSpan.parentNode;
     this.outputBefore = parentSpan.nextSibling;
     this._currentStyleSpan = null;
 };
 
-DomTerm._styleAttributes = ["style", "std", "color", "background-color",
+DomTerm._styleAttributes = ["style", "color", "background-color",
                             "font-weight", "text-decoration"];
 DomTerm._styleSpansMatch = function(newSpan, oldSpan) {
     for (var i = DomTerm._styleAttributes.length; --i >= 0; ) {
@@ -1230,7 +1265,6 @@ DomTerm.prototype._adjustStyle = function() {
             case "text-line-through":
                 decoration = decoration ? decoration + " line-through" : "line-through";
                 break;
-            case "std":
             case "font-weight":
                 styleSpan.setAttribute(key, value);
                 break;
@@ -2322,10 +2356,7 @@ DomTerm.prototype._clearWrap = function(absLine) {
         // If lineEnd is inside a SPAN, move it outside.
         while (pname == "SPAN") {
             if (lineEnd.nextSibling) {
-                var newSpan = document.createElement(pname);
-                this._copyAttributes(parent, newSpan);
-                this._moveNodes(lineEnd.nextSibling, newSpan);
-                parent.parentNode.insertBefore(newSpan, parent.nextSibling);
+                this._splitNode(parent, lineEnd.nextSibling);
             }
             parent.parentNode.insertBefore(lineEnd, parent.nextSibling);
             if (lineEnd == this.outputBefore)
@@ -2334,11 +2365,8 @@ DomTerm.prototype._clearWrap = function(absLine) {
             pname = parent.nodeName;
         }
         if (pname == "PRE" || pname == "P" || pname == "DIV") {
-            var newBlock = document.createElement(pname);
-            this._copyAttributes(parent, newBlock);
-            this._moveNodes(lineEnd.nextSibling, newBlock);
+            var newBlock = this._splitNode(parent, lineEnd.nextSibling);
             this.lineStarts[absLine+1] = newBlock;
-            parent.parentNode.insertBefore(newBlock, parent.nextSibling);
         }
         // otherwise we have a non-standard line
         // Regardless, do:
@@ -2355,7 +2383,7 @@ DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
     var attrs = oldElement.attributes;
     for (var i = attrs.length; --i >= 0; ) {
         var attr = attrs[i];
-        if (attr.specified)
+        if (attr.specified && attr.name != "id")
             newElement.setAttribute(attr.name, attr.value);
     }
 };
@@ -2945,10 +2973,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 117 /*'u'*/:
         switch (this.getParameter(0, 0)) {
         case 11:
-            this._pushStyle("std", null);
+            this._pushStdMode(null);
             break;
         case 12:
-            this._pushStyle("std", "error");
+            this._pushStdMode("error");
             break;
         case 18: // End non-selectable prompt
             var container = this.outputContainer;
@@ -2964,7 +2992,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             }
             // ... fall through ...
         case 13: // End (selectable) prompt
-            this._pushStyle("std", null);
+            this._pushStdMode(null);
             // Force inputLine outside prompt
             this._adjustStyle();
             break;
@@ -2981,23 +3009,23 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 if (this._currentCommandHideable)
                     this.outputContainer.setAttribute("domterm-hidden", "false");
             }
-            this._pushStyle("std", "prompt");
+            this._pushStdMode("prompt");
             if (param == 24)
                 this.inputLine.setAttribute("continuation", "true");
             else
                 this.inputLine.removeAttribute("continuation");
             break;
         case 15:
-            this._pushStyle("std", "input");
+            this._pushStdMode("input");
             this._adjustStyle();
             break;
         case 16:
-            this._pushStyle("std", "hider");
+            this._pushStdMode("hider");
             this._adjustStyle(); // Force - even if empty
             this._currentCommandHideable = true;
             break;
         case 17:
-            this._pushStyle("std", null);
+            this._pushStdMode(null);
             this.outputContainer.addEventListener("click",
                                                   this._showHideEventHandler,
                                                   true);
@@ -3529,7 +3557,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             span.appendChild(tnode);
             this.insertNode(span);
         }
-        this.pushIntoElement(ppgroup);
+        this._pushIntoElement(ppgroup);
         this._pushPprintGroup(ppgroup);
         break;
     case 111: // end prettyprinting-group
@@ -4001,8 +4029,9 @@ DomTerm.prototype.insertString = function(str) {
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && (this._deferredLinebreaksStart >= 0
                         || this.getCursorLine() != this._regionBottom-1)) {
-                    if (this._currentStyleMap.get("std") == "input")
-                        this._pushStyle("std", null);
+                    var stdMode = this._getStdMode(); 
+                    if (stdMode && stdMode.getAttribute("std") == "input")
+                        this._pushStdMode(null);
                     this.cursorLineStart(1);
                     i++;
                 } else {
@@ -4017,7 +4046,7 @@ DomTerm.prototype.insertString = function(str) {
                 this.insertSimpleOutput(str, prevEnd, i);
                 this._breakDeferredLines();
                 if (this._currentStyleMap.get("std") == "input")
-                    this._pushStyle("std", null);
+                    this._pushStdMode(null);
                 this.cursorNewLine(this.automaticNewlineMode);
                 prevEnd = i + 1;
                 break;
@@ -4548,6 +4577,13 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     var absLine = this.getAbsCursorLine();
     var widthInColums = -1;
     var fits = true;
+    if (this.outputBefore instanceof Element
+        && this.outputBefore.getAttribute("line")
+        && this.outputBefore.previousSibling instanceof Element
+        && this.outputBefore.previousSibling.getAttribute("std")) {
+        this.outputContainer = this.outputBefore.previousSibling;
+        this.outputBefore = null;
+    }
     if (! this.insertMode) { // FIXME optimize if end of line
         widthInColums = this.widthInColumns(str, 0, slen);
         fits = this.eraseCharactersRight(widthInColums, true);
@@ -4562,8 +4598,22 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             var right = this.availWidth;
             str = this._breakString(textNode, this.lineEnds[absLine], 0, right, this.availWidth);
             //current is after inserted textNode;
+            var oldContainer = this.outputContainer;
+            var oldLine = this.lineEnds[absLine];
+            if (this.outputBefore != null
+                || oldContainer.nextSibling != oldLine)
+                oldLine = null;
+            var oldContainerNext = oldContainer.nextSibling;
             this.cursorLineStart(1);
             this._forceWrap(absLine);
+            // Move newly-softened line inside oldContainer.
+            if (oldLine
+                && this.outputContainer == oldLine.parentNode
+                && this.outputBefore == oldLine.nextSibling) {
+                oldContainer.appendChild(oldLine);
+                this.outputContainer = oldContainer;
+                this.outputBefore = null;
+            }
             absLine++;
             slen = str.length;
             widthInColums = this.widthInColumns(str, 0, slen);
@@ -4612,8 +4662,7 @@ DomTerm.prototype.insertRawOutput = function(str) {
  *  This element should have no parents *or* children.
  *  It becomes the new outputContainer.
  */
-DomTerm.prototype.pushIntoElement = function(element) {
-    this.resetCursorCache(); // FIXME - not needed if element is span, say.
+DomTerm.prototype._pushIntoElement = function(element) {
     this.insertNode(element);
     this.outputContainer = element;
     this.outputBefore = null;
