@@ -3562,11 +3562,15 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         break;
     case 111: // end prettyprinting-group
         if (this._currentPprintGroup != null) {
-            for (;;) {
-                var isGroup = this.outputContainer == this._currentPprintGroup;
-                this.popFromElement();
-                if (isGroup)
-                    break;
+            if (this._isAnAncestor(this.outputContainer, this._currentPprintGroup)) {
+                var saveBefore = this.outputBefore;
+                var saveContainer = this.outputContainer;
+                for (;;) {
+                    var isGroup = this.outputContainer == this._currentPprintGroup;
+                    this.popFromElement();
+                    if (isGroup)
+                        break;
+                }
             }
             this._popPprintGroup();
         }
@@ -4284,27 +4288,34 @@ DomTerm.prototype._breakAllLines = function(startLine) {
         end.measureWidth = end.offsetWidth;
 
         // second pass - edit DOM, but don't look at offsetLeft
+        // beforePos is typically el.offsetLeft (if el is an element).
+        var beforePos = 0;
+        // startOffset is the difference (beforePos - beforeMeasure),
+        // where beforeMeasure is typically el.measureLeft (if any element).
+        // If el is a Text, beforePos and beforeMeasure are calculated.
         var startOffset = 0;
         var sectionStartLine = line;
         for (var el = start; el != null; ) {
+            // startOffset is the value of measureWidth corresponding
+            // to the start of the current line.
             var lineAttr;
             var dobreak = false;
             var skipChildren = false;
+            var measureWidth = el instanceof Element ? el.measureWidth : 0;
             if (el instanceof Text || dt.isObjectElement(el)) {
                 skipChildren = true;
                 if (el instanceof Text)
                     dt._normalize1(el);
                 next = el.nextSibling;
-                var right;
+                var afterMeasure;
                 if (next instanceof Element)
-                    right = next.measureLeft;
+                    afterMeasure = next.measureLeft;
                 else {
                     var parent = el.parentNode;
-                    right = parent.measureLeft+parent.measureWidth;
+                    afterMeasure = parent.measureLeft+parent.measureWidth;
                 }
-                right = right - startOffset;
+                var right = afterMeasure - startOffset;
                 if (right > availWidth) {
-                    beforePos = 0; // FIXME
                     if (el instanceof Text) {
                         var lineNode = dt._createLineNode("soft", null);
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
@@ -4312,19 +4323,26 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                                                    right, availWidth);
                         insertIntoLines(dt, lineNode);
                         el = lineNode;
-                        startOffset = el.measureLeft;
-                        startOffset -= addIndentation(dt, el);
+                        var indentWidth = addIndentation(dt, el);
+                        var beforeMeasure = beforePos + startOffset;
+                        var oldWidth = afterMeasure - beforeMeasure;
+                        var beforeWidth = lineNode.offsetLeft;
                         rest = document.createTextNode(rest);
                         el.parentNode.insertBefore(rest, el.nextSibling);
+                        beforeMeasure += lineNode.offsetLeft - beforePos;
+                        beforePos = indentWidth;
+                        startOffset = beforeMeasure - beforePos;
                         next = rest;
-                        right = 0; // FIXME rest
                         line++;
                     } else { // dt.isObjectElement(el)
                         // FIXME insert a "soft" break before el 
                         var lineNode = dt._createLineNode("soft", null);
                         el.parentNode.insertBefore(lineNode, el);
+                        // FIXME update beforePos startOffset
                     }
                     dobreak = true;
+                } else {
+                    beforePos = right;
                 }
             } else if (el.nodeName == "SPAN"
                        && (lineAttr = el.getAttribute("line")) != null) {
@@ -4355,7 +4373,9 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 }
                 if (dobreak) {
                     startOffset = el.measureLeft + el.measureWidth;
-                    startOffset -= addIndentation(dt, el);
+                    var indentWidth = addIndentation(dt, el);
+                    startOffset -= indentWidth;
+                    beforePos = indentWidth;
                     if (lineAttr != "hard") {
                         insertIntoLines(dt, el);
                         line++;
@@ -4403,6 +4423,8 @@ DomTerm.prototype._breakAllLines = function(startLine) {
             if (dobreak) {
                 for (var g = pprintGroup; g != null; g = g.outerPprintGroup)
                     g.breakSeen = true;
+            } else {
+                beforePos += measureWidth;
             }
             if (el.firstChild != null && ! skipChildren)
                 el = el.firstChild;
