@@ -4233,6 +4233,11 @@ DomTerm.prototype._breakAllLines = function(startLine) {
 
         // Using two passes is an optimization, because mixing offsetLeft
         // calls with DOM mutation is very expensive.
+        for (var el = start.parentNode;
+             el != null && el.nodeName == "SPAN"; el = el.parentNode) {
+            el.measureLeft = 0;
+            el.measureWidth = 0;
+        }
         // First pass - measure (call offsetLet) but do not change DOM
         for (var el = start; el != null; ) {
             var lineAttr;
