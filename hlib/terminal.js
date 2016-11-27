@@ -1772,6 +1772,8 @@ DomTerm.prototype.measureWindow = function()  {
 };
 
 DomTerm.prototype._mouseHandler = function(ev) {
+    if (ev.shiftKey)
+        return;
     var x = ev.pageX;
     var y = ev.pageY;
     var n = this.lineStarts[this.homeLine];
