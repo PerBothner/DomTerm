@@ -1572,7 +1572,7 @@ state of a terminal emulator / console.
 Functions and properties not documented here should be considered
 internal and (more) likely to change.
 
-@deftypefun new DomType (@var{name})
+@deftypefun new DomTerm (@var{name})
 Create a new DomTerm instance.
 The parameter @var{name} is a string.
 If you have multiple DomTerm instances, it is a good idea
