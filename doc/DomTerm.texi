@@ -1588,7 +1588,7 @@ of @var{element}.
 
 @defun insertString (str)
 Interpret and insert the characters of @var{str}.
-If may have ANSI/xterm @ref{Wire byte protocol,escape sequences}.
+It may have ANSI/xterm @ref{Wire byte protocol,escape sequences}.
 This method is called by the DomTerm client code.
 @end defun
 
@@ -1690,7 +1690,7 @@ based on various properies.
 
 @defun updateWindowTitle (title)
 Actualy set the window title - which is usually the
-reuslt of @code{formatWindowTitle()}.
+result of @code{formatWindowTitle()}.
 @end defun
 
 @defun elementInfo (tag, parents)
