@@ -17,7 +17,7 @@ if WITH_JAVA
 DOMTERM_JAR = domterm.jar
 endif
 
-all: d/domterm $(DOMTERM_JAR) $(LIBPTY) xulapp/domterm-chrome.jar $(QTDOMTERM)
+all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) xulapp/domterm-chrome.jar $(QTDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: domterm.jar
 	javah -d native/pty org.domterm.pty.PTY
@@ -38,6 +38,10 @@ d/domterm: d/domterm.ti
 
 run-pty: libpty@LIBEXT@ d/domterm domterm.jar
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar domterm.jar --pty
+
+# FUTURE: hlib/domterm-all.js may be minimized
+hlib/domterm-all.js: hlib/terminal.js hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js
+	cat hlib/bililiteRange.js hlib/terminal.js hlib/FileSaver.js hlib/ResizeSensor.js > hlib/domterm-all.js
 
 EXTRA_CLASSPATH =
 SERVER_ARGS =
@@ -61,10 +65,10 @@ run-shell: domterm.jar
 	CLASSPATH=domterm.jar $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm-chrome.jar
+	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html domterm.jar tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm-chrome.jar hlib/domterm-all.js
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
-	-rm -f qtdomterm/data/hlib/terminal.js qtdomterm/data/hlib/ResizeSensor.js qtdomterm/data/hlib/FileSaver.js qtdomterm/data/hlib/bililiteRange.js \
+	-rm -f qtdomterm/data/hlib/domterm-all.js \
 	  qtdomterm/data/hlib/domterm-core.css \
 	  qtdomterm/data/hlib/domterm-standard.css \
 	  qtdomterm/data/hlib/domterm-default.css
@@ -108,7 +112,7 @@ org/classes.stamp: $(domterm_jar_sources)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
-tmp-for-jar/jfx-term.html: jfx-term.html hlib/terminal.js Makefile
+tmp-for-jar/jfx-term.html: jfx-term.html hlib/domterm-all.js Makefile
 # JavaFX seems to have a problem loading .js files referenced from repl.html,
 # in a .jar, but inline javascript and css works.
 # So we use use sed to inline it into one by repl.html.
@@ -116,8 +120,8 @@ tmp-for-jar/jfx-term.html: jfx-term.html hlib/terminal.js Makefile
 	$(SED) \
 	  -e '/<link .*hlib.domterm-standard.css">/i</style>' \
 	  -e '/<link .*hlib.domterm-default.css">/i</style>' \
-	  -e '/ResizeSensor.js/i</style>' \
-	  -e '/ResizeSensor.js/i<script>' \
+	  -e '/domterm-all.js/i</style>' \
+	  -e '/domterm-all.js/i<script>' \
 	  -e '/<link .*hlib.domterm-core.css">/rhlib/domterm-core.css' \
 	  -e '/<link .*hlib.domterm-standard.css">/rhlib/domterm-standard.css' \
 	  -e '/<link .*hlib.domterm-default.css">/rhlib/domterm-default.css' \
@@ -125,16 +129,13 @@ tmp-for-jar/jfx-term.html: jfx-term.html hlib/terminal.js Makefile
 	  -e '/domterm-default/a</style>' \
 	  -e '/domterm-default/a<script type="text/javascript">' \
 	  -e 's|<script type="text.javascript">||' \
-	  -e '/<script .*src=.*.ResizeSensor.js.*>/rhlib/ResizeSensor.js' \
-	  -e '/<script .*src=.*.FileSaver.js.*>/rhlib/FileSaver.js' \
-	  -e '/<script .*src=.*.bililiteRange.js.*>/rhlib/bililiteRange.js' \
-	  -e '/<script .*src=.*.terminal.js.*>/rhlib/terminal.js' \
+	  -e '/<script .*src=.*.domterm-all.js.*>/rhlib/domterm-all.js' \
 	  -e 's|<script .*src=.*.*.js.*script>||' \
 	  <jfx-term.html >$@
 
-PLAIN_COPY_TO_JAR = repl-client.html hlib/*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
+PLAIN_COPY_TO_JAR = repl-client.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
 
-domterm.jar: org/classes.stamp hlib/terminal.js
+domterm.jar: org/classes.stamp hlib/domterm-all.js
 	mkdir -p tmp-for-jar
 @ENABLE_PTY_TRUE@	$(MAKE) tmp-for-jar/jfx-term.html
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
@@ -144,10 +145,10 @@ endif
 	cd tmp-for-jar && \
 	  jar cmf ../domterm-jar-manifest ../domterm.jar .
 
-xulapp/domterm-chrome.jar: hlib/terminal.js xulapp/chrome/content/domterm.xul
+xulapp/domterm-chrome.jar: hlib/domterm-all.js xulapp/chrome/content/domterm.xul
 	mkdir -p tmp-for-xul tmp-for-xul/chrome \
 	  tmp-for-xul/chrome/content tmp-for-xul/chrome/content
-	tar cf - hlib/*.js repl-client.html hlib/*.css |\
+	tar cf - hlib/domterm-*.js repl-client.html hlib/*.css |\
 	  (cd tmp-for-xul/chrome/content; tar xf -)
 	cp xulapp/chrome/content/domterm.xul tmp-for-xul/chrome/content
 	(cd tmp-for-xul; zip -r ../xulapp/domterm-chrome.jar chrome)
@@ -206,17 +207,8 @@ upload-web: web/index.html
 	cd web && \
 	  rsync -v -r -u -l -p -t --relative . $(WEB_SERVER_ROOT)
 
-qtdomterm/data/hlib/terminal.js:
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/terminal.js .
-
-qtdomterm/data/hlib/ResizeSensor.js:
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/ResizeSensor.js .
-
-qtdomterm/data/hlib/FileSaver.js:
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/FileSaver.js .
-
-qtdomterm/data/hlib/bililiteRange.js:
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/bililiteRange.js .
+qtdomterm/data/hlib/domterm-all.js:
+	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-all.js .
 
 qtdomterm/data/hlib/domterm-core.css:
 	mkdir -p qtdomterm/data/hlib
@@ -231,10 +223,7 @@ qtdomterm/data/hlib/domterm-default.css:
 	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-default.css .
 
 bin/qtdomterm: \
-  qtdomterm/data/hlib/terminal.js \
-  qtdomterm/data/hlib/ResizeSensor.js \
-  qtdomterm/data/hlib/FileSaver.js \
-  qtdomterm/data/hlib/bililiteRange.js \
+  qtdomterm/data/hlib/domterm-all.js \
   qtdomterm/data/hlib/domterm-core.css \
   qtdomterm/data/hlib/domterm-standard.css \
   qtdomterm/data/hlib/domterm-default.css

@@ -1,10 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
     <qresource prefix="/">
         <file>index.html</file>
-        <file>hlib/terminal.js</file>
-        <file>hlib/ResizeSensor.js</file>
-        <file>hlib/bililiteRange.js</file>
-        <file>hlib/FileSaver.js</file>
+        <file>hlib/domterm-all.js</file>
         <file>hlib/domterm-client.js</file>
         <file>hlib/qwebchannel.js</file>
         <file>hlib/domterm-core.css</file>
