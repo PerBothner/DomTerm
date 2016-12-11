@@ -340,7 +340,7 @@ DomTerm.prototype.startCommandGroup = function() {
         }
         container.parentNode.insertBefore(commandGroup, container);
         commandGroup.appendChild(container);
-        // this._moveNodes(firstChild, newParent)
+        // this._moveNodes(firstChild, newParent, null)
         // Remove old empty domterm-output container.
         if (oldOutput && oldOutput.firstChild == null
             && oldOutput.parentNode != null
@@ -396,16 +396,11 @@ if (!String.prototype.repeat) {
 };
 
 if (!String.prototype.startsWith) {
-  // Needed for Chrome 39 - supposedly available in Chrome 41.
-  Object.defineProperty(String.prototype, 'startsWith', {
-    enumerable: false,
-    configurable: false,
-    writable: false,
-    value: function(searchString, position) {
-      position = position || 0;
-      return this.lastIndexOf(searchString, position) === position;
-    }
-  });
+    // Needed for Chrome 39 - supposedly available in Chrome 41.
+    String.prototype.startsWith = function(searchString, position){
+        position = position || 0;
+        return this.substr(position, searchString.length) === searchString;
+    };
 };
 
 DomTerm.makeSpaces = function(n) {
@@ -544,7 +539,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     if (i+1 == dlen)
                         cur.parentNode.removeChild(cur);
                     else {
-                        cur.deleteData(i+1);
+                        cur.deleteData(i+1, dlen-i-1);
                     }
                     cur = line; // continue with Element case below
                     break;
@@ -880,7 +875,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         parent.insertBefore(this.inputLine, current);
         current = this.inputLine;
     }
-*/
+    */
     var oldBefore = this.outputBefore;
     this.outputContainer = parent;
     this.outputBefore = current;
@@ -1177,7 +1172,7 @@ DomTerm.prototype._clearStyle = function() {
 DomTerm.prototype._splitNode = function(node, splitPoint) {
     var newNode = document.createElement(node.nodeName);
     this._copyAttributes(node, newNode);
-    this._moveNodes(splitPoint, newNode);
+    this._moveNodes(splitPoint, newNode, null);
     node.parentNode.insertBefore(newNode, node.nextSibling);
     return newNode;
 };
@@ -2391,8 +2386,6 @@ DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
 };
 
 DomTerm.prototype._moveNodes = function(firstChild, newParent, newBefore) {
-    if (! newBefore)
-        newBefore = null;
     var oldParent = firstChild ? firstChild.parentNode : null;
     for (var child = firstChild; child != null; ) {
         var next = child.nextSibling;
@@ -2670,7 +2663,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this.insertMode = true;
         param = this.getParameter(0, 1);
         this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param);
-        this.cursorLeft(param);
+        this.cursorLeft(param, false);
         this.insertMode = saveInsertMode;
         break;
     case 65 /*'A'*/: // cursor up
@@ -2935,6 +2928,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             // Restore DEC Private Mode Values.
             if (this.saved_DEC_private_mode_flags == null)
                 break;
+            var numParameters = this.parameters.length;
             for (var i = 0; i < numParameters; i++) {
                 param = this.getParameter(i, -1);
                 var saved = this.saved_DEC_private_mode_flags[param];
@@ -2956,6 +2950,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             // Save DEC Private Mode Values.
             if (this.saved_DEC_private_mode_flags == null)
                 this.saved_DEC_private_mode_flags = new Array();
+            var numParameters = this.parameters.length;
             for (var i = 0; i < numParameters; i++) {
                 param = this.getParameter(i, -1);
                 this.saved_DEC_private_mode_flags[param]
@@ -3054,8 +3049,8 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.insertString(String.fromCharCode(last));
             if (last != 24 && last != 26 && last != 27)
                 this.controlSequenceState = oldState;
-        } else
-            ; // FIXME
+        } else { // FIXME
+        }
     }
 };
 
@@ -3298,7 +3293,7 @@ DomTerm.HTMLinfo = {
     "radialGradient": 12,
     "rect": 12,
     "samp": 5,
-    "script": 12, // ?
+    //"script": 12, // ?
     "script": 0,
     "set": 12,
     "small": 5,
@@ -4065,7 +4060,7 @@ DomTerm.prototype.insertString = function(str) {
             case 8 /*'\b'*/:
                 this.insertSimpleOutput(str, prevEnd, i);
                 this._breakDeferredLines();
-                this.cursorLeft(1);
+                this.cursorLeft(1, false);
                 prevEnd = i + 1; 
                 break;
             case 9 /*'\t'*/:
@@ -4096,7 +4091,7 @@ DomTerm.prototype.insertString = function(str) {
             case 16: case 17: case 18: case 19:
             case 20: case 21: case 22: case 23: case 25:
             case 28: case 29: case 30: case 31:
-            case 7: // ignore
+                // ignore
                 this.insertSimpleOutput(str, prevEnd, i);
                 prevEnd = i + 1;
                 break;
@@ -4191,7 +4186,7 @@ DomTerm.prototype._breakAllLines = function(startLine) {
             if (indent == null)
                 break;
             if (indent instanceof Element) {
-                indent = indent.cloneNode();
+                indent = indent.cloneNode(false);
                 el.insertBefore(indent, insertPosition);
                 curPosition = el.offsetLeft + el.offsetWidth;
                 goalPosition = curPosition;
@@ -4831,7 +4826,7 @@ DomTerm.prototype.pasteText = function(str) {
         rng.text(str, 'end');
         rng.select();
     } else {
-        this.reportText(str);
+        this.reportText(str, null);
     }
 };
 
@@ -5198,7 +5193,7 @@ DomTerm.prototype.inputHandler = function(event) {
             this.inputLine.removeChild(ch);
             ch = next;
         }
-        this.reportText(text);
+        this.reportText(text, null);
     }
 };
 
