@@ -25,6 +25,9 @@ AC_ARG_WITH(javafx,
 AC_ARG_WITH(qtwebengine,
   AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
+AC_ARG_WITH(closure_compiler,
+  AC_HELP_STRING("--with-closure-compiler=@<:@=compiler.jar@:>@,compress JavaScripr with Closure))
+
 conf_classpath=
 echo host: $host
 pathsep="$PATH_SEPARATOR"
@@ -50,11 +53,13 @@ case ${host} in
     ;;
 esac
 
-AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
-
 AC_CHECK_PROGS(QMAKE, qmake-qt5 qmake, qmake)
 
+AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
+
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
+
+AM_CONDITIONAL(WITH_CLOSURE_COMPILER, test "$with_closure_compiler" != "")
 
 if test "$with_java" = "no" && test -z "${with_java_websocket}"
 then
@@ -122,6 +127,7 @@ AC_SUBST(conf_classpath)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
 AC_SUBST(DOMTERM_VERSION)
+AC_SUBST(with_closure_compiler)
 
 AC_CONFIG_FILES([Makefile qtdomterm/dt_version.h])
 AC_OUTPUT

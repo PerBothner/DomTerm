@@ -92,6 +92,8 @@ OTHER DEALINGS IN THE SOFTWARE.
     */
 "use strict";
 
+/** @constructor */
+
 function DomTerm(name, topNode) {
     // A unique name for this DomTerm instance.
     // Should match the syntax for an XML NCName, as it is used to
@@ -208,11 +210,13 @@ function DomTerm(name, topNode) {
     // or when lineEditing is true.
     // If null, this means append output to the end of the output container's
     // children. (FIXME: The null case is not fully debugged.)
+    /** @type {Node|null} */
     this.outputBefore = null;
 
     // The parent node of the output position.
     // New output is by default inserted into this Node,
     // at the position indicated by outputBefore.
+    /** @type {Node|null} */
     this.outputContainer = null;
 
     this.inputLine = null;
@@ -259,6 +263,7 @@ function DomTerm(name, topNode) {
     // 0 - old single-byte; 1005 (UTF8-EXT); 1006 (SGR_EXT); 1015 (URXVT_EXT)
     this._mouseCoordEncoding = 0;
 
+    /** @type {Array|null} */
     this.saved_DEC_private_mode_flags = null;
 
     this.defaultBackgroundColor = "white";
@@ -277,8 +282,11 @@ function DomTerm(name, topNode) {
     this._Gcharsets = [null, null, null, null];
     this._Glevel = 0;
 
+    /** @type {Element|null} */
     this._currentCommandGroup = null;
+    /** @type {Element|null} */
     this._currentCommandOutput = null;
+    /** @type{boolean} */
     this._currentCommandHideable = false;
 
     this._currentPprintGroup = null;
@@ -486,9 +494,8 @@ DomTerm.prototype.updateColumn = function(ch, startState) {
         ch == 13 /* '\r' */ ||
         ch == 12 /* '\f' */)
         return -1;
-    if (startState < 0) {
-        // TODO handle surrogates, compound characters, etc.
-    }
+    // TODO handle surrogates, compound characters, etc.
+    // if (startState < 0) ...
     if (ch == 9 /* '\t' - tab */)
         return this.nextTabCol(startState);
     return startState+this.charColumns(ch);
@@ -640,12 +647,7 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
  */
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     //Only if char-edit? FIXME
-    if (true)
-        this._removeInputLine();
-    else {
-        // var moveInput = this.inputFollowsOutput && this.inputLine
-        // && this.outputBefore==this.inputLine;
-    }
+    this._removeInputLine();
     var line = this.currentCursorLine;
     var column = this.currentCursorColumn;
     if (this.verbosity >= 3)
@@ -1520,7 +1522,7 @@ DomTerm.prototype.makeId = function(local) {
     return this.name + "__" + local;
 };
 
-DomTerm.prototype._createLineNode = function(kind, text) {
+DomTerm.prototype._createLineNode = function(kind, text="") {
     var el = document.createElement("span");
     // the following is for debugging
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
@@ -1618,7 +1620,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this._rulerNode = rulerNode;
     helperNode.appendChild(rulerNode);
 
-    var wrapDummy = this._createLineNode("soft", null);
+    var wrapDummy = this._createLineNode("soft");
     wrapDummy.setAttribute("breaking", "yes");
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
@@ -1712,16 +1714,7 @@ DomTerm.prototype._createBuffer = function(bufName) {
     var bufNode = document.createElement("div");
     bufNode.setAttribute("id", bufName);
     bufNode.setAttribute("class", "interaction");
-    if (true)
         this._addBlankLines(1, this.lineEnds.length, bufNode, null);
-    else {
-        var preNode = this._createPreNode();
-        var lineEnd = this._createLineNode("hard", "\n");
-        preNode.appendChild(lineEnd);
-        bufNode.appendChild(preNode);
-        this.lineStarts.push(preNode);
-        this.lineEnds.push(lineEnd);
-    }
     return bufNode;
 };
 
@@ -2339,9 +2332,7 @@ DomTerm.prototype._forceWrap = function(absLine) {
 /** clear line-wrap indicator from absLine to absLine+1.
  *  The default for absLine is getAbsCursorLine().
  */
-DomTerm.prototype._clearWrap = function(absLine) {
-    if (! absLine)
-        absLine = this.getAbsCursorLine();
+DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
     var lineEnd = this.lineEnds[absLine];
     if (lineEnd.getAttribute("line")=="soft") {
         // Try to convert soft line break to hard break, using a <div>
@@ -2571,7 +2562,7 @@ DomTerm.prototype.getParameter = function(index, defaultValue) {
 DomTerm.prototype.get_DEC_private_mode = function(param) {
     switch (param) {
     case 1: return this.applicationCursorKeysMode;
-    case 3: return this.numColumsn == 132;
+    case 3: return this.numColumns == 132;
     case 6: return this.originMode;
     case 7: return (this.wraparoundMode & 2) != 0;
     case 45: return (this.wraparoundMode & 1) != 0;
@@ -2721,9 +2712,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 84 /*'T'*/:
         param = this.getParameter(0, 1);
-        if (curNumParameter >= 5) {
-            // FIXME Initiate mouse tracking.
-        }
+        /* FIXME Initiate mouse tracking.
+        if (curNumParameter >= 5) { ... }
+        */
         this.scrollReverse(curNumParameter);
         break;
     case 97 /*'a'*/: // HPR
@@ -3547,7 +3538,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         ppgroup.setAttribute("class", "pprint-group");
         text = text.trim();
         if (text) {
-            var prefix = JSON.parse(text);
+            var prefix = String(JSON.parse(text));
             var span = this._createSpanNode();
             span.setAttribute("class", "pprint-prefix");
             var tnode = document.createTextNode(prefix);
@@ -4157,7 +4148,7 @@ DomTerm.prototype._breakDeferredLines = function() {
     }
 };
 
-DomTerm.prototype._breakAllLines = function(startLine) {
+DomTerm.prototype._breakAllLines = function(startLine = -1) {
     // The indentation array is a stack of the following:
     // - a <span> node containing pre-line prefixes; or
     // - an absolute x-position (in pixels)
@@ -4253,9 +4244,6 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                     var sectionEnd = group.sectionEnd;
                     if (! sectionEnd)
                         sectionEnd = dt.lineEnds[line];
-                } else if (lineAttr == "hard" || lineAttr == "required")
-                    ;
-                else if (lineAttr == "fill" || lineAttr == "miser") {
                 }
             } else if (el.getAttribute("class") == "pprint-indent") {
                 skipChildren = true;
@@ -4319,7 +4307,7 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                 var right = afterMeasure - startOffset;
                 if (right > availWidth) {
                     if (el instanceof Text) {
-                        var lineNode = dt._createLineNode("soft", null);
+                        var lineNode = dt._createLineNode("soft");
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
                         var rest = dt._breakString(el, lineNode, beforePos,
                                                    right, availWidth);
@@ -4338,7 +4326,7 @@ DomTerm.prototype._breakAllLines = function(startLine) {
                         line++;
                     } else { // dt.isObjectElement(el)
                         // FIXME insert a "soft" break before el 
-                        var lineNode = dt._createLineNode("soft", null);
+                        var lineNode = dt._createLineNode("soft");
                         el.parentNode.insertBefore(lineNode, el);
                         // FIXME update beforePos startOffset
                     }
@@ -4450,7 +4438,7 @@ DomTerm.prototype._breakAllLines = function(startLine) {
         }
     };
 
-    if (startLine === undefined || startLine < 0) {
+    if (startLine < 0) {
         startLine = 0;
         if (this.usingAlternateScreenBuffer) {
             if (this.initial && this.initial.saveLastLine >= 0) // paranoia

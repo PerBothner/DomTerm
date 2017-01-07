@@ -13,6 +13,7 @@ config.status
 domterm.jar
 xulapp/domterm-chrome.jar
 native/pty/org_domterm_pty_PTY.h
+hlib/domterm-all.js
 org/classes.stamp
 tmp-for-xul
 tmp-for-jar
@@ -42,4 +43,5 @@ qtdomterm/data/hlib/ResizeSensor.js
 qtdomterm/data/hlib/FileSaver.js
 qtdomterm/data/hlib/bililiteRange.js
 qtdomterm/data/hlib/terminal.js
+qtdomterm/data/hlib/domterm-all.js
 qtdomterm/data/hlib/*.css
