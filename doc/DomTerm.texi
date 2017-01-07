@@ -51,6 +51,9 @@ with an @uref{http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,
 and @uref{http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archives}.
 
 @item
+Optionally uses Google's Closure compiler to reduce the size of the JavaScript.
+
+@item
 The qtdomterm application is designed to replace your favorite
 standalone terminal emulator program. It uses QtWebEngine.
 
@@ -274,6 +277,12 @@ to build @code{qtdomterm}, an advanced front-end that
 supports multiple tabs, screen re-sizing, and other nice features.
 
 For this you need the Qt development tools including QtWebEngine installed.
+
+@item --with-closure-compiler=@var{compiler.jar}
+Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compiler} to minimize the size of the JavaScript.
+(Current only the ``simple optimizations'' are done.
+Using the ``advanced optimizations'' would reduce the JavaScript file
+siew further, but causes some not-yet-resolved problems.)
 @end table
 
 Then just:
