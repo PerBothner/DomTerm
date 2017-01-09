@@ -1,4 +1,6 @@
-//window['Domterm-processInputCharacters'] = DomTerm.prototype.processInputCharacters;
+// Used when compiling terminal.js with Google's Closure compiler
+// in "advanced optimization" mode.
+// NEEDS WORK.
 window['DomTerm'] = DomTerm;
 DomTerm.prototype.processInputCharacters = function(str) {
     this['processInputCharacters'](str);
