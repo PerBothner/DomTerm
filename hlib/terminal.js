@@ -2729,10 +2729,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 99 /*'c'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
             // Send Device Attributes (Secondary DA).
-            this.processResponseCharacters("\x1B[>0;0;0c");
+            this.processResponseCharacters("\x1B[>41;0;0c");
         } else {
             // Send Device Attributes (Primary DA)
-            this.processResponseCharacters("\x1B[?1;0c");
+            this.processResponseCharacters("\x1B[?62;1;22c");
         }
         break;
     case 100 /*'d'*/: // VPA Line Position Absolute
