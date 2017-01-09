@@ -4072,11 +4072,11 @@ DomTerm.prototype.insertString = function(str) {
             case 24: case 26:
                 this.controlSequenceState = DomTerm.INITIAL_STATE;
                 break;
-            case 14 /*SO*/:
-                this._selectGcharset(1, false);
-                break;
-            case 15 /*SI*/:
-                this._selectGcharset(0, false);
+            case 14 /*SO*/: // Switch to Alternate Character Set G1
+            case 15 /*SI*/: // Switch to Standard Character Set G0
+                this.insertSimpleOutput(str, prevEnd, i);
+                prevEnd = i + 1;
+                this._selectGcharset(15-ch, false);
                 break;
             case 5 /*ENQ*/: // FIXME
             case 0: case 1: case 2:  case 3:
