@@ -4589,7 +4589,6 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     if (this._currentStyleSpan != this.outputContainer)
         this._adjustStyle();
     var absLine = this.getAbsCursorLine();
-    var widthInColums = -1;
     var fits = true;
     if (this.outputBefore instanceof Element
         && this.outputBefore.getAttribute("line")
@@ -4598,8 +4597,17 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         this.outputContainer = this.outputBefore.previousSibling;
         this.outputBefore = null;
     }
-    if (! this.insertMode) { // FIXME optimize if end of line
-        widthInColums = this.widthInColumns(str, 0, slen);
+    var widthInColums = this.widthInColumns(str, 0, slen);
+    if (this.insertMode) {
+        var line = this.getCursorLine();
+        var col = this.getCursorColumn();
+        var trunccol = this.numColumns-widthInColums;
+        if (col < trunccol)
+            this.moveToIn(line, trunccol, false);
+        this.eraseCharactersRight(-1, true);
+        this.moveToIn(line, col, true);
+    } else {
+        // FIXME optimize if end of line
         fits = this.eraseCharactersRight(widthInColums, true);
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
