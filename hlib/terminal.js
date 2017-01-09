@@ -3717,9 +3717,7 @@ DomTerm.prototype.getAsHTML = function() {
                         avalue = avalue.replace("qrc:", "");
                         if (avalue == "hlib/domterm-client.js")
                             avalue = "hlib/domterm-saved.js";
-                        if (avalue == "hlib/qwebchannel.js"
-                            || avalue == "hlib/FileSaver.js"
-                            || avalue == "hlib/bililiteRange.js")
+                        if (avalue == "hlib/qwebchannel.js")
                             skip = true;
                     } else if (aname=="breaking" && tagName=="span"
                                && node.getAttribute("line"))
