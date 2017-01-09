@@ -4559,8 +4559,17 @@ DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPo
     }
     if (goodLength == 0)
         textNode.parentNode.removeChild(textNode);
-    else if (textNode.data.length != goodLength)
-        textNode.data = textData.substring(0, goodLength);
+    else if (textNode.data.length != goodLength) {
+        if ((this.wraparoundMode & 2) != 0) {
+            textNode.data = textData.substring(0, goodLength);
+        } else {
+            // FIXME handle surrogates
+            textData = (textData.substring(0, goodLength-1)
+                        + textData.substring(textLength-1));
+            textNode.data = textData;
+            return "";
+        }
+    }
 
     if (goodLength < textLength) {
         var rest;
