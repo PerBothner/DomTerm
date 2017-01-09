@@ -2695,9 +2695,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.eraseLineLeft();
         break;
     case 76 /*'L'*/: // Insert lines
+        this.columnSet(this._regionLeft);
         this.insertLines(this.getParameter(0, 1));
         break;
     case 77 /*'M'*/: // Delete lines
+        this.columnSet(this._regionLeft);
         this.deleteLines(this.getParameter(0, 1));
         break;
     case 80 /*'P'*/: // Delete characters
