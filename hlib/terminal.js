@@ -1385,8 +1385,10 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count, restoreCursor) {
             all = false;
         }
         count = this.lineStarts.length - absLine;
-    } else
+    } else {
+        this._clearWrap(absLine+count-1);
         end = this.lineStarts[absLine+count];
+    }
     var cur = this.outputBefore;
     var parent = this.outputContainer;
     var inputLine = this.inputLine;
