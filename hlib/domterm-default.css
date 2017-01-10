@@ -3,6 +3,7 @@
 span[breaking="yes"][line="soft"]:before {content: "\2936" "\A"; }
 /* Suggested by Tufte CSS - less harsh than pure white. */
 div.domterm { background-color: #fffff8 }
+div.domterm[reverse-video] { color: white; background-color: black }
 /* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
    However, the first four in that list cause some vertical spacing issues,
    including background-color not being full-height.

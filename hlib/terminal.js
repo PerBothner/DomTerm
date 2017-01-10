@@ -1319,9 +1319,13 @@ DomTerm.prototype._adjustStyle = function() {
             }
         }
         if (reverse) {
-            var tmp = bgcolor ? bgcolor : this.defaultBackgroundColor;
-            bgcolor = fgcolor ? fgcolor : this.defaultForegroundColor;
-            fgcolor = tmp;
+            if (bgcolor || fgcolor) {
+                var tmp = bgcolor ? bgcolor : this.defaultBackgroundColor;
+                bgcolor = fgcolor ? fgcolor : this.defaultForegroundColor;
+                fgcolor = tmp;
+            } else {
+                styleSpan.setAttribute("reverse", "yes");
+            }
         }
         if (fgcolor) {
             styleSpan.setAttribute("color", fgcolor);
@@ -1563,6 +1567,10 @@ DomTerm.prototype._createPreNode = function() {
     // Prefer <div> over <pre> because Firefox adds extra lines when doing a Copy
     // spanning multiple <pre> nodes.
     var n = document.createElement("div");
+    var bg = this._currentStyleMap.get("background-color");
+    if (bg) {
+        n.setAttribute("style", "background-color: "+bg);
+    }
     n.setAttribute("class", "domterm-pre");
     return n;
 };
@@ -1771,7 +1779,7 @@ DomTerm.prototype._createBuffer = function(bufName) {
     return bufNode;
 };
 
-/* If browsers allows, should re-size actula window instead. FIXME */
+/* If browsers allows, should re-size actual window instead. FIXME */
 DomTerm.prototype.forceWidthInColumns = function(numCols) {
     if (numCols <= 0) {
         this.topNode.style.width = "";
@@ -2623,6 +2631,7 @@ DomTerm.prototype.get_DEC_private_mode = function(param) {
     switch (param) {
     case 1: return this.applicationCursorKeysMode;
     case 3: return this.numColumns == 132;
+    case 5: return this.topNode.getAttribute("reverse-video") != null;
     case 6: return this.originMode;
     case 7: return (this.wraparoundMode & 2) != 0;
     case 45: return (this.wraparoundMode & 1) != 0;
@@ -2647,6 +2656,12 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
         break;
     case 3:
         this.forceWidthInColumns(value ? 132 : 80);
+        break;
+    case 5: // Reverse Video (DECSCNM)
+        if (value)
+            this.topNode.setAttribute("reverse-video", "yes");
+        else
+            this.topNode.removeAttribute("reverse-video");
         break;
     case 6:
         this.originMode = value;

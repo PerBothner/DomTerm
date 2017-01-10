@@ -3,6 +3,9 @@
  * You can change these if you don't like the standard colors and styles.
  */
 
+span.term-style[reverse] { color: white; background-color: black }
+div.domterm[reverse-video] span.term-style[reverse] { color: black; background-color: white }
+
 /* http://en.wikipedia.org/wiki/ANSI_escape_code#Colors
   says xterm in July 2004 changed blue #0000CD to  #0000EE,
   and light-blue #0000FF to #5C5CFF.
