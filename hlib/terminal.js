@@ -1534,12 +1534,13 @@ DomTerm.prototype.insertLines = function(count) {
 };
 
 DomTerm.prototype._deleteLinesAt = function(count, line) {
-    this.deleteLinesIgnoreScroll(count, false);
+    this.moveToIn(line, 0, true);
     var scrollBottom = this._regionBottom;
-    var savedLines = scrollBottom - line - count;
-    if (savedLines > 0) {
-        this.insertLinesIgnoreScroll(count, scrollBottom - count);
-    }
+    var regionHeight = scrollBottom - line;
+    if (count > regionHeight)
+        count = regionHeight;
+    this.deleteLinesIgnoreScroll(count, false);
+    this.insertLinesIgnoreScroll(count, scrollBottom - count);
     this.resetCursorCache();
     this.moveToIn(line, 0, true);
     this._removeInputLine();
@@ -1793,6 +1794,9 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
         topNode.style.width = width+"px";
         window.addEventListener("resize", this._unforceWidthInColumns, true);
         this.measureWindow();
+        this.eraseDisplay(2);
+        this._setRegionLR(0, -1);
+        this.moveToIn(0, 0, false);
     }
 };
 
