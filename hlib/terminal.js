@@ -176,8 +176,7 @@ function DomTerm(name, topNode) {
     // -1 if unknown. */
     this.currentCursorColumn = -1;
 
-    this.savedCursorLine = 0;
-    this.savedCursorColumn = 0;
+    this._savedCursor = null;
 
     this.rightMarginWidth = 0;
 
@@ -654,12 +653,52 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
 };
 
 DomTerm.prototype.saveCursor = function() {
-    this.savedCursorLine = this.getCursorLine();
-    this.savedCursorColumn = this.getCursorColumn();
+    this._savedCursor = {
+        line: this.getCursorLine(),
+        column: this.getCursorColumn(),
+        fgcolor:  this._currentStyleMap.get("color"),
+        bgcolor:  this._currentStyleMap.get("background-color"),
+        weight: this._currentStyleMap.get("font-weight"),
+        blink: this._currentStyleMap.get("text-blink"),
+        underline: this._currentStyleMap.get("text-underline"),
+        reverse: this._currentStyleMap.get("reverse"),
+        origin: this.originMode,
+        wraparound: this.wraparoundMode,
+        glevel: this._Glevel,
+        charset0: this._Gcharsets[0],
+        charset1: this._Gcharsets[1],
+        charset2: this._Gcharsets[2],
+        charset3: this._Gcharsets[3],
+        charMapper: this.charMapper
+    };
 };
  
 DomTerm.prototype.restoreCursor = function() {
-    this.moveToIn(this.savedCursorLine, this.savedCursorColumn, true);
+    var saved = this._savedCursor;
+    if (saved) {
+        this.moveToIn(saved.line, saved.column, true);
+        this._Gcharsets[0] = saved.charset0;
+        this._Gcharsets[1] = saved.charset1;
+        this._Gcharsets[2] = saved.charset2;
+        this._Gcharsets[3] = saved.charset3;
+        this._Glevel = saved.glevel;
+        this.charMapper = saved.charMapper;
+        this._pushStyle("color", saved.fgcolor);
+        this._pushStyle("background-color", saved.bgcolor);
+        this._pushStyle("font-weight", saved.weight);
+        this._pushStyle("text-blink", saved.blink);
+        this._pushStyle("text-underline", saved.underline);
+        this._pushStyle("reverse", saved.reverse);
+        this.originMode = saved.origin;
+        this.wraparoundMode = saved.wraparound;
+    } else {
+        this._Gcharsets[0] = null;
+        this._Gcharsets[1] = null;
+        this._Gcharsets[2] = null;
+        this._Gcharsets[3] = null;
+        this.charMapper = null;
+        this._Glevel = 0;
+    }
 }; 
 
 DomTerm.prototype.columnSet = function(column) {
@@ -2641,7 +2680,7 @@ DomTerm.prototype.get_DEC_private_mode = function(param) {
     case 45: return (this.wraparoundMode & 1) != 0;
     case 47: // fall though
     case 1047: return this.usingAlternateScreenBuffer;
-    case 1048: return this.savedCursorLine > 0;
+    case 1048: return this._savedCursor != null;
     case 1049: return this.usingAlternateScreenBuffer;
     case 2004: return this.bracketedPasteMode;
     case 9: case 1000: case 1001: case 1002: case 1003:
