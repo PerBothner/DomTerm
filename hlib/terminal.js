@@ -265,6 +265,9 @@ function DomTerm(name, topNode) {
     /** @type {Array|null} */
     this.saved_DEC_private_mode_flags = null;
 
+    this._tabDefaultStart = 0;
+    this._tabsAdded = null;
+
     this.defaultBackgroundColor = "white";
     this.defaultForegroundColor = "black";
 
@@ -453,12 +456,58 @@ DomTerm.prototype._adjustSpacer = function(needed) {
     }
 };
 
+DomTerm.prototype.atTabStop = function(col) {
+    if (col >= this._tabDefaultStart)
+        if ((col & ~7) == 0)
+            return true;
+    return this._tabsAdded && this._tabsAdded[col];
+}
+
 // Return column number following a tab at initial {@code col}.
 // Ths col is the initial column, 0-origin.
 // Return the column number (0-origin) after a tab.
 // Default implementation assumes tabs every 8 columns.
- DomTerm.prototype.nextTabCol = function(col) {
-    return (col & ~7) + 8;
+DomTerm.prototype.nextTabCol = function(col) {
+    if (this._tabsAdded == null && this._tabDefaultStart == 0)
+        return (col & ~7) + 8;
+    var max = this.numColumns - 1;
+    for (var i = col; ; i++) {
+        if (i >= max || this.atTabStop(i))
+            return i;
+    }
+};
+
+DomTerm.prototype.tabToNextStop = function() {
+    var nextStop = this.nextTabCol(this.getCursorColumn());
+    this.cursorRight(nextStop-this.currentCursorColumn);
+}
+
+DomTerm.prototype.tabToPrevStop = function() {
+    var col = this.getCursorColumn();
+    while (--col > 0 && ! this.atTabStop(col)) { }
+    this.columnSet(col);
+}
+
+DomTerm.prototype.setTabStop = function(col, set) {
+    if (this._tabsAdded == null)
+        this._tabsAdded = new Array();
+    if (! set && (col & ~7) == 0 && col >= this._tabDefaultStart) {
+        for (var i = this._tabDefaultStart; i < col; i = (i & ~7) + 8) {
+            this._tabsAdded[i] = true;
+        }
+        this._tabDefaultStart = col + 1;
+    }
+    this._tabsAdded[col] = set;
+};
+
+DomTerm.prototype.clearAllTabs = function() {
+    this._tabsAdded = null;
+    this._tabDefaultStart = Number.POSITIVE_INFINITY;
+};
+
+DomTerm.prototype.resetTabs = function() {
+    this._tabsAdded = null;
+    this._tabDefaultStart = 0;
 };
 
 /** Returns number of columns needed for argument character.
@@ -613,6 +662,9 @@ DomTerm.prototype.restoreCursor = function() {
     this.moveToIn(this.savedCursorLine, this.savedCursorColumn, true);
 }; 
 
+DomTerm.prototype.columnSet = function(column) {
+    this.cursorSet(this.getCursorLine(), column, false);
+}
 
 /** Move to give position relative to cursorHome or region.
  * Add spaces as needed.
@@ -1024,7 +1076,7 @@ DomTerm.prototype.cursorNewLine = function(autoNewline) {
 
 DomTerm.prototype.cursorRight = function(count) {
     // FIXME optimize same way cursorLeft is.
-    this.cursorSet(this.getCursorLine(), this.getCursorColumn()+count, false);
+    this.columnSet(this.getCursorColumn()+count);
 };
 
 DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
@@ -1111,7 +1163,7 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
         }
     }
     if (count > 0) {
-        this.cursorSet(this.getCursorLine(), goal, false);
+        this.columnSet(goal);
     }
 };
 
@@ -2690,6 +2742,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this.cursorSet(this.getParameter(0, 1)-1, this.getParameter(1, 1)-1,
                       this.originMode);
         break;
+    case 73 /*'I'*/: // CHT Cursor Forward Tabulation
+        for (var n = this.getParameter(0, 1); --n >= 0; )
+            this.tabToNextStop();
+        break;
     case 74 /*'J'*/:
         this.eraseDisplay(this.getParameter(0, 0));
         break;
@@ -2727,6 +2783,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
         */
         this.scrollReverse(curNumParameter);
         break;
+    case 90 /*'Z' */: // CBT Cursor Backward Tabulation
+        for (var n = this.getParameter(0, 1); --n >= 0; )
+            this.tabToPrevStop();
+        break;
     case 97 /*'a'*/: // HPR
         var line = this.getCursorLine();
         var column = this.getCursorColumn();
@@ -2756,6 +2816,13 @@ DomTerm.prototype.handleControlSequence = function(last) {
                        + this.getParameter(0, 1),
                        this.originMode ? column - this._regionLeft : column,
                        this.originMode);
+    case 103 /*'g'*/: // TBC Tab Clear
+        param = this.getParameter(0, 0);
+        if (param <= 0)
+            this.setTabStop(this.getCursorColumn(), false);
+        else if (param == 3)
+            this.clearAllTabs();
+        break;
     case 104 /*'h'*/:
         param = this.getParameter(0, 0);
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
@@ -3132,11 +3199,12 @@ DomTerm.prototype.resetTerminal = function(full, saved) {
     this._currentCommandHideable = false;
     this._currentPprintGroup = null;
     this._needSectionEndFence = null;
+    this.resetTabs();
 
     // FIXME a bunch more
 };
 
-DomTerm.prototype._selectGcharset = function(g, whenShifted/*igored*/) {
+DomTerm.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
     this._Glevel = g;
     this.charMapper = this._Gcharsets[g];
 };
@@ -3863,6 +3931,9 @@ DomTerm.prototype.insertString = function(str) {
             case 69 /*'E'*/: // NEL
                 this.cursorNewLine(true);
                 break;
+            case 72 /*'H'*/: // HTS Tab Set
+                this.setTabStop(this.getCursorColumn(), true);
+                break;
             case 77 /*'M'*/: // Reverse index
                 var line = this.getCursorLine();
                 if (line == this._regionTop)
@@ -4065,8 +4136,7 @@ DomTerm.prototype.insertString = function(str) {
             case 9 /*'\t'*/:
                 this.insertSimpleOutput(str, prevEnd, i);
                 this._breakDeferredLines();
-                var nextStop = this.nextTabCol(this.getCursorColumn());
-                this.cursorRight(nextStop-this.currentCursorColumn);
+                this.tabToNextStop();
                 prevEnd = i + 1;
                 break;
             case 7 /*'\a'*/:
