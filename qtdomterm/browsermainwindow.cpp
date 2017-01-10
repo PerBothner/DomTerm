@@ -287,11 +287,12 @@ void BrowserMainWindow::slotAboutApplication()
 {
     QMessageBox::about(this, tr("About"), tr(
         "Version %1"
-        "<p>QtDomTerm is a terminal emulator based on DomTerm and QtWebEngine. "
+        "<p>QtDomTerm is a terminal emulator based on DomTerm (%1) and QtWebEngine (%3). "
         "<p>Copyright %2 Per Bothner."
         "<p>The DomTerm home page is <a href=\"http://domterm.org/\">http://domterm.org/</a>.")
                        .arg(QCoreApplication::applicationVersion())
-                       .arg(QTDOMTERM_YEAR));
+                       .arg(QTDOMTERM_YEAR)
+                       .arg(qVersion()));
 }
 
 void BrowserMainWindow::slotFileNew()

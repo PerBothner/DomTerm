@@ -88,7 +88,7 @@ void print_usage_and_exit(int code)
 
 void print_version_and_exit(int code=0)
 {
-    printf("QtDomTerm %s\n", QTDOMTERM_VERSION);
+    printf("QtDomTerm %s, using Qt version %s.\n", QTDOMTERM_VERSION, qVersion());
     printf("Copyright %s Per Bothner.\n",  QTDOMTERM_YEAR);
     exit(code);
 }
