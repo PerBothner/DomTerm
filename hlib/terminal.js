@@ -1,6 +1,5 @@
-/*
- * Copyright (c) 2015, 2016 Per Bothner.
- *
+/** @license Copyright (c) 2015, 2016, 2017 Per Bothner.
+um *
  * Converted to JavaScript from WebTerminal.java, which has the license:
  *
  * Copyright (c) 2011, 2014 Oracle and/or its affiliates.
