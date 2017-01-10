@@ -288,9 +288,10 @@ void BrowserMainWindow::slotAboutApplication()
     QMessageBox::about(this, tr("About"), tr(
         "Version %1"
         "<p>QtDomTerm is a terminal emulator based on DomTerm and QtWebEngine. "
-        "<p>Copyright 2016 Per Bothner."
-        "<p>The DomTerm home page is <a href=\"http://domterm.org/\">http://domterm.org/</a>."
-        ).arg(QCoreApplication::applicationVersion()));
+        "<p>Copyright %2 Per Bothner."
+        "<p>The DomTerm home page is <a href=\"http://domterm.org/\">http://domterm.org/</a>.")
+                       .arg(QCoreApplication::applicationVersion())
+                       .arg(QTDOMTERM_YEAR));
 }
 
 void BrowserMainWindow::slotFileNew()

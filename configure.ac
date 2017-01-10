@@ -1,5 +1,8 @@
 dnl Autoconf script for DomTerm
-AC_INIT([DomTerm],[0.2])
+AC_INIT([DomTerm],[0.45])
+
+DOMTERM_VERSION=`<$srcdir/hlib/terminal.js sed -n -e 's/.*this.versionString = "\(.*\)".*$/\1/p'`
+DOMTERM_YEAR="2017"
 
 AC_CONFIG_AUX_DIR(autotools-aux)
 AM_INIT_AUTOMAKE([foreign])
@@ -116,8 +119,6 @@ then
   fi
 fi
 
-DOMTERM_VERSION=`<$srcdir/hlib/terminal.js sed -n -e 's/.*this.versionString = "\(0.43\)".*$/\1/p'`
-
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(LIBEXT)
@@ -127,6 +128,7 @@ AC_SUBST(conf_classpath)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
 AC_SUBST(DOMTERM_VERSION)
+AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(with_closure_compiler)
 
 AC_CONFIG_FILES([Makefile qtdomterm/dt_version.h])
