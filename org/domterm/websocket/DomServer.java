@@ -280,34 +280,25 @@ public class DomServer extends WebSocketServer {
             DomServer s = new DomServer(port, backendArgs);
             s.start();
             port = s.getPort();
+            String defaultUrl = "file://"+domtermPath
+                +"/repl-client.html#ws=//localhost:"+port+"/";
             if (runBrowser == 0) { // desktop --browser
-                String href =
-                    "file://"+domtermPath
-                    +"/repl-client.html#ws=//localhost:"+port+"/";
-                URI uri = new URI(href);
                 if (browserCommand == null)
-                    Desktop.getDesktop().browse(uri);
+                    Desktop.getDesktop().browse(new URI(defaultUrl));
                 else {
                     Process process = Runtime.getRuntime()
-                        .exec(new String[] { browserCommand, href });
+                        .exec(new String[] { browserCommand, defaultUrl });
                 }
             } else if (runBrowser == 1) { // --firefox
-                String firefoxCommand = "firefox";
-                String firefoxMac =
-                    "/Applications/Firefox.app/Contents/MacOS/firefox";
-                if (new File(firefoxMac).exists())
-                    firefoxCommand = firefoxMac;
+                String firefoxCommand = firefoxCommand();
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { firefoxCommand, "-app",
                                          domtermPath+"/xulapp/application.ini",
                                          "-wspath",
                                          "ws://localhost:"+port });
             } else if (runBrowser == 2) { // --chrome
-                String chromeCommand = "google-chrome";
-                String chromeBin = System.getenv("CHROME_BIN");
-                if (chromeBin != null && new File(chromeBin).exists())
-                    chromeCommand = chromeBin;
-                String appArg = "--app=file://"+domtermPath+"/repl-client.html?ws=//localhost:"+port+"/";
+                String chromeCommand = chromeCommand();
+                String appArg = "--app="+defaultUrl;
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { chromeCommand, appArg });
                 //process.waitFor();
@@ -336,5 +327,22 @@ public class DomServer extends WebSocketServer {
             ex.printStackTrace();
             throw new RuntimeException(ex);
         }
+    }
+
+    public static String chromeCommand() {
+        String chromeCommand = "google-chrome";
+        String chromeBin = System.getenv("CHROME_BIN");
+        if (chromeBin != null && new File(chromeBin).exists())
+            chromeCommand = chromeBin;
+        return chromeCommand;
+    }
+
+    public static String firefoxCommand() {
+        String firefoxCommand = "firefox";
+        String firefoxMac =
+            "/Applications/Firefox.app/Contents/MacOS/firefox";
+        if (new File(firefoxMac).exists())
+            firefoxCommand = firefoxMac;
+        return firefoxCommand;
     }
 }
