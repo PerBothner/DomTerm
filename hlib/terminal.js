@@ -168,11 +168,11 @@ function DomTerm(name, topNode) {
     // See note in eraseDisplay.
     this._vspacer = null;
 
-    // Current line number, 0-origin, relative to start of cursorHome.
+    // Current line number, 0-origin, relative to start topNode
     // -1 if unknown. */
-    this.currentCursorLine = -1;
+    this.currentAbsLine = -1;
 
-    // Current column number, 0-origin, relative to start of cursorHome.
+    // Current column number, 0-origin
     // -1 if unknown. */
     this.currentCursorColumn = -1;
 
@@ -738,7 +738,9 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
 DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     //Only if char-edit? FIXME
     this._removeInputLine();
-    var line = this.currentCursorLine;
+    var line = this.currentAbsLine;
+    if (line < 0)
+        line -= this.homeLine;
     var column = this.currentCursorColumn;
     if (this.verbosity >= 3)
         this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
@@ -934,7 +936,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
 
             ch = current;
             for (;;) {
-                //this.log(" move 2 parent:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.topNode, line, goalLine, this.currentCursorLine, current);
+                //this.log(" move 2 parent:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.topNode, line, goalLine, this.currentAbsLine, current);
                 if (parent == this.initial || parent == this.topNode) {
                     current = null;
                     var fill = goalColumn - column;
@@ -975,7 +977,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         && oldBefore.previousSibling instanceof Text)
         this._normalize1(oldBefore.previousSibling);
     //this._removeInputLine();
-    this.currentCursorLine = line;
+    this.currentAbsLine = line + this.homeLine;
     this.currentCursorColumn = column;
 };
 
@@ -1108,8 +1110,8 @@ DomTerm.prototype.cursorNewLine = function(autoNewline) {
     if (autoNewline) {
         if (this.insertMode) {
             this.insertRawOutput("\n"); // FIXME
-            if (this.currentCursorLine >= 0)
-                this.currentCursorLine++;
+            if (this.currentAbsLine >= 0)
+                this.currentAbsLine++;
             this.currentCursorColumn = 0;
         } else {
             this.cursorLineStart(1);
@@ -1886,7 +1888,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
         return;
 
     var saveCol = this.currentCursorColumn;
-    var saveLine = this.currentCursorLine;
+    var saveLine = this.currentAbsLine;
     var saveBefore = this.outputBefore;
     var saveContainer = this.outputContainer;
     this.outputContainer = ev.target;
@@ -1895,7 +1897,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     var row = this.getCursorLine();
     var col = this.getCursorColumn();
     this.currentCursorColumn = saveCol;
-    this.currentCursorLine = saveLine;
+    this.currentAbsLine = saveLine;
     this.outputBefore = saveBefore;
     this.outputContainer = saveContainer;
     var xdelta = ev.pageX - ev.target.offsetLeft;
@@ -2115,15 +2117,13 @@ DomTerm.prototype._forEachElementIn = function(node, func) {
 
 DomTerm.prototype.resetCursorCache = function() {
     this.currentCursorColumn = -1;
-    this.currentCursorLine = -1;
+    this.currentAbsLine = -1;
 };
 
 DomTerm.prototype.updateCursorCache = function() {
     var goal = this.outputBefore;
-    var line = this.currentCursorLine;
-    if (line >= 0)
-        line += this.homeLine;
-    else {
+    var line = this.currentAbsLine;
+    if (line < 0) {
         var n = goal ? goal : this.outputContainer;
         while (n) {
             if (this.isBlockNode(n))
@@ -2202,7 +2202,7 @@ DomTerm.prototype.updateCursorCache = function() {
             cur = cur.nextSibling;
         }
     }
-    this.currentCursorLine = line - this.homeLine;
+    this.currentAbsLine = line;
     this.currentCursorColumn = col;
     return;
 };
@@ -2210,13 +2210,15 @@ DomTerm.prototype.updateCursorCache = function() {
 /** Get line of current cursor position.
  * This is 0-origin (i.e. 0 is the top line), relative to cursorHome. */
 DomTerm.prototype.getCursorLine = function() {
-    if (this.currentCursorLine < 0)
+    if (this.currentAbsLine < 0)
         this.updateCursorCache();
-    return this.currentCursorLine;
+    return this.currentAbsLine - this.homeLine
 };
 
 DomTerm.prototype.getAbsCursorLine = function() {
-    return this.homeLine+this.getCursorLine();
+    if (this.currentAbsLine < 0)
+        this.updateCursorCache();
+    return this.currentAbsLine;
 };
 
 /** Get column of current cursor position.
@@ -2327,7 +2329,7 @@ DomTerm.prototype.handleEnter = function(text) {
     this.addInputLine();
     if (this.clientDoesEcho) {
         this._deferredForDeletion = oldInputLine;
-        this.currentCursorLine = line;
+        this.currentAbsLine = line+this.homeLine;
         this.currentCursorColumn = -1;
     }
     this.outputBefore = this.inputLine;
@@ -2360,8 +2362,8 @@ DomTerm.prototype.insertBreak = function() {
     var breakNode = document.createElement("br");
     this.insertNode(breakNode);
     this.currentCursorColumn = 0;
-    if (this.currentCursorLine >= 0)
-        this.currentCursorLine++;
+    if (this.currentAbsLine >= 0)
+        this.currentAbsLine++;
 };
 
 DomTerm.prototype.eraseDisplay = function(param) {
@@ -4810,7 +4812,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 || this.lineEnds[absLine].offsetLeft > this.availWidth))
             this._deferredLinebreaksStart = absLine;
     }
-    this.currentCursorLine = absLine - this.homeLine;
+    this.currentAbsLine = absLine;
     this.currentCursorColumn =
         this.currentCursorColumn < 0 || widthInColums < 0 ? -1
         : this.currentCursorColumn + widthInColums;
@@ -5365,9 +5367,9 @@ DomTerm.prototype._checkTree = function() {
     var istart = 0;
     var iend = 0;
     var nlines = this.lineStarts.length;
-    if (this.currentCursorLine >= 0
-        && this.homeLine + this.currentCursorLine >= nlines)
-        error("bad currentCursorLine");
+    if (this.currentAbsLine >= 0
+        && this.currentAbsLine >= nlines)
+        error("bad currentAbsLine");
     if ((this.outputBefore
          && this.outputBefore.parentNode != this.outputContainer)
         || this.outputContainer.parentNode == null)
@@ -5381,9 +5383,9 @@ DomTerm.prototype._checkTree = function() {
         error("homeLine not in initial");
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
-            if (this.currentCursorLine >= 0)
-                if (this.homeLine + this.currentCursorLine != iend)
-                    error("bad currentCursorLine");
+            if (this.currentAbsLine >= 0)
+                if (this.currentAbsLine != iend)
+                    error("bad currentAbsLine");
         }
         if (cur == null) {
             if (parent == null)
