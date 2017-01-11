@@ -1882,23 +1882,25 @@ DomTerm.prototype.measureWindow = function()  {
 };
 
 DomTerm.prototype._mouseHandler = function(ev) {
-    if (ev.shiftKey)
+    if (ev.shiftKey || ev.target == this.topNode)
         return;
-    var x = ev.pageX;
-    var y = ev.pageY;
-    var n = this.lineStarts[this.homeLine];
-    var homex = 0, homey = 0;
-    while (n != null) {
-        homex += n.offsetLeft;
-        homey += n.offsetTop;
-        n = n.offsetParent;
-    }
-    homex -= this.topNode.scrollLeft;
-    homey -= this.topNode.scrollTop;
-    x -= homex;
-    y -= homey;
-    var row = Math.floor(y / this.charHeight);
-    var col = Math.floor(x / this.charWidth);
+
+    var saveCol = this.currentCursorColumn;
+    var saveLine = this.currentCursorLine;
+    var saveBefore = this.outputBefore;
+    var saveContainer = this.outputContainer;
+    this.outputContainer = ev.target;
+    this.outputBefore = this.outputContainer.firstChild;
+    this.resetCursorCache();
+    var row = this.getCursorLine();
+    var col = this.getCursorColumn();
+    this.currentCursorColumn = saveCol;
+    this.currentCursorLine = saveLine;
+    this.outputBefore = saveBefore;
+    this.outputContainer = saveContainer;
+    var xdelta = ev.pageX - ev.target.offsetLeft;
+    if (xdelta > 0)
+        col += Math.floor(xdelta / this.charWidth);
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
 
     var final = "M";
@@ -1935,7 +1937,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     }
 
     if (this.verbosity >= 2)
-        this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" h:"+homex+"/"+homey+" xy:"+x+"/"+y+" row:"+row+" col:"+col+" button:"+button+" mode:"+this._mouseMode+" ext_coord:"+this._mouseCoordEncoding);
+        this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" row:"+row+" col:"+col+" button:"+button+" mode:"+this._mouseMode+" ext_coord:"+this._mouseCoordEncoding);
 
     if (button < 0 || col < 0 || col >= this.numColumns
         || row < 0 || row >= this.numRows)
