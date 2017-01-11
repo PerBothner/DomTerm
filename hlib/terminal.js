@@ -1090,7 +1090,18 @@ DomTerm.prototype.cursorLineStart = function(deltaLines) {
 };
 
 DomTerm.prototype.cursorDown = function(count) {
-    this.cursorSet(this.getCursorLine()+count, this.getCursorColumn(), false);
+    var cur = this.getCursorLine();
+    var next = cur+count;
+    if (count > 0) {
+        var end = cur > this._regionBottom ? this.numRows : this._regionBottom;
+        if (next >= end)
+            next = end - 1;
+    } else if (count < 0) {
+        var min = cur < this._regionTop ? 0 : this._regionTop;
+        if (next < min)
+            next = min;
+    }
+    this.moveToIn(next, this.getCursorColumn(), true);
 };
 
 DomTerm.prototype.cursorNewLine = function(autoNewline) {
