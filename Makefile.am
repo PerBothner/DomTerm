@@ -121,32 +121,10 @@ org/classes.stamp: $(domterm_jar_sources)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch org/classes.stamp
 
-tmp-for-jar/jfx-term.html: jfx-term.html hlib/domterm-all.js Makefile
-# JavaFX seems to have a problem loading .js files referenced from repl.html,
-# in a .jar, but inline javascript and css works.
-# So we use use sed to inline it into one by repl.html.
-# Ugly - hopefully we can figure out what is going on.
-	$(SED) \
-	  -e '/<link .*hlib.domterm-standard.css">/i</style>' \
-	  -e '/<link .*hlib.domterm-default.css">/i</style>' \
-	  -e '/domterm-all.js/i</style>' \
-	  -e '/domterm-all.js/i<script>' \
-	  -e '/<link .*hlib.domterm-core.css">/rhlib/domterm-core.css' \
-	  -e '/<link .*hlib.domterm-standard.css">/rhlib/domterm-standard.css' \
-	  -e '/<link .*hlib.domterm-default.css">/rhlib/domterm-default.css' \
-	  -e 's/<link rel="stylesheet"\(.*\) href=".*"/<style\1/' \
-	  -e '/domterm-default/a</style>' \
-	  -e '/domterm-default/a<script type="text/javascript">' \
-	  -e 's|<script type="text.javascript">||' \
-	  -e '/<script .*src=.*.domterm-all.js.*>/rhlib/domterm-all.js' \
-	  -e 's|<script .*src=.*.*.js.*script>||' \
-	  <jfx-term.html >$@
-
-PLAIN_COPY_TO_JAR = repl-client.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
+PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
 
 $(DOMTERM_JAR): org/classes.stamp hlib/domterm-all.js
 	mkdir -p lib tmp-for-jar
-@ENABLE_PTY_TRUE@	$(MAKE) tmp-for-jar/jfx-term.html
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 	cp xulapp/chrome/content/domterm.xul tmp-for-jar/
 if WITH_JAVA_WEBSOCKET
