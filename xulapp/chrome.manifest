@@ -1,1 +1,1 @@
-content domterm jar:domterm-chrome.jar!/chrome/content/repl-client.html
+content domterm jar:domterm.jar!/repl-client.html
