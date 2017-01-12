@@ -1752,6 +1752,8 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         dt._scrollIfNeeded();
     });
     this.measureWindow();
+
+    this.topNode.addEventListener("mousedown", this._mouseEventHandler);
 };
 
 DomTerm.prototype.initializeTerminal = function(topNode) {
@@ -1886,6 +1888,8 @@ DomTerm.prototype.measureWindow = function()  {
 DomTerm.prototype._mouseHandler = function(ev) {
     if (ev.shiftKey || ev.target == this.topNode)
         return;
+    if (this._mouseMode == 0 && (! ev.ctrlKey || ev.button != 0))
+        return;
 
     var saveCol = this.currentCursorColumn;
     var saveLine = this.currentAbsLine;
@@ -1901,9 +1905,39 @@ DomTerm.prototype._mouseHandler = function(ev) {
     this.outputBefore = saveBefore;
     this.outputContainer = saveContainer;
     var xdelta = ev.pageX - ev.target.offsetLeft;
-    if (xdelta > 0)
-        col += Math.floor(xdelta / this.charWidth);
+    col += Math.floor(xdelta / this.charWidth);
+    var ydelta = ev.pageY + this.topNode.scrollTop - ev.target.offsetTop;
+    row += Math.floor(ydelta / this.charHeight);
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
+
+    if (this._mouseMode == 0 && ev.ctrlKey) {
+        var curVLine = this.getAbsCursorLine();
+        var goalVLine = row+this.homeLine;
+        var curLine = curVLine;
+        var goalLine = curVLine;
+        while (this.isSpanNode(this.lineStarts[goalLine]))
+            goalLine--;
+        while (this.isSpanNode(this.lineStarts[curLine]))
+            curLine--;
+        if (curLine != goalLine)
+            return; // FIXME should allow as long as same "command-group"
+        var goalCol = col + (goalVLine - goalLine) * this.numColumns;
+        var curCol = this.getCursorColumn()
+            + (curVLine - curLine) * this.numColumns;
+        var delta = goalCol - curCol;
+        var arrow;
+        var n;
+        if (delta >= 0) {
+            arrow = this.specialKeySequence("", "C", null); // char-right
+            n = delta;
+        } else {
+            n = -delta;
+            arrow = this.specialKeySequence("", "D", null); // char-left
+        }
+        if (n > 0)
+            this.processInputCharacters(arrow.repeat(n));
+        return;
+    }
 
     var final = "M";
     var button = Math.min(ev.which - 1, 2) | mod;
@@ -2122,9 +2156,10 @@ DomTerm.prototype.resetCursorCache = function() {
 
 DomTerm.prototype.updateCursorCache = function() {
     var goal = this.outputBefore;
+    var goalParent = this.outputContainer;
     var line = this.currentAbsLine;
     if (line < 0) {
-        var n = goal ? goal : this.outputContainer;
+        var n = goal ? goal : goalParent;
         while (n) {
             if (this.isBlockNode(n))
                 break;
@@ -2132,7 +2167,11 @@ DomTerm.prototype.updateCursorCache = function() {
         }
         if (n) {
             var len = this.lineStarts.length;
-            for (var ln = this.homeLine; ln < len; ln++) {
+            // search after homeLine first, then before it
+            for (var i = 0; i < len; i++) {
+                var ln = i + this.homeLine;
+                if (i >= len)
+                    i -= len;
                 if (this.lineStarts[ln] == n) {
                     line = ln;
                     break;
@@ -2149,7 +2188,7 @@ DomTerm.prototype.updateCursorCache = function() {
         parent = parent.parentNode;
     }
     var col = 0;
-    while (cur != goal || (goal == null && parent != this.outputContainer)) {
+    while (cur != goal || (goal == null && parent != goalParent)) {
         if (cur == null) {
             cur = parent.nextSibling;
             parent = parent.parentNode;
@@ -2159,6 +2198,8 @@ DomTerm.prototype.updateCursorCache = function() {
             if (tag == "BR"
                 || (tag == "SPAN"
                     && (lineAttr = cur.getAttribute("line")) != null)) {
+                if (cur == goalParent)
+                    break;
                 var breaking = cur.getAttribute("breaking");
                 if (breaking || lineAttr == "hard"
                     || lineAttr == "soft" || lineAttr == "br")
@@ -2167,6 +2208,8 @@ DomTerm.prototype.updateCursorCache = function() {
                 cur = cur.nextSibling;
                 continue;
             } else if (this.isObjectElement(cur)) {
+                if (cur == goalParent)
+                    break;
                 col++;
                 cur = cur.nextSibling;
                 continue;
@@ -2739,17 +2782,17 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
     case 9: case 1000: case 1001: case 1002: case 1003:
         var handler = this._mouseEventHandler;
         if (value) {
-            this.topNode.addEventListener("mousedown", handler);
             this.topNode.addEventListener("mouseup", handler);
             this.topNode.addEventListener("wheel", handler);
         } else {
-            this.topNode.removeEventListener("mousedown", handler);
             this.topNode.removeEventListener("mouseup", handler);
             this.topNode.removeEventListener("wheel", handler);
         }
-        return this._mouseMode = value ? param : 0;
+        this._mouseMode = value ? param : 0;
+        break;
     case 1005: case 1006: case 1015:
-        return this._mouseCoordEncoding = value ? param : 0;
+        this._mouseCoordEncoding = value ? param : 0;
+        break;
     case 47:
     case 1047:
         this.setAlternateScreenBuffer(value);
@@ -4007,7 +4050,7 @@ DomTerm.prototype.insertString = function(str) {
             case 72 /*'H'*/: // HTS Tab Set
                 this.setTabStop(this.getCursorColumn(), true);
                 break;
-            case 77 /*'M'*/: // Reverse index
+            case 77 /*'M'*/: // Reverse index (cursor up with scrolling)
                 var line = this.getCursorLine();
                 if (line == this._regionTop)
                     this.scrollReverse(1);
@@ -4903,14 +4946,16 @@ DomTerm.prototype.processEnter = function() {
 DomTerm.prototype.specialKeySequence = function(param, last, event) {
     var csi = "\x1B[";
     var mods = 0;
-    if (event.shiftKey)
-        mods += 1;
-    if (event.altKey)
-        mods += 2;
-    if (event.ctrlKey)
-        mods += 4;
-    if (event.metaKey)
-        mods += 8;
+    if (event) {
+        if (event.shiftKey)
+            mods += 1;
+        if (event.altKey)
+            mods += 2;
+        if (event.ctrlKey)
+            mods += 4;
+        if (event.metaKey)
+            mods += 8;
+    }
     if (mods > 0)
         return csi+(param==""||param=="O"?"1":param)+";"+(mods+1)+last;
     else if ((this.applicationCursorKeysMode && param == "") || param == "O")
