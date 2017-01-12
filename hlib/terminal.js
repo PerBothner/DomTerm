@@ -2170,8 +2170,8 @@ DomTerm.prototype.updateCursorCache = function() {
             // search after homeLine first, then before it
             for (var i = 0; i < len; i++) {
                 var ln = i + this.homeLine;
-                if (i >= len)
-                    i -= len;
+                if (ln >= len)
+                    ln -= len;
                 if (this.lineStarts[ln] == n) {
                     line = ln;
                     break;
