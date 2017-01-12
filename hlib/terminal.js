@@ -1119,7 +1119,8 @@ DomTerm.prototype.cursorNewLine = function(autoNewline) {
     }
     // Only scroll if this._regionBottom explicitly set to a value >= 0.
     else if ((this._regionTop > 0
-              || this._regionBottom < this.numRows)
+              || this._regionBottom < this.numRows
+              || this.usingAlternateScreenBuffer)
              && this.getCursorLine() == this._regionBottom-1)
         this.scrollForward(1);
     else
@@ -1651,6 +1652,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         this._setRegionTB(0, -1);
         if (val) {
+            var line = this.getCursorLine();
+            var col = this.getCursorColumn();
             // FIXME should scroll top of new buffer to top of window.
             var nextLine = this.lineEnds.length;
             var bufNode = this._createBuffer(this._altBufferName);
@@ -1664,8 +1667,6 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.outputBefore = newLineNode.firstChild;
             this._removeInputLine();
             this.initial = bufNode;
-            var line = this.getCursorLine();
-            var col = this.getCursorColumn();
             this.resetCursorCache();
             this.moveToIn(line, col, true);
         } else {
@@ -4236,7 +4237,8 @@ DomTerm.prototype.insertString = function(str) {
                 //this.currentCursorColumn = column;
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
-                    && (this._deferredLinebreaksStart >= 0
+                    && ((this._deferredLinebreaksStart >= 0
+                         && ! this.usingAlternateScreenBuffer)
                         || this.getCursorLine() != this._regionBottom-1)) {
                     var stdMode = this._getStdMode(); 
                     if (stdMode && stdMode.getAttribute("std") == "input")
