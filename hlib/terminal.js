@@ -1747,8 +1747,30 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
             dt.log("ResizeSensor called"); 
         var oldCols = dt.numColumns;
         dt.measureWindow();
-        if (dt.numColumns != oldCols)
+        if (dt.numColumns != oldCols) {
+            var homeStart = null;
+            if (dt.homeLine > 0) {
+                dt._clearWrap(dt.homeLine-1);
+                homeStart = dt.lineStarts[dt.homeLine];
+            }
             dt._breakAllLines();
+            if (homeStart) {
+                var saveContainer = dt.outputContainer;
+                var saveBefore = dt.outputBefore;
+                dt.resetCursorCache();
+                dt.outputContainer = homeStart;
+                dt.outputBefore = homeStart.firstChild;
+                dt.homeLine = dt.getAbsCursorLine();
+                dt.outputContainer = saveContainer;
+                dt.outputBefore = saveBefore;
+                dt.resetCursorCache();
+            }
+            var minHome = dt.lineStarts.length - dt.numRows;
+            if (dt.homeLine < minHome) {
+                dt.homeLine = minHome;
+                dt.resetCursorCache();
+            }
+        }
         dt._scrollIfNeeded();
     });
     this.measureWindow();
