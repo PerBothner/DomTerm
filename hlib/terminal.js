@@ -4803,10 +4803,17 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         var line = this.getCursorLine();
         var col = this.getCursorColumn();
         var trunccol = this.numColumns-widthInColums;
+        var saveContainer = this.outputContainer;
+        var saveOutput = this.outputBefore;
         if (col < trunccol)
             this.moveToIn(line, trunccol, false);
         this.eraseCharactersRight(-1, true);
-        this.moveToIn(line, col, true);
+        if (col < trunccol) {
+            this.outputContainer = saveContainer;
+            this.outputBefore = saveOutput;
+            this.currentAbsLine = line+this.homeLine;
+            this.currentCursorColumn = col;
+        }
     } else {
         // FIXME optimize if end of line
         fits = this.eraseCharactersRight(widthInColums, true);
