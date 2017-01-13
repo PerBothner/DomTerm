@@ -4441,8 +4441,16 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         // calls with DOM mutation is very expensive.
         for (var el = start.parentNode;
              el != null && el.nodeName == "SPAN"; el = el.parentNode) {
-            el.measureLeft = 0;
-            el.measureWidth = 0;
+            // This is needed when we start with an existing soft break
+            var rects = el.getClientRects();
+            var nrects = rects.length;
+            if (nrects == 0) {
+                el.measureLeft = 0;
+                el.measureWidth = 0;
+            } else {
+                el.measureLeft = rects[nrects-1].left;
+                el.measureWidth = rects[nrects-1].right - el.measureLeft;
+            }
         }
         // First pass - measure (call offsetLet) but do not change DOM
         for (var el = start; el != null; ) {
