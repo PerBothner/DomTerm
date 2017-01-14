@@ -1886,6 +1886,8 @@ DomTerm.prototype.measureWindow = function()  {
         this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
     var availHeight = this.topNode.parentNode.clientHeight;
     var availWidth = this.topNode.clientWidth - this.rightMarginWidth;
+    var numRows = Math.floor(availHeight / this.charHeight);
+    var numColumns = Math.floor(availWidth / this.charWidth);
     // KLUDGE Add some tolerance for rounding errors.
     // This is occasionally needed, at least on Chrome.
     // FIXME - Better would be to use separate line-breaking measurements
@@ -1893,8 +1895,6 @@ DomTerm.prototype.measureWindow = function()  {
     // In that case we should line-break based on character counts rather
     // than measured offsets.
     availWidth += 2;
-    var numRows = Math.floor(availHeight / this.charHeight);
-    var numColumns = Math.floor(availWidth / this.charWidth);
     if (numRows != this.numRows || numColumns != this.numColumns
         || availHeight != this.availHeight || availWidth != this.availWidth) {
         this.setWindowSize(numRows, numColumns, availHeight, availWidth);
