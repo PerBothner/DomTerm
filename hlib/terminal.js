@@ -4835,16 +4835,27 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         var line = this.getCursorLine();
         var col = this.getCursorColumn();
         var trunccol = this.numColumns-widthInColums;
+        // This would be simpler and faster if we had a generalization
+        // of eraseCharactersRight which erases after an initial skip. FIXME
+        // I.e. eraseCharactersAfterSkip(col < trunccol ? trunccol - col : 0);
         var saveContainer = this.outputContainer;
         var saveOutput = this.outputBefore;
+        var firstInParent = saveOutput == saveContainer.firstChild;
+        var prev = saveOutput ? saveOutput.previousSibling : null;
         if (col < trunccol)
             this.moveToIn(line, trunccol, false);
         this.eraseCharactersRight(-1, true);
         if (col < trunccol) {
-            this.outputContainer = saveContainer;
-            this.outputBefore = saveOutput;
-            this.currentAbsLine = line+this.homeLine;
-            this.currentCursorColumn = col;
+            if (firstInParent || prev instanceof Element) {
+                this.outputContainer = saveContainer;
+                this.outputBefore =
+                    firstInParent ? saveContainer.firstChild
+                    : prev.nextSibling;
+                this.currentAbsLine = line+this.homeLine;
+                this.currentCursorColumn = col;
+            } else {
+                this.moveToIn(line, col, true);
+            }
         }
     } else {
         // FIXME optimize if end of line
