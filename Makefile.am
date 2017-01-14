@@ -39,7 +39,6 @@ d/domterm: d/domterm.ti
 run-pty: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar  $(DOMTERM_JAR) --pty
 
-# FUTURE: hlib/domterm-all.js may be minimized
 hlib/domterm-all.js: hlib/terminal.js hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js
 if WITH_CLOSURE_COMPILER
 # ADVANCED_OPTIMIZATION doesn't quite work, even with closure-externs.js.

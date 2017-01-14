@@ -130,7 +130,7 @@ function DomTerm(name, topNode) {
 
     this.verbosity = 0;
 
-    this.versionString = "0.45";
+    this.versionString = "0.50";
     this.versionInfo = "version="+this.versionString;
 
     // Use the doLineEdit function when in lineEditing mode.

@@ -1,5 +1,5 @@
 dnl Autoconf script for DomTerm
-AC_INIT([DomTerm],[0.45])
+AC_INIT([DomTerm],[0.50])
 
 DOMTERM_VERSION=`<$srcdir/hlib/terminal.js sed -n -e 's/.*this.versionString = "\(.*\)".*$/\1/p'`
 DOMTERM_YEAR="2017"
