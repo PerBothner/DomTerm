@@ -1911,7 +1911,7 @@ DomTerm.prototype.measureWindow = function()  {
 DomTerm.prototype._mouseHandler = function(ev) {
     if (ev.shiftKey || ev.target == this.topNode)
         return;
-    if (this._mouseMode == 0 && (! ev.ctrlKey || ev.button != 0))
+    if (this._mouseMode == 0 && (! ev.altKey || ev.button != 0))
         return;
 
     var saveCol = this.currentCursorColumn;
@@ -1933,7 +1933,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     row += Math.floor(ydelta / this.charHeight);
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
 
-    if (this._mouseMode == 0 && ev.ctrlKey) {
+    if (this._mouseMode == 0 && ev.altKey) {
         var curVLine = this.getAbsCursorLine();
         var goalVLine = row+this.homeLine;
         var curLine = curVLine;
@@ -5054,6 +5054,9 @@ DomTerm.prototype.keyDownToString = function(event) {
     case 133: /* F22 */  return "\x1B[21;2~";
     case 134: /* F23 */  return "\x1B[23;2~";
     case 135: /* F24 */  return "\x1B[24;2~";
+    case 17: /* Ctrl */
+    case 18: /* Alt */
+    case 20: /* CapsLoc */
     case 91: case 93: case 224:
         // Command-key on MacOS (Chrome or Firefox)
         return null;
