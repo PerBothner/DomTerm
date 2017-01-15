@@ -676,7 +676,7 @@ DomTerm.prototype.saveCursor = function() {
 DomTerm.prototype.restoreCursor = function() {
     var saved = this._savedCursor;
     if (saved) {
-        this.moveToIn(saved.line, saved.column, true);
+        this.moveToAbs(saved.line+this.homeLine, saved.column, true);
         this._Gcharsets[0] = saved.charset0;
         this._Gcharsets[1] = saved.charset1;
         this._Gcharsets[2] = saved.charset2;
@@ -727,25 +727,23 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
         column = 0;
     else if (column >= colLimit)
         column = colLimit-1;
-    this.moveToIn(line, column, true);
+    this.moveToAbs(line+this.homeLine, column, true);
 };
 
 /** Move to the request position.
- * @param goalLine number of lines (non-negative) to down from homeLine
+ * @param goalAbsLine number of lines (non-negative) to down topNode start
  * @param goalColumn number of columns to move right from the start of the goalLine
- * @param addSpaceAsNeeded if we should add blank lines or spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine
+ * @param addSpaceAsNeeded if we should add blank lines or spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine. In this case homeLine may be adjusted.
  */
-DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
+DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded) {
     //Only if char-edit? FIXME
     this._removeInputLine();
-    var line = this.currentAbsLine;
-    if (line < 0)
-        line -= this.homeLine;
+    var absLine = this.currentAbsLine;
     var column = this.currentCursorColumn;
     if (this.verbosity >= 3)
-        this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalLine+" line:"+line+" goalCol:"+goalColumn+" col:"+column);
+        this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalAbsLine+" line:"+absLine+" goalCol:"+goalColumn+" col:"+column);
     // This moves current (and parent) forwards in the DOM tree
-    // until we reach the desired (goalLine,goalColumn).
+    // until we reach the desired (goalAbsLine,goalColumn).
     // The invariant is if current is non-null, then the position is
     // just before current (and parent == current.parentNode);
     // otherwise, the position is after the last child of parent.
@@ -753,16 +751,15 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
     // First we use the current position or the lineStarts table
     // to quickly go to the desired line.
     var current, parent;
-    if (goalLine == line && column >= 0 && goalColumn >= column) {
+    if (goalAbsLine == absLine && column >= 0 && goalColumn >= column) {
         current = this.outputBefore;
         parent = this.outputContainer;
     } else {
         var homeLine = this.homeLine;
         var lineCount = this.lineStarts.length;
-        var absLine = homeLine+goalLine;
         // FIXME this doesn't handle _currentCommandGroup != null
-        // and absLine < lineCount
-        while (absLine >= lineCount) {
+        // and goalAbsLine < lineCount
+        while (goalAbsLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
             var preNode = this._createPreNode();
@@ -801,14 +798,13 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
             lineCount++;
             if (lineCount > homeLine + this.numRows) {
                 homeLine = lineCount - this.numRows;
-                goalLine -= homeLine - this.homeLine;
                 this.homeLine = homeLine;
                 this._adjustSpacer(0);
             }
         }
-        var lineStart = this.lineStarts[absLine];
-        //this.log("- lineStart:"+lineStart+" homeL:"+homeLine+" goalL:"+goalLine+" lines.len:"+this.lineStarts.length+" absLine:"+absLine);
-        if (absLine > 0 && lineStart == this.lineEnds[absLine-1]) {
+        var lineStart = this.lineStarts[goalAbsLine];
+        //this.log("- lineStart:"+lineStart+" homeL:"+homeLine+" goalL:"+goalAbsLine+" lines.len:"+this.lineStarts.length);
+        if (goalAbsLine > 0 && lineStart == this.lineEnds[goalAbsLine-1]) {
             current = lineStart.nextSibling;
             parent = lineStart.parentNode;
         } else {
@@ -818,11 +814,11 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
             } else
                 this.log("- bad lineStart");
         }
-        line = goalLine;
+        absLine = goalAbsLine;
         column = 0;
     }
     if (column != goalColumn) {
-        var lineEnd = this.lineEnds[this.homeLine+line];
+        var lineEnd = this.lineEnds[absLine];
         // At this point we're at the correct line; scan to the desired column.
         mainLoop:
         while (column < goalColumn) {
@@ -858,14 +854,14 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                 var tlen = text.length;
                 var i = tstart;
                 for (; i < tlen;  i++) {
-                    if (line >= goalLine && column >= goalColumn) {
+                    if (absLine >= goalAbsLine && column >= goalColumn) {
                         tnode.splitText(i);
                         break;
                     }
                     var ch = text.charCodeAt(i);
                     var nextColumn = this.updateColumn(ch, column);
                     if (nextColumn == -1) {
-                        if (line == goalLine) {
+                        if (absLine == goalAbsLine) {
                             var nspaces = goalColumn-column;
                             if (addSpaceAsNeeded) {
                                 var spaces = DomTerm.makeSpaces(nspaces);
@@ -876,7 +872,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                             column = goalColumn;
                             i--;
                         } else {
-                            line++;
+                            absLine++;
                             column = 0;
                             if (ch == 13 /*'\r'*/
                                 && i+1<tlen
@@ -931,12 +927,12 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                 }
                 // Otherwise go to the parent's sibling - but this gets complicated.
                 if (this.isBlockNode(current))
-                    line++;
+                    absLine++;
             }
 
             ch = current;
             for (;;) {
-                //this.log(" move 2 parent:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.topNode, line, goalLine, this.currentAbsLine, current);
+                //this.log(" move 2 parent:%s body:%s line:%s goal:%s curl:%s current:%s", parent, this.topNode, absLine, goalAbsLine, this.currentAbsLine, current);
                 if (parent == this.initial || parent == this.topNode) {
                     current = null;
                     var fill = goalColumn - column;
@@ -944,7 +940,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
                     if (fill > 0) {
                         this.appendText(parent, DomTerm.makeSpaces(fill))
                     }
-                    line = goalLine;
+                    absLine = goalAbsLine;
                     column = goalColumn;
                     break mainLoop;
                 }
@@ -977,7 +973,7 @@ DomTerm.prototype.moveToIn = function(goalLine, goalColumn, addSpaceAsNeeded) {
         && oldBefore.previousSibling instanceof Text)
         this._normalize1(oldBefore.previousSibling);
     //this._removeInputLine();
-    this.currentAbsLine = line + this.homeLine;
+    this.currentAbsLine = absLine;
     this.currentCursorColumn = column;
 };
 
@@ -1088,7 +1084,7 @@ DomTerm.prototype._restoreInputLine = function() {
  * @param deltaLines line number to move to, relative to current line.
  */
 DomTerm.prototype.cursorLineStart = function(deltaLines) {
-    this.moveToIn(this.getCursorLine()+deltaLines, 0, true);
+    this.moveToAbs(this.getAbsCursorLine()+deltaLines, 0, true);
 };
 
 DomTerm.prototype.cursorDown = function(count) {
@@ -1103,7 +1099,7 @@ DomTerm.prototype.cursorDown = function(count) {
         if (next < min)
             next = min;
     }
-    this.moveToIn(next, this.getCursorColumn(), true);
+    this.moveToAbs(next+this.homeLine, this.getCursorColumn(), true);
 };
 
 DomTerm.prototype.cursorNewLine = function(autoNewline) {
@@ -1124,7 +1120,7 @@ DomTerm.prototype.cursorNewLine = function(autoNewline) {
              && this.getCursorLine() == this._regionBottom-1)
         this.scrollForward(1);
     else
-        this.moveToIn(this.getCursorLine()+1, this.getCursorColumn(), true);
+        this.moveToAbs(this.getAbsCursorLine()+1, this.getCursorColumn(), true);
 };
 
 DomTerm.prototype.cursorRight = function(count) {
@@ -1443,7 +1439,7 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
     }
     this._addBlankLines(count, absLine, oldParent, oldStart);
     this.resetCursorCache();
-    this.moveToIn(line, column, true);
+    this.moveToAbs(absLine, column, true);
 };
 
 DomTerm.prototype._addBlankLines = function(count, absLine, parent, oldStart) {
@@ -1572,7 +1568,7 @@ DomTerm.prototype._insertLinesAt = function(count, line, regionBottom) {
         count = avail;
     if (count <= 0)
         return;
-    this.moveToIn(regionBottom-count, 0, true);
+    this.moveToAbs(regionBottom+this.homeLine-count, 0, true);
     this.deleteLinesIgnoreScroll(count, false);
     if (count > this.numRows)
         count = this.numRows;
@@ -1587,33 +1583,33 @@ DomTerm.prototype.insertLines = function(count) {
 };
 
 DomTerm.prototype._deleteLinesAt = function(count, line) {
-    this.moveToIn(line, 0, true);
+    this.moveToAbs(line, 0, true);
     var scrollBottom = this._regionBottom;
-    var regionHeight = scrollBottom - line;
+    var regionHeight = scrollBottom +this.homeLine - line;
     if (count > regionHeight)
         count = regionHeight;
     this.deleteLinesIgnoreScroll(count, false);
     this.insertLinesIgnoreScroll(count, scrollBottom - count);
     this.resetCursorCache();
-    this.moveToIn(line, 0, true);
+    this.moveToAbs(line, 0, true);
     this._removeInputLine();
 };
 
  DomTerm.prototype.deleteLines = function(count) {
-     this._deleteLinesAt(count, this.getCursorLine());
+     this._deleteLinesAt(count, this.getAbsCursorLine());
 };
 
 DomTerm.prototype.scrollForward = function(count) {
     var line = this.getCursorLine();
-    this.moveToIn(this._regionTop, 0, true);
-    this._deleteLinesAt(count, this._regionTop);
-    this.moveToIn(line, 0, true);
+    this.moveToAbs(this._regionTop+this.homeLine, 0, true);
+    this._deleteLinesAt(count, this._regionTop+this.homeLine);
+    this.moveToAbs(line+this.homeLine, 0, true);
 };
 
 DomTerm.prototype.scrollReverse = function(count) {
-    var line = this.getCursorLine();
+    var line = this.getAbsCursorLine();
     this._insertLinesAt(count, this._regionTop, this._regionBottom);
-    this.moveToIn(line, 0, true);
+    this.moveToAbs(line, 0, true);
 };
 
 DomTerm.prototype._createPreNode = function() {
@@ -1668,14 +1664,14 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this._removeInputLine();
             this.initial = bufNode;
             this.resetCursorCache();
-            this.moveToIn(line, col, true);
+            this.moveToAbs(line+this.homeLine, col, true);
         } else {
             var bufNode = this.initial;
             this.initial = bufNode.saveInitial;
             this.lineStarts.length = bufNode.saveLastLine;
             this.lineEnds.length = bufNode.saveLastLine;
             this.homeLine = bufNode.saveHomeLine;
-            this.moveToIn(0, 0, false);
+            this.moveToAbs(this.homeLine, 0, false);
             bufNode.parentNode.removeChild(bufNode);
         }
         this.usingAlternateScreenBuffer = val;
@@ -1873,7 +1869,7 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
         this.measureWindow();
         this.eraseDisplay(2);
         this._setRegionLR(0, -1);
-        this.moveToIn(0, 0, false);
+        this.moveToAbs(this.homeLine, 0, false);
     }
 };
 
@@ -2433,9 +2429,9 @@ DomTerm.prototype.insertBreak = function() {
 };
 
 DomTerm.prototype.eraseDisplay = function(param) {
-    var saveLine = this.getCursorLine();
+    var saveLine = this.getAbsCursorLine();
     var saveCol = this.getCursorColumn();
-    if (param == 0 && saveLine == 0 && saveCol == 0)
+    if (param == 0 && saveLine == this.homeLine && saveCol == 0)
         param = 2;
     // When we erase the whole screen, we want to scroll the display so
     // the home line is the top of the visible screen.  This cannot be
@@ -2448,12 +2444,12 @@ DomTerm.prototype.eraseDisplay = function(param) {
     // alone, without scrolling.
     switch (param) {
     case 1: // Erase above
-        for (var line = 0;  line < saveLine;  line++) {
-            this.moveToIn(line, 0, true);
+        for (var line = this.homeLine;  line < saveLine;  line++) {
+            this.moveToAbs(line, 0, true);
             this.eraseLineRight();
         }
         if (saveCol != 0) {
-            this.moveToIn(saveLine, 0, true);
+            this.moveToAbs(saveLine, 0, true);
             this.eraseCharactersRight(saveCol+1, false);
         }
         break;
@@ -2465,14 +2461,14 @@ DomTerm.prototype.eraseDisplay = function(param) {
         var removed = saveHome - this.homeLine;
         if (removed > 0) {
             this.resetCursorCache();
-            this.moveToIn(0, 0, false);
+            this.moveToAbs(this.homeLine, 0, false);
             this.deleteLinesIgnoreScroll(removed, false);
             this.resetCursorCache();
         }
         break;
     default:
-        var startLine = param == 0 ? saveLine : 0;
-        if (this.usingAlternateScreenBuffer && startLine == 0
+        var startLine = param == 0 ? saveLine : this.homeLine;
+        if (this.usingAlternateScreenBuffer && startLine == this.homeLine
             && param == 2 && this.initial.saveHomeLine > 0) {
             // FIXME maybe this is a bad idea
             var saveHome = this.homeLine;
@@ -2482,24 +2478,24 @@ DomTerm.prototype.eraseDisplay = function(param) {
             saveLine -= homeAdjust;
             startLine -= homeAdjust;
         }
-        var count = this.lineStarts.length-startLine-this.homeLine;
+        var count = this.lineStarts.length-startLine;
         if (param == 0) {
             this.eraseCharactersRight(-1, true);
             count--;
             while (--count >= 0) {
                 startLine++;
-                this.moveToIn(startLine, 0, false);
+                this.moveToAbs(startLine, 0, false);
                 this.eraseCharactersRight(-1, true);
             }
         }
         else if (count > 0) {
-            this.moveToIn(startLine, 0, false);
+            this.moveToAbs(startLine, 0, false);
             this.deleteLinesIgnoreScroll(count, false);
             this.resetCursorCache();
         }
         break;
     }
-    this.moveToIn(saveLine, saveCol, true);
+    this.moveToAbs(saveLine, saveCol, true);
 };
 
 /** set line-wrap indicator from absLine to absLine+1.
@@ -4202,7 +4198,7 @@ DomTerm.prototype.insertString = function(str) {
             case 56 /*'8'*/: // DEC Screen Alignment Test (DECALN)
                 this._setRegionTB(0, -1);
                 this._setRegionLR(0, -1);
-                this.moveToIn(0, 0, true);
+                this.moveToAbs(this.homeLine, 0, true);
                 this.eraseDisplay(0);
                 var Es = "E".repeat(this.numColumns);
                 for (var r = 0; ; ) {
@@ -4211,7 +4207,7 @@ DomTerm.prototype.insertString = function(str) {
                         break;
                     this.cursorLineStart(1);
                 }
-                this.moveToIn(0, 0, true);
+                this.moveToAbs(this.homeLine, 0, true);
                 break;
             }
             prevEnd = i + 1;
@@ -4358,9 +4354,9 @@ DomTerm.prototype._breakDeferredLines = function() {
             var regionHeight = this._regionBottom - this._regionTop;
             var scrollCount = lines - regionHeight;
             if (scrollCount > 0) {
-                this.moveToIn(this._regionTop, 0, true);
+                this.moveToAbs(this._regionTop+this.homeLine, 0, true);
                 this.deleteLinesIgnoreScroll(scrollCount, false);
-                this.moveToIn(this._regionBottom - 1, 0, true);
+                this.moveToAbs(this._regionBottom +this.homeLine- 1, 0, true);
             }
         }
     }
@@ -4424,7 +4420,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         dt.lineEnds[line+1] = lineEnd;
         dt.lineStarts[line+1] = el;
         dt.lineEnds[line] = el;
-        // FIXME following lines are duplicated with moveToIn
+        // FIXME following lines are duplicated with moveToAbs
         lineCount++;
         var homeLine = dt.homeLine;
         if (lineCount > homeLine + dt.numRows) {
@@ -4738,7 +4734,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         this.homeLine = this.lineStarts.length - this.numRows;
         if (absLine < this.homeLine) {
             this.resetCursorCache();
-            this.moveToIn(0, 0, false);
+            this.moveToAbs(this.homeLine, 0, false);
         }
     }
 }
@@ -4832,7 +4828,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     }
     var widthInColums = this.widthInColumns(str, 0, slen);
     if (this.insertMode) {
-        var line = this.getCursorLine();
+        var line = this.getAbsCursorLine();
         var col = this.getCursorColumn();
         var trunccol = this.numColumns-widthInColums;
         // This would be simpler and faster if we had a generalization
@@ -4843,7 +4839,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         var firstInParent = saveOutput == saveContainer.firstChild;
         var prev = saveOutput ? saveOutput.previousSibling : null;
         if (col < trunccol)
-            this.moveToIn(line, trunccol, false);
+            this.moveToAbs(line, trunccol, false);
         this.eraseCharactersRight(-1, true);
         if (col < trunccol) {
             if (firstInParent || prev instanceof Element) {
@@ -4851,10 +4847,10 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 this.outputBefore =
                     firstInParent ? saveContainer.firstChild
                     : prev.nextSibling;
-                this.currentAbsLine = line+this.homeLine;
+                this.currentAbsLine = line;
                 this.currentCursorColumn = col;
             } else {
-                this.moveToIn(line, col, true);
+                this.moveToAbs(line, col, true);
             }
         }
     } else {
