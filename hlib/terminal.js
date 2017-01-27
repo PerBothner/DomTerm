@@ -164,6 +164,9 @@ function DomTerm(name, topNode) {
     // ??? FIXME we want to get rid of this
     this.initial = null;
 
+    this._displaySizeWidget = null;
+    this._displaySizePendingTimeouts = -1;
+
     // Used if needed to add extra space at the bottom, for proper scrolling.
     // See note in eraseDisplay.
     this._vspacer = null;
@@ -1744,6 +1747,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
             dt.log("ResizeSensor called"); 
         var oldCols = dt.numColumns;
         dt.measureWindow();
+        dt._displaySizeInfoWithTimeout();
         if (dt.numColumns != oldCols) {
             var homeStart = null;
             if (dt.homeLine > 0) {
@@ -1773,6 +1777,46 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.measureWindow();
 
     this.topNode.addEventListener("mousedown", this._mouseEventHandler);
+};
+
+DomTerm.prototype._displaySizeInfoWithTimeout = function() {
+    // Might be nicer to keep displaying the size-info while
+    // button-1 is pressed. However, that seems a bit tricky.
+    var dt = this;
+    if (dt._displaySizePendingTimeouts < 0) {
+        dt._displaySizePendingTimeouts = 0;
+        return;
+    }
+    dt._displaySizeInfo();
+    dt._displaySizePendingTimeouts++;
+    function clear() {
+        var widget = dt._displaySizeWidget;
+        if (widget == null) {
+            dt._displaySizePendingTimeouts = 0;
+        } else if (--dt._displaySizePendingTimeouts == 0) {
+            widget.parentNode.removeChild(widget);
+            dt._displaySizeWidget = null;
+        }
+    };
+    setTimeout(clear, 2000);
+};
+
+DomTerm.prototype._displaySizeInfo = function() {
+    var text = ""+this.numColumns+" x "+this.numRows
+        +" ("+this.availWidth+"px x "+this.availHeight+"px)";
+    var ratio = window.devicePixelRatio;
+    if (ratio)
+        text += " "+(ratio*100.0).toFixed(0)+"%";
+    var div = this._displaySizeWidget;
+    if (div != null)
+        div.firstChild.data = text;
+    else {
+        div = document.createElement("div");
+        div.setAttribute("class", "domterm-show-size");
+        div.appendChild(document.createTextNode(text));
+        this.topNode.insertBefore(div, this.topNode.firstChild);
+        this._displaySizeWidget = div;
+    }
 };
 
 DomTerm.prototype.initializeTerminal = function(topNode) {
