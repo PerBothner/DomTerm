@@ -4511,7 +4511,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     break;
                 if (lineAttr == "linear") {
                     var group = el.outerPprintGroup;
-                    var sectionEnd = group.sectionEnd;
+                    var sectionEnd = group ? group.sectionEnd : null;
                     if (! sectionEnd)
                         sectionEnd = dt.lineEnds[line];
                 }
@@ -4612,7 +4612,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     break;
                 if (lineAttr == "linear") {
                     var group = el.outerPprintGroup;
-                    var sectionEnd = group.sectionEnd;
+                    var sectionEnd = group ? group.sectionEnd : null;
                     if (! sectionEnd)
                         sectionEnd = dt.lineEnds[line];
                     var containingSectionStartLine =
