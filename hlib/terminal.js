@@ -2228,11 +2228,15 @@ DomTerm.prototype.updateCursorCache = function() {
                 break;
             n = n.parentNode;
         }
+        var len = this.lineStarts.length;
+        var home = this.homeLine;
+        // homeLine may be invalid after _breakAllLines
+        if (home >= len)
+            home = 0;
         if (n) {
-            var len = this.lineStarts.length;
             // search after homeLine first, then before it
             for (var i = 0; i < len; i++) {
-                var ln = i + this.homeLine;
+                var ln = i + home;
                 if (ln >= len)
                     ln -= len;
                 if (this.lineStarts[ln] == n) {
@@ -2242,7 +2246,7 @@ DomTerm.prototype.updateCursorCache = function() {
             }
         }
         if (line < 0)
-            line = this.homeLine;
+            line = home;
     }
     var parent = this.lineStarts[line];
     var cur = parent.firstChild;
