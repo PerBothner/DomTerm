@@ -5469,14 +5469,14 @@ DomTerm.prototype.keyPressHandler = function(event) {
     } else {
         if (event.which !== 0
             && key != 8
-            && ! (event.ctrlKey && key >= 97 && key <= 122)) {
+            && ! event.ctrlKey) {
             var str = String.fromCharCode(key);
             if (this.autoEditing)
                 this.reportKeyEvent(-key, str);
             else
                 this.processInputCharacters(str);
+            event.preventDefault();
         }
-        event.preventDefault();
     }
 };
 
