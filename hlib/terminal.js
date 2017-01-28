@@ -1310,6 +1310,11 @@ DomTerm._styleSpansMatch = function(newSpan, oldSpan) {
 DomTerm._savedSessionClassNoScript = "domterm domterm-saved-session domterm-noscript";
 DomTerm._savedSessionClass = "domterm domterm-saved-session";
 
+DomTerm.prototype.isSavedSession = function() {
+    var cl = this.topNode == null ? null : this.topNode.getAttribute("class");
+    return cl != null && cl.indexOf("domterm-saved-session") >= 0;
+}
+
 /** Adjust style at current position to match desired style.
  * The desired style is a specified by the _currentStyleMap.
  * This usually means adding {@code <span style=...>} nodes around the
@@ -5512,9 +5517,10 @@ DomTerm.prototype._checkTree = function() {
     if (this.currentAbsLine >= 0
         && this.currentAbsLine >= nlines)
         error("bad currentAbsLine");
+    var isSavedSession = this.isSavedSession();
     if ((this.outputBefore
          && this.outputBefore.parentNode != this.outputContainer)
-        || this.outputContainer.parentNode == null)
+        || (! isSavedSession && this.outputContainer.parentNode == null))
         error("bad outputContainer");
     if (this.inputFollowsOutput && this.inputLine.parentNode
         && this.outputBefore != this.inputLine)

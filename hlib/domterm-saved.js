@@ -8,7 +8,7 @@ function loadHandler(event) {
     dt.setWindowSize = function(numRows, numColumns,
                                 availHeight, availWidth) {
     };
-
+    dt.initial = document.getElementById(dt.makeId("main"));
     dt._restoreLineTables(topNode, 0);
     dt._initializeDomTerm(topNode);
     dt._breakAllLines();
