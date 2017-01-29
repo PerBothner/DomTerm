@@ -16,6 +16,25 @@ span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer 
 span[caret="block"][std="input"] {
     background-color: black; color: white
 }
+
+div.domterm-show-size {
+    bottom: 4px;
+    right: 4px;
+    padding: 2px;
+    border: 2px solid black;
+}
+
+/* FUTURE POPUP
+div.domterm-main-popup {
+}
+div.domterm-main-popup div {
+    border:  thin solid black;
+}
+div.domterm-popup-action:hover {
+    background-color: lightblue
+}
+*/
+
 span[caret="blinking-block"][std="input"] {
     animation: blinking-block 1.5s steps(1) 0s 20;
     background-color: black; color: white

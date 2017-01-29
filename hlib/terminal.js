@@ -1874,6 +1874,11 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     topNode.addEventListener("click",
                              function(e) {
                                  var target = e.target;
+                                 /* FUTURE POPUP
+                                 if (dt._isAnAncestor(target, dt._popupMenu)) {
+                                     dt.handleContextMenu(dt._popupMenu, e);
+                                 } else
+                                 */
                                  if (target instanceof Element
                                      && target.nodeName == "A")
                                      dt.handleLink(e, target.getAttribute("href"));
@@ -1953,7 +1958,48 @@ DomTerm.prototype.measureWindow = function()  {
         this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" numCols:"+this.numColumns+" numRows:"+this.numRows);
 };
 
+/* FUTURE POPUP
+DomTerm.prototype.handleContextMenu = function(menu, event) {
+    //this.log("handleContextMenu");
+    var id = event.target.getAttribute("id");
+    if (id == "domterm-popup-copy") {
+        this.doCopy();
+    } else if (id == "domterm-popup-paste") {
+        this.doPaste();
+    }
+}
+
+DomTerm.prototype.createContextMenu = function() {
+    var menu = this._popupMenu;
+    if (menu != null)
+        return;
+    // Copy and Paste run into security issues.
+    // Other "menu-style" actions should be possible.
+    var copyDiv = document.createElement("div");
+    copyDiv.appendChild(document.createTextNode("Copy"));
+    copyDiv.setAttribute("class", "domterm-popup-action");
+    copyDiv.setAttribute("id", "domterm-popup-copy");
+    var pasteDiv = document.createElement("div");
+    pasteDiv.appendChild(document.createTextNode("Paste"));
+    pasteDiv.setAttribute("class", "domterm-popup-action");
+    pasteDiv.setAttribute("id", "domterm-popup-paste");
+    menu = document.createElement("div");
+    menu.setAttribute("class", "domterm-main-popup");
+    menu.appendChild(copyDiv);
+    menu.appendChild(pasteDiv);
+    this.topNode.insertBefore(menu, this.topNode.firstChild);
+    this._popupMenu = menu;
+};
+*/
+
 DomTerm.prototype._mouseHandler = function(ev) {
+    /* FUTURE POPUP
+    if (ev.ctrlKey && ev.button == 2) {
+        this.createContextMenu();
+        ev.preventDefault();
+        return;
+    }
+    */
     if (ev.shiftKey || ev.target == this.topNode)
         return;
     if (this._mouseMode == 0 && (! ev.altKey || ev.button != 0))

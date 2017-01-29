@@ -8,12 +8,16 @@ div.domterm.domterm-noscript { word-break: break-all }
 pre { padding: 0px; margin: 0px; }
 div.domterm-show-size {
     position: fixed;
-    bottom: 4px;
-    right: 4px;
-    padding: 2px;
-    border: 2px solid black;
     z-index: 100;
+    background-color: inherit
 }
+/* FUTURE POPUP
+div.domterm-main-popup {
+    position: fixed;
+    z-index: 100;
+    background-color: inherit
+}
+*/
 /* We use <div class="domterm-pre"> instead of <pre> for regular terminal lines.
  * The reason is that <Copy> on some browsers adds *two* newlines between adjacent
  * <pre> nodes.  This appears intentional, as it matches the new innerText spec. */
