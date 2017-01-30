@@ -123,7 +123,7 @@ public class DomServer extends WebSocketServer {
                 if (mode == 'S')
                     backend = new ProcessBackend(restArgs);
                 else
-                    backend = new PtyBackend(restArgs);
+                    backend = new PtyBackend(restArgs, domtermPath);
              } catch (Throwable ex) {
                  fatal("caught "+ex);
              }

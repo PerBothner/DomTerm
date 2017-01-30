@@ -46,7 +46,8 @@ public class PTY {
     public InputStream fromChildOutput;
     public OutputStream toChildInput;
 
-    public PTY(String[] args, String termname, String versionInfo) {
+    public PTY(String[] args, String termname,
+               String versionInfo, String domtermHome) {
         String ldpath = System.getProperty("java.library.path");
         int startpath = 0;
         String pathsep = System.getProperty("path.separator");
@@ -76,7 +77,9 @@ public class PTY {
         }
         fdm = init(bargs,
                    ("TERM="+termname).getBytes(),
-                   versionInfo.getBytes());
+                   versionInfo.getBytes(),
+                   domtermHome == null ? null : domtermHome.getBytes()
+                   );
         toChildInput = new OutputStream() {
                 public void write(int b) {
                     writeToChildInput(fdm, b);
@@ -105,7 +108,8 @@ public class PTY {
     public int getTtyMode() { return getTtyMode(fdm); }
 
     private static native int init(byte[][] args,
-                                   byte[] termvar, byte[] versionInfo);
+                                   byte[] termvar, byte[] versionInfo,
+                                   byte[] domtermHome);
 
     private static native void writeToChildInput(int fdm, byte[] buf, int start, int length);
     private static native void writeToChildInput(int fdm, int b);

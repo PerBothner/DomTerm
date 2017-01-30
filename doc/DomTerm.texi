@@ -58,7 +58,9 @@ The qtdomterm application is designed to replace your favorite
 standalone terminal emulator program. It uses QtWebEngine.
 
 @item
-Mouse support using xterm protocols.
+Mouse support using xterm protocols, used by @code{emacs} and @code{mc}.
+In addition, Alt-Click generates arrow-key events to move the caret
+within an input line.
 
 @item
 Switchable caret styles (using xterm escape sequences).
@@ -283,6 +285,11 @@ Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compile
 (Current only the ``simple optimizations'' are done.
 Using the ``advanced optimizations'' would reduce the JavaScript file
 siew further, but causes some not-yet-resolved problems.)
+
+@item --enable-ld-preload
+This is an experimental feature to preload a library to interpose
+some system functions.  Most importantly it overrides @code{tcgetattr}
+so that DomTerm gets notified on term terminal mode changes.
 @end table
 
 Then just:

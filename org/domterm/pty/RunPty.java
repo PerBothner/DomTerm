@@ -44,7 +44,8 @@ public class RunPty extends WebTerminalApp
     static String[] commandArgs;
 
     protected Backend makeClient() {
-        return new PtyBackend(commandArgs);
+        String domtermHome = null; // FIXME
+        return new PtyBackend(commandArgs, domtermHome);
     }
 
     public static void main(String[] args) throws Throwable {

@@ -16,19 +16,27 @@ endif
 if WITH_JAVA
 DOMTERM_JAR = lib/domterm.jar
 endif
+DT_CFLAGS =
+if ENABLE_LD_PRELOAD
+PRELOADS_SO = lib/domterm-preloads.so
+DT_CFLAGS += -DENABLE_LD_PRELOAD
+endif
 
-all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) xulapp/domterm.jar $(QTDOMTERM)
+all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) xulapp/domterm.jar $(QTDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	javah -d native/pty org.domterm.pty.PTY
 	touch native/pty/org_domterm_pty_PTY.h
+
+lib/domterm-preloads.so: native/preloads.cc
+	$(CXX) $(DT_CFLAGS) -Wall -fPIC -shared -o $@ native/preloads.cc
 
 PTY_COMMON_PARAMS = -fno-strict-aliasing -fPIC -W -Wall  -Wno-unused -Wno-parentheses -fno-omit-frame-pointer
 
 native/pty/pty.o native/pty/pty_fork.o: native/pty/org_domterm_pty_PTY.h
 
 .c.o:
-	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) -c $< -o $@
+	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) $(DT_CFLAGS) -c $< -o $@
 
 libpty@LIBEXT@: native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 	$(CC) $(PTY_COMMON_PARAMS) -shared -o $@ $^
@@ -73,7 +81,7 @@ run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar hlib/domterm-all.js
+	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar hlib/domterm-all.js lib/*.so
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
 	-rm -f qtdomterm/data/hlib/domterm-all.js \

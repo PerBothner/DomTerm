@@ -70,7 +70,7 @@ public class Main {
                 if (mode == 'S')
                     mainClient = new ProcessBackend(restArgs);
                 else
-                    mainClient = new PtyBackend(restArgs);
+                    mainClient = new PtyBackend(restArgs, null);
              } catch (Throwable ex) {
                  usage("caught "+ex);
              }

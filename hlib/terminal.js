@@ -127,6 +127,14 @@ function DomTerm(name, topNode) {
     // If true, we automatically switching lineEditing depending
     // on slave pty's canon mode.
     this.autoEditing = true;
+    // We have two variations of autoEditing:
+    // - If autoCheckInferior is false, then the inferior actively sends OSC 71
+    // " handle tcsetattr", and we switch based on that. This is experimental.
+    // - If autoCheckInferior is true, then when the user types a character
+    // (and not currently lineEditing), then we send a "KEY" command to the
+    // inferior, which calls tcgetattr to decide what to do.  (If CANON, the
+    // key is sent back to DomTerm; otherwise, it is sent to the child proess.)
+    this.autoLazyCheckInferior = true;
 
     this.verbosity = 0;
 
@@ -3795,6 +3803,15 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 30:
         this.setWindowTitle(text, code);
         break;
+    case 71:
+        // handle tcsetattr
+        var canon = text.indexOf(" canon ") >= 0;
+        var echo = text.indexOf(" echo ") >= 0;
+        this.autoLazyCheckInferior = false;
+        if (this.autoEditing) {
+            this.lineEditing = canon;
+        }
+        break;
     case 72:
         this._scrubAndInsertHTML(text);
         this.cursorColumn = -1;
@@ -5468,7 +5485,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 this.pasteText("\n");
             } else {
                 this.processEnter();
-                if (this.autoEditing) {
+                if (this.autoEditing && this.autoLazyCheckInferior) {
                     this.lineEditing = false;
                     this._usingDoLineEdit = this.useDoLineEdit;
                 }
@@ -5480,7 +5497,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
                      || (key == 68 // ctrl-D
                          && this.grabInput(this.inputLine).length == 0))) {
             event.preventDefault();
-            if (this.autoEditing)
+            if (this.autoEditing && this.autoLazyCheckInferior)
                 this.lineEditing = false;
             this.reportKeyEvent(64 - key, // ctrl-C -> -3; ctrl-D -> -4
                                 this.keyDownToString(event));
@@ -5506,7 +5523,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         var str = this.keyDownToString(event);
         if (str) {
             event.preventDefault();
-            if (this.autoEditing)
+            if (this.autoEditing && this.autoLazyCheckInferior)
                 this.reportKeyEvent(key, str);
             else
                 this.processInputCharacters(str);
@@ -5529,7 +5546,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
             && key != 8
             && ! event.ctrlKey) {
             var str = String.fromCharCode(key);
-            if (this.autoEditing)
+            if (this.autoEditing && this.autoLazyCheckInferior)
                 this.reportKeyEvent(-key, str);
             else
                 this.processInputCharacters(str);

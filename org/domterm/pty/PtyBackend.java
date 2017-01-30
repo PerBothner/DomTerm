@@ -48,23 +48,25 @@ public class PtyBackend extends Backend {
     public Reader pout;
     public PTY pty;
     String[] childArgs;
+    String domtermHome;
 
     static String[] defaultArgs = { "/bin/bash" };
 
     public PtyBackend() {
-        this(null);
+        this(null, null);
     }
 
-    public PtyBackend(String[] childArgs) {
+    public PtyBackend(String[] childArgs, String domtermHome) {
         if (childArgs == null || childArgs.length == 0)
             childArgs = defaultArgs;
         this.childArgs = childArgs;
+        this.domtermHome = domtermHome;
     }
 
     @Override
     public void run(Writer out) throws Exception {
         addVersionInfo("PtyClient");
-        pty = new PTY(childArgs, "xterm-256color", getVersionInfo());
+        pty = new PTY(childArgs, "xterm-256color", getVersionInfo(), domtermHome);
         try {
             pin = new OutputStreamWriter(pty.toChildInput);
             pout = new InputStreamReader(pty.fromChildOutput, "UTF-8");

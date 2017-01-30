@@ -22,6 +22,9 @@ AC_ARG_WITH(java_websocket,
 AC_ARG_ENABLE(pty,
   AS_HELP_STRING(--enable-pty,Enable support for PTYs (default true except on Windows)))
 
+AC_ARG_ENABLE(ld-preload,
+  AS_HELP_STRING(--enable-ld-preload,Make use of LD_PRELOAD to modify standard functions))
+
 AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
 
@@ -118,6 +121,7 @@ then
     fi
   fi
 fi
+AM_CONDITIONAL(ENABLE_LD_PRELOAD, test "$enable_ld_preload" = "yes") 
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)

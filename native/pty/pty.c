@@ -58,9 +58,18 @@ int log_to_stderr = 1;
 
 typedef JNIEnv *JNIEnvP;
 
+static char* copyString(jbyteArray jstr, JNIEnv *env)
+{
+  int alen = (*env)->GetArrayLength(env, jstr);
+  char* buf = malloc(alen+1);
+  buf[alen] = 0;
+  (*env)->GetByteArrayRegion(env, jstr, 0, alen, (jbyte*) buf);
+  return buf;
+}
+
 JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
 (JNIEnv *env, jobject UNUSED(pclas), jobjectArray args,
- jbyteArray termvar, jbyteArray versionInfo)
+ jbyteArray termvar, jbyteArray versionInfo, jbyteArray domtermHome)
 {
   int fdm;
   pid_t pid;
@@ -77,32 +86,39 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
         {
           jbyteArray arg =
             (jbyteArray) (*env)->GetObjectArrayElement(env, args, i);
-          int alen = (*env)->GetArrayLength(env, arg);
-          char* buf = malloc(alen+1);
-          buf[alen] = 0;
-          (*env)->GetByteArrayRegion(env, arg, 0, alen, (jbyte*) buf);
-          cargs[i] = buf;
+          cargs[i] = copyString(arg, env);
         }
       cargs[nargs] = NULL;
-
-      int alen = (*env)->GetArrayLength(env, termvar);
-      char* buf = malloc(alen+1);
-      buf[alen] = 0;
-      (*env)->GetByteArrayRegion(env, termvar, 0, alen, (jbyte*) buf);
-      putenv(buf);
+      putenv(copyString(termvar, env));
       putenv("COLORTERM=truecolor");
       if (getenv("WINDOWID") != NULL)
          putenv("WINDOWID=0");
-
+#if ENABLE_LD_PRELOAD
+      int normal_user = getuid() == geteuid();
+      if (normal_user && domtermHome != NULL)
+        {
+          char *home = copyString(domtermHome, env);
+          char *buf = malloc(strlen(home)+100);
+          sprintf(buf, "LD_PRELOAD=%s/lib/domterm-preloads.so libdl.so.2",
+                  home);
+          putenv(buf);
+        }
+#endif
       char* dinit = "DOMTERM=";
       char* pinit = ";tty=";
       char* ttyName = ttyname(0);
       size_t dlen = strlen(dinit);
       size_t plen = strlen(pinit);
       jint vlen = (*env)->GetArrayLength(env, versionInfo);
-      int tlen = ttyName == NULL ? 0 : strlen(ttyName); 
-      int mlen = dlen + vlen + (tlen > 0 ? plen + tlen : 0);
-      buf = malloc(mlen+1);
+      int tlen = ttyName == NULL ? 0 : strlen(ttyName);
+#if ENABLE_LD_PRELOAD && WRAP_STDERR
+      char *estr = ";err-handled";
+      size_t elen = normal_user ? strlen(estr) : 0;
+#else
+      size_t elen = 0;
+#endif
+      int mlen = dlen + vlen + (tlen > 0 ? plen + tlen : 0) + elen;
+      char* buf = malloc(mlen+1);
       strcpy(buf, dinit);
       int offset = dlen;
       (*env)->GetByteArrayRegion(env, versionInfo, 0, vlen,
@@ -113,7 +129,15 @@ JNIEXPORT jint JNICALL Java_org_domterm_pty_PTY_init
           strcpy(buf+offset, pinit);
           offset += plen;
           strcpy(buf+offset, ttyName);
+          offset += tlen;
         }
+#if ENABLE_LD_PRELOAD && WRAP_STDERR
+      if (elen > 0)
+        {
+          strcpy(buf+offset, estr);
+          offset += elen;
+        }
+#endif
       buf[mlen] = '\0';
       putenv(buf);
 
