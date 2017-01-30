@@ -2167,16 +2167,21 @@ DomTerm.prototype._showHideHandler = function(event) {
             child.data = markers[wasHidden ? i+1 : i-1];
         target.setAttribute("domterm-hiding", wasHidden ? "false" : "true");
 
-        // For all following-siblings of target,
-        // plus all following-siblings of target's parent
-        // (assuming parent is a PRE or P or DIV),
+        // For all following-siblings of the start-node,
+        // plus all following-siblings of the start-node's parent
+        // (assuming that parent is a PRE or P or DIV),
         // flip the domterm-hidden attribute.
-        var node = target;
+        // The start node is either the "hider" node itself,
+        // or if the "hider" is nested in a "prompt", the latter.
+        var start = target;
+        if (start.parentNode.getAttribute("std") == "prompt")
+            start = start.parentNode;
+        var node = start;
         for (;;) {
             var next = node.nextSibling;
             if (next == null) {
                 var parent = node.parentNode;
-                if (parent == target.parentNode
+                if (parent == start.parentNode
                     && (parent.tagName == "PRE" || parent.tagName == "P"
                         || parent.tagName == "DIV"))
                     next = parent.nextSibling;
@@ -3319,16 +3324,18 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._adjustStyle();
             break;
         case 16:
-            this._pushStdMode("hider");
-            this._adjustStyle(); // Force - even if empty
+            var hider = this._createSpanNode();
+            hider.setAttribute("std", "hider");
+            this._pushIntoElement(hider);
             this._currentCommandHideable = true;
             break;
         case 17:
-            this._pushStdMode(null);
+            if (this.isSpanNode(this.outputContainer) // sanity check
+                && this.outputContainer.getAttribute("std") == "hider")
+                this.popFromElement();
             this.outputContainer.addEventListener("click",
                                                   this._showHideEventHandler,
                                                   true);
-            this._adjustStyle();
             break;
         case 19:
             this.startCommandGroup();
