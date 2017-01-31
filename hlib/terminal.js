@@ -5203,8 +5203,7 @@ DomTerm.prototype.pasteText = function(str) {
 };
 
 DomTerm.prototype.doPaste = function() {
-    if (! this.useStyledCaret())
-        this.inputLine.focus();
+    this.inputLine.focus();
     return document.execCommand("paste", false);
 };
 
