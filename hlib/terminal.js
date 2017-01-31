@@ -1927,13 +1927,13 @@ DomTerm.prototype.measureWindow = function()  {
     var availHeight = this.topNode.parentNode.clientHeight;
     var availWidth = this.topNode.clientWidth - this.rightMarginWidth;
     var numRows = Math.floor(availHeight / this.charHeight);
-    var numColumns = Math.floor(availWidth / this.charWidth);
     // KLUDGE Add some tolerance for rounding errors.
     // This is occasionally needed, at least on Chrome.
     // FIXME - Better would be to use separate line-breaking measurements
     // when in traditional terminal mode (monospace and no html emitted):
     // In that case we should line-break based on character counts rather
     // than measured offsets.
+    var numColumns = Math.floor(availWidth / this.charWidth);
     availWidth += 2;
     if (numRows != this.numRows || numColumns != this.numColumns
         || availHeight != this.availHeight || availWidth != this.availWidth) {
@@ -4570,7 +4570,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 el.measureWidth = rects[nrects-1].right - el.measureLeft;
             }
         }
-        // First pass - measure (call offsetLet) but do not change DOM
+        // First pass - measure (call offsetLeft) but do not change DOM
         for (var el = start; el != null; ) {
             var lineAttr;
             var skipChildren = false;
