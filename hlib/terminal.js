@@ -3863,7 +3863,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this.measureWindow();
         break;
     case 102:
-        this.reportEvent("GET-HTML", JSON.stringify(this.getAsHTML()));
+        this.reportEvent("GET-HTML", JSON.stringify(this.getAsHTML(true)));
         break;
     case 110: // start prettyprinting-group
         if (this._currentStyleSpan == this.outputContainer
@@ -4003,8 +4003,9 @@ var escapeMap = {
     "'": '&#039;'
 };
 
-DomTerm.prototype.getAsHTML = function() {
+DomTerm.prototype.getAsHTML = function(saveMode=false) {
     var string = "<!DOCTYPE html>\n";
+    var dt = this;
 
     function  escapeText(text) {
         // Assume single quote is not used in atributes
@@ -4074,6 +4075,22 @@ DomTerm.prototype.getAsHTML = function() {
                 children = node.childNodes;
                 for (i = 0; i < children.length; i++) {
                     formatDOM(children[i]); // , namespaces
+                }
+                if (saveMode
+                    && tagName == "title"
+                    && node.parentNode instanceof Element
+                    && node.parentNode.tagName.toLowerCase() == "head") {
+                    string += " saved ";
+                    var now = new Date();
+                    string += now.getFullYear();
+                    var month = now.getMonth() + 1;
+                    string += (month < 10 ? "-0" : "-") + month;
+                    var date = now.getDate();
+                    string += (date < 10 ? "-0" : "-") + date;
+                    var hours = now.getHours();
+                    string += (hours < 10 ? " 0" : " ") + hours;
+                    var minutes = now.getMinutes();
+                    string += (minutes < 10 ? ":0" : ":") + minutes;
                 }
                 string += '<\/' + tagName + '>';
             }
@@ -5216,7 +5233,7 @@ DomTerm.prototype.doCopy = function() {
 DomTerm.prototype.doSaveAs = function() {
     var fname = this._pickFile();
     if (fname) {
-        this._writeFile(this.getAsHTML(), fname);
+        this._writeFile(this.getAsHTML(true), fname);
     }
 };
 
