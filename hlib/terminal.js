@@ -2572,10 +2572,10 @@ DomTerm.prototype.eraseDisplay = function(param) {
             : 0;
         var removed = saveHome - this.homeLine;
         if (removed > 0) {
-            this.resetCursorCache();
             this.moveToAbs(this.homeLine, 0, false);
             this.deleteLinesIgnoreScroll(removed, false);
             this.resetCursorCache();
+            saveLine -= removed;
         }
         break;
     default:
