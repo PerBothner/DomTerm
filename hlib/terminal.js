@@ -1758,33 +1758,15 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     new ResizeSensor(topNode, function () {
         if (dt.verbosity > 0)
             dt.log("ResizeSensor called"); 
-        var oldCols = dt.numColumns;
+        var oldWidth = dt.availWidth;
         dt.measureWindow();
         dt._displaySizeInfoWithTimeout();
-        if (dt.numColumns != oldCols) {
-            var homeStart = null;
-            if (dt.homeLine > 0) {
-                dt._clearWrap(dt.homeLine-1);
-                homeStart = dt.lineStarts[dt.homeLine];
-            }
+        if (dt.availWidth != oldWidth) {
             dt._breakAllLines();
-            if (homeStart) {
-                var saveContainer = dt.outputContainer;
-                var saveBefore = dt.outputBefore;
-                dt.resetCursorCache();
-                dt.outputContainer = homeStart;
-                dt.outputBefore = homeStart.firstChild;
-                dt.homeLine = dt.getAbsCursorLine();
-                dt.outputContainer = saveContainer;
-                dt.outputBefore = saveBefore;
-                dt.resetCursorCache();
-            }
-            var minHome = dt.lineStarts.length - dt.numRows;
-            if (dt.homeLine < minHome) {
-                dt.homeLine = minHome;
-                dt.resetCursorCache();
-            }
+            dt.resetCursorCache();
         }
+        var minHome = dt.lineStarts.length - dt.numRows;
+        dt.homeLine = minHome < 0 ? 0 : minHome;
         dt._scrollIfNeeded();
     });
     this.measureWindow();
