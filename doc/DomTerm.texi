@@ -1227,6 +1227,7 @@ This @code{<div>} contains one or more @var{logical-line}s.
 Returning to the normal screen deletes the @code{<div>} for the
 alternative screen, along with all of its contents.
 
+@anchor{DOM-pretty-printing}
 @subsubheading Pretty-printing and line-breaking
 
 @table @asis
