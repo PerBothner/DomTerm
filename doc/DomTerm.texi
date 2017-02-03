@@ -1457,6 +1457,7 @@ is the index of the replaced or created stylesheet.
 
 @end table
 
+@anchor{escapes-pretty-printing}
 @subsubsection Pretty-printing
 
 "Pretty-printing" refers to breaking a text info multiple lines
@@ -1833,8 +1834,9 @@ unknown reason.)
 These libraries are much bigger, but this implementation
 could be suitable for a JavaEE environment as it follows JSR-356.)
 
-(If using PTYs, which requires native code anyway, it may be better
+If using PTYs, which requires native code anyway, it may be better
 to use a server written in C or C++, such as
+@uref{https://libwebsockets.org/,libwebsockets}.
 
 @subsection Line vs character input modes
 
