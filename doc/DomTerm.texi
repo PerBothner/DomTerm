@@ -279,7 +279,15 @@ to build @code{qtdomterm}, an advanced front-end that
 supports multiple tabs, screen re-sizing, and other nice features.
 
 For this you need the Qt development tools including QtWebEngine installed.
+@item --with-libwebsockets
+Build the C application @code{ldomterm},
+which uses @uref{https://libwebsockets.org/,libwebsockets}.
 
+On Fedora, you need to first:
+@example
+sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel vim-common
+@end example
+(You need @code{vim-common} for the @code{xxd} tool, only used at build time.)
 @item --with-closure-compiler=@var{compiler.jar}
 Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compiler} to minimize the size of the JavaScript.
 (Current only the ``simple optimizations'' are done.
