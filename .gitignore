@@ -32,7 +32,10 @@ doc/DomTerm.xml
 web/*.html
 web/images/*.png
 autom4te.cache/*
+bin/ldomterm
 bin/qtdomterm
+lws-term/resources.c
+lws-term/tmp-resources
 qtdomterm/dt_version.h
 qtdomterm/moc_*.cpp
 qtdomterm/moc_predefs.h

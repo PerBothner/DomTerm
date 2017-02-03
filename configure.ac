@@ -19,6 +19,12 @@ AC_ARG_WITH(java,
 AC_ARG_WITH(java_websocket,
   AS_HELP_STRING(--with-java_websocket@<:@=/path/to/java_websocket.jar@:>@,Build server using Java-WebServer (default true)))
 
+AC_ARG_WITH(libwebsockets,
+  AS_HELP_STRING(--with-websockets,Build server using libwebsockets))
+
+AC_ARG_WITH(qtwebengine,
+  AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
+
 AC_ARG_ENABLE(pty,
   AS_HELP_STRING(--enable-pty,Enable support for PTYs (default true except on Windows)))
 
@@ -27,9 +33,6 @@ AC_ARG_ENABLE(ld-preload,
 
 AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
-
-AC_ARG_WITH(qtwebengine,
-  AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
 AC_ARG_WITH(closure_compiler,
   AC_HELP_STRING("--with-closure-compiler=@<:@=compiler.jar@:>@,compress JavaScripr with Closure))
@@ -62,6 +65,8 @@ esac
 AC_CHECK_PROGS(QMAKE, qmake-qt5 qmake, qmake)
 
 AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
+
+AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" = "yes")
 
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
 
@@ -135,5 +140,5 @@ AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(with_closure_compiler)
 
-AC_CONFIG_FILES([Makefile qtdomterm/dt_version.h])
+AC_CONFIG_FILES([Makefile qtdomterm/dt_version.h lws-term/version.h])
 AC_OUTPUT

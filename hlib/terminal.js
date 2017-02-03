@@ -4115,6 +4115,7 @@ DomTerm.prototype._doDeferredDeletion = function() {
     }
 }
 
+/* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
 DomTerm.prototype.insertBytes = function(bytes) {
     if (this.verbosity >= 2)
         this.log("insertBytes "+typeof bytes);

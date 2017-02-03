@@ -21,8 +21,11 @@ if ENABLE_LD_PRELOAD
 PRELOADS_SO = lib/domterm-preloads.so
 DT_CFLAGS += -DENABLE_LD_PRELOAD
 endif
+if WITH_LIBWEBSOCKETS
+LDOMTERM = bin/ldomterm
+endif
 
-all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) xulapp/domterm.jar $(QTDOMTERM)
+all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) xulapp/domterm.jar $(QTDOMTERM) $(LDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	javah -d native/pty org.domterm.pty.PTY
@@ -81,7 +84,8 @@ run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf org/classes.stamp tmp-for-jar tmp-for-xul org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) tmp-repl.in native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar hlib/domterm-all.js lib/*.so
+	-rm -rf org/classes.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar hlib/domterm-all.js lib/*.so
+	-rm -rf lws-term/*.o lws-term/resources.c bin/ldomterm
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
 	-rm -f qtdomterm/data/hlib/domterm-all.js \
@@ -218,3 +222,32 @@ bin/qtdomterm: \
   qtdomterm/data/hlib/domterm-standard.css \
   qtdomterm/data/hlib/domterm-default.css
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
+
+LIBWEBSOCKETS_LIBARG = -lwebsockets
+bin/ldomterm: lws-term/server.o lws-term/utils.o lws-term/protocol.o lws-term/http.o lws-term/resources.o
+	$(CC) -o $@ $^ $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil
+
+lws-term/%.o: $(srcdir)/lws-term/%.c
+	$(CC) -c -g -I/usr/include/json-c $< -o $@
+
+lws-term/repl_client.h: repl-client.h
+
+LWS_RESOURCES = repl-client.html hlib/domterm-all.js hlib/domterm-client.js \
+  hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
+XXD = xxd
+
+lws-term/resources.c: $(LWS_RESOURCES)
+	echo '#include "server.h"' >lws-term/tmp-resources.c
+	for file in $(LWS_RESOURCES); do \
+	  (cd $(srcdir) && $(XXD) -i $$file -) | \
+	    sed -e 's|unsigned int \(.*\) = \(.*\);|#define \1 \2|' \
+	    >>lws-term/tmp-resources.c; \
+	done
+	echo 'struct resource resources[] = {' >>lws-term/tmp-resources.c
+	for file in $(LWS_RESOURCES); do \
+          name=`echo "$$file"|sed -e 's|[-./]|_|g'`; \
+	  echo '    { "'$$file'", '$$name', '$$name'_len },' >>lws-term/tmp-resources.c; \
+	done
+	echo '    { NULL, NULL, 0}' >>lws-term/tmp-resources.c; \
+	echo '};' >>lws-term/tmp-resources.c; \
+	mv lws-term/tmp-resources.c lws-term/resources.c
