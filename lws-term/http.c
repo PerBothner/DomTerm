@@ -135,7 +135,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             }
 
             const char* fname  = in;
-            if (fname == NULL)
+            if (fname == NULL || strcmp(fname, "/") == 0)
                 fname = "/repl-client.html";
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)

@@ -85,7 +85,7 @@ void print_help() {
                     "    --ssl-cert, -C          SSL certificate file path\n"
                     "    --ssl-key, -K           SSL key file path\n"
                     "    --ssl-ca, -A            SSL CA file path for client certificate verification\n"
-                    "    --debug, -d             Set log level (0-9, default: 7)\n"
+                    "    --debug, -d             Set log level (0-9, default: 0)\n"
                     "    --version, -v           Print the version and exit\n"
                     "    --help, -h              Print this text and exit\n"
                     "If no --port option is pecified, --browser --once are implied.\n",
@@ -450,10 +450,13 @@ main(int argc, char **argv) {
     if (server->index != NULL) {
         lwsl_notice("  custom index.html: %s\n", server->index);
     }
+    if (port_specified <= 0 && browser_command == NULL)
+      fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
+              info.port, info.port);
 
     if (browser_command != NULL) {
         char *url = xmalloc(100);
-        sprintf(url, "http://localhost:%d/repl-client.html#ws=same", info.port);
+        sprintf(url, "http://localhost:%d/#ws=same", info.port);
         if (browser_command[0] == '\0')
             browser_command = DEFAULT_BROWSER_COMMAND;
         size_t clen = strlen(browser_command);
