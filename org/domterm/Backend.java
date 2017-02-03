@@ -120,7 +120,7 @@ public abstract class Backend {
      */
     public abstract void run(Writer out) throws Exception;
 
-    public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
+    public void setWindowSize(int nrows, int ncols, int pixh, int pixw) {
     }
 
     public void close(boolean isLast) {

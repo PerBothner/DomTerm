@@ -197,7 +197,7 @@ JNIEXPORT jint JNICALL Java_PTY_readFromChildOutput__I
 
 JNIEXPORT void JNICALL Java_org_domterm_pty_PTY_setWindowSize
 (JNIEnvP UNUSED(env), jclass UNUSED(pclas),
- jint fdm, jint nrows, jint ncols, jint pixw, jint pixh)
+ jint fdm, jint nrows, jint ncols, jint pixh, jint pixw)
 {
   struct winsize ws;
   ws.ws_row = nrows;

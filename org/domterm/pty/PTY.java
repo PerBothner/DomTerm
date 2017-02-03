@@ -124,11 +124,11 @@ public class PTY {
      * @param pixw width of logical screen in pixels
      * @param pixh height of logical screen in pixels
      */
-    public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
-        setWindowSize(fdm, nrows, ncols, pixw, pixh);
+    public void setWindowSize(int nrows, int ncols, int pixh, int pixw) {
+        setWindowSize(fdm, nrows, ncols, pixh, pixw);
     }
 
-    private static native void setWindowSize(int fdm, int nrows, int ncols, int pixw, int pixh);
+    private static native void setWindowSize(int fdm, int nrows, int ncols, int pixh, int pixw);
 
     static { System.loadLibrary("pty"); }
 

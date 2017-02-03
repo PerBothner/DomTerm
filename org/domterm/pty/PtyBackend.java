@@ -103,11 +103,11 @@ public class PtyBackend extends Backend {
     }
 
     @Override
-    public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
+    public void setWindowSize(int nrows, int ncols, int pixh, int pixw) {
         // We might get a call to setWindowSize before the PTY is
         // allocated in the run method.  We get another call after PTY
         // is allocated, so it appears ok to ignore it when pty is null.
         if (pty != null)
-            pty.setWindowSize(nrows, ncols, pixw, pixh);
+            pty.setWindowSize(nrows, ncols, pixh, pixw);
     }
 }

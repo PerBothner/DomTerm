@@ -114,9 +114,9 @@ public class WebTerminal extends VBox // FIXME should extend Control
      */
     //Node pendingInput;
 
-    public void setWindowSize(int nrows, int ncols, int pixw, int pixh) {
+    public void setWindowSize(int nrows, int ncols, int pixh, int pixw) {
         if (backend != null)
-            backend.setWindowSize(nrows, ncols, pixw, pixh);
+            backend.setWindowSize(nrows, ncols, pixh, pixw);
     }
     public void close() {
         WebTerminalApp app = WebTerminalApp.instance;
