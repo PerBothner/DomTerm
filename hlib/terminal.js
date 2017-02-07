@@ -406,6 +406,7 @@ DomTerm.SEEN_ESC_CHARSET2 = 12;
 DomTerm.SEEN_ESC_CHARSET3 = 13;
 DomTerm.SEEN_ESC_SS2 = 14;
 DomTerm.SEEN_ESC_SS3 = 15;
+DomTerm.SEEN_SURROGATE_HIGH = 16;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -518,60 +519,6 @@ DomTerm.prototype.clearAllTabs = function() {
 DomTerm.prototype.resetTabs = function() {
     this._tabsAdded = null;
     this._tabDefaultStart = 0;
-};
-
-/** Returns number of columns needed for argument character.
- * Currently always returns 1 (except for 'zero width space').
- * However, in the future we should handle zero-width characters
- * as well as double-width characters, and composing charcters.
- */
-DomTerm.prototype.charColumns = function(ch) {
-    if (ch == 0x200B)
-        return 0;
-    return 1;
-};
-
-/** Calculate a "column state" after appending a given char.
- * A non-negative column state is a number of columns.
- * The value -1 as a return value indicates a newline character.
- *
- * In the future, a value less than -1 can be used to encode an
- * initial part of a compound character, including a start surrogate.
- * Compound character support is not implemented yet,
- * nor is support for zero-width or double-width characters.
- 
- * The ch is the next character to output.
- * The startState is the column state before emitting {@code ch}
- *   This is basically the number of columns, but in the future we
- *   might use the high-order bits for flags, fractional columns etc.
- * Returns the column state after {@code ch} is appended,
- *  or -1 after a character that starts a new line.
- */
-DomTerm.prototype.updateColumn = function(ch, startState) {
-    if (ch == 10 /* '\n' */ ||
-        ch == 13 /* '\r' */ ||
-        ch == 12 /* '\f' */)
-        return -1;
-    // TODO handle surrogates, compound characters, etc.
-    // if (startState < 0) ...
-    if (ch == 9 /* '\t' - tab */)
-        return this.nextTabCol(startState);
-    return startState+this.charColumns(ch);
-};
-
-DomTerm.prototype.widthInColumns = function(str, start, end) {
-    if (start === undefined)
-        start = 0;
-    if (end === undefined)
-        end = str.length;
-    var w = 0;
-    for (var i = start; i < end;  i++) {
-        var ch = str.charCodeAt(i);
-        w = this.updateColumn(ch, w);
-        if (w < 0)
-            w = 0;
-    }
-    return w;
 };
 
 DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
@@ -869,9 +816,11 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                         tnode.splitText(i);
                         break;
                     }
-                    var ch = text.charCodeAt(i);
-                    var nextColumn = this.updateColumn(ch, column);
-                    if (nextColumn == -1) {
+                    var ch = text.codePointAt(i);
+                    if (ch > 0xffff) i++;
+                    if (ch == 10 || ch == 13 || ch == 12) { // One of "\n\r\f"
+                        // Paranoia - we should never have raw "\n\r\f" in text,
+                        // but it can happen if HTML is inserted and not cleaned up.
                         if (absLine == goalAbsLine) {
                             var nspaces = goalColumn-column;
                             if (addSpaceAsNeeded) {
@@ -891,8 +840,9 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                                 i++;
                         }
                     }
-                    else
-                        column = nextColumn;
+                    else {
+                        column += this.wcwidthInContext(ch, tnode.parentNode);
+                    }
                 }
             }
 
@@ -907,7 +857,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                     column += 1;
                 else if (valueAttr
                          && current.getAttribute("std")=="prompt") {
-                    var w = this.widthInColumns(valueAttr, 0, valueAttr.length);
+                    var w = this.strWidthInContext(valueAttr, current);
                     column += w;
                     if (column > goalColumn) {
                         column -= w;
@@ -1185,7 +1135,14 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
             }
             tcount++;
             var ch = tstr.charCodeAt(len-tcount);
-            var chcols = this.charColumns(ch);
+            if (ch >= 0xDC00 && ch <= 0xDFFF && len > tcount) {
+                var ch0 =  tstr.charCodeAt(len-tcount-1);
+                if (ch0 >= 0xD800 && ch0 <= 0xDBFF) {
+                    ch = (ch0 - 0xD800) * 0x400 + ch - 0xDC00 + 0x10000;
+                    tcount++;
+                }
+            }
+            var chcols = this.wcwidthInContext(ch, prev.parentNode);
             if (ch == 10/*'\n'*/ || ch == 13/*'\r'*/ || ch == 12/*'\f'*/
                 || ch == 9/*'\t'*/
                 || chcols < 0 || tcols+chcols > count) {
@@ -1754,6 +1711,11 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
    // if (! this.useStyledCaret())
         topNode.focus();
     var dt = this;
+
+    var styleSheet0 = document.styleSheets[0];
+    styleSheet0.insertRule("div.domterm-pre span.wc-node { width: 18px; }", 0);
+    dt._wcnodeRule = styleSheet0.cssRules[0];
+
     // FIXME we want the resize-sensor to be a child of helperNode
     new ResizeSensor(topNode, function () {
         if (dt.verbosity > 0)
@@ -1761,6 +1723,10 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         var oldWidth = dt.availWidth;
         dt.measureWindow();
         dt._displaySizeInfoWithTimeout();
+        dt._wcnodeRule.style.cssText =
+            '  display: inline-block;' +
+            '  text-align: center;' +
+            '  width: ' + dt.charWidth * 2 + 'px;';
         if (dt.availWidth != oldWidth) {
             dt._breakAllLines();
             dt.resetCursorCache();
@@ -2330,10 +2296,8 @@ DomTerm.prototype.updateCursorCache = function() {
                 // FIXME handle line specially
             } else if (cur.getAttribute("std")=="prompt") {
                 var valueAttr = cur.getAttribute("value");
-                if (valueAttr) {
-                    var w = this.widthInColumns(valueAttr, 0, valueAttr.length);
-                    col += w;
-                }
+                if (valueAttr)
+                    col += this.strWidthInContext(valueAttr, cur);
             }
             // isBreak
             parent = cur;
@@ -2344,15 +2308,17 @@ DomTerm.prototype.updateCursorCache = function() {
                 var text = tnode.textContent;
                 var tlen = text.length;
                 for (var i = 0; i < tlen;  i++) {
-                    var ch = text.charCodeAt(i);
-                    col = this.updateColumn(ch, col);
-                    if (col == -1) {
+                    var ch = text.codePointAt(i);
+                    if (ch > 0xffff) i++;
+                    if (ch == 10 || ch == 13 || ch == 12) {
                         line++;
                         col = 0;
                         if (ch == 13 /*'\r'*/ && i+1<tlen
                             && text.charCodeAt(i+1) == 10 /*'\n'*/)
                             i++;
                     }
+                    else
+                        col += this.wcwidthInContext(ch, cur.parentNode);
                 }
             }
             cur = cur.nextSibling;
@@ -2714,7 +2680,8 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
                 for (; i < length; i++) {
                     if (todo <= 0)
                         break;
-                    var ch = text.charCodeAt(i);
+                    var ch = text.codePointAt(i);
+                    if (ch > 0xffff) i++;
                     // Optimization - don't need to calculate getCurrentColumn.
                     if (ch >= 32/*' '*/ && ch < 127) {
                         todo--;
@@ -2725,12 +2692,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
                         break;
                     }
                     else {
-                        if (curColumn < 0)
-                            curColumn = this.getCursorColumn();
-                        var col = this.updateColumn(ch,
-                                                    curColumn+(count-todo));
-                        todo = count - (col - curColumn);
-                        // general case using updateColumn FIXME
+                        todo -= this.wcwidthInContext(ch, current.parentNode);
                     }
                 }
             }
@@ -4153,6 +4115,13 @@ DomTerm.prototype.insertString = function(str) {
         //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
         var state = this.controlSequenceState;
         switch (state) {
+        case DomTerm.SEEN_SURROGATE_HIGH:
+            // must have i==0
+            str = this.parameters[0] + str;
+            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            slen++;
+            i = -1;
+            break;
         case DomTerm.SEEN_ESC_STATE:
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             if (ch != 91 /*'['*/ && ch != 93 /*']'*/
@@ -4427,14 +4396,51 @@ DomTerm.prototype.insertString = function(str) {
                 prevEnd = i + 1;
                 break;
             default:
-                if (this.charMapper != null) {
-                    var chm = this.charMapper(ch);
-                    if (chm != null) {
-                        this.insertSimpleOutput(str, prevEnd, i);
-                        this.insertSimpleOutput(chm, 0, chm.length);
-                        prevEnd = i + 1;
+                var i0 = i;
+                if (ch >= 0xD800 && ch <= 0xDBFF) {
+                    i++;
+                    if (i == slen) {
+                        this.insertSimpleOutput(str, prevEnd, i0);
+                        this.parameters[0] = str.charAt(i0);
+                        this.controlSequenceState = DomTerm.SEEN_SURROGATE_HIGH;
                         break;
+                    } else {
+                        ch = ((ch - 0xD800) * 0x400)
+                            + ( str.charCodeAt(i) - 0xDC00) + 0x10000;
                     }
+                }
+                var chm = this.charMapper == null ? null : this.charMapper(ch);
+                var multipleChars = chm != null;
+                if (chm != null && chm.length == 2) {
+                    var ch0 = chm.charCodeAt(0);
+                    var ch1 = chm.charCodeAt(1);
+                    if (ch0 >= 0xd800 && ch0 <= 0xdbff
+                        && ch1 >= 0xdc00 && ch1 <= 0xdfff) {
+                        ch = (ch0-0xd800)*0x400 + (ch1-0xdc00)+0x10000;
+                        multipleChars = false;
+                    }
+                }
+                if (multipleChars) {
+                    this.insertSimpleOutput(str, prevEnd, i0);
+                    this.insertSimpleOutput(chm, 0, chm.length);
+                    prevEnd = i + 1;
+                    break;
+                }
+                var cwidth = this.wcwidthInContext(ch, this.outputContainer);
+                if (cwidth == 0) {
+                    // FIXME
+                }
+                if (cwidth == 2) {
+                    this.insertSimpleOutput(str, prevEnd, i0);
+                    prevEnd = i + 1;
+                    if (chm == null)
+                        chm = str.substring(i0, prevEnd);
+                    var wcnode = this._createSpanNode();
+                    wcnode.setAttribute("class", "wc-node");
+                    this._pushIntoElement(wcnode);
+                    this.insertSimpleOutput(chm, 0, chm.length);
+                    this.popFromElement();
+                    break;
                 }
             }
         }
@@ -4578,9 +4584,9 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         for (var el = start; el != null; ) {
             var lineAttr;
             var skipChildren = false;
-            if (el instanceof Text || dt.isObjectElement(el)) {
+            if (el instanceof Text || dt.isObjectElement(el)
+                || el.getAttribute("class") == "wc-node") {
                 skipChildren = true;
-                next = el.nextSibling;
             } else if (el.nodeName == "SPAN"
                        && (lineAttr = el.getAttribute("line")) != null) {
                 skipChildren = true;
@@ -4629,7 +4635,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         // beforePos is typically el.offsetLeft (if el is an element).
         var beforePos = 0;
         // startOffset is the difference (beforePos - beforeMeasure),
-        // where beforeMeasure is typically el.measureLeft (if any element).
+        // where beforeMeasure is typically el.measureLeft (if an element).
         // If el is a Text, beforePos and beforeMeasure are calculated.
         var startOffset = 0;
         var sectionStartLine = line;
@@ -4640,7 +4646,8 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             var dobreak = false;
             var skipChildren = false;
             var measureWidth = el instanceof Element ? el.measureWidth : 0;
-            if (el instanceof Text || dt.isObjectElement(el)) {
+            if (el instanceof Text || dt.isObjectElement(el)
+                || el.getAttribute("class") == "wc-node") {
                 skipChildren = true;
                 if (el instanceof Text)
                     dt._normalize1(el);
@@ -4649,35 +4656,35 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 if (next instanceof Element)
                     afterMeasure = next.measureLeft;
                 else {
-                    var parent = el.parentNode;
-                    afterMeasure = parent.measureLeft+parent.measureWidth;
+                    var p = el instanceof Element ? el : el.parentNode;
+                    afterMeasure = p.measureLeft+p.measureWidth;
                 }
                 var right = afterMeasure - startOffset;
                 if (right > availWidth) {
+                    var beforeMeasure = beforePos + startOffset;
+                    var lineNode = dt._createLineNode("soft");
+                    var indentWidth;
                     if (el instanceof Text) {
-                        var lineNode = dt._createLineNode("soft");
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
                         var rest = dt._breakString(el, lineNode, beforePos,
                                                    right, availWidth);
                         insertIntoLines(dt, lineNode);
                         el = lineNode;
-                        var indentWidth = addIndentation(dt, el);
-                        var beforeMeasure = beforePos + startOffset;
+                        indentWidth = addIndentation(dt, el);
                         var oldWidth = afterMeasure - beforeMeasure;
                         var beforeWidth = lineNode.offsetLeft;
                         rest = document.createTextNode(rest);
                         el.parentNode.insertBefore(rest, el.nextSibling);
-                        beforeMeasure += lineNode.offsetLeft - beforePos;
-                        beforePos = indentWidth;
-                        startOffset = beforeMeasure - beforePos;
                         next = rest;
-                        line++;
-                    } else { // dt.isObjectElement(el)
-                        // FIXME insert a "soft" break before el 
-                        var lineNode = dt._createLineNode("soft");
+                    } else { // dt.isObjectElement(el) or wc-node
+                        insertIntoLines(dt, lineNode);
                         el.parentNode.insertBefore(lineNode, el);
-                        // FIXME update beforePos startOffset
+                        indentWidth = addIndentation(dt, lineNode);
                     }
+                    line++;
+                    beforeMeasure += lineNode.offsetLeft - beforePos;
+                    beforePos = indentWidth;
+                    startOffset = beforeMeasure - beforePos;
                     dobreak = true;
                 } else {
                     beforePos = right;
@@ -4952,7 +4959,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         this.outputContainer = this.outputBefore.previousSibling;
         this.outputBefore = null;
     }
-    var widthInColums = this.widthInColumns(str, 0, slen);
+    var widthInColums = this.strWidthInContext(str, this.outputContainer);
     if (this.insertMode) {
         var line = this.getAbsCursorLine();
         var col = this.getCursorColumn();
@@ -5010,8 +5017,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 this.outputBefore = null;
             }
             absLine++;
-            slen = str.length;
-            widthInColums = this.widthInColumns(str, 0, slen);
+            widthInColums = this.strWidthInContext(str, this.outputContainer);
             this.eraseCharactersRight(widthInColums, true);
         }
     }

@@ -50,16 +50,18 @@ d/domterm: d/domterm.ti
 run-pty: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
 	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar  $(DOMTERM_JAR) --pty
 
-hlib/domterm-all.js: hlib/terminal.js hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js
+JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js hlib/wcwidth.js
+
+hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
 if WITH_CLOSURE_COMPILER
 # ADVANCED_OPTIMIZATION doesn't quite work, even with closure-externs.js.
 # There are some problem - and qtdomterm doesn't work at all. FIXME
 #	$(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js hlib/closure-externs.js --compilation_level ADVANCED_OPTIMIZATIONS >tmp-domterm-all.js
-#	$(JAVA_WITH_PATH) -jar @with_closure_compiler@ --js hlib/bililiteRange.js hlib/FileSaver.js hlib/ResizeSensor.js >>tmp-domterm-all.js
-	$(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js hlib/bililiteRange.js hlib/FileSaver.js hlib/ResizeSensor.js >tmp-domterm-all.js
+#	$(JAVA_WITH_PATH) -jar @with_closure_compiler@ --js $(JS_LIBS) >>tmp-domterm-all.js
+	$(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js $(JS_LIBS) >tmp-domterm-all.js
 	mv tmp-domterm-all.js hlib/domterm-all.js
 else
-	cat hlib/bililiteRange.js hlib/terminal.js hlib/FileSaver.js hlib/ResizeSensor.js > hlib/domterm-all.js
+	cat $(JS_LIBS) hlib/terminal.js > hlib/domterm-all.js
 endif
 
 EXTRA_CLASSPATH =
