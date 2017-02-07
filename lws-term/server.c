@@ -34,10 +34,16 @@ static const struct lws_extension extensions[] = {
         {NULL, NULL, NULL}
 };
 
+#define CHROME_OPTION 1000
+#define FIREFOX_OPTION 1001
+
 // command line options
 static const struct option options[] = {
         {"port",         required_argument, NULL, 'p'},
         {"browser",      optional_argument, NULL, 'B'},
+        {"chrome",       no_argument,       NULL, CHROME_OPTION},
+        {"google-chrome",no_argument,       NULL, CHROME_OPTION},
+        {"firefox",no_argument,             NULL, FIREFOX_OPTION},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
         {"uid",          required_argument, NULL, 'u'},
@@ -215,6 +221,26 @@ calc_command_start(int argc, char **argv) {
     return start;
 }
 
+char *
+chrome_command()
+{
+    char *cmd = "google-chrome";
+    char *cbin = getenv("CHROME_BIN");
+    if (cbin != NULL && access(cbin, X_OK) == 0)
+        return cbin;
+    return cmd;
+}
+
+char *
+firefox_command()
+{
+    char *firefoxCommand = "firefox";
+    char *firefoxMac ="/Applications/Firefox.app/Contents/MacOS/firefox";
+    if (access(firefoxMac, X_OK) == 0)
+        return firefoxMac;
+    return firefoxCommand;
+}
+
 int
 main(int argc, char **argv) {
     int start = calc_command_start(argc, argv);
@@ -278,6 +304,16 @@ main(int argc, char **argv) {
                 break;
             case 'B':
                 browser_command = optarg == NULL ? "" : optarg;
+                break;
+            case CHROME_OPTION: {
+                char *cbin = chrome_command();
+                char *crest = " --app=%U";
+                browser_command = xmalloc(strlen(cbin)+strlen(crest)+1);
+                sprintf(browser_command, "%s%s", cbin, crest);
+                break;
+            }
+            case FIREFOX_OPTION:
+                browser_command = "firefox";
                 break;
             case 'i':
                 strncpy(iface, optarg, sizeof(iface));
@@ -455,6 +491,11 @@ main(int argc, char **argv) {
               info.port, info.port);
 
     if (browser_command != NULL) {
+        if (strcmp(browser_command, "firefox") == 0)
+            browser_command = firefox_command();
+        else if (strcmp(browser_command, "chrome") == 0
+                 || strcmp(browser_command, "google-chrome") == 0)
+            browser_command = chrome_command();
         char *url = xmalloc(100);
         sprintf(url, "http://localhost:%d/#ws=same", info.port);
         if (browser_command[0] == '\0')
