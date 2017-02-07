@@ -190,9 +190,9 @@ The default style add markers to show when wrapping occurred,
 as seen in the nearby screenshot.
 Window size re-size will automatically re-do line-breaking.
 Copying the selection as text will only include hard newlines.
-Reports window resize to applicaton.
-@strong{Dynamic pretty-printing} uses special commands to group
-logical blocks, and attempts to keep the ext of a block on a single line.
+Reports window resize to application.
+@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,@strong{Dynamic pretty-printing}} uses special commands to group
+logical blocks, and attempts to keep the text of a block on a single line.
 
 ``Print'' @ref{Hide/show buttons,hide/show buttons},
 using certain escape sequences enables @strong{text folding}.
