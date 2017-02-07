@@ -5331,7 +5331,7 @@ DomTerm.prototype.findStyleSheet = function(specifier) {
     var styleSheets = document.styleSheets;
     var styleSheet;
     var index = Number(specifier);
-    if (index) {
+    if (! isNaN(index)) {
         if (index < 0 || index >= styleSheets.length)
             return "invalid stylesheet index";
         return styleSheet = styleSheets[index];
