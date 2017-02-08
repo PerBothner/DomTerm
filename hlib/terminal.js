@@ -102,6 +102,8 @@ function DomTerm(name, topNode) {
     // Generated named have the format:  name + "__" + something.
     this.name = name;
 
+    this._updateTimer = null;
+
     this.windowName = null;
     this.iconName = null;
     
@@ -4476,16 +4478,16 @@ DomTerm.prototype.insertString = function(str) {
 
     var dt = this;
     var update = function() {
+        dt._updateTimer = null;
         dt._breakDeferredLines();
         // FIXME only if "scrollWanted"
         dt._scrollIfNeeded();
         dt._checkSpacer();
         dt._restoreInputLine();
     };
-    if (window.requestAnimationFrame)
-        requestAnimationFrame(update);
-    else
-        setTimeout(update, 20);
+    if (this._updateTimer)
+        cancelAnimationFrame(this._updateTimer);
+    this._updateTimer = requestAnimationFrame(update);
 };
 
 DomTerm.prototype._scrollIfNeeded = function() {
