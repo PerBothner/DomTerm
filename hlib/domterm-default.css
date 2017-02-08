@@ -8,7 +8,7 @@ div.domterm[reverse-video] { color: white; background-color: black }
    However, the first four in that list cause some vertical spacing issues,
    including background-color not being full-height.
    Check with tests/256-colors.sh. */
-/*div.domterm-pre { font-family: monospace } This is the default */
+div.domterm-pre { font-family: "DejaVu Sans Mono","Everson Mono",FreeMono,Menlo,Terminal,monospace; }
 span[std="input"] { background-color: #FFFFD0 } /* a pale yellow */
 span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
