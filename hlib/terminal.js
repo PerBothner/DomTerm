@@ -1740,8 +1740,8 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         }
         var minHome = dt.lineStarts.length - dt.numRows;
         dt.homeLine = minHome < 0 ? 0 : minHome;
-        dt._scrollIfNeeded();
         dt._checkSpacer();
+        dt._scrollIfNeeded();
     });
     this.measureWindow();
 
@@ -4480,9 +4480,9 @@ DomTerm.prototype.insertString = function(str) {
     var update = function() {
         dt._updateTimer = null;
         dt._breakDeferredLines();
+        dt._checkSpacer();
         // FIXME only if "scrollWanted"
         dt._scrollIfNeeded();
-        dt._checkSpacer();
         dt._restoreInputLine();
     };
     if (this._updateTimer)
