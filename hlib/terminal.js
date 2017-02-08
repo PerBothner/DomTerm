@@ -1734,6 +1734,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         var minHome = dt.lineStarts.length - dt.numRows;
         dt.homeLine = minHome < 0 ? 0 : minHome;
         dt._scrollIfNeeded();
+        dt._checkSpacer();
     });
     this.measureWindow();
 
@@ -1885,8 +1886,9 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
 
 DomTerm.prototype.measureWindow = function()  {
     var ruler = this._rulerNode;
-    this.charWidth = ruler.offsetWidth/26.0;
-    this.charHeight = ruler.parentNode.offsetHeight;
+    var rbox = ruler.getBoundingClientRect();
+    this.charWidth = rbox.width/26.0;
+    this.charHeight = rbox.height;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
     if (this.verbosity >= 2)
         this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
