@@ -275,6 +275,11 @@ function DomTerm(name, topNode) {
     /** @type {Array|null} */
     this.saved_DEC_private_mode_flags = null;
 
+    // See https://www.stum.de/2016/06/24/handling-ime-events-in-javascript/
+    // 1: IME Composing going on;
+    // 0: composition just ended - Used to swallow keyup event related to compositionend
+    this._composing = -1; // > 0: IME Composing going on
+
     this._tabDefaultStart = 0;
     this._tabsAdded = null;
 
@@ -1821,6 +1826,17 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     document.addEventListener("input",
                               function(e) { dt.inputHandler(e ? e : window.event); },
                               false);
+    function compositionStart(ev) {
+        dt._composing = 1;
+        if (this.verbosity >= 2) dt.log("compositionstart");
+    }
+    function compositionEnd(ev) {
+        dt._composing = 0;
+        if (this.lineEditing)
+            dt.reportText(dt.grabInput(dt.inputLine), null);
+    }
+    document.addEventListener("compositionstart", compositionStart, false);
+    document.addEventListener("compositionend", compositionEnd, false);
     document.addEventListener("paste",
                               function(e) {
                                   dt.pasteText(e.clipboardData.getData("text"));
@@ -5466,6 +5482,12 @@ DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
+
+    if (this._composing > 0 || event.which === 229)
+        return;
+    if (this._composing == 0)
+        this._composing = -1;
+
     // Ctrl-Shift-C is Copy and Ctrl-Shift-V is Paste
     if (event.ctrlKey && event.shiftKey) {
         if (key == 67) {
