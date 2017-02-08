@@ -88,6 +88,18 @@ tty_client_destroy(struct tty_client *client) {
     pthread_mutex_unlock(&server->lock);
 }
 
+static void
+setWindowSize(struct tty_client *client)
+{
+    struct winsize ws;
+    ws.ws_row = client->nrows;
+    ws.ws_col = client->ncols;
+    ws.ws_xpixel = client->pixw;
+    ws.ws_ypixel = client->pixh;
+    if (ioctl(client->pty, TIOCSWINSZ, &ws) < 0)
+        lwsl_err("ioctl TIOCSWINSZ: %d (%s)\n", errno, strerror(errno));
+}
+
 void *
 thread_run_command(void *args) {
     struct tty_client *client;
@@ -145,6 +157,8 @@ thread_run_command(void *args) {
             lwsl_notice("started process, pid: %d\n", pid);
             client->pid = pid;
             client->pty = pty;
+            if (client->nrows >= 0)
+               setWindowSize(client);
 
             while (!client->exit) {
                 FD_ZERO (&des_set);
@@ -192,15 +206,10 @@ reportEvent(const char *name, char *data, size_t dlen, struct tty_client *client
 {
     // FIXME call reportEvent(cname, data)
     if (strcmp(name, "WS") == 0) {
-        int nrows, ncols, pixw, pixh;
-        if (sscanf(data, "%d %d %d %d", &nrows, &ncols, &pixh, &pixw) == 4) {
-            struct winsize ws;
-            ws.ws_row = nrows;
-            ws.ws_col = ncols;
-            ws.ws_xpixel = pixw;
-            ws.ws_ypixel = pixh;
-            if (ioctl(client->pty, TIOCSWINSZ, &ws) < 0)
-                lwsl_err("ioctl TIOCSWINSZ: %d (%s)\n", errno, strerror(errno));
+        if (sscanf(data, "%d %d %d %d", &client->nrows, &client->ncols,
+                   &client->pixh, &client->pixw) == 4) {
+          if (client->pty >= 0)
+            setWindowSize(client);
         }
     } else if (strcmp(name, "VERSION") == 0) {
         char *version_info = xmalloc(dlen+1);
@@ -263,6 +272,11 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             client->wsi = wsi;
             client->buffer = NULL;
             client->version_info = NULL;
+            client->pty = -1;
+            client->nrows = -1;
+            client->ncols = -1;
+            client->pixh = -1;
+            client->pixw = -1;
             lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
                                    client->hostname, sizeof(client->hostname),
                                    client->address, sizeof(client->address));
