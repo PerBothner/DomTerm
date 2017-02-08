@@ -2922,7 +2922,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         var saveInsertMode = this.insertMode;
         this.insertMode = true;
         param = this.getParameter(0, 1);
-        this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param);
+        this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param, param);
         this.cursorLeft(param, false);
         this.insertMode = saveInsertMode;
         break;
@@ -4128,6 +4128,7 @@ DomTerm.prototype.insertString = function(str) {
     var slen = str.length;
     var i = 0;
     var prevEnd = 0;
+    var columnWidth = 0; // number of columns since prevEnv
     for (; i < slen; i++) {
         var ch = str.charCodeAt(i);
         //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
@@ -4219,7 +4220,7 @@ DomTerm.prototype.insertString = function(str) {
             //case 62 /*'>'*/: // VT52 mode: Enter alternate keypad mode
             default: ;
             }
-            prevEnd = i + 1;
+            prevEnd = i + 1; columnWidth = 0;
             break;
         case DomTerm.SEEN_ESC_LBRACKET_STATE:
         case DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE:
@@ -4246,7 +4247,7 @@ DomTerm.prototype.insertString = function(str) {
             else {
                 this.handleControlSequence(ch);
                 this.parameters.length = 1;
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
             }
             continue;
 
@@ -4263,10 +4264,10 @@ DomTerm.prototype.insertString = function(str) {
                 this.parameters.push("");
                 if (ch != 59)
                     i--; // re-read 7 or 0
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
             } else {
                 this.parameters.length = 1;
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
                 this.controlSequenceState = DomTerm.INITIAL_STATE;
             }
             continue;
@@ -4276,7 +4277,7 @@ DomTerm.prototype.insertString = function(str) {
                     this.parameters[1] + str.substring(prevEnd, i);
                 this.handleOperatingSystemControl(this.parameters[0], this.parameters[1]);
                 this.parameters.length = 1;
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
                 this.controlSequenceState =
                     ch == 27 ? DomTerm.SEEN_ESC_STATE
                     : DomTerm.INITIAL_STATE;
@@ -4304,7 +4305,7 @@ DomTerm.prototype.insertString = function(str) {
             this._Gcharsets[g] = cs;
             this._selectGcharset(this._Glevel, false);
             this.controlSequenceState = DomTerm.INITIAL_STATE;
-            prevEnd = i + 1;
+            prevEnd = i + 1; columnWidth = 0;
             break;
         case DomTerm.SEEN_ESC_SHARP_STATE: /* SCR */
             switch (ch) {
@@ -4315,7 +4316,7 @@ DomTerm.prototype.insertString = function(str) {
                 this.eraseDisplay(0);
                 var Es = "E".repeat(this.numColumns);
                 for (var r = 0; ; ) {
-                    this.insertSimpleOutput(Es, 0, this.numColumns);
+                    this.insertSimpleOutput(Es, 0, this.numColumns, this.numColumns);
                     if (++r >= this.numRows)
                         break;
                     this.cursorLineStart(1);
@@ -4323,7 +4324,7 @@ DomTerm.prototype.insertString = function(str) {
                 this.moveToAbs(this.homeLine, 0, true);
                 break;
             }
-            prevEnd = i + 1;
+            prevEnd = i + 1; columnWidth = 0;
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             break;
         case DomTerm.SEEN_ESC_SS2:
@@ -4333,8 +4334,9 @@ DomTerm.prototype.insertString = function(str) {
             if (mapper != null) {
                 var chm = this.charMapper(ch);
                 if (chm != null) {
-                    this.insertSimpleOutput(chm, 0, chm.length);
-                    prevEnd = i + 1;
+                    this.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                    this.insertSimpleOutput(chm, 0, chm.length, -1);
+                    prevEnd = i + 1;  columnWidth = 0;
                 }
             }
             this.controlSequenceState = DomTerm.INITIAL_STATE;
@@ -4342,7 +4344,7 @@ DomTerm.prototype.insertString = function(str) {
         case DomTerm.INITIAL_STATE:
             switch (ch) {
             case 13: // '\r' carriage return
-                this.insertSimpleOutput(str, prevEnd, i);
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 //this.currentCursorColumn = column;
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
@@ -4358,49 +4360,49 @@ DomTerm.prototype.insertString = function(str) {
                     this._breakDeferredLines();
                     this.cursorLineStart(0);
                 }
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
                 break;
             case 10: // '\n' newline
             case 11: // vertical tab
             case 12: // form feed
-                this.insertSimpleOutput(str, prevEnd, i);
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 this._breakDeferredLines();
                 if (this._currentStyleMap.get("std") == "input")
                     this._pushStdMode(null);
                 this.cursorNewLine(this.automaticNewlineMode);
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
                 break;
             case 27 /* Escape */:
-                this.insertSimpleOutput(str, prevEnd, i);
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 //this.currentCursorColumn = column;
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
                 this.controlSequenceState = DomTerm.SEEN_ESC_STATE;
                 continue;
             case 8 /*'\b'*/:
-                this.insertSimpleOutput(str, prevEnd, i);
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 this._breakDeferredLines();
                 this.cursorLeft(1, false);
-                prevEnd = i + 1; 
+                prevEnd = i + 1;  columnWidth = 0;
                 break;
             case 9 /*'\t'*/:
-                this.insertSimpleOutput(str, prevEnd, i);
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 this._breakDeferredLines();
                 this.tabToNextStop();
-                prevEnd = i + 1;
+                prevEnd = i + 1;  columnWidth = 0;
                 break;
             case 7 /*'\a'*/:
-                this.insertSimpleOutput(str, prevEnd, i); 
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth); 
                 //this.currentCursorColumn = column;
                 this.handleBell();
-                prevEnd = i + 1;
+                prevEnd = i + 1; columnWidth = 0;
                 break;
             case 24: case 26:
                 this.controlSequenceState = DomTerm.INITIAL_STATE;
                 break;
             case 14 /*SO*/: // Switch to Alternate Character Set G1
             case 15 /*SI*/: // Switch to Standard Character Set G0
-                this.insertSimpleOutput(str, prevEnd, i);
-                prevEnd = i + 1;
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                prevEnd = i + 1; columnWidth = 0;
                 this._selectGcharset(15-ch, false);
                 break;
             case 5 /*ENQ*/: // FIXME
@@ -4410,15 +4412,15 @@ DomTerm.prototype.insertString = function(str) {
             case 20: case 21: case 22: case 23: case 25:
             case 28: case 29: case 30: case 31:
                 // ignore
-                this.insertSimpleOutput(str, prevEnd, i);
-                prevEnd = i + 1;
+                this.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                prevEnd = i + 1; columnWidth = 0;
                 break;
             default:
                 var i0 = i;
                 if (ch >= 0xD800 && ch <= 0xDBFF) {
                     i++;
                     if (i == slen) {
-                        this.insertSimpleOutput(str, prevEnd, i0);
+                        this.insertSimpleOutput(str, prevEnd, i0, columnWidth);
                         this.parameters[0] = str.charAt(i0);
                         this.controlSequenceState = DomTerm.SEEN_SURROGATE_HIGH;
                         break;
@@ -4439,9 +4441,9 @@ DomTerm.prototype.insertString = function(str) {
                     }
                 }
                 if (multipleChars) {
-                    this.insertSimpleOutput(str, prevEnd, i0);
+                    this.insertSimpleOutput(str, prevEnd, i0, columnWidth);
                     this.insertSimpleOutput(chm, 0, chm.length);
-                    prevEnd = i + 1;
+                    prevEnd = i + 1; columnWidth = 0;
                     break;
                 }
                 var cwidth = this.wcwidthInContext(ch, this.outputContainer);
@@ -4449,22 +4451,23 @@ DomTerm.prototype.insertString = function(str) {
                     // FIXME
                 }
                 if (cwidth == 2) {
-                    this.insertSimpleOutput(str, prevEnd, i0);
-                    prevEnd = i + 1;
+                    this.insertSimpleOutput(str, prevEnd, i0, columnWidth);
+                    prevEnd = i + 1; columnWidth = 0;
                     if (chm == null)
                         chm = str.substring(i0, prevEnd);
                     var wcnode = this._createSpanNode();
                     wcnode.setAttribute("class", "wc-node");
                     this._pushIntoElement(wcnode);
-                    this.insertSimpleOutput(chm, 0, chm.length);
+                    this.insertSimpleOutput(chm, 0, chm.length, 2);
                     this.popFromElement();
                     break;
                 }
+                columnWidth += cwidth;
             }
         }
     }
     if (this.controlSequenceState == DomTerm.INITIAL_STATE) {
-        this.insertSimpleOutput(str, prevEnd, i);
+        this.insertSimpleOutput(str, prevEnd, i, columnWidth);
         //this.currentCursorColumn = column;
     }
     if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
@@ -4954,7 +4957,8 @@ DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPo
     return "";
 };
 
-DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
+DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
+                                               widthInColumns = -1) {
     var sslen = endIndex - beginIndex;
     if (sslen == 0)
         return;
@@ -4977,11 +4981,12 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         this.outputContainer = this.outputBefore.previousSibling;
         this.outputBefore = null;
     }
-    var widthInColums = this.strWidthInContext(str, this.outputContainer);
+    if (widthInColumns < 0)
+        widthInColumns = this.strWidthInContext(str, this.outputContainer);
     if (this.insertMode) {
         var line = this.getAbsCursorLine();
         var col = this.getCursorColumn();
-        var trunccol = this.numColumns-widthInColums;
+        var trunccol = this.numColumns-widthInColumns;
         // This would be simpler and faster if we had a generalization
         // of eraseCharactersRight which erases after an initial skip. FIXME
         // I.e. eraseCharactersAfterSkip(col < trunccol ? trunccol - col : 0);
@@ -5006,14 +5011,14 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         }
     } else {
         // FIXME optimize if end of line
-        fits = this.eraseCharactersRight(widthInColums, true);
+        fits = this.eraseCharactersRight(widthInColumns, true);
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
         // maybe adjust line/absLine? FIXME
         for (;;) {
             var textNode = this.insertRawOutput(str);
-            if (this.getCursorColumn() + widthInColums <= this.numColumns)
+            if (this.getCursorColumn() + widthInColumns <= this.numColumns)
                 break;
             var right = this.availWidth;
             str = this._breakString(textNode, this.lineEnds[absLine], 0, right, this.availWidth);
@@ -5035,8 +5040,8 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 this.outputBefore = null;
             }
             absLine++;
-            widthInColums = this.strWidthInContext(str, this.outputContainer);
-            this.eraseCharactersRight(widthInColums, true);
+            widthInColumns = this.strWidthInContext(str, this.outputContainer);
+            this.eraseCharactersRight(widthInColumns, true);
         }
     }
     else {
@@ -5053,8 +5058,8 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     }
     this.currentAbsLine = absLine;
     this.currentCursorColumn =
-        this.currentCursorColumn < 0 || widthInColums < 0 ? -1
-        : this.currentCursorColumn + widthInColums;
+        this.currentCursorColumn < 0 || widthInColumns < 0 ? -1
+        : this.currentCursorColumn + widthInColumns;
 };
 
 DomTerm.prototype.insertRawOutput = function(str) {
