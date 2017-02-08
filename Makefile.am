@@ -25,7 +25,7 @@ if WITH_LIBWEBSOCKETS
 LDOMTERM = bin/ldomterm
 endif
 
-all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) xulapp/domterm.jar $(QTDOMTERM) $(LDOMTERM)
+all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	javah -d native/pty org.domterm.pty.PTY
@@ -69,14 +69,9 @@ SERVER_ARGS =
 run-server: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
 
-# Start up DomTerm as a Firefox/XUL app. Requires already-running server.
-# (See also run-firefox.)
-run-xul: xulapp/domterm.jar
-	firefox -app xulapp/application.ini
-
 # Start up DomTerm as a Firefox/XUL-based terminal emulator.
 # (Like run-xul, but automatically runs server and connects to it.)
-run-firefox: libpty@LIBEXT@ domterm.jar d/domterm xulapp/domterm.jar
+run-firefox: libpty@LIBEXT@ domterm.jar d/domterm
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer --firefox $(SERVER_ARGS)
 
 run-chrome: libpty.so $(DOMTERM_JAR) d/domterm
@@ -86,7 +81,7 @@ run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean:
-	-rm -rf org/classes.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar hlib/domterm-all.js lib/*.so
+	-rm -rf org/classes.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h hlib/domterm-all.js lib/*.so
 	-rm -rf lws-term/*.o lws-term/resources.c bin/ldomterm
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
@@ -145,9 +140,6 @@ if WITH_JAVA_WEBSOCKET
 endif
 	cd tmp-for-jar && \
 	  jar cmf ../domterm-jar-manifest ../$(DOMTERM_JAR) .
-
-xulapp/domterm.jar: $(DOMTERM_JAR)
-	cd xulapp && ln -s ../$(DOMTERM_JAR) domterm.jar
 
 MAKEINFO = makeinfo
 srcdir = .
