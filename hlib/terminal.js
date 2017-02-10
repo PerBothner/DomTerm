@@ -1720,8 +1720,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     var dt = this;
 
     var styleSheet0 = document.styleSheets[0];
-    styleSheet0.insertRule("div.domterm-pre span.wc-node { width: 18px; }", 0);
-    dt._wcnodeRule = styleSheet0.cssRules[0];
+    dt._wcnodeRule = -1;
 
     // FIXME we want the resize-sensor to be a child of helperNode
     new ResizeSensor(topNode, function () {
@@ -1730,10 +1729,16 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         var oldWidth = dt.availWidth;
         dt.measureWindow();
         dt._displaySizeInfoWithTimeout();
-        dt._wcnodeRule.style.cssText =
+
+        if (dt._wcnodeRule >= 0)
+            styleSheet0.deleteRule(dt._wcnodeRule);
+        var wideCssRule =
+            ' div.domterm-pre span.wc-node {' +
             '  display: inline-block;' +
             '  text-align: center;' +
-            '  width: ' + dt.charWidth * 2 + 'px;';
+            '  width: ' + dt.charWidth * 2 + 'px; }';
+        dt._wcnodeRule = styleSheet0.insertRule(wideCssRule, 0);
+
         if (dt.availWidth != oldWidth) {
             dt._breakAllLines();
             dt.resetCursorCache();
