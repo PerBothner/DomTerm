@@ -134,7 +134,6 @@ PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css 
 $(DOMTERM_JAR): org/classes.stamp hlib/domterm-all.js
 	mkdir -p lib tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
-	cp xulapp/chrome/content/domterm.xul tmp-for-jar/
 if WITH_JAVA_WEBSOCKET
 	cd tmp-for-jar && unzip -o ../java_websocket.jar 'org/java_websocket/*.class'
 endif
