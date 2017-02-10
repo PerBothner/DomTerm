@@ -94,8 +94,8 @@ setWindowSize(struct tty_client *client)
     struct winsize ws;
     ws.ws_row = client->nrows;
     ws.ws_col = client->ncols;
-    ws.ws_xpixel = client->pixw;
-    ws.ws_ypixel = client->pixh;
+    ws.ws_xpixel = (int) client->pixw;
+    ws.ws_ypixel = (int) client->pixh;
     if (ioctl(client->pty, TIOCSWINSZ, &ws) < 0)
         lwsl_err("ioctl TIOCSWINSZ: %d (%s)\n", errno, strerror(errno));
 }
@@ -206,7 +206,7 @@ reportEvent(const char *name, char *data, size_t dlen, struct tty_client *client
 {
     // FIXME call reportEvent(cname, data)
     if (strcmp(name, "WS") == 0) {
-        if (sscanf(data, "%d %d %d %d", &client->nrows, &client->ncols,
+        if (sscanf(data, "%d %d %g %g", &client->nrows, &client->ncols,
                    &client->pixh, &client->pixw) == 4) {
           if (client->pty >= 0)
             setWindowSize(client);

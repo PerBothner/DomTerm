@@ -62,7 +62,8 @@ struct tty_client {
     int pty;
     pthread_t thread;
 
-    int nrows, ncols, pixh, pixw;
+    int nrows, ncols;
+    float pixh, pixw;
 
     STAILQ_HEAD(pty, pty_data) queue;
     pthread_mutex_t lock;

@@ -410,7 +410,7 @@ void Backend::reportEvent(const QString &name, const QString &data)
     } else if (name=="WS") {
         QStringList words = data.split(QRegExp("\\s+"));
         setWindowSize(words[0].toInt(), words[1].toInt(),
-                      words[2].toInt(), words[3].toInt());
+                      (int) words[2].toFloat(), (int) words[3].toFloat());
     } else if (name=="VERSION") {
         addDomtermVersion(data);
     } else if (name=="ALINK") {

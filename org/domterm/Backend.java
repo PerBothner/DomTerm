@@ -62,11 +62,11 @@ public abstract class Backend {
             try {
                 int i1 = Integer.parseInt(words[0]);
                 int i2 = Integer.parseInt(words[1]);
-                int i3 = Integer.parseInt(words[2]);
-                int i4 = Integer.parseInt(words[3]);
+                int i3 = (int) Double.parseDouble(words[2]);
+                int i4 = (int) Double.parseDouble(words[3]);
                 setWindowSize(i1, i2, i3, i3);
             } catch (Throwable ex) {
-                System.err.println("caught "+ex);
+                System.err.println("caught "+ex+" from "+str);
             }
         } else if ("ALINK".equals(name)) {
             int q = str.indexOf('"');
