@@ -22,7 +22,13 @@ PRELOADS_SO = lib/domterm-preloads.so
 DT_CFLAGS += -DENABLE_LD_PRELOAD
 endif
 if WITH_LIBWEBSOCKETS
-LDOMTERM = bin/ldomterm
+LIBWEBSOCKETS_LIBARG = -lwebsockets
+LDOMTERM = bin/ldomterm$(EXEEXT)
+bin_PROGRAMS = bin/ldomterm
+bin_ldomterm_SOURCES = lws-term/server.c lws-term/utils.c \
+  lws-term/protocol.c lws-term/http.c lws-term/resources.c
+bin_ldomterm_CFLAGS = -I/usr/include/json-c
+bin_ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil
 endif
 
 all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM)
@@ -216,10 +222,6 @@ bin/qtdomterm: \
   qtdomterm/data/hlib/domterm-default.css
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
 
-LIBWEBSOCKETS_LIBARG = -lwebsockets
-bin/ldomterm: lws-term/server.o lws-term/utils.o lws-term/protocol.o lws-term/http.o lws-term/resources.o
-	$(CC) -o $@ $^ $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil
-
 lws-term/%.o: $(srcdir)/lws-term/%.c
 	$(CC) -c -g -I/usr/include/json-c $< -o $@
 
@@ -244,3 +246,8 @@ lws-term/resources.c: $(LWS_RESOURCES)
 	echo '    { NULL, NULL, 0}' >>lws-term/tmp-resources.c; \
 	echo '};' >>lws-term/tmp-resources.c; \
 	mv lws-term/tmp-resources.c lws-term/resources.c
+
+xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest xulapp/domterm.xul
+xulappprefs_DATA = xulapp/defaults/preferences/prefs.js
+xulappdir = $(datadir)/domterm-xulapp
+xulappprefsdir = $(datadir)/domterm-xulapp/defaults/preferences

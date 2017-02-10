@@ -5,7 +5,7 @@ DOMTERM_VERSION=`<$srcdir/hlib/terminal.js sed -n -e 's/.*this.versionString = "
 DOMTERM_YEAR="2017"
 
 AC_CONFIG_AUX_DIR(autotools-aux)
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign subdir-objects no-dependencies])
 AC_CANONICAL_HOST
 AC_EXEEXT
 AC_OBJEXT
@@ -141,4 +141,9 @@ AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(with_closure_compiler)
 
 AC_CONFIG_FILES([Makefile qtdomterm/dt_version.h lws-term/version.h])
+AC_CONFIG_LINKS(share/domterm-xulapp/application.ini:xulapp/application.ini
+                share/domterm-xulapp/chrome.manifest:xulapp/chrome.manifest
+                share/domterm-xulapp/domterm.xul:xulapp/domterm.xul
+                share/domterm-xulapp/defaults/preferences/prefs.js:xulapp/defaults/preferences/prefs.js)
+
 AC_OUTPUT
