@@ -1,4 +1,5 @@
 #include "server.h"
+#include "whereami.h"
 
 #if 1
 #include "version.h"
@@ -43,7 +44,7 @@ static const struct option options[] = {
         {"browser",      optional_argument, NULL, 'B'},
         {"chrome",       no_argument,       NULL, CHROME_OPTION},
         {"google-chrome",no_argument,       NULL, CHROME_OPTION},
-        {"firefox",no_argument,             NULL, FIREFOX_OPTION},
+        {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
         {"uid",          required_argument, NULL, 'u'},
@@ -241,6 +242,44 @@ firefox_command()
     return firefoxCommand;
 }
 
+/** Try to find the "application.ini" file for the DomTerm XUL application. */
+char *
+firefox_xul_application()
+{
+    char* path = NULL;
+    char *fcommand = firefox_command();
+    int length, dirname_length;
+    int i;
+
+    length = wai_getExecutablePath(NULL, 0, &dirname_length);
+    char *app_path = "/share/domterm-xulapp/application.ini";
+    int app_path_length = strlen(app_path);
+    path = (char*)xmalloc(length + app_path_length + 1);
+    wai_getExecutablePath(path, length, &dirname_length);
+    path[length] = '\0';
+
+    if (dirname_length > 4 && memcmp(path+dirname_length-4, "/bin", 4)==0)
+      dirname_length -= 4;
+    strcpy(path+dirname_length, app_path);
+    return path;
+}
+
+char *
+firefox_xul_command(char* app_path)
+{
+    char* path = NULL;
+    char *fcommand = firefox_command();
+    int allocated_app_path = app_path == NULL;
+    if (allocated_app_path)
+        app_path = firefox_xul_application();
+    char *format = "%s -app %s -dtpath %%U &";
+    char *buf = xmalloc(strlen(fcommand) + strlen(app_path) + strlen(format));
+    sprintf(buf, format, fcommand, app_path);
+    if (allocated_app_path)
+        free(app_path);
+    return buf;
+}
+
 int
 main(int argc, char **argv) {
     int start = calc_command_start(argc, argv);
@@ -312,9 +351,18 @@ main(int argc, char **argv) {
                 sprintf(browser_command, "%s%s", cbin, crest);
                 break;
             }
-            case FIREFOX_OPTION:
-                browser_command = "firefox";
+            case FIREFOX_OPTION: {
+                char *xulapp = firefox_xul_application();
+                if (xulapp != NULL && access(xulapp, R_OK) == 0) {
+                    browser_command = firefox_xul_command(xulapp);
+                } else {
+                    fprintf(stderr, "Firefox XUL application.ini not found.\n");
+                    fprintf(stderr,
+                            "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
+                    browser_command = "firefox";
+                }
                 break;
+            }
             case 'i':
                 strncpy(iface, optarg, sizeof(iface));
                 iface[sizeof(iface) - 1] = '\0';
@@ -511,6 +559,7 @@ main(int argc, char **argv) {
                     clen - beforeU - 2, upos+2);
         } else
             sprintf(cmd, "%s %s", browser_command, url);
+        lwsl_notice("frontend command: %s\n", cmd);
         system(cmd);
     }
 

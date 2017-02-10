@@ -26,7 +26,7 @@ LIBWEBSOCKETS_LIBARG = -lwebsockets
 LDOMTERM = bin/ldomterm$(EXEEXT)
 bin_PROGRAMS = bin/ldomterm
 bin_ldomterm_SOURCES = lws-term/server.c lws-term/utils.c \
-  lws-term/protocol.c lws-term/http.c lws-term/resources.c
+  lws-term/protocol.c lws-term/http.c lws-term/resources.c lws-term/whereami.c
 bin_ldomterm_CFLAGS = -I/usr/include/json-c
 bin_ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil
 endif
