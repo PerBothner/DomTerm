@@ -1,5 +1,7 @@
 dnl Autoconf script for DomTerm
 AC_INIT([DomTerm],[0.50])
+AC_CONFIG_SRCDIR([doc/DomTerm.texi])
+AM_MAINTAINER_MODE([enable])
 
 DOMTERM_VERSION=`<$srcdir/hlib/terminal.js sed -n -e 's/.*this.versionString = "\(.*\)".*$/\1/p'`
 DOMTERM_YEAR="2017"
@@ -12,6 +14,8 @@ AC_OBJEXT
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_SED
+AC_PROG_MKDIR_P
+AC_PROG_LN_S
 
 AC_ARG_WITH(java,
   AS_HELP_STRING(--without-java,Build Java help library))
@@ -37,13 +41,16 @@ AC_ARG_WITH(javafx,
 AC_ARG_WITH(closure_compiler,
   AC_HELP_STRING("--with-closure-compiler=@<:@=compiler.jar@:>@,compress JavaScripr with Closure))
 
-conf_classpath=
-echo host: $host
 pathsep="$PATH_SEPARATOR"
 case ${host} in
   *-*-mingw*|*-*-cygwin*) CLASSPATH_SEPARATOR=";" ;;
   *) CLASSPATH_SEPARATOR="$PATH_SEPARATOR"
 esac
+case "${srcdir}" in
+  ".")  conf_classpath="";;
+  *) conf_classpath="${srcdir}";;
+esac
+
 case ${host} in
   *darwin*)
     JAVA_INCLUDE_SUBDIR=darwin
@@ -126,7 +133,17 @@ then
     fi
   fi
 fi
+
 AM_CONDITIONAL(ENABLE_LD_PRELOAD, test "$enable_ld_preload" = "yes") 
+
+dnl FIXME We might want to figure out datadir_relative by
+dnl decl comparing datadir to bindir or prefix.
+dnl If datadir and prefix set, remove prefix from datadir.
+dnl If bindir is set, use bindir without last component instead of prefix.
+dnl Otherwise default to "share"
+datadir_relative="share"
+
+AC_SUBST(datadir_relative)
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
@@ -140,7 +157,7 @@ AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(with_closure_compiler)
 
-AC_CONFIG_FILES([Makefile qtdomterm/dt_version.h lws-term/version.h])
+AC_CONFIG_FILES([Makefile lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h])
 AC_CONFIG_LINKS(share/domterm-xulapp/application.ini:xulapp/application.ini
                 share/domterm-xulapp/chrome.manifest:xulapp/chrome.manifest
                 share/domterm-xulapp/domterm.xul:xulapp/domterm.xul

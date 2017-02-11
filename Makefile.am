@@ -1,3 +1,5 @@
+DIST_SUBDIRS = lws-term
+SUBDIRS = .
 JAVA_HOME = @JAVA_HOME@
 SED = @SED@
 JAVA = java
@@ -6,6 +8,7 @@ LN_S = ln -s
 JAVA_INCLUDE_SUBDIR = @JAVA_INCLUDE_SUBDIR@
 JAVAC_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVAC)
 JAVA_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVA)
+CLIENT_DATA_DIR = @datadir_relative@/domterm
 
 if ENABLE_PTY
 LIBPTY = libpty@LIBEXT@
@@ -13,8 +16,11 @@ endif
 if WITH_QTWEBENGINE
 QTDOMTERM = bin/qtdomterm
 endif
+# FIXME default should change to share/domterm
+domterm_jar_dir = lib
+
 if WITH_JAVA
-DOMTERM_JAR = lib/domterm.jar
+DOMTERM_JAR = $(domterm_jar_dir)/domterm.jar
 endif
 DT_CFLAGS =
 if ENABLE_LD_PRELOAD
@@ -23,15 +29,10 @@ DT_CFLAGS += -DENABLE_LD_PRELOAD
 endif
 if WITH_LIBWEBSOCKETS
 LIBWEBSOCKETS_LIBARG = -lwebsockets
-LDOMTERM = bin/ldomterm$(EXEEXT)
-bin_PROGRAMS = bin/ldomterm
-bin_ldomterm_SOURCES = lws-term/server.c lws-term/utils.c \
-  lws-term/protocol.c lws-term/http.c lws-term/resources.c lws-term/whereami.c
-bin_ldomterm_CFLAGS = -I/usr/include/json-c
-bin_ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil
+SUBDIRS += lws-term
 endif
 
-all: d/domterm hlib/domterm-all.js $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM)
+all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	javah -d native/pty org.domterm.pty.PTY
@@ -58,16 +59,27 @@ run-pty: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
 
 JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js hlib/wcwidth.js
 
-hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
+HLIB_DATA_FILES = hlib/domterm-client.js \
+  hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
+CLIENT_DATA_FILES = repl-client.html $(HLIB_DATA_FILES)
+
+client-data-links.stamp: $(CLIENT_DATA_DIR)/hlib/domterm-all.js
+	cd $(CLIENT_DATA_DIR); \
+	for file in $(CLIENT_DATA_FILES); do \
+	    $(LN_S) $(abs_srcdir)/$$file $$file; done
+	touch client-data-links.stamp
+
+$(CLIENT_DATA_DIR)/hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
+	$(MKDIR_P) $(CLIENT_DATA_DIR)/hlib
 if WITH_CLOSURE_COMPILER
 # ADVANCED_OPTIMIZATION doesn't quite work, even with closure-externs.js.
 # There are some problem - and qtdomterm doesn't work at all. FIXME
 #	$(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js hlib/closure-externs.js --compilation_level ADVANCED_OPTIMIZATIONS >tmp-domterm-all.js
 #	$(JAVA_WITH_PATH) -jar @with_closure_compiler@ --js $(JS_LIBS) >>tmp-domterm-all.js
-	$(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js $(JS_LIBS) >tmp-domterm-all.js
-	mv tmp-domterm-all.js hlib/domterm-all.js
+	(cd $(srcdir) && $(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js $(JS_LIBS)) >tmp-domterm-all.js
+	mv tmp-domterm-all.js $(CLIENT_DATA_DIR)/hlib/domterm-all.js
 else
-	cat $(JS_LIBS) hlib/terminal.js > hlib/domterm-all.js
+	(cd $(srcdir) && cat $(JS_LIBS) hlib/terminal.js) > $(CLIENT_DATA_DIR)/hlib/domterm-all.js
 endif
 
 EXTRA_CLASSPATH =
@@ -86,9 +98,9 @@ run-chrome: libpty.so $(DOMTERM_JAR) d/domterm
 run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
-clean:
-	-rm -rf org/classes.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h hlib/domterm-all.js lib/*.so
-	-rm -rf lws-term/*.o lws-term/resources.c bin/ldomterm
+clean-am:
+	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h $(CLIENT_DATA_DIR) lib/*.so
+	-rm -rf bin/ldomterm
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
 	-rm -f qtdomterm/data/hlib/domterm-all.js \
@@ -131,23 +143,22 @@ if WITH_JAVAFX
 endif
 endif
 
-org/classes.stamp: $(domterm_jar_sources)
+classes.stamp: $(domterm_jar_sources)
 	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
-	touch org/classes.stamp
+	touch classes.stamp
 
 PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
 
-$(DOMTERM_JAR): org/classes.stamp hlib/domterm-all.js
-	mkdir -p lib tmp-for-jar
+$(DOMTERM_JAR): classes.stamp hlib/domterm-all.js
+	$(MKDIR_P) lib tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_JAVA_WEBSOCKET
 	cd tmp-for-jar && unzip -o ../java_websocket.jar 'org/java_websocket/*.class'
 endif
 	cd tmp-for-jar && \
-	  jar cmf ../domterm-jar-manifest ../$(DOMTERM_JAR) .
+	  jar cmf $(abs_top_srcdir)/domterm-jar-manifest ../$(DOMTERM_JAR) .
 
 MAKEINFO = makeinfo
-srcdir = .
 XSLT = xsltproc
 DOCBOOK_XSL_DIR = /home/bothner/Software/docbook-xsl-1.78.1
 doc/index.html: doc/DomTerm.texi
@@ -222,32 +233,15 @@ bin/qtdomterm: \
   qtdomterm/data/hlib/domterm-default.css
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
 
-lws-term/%.o: $(srcdir)/lws-term/%.c
-	$(CC) -c -g -I/usr/include/json-c $< -o $@
-
-lws-term/repl_client.h: repl-client.h
-
-LWS_RESOURCES = repl-client.html hlib/domterm-all.js hlib/domterm-client.js \
-  hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
-XXD = xxd
-
-lws-term/resources.c: $(LWS_RESOURCES)
-	echo '#include "server.h"' >lws-term/tmp-resources.c
-	for file in $(LWS_RESOURCES); do \
-	  (cd $(srcdir) && $(XXD) -i $$file -) | \
-	    sed -e 's|unsigned int \(.*\) = \(.*\);|#define \1 \2|' \
-	    >>lws-term/tmp-resources.c; \
-	done
-	echo 'struct resource resources[] = {' >>lws-term/tmp-resources.c
-	for file in $(LWS_RESOURCES); do \
-          name=`echo "$$file"|sed -e 's|[-./]|_|g'`; \
-	  echo '    { "'$$file'", '$$name', '$$name'_len },' >>lws-term/tmp-resources.c; \
-	done
-	echo '    { NULL, NULL, 0}' >>lws-term/tmp-resources.c; \
-	echo '};' >>lws-term/tmp-resources.c; \
-	mv lws-term/tmp-resources.c lws-term/resources.c
-
 xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest xulapp/domterm.xul
 xulappprefs_DATA = xulapp/defaults/preferences/prefs.js
 xulappdir = $(datadir)/domterm-xulapp
 xulappprefsdir = $(datadir)/domterm-xulapp/defaults/preferences
+
+install-client-links:
+	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)/hlib
+	cd $(CLIENT_DATA_DIR) \
+	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir)/hlib $(HLIB_DATA_FILES)  \
+	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) repl-client.html
+
+install-data-local: install-client-links
