@@ -60,7 +60,7 @@
         var dt = getDomTermObject();
         dt.updateWindowTitle = function(title) {
             document.title = title;
-            };
+        };
         dt.close = function() { doQuit(); };
         dt._pickFile = function() {
             const nsIFilePicker = Components.interfaces.nsIFilePicker;
