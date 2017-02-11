@@ -35,7 +35,7 @@ endif
 all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) xulapp/domterm.jar $(QTDOMTERM) $(LDOMTERM)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
-	javah -d native/pty org.domterm.pty.PTY
+	javah -cp $(DOMTERM_JAR) -d native/pty org.domterm.pty.PTY
 	touch native/pty/org_domterm_pty_PTY.h
 
 lib/domterm-preloads.so: native/preloads.cc
@@ -46,7 +46,7 @@ PTY_COMMON_PARAMS = -fno-strict-aliasing -fPIC -W -Wall  -Wno-unused -Wno-parent
 native/pty/pty.o native/pty/pty_fork.o: native/pty/org_domterm_pty_PTY.h
 
 .c.o:
-	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -Inative/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) $(DT_CFLAGS) -c $< -o $@
+	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -I$(srcdir)/native/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) $(DT_CFLAGS) -c $< -o $@
 
 libpty@LIBEXT@: native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 	$(CC) $(PTY_COMMON_PARAMS) -shared -o $@ $^
@@ -150,7 +150,7 @@ endif
 endif
 
 classes.stamp: $(domterm_jar_sources)
-	$(JAVAC_WITH_PATH) -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
+	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch classes.stamp
 
 PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
