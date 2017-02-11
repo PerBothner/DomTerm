@@ -294,8 +294,8 @@ public class DomServer extends WebSocketServer {
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { firefoxCommand, "-app",
                                          domtermPath+"/xulapp/application.ini",
-                                         "-dtpath",
-                                         defaultUrl });
+                                         "-wspath",
+                                         "ws://localhost:"+port });
             } else if (runBrowser == 2) { // --chrome
                 String chromeCommand = chromeCommand();
                 String appArg = "--app="+defaultUrl;

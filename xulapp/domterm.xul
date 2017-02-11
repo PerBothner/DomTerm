@@ -49,15 +49,14 @@
       </menu>
     </menupopup>
   </popupset>
-  <browser id="browser" type="content" flex="1" context="mainmenu">
+  <browser id="browser" type="content" src="repl-client.html?wait" flex="1" context="mainmenu">
   </browser>
   <script>
     function init() {
         var cmdLine = window.arguments[0];
         cmdLine = cmdLine.QueryInterface(Components.interfaces.nsICommandLine);
-        var browser = document.getElementById("browser");
-        var domtermPath = cmdLine.handleFlagWithParam("dtpath", false);
-        browser.loadURI(domtermPath);
+        var wspath = cmdLine.handleFlagWithParam("wspath", false);
+        getDomTermWindow().connect(wspath);
         var dt = getDomTermObject();
         dt.updateWindowTitle = function(title) {
             document.title = title;
