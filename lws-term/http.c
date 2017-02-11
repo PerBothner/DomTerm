@@ -1,6 +1,25 @@
 #include "server.h"
 //#include "html.h"
 
+#ifdef RESOURCE_DIR
+static char *resource_path = NULL;
+char *
+get_resource_path()
+{
+  if (resource_path == NULL) {
+      resource_path = RESOURCE_DIR;
+      if (resource_path[0] != '/') {
+          char *cmd_path = get_executable_path();
+          int cmd_dir_length = get_executable_directory_length();
+          char *buf = xmalloc(cmd_dir_length + strlen(resource_path) + 2);
+          sprintf(buf, "%.*s/%s", cmd_dir_length, cmd_path, resource_path);
+          resource_path = buf;
+      }
+  }
+  return resource_path;
+}
+#endif
+
 const char * get_mimetype(const char *file)
 {
         int n = strlen(file);
@@ -129,18 +148,13 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 goto try_to_reuse;
             }
 
-            if (strncmp((const char *) in, "/", 1)) {
-                lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
-                goto try_to_reuse;
-            }
-
             const char* fname  = in;
             if (fname == NULL || strcmp(fname, "/") == 0)
                 fname = "/repl-client.html";
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)
               content_type = "text/html";
-            //const char* resource_path = "/home/bothner/DomTerm";
+#if COMPILED_IN_RESOURCES
             struct resource *resource = &resources[0];
             while (resource->name != NULL && strcmp(resource->name, fname+1) != 0)
                 resource++;
@@ -163,7 +177,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     return 1;
 
             }
-#if 0
+#else
+            const char* resource_path = get_resource_path();
             size_t flen = strlen(resource_path) + strlen(fname) + 1;
             char *buf = malloc(flen);
             sprintf(buf, "%s%s", resource_path, fname);
@@ -172,24 +187,12 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             if (n < 0 || (n > 0 && lws_http_transaction_completed(wsi)))
               return 1;
 #endif
+            break;
 #if 0
-            } else {
-                if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end))
-                    return 1;
-                if (lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, (const unsigned char *) content_type, 9, &p, end))
-                    return 1;
-                if (lws_add_http_header_content_length(wsi, (unsigned long) index_html_len, &p, end))
-                    return 1;
-                if (lws_finalize_http_header(wsi, &p, end))
-                    return 1;
-                if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
-                    return 1;
-
-                if (lws_write_http(wsi, index_html, index_html_len) < 0)
-                    return 1;
-            }
-#endif
+            fprintf(stderr, "before  lws_return_http_status %d\n", HTTP_STATUS_NOT_FOUND);
+            lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
             goto try_to_reuse;
+#endif
 
         case LWS_CALLBACK_OPENSSL_PERFORM_CLIENT_CERT_VERIFICATION:
             if (!len || (SSL_get_verify_result((SSL *) in) != X509_V_OK)) {

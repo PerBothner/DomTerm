@@ -95,9 +95,14 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 extern int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
+extern int get_executable_directory_length();
+extern  char* get_executable_path();
+
+#if COMPILED_IN_RESOURCES
 struct resource {
   char *name;
   unsigned char *data;
   unsigned int length;
 };
 extern struct resource resources[];
+#endif

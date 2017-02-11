@@ -41,6 +41,8 @@ AC_ARG_WITH(javafx,
 AC_ARG_WITH(closure_compiler,
   AC_HELP_STRING("--with-closure-compiler=@<:@=compiler.jar@:>@,compress JavaScripr with Closure))
 
+AC_ARG_ENABLE(compiled-in-resources)
+
 pathsep="$PATH_SEPARATOR"
 case ${host} in
   *-*-mingw*|*-*-cygwin*) CLASSPATH_SEPARATOR=";" ;;
@@ -134,7 +136,9 @@ then
   fi
 fi
 
-AM_CONDITIONAL(ENABLE_LD_PRELOAD, test "$enable_ld_preload" = "yes") 
+AM_CONDITIONAL(ENABLE_LD_PRELOAD, test "$enable_ld_preload" = "yes")
+AM_CONDITIONAL(ENABLE_COMPILED_IN_RESOURCES,
+    test "$enable_compiled_in_resources" = "yes")
 
 dnl FIXME We might want to figure out datadir_relative by
 dnl decl comparing datadir to bindir or prefix.

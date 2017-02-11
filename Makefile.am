@@ -59,9 +59,10 @@ run-pty: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
 
 JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js hlib/wcwidth.js
 
-HLIB_DATA_FILES = hlib/domterm-client.js \
+HLIB_FIXED_FILES = hlib/domterm-client.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
-CLIENT_DATA_FILES = repl-client.html $(HLIB_DATA_FILES)
+CLIENT_DATA_FILES = repl-client.html $(HLIB_FIXED_FILES)
+HLIB_DATA_FILES = $(HLIB_FIXED_FILES) hlib/domterm-all.js
 
 client-data-links.stamp: $(CLIENT_DATA_DIR)/hlib/domterm-all.js
 	cd $(CLIENT_DATA_DIR); \
@@ -172,7 +173,8 @@ DOC_IMAGES = \
   doc/images/emacs-in-firefox-1.png
 
 doc/DomTerm.xml: doc/DomTerm.texi
-	$(MAKEINFO) -I=doc --docbook doc/DomTerm.texi -o - | \
+	$(MKDIR_P) doc
+	$(MAKEINFO) -I=doc --docbook $< -o - | \
 	$(SED) \
 	-e 's|_002d|-|g' \
 	-e 's|<emphasis></emphasis>||' \
@@ -181,6 +183,7 @@ doc/DomTerm.xml: doc/DomTerm.texi
 	> doc/DomTerm.xml
 
 web/index.html: doc/DomTerm.xml Makefile
+	$(MKDIR_P) web/images
 	$(XSLT) --path $(DOCBOOK_XSL_DIR)/html \
 	  --output web/  \
 	  --stringparam root.filename toc \
@@ -199,12 +202,11 @@ web/index.html: doc/DomTerm.xml Makefile
 	  --stringparam toc.section.depth 3 \
 	  --stringparam chunk.separate.lots 1 \
 	  --stringparam chunk.tocs.and.lots 1 \
-	  doc/style/domterm.xsl doc/DomTerm.xml
+	  $(srcdir)/doc/style/domterm.xsl doc/DomTerm.xml
 	$(SED) -s 's|<a name=".*"></a>Why|Why|' <web/index.html >web/tmp-index.html
 	mv web/tmp-index.html web/index.html
-	patch --no-backup-if-mismatch -p0 <doc/webdoc.patch
-	mkdir -p web/images
-	cp $(DOC_IMAGES) web/images
+	patch --no-backup-if-mismatch -p0 <$(srcdir)/doc/webdoc.patch
+	cd $(srcdir) && cp $(DOC_IMAGES) $(abs_builddir)/web/images
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
 upload-web: web/index.html

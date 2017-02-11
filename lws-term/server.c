@@ -1,5 +1,4 @@
 #include "server.h"
-#include "whereami.h"
 
 #if 1
 #include "version.h"
@@ -246,22 +245,19 @@ firefox_command()
 char *
 firefox_xul_application()
 {
-    char* path = NULL;
+    char* path = get_executable_path();
     char *fcommand = firefox_command();
-    int length, dirname_length;
+    int dirname_length = get_executable_directory_length();
     int i;
-
-    length = wai_getExecutablePath(NULL, 0, &dirname_length);
-    char *app_path = "/share/domterm-xulapp/application.ini";
-    int app_path_length = strlen(app_path);
-    path = (char*)xmalloc(length + app_path_length + 1);
-    wai_getExecutablePath(path, length, &dirname_length);
-    path[length] = '\0';
 
     if (dirname_length > 4 && memcmp(path+dirname_length-4, "/bin", 4)==0)
       dirname_length -= 4;
-    strcpy(path+dirname_length, app_path);
-    return path;
+
+    char *app_path = "/share/domterm-xulapp/application.ini";
+    int app_path_length = strlen(app_path);
+    char *buf = (char*)xmalloc(dirname_length + app_path_length + 1);
+    sprintf(buf, "%.*s%s", dirname_length, path, app_path);
+    return buf;
 }
 
 char *

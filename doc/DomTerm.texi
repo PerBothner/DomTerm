@@ -294,6 +294,12 @@ Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compile
 Using the ``advanced optimizations'' would reduce the JavaScript file
 siew further, but causes some not-yet-resolved problems.)
 
+@item --enable-compiled-in-resources
+This feature causes the html, JavaScript and css files needed by DomTerm
+to be compiled into the executable.
+Otherwise, they are served from the file system, which saves duplication.
+It also work best for the Firefox-XUL application.
+
 @item --enable-ld-preload
 This is an experimental feature to preload a library to interpose
 some system functions.  Most importantly it overrides @code{tcgetattr}

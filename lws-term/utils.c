@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <signal.h>
+#include "whereami.h"
 
 void *
 xmalloc(size_t size) {
@@ -88,4 +89,27 @@ base64_encode(const unsigned char *buffer, size_t length) {
     *dst = '\0';
 
     return ret;
+}
+
+static char *executable_path = NULL;
+static int dirname_length;
+
+char *
+get_executable_path()
+{
+    if (executable_path == NULL) {
+        int length = wai_getExecutablePath(NULL, 0, &dirname_length);
+        executable_path = (char*) xmalloc(length + 1);
+        wai_getExecutablePath(executable_path, length, &dirname_length);
+        executable_path[length] = '\0';
+    }
+    return executable_path;
+}
+
+int
+get_executable_directory_length()
+{
+    if (executable_path == NULL)
+        (void) get_executable_path();
+    return dirname_length;
 }
