@@ -309,7 +309,8 @@ public class DomServer extends WebSocketServer {
                                          "--connect", "localhost:"+port });
                 process.waitFor();
             } else {
-                System.out.println("DomTerm server started on port: "+port);
+                System.out.println("DomTerm server started on port: "+port+".");
+                System.out.println("Point your browser at "+defaultUrl);
                 BufferedReader reader =
                     new BufferedReader(new InputStreamReader(System.in));
                 System.out.print("Please press a key to stop the server.");
