@@ -1,8 +1,14 @@
 all-am: ldomterm$(EXEEXT) ../bin/ldomterm$(EXEEXT)
 
+# Note we use a hard link.  This is so when we execute ../bin/ldomterm,
+# and then try figure out the executable's directory (so we can look for
+# resource files) we get ../bin and not the lws-term.
+# (This is to make execute-in-place and execute-after-install be similar.)
+LN_H = ln
 ../bin/ldomterm$(EXEEXT): ldomterm$(EXEEXT)
 	cd .. && $(MKDIR_P) bin
-	cd ../bin && $(LN_S) ../lws-term/ldomterm$(EXEEXT) ldomterm$(EXEEXT)
+	@rm -f ../bin/ldomterm$(EXEEXT)
+	cd ../bin && $(LN_H) ../lws-term/ldomterm$(EXEEXT) ldomterm$(EXEEXT)
 
 LIBWEBSOCKETS_LIBARG = -lwebsockets
 bin_PROGRAMS = ldomterm
