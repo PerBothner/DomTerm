@@ -1,0 +1,48 @@
+(UTF-8.txt from https://github.com/poderosaproject/cjksample)
+
+UTF-8 test
+
+Border lines must be aligned.
+0        1         2         3         4         5         6         7         8
+1--------0---------0---------0---------0---------0---------0---------0---------0
+┌───┬───┰───┐
+│ ABCD │ ABCD ┃ ABCD │
+├───┼───╂───┤
+│ 漢字 │ 漢字 ┃ 漢字 │
+┝━━━┿━━━╋━━━┥
+│ ABCD │ ABCD ┃ ABCD │
+└───┴───┸───┘
+┏━━━┳━━━┯━━━┓
+┃ ABCD ┃ ABCD │ ABCD ┃
+┣━━━╋━━━┿━━━┫
+┃ 漢字 ┃ 漢字 │ 漢字 ┃
+┠───╂───┼───┨
+┃ ABCD ┃ ABCD │ ABCD ┃
+┗━━━┻━━━┷━━━┛
+
+Vertical line (|) must be aligned over two lines.
+|      | Blank with ASCII space x 6.
+|　　　| Blank with U+3000 x 3.
+
+Right 'X' must be placed at right edge on 80 column console.
+0        1         2         3         4         5         6         7         8
+1--------0---------0---------0---------0---------0---------0---------0---------0
+                                                                               X
+
+Right '字' must be placed at the top of the next line on 80 column console.
+                                                                             漢字
+
+UTF-8 kanji sample:
+哀公問社於宰我宰我對曰夏后氏以松殷人以柏周人以栗曰使人戰栗子聞之曰成事不說遂事不諫既往不咎
+
+On 80 column console, above line must be displayed like:
+哀公問社於宰我宰我對曰夏后氏以松殷人以柏周人以栗曰使人戰栗子聞之曰成事不說遂事不
+諫既往不咎
+
+UTF-8 kanji-ascii sample:
+ABC哀公問社於宰我DEF宰我對曰GHI夏后氏以松殷人以柏周人以栗JKL曰MNO使人戰栗PQR子聞之曰YZ成事不說遂事不諫既往不咎
+
+On 80 column console, above line must be displayed like:
+ABC哀公問社於宰我DEF宰我對曰GHI夏后氏以松殷人以柏周人以栗JKL曰MNO使人戰栗PQR子聞
+之曰YZ成事不說遂事不諫既往不咎
+
