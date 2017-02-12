@@ -257,4 +257,6 @@ xulappprefsdir = $(datadir)/domterm/defaults/preferences
 #	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir)/hlib $(HLIB_DATA_FILES)  \
 #	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) repl-client.html
 
-#install-data-local: install-client-links
+install-data-local:
+	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
+	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
