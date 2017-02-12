@@ -187,12 +187,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             if (n < 0 || (n > 0 && lws_http_transaction_completed(wsi)))
               return 1;
 #endif
-            break;
-#if 0
-            fprintf(stderr, "before  lws_return_http_status %d\n", HTTP_STATUS_NOT_FOUND);
             lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
             goto try_to_reuse;
-#endif
 
         case LWS_CALLBACK_OPENSSL_PERFORM_CLIENT_CERT_VERIFICATION:
             if (!len || (SSL_get_verify_result((SSL *) in) != X509_V_OK)) {
