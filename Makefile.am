@@ -17,8 +17,7 @@ endif
 if WITH_QTWEBENGINE
 QTDOMTERM = bin/qtdomterm
 endif
-# FIXME default should change to share/domterm
-domterm_jar_dir = lib
+domterm_jar_dir = share/domterm
 
 if WITH_JAVA
 DOMTERM_JAR = $(domterm_jar_dir)/domterm.jar
@@ -159,7 +158,7 @@ classes.stamp: $(domterm_jar_sources)
 PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
 
 $(DOMTERM_JAR): classes.stamp hlib/domterm-all.js
-	$(MKDIR_P) lib tmp-for-jar
+	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 	cp xulapp/domterm.xul tmp-for-jar/
 if WITH_JAVA_WEBSOCKET
