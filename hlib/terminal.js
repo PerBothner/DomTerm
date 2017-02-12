@@ -140,7 +140,7 @@ function DomTerm(name, topNode) {
 
     this.verbosity = 0;
 
-    this.versionString = "0.50";
+    this.versionString = "0.70";
     this.versionInfo = "version="+this.versionString;
 
     // Use the doLineEdit function when in lineEditing mode.
@@ -4490,9 +4490,15 @@ DomTerm.prototype.insertString = function(str) {
         dt._scrollIfNeeded();
         dt._restoreInputLine();
     };
-    if (this._updateTimer)
-        cancelAnimationFrame(this._updateTimer);
-    this._updateTimer = requestAnimationFrame(update);
+    if (window.requestAnimationFrame) {
+        if (this._updateTimer)
+            cancelAnimationFrame(this._updateTimer);
+        this._updateTimer = requestAnimationFrame(update);
+    } else {
+        if (this._updateTimer)
+            clearTimeout(this._updateTimer);
+        this._updateTimer = setTimeout(update, 100);
+    }
 };
 
 DomTerm.prototype._scrollIfNeeded = function() {
