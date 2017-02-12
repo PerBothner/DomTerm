@@ -253,7 +253,7 @@ firefox_xul_application()
     if (dirname_length > 4 && memcmp(path+dirname_length-4, "/bin", 4)==0)
       dirname_length -= 4;
 
-    char *app_path = "/share/domterm-xulapp/application.ini";
+    char *app_path = "/share/domterm/application.ini";
     int app_path_length = strlen(app_path);
     char *buf = (char*)xmalloc(dirname_length + app_path_length + 1);
     sprintf(buf, "%.*s%s", dirname_length, path, app_path);
@@ -268,7 +268,7 @@ firefox_xul_command(char* app_path)
     int allocated_app_path = app_path == NULL;
     if (allocated_app_path)
         app_path = firefox_xul_application();
-    char *format = "%s -app %s -dtpath %%U &";
+    char *format = "%s -app %s -wsprotocol domterm -wspath ws://localhost:%%W &";
     char *buf = xmalloc(strlen(fcommand) + strlen(app_path) + strlen(format));
     sprintf(buf, format, fcommand, app_path);
     if (allocated_app_path)
@@ -547,12 +547,19 @@ main(int argc, char **argv) {
         size_t clen = strlen(browser_command);
         char *cmd = xmalloc(clen + strlen(url) + 10);
         char *upos = strstr(browser_command, "%U");
+        char *wpos;
         if (upos) {
             size_t beforeU = upos - browser_command;
             sprintf(cmd, "%.*s%s%.*s",
                     beforeU, browser_command,
                     url,
                     clen - beforeU - 2, upos+2);
+        } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
+            size_t beforeW = wpos - browser_command;
+            sprintf(cmd, "%.*s%d%.*s",
+                    beforeW, browser_command,
+                    info.port,
+                    clen - beforeW - 2, wpos+2);
         } else
             sprintf(cmd, "%s %s", browser_command, url);
         lwsl_notice("frontend command: %s\n", cmd);

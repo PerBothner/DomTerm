@@ -293,7 +293,7 @@ public class DomServer extends WebSocketServer {
                 String firefoxCommand = firefoxCommand();
                 Process process = Runtime.getRuntime()
                     .exec(new String[] { firefoxCommand, "-app",
-                                         domtermPath+"/xulapp/application.ini",
+                                         domtermPath+"/share/domterm/application.ini",
                                          "-wspath",
                                          "ws://localhost:"+port });
             } else if (runBrowser == 2) { // --chrome

@@ -56,7 +56,10 @@
         var cmdLine = window.arguments[0];
         cmdLine = cmdLine.QueryInterface(Components.interfaces.nsICommandLine);
         var wspath = cmdLine.handleFlagWithParam("wspath", false);
-        getDomTermWindow().connect(wspath);
+        var wsprotocol = cmdLine.handleFlagWithParam("wsprotocol", false);
+        if (! wsprotocol)
+            wsprotocol = [];
+        getDomTermWindow().connect(wspath, wsprotocol);
         var dt = getDomTermObject();
         dt.updateWindowTitle = function(title) {
             document.title = title;

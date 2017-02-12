@@ -1,11 +1,7 @@
-function connect(wspath) {
+function connect(wspath, wsprotocol) {
     var wt = new DomTerm("domterm");
     window.domterm1 = wt;
-    // A kludge - the libwebsockets server requires a protocol "domterm",
-    // but the Java-WebServer server doesn't support that.  FIXME
-    var wsocket = location.hash.indexOf("ws=same") >= 0
-        ? new WebSocket(wspath, "domterm")
-        : new WebSocket(wspath);
+    var wsocket = new WebSocket(wspath, wsprotocol);
     wsocket.binaryType = "arraybuffer";
     wt.processInputCharacters = function(str) { wsocket.send(str); };
     wsocket.onmessage = function(evt) {
@@ -21,17 +17,23 @@ function connect(wspath) {
 }
 
 function loadHandler(event) {
-    var query = location.search;
-    var ws = location.hash.match(/ws=([^&]*)/);
-    if (ws) {
-        var path = ws[1];
-        if (path == "same")
-            url = (location.protocol == "https:" ? "wss:" : "ws:")
-            + "//localhost:" + location.port + "/replsrc";
-        else
-            url = "ws:"+path;
-        connect(url);
-    } else if (query.search(/wait/) < 0)
-        connect("ws://localhost:8025/websocket/replsrv");
+    if (location.search.search(/wait/) < 0) {
+        var ws = location.hash.match(/ws=([^,&]*)/);
+        var url;
+        if (ws) {
+            var path = ws[1];
+            if (path == "same")
+                url = (location.protocol == "https:" ? "wss:" : "ws:")
+                + "//localhost:" + location.port + "/replsrc";
+            else
+                url = "ws:"+path;
+        } else
+            url = "ws://localhost:8025/websocket/replsrv";
+        // A kludge - the libwebsockets server requires a protocol "domterm",
+        // but the Java-WebServer server doesn't support that.  FIXME
+        var wsprotocol = location.hash.indexOf("ws=same") >= 0
+            ? "domterm" : [];
+        connect(url, wsprotocol);
+    }
 }
 window.addEventListener("load", loadHandler, false);

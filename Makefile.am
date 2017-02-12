@@ -246,7 +246,7 @@ bin/qtdomterm: \
   qtdomterm/data/hlib/domterm-default.css
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
 
-xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest xulapp/domterm.xul
+xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest
 xulappprefs_DATA = xulapp/defaults/preferences/prefs.js
 xulappdir = $(datadir)/domterm
 xulappprefsdir = $(datadir)/domterm/defaults/preferences

@@ -14,7 +14,7 @@ domterm.jar
 xulapp/domterm-chrome.jar
 native/pty/org_domterm_pty_PTY.h
 hlib/domterm-all.js
-org/classes.stamp
+classes.stamp
 tmp-for-xul
 tmp-for-jar
 tmp-repl.in
@@ -34,7 +34,9 @@ web/images/*.png
 autom4te.cache/*
 bin/ldomterm
 bin/qtdomterm
+lws-term/ldomterm
 lws-term/resources.c
+lws-term/version.h
 lws-term/tmp-resources
 qtdomterm/dt_version.h
 qtdomterm/moc_*.cpp
