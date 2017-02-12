@@ -9,7 +9,8 @@ bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.c utils.c protocol.c http.c whereami.c
 ldomterm_CFLAGS = -I/usr/include/json-c -I$(srcdir)/lws-term
 ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil
-CLIENT_DATA_DIR = @datadir_relative@/domterm
+#CLIENT_DATA_DIR = @datadir_relative@/domterm
+CLIENT_DATA_DIR = .
 LWS_RESOURCES = repl-client.html hlib/domterm-all.js hlib/domterm-client.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
 if ENABLE_COMPILED_IN_RESOURCES

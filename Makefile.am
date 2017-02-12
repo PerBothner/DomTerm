@@ -8,7 +8,8 @@ LN_S = ln -s
 JAVA_INCLUDE_SUBDIR = @JAVA_INCLUDE_SUBDIR@
 JAVAC_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVAC)
 JAVA_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVA)
-CLIENT_DATA_DIR = @datadir_relative@/domterm
+CLIENT_DATA_DIR = .
+#CLIENT_DATA_DIR = @datadir_relative@/domterm
 
 if ENABLE_PTY
 LIBPTY = libpty@LIBEXT@
@@ -65,9 +66,11 @@ CLIENT_DATA_FILES = repl-client.html $(HLIB_FIXED_FILES)
 HLIB_DATA_FILES = $(HLIB_FIXED_FILES) hlib/domterm-all.js
 
 client-data-links.stamp: $(CLIENT_DATA_DIR)/hlib/domterm-all.js
-	cd $(CLIENT_DATA_DIR); \
-	for file in $(CLIENT_DATA_FILES); do \
-	    $(LN_S) $(abs_srcdir)/$$file $$file; done
+	if test "$(srcdir)" != "."; then \
+	  cd $(CLIENT_DATA_DIR); \
+	  for file in $(CLIENT_DATA_FILES); do \
+	      $(LN_S) $(abs_srcdir)/$$file $$file; done; \
+	fi
 	touch client-data-links.stamp
 
 $(CLIENT_DATA_DIR)/hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
@@ -105,7 +108,7 @@ run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean-am:
-	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar $(CLIENT_DATA_DIR) lib/*.so
+	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar lib/*.so
 	-rm -rf bin/ldomterm
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
@@ -246,13 +249,13 @@ bin/qtdomterm: \
 
 xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest xulapp/domterm.xul
 xulappprefs_DATA = xulapp/defaults/preferences/prefs.js
-xulappdir = $(datadir)/domterm-xulapp
-xulappprefsdir = $(datadir)/domterm-xulapp/defaults/preferences
+xulappdir = $(datadir)/domterm
+xulappprefsdir = $(datadir)/domterm/defaults/preferences
 
-install-client-links:
-	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)/hlib
-	cd $(CLIENT_DATA_DIR) \
-	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir)/hlib $(HLIB_DATA_FILES)  \
-	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) repl-client.html
+#install-client-links:
+#	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)/hlib
+#	cd $(CLIENT_DATA_DIR) \
+#	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir)/hlib $(HLIB_DATA_FILES)  \
+#	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) repl-client.html
 
-install-data-local: install-client-links
+#install-data-local: install-client-links
