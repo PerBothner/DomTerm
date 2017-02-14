@@ -22,9 +22,9 @@ char *(default_argv[]) = DEFAULT_ARGV;
 
 // websocket protocols
 static const struct lws_protocols protocols[] = {
-        {"http-only", callback_http, 0,                         0},
-        {"domterm",       callback_tty,  sizeof(struct tty_client), 0},
-        {NULL, NULL,                 0,                         0}
+        {"http-only", callback_http, 0,                          0},
+        {"domterm",   callback_tty,  sizeof(struct tty_client),  0},
+        {NULL,        NULL,          0,                          0}
 };
 
 // websocket extensions
@@ -241,9 +241,8 @@ firefox_command()
     return firefoxCommand;
 }
 
-/** Try to find the "application.ini" file for the DomTerm XUL application. */
 char *
-firefox_xul_application()
+get_bin_relative_path(const char* app_path)
 {
     char* path = get_executable_path();
     char *fcommand = firefox_command();
@@ -253,11 +252,23 @@ firefox_xul_application()
     if (dirname_length > 4 && memcmp(path+dirname_length-4, "/bin", 4)==0)
       dirname_length -= 4;
 
-    char *app_path = "/share/domterm/application.ini";
     int app_path_length = strlen(app_path);
     char *buf = (char*)xmalloc(dirname_length + app_path_length + 1);
     sprintf(buf, "%.*s%s", dirname_length, path, app_path);
     return buf;
+}
+
+char *
+get_domterm_jar_path()
+{
+    return get_bin_relative_path("/share/domterm/domterm.jar");
+}
+
+/** Try to find the "application.ini" file for the DomTerm XUL application. */
+char *
+firefox_xul_application()
+{
+    return get_bin_relative_path("/share/domterm/application.ini");
 }
 
 char *
@@ -514,6 +525,8 @@ main(int argc, char **argv) {
         lwsl_err("libwebsockets init failed\n");
         return 1;
     }
+
+    initialize_resource_map(context, get_domterm_jar_path());
 
     lwsl_notice("TTY configuration:\n");
     if (server->credential != NULL)

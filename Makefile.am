@@ -28,7 +28,6 @@ PRELOADS_SO = lib/domterm-preloads.so
 DT_CFLAGS += -DENABLE_LD_PRELOAD
 endif
 if WITH_LIBWEBSOCKETS
-LIBWEBSOCKETS_LIBARG = -lwebsockets
 SUBDIRS += lws-term
 endif
 
@@ -250,12 +249,6 @@ xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest
 xulappprefs_DATA = xulapp/defaults/preferences/prefs.js
 xulappdir = $(datadir)/domterm
 xulappprefsdir = $(datadir)/domterm/defaults/preferences
-
-#install-client-links:
-#	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)/hlib
-#	cd $(CLIENT_DATA_DIR) \
-#	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir)/hlib $(HLIB_DATA_FILES)  \
-#	  && $(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) repl-client.html
 
 install-data-local:
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)

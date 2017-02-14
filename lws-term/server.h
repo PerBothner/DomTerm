@@ -92,10 +92,14 @@ struct tty_server {
 extern int
 callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
+extern void
+initialize_resource_map(struct lws_context *, const char*);
+
 extern int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
 extern int get_executable_directory_length();
+extern char *get_bin_relative_path(const char* app_path);
 extern  char* get_executable_path();
 
 #if COMPILED_IN_RESOURCES

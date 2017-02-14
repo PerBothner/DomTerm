@@ -21,7 +21,7 @@ AC_ARG_WITH(java,
   AS_HELP_STRING(--without-java,Build Java help library))
 
 AC_ARG_WITH(java_websocket,
-  AS_HELP_STRING(--with-java_websocket@<:@=/path/to/java_websocket.jar@:>@,Build server using Java-WebServer (default true)))
+  AS_HELP_STRING(--with-java_websocket@<:@=/path/to/java_websocket.jar@:>@,Build server using Java-WebServer))
 
 AC_ARG_WITH(libwebsockets,
   AS_HELP_STRING(--with-websockets,Build server using libwebsockets))
@@ -75,7 +75,7 @@ AC_CHECK_PROGS(QMAKE, qmake-qt5 qmake, qmake)
 
 AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 
-AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" = "yes")
+AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
 
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
 
@@ -95,7 +95,8 @@ case "${with_java_websocket}" in
     conf_classpath=${with_java_websocket}${CLASSPATH_SEPARATOR}$conf_classpath
     ;;
 esac
-AM_CONDITIONAL(WITH_JAVA_WEBSOCKET, test "$with_java_websocket" != "no")
+AM_CONDITIONAL(WITH_JAVA_WEBSOCKET,
+  test "$with_java_websocket" != "no" -a "$with_java_websocket" != "")
 
 case ${with_javafx} in
   "yes" | "no" | "")
@@ -149,6 +150,17 @@ datadir_relative="share"
 
 AC_SUBST(datadir_relative)
 
+case "${with_libwebsockets}" in
+  "yes" | "no" | "")
+    LIBWEBSOCKETS_LIB=-lwebsockets
+    LIBWEBSOCKETS_INCLUDES=
+    ;;
+  *)
+    LIBWEBSOCKETS_LIB="${with_libwebsockets}/lib"
+    LIBWEBSOCKETS_INCLUDES="${with_libwebsockets}/include"
+    ;;
+esac
+
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(LIBEXT)
@@ -157,6 +169,8 @@ AC_SUBST(CLASSPATH_SEPARATOR)
 AC_SUBST(conf_classpath)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
+AC_SUBST(LIBWEBSOCKETS_LIB)
+AC_SUBST(LIBWEBSOCKETS_INCLUDES)
 AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(with_closure_compiler)
