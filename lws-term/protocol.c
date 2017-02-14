@@ -121,7 +121,12 @@ thread_run_command(void *args) {
                 exit(1);
             }
             char* dinit = "DOMTERM=";
-            const char *lstr = ";libwebsockets";
+#ifdef LWS_LIBRARY_VERSION
+#define SHOW_LWS_LIBRARY_VERSION "=" LWS_LIBRARY_VERSION
+#else
+#define SHOW_LWS_LIBRARY_VERSION ""
+#endif
+            const char *lstr = ";libwebsockets" SHOW_LWS_LIBRARY_VERSION;
             char* pinit = ";tty=";
             char* ttyName = ttyname(0);
             size_t dlen = strlen(dinit);
