@@ -130,7 +130,7 @@ public class PTY {
 
     private static native void setWindowSize(int fdm, int nrows, int ncols, int pixh, int pixw);
 
-    static { System.loadLibrary("pty"); }
+    static { System.loadLibrary("domterm-pty"); }
 
     public static void checkLoaded() { }
 }

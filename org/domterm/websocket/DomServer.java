@@ -241,6 +241,8 @@ public class DomServer extends WebSocketServer {
         char mode = ' ';
         String browserCommand = null;
         domtermPath = System.getProperty("java.library.path");
+        if (domtermPath != null && domtermPath.endsWith("/lib"))
+            domtermPath = domtermPath.substring(0, domtermPath.length()-4);
         //int port = 8887; // 843 flash policy port
         int port = -1;
         int i = 0;

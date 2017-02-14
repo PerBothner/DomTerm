@@ -36,10 +36,10 @@ case "$1" in
   ;;
   "--javafx")
   shift
-  exec $JAVA -Djava.library.path="$DOMTERM_DIR" -cp $DOMTERM_DIR/domterm.jar:$CLASSPATH org.domterm.javafx.Main "$@"
+  exec $JAVA -Djava.library.path="$DOMTERM_DIR"/lib -cp $DOMTERM_DIR/share/domterm.jar:$DOMTERM_DIR/share/wsdomterm.jar:$CLASSPATH org.domterm.javafx.Main "$@"
   ;;
   *)
   EXTRA_ARG="--firefox"
   ;;
 esac
-exec $JAVA -cp "$DOMTERM_DIR/share/domterm/domterm.jar:$CLASSPATH" -Djava.library.path="$DOMTERM_DIR" org.domterm.websocket.DomServer $EXTRA_ARG "$@"
+exec $JAVA -cp "$DOMTERM_DIR/share/domterm/domterm.jar:$DOMTERM_DIR/share/domterm/wsdomterm.jar:$CLASSPATH" -Djava.library.path="$DOMTERM_DIR"/lib org.domterm.websocket.DomServer $EXTRA_ARG "$@"

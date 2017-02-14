@@ -191,8 +191,6 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                     rsize = uncompressedSize;
                     char *data = xmalloc(rsize);
                     mem->data = data;
-                    printf("- before reading data size:%d index:%d\n", (int) uncompressedSize, j);
-
                     if (jzReadData(&junzip_handler.handle,
                                    &entry->info, data) != Z_OK) {
                       fprintf(stderr, "Couldn't read file data!");
@@ -275,7 +273,6 @@ initialize_resource_map(struct lws_context *context,
         exit(-1);
     }
     off_t jarsize = statbuf.st_size;
-    fprintf(stderr, "initialize_http domterm:%s size:%d\n", domterm_jar_path, jarsize);
     void *jardata = mmap(NULL, jarsize, PROT_READ, MAP_PRIVATE, fd, 0);
     if (jardata == MAP_FAILED) {
         fprintf(stderr, "domterm: failed to map '%s'\n", domterm_jar_path);

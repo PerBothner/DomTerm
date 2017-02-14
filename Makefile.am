@@ -12,7 +12,7 @@ CLIENT_DATA_DIR = .
 #CLIENT_DATA_DIR = @datadir_relative@/domterm
 
 if ENABLE_PTY
-LIBPTY = libpty@LIBEXT@
+LIBPTY = lib/libdomterm-pty@LIBEXT@
 endif
 if WITH_QTWEBENGINE
 QTDOMTERM = bin/qtdomterm
@@ -21,6 +21,9 @@ domterm_jar_dir = share/domterm
 
 if WITH_JAVA
 DOMTERM_JAR = $(domterm_jar_dir)/domterm.jar
+if WITH_JAVA_WEBSOCKET
+WSDOMTERM_JAR = $(domterm_jar_dir)/wsdomterm.jar
+endif
 endif
 DT_CFLAGS =
 if ENABLE_LD_PRELOAD
@@ -31,7 +34,19 @@ if WITH_LIBWEBSOCKETS
 SUBDIRS += lws-term
 endif
 
-all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) xulapp/domterm.jar $(QTDOMTERM) $(LDOMTERM)
+all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM) bin/domterm
+
+bin/domterm:
+	@rm -f bin/domterm
+if WITH_LIBWEBSOCKETS
+	cd bin && $(LN_S) ldomterm domterm
+else
+if WITH_QTWEBENGINE
+	cd bin && $(LN_S) qtdomterm domterm
+else
+	cd bin && $(LN_S) jdomterm domterm
+endif
+endif
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	javah -cp $(DOMTERM_JAR) -d native/pty org.domterm.pty.PTY
@@ -47,7 +62,7 @@ native/pty/pty.o native/pty/pty_fork.o: native/pty/org_domterm_pty_PTY.h
 .c.o:
 	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -I$(srcdir)/native/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) $(DT_CFLAGS) -c $< -o $@
 
-libpty@LIBEXT@: native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
+$(LIBPTY): native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 	$(CC) $(PTY_COMMON_PARAMS) -shared -o $@ $^
 
 d/domterm: d/domterm.ti
@@ -96,18 +111,18 @@ run-xul: xulapp/domterm.jar
 
 # Start up DomTerm as a Firefox/XUL-based terminal emulator.
 # (Like run-xul, but automatically runs server and connects to it.)
-run-firefox: libpty@LIBEXT@ domterm.jar d/domterm xulapp/domterm.jar
+run-firefox: $(LIBPTY) domterm.jar d/domterm xulapp/domterm.jar
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer --firefox $(SERVER_ARGS)
 
-run-chrome: libpty.so $(DOMTERM_JAR) d/domterm
+run-chrome: $(LIBPTY) $(DOMTERM_JAR) d/domterm
 	$(JAVA) -cp $(EXTRA_CLASSPATH):$(DOMTERM_JAR) -Djava.library.path=`pwd` org.domterm.websocket.DomServer --chrome $(SERVER_ARGS)
 
 run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean-am:
-	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h xulapp/domterm.jar lib/*.so
-	-rm -rf bin/ldomterm
+	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*.so
+	-rm -rf bin/ldomterm bin/domterm
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
 	-rm -f qtdomterm/data/hlib/domterm-all.js \
@@ -137,15 +152,16 @@ domterm_jar_sources = \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
   org/domterm/util/Utf8WriterOutputStream.java
+wsdomterm_jar_sources =
 if WITH_JAVA_WEBSOCKET
-  domterm_jar_sources += $(websocket_sources)
+  wsdomterm_jar_sources += $(websocket_sources)
 endif
 if ENABLE_PTY
   domterm_jar_sources += $(pty_sources)
 endif
 if WITH_JAVAFX
   domterm_jar_sources += $(javafx_sources)
-if WITH_JAVAFX
+if ENABLE_PTY
   domterm_jar_sources += $(javafx_pty_sources)
 endif
 endif
@@ -154,20 +170,28 @@ classes.stamp: $(domterm_jar_sources)
 	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch classes.stamp
 
+wsclasses.stamp: $(wsdomterm_jar_sources)
+	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
+	touch wsclasses.stamp
+
 PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
 
 $(DOMTERM_JAR): classes.stamp hlib/domterm-all.js
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 	cp xulapp/domterm.xul tmp-for-jar/
+	cd tmp-for-jar && \
+	  jar cmf $(abs_top_srcdir)/domterm-jar-manifest ../$(DOMTERM_JAR) .
+	rm -rf tmp-for-jar
+
+$(WSDOMTERM_JAR): wsclasses.stamp wsclasses.stamp
+	$(MKDIR_P) $(wsdomterm_jar_dir) tmp-for-jar
 if WITH_JAVA_WEBSOCKET
 	cd tmp-for-jar && unzip -o ../java_websocket.jar 'org/java_websocket/*.class'
 endif
 	cd tmp-for-jar && \
-	  jar cmf $(abs_top_srcdir)/domterm-jar-manifest ../$(DOMTERM_JAR) .
-
-xulapp/domterm.jar: $(DOMTERM_JAR)
-	cd xulapp && ln -s ../$(DOMTERM_JAR) domterm.jar
+	  jar cmf $(abs_top_srcdir)/wsdomterm-jar-manifest ../$(WSDOMTERM_JAR) .
+	rm -rf tmp-for-jar
 
 MAKEINFO = makeinfo
 XSLT = xsltproc
@@ -253,3 +277,15 @@ xulappprefsdir = $(datadir)/domterm/defaults/preferences
 install-data-local:
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
 	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
+
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(bindir)
+if WITH_LIBWEBSOCKETS
+	cd $(DESTDIR)$(bindir) && $(LN_S) ldomterm domterm
+else
+if WITH_QTWEBENGINE
+	cd $(DESTDIR)$(bindir) && $(LN_S) qtdomterm domterm
+else
+	cd $(DESTDIR)$(bindir) && $(LN_S) jdomterm domterm
+endif
+endif
