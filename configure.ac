@@ -165,7 +165,7 @@ ldomterm_misc_includes=-I/usr/include/json-c
 default_browser_command="xdg-open"
 if (which brew>&/dev/null)
 then
-  ldomterm_misc_includes="I$(shell brew --prefix)/include -I$(shell brew --prefix)/include/json-c -I$(shell brew --prefix openssl)/include"
+  ldomterm_misc_includes="I$(brew --prefix)/include -I$(brew --prefix)/include/json-c -I$(brew --prefix openssl)/include"
   default_browser_command="open"
 fi
 AC_SUBST(ldomterm_misc_includes)
