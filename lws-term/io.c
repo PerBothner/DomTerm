@@ -4,20 +4,10 @@
 #include <junzip.h>
 #include <zlib.h>
 
-struct mem_file {
-    char* filename;
-    JZFileHeader info;
-};
-
 struct junzip_mem_handle {
     JZFile handle;
-    char *start;
-    off_t length;
     int fd;
-    long position;
-    JZEndRecord endRecord;
-    int numEntries;
-    struct mem_file *entries;
+    JZFileHeader *entries;
 };
 
 struct open_mem_file {
@@ -37,53 +27,12 @@ struct lws_plat_file_ops fops_plat;
 
 struct junzip_mem_handle junzip_handler;
 
-static size_t junzip_mem_read(JZFile *file, void *buf, size_t size)
-{
-    struct junzip_mem_handle *handle = (struct junzip_mem_handle *) file;
-    size_t avail = handle->length - handle->position;
-    if (size > avail)
-        size = avail;
-    memcpy(buf, handle->start + handle->position, size);
-    handle->position += size;
-    return size;
-}
-
-static size_t
-junzip_mem_tell(JZFile *file)
-{
-    struct junzip_mem_handle *handle = (struct junzip_mem_handle *) file;
-    return handle->position;
-}
-
-static int
-junzip_mem_seek(JZFile *file, size_t offset, int whence)
-{
-    struct junzip_mem_handle *handle = (struct junzip_mem_handle *) file;
-    int new_position = -1;
-    switch (whence) {
-    case SEEK_CUR:      new_position = handle->position + offset; break;
-    case SEEK_END:      new_position = handle->length + offset; break;
-    case SEEK_SET:      new_position = offset; break;
-    default: ;
-    }
-    if (new_position < 0 || new_position > handle->length) {
-        errno = EINVAL; return -1;
-    }
-    handle->position = new_position;
-    return 0;
-}
-
-static int
-junzip_mem_error(JZFile *file)
-{
-    return 0;
-}
-
 static void
-junzip_mem_close(JZFile *file)
+junzip_mem_close(JZFile *zfile)
 {
-    struct junzip_mem_handle *handle = (struct junzip_mem_handle *) file;
-    munmap(handle->start, handle->length);
+    struct junzip_mem_handle *handle = (struct junzip_mem_handle *) zfile;
+    munmap(zfile->start, zfile->length);
+    // FIXME free(entries)
     close(handle->fd);
 }
 
@@ -91,26 +40,16 @@ JZFile *
 init_junzip_handle(struct junzip_mem_handle *handle,
                         char *start, off_t length, int fd)
 {
-    handle->start = start;
-    handle->length = length;
+    handle->handle.start = start;
+    handle->handle.length = length;
     handle->fd = fd;
-    handle->position = 0;
-    handle->handle.read = junzip_mem_read;
-    handle->handle.tell = junzip_mem_tell;
-    handle->handle.seek = junzip_mem_seek;
-    handle->handle.error = junzip_mem_error;
-    handle->handle.close = junzip_mem_close;
+    handle->handle.position = 0;
     return &handle->handle;
 }
 
-static int zipRecordCallback(JZFile *zip, int idx, JZFileHeader *header, char *filename, void *user_data) {
+static int zipRecordCallback(JZFile *zip, int idx, JZFileHeader *header) {
     struct junzip_mem_handle *handle = (struct junzip_mem_handle *) zip;
-    int flen = strlen(filename);
-    char *tmp = xmalloc(flen+1);
-    memcpy(tmp, filename, flen+1);
-    filename = tmp;
-    handle->entries[idx].filename = filename;
-    handle->entries[idx].info = *header;
+    handle->entries[idx] = *header;
     return 1;
 }
 
@@ -129,13 +68,16 @@ domserver_fops_open(struct lws *wsi, const char *filename,
     lws_filefd_type n;
     if (strncmp(filename, domterm_resource_prefix,
                 sizeof(domterm_resource_prefix)-1) == 0) {
-        int numEntries = junzip_handler.numEntries;
-        const char *entry_name = filename+sizeof(domterm_resource_prefix)-1;
         JZFile *zip = &junzip_handler.handle;
+        int numEntries = zip->numEntries;
+        const char *entry_name = filename+sizeof(domterm_resource_prefix)-1;
+        int fnlength = strlen(entry_name);
         for (int i = 0; i < numEntries; i++) {
-            struct mem_file* entry = &junzip_handler.entries[i];
-            if (strcmp(entry->filename, entry_name) == 0) {
-                uint32_t uncompressedSize = entry->info.uncompressedSize;
+            JZFileHeader *entry = &junzip_handler.entries[i];
+            if (fnlength == entry->fileNameLength
+                && memcmp(entry_name, zip->start + entry->fileNameStart,
+                          fnlength) == 0) {
+                uint32_t uncompressedSize = entry->uncompressedSize;
                 int j = MAX_OPEN_MEM_FILES;
                 struct open_mem_file *mem;
                 for (;;) {
@@ -150,16 +92,15 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                 mem->handle = &junzip_handler;
                 mem->index = i;
                 mem->position = 0;
-                size_t offset = entry->info.offset;
-                offset += sizeof(JZLocalFileHeader);
-                offset += entry->info.fileNameLength
-                  + entry->info.extraFieldLength;
+                size_t offset = entry->offset;
+                offset += ZIP_LOCAL_FILE_HEADER_LENGTH;
+                offset += entry->fileNameLength + entry->extraFieldLength;
                 unsigned long rsize;
                 int sentCompressed = 0;
 #ifdef LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP
                 if ((*flags & LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP) != 0
-                    && entry->info.compressionMethod == 8) {
-                    uint32_t compressedSize = entry->info.compressedSize;
+                    && entry->compressionMethod == 8) {
+                    uint32_t compressedSize = entry->compressedSize;
                     sentCompressed = 1;
                     rsize = 18 + compressedSize;
                     char *data = xmalloc(rsize);
@@ -187,12 +128,12 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                 }
 #endif
                 if (! sentCompressed) {
-                    junzip_mem_seek(zip, offset, SEEK_SET);
+                    zf_seek_set(zip, offset);
                     rsize = uncompressedSize;
                     char *data = xmalloc(rsize);
                     mem->data = data;
                     if (jzReadData(&junzip_handler.handle,
-                                   &entry->info, data) != Z_OK) {
+                                   entry, data) != Z_OK) {
                       fprintf(stderr, "Couldn't read file data!");
                       free(data);
                       return -1;
@@ -281,14 +222,13 @@ initialize_resource_map(struct lws_context *context,
     struct junzip_mem_handle *mzip = &junzip_handler;
     JZFile *zip = init_junzip_handle(mzip, jardata, jarsize, fd);
 
-    if(jzReadEndRecord(zip, &mzip->endRecord)) {
+    if(jzReadEndRecord(zip)) {
         fprintf(stderr, "Couldn't read ZIP file end record.");
         exit(-1);
     }
-    int numEntries = mzip->endRecord.numEntries;
-    mzip->numEntries = numEntries;
-    mzip->entries = xmalloc(numEntries * sizeof(struct mem_file));
-    if(jzReadCentralDirectory(zip, &mzip->endRecord, zipRecordCallback, NULL)) {
+    int numEntries = zip->numEntries;
+    mzip->entries = xmalloc(numEntries * sizeof(JZFileHeader));
+    if(jzReadCentralDirectory(zip, zipRecordCallback)) {
         printf("Couldn't read ZIP file central record.");
     }
 
