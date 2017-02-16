@@ -122,28 +122,31 @@ function DomTerm(name, topNode) {
     // If true, treat "\n" as "\r\n".
     this.automaticNewlineMode = false;
 
-    this.lineEditing = false;
+    // How are typed characters processed?
+    // -1: character mode (each character/keystroke sent immediately to process)
+    // 1: line mode (local editing, sent to process when Enter types).
+    // 0: auto mode (either line and character depending on _clientWantsEditing)
+    this._lineEditingMode = 0;
+    // 1: client/inferor is in "canonical mode; 0: non-canonical mode.
+    this._clientWantsEditing = 0;
 
-    this.caretStyle = 1; // only if *not* inputEditing
-
-    // If true, we automatically switching lineEditing depending
-    // on slave pty's canon mode.
-    this.autoEditing = true;
     // We have two variations of autoEditing:
     // - If autoCheckInferior is false, then the inferior actively sends OSC 71
     // " handle tcsetattr", and we switch based on that. This is experimental.
     // - If autoCheckInferior is true, then when the user types a character
-    // (and not currently lineEditing), then we send a "KEY" command to the
+    // (and not isLineEditing()), then we send a "KEY" command to the
     // inferior, which calls tcgetattr to decide what to do.  (If CANON, the
     // key is sent back to DomTerm; otherwise, it is sent to the child proess.)
     this.autoLazyCheckInferior = true;
+
+    this.caretStyle = 1; // only if *not* isLineEditing()
 
     this.verbosity = 0;
 
     this.versionString = "0.70";
     this.versionInfo = "version="+this.versionString;
 
-    // Use the doLineEdit function when in lineEditing mode.
+    // Use the doLineEdit function when isLineEditing().
     // By default this is only used in autoEditing mode, in two cases:
     // (1) for the first character when switching from character to line mode.
     // (This is because we have check the backend pty for its status before
@@ -157,12 +160,12 @@ function DomTerm(name, topNode) {
     this._usingDoLineEdit = false;
 
     // True if a client performs echo on lines sent to it.
-    // In that case, when lineEditing is true, when a completed
+    // In that case, when isLineEditing(), when a completed
     // input line is sent to the client, it gets echoed by the client.
     // Hence we get two copies of each input line.
     // If this setting is true, we clear the contents of the input line
     // before the client echo.
-    // If lineEditing is false, the client is always responsible
+    // If isLineEditing() is false, the client is always responsible
     // for echo, so this setting is ignored in that case.
     this.clientDoesEcho = true;
 
@@ -218,7 +221,7 @@ function DomTerm(name, topNode) {
 
     // The output position (cursor) - insert output before this node.
     // Usually equal to inputLine except for temporary updates,
-    // or when lineEditing is true.
+    // or when isLineEditing().
     // If null, this means append output to the end of the output container's
     // children. (FIXME: The null case is not fully debugged.)
     /** @type {Node|null} */
@@ -1005,11 +1008,15 @@ DomTerm.prototype.useStyledCaret = function() {
     return this.caretStyle < 5;
 };
 
+DomTerm.prototype.isLineEditing = function() {
+    return this._lineEditingMode + this._clientWantsEditing > 0;
+}
+
 DomTerm.prototype._restoreInputLine = function() {
     if (this.inputFollowsOutput && this.outputBefore != this.inputLine) {
         this.outputContainer.insertBefore(this.inputLine, this.outputBefore);
         this.outputBefore = this.inputLine;
-        if (this.useStyledCaret() && ! this.lineEditing) {
+        if (this.useStyledCaret() && ! this.isLineEditing()) {
             if (! (this.inputLine.firstChild instanceof Text)
                 || this.inputLine.firstChild.data.length == 0) {
                 var text = this._followingText();
@@ -1839,7 +1846,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     }
     function compositionEnd(ev) {
         dt._composing = 0;
-        if (this.lineEditing)
+        if (this.isLneEditing())
             dt.reportText(dt.grabInput(dt.inputLine), null);
     }
     document.addEventListener("compositionstart", compositionStart, false);
@@ -3780,9 +3787,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         var canon = text.indexOf(" canon ") >= 0;
         var echo = text.indexOf(" echo ") >= 0;
         this.autoLazyCheckInferior = false;
-        if (this.autoEditing) {
-            this.lineEditing = canon;
-        }
+        this._clientWantsEditing = canon ? 1 : 0;
         break;
     case 72:
         this._scrubAndInsertHTML(text);
@@ -3795,7 +3800,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         var kstr = JSON.parse(text.substring(sp+1));
         if (this.verbosity >= 2)
             this.log("OSC KEY k:"+key+" kstr:"+this.toQuoted(kstr));
-        this.lineEditing = true;
+        this._clientWantsEditing = 1;
         if (code == 73 && this.inputLine) {
             this.inputLine.setAttribute("domterm-noecho", "true");
             this._usingDoLineEdit = true;
@@ -5239,7 +5244,7 @@ DomTerm.prototype.keyDownToString = function(event) {
 };
 
 DomTerm.prototype.pasteText = function(str) {
-    if (this.lineEditing) {
+    if (this.isLineEditing()) {
         var rng = bililiteRange(this.inputLine).bounds('selection');
         rng.text(str, 'end');
         rng.select();
@@ -5417,23 +5422,19 @@ DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 DomTerm.prototype.setInputMode = function(mode) {
     switch (mode) {
     case 97 /*'a'*/: //auto
-        this.autoEditing = true;
-        this.lineEditing = false;
+        this._lineEditingMode = 0;
         this.clientDoesEcho = true;
         break;
     case 99 /*'c'*/: //char
-        this.autoEditing = false;
-        this.lineEditing = false;
+        this._lineEditingMode = -1;
         this.clientDoesEcho = true;
         break;
     case 108 /*'l'*/: //line
-        this.autoEditing = false;
-        this.lineEditing = true;
+        this._lineEditingMode = 1;
         this.clientDoesEcho = true;
         break;
     case 112 /*'p'*/: //pipe
-        this.autoEditing = false;
-        this.lineEditing = true;
+        this._lineEditingMode = 1;
         this.clientDoesEcho = false;
         break;
     }
@@ -5526,7 +5527,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             return;
         }
     }
-    if (this.lineEditing) {
+    if (this.isLineEditing()) {
         if (! this.useStyledCaret())
             this.inputLine.focus();
         if (key == 13) {
@@ -5535,8 +5536,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 this.pasteText("\n");
             } else {
                 this.processEnter();
-                if (this.autoEditing && this.autoLazyCheckInferior) {
-                    this.lineEditing = false;
+                if (this._lineEditingMode == 0 && this.autoLazyCheckInferior) {
+                    this._clientWantsEditing = 0;
                     this._usingDoLineEdit = this.useDoLineEdit;
                 }
             }
@@ -5547,8 +5548,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
                      || (key == 68 // ctrl-D
                          && this.grabInput(this.inputLine).length == 0))) {
             event.preventDefault();
-            if (this.autoEditing && this.autoLazyCheckInferior)
-                this.lineEditing = false;
+            if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
+                this._clientWantsEditing = 0;
             this.reportKeyEvent(64 - key, // ctrl-C -> -3; ctrl-D -> -4
                                 this.keyDownToString(event));
         } else if (key == 38/*Up*/) {
@@ -5573,7 +5574,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         var str = this.keyDownToString(event);
         if (str) {
             event.preventDefault();
-            if (this.autoEditing && this.autoLazyCheckInferior)
+            if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
                 this.reportKeyEvent(key, str);
             else
                 this.processInputCharacters(str);
@@ -5584,8 +5585,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
 DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" lineEdit:"+this.lineEditing+" do-line-edit:"+this._usingDoLineEdit+" inputLine:"+this.inputLine);
-    if (this.lineEditing) {
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" inputLine:"+this.inputLine);
+    if (this.isLineEditing()) {
         if (this._usingDoLineEdit) {
             event.preventDefault();
             var str = String.fromCharCode(key);
@@ -5596,7 +5597,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
             && key != 8
             && ! event.ctrlKey) {
             var str = String.fromCharCode(key);
-            if (this.autoEditing && this.autoLazyCheckInferior)
+            if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
                 this.reportKeyEvent(-key, str);
             else
                 this.processInputCharacters(str);
@@ -5608,7 +5609,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
 DomTerm.prototype.inputHandler = function(event) {
     if (this.verbosity >= 2)
         this.log("input "+event+ " which:"+event.which+" data:'"+event.data);
-    if (event.target == this.inputLine && ! this.lineEditing) {
+    if (event.target == this.inputLine && ! this.isLineEditing()) {
         var text = this.grabInput(this.inputLine);
         var ch = this.inputLine.firstChild;
         while (ch != null) {
