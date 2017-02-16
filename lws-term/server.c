@@ -6,14 +6,51 @@
 #define LDOMTERM_VERSION "1.2.2"
 #endif
 
-#ifndef DEFAULT_BROWSER_COMMAND
-#define DEFAULT_BROWSER_COMMAND "xdg-open"
-#endif
-
 #ifndef DEFAULT_ARGV
 #define DEFAULT_ARGV {"/bin/bash", NULL }
 #endif
 
+void
+subst_run_command (const char *browser_command, const char *url, int port)
+{
+    size_t clen = strlen(browser_command);
+    char *cmd = xmalloc(clen + strlen(url) + 10);
+    char *upos = strstr(browser_command, "%U");
+    char *wpos;
+    if (upos) {
+      size_t beforeU = upos - browser_command;
+      sprintf(cmd, "%.*s%s%.*s",
+              beforeU, browser_command,
+              url,
+              clen - beforeU - 2, upos+2);
+    } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
+        size_t beforeW = wpos - browser_command;
+        sprintf(cmd, "%.*s%d%.*s",
+                beforeW, browser_command,
+                port,
+                clen - beforeW - 2, wpos+2);
+    } else
+        sprintf(cmd, "%s %s", browser_command, url);
+    lwsl_notice("frontend command: %s\n", cmd);
+    system(cmd);
+}
+
+void
+default_browser_command(const char *url, int port)
+{
+#ifdef DEFAULT_BROWSER_COMMAND
+    subst_run_command(DEFAULT_BROWSER_COMMAND, url, port);
+#elif __APPLE__
+    subst_run_command("open %U > /dev/null 2>&1", url, port);
+#elif defined(_WIN32) || defined(__CYGWIN__)
+    ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
+#else
+    // check if X server is running
+    //if (system("xset -q > /dev/null 2>&1"))
+    //return 1;
+    subst_run_command("xdg-open %U > /dev/null 2>&1", url, port);
+#endif
+}
 
 volatile bool force_exit = false;
 struct lws_context *context;
@@ -36,6 +73,7 @@ static const struct lws_extension extensions[] = {
 
 #define CHROME_OPTION 1000
 #define FIREFOX_OPTION 1001
+#define QTDOMTERM_OPTION 1002
 
 // command line options
 static const struct option options[] = {
@@ -44,6 +82,8 @@ static const struct option options[] = {
         {"chrome",       no_argument,       NULL, CHROME_OPTION},
         {"google-chrome",no_argument,       NULL, CHROME_OPTION},
         {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
+        {"qtdomterm",    no_argument,       NULL, QTDOMTERM_OPTION},
+        {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
         {"uid",          required_argument, NULL, 'u'},
@@ -222,30 +262,9 @@ calc_command_start(int argc, char **argv) {
 }
 
 char *
-chrome_command()
-{
-    char *cmd = "google-chrome";
-    char *cbin = getenv("CHROME_BIN");
-    if (cbin != NULL && access(cbin, X_OK) == 0)
-        return cbin;
-    return cmd;
-}
-
-char *
-firefox_command()
-{
-    char *firefoxCommand = "firefox";
-    char *firefoxMac ="/Applications/Firefox.app/Contents/MacOS/firefox";
-    if (access(firefoxMac, X_OK) == 0)
-        return firefoxMac;
-    return firefoxCommand;
-}
-
-char *
 get_bin_relative_path(const char* app_path)
 {
     char* path = get_executable_path();
-    char *fcommand = firefox_command();
     int dirname_length = get_executable_directory_length();
     int i;
 
@@ -259,9 +278,23 @@ get_bin_relative_path(const char* app_path)
 }
 
 char *
-get_domterm_jar_path()
+chrome_command()
 {
-    return get_bin_relative_path("/share/domterm/domterm.jar");
+    char *cmd = "google-chrome";
+    char *cbin = getenv("CHROME_BIN");
+    if (cbin != NULL && access(cbin, X_OK) == 0)
+        return cbin;
+    return cmd;
+}
+
+char *
+firefox_browser_command()
+{
+    char *firefoxCommand = "firefox";
+    char *firefoxMac ="/Applications/Firefox.app/Contents/MacOS/firefox";
+    if (access(firefoxMac, X_OK) == 0)
+        return firefoxMac;
+    return firefoxCommand;
 }
 
 /** Try to find the "application.ini" file for the DomTerm XUL application. */
@@ -275,7 +308,7 @@ char *
 firefox_xul_command(char* app_path)
 {
     char* path = NULL;
-    char *fcommand = firefox_command();
+    char *fcommand = firefox_browser_command();
     int allocated_app_path = app_path == NULL;
     if (allocated_app_path)
         app_path = firefox_xul_application();
@@ -285,6 +318,26 @@ firefox_xul_command(char* app_path)
     if (allocated_app_path)
         free(app_path);
     return buf;
+}
+
+char *
+firefox_command()
+{
+    char *xulapp = firefox_xul_application();
+    if (xulapp != NULL && access(xulapp, R_OK) == 0) {
+        return firefox_xul_command(xulapp);
+    } else {
+        fprintf(stderr, "Firefox XUL application.ini not found.\n");
+        fprintf(stderr,
+                "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
+        return "firefox";
+    }
+}
+
+char *
+get_domterm_jar_path()
+{
+    return get_bin_relative_path("/share/domterm/domterm.jar");
 }
 
 int
@@ -358,18 +411,13 @@ main(int argc, char **argv) {
                 sprintf(browser_command, "%s%s", cbin, crest);
                 break;
             }
-            case FIREFOX_OPTION: {
-                char *xulapp = firefox_xul_application();
-                if (xulapp != NULL && access(xulapp, R_OK) == 0) {
-                    browser_command = firefox_xul_command(xulapp);
-                } else {
-                    fprintf(stderr, "Firefox XUL application.ini not found.\n");
-                    fprintf(stderr,
-                            "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
-                    browser_command = "firefox";
-                }
+            case FIREFOX_OPTION:
+                browser_command = firefox_command();
                 break;
-            }
+            case QTDOMTERM_OPTION:
+                browser_command =
+                    get_bin_relative_path("/bin/qtdomterm --connect %U &");
+                break;
             case 'i':
                 strncpy(iface, optarg, sizeof(iface));
                 iface[sizeof(iface) - 1] = '\0';
@@ -468,9 +516,7 @@ main(int argc, char **argv) {
         return -1;
     }
 
-    if (browser_command == NULL && port_specified < 0)
-        browser_command = "";
-    if (browser_command != NULL)
+    if (port_specified < 0)
         server->once = true;
 
     lws_set_log_level(debug_level, NULL);
@@ -543,40 +589,30 @@ main(int argc, char **argv) {
     if (server->index != NULL) {
         lwsl_notice("  custom index.html: %s\n", server->index);
     }
-    if (port_specified <= 0 && browser_command == NULL)
+    if (port_specified >= 0 && browser_command == NULL)
       fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
               info.port, info.port);
 
-    if (browser_command != NULL) {
-        if (strcmp(browser_command, "firefox") == 0)
+    if (browser_command != NULL || port_specified < 0) { 
+        char *url = xmalloc(100);
+        int port = info.port;
+        sprintf(url, "http://localhost:%d/#ws=same", port);
+        if (browser_command == NULL && port_specified < 0) {
+#if 0
+            browser_command = "";
+#else
             browser_command = firefox_command();
+#endif
+        }
+        if (strcmp(browser_command, "firefox") == 0)
+            browser_command = firefox_browser_command();
         else if (strcmp(browser_command, "chrome") == 0
                  || strcmp(browser_command, "google-chrome") == 0)
             browser_command = chrome_command();
-        char *url = xmalloc(100);
-        sprintf(url, "http://localhost:%d/#ws=same", info.port);
         if (browser_command[0] == '\0')
-            browser_command = DEFAULT_BROWSER_COMMAND;
-        size_t clen = strlen(browser_command);
-        char *cmd = xmalloc(clen + strlen(url) + 10);
-        char *upos = strstr(browser_command, "%U");
-        char *wpos;
-        if (upos) {
-            size_t beforeU = upos - browser_command;
-            sprintf(cmd, "%.*s%s%.*s",
-                    beforeU, browser_command,
-                    url,
-                    clen - beforeU - 2, upos+2);
-        } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
-            size_t beforeW = wpos - browser_command;
-            sprintf(cmd, "%.*s%d%.*s",
-                    beforeW, browser_command,
-                    info.port,
-                    clen - beforeW - 2, wpos+2);
-        } else
-            sprintf(cmd, "%s %s", browser_command, url);
-        lwsl_notice("frontend command: %s\n", cmd);
-        system(cmd);
+            default_browser_command(url, port);
+        else
+            subst_run_command(browser_command, url, port);
     }
 
     // libwebsockets main loop

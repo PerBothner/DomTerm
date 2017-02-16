@@ -5,7 +5,7 @@ function loadHandler(event) {
     var query = location.search;
     var ws = query.match(/ws=([^&]*)/);
     if (ws) {
-        var wsocket = new WebSocket(ws[1]);
+        var wsocket = new WebSocket(ws[1], "domterm");
         wt.processInputCharacters = function(str) { wsocket.send(str); };
         wsocket.onmessage = function(evt) {  wt.insertString(evt.data); }
         wsocket.onopen = function(e) {

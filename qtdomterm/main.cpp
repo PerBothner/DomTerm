@@ -145,8 +145,12 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
     const QString ws = processOptions->wsconnect;
     QString url = "qrc:/index.html";
     if (! ws.isEmpty()) {
-        url += "?ws=ws://";
-        url += ws;
+        if (ws.startsWith("http:") || ws.startsWith("https:"))
+            url = ws;
+        else {
+            url += "?ws=ws://";
+            url += ws;
+        }
     }
     processOptions->url = url;
 }

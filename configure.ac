@@ -162,14 +162,11 @@ case "${with_libwebsockets}" in
 esac
 
 ldomterm_misc_includes=-I/usr/include/json-c
-default_browser_command="xdg-open"
 if (which brew>&/dev/null)
 then
   ldomterm_misc_includes="I$(brew --prefix)/include -I$(brew --prefix)/include/json-c -I$(brew --prefix openssl)/include"
-  default_browser_command="open"
 fi
 AC_SUBST(ldomterm_misc_includes)
-AC_SUBST(default_browser_command)
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)

@@ -174,7 +174,9 @@ wsclasses.stamp: $(wsdomterm_jar_sources)
 	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch wsclasses.stamp
 
-PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css org/domterm/*.class org/domterm/*/*.class
+PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css \
+  org/domterm/*.class org/domterm/javafx/*.class org/domterm/pty/*.class \
+  org/domterm/util/*.class
 
 $(DOMTERM_JAR): classes.stamp hlib/domterm-all.js
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
@@ -186,6 +188,7 @@ $(DOMTERM_JAR): classes.stamp hlib/domterm-all.js
 
 $(WSDOMTERM_JAR): wsclasses.stamp wsclasses.stamp
 	$(MKDIR_P) $(wsdomterm_jar_dir) tmp-for-jar
+	tar cf - org/domterm/websocket/*.class | (cd tmp-for-jar; tar xf -)
 if WITH_JAVA_WEBSOCKET
 	cd tmp-for-jar && unzip -o ../java_websocket.jar 'org/java_websocket/*.class'
 endif

@@ -13,7 +13,7 @@ LN_H = ln
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIB@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.c utils.c protocol.c http.c io.c whereami.c junzip.c
-ldomterm_CFLAGS = @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_INCLUDES@ -DDEFAULT_BROWSER_COMMAND='"@default_browser_command@"'
+ldomterm_CFLAGS = @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_INCLUDES@
 ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil -lz
 #CLIENT_DATA_DIR = @datadir_relative@/domterm
 CLIENT_DATA_DIR = .
