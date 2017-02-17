@@ -199,6 +199,9 @@ using certain escape sequences enables @strong{text folding}.
 The nearby screenshot shows the output of @code{ls -l} being hidden.
 
 Handles Unicode.
+Good CJK (Chinese, Japanese, Korean) support:
+double-width characters really are two columns wide.
+Experimental IME (Input Method Editor) support.
 
 Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
 
@@ -666,6 +669,22 @@ a Frequently-Asked-Questions page.
 
 Notes about ``@emph{Front-end support}'' discuss how
 different front-ends may support some features differently.
+
+@subheading Keyboard shortcuts
+
+@table @asis
+@item Control-Shift-C
+Copy the selected text to the clipboard.
+(Control-C also works in line-editing mode.)
+@item Control-Shift-V
+Paste text from the clipboard.
+(Control-V also works in line-editing mode.)
+@item Control-Shift-S
+Save the display to a file.
+@item Control-Shift-I
+Cycle between the input modes: automatic, to line, to character, and back.
+The resulting mode is displayed temporarily.
+@end table
 
 @subheading Copy and Paste
 
