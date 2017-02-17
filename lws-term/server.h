@@ -100,7 +100,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void
 
 extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
-extern  char* get_executable_path();
+extern char* get_executable_path();
+extern char *get_bin_relative_path(const char* app_path);
 
 #if COMPILED_IN_RESOURCES
 struct resource {

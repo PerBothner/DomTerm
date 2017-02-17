@@ -152,7 +152,20 @@ thread_run_command(void *args) {
             }
             ebuf[mlen] = '\0';
             putenv(ebuf);
-
+#if ENABLE_LD_PRELOAD
+            int normal_user = getuid() == geteuid();
+            char* domterm_home = get_bin_relative_path("");
+            if (normal_user && domterm_home != NULL) {
+#if __APPLE__
+                char *fmt =  "DYLD_INSERT_LIBRARIES=%s/lib/domterm-preloads.dylib";
+#else
+                char *fmt =  "LD_PRELOAD=%s/lib/domterm-preloads.so libdl.so.2";
+#endif
+                char *buf = malloc(strlen(domterm_home)+strlen(fmt)-1);
+                sprintf(buf, fmt, domterm_home);
+                putenv(buf);
+            }
+#endif
             if (execvp(server->argv[0], server->argv) < 0) {
                 perror("execvp");
                 exit(1);

@@ -27,7 +27,7 @@ endif
 endif
 DT_CFLAGS =
 if ENABLE_LD_PRELOAD
-PRELOADS_SO = lib/domterm-preloads.so
+PRELOADS_SO = lib/domterm-preloads$(LIBEXT)
 DT_CFLAGS += -DENABLE_LD_PRELOAD
 endif
 if WITH_LIBWEBSOCKETS
@@ -52,7 +52,7 @@ native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	javah -cp $(DOMTERM_JAR) -d native/pty org.domterm.pty.PTY
 	touch native/pty/org_domterm_pty_PTY.h
 
-lib/domterm-preloads.so: native/preloads.cc
+lib/domterm-preloads$(LIBEXT): native/preloads.cc
 	$(CXX) $(DT_CFLAGS) -Wall -fPIC -shared -o $@ native/preloads.cc
 
 PTY_COMMON_PARAMS = -fno-strict-aliasing -fPIC -W -Wall  -Wno-unused -Wno-parentheses -fno-omit-frame-pointer
@@ -121,7 +121,7 @@ run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean-am:
-	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*.so
+	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
 	-rm -rf bin/ldomterm bin/domterm
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
