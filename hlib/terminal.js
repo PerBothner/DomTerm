@@ -1851,12 +1851,13 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                               false);
     function compositionStart(ev) {
         dt._composing = 1;
-        if (this.verbosity >= 2) dt.log("compositionStart");
+        if (dt.verbosity >= 1) dt.log("compositionStart");
     }
     function compositionEnd(ev) {
+        if (dt.verbosity >= 1) dt.log("compositionEnd");
         dt._composing = 0;
-        if (this.isLineEditing())
-            dt.reportText(dt.grabInput(dt.inputLine), null);
+        if (! dt.isLineEditing())
+            dt._sendInputContents();
     }
     document.addEventListener("compositionstart", compositionStart, false);
     document.addEventListener("compositionend", compositionEnd, false);
@@ -5450,13 +5451,18 @@ DomTerm.prototype.setInputMode = function(mode) {
     }
     this._restoreInputLine();
     if (wasEditing && ! this.isLineEditing()) {
-        this._doDeferredDeletion();
-        var text = this.grabInput(this.inputLine);
-        this._deferredForDeletion = this.inputLine;
-        this.reportText(text);
+        this._sendInputContents();
     }
     this.automaticNewlineMode = ! this.clientDoesEcho;
 };
+
+DomTerm.prototype._sendInputContents = function() {
+    this._doDeferredDeletion();
+    var text = this.grabInput(this.inputLine);
+    this._deferredForDeletion = this.inputLine;
+    this.reportText(text);
+}
+
 DomTerm.prototype.inputModeChanged = function(mode) {
     this.reportEvent("INPUT-MODE-CHANGED", '"'+String.fromCharCode(mode)+'"');
 }
