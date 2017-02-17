@@ -37,7 +37,6 @@ text, and attributes.
 
 DomTerm is Free Software (open-source)
 available at @uref{https://github.com/PerBothner/DomTerm,https://github.com/PerBothner/DomTerm}.
-
 The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
 was based on similar concepts, but was mostly written in Java using
 @uref{https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm, Javafx WebView}.
@@ -45,6 +44,13 @@ was based on similar concepts, but was mostly written in Java using
 @subheading Recent advances:
 
 @itemize
+@item
+The preferred ``backend` is now @uref{https://libwebsockets.org/,libwebsockets}.
+This is light-weight, does not require Java, is actively maintained,
+and enables serving http and the WebSockets on the same port.
+@item
+Support for CJK (Chinese, Japanese, and Korean) characters is improved:
+Double-width characters now really are two columns wide.
 @item
 There is now a DomTerm mailing list at @email{domterm-discuss@@domterm.org}
 with an @uref{http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,information page}
@@ -227,15 +233,16 @@ You can use @code{terminal.js} in your own application.
 However, there is also some utility code, include standalone
 terminal emulator applications.
 
-The recommended terminal emulator program is @code{qtdomterm}.
+The best terminal emulator experience at this time
+is probably the combineation of libwebsockets
+with Google-Chrome in ``app'' mode.
+
+Another good application is @code{qtdomterm}.
 It uses the C++-based @uref{https://www.qt.io/,Qt toolkit}
 including @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}.
 Needed packages are included with Fedora 24.
 (Reports of attempt to build or use qtdomterm on other platforms
 would be welcome.)
-
-Alternatively,
-you can use easier-to-install Java-based terminal emulators.
 
 Building the sample applications and libraries is a two-part process:
 
@@ -253,14 +260,23 @@ Then run the @code{configure} script:
 @end example
 where @var{configure-options} can be:
 @table @code
+@item --with-libwebsockets
+Build the C application @code{ldomterm},
+which uses @uref{https://libwebsockets.org/,libwebsockets}.
+
+On Fedora, you need to first:
+@example
+sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel vim-common
+@end example
+(You need @code{vim-common} for the @code{xxd} tool, only used at build time.)
+
+This is the recommended ``backend'' and the default.
 @item --with-java_websocket
 @itemx --with-java_websocket=/path/to/java_websocket.jar
 Build a WebSocket server, using
 @uref{https://github.com/TooTallNate/Java-WebSocket/,Java WebSockets},
 which allows using any modern browser as a front-end.
-This option is enabled by default.
-The default jar path references the @code{java_websocket.jar}
-bundled with the DomTerm sources.
+This server is no longer recommended or enabled by default.
 
 This options adds the classes in @code{java_websocket.jar} to @code{domterm.jar}.
 @item --enable-pty
@@ -282,15 +298,6 @@ to build @code{qtdomterm}, an advanced front-end that
 supports multiple tabs, screen re-sizing, and other nice features.
 
 For this you need the Qt development tools including QtWebEngine installed.
-@item --with-libwebsockets
-Build the C application @code{ldomterm},
-which uses @uref{https://libwebsockets.org/,libwebsockets}.
-
-On Fedora, you need to first:
-@example
-sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel vim-common
-@end example
-(You need @code{vim-common} for the @code{xxd} tool, only used at build time.)
 @item --with-closure-compiler=@var{compiler.jar}
 Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compiler} to minimize the size of the JavaScript.
 (Current only the ``simple optimizations'' are done.
@@ -300,8 +307,7 @@ siew further, but causes some not-yet-resolved problems.)
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm
 to be compiled into the executable.
-Otherwise, they are served from the file system, which saves duplication.
-It also work best for the Firefox-XUL application.
+Otherwise, they are served from the compressed @code{domterm.jar}.
 
 @item --enable-ld-preload
 This is an experimental feature to preload a library to interpose
@@ -324,8 +330,8 @@ bin/qtdomterm
 @end example
 Either starts up a useable terminal emulator in a fresh window.
 The former starts up a @code{bash} shell, running in a PTY,
-with a WebSocket server.  It also starts a stripped-down Firefox window,
-with no location bar or a menubar, using that for the input and output
+with a libwebsockets server.  It also starts a stripped-down browser window,
+using that for the input and output
 of the @code{bash} shell.
 The latter (obviously) runs qtdomterm.
 
@@ -338,12 +344,104 @@ The @code{qtdomterm} executable has no external dependencies
 The core of DomTerm is the JavaScript @code{terminal.js},
 but we also provides a few wrappers and applications that make use of it.
 
+The @code{domterm} command is normally an alias for @code{ldomterm}.
+
 @menu
 * qtdomterm application::
 * domterm script::
 * dtstyle - Changing styles::
 * Utility scripts::
 @end menu
+
+@node ldomterm application
+@section The ldomterm terminal emulator
+
+The @code{ldomterm} application is the preferred away of
+using DomTerm, so plain @code{domterm} is
+normally installed as an alias for it.
+
+If you run @code{ldomterm} with no arguments, you get a
+fairly nice terminal emulator, just as if you'd start @code{xterm}, say.
+
+The actual @code{ldomterm} program is primarily a server
+for WebSockets and http.  When it receives a connection,
+it runs a specified command, by default a shell.
+
+Unless @code{--port} is specified, @code{ldomterm} will automatically
+start a browser session (the ``front-end'') that connects
+to the server.  The default is currently
+as if you specified @code{--chrome}, or @code{--browser} (if the
+Google Chome browser is not found).
+
+@display
+@code{ldomterm} [@var{options}] [@var{command} @var{arg}...]
+@end display
+
+The @var{command} is the program that gets run.  By default it is a
+shell such as @code{/bin/bash}.
+
+The following options control which front-end (usually a browser),
+if any, is started.
+
+@table @asis
+@item @code{--browser}
+@itemx @code{--browser=}@var{program}
+@itemx @code{--browser=firefox}
+@itemx @code{--browser=google}
+@itemx @code{--browser=google-chrome}
+
+Use @var{program} as a browser to run DomTerm in.
+If @var{program} is not specified,
+creates a new window or tab in your preferred desktop browser.
+
+If @var{program} is specified, instead creates a window
+in the specified browser, where @var{program} is the name
+of a browser program that takes a single URL argument.
+The @var{program} can be a multi-word template,
+where @code{%U} replaced a URL generated by @code{ldomterm}.
+
+Using @code{firefox}, @code{chrome}, or @code{google-chrome}
+for @var{program} enables some special tricks to search for those browsers.
+(Using @code{chrome} or @code{google-chrome} has the same effect.)
+
+@item @code{--chrome}
+This uses the Google Chrome browser,
+started using the @code{--app=} option,
+so you get a fresh chrome-less window (with no menubar or toolbar).
+
+This works well and the performance is good.
+This method provides no menubar or context-menu customization (so far).
+
+This is currently the default, when available.
+
+@item @code{--firefox}
+This is similar to the @code{--chrome} option, but using
+bare Firefox browser window, with
+a custom menubar, and custom context menu (what you get by right-clicking).
+
+This is potentially a very nice terminal emulator,
+though it is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
+which is being phased out.
+
+@item @code{--qtdomterm}
+@itemx @code{--qtwebengine}
+Experimental (not all functionality is working).
+Either option (they do the same thing)
+runs @code{qtdomterm} with the @code{--connect} option,
+after starting up a websockets server.
+
+@item @code{--port} @var{portnum}
+Start a server, listening on the specified @var{portnum}.
+A @var{portnum} of 0 lets the system choose an available port,
+which is printed out.  No front-end is started.
+
+@item @code{--once}
+Only allow a single connect before shutting down.
+This option is the default unless @code{--port} is specified.
+@end table
+
+There are other @code{ldomterm} options which useful
+if you want to run DomTerm as a server.
 
 @node qtdomterm appliction
 @section The qtdomterm terminal emulator
@@ -419,11 +517,11 @@ user interfaces: It specifies to use green for menu text.
 See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
 
 @node domterm script
-@section The domterm terminal emulator command
+@section The jdomterm terminal emulator script
 
-The @code{domterm} script (in the @code{bin} directory) is a convenient
-way to start up a standalone terminal emulator.
-It depends on Java, but does not depend on Qt.
+The @code{jdomterm} script is no longer recommended as a general terminal-emulator.
+It can be useful when using Java as it does not require native code.
+
 By default it runs a shell (@code{bash}), but there are a number of options.
 
 @display
@@ -440,38 +538,11 @@ The @var{frontend} is one of the following:
 @table @asis
 @item @code{--browser}
 @itemx @code{--browser=}@var{program}
-
-Creates a new window or tab in your preferred desktop browser.
-
-If @var{program} is specified, instead creates a window
-in the specified browser, where @var{program} is the name
-of a browser program that takes a single URL argument.
-
-The window is created after starting up a backend, and a WebSocket server
-for the browser to listen to.
-
-@item @code{--firefox}
-This is currently the default.
-The user interface is a “chrome-less” Firefox browser window, with
-a custom menubar, and custom context menu (what you get by right-clicking).
-The script also starts up a WebSocket server, and connects them.
-
-This is potentially a very nice terminal emulator,
-though it is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
-which is being phased out.
-@item @code{--qtdomterm}
+@itemx @code{--chrome}
+@itemx @code{--firefox}
+@itemx @code{--qtdomterm}
 @itemx @code{--qtwebengine}
-Either option (they do the same thing)
-runs @code{qtdomterm} with the @code{--connect} option,
-after starting up a websockets server.
-
-@item @code{--chrome}
-This is very similar to using Firefox, but uses the Google Chrome browser.
-The latter is started using the @code{--app=} option,
-so you get a fresh chrome-less window (with no menubar or toolbar).
-
-This works well and the performance is good.
-This method provides no menubar or context-menu customization (so far).
+Similar to the @code{ldomterm} options.
 
 @item @code{--javafx}
 This uses Java and the JavaFX WebView browser component (based on WebKit).
