@@ -280,11 +280,38 @@ get_bin_relative_path(const char* app_path)
 char *
 chrome_command()
 {
-    char *cmd = "google-chrome";
     char *cbin = getenv("CHROME_BIN");
     if (cbin != NULL && access(cbin, X_OK) == 0)
         return cbin;
-    return cmd;
+    char *path = getenv("PATH");
+    int plen = strlen(path);
+    char *end = path + plen;
+    char *buf = xmalloc(plen + 20);
+    for (;;) {
+        char* colon = strchr(path, ':');
+        if (colon == NULL)
+            colon = end;
+        if (path != colon) {
+            sprintf(buf, "%.*s/chrome", colon-path, path);
+            if (access(buf, X_OK) == 0)
+                return buf;
+            sprintf(buf, "%.*s/google-chrome", colon-path, path);
+            if (access(buf, X_OK) == 0)
+                return buf;
+        }
+        if (colon == end)
+            return NULL;
+        path = colon + 1;
+    }
+}
+
+char *
+chrome_app_command(char *chrome_cmd)
+{
+    char *crest = " --app=%U >/dev/null";
+    char *buf = xmalloc(strlen(chrome_cmd)+strlen(crest)+1);
+    sprintf(buf, "%s%s", chrome_cmd, crest);
+    return buf;
 }
 
 char *
@@ -406,9 +433,11 @@ main(int argc, char **argv) {
                 break;
             case CHROME_OPTION: {
                 char *cbin = chrome_command();
-                char *crest = " --app=%U >/dev/null";
-                browser_command = xmalloc(strlen(cbin)+strlen(crest)+1);
-                sprintf(browser_command, "%s%s", cbin, crest);
+                if (cbin == NULL) {
+                    fprintf(stderr, "neither chrome or google-chrome command found\n");
+                    exit(-1);
+                }
+                browser_command = chrome_app_command(cbin);
                 break;
             }
             case FIREFOX_OPTION:
@@ -601,17 +630,23 @@ main(int argc, char **argv) {
         int port = info.port;
         sprintf(url, "http://localhost:%d/#ws=same", port);
         if (browser_command == NULL && port_specified < 0) {
-#if 0
-            browser_command = "";
-#else
-            browser_command = firefox_command();
-#endif
+            // The default is "--chrome" followed by "--browser"
+            browser_command = chrome_command();
+            if (browser_command != NULL)
+                browser_command = chrome_app_command(browser_command);
+            else
+                browser_command = "";
         }
         if (strcmp(browser_command, "firefox") == 0)
             browser_command = firefox_browser_command();
         else if (strcmp(browser_command, "chrome") == 0
-                 || strcmp(browser_command, "google-chrome") == 0)
+                 || strcmp(browser_command, "google-chrome") == 0) {
             browser_command = chrome_command();
+            if (browser_command == NULL) {
+                fprintf(stderr, "neither chrome or google-chrome command found\n");
+                exit(-1);
+            }
+        }
         if (browser_command[0] == '\0')
             default_browser_command(url, port);
         else
