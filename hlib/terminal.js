@@ -3793,7 +3793,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         break;
     case 71:
         // handle tcsetattr
-        var canon = text.indexOf(" canon ") >= 0;
+        var canon = text.indexOf(" icanon ") >= 0;
         var echo = text.indexOf(" echo ") >= 0;
         this.autoLazyCheckInferior = false;
         this._clientWantsEditing = canon ? 1 : 0;
