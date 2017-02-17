@@ -177,7 +177,7 @@ function DomTerm(name, topNode) {
     // ??? FIXME we want to get rid of this
     this.initial = null;
 
-    this._displaySizeWidget = null;
+    this._displayInfoWidget = null;
     this._displaySizePendingTimeouts = -1;
 
     // Used if needed to add extra space at the bottom, for proper scrolling.
@@ -1760,43 +1760,52 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.topNode.addEventListener("mousedown", this._mouseEventHandler);
 };
 
-DomTerm.prototype._displaySizeInfoWithTimeout = function() {
-    // Might be nicer to keep displaying the size-info while
-    // button-1 is pressed. However, that seems a bit tricky.
+DomTerm.prototype._displayInputModeWithTimeout = function(text) {
+    this._displayInfoWithTimeout(text);
+};
+
+DomTerm.prototype._displayInfoWithTimeout = function(text) {
     var dt = this;
     if (dt._displaySizePendingTimeouts < 0) {
         dt._displaySizePendingTimeouts = 0;
         return;
     }
-    dt._displaySizeInfo();
+    dt._displayInfoString(text);
     dt._displaySizePendingTimeouts++;
     function clear() {
-        var widget = dt._displaySizeWidget;
+        var widget = dt._displayInfoWidget;
         if (widget == null) {
             dt._displaySizePendingTimeouts = 0;
         } else if (--dt._displaySizePendingTimeouts == 0) {
             widget.parentNode.removeChild(widget);
-            dt._displaySizeWidget = null;
+            dt._displayInfoWidget = null;
         }
     };
     setTimeout(clear, 2000);
 };
 
-DomTerm.prototype._displaySizeInfo = function() {
+DomTerm.prototype._displaySizeInfoWithTimeout = function() {
+    // Might be nicer to keep displaying the size-info while
+    // button-1 is pressed. However, that seems a bit tricky.
     var text = ""+this.numColumns+" x "+this.numRows
         +" ("+this.availWidth+"px x "+this.availHeight+"px)";
     var ratio = window.devicePixelRatio;
     if (ratio)
         text += " "+(ratio*100.0).toFixed(0)+"%";
-    var div = this._displaySizeWidget;
+    this._displayInfoWithTimeout(text);
+};
+
+/** Display text in _displayInfoWidget */
+DomTerm.prototype._displayInfoString = function(text) {
+    var div = this._displayInfoWidget;
     if (div != null)
         div.firstChild.data = text;
     else {
         div = document.createElement("div");
-        div.setAttribute("class", "domterm-show-size");
+        div.setAttribute("class", "domterm-show-info");
         div.appendChild(document.createTextNode(text));
         this.topNode.insertBefore(div, this.topNode.firstChild);
-        this._displaySizeWidget = div;
+        this._displayInfoWidget = div;
     }
 };
 
@@ -1842,11 +1851,11 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                               false);
     function compositionStart(ev) {
         dt._composing = 1;
-        if (this.verbosity >= 2) dt.log("compositionstart");
+        if (this.verbosity >= 2) dt.log("compositionStart");
     }
     function compositionEnd(ev) {
         dt._composing = 0;
-        if (this.isLneEditing())
+        if (this.isLineEditing())
             dt.reportText(dt.grabInput(dt.inputLine), null);
     }
     document.addEventListener("compositionstart", compositionStart, false);
@@ -5420,6 +5429,7 @@ DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 };
 
 DomTerm.prototype.setInputMode = function(mode) {
+    var wasEditing = this.isLineEditing();
     switch (mode) {
     case 97 /*'a'*/: //auto
         this._lineEditingMode = 0;
@@ -5438,8 +5448,18 @@ DomTerm.prototype.setInputMode = function(mode) {
         this.clientDoesEcho = false;
         break;
     }
+    this._restoreInputLine();
+    if (wasEditing && ! this.isLineEditing()) {
+        this._doDeferredDeletion();
+        var text = this.grabInput(this.inputLine);
+        this._deferredForDeletion = this.inputLine;
+        this.reportText(text);
+    }
     this.automaticNewlineMode = ! this.clientDoesEcho;
 };
+DomTerm.prototype.inputModeChanged = function(mode) {
+    this.reportEvent("INPUT-MODE-CHANGED", '"'+String.fromCharCode(mode)+'"');
+}
 
 DomTerm.prototype.doLineEdit = function(key, str) {
     if (this.verbosity >= 2)
@@ -5509,21 +5529,41 @@ DomTerm.prototype.keyDownHandler = function(event) {
 
     // Ctrl-Shift-C is Copy and Ctrl-Shift-V is Paste
     if (event.ctrlKey && event.shiftKey) {
-        if (key == 67) {
+        switch (key) {
+        case 67: // Control-Shift-C
             if (this.doCopy())
                 event.preventDefault();
             return;
-        }
-        if (key == 86) {
+        case 73: // Control-shift-I
+            var mode;
+            var displayString;
+            if (this._lineEditingMode == 0) {
+                // was 'auto', change to 'line'
+                mode = 108; // 'l'
+                displayString = "Input mode: line";
+            } else if (this._lineEditingMode > 0) {
+                // was 'line' change to 'char'
+                mode = 99; // 'c'
+                displayString = "Input mode: character";
+            } else {
+                // was 'char' change to 'auto'
+                mode = 97; // 'a'
+                displayString = "Input mode: automatic";
+            }
+            this.setInputMode(mode);
+            this.inputModeChanged(mode);
+            this._displayInputModeWithTimeout(displayString);
+            event.preventDefault();
+            return;
+        case 83: // Control-Shift-S
+            this.doSaveAs();
+            event.preventDefault();
+            return;
+        case 86: // Control-Shift-V
             // Google Chrome doesn't allow execCommand("paste") but Ctrl-Shift-V
             // works by default.  In Firefox, it's the other way round.
             if (this.doPaste())
                 event.preventDefault();
-            return;
-        }
-        if (key == 83) { // Control-Shift-S
-            this.doSaveAs();
-            event.preventDefault();
             return;
         }
     }

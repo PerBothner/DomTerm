@@ -15,6 +15,8 @@ namespace Konsole {
     class Pty;
 }
 
+class WebView;
+
 class Backend : public QObject
 {
     Q_OBJECT
@@ -37,6 +39,7 @@ public:
     QString initialWorkingDirectory() const;
 
     ProcessOptions* processOptions();
+    WebView *webView() const { return (WebView*)parent(); }
     /**
      * Returns the environment of this session as a list of strings like
      * VARIABLE=VALUE

@@ -406,7 +406,7 @@ main(int argc, char **argv) {
                 break;
             case CHROME_OPTION: {
                 char *cbin = chrome_command();
-                char *crest = " --app=%U";
+                char *crest = " --app=%U >/dev/null";
                 browser_command = xmalloc(strlen(cbin)+strlen(crest)+1);
                 sprintf(browser_command, "%s%s", cbin, crest);
                 break;
@@ -415,6 +415,9 @@ main(int argc, char **argv) {
                 browser_command = firefox_command();
                 break;
             case QTDOMTERM_OPTION:
+                fprintf(stderr,
+                        "Warning: The --qtdomterm option is experimental "
+                        "and not fully working!\n");
                 browser_command =
                     get_bin_relative_path("/bin/qtdomterm --connect %U &");
                 break;

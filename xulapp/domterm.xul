@@ -78,6 +78,7 @@
             }
             return null;
         };
+        dt.inputModeChanged = inputModeChanged;
         dt._writeFile = function(data, filePath) {
             var file = Components.classes["@mozilla.org/file/local;1"]
                 .createInstance(Components.interfaces.nsILocalFile);
@@ -123,18 +124,22 @@
     function doSaveAs() {
         getDomTermObject().doSaveAs();
     }
-    function setInputMode(mode) {
+    function inputModeChanged(mode) {
         var modeword;
         switch (mode) {
         case 108: modeword="line"; break;
         case 99: modeword="char"; break;
         case 97: modeword="auto"; break
         }
-        getDomTermObject().setInputMode(mode);
         var inMenubar = document.getElementById("menubar-inputmode-"+modeword);
         var inContext = document.getElementById("context-inputmode-"+modeword);
         inMenubar.setAttribute("checked", "true");
         inContext.setAttribute("checked", "true");
+        getDomTermObject().prototype.inputModeChanged(mode);
+    }
+    function setInputMode(mode) {
+        getDomTermObject().setInputMode(mode);
+        inputModeChanged(mode);
     }
     function doQuit() { window.close(); }
   </script>

@@ -111,6 +111,7 @@ public:
     inline int progress() const { return m_progress; }
 public slots:
     void changeInputMode(QAction*);
+    void inputModeChanged(char mode);
 signals:
     void finished();
 

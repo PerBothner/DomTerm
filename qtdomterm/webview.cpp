@@ -300,13 +300,28 @@ void WebView::changeInputMode(QAction* action)
     if(!inputMode)
         qFatal("scrollPosition is NULL");
     if (action != selectedInputMode) {
-        selectedInputMode->setChecked(false);
-        action->setChecked(true);
-        selectedInputMode = action;
         char mode = action == charInputMode ? 'c'
           : action == lineInputMode ? 'l'
           : 'a';
+        inputModeChanged(mode);
         backend()->setInputMode(mode);
+    }
+}
+
+void WebView::inputModeChanged(char mode)
+{
+  QAction* action = mode == 'a' ? autoInputMode
+    : mode == 'l' ? lineInputMode
+    : charInputMode;
+#if 0
+    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
+    if(!inputMode)
+        qFatal("scrollPosition is NULL");
+#endif
+    if (action != selectedInputMode) {
+        selectedInputMode->setChecked(false);
+        action->setChecked(true);
+        selectedInputMode = action;
     }
 }
 

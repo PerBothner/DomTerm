@@ -39,6 +39,7 @@
 #include "Pty.h"
 #include "kptyprocess.h"
 #include "browserapplication.h"
+#include "webview.h"
 
 Backend::Backend(QSharedDataPointer<ProcessOptions> processOptions,
                  QObject *parent)
@@ -416,8 +417,11 @@ void Backend::reportEvent(const QString &name, const QString &data)
     } else if (name=="ALINK") {
         QUrl url = parseSimpleJsonString(data, 0, data.length());
         QDesktopServices::openUrl(url);
-    } if (name=="SESSION-NAME") {
+    } else if (name=="SESSION-NAME") {
         setSessionName(parseSimpleJsonString(data, 0, data.length()));
+    } else if (name=="INPUT-MODE-CHANGED") {
+      if (data.length() == 3)
+          webView()->inputModeChanged(data[1].cell());
     } else if (name=="GET-HTML") {
       int q = data.indexOf('"');
       QString html = parseSimpleJsonString(data, q, data.length());
