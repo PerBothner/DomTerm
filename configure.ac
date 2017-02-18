@@ -24,7 +24,7 @@ AC_ARG_WITH(java_websocket,
   AS_HELP_STRING(--with-java_websocket@<:@=/path/to/java_websocket.jar@:>@,Build server using Java-WebServer))
 
 AC_ARG_WITH(libwebsockets,
-  AS_HELP_STRING(--with-websockets,Build server using libwebsockets))
+  AS_HELP_STRING(--with-libwebsockets,Build server using libwebsockets))
 
 AC_ARG_WITH(qtwebengine,
   AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
@@ -164,7 +164,7 @@ esac
 ldomterm_misc_includes=-I/usr/include/json-c
 if (which brew>&/dev/null)
 then
-  ldomterm_misc_includes="I$(brew --prefix)/include -I$(brew --prefix)/include/json-c -I$(brew --prefix openssl)/include"
+  ldomterm_misc_includes="-I$(brew --prefix)/include -I$(brew --prefix)/include/json-c -I$(brew --prefix openssl)/include"
 fi
 AC_SUBST(ldomterm_misc_includes)
 
