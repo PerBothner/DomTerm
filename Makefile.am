@@ -286,7 +286,7 @@ if WITH_JAVA
 endif
 
 install-ldomterm:
-	cd lws-term &&& $(MAKE) install
+	cd lws-term && $(MAKE) install
 
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(bindir)
