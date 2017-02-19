@@ -948,8 +948,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
     this.currentCursorColumn = column;
 };
 
-DomTerm.prototype._followingText = function() {
-    var cur = this.outputBefore;
+DomTerm.prototype._followingText = function(cur) {
     for (;;) {
         if (cur instanceof Text)
             return cur;
@@ -978,24 +977,32 @@ DomTerm.prototype._followingText = function() {
     }
 };
 
+DomTerm.prototype._removeCaret = function() {
+    var inputLine = this.inputLine;
+    if (inputLine && inputLine.getAttribute("caret")) {
+        var child = inputLine.firstChild;
+        inputLine.removeAttribute("caret");
+        if (child instanceof Text) {
+            var text = this._followingText(inputLine.followingSibling);
+            if (text instanceof Text) {
+                text.insertData(0, child.data);
+                inputLine.removeChild(child);
+            } else {
+                inputLine.removeChild(child);
+                inputLine.parentNode.insertBefore(child, inputLine.nextSibling);
+            }
+        }
+    }
+}
+
 DomTerm.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput && this.inputLine) {
         var inputParent = this.inputLine.parentNode;
         if (inputParent != null) {
+            this._removeCaret();
             if (this.outputBefore==this.inputLine)
                 this.outputBefore = this.outputBefore.nextSibling;
             inputParent.removeChild(this.inputLine);
-            if (this.inputLine.getAttribute("caret")) {
-                var child = this.inputLine.firstChild;
-                this.inputLine.removeAttribute("caret");
-                if (child instanceof Text) {
-                    var text = this._followingText();
-                    if (text instanceof Text) {
-                        text.insertData(0, child.data);
-                        this.inputLine.removeChild(child);
-                    }
-                }
-            }
         }
     }
 };
@@ -1009,7 +1016,8 @@ DomTerm.prototype.useStyledCaret = function() {
 };
 
 DomTerm.prototype.isLineEditing = function() {
-    return this._lineEditingMode + this._clientWantsEditing > 0;
+    return this._lineEditingMode + this._clientWantsEditing > 0
+        || this._composing > 0;
 }
 
 DomTerm.prototype._restoreInputLine = function() {
@@ -1019,7 +1027,7 @@ DomTerm.prototype._restoreInputLine = function() {
         if (this.useStyledCaret() && ! this.isLineEditing()) {
             if (! (this.inputLine.firstChild instanceof Text)
                 || this.inputLine.firstChild.data.length == 0) {
-                var text = this._followingText();
+                var text = this._followingText(this.outputBefore);
                 if (text instanceof Text && text.data.length > 0) {
                     var tdata = text.data;
                     var sz = 1;
@@ -1032,7 +1040,10 @@ DomTerm.prototype._restoreInputLine = function() {
                     }
                     var ch = tdata.substring(0, sz);
                     this.inputLine.appendChild(document.createTextNode(ch));
-                    text.deleteData(0, sz);
+                    if (sz == text.length)
+                        text.parentNode.removeChild(text);
+                    else
+                        text.deleteData(0, sz);
                     this.inputLine.removeAttribute("value");
                 }
                 else
@@ -1851,6 +1862,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                               false);
     function compositionStart(ev) {
         dt._composing = 1;
+        dt._removeCaret();
         if (dt.verbosity >= 1) dt.log("compositionStart");
     }
     function compositionEnd(ev) {
@@ -5655,7 +5667,8 @@ DomTerm.prototype.keyPressHandler = function(event) {
 DomTerm.prototype.inputHandler = function(event) {
     if (this.verbosity >= 2)
         this.log("input "+event+ " which:"+event.which+" data:'"+event.data);
-    if (event.target == this.inputLine && ! this.isLineEditing()) {
+    if (event.target == this.inputLine && ! this.isLineEditing()
+        && this.inputLine != this._deferredForDeletion) {
         var text = this.grabInput(this.inputLine);
         var ch = this.inputLine.firstChild;
         while (ch != null) {
