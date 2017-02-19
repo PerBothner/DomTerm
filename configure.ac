@@ -161,10 +161,15 @@ case "${with_libwebsockets}" in
     ;;
 esac
 
-ldomterm_misc_includes=-I/usr/include/json-c
+PKG_PROG_PKG_CONFIG
+if test "$with_libwebsockets" != "no"; then
+  PKG_CHECK_MODULES(JSON_C, json-c)
+  PKG_CHECK_MODULES(OPENSSL, openssl)
+fi
+ldomterm_misc_includes=
 if (which brew>&/dev/null)
 then
-  ldomterm_misc_includes="-I$(brew --prefix)/include -I$(brew --prefix)/include/json-c -I$(brew --prefix openssl)/include"
+  ldomterm_misc_includes="-I$(brew --prefix)/include"
 fi
 AC_SUBST(ldomterm_misc_includes)
 

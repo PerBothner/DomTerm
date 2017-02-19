@@ -13,11 +13,11 @@ LN_H = ln
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIB@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.c utils.c protocol.c http.c io.c whereami.c junzip.c
-ldomterm_CFLAGS = @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_INCLUDES@
+ldomterm_CFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_INCLUDES@
 if ENABLE_LD_PRELOAD
 ldomterm_CFLAGS += -DENABLE_LD_PRELOAD
 endif
-ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) -lssl -lcrypto -lpthread -ljson-c -lutil -lz
+ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) $(OPENSSL_LIBS) $(JSON_C_LIBS) -lpthread -lutil -lz
 #CLIENT_DATA_DIR = @datadir_relative@/domterm
 CLIENT_DATA_DIR = .
 LWS_RESOURCES = repl-client.html hlib/domterm-all.js hlib/domterm-client.js \
