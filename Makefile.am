@@ -304,19 +304,10 @@ else
 endif
 endif
 
-man_MANS = doc/domterm.1
+man1_MANS = doc/domterm.man
 if WITH_LIBWEBSOCKETS
-man_MANS += doc/ldomterm.1
+man1_MANS += doc/ldomterm.man
 endif
 if WITH_QTWEBENGINE
-man_MANS += doc/qtdomterm.1
+man1_MANS += doc/qtdomterm.man
 endif
-doc/domterm.1: $(srcdir)/doc/domterm.man
-	nroff -man $< > tpm-domterm.1
-	mv tpm-domterm.1 doc/domterm.1
-doc/ldomterm.1: $(srcdir)/doc/ldomterm.man
-	nroff -man $< > tpm-ldomterm.1
-	mv tpm-ldomterm.1 doc/ldomterm.1
-doc/qtdomterm.1: $(srcdir)/doc/qtdomterm.man
-	nroff -man $< > tpm-qtdomterm.1
-	mv tpm-qtdomterm.1 doc/qtdomterm.1
