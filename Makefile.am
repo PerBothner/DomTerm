@@ -122,7 +122,8 @@ run-shell: $(DOMTERM_JAR)
 
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
-	-rm -rf bin/ldomterm bin/domterm
+	-rm -rf bin/ldomterm bin/domterm \
+	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
 	-rm -f qtdomterm/data/hlib/domterm-all.js \
@@ -302,3 +303,20 @@ else
 	cd $(DESTDIR)$(bindir) && $(LN_S) jdomterm domterm
 endif
 endif
+
+man_MANS = doc/domterm.1
+if WITH_LIBWEBSOCKETS
+man_MANS += doc/ldomterm.1
+endif
+if WITH_QTWEBENGINE
+man_MANS += doc/qtdomterm.1
+endif
+doc/domterm.1: $(srcdir)/doc/domterm.man
+	nroff -man $< > tpm-domterm.1
+	mv tpm-domterm.1 doc/domterm.1
+doc/ldomterm.1: $(srcdir)/doc/ldomterm.man
+	nroff -man $< > tpm-ldomterm.1
+	mv tpm-ldomterm.1 doc/ldomterm.1
+doc/qtdomterm.1: $(srcdir)/doc/qtdomterm.man
+	nroff -man $< > tpm-qtdomterm.1
+	mv tpm-qtdomterm.1 doc/qtdomterm.1

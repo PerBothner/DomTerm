@@ -1,0 +1,26 @@
+.TH LDOMTERM 1
+.SH NAME
+domterm \- a terminal emulator based on web techologies
+.SH SYNOPSIS
+.B domterm
+.I "[options]"
+.I [command argument ...]
+.SH "DESCRIPTION"
+The domterm command is an alias for either
+.BR ldomterm (1)
+or
+.BR qtdomterm (1).
+For more details see those commands.
+
+The domterm application implements a terminal emulator based on
+web technologies.  This means the displayed text is structured
+like a web page, and can include image, links, and annotations.
+The style can be changed with CSS style sheets.
+
+.SH SEE ALSO
+.BR ldomterm (1)
+.BR qtdomterm (1)
+.BR qtdomterm(1)
+.PP
+.BR "http://domterm.org/"
+- the DomTerm home page

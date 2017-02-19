@@ -19,6 +19,7 @@ wsclasses.stamp
 tmp-for-xul
 tmp-for-jar
 tmp-repl.in
+doc/*.1
 doc/index.html
 doc/Applications.html
 doc/Architecture-notes.html

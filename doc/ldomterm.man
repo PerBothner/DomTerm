@@ -1,0 +1,28 @@
+.TH LDOMTERM 1
+.SH NAME
+ldomterm \- a terminal emulator based on web techologies
+.SH SYNOPSIS
+.B ldomterm
+.I "[options]"
+.I [command argument ...]
+
+.SH "DESCRIPTION"
+The ldomterm program implements a terminal emulator based on
+web technologies.  This means the displayed text is structured
+like a web page, and can include image, links, and annotations.
+The style can be changed with CSS style sheets.
+.PP
+The user interface ("DomTerm") and the actual terminal emulator
+runs in the "front-end", typically a web browser window.
+The ldomterm program starts a WebSockets server, runs the
+.I command
+(the "back-end"), and then by default creates a front-end
+window connected to the back-end.
+
+.SH SEE ALSO
+.BR domterm (1)
+- an alias for either ldomterm or qtdomterm
+.BR qtdomterm(1)
+.PP
+.BR "http://domterm.org/"
+- the DomTerm home page
