@@ -272,22 +272,32 @@ bin/qtdomterm: \
   qtdomterm/data/hlib/domterm-default.css
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
 
+if WITH_JAVA
 xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest
 xulappprefs_DATA = xulapp/defaults/preferences/prefs.js
 xulappdir = $(datadir)/domterm
 xulappprefsdir = $(datadir)/domterm/defaults/preferences
+endif
 
 install-data-local:
+if WITH_JAVA
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
 	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
+endif
+
+install-ldomterm:
+	cd lws-term &&& $(MAKE) install
 
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(bindir)
+if WITH_QTWEBENGINE
+	$(INSTALL_PROGRAM) bin/qtdomterm$(EXEEXT) $(DESTDIR)$(bindir)/qtdomterm$(EXEEXT)
+endif
 if WITH_LIBWEBSOCKETS
 	cd $(DESTDIR)$(bindir) && $(LN_S) ldomterm domterm
 else
 if WITH_QTWEBENGINE
-	cd $(DESTDIR)$(bindir) && $(LN_S) qtdomterm domterm
+	cd $(DESTDIR)$(bindir) && $(LN_S) qtdomterm$(EXEEXT) domterm
 else
 	cd $(DESTDIR)$(bindir) && $(LN_S) jdomterm domterm
 endif
