@@ -1,16 +1,19 @@
 Name:           domterm
-Version:        0.70
+Version:        0.71
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
 License:        BSD
 URL:            http://domterm.org/  
-Source0:        domterm-master.tar.gz
-#Source0:        https://github.com/PerBothner/DomTerm/archive/master.tar.gz
+#Source0:        DomTerm-master.tar.gz
+Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz
 
-BuildRequires:  libwebsockets-devel%{?_isa} json-c-devel
+BuildRequires:  autoconf automake libwebsockets-devel json-c-devel openssl-devel java-devel
+BuildRequires:  qt5-qtbase-devel qt5-qtwebchannel-devel qt5-qtwebengine-devel
 Requires:       json-c
+Requires(preun): %{_sbindir}/alternatives
+Requires(posttrans): %{_sbindir}/alternatives
 
 %global commit0 574e37bbda5b64ea93327cef45e44f744d8b2132
 %global gittag0 master
@@ -19,29 +22,56 @@ Requires:       json-c
 %description
 A terminal emulator based on web technologies
 
+%package -n qtdomterm
+Summary:        A terminal emulator using Qt and web technologies
+License:        BSD
+Requires:  qt5-qtbase qt5-qtwebchannel qt5-qtwebengine
+Requires(preun): %{_sbindir}/alternatives
+Requires(posttrans): %{_sbindir}/alternatives
+%description -n qtdomterm
+
+A terminal emulator using Qt and web technologies
+
 %prep
-echo in prep section1
-%autosetup -n domterm-master
-echo in prep section2
+%autosetup -n DomTerm-%{version}
 
 %build
 autoreconf
-%configure --disable-pty
+%configure --disable-pty --with-qtwebengine --with-java --with-libwebsockets
 %make_build
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make DESTDIR=$RPM_BUILD_ROOT install-ldomterm install-data
+make DESTDIR=$RPM_BUILD_ROOT install
+# Let alternatives manage the symlink
+echo after install link %{buildroot}%{_bindir}/domterm
+rm %{buildroot}%{_bindir}/domterm
+
+%preun
+%{_sbindir}/alternatives --remove domterm %{_bindir}/ldomterm
+
+%preun -n qtdomterm
+%{_sbindir}/alternatives --remove domterm %{_bindir}/qtdomterm
+
+%posttrans
+%{_sbindir}/alternatives --install %{_bindir}/domterm domterm %{_bindir}/ldomterm 80
+
+%posttrans -n qtdomterm
+%{_sbindir}/alternatives --install %{_bindir}/domterm domterm %{_bindir}/qtdomterm 70
 
 %files
-%{_bindir}/domterm
 %{_bindir}/ldomterm
 %{_datadir}/domterm/application.ini
 %{_datadir}/domterm/chrome.manifest
 %{_datadir}/domterm/defaults/preferences/prefs.js
 %{_datadir}/domterm/domterm.jar
+%{_mandir}/man1/domterm.1.gz
+%{_mandir}/man1/ldomterm.1.gz
 
+%files -n qtdomterm
+%{_bindir}/qtdomterm
+%{_mandir}/man1/qtdomterm.1.gz
 
 %changelog
-* Thu Feb  9 2017 Per Bothner <per@bothner.com>
-- 
+* Sun Feb 19 2017 Per Bothner <per@bothner.com> 0.71-1
+- Initial version.
