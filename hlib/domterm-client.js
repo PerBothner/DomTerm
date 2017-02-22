@@ -1,3 +1,4 @@
+/** Connect using WebSockets */
 function connect(wspath, wsprotocol) {
     var wt = new DomTerm("domterm");
     window.domterm1 = wt;
@@ -16,8 +17,96 @@ function connect(wspath, wsprotocol) {
         wt.initializeTerminal(topNode); };
 }
 
+var maxAjaxInterval = 2000;
+
+/** Connect using XMLHttpRequest ("ajax") */
+function connectAjax()
+{
+    var wt = new DomTerm("domterm");
+    window.domterm1 = wt;
+    var xhr = new XMLHttpRequest();
+    var sessionKey = 0;
+    var pendingInput = "";
+    var ajaxInterval = 200;
+    var awaitingAjax = false;
+    var timer = null;
+
+    function handleAjaxOpen() {
+        var xhr = window.xmlHttpRequest;
+        var wt = window.domterm1;
+        if (xhr.readyState === 4) {
+            var key = xhr.responseText.replace(/key=/, "");
+            var topNode = document.getElementById("domterm");
+            wt.initializeTerminal(topNode);
+            sessionKey = key;
+            requestIO();
+        }
+    }
+
+    function handleTimeout() {
+        timer = null;
+        requestIO();
+    }
+
+    function handleAjaxIO() {
+        if (xhr.readyState === 4) {
+            var outputText = xhr.responseText;
+            wt.insertString(outputText);
+            awaitingAjax = false;
+
+            if (pendingInput.length > 0) {
+                ajaxInterval = 0;
+                requestIO();
+            } else {
+                if (outputText.length > 0)
+                    ajaxInterval = 0;
+                ajaxInterval += 200;
+                if (ajaxInterval > maxAjaxInterval)
+                    ajaxInterval = maxAjaxInterval;
+                timer = setTimeout(handleTimeout, ajaxInterval);
+            }
+        }
+    }
+    function requestIO() {
+        if (timer != null) {
+            clearTimeout(timer);
+            timer = null;
+        }
+        xhr.open("POST", "io-"+sessionKey);
+        xhr.onreadystatechange = handleAjaxIO;
+        var text = pendingInput;
+        if (text.length > 0)
+            ajaxInterval = 0;
+        pendingInput = "";
+        xhr.send(text);
+        awaitingAjax = true;
+    }
+    function onUnload(evt) {
+        var request = new XMLHttpRequest();
+        request.open("POST","close-"+sessionKey);
+        request.send("");
+    }
+    window.addEventListener("beforeunload", onUnload, false);
+
+    function processInput(str) {
+        pendingInput = pendingInput + str;
+        if (! awaitingAjax) {
+            requestIO();
+        }
+    }
+    wt.processInputCharacters = processInput;
+
+    xhr.open("POST", "open.txt");
+    xhr.onreadystatechange = handleAjaxOpen;
+    xhr.send("VERSION="+wt.versionInfo);
+    window.xmlHttpRequest = xhr;
+}
+
 function loadHandler(event) {
-    if (location.search.search(/wait/) < 0) {
+    if (location.hash == "#ajax" || ! window.WebSocket) {
+        connectAjax();
+    }
+    else if (location.search.search(/wait/) < 0) {
         var ws = location.hash.match(/ws=([^,&]*)/);
         var url;
         if (ws) {

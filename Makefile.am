@@ -144,6 +144,7 @@ javafx_pty_sources = org/domterm/pty/RunPty.java
 
 domterm_jar_sources = \
   org/domterm/Backend.java \
+  org/domterm/DomHttpServer.java \
   org/domterm/ClassBackend.java \
   org/domterm/ProcessBackend.java \
   org/domterm/util/DomTermErrorStream.java \
