@@ -26,7 +26,7 @@ import com.sun.net.httpserver.HttpServer;
  */
 
 public class DomHttpServer implements HttpHandler {
-    static int verbose = 2;
+    static int verbose = 0;
     //Map<WebSocket,Backend> backendMap
     //= new IdentityHashMap();
     Map<String,Session> sessionMap = new HashMap<String,Session>();
@@ -156,7 +156,6 @@ public class DomHttpServer implements HttpHandler {
                     backend.addVersionInfo(rtext.substring(8));
                 backend.versionInfo = backend.versionInfo+";DomHttpServer";
                 try {
-                    System.err.println("before new ReplW sess:"+session);
                     session.termWriter = new ReplWriter(session);
                     backend.run(session.termWriter);
                     backend.sendSessionName();
@@ -176,7 +175,6 @@ public class DomHttpServer implements HttpHandler {
                 Session session = sessionMap.get(key);
                 String rtext = readAll(exchange);
                 Backend backend = session.backend;
-                //backend.processInputCharacters(rtext);
                 processInput(session, rtext);
                 CharSequence output = session.termWriter.removeStrings();
                 byte[] bytes = output.toString().getBytes();
@@ -191,7 +189,6 @@ public class DomHttpServer implements HttpHandler {
                 session.close();
             } else {
                 URL url = getClass().getResource(uris);
-            WTDebug.println("connect "+uris+" url:"+url);
                 URLConnection connection;
                 InputStream in;
                 if (url != null
@@ -311,20 +308,6 @@ public class DomHttpServer implements HttpHandler {
         return backend;
     }
 
-    /*
-    @Override
-    public void onClose(WebSocket conn, int code, String reason, boolean remote ) {
-        if (verbose > 0)
-            WTDebug.println("onClose called");
-        Backend backend = backendMap.get(conn);
-        backendMap.remove(conn);
-        backend.close(backendMap.isEmpty());
-        if (runBrowser >= 0)
-            System.exit(0);
-    }
-
-    */
-
     public void processInput(Session session, String msg) {
         Backend backend = session.backend;
         if (verbose > 0)
@@ -414,10 +397,7 @@ public class DomHttpServer implements HttpHandler {
             DomHttpServer s = new DomHttpServer(port, backendArgs);
             s.start();
             port = s.getPort();
-            //String defaultUrl = "file://"+domtermPath
-            //    +"/repl-client.html#ws=//localhost:"+port+"/";
             String defaultUrl = "http://localhost:"+port+"/domterm/#ajax";
-            //String defaultUrl = "http://localhost:"+port+"/";
             if (runBrowser == 0) { // desktop --browser
                 if (browserCommand == null)
                     Desktop.getDesktop().browse(new URI(defaultUrl));
