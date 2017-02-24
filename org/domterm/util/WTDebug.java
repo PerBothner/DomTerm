@@ -48,6 +48,8 @@ static
         init();
     }
 
+    public static PrintStream getErr() { return origErr; }
+
     public static void print(Object obj) {
         origErr.print(""+obj);
     }
