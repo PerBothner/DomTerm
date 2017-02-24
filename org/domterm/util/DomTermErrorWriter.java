@@ -21,9 +21,6 @@ public class DomTermErrorWriter extends FilterWriter {
     public static final char[] END_ERR_MARKER = {
         ESCAPE, '[', '1', '1', 'u'
     };
-    public static final char[] EOF_MARKER = {
-        ESCAPE, '[', '9', '9', ';', '9', '9', 'u'
-    };
 
     public DomTermErrorWriter(Writer out) {
         super(out);
