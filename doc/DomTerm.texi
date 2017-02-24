@@ -845,6 +845,25 @@ div.domterm[name="domterm-1"] @{ background-color: #FEE @}
 div.domterm[name="domterm-2"] @{ background-color: #EEF @}
 @end example
 
+@subheading Browser quirks and limitions
+
+(These can all change as browsers change or work-arounds implemented.)
+
+Middle-button paste: Works with Chrome and qtdomterm (on Linux);
+does not work on Firefox (or Firefox-XUL).
+
+Exiting the inferior process can sometimes fail to automatically
+close the DomTerm window, due to browser security limitations.
+It currently works on Google Chrome, but not Firefox.
+
+Saving the console display to a file in a browser may
+save to the browser's ``Downloads'' area.
+You may be able to save the file elsewhere, depending
+on the browser and its settings.
+
+Using line-editing mode with the brower's builtin editor
+may exhibit various quirks.
+
 @subheading Adding qtdomterm to the desktop
 
 @subsubheading On Gnome or KDE
