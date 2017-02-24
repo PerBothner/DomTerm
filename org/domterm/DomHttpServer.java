@@ -35,6 +35,7 @@ public class DomHttpServer implements HttpHandler {
     public static int serverBacklog = 0;
     HttpServer httpServer;
     int port;
+    Object endMonitor;
 
     String[] backendArgs;
 
@@ -57,9 +58,13 @@ public class DomHttpServer implements HttpHandler {
         public void close() {
             server.sessionMap.remove(key);
             backend.close(server.sessionMap.isEmpty());
-                new Error("got Session.close "+key+" runB:"+runBrowser).printStackTrace();
-            if (runBrowser >= 0)
-                System.exit(0);
+            if (server.endMonitor != null) {
+                synchronized (server.endMonitor) {
+                    server.endMonitor.notifyAll();
+                }
+            } else if (runBrowser >= 0) {
+                server.stop();
+            }
         }
         public String toString() { return "Session-"+key; }
     }
@@ -68,6 +73,7 @@ public class DomHttpServer implements HttpHandler {
         Session session;
         List<String> strings = new ArrayList<String>();
         int numChars = 0;
+        boolean closed;
         
         ReplWriter(Session session) { super(true); this.session = session; }
  
@@ -86,12 +92,10 @@ public class DomHttpServer implements HttpHandler {
             return sbuf;
         }
         public void close() throws IOException {
-            System.err.println("\nReplWriter close session:"+session);
-            System.err.flush();
+            closed = true;
             if (session != null) {
                 write("\033[99;99u");
                 super.close();
-                session.close();
                 session = null;
             }
         }
@@ -104,6 +108,10 @@ public class DomHttpServer implements HttpHandler {
         httpServer.setExecutor(null); // creates a default executor
         this.backendArgs = backendArgs;
         httpServer.createContext("/", this);
+    }
+
+    public static void setExitOnClose(boolean exitOnClose) {
+        runBrowser = exitOnClose ? 0 : -1;
     }
 
     private static String readAll(InputStream in) throws IOException {
@@ -132,18 +140,15 @@ public class DomHttpServer implements HttpHandler {
 
     }
     public void handle(HttpExchange exchange) throws IOException {
-        System.err.println();
         URI uri = exchange.getRequestURI();
         String uris = uri.toString();
         Headers headers = exchange.getResponseHeaders();
-        System.err.println("handle "+uris);
         if ("/".equals(uris)) {
             uris = "/domterm/#ajax";
             headers.add("Location", uris);
             exchange.sendResponseHeaders(307, -1);
             return;
         }
-        System.err.println("handle "+exchange+" uri:"+uri+" -> "+uris);
         if (uris.startsWith("/domterm/")) {
             uris = uris.substring(8);
             if (uris.equals("/"))
@@ -182,6 +187,8 @@ public class DomHttpServer implements HttpHandler {
                 OutputStream out = exchange.getResponseBody();
                 out.write(bytes);
                 out.close();
+                if (session.termWriter.closed)
+                    session.close();
                 return;
             } else if (uris.startsWith("/close-")) {
                 String key = uris.substring(7);
@@ -358,7 +365,6 @@ public class DomHttpServer implements HttpHandler {
         domtermPath = System.getProperty("java.library.path");
         if (domtermPath != null && domtermPath.endsWith("/lib"))
             domtermPath = domtermPath.substring(0, domtermPath.length()-4);
-        //int port = 8887; // 843 flash policy port
         int port = -1;
         int i = 0;
         for (; i < args.length; i++) {
@@ -379,8 +385,8 @@ public class DomHttpServer implements HttpHandler {
             } else if (arg.startsWith("--browser=")) {
                 runBrowser = 0;
                 browserCommand = arg.substring(10);
-            } else if (arg.equals("--firefox")) {
-                runBrowser = 1;
+            //} else if (arg.equals("--firefox")) {
+            //runBrowser = 1;
             } else if (arg.equals("--chrome")) {
                 runBrowser = 2;
             } else if (arg.equals("--qtdomterm")
@@ -405,13 +411,6 @@ public class DomHttpServer implements HttpHandler {
                     Process process = Runtime.getRuntime()
                         .exec(new String[] { browserCommand, defaultUrl });
                 }
-            } else if (runBrowser == 1) { // --firefox
-                String firefoxCommand = firefoxCommand();
-                Process process = Runtime.getRuntime()
-                    .exec(new String[] { firefoxCommand, "-app",
-                                         domtermPath+"/share/domterm/application.ini",
-                                         "-wspath",
-                                         "ws://localhost:"+port });
             } else if (runBrowser == 2) { // --chrome
                 String chromeCommand = chromeCommand();
                 String appArg = "--app="+defaultUrl;
@@ -433,9 +432,9 @@ public class DomHttpServer implements HttpHandler {
                 reader.readLine();
             }
             if (runBrowser >= 0) {
-                Object monitor = new Object();
-                synchronized (monitor) {
-                    monitor.wait();
+                s.endMonitor = new Object();
+                synchronized (s.endMonitor) {
+                    s.endMonitor.wait();
                 }
             }
             s.stop();

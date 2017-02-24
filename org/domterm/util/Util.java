@@ -31,6 +31,7 @@ public final class Util {
                             if (count < 0) {
                                 out.write(EOF_MARKER, 0,
                                           EOF_MARKER.length);
+                                out.close();
                                 break;
                             }
                             //WTDebug.println("copyThread "+count+": "+WTDebug.toQuoted(new String(buffer,0,count)));

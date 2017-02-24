@@ -78,6 +78,9 @@ function connectAjax()
         if (text.length > 0)
             ajaxInterval = 0;
         pendingInput = "";
+        xhr.onerror= function(e) {
+            wt.close();
+        }
         xhr.send(text);
         awaitingAjax = true;
     }
