@@ -150,21 +150,20 @@ datadir_relative="share"
 
 AC_SUBST(datadir_relative)
 
-case "${with_libwebsockets}" in
-  "yes" | "no" | "")
-    LIBWEBSOCKETS_LIB=-lwebsockets
-    LIBWEBSOCKETS_INCLUDES=
-    ;;
-  *)
-    LIBWEBSOCKETS_LIB="${with_libwebsockets}/lib"
-    LIBWEBSOCKETS_INCLUDES="${with_libwebsockets}/include"
-    ;;
-esac
-
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
   PKG_CHECK_MODULES(JSON_C, json-c)
   PKG_CHECK_MODULES(OPENSSL, openssl)
+  case "${with_libwebsockets}" in
+    "yes" | "")
+      PKG_CHECK_MODULES(LIBWEBSOCKETS, libwebsockets)
+      ;;
+    *)
+      #LIBWEBSOCKETS_LIBS="-L ${with_libwebsockets}/lib -lwebsockets"
+      LIBWEBSOCKETS_LIBS="${with_libwebsockets}/lib/libwebsockets.a"
+      LIBWEBSOCKETS_CFLAGS="-I${with_libwebsockets}/include"
+      ;;
+  esac
 fi
 ldomterm_misc_includes=
 if (which brew>&/dev/null)
@@ -181,8 +180,8 @@ AC_SUBST(CLASSPATH_SEPARATOR)
 AC_SUBST(conf_classpath)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
-AC_SUBST(LIBWEBSOCKETS_LIB)
-AC_SUBST(LIBWEBSOCKETS_INCLUDES)
+AC_SUBST(LIBWEBSOCKETS_LIBS)
+AC_SUBST(LIBWEBSOCKETS_CFLAGS)
 AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(with_closure_compiler)

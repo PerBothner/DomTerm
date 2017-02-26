@@ -10,10 +10,10 @@ LN_H = ln
 	@rm -f ../bin/ldomterm$(EXEEXT)
 	cd ../bin && $(LN_H) ../lws-term/ldomterm$(EXEEXT) ldomterm$(EXEEXT)
 
-LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIB@
+LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.c utils.c protocol.c http.c io.c whereami.c junzip.c
-ldomterm_CFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_INCLUDES@
+ldomterm_CFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@
 if ENABLE_LD_PRELOAD
 ldomterm_CFLAGS += -DENABLE_LD_PRELOAD
 endif

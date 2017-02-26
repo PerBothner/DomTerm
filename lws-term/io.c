@@ -4,6 +4,12 @@
 #include <junzip.h>
 #include <zlib.h>
 
+#ifdef LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP
+#define USE_NEW_FOPS 1
+#else
+#define USE_NEW_FOPS 0
+#endif
+
 struct junzip_mem_handle {
     JZFile handle;
     int fd;
@@ -17,11 +23,16 @@ struct open_mem_file {
     long length;
     long position;
 };
+#if USE_NEW_FOPS
+#define lws_filefd_to_mem_file(FD) \
+  ((struct open_mem_file*) (FD)->filesystem_priv)
+#else
 #define MAX_OPEN_MEM_FILES 32
 struct open_mem_file open_mem_files[MAX_OPEN_MEM_FILES];
 #define lws_filefd_to_mem_file(FD) \
   ((FD) >= 1000 ? &open_mem_files[(FD)-1000] : NULL)
 #define mem_file_to_lws_filefd(MEM) (((MEM)-&open_mem_files[0])+1000)
+#endif
 
 struct lws_plat_file_ops fops_plat;
 
@@ -55,17 +66,21 @@ static int zipRecordCallback(JZFile *zip, int idx, JZFileHeader *header) {
 
 static char domterm_resource_prefix[] = "domterm:/";
 
+#if USE_NEW_FOPS
+static lws_fop_fd_t
+domserver_fops_open(struct lws_plat_file_ops *fops,
+                     const char *filename,
+                     lws_filepos_t *filelen, lws_fop_flags_t *flags)
+#else
 static lws_filefd_type
 domserver_fops_open(struct lws *wsi, const char *filename,
-                    unsigned long *filelen,
-#ifdef LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP
-                    int *flags
-#else
-                    int flags
+                    unsigned long *filelen, int flags)
 #endif
-                    )
 {
     lws_filefd_type n;
+#if USE_NEW_FOPS
+    lws_fop_fd_t fop_fd;
+#endif
     if (strncmp(filename, domterm_resource_prefix,
                 sizeof(domterm_resource_prefix)-1) == 0) {
         JZFile *zip = &junzip_handler.handle;
@@ -78,8 +93,14 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                 && memcmp(entry_name, zip->start + entry->fileNameStart,
                           fnlength) == 0) {
                 uint32_t uncompressedSize = entry->uncompressedSize;
-                int j = MAX_OPEN_MEM_FILES;
                 struct open_mem_file *mem;
+#if USE_NEW_FOPS
+                fop_fd = xmalloc(sizeof(*fop_fd)+sizeof(struct open_mem_file));
+                mem = (struct open_mem_file*) (fop_fd+1);
+                fop_fd->filesystem_priv = mem;
+                fop_fd->fops = fops;
+#else
+                int j = MAX_OPEN_MEM_FILES;
                 for (;;) {
                     if (--j == 0) {
                         errno = EMFILE;
@@ -89,6 +110,7 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                     if (mem->handle == NULL)
                         break;
                 }
+#endif
                 mem->handle = &junzip_handler;
                 mem->index = i;
                 mem->position = 0;
@@ -113,10 +135,10 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                     for (int k = 4; --k >= 0; ) *ptr++ = 0; // MTIME = 0
                     *ptr++ = 0; // Extra Flags. should get from generalPurposeBitFlag
                     *ptr++ = 3; // OS=Unix.  Could use versionMadeBy
-                    memcpy(ptr, junzip_handler.start + offset, compressedSize);
+                    memcpy(ptr, zip->start + offset, compressedSize);
                     ptr += compressedSize;
                     // write 8-byte footer
-                    uint32_t val = entry->info.crc32;
+                    uint32_t val = entry->crc32;
                     for (int k = 4; --k >= 0; ) {
                       *ptr++ = val & 0xFF; val >>= 8;
                     }
@@ -136,24 +158,44 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                                    entry, data) != Z_OK) {
                       fprintf(stderr, "Couldn't read file data!");
                       free(data);
-                      return -1;
+#if USE_NEW_FOPS
+                      return NULL;
+#else
+                      return LWS_INVALID_FILE;
+#endif
                     }
                 }
                 mem->length = rsize;
                 *filelen = rsize;
+#if USE_NEW_FOPS
+                return fop_fd;
+#else
                 return mem_file_to_lws_filefd(mem);
+#endif
             }
         }
         errno = EMFILE;
+#if USE_NEW_FOPS
+        return NULL;
+#else
         return LWS_INVALID_FILE;
+#endif
     }
 
     /* call through to original platform implementation */
-    return  fops_plat.open(wsi, filename, filelen, flags);
+#if USE_NEW_FOPS
+    return fops_plat.open(fops, filename, filelen, flags);
+#else
+    return fops_plat.open(wsi, filename, filelen, flags);
+#endif
 }
 
 static int
+#if USE_NEW_FOPS
+domserver_fops_close(lws_fop_fd_t fd)
+#else
 domserver_fops_close(struct lws *wsi, lws_filefd_type fd)
+#endif
 {
     struct open_mem_file *mem = lws_filefd_to_mem_file(fd);
     if (mem != NULL) {
@@ -164,39 +206,62 @@ domserver_fops_close(struct lws *wsi, lws_filefd_type fd)
         mem->index = 0;
         return 0;
     }
+#if USE_NEW_FOPS
+    return fops_plat.close(fd);
+#else
     return fops_plat.close(wsi, fd);
+#endif
 }
 
+#if USE_NEW_FOPS
+static lws_fileofs_t
+domserver_fops_seek_cur(lws_fop_fd_t fd,
+                        lws_fileofs_t offset_from_cur_pos)
+#else
 static unsigned long
 domserver_fops_seek_cur(struct lws *wsi, lws_filefd_type fd,
                         long offset_from_cur_pos)
+#endif
 {
     struct open_mem_file *mem = lws_filefd_to_mem_file(fd);
+#if !USE_NEW_FOPS
     if (mem != NULL) {
-        long new_position = mem->position + offset_from_cur_pos;
-        if (new_position < 0 || new_position > mem->length)
-            return (off_t) (-1);
-        mem->position = new_position;
-        return new_position;
+#endif
+    long new_position = mem->position + offset_from_cur_pos;
+    if (new_position < 0 || new_position > mem->length)
+        return (off_t) (-1);
+    mem->position = new_position;
+    return new_position;
+#if !USE_NEW_FOPS
     }
     return fops_plat.seek_cur(wsi, fd, offset_from_cur_pos);
+#endif
 }
 
 static int
+#if USE_NEW_FOPS
+domserver_fops_read(lws_fop_fd_t fd, lws_filepos_t *amount,
+                    uint8_t *buf, lws_filepos_t len)
+#else
 domserver_fops_read(struct lws *wsi, lws_filefd_type fd, unsigned long *amount,
                     unsigned char *buf, unsigned long len)
+#endif
 {
     struct open_mem_file *mem = lws_filefd_to_mem_file(fd);
+#if !USE_NEW_FOPS
     if (mem != NULL) {
-       unsigned long avail = mem->length - mem->position;
-       if (len > avail)
-          len = avail;
-       memcpy(buf, mem->data + mem->position, len);
-       mem->position += len;
-       *amount = len;
-       return 0;
+#endif
+    unsigned long avail = mem->length - mem->position;
+    if (len > avail)
+        len = avail;
+    memcpy(buf, mem->data + mem->position, len);
+    mem->position += len;
+    *amount = len;
+    return 0;
+#if !USE_NEW_FOPS
     }
     return fops_plat.read(wsi, fd, amount, buf, len);
+#endif
 }
 
 void
