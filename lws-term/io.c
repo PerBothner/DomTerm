@@ -6,8 +6,11 @@
 
 #ifdef LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP
 #define USE_NEW_FOPS 1
+#define LWS_INVALID_FILEFD NULL
+static struct lws_plat_file_ops zip_fops;
 #else
 #define USE_NEW_FOPS 0
+#define LWS_INVALID_FILEFD LWS_INVALID_FILE
 #endif
 
 struct junzip_mem_handle {
@@ -47,7 +50,7 @@ junzip_mem_close(JZFile *zfile)
     close(handle->fd);
 }
 
-JZFile *
+static JZFile *
 init_junzip_handle(struct junzip_mem_handle *handle,
                         char *start, off_t length, int fd)
 {
@@ -98,7 +101,7 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                 fop_fd = xmalloc(sizeof(*fop_fd)+sizeof(struct open_mem_file));
                 mem = (struct open_mem_file*) (fop_fd+1);
                 fop_fd->filesystem_priv = mem;
-                fop_fd->fops = fops;
+                fop_fd->fops = &zip_fops;
 #else
                 int j = MAX_OPEN_MEM_FILES;
                 for (;;) {
@@ -114,9 +117,10 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                 mem->handle = &junzip_handler;
                 mem->index = i;
                 mem->position = 0;
-                size_t offset = entry->offset;
-                offset += ZIP_LOCAL_FILE_HEADER_LENGTH;
-                offset += entry->fileNameLength + entry->extraFieldLength;
+                if (jzSeekData(&junzip_handler.handle, entry) != Z_OK) {
+                    return LWS_INVALID_FILEFD;
+                }
+                size_t offset = zip->position;
                 unsigned long rsize;
                 int sentCompressed = 0;
 #ifdef LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP
@@ -150,19 +154,14 @@ domserver_fops_open(struct lws *wsi, const char *filename,
                 }
 #endif
                 if (! sentCompressed) {
-                    zf_seek_set(zip, offset);
                     rsize = uncompressedSize;
                     char *data = xmalloc(rsize);
                     mem->data = data;
                     if (jzReadData(&junzip_handler.handle,
-                                   entry, data) != Z_OK) {
+                                       entry, data) != Z_OK) {
                       fprintf(stderr, "Couldn't read file data!");
                       free(data);
-#if USE_NEW_FOPS
-                      return NULL;
-#else
-                      return LWS_INVALID_FILE;
-#endif
+                      return LWS_INVALID_FILEFD;
                     }
                 }
                 mem->length = rsize;
@@ -175,11 +174,7 @@ domserver_fops_open(struct lws *wsi, const char *filename,
             }
         }
         errno = EMFILE;
-#if USE_NEW_FOPS
-        return NULL;
-#else
-        return LWS_INVALID_FILE;
-#endif
+        return LWS_INVALID_FILEFD;
     }
 
     /* call through to original platform implementation */
@@ -264,6 +259,14 @@ domserver_fops_read(struct lws *wsi, lws_filefd_type fd, unsigned long *amount,
 #endif
 }
 
+static struct lws_plat_file_ops zip_fops = {
+    domserver_fops_open,
+    domserver_fops_close,
+    domserver_fops_seek_cur,
+    domserver_fops_read,
+    NULL
+};
+
 void
 initialize_resource_map(struct lws_context *context,
                         const char *domterm_jar_path)
@@ -301,7 +304,9 @@ initialize_resource_map(struct lws_context *context,
     fops_plat = *(lws_get_fops(context));
     /* override the active fops */
     lws_get_fops(context)->open = domserver_fops_open;
+#if ! USE_NEW_FOPS 
     lws_get_fops(context)->close = domserver_fops_close;
     lws_get_fops(context)->seek_cur = domserver_fops_seek_cur;
     lws_get_fops(context)->read = domserver_fops_read;
+#endif
 }

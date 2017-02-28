@@ -1,6 +1,6 @@
-// JUnzip library by Joonas Pihlajamaa. See junzip.h for license and details.
+// Unzip library by Per Bothner and Joonas Pihlajamaa.
+// See junzip.h for license and details.
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,7 +8,39 @@
 
 #include "junzip.h"
 
-int
+#define ZIP_CENTRAL_SIGNATURE 0
+#define ZIP_CENTRAL_VERSION_MADE_BY 4
+#define ZIP_CENTRAL_VERSION_NEEDED_TO_EXTRACT 6
+#define ZIP_CENTRAL_GENERAL_PURPOSE_BIT_FLAG 8
+#define ZIP_CENTRAL_COMPRESSION_METHOD 10
+#define ZIP_CENTRAL_LAST_MOD_FILE_TIME 12
+#define ZIP_CENTRAL_LAST_MOD_FILE_DATE 14
+#define ZIP_CENTRAL_CRC32 16
+#define ZIP_CENTRAL_COMPRESSED_SIZE 20
+#define ZIP_CENTRAL_UNCOMPRESSED_SIZE 24
+#define ZIP_CENTRAL_FILE_NAME_LENGTH 28
+#define ZIP_CENTRAL_EXTRA_FIELD_LENGTH 30
+#define ZIP_CENTRAL_FILE_COMMENT_LENGTH 32
+#define ZIP_CENTRAL_DISK_NUMBER_START 34
+#define ZIP_CENTRAL_INTERNAL_FILE_ATTRIBUTES 36
+#define ZIP_CENTRAL_EXTERNAL_FILE_ATTRIBUTES 38
+#define ZIP_CENTRAL_RELATIVE_OFFSET_OF_LOCAL_HEADER 42
+#define ZIP_CENTRAL_DIRECTORY_LENGTH 46
+
+#define ZIP_END_SIGNATURE_OFFSET 0
+#define ZIP_END_DESK_NUMBER 4
+#define ZIP_END_CENTRAL_DIRECTORY_DISK_NUMBER 6
+#define ZIP_END_NUM_ENTRIES_THIS_DISK 8
+#define ZIP_END_NUM_ENTRIES 10
+#define ZIP_END_CENTRAL_DIRECTORY_SIZE 12
+#define ZIP_END_CENTRAL_DIRECTORY_OFFSET 16
+#define ZIP_END_ZIP_COMMENT_LENGTH 20
+#define ZIP_END_DIRECTORY_LENGTH 22
+
+#define get_u16(PTR) ((PTR)[0] | ((PTR)[1] << 8))
+#define get_u32(PTR) ((PTR)[0] | ((PTR)[1]<<8) | ((PTR)[2]<<16) | ((PTR)[3]<<24))
+
+static int
 zf_seek_set(JZFile *zfile, size_t offset)
 {
     int new_position = offset;
@@ -18,7 +50,7 @@ zf_seek_set(JZFile *zfile, size_t offset)
     return 0;
 }
 
-int
+static int
 zf_seek_cur(JZFile *zfile, size_t offset)
 {
     int new_position = zfile->position + offset;
@@ -28,7 +60,7 @@ zf_seek_cur(JZFile *zfile, size_t offset)
     return 0;
 }
 
-int
+static int
 zf_seek_end(JZFile *zfile, size_t offset)
 {
     int new_position = zfile->length + offset;
@@ -53,14 +85,12 @@ int jzReadEndRecord(JZFile *zip) {
     long fileSize, readBytes, i;
 
     if(zf_seek_end(zip, -ZIP_END_DIRECTORY_LENGTH)) {
-        fprintf(stderr, "Too small file to be a zip!");
         return Z_ERRNO;
     }
 
     unsigned char *ptr = zf_current(zip);
     while (ptr[0] != 0x50 || ptr[1] != 0x4B || ptr[2] != 0x05 || ptr[3] != 0x06) {
         if (ptr == zip->start) {
-            fprintf(stderr, "End record signature not found in zip!");
             return Z_ERRNO;
         }
         ptr--;
@@ -70,7 +100,6 @@ int jzReadEndRecord(JZFile *zip) {
     if (get_u16(ptr + ZIP_END_DESK_NUMBER)
         || get_u16(ptr + ZIP_END_CENTRAL_DIRECTORY_DISK_NUMBER)
         || zip->numEntries != get_u16(ptr + ZIP_END_NUM_ENTRIES_THIS_DISK)) {
-        fprintf(stderr, "Multifile zips not supported!");
         return Z_ERRNO;
     }
 
@@ -83,19 +112,16 @@ int jzReadCentralDirectory(JZFile *zip, JZRecordCallback callback) {
     int i;
 
     if(zf_seek_set(zip, zip->centralDirectoryOffset)) {
-        fprintf(stderr, "Cannot seek in zip file!");
         return Z_ERRNO;
     }
 
     for(i=0; i < zip->numEntries; i++) {
         unsigned char *ptr = zf_current(zip);
         if (zf_available(zip) < ZIP_CENTRAL_DIRECTORY_LENGTH) {
-            fprintf(stderr, "Couldn't read file header %d!", i);
             return Z_ERRNO;
         }
         zf_seek_cur(zip, ZIP_CENTRAL_DIRECTORY_LENGTH);
         if (get_u32(ptr + ZIP_CENTRAL_SIGNATURE) != 0x02014B50) {
-            fprintf(stderr, "Invalid file header signature %d!", i);
             return Z_ERRNO;
         }
         // Construct JZFileHeader from global file header
@@ -109,7 +135,6 @@ int jzReadCentralDirectory(JZFile *zip, JZRecordCallback callback) {
 
         header.fileNameStart = zf_tell(zip);
         if (zf_seek_cur(zip, header.fileNameLength + header.extraFieldLength + get_u16(ptr + ZIP_CENTRAL_FILE_COMMENT_LENGTH))) {
-            fprintf(stderr, "Couldn't skip extra field or file comment %d", i);
             return Z_ERRNO;
         }
 
@@ -117,6 +142,16 @@ int jzReadCentralDirectory(JZFile *zip, JZRecordCallback callback) {
             break; // end if callback returns zero
     }
 
+    return Z_OK;
+}
+
+int jzSeekData(JZFile *zip, JZFileHeader *entry) {
+    size_t offset = entry->offset;
+    offset += ZIP_LOCAL_FILE_HEADER_LENGTH;
+    offset += entry->fileNameLength + entry->extraFieldLength;
+    if (offset < 0 || offset > zip->length)
+        return Z_STREAM_END;
+    zip->position = offset;
     return Z_OK;
 }
 
@@ -128,10 +163,10 @@ int jzReadData(JZFile *zip, JZFileHeader *header, void *buffer) {
     int ret;
 
     if(header->compressionMethod == 0) { // Store - just read it
-        if(zf_read(zip, buffer, header->uncompressedSize) <
+        if (zf_read(zip, buffer, header->uncompressedSize) <
                 header->uncompressedSize)
             return Z_ERRNO;
-    } else if(header->compressionMethod == 8) { // Deflate - using zlib
+    } else if (header->compressionMethod == 8) { // Deflate - using zlib
         strm.zalloc = Z_NULL;
         strm.zfree = Z_NULL;
         strm.opaque = Z_NULL;
@@ -140,11 +175,11 @@ int jzReadData(JZFile *zip, JZFileHeader *header, void *buffer) {
         strm.next_in = Z_NULL;
 
         // Use inflateInit2 with negative window bits to indicate raw data
-        if((ret = inflateInit2(&strm, -MAX_WBITS)) != Z_OK)
+        if ((ret = inflateInit2(&strm, -MAX_WBITS)) != Z_OK)
             return ret; // Zlib errors are negative
 
         // Inflate compressed data
-        for(compressedLeft = header->compressedSize,
+        for (compressedLeft = header->compressedSize,
                 uncompressedLeft = header->uncompressedSize;
                 compressedLeft && uncompressedLeft && ret != Z_STREAM_END;
                 compressedLeft -= strm.avail_in) {
