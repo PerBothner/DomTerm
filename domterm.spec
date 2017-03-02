@@ -9,7 +9,7 @@ URL:            http://domterm.org/
 Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz
 
-BuildRequires:  autoconf automake libwebsockets-devel json-c-devel openssl-devel java-devel
+BuildRequires:  autoconf automake pkgconfig(libwebsockets) pkgconfig(json-c) pkgconfig(openssl) java-devel
 BuildRequires:  qt5-qtbase-devel qt5-qtwebchannel-devel qt5-qtwebengine-devel
 Requires:       json-c
 Requires(preun): %{_sbindir}/alternatives
@@ -41,7 +41,6 @@ autoreconf
 %make_build
 
 %install
-rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT install
 # Let alternatives manage the symlink
 echo after install link %{buildroot}%{_bindir}/domterm
@@ -61,17 +60,21 @@ rm %{buildroot}%{_bindir}/domterm
 
 %files
 %{_bindir}/ldomterm
+%dir %{_datadir}/domterm
 %{_datadir}/domterm/application.ini
 %{_datadir}/domterm/chrome.manifest
 %{_datadir}/domterm/defaults/preferences/prefs.js
 %{_datadir}/domterm/domterm.jar
-%{_mandir}/man1/domterm.1.gz
-%{_mandir}/man1/ldomterm.1.gz
+%{_mandir}/man1/domterm.1*
+%{_mandir}/man1/ldomterm.1*
 
 %files -n qtdomterm
 %{_bindir}/qtdomterm
-%{_mandir}/man1/qtdomterm.1.gz
+%{_mandir}/man1/qtdomterm.1*
 
 %changelog
+* Wed Mar  1 2017 Per Bothner <per@bothner.com> 0.72-1
+- Various tweaks based on feedback.
+
 * Sun Feb 19 2017 Per Bothner <per@bothner.com> 0.71-1
 - Initial version.
