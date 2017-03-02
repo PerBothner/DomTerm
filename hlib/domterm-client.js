@@ -13,7 +13,7 @@ function connect(wspath, wsprotocol) {
     }
     var topNode = document.getElementById("domterm");
     wsocket.onopen = function(e) {
-        wsocket.send("\x92VERSION "+wt.versionInfo+"\n");
+        wsocket.send("\x92VERSION "+DomTerm.versionInfo+"\n");
         wt.initializeTerminal(topNode); };
 }
 
@@ -101,7 +101,7 @@ function connectAjax()
 
     xhr.open("POST", "open.txt");
     xhr.onreadystatechange = handleAjaxOpen;
-    xhr.send("VERSION="+wt.versionInfo);
+    xhr.send("VERSION="+DomTerm.versionInfo);
     window.xmlHttpRequest = xhr;
 }
 

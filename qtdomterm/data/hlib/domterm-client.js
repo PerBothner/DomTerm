@@ -9,7 +9,7 @@ function loadHandler(event) {
         wt.processInputCharacters = function(str) { wsocket.send(str); };
         wsocket.onmessage = function(evt) {  wt.insertString(evt.data); }
         wsocket.onopen = function(e) {
-            wsocket.send("\x92VERSION QtDomTerm;"+wt.versionInfo+"\n");
+            wsocket.send("\x92VERSION QtDomTerm;"+DomTerm.versionInfo+"\n");
             wt.initializeTerminal(topNode); };
         return;
     }
@@ -17,7 +17,7 @@ function loadHandler(event) {
         function(channel) {
             var backend = channel.objects.backend;
             window.backend = backend;
-            backend.reportEvent("VERSION", wt.versionInfo);
+            backend.reportEvent("VERSION", DomTerm.versionInfo);
             wt.initializeTerminal(topNode);
             wt.processInputCharacters =
                 function(str) { if (backend) backend.processInputCharacters(str); };

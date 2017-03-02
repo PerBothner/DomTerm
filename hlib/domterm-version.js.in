@@ -1,0 +1,2 @@
+DomTerm.versionString = "@DOMTERM_VERSION@";
+DomTerm.versionInfo = "version="+DomTerm.versionString;

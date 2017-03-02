@@ -1,9 +1,9 @@
 dnl Autoconf script for DomTerm
-AC_INIT([DomTerm],[0.50])
+AC_INIT([DomTerm],[0.72])
 AC_CONFIG_SRCDIR([doc/DomTerm.texi])
 AM_MAINTAINER_MODE([enable])
 
-DOMTERM_VERSION=`<$srcdir/hlib/terminal.js sed -n -e 's/.*this.versionString = "\(.*\)".*$/\1/p'`
+DOMTERM_VERSION="${PACKAGE_VERSION}"
 DOMTERM_YEAR="2017"
 
 AC_CONFIG_AUX_DIR(autotools-aux)
@@ -186,7 +186,8 @@ AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(with_closure_compiler)
 
-AC_CONFIG_FILES([Makefile lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h])
+AC_CONFIG_FILES([Makefile hlib/domterm-version.js
+                 lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h])
 AC_CONFIG_LINKS(share/domterm/application.ini:xulapp/application.ini
                 share/domterm/chrome.manifest:xulapp/chrome.manifest
                 share/domterm/defaults/preferences/prefs.js:xulapp/defaults/preferences/prefs.js)

@@ -94,10 +94,12 @@ if WITH_CLOSURE_COMPILER
 #	$(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js hlib/closure-externs.js --compilation_level ADVANCED_OPTIMIZATIONS >tmp-domterm-all.js
 #	$(JAVA_WITH_PATH) -jar @with_closure_compiler@ --js $(JS_LIBS) >>tmp-domterm-all.js
 	(cd $(srcdir) && $(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js $(JS_LIBS)) >tmp-domterm-all.js
-	mv tmp-domterm-all.js $(CLIENT_DATA_DIR)/hlib/domterm-all.js
+	cat hlib/domterm-version.js >> tmp-domterm-all.js
 else
-	(cd $(srcdir) && cat $(JS_LIBS) hlib/terminal.js) > $(CLIENT_DATA_DIR)/hlib/domterm-all.js
+	(cd $(srcdir) && cat $(JS_LIBS) hlib/terminal.js) > tmp-domterm-all.js
+	cat hlib/domterm-version.js >> tmp-domterm-all.js
 endif
+	mv tmp-domterm-all.js $(CLIENT_DATA_DIR)/hlib/domterm-all.js
 
 EXTRA_CLASSPATH =
 SERVER_ARGS =

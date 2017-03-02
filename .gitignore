@@ -14,6 +14,7 @@ domterm.jar
 xulapp/domterm-chrome.jar
 native/pty/org_domterm_pty_PTY.h
 hlib/domterm-all.js
+hlib/domterm-version.js
 classes.stamp
 wsclasses.stamp
 tmp-for-xul
