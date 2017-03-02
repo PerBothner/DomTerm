@@ -496,8 +496,18 @@ DomTerm.prototype.nextTabCol = function(col) {
 };
 
 DomTerm.prototype.tabToNextStop = function() {
-    var nextStop = this.nextTabCol(this.getCursorColumn());
-    this.cursorRight(nextStop-this.currentCursorColumn);
+    var col = this.getCursorColumn();
+    if (col == this.numColumns && (this.wraparoundMode & 2) != 0) {
+        this.cursorLineStart(1);
+        if (this.atTabStop(0))
+            return true;
+        col = 0;
+    }
+    var nextStop = this.nextTabCol(col);
+    if (nextStop <= col)
+        return false;
+    this.cursorRight(nextStop-col);
+    return true;
 }
 
 DomTerm.prototype.tabToPrevStop = function() {
@@ -1921,7 +1931,8 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
         // FIXME add sanity check?
         var ruler = this._rulerNode;
         var charWidth = ruler.offsetWidth/26.0;
-        var width = numCols * charWidth + this.rightMarginWidth
+        // Add half a column for rounding issues - see comment in measureWidth
+        var width = (numCols + 0.5) * charWidth + this.rightMarginWidth
             + (this.topNode.offsetWidth - this.topNode.clientWidth);
         var topNode = this.topNode;
         topNode.style.width = width+"px";
@@ -2972,6 +2983,16 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this.cursorLeft(this.getParameter(0, 1),
                         (this.wraparoundMode & 3) == 3);
         break;
+    case 69 /*'E'*/: // Cursor Next Line (CNL)
+        this._breakDeferredLines();
+        this.cursorDown(this.getParameter(0, 1));
+        this.cursorLineStart(0);
+        break;
+    case 70 /*'F'*/: // Cursor Preceding Line (CPL)
+        this._breakDeferredLines();
+        this.cursorDown(- this.getParameter(0, 1));
+        this.cursorLineStart(0);
+        break;
     case 71 /*'G'*/: // HPA- horizontal position absolute
     case 96 /*'`'*/:
         var line = this.getCursorLine();
@@ -2985,8 +3006,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
                       this.originMode);
         break;
     case 73 /*'I'*/: // CHT Cursor Forward Tabulation
-        for (var n = this.getParameter(0, 1); --n >= 0; )
-            this.tabToNextStop();
+        for (var n = this.getParameter(0, 1);
+             --n >= 0 && this.tabToNextStop(); ) {
+        }
         break;
     case 74 /*'J'*/:
         this.eraseDisplay(this.getParameter(0, 0));
@@ -3025,7 +3047,15 @@ DomTerm.prototype.handleControlSequence = function(last) {
         */
         this.scrollReverse(curNumParameter);
         break;
-    case 90 /*'Z' */: // CBT Cursor Backward Tabulation
+    case 88 /*'X'*/: // Erase character (ECH)
+        param = this.getParameter(0, 1);
+        var avail = this.numColumns - this.getCursorColumn();
+        if (param > avail)
+            param = avail;
+        this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param, param);
+        this.cursorLeft(param == avail ? param - 1 : param, false);
+        break;
+    case 90 /*'Z'*/: // CBT Cursor Backward Tabulation
         for (var n = this.getParameter(0, 1); --n >= 0; )
             this.tabToPrevStop();
         break;
@@ -3040,7 +3070,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
             // Send Device Attributes (Secondary DA).
             this.processResponseCharacters("\x1B[>41;0;0c");
-        } else {
+        } else if (oldState == DomTerm.SEEN_ESC_LBRACKET_STATE) {
             // Send Device Attributes (Primary DA)
             this.processResponseCharacters("\x1B[?62;1;22c");
         }
@@ -3219,6 +3249,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             }
             this.processResponseCharacters("\x1B["+(r+1)+";"+(c+1)+"R");
             break;
+        case 26:
+            this.processResponseCharacters("\x1B[?27;1;0;0n");
+            break;
         }
         break;
     case 112 /*'p'*/:
@@ -3333,12 +3366,12 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._currentCommandHideable = true;
             break;
         case 17:
-            if (this.isSpanNode(this.outputContainer) // sanity check
-                && this.outputContainer.getAttribute("std") == "hider")
-                this.popFromElement();
             this.outputContainer.addEventListener("click",
                                                   this._showHideEventHandler,
                                                   true);
+            if (this.isSpanNode(this.outputContainer) // sanity check
+                && this.outputContainer.getAttribute("std") == "hider")
+                this.popFromElement();
             break;
         case 19:
             this.startCommandGroup();
@@ -4340,6 +4373,17 @@ DomTerm.prototype.insertString = function(str) {
             break;
         case DomTerm.SEEN_ESC_SHARP_STATE: /* SCR */
             switch (ch) {
+            case 53 /*'5'*/: // DEC single-width line (DECSWL)
+            case 54 /*'6'*/: // DEC double-width line (DECDWL)
+                // DECDWL is a property of the entire current line.
+                // I.e. existing character on the current line are re-drawn.
+                // DECSWL undoes any previous DECDWL for that line.
+                // In lieu of stylesheet support, we can place each
+                // character in its own <span class="wc-node">.
+                // (ASCII characters should be replaced by full-width forms.)
+                // However, cursor motion treats each double-width
+                // character as a singe column.  FIXME
+                break;
             case 56 /*'8'*/: // DEC Screen Alignment Test (DECALN)
                 this._setRegionTB(0, -1);
                 this._setRegionLR(0, -1);
