@@ -8,8 +8,9 @@ URL:            http://domterm.org/
 #Source0:        DomTerm-master.tar.gz
 Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz
-
 BuildRequires:  autoconf automake pkgconfig(libwebsockets) pkgconfig(json-c) pkgconfig(openssl) java-devel
+BuildRequires:  qt5-qtbase-devel qt5-qtwebchannel-devel qt5-qtwebengine-devel
+
 Requires:       json-c
 Requires(preun): %{_sbindir}/alternatives
 Requires(posttrans): %{_sbindir}/alternatives
