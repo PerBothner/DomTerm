@@ -1,5 +1,5 @@
 Name:           domterm
-Version:        0.71
+Version:        0.72
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
@@ -10,7 +10,6 @@ Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz
 
 BuildRequires:  autoconf automake pkgconfig(libwebsockets) pkgconfig(json-c) pkgconfig(openssl) java-devel
-BuildRequires:  qt5-qtbase-devel qt5-qtwebchannel-devel qt5-qtwebengine-devel
 Requires:       json-c
 Requires(preun): %{_sbindir}/alternatives
 Requires(posttrans): %{_sbindir}/alternatives
@@ -25,7 +24,6 @@ A terminal emulator based on web technologies
 %package -n qtdomterm
 Summary:        A terminal emulator using Qt and web technologies
 License:        BSD
-Requires:  qt5-qtbase qt5-qtwebchannel qt5-qtwebengine
 Requires(preun): %{_sbindir}/alternatives
 Requires(posttrans): %{_sbindir}/alternatives
 %description -n qtdomterm
@@ -42,8 +40,7 @@ autoreconf
 
 %install
 make DESTDIR=$RPM_BUILD_ROOT install
-# Let alternatives manage the symlink
-echo after install link %{buildroot}%{_bindir}/domterm
+# Let alternatives manage the symlink to %{_bindir}/domterm
 rm %{buildroot}%{_bindir}/domterm
 
 %preun
@@ -67,14 +64,16 @@ rm %{buildroot}%{_bindir}/domterm
 %{_datadir}/domterm/domterm.jar
 %{_mandir}/man1/domterm.1*
 %{_mandir}/man1/ldomterm.1*
+%license COPYING
 
 %files -n qtdomterm
 %{_bindir}/qtdomterm
 %{_mandir}/man1/qtdomterm.1*
+%license COPYING
 
 %changelog
-* Wed Mar  1 2017 Per Bothner <per@bothner.com> 0.72-1
+* Wed Mar  1 2017 Per Bothner <per@bothner.com> - 0.72-1
 - Various tweaks based on feedback.
 
-* Sun Feb 19 2017 Per Bothner <per@bothner.com> 0.71-1
+* Sun Feb 19 2017 Per Bothner <per@bothner.com> - 0.71-1
 - Initial version.
