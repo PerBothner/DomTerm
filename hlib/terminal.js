@@ -3066,6 +3066,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                        this.originMode ? column - this._regionLeft : column
                        + this.getParameter(0, 1),
                        this.originMode);
+        break;
     case 99 /*'c'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
             // Send Device Attributes (Secondary DA).
@@ -4407,7 +4408,7 @@ DomTerm.prototype.insertString = function(str) {
             var mapper = this._Gcharsets[state-DomTerm.SEEN_ESC_SS2+2];
             prevEnv = i;
             if (mapper != null) {
-                var chm = this.charMapper(ch);
+                var chm = this.mapper(ch);
                 if (chm != null) {
                     this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                     this.insertSimpleOutput(chm, 0, chm.length, -1);
@@ -4423,8 +4424,8 @@ DomTerm.prototype.insertString = function(str) {
                 //this.currentCursorColumn = column;
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
-                    && ((this._deferredLinebreaksStart >= 0
-                         && ! this.usingAlternateScreenBuffer)
+                    && ! this.usingAlternateScreenBuffer
+                    && (this._regionBottom == this.numRows
                         || this.getCursorLine() != this._regionBottom-1)) {
                     var stdMode = this._getStdMode(); 
                     if (stdMode && stdMode.getAttribute("std") == "input")
