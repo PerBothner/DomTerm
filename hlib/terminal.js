@@ -454,14 +454,8 @@ DomTerm.prototype._homeOffset = function() {
 };
 
 DomTerm.prototype._checkSpacer = function() {
-    var needed;
-    if (this.homeLine == 0)
-        needed = 0;
-    else {
-        var height = this._vspacer.offsetTop - this._homeOffset();
-        needed = this.availHeight - height;
-    }
-    this._adjustSpacer(needed);
+    var height = this._vspacer.offsetTop - this._homeOffset();
+    this._adjustSpacer(this.availHeight - height);
 };
 DomTerm.prototype._adjustSpacer = function(needed) {
     var vspacer = this._vspacer;
@@ -1230,6 +1224,15 @@ DomTerm.prototype._pushStyle = function(styleName, styleValue) {
         this._currentStyleMap.delete(styleName);
     this._currentStyleSpan = null;
 };
+DomTerm.prototype.mapColorName = function(name) {
+    return "var(--dt-"+name.replace(/-/, "")+")";
+}
+DomTerm.prototype._pushFgStdColor = function(name) {
+    this._pushStyle("color", this.mapColorName(name));
+}
+DomTerm.prototype._pushBgStdColor = function(name) {
+    this._pushStyle("background-color", this.mapColorName(name));
+}
 
 DomTerm.prototype._getStdMode = function() {
     for (var stdElement = this.outputContainer;
@@ -1323,7 +1326,14 @@ DomTerm.prototype.isSavedSession = function() {
 DomTerm.prototype._adjustStyle = function() {
     var parentSpan = this.outputContainer;
     var inStyleSpan = parentSpan.getAttribute("class") == "term-style";
-    if (this._currentStyleMap.size == 0 && ! inStyleSpan) {
+    var needBackground = false;
+    if (! inStyleSpan && this._currentStyleMap.get("background-color") == null) {
+        var block = this._getOuterBlock(parentSpan);
+        if (block && this._getBackgroundColor(block) != null) {
+            needBackground = true;
+        }
+    }
+    if (this._currentStyleMap.size == 0 && ! inStyleSpan && ! needBackground) {
         this._currentStyleSpan = parentSpan;
         return;
     }
@@ -1335,7 +1345,7 @@ DomTerm.prototype._adjustStyle = function() {
     if (inStyleSpan) {
         this._popStyleSpan();
     }
-    if (this._currentStyleMap.size != 0) {
+    if (this._currentStyleMap.size != 0 || needBackground) {
         var styleSpan = this._createSpanNode();
         styleSpan.setAttribute("class", "term-style");
         var styleAttr = null;
@@ -1374,26 +1384,22 @@ DomTerm.prototype._adjustStyle = function() {
         }
         if (reverse) {
             if (bgcolor || fgcolor) {
-                var tmp = bgcolor ? bgcolor : this.defaultBackgroundColor;
-                bgcolor = fgcolor ? fgcolor : this.defaultForegroundColor;
+                var tmp = bgcolor ? bgcolor : "var(--dt-bgcolor)";
+                bgcolor = fgcolor ? fgcolor : "var(--dt-fgcolor)";
                 fgcolor = tmp;
             } else {
                 styleSpan.setAttribute("reverse", "yes");
             }
         }
         if (fgcolor) {
-            styleSpan.setAttribute("color", fgcolor);
-            if (fgcolor.length > 0 && fgcolor.charCodeAt(0) == 35) {
-                fgcolor = "color: "+fgcolor;
-                styleAttr = styleAttr ? styleAttr+";"+fgcolor : fgcolor;
-            }
+            var fgstyle = "color: "+fgcolor;
+            styleAttr = styleAttr ? styleAttr+";"+fgstyle : fgstyle;
         }
+        if (needBackground && ! bgcolor && ! reverse)
+            bgcolor = "var(--dt-bgcolor)";
         if (bgcolor) {
-            styleSpan.setAttribute("background-color", bgcolor);
-            if (bgcolor.length > 0 && bgcolor.charCodeAt(0) == 35) {
-                bgcolor = "background-color: "+bgcolor;
-                styleAttr = styleAttr ? styleAttr+";"+bgcolor : bgcolor;
-            }
+            var bgstyle = "background-color: "+bgcolor;
+            styleAttr = styleAttr ? styleAttr+";"+bgstyle : bgstyle;
         }
         if (styleAttr)
             styleSpan.setAttribute("style", styleAttr);
@@ -1427,22 +1433,26 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
     var oldLength = this.lineStarts.length;
     var column = this.getCursorColumn();
     var oldStart, oldParent;
+    var startLine;
     if (absLine >= oldLength) {
         oldParent = this.initial;
         oldStart = null;
+        count += absLine - oldLength;
+        startLine = oldLength;
     } else {
         if (absLine > 0)
             this._clearWrap(absLine-1);
         oldStart = this.lineStarts[absLine];
+        startLine = absLine;
         oldParent = oldStart.parentNode;
+        this.lineStarts.length += count;
+        this.lineEnds.length += count;
+        for (var i = oldLength-1; i >= startLine; i--) {
+            this.lineStarts[i+count] = this.lineStarts[i];
+            this.lineEnds[i+count] = this.lineEnds[i];
+        }
     }
-    this.lineStarts.length += count;
-    this.lineEnds.length += count;
-    for (var i = oldLength-1; i >= absLine; i--) {
-        this.lineStarts[i+count] = this.lineStarts[i];
-        this.lineEnds[i+count] = this.lineEnds[i];
-    }
-    this._addBlankLines(count, absLine, oldParent, oldStart);
+    this._addBlankLines(count, startLine, oldParent, oldStart);
     this.resetCursorCache();
     this.moveToAbs(absLine, column, true);
 };
@@ -1617,15 +1627,54 @@ DomTerm.prototype.scrollReverse = function(count) {
     this.moveToAbs(line, 0, true);
 };
 
+DomTerm.prototype._currentStyleBackground = function() {
+    return this._currentStyleMap.get("background-color");
+}
+
+DomTerm.prototype._getBackgroundColor = function(element) {
+    var st = element.getAttribute("style");
+    if (st) {
+        var n = "background-color:";
+        var nlen = n.length;
+        var i = st.indexOf(n);
+        if (i >= 0) {
+            var nend = st.indexOf(";", i);
+            if (nend < 0)
+                nend = st.length;
+            return st.substring(i+nlen, nend).trim();
+        }
+    }
+    return null;
+}
+DomTerm.prototype._setBackgroundColor = function(element, bgcolor) {
+    var st = element.getAttribute("style");
+    if (st) {
+        if (! bgcolor)
+            element.removeAttribute("style");
+        else {
+            var n = "background-color:";
+            var i = st.indexOf(n);
+            if (i >= 0) {
+                var nend = st.indexOf(";", i);
+                if (nend < 0)
+                    st = st.substring(0, n);
+                else
+                    st = st.substring(0, n) + st.substring(nend+1);
+            }
+            element.setAttribute("style", "background-color: "+bgcolor+";"+st);
+        }
+    } else if (bgcolor) {
+        element.setAttribute("style", "background-color: "+bgcolor);
+    }
+}
+
 DomTerm.prototype._createPreNode = function() {
     //return document.createElement("pre");
     // Prefer <div> over <pre> because Firefox adds extra lines when doing a Copy
     // spanning multiple <pre> nodes.
     var n = document.createElement("div");
-    var bg = this._currentStyleMap.get("background-color");
-    if (bg) {
-        n.setAttribute("style", "background-color: "+bg);
-    }
+    var bg = this._currentStyleBackground();
+    this._setBackgroundColor(n, bg);
     n.setAttribute("class", "domterm-pre");
     return n;
 };
@@ -1662,6 +1711,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             bufNode.saveHomeLine = this.homeLine;
             bufNode.saveInitial = this.initial;
             bufNode.saveLastLine = nextLine;
+            bufNode.savedCursor = this._savedCursor;
+            this._savedCursor = null;
             var newLineNode = bufNode.firstChild;
             this.homeLine = nextLine;
             this.outputContainer = newLineNode;
@@ -1676,6 +1727,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.lineStarts.length = bufNode.saveLastLine;
             this.lineEnds.length = bufNode.saveLastLine;
             this.homeLine = bufNode.saveHomeLine;
+            this._savedCursor = bufNode.savedCursor;
             this.moveToAbs(this.homeLine, 0, false);
             bufNode.parentNode.removeChild(bufNode);
         }
@@ -1703,6 +1755,14 @@ DomTerm.prototype.isBlockNode = function(node) {
     var tag = node.tagName;
     return "P" == tag || "DIV" == tag || "PRE" == tag;
 };
+
+DomTerm.prototype._getOuterBlock = function(node) {
+    for (var n = node; n; n = n.parentNode) {
+        if (this.isBlockNode(n))
+            return n;
+    }
+    return null;
+}
 
 // Obsolete?  We should never have a <br> node in the DOM.
 // (If we allow it, we should wrap it in a <span line="br">.)
@@ -2199,9 +2259,7 @@ DomTerm.prototype._showHideHandler = function(event) {
             var next = node.nextSibling;
             if (next == null) {
                 var parent = node.parentNode;
-                if (parent == start.parentNode
-                    && (parent.tagName == "PRE" || parent.tagName == "P"
-                        || parent.tagName == "DIV"))
+                if (parent == start.parentNode && this.isBlockNode(parent))
                     next = parent.nextSibling;
             }
             node = next;
@@ -2296,12 +2354,7 @@ DomTerm.prototype.updateCursorCache = function() {
     var goalParent = this.outputContainer;
     var line = this.currentAbsLine;
     if (line < 0) {
-        var n = goal ? goal : goalParent;
-        while (n) {
-            if (this.isBlockNode(n))
-                break;
-            n = n.parentNode;
-        }
+        var n = this._getOuterBlock(goal ? goal : goalParent);
         var len = this.lineStarts.length;
         var home = this.homeLine;
         // homeLine may be invalid after _breakAllLines
@@ -2572,7 +2625,7 @@ DomTerm.prototype.eraseDisplay = function(param) {
         }
         if (saveCol != 0) {
             this.moveToAbs(saveLine, 0, true);
-            this.eraseCharactersRight(saveCol+1, false);
+            this.eraseCharactersRight(saveCol+1);
         }
         break;
     case 3: // Delete saved scrolled-off lines - xterm extension
@@ -2602,12 +2655,12 @@ DomTerm.prototype.eraseDisplay = function(param) {
         }
         var count = this.lineStarts.length-startLine;
         if (param == 0) {
-            this.eraseCharactersRight(-1, true);
+            this.eraseLineRight();
             count--;
             while (--count >= 0) {
                 startLine++;
                 this.moveToAbs(startLine, 0, false);
-                this.eraseCharactersRight(-1, true);
+                this.eraseLineRight();
             }
         }
         else if (count > 0) {
@@ -2616,6 +2669,14 @@ DomTerm.prototype.eraseDisplay = function(param) {
             this.resetCursorCache();
         }
         break;
+    }
+    if (param == 0 || param == 2) {
+        var bg = this._currentStyleBackground();
+        if (bg != null) {
+             this.moveToAbs(this.numRows-1+this.homeLine, 0, true);
+        }
+        if (this._vspacer != null)
+            this._setBackgroundColor(this._vspacer, bg);
     }
     this.moveToAbs(saveLine, saveCol, true);
 };
@@ -2706,7 +2767,19 @@ DomTerm.prototype._moveNodes = function(firstChild, newParent, newBefore) {
  * The 'count' is the number of characters to erase/delete;
  * a count of -1 means erase to the end of the line.
  */
-DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
+DomTerm.prototype.eraseCharactersRight = function(count, doDelete=false) {
+    if (count > 0 && ! doDelete) {
+        // handle BCH FIXME
+        var avail = this.numColumns - this.getCursorColumn();
+        if (count > avail)
+            count = avail;
+        this.insertSimpleOutput(DomTerm.makeSpaces(count), 0, count, count);
+        this.cursorLeft(count == avail ? count - 1 : count, false);
+        return;
+    }
+    this.deleteCharactersRight(count);
+};
+DomTerm.prototype.deleteCharactersRight = function(count) {
     var todo = count >= 0 ? count : 999999999;
     // Note that the traversal logic is similar to move.
     var current = this.outputBefore;
@@ -2760,9 +2833,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
             }
 
             var next = current.nextSibling;
-            if (! doDelete)
-                tnode.replaceData(0, i, DomTerm.makeSpaces(i));
-            else if (i < length)
+            if (i < length)
                 tnode.deleteData(0, i);
             else  {
                 parent.removeChild(current);
@@ -2791,14 +2862,46 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete) {
 
 
 DomTerm.prototype.eraseLineRight = function() {
-    this.eraseCharactersRight(-1, true);
+    this.deleteCharactersRight(-1);
     this._clearWrap();
+    this._eraseLineEnd();
+}
+
+DomTerm.prototype._eraseLineEnd = function() {
+    var line = this.lineStarts[this.getAbsCursorLine()];
+    var bg = this._currentStyleBackground();
+    var oldbg = this._getBackgroundColor(line);
+    if (bg != oldbg) {
+        this._setBackgroundColor(line, bg);
+        var col = this.getCursorColumn();
+        if (col > 0) {
+            // FIXME avoid this if also doing eraseLineRight
+            var end = this.lineEnds[this.getAbsCursorLine()];
+            if (oldbg == null)
+                oldbg = "var(-dt-bgcolor)";
+            for (var ch = line.firstChild;
+                 ch != null && ch != end; ) {
+                var next = ch.nextSibling;
+                if (ch instanceof Text) {
+                    var span = this._createSpanNode();
+                    line.removeChild(ch);
+                    span.appendChild(ch);
+                    line.insertBefore(span, next);
+                    ch = span;
+                }
+                if (ch.nodeName == "SPAN"
+                    && this._getBackgroundColor(ch) == null)
+                    this._setBackgroundColor(ch, oldbg);
+                ch = next;
+            }
+        }
+    }
 };
 
 DomTerm.prototype.eraseLineLeft = function() {
     var column = this.getCursorColumn();
     this.cursorLineStart(0);
-    this.eraseCharactersRight(column+1, false);
+    this.eraseCharactersRight(column+1);
     this.cursorRight(column);
 };
 
@@ -3029,8 +3132,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this.deleteLines(this.getParameter(0, 1));
         break;
     case 80 /*'P'*/: // Delete characters
-        this.eraseCharactersRight(this.getParameter(0, 1), true);
+        this.deleteCharactersRight(this.getParameter(0, 1));
         this._clearWrap();
+        this._eraseLineEnd();
         break;
     case 83 /*'S'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
@@ -3045,15 +3149,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
         /* FIXME Initiate mouse tracking.
         if (curNumParameter >= 5) { ... }
         */
-        this.scrollReverse(curNumParameter);
+        this.scrollReverse(param);
         break;
     case 88 /*'X'*/: // Erase character (ECH)
         param = this.getParameter(0, 1);
-        var avail = this.numColumns - this.getCursorColumn();
-        if (param > avail)
-            param = avail;
-        this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param, param);
-        this.cursorLeft(param == avail ? param - 1 : param, false);
+        this.eraseCharactersRight(param);
         break;
     case 90 /*'Z'*/: // CBT Cursor Backward Tabulation
         for (var n = this.getParameter(0, 1); --n >= 0; )
@@ -3066,6 +3166,23 @@ DomTerm.prototype.handleControlSequence = function(last) {
                        this.originMode ? column - this._regionLeft : column
                        + this.getParameter(0, 1),
                        this.originMode);
+        break;
+    case 98 /*'b'*/: // Repeat the preceding graphic character (REP)
+        param = this.getParameter(0, 1);
+        var prev = this.outputBefore == null ? this.outputContainer.lastChild
+            : this.outputBefore.previousSibling;
+        if (prev instanceof Text) {
+            var d = prev.data;
+            var dl = d.length;
+            if (dl > 0) {
+                var c1 = d.charCodeAt(dl-1);
+                var c0 = dl > 1 && c1 >= 0xDC00 && c1 <= 0xDFFF
+                    ? d.charCodeAt(dl-2) : -1;
+                var w = c0 >= 0xD800 && c0 <= 0xDBFF ? 2 : 1;
+                var str = d.substring(dl-w).repeat(param);
+                this.insertSimpleOutput(str, 0, str.length, -1);
+            }
+        }
         break;
     case 99 /*'c'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
@@ -3178,14 +3295,14 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 case 27:
                     this._pushStyle("reverse", null);
                     break;
-                case 30: this._pushStyle("color", "black"); break;
-                case 31: this._pushStyle("color", "red"); break;
-                case 32: this._pushStyle("color", "green"); break;
-                case 33: this._pushStyle("color", "yellow"); break;
-                case 34: this._pushStyle("color", "blue"); break;
-                case 35: this._pushStyle("color", "magenta"); break;
-                case 36: this._pushStyle("color", "cyan"); break;
-                case 37: this._pushStyle("color", "light-gray"); break;
+                case 30: this._pushFgStdColor("black"); break;
+                case 31: this._pushFgStdColor("red"); break;
+                case 32: this._pushFgStdColor("green"); break;
+                case 33: this._pushFgStdColor("yellow"); break;
+                case 34: this._pushFgStdColor("blue"); break;
+                case 35: this._pushFgStdColor("magenta"); break;
+                case 36: this._pushFgStdColor("cyan"); break;
+                case 37: this._pushFgStdColor("light-gray"); break;
                 case 38:
                 case 48:
                     var property = param==38 ? "color" : "background-color";
@@ -3205,31 +3322,31 @@ DomTerm.prototype.handleControlSequence = function(last) {
                     }
                     break;
                 case 39: this._pushStyle("color", null/*defaultForegroundColor*/); break;
-                case 40: this._pushStyle("background-color", "black"); break;
-                case 41: this._pushStyle("background-color", "red"); break;
-                case 42: this._pushStyle("background-color", "green"); break;
-                case 43: this._pushStyle("background-color", "yellow"); break;
-                case 44: this._pushStyle("background-color", "blue"); break;
-                case 45: this._pushStyle("background-color", "magenta"); break;
-                case 46: this._pushStyle("background-color", "cyan"); break;
-                case 47: this._pushStyle("background-color", "light-gray"); break;
+                case 40: this._pushBgStdColor("black"); break;
+                case 41: this._pushBgStdColor("red"); break;
+                case 42: this._pushBgStdColor("green"); break;
+                case 43: this._pushBgStdColor("yellow"); break;
+                case 44: this._pushBgStdColor("blue"); break;
+                case 45: this._pushBgStdColor("magenta"); break;
+                case 46: this._pushBgStdColor("cyan"); break;
+                case 47: this._pushBgStdColor("light-gray"); break;
                 case 49: this._pushStyle("background-color", null/*defaultBackgroundColor*/); break
-                case 90: this._pushStyle("color", "dark-gray"); break;
-                case 91: this._pushStyle("color", "light-red"); break;
-                case 92: this._pushStyle("color", "light-green"); break;
-                case 93: this._pushStyle("color", "light-yellow"); break;
-                case 94: this._pushStyle("color", "light-blue"); break;
-                case 95: this._pushStyle("color", "light-magenta"); break;
-                case 96: this._pushStyle("color", "light-cyan"); break;
-                case 97: this._pushStyle("color", "white"); break;
-                case 100: this._pushStyle("background-color", "dark-gray"); break;
-                case 101: this._pushStyle("background-color", "light-red"); break;
-                case 102: this._pushStyle("background-color", "light-green"); break;
-                case 103: this._pushStyle("background-color", "light-yellow"); break;
-                case 104: this._pushStyle("background-color", "light-blue"); break;
-                case 105: this._pushStyle("background-color", "light-magenta"); break;
-                case 106: this._pushStyle("background-color", "light-cyan"); break;
-                case 107: this._pushStyle("background-color", "white"); break;
+                case 90: this._pushFgStdColor("dark-gray"); break;
+                case 91: this._pushFgStdColor("light-red"); break;
+                case 92: this._pushFgStdColor("light-green"); break;
+                case 93: this._pushFgStdColor("light-yellow"); break;
+                case 94: this._pushFgStdColor("light-blue"); break;
+                case 95: this._pushFgStdColor("light-magenta"); break;
+                case 96: this._pushFgStdColor("light-cyan"); break;
+                case 97: this._pushFgStdColor("white"); break;
+                case 100: this._pushBgStdColor("dark-gray"); break;
+                case 101: this._pushBgStdColor("light-red"); break;
+                case 102: this._pushBgStdColor("light-green"); break;
+                case 103: this._pushBgStdColor("light-yellow"); break;
+                case 104: this._pushBgStdColor("light-blue"); break;
+                case 105: this._pushBgStdColor("light-magenta"); break;
+                case 106: this._pushBgStdColor("light-cyan"); break;
+                case 107: this._pushBgStdColor("white"); break;
                 }
             }
         }
@@ -3250,6 +3367,16 @@ DomTerm.prototype.handleControlSequence = function(last) {
             }
             this.processResponseCharacters("\x1B["+(r+1)+";"+(c+1)+"R");
             break;
+        case 15: // request printer status
+            if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+                this.processResponseCharacters("\x1B[?13n"); // No printer
+            }
+            break;
+        case 25: // request UDK status
+            if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+                this.processResponseCharacters("\x1B[?20n");
+            }
+            break;
         case 26:
             this.processResponseCharacters("\x1B[?27;1;0;0n");
             break;
@@ -3258,7 +3385,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 112 /*'p'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE) {
             // Soft terminal reset (DECSTR)
-            this.resetTerminal(False, False);
+            this.resetTerminal(false, false);
         }
         break;
     case 113 /*'q'*/:
@@ -4391,24 +4518,28 @@ DomTerm.prototype.insertString = function(str) {
                 this.moveToAbs(this.homeLine, 0, true);
                 this.eraseDisplay(0);
                 var Es = "E".repeat(this.numColumns);
+                this._currentStyleSpan = null;
+                var savedStyleMap = this._currentStyleMap;
+                this._currentStyleMap = new Map();
                 for (var r = 0; ; ) {
                     this.insertSimpleOutput(Es, 0, this.numColumns, this.numColumns);
                     if (++r >= this.numRows)
                         break;
                     this.cursorLineStart(1);
                 }
+                this._currentStyleMap = savedStyleMap;
                 this.moveToAbs(this.homeLine, 0, true);
                 break;
             }
             prevEnd = i + 1; columnWidth = 0;
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             break;
-        case DomTerm.SEEN_ESC_SS2:
-        case DomTerm.SEEN_ESC_SS3:
+        case DomTerm.SEEN_ESC_SS2: // _Gcharsets[2]
+        case DomTerm.SEEN_ESC_SS3: // _Gcharsets[3]
             var mapper = this._Gcharsets[state-DomTerm.SEEN_ESC_SS2+2];
             prevEnv = i;
             if (mapper != null) {
-                var chm = this.mapper(ch);
+                var chm = mapper(ch);
                 if (chm != null) {
                     this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                     this.insertSimpleOutput(chm, 0, chm.length, -1);
@@ -5052,8 +5183,6 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     }
     if (this.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str)+"'");
-    if (this._currentStyleSpan != this.outputContainer)
-        this._adjustStyle();
     var absLine = this.getAbsCursorLine();
     var fits = true;
     if (this.outputBefore instanceof Element
@@ -5078,7 +5207,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         var prev = saveOutput ? saveOutput.previousSibling : null;
         if (col < trunccol)
             this.moveToAbs(line, trunccol, false);
-        this.eraseCharactersRight(-1, true);
+        this.deleteCharactersRight(-1);
         if (col < trunccol) {
             if (firstInParent || prev instanceof Element) {
                 this.outputContainer = saveContainer;
@@ -5093,8 +5222,10 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         }
     } else {
         // FIXME optimize if end of line
-        fits = this.eraseCharactersRight(widthInColumns, true);
+        fits = this.deleteCharactersRight(widthInColumns);
     }
+    if (this._currentStyleSpan != this.outputContainer)
+        this._adjustStyle();
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
         // maybe adjust line/absLine? FIXME
@@ -5123,7 +5254,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             }
             absLine++;
             widthInColumns = this.strWidthInContext(str, this.outputContainer);
-            this.eraseCharactersRight(widthInColumns, true);
+            this.deleteCharactersRight(widthInColumns);
         }
     }
     else {
