@@ -26,6 +26,8 @@ the results, typically in some kind of type-script format.
 
 The @code{qtdomterm} application is self-contained terminal emulator
 based on DomTerm and QtWebEngine.
+The @code{ldomterm} application is similar, but uses an
+external browser.
 
 This @uref{https://lwn.net/Articles/670062/,LWN article} provides
 background, motivation, and a summary of the functionality.
@@ -44,6 +46,9 @@ was based on similar concepts, but was mostly written in Java using
 @subheading Recent advances:
 
 @itemize
+@item
+DomTerm now handles the @code{vttest} terminal test program
+very well, including BCE (Background Color Erase).
 @item
 The preferred ``backend` is now @uref{https://libwebsockets.org/,libwebsockets}.
 This is light-weight, does not require Java, is actively maintained,
@@ -632,12 +637,12 @@ Add the @var{style-rule} to the temporary stylesheet.
 
 For example, to change the background color to pink:
 @example
-$ dtstyle --add-rule "div.domterm @{ background-color: pink @}"
+$ dtstyle --add-rule "div.domterm @{ --background-color: pink @}"
 @end example
 
 Inverse video:
 @example
-$ dtstyle --add-rule "div.domterm @{ background-color: black; color: white @}"
+$ dtstyle --add-rule "div.domterm @{ --background-color: black; --foreground-color: white @}"
 @end example
 
 Setting a background image:
