@@ -35,6 +35,14 @@
 
 #include "utils.h"
 
+#ifdef LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP
+#define USE_NEW_FOPS 1
+#define USE_ADOPT_FILE 1
+#else
+#define USE_NEW_FOPS 0
+#define USE_ADOPT_FILE 0
+#endif
+
 extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
@@ -50,7 +58,7 @@ struct tty_client {
     bool initialized;
     bool pty_started;
     bool authenticated;
-    int eof_seen;  // 1 means seen; 2 reported to cliet
+    int eof_seen;  // 1 means seen; 2 reported to client
     char hostname[100];
     char address[50];
     char *version_info;
@@ -58,6 +66,13 @@ struct tty_client {
     struct lws *wsi;
     char *buffer;
     size_t len;
+#if USE_ADOPT_FILE
+    char *obuffer; // output from child process
+    size_t olen; // used length of obuffer
+    size_t osize; // allocated size of obuffer
+    int pty_read_available;
+    struct lws *pty_wsi;
+#endif
     int pid;
     int pty;
     pthread_t thread;
@@ -65,10 +80,12 @@ struct tty_client {
     int nrows, ncols;
     float pixh, pixw;
 
+#if !USE_ADOPT_FILE
     STAILQ_HEAD(pty, pty_data) queue;
     pthread_mutex_t lock;
 
     LIST_ENTRY(tty_client) list;
+#endif
 };
 
 struct tty_server {
@@ -98,6 +115,7 @@ initialize_resource_map(struct lws_context *, const char*);
 extern int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
+extern char *get_resource_path();
 extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();

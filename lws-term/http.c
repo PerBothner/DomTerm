@@ -12,7 +12,7 @@ get_resource_path()
           char *cmd_path = get_executable_path();
           int cmd_dir_length = get_executable_directory_length();
           char *buf = xmalloc(cmd_dir_length + strlen(resource_path) + 2);
-          sprintf(buf, "%.*s/%s", cmd_dir_length, cmd_path, resource_path);
+          sprintf(buf, "%.*s/%s/domterm.jar", cmd_dir_length, cmd_path, resource_path);
           resource_path = buf;
       }
   }
@@ -180,11 +180,15 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
             goto try_to_reuse;
 #else
+#if USE_NEW_FOPS
+            const char* buf = fname;
+#else
             //const char* resource_path = get_resource_path();
             const char* resource_path = "domterm:";
             size_t flen = strlen(resource_path) + strlen(fname) + 1;
             char *buf = malloc(flen);
             sprintf(buf, "%s%s", resource_path, fname);
+#endif
             int n = lws_serve_http_file(wsi, buf, content_type, NULL, 0);
             if (n < 0 || ((n > 0) && lws_http_transaction_completed(wsi)))
               return -1; /* error or can't reuse connection: close the socket */

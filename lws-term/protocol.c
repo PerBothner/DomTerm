@@ -2,6 +2,9 @@
 
 #define BUF_SIZE 1024
 
+static char eof_message[] = "\033[99;99u";
+#define eof_len (sizeof(eof_message)-1)
+
 int
 send_initial_message(struct lws *wsi) {
 #if 0
@@ -82,10 +85,12 @@ tty_client_destroy(struct tty_client *client) {
       free(client->version_info);
 
     // remove from clients list
+    server->client_count--;
+#if !USE_ADOPT_FILE
     pthread_mutex_lock(&server->lock);
     LIST_REMOVE(client, list);
-    server->client_count--;
     pthread_mutex_unlock(&server->lock);
+#endif
 }
 
 static void
@@ -101,14 +106,23 @@ setWindowSize(struct tty_client *client)
 }
 
 void *
-thread_run_command(void *args) {
-    struct tty_client *client;
+run_command
+#if USE_ADOPT_FILE
+(struct lws *wsi, struct tty_client *client)
+#else
+(void *args)
+#endif
+{
+#if USE_ADOPT_FILE
+    struct lws *outwsi;
+#else
+    struct tty_client *client = (struct tty_client *) args;
+#endif
     int pty;
     int bytes;
     char buf[BUF_SIZE];
     fd_set des_set;
 
-    client = (struct tty_client *) args;
     pid_t pid = forkpty(&pty, NULL, NULL, NULL);
 
     switch (pid) {
@@ -177,7 +191,18 @@ thread_run_command(void *args) {
             client->pty = pty;
             if (client->nrows >= 0)
                setWindowSize(client);
-
+#if USE_ADOPT_FILE
+            lws_sock_file_fd_type fd;
+            fd.filefd = pty;
+            client->osize = 2048;
+            client->obuffer = xmalloc(client->osize);
+            client->olen = 0;
+            client->pty_read_available = 0;
+            outwsi = lws_adopt_descriptor_vhost(lws_get_vhost(wsi), 0, fd, "domterm", wsi);
+            client->pty_wsi = outwsi;
+            // lws_change_pollfd ??
+            // FIXME do on end: tty_client_destroy(client);
+#else
             while (!client->exit) {
                 FD_ZERO (&des_set);
                 FD_SET (pty, &des_set);
@@ -202,25 +227,28 @@ thread_run_command(void *args) {
                 }
             }
             tty_client_destroy(client);
+#endif
             break;
     }
 
     return 0;
 }
 
+#if !USE_ADOPT_FILE
 void
 start_pty(struct tty_client *client)
 {
-    client->pty_started = true;
     STAILQ_INIT(&client->queue);
-    if (pthread_create(&client->thread, NULL, thread_run_command, client) != 0) {
+    if (pthread_create(&client->thread, NULL, run_command, client) != 0) {
         lwsl_err("pthread_create\n");
         //return -1;
     }
 }
+#endif
 
 void
-reportEvent(const char *name, char *data, size_t dlen, struct tty_client *client)
+reportEvent(const char *name, char *data, size_t dlen,
+            struct lws *wsi, struct tty_client *client)
 {
     // FIXME call reportEvent(cname, data)
     if (strcmp(name, "WS") == 0) {
@@ -233,8 +261,14 @@ reportEvent(const char *name, char *data, size_t dlen, struct tty_client *client
         char *version_info = xmalloc(dlen+1);
         strcpy(version_info, data);
         client->version_info = version_info;
-        if (! client->pty_started)
+        if (! client->pty_started) {
+          client->pty_started = true;
+#if USE_ADOPT_FILE
+          run_command(wsi, client);
+#else
           start_pty(client);
+#endif
+        }
     } else if (strcmp(name, "KEY") == 0) {
         char *q = strchr(data, '"');
         struct termios termios;
@@ -271,6 +305,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 
     switch (reason) {
         case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
+            //fprintf(stderr, "callback_tty FILTER_PROTOCOL_CONNECTION\n");
             if (server->once && server->client_count > 0) {
                 lwsl_notice("refuse to serve new client due to the --once option.\n");
                 return -1;
@@ -284,6 +319,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             break;
 
         case LWS_CALLBACK_ESTABLISHED:
+            //fprintf(stderr, "callback_tty CALLBACK_ESTABLISHED\n");
             client->exit = false;
             client->initialized = false;
             client->authenticated = false;
@@ -303,22 +339,77 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             // Defer start_pty so we can set up DOMTERM variable with version_info.
             // start_pty(client);
 
+#if USE_ADOPT_FILE
+            server->client_count++;
+#else
             pthread_mutex_lock(&server->lock);
             LIST_INSERT_HEAD(&server->clients, client, list);
             server->client_count++;
             pthread_mutex_unlock(&server->lock);
+#endif
 
             lwsl_notice("client connected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
             break;
 
-        case LWS_CALLBACK_SERVER_WRITEABLE:
-            if (!client->initialized) {
-                if (send_initial_message(wsi) < 0)
-                    return -1;
-                client->initialized = true;
-                break;
+#if USE_ADOPT_FILE
+        case LWS_CALLBACK_RAW_RX_FILE: {
+            //fprintf(stderr, "callback_tty RAW_RX_FILE\n");
+           client = lws_wsi_user(lws_get_parent(wsi));
+            size_t avail = client->osize - client->olen;
+            if (avail >= eof_len) {
+                ssize_t n = read(client->pty, client->obuffer+client->olen,
+                                 avail);
+                if (n > 0)
+                    client->olen += n;
+                else if (client->eof_seen == 0) {
+                    client->eof_seen = 1;
+                    memcpy(client->obuffer+client->olen,
+                           eof_message, eof_len);
+                    client->olen += eof_len;
+                }
             }
-
+            ((struct tty_client *) lws_wsi_user(lws_get_parent(wsi)))
+              ->pty_read_available = 1;
+            lws_callback_on_writable(lws_get_parent(wsi));
+        }
+        break;
+        case LWS_CALLBACK_RAW_CLOSE_FILE: {
+            struct lws *parent_wsi = lws_get_parent(wsi);
+            //fprintf(stderr, "callback_tty RAW_CLOSE_FILE eof-seen:%d\n", client->eof_seen);
+            if (parent_wsi != NULL) {
+                client = (struct tty_client *) lws_wsi_user(parent_wsi);
+                if (client->eof_seen == 0)
+                    client->eof_seen = 1;
+                if (client->eof_seen < 2) {
+                    client->eof_seen = 2;
+                    memcpy(client->obuffer+client->olen,
+                           eof_message, eof_len);
+                    client->olen += eof_len;
+                }
+                lws_callback_on_writable(parent_wsi);
+            }
+        }
+        break;
+#endif
+        case LWS_CALLBACK_SERVER_WRITEABLE:
+            //fprintf(stderr, "callback_tty CALLBACK_SERVER_WRITEABLE init:%d eof:%d\n", client->initialized, client->eof_seen);
+            if (!client->initialized) {
+              //if (send_initial_message(wsi) < 0)
+              //    return -1;
+                client->initialized = true;
+                //break;
+            }
+#if USE_ADOPT_FILE
+            if (client->olen > 0) {
+              if (lws_write(wsi, client->obuffer, client->olen, LWS_WRITE_BINARY)
+                  < client->olen) {
+                    lwsl_err("lws_write\n");
+                    break;
+                }
+                client->olen = 0;
+            }
+            lws_rx_flow_control(client->pty_wsi, 1);
+#else
             pthread_mutex_lock(&client->lock);
             while (!STAILQ_EMPTY(&client->queue)) {
                 struct pty_data *frame = STAILQ_FIRST(&client->queue);
@@ -326,8 +417,6 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (frame->len <= 0) {
                     STAILQ_REMOVE_HEAD(&client->queue, list);
                     if (client->eof_seen == 1) {
-                        char *eof_message = "\033[99;99u";
-                        int eof_len = strlen(eof_message);
                         if (lws_write(wsi, eof_message, eof_len,
                                       LWS_WRITE_BINARY) < eof_len) {
                           lwsl_err("lws_write\n");
@@ -354,9 +443,11 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 }
             }
             pthread_mutex_unlock(&client->lock);
+#endif
             break;
 
         case LWS_CALLBACK_RECEIVE:
+            //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
             if (client->buffer == NULL) {
                 client->buffer = xmalloc(len + 1);
                 client->len = len;
@@ -368,13 +459,6 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             }
             client->buffer[client->len] = '\0';
 
-#if 0
-            // check auth
-            if (server->credential != NULL && !client->authenticated && command != JSON_DATA) {
-                lwsl_notice("websocket authentication failed\n");
-                return -1;
-            }
-#endif
             // check if there are more fragmented messages
             if (lws_remaining_packet_payload(wsi) > 0 || !lws_is_final_fragment(wsi)) {
                 return 0;
@@ -419,7 +503,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                         char *data = (char*) p;
                         *eol = '\0';
                         size_t dlen = eol - p;
-                        reportEvent(cname, data, dlen, client);
+                        reportEvent(cname, data, dlen, wsi, client);
                         i = eol - msg;
                     } else {
                         break;
@@ -438,6 +522,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             break;
 
         case LWS_CALLBACK_CLOSED:
+            //fprintf(stderr, "callback_tty CALLBACK_CLOSED\n");
             tty_client_destroy(client);
             lwsl_notice("client disconnected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
             if (server->once && server->client_count == 0) {
@@ -449,6 +534,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             break;
 
         default:
+            //fprintf(stderr, "callback_tty default reason:%d\n", (int) reason);
             break;
     }
 

@@ -71,6 +71,33 @@ static const struct lws_extension extensions[] = {
         {NULL, NULL, NULL}
 };
 
+/*#define ZIP_MOUNT "/domterm" */
+#define ZIP_MOUNT "/" 
+
+#if USE_NEW_FOPS
+static struct lws_http_mount mount_domterm_zip = {
+        NULL,                   /* linked-list pointer to next*/
+        ZIP_MOUNT,              /* mountpoint in URL namespace on this vhost */
+        "<change this>",      /* handler */
+        "repl-client.html",   /* default filename if none given */
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        LWSMPRO_FILE,   /* origin points to a callback */
+        sizeof(ZIP_MOUNT)-1,
+        NULL,
+
+        { NULL, NULL } // sentinel
+};
+#endif
+
 #define CHROME_OPTION 1000
 #define FIREFOX_OPTION 1001
 #define QTDOMTERM_OPTION 1002
@@ -386,6 +413,10 @@ main(int argc, char **argv) {
     info.options = LWS_SERVER_OPTION_VALIDATE_UTF8;
     info.extensions = extensions;
     info.timeout_secs = 5;
+#if USE_NEW_FOPS
+    mount_domterm_zip.origin = get_resource_path();
+    info.mounts = &mount_domterm_zip;
+#endif
 
     int debug_level = 0;
     char iface[128] = "";
@@ -604,7 +635,9 @@ main(int argc, char **argv) {
         return 1;
     }
 
+#if !USE_NEW_FOPS
     initialize_resource_map(context, get_domterm_jar_path());
+#endif
 
     lwsl_notice("TTY configuration:\n");
     if (server->credential != NULL)
@@ -655,6 +688,7 @@ main(int argc, char **argv) {
 
     // libwebsockets main loop
     while (!force_exit) {
+#if ! USE_ADOPT_FILE
         pthread_mutex_lock(&server->lock);
         if (!LIST_EMPTY(&server->clients)) {
             struct tty_client *client;
@@ -665,7 +699,8 @@ main(int argc, char **argv) {
             }
         }
         pthread_mutex_unlock(&server->lock);
-        lws_service(context, 10);
+#endif
+        lws_service(context, 100);
     }
 
     lws_context_destroy(context);
