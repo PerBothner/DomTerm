@@ -5553,7 +5553,7 @@ DomTerm.prototype.createStyleSheet = function() {
 
 DomTerm.prototype.getTemporaryStyleSheet = function() {
     var styleSheet = this.temporaryStyleSheet;
-    if (! styleSheet || ! styleSheet.parentNode) {
+    if (! styleSheet || ! styleSheet.ownerNode) {
         styleSheet = this.createStyleSheet();
         styleSheet.ownerNode.setAttribute("name", "(temporary-styles)");
         this.temporaryStyleSheet = styleSheet;
