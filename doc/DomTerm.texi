@@ -749,6 +749,10 @@ different front-ends may support some features differently.
 @subheading Keyboard shortcuts
 
 @table @asis
+@c FUTURE @item Control-Shift-P
+@c Enter/exit pager mode
+@c FUTURE @item Control-Shift-M
+@c Prefix for Screen or TMux
 @item Control-Shift-C
 Copy the selected text to the clipboard.
 (Control-C also works in line-editing mode.)
@@ -1437,6 +1441,13 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 Erase the scrollback buffer (i.e. any lines above the home line).
 (This is an xterm feature.)
 
+@item @code{"\e[>0c"}
+Request Secondary Device Attributes.
+(This is a standard request for xt100style terminals, including xterm.)
+DomTerm responds @code{"\e]990;XXYYYZZ;0c"},
+where the number @code{XXYYYZZ} is derived from the DomTerm
+version number @code{"XXX.YYY.ZZ"}.
+
 @item @code{"\e]30;" @var{name} "\a"}
 Sets the ``session name'' to @var{name}, which is shown in the window title.
 Specifically sets the @code{name} attribute of the top-level
@@ -1510,9 +1521,13 @@ and @code{"\e[17u"} after.
 @item @code{"\e[19u"}
 
 Start a @ref{command group}.
-This command implicitly ends any existing command group.
+This command implicitly does a "fresh line" and ends any existing command group,
 You can write this string before writing
 an input prompt string.
+
+@item @code{"\e[20u"}
+Starts a "fresh line": If at the beginning of line, does nothing.
+Otherwise moves to the start of a new line.
 
 @item @code{"\e[80;97u"}
 @itemx @code{"\e[80;99u"}
