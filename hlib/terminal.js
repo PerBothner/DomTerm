@@ -2276,6 +2276,19 @@ DomTerm.prototype._showHideHandler = function(event) {
     }
 };
 
+DomTerm.prototype.freshLine = function() {
+    var lineno = this.getAbsCursorLine();
+    var line = this.lineStarts[lineno];
+    var end = this.lineEnds[lineno];
+    if (line.firstChild == this.outputBefore)
+        return;
+    this.cursorLineStart(1);
+    if (end.getAttribute("line")=="hard") {
+        if (end.firstChild instanceof Text)
+            end.removeChild(end.firstChild);
+    }
+};
+
 DomTerm.prototype.reportEvent = function(name, data) {
     // 0x92 is "Private Use 2".
     // FIXME should encode data
@@ -3518,7 +3531,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.popFromElement();
             break;
         case 19:
+            this.freshLine();
             this.startCommandGroup();
+            break;
+        case 20:
+            this.freshLine();
             break;
         case 80: // set input mode
             this.setInputMode(this.getParameter(1, 112));
