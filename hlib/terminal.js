@@ -4927,7 +4927,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     afterMeasure = p.measureLeft+p.measureWidth;
                 }
                 var right = afterMeasure - startOffset;
-                if (right > availWidth) {
+                if (right > availWidth && beforePos > 0) {
                     var beforeMeasure = beforePos + startOffset;
                     var lineNode = dt._createLineNode("soft");
                     var indentWidth;
