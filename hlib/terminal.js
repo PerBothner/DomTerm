@@ -3187,7 +3187,23 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 99 /*'c'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
             // Send Device Attributes (Secondary DA).
-            this.processResponseCharacters("\x1B[>41;0;0c");
+            // Translate version string X.Y.Z to integer XYYYZZ.
+            var version = DomTerm.versionString.split(".");
+            var vnum = 0;
+            var v = version[0] ? Number(version[0]) : Number.NaN;
+            if (! isNaN(v)) {
+                vnum += 100000 * v;
+                v = version[1] ? Number(version[1]) : Number.NaN;
+                if (! isNaN(v)) {
+                    vnum += 100 * v;
+                    v = version[2] ? Number(version[2]) : Number.NaN;
+                    if (! isNaN(v)) {
+                        vnum += v;
+                    }
+                }
+            }
+            // 990 is "DM" in roman numerals.
+            this.processResponseCharacters("\x1B[>990;"+vnum+";0c");
         } else if (oldState == DomTerm.SEEN_ESC_LBRACKET_STATE) {
             // Send Device Attributes (Primary DA)
             this.processResponseCharacters("\x1B[?62;1;22c");
