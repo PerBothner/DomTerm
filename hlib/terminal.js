@@ -4458,6 +4458,13 @@ DomTerm.prototype.insertString = function(str) {
                 cur = cur ? 10 * cur : 0;
                 this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
             }
+            else if (ch == 58 /*':'*/) {
+                // See https://bugzilla.gnome.org/show_bug.cgi?id=685759
+                // This is a cheat - treat ':' same as ';'.
+                // Better would be to append digits and colons into a single
+                // string parameter.
+                this.parameters.push(null);
+            }
             else if (ch == 59 /*';'*/) {
                 this.parameters.push(null);
             }
