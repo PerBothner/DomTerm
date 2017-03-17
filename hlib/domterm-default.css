@@ -16,6 +16,15 @@ div.domterm[reverse-video] {
     --dt-bgcolor: var(--foreground-color);
     --dt-fgcolor: var(--background-color);
 }
+div.domterm-spacer {
+    background: repeating-linear-gradient(
+        45deg,
+        #fffff8,
+        #fffff8 10px,
+        #F4F4FC 10px,
+        #F4F4FC 20px
+    );
+}
 /* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
    However, the first four in that list cause some vertical spacing issues,
    including background-color not being full-height.
@@ -26,10 +35,10 @@ span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
 div.domterm-show-info {
-    bottom: 4px;
-    right: 4px;
-    padding: 2px;
-    border: 2px solid black;
+    bottom: 0px;
+    right: 2px;
+    padding: 1px 4px;
+    border: 2px solid blue;
 }
 
 /* FUTURE POPUP
