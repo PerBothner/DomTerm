@@ -166,6 +166,7 @@ run_command
             }
             ebuf[mlen] = '\0';
             putenv(ebuf);
+            putenv("COLORTERM=truecolor");
 #if ENABLE_LD_PRELOAD
             int normal_user = getuid() == geteuid();
             char* domterm_home = get_bin_relative_path("");
