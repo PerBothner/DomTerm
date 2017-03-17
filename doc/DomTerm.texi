@@ -1132,15 +1132,48 @@ they should be bundled in a zip archive (like LibreOffice does).
 Tools to convert to and from Jupyter format would be nice,
 so we should avoid gratuitous conceptual incompatibility.
 
+@subheading Multiplexing sessions
+
+GNU Screen and Tmux handle multiple terminals. They provide keystroke
+bindings that make it convenient to create new terminal jobs,
+and navigate between them.  This isn't a critical feature, since
+people can always using windows and tabs, but it would be nice.
+
+The @uref{http://www.brain-dump.org/projects/dvtm/,dtvm} project
+implements tiling window management for a terminal emulalot
+(without session management).
+
+The @uref{http://nathancahill.github.io/Split.js/,Split.js} library
+could be useful for implementing tiling.
+
+Ideally, tiling should be handled by a window manager and/or a library.
+I love the flexibility and ease-of-use of how NetBeans handles windows,
+tiling, and tabs, with a great drag-and-drop mechanism.
+
 @subheading Detachable and remote sessions
 
 Detachable sessions means that a front-end
 can disconnect from a session, while the session (child process) persists.
 The same or a different front-end can later re-attach to the session
-The problem is remembering and being able to re-create the front-end state.
+
+The GNU Screen and tmux programs support detachable sessions
+(along with many other features).  These know the display state,
+so they can re-create it on a re-attach.  The problem is that
+DomTerm has more complex state and features, which you won't
+be able to use with screen or tmux.
+
+A simpler solution that only deals with session management is
+@uref{http://www.brain-dump.org/projects/abduco/,abduco},
+or @uref{dtach.sourceforge.net,dtach}. These just ``pass through''
+escape sequences, without trying to simulate the display.
+The downside is this depends on client re-draw (using
+sigwinch or ctrl-L), which is fine for a program like emacs,
+but doesn't redraw previous commands, and doesn't work with a
+console-based REPL.
+
 Handling explicit detach can be done by having the front-end serialize
 the important aspects of state, and send it back to the back-end.
-On a re-attach, the back-en can send the saved front-end state back
+On a re-attach, the back-end can send the saved front-end state back
 to the front-end.
 
 However, this doesn't handle unexpected detaches, as when the
@@ -1148,8 +1181,10 @@ connection dies.  To support this, the back-end has to know the
 critical parts of the front-end state.  This means the back-end
 has to track the front-end state by simulating the actions of
 the various escape sections.  One way to do that is to use a
-@uref{https://gist.github.com/evandrix/3694955#file-readme-md,``headless'' web server}, such as @uref{http://htmlunit.sourceforge.net/HtmlUnit}
-or (the presumably more heavy-duty) @uref{http://phantomjs.org/,PhantomJS}.
+@uref{https://github.com/dhamaniasad/HeadlessBrowsers,``headless'' web browser}
+such as (the presumably rekativey heavy-duty) @uref{http://phantomjs.org/,PhantomJS}.
+Chromium has a @uref{https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md,@code{--headless} option}.
+Using QtWebEngine in headless mode makes sense if we also use qtdomterm.
 
 @node Technical documentation
 @chapter Technical documentation
