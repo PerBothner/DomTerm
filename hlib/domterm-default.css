@@ -3,26 +3,39 @@
 span[breaking="yes"][line="soft"]:before {content: "\2936" "\A"; }
 /* Suggested by Tufte CSS - less harsh than pure white. */
 div.domterm {
-    --background-color: #fffff8;
-    --foreground-color: black;
+    /* A light color used for the default background in normal mode,
+       or used for default foreground (text) in reverse-video mode. */
+    --main-light-color: #fffff8;
+    /* A dark color used for the default foreground (text) in normal mode,
+       or used for default background in reverse-video mode. */
+    --main-dark-color: black;
     color: black; background-color: #fffff8; /* fallback if var not handled */
-    color: var(--foreground-color); background-color: var(--background-color);
-    --dt-bgcolor: var(--background-color);
-    --dt-fgcolor: var(--foreground-color);
+    color: var(--main-dark-color); background-color: var(--main-light-color);
+    --background-color: var(--main-light-color);
+    --foreground-color: var(--main-dark-color);
 }
 div.domterm[reverse-video] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
-    color: var(--background-color); background-color: var(--foreground-color);
-    --dt-bgcolor: var(--foreground-color);
-    --dt-fgcolor: var(--background-color);
+    color: var(--main-light-color); background-color: var(--main-dark-color);
+    --background-color: var(--main-dark-color);
+    --foreground-color: var(--main-light-color);
 }
 div.domterm-spacer {
     background: repeating-linear-gradient(
         45deg,
-        #fffff8,
-        #fffff8 10px,
+        var(--background-color),
+        var(--background-color) 10px,
         #F4F4FC 10px,
         #F4F4FC 20px
+    );
+}
+div.domterm[reverse-video] div.domterm-spacer {
+    background: repeating-linear-gradient(
+        45deg,
+        var(--background-color),
+        var(--background-color) 10px,
+        #000030 10px,
+        #000030 20px
     );
 }
 /* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
@@ -30,7 +43,9 @@ div.domterm-spacer {
    including background-color not being full-height.
    Check with tests/256-colors.sh. */
 div.domterm-pre { font-family: "DejaVu Sans Mono","Everson Mono",FreeMono,Menlo,Terminal,monospace; }
-span[std="input"] { background-color: #FFFFD0 } /* a pale yellow */
+div.domterm[reverse-video] span[std="input"] { background-color: #808200 } /* a dark yellow */
+div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
+span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
@@ -54,13 +69,13 @@ div.domterm-popup-action:hover {
 
 span[caret="block"][std="input"] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
-    background-color: var(--dt-fgcolor); color: var(--dt-bgcolor)'white
+    background-color: var(--foreground-color); color: var(--background-color);
 }
 
 span[caret="blinking-block"][std="input"] {
     animation: blinking-block 1.5s steps(1) 0s 20;
     color: #fffff8; background-color: black; /* fallback if var not handled */
-    background-color: var(-dt-fgcolor); color: var(--dt-bgcolor)'white
+    background-color: var(--foreground-color); color: var(--background-color);
 }
 span[caret="underline"][std="input"] {
     text-decoration: underline

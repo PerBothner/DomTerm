@@ -5,7 +5,7 @@
 
 span.term-style[reverse] {
     color: #fffff8; background-color: black;
-    color: var(--dt-bgcolor); background-color: var(--dt-fgcolor);
+    color: var(--background-color); background-color: var(--foreground-color);
 }
 
 /* http://en.wikipedia.org/wiki/ANSI_escape_code#Colors
