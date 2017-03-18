@@ -10,7 +10,8 @@ help_general() {
   echo "  html [or hcat] - display html"
   echo "  image [or img or imgcat] - display image"
   echo "  freshline - if not a beginning of inline, starts a fresh line"
-  echo "Subcommands for style sheets (these require Java to work):"
+  echo "Subcommands for styling:"
+  echo "  reverse-video on|off - switch between dark or light background"
   echo "  list-stylesheets - list loaded stylesheets"
   echo "  print-stylesheet - print stylesheet rules from a loaded stylesheet"
   echo "  add-rule - add a new rule to a temporary stylesheet"
@@ -81,6 +82,18 @@ java_StyleSheet_app() {
   stty -F /dev/tty -echo
   $JAVA -cp "$DOMTERM_DIR/share/domterm/domterm.jar" org.domterm.util.StyleSheets "$@"
   stty -F /dev/tty echo
+}
+
+reverse_video() {
+  case "$1" in
+    "yes"|"on") echo -en '\e[?5h' ;;
+    "no"|"off") echo -en '\e[?5l' ;;
+    *)
+      echo "reverse-video option must be on/off (or yes/no)"
+      return -1;
+      ;;
+  esac
+  return 0;
 }
 
 # Print contents of named image to domterm terminal.  See --help.
@@ -168,6 +181,10 @@ html|hcat)
       echo -en "\e]72;$arg\a"
     done
   fi
+  ;;
+reverse-video)
+  shift
+  reverse_video "$@"
   ;;
 image|img|imgcat)
   shift
