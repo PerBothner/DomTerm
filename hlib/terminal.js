@@ -1848,7 +1848,7 @@ DomTerm.prototype._displayInfoWithTimeout = function(text) {
         dt._displaySizePendingTimeouts = 0;
         return;
     }
-    dt._displayInfoString(text);
+    dt._displayInfoMessage(text);
     dt._displaySizePendingTimeouts++;
     function clear() {
         var widget = dt._displayInfoWidget;
@@ -1873,18 +1873,17 @@ DomTerm.prototype._displaySizeInfoWithTimeout = function() {
     this._displayInfoWithTimeout(text);
 };
 
-/** Display text in _displayInfoWidget */
-DomTerm.prototype._displayInfoString = function(text) {
+/** Display contents in _displayInfoWidget.
+ * The contents is updated with innerHTML, so "<>&" must be escaped. */
+DomTerm.prototype._displayInfoMessage = function(contents) {
     var div = this._displayInfoWidget;
-    if (div != null)
-        div.firstChild.data = text;
-    else {
+    if (div == null) {
         div = document.createElement("div");
         div.setAttribute("class", "domterm-show-info");
-        div.appendChild(document.createTextNode(text));
         this.topNode.insertBefore(div, this.topNode.firstChild);
         this._displayInfoWidget = div;
     }
+    div.innerHTML = contents;
 };
 
 DomTerm.prototype.initializeTerminal = function(topNode) {
