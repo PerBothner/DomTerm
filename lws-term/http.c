@@ -3,6 +3,7 @@
 
 #ifdef RESOURCE_DIR
 static char *resource_path = NULL;
+static char domterm_jar_name[] = "domterm.jar";
 char *
 get_resource_path()
 {
@@ -11,8 +12,10 @@ get_resource_path()
       if (resource_path[0] != '/') {
           char *cmd_path = get_executable_path();
           int cmd_dir_length = get_executable_directory_length();
-          char *buf = xmalloc(cmd_dir_length + strlen(resource_path) + 2);
-          sprintf(buf, "%.*s/%s/domterm.jar", cmd_dir_length, cmd_path, resource_path);
+          char *buf =xmalloc(cmd_dir_length + strlen(resource_path)
+                             + sizeof(domterm_jar_name) + 2);
+          sprintf(buf, "%.*s/%s/%s", cmd_dir_length, cmd_path, resource_path,
+                  domterm_jar_name);
           resource_path = buf;
       }
   }

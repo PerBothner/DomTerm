@@ -193,9 +193,7 @@ tty_server_new(int argc, char **argv, int start) {
     for (int i = 0; i < cmd_argc; i++) {
         ts->argv[i] = strdup(cmd_argv[i]);
         cmd_len += strlen(ts->argv[i]);
-        if (i != cmd_argc - 1) {
-            cmd_len++; // for space
-        }
+        cmd_len++; // for intermediate space or final nul
     }
     ts->argv[cmd_argc] = NULL;
 
@@ -204,7 +202,7 @@ tty_server_new(int argc, char **argv, int start) {
     for (int i = 0; i < cmd_argc; i++) {
         ptr = stpcpy(ptr, ts->argv[i]);
         if (i != cmd_argc - 1) {
-            sprintf(ptr++, "%c", ' ');
+            *ptr++ = ' ';
         }
     }
 
