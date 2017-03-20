@@ -385,8 +385,8 @@ public class DomHttpServer implements HttpHandler {
             } else if (arg.startsWith("--browser=")) {
                 runBrowser = 0;
                 browserCommand = arg.substring(10);
-            //} else if (arg.equals("--firefox")) {
-            //runBrowser = 1;
+            } else if (arg.equals("--firefox")) {
+                runBrowser = 1;
             } else if (arg.equals("--chrome")) {
                 runBrowser = 2;
             } else if (arg.equals("--qtdomterm")
@@ -411,6 +411,12 @@ public class DomHttpServer implements HttpHandler {
                     Process process = Runtime.getRuntime()
                         .exec(new String[] { browserCommand, defaultUrl });
                 }
+            } else if (runBrowser == 1) { // --firefox
+                String firefoxCommand = firefoxCommand();
+                Process process = Runtime.getRuntime()
+                    .exec(new String[] { firefoxCommand, "-app",
+                                         domtermPath+"/share/domterm/application.ini",
+                                         "-ajax", "http://localhost:"+port+"/domterm/" });
             } else if (runBrowser == 2) { // --chrome
                 String chromeCommand = chromeCommand();
                 String appArg = "--app="+defaultUrl;
