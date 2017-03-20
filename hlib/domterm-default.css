@@ -13,31 +13,25 @@ div.domterm {
     color: var(--main-dark-color); background-color: var(--main-light-color);
     --background-color: var(--main-light-color);
     --foreground-color: var(--main-dark-color);
+    --spacer-color:  #F0F0F8;
 }
 div.domterm[reverse-video] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
     color: var(--main-light-color); background-color: var(--main-dark-color);
     --background-color: var(--main-dark-color);
     --foreground-color: var(--main-light-color);
+    --spacer-color:  #101040;
 }
 div.domterm-spacer {
-    background: repeating-linear-gradient(
-        45deg,
-        var(--background-color),
-        var(--background-color) 10px,
-        #F4F4FC 10px,
-        #F4F4FC 20px
-    );
+  background-image: repeating-linear-gradient(
+      45deg,
+      var(--spacer-color),
+      var(--spacer-color) 5px,
+      transparent 5px,
+      transparent 15px
+  );
 }
-div.domterm[reverse-video] div.domterm-spacer {
-    background: repeating-linear-gradient(
-        45deg,
-        var(--background-color),
-        var(--background-color) 10px,
-        #000030 10px,
-        #000030 20px
-    );
-}
+
 /* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
    However, the first four in that list cause some vertical spacing issues,
    including background-color not being full-height.
