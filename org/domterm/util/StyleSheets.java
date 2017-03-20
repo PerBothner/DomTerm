@@ -28,6 +28,11 @@ public class StyleSheets {
                 maybeDisable(args[i++], false);
             else if (arg.equals("--add-rule") && i < args.length)
                 addRule(args[i++]);
+            else if (arg.equals("--add-rules") && i < args.length) {
+		do {
+		    addRule(args[i++]);
+		} while (i < args.length);
+	    }
             else if (arg.equals("--load-stylesheet") && i + 1 < args.length)
                 loadStyleSheet(args[i++], args[i++]);
             else if (arg.equals("--print") && i < args.length)

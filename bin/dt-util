@@ -14,7 +14,7 @@ help_general() {
   echo "  reverse-video on|off - switch between dark or light background"
   echo "  list-stylesheets - list loaded stylesheets"
   echo "  print-stylesheet - print stylesheet rules from a loaded stylesheet"
-  echo "  add-rule - add a new rule to a temporary stylesheet"
+  echo "  add-style - add a new rule to a temporary stylesheet"
 }
 
 help_imgcat() {
@@ -202,7 +202,7 @@ list-stylesheets)
   ;;
 add-style)
   shift
-  java_StyleSheet_app --add-rule "$@"
+  java_StyleSheet_app --add-rules "$@"
   exit $?
   ;;
 load-stylesheet)
