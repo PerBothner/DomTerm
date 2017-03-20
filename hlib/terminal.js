@@ -5570,7 +5570,11 @@ DomTerm.prototype.getTemporaryStyleSheet = function() {
 
 DomTerm.prototype.addStyleRule = function(styleRule) {
     var styleSheet = this.getTemporaryStyleSheet();
-    styleSheet.insertRule(styleRule, styleSheet.cssRules.length);
+    try {
+	styleSheet.insertRule(styleRule, styleSheet.cssRules.length);
+    } catch (e) {
+	this.log(e.toString());
+    }
 };
 
 DomTerm.prototype.loadStyleSheet = function(name, value) {
