@@ -117,6 +117,7 @@ embedded in different modes and applications.
 * Features:: Features and screenshots
 * Downloading and building::
 * Applications::
+* Styling:: 
 * Tips:: Tips and solutions
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
@@ -352,9 +353,10 @@ but we also provides a few wrappers and applications that make use of it.
 The @code{domterm} command is normally an alias for @code{ldomterm}.
 
 @menu
+* ldomterm application::
 * qtdomterm application::
 * domterm script::
-* dtstyle - Changing styles::
+* dt-util::dt-util - client-side utility
 * Utility scripts::
 @end menu
 
@@ -619,60 +621,87 @@ CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}.
 
 @end table
 
-@node dtstyle - Changing styles
-@section dtstyle - Changing styles
+@node dt-util
+@section dt-util - client-side utility
 
-The @code{dtstyle} command is useful for managing and
-modifying the currently active stylesheets.
-It takes various options.
+The @code{dt-util} command provides a number of useful features
+when run in a DomTerm terminal.
+For example you can print pictures, or change the background color.
+The syntax is:
+@example
+dt-util @var{sub-command} [@var{option) ...}
+@end example
+
+The @var{sub-command} can be one of the following:
+
+@subheading Miscellaneous
+@table @asis
+@item @code{help} [sub-help]
+@item @code{is-domterm}
+Succeeds (exits with code 0) if the current terminal is DomTerm;
+fails (exits with code -1) otherwise.
+
+This test does not depend on environment variables,
+but instead sends a special request code, and checks the response.
+This test works over an @code{ssh} connection.
+(The test does require that either @code{DOMTERM} be non-empty,
+or that @code{TERM} be either empty or contain the string @code{xterm};
+otherwise it does not try to the request code.)
+@end table
+
+@subheading ``Printing'' images or html
 
 @table @asis
-@item @code{--add-rule} @var{style-rule}
+@item @b{@code{html}}
+@item @b{@code{image}}
+@item @b{@code{fresh-line}}
+@end table
+
+@subheading Working with styles
+
+@table @asis
+@item @b{@code{reverse-video}} @code{on}|@code{off}
+@end table
+
+(The following currently require Java.)
+
+@table @asis
+@item @b{@code{add-style}} @var{style-rule} ...
 
 If called for the first time, create and install a temporary
 stylesheet.
 This temporary stylesheet has a @code{name} attribute
 with the value @code{"(temporary-styles)"}.
-Add the @var{style-rule} to the temporary stylesheet.
+Add each @var{style-rule} to the temporary stylesheet.
 
 For example, to change the background color to pink:
 @example
-$ dtstyle --add-rule "div.domterm @{ --background-color: pink @}"
+$ dt-util add-style "div.domterm @{ --background-color: pink @}"
 @end example
 
-Inverse video:
+You can also set the @code{background-color} style directly:
 @example
-$ dtstyle --add-rule "div.domterm @{ --background-color: black; --foreground-color: white @}"
+$ dt-util add-style "div.domterm @{ background-color: pink @}"
 @end example
+Howeverm it is better to set the @code{--background-color} CSS variable,
+as that is required for reverse video and ``Background Color Erase'' to work.
 
-Setting a background image:
+Inverse video (using CSS variables):
 @example
-$ dtstyle --add-rule "div.domterm @{background-image: url('file:/usr/share/backgrounds/gnome/Mirror.jpg')@}"
+$ dt-util add-style "div.domterm @{ --background-color: black; --foreground-color: white @}"
 @end example
 
 Changing font size:
 @example
-$ dtstyle --add-rule "body @{ font-size: 14pt @}"
+$ dt-util add-style "body @{ font-size: 14pt @}"
 @end example
 
-@item @code{--load-stylesheet} @var{name} @var{filename}
-
-Replace or create a new stylesheet with the given @var{name}.
-The content of the stylesheet are read from the given @var{filename}.
-If the @var{filename} is @code{-} then standard input is used.
-
-The @var{name} is used to set the non-standard @code{name} attribute
-of the created @code{<style>} element.  If there is an existing stylesheet
-with a matching @code{name} attribute, then that stylesheet is replaced;
-otherwise a new stylesheet is created.
-The @var{name} attribute is displayed by the @code{dtstyle --list} command.
-
-@item @code{--list}
+@item @b{@code{list-stylesheets}}
 List on the standard output the set of stylesheets associated with
 the domterm document, one per line:
 
 @example
-$ dtstyle --list
+$ dt-util list-stylesheets
 0: enabled  - "style/domterm-core.css"
 1: enabled  - "style/domterm-standard.css"
 2: enabled  "Default DomTerm styling" "style/domterm-default.css"
@@ -687,20 +716,31 @@ If the stylesheet has the @code{href} attribute, it is shown next
 otherwise, if it has the @code{code} attribute, that is shown;
 otherwise @code{-} is printed.
 
-@item @code{--print} @var{index}
-Print out the style rules of the specified stylesheet,
-which is an @var{index} in the @code{--list} output.
+@item @b{@code{load-stylesheet}} @var{name} @var{filename}
 
-@item @code{--enable} @var{index}
-@itemx @code{--disable} @var{index}
+Replace or create a new stylesheet with the given @var{name}.
+The content of the stylesheet are read from the given @var{filename}.
+If the @var{filename} is @code{-} then standard input is used.
+
+The @var{name} is used to set the non-standard @code{name} attribute
+of the created @code{<style>} element.  If there is an existing stylesheet
+with a matching @code{name} attribute, then that stylesheet is replaced;
+otherwise a new stylesheet is created.
+The @var{name} attribute is displayed by the @code{list-stylesheets} subcommand.
+
+@item @b{@code{print-stylesheet}} @var{index}
+Print out the style rules of the specified stylesheet,
+which is an @var{index} in the @code{list-stylesheets} output.
+
+@item @b{@code{disable-stylesheet}} @var{index}
+@itemx @b{@code{enable-stylesheet}} @var{index}
 Disable or enable the specified stylesheet.
 A @var{index} is an integer index into the
-list as shown by @code{--list}.
+list as shown by @code{list-stylesheets}.
 
 @example
-$ dtstyle --disable 2
+$ dt-util disable-stylesheet 2
 @end example
-
 @end table
 
 @node Utility scripts
@@ -736,6 +776,123 @@ Valid @var{attrnames} are the following, which
 are specified in the HTML specification:
 @code{alt}, @code{longdesc}, @code{height}, @code{width}, @code{border}, @code{hspace}, @code{vspace}, @code{class}.
 @end table
+
+@node Styling
+@chapter Styling
+
+The appearance of a DomTerm window is controlled by CSS stylesheets.
+
+@subheading Reverse video (dark vs light)
+
+By default DomTerm uses uses dark-colored (black) foreground (text) on a
+light-colored (off-white) background.
+Reverse video switches these, by using alight-colored text
+on a dark background.
+
+You can enable reverse-video mode using the @code{dt-util} command:
+@example
+dt-util reverse-video on
+@end example
+
+Enabling reverse-video does not change stylesheet rules,
+but instead sets the @code{reverse-video} attribute on the
+top-level @code{domterm} element.  This is used to select
+differe stylesheet rules for reverse-video.  For example
+to change the background color input @code{input} lines
+to a dark brown do this:
+@example
+div.domterm[reverse-video] span[std="input"] @{ background-color: #808200 @}
+@end example
+
+``Reverse-video mode'' is any style where the background is darker
+than the foreground.  You can tweak individual style elements to
+achieve such a style, but its better to first explicitly set reverse-video mode
+(perhaps using the above @code{dt-util} command), because that
+selects a consistent whole.
+
+@subheading Color variables
+
+DomTerm works best on a browser that supports
+@uref{https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_variables,CSS Variables}, which include Firefox, Google Chrome, and (soon) Edge.
+The following variables defined the main colors.
+
+@table @code
+@item --main-light-color
+A light color used for the default background in normal mode,
+or used for default foreground (text) in reverse-video mode.
+@item --main-dark-color
+A dark color used for the default foreground (text) in normal mode,
+or used for default background in reverse-video mode.
+@item --background-color
+The color currently used for the main background.
+Defaults to @code{--main-light-color} normally, or
+@code{--main-dark-color} in reverse-video mode
+(or after the SGR reverse-videa escape-sequence).
+@item --foreground-color
+The color currently used for the main background (text).
+Defaults to @code{--main-dark-color} normally, or
+@code{--main-light-color} in reverse-video mode
+(or after the SGR reverse-videa escape-sequence).
+@end table
+
+A common desire is to change the default background color.
+You can do any one of:
+@example
+div.domterm @{ --main-light-color: azure @} /* recommended method */
+div.domterm @{ --background-color: azure @}
+div.domterm @{ background-color: azure @}
+@end example
+Using @code{--main-light-color} is recommended because
+it integrates better with the rest of the default stylesheets.
+
+If you want to change to a dark background color,
+it is recommended to you enable reverse-video mode instead (or in addition).
+
+The following color variables define the standard 16
+@uref{https://en.wikipedia.org/wiki/ANSI_escape_code#Colors,``ANSI colors''}:
+@code{--dt-black},
+@code{--dt-red},
+@code{--dt-green},
+@code{--dt-yellow},
+@code{--dt-blue},
+@code{--dt-magenta},
+@code{--dt-cyan},
+@code{--dt-lightgray},
+@code{--dt-darkgray},
+@code{--dt-lightred},
+@code{--dt-lightgreen},
+@code{--dt-lightyellow},
+@code{--dt-lightblue},
+@code{--dt-lightmagenta},
+@code{--dt-lightcyan},
+@code{--dt-white}.
+The default definitions mostly match xterm.
+For example @code{cyan} is @code{#00CDCD}.
+It you can to change it to the standard VGA color, you
+can add an override rule:
+@example
+div.domterm @{--dt-cyan: #00AAAA@}
+@end example
+
+@subheading End-of-file background
+
+DomTerm indicates the bottom area past the written
+data with pale ``zebra stripes''.
+If you want to disable this, do:
+@example
+div.domterm-spacer @{background: none @}
+@end example
+
+@subheading Background image
+
+Setting a background image:
+@example
+/* Note: browser security may disallow file: URLs. */
+div.domterm @{
+  background-image: url('file:/usr/share/backgrounds/gnome/Mirror.jpg');
+  opacity: 0.4 @}
+div.domterm-spacer @{background: none @}
+@end example
 
 @node Tips
 @chapter Tips and solutions
@@ -818,7 +975,7 @@ or other JavaScript modification.
 
 @subheading Changing appearance with CSS stylesheets
 
-You can @code{@ref{dtstyle - Changing styles,dtstyle}} application
+You can use the @code{@ref{dt-util,dt-util}} application
 in a DomTerm window to change its appearance.
 
 On @code{@ref{qtdomterm appliction,qtdomterm}} you can use
@@ -839,13 +996,13 @@ For example (using bash):
 echo -en "\e]30;@var{session-name}\007"
 @end example
 
-The @code{qtdomterm} application will give each ssession a
+The @code{qtdomterm} application will give each session a
 fresh name of the form @code{domterm-@var{N}}.
 The Java WebSockets server will do the same.
 
 The session name is used to set the @code{name}
 attribute of the top domterm element,
-so you can use it to select differnt rules for different sessions.
+so you can use it to select different rules for different sessions.
 For example the following selects different background colors.
 
 @example
@@ -1594,7 +1751,7 @@ A request to return a list of the stylesheets in the document.
 Result to client: @code{"\x9D"} @var{stylesheets} @code{"\n"}
 
 Each stylesheet is a JSON-formatted string, separated by @code{"\t"},
-suitable for printing by @code{dtstyle --list}.
+suitable for printing by @code{dt-util list-stylesheets}.
 
 @item @code{\e]91;"} @var{index} @code{"\a"}
 Disable the stylesheet that has index @var{index} in the list of
