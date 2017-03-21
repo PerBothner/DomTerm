@@ -199,6 +199,9 @@ run_command
             client->obuffer = xmalloc(client->osize);
             client->olen = 0;
             client->pty_read_available = 0;
+            client->sent_count = 0;
+            client->confirmed_count = 0;
+            client->paused = 0;
             outwsi = lws_adopt_descriptor_vhost(lws_get_vhost(wsi), 0, fd, "domterm", wsi);
             client->pty_wsi = outwsi;
             // lws_change_pollfd ??
@@ -270,6 +273,16 @@ reportEvent(const char *name, char *data, size_t dlen,
           start_pty(client);
 #endif
         }
+    } else if (strcmp(name, "RECEIVED") == 0) {
+        long count;
+        sscanf(data, "%ld", &count);
+        //fprintf(stderr, "RECEIVED %ld sent:%ld\n", count, client->sent_count);
+        client->confirmed_count = count;
+        if (((client->sent_count - client->confirmed_count) & MASK28) < 1000
+            && client->paused) {
+          lws_rx_flow_control(client->pty_wsi, 1);
+          client->paused = 0;
+        }
     } else if (strcmp(name, "KEY") == 0) {
         char *q = strchr(data, '"');
         struct termios termios;
@@ -286,6 +299,9 @@ reportEvent(const char *name, char *data, size_t dlen,
             char *rbuf = dlen < 30 ? tbuf : xmalloc(dlen+10);
             sprintf(rbuf, "\033]%d;%.*s\007", isEchoing ? 74 : 73, dlen, data);
             size_t rlen = strlen(rbuf);
+#if USE_ADOPT_FILE
+            client->sent_count = (client->sent_count + rlen) & MASK28;
+#endif
             if (lws_write(client->wsi, rbuf, rlen, LWS_WRITE_BINARY) < rlen)
                 lwsl_err("lws_write\n");
             if (rbuf != tbuf)
@@ -354,9 +370,18 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 
 #if USE_ADOPT_FILE
         case LWS_CALLBACK_RAW_RX_FILE: {
-            //fprintf(stderr, "callback_tty RAW_RX_FILE\n");
-           client = lws_wsi_user(lws_get_parent(wsi));
+            long xsent;
+            client = lws_wsi_user(lws_get_parent(wsi));
+            xsent = (client->sent_count - client->confirmed_count) & MASK28;
+            //fprintf(stderr, "callback_tty RAW_RX_FILE sent:%ld confirmed:%ld diff:%d\n",(int)client->sent_count, (int)client->confirmed_count, (int)xsent );
             size_t avail = client->osize - client->olen;
+            if (xsent >= 2000 || client->paused) {
+                //fprintf(stderr, "RX paused:%d\n", client->paused);
+                client->paused = 1;
+                break;
+            }
+            if (avail > 2500 - xsent)
+              avail = 2500 - xsent;
             if (avail >= eof_len) {
                 ssize_t n = read(client->pty, client->obuffer+client->olen,
                                  avail);
@@ -401,7 +426,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 //break;
             }
 #if USE_ADOPT_FILE
-            if (client->olen > 0) {
+            client->sent_count = (client->sent_count + client->olen) & MASK28;
+             if (client->olen > 0) {
+               //fprintf(stderr, "send %d sent:%ld\n", client->olen, client->sent_count);
               if (lws_write(wsi, client->obuffer, client->olen, LWS_WRITE_BINARY)
                   < client->olen) {
                     lwsl_err("lws_write\n");
@@ -409,7 +436,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 }
                 client->olen = 0;
             }
-            lws_rx_flow_control(client->pty_wsi, 1);
+            if (! client->paused)
+              lws_rx_flow_control(client->pty_wsi, 1);
 #else
             pthread_mutex_lock(&client->lock);
             while (!STAILQ_EMPTY(&client->queue)) {

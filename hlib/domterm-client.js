@@ -1,3 +1,23 @@
+DomTerm._mask28 = 0xfffffff;
+
+// data can be a DomString or an ArrayBuffer.
+DomTerm._handleOutputData = function(dt, data) {
+    var dlen;
+    if (data instanceof ArrayBuffer) {
+	dt.insertBytes(new Uint8Array(data));
+        dlen = data.byteLength;
+    } else {
+        dt.insertString(data);
+        dlen = data.length;
+    }
+    dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
+    if (((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
+        dt._confirmedCount = dt._receivedCount;
+        dt.reportEvent("RECEIVED", dt._confirmedCount);
+    }
+    return dlen;
+}
+
 /** Connect using WebSockets */
 function connect(wspath, wsprotocol) {
     var wt = new DomTerm("domterm");
@@ -6,15 +26,13 @@ function connect(wspath, wsprotocol) {
     wsocket.binaryType = "arraybuffer";
     wt.processInputCharacters = function(str) { wsocket.send(str); };
     wsocket.onmessage = function(evt) {
-        if (evt.data instanceof ArrayBuffer)
-            wt.insertBytes(new Uint8Array(evt.data));
-        else
-            wt.insertString(evt.data);
+	DomTerm._handleOutputData(wt, evt.data);
     }
     var topNode = document.getElementById("domterm");
     wsocket.onopen = function(e) {
         wsocket.send("\x92VERSION "+DomTerm.versionInfo+"\n");
-        wt.initializeTerminal(topNode); };
+        wt.initializeTerminal(topNode);
+ };
 }
 
 var maxAjaxInterval = 2000;
@@ -50,15 +68,14 @@ function connectAjax(prefix="")
 
     function handleAjaxIO() {
         if (xhr.readyState === 4) {
-            var outputText = xhr.responseText;
-            wt.insertString(outputText);
+	    var dlen = DomTerm._handleOutputData(wt, xhr.response);
             awaitingAjax = false;
 
             if (pendingInput.length > 0) {
                 ajaxInterval = 0;
                 requestIO();
             } else {
-                if (outputText.length > 0)
+                if (dlen > 0)
                     ajaxInterval = 0;
                 ajaxInterval += 200;
                 if (ajaxInterval > maxAjaxInterval)

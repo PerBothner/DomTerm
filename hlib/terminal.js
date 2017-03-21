@@ -139,6 +139,9 @@ function DomTerm(name, topNode) {
     // key is sent back to DomTerm; otherwise, it is sent to the child proess.)
     this.autoLazyCheckInferior = true;
 
+    this._receivedCount = 0;
+    this._confirmedCount = 0;
+
     this.caretStyle = 1; // only if *not* isLineEditing()
 
     this.verbosity = 0;

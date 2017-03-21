@@ -27,8 +27,6 @@ import com.sun.net.httpserver.HttpServer;
 
 public class DomHttpServer implements HttpHandler {
     static int verbose = 0;
-    //Map<WebSocket,Backend> backendMap
-    //= new IdentityHashMap();
     Map<String,Session> sessionMap = new HashMap<String,Session>();
     Set<Backend> pendingBackends = new HashSet();
 
@@ -55,6 +53,17 @@ public class DomHttpServer implements HttpHandler {
             server.sessionMap.put(key, this);
         }
 
+	public void reportEvent(String name, String str) {
+	    if (name.equals("RECEIVED")) {
+		try {
+		    int received = Integer.parseInt(str);
+		    termWriter.updateConfirmed(received);
+		} catch (Throwable ex) {
+		}
+	    } else
+		backend.reportEvent(name, str);
+	}
+
         public void close() {
             server.sessionMap.remove(key);
             backend.close(server.sessionMap.isEmpty());
@@ -74,14 +83,32 @@ public class DomHttpServer implements HttpHandler {
         List<String> strings = new ArrayList<String>();
         int numChars = 0;
         boolean closed;
-        
+	int limit = 2000;
+	public static final int MASK28 = 0xfffffff;
+	int countWritten;
+	int countConfirmed;
+
         ReplWriter(Session session) { super(true); this.session = session; }
  
         @Override
         protected synchronized void writeRaw(String str) throws IOException {
             strings.add(str);
-            numChars += str.length();
+	    int slen = str.length();
+            numChars += slen;
+	    countWritten = (countWritten + slen) & MASK28;
+	    while (((countWritten - countConfirmed) & MASK28) > 3000) {
+		try {
+		    wait();
+		} catch (InterruptedException ex) {
+		}
+	    }
         }
+
+	public synchronized void updateConfirmed(int confirmed) {
+	    countConfirmed = confirmed;
+	    notifyAll();
+	}
+
         public synchronized CharSequence removeStrings() {
             StringBuilder sbuf = new StringBuilder(numChars);
             int nstrings = strings.size();
@@ -337,7 +364,7 @@ public class DomHttpServer implements HttpHandler {
                   String cname = msg.substring(i+1, space);
                   while (space < eol && msg.charAt(space) == ' ')
                       space++;
-                  backend.reportEvent(cname,
+                  session.reportEvent(cname,
                                      msg.substring(space, eol));
                   msg = msg.substring(eol+1);
                   i = -1;

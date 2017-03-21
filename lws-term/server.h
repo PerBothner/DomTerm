@@ -80,13 +80,18 @@ struct tty_client {
     int nrows, ncols;
     float pixh, pixw;
 
-#if !USE_ADOPT_FILE
+#if USE_ADOPT_FILE
+    long sent_count;
+    long confirmed_count;
+    int paused;
+#else
     STAILQ_HEAD(pty, pty_data) queue;
     pthread_mutex_t lock;
 
     LIST_ENTRY(tty_client) list;
 #endif
 };
+#define MASK28 0xfffffff
 
 struct tty_server {
     LIST_HEAD(client, tty_client) clients;    // client list
