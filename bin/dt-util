@@ -9,20 +9,30 @@ help_general() {
   echo "Subcommands for output:"
   echo "  html [or hcat] - display html"
   echo "  image [or img or imgcat] - display image"
-  echo "  freshline - if not a beginning of inline, starts a fresh line"
+  echo "  freshline - if not at beginning of line, starts a fresh line"
   echo "Subcommands for styling:"
   echo "  reverse-video on|off - switch between dark or light background"
+  echo "  add-style - add a new rule to a temporary stylesheet"
+  echo "  load-stylesheet - load new stylesheet from a file"
   echo "  list-stylesheets - list loaded stylesheets"
   echo "  print-stylesheet - print stylesheet rules from a loaded stylesheet"
-  echo "  add-style - add a new rule to a temporary stylesheet"
+  echo "  disable-stylesheet - disable a stylesheet"
+  echo "  enable-stylesheet - enable a stylesheet"
 }
 
 help_imgcat() {
-    echo 'Usage: image [--ATTRNAME=ATTRVALUE]... FILENAME'
+    echo 'Usage: image [-n] [--ATTRNAME=ATTRVALUE]... FILENAME'
     echo '"Print" the contents of the named image file to domterm.'
     echo 'This uses a "data:" URI with the file contents sent directly to domterm.'
+    echo
     echo '--ATTRNAME=ATTRVALUE - specify the given attribute; for example: --height=200'
     echo 'Valid ATTRNAMEs: alt, longdesc, height, width, border, hspace, vspace, class'
+    echo
+    echo "If no -n is specified), the image has a 'display: block' style."
+    echo "(so it is automatically on a 'line' by itself), and"
+    echo "gets a horizontal scroll bar if and only if it is too wide to fit."
+    echo "If -n is specified, then only a plain <img> element is written,"
+    echo "hence you can write multiple images and other HTML on the same 'line'."
 }
 
 help_hcat() {
@@ -98,16 +108,15 @@ reverse_video() {
 
 # Print contents of named image to domterm terminal.  See --help.
 imgcat() {
-  LAST_ECHO_ARG="-en"
-  #LAST_ECHO_ARG="-e"
   ATTRIBUTES=""
-  OVERFLOW_X="auto"
+  OVERFLOW_X=""
+  N_ARG=""
 
   while true
   do
   case $1 in
   "-n")
-    LAST_ECHO_ARG="${LAST_ECHO_ARG}n"
+    N_ARG="-n"
     shift
     ;;
   "--width="* | "--height="* | "--border="* | "--align="* \
@@ -129,10 +138,11 @@ imgcat() {
   ;;
   "-"*)
     echo 'imgcat: Unrecognized option "'$1'"'
-    imgcat --help
+    help_imgcat
     ;;
   *)
     FILENAME="$1"
+    test "${OVERFLOW_X}:${N_ARG}" = ":" && OVERFLOW_X="auto"
     if test -f "$FILENAME" && test -r "$FILENAME"
     then true
     else
@@ -140,9 +150,15 @@ imgcat() {
        return -1
     fi
     MIMETYPE=`file --brief --mime-type "$1"`
-    echo -en "\e]72;<span style='display: block; overflow-x: ${OVERFLOW_X}'><img${ATTRIBUTES} src='data:${MIMETYPE};base64,"
+    echo -en "\e]72;"
+    test -z "${N_ARG}" && \
+      echo -en "<span style='display: block; overflow-x: ${OVERFLOW_X}'>"
+    echo -en "<img${ATTRIBUTES} src='data:${MIMETYPE};base64,"
     base64 $FILENAME
-    echo $LAST_ECHO_ARG "'/></span>\a"
+    echo -en "'/>"
+    test -z "${N_ARG}" && \
+      echo -en "</span>"
+    echo -en "\a"
     return 0
     ;;
   esac
@@ -225,7 +241,7 @@ disable-stylesheet)
   java_StyleSheet_app --disable "$@"
   exit $?
   ;;
-help | --help)
+help | --help | "")
   case "$2" in
     image|img|imgcat) help_imgcat;;
     html|hcat) help_hcat;;

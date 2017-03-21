@@ -1,0 +1,37 @@
+.TH LDOMTERM 1
+.SH NAME
+dt-util \- utilities for DomTerm terminal emulators
+.SH SYNOPSIS
+.B dt-util
+.I sub-command [argument ...]
+.SH "DESCRIPTION"
+The dt-util command provides various useful features
+when running in a DomTerm-based terminal emulator,
+such as \fBldomterm\fR(1) or \fBqtdomterm\fR(1).
+
+.SH "SUB-COMMANDS"
+This stub page is just a summary.  For more information see
+the DomTerm home page (http://domterm.org/) or type \fBqt-domterm help\fR.
+.sp
+Miscellaneous sub-commands:
+  help [subcommand]
+  is-domterm - succeeds if running under DomTerm
+.sp
+Subcommands for output:
+  html [or hcat] - display html
+  image [or img or imgcat] - display image
+  freshline - if not a beginning of inline, starts a fresh line
+.sp
+Subcommands for styling:
+  reverse-video on|off - switch between dark or light background
+  add-style - add a new rule to a temporary stylesheet
+  load-stylesheet - load new stylesheet from a file
+  list-stylesheets - list loaded stylesheets
+  print-stylesheet - print stylesheet rules from a loaded stylesheet
+  disable-stylesheet - disable a stylesheet
+  enable-stylesheet - enable a stylesheet
+  
+.SH SEE ALSO
+
+.BR "http://domterm.org/"
+- the DomTerm home page

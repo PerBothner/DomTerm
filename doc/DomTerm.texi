@@ -357,7 +357,6 @@ The @code{domterm} command is normally an alias for @code{ldomterm}.
 * qtdomterm application::
 * domterm script::
 * dt-util::dt-util - client-side utility
-* Utility scripts::
 @end menu
 
 @node ldomterm application
@@ -632,12 +631,13 @@ The syntax is:
 dt-util @var{sub-command} [@var{option) ...}
 @end example
 
-The @var{sub-command} can be one of the following:
+The @var{sub-command} can be one described below.
 
 @subheading Miscellaneous
 @table @asis
-@item @code{help} [sub-help]
-@item @code{is-domterm}
+@item @b{@code{help}} [@var{sub-help}]
+Print some help.  The @var{sub-help} may be a sub-command.
+@item @b{@code{is-domterm}}
 Succeeds (exits with code 0) if the current terminal is DomTerm;
 fails (exits with code -1) otherwise.
 
@@ -653,8 +653,45 @@ otherwise it does not try to the request code.)
 
 @table @asis
 @item @b{@code{html}}
-@item @b{@code{image}}
+@itemx @b{@code{html}} @var{html-value} ...
+Use this to embed HTML content info the DomTerm page.
+If there are no arguments, read from standard input.
+Either of the following work:
+@example
+echo 'E = mc<sup>2</sup>' | dt-util html
+dt-util html 'E = mc<sup>2</sup>'
+@end example
+displays: @code{E = mc@sup{2}}.
+
+@item @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
+
+This script ``prints'' the contents of the named image file to domterm.
+This uses a ``@code{data:}'' URI with the file contents sent directly to domterm, so it works when working remotely.
+
+The @var{filename} must be a file that can be displayed
+by an HTML @code{<img>} element, most commonly a @code{png} or @code{jpg} file.
+
+By default (no @code{-n} is specified),
+the image has a @code{display: block} style
+(so it is automatically on a ``line'' by itself),'
+and gets a horizontal scroll bar if and only if it is too wide to fit.
+If @code{-n} is specified, then only a plain @code{<img>} element is written,
+which means you can write multiple images and other HTML on the same ``line''.
+
+@table @asis
+@item @code{--@var{attrname}=@var{attrvalue}}
+Specify the given attribute; for example: @code{--height=200}.
+Valid @var{attrnames} are the following, which
+are specified in the HTML specification:
+@code{alt}, @code{longdesc}, @code{height}, @code{width}, @code{border}, @code{hspace}, @code{vspace}, @code{class}.
+
+For example: @code{--width=600} scales the image width to be the given number
+of pixels (in the CSS meaning).  (The height is scaled proportionally,
+unless you also specify the @code{--height} option.)
+@end table
+
 @item @b{@code{fresh-line}}
+If not already at beginning of line, starts a fresh line
 @end table
 
 @subheading Working with styles
@@ -743,44 +780,12 @@ $ dt-util disable-stylesheet 2
 @end example
 @end table
 
-@node Utility scripts
-@section Utility scripts
-
-@subsubheading hcat: Print HTML
-
-A simple script for embedding HTML content - just pipe to to stdin:
-
-@example
-echo 'E = mc<sup>2</sup>' | hcat
-@end example
-displays: @code{E = mc@sup{2}}.
-
-@subsubheading imgcat: Send an image file to DomTerm
-
-This script ``prints'' the contents of the named image file to domterm.
-This uses a ``@code{data:}'' URI with the file contents sent directly to domterm, so it works when working remotely.
-
-@example
-@code{imgcat} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
-@end example
-
-The @var{filename} must be a file that can be displayed
-by an HTML @code{<img>} element, most commonly a @code{png} or @code{jpg} file.
-
-@table @asis
-@item @code{-@var{n}}
-Do not append a newline.
-@item @code{--@var{attrname}=@var{attrvalue}}
-Specify the given attribute; for example: @code{--height=200}.
-Valid @var{attrnames} are the following, which
-are specified in the HTML specification:
-@code{alt}, @code{longdesc}, @code{height}, @code{width}, @code{border}, @code{hspace}, @code{vspace}, @code{class}.
-@end table
-
 @node Styling
 @chapter Styling
 
 The appearance of a DomTerm window is controlled by CSS stylesheets.
+You can change the stylesheets using the @ref{dt-util} command.
+If you use @code{qtdomterm}, see its documentation.
 
 @subheading Reverse video (dark vs light)
 
@@ -882,6 +887,10 @@ If you want to disable this, do:
 @example
 div.domterm-spacer @{background: none @}
 @end example
+The spacer stripes alternatate between transparent and the value of @code{--spacer-color}.  You can change it thus:
+@example
+div.domterm-spacer @{--spacer-color: LemonChiffon@}
+@end example
 
 @subheading Background image
 
@@ -891,8 +900,14 @@ Setting a background image:
 div.domterm @{
   background-image: url('file:/usr/share/backgrounds/gnome/Mirror.jpg');
   opacity: 0.4 @}
-div.domterm-spacer @{background: none @}
+div.domterm-spacer @{background: none @} /* optional but recommended */
 @end example
+You can reduce the opacity to make the text more visible.
+
+Note browsers may restrict the use of @code{file:} URLs
+because of the @uref{https://en.wikipedia.org/wiki/Same-origin_policy,same-origin policy}.
+Work-arounds are being considered; please contact the maintainer if this
+is a feature you want.
 
 @node Tips
 @chapter Tips and solutions
@@ -956,7 +971,7 @@ hide/show buttons and dynamic line-(re-)breaking.
 Images will preserve their URLs.
 Relative URLs may need to be fixed, but absolute ones should be fine.
 ``Embedded'' images using a @code{data:} URL (including those
-loaded with the @code{imgcat} program) will be saved embedded,
+loaded with the @code{dt-util image} command) will be saved embedded,
 and Just Work.
 
 The resulting file is actually an XHTML file, so you can use
