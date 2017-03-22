@@ -205,6 +205,7 @@ tty_server_new(int argc, char **argv, int start) {
             *ptr++ = ' ';
         }
     }
+    *ptr = '\0'; // redundant (as long as cmd_argc > 0)
 
     return ts;
 }
