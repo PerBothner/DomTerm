@@ -124,8 +124,8 @@ run-shell: $(DOMTERM_JAR)
 
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
-	-rm -rf bin/ldomterm bin/domterm \
-	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1
+	-rm -rf bin/ldomterm bin/domterm hlib/domterm-all.js \
+	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
 	-rm -f qtdomterm/data/hlib/domterm-all.js \
