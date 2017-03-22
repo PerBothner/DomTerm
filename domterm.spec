@@ -58,6 +58,7 @@ rm %{buildroot}%{_bindir}/domterm
 
 %files
 %{_bindir}/ldomterm
+%{_bindir}/dt-util
 %dir %{_datadir}/domterm
 %{_datadir}/domterm/application.ini
 %{_datadir}/domterm/chrome.manifest
@@ -65,6 +66,7 @@ rm %{buildroot}%{_bindir}/domterm
 %{_datadir}/domterm/domterm.jar
 %{_mandir}/man1/domterm.1*
 %{_mandir}/man1/ldomterm.1*
+%{_mandir}/man1/dt-util.1*
 %license COPYING
 
 %files -n qtdomterm
