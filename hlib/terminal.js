@@ -457,8 +457,10 @@ DomTerm.prototype._homeOffset = function() {
 };
 
 DomTerm.prototype._checkSpacer = function() {
-    var height = this._vspacer.offsetTop - this._homeOffset();
-    this._adjustSpacer(this.availHeight - height);
+    if (this._vspacer != null) {
+        var height = this._vspacer.offsetTop - this._homeOffset();
+        this._adjustSpacer(this.availHeight - height);
+    }
 };
 DomTerm.prototype._adjustSpacer = function(needed) {
     var vspacer = this._vspacer;
