@@ -39,7 +39,7 @@ div.domterm-spacer {
 div.domterm-pre { font-family: "DejaVu Sans Mono","Everson Mono",FreeMono,Menlo,Terminal,monospace; }
 div.domterm[reverse-video] span[std="input"] { background-color: #808200 } /* a dark yellow */
 div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
-span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
+span[std="input"] { background-color: #FFFFD0 } /* a pale yellow */
 span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
