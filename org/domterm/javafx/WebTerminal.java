@@ -232,9 +232,6 @@ public class WebTerminal extends VBox // FIXME should extend Control
             jsWebTerminal = (JSObject) tmp;
             jsWebTerminal.setMember("java", this);
             jsWebTerminal.setMember("jclient", backend);
-            Object versionInfo = jsWebTerminal.getMember("versionInfo");
-            if (versionInfo != null)
-                backend.addVersionInfo(versionInfo.toString());
             webEngine.executeScript("initDomTerm()");
             backend.run(new WebWriter(this));
         } catch (Exception ex) {

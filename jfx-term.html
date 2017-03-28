@@ -32,6 +32,7 @@ function makeDomTerm() {
     return term;
 }
 function initDomTerm() {
+    termInstance.reportEvent("VERSION", DomTerm.versionInfo);
     termInstance.initializeTerminal(termElement);
 }
 </script>
