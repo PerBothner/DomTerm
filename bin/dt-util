@@ -152,12 +152,12 @@ imgcat() {
     MIMETYPE=`file --brief --mime-type "$1"`
     echo -en "\e]72;"
     test -z "${N_ARG}" && \
-      echo -en "<span style='display: block; overflow-x: ${OVERFLOW_X}'>"
+      echo -en "<div style='overflow-x: ${OVERFLOW_X}'>"
     echo -en "<img${ATTRIBUTES} src='data:${MIMETYPE};base64,"
     base64 $FILENAME
     echo -en "'/>"
     test -z "${N_ARG}" && \
-      echo -en "</span>"
+      echo -en "</div>"
     echo -en "\a"
     return 0
     ;;

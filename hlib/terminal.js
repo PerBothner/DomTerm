@@ -249,6 +249,9 @@ function DomTerm(name, topNode) {
 
     // Map line number to end of each line.
     // This is a <span> element with a line attribute.
+    // It can be null if the corresponding lineStart is a block element
+    // (possibly inserted using HTML "printing"); in that case the line
+    // does not support line-breaking.
     this.lineEnds = new Array();
 
     // Index of the 'home' position in the lineStarts table.
@@ -546,18 +549,9 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
         if (cur == null || cur == startNode)
             break;
         var descend = false;
-        var pendingDelete = null;
         if (cur instanceof Text) {
             var data = cur.data;
             var dlen = data.length;
-            if (data == "\n" && cur.previousSibling) {
-                var prevName = cur.previousSibling.nodeName;
-                if (prevName == "DIV" || prevName == "P" || prevName == "BODY"
-                    || prevName == "PRE") {
-                    pendingDelete = cur;
-                    dlen = 0;
-                }
-            }
             for (var i = 0; i < dlen; i++) {
                 if (data.charCodeAt(i) == 10) {
                     if (i > 0)
@@ -578,9 +572,38 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
             var tag = cur.tagName;
             if (cur.firstChild)
                 descend = true;
-            if (tag == "DIV" || tag == "PRE" || tag == "P")
-                start = cur;
-            else if (tag == "SPAN") {
+            if (tag == "DIV" || tag == "PRE" || tag == "P") {
+                var hasData = false;
+                var prevWasBlock = false;
+                // Check to see if cur has any non-block children:
+                for (var ch = cur.firstChild; ch != null; ) {
+                    var next = ch.nextSibling;
+                    var isBlockNode = false;
+                    if (ch instanceof Text) {
+                        if (ch.data == "\n" && prevWasBlock) {
+                            // The "write" routine adds newlines after these
+                            // block elements, for better human-readability.
+                            // Remote them here.
+                            cur.removeChild(ch);
+                            ch = next;
+                            continue;
+                        }
+                        hasData = true;
+                    } else if (ch instanceof Element) {
+                        isBlockNode = this.isBlockNode(ch);
+                        if (! isBlockNode)
+                            hasData = true;
+                    }
+                    ch = next;
+                    prevWasBlock = isBlockNode;
+                }
+                if (hasData) {
+                    start = cur;
+                    this.lineStarts[startLine] = start;
+                    this.lineEnds[startLine] = null;
+                    startLine++;
+                }
+            } else if (tag == "SPAN") {
                 var line = cur.getAttribute("line");
                 var cls =  cur.getAttribute("class");
                 if (line) {
@@ -590,10 +613,16 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     //this.currentCursorColumn = -1;
                     this._setPendingSectionEnds(cur);
                     if (line == "hard" || line == "br") {
-                        this.lineStarts[startLine] = start;
-                        this.lineEnds[startLine] = cur;
-                        start = cur;
-                        startLine++;
+                        if (start != null && cur.parentNode == start
+                            && cur.nextSibling == null) { // normal case
+                            this.lineEnds[startLine-1] = cur;
+                            start = null;
+                        } else if (startLine > 0) { // shouldn't happen
+                            this.lineEnds[startLine-1] = cur;
+                            this.lineStarts[startLine] = cur;
+                            startLine++;
+                            start = cur;
+                        }
                     } else {
                         cur._needSectionEndNext = this._needSectionEndList;
                         this._needSectionEndList = cur;
@@ -620,8 +649,6 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                 if (cur == startNode)
                     break;
             }
-            if (pendingDelete)
-                pendingDelete.parentNode.removeChild(pendingDelete);
         }
     }
 };
@@ -742,6 +769,8 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                 parent = this.initial;
             else {
                 var lastParent = this.lineEnds[lineCount-1];
+                if (lastParent == null)
+                   lastParent = this.lineStarts[lineCount-1]; 
                 for (;;) {
                     if (this.isBlockNode(lastParent))
                         break;
@@ -2287,10 +2316,6 @@ DomTerm.prototype.freshLine = function() {
     if (line.firstChild == this.outputBefore)
         return;
     this.cursorLineStart(1);
-    if (end.getAttribute("line")=="hard") {
-        if (end.firstChild instanceof Text)
-            end.removeChild(end.firstChild);
-    }
 };
 
 DomTerm.prototype.reportEvent = function(name, data) {
@@ -3677,10 +3702,12 @@ DomTerm.charsetUK = function(ch) {
 DomTerm.prototype._unsafeInsertHTML = function(text) {
     if (this.verbosity >= 1)
         this.log("_unsafeInsertHTML "+JSON.stringify(text));
-    if (this.outputBefore != null)
-        this.outputBefore.insertAdjacentHTML("beforebegin", text);
-    else
-        this.outputContainer.insertAdjacentHTML("beforeend", text);
+    if (text.length > 0) {
+        if (this.outputBefore != null)
+            this.outputBefore.insertAdjacentHTML("beforebegin", text);
+        else
+            this.outputContainer.insertAdjacentHTML("beforeend", text);
+    }
 };
 
 // Bit 0 (value 1): Allow in inserted HTML
@@ -3725,6 +3752,7 @@ DomTerm.prototype.allowAttribute = function(name, value, einfo, parents) {
 //FIXME Study the following:
 //https://www.owasp.org/index.php/XSS_Filter_Evasion_Cheat_Sheet
 
+// See elementInfo comment for bit values.
 DomTerm.HTMLinfo = {
     "a": 7, // need to check "href" for "javascript:"
     "abbr": 5,
@@ -3840,6 +3868,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
     var start = 0;
     var ok = 0;
     var i = 0;
+    var startLine = this.getAbsCursorLine();
     var activeTags = new Array();
     loop:
     for (;;) {
@@ -3849,6 +3878,18 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
         }
         var ch = str.charCodeAt(i++);
         switch (ch) {
+        case 10:
+        case 12:
+        case 13:
+            if (activeTags.length == 0) {
+                this._unsafeInsertHTML(str.substring(start, i-1)); 
+                this.cursorLineStart(1);
+                if (ch == 13 && i < len && str.charCodeAt(i) == 10)
+                    i++;
+                start = i;
+                ok = i;
+            }
+            break;
         case 38 /*'&'*/:
             ok = i-1;
             for (;;) {
@@ -3907,10 +3948,37 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                     break loop; // invalid
                 var tag = str.substring(ok+2,i-1);
                 if (activeTags.length == 0) {
-                    // FIXME check current context
+                    // maybe TODO: allow unbalanced "</foo>" to pop from foo.
                     break loop;
                 } else if (activeTags.pop() == tag) {
                     ok = i;
+                    if (activeTags.length == 0
+                        && (this.elementInfo(tag, activeTags) & 4) == 0) {
+                        this.freshLine();
+                        var line = this.getAbsCursorLine();
+                        var lstart = this.lineStarts[line];
+                        var lend = this.lineEnds[line];
+                        var emptyLine = (lstart == this.outputContainer
+                                         && lstart.firstChild == lend
+                                         && this.outputBefore == lend);
+                        this._unsafeInsertHTML(str.substring(start, ok));
+                        var created = lstart.firstChild;
+                        if (emptyLine && created.nextSibling == lend) {
+                            lstart.removeChild(created);
+                            if (lend != null)
+                                lstart.removeChild(lend);
+                            lstart.parentNode.insertBefore(created, lstart);
+                            lstart.parentNode.removeChild(lstart);
+                            this.lineStarts[line] = created;
+                            this.lineEnds[line] = null;
+                            this.resetCursorCache();
+                            this.outputContainer = created;
+                            this.outputBefore = null;
+                            this.freshLine();
+                        }
+                        start = i;
+                        //insert immediately, as new line
+                    }
                     continue;
                 } else
                     break loop; // invalid - tag mismatch                    
@@ -3981,9 +4049,14 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
         this.insertNode(span);
         span.appendChild(document.createTextNode(str.substring(ok, len)));
     }
-    else if (ok > start) {
-        this._unsafeInsertHTML(str.substring(start, ok));
+    else {
+        if (ok > start) {
+            this._unsafeInsertHTML(str.substring(start, ok)); 
+            this.resetCursorCache();
+        }
+        this._updateLinebreaksStart(startLine);
     }
+    //this.cursorColumn = -1;
 };
 
 
@@ -4008,7 +4081,6 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         break;
     case 72:
         this._scrubAndInsertHTML(text);
-        this.cursorColumn = -1;
         break;
     case 73:
     case 74:
@@ -4938,7 +5010,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     afterMeasure = p.measureLeft+p.measureWidth;
                 }
                 var right = afterMeasure - startOffset;
-                if (right > availWidth && beforePos > 0) {
+                if (right > availWidth) {
                     var beforeMeasure = beforePos + startOffset;
                     var lineNode = dt._createLineNode("soft");
                     var indentWidth;
@@ -5131,7 +5203,8 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     for (var line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
         var end = this.lineEnds[line];
-        if (start.alwaysMeasureForBreak || end.offsetLeft > this.availWidth) {
+        if (start.alwaysMeasureForBreak
+            || (end != null && end.offsetLeft > this.availWidth)) {
             changed = true; // FIXME needlessly conservative
             var first = this.isBlockNode(start) ? start.firstChild
                 : start.nextSibling;
@@ -5303,21 +5376,26 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     }
     else {
         this.insertRawOutput(str);
-        // Contending optimizations:
-        // If we're on the last line, we may be doing bulk output,
-        // so avoid acessing offsetLeft (expensive because it forces layout).
-        // If we're not on the last, we may be doing cursor adressing,
-        // and we want to avoid calling _breakAllLines needlessly.
-        if (this._deferredLinebreaksStart < 0
-            && (absLine == this.lineEnds.length - 1
-                || this.lineEnds[absLine].offsetLeft > this.availWidth))
-            this._deferredLinebreaksStart = absLine;
+        this._updateLinebreaksStart(absLine);
     }
     this.currentAbsLine = absLine;
     this.currentCursorColumn =
         this.currentCursorColumn < 0 || widthInColumns < 0 ? -1
         : this.currentCursorColumn + widthInColumns;
 };
+
+DomTerm.prototype._updateLinebreaksStart = function(absLine) {
+    // Contending optimizations:
+    // If we're on the last line, we may be doing bulk output,
+    // so avoid acessing offsetLeft (expensive because it forces layout).
+    // If we're not on the last, we may be doing cursor adressing,
+    // and we want to avoid calling _breakAllLines needlessly.
+    if (this._deferredLinebreaksStart < 0
+        && (absLine == this.lineEnds.length - 1
+            || (this.lineEnds[absLine] != null
+                && this.lineEnds[absLine].offsetLeft > this.availWidth)))
+        this._deferredLinebreaksStart = absLine;
+}
 
 DomTerm.prototype.insertRawOutput = function(str) {
     var node
