@@ -1,5 +1,7 @@
 /* Optional - user-overridable styling */
 
+/* "\2936" is "arrow pointing downwards then curving leftward".
+It is used to indicate a wrapped line, rather like a hyphen. */
 span[breaking="yes"][line="soft"]:before {content: "\2936" "\A"; }
 /* Suggested by Tufte CSS - less harsh than pure white. */
 div.domterm {
