@@ -1838,9 +1838,6 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         topNode.focus();
     var dt = this;
 
-    var styleSheet0 = document.styleSheets[0];
-    dt._wcnodeRule = -1;
-
     // FIXME we want the resize-sensor to be a child of helperNode
     new ResizeSensor(topNode, function () {
         if (dt.verbosity > 0)
@@ -1848,15 +1845,6 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         var oldWidth = dt.availWidth;
         dt.measureWindow();
         dt._displaySizeInfoWithTimeout();
-
-        if (dt._wcnodeRule >= 0)
-            styleSheet0.deleteRule(dt._wcnodeRule);
-        var wideCssRule =
-            ' div.domterm-pre span.wc-node {' +
-            '  display: inline-block;' +
-            '  text-align: center;' +
-            '  width: ' + dt.charWidth * 2 + 'px; }';
-        dt._wcnodeRule = styleSheet0.insertRule(wideCssRule, 0);
 
         if (dt.availWidth != oldWidth) {
             dt._breakAllLines();
@@ -2024,7 +2012,7 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
         // FIXME add sanity check?
         var ruler = this._rulerNode;
         var charWidth = ruler.offsetWidth/26.0;
-        // Add half a column for rounding issues - see comment in measureWidth
+        // Add half a column for rounding issues - see comment in measureWindow
         var width = (numCols + 0.5) * charWidth + this.rightMarginWidth
             + (this.topNode.offsetWidth - this.topNode.clientWidth);
         var topNode = this.topNode;
@@ -2067,6 +2055,8 @@ DomTerm.prototype.measureWindow = function()  {
     this.availWidth = availWidth;
     if (this.verbosity >= 2)
         this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" numCols:"+this.numColumns+" numRows:"+this.numRows);
+    this.topNode.setAttribute("style",
+                              "--wchar-width: "+(this.charWidth * 2)+"px");
 };
 
 /* FUTURE POPUP

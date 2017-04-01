@@ -11,6 +11,11 @@ div.domterm-show-info {
     z-index: 100;
     background-color: inherit
 }
+div.domterm-pre span.wc-node {
+    display: inline-block;
+    text-align: center;
+    width: var(--wchar-width);
+}
 /* FUTURE POPUP
 div.domterm-main-popup {
     position: fixed;
