@@ -553,7 +553,8 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
             var data = cur.data;
             var dlen = data.length;
             for (var i = 0; i < dlen; i++) {
-                if (data.charCodeAt(i) == 10) {
+                var ch = data.codePointAt(i);
+                if (ch == 10) {
                     if (i > 0)
                         cur.parentNode.insertBefore(document.createTextNode(data.substring(0,i)), cur);
                     var line = this._createLineNode("hard", "\n");
@@ -565,6 +566,28 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     }
                     cur = line; // continue with Element case below
                     break;
+                }
+                var cwidth = this.wcwidthInContext(ch, cur.parentNode);
+                if (cwidth == 2) {
+                    var i1 = ch > 0xffff ? i + 2 : i + 1;
+                    var wcnode = this._createSpanNode();
+                    wcnode.setAttribute("class", "wc-node");
+                    wcnode.appendChild(document.createTextNode(String.fromCodePoint(ch)));
+                    cur.parentNode.insertBefore(wcnode, cur.nextSibling);
+                    if (i == 0)
+                        cur.parentNode.removeChild(cur);
+                    else
+                        cur.deleteData(i, dlen-i);
+                    cur = wcnode;
+                    if (i1 < dlen) {
+                        data = data.substring(i1, dlen);
+                        var next = document.createTextNode(data);
+                        cur.parentNode.insertBefore(next, cur.nextSibling);
+                        cur = next;
+                        dlen -= i1;
+                        i = -1;
+                    } else
+                        break;
                 }
             }
         }
@@ -627,6 +650,8 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                         cur._needSectionEndNext = this._needSectionEndList;
                         this._needSectionEndList = cur;
                     }
+                } else if (cls == "wc-node") {
+                    descend = false;
                 } else if (cls == "pprint-group") {
                     this._pushPprintGroup(cur);
                 }
@@ -4280,11 +4305,15 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
 
             if (tagName == "div") {
                 if (id == "domterm__helper" || cls == "domterm-spacer"
-                    || cls == "resize-sensor")
+                    || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
             } else if (tagName == "span") {
                 if (cls == "pprint-indentation")
                     break;
+                if (cls == "wc-node") {
+                    string += node.textContent;
+                    break;
+                }
             }
 
             var s = '<' + tagName;
