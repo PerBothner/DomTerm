@@ -1,4 +1,7 @@
 #!/bin/bash
+# Run DomTerm using Java's HttpServer.
+# This uses AJAX instead of WebSockets.
+# This script is not installed by default.
 thisfile=`type -p $0`
 case "$thisfile" in
   "") echo "installation error - can't find path to $0"; exit -1 ;;
@@ -6,7 +9,8 @@ case "$thisfile" in
   *) thisfile="$PWD/$thisfile"  ;;
 esac         
 while test -L "$thisfile"; do thisfile=$(readlink -f "$thisfile"); done
-DOMTERM_DIR=`echo $(dirname $thisfile) | sed -e 's|/bin$||'`
+# This script might be as xxx/bin/jdomterm or xxx/share/odmterm/jdomterm.
+DOMTERM_DIR=`echo $(dirname $thisfile) | sed -e 's|/bin$||' -e 's|/share/domterm$||'`
 if test -n "$JAVA_HOME"; then
     JAVA="${JAVA_HOME}/bin/java"
 else
