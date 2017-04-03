@@ -288,6 +288,15 @@ if WITH_JAVA
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
 	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
 endif
+	$(MKDIR_P) $(DESTDIR)$(datadir)/applications \
+	    $(DESTDIR)$(datadir)/appdata
+	$(INSTALL_DATA) domterm.desktop $(DESTDIR)$(datadir)/applications/
+	$(INSTALL_DATA) domterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
+if WITH_QTWEBENGINE
+	$(INSTALL_DATA) qtdomterm.desktop $(DESTDIR)$(datadir)/applications/
+	$(INSTALL_DATA) qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
+endif
+	$(INSTALL_SCRIPT) bin/jdomterm $(DESTDIR)$(pkgdatadir)
 
 install-ldomterm:
 	cd lws-term && $(MAKE) install
@@ -303,7 +312,7 @@ else
 if WITH_QTWEBENGINE
 	cd $(DESTDIR)$(bindir) && $(LN_S) qtdomterm$(EXEEXT) domterm
 else
-	cd $(DESTDIR)$(bindir) && $(LN_S) jdomterm domterm
+	cd $(DESTDIR)$(bindir) && $(LN_S) ../share/domterm/jdomterm domterm
 endif
 endif
 
