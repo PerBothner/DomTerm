@@ -107,6 +107,12 @@ public class DomHttpServer implements HttpHandler {
 	public synchronized void updateConfirmed(int confirmed) {
 	    countConfirmed = confirmed;
 	    notifyAll();
+	    /*
+		    if (((sentCount - confirmedCount) & MASK28) < 1000
+			&& paused) {
+			// FIXME lws_rx_flow_control(client->pty_wsi, 1);
+			paused = false;
+	    */
 	}
 
         public synchronized CharSequence removeStrings() {

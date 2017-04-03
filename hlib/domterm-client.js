@@ -4,14 +4,15 @@ DomTerm._mask28 = 0xfffffff;
 DomTerm._handleOutputData = function(dt, data) {
     var dlen;
     if (data instanceof ArrayBuffer) {
-	dt.insertBytes(new Uint8Array(data));
+        dt.insertBytes(new Uint8Array(data));
         dlen = data.byteLength;
     } else {
         dt.insertString(data);
         dlen = data.length;
     }
     dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
-    if (((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
+    if (! dt._paused
+        && ((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
         dt._confirmedCount = dt._receivedCount;
         dt.reportEvent("RECEIVED", dt._confirmedCount);
     }
@@ -32,7 +33,7 @@ function connect(wspath, wsprotocol) {
     wsocket.onopen = function(e) {
         wsocket.send("\x92VERSION "+DomTerm.versionInfo+"\n");
         wt.initializeTerminal(topNode);
- };
+    };
 }
 
 var maxAjaxInterval = 2000;

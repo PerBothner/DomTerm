@@ -139,6 +139,14 @@ function DomTerm(name, topNode) {
     // key is sent back to DomTerm; otherwise, it is sent to the child proess.)
     this.autoLazyCheckInferior = true;
 
+    // 0: not in paging or pause mode
+    // 1: in paging mode
+    // 2: in paused mode
+    this._pagingMode = 0;
+
+    this._autoPaging = false;
+    this._temporaryAutoPaging = false;
+    this._pauseLimit = -1;
     this._receivedCount = 0;
     this._confirmedCount = 0;
 
@@ -384,6 +392,7 @@ DomTerm.prototype.startCommandGroup = function() {
         this._currentCommandOutput = null;
         this._currentCommandHideable = false;
     }
+    this._temporaryAutoPaging = false;
 };
 
 // For debugging (may be overridden)
@@ -1780,6 +1789,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.initial = bufNode;
             this.resetCursorCache();
             this.moveToAbs(line+this.homeLine, col, true);
+            if (this._pauseLimit >= 0)
+                this._pauseLimit += bufNode.offsetTop;
         } else {
             var bufNode = this.initial;
             this.initial = bufNode.saveInitial;
@@ -1789,6 +1800,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this._savedCursor = bufNode.savedCursor;
             this.moveToAbs(this.homeLine, 0, false);
             bufNode.parentNode.removeChild(bufNode);
+            if (this._pauseLimit >= 0)
+                this._pauseLimit = this.initial.offsetTop + this.availHeight;
         }
         this.usingAlternateScreenBuffer = val;
     }
@@ -1902,12 +1915,20 @@ DomTerm.prototype._displayInfoWithTimeout = function(text) {
         if (widget == null) {
             dt._displaySizePendingTimeouts = 0;
         } else if (--dt._displaySizePendingTimeouts == 0) {
-            widget.parentNode.removeChild(widget);
-            dt._displayInfoWidget = null;
+            dt._updatePagerInfo();
         }
     };
     setTimeout(clear, 2000);
 };
+
+DomTerm.prototype._clearInfoMessage = function() {
+    var widget = this._displayInfoWidget;
+    if (widget != null) {
+        widget.parentNode.removeChild(widget);
+        this._displayInfoWidget = null;
+        this._displaySizePendingTimeouts = 0;
+    }
+}
 
 DomTerm.prototype._displaySizeInfoWithTimeout = function() {
     // Might be nicer to keep displaying the size-info while
@@ -2686,6 +2707,7 @@ DomTerm.prototype.eraseDisplay = function(param) {
         }
         break;
     case 3: // Delete saved scrolled-off lines - xterm extension
+        this._pauseLimit = this.availHeight;
         var saveHome = this.homeLine;
         this.homeLine =
             this.usingAlternateScreenBuffer ? this.initial.saveLastLine
@@ -4443,12 +4465,39 @@ DomTerm.prototype.insertBytes = function(bytes) {
     if (this.decoder == null)
         this.decoder = new TextDecoder(); //label = "utf-8");
     var str = this.decoder.decode(bytes, {stream:true});
-    this.insertString(str);
+    this.insertString(str); 
+}
+
+DomTerm.prototype._pauseContinue = function(skip = false) {
+    var wasMode = this._pagingMode;
+    this._pagingMode = 0;
+    if (wasMode != 0)
+        this._updatePagerInfo();
+    if (this.verbosity >= 2)
+        this.log("pauseContinue was mode="+wasMode);
+    if (wasMode == 2) {
+        var text = this.parameters[1];
+        this.parameters[1] = null;
+        if (! skip && text)
+            this.insertString(text);
+        this._confirmedCount = this._receivedCount;
+        text = this.parameters[1];
+        // FIXME maybe this._temporaryAutoPaging = true;
+        if (text == null || text.length < 500) {
+            if (this.verbosity >= 2)
+                this.log("report RECEIVED "+this._confirmedCount);
+            this.reportEvent("RECEIVED", this._confirmedCount);
+        }
+    }
 }
 
 DomTerm.prototype.insertString = function(str) {
     if (this.verbosity >= 2)
         this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState);
+    if (this._pagingMode == 2) {
+        this.parameters[1] = this.parameters[1] + str;
+        return;
+    }
     /*
     var indexTextEnd = function(str, start) {
         var len = str.length;
@@ -4460,6 +4509,16 @@ DomTerm.prototype.insertString = function(str) {
         return i;
     };
     */
+    var dt = this;
+    var update = function() {
+        dt._updateTimer = null;
+        dt._breakDeferredLines();
+        dt._checkSpacer();
+        // FIXME only if "scrollWanted"
+        if (dt._pagingMode == 0)
+            dt._scrollIfNeeded();
+        dt._restoreInputLine();
+    };
     if (this.useStyledCaret())
         this._removeInputLine();
     this._doDeferredDeletion();
@@ -4709,6 +4768,7 @@ DomTerm.prototype.insertString = function(str) {
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && ! this.usingAlternateScreenBuffer
+                    && ! this._pauseNeeded()
                     && (this._regionBottom == this.numRows
                         || this.getCursorLine() != this._regionBottom-1)) {
                     var stdMode = this._getStdMode(); 
@@ -4729,6 +4789,12 @@ DomTerm.prototype.insertString = function(str) {
                 this._breakDeferredLines();
                 if (this._currentStyleMap.get("std") == "input")
                     this._pushStdMode(null);
+                if (this._pauseNeeded()) {
+                    this.parameters[1] = str.substring(i);
+                    update();
+                    this._enterPaging(true);
+                    return;
+                }
                 this.cursorNewLine(this.automaticNewlineMode);
                 prevEnd = i + 1; columnWidth = 0;
                 break;
@@ -4834,15 +4900,6 @@ DomTerm.prototype.insertString = function(str) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
     }
 
-    var dt = this;
-    var update = function() {
-        dt._updateTimer = null;
-        dt._breakDeferredLines();
-        dt._checkSpacer();
-        // FIXME only if "scrollWanted"
-        dt._scrollIfNeeded();
-        dt._restoreInputLine();
-    };
     if (window.requestAnimationFrame) {
         if (this._updateTimer)
             cancelAnimationFrame(this._updateTimer);
@@ -4857,8 +4914,12 @@ DomTerm.prototype.insertString = function(str) {
 DomTerm.prototype._scrollIfNeeded = function() {
     var last = this.topNode.lastChild;
     var lastBottom = last.offsetTop + last.offsetHeight;
-    if (lastBottom > this.topNode.scrollTop + this.availHeight)
+    if (lastBottom > this.topNode.scrollTop + this.availHeight) {
+        if (this.verbosity >= 2)
+            this.log("scroll-needed was:"+this.topNode.scrollTop+" to "
+                     +(lastBottom - this.availHeight));
         this.topNode.scrollTop = lastBottom - this.availHeight;
+    }
 }
 
 DomTerm.prototype._breakDeferredLines = function() {
@@ -5871,6 +5932,12 @@ DomTerm.prototype._pickFile = function() {
     return prompt("save contents as: ", fname);
 };
 
+DomTerm.prototype._adjustPauseLimit = function(node) {
+    var limit = node.offsetTop + this.availHeight;
+    if (limit > this._pauseLimit)
+        this._pauseLimit = limit;
+}
+
 DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
@@ -5884,6 +5951,24 @@ DomTerm.prototype.keyDownHandler = function(event) {
     // Ctrl-Shift-C is Copy and Ctrl-Shift-V is Paste
     if (event.ctrlKey && event.shiftKey) {
         switch (key) {
+        case 33 /*PageUp*/:
+        case 34 /*PageDown*/:
+            this._pagePage(key == 33 ? -1 : 1);
+            event.preventDefault();
+            return;
+        case 35 /*End*/:
+            this._pageBottom();
+            event.preventDefault();
+            return;
+        case 36 /*Home*/:
+            this._pageTop();
+            event.preventDefault();
+            return;
+        case 38 /*Up*/:
+        case 40 /*Down*/:
+            this._pageLine(key == 38 ? -1 : 1);
+            event.preventDefault();
+            return;
         case 67: // Control-Shift-C
             if (this.doCopy())
                 event.preventDefault();
@@ -5909,6 +5994,15 @@ DomTerm.prototype.keyDownHandler = function(event) {
             this._displayInputModeWithTimeout(displayString);
             event.preventDefault();
             return;
+        case 80: // Control-Shift-P
+            if (this._currentlyPagingOrPaused()) {
+                this._temporaryAutoPaging = false;
+                this._pauseContinue();
+                this._exitPaging();
+            } else
+                this._enterPaging(true);
+            event.preventDefault();
+            return;
         case 83: // Control-Shift-S
             this.doSaveAs();
             event.preventDefault();
@@ -5921,6 +6015,11 @@ DomTerm.prototype.keyDownHandler = function(event) {
             return;
         }
     }
+    if (this._currentlyPagingOrPaused()) {
+        this._pageKeyHandler(event, key, false);
+        return;
+    }
+    this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
         if (! this.useStyledCaret())
             this.inputLine.focus();
@@ -5980,6 +6079,11 @@ DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
         this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" inputLine:"+this.inputLine);
+    if (this._currentlyPagingOrPaused()) {
+        this._pageKeyHandler(event, key, true);
+        return;
+    }
+    this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
         if (this._usingDoLineEdit) {
             event.preventDefault();

@@ -372,8 +372,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         case LWS_CALLBACK_RAW_RX_FILE: {
             long xsent;
             client = lws_wsi_user(lws_get_parent(wsi));
+            //fprintf(stderr, "callback_tty RAW_RX_FILE sent:%ld confirmed:%ld\n",client->sent_count, client->confirmed_count );
             xsent = (client->sent_count - client->confirmed_count) & MASK28;
-            //fprintf(stderr, "callback_tty RAW_RX_FILE sent:%ld confirmed:%ld diff:%d\n",(int)client->sent_count, (int)client->confirmed_count, (int)xsent );
             size_t avail = client->osize - client->olen;
             if (xsent >= 2000 || client->paused) {
                 //fprintf(stderr, "RX paused:%d\n", client->paused);
@@ -427,8 +427,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             }
 #if USE_ADOPT_FILE
             client->sent_count = (client->sent_count + client->olen) & MASK28;
-             if (client->olen > 0) {
-               //fprintf(stderr, "send %d sent:%ld\n", client->olen, client->sent_count);
+            if (client->olen > 0) {
+              //fprintf(stderr, "send %d sent:%ld\n", client->olen, client->sent_count);
               if (lws_write(wsi, client->obuffer, client->olen, LWS_WRITE_BINARY)
                   < client->olen) {
                     lwsl_err("lws_write\n");

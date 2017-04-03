@@ -117,6 +117,7 @@ embedded in different modes and applications.
 * Features:: Features and screenshots
 * Downloading and building::
 * Applications::
+* Paging:: Paging and Pausing
 * Styling:: 
 * Tips:: Tips and solutions
 * To do:: Ideas and projects for DomTerm
@@ -449,7 +450,7 @@ This option is the default unless @code{--port} is specified.
 There are other @code{ldomterm} options which useful
 if you want to run DomTerm as a server.
 
-@node qtdomterm appliction
+@node qtdomterm application
 @section The qtdomterm terminal emulator
 
 You start and use @code{qtdomterm} just like other
@@ -464,7 +465,7 @@ and remote debugging,
 @end display
 
 This runs the @var{command}, with the specified @var{argument}s,
-in a sub-preocess using a pty.
+in a sub-process using a pty.
 The @var{command} defaults to the value of the @code{SHELL}
 environment variable.
 
@@ -780,6 +781,88 @@ $ dt-util disable-stylesheet 2
 @end example
 @end table
 
+@node Paging
+@chapter Paging and Pausing
+
+DomTerm includes a builtin ``pager'' that gives you
+functionality to programs like @code{less}.
+You can set ``auto-pause'' which enters the pager each time
+a full screen has been displayed.
+
+We will discuss two related modes.
+@dfn{Pager mode} does the following:
+@enumerate
+@item
+Automatically scrolling (on output) is turned off.
+@item
+The key-bindings are changed to be more
+like the @code{less} program or Emacs ``view mode''.
+@end enumerate
+
+@dfn{Pause mode}  additionally does the following:
+@enumerate 3
+@item
+Suspends addition output from updating the display.
+Any not-yet-displayed output is queued up,
+and the sending (client process) will suspend too.
+@end enumerate
+
+You enter pause mode in two basic ways
+@itemize
+@item
+You manually enter pause mode by typing Control-Shift-P.
+@item
+You automatically enter pause mode if automatic pausing is
+enables, and a ``full screen'' is displayed since laster user interaction:
+Any further output would cause part of the visible screen to scroll off.
+@end itemize
+
+To enter pager mode, you first have to enter pause mode,
+and then type @code{P}.
+
+The following key-bindings are in effect in pager or paused mode.
+Some other these may bre prefixed by a numeri c @var{count}.
+@table @asis
+@item P
+Toggle between pager and pause mode.
+@item Control-Shift-P
+Return to normal mode.
+If paused, allow further output.
+@item Space
+Scroll @var{count} screenfuls down.
+If we go past the bottom of the current output,
+leave pause or pager mode, and allow further output.
+Temporarily set automatic-pause mode, so that we pause again
+if the screen ``fill up again.
+@item Enter
+Scroll @var{count} lines down.
+Otherwise similar to Space.
+@item PageUp
+@itemx PageDown
+Scroll @var{count} screenfuls up/down.
+@item Home
+Scroll to the current ``pager home''.  (Details needed ...)
+@item Home
+Scroll to the current ``pager home''.  (Details needed ...)
+@end table
+
+DomTerm does not yet implement a search command,
+but most browsers have a find-in-page command,
+commonly bound to Ctrl-F.
+
+In addition the following work as in all other modes:
+@table @asis
+@item Control-Shift-Home
+@itemx Control-Shift-End
+Scroll to top/bottom.
+@item Control-Shift-PageUp
+@itemx Control-Shift-PageDown
+Scroll one ``page'' up or down.
+@item Control-Shift-Up
+@itemx Control-Shift-Down
+Scroll one line up or down.
+@end table
+
 @node Styling
 @chapter Styling
 
@@ -936,6 +1019,27 @@ Save the display to a file.
 @item Control-Shift-I
 Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
+@item Control-Shift-Home
+Scroll to top.
+@item Control-Shift-End
+Scroll to bottom.
+@item Control-Shift-PageUp
+@itemx Control-Shift-PageDown
+Scroll one ``page'' up or down.
+(Specifically, the viewport height minus a height of one line.)
+@item Control-Shift-Up
+@itemx Control-Shift-Down
+Scroll one line up or down.
+@end table
+
+The following are implemented by most browsers, rather than DomTerm,
+so it may not work on all browsers.
+@table @asis
+@item Contriol-Shift-Plus
+Zoom in (makes text bigger).
+@item Control-Shift-Minus
+@itemx Control-Minus
+Zoom out (makes text smaller).
 @end table
 
 @subheading Copy and Paste
@@ -993,7 +1097,7 @@ or other JavaScript modification.
 You can use the @code{@ref{dt-util,dt-util}} application
 in a DomTerm window to change its appearance.
 
-On @code{@ref{qtdomterm appliction,qtdomterm}} you can use
+On @code{@ref{qtdomterm application,qtdomterm}} you can use
 the @code{--stylesheet} option
 or the @code{Edit} / @code{Preferences} / @code{Appearance} menu entry.
 
@@ -1312,13 +1416,14 @@ and navigate between them.  This isn't a critical feature, since
 people can always using windows and tabs, but it would be nice.
 
 The @uref{http://www.brain-dump.org/projects/dvtm/,dtvm} project
-implements tiling window management for a terminal emulalot
+implements tiling window management for a terminal emulalor
 (without session management).
 
 The @uref{http://nathancahill.github.io/Split.js/,Split.js} library
 could be useful for implementing tiling.
 
 Ideally, tiling should be handled by a window manager and/or a library.
+Consider @uref{http://tiwulfx.panemu.com/2015/09/18/detachabletabpane-supports-docking-and-reordering/,DetachableTabPane} (for JavaFX).
 I love the flexibility and ease-of-use of how NetBeans handles windows,
 tiling, and tabs, with a great drag-and-drop mechanism.
 
