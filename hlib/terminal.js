@@ -3729,10 +3729,11 @@ DomTerm.prototype._unsafeInsertHTML = function(text) {
 // Bit 1 (value 2): Some attributes may need scrubbing
 // Bit 2 (value 4): "Phrasing [inline] content"
 // Bit 3 (value 8): Allow in SVG
-DomTerm.prototype.elementInfo = function(tag, parents) {
+// Bit 4 (value 16): Void (empty) HTML element
+DomTerm.prototype.elementInfo = function(tag, parents=null) {
     var v = DomTerm.HTMLinfo.hasOwnProperty(tag) ? DomTerm.HTMLinfo[tag] : 0;
 
-    if ((v & 8) == 8) { // If allow in SVG, check parents for svg
+    if ((v & 8) == 8 && parents) { // If allow in SVG, check parents for svg
         for (var i = parents.length; --i >= 0; ) {
             if (parents[i] == "svg") {
                 v |= 1;
@@ -3778,12 +3779,18 @@ DomTerm.HTMLinfo = {
     "animateColor": 12,
     "animateMotion": 12,
     "animateTransform": 12,
+    "area": 0x14,
     "b": 5,
+    "base": 0x10,//metadata
+    "basefont": 0x10, //obsolete
+    "br": 0x15,
     "circle": 12,
     "cite": 5,
     "clipPath": 12,
     "code": 5,
+    "col": 0x11,
     "color-profile": 12,
+    "command": 0x15, // obsolete
     "cursor": 12,
     "dfn": 5,
     "defs": 12,
@@ -3791,6 +3798,7 @@ DomTerm.HTMLinfo = {
     "div": 1,
     "ellipse": 12,
     "em": 5,
+    "embed": 0x14,
     "feBlend": 12,
     "feColorMatrix": 12,
     "feComponentTransfer": 12,
@@ -3823,24 +3831,32 @@ DomTerm.HTMLinfo = {
     "font-face-src": 12,
     "font-face-uri": 12,
     "foreignObject": 12,
+    "frame": 0x10,
     "g": 12,
     "glyph": 12,
     "glyphRef": 12,
     "hkern": 12,
-    "hr": 1,
+    "hr": 0x11,
     "i": 5,
-    // "iframe": 1, // ??? maybe
+    //"iframe": 1, // ??? maybe
     "image": 12, // FIXME
-    "img": 7, // need to check "src" for "javascript:"
+    "img": 0x17, // need to check "src" for "javascript:"
+    "input": 0x15,
+    //"isindex": 0x10, //metadata
+    "keygen": 0x15,
     "line": 12,
     "linearGradient": 12,
+    "link": 0x10, //metadata
     "mark": 5,
     "marker": 12,
     "mask": 12,
+    "meta": 0x10, //metadata
     "metadata": 12,
     "missing-glyph": 12,
     "mpath": 12,
     "p": 1,
+    //"para": 0x10, //???
+    "param": 0x10,
     "path": 12,
     "pattern": 12,
     "polygon": 12,
@@ -3854,6 +3870,7 @@ DomTerm.HTMLinfo = {
     "script": 0,
     "set": 12,
     "small": 5,
+    "source": 0x10,
     "span": 5,
     "stop": 12,
     "strong": 5,
@@ -3866,6 +3883,7 @@ DomTerm.HTMLinfo = {
     "text": 12,
     "textPath": 12,
     "title": 12,
+    //"track": 0x10,
     "tref": 12,
     "tspan": 12,
     "u": 5,
@@ -3873,6 +3891,7 @@ DomTerm.HTMLinfo = {
     "view": 12,
     "var": 5,
     "vkern": 12,
+    "wbr": 0x15,
     
     // Phrasing content:
     //area (if it is a descendant of a map element) audio bdi bdo br button canvas data datalist del embed iframe input ins kbd keygen label map math meter noscript object output progress q ruby s select svg template textarea time u  video wbr text
@@ -4350,11 +4369,10 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
                 break;
             string += s;
             if (!node.firstChild) {
-                if (tagName == "span" || tagName == "div" || tagName == "p"
-                    || tagName == "pre")
+                if ((this.elementInfo(tagName) & 0x10) == 0)
                     string += '></'+tagName+'>';
                 else
-                    string += ' />';
+                    string += '/>';
             } else {
                 string += '>';
                 children = node.childNodes;
