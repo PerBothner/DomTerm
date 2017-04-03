@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=domterm
+GenericName=Terminal emulator
+Exec=domterm
+Terminal=false
+Type=Application
+Encoding=UTF-8
+Categories=System;TerminalEmulator;
+Keywords=shell;prompt;command;commandline;cmd;
+Icon=utilities-terminal

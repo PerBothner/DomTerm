@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop">
+  <id>qtdomterm.desktop</id>
+  <name>qrdomterm</name>
+   <url type="homepage">http://domterm.org/</url>
+  <provides>
+    <binary>qtdomterm</binary>
+  </provides>
+</component>
