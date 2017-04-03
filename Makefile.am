@@ -34,7 +34,11 @@ if WITH_LIBWEBSOCKETS
 SUBDIRS += lws-term
 endif
 
-all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM) bin/domterm
+all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM) bin/domterm share/domterm/application.ini
+
+# application.ini has to be copied, not linked; or it can't find domterm.jar
+share/domterm/application.ini: $(srcdir)/xulapp/application.ini
+	cp $< $@
 
 bin/domterm:
 	@rm -f bin/domterm
@@ -106,11 +110,6 @@ SERVER_ARGS =
 run-server: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
 
-# Start up DomTerm as a Firefox/XUL app. Requires already-running server.
-# (See also run-firefox.)
-run-xul: xulapp/domterm.jar
-	firefox -app xulapp/application.ini
-
 # Start up DomTerm as a Firefox/XUL-based terminal emulator.
 # (Like run-xul, but automatically runs server and connects to it.)
 run-firefox: $(LIBPTY) domterm.jar d/domterm xulapp/domterm.jar
@@ -125,6 +124,7 @@ run-shell: $(DOMTERM_JAR)
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
 	-rm -rf bin/ldomterm bin/domterm hlib/domterm-all.js \
+	  share/domterm/application.ini \
 	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
