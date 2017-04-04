@@ -274,6 +274,7 @@ reportEvent(const char *name, char *data, size_t dlen,
 #endif
         }
     } else if (strcmp(name, "RECEIVED") == 0) {
+#if USE_ADOPT_FILE
         long count;
         sscanf(data, "%ld", &count);
         //fprintf(stderr, "RECEIVED %ld sent:%ld\n", count, client->sent_count);
@@ -283,6 +284,7 @@ reportEvent(const char *name, char *data, size_t dlen,
           lws_rx_flow_control(client->pty_wsi, 1);
           client->paused = 0;
         }
+#endif
     } else if (strcmp(name, "KEY") == 0) {
         char *q = strchr(data, '"');
         struct termios termios;
