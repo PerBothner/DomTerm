@@ -1699,7 +1699,7 @@ or a complex object graph.
 
 Xterm supports an ``alternate screen buffer'' which is used
 by character-based programs like emacs.
-Switching to the alternate buffer creates a new @code{<div class="interaction>},
+Switching to the alternate buffer creates a new @code{<div class="interaction">},
 with an @code{id} attribute of the form @code{@var{xxx}_alternate}.
 It is the sibling of the normal screen buffer
 (with @code{id} attribute of the form @code{@var{xxx}_normal}).
