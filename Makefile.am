@@ -285,6 +285,7 @@ xulappprefsdir = $(datadir)/domterm/defaults/preferences
 endif
 
 install-data-local:
+	$(INSTALL_SCRIPT) bin/dt-util $(DESTDIR)$(bindir)
 if WITH_JAVA
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
 	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
@@ -317,7 +318,7 @@ else
 endif
 endif
 
-man1_MANS = doc/domterm.man
+man1_MANS = doc/domterm.man doc/dt-util.man
 if WITH_LIBWEBSOCKETS
 man1_MANS += doc/ldomterm.man
 endif
