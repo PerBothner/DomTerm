@@ -38,11 +38,8 @@ DomTerm.prototype._pageScrollAbsolute = function(percent) {
 
 DomTerm.prototype._pageScroll = function(delta) {
     var scroll = this.topNode.scrollTop;
-    var limit = scroll + this.availHeight;
+    var limit = scroll + this.availHeight + delta;
     var vtop = this._vspacer.offsetTop;
-    if (limit < vtop)
-        limit = vtop;
-    limit += delta;
     var extend = limit > this._pauseLimit;
     if (extend)
         this._pauseLimit = limit;
@@ -62,10 +59,12 @@ DomTerm.prototype._pageScroll = function(delta) {
 }
 
 DomTerm.prototype._pagePage = function(count) {
-    var xxxold = this.topNode.scrollTop;
-    this._pageScroll(count * this.availHeight - this.charHeight);
-    if (this.verbosity >= 2)
-        this.log("after pagePage "+count+" offset:"+xxxold+"->"+this.topNode.scrollTop);
+    var amount = count * this.availHeight;
+    if (count > 0)
+        amount -= this.charHeight;
+    else if (count < 0)
+        amount += this.charHeight;
+    this._pageScroll(amount);
 }
 
 DomTerm.prototype._pageLine = function(count) {
