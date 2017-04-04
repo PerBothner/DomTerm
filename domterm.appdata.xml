@@ -2,7 +2,19 @@
 <component type="desktop">
   <id>domterm.desktop</id>
   <name>domterm</name>
-   <url type="homepage">http://domterm.org/</url>
+  <url type="homepage">http://domterm.org/</url>
+  <description>
+    <p>
+A terminal emulator based on web technologies.
+You can "print" images, tables, and other HTML forms.
+Supports 24-bit color; xterm mouse events; solid xterm emulation.
+Good handling of Unicode, CJK wide characters, and IME support.
+Builtin basic input line editor with history.
+Styling using CSS.
+Hide/unhide a commands's output.
+Experimental builtin pager (simplified less).
+    </p>
+  </description>
   <provides>
     <binary>domterm</binary>
   </provides>
