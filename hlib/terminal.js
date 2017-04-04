@@ -4768,12 +4768,17 @@ DomTerm.prototype.insertString = function(str) {
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && ! this.usingAlternateScreenBuffer
-                    && ! this._pauseNeeded()
                     && (this._regionBottom == this.numRows
                         || this.getCursorLine() != this._regionBottom-1)) {
                     var stdMode = this._getStdMode(); 
                     if (stdMode && stdMode.getAttribute("std") == "input")
                         this._pushStdMode(null);
+                    if (this._pauseNeeded()) {
+                        this.parameters[1] = str.substring(i);
+                        update();
+                        this._enterPaging(true);
+                        return;
+                    }
                     this.cursorLineStart(1);
                     i++;
                 } else {
