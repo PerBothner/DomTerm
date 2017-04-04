@@ -1,5 +1,5 @@
 dnl Autoconf script for DomTerm
-AC_INIT([DomTerm],[0.73],,domterm)
+AC_INIT([DomTerm],[0.74],,domterm)
 AC_CONFIG_SRCDIR([doc/DomTerm.texi])
 AM_MAINTAINER_MODE([enable])
 

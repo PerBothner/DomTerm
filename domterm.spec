@@ -1,5 +1,5 @@
 Name:           domterm
-Version:        0.73
+Version:        0.74
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
@@ -40,6 +40,7 @@ A terminal emulator based on web technologies.
 You can "print" images, tables, and other HTML forms.
 Supports 24-bit color; xterm mouse events; solid xterm emulation.
 Good handling of Unicode, CJK wide characters, and IME support.
+Experimental builtin pager (like simplified 'less').
 Builtin basic input line editor with history.
 Styling using CSS.
 Hide/unhide a commands's output.
