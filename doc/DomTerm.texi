@@ -47,6 +47,9 @@ was based on similar concepts, but was mostly written in Java using
 
 @itemize
 @item
+An experimental @ref{Paging,pager} with optional
+automatic pause on each page.
+@item
 DomTerm now handles the @code{vttest} terminal test program
 very well, including BCE (Background Color Erase).
 @item
@@ -119,6 +122,7 @@ embedded in different modes and applications.
 * Applications::
 * Paging:: Paging and Pausing
 * Styling:: 
+* Java tools::
 * Tips:: Tips and solutions
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
@@ -784,8 +788,13 @@ $ dt-util disable-stylesheet 2
 @node Paging
 @chapter Paging and Pausing
 
+@emph{This feature is experiemental. It requires ``back-end'' support,
+which has not been implemented yet for qtdomterm or @code{DomHttpServer}.}
+
+@emph{Key-bindings and other aspects are likely to change.}
+
 DomTerm includes a builtin ``pager'' that gives you
-functionality to programs like @code{less}.
+functionality similar to programs like @code{less}.
 You can set ``auto-pause'' which enters the pager each time
 a full screen has been displayed.
 
@@ -793,16 +802,17 @@ We will discuss two related modes.
 @dfn{Pager mode} does the following:
 @enumerate
 @item
-Automatically scrolling (on output) is turned off.
-@item
 The key-bindings are changed to be more
 like the @code{less} program or Emacs ``view mode''.
+@item
+Automatically scrolling (on output) is turned off.
 @end enumerate
 
 @dfn{Pause mode}  additionally does the following:
+@c NOTE The following lines are kludged in the Makefile.
 @enumerate 3
 @item
-Suspends addition output from updating the display.
+Suspends additional output from updating the display.
 Any not-yet-displayed output is queued up,
 and the sending (client process) will suspend too.
 @end enumerate
@@ -813,16 +823,22 @@ You enter pause mode in two basic ways
 You manually enter pause mode by typing Control-Shift-P.
 @item
 You automatically enter pause mode if automatic pausing is
-enables, and a ``full screen'' is displayed since laster user interaction:
+enables, and a ``full screen'' is displayed since last user interaction:
 Any further output would cause part of the visible screen to scroll off.
 @end itemize
+
+To enable automatic-pause mode, type @code{ctrl-shift-P} (to enter pause mode);
+then @code{shift-A} (to enable auto-pause); and then @code{ctrl-shift-P} (to exit pause mode). This is obviously too awkward and needs to change.
 
 To enter pager mode, you first have to enter pause mode,
 and then type @code{P}.
 
 The following key-bindings are in effect in pager or paused mode.
-Some other these may bre prefixed by a numeri c @var{count}.
+Some other these may be prefixed by a numeric @var{count}.
 @table @asis
+@item Shift-A
+Toggle automatic-pause mode on and off.
+(This is a klunky way tro do it and is likely to change.)
 @item P
 Toggle between pager and pause mode.
 @item Control-Shift-P
@@ -833,7 +849,7 @@ Scroll @var{count} screenfuls down.
 If we go past the bottom of the current output,
 leave pause or pager mode, and allow further output.
 Temporarily set automatic-pause mode, so that we pause again
-if the screen ``fill up again.
+if the screen fills up again.
 @item Enter
 Scroll @var{count} lines down.
 Otherwise similar to Space.
@@ -992,6 +1008,26 @@ because of the @uref{https://en.wikipedia.org/wiki/Same-origin_policy,same-origi
 Work-arounds are being considered; please contact the maintainer if this
 is a feature you want.
 
+@node Java tools
+@chapter Java tools
+
+The @code{domterm.jar} by default includes various useful Java classes
+(in addition
+to all the JavaScript and styling for DomTerm itself).
+
+The class @code{org.domterm.javafx.WebTerminalApp} creates a DomTerm
+window in the current Java process, without requiring a server.
+It is used by the @uref{https://www.gnu.org/software/kawa/REPL-Console.html#Running-a-Command-Interpreter-in-a-new-Window,Kawa @code{-wjavafx} option}.
+This does require JavaFX.
+
+The @code{org.domterm.DomHttpServer} is a webserver that can be used
+as a server (back-end) component of DomTerm.
+It does not use WebSockets but uses plain HTTP (with ``Ajax'') instead.
+It only depends on the @code{HttpServer} that is a standard part of the JDK.
+
+The @code{jdomterm} script starts up @code{DomHttpServer} along with
+an optional front-end.
+
 @node Tips
 @chapter Tips and solutions
 
@@ -1132,7 +1168,7 @@ div.domterm[name="domterm-2"] @{ background-color: #EEF @}
 
 @subheading Browser quirks and limitions
 
-(These can all change as browsers change or work-arounds implemented.)
+(These can all change as browsers change or work-arounds are implemented.)
 
 Middle-button paste: Works with Chrome and qtdomterm (on Linux);
 does not work on Firefox (or Firefox-XUL).

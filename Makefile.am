@@ -221,6 +221,7 @@ doc/DomTerm.xml: doc/DomTerm.texi
 	-e 's|<emphasis></emphasis>||' \
 	-e 's|<inlinemediaobject><imageobject><imagedata fileref="\(.*\)" format="\(.*\)"></imagedata></imageobject></inlinemediaobject>|<ulink url="\1"><inlinemediaobject><imageobject><imagedata fileref="\1" format="\2"></imagedata></imageobject></inlinemediaobject></ulink>|' \
 	-e 's|<chapter label="" id="Top">|<chapter label="Top" id="Top"><?dbhtml filename="index.html"?>|' \
+	-e '/Suspends additional output/s|><listitem>| continuation="continues"><listitem>|' \
 	> doc/DomTerm.xml
 
 web/index.html: doc/DomTerm.xml Makefile
