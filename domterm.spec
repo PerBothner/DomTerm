@@ -5,12 +5,11 @@ Summary:        A terminal emulator based on web technologies
 
 License:        BSD
 URL:            http://domterm.org/  
-%global commit0 5f9f10fac063059fec4e121d0562b2f2081d6b51
+%global commit0 d66241a62eb4cc9ffe90760ef39c7d890ef627a0
 %global gittag0 HEAD
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-#Source0: .
 #Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz#/DomTerm-%{commit0}.tar.gz
-Source0: DomTerm-5f9f10fac063059fec4e121d0562b2f2081d6b51.tar.gz
+Source0: DomTerm.tar.gz
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz
 BuildRequires: autoconf
