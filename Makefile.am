@@ -292,10 +292,8 @@ if WITH_JAVA
 endif
 	$(MKDIR_P) $(DESTDIR)$(datadir)/applications \
 	    $(DESTDIR)$(datadir)/appdata
-	$(INSTALL_DATA) domterm.desktop $(DESTDIR)$(datadir)/applications/
 	$(INSTALL_DATA) domterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 if WITH_QTWEBENGINE
-	$(INSTALL_DATA) qtdomterm.desktop $(DESTDIR)$(datadir)/applications/
 	$(INSTALL_DATA) qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
 	$(INSTALL_SCRIPT) bin/jdomterm $(DESTDIR)$(pkgdatadir)
