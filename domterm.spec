@@ -5,18 +5,24 @@ Summary:        A terminal emulator based on web technologies
 
 License:        BSD
 URL:            http://domterm.org/  
-#Source0:        DomTerm-master.tar.gz
-Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
+%global commit0 5f9f10fac063059fec4e121d0562b2f2081d6b51
+%global gittag0 HEAD
+%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
+#Source0: .
+#Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz#/DomTerm-%{commit0}.tar.gz
+Source0: DomTerm-5f9f10fac063059fec4e121d0562b2f2081d6b51.tar.gz
+#Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz
-BuildRequires:  autoconf
-BuildRequires:  automake
-BuildRequires:  pkgconfig(libwebsockets)
-BuildRequires:  pkgconfig(json-c)
-BuildRequires:  pkgconfig(openssl)
-BuildRequires:  java-devel
-BuildRequires:  qt5-qtbase-devel
-BuildRequires:  qt5-qtwebchannel-devel
-BuildRequires:  qt5-qtwebengine-devel
+BuildRequires: autoconf
+BuildRequires: automake
+BuildRequires: desktop-file-utils
+BuildRequires: pkgconfig(libwebsockets)
+BuildRequires: pkgconfig(json-c)
+BuildRequires: pkgconfig(openssl)
+BuildRequires: java-devel
+BuildRequires: qt5-qtbase-devel
+BuildRequires: qt5-qtwebchannel-devel
+BuildRequires: qt5-qtwebengine-devel
 
 Requires:       json-c
 Requires(preun): %{_sbindir}/alternatives
@@ -31,10 +37,6 @@ Requires(posttrans): %{_sbindir}/alternatives
 # are not needed for the ldomterm or qtdomterm applications.
 Recommends:     java
 
-%global commit0 574e37bbda5b64ea93327cef45e44f744d8b2132
-%global gittag0 master
-%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-
 %description
 A terminal emulator based on web technologies.
 You can "print" images, tables, and other HTML forms.
@@ -43,7 +45,7 @@ Good handling of Unicode, CJK wide characters, and IME support.
 Experimental builtin pager (like simplified 'less').
 Builtin basic input line editor with history.
 Styling using CSS.
-Hide/unhide a commands's output.
+Hide/unhide a command's output.
 
 %package -n qtdomterm
 Summary:        A terminal emulator using Qt and web technologies
@@ -55,7 +57,8 @@ Requires(posttrans): %{_sbindir}/alternatives
 A terminal emulator using Qt and web technologies
 
 %prep
-%autosetup -n DomTerm-%{version}
+echo in prep *.gz
+%autosetup -n DomTerm-%{commit0}
 
 %build
 autoreconf
@@ -98,8 +101,8 @@ rm %{buildroot}%{_bindir}/domterm
 %files -n qtdomterm
 %{_bindir}/qtdomterm
 %{_mandir}/man1/qtdomterm.1*
-%{_datadir}/qtdomterm/application.ini
-%{_datadir}/qtdomterm/chrome.manifest
+%{_datadir}/applications/qtdomterm.desktop
+%{_datadir}/appdata/qtdomterm.appdata.xml
 %license COPYING
 
 %changelog
