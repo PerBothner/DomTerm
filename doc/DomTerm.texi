@@ -277,7 +277,7 @@ which uses @uref{https://libwebsockets.org/,libwebsockets}.
 
 On Fedora, you need to first:
 @example
-sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel vim-common
+sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel vim-common openssl-devel
 @end example
 (You need @code{vim-common} for the @code{xxd} tool, only used at build time.)
 
@@ -309,6 +309,11 @@ to build @code{qtdomterm}, an advanced front-end that
 supports multiple tabs, screen re-sizing, and other nice features.
 
 For this you need the Qt development tools including QtWebEngine installed.
+
+For Fedora, you also need:
+@example
+sudo dnf install qt5-qtbase-devel  qt5-qtwebchannel-devel qt5-qtwebengine-devel
+@end example
 @item --with-closure-compiler=@var{compiler.jar}
 Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compiler} to minimize the size of the JavaScript.
 (Current only the ``simple optimizations'' are done.
@@ -1363,6 +1368,34 @@ A possible start is @uref{https://atom.io/packages/term2,term2}.
 @uref{http://webkitgtk.org/,WebKitGtk+}
 @end itemize
 
+@subsubheading Tools and examples for Atom or Electron
+
+Atom packages are in @code{~/.atom/packages}.
+Seemingly helpful tutorial:
+``@uref{https://www.sitepoint.com/write-atom-packages-using-vanilla-javascript/,
+How to Write Atom Packages Using Vanilla JavaScript}''.
+
+Web browsers for Atom include
+@uref{https://github.com/gabceb/atom-web-view,atom-web-view} (aka web-view),
+or @uref{https://github.com/gstack/atom-browser-webview,atom-browser-webview}.
+Neither of them work well, probably because of Atom API changes.
+
+Terminal emulators for Electron:
+@url{https://github.com/sedwards2009/extraterm,Extraterm} (interesting, uses CodeMirror).
+@url{https://github.com/vshatskyi/black-screen,Black Screen} (extra shell features).
+
+Terminal emulators for Atom:
+@uref{https://atom.io/packages/term3,Term 3}.
+@uref{https://atom.io/packages/terminal-plus,terminal-plus}.
+@uref{https://atom.io/packages/atom-terminal-panel,atom-terminal-panel}.
+@uref{https://github.com/romgrk/termrk,Termrk}.
+
+@uref{https://www.npmjs.com/package/electron-tabs,Tabs for Electron}
+(compatible with @uref{https://github.com/bevacqua/dragula,dragula}).
+
+Various Electron @uref{https://github.com/sindresorhus/awesome-electron,Awesome links}
+@uref{https://electron.atom.io/community/,Community links}.
+
 @subheading Readline style hooks and improvements
 
 The idea is the line-editing mode would provide the
@@ -1444,6 +1477,13 @@ implements tiling window management for a terminal emulalor
 
 The @uref{http://nathancahill.github.io/Split.js/,Split.js} library
 could be useful for implementing tiling.
+For creating tabs:
+@uref{https://github.com/adamschwartz/chrome-tabs,chome-tabs}
+(uses @uref{https://github.com/desandro/draggabilly,draggabilly})
+or @uref{https://github.com/jaswrks/chrome-tabs,a fork}.
+For drag-and-drop we can use @uref{https://github.com/bevacqua/dragula,dragula}.
+or @uref{http://draggabilly.desandro.com/,draggabilly}
+or @uref{http://interactjs.io,/interact.js}.
 
 Ideally, tiling should be handled by a window manager and/or a library.
 Consider @uref{http://tiwulfx.panemu.com/2015/09/18/detachabletabpane-supports-docking-and-reordering/,DetachableTabPane} (for JavaFX).
