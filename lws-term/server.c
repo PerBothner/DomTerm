@@ -662,12 +662,16 @@ main(int argc, char **argv) {
         int port = info.port;
         sprintf(url, "http://localhost:%d/#ws=same", port);
         if (browser_command == NULL && port_specified < 0) {
-            // The default is "--chrome" followed by "--browser"
+            // The default is "--firefox"
+#if 1
+            browser_command = firefox_command(NULL);
+#else
             browser_command = chrome_command();
             if (browser_command != NULL)
                 browser_command = chrome_app_command(browser_command);
             else
                 browser_command = "";
+#endif
         }
         if (strcmp(browser_command, "firefox") == 0)
             browser_command = firefox_browser_command();
