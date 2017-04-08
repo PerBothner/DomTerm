@@ -8,10 +8,9 @@ URL:            http://domterm.org/
 %global commit0 d66241a62eb4cc9ffe90760ef39c7d890ef627a0
 %global gittag0 HEAD
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-#Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz#/DomTerm-%{commit0}.tar.gz
-Source0: DomTerm.tar.gz
+Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz#/DomTerm-%{commit0}.tar.gz
+#Source0: DomTerm.tar.gz
 #Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
-#Source0:        https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: desktop-file-utils
@@ -48,7 +47,10 @@ Hide/unhide a command's output.
 
 %package -n qtdomterm
 Summary:        A terminal emulator using Qt and web technologies
-License:        BSD
+# qtdomterm currently uses some GPL-licensed files for the "backend".
+# It is likely we will want to remove those backend files, and
+# just use ldomterm instead.  But until then ...
+License:        GPLv2+
 Requires(preun): %{_sbindir}/alternatives
 Requires(posttrans): %{_sbindir}/alternatives
 %description -n qtdomterm
@@ -81,12 +83,17 @@ rm %{buildroot}%{_bindir}/domterm
 %posttrans -n qtdomterm
 %{_sbindir}/alternatives --install %{_bindir}/domterm domterm %{_bindir}/qtdomterm 70
 
+%check
+desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{buildroot}%{_datadir}/applications/qtdomterm.desktop
+
 %files
 %{_bindir}/ldomterm
 %{_bindir}/dt-util
 %dir %{_datadir}/domterm
 %{_datadir}/domterm/application.ini
 %{_datadir}/domterm/chrome.manifest
+%{_datadir}/domterm/defaults/
+%{_datadir}/domterm/defaults/preferences/
 %{_datadir}/domterm/defaults/preferences/prefs.js
 %{_datadir}/domterm/domterm.jar
 %{_datadir}/domterm/jdomterm
@@ -105,8 +112,5 @@ rm %{buildroot}%{_bindir}/domterm
 %license COPYING
 
 %changelog
-* Wed Mar  1 2017 Per Bothner <per@bothner.com> - 0.72-1
-- Various tweaks based on feedback.
-
-* Sun Feb 19 2017 Per Bothner <per@bothner.com> - 0.71-1
+* Sun Apr  8 2017 Per Bothner <per@bothner.com> - 0.74-1
 - Initial version.
