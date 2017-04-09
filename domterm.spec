@@ -5,7 +5,7 @@ Summary:        A terminal emulator based on web technologies
 
 License:        BSD
 URL:            http://domterm.org/  
-%global commit0 d66241a62eb4cc9ffe90760ef39c7d890ef627a0
+%global commit0 6968552cad997b9f70794054f7c93a233ce97700
 %global gittag0 HEAD
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
 Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz#/DomTerm-%{commit0}.tar.gz
@@ -58,7 +58,6 @@ Requires(posttrans): %{_sbindir}/alternatives
 A terminal emulator using Qt and web technologies
 
 %prep
-echo in prep *.gz
 %autosetup -n DomTerm-%{commit0}
 
 %build
@@ -112,5 +111,5 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{bui
 %license COPYING
 
 %changelog
-* Sun Apr  8 2017 Per Bothner <per@bothner.com> - 0.74-1
+* Sat Apr  8 2017 Per Bothner <per@bothner.com> - 0.74-1
 - Initial version.
