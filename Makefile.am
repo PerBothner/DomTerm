@@ -284,6 +284,8 @@ xulappdir = $(datadir)/domterm
 xulappprefsdir = $(datadir)/domterm/defaults/preferences
 endif
 
+ELECTRON_FILES = electron/package.json electron/main.js
+
 install-data-local:
 	$(INSTALL_SCRIPT) bin/dt-util $(DESTDIR)$(bindir)
 if WITH_JAVA
@@ -299,6 +301,9 @@ if WITH_QTWEBENGINE
 	$(INSTALL_DATA) qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
 	$(INSTALL_SCRIPT) bin/jdomterm $(DESTDIR)$(pkgdatadir)
+	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
+	$(INSTALL_DATA) electron/package.json electron/main.js \
+	    $(DESTDIR)$(datadir)/domterm/electron/
 
 install-ldomterm:
 	cd lws-term && $(MAKE) install

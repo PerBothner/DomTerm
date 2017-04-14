@@ -189,6 +189,8 @@ AC_SUBST(with_closure_compiler)
 AC_CONFIG_FILES([Makefile hlib/domterm-version.js
                  lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h])
 AC_CONFIG_LINKS(share/domterm/chrome.manifest:xulapp/chrome.manifest
-                share/domterm/defaults/preferences/prefs.js:xulapp/defaults/preferences/prefs.js)
+                share/domterm/defaults/preferences/prefs.js:xulapp/defaults/preferences/prefs.js
+                share/domterm/electron/package.json:electron/package.json
+                share/domterm/electron/main.js:electron/main.js)
 
 AC_OUTPUT

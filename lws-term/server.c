@@ -101,6 +101,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define CHROME_OPTION 1000
 #define FIREFOX_OPTION 1001
 #define QTDOMTERM_OPTION 1002
+#define ELECTRON_OPTION 1003
 
 // command line options
 static const struct option options[] = {
@@ -111,6 +112,7 @@ static const struct option options[] = {
         {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
         {"qtdomterm",    no_argument,       NULL, QTDOMTERM_OPTION},
         {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
+        {"electron"   ,  no_argument,       NULL, ELECTRON_OPTION},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
         {"uid",          required_argument, NULL, 'u'},
@@ -304,24 +306,18 @@ get_bin_relative_path(const char* app_path)
 }
 
 char *
-chrome_command()
+find_in_path(const char *name)
 {
-    char *cbin = getenv("CHROME_BIN");
-    if (cbin != NULL && access(cbin, X_OK) == 0)
-        return cbin;
     char *path = getenv("PATH");
     int plen = strlen(path);
     char *end = path + plen;
-    char *buf = xmalloc(plen + 20);
+    char *buf = xmalloc(plen + strlen(name) + 2);
     for (;;) {
         char* colon = strchr(path, ':');
         if (colon == NULL)
             colon = end;
         if (path != colon) {
-            sprintf(buf, "%.*s/chrome", colon-path, path);
-            if (access(buf, X_OK) == 0)
-                return buf;
-            sprintf(buf, "%.*s/google-chrome", colon-path, path);
+            sprintf(buf, "%.*s/%s", colon-path, path, name);
             if (access(buf, X_OK) == 0)
                 return buf;
         }
@@ -329,6 +325,18 @@ chrome_command()
             return NULL;
         path = colon + 1;
     }
+}
+
+char *
+chrome_command()
+{
+    char *cbin = getenv("CHROME_BIN");
+    if (cbin != NULL && access(cbin, X_OK) == 0)
+        return cbin;
+    char *path = find_in_path("chrome");
+    if (path != NULL)
+        return path;
+    return find_in_path("google-chrome");
 }
 
 char *
@@ -385,6 +393,23 @@ firefox_command()
                 "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
         return "firefox";
     }
+}
+
+char *
+electron_command(int quiet)
+{
+    char *epath = find_in_path("electron");
+    char *app = get_bin_relative_path("/share/domterm/electron");
+    char *format = "%s %s --url '%U'&";
+    if (epath == NULL) {
+        if (quiet)
+            return NULL;
+        fprintf(stderr, "'electron' not found in PATH\n");
+        exit(-1);
+    }
+    char *buf = xmalloc(strlen(epath) + strlen(app) + strlen(format));
+    sprintf(buf, format, epath, app);
+    return buf;
 }
 
 char *
@@ -472,6 +497,9 @@ main(int argc, char **argv) {
             }
             case FIREFOX_OPTION:
                 browser_command = firefox_command();
+                break;
+            case ELECTRON_OPTION:
+                browser_command = electron_command(0);
                 break;
             case QTDOMTERM_OPTION:
                 fprintf(stderr,
