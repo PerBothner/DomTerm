@@ -20,16 +20,17 @@ DomTerm._handleOutputData = function(dt, data) {
 }
 
 /** Connect using WebSockets */
-function connect(wspath, wsprotocol) {
+function connect(wspath, wsprotocol, topNode=null) {
     var wt = new DomTerm("domterm");
-    window.domterm1 = wt;
     var wsocket = new WebSocket(wspath, wsprotocol);
     wsocket.binaryType = "arraybuffer";
     wt.processInputCharacters = function(str) { wsocket.send(str); };
     wsocket.onmessage = function(evt) {
 	DomTerm._handleOutputData(wt, evt.data);
     }
-    var topNode = document.getElementById("domterm");
+    if (topNode == null)
+        topNode = document.getElementById("domterm");
+    topNode.terminal = wt;
     wsocket.onopen = function(e) {
         wsocket.send("\x92VERSION "+DomTerm.versionInfo+"\n");
         wt.initializeTerminal(topNode);
@@ -39,10 +40,12 @@ function connect(wspath, wsprotocol) {
 var maxAjaxInterval = 2000;
 
 /** Connect using XMLHttpRequest ("ajax") */
-function connectAjax(prefix="")
+function connectAjax(prefix="", topNode=null)
 {
     var wt = new DomTerm("domterm");
-    window.domterm1 = wt;
+    if (topNode == null)
+        topNode = document.getElementById("domterm");
+    topNode.terminal = wt;
     var xhr = new XMLHttpRequest();
     var sessionKey = 0;
     var pendingInput = "";
@@ -51,11 +54,8 @@ function connectAjax(prefix="")
     var timer = null;
 
     function handleAjaxOpen() {
-        var xhr = window.xmlHttpRequest;
-        var wt = window.domterm1;
         if (xhr.readyState === 4) {
             var key = xhr.responseText.replace(/key=/, "");
-            var topNode = document.getElementById("domterm");
             wt.initializeTerminal(topNode);
             sessionKey = key;
             requestIO();
@@ -120,13 +120,14 @@ function connectAjax(prefix="")
     xhr.open("POST", prefix+"open.txt");
     xhr.onreadystatechange = handleAjaxOpen;
     xhr.send("VERSION="+DomTerm.versionInfo);
-    window.xmlHttpRequest = xhr;
 }
 
 function loadHandler(event) {
+    var topNodes = document.getElementsByClassName("domterm");
     if (location.search.search(/wait/) >= 0) {
     } else if (location.hash == "#ajax" || ! window.WebSocket) {
-        connectAjax();
+        for (var i = 0; i < topNodes.length; i++)
+            connectAjax("", topNodes[i]);
     } else {
         var ws = location.hash.match(/ws=([^,&]*)/);
         var url;
@@ -143,7 +144,8 @@ function loadHandler(event) {
         // but the Java-WebServer server doesn't support that.  FIXME
         var wsprotocol = location.hash.indexOf("ws=same") >= 0
             ? "domterm" : [];
-        connect(url, wsprotocol);
+        for (var i = 0; i < topNodes.length; i++)
+            connect(url, wsprotocol, topNodes[i]);
     }
 }
 window.addEventListener("load", loadHandler, false);

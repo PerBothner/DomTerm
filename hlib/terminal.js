@@ -91,6 +91,9 @@ OTHER DEALINGS IN THE SOFTWARE.
     */
 "use strict";
 
+if (typeof ResizeSensor == "undefined" && typeof require !== "undefined")
+    var ResizeSensor = require("./ResizeSensor.js");
+
 /** @constructor */
 
 function DomTerm(name, topNode) {
@@ -401,6 +404,32 @@ DomTerm.prototype.log = function(str) {
     str = str.replace(/\\u001b/g, "\\e");
     console.log(str);
 };
+
+DomTerm.focusedTerm = null;
+
+DomTerm.prototype.setFocus = function() {
+    if (DomTerm.focusedTerm != this) {
+        if (DomTerm.focusedTerm != null)
+            DomTerm.focusedTerm.topNode.classList.remove("domterm-active");
+        this.topNode.classList.add("domterm-active");
+    }
+    DomTerm.focusedTerm = this;
+    this.maybeFocus();
+}
+
+DomTerm.prototype.maybeFocus = function() {
+    if (this.hasFocus()) {
+        if (this.inputLine && this.inputLine.parentNode)
+            this.inputLine.focus();
+        else
+            this.topNode.focus();
+    }
+}
+
+
+DomTerm.prototype.hasFocus = function() {
+    return DomTerm.focusedTerm = this;
+}
 
 // States of escape sequences handler state machine.
 DomTerm.INITIAL_STATE = 0;
@@ -1131,7 +1160,7 @@ DomTerm.prototype._restoreInputLine = function() {
             }
             this.inputLine.setAttribute("caret", cstyle);
         }
-        this.inputLine.focus();
+        this.maybeFocus();
     }
 };
 
@@ -1873,11 +1902,11 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
    // if (! this.useStyledCaret())
-        topNode.focus();
+       this.setFocus();
     var dt = this;
 
     // FIXME we want the resize-sensor to be a child of helperNode
-    new ResizeSensor(topNode, function () {
+    ResizeSensor(topNode, function () {
         if (dt.verbosity > 0)
             dt.log("ResizeSensor called"); 
         var oldWidth = dt.availWidth;
@@ -1987,13 +2016,13 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     this.pendingInput = this.inputLine;
 
     var dt = this;
-    document.onkeydown =
-        function(e) { dt.keyDownHandler(e ? e : window.event) };
-    document.onkeypress =
-        function(e) { dt.keyPressHandler(e ? e : window.event) };
-    document.addEventListener("input",
-                              function(e) { dt.inputHandler(e ? e : window.event); },
-                              false);
+    topNode.addEventListener("keydown",
+                             function(e) { dt.keyDownHandler(e) }, true);
+    topNode.addEventListener("keypress",
+                             function(e) { dt.keyPressHandler(e) }, true);
+    topNode.addEventListener("input",
+                             function(e) { dt.inputHandler(e); },
+                             true);
     function compositionStart(ev) {
         dt._composing = 1;
         dt._removeCaret();
@@ -2005,18 +2034,19 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
         if (! dt.isLineEditing())
             dt._sendInputContents();
     }
-    document.addEventListener("compositionstart", compositionStart, false);
-    document.addEventListener("compositionend", compositionEnd, false);
-    document.addEventListener("paste",
-                              function(e) {
-                                  dt.pasteText(e.clipboardData.getData("text"));
-                                  e.preventDefault(); },
-                              false);
+    topNode.addEventListener("compositionstart", compositionStart, true);
+    topNode.addEventListener("compositionend", compositionEnd, true);
+    topNode.addEventListener("paste",
+                             function(e) {
+                                 dt.pasteText(e.clipboardData.getData("text"));
+                                 e.preventDefault(); },
+                              true);
     window.addEventListener("unload",
                             function(event) { dt.historySave(); });
     topNode.addEventListener("click",
                              function(e) {
                                  var target = e.target;
+                                 console.log("click event top.n:"+topNode.name);
                                  /* FUTURE POPUP
                                  if (dt._isAnAncestor(target, dt._popupMenu)) {
                                      dt.handleContextMenu(dt._popupMenu, e);
@@ -2025,6 +2055,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                  if (target instanceof Element
                                      && target.nodeName == "A")
                                      dt.handleLink(e, target.getAttribute("href"));
+                                 dt.setFocus();
                              },
                              false);
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
@@ -2079,7 +2110,7 @@ DomTerm.prototype.measureWindow = function()  {
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
     if (this.verbosity >= 2)
         this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
-    var availHeight = this.topNode.parentNode.clientHeight;
+    var availHeight = this.topNode.clientHeight;
     var availWidth = this.topNode.clientWidth - this.rightMarginWidth;
     var numRows = Math.floor(availHeight / this.charHeight);
     var numColumns = Math.floor(availWidth / this.charWidth);
@@ -5674,7 +5705,7 @@ DomTerm.prototype.pasteText = function(str) {
 };
 
 DomTerm.prototype.doPaste = function() {
-    this.inputLine.focus();
+    this.maybeFocus();
     return document.execCommand("paste", false);
 };
 
@@ -6027,7 +6058,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
     this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
         if (! this.useStyledCaret())
-            this.inputLine.focus();
+            this.maybeFocus();
         if (key == 13) {
             event.preventDefault();
             if (event.shiftKey) {
@@ -6256,3 +6287,5 @@ DomTerm.prototype.toQuoted = function(str) {
     }
     return str;
 };
+if (typeof exports === "object")
+    module.exports = DomTerm;
