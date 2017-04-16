@@ -189,7 +189,6 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
                 this._pageNumericArgument = arg;
                 event.preventDefault();
                 this._updatePagerInfo();
-            } else if (key == 46) { // "." FIXME desired for '%'
             }
         }
     }

@@ -588,8 +588,8 @@ DomTerm.prototype.substr = function(str, start, opt_width) {
 
   if (opt_width != undefined) {
     for (endIndex = startIndex, width = 0;
-         endIndex < str.length && width < opt_width;
-         width += this.wcwidth(str.charCodeAt(endIndex)), endIndex++);
+         endIndex < str.length && width < opt_width; endIndex++)
+        width += this.wcwidth(str.charCodeAt(endIndex));
     if (width > opt_width)
       endIndex--;
     return str.substring(startIndex, endIndex);

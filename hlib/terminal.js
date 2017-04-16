@@ -4909,9 +4909,6 @@ DomTerm.prototype.insertString = function(str) {
                     break;
                 }
                 var cwidth = this.wcwidthInContext(ch, this.outputContainer);
-                if (cwidth == 0) {
-                    // FIXME
-                }
                 if (cwidth == 2) {
                     this.insertSimpleOutput(str, prevEnd, i0, columnWidth);
                     prevEnd = i + 1; columnWidth = 0;
