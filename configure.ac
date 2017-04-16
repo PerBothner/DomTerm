@@ -39,7 +39,7 @@ AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
 
 AC_ARG_WITH(closure_compiler,
-  AC_HELP_STRING("--with-closure-compiler=@<:@=compiler.jar@:>@,compress JavaScripr with Closure))
+  AC_HELP_STRING("--with-closure-compiler[=@<:@=compiler.jar@:>],compress JavaScripr with Closure))
 
 AC_ARG_ENABLE(compiled-in-resources)
 
@@ -78,8 +78,6 @@ AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
 
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
-
-AM_CONDITIONAL(WITH_CLOSURE_COMPILER, test "$with_closure_compiler" != "")
 
 if test "$with_java" = "no" && test -z "${with_java_websocket}"
 then
@@ -172,6 +170,19 @@ then
 fi
 AC_SUBST(ldomterm_misc_includes)
 
+case "$with_closure_compiler" in
+  "yes")
+    CLOSURE_COMPILER='closure-compiler' ;;
+  *".jar")
+    CLOSURE_COMPILER='$(JAVA_WITH_PATH)'" -jar ${with_closure_compiler}" ;;
+  "no" | "")
+    CLOSURE_COMPILER="NONE" ;;
+  *)
+    CLOSURE_COMPILER="${with_closure_compiler}" ;;
+esac
+AM_CONDITIONAL(WITH_CLOSURE_COMPILER, test "$CLOSURE_COMPILER" != "NONE")
+AC_SUBST(CLOSURE_COMPILER)
+
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(LIBEXT)
@@ -184,7 +195,6 @@ AC_SUBST(LIBWEBSOCKETS_LIBS)
 AC_SUBST(LIBWEBSOCKETS_CFLAGS)
 AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
-AC_SUBST(with_closure_compiler)
 
 AC_CONFIG_FILES([Makefile hlib/domterm-version.js
                  lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h])

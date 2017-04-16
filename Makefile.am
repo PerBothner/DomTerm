@@ -95,9 +95,9 @@ $(CLIENT_DATA_DIR)/hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
 if WITH_CLOSURE_COMPILER
 # ADVANCED_OPTIMIZATION doesn't quite work, even with closure-externs.js.
 # There are some problem - and qtdomterm doesn't work at all. FIXME
-#	$(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js hlib/domterm-paging.js --js hlib/closure-externs.js --compilation_level ADVANCED_OPTIMIZATIONS >tmp-domterm-all.js
-#	$(JAVA_WITH_PATH) -jar @with_closure_compiler@ --js $(JS_LIBS) >>tmp-domterm-all.js
-	(cd $(srcdir) && $(JAVA_WITH_PATH) -jar @with_closure_compiler@  --js hlib/terminal.js --js hlib/domterm-paging.js --js $(JS_LIBS)) >tmp-domterm-all.js
+#	@CLOSURE_COMPILER@ --js hlib/terminal.js --js hlib/domterm-paging.js --js hlib/closure-externs.js --compilation_level ADVANCED_OPTIMIZATIONS >tmp-domterm-all.js
+#	@CLOSURE_COMPILER@ --js $(JS_LIBS) >>tmp-domterm-all.js
+	(cd $(srcdir) && @CLOSURE_COMPILER@ --language_in=ES6 --language_out=ES5 --js hlib/terminal.js --js hlib/domterm-paging.js --js $(JS_LIBS)) >tmp-domterm-all.js
 	cat hlib/domterm-version.js >> tmp-domterm-all.js
 else
 	(cd $(srcdir) && cat $(JS_LIBS) hlib/terminal.js hlib/domterm-paging.js) > tmp-domterm-all.js
