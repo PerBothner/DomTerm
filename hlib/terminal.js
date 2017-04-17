@@ -189,7 +189,7 @@ function DomTerm(name, topNode) {
     this.initial = null;
 
     this._displayInfoWidget = null;
-    this._displaySizePendingTimeouts = -1;
+    this._displaySizePendingTimeouts = 0;
 
     // Used if needed to add extra space at the bottom, for proper scrolling.
     // See note in eraseDisplay.
@@ -1933,10 +1933,6 @@ DomTerm.prototype._displayInputModeWithTimeout = function(text) {
 
 DomTerm.prototype._displayInfoWithTimeout = function(text) {
     var dt = this;
-    if (dt._displaySizePendingTimeouts < 0) {
-        dt._displaySizePendingTimeouts = 0;
-        return;
-    }
     dt._displayInfoMessage(text);
     dt._displaySizePendingTimeouts++;
     function clear() {
