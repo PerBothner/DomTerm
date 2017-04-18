@@ -52,20 +52,24 @@
   <browser id="browser" type="content" src="repl-client.html?wait" flex="1" context="mainmenu">
   </browser>
   <script>
+    var domterm;
     function init() {
+        var domtermWindow = document.getElementById("browser").contentWindow;
+        var domtermElement = domtermWindow.document.getElementById("domterm1");
         var cmdLine = window.arguments[0];
         cmdLine = cmdLine.QueryInterface(Components.interfaces.nsICommandLine);
         var ajax = cmdLine.handleFlagWithParam("ajax", false);
         if (ajax)
-            getDomTermWindow().connectAjax(ajax);
+            domtermWindow.connectAjax(ajax, domtermElement);
         else {
             var wspath = cmdLine.handleFlagWithParam("wspath", false);
             var wsprotocol = cmdLine.handleFlagWithParam("wsprotocol", false);
             if (! wsprotocol)
                 wsprotocol = [];
-            getDomTermWindow().connect(wspath, wsprotocol);
+            domtermWindow.connect(wspath, wsprotocol, domtermElement);
         }
-        var dt = getDomTermObject();
+        domterm = getDomTermObject();
+        var dt = domterm;
         dt.updateWindowTitle = function(title) {
             document.title = title;
         };
@@ -98,11 +102,8 @@
             converter.close(); // this closes foStream
         };
     }
-    function getDomTermWindow() {
-        return document.getElementById("browser").contentWindow;
-    }
     function getDomTermObject() {
-        return getDomTermWindow().domterm1;
+        return domterm;
     }
     function changeCaret() {
     var blockCaretItem = document.getElementById("menubar-block-caret");
