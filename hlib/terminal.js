@@ -291,6 +291,8 @@ function DomTerm(name, topNode) {
     // 0 - old single-byte; 1005 (UTF8-EXT); 1006 (SGR_EXT); 1015 (URXVT_EXT)
     this._mouseCoordEncoding = 0;
 
+    this._sendFocus = false;
+
     /** @type {Array|null} */
     this.saved_DEC_private_mode_flags = null;
 
@@ -407,22 +409,27 @@ DomTerm.prototype.log = function(str) {
 
 DomTerm.focusedTerm = null;
 
-DomTerm.prototype.setFocus = function() {
-    if (DomTerm.focusedTerm != this) {
-        if (DomTerm.focusedTerm != null)
-            DomTerm.focusedTerm.topNode.classList.remove("domterm-active");
-        this.topNode.classList.add("domterm-active");
+DomTerm.setFocus = function(term) {
+    var current = DomTerm.focusedTerm;
+    if (current == term)
+        return;
+    if (current !== null) {
+        current.topNode.classList.remove("domterm-active");
+        if (current._sendFocus)
+            current.processResponseCharacters("\x1b[O");
     }
-    DomTerm.focusedTerm = this;
-    this.maybeFocus();
+    if (term != null) {
+        term.topNode.classList.add("domterm-active");
+        if (term._sendFocus)
+            term.processResponseCharacters("\x1b[I");
+    }
+    DomTerm.focusedTerm = term;
 }
 
 DomTerm.prototype.maybeFocus = function() {
     if (this.hasFocus()) {
         if (this.inputLine && this.inputLine.parentNode)
             this.inputLine.focus();
-        else
-            this.topNode.focus();
     }
 }
 
@@ -1901,8 +1908,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     wrapDummy.setAttribute("breaking", "yes");
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
-   // if (! this.useStyledCaret())
-       this.setFocus();
+    DomTerm.setFocus(this);
     var dt = this;
 
     // FIXME we want the resize-sensor to be a child of helperNode
@@ -1924,7 +1930,14 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     });
     this.measureWindow();
 
-    this.topNode.addEventListener("mousedown", this._mouseEventHandler);
+    this.topNode.addEventListener("mousedown", this._mouseEventHandler, true);
+    function docMouseDown(event) {
+        if (! dt._isAnAncestor(event.target, dt.topNode)
+            && DomTerm.focusedTerm === dt) {
+            DomTerm.setFocus(null);
+        }
+    }
+    document.addEventListener("mousedown", docMouseDown, false);
 };
 
 DomTerm.prototype._displayInputModeWithTimeout = function(text) {
@@ -2012,13 +2025,14 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     this.pendingInput = this.inputLine;
 
     var dt = this;
-    topNode.addEventListener("keydown",
-                             function(e) { dt.keyDownHandler(e) }, true);
-    topNode.addEventListener("keypress",
-                             function(e) { dt.keyPressHandler(e) }, true);
-    topNode.addEventListener("input",
-                             function(e) { dt.inputHandler(e); },
-                             true);
+    document.addEventListener("keydown",
+                              function(e) { dt.keyDownHandler(e) }, true);
+    document.addEventListener("keypress",
+                              function(e) { dt.keyPressHandler(e) }, true);
+    document.addEventListener("input",
+                              function(e) { dt.inputHandler(e); },
+                              true);
+    topNode.addEventListener("focus", function(e) { console.log("focus handler"); DomTerm.setFocus(dt); }, false);
     function compositionStart(ev) {
         dt._composing = 1;
         dt._removeCaret();
@@ -2042,7 +2056,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     topNode.addEventListener("click",
                              function(e) {
                                  var target = e.target;
-                                 console.log("click event top.n:"+topNode.name);
                                  /* FUTURE POPUP
                                  if (dt._isAnAncestor(target, dt._popupMenu)) {
                                      dt.handleContextMenu(dt._popupMenu, e);
@@ -2051,7 +2064,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                  if (target instanceof Element
                                      && target.nodeName == "A")
                                      dt.handleLink(e, target.getAttribute("href"));
-                                 dt.setFocus();
                              },
                              false);
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
@@ -2167,6 +2179,11 @@ DomTerm.prototype.createContextMenu = function() {
 */
 
 DomTerm.prototype._mouseHandler = function(ev) {
+    if (this.verbosity >= 2)
+        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id);
+    if (ev.type == "mousedown") {
+        DomTerm.setFocus(this);
+    }
     /* FUTURE POPUP
     if (ev.ctrlKey && ev.button == 2) {
         this.createContextMenu();
@@ -3089,6 +3106,8 @@ DomTerm.prototype.get_DEC_private_mode = function(param) {
     case 2004: return this.bracketedPasteMode;
     case 9: case 1000: case 1001: case 1002: case 1003:
         return this._mouseMode == param;
+    case 1004:
+        return this._sendMouse;
     case 1005: case 1006: case 1015:
         return this._mouseCoordEncoding == param;
     }
@@ -3135,6 +3154,9 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
             this.topNode.removeEventListener("wheel", handler);
         }
         this._mouseMode = value ? param : 0;
+        break;
+    case 1004: // Send FocusIn/FocusOut events.
+        this._sendFocus = true;
         break;
     case 1005: case 1006: case 1015:
         this._mouseCoordEncoding = value ? param : 0;
@@ -5967,11 +5989,18 @@ DomTerm.prototype._adjustPauseLimit = function(node) {
         this._pauseLimit = limit;
 }
 
+DomTerm.prototype._isOurEvent = function(event) {
+    //return this._isAnAncestor(event.target, this.topNode);
+    return DomTerm.focusedTerm == this;
+}
+
 DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
 
+    if (! this._isOurEvent(event))
+        return;
     if (this._composing > 0 || event.which === 229)
         return;
     if (this._composing == 0)
@@ -6108,6 +6137,8 @@ DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
         this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" t:"+this.grabInput(this.inputLine)+" inputLine:"+this.inputLine);
+    if (! this._isOurEvent(event))
+        return;
     if (this._currentlyPagingOrPaused()) {
         this._pageKeyHandler(event, key, true);
         return;
