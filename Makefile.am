@@ -67,6 +67,7 @@ native/pty/pty.o native/pty/pty_fork.o: native/pty/org_domterm_pty_PTY.h
 	$(CC) -O2 -ffast-math $(PTY_COMMON_PARAMS) -I$(srcdir)/native/pty -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JAVA_INCLUDE_SUBDIR) $(DT_CFLAGS) -c $< -o $@
 
 $(LIBPTY): native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
+	$(MKDIR_P) lib
 	$(CC) $(PTY_COMMON_PARAMS) -shared -o $@ $^
 
 d/domterm: d/domterm.ti
