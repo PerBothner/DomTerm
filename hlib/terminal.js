@@ -2210,8 +2210,12 @@ DomTerm.prototype._mouseHandler = function(ev) {
     this.outputBefore = saveBefore;
     this.outputContainer = saveContainer;
     var xdelta = ev.pageX - ev.target.offsetLeft;
-    col += Math.floor(xdelta / this.charWidth);
     var ydelta = ev.pageY + this.topNode.scrollTop - ev.target.offsetTop;
+    for (var top = this.topNode; top != null; top = top.offsetParent) {
+        xdelta -= top.offsetLeft;
+        ydelta -= top.offsetTop;
+    }
+    col += Math.floor(xdelta / this.charWidth);
     row += Math.floor(ydelta / this.charHeight);
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
 
