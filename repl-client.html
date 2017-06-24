@@ -2,11 +2,24 @@
 <html><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>DomTerm</title>
-<link rel="stylesheet" href="hlib/domterm-core.css">
-<link rel="stylesheet" href="hlib/domterm-standard.css">
-<link rel="stylesheet" href="hlib/domterm-default.css">
+<link type="text/css" rel="stylesheet" href="hlib/domterm-core.css">
+<link type="text/css" rel="stylesheet" href="hlib/domterm-standard.css">
+<link type="text/css" rel="stylesheet" href="hlib/goldenlayout-base.css">
+<link type="text/css" rel="stylesheet" href="hlib/domterm-layout.css">
+<link type="text/css" rel="stylesheet" href="hlib/domterm-default.css">
 <script type="text/javascript" src="hlib/domterm-all.js"> </script>
+<script type="text/javascript">
+if (DomTerm.isElectron()) {
+    window.nodeRequire = require;
+    delete window.require;
+    delete window.exports;
+    delete window.module;
+}
+</script>
+<script type="text/javascript" src="hlib/jquery.min.js"> </script>
+<script type="text/javascript" src="hlib/goldenlayout.js"> </script>
 <script type="text/javascript" src="hlib/domterm-client.js"> </script>
+<script type="text/javascript" src="hlib/domterm-layout.js"> </script>
 </head>
-<body><div class="domterm" id="domterm1"></div></body>
+<body></body>
 </html>

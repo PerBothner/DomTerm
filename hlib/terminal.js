@@ -108,6 +108,7 @@ function DomTerm(name, topNode) {
     this._updateTimer = null;
 
     this.windowName = null;
+    this.windowTitle = null;
     this.iconName = null;
     
     // Input lines that have not been processed yet.
@@ -146,6 +147,7 @@ function DomTerm(name, topNode) {
     // 1: in paging mode
     // 2: in paused mode
     this._pagingMode = 0;
+    this._muxMode = false;
 
     this._autoPaging = false;
     this._temporaryAutoPaging = false;
@@ -190,6 +192,7 @@ function DomTerm(name, topNode) {
 
     this._displayInfoWidget = null;
     this._displaySizePendingTimeouts = 0;
+    this.modeLineGenerator = null;
 
     // Used if needed to add extra space at the bottom, for proper scrolling.
     // See note in eraseDisplay.
@@ -348,6 +351,13 @@ function DomTerm(name, topNode) {
         function(evt) { dt._mouseHandler(evt); };
 }
 
+DomTerm._instanceCounter = 0;
+DomTerm.layoutManager = null;
+
+DomTerm.freshName = function() {
+    return "domterm-"+(++DomTerm._instanceCounter);
+}
+
 DomTerm.prototype.eofSeen = function() {
     this.historySave();
     this.history.length = 0;
@@ -355,7 +365,10 @@ DomTerm.prototype.eofSeen = function() {
 };
 
 DomTerm.prototype.close = function() {
-    window.close();
+    if (DomTerm.domTermLayoutClose)
+        DomTerm.domTermLayoutClose(this);
+    else
+        window.close();
 };
 
 DomTerm.prototype.startCommandGroup = function() {
@@ -422,7 +435,10 @@ DomTerm.setFocus = function(term) {
         term.topNode.classList.add("domterm-active");
         if (term._sendFocus)
             term.processResponseCharacters("\x1b[I");
+        document.title = term.windowTitle;
     }
+    if (DomTerm.layoutManager)
+        DomTerm.showFocusedPane(term);
     DomTerm.focusedTerm = term;
 }
 
@@ -1888,6 +1904,7 @@ DomTerm.prototype.isSpanNode = function(node) {
 
 DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.topNode = topNode;
+    topNode.terminal = this;
     var name = topNode.name;
     if (name)
         this.setSessionName(name);
@@ -1910,27 +1927,11 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this._wrapDummy = wrapDummy;
     DomTerm.setFocus(this);
     var dt = this;
-
-    // FIXME we want the resize-sensor to be a child of helperNode
-    ResizeSensor(topNode, function () {
-        if (dt.verbosity > 0)
-            dt.log("ResizeSensor called"); 
-        var oldWidth = dt.availWidth;
-        dt.measureWindow();
-        dt._displaySizeInfoWithTimeout();
-
-        if (dt.availWidth != oldWidth) {
-            dt._breakAllLines();
-            dt.resetCursorCache();
-        }
-        var minHome = dt.lineStarts.length - dt.numRows;
-        dt.homeLine = minHome < 0 ? 0 : minHome;
-        dt._checkSpacer();
-        dt._scrollIfNeeded();
-    });
+    this.attachResizeSensor();
     this.measureWindow();
 
     this.topNode.addEventListener("mousedown", this._mouseEventHandler, true);
+    /*
     function docMouseDown(event) {
         if (! dt._isAnAncestor(event.target, dt.topNode)
             && DomTerm.focusedTerm === dt) {
@@ -1938,6 +1939,37 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         }
     }
     document.addEventListener("mousedown", docMouseDown, false);
+    */
+};
+
+DomTerm.prototype.resizeHandler = function() {
+    var dt = this;
+    // FIXME we want the resize-sensor to be a child of helperNode
+    if (dt.verbosity > 0)
+        dt.log("ResizeSensor called "+dt.name); 
+    var oldWidth = dt.availWidth;
+    dt.measureWindow();
+    dt._displaySizeInfoWithTimeout();
+
+    if (dt.availWidth != oldWidth) {
+        dt._breakAllLines();
+        dt.resetCursorCache();
+    }
+    var minHome = dt.lineStarts.length - dt.numRows;
+    dt.homeLine = minHome < 0 ? 0 : minHome;
+    dt._checkSpacer();
+    dt._scrollIfNeeded();
+}
+
+DomTerm.prototype.attachResizeSensor = function() {
+    var dt = this;
+    dt._resizeSensor = new ResizeSensor(dt.topNode, function() { dt.resizeHandler(); });
+}
+
+DomTerm.prototype.detachResizeSensor = function() {
+    if (this._resizeSensor)
+        this._resizeSensor.detach();
+    this._resizeSensor = null;
 };
 
 DomTerm.prototype._displayInputModeWithTimeout = function(text) {
@@ -2180,7 +2212,7 @@ DomTerm.prototype.createContextMenu = function() {
 
 DomTerm.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
-        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id);
+        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY);
     if (ev.type == "mousedown") {
         DomTerm.setFocus(this);
     }
@@ -2406,7 +2438,7 @@ DomTerm.prototype.reportEvent = function(name, data) {
     // 0x92 is "Private Use 2".
     // FIXME should encode data
     if (this.verbosity >= 2)
-        this.log("reportEvent "+name+" "+data);
+        this.log("reportEvent "+this.name+": "+name+" "+data);
     this.processInputCharacters("\x92"+name+" "+data+"\n");
 };
 
@@ -2416,6 +2448,8 @@ DomTerm.prototype.reportKeyEvent = function(key, str) {
 
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
                                            availHeight, availWidth) {
+    if (! numRows)
+        console.log("BAD numRows");
     this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
 };
 
@@ -3696,10 +3730,13 @@ DomTerm.prototype.handleLink = function(event, href) {
 DomTerm.prototype.setSessionName = function(title) {
     this.topNode.setAttribute("name", title);
     this.reportEvent("SESSION-NAME", JSON.stringify(title));
+    if (DomTerm.setLayoutTitle)
+        DomTerm.setLayoutTitle(this, title, this.windowName);
 }
 
 DomTerm.prototype.sessionName = function() {
-    return this.topNode.getAttribute("name");
+    var sname = this.topNode.getAttribute("name");
+    return sname ? sname : this.name;
 };
 
 DomTerm.prototype.setWindowTitle = function(title, option) {
@@ -3718,6 +3755,8 @@ DomTerm.prototype.setWindowTitle = function(title, option) {
         this.setSessionName(title);
         break;
     }
+    if (DomTerm.setLayoutTitle)
+        DomTerm.setLayoutTitle(this, this.sessionName(), this.windowName);
     this.updateWindowTitle(this.formatWindowTitle());
 };
 
@@ -3726,8 +3765,8 @@ DomTerm.prototype.formatWindowTitle = function() {
         : this.iconName ? this.iconName
         : "";
     var sessionName = this.sessionName();
-    if (! sessionName)
-        sessionName = this.name;
+    //if (! sessionName)
+    //    sessionName = this.name;
     if (sessionName) {
         if (str)
             str += " ";
@@ -3737,7 +3776,9 @@ DomTerm.prototype.formatWindowTitle = function() {
 }
 
 DomTerm.prototype.updateWindowTitle = function(str) {
-    document.title = str;
+    this.windowTitle = str;
+    if (this.hasFocus())
+        document.title = str;
 }
 
 DomTerm.prototype.resetTerminal = function(full, saved) {
@@ -4514,7 +4555,7 @@ DomTerm.prototype._doDeferredDeletion = function() {
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
 DomTerm.prototype.insertBytes = function(bytes) {
     if (this.verbosity >= 2)
-        this.log("insertBytes "+typeof bytes);
+        this.log("insertBytes "+this.name+" "+typeof bytes);
     if (this.decoder == null)
         this.decoder = new TextDecoder(); //label = "utf-8");
     var str = this.decoder.decode(bytes, {stream:true});
@@ -4524,6 +4565,7 @@ DomTerm.prototype.insertBytes = function(bytes) {
 DomTerm.prototype._pauseContinue = function(skip = false) {
     var wasMode = this._pagingMode;
     this._pagingMode = 0;
+    this.modeLineGenerator = null;
     if (wasMode != 0)
         this._updatePagerInfo();
     if (this.verbosity >= 2)
@@ -5658,6 +5700,7 @@ DomTerm.prototype.keyDownToString = function(event) {
     switch (key) {
     case 8: /* Backspace */ return "\x7F";
     case 9: /* Tab */    return "\t";
+    case 13: /* Return/Enter */ return "\r";
     case 27: /* Esc */   return "\x1B";
     case 33 /* PageUp*/: return this.specialKeySequence("5", "~", event);
     case 34 /* PageDown*/:return this.specialKeySequence("6", "~", event);
@@ -6056,6 +6099,12 @@ DomTerm.prototype.keyDownHandler = function(event) {
             this._displayInputModeWithTimeout(displayString);
             event.preventDefault();
             return;
+        case 77: // Control-Shift-M
+            if (this.enterMuxMode) {
+                this.enterMuxMode();
+                event.preventDefault();
+            }
+            return;
         case 80: // Control-Shift-P
             if (this._currentlyPagingOrPaused()) {
                 this._temporaryAutoPaging = false;
@@ -6079,6 +6128,10 @@ DomTerm.prototype.keyDownHandler = function(event) {
     }
     if (this._currentlyPagingOrPaused()) {
         this._pageKeyHandler(event, key, false);
+        return;
+    }
+    if (this._muxMode) {
+        this._muxKeyHandler(event, key, false);
         return;
     }
     this._adjustPauseLimit(this.outputContainer);
@@ -6134,6 +6187,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             else
                 this.processInputCharacters(str);
         }
+        else  this.log("- key-down string null");
     }
 };
 
@@ -6145,6 +6199,10 @@ DomTerm.prototype.keyPressHandler = function(event) {
         return;
     if (this._currentlyPagingOrPaused()) {
         this._pageKeyHandler(event, key, true);
+        return;
+    }
+    if (this._muxMode) {
+        this._muxKeyHandler(event, key, true);
         return;
     }
     this._adjustPauseLimit(this.outputContainer);

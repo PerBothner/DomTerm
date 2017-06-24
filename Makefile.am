@@ -179,11 +179,14 @@ wsclasses.stamp: $(wsdomterm_jar_sources)
 	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch wsclasses.stamp
 
-PLAIN_COPY_TO_JAR = repl-client.html jfx-term.html hlib/domterm-*.js hlib/*.css \
+MISC_COPY_TO_JAR = repl-client.html jfx-term.html \
+  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js
+
+PLAIN_COPY_TO_JAR =  $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
   org/domterm/*.class org/domterm/javafx/*.class org/domterm/pty/*.class \
   org/domterm/util/*.class
 
-$(DOMTERM_JAR): classes.stamp hlib/domterm-all.js
+$(DOMTERM_JAR): classes.stamp hlib/domterm-all.js $(MISC_COPY_TO_JAR)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 	cp xulapp/domterm.xul tmp-for-jar/

@@ -2,20 +2,19 @@ DomTerm.prototype._currentlyPagingOrPaused = function() {
     return this._pagingMode > 0;
 };
 
-DomTerm.prototype._pagerModeInfo = function() {
-    var prefix =  this._pagingMode == 2 ? "<b>PAUSED</b>" : "<b>PAGER</b>";
-    if (this._pageNumericArgument) {
-        return prefix+": numeric argument: "+this._pageNumericArgument;
+function _pagerModeInfo(dt) {
+    var prefix =  dt._pagingMode == 2 ? "<b>PAUSED</b>" : "<b>PAGER</b>";
+    if (dt._pageNumericArgument) {
+        return prefix+": numeric argument: "+st._pageNumericArgument;
     }
     return prefix+": type SPACE for more; Ctrl-Shift-P to exit paging";
 }
 
 DomTerm.prototype._updatePagerInfo = function() {
-    if (this._currentlyPagingOrPaused()) {
-        this._displayInfoMessage(this._pagerModeInfo());
-    } else {
+    if (this.modeLineGenerator != null)
+        this._displayInfoMessage(this.modeLineGenerator(this));
+    else
         this._clearInfoMessage();
-    }
 }
 
 DomTerm.prototype._pageScrollAbsolute = function(percent) {
@@ -84,11 +83,13 @@ DomTerm.prototype._enterPaging = function(pause) {
     this._pageNumericArgumentClear();
     this._temporaryAutoPaging = false;
     this._pagingMode = pause ? 2 : 1;
+    this.modeLineGenerator = _pagerModeInfo;
     this._updatePagerInfo();
 }
 
 DomTerm.prototype._exitPaging = function() {
     this._pagingMode = 0;
+    this.modeLineGenerator = null;
     this._updatePagerInfo();
 }
 

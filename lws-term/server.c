@@ -163,7 +163,7 @@ void print_help() {
                     "    --debug, -d             Set log level (0-9, default: 0)\n"
                     "    --version, -v           Print the version and exit\n"
                     "    --help, -h              Print this text and exit\n"
-                    "If no --port option is pecified, --browser --once are implied.\n",
+                    "If no --port option is pecified, --browser is implied.\n",
             LDOMTERM_VERSION
     );
 }
@@ -607,7 +607,7 @@ main(int argc, char **argv) {
     }
 
     if (port_specified < 0)
-        server->once = true;
+        server->client_can_close = true;
 
     lws_set_log_level(debug_level, NULL);
 
