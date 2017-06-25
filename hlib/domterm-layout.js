@@ -49,6 +49,13 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
             event.preventDefault();
         }
         break;
+    case 68:
+        if (event.ctrlKey && DomTerm.isElectron()) {
+            nodeRequire('electron').remote.getCurrentWindow().toggleDevTools();
+            this.exitMuxMode();
+            event.preventDefault();
+        }
+        break;
     case 84: // T
         if (event.ctrlKey) {
             DomTerm.domTermLayoutAddTab(this);
