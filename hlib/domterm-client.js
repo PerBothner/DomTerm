@@ -161,7 +161,7 @@ function loadHandler(event) {
     if (topNodes.length == 0) {
         var topNode = document.createElement("div");
         topNode.setAttribute("class", "domterm");
-        topNode.setAttribute("id", "domterm1");
+        topNode.setAttribute("id", DomTerm.freshName());
         var bodyNode = document.getElementsByTagName("body")[0];
         bodyNode.appendChild(topNode);
         topNodes = [ topNode ];
