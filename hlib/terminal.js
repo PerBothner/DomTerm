@@ -5778,10 +5778,11 @@ DomTerm.prototype.doCopy = function() {
 };
 
 DomTerm.prototype.doSaveAs = function() {
-    var fname = this._pickFile();
-    if (fname) {
-        this._writeFile(this.getAsHTML(true), fname);
-    }
+    var dt = this;
+    this._pickFile(function(fname) {
+        if (fname)
+            dt._writeFile(dt.getAsHTML(true), fname);
+    });
 };
 
 DomTerm.prototype.getSelectedText = function() {
@@ -6024,12 +6025,31 @@ DomTerm.prototype.doLineEdit = function(key, str) {
 };
 
 DomTerm.prototype._writeFile = function(data, filePath) {
-    saveAs(new Blob([data], {type: "text/html;charset=utf-8"}),
-           filePath, true);
+    if (DomTerm.isElectron()) {
+        var fs = nodeRequire('fs');
+        if (filePath) {
+            fs.writeFile(filePath, data, function (err) {
+                alert("An error ocurred creating the file "+ err.message);
+            });
+        }
+    } else {
+        saveAs(new Blob([data], {type: "text/html;charset=utf-8"}),
+               filePath, true);
+    }
 };
-DomTerm.prototype._pickFile = function() {
+
+/* Request from user name for file to save.
+   Then call callname(fname) is user-supplied name.
+   If user cancels then fname will have a false value (null or undefined).
+*/
+DomTerm.prototype._pickFile = function(callback) {
     var fname = this.sessionName()+".html";
-    return prompt("save contents as: ", fname);
+    if (DomTerm.isElectron()) {
+        const {dialog} = nodeRequire('electron').remote;
+        dialog.showSaveDialog({defaultPath: fname}, callback);
+    } else {
+        callback(prompt("save contents as: ", fname));
+    }
 };
 
 DomTerm.prototype._adjustPauseLimit = function(node) {
@@ -6189,7 +6209,6 @@ DomTerm.prototype.keyDownHandler = function(event) {
             else
                 this.processInputCharacters(str);
         }
-        else  this.log("- key-down string null");
     }
 };
 

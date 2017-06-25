@@ -74,7 +74,7 @@
             document.title = title;
         };
         dt.close = function() { doQuit(); };
-        dt._pickFile = function() {
+        dt._pickFile = function(callback) {
             const nsIFilePicker = Components.interfaces.nsIFilePicker;
             var fp = Components.classes["@mozilla.org/filepicker;1"]
 	           .createInstance(nsIFilePicker);
@@ -83,9 +83,8 @@
 
             var rv = fp.show();
             if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
-                return fp.file;
+                callback(fp.file);
             }
-            return null;
         };
         dt.inputModeChanged = inputModeChanged;
         dt._writeFile = function(data, filePath) {
