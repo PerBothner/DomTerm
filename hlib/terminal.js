@@ -4485,7 +4485,7 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
                 break;
             string += s;
             if (!node.firstChild) {
-                if ((this.elementInfo(tagName) & 0x10) == 0)
+                if ((dt.elementInfo(tagName) & 0x10) == 0)
                     string += '></'+tagName+'>';
                 else
                     string += '/>';
