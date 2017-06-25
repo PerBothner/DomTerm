@@ -384,15 +384,15 @@ firefox_xul_command(char* app_path)
 char *
 firefox_command()
 {
+#if 1
     char *xulapp = firefox_xul_application();
-    if (xulapp != NULL && access(xulapp, R_OK) == 0) {
+    if (xulapp != NULL && access(xulapp, R_OK) == 0)
         return firefox_xul_command(xulapp);
-    } else {
-        fprintf(stderr, "Firefox XUL application.ini not found.\n");
-        fprintf(stderr,
-                "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
-        return "firefox";
-    }
+    fprintf(stderr, "Firefox XUL application.ini not found.\n");
+    fprintf(stderr,
+            "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
+#endif
+    return "firefox";
 }
 
 char *
@@ -690,16 +690,10 @@ main(int argc, char **argv) {
         int port = info.port;
         sprintf(url, "http://localhost:%d/#ws=same", port);
         if (browser_command == NULL && port_specified < 0) {
-            // The default is "--firefox"
-#if 1
-            browser_command = firefox_command(NULL);
-#else
-            browser_command = chrome_command();
-            if (browser_command != NULL)
-                browser_command = chrome_app_command(browser_command);
-            else
+            // The default is "--electron" if available
+            browser_command = electron_command(1);
+            if (browser_command == NULL)
                 browser_command = "";
-#endif
         }
         if (strcmp(browser_command, "firefox") == 0)
             browser_command = firefox_browser_command();
