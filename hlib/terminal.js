@@ -5966,6 +5966,36 @@ DomTerm.prototype.setInputMode = function(mode) {
     this.automaticNewlineMode = ! this.clientDoesEcho;
 };
 
+DomTerm.prototype.getInputMode = function() {
+    if (this._lineEditingMode == 0)
+        return 97; // auto
+    else if (this._lineEditingMode > 0)
+        return 108; // line
+    else
+        return 99; // char
+}
+
+DomTerm.prototype.nextInputMode = function() {
+    var mode;
+    var displayString;
+    if (this._lineEditingMode == 0) {
+        // was 'auto', change to 'line'
+        mode = 108; // 'l'
+        displayString = "Input mode: line";
+    } else if (this._lineEditingMode > 0) {
+        // was 'line' change to 'char'
+        mode = 99; // 'c'
+        displayString = "Input mode: character";
+    } else {
+        // was 'char' change to 'auto'
+        mode = 97; // 'a'
+        displayString = "Input mode: automatic";
+    }
+    this.setInputMode(mode);
+    this.inputModeChanged(mode);
+    this._displayInputModeWithTimeout(displayString);
+}
+
 DomTerm.prototype._sendInputContents = function() {
     this._doDeferredDeletion();
     var text = this.grabInput(this.inputLine);
@@ -6101,24 +6131,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 event.preventDefault();
             return;
         case 73: // Control-shift-I
-            var mode;
-            var displayString;
-            if (this._lineEditingMode == 0) {
-                // was 'auto', change to 'line'
-                mode = 108; // 'l'
-                displayString = "Input mode: line";
-            } else if (this._lineEditingMode > 0) {
-                // was 'line' change to 'char'
-                mode = 99; // 'c'
-                displayString = "Input mode: character";
-            } else {
-                // was 'char' change to 'auto'
-                mode = 97; // 'a'
-                displayString = "Input mode: automatic";
-            }
-            this.setInputMode(mode);
-            this.inputModeChanged(mode);
-            this._displayInputModeWithTimeout(displayString);
+            this.nextInputMode();
             event.preventDefault();
             return;
         case 77: // Control-Shift-M

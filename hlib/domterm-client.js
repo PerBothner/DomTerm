@@ -153,6 +153,7 @@ function _activeContentItemHandler(item) {
 }
 
 function loadHandler(event) {
+    DomTerm.setContextMenu();
     if (false) {
         DomTerm.layoutInit(null);
         return;
