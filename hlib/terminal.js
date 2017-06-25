@@ -5722,7 +5722,9 @@ DomTerm.prototype.keyDownToString = function(event) {
     case 119: /* F8 */   return this.specialKeySequence("19", "~", event);
     case 120: /* F9 */   return this.specialKeySequence("20", "~", event);
     case 121: /* F10 */  return this.specialKeySequence("21", "~", event);
-    case 122: /* F11 */  return this.specialKeySequence("23", "~", event);
+    case 122: /* F11 */
+        //return this.specialKeySequence("23", "~", event);
+        return null; // default handling, which is normally full-screen
     case 123: /* F12 */  return this.specialKeySequence("24", "~", event);
     case 124: /* F13 */  return "\x1B[1;2P";
     case 125: /* F14 */  return "\x1B[1;2Q";
