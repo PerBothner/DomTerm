@@ -5112,6 +5112,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
 
         // Using two passes is an optimization, because mixing offsetLeft
         // calls with DOM mutation is very expensive.
+        var topLeft = dt.topNode.getBoundingClientRect().left;
         for (var el = start.parentNode;
              el != null && el.nodeName == "SPAN"; el = el.parentNode) {
             // This is needed when we start with an existing soft break
@@ -5121,8 +5122,9 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 el.measureLeft = 0;
                 el.measureWidth = 0;
             } else {
-                el.measureLeft = rects[nrects-1].left;
-                el.measureWidth = rects[nrects-1].right - el.measureLeft;
+                var measureLeft = rects[nrects-1].left;
+                el.measureLeft = measureLeft - topLeft;
+                el.measureWidth = rects[nrects-1].right - measureLeft;
             }
         }
         // First pass - measure (call offsetLeft) but do not change DOM
