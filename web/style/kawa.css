@@ -241,5 +241,5 @@ div[class="navcol"] div > ul > li { font-size: larger }
 
 /* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
 
-img { float: right; width: 40% }
+img { float: right; width: 50%; padding: 3px }
 div { overflow:auto}

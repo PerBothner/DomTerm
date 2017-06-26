@@ -29,6 +29,9 @@ based on DomTerm and QtWebEngine.
 The @code{ldomterm} application is similar, but uses an
 external browser.
 
+@emph{}
+@uref{images/domterm-panes-1.png,@image{images/domterm-panes-1}}
+
 This @uref{https://lwn.net/Articles/670062/,LWN article} provides
 background, motivation, and a summary of the functionality.
 
@@ -46,6 +49,12 @@ was based on similar concepts, but was mostly written in Java using
 @subheading Recent advances:
 
 @itemize
+@item
+A front-end based on @uref{https://electron.atom.io/,Electron}
+is now the preferred one.
+@item
+We now support draggable tabs and panes.
+This uses @uref{http://golden-layout.com/,GoldenLayout}.
 @item
 An experimental @ref{Paging,pager} with optional
 automatic pause on each page.
@@ -386,8 +395,8 @@ it runs a specified command, by default a shell.
 Unless @code{--port} is specified, @code{ldomterm} will automatically
 start a browser session (the ``front-end'') that connects
 to the server.  The default is currently
-as if you specified @code{--chrome}, or @code{--browser} (if the
-Google Chome browser is not found).
+as if you specified @code{--electron}, or @code{--browser} (if the
+@code{electron} is not found).
 
 @display
 @code{ldomterm} [@var{options}] [@var{command} @var{arg}...]
@@ -420,6 +429,10 @@ Using @code{firefox}, @code{chrome}, or @code{google-chrome}
 for @var{program} enables some special tricks to search for those browsers.
 (Using @code{chrome} or @code{google-chrome} has the same effect.)
 
+@item @code{--electron}
+Use a front-end based on @uref{https://electron.atom.io/,Electron}.
+This is currently the nicest (and default) front-end.
+
 @item @code{--chrome}
 This uses the Google Chrome browser,
 started using the @code{--app=} option,
@@ -428,15 +441,12 @@ so you get a fresh chrome-less window (with no menubar or toolbar).
 This works well and the performance is good.
 This method provides no menubar or context-menu customization (so far).
 
-This is currently the default, when available.
-
 @item @code{--firefox}
+@emph{This is no longer supported.}
 This is similar to the @code{--chrome} option, but using
 bare Firefox browser window, with
 a custom menubar, and custom context menu (what you get by right-clicking).
-
-This is potentially a very nice terminal emulator,
-though it is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
+This is based on @uref{https://en.wikipedia.org/wiki/XUL,XUL},
 which is being phased out.
 
 @item @code{--qtdomterm}
@@ -1050,6 +1060,8 @@ different front-ends may support some features differently.
 @c Enter/exit pager mode
 @c FUTURE @item Control-Shift-M
 @c Prefix for Screen or TMux
+@item Control-Shift-M Control-D
+@ On Electron toogle Developer Window.
 @item Control-Shift-C
 Copy the selected text to the clipboard.
 (Control-C also works in line-editing mode.)
@@ -1082,7 +1094,35 @@ Zoom in (makes text bigger).
 @item Control-Shift-Minus
 @itemx Control-Minus
 Zoom out (makes text smaller).
+@item Control-0
+``Un-zoom'' to normal size.
+@item F11
+Toggle full-screen mode.
 @end table
+
+@subsubheading Managing subwindows
+
+@table @asis
+@item Control-Shift-T
+Create a new terminal in a new tab.
+@item Control-Shift-N
+Create a new terminal in a new pane (sub-window).
+The new pane is create to the right or below the current pane,
+depending on space.
+@item Control-Shift-M Control-Left
+Create a new terminal pane to the left of the current one.
+@item Control-Shift-M Control-Right
+Create a new terminal pane to the right of the current one.
+@item Control-Shift-M Control-Up
+Create a new terminal pane above the current one.
+@item Control-Shift-M Control-Down
+Create a new terminal pane below the current one.
+@item Control-Shift-M Left
+Select the previous pane or tab.
+@item Control-Shift-M Right
+Select the next pane or tab.
+@end table
+
 
 @subheading Copy and Paste
 
@@ -1215,11 +1255,11 @@ The specific list is subject to change.
 
 An example when running on @code{qtdomterm}:
 @example
-QtDomTerm;version=0.4;tty=/dev/pts/3
+QtDomTerm;version=0.80;tty=/dev/pts/3
 @end example
-The XUL front-end (FireFox in app mode) may yield:
+The Electron front-end may yield:
 @example
-version=0.4;Java-WebSocket-server;PtyClient;tty=/dev/pts/1
+version=0.80;electron=1.3.13;libwebsockets=2.1.1;tty=/dev/pts/1
 @end example
 
 Checking the @code{DOMTERM} variable is the normal way to
@@ -1464,32 +1504,6 @@ they should be bundled in a zip archive (like LibreOffice does).
 Tools to convert to and from Jupyter format would be nice,
 so we should avoid gratuitous conceptual incompatibility.
 
-@subheading Multiplexing sessions
-
-GNU Screen and Tmux handle multiple terminals. They provide keystroke
-bindings that make it convenient to create new terminal jobs,
-and navigate between them.  This isn't a critical feature, since
-people can always using windows and tabs, but it would be nice.
-
-The @uref{http://www.brain-dump.org/projects/dvtm/,dtvm} project
-implements tiling window management for a terminal emulalor
-(without session management).
-
-The @uref{http://nathancahill.github.io/Split.js/,Split.js} library
-could be useful for implementing tiling.
-For creating tabs:
-@uref{https://github.com/adamschwartz/chrome-tabs,chome-tabs}
-(uses @uref{https://github.com/desandro/draggabilly,draggabilly})
-or @uref{https://github.com/jaswrks/chrome-tabs,a fork}.
-For drag-and-drop we can use @uref{https://github.com/bevacqua/dragula,dragula}.
-or @uref{http://draggabilly.desandro.com/,draggabilly}
-or @uref{http://interactjs.io,/interact.js}.
-
-Ideally, tiling should be handled by a window manager and/or a library.
-Consider @uref{http://tiwulfx.panemu.com/2015/09/18/detachabletabpane-supports-docking-and-reordering/,DetachableTabPane} (for JavaFX).
-I love the flexibility and ease-of-use of how NetBeans handles windows,
-tiling, and tabs, with a great drag-and-drop mechanism.
-
 @subheading Detachable and remote sessions
 
 Detachable sessions means that a front-end
@@ -1525,6 +1539,8 @@ the various escape sections.  One way to do that is to use a
 such as (the presumably rekativey heavy-duty) @uref{http://phantomjs.org/,PhantomJS}.
 Chromium has a @uref{https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md,@code{--headless} option}.
 Using QtWebEngine in headless mode makes sense if we also use qtdomterm.
+
+See also @uref{https://mosh.org/,Mosh} (also @uref{https://lwn.net/Articles/722923/,LWN article}), and @uref{https://mistertea.github.io/EternalTCP/,EternalTerminal}.
 
 @node Technical documentation
 @chapter Technical documentation
