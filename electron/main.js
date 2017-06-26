@@ -7,8 +7,8 @@ const url = require('url')
 let win
 
 function createWindow () {
-  // Create the browser window.
-  win = new BrowserWindow({width: 800, height: 600})
+    // Create the browser window.
+    win = new BrowserWindow({width: 800, height: 600, show: false})
 
     // options = yargs(process.argv[1..]).wrap(100)
     // and load the index.html of the app.
@@ -29,6 +29,10 @@ function createWindow () {
 
     if (openDevTools)
         win.webContents.openDevTools()
+
+    win.once('ready-to-show', () => {
+            win.show()
+        })
 
   // Emitted when the window is closed.
   win.on('closed', () => {
