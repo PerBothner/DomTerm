@@ -1,6 +1,30 @@
 DomTerm.savedMenuBar = null;
 
-DomTerm.aboutMessage = 'Welcome to DomTerm.<br/>A terminal emulator.';
+DomTerm.aboutMessage = function() {
+    var s = '<h2>Welcome to DomTerm.</h2>\n';
+    s += '<p>DomTerm is terminal emulator based on web technologies. ';
+    s += 'Features include embedded graphicss and html; tabs and sub-windows; save as html.</p>\n';
+    s += '<p>Home page: <a href="http://domterm.org/" target="_blank"><code>http://domterm.org</code></a>.</p>\n';
+    s += '<p>DomTerm version '+DomTerm.versionString+'.';
+    if (DomTerm.isElectron()) {
+        s += ' This variant of DomTerm uses Electron '
+            + process.versions.electron
+            + ' for the "front-end" and libwebsockets for the "back-end".';
+    }
+    s += '</p>\n';
+    s += '<p>Copyright '+DomTerm.copyrightYear+' Per Bothner and others.</p>';
+    s += '<script>function handler(event) { if (event.keyCode==27) window.close();} window.addEventListener("keydown", handler);</script>\n';
+    return s;
+}
+
+DomTerm.showAboutMessage = function() {
+    const {BrowserWindow} = nodeRequire('electron').remote
+    let win = new BrowserWindow({width: 500, height: 400,
+                                 title: 'About DomTerm', show: false});
+    win.setMenu(null)
+    win.loadURL('data:text/html,'+encodeURIComponent(DomTerm.aboutMessage()));
+    win.show();
+}
 
 DomTerm.createElectronMenus = function() {
     const muxPrefix = 'CommandOrControl+Shift+M';
@@ -94,12 +118,8 @@ DomTerm.createElectronMenus = function() {
 
     const homePageItem = new MenuItem({label: 'DomTerm home page',
                                        click: function() { shell.openExternal('http://domterm.org') }});
-    /*
     const aboutItem = new MenuItem({label: 'About DomTerm',
-                                    click: function() {
-                                        var dt = DomTerm.focusedTerm;
-                                        dt.modeLineGenerator = function(dt) { return DomTerm.aboutMessage; }; dt._updatePagerInfo();}});
-    */
+                                    click: DomTerm.showAboutMessage});
 
     const contextMenu = new Menu()
     contextMenu.append(showMenuBarItem);
@@ -137,7 +157,7 @@ DomTerm.createElectronMenus = function() {
                                      newTerminalMenuItem]},
                                 {label: 'Help',
                                  submenu: [
-                                     //aboutItem,
+                                     aboutItem,
                                      homePageItem]}
                                ]);
 

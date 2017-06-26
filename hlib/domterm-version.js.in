@@ -1,4 +1,6 @@
+// @configure_input@
 DomTerm.versionString = "@DOMTERM_VERSION@";
+DomTerm.copyrightYear = 2017;
 
 DomTerm.isElectron = function() {
     return typeof process !== 'undefined' && process.versions
