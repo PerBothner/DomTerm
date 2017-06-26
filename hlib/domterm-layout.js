@@ -26,7 +26,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
         this.log("mux-key key:"+key+" event:"+event+" press:"+press);
     switch (key) {
     case 13: // Enter
-        DomTerm.domTermLayoutAddSibling(this, true, true);
+        DomTerm.layoutAddSibling(this);
         this.exitMuxMode();
         event.preventDefault();
         break;
@@ -39,8 +39,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
     case 37 /*Left*/:
     case 39 /*Right*/:
         if (event.ctrlKey) {
-            DomTerm.domTermLayoutAddSibling(this, key==38||key==40,
-                                            key==39||key==40);
+            DomTerm.layoutAddSibling(this, key==38||key==40, key==39||key==40);
             this.exitMuxMode();
             event.preventDefault();
         } else {
@@ -58,7 +57,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
         break;
     case 84: // T
         if (event.ctrlKey) {
-            DomTerm.domTermLayoutAddTab(this);
+            DomTerm.layoutAddTab(this);
             this.exitMuxMode();
             event.preventDefault();
         }
@@ -161,7 +160,14 @@ DomTerm._indexInParent = function (component) {
     while (i < ppChildren.length && ppChildren[i] != component) i++;
     return i;
 }
-DomTerm.domTermLayoutAddSibling = function(dt, isColumn, addAfter) {
+
+DomTerm._splitVertically = function(dt) {
+    return dt.numColumns<4*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
+}
+DomTerm.layoutAddSibling = function(
+        dt,
+        isColumn=DomTerm._splitVertically(dt),
+        addAfter=true) {
     if (! DomTerm.layoutManager)
         DomTerm.layoutInit(dt);
     var r = DomTerm.domTermToLayoutItem(dt);
@@ -184,7 +190,7 @@ DomTerm.domTermLayoutAddSibling = function(dt, isColumn, addAfter) {
     }
 };
 
-DomTerm.domTermLayoutAddTab = function(dt) {
+DomTerm.layoutAddTab = function(dt) {
     if (! DomTerm.layoutManager)
         DomTerm.layoutInit(dt);
     var r = DomTerm.domTermToLayoutItem(dt);

@@ -6140,7 +6140,14 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 event.preventDefault();
             }
             return;
-        case 80: // Control-Shift-P
+        case 78: // Control-Shift-N
+            if (DomTerm.layoutAddSibling) {
+                DomTerm.layoutAddSibling(this);
+                event.preventDefault();
+                return;
+            }
+            break;
+       case 80: // Control-Shift-P
             if (this._currentlyPagingOrPaused()) {
                 this._temporaryAutoPaging = false;
                 this._pauseContinue();
@@ -6153,6 +6160,13 @@ DomTerm.prototype.keyDownHandler = function(event) {
             this.doSaveAs();
             event.preventDefault();
             return;
+        case 84: // Control-Shift-T
+            if (DomTerm.layoutAddTab) {
+                DomTerm.layoutAddTab(this);
+                event.preventDefault();
+                return;
+            }
+            break;
         case 86: // Control-Shift-V
             // Google Chrome doesn't allow execCommand("paste") but Ctrl-Shift-V
             // works by default.  In Firefox, it's the other way round.

@@ -47,6 +47,7 @@ DomTerm.createElectronMenus = function() {
     const cycleInputModesItem = new MenuItem({label: 'Cycle input modes',
                                               accelerator: 'Ctrl+Shift+I',
                                               click: inputModeClickHandler});
+
     const inputMenu = new Menu();
     inputMenu.append(charModeItem);
     inputMenu.append(lineModeItem);
@@ -60,8 +61,36 @@ DomTerm.createElectronMenus = function() {
                                          if (dt)
                                              dt.doSaveAs();
                                      }});
+
+
     const quitItem = new MenuItem({label: 'Quit', role: 'quit'});
-    
+    const newPaneItem = new MenuItem({label: 'New terminal (right/below)',
+                                      accelerator: 'Ctrl+Shift+N',
+                                      click: function() {
+                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm);
+                                      }});
+    const newTabItem = new MenuItem({label: 'New terminal tab',
+                                      accelerator: 'Ctrl+Shift+T',
+                                      click: function() {
+                                          DomTerm.layoutAddTab(DomTerm.focusedTerm);
+                                      }});
+    const newTerminalMenu = new Menu();
+    newTerminalMenu.append(newTabItem);
+    newTerminalMenu.append(newPaneItem);
+    newTerminalMenu.append(new MenuItem({label: 'New terminal above',
+                                         click: function() {
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, true, false); }}));
+    newTerminalMenu.append(new MenuItem({label: 'New terminal below',
+                                         click: function() {
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, true, true); }}));
+    newTerminalMenu.append(new MenuItem({label: 'New terminal left',
+                                         click: function() {
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, false, false); }}));
+    newTerminalMenu.append(new MenuItem({label: 'New terminal right',
+                                         click: function() {
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, false, true); }}));
+    const newTerminalMenuItem = new MenuItem({label: 'New Terminal',
+                                              submenu: newTerminalMenu});
 
     const homePageItem = new MenuItem({label: 'DomTerm home page',
                                        click: function() { shell.openExternal('http://domterm.org') }});
@@ -77,11 +106,14 @@ DomTerm.createElectronMenus = function() {
     contextMenu.append(copyItem);
     contextMenu.append(pasteItem);
     contextMenu.append(inputModeMenu);
+    contextMenu.append(newTerminalMenuItem);
     contextMenu.append(showInspectorItem);
 
     DomTerm.savedMenuBar =
         Menu.buildFromTemplate([{label: 'File',
                                  submenu: [
+                                     newTabItem,
+                                     newPaneItem,
                                      saveAsItem,
                                      quitItem]},
                                 {label: 'Edit',
@@ -101,7 +133,8 @@ DomTerm.createElectronMenus = function() {
                                  ]},
                                 {label: 'Terminal',
                                  submenu: [
-                                     cycleInputModesItem]},
+                                     cycleInputModesItem,
+                                     newTerminalMenuItem]},
                                 {label: 'Help',
                                  submenu: [
                                      //aboutItem,
