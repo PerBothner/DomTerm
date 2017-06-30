@@ -365,7 +365,7 @@ DomTerm.prototype.eofSeen = function() {
 };
 
 DomTerm.prototype.close = function() {
-    if (DomTerm.domTermLayoutClose)
+    if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
         DomTerm.domTermLayoutClose(this);
     else
         window.close();
