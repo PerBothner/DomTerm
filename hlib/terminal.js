@@ -5186,6 +5186,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         // If el is a Text, beforePos and beforeMeasure are calculated.
         var startOffset = 0;
         var sectionStartLine = line;
+        var didbreak = true;
         for (var el = start; el != null; ) {
             // startOffset is the value of measureWidth corresponding
             // to the start of the current line.
@@ -5193,6 +5194,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             var dobreak = false;
             var skipChildren = false;
             var measureWidth = el instanceof Element ? el.measureWidth : 0;
+            check_fits:
             if (el instanceof Text || dt.isObjectElement(el)
                 || el.getAttribute("class") == "wc-node") {
                 skipChildren = true;
@@ -5214,7 +5216,15 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     if (el instanceof Text) {
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
                         var rest = dt._breakString(el, lineNode, beforePos,
-                                                   right, availWidth);
+                                                   right, availWidth, didbreak);
+                        if (rest == "") {
+                            // It all "fit", after all.  Can happen in
+                            // pathological cases when there isn't room for
+                            // even a single character but didbreak forces
+                            // as to include one character on each line.
+                            beforePos = right;
+                            break check_fits;
+                        }
                         insertIntoLines(dt, lineNode);
                         el = lineNode;
                         indentWidth = addIndentation(dt, el);
@@ -5318,6 +5328,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             } else {
                 beforePos += measureWidth;
             }
+            didbreak = dobreak;
             if (el.firstChild != null && ! skipChildren)
                 el = el.firstChild;
             else {
@@ -5420,7 +5431,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     }
 }
 
-DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPos, availWidth) {
+DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPos, availWidth, forceSomething) {
     var dt = this;
     var textData = textNode.data;
     var textLength = textData.length;
@@ -5458,6 +5469,18 @@ DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPo
             goodWidth = nextPos;
         }
     }
+    if (forceSomething && goodLength == 0) {
+        var ch0len = 1;
+        if (textLength >= 2) {
+            // check for surrogates (FIXME better to handle grapheme clusters)
+            var ch0 = textData.charCodeAt(0);
+            var ch1 = textData.charCodeAt(1);
+            if (ch0 >= 0xD800 && ch0 <= 0xDBFF
+                && ch1 >= 0xdc00 && ch1 <= 0xdfff)
+                ch0len = 2;
+        }
+        goodLength = ch0len;
+    }
     if (goodLength == 0)
         textNode.parentNode.removeChild(textNode);
     else if (textNode.data.length != goodLength) {
@@ -5472,16 +5495,7 @@ DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPo
         }
     }
 
-    if (goodLength < textLength) {
-        var rest;
-        if (goodLength == 0) {
-            textNode.data = "";
-            return textData;
-        } else {
-            return textData.substring(goodLength);
-        }
-    }
-    return "";
+    return goodLength < textLength ? textData.substring(goodLength) : "";
 };
 
 DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
@@ -5548,7 +5562,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             if (this.getCursorColumn() + widthInColumns <= this.numColumns)
                 break;
             var right = this.availWidth;
-            str = this._breakString(textNode, this.lineEnds[absLine], 0, right, this.availWidth);
+            str = this._breakString(textNode, this.lineEnds[absLine], 0, right, this.availWidth, false);
             //current is after inserted textNode;
             var oldContainer = this.outputContainer;
             var oldLine = this.lineEnds[absLine];
