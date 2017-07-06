@@ -254,8 +254,8 @@ However, there is also some utility code, include standalone
 terminal emulator applications.
 
 The best terminal emulator experience at this time
-is probably the combineation of libwebsockets
-with Google-Chrome in ``app'' mode.
+is probably the combination of libwebsockets 2.2
+with the Electron front-end.
 
 Another good application is @code{qtdomterm}.
 It uses the C++-based @uref{https://www.qt.io/,Qt toolkit}
@@ -280,15 +280,21 @@ Then run the @code{configure} script:
 @end example
 where @var{configure-options} can be:
 @table @code
-@item --with-libwebsockets
+@item --with-libwebsockets[=@var{lws-build}]
 Build the C application @code{ldomterm},
 which uses @uref{https://libwebsockets.org/,libwebsockets}.
+If @var{lws-build} is specified, it should be the path
+to the @code{build} subdirectory of the libwebsockets compiled source tree.
+(The files @code{@var{lws-build}/lib/libwebsockets.a}
+and @code{@var{lws-build}/include/libwebsockets.h} should exist.)
+
+While using libwebsockets version 2.2 or newer is strongly recommended.
+(Older versions do not support flow control or paging.)
 
 On Fedora, you need to first:
 @example
-sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel vim-common openssl-devel
+sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel
 @end example
-(You need @code{vim-common} for the @code{xxd} tool, only used at build time.)
 
 This is the recommended ``backend'' and the default.
 @item --with-java_websocket
@@ -839,12 +845,16 @@ You enter pause mode in two basic ways
 You manually enter pause mode by typing Control-Shift-P.
 @item
 You automatically enter pause mode if automatic pausing is
-enables, and a ``full screen'' is displayed since last user interaction:
+enabled, and a ``full screen'' is displayed since last user interaction:
 Any further output would cause part of the visible screen to scroll off.
 @end itemize
 
-To enable automatic-pause mode, type @code{ctrl-shift-P} (to enter pause mode);
-then @code{shift-A} (to enable auto-pause); and then @code{ctrl-shift-P} (to exit pause mode). This is obviously too awkward and needs to change.
+To enable automatic-pause mode on Electron you can
+check the @code{Automatic Pager} option in the right-click (context) menu.
+(You can also type @code{ctrl-shift-P} (to enter pause mode);
+then @code{shift-A} (to enable auto-pause);
+and then @code{ctrl-shift-P} (to exit pause mode).
+This is obviously too awkward and needs to change.)
 
 To enter pager mode, you first have to enter pause mode,
 and then type @code{P}.
@@ -1099,6 +1109,22 @@ Zoom out (makes text smaller).
 @item F11
 Toggle full-screen mode.
 @end table
+
+@subsubheading Scrolling
+
+@table @asis
+@item Control-Shift-PageUp
+@item Control-Shift-PageDown
+Scroll a page up or down, respectively.
+@item Control-Shift-Up
+@item Control-Shift-Down
+Scroll a line up or down, respectively.
+@item Control-Shift-Home
+@item Control-Shift-End
+Scroll to top or bottom, respectively.
+@end table
+
+See also the bindings for @ref{Paging} mode.
 
 @subsubheading Managing subwindows
 
