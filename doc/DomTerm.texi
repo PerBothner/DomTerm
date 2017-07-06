@@ -1351,24 +1351,6 @@ which is needed for readline to calculate the column position.)
 
 @subheading Basic terminal emulator functionality
 
-@subsubheading Make robust enough for actual use
-
-This means supporting all the ``base'' functionality
-of xterm as implemented by terminal emulators that
-set @code{TERM} tp @code{xterm-256color}.
-At this point we're pretty close to that.
-
-Error recovery and state transitions should follow
-@uref{http://www.vt100.net/emu/dec_ansi_parser,this}.
-
-Other terminal emulators:
-
-@uref{https://github.com/chjj/term.js/,term.js}
-and the new fork @uref{https://github.com/sourcelair/xterm.js,xterm.js}
-have quite complete terminal emulation and even better documentation.
-Howewver, it's based on a simple 2-d array (char value and attributes
-encoded as an integer).
-
 @subsubheading Document any discrepances from xterm and ANSI
 
 While implementing all of the
@@ -1378,10 +1360,13 @@ anything we don't implement, or implement differently from xterm.
 
 See also the @uref{http://www.ecma-international.org/publications/standards/Ecma-048.htm,ECMA-48 standard}.
 
+Error recovery and state transitions should follow
+@uref{http://www.vt100.net/emu/dec_ansi_parser,this}.
+
 @subsubheading  Use vttest for testing
 
 The xterm distribution includes @uref{http://invisible-island.net/vttest/,vttest}.
-Many of the tests work now, but there are more worth fixing.
+Most of the tests work now, but there are more worth fixing.
 
 @subsubheading Support Sixel graphics
 
@@ -1433,6 +1418,20 @@ A possible start is @uref{https://atom.io/packages/term2,term2}.
 @item
 @uref{http://webkitgtk.org/,WebKitGtk+}
 @end itemize
+
+@subsubheading Using alternate window managers
+
+DomTerm includes a ``window manager''
+(implemented
+using @uref{http://golden-layout.com/,GoldenLayout})
+that supports panes and tabs.
+If DomTerm is integrated in an application with its
+own window manager,such as Atom or Visual Studio Code,
+it would make sense to instead integrate with the latter manager.
+
+Similarly, when running under a
+@uref{https://en.wikipedia.org/wiki/Tiling_window_manager,tiling window manager}
+using the latter to manage panes and tabs is likely preferable.
 
 @subsubheading Tools and examples for Atom or Electron
 
