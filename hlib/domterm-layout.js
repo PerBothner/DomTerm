@@ -94,12 +94,18 @@ DomTerm.domTermLayoutClose = function(dt) {
     if (r) {
         var p = r.parent;
         if (p && p.type == 'stack'
+            && p.contentItems.length == 1
             && p.parent.type == 'root'
             && p.parent.contentItems.length == 1) {
             window.unloadHandler(null);
             window.close();
-        } else
+        } else {
+            DomTerm.selectNextPane(dt, true);
+            dt = DomTerm.focusedTerm;
             r.remove();
+            DomTerm.setFocus(dt);
+            dt.maybeFocus();
+        }
     }
 }
 DomTerm._oldFocusedPane = null;
