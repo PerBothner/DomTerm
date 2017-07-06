@@ -311,6 +311,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         } else {
           int bytesAv;
           int to_drain = 0;
+#if USE_ADOPT_FILE
           if (client->paused) {
             struct termios term;
             // If we see INTR, we want to drain already-buffered data.
@@ -320,8 +321,10 @@ reportEvent(const char *name, char *data, size_t dlen,
                 && ioctl (client->pty, FIONREAD, &to_drain) != 0)
               to_drain = 0;
           }
+#endif
           if (write(client->pty, kstr, klen) < klen)
              lwsl_err("write INPUT to pty\n");
+#if USE_ADOPT_FILE
           while (to_drain > 0) {
             char buf[500];
             ssize_t r = read(client->pty, buf,
@@ -330,6 +333,7 @@ reportEvent(const char *name, char *data, size_t dlen,
               break;
             to_drain -= r;
           }
+#endif
         }
         json_object_put(obj);
     }
