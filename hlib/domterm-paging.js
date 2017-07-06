@@ -93,6 +93,11 @@ DomTerm.prototype._exitPaging = function() {
     this._updatePagerInfo();
 }
 
+DomTerm.toggleAutoPaging = function(dt = DomTerm.focusedTerm) {
+    if (dt)
+        dt._autoPaging = ! dt._autoPaging;
+}
+
 DomTerm.prototype._pageNumericArgumentGet = function(def = 1) {
     var arg = this._pageNumericArgument;
     return arg == null ? def : Number(arg);
@@ -167,7 +172,7 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         break;
     case 65: // 'A'
         if (event.shiftKey) {
-            this._autoPaging = ! this._autoPaging;
+            DomTerm.toggleAutoPaging(this);
             this._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
                                              +(this._autoPaging?"on":"off"));
             event.preventDefault();

@@ -38,7 +38,10 @@ DomTerm.createElectronMenus = function() {
                                           type: 'checkbox',
                                           click: function(menuItem, browserWindow, event) { showingMenuBar = ! showingMenuBar; Menu.setApplicationMenu(showingMenuBar ? DomTerm.savedMenuBar : null); },
                                           checked: true});
-
+    const autoPagingItem = new MenuItem({label: 'Automatic Pager',
+                                         type: 'checkbox',
+                                         click: function() {
+                                             DomTerm.toggleAutoPaging(); }});
     const showInspectorItem =
           new MenuItem({label: 'Toggle Developer Tools',
                         accelerator: '',
@@ -126,6 +129,7 @@ DomTerm.createElectronMenus = function() {
     contextMenu.append(copyItem);
     contextMenu.append(pasteItem);
     contextMenu.append(inputModeMenu);
+    contextMenu.append(autoPagingItem);
     contextMenu.append(newTerminalMenuItem);
     contextMenu.append(showInspectorItem);
 
@@ -169,6 +173,7 @@ DomTerm.createElectronMenus = function() {
         charModeItem.checked = mode == 99;
         lineModeItem.checked = mode == 108;
         autoModeItem.checked = mode == 97;
+        autoPagingItem.checked = dt ? dt._autoPaging : false;
         contextMenu.popup(remote.getCurrentWindow())
     }, false)
 }
