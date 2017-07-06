@@ -451,7 +451,7 @@ DomTerm.prototype.maybeFocus = function() {
 
 
 DomTerm.prototype.hasFocus = function() {
-    return DomTerm.focusedTerm = this;
+    return DomTerm.focusedTerm == this;
 }
 
 // States of escape sequences handler state machine.
