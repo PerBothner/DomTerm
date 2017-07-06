@@ -196,6 +196,12 @@ function loadHandler(event) {
 }
 
 function unloadHandler(evt) {
+    if (DomTerm.isElectron()) {
+        const {app} = nodeRequire('electron').remote
+        app.on('certificate-error',
+               function (event, webContents, url, error, certificate, callback)
+               { callback(true); });
+    }
     var request = new XMLHttpRequest();
     request.open("GET","(WINDOW-CLOSED)");
     request.send(null);
