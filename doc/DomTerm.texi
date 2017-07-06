@@ -1543,7 +1543,7 @@ be able to use with screen or tmux.
 
 A simpler solution that only deals with session management is
 @uref{http://www.brain-dump.org/projects/abduco/,abduco},
-or @uref{dtach.sourceforge.net,dtach}. These just ``pass through''
+or @uref{http://dtach.sourceforge.net,dtach}. These just ``pass through''
 escape sequences, without trying to simulate the display.
 The downside is this depends on client re-draw (using
 sigwinch or ctrl-L), which is fine for a program like emacs,
