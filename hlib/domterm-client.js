@@ -11,7 +11,7 @@ DomTerm._handleOutputData = function(dt, data) {
         dlen = data.length;
     }
     dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
-    if (! dt._paused
+    if (dt._pagingMode != 2
         && ((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
         dt._confirmedCount = dt._receivedCount;
         dt.reportEvent("RECEIVED", dt._confirmedCount);
