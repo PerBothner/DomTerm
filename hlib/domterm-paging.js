@@ -174,9 +174,10 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         }
         break;
     case 67:
-        if (event.ctrlKey) {
+        if (event.ctrlKey) { // ctrl-C
             this.reportKeyEvent(3, this.keyDownToString(event));
-            this._pauseContinue();
+            this._pauseContinue(true);
+            this._adjustPauseLimit(this.outputContainer);
             event.preventDefault();
         }
         break;

@@ -309,8 +309,27 @@ reportEvent(const char *name, char *data, size_t dlen,
             if (rbuf != tbuf)
                 free (rbuf);
         } else {
+          int bytesAv;
+          int to_drain = 0;
+          if (client->paused) {
+            struct termios term;
+            // If we see INTR, we want to drain already-buffered data.
+            // But we don't want to drain data that written after the INTR.
+            if (tcgetattr(client->pty, &term) == 0
+                && term.c_cc[VINTR] == kstr0
+                && ioctl (client->pty, FIONREAD, &to_drain) != 0)
+              to_drain = 0;
+          }
           if (write(client->pty, kstr, klen) < klen)
              lwsl_err("write INPUT to pty\n");
+          while (to_drain > 0) {
+            char buf[500];
+            ssize_t r = read(client->pty, buf,
+                             to_drain <= sizeof(buf) ? to_drain : sizeof(buf));
+            if (r <= 0)
+              break;
+            to_drain -= r;
+          }
         }
         json_object_put(obj);
     }

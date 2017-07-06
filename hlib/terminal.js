@@ -4578,7 +4578,7 @@ DomTerm.prototype._pauseContinue = function(skip = false) {
         this._confirmedCount = this._receivedCount;
         text = this.parameters[1];
         // FIXME maybe this._temporaryAutoPaging = true;
-        if (text == null || text.length < 500) {
+        if (text == null || text.length < 500 || skip) {
             if (this.verbosity >= 2)
                 this.log("report RECEIVED "+this._confirmedCount);
             this.reportEvent("RECEIVED", this._confirmedCount);
