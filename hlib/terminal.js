@@ -1956,7 +1956,8 @@ DomTerm.prototype.resizeHandler = function() {
         dt.resetCursorCache();
     }
     var minHome = dt.lineStarts.length - dt.numRows;
-    dt.homeLine = minHome < 0 ? 0 : minHome;
+    var line0 = dt.usingAlternateScreenBuffer ? dt.initial.saveLastLine : 0;
+    dt.homeLine = minHome < line0 ? line0 : minHome;
     dt._checkSpacer();
     dt._scrollIfNeeded();
 }
