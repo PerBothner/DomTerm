@@ -53,37 +53,47 @@ struct pty_data {
     STAILQ_ENTRY(pty_data) list;
 };
 
-struct tty_client {
-    bool exit;
-    bool initialized;
-    bool pty_started;
-    bool authenticated;
-    int eof_seen;  // 1 means seen; 2 reported to client
-    char hostname[100];
-    char address[50];
-    char *version_info;
-
-    struct lws *wsi;
-    char *buffer;
-    size_t len;
-#if USE_ADOPT_FILE
-    char *obuffer; // output from child process
-    size_t olen; // used length of obuffer
-    size_t osize; // allocated size of obuffer
-    int pty_read_available;
-    struct lws *pty_wsi;
-#endif
+/** Data specific to a pty process. */
+struct pty_client {
+    struct pty_client *next_pty_client;
     int pid;
     int pty;
     pthread_t thread;
-
     int nrows, ncols;
     float pixh, pixw;
-
-#if USE_ADOPT_FILE
+    int eof_seen;  // 1 means seen; 2 reported to client
+    bool exit;
+    int paused;
+    struct lws *first_client_wsi;
+    char *obuffer; // output from child process
+    size_t olen; // used length of obuffer
+    size_t osize; // allocated size of obuffer
     long sent_count;
     long confirmed_count;
-    int paused;
+    struct lws *pty_wsi;
+};
+
+/** Data specific to a client connection. */
+struct tty_client {
+    struct pty_client *pclient;
+    bool initialized;
+    //bool pty_started; = pclient!=NULL
+    bool authenticated;
+    char hostname[100];
+    char address[50];
+    char *version_info; // received from client
+    size_t osent; // index in obuffer
+
+    struct lws *wsi;
+    // data received from client and not yet processed.
+    // (Normally, this is only if an incomplete reportEvent message.)
+    char *buffer;
+    size_t len; // length of data in buffer
+#if USE_ADOPT_FILE
+    struct lws *next_client_wsi;
+#endif
+
+#if USE_ADOPT_FILE
 #else
     STAILQ_HEAD(pty, pty_data) queue;
     pthread_mutex_t lock;
@@ -121,6 +131,9 @@ initialize_resource_map(struct lws_context *, const char*);
 extern int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
+extern int
+callback_pty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+
 extern char *get_resource_path();
 extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
@@ -135,3 +148,7 @@ struct resource {
 };
 extern struct resource resources[];
 #endif
+
+#define FOREACH_WSCLIENT(VAR, PCLIENT)      \
+  for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
+       VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)

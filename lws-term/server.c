@@ -61,6 +61,7 @@ char *(default_argv[]) = DEFAULT_ARGV;
 static const struct lws_protocols protocols[] = {
         {"http-only", callback_http, 0,                          0},
         {"domterm",   callback_tty,  sizeof(struct tty_client),  0},
+        {"pty",       callback_pty,  sizeof(struct pty_client),  0},
         {NULL,        NULL,          0,                          0}
 };
 

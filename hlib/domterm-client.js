@@ -178,9 +178,10 @@ function loadHandler(event) {
             var path = ws[1];
             if (path == "same")
                 url = (location.protocol == "https:" ? "wss:" : "ws:")
-                + "//localhost:" + location.port + "/replsrc";
+                + "//"+location.hostname+":" + location.port + "/replsrc";
             else
                 url = "ws:"+path;
+            url = url + "?" + location.hash.substring(1);
         } else
             url = "ws://localhost:8025/websocket/replsrv";
         // A kludge - the libwebsockets server requires a protocol "domterm",
@@ -188,7 +189,7 @@ function loadHandler(event) {
         var wsprotocol = location.hash.indexOf("ws=same") >= 0
             ? "domterm" : [];
         for (var i = 0; i < topNodes.length; i++) {
-            var name = topNodes[i].getAttribute("id");
+            //var name = topNodes[i].getAttribute("id");
             connect(null, url, wsprotocol, topNodes[i]);
         }
     }

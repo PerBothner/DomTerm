@@ -5,6 +5,10 @@
 static char eof_message[] = "\033[99;99u";
 #define eof_len (sizeof(eof_message)-1)
 
+struct per_vhost_data__domterm {
+    struct pty_client *pty_client_list;
+};
+
 int
 send_initial_message(struct lws *wsi) {
 #if 0
@@ -60,9 +64,22 @@ check_host_origin(struct lws *wsi) {
 #endif
 
 void
-tty_client_destroy(struct tty_client *client) {
+tty_client_destroy(struct lws *wsi, struct pty_client *client) {
     if (client->exit || client->pid <= 0)
         return;
+
+    struct per_vhost_data__domterm *v =
+      (struct per_vhost_data__domterm *)
+      lws_protocol_vh_priv_get(lws_get_vhost(wsi),
+                               lws_get_protocol(wsi));
+
+    struct pty_client **p = &v->pty_client_list;
+    for (;*p != NULL; p = &(*p)->next_pty_client) {
+        if (*p == client) {
+            *p = client->next_pty_client;
+            break;
+        }
+    }
 
     // stop event loop
     client->exit = true;
@@ -77,12 +94,9 @@ tty_client_destroy(struct tty_client *client) {
         ;
     lwsl_notice("process exited with code %d, pid: %d\n", status, client->pid);
     close(client->pty);
-
-    // free the buffer
-    if (client->buffer != NULL)
-        free(client->buffer);
-    if (client->version_info != NULL)
-      free(client->version_info);
+    if (client->obuffer == NULL)
+      free(client->obuffer);
+    // FIXME free client; set pclient to NULL in all matching tty_clients.
 
     // remove from clients list
     server->client_count--;
@@ -94,7 +108,7 @@ tty_client_destroy(struct tty_client *client) {
 }
 
 static void
-setWindowSize(struct tty_client *client)
+setWindowSize(struct pty_client *client)
 {
     struct winsize ws;
     ws.ws_row = client->nrows;
@@ -108,7 +122,7 @@ setWindowSize(struct tty_client *client)
 void *
 run_command
 #if USE_ADOPT_FILE
-(struct lws *wsi, struct tty_client *client)
+(struct lws *wsi, struct tty_client *tclient)
 #else
 (void *args)
 #endif
@@ -143,13 +157,19 @@ run_command
             const char *lstr = ";libwebsockets" SHOW_LWS_LIBRARY_VERSION;
             char* pinit = ";tty=";
             char* ttyName = ttyname(0);
+            char pidbuf[40];
+            pid = getpid();
             size_t dlen = strlen(dinit);
             size_t llen = strlen(lstr);
             size_t plen = strlen(pinit);
             int tlen = ttyName == NULL ? 0 : strlen(ttyName);
-            char *version_info = client->version_info;
+            char *version_info = tclient->version_info;
             int vlen = version_info == NULL ? 0 : strlen(version_info);
             int mlen = dlen + vlen + llen + (tlen > 0 ? plen + tlen : 0);
+            if (pid > 0) {
+                sprintf(pidbuf, ";pid=%d", pid);
+                mlen += strlen(pidbuf);
+            }
             char* ebuf = malloc(mlen+1);
             strcpy(ebuf, dinit);
             int offset = dlen;
@@ -163,6 +183,10 @@ run_command
                 offset += plen;
                 strcpy(ebuf+offset, ttyName);
                 offset += tlen;
+            }
+            if (pid > 0) {
+                strcpy(ebuf+offset, pidbuf);
+                offset += strlen(pidbuf);
             }
             ebuf[mlen] = '\0';
             putenv(ebuf);
@@ -188,22 +212,38 @@ run_command
             break;
         default: /* parent */
             lwsl_notice("started process, pid: %d\n", pid);
-            client->pid = pid;
-            client->pty = pty;
-            if (client->nrows >= 0)
-               setWindowSize(client);
-#if USE_ADOPT_FILE
             lws_sock_file_fd_type fd;
             fd.filefd = pty;
-            client->osize = 2048;
-            client->obuffer = xmalloc(client->osize);
-            client->olen = 0;
-            client->pty_read_available = 0;
-            client->sent_count = 0;
-            client->confirmed_count = 0;
-            client->paused = 0;
-            outwsi = lws_adopt_descriptor_vhost(lws_get_vhost(wsi), 0, fd, "domterm", wsi);
-            client->pty_wsi = outwsi;
+            outwsi = lws_adopt_descriptor_vhost(lws_get_vhost(wsi), 0, fd, "pty", NULL);
+            struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
+            struct per_vhost_data__domterm *v =
+              (struct per_vhost_data__domterm *)
+              lws_protocol_vh_priv_get(lws_get_vhost(wsi),
+                                       lws_get_protocol(wsi));
+            pclient->next_pty_client = v->pty_client_list;
+            v->pty_client_list = pclient;
+
+            tclient->pclient = pclient;
+            tclient->next_client_wsi = pclient->first_client_wsi;
+            pclient->first_client_wsi = wsi;
+
+            pclient->pid = pid;
+            pclient->pty = pty;
+            pclient->nrows = -1;
+            pclient->ncols = -1;
+            pclient->pixh = -1;
+            pclient->pixw = -1;
+            pclient->eof_seen = 0;
+            pclient->paused = 0;
+            if (pclient->nrows >= 0)
+               setWindowSize(pclient);
+            pclient->osize = 2048;
+            pclient->obuffer = xmalloc(pclient->osize);
+            pclient->olen = 0;
+            pclient->sent_count = 0;
+            pclient->confirmed_count = 0;
+#if USE_ADOPT_FILE
+            pclient->pty_wsi = outwsi;
             // lws_change_pollfd ??
             // FIXME do on end: tty_client_destroy(client);
 #else
@@ -230,7 +270,7 @@ run_command
                     pthread_mutex_unlock(&client->lock);
                 }
             }
-            tty_client_destroy(client);
+            tty_client_destroy(wsi, client);
 #endif
             break;
     }
@@ -254,19 +294,19 @@ void
 reportEvent(const char *name, char *data, size_t dlen,
             struct lws *wsi, struct tty_client *client)
 {
+    struct pty_client *pclient = client->pclient;
     // FIXME call reportEvent(cname, data)
     if (strcmp(name, "WS") == 0) {
-        if (sscanf(data, "%d %d %g %g", &client->nrows, &client->ncols,
-                   &client->pixh, &client->pixw) == 4) {
-          if (client->pty >= 0)
-            setWindowSize(client);
+        if (sscanf(data, "%d %d %g %g", &pclient->nrows, &pclient->ncols,
+                   &pclient->pixh, &pclient->pixw) == 4) {
+          if (pclient->pty >= 0)
+            setWindowSize(pclient);
         }
     } else if (strcmp(name, "VERSION") == 0) {
         char *version_info = xmalloc(dlen+1);
         strcpy(version_info, data);
         client->version_info = version_info;
-        if (! client->pty_started) {
-          client->pty_started = true;
+        if (pclient == NULL) {
 #if USE_ADOPT_FILE
           run_command(wsi, client);
 #else
@@ -278,17 +318,17 @@ reportEvent(const char *name, char *data, size_t dlen,
         long count;
         sscanf(data, "%ld", &count);
         //fprintf(stderr, "RECEIVED %ld sent:%ld\n", count, client->sent_count);
-        client->confirmed_count = count;
-        if (((client->sent_count - client->confirmed_count) & MASK28) < 1000
-            && client->paused) {
-          lws_rx_flow_control(client->pty_wsi, 1);
-          client->paused = 0;
+        pclient->confirmed_count = count;
+        if (((pclient->sent_count - pclient->confirmed_count) & MASK28) < 1000
+            && pclient->paused) {
+          lws_rx_flow_control(pclient->pty_wsi, 1);
+          pclient->paused = 0;
         }
 #endif
     } else if (strcmp(name, "KEY") == 0) {
         char *q = strchr(data, '"');
         struct termios termios;
-        if (tcgetattr(client->pty, &termios) < 0)
+        if (tcgetattr(pclient->pty, &termios) < 0)
           ; //return -1;
         bool isCanon = (termios.c_lflag & ICANON) != 0;
         bool isEchoing = (termios.c_lflag & ECHO) != 0;
@@ -302,8 +342,9 @@ reportEvent(const char *name, char *data, size_t dlen,
             sprintf(rbuf, "\033]%d;%.*s\007", isEchoing ? 74 : 73, dlen, data);
             size_t rlen = strlen(rbuf);
 #if USE_ADOPT_FILE
-            client->sent_count = (client->sent_count + rlen) & MASK28;
+            pclient->sent_count = (pclient->sent_count + rlen) & MASK28;
 #endif
+            // FIXME per wsclient
             if (lws_write(client->wsi, rbuf, rlen, LWS_WRITE_BINARY) < rlen)
                 lwsl_err("lws_write\n");
             if (rbuf != tbuf)
@@ -312,22 +353,22 @@ reportEvent(const char *name, char *data, size_t dlen,
           int bytesAv;
           int to_drain = 0;
 #if USE_ADOPT_FILE
-          if (client->paused) {
+          if (pclient->paused) {
             struct termios term;
             // If we see INTR, we want to drain already-buffered data.
             // But we don't want to drain data that written after the INTR.
-            if (tcgetattr(client->pty, &term) == 0
+            if (tcgetattr(pclient->pty, &term) == 0
                 && term.c_cc[VINTR] == kstr0
-                && ioctl (client->pty, FIONREAD, &to_drain) != 0)
+                && ioctl (pclient->pty, FIONREAD, &to_drain) != 0)
               to_drain = 0;
           }
 #endif
-          if (write(client->pty, kstr, klen) < klen)
+          if (write(pclient->pty, kstr, klen) < klen)
              lwsl_err("write INPUT to pty\n");
 #if USE_ADOPT_FILE
           while (to_drain > 0) {
             char buf[500];
-            ssize_t r = read(client->pty, buf,
+            ssize_t r = read(pclient->pty, buf,
                              to_drain <= sizeof(buf) ? to_drain : sizeof(buf));
             if (r <= 0)
               break;
@@ -343,7 +384,12 @@ int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len) {
     struct tty_client *client = (struct tty_client *) user;
+    struct pty_client *pclient = client == NULL ? NULL : client->pclient;
     //struct winsize *size;
+    struct per_vhost_data__domterm *v =
+                        (struct per_vhost_data__domterm *)
+                        lws_protocol_vh_priv_get(lws_get_vhost(wsi),
+                                        lws_get_protocol(wsi));
 
     switch (reason) {
         case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
@@ -352,32 +398,36 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 lwsl_notice("refuse to serve new client due to the --once option.\n");
                 return -1;
             }
-#if 0
-            if (server->check_origin && !check_host_origin(wsi)) {
-                lwsl_notice("refuse to serve new client from different origin due to the --check-origin option.\n");
-                return -1;
-            }
-#endif
             break;
 
         case LWS_CALLBACK_ESTABLISHED:
-            //fprintf(stderr, "callback_tty CALLBACK_ESTABLISHED\n");
-            client->exit = false;
             client->initialized = false;
             client->authenticated = false;
             client->wsi = wsi;
             client->buffer = NULL;
             client->version_info = NULL;
-            client->pty = -1;
-            client->nrows = -1;
-            client->ncols = -1;
-            client->pixh = -1;
-            client->pixw = -1;
+            client->pclient = NULL;
+            client->osent = 0;
+          {
+            char arg[100]; // FIXME
+            const char*connect_pid = lws_get_urlarg_by_name(wsi, "connect-pid", arg, sizeof(arg) - 1);
+            int cpid = connect_pid == NULL ? -2 : strtol(connect_pid, NULL, 10);
+            if (connect_pid != NULL && connect_pid[0] == '='
+                && (cpid = strtol(connect_pid+1, NULL, 10)) != 0) {
+              struct pty_client *pclient = v->pty_client_list;
+              for (; pclient != NULL; pclient = pclient->next_pty_client) {
+                if (pclient->pid == cpid) {
+                  client->pclient = pclient;
+                  client->next_client_wsi = pclient->first_client_wsi;
+                  pclient->first_client_wsi = wsi;
+                  break;
+                }
+              }
+            }
+          }
             lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
                                    client->hostname, sizeof(client->hostname),
                                    client->address, sizeof(client->address));
-            client->pty_started = false;
-            client->eof_seen = 0;
             // Defer start_pty so we can set up DOMTERM variable with version_info.
             // start_pty(client);
 
@@ -393,57 +443,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             lwsl_notice("client connected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
             break;
 
-#if USE_ADOPT_FILE
-        case LWS_CALLBACK_RAW_RX_FILE: {
-            long xsent;
-            client = lws_wsi_user(lws_get_parent(wsi));
-            //fprintf(stderr, "callback_tty RAW_RX_FILE sent:%ld confirmed:%ld\n",client->sent_count, client->confirmed_count );
-            xsent = (client->sent_count - client->confirmed_count) & MASK28;
-            size_t avail = client->osize - client->olen;
-            if (xsent >= 2000 || client->paused) {
-                //fprintf(stderr, "RX paused:%d\n", client->paused);
-                client->paused = 1;
-                break;
-            }
-            if (avail > 2500 - xsent)
-              avail = 2500 - xsent;
-            if (avail >= eof_len) {
-                ssize_t n = read(client->pty, client->obuffer+client->olen,
-                                 avail);
-                if (n > 0)
-                    client->olen += n;
-                else if (client->eof_seen == 0) {
-                    client->eof_seen = 1;
-                    memcpy(client->obuffer+client->olen,
-                           eof_message, eof_len);
-                    client->olen += eof_len;
-                }
-            }
-            ((struct tty_client *) lws_wsi_user(lws_get_parent(wsi)))
-              ->pty_read_available = 1;
-            lws_callback_on_writable(lws_get_parent(wsi));
-        }
-        break;
-        case LWS_CALLBACK_RAW_CLOSE_FILE: {
-            struct lws *parent_wsi = lws_get_parent(wsi);
-            //fprintf(stderr, "callback_tty RAW_CLOSE_FILE eof-seen:%d\n", client->eof_seen);
-            if (parent_wsi != NULL) {
-                client = (struct tty_client *) lws_wsi_user(parent_wsi);
-                if (client->eof_seen == 0)
-                    client->eof_seen = 1;
-                if (client->eof_seen < 2) {
-                    client->eof_seen = 2;
-                    memcpy(client->obuffer+client->olen,
-                           eof_message, eof_len);
-                    client->olen += eof_len;
-                }
-                lws_callback_on_writable(parent_wsi);
-            }
-        }
-        break;
-#endif
         case LWS_CALLBACK_SERVER_WRITEABLE:
-            //fprintf(stderr, "callback_tty CALLBACK_SERVER_WRITEABLE init:%d eof:%d\n", client->initialized, client->eof_seen);
+            //fprintf(stderr, "callback_tty CALLBACK_SERVER_WRITEABLE init:%d eof:%d\n", client->initialized, client->pclient->eof_seen);
             if (!client->initialized) {
               //if (send_initial_message(wsi) < 0)
               //    return -1;
@@ -451,18 +452,19 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 //break;
             }
 #if USE_ADOPT_FILE
-            client->sent_count = (client->sent_count + client->olen) & MASK28;
-            if (client->olen > 0) {
+            if (client->osent < pclient->olen) {
               //fprintf(stderr, "send %d sent:%ld\n", client->olen, client->sent_count);
-              if (lws_write(wsi, client->obuffer, client->olen, LWS_WRITE_BINARY)
-                  < client->olen) {
+              size_t dlen = pclient->olen - client->osent;
+              if (lws_write(wsi, pclient->obuffer + client->osent,
+                            dlen, LWS_WRITE_BINARY)
+                  < dlen) {
                     lwsl_err("lws_write\n");
                     break;
                 }
-                client->olen = 0;
+              client->osent += dlen;;
             }
-            if (! client->paused)
-              lws_rx_flow_control(client->pty_wsi, 1);
+            if (! pclient->paused)
+              lws_rx_flow_control(pclient->pty_wsi, 1);
 #else
             pthread_mutex_lock(&client->lock);
             while (!STAILQ_EMPTY(&client->queue)) {
@@ -501,6 +503,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             break;
 
         case LWS_CALLBACK_RECEIVE:
+            // receive data from websockets client (browser)
             //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
             if (client->buffer == NULL) {
                 client->buffer = xmalloc(len + 1);
@@ -522,6 +525,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
               return 0;
             size_t clen = client->len;
             unsigned char *msg = (unsigned char*) client->buffer;
+            struct pty_client *pclient = client->pclient;
             // FIXME handle PENDING
             int start = 0;
             for (int i = 0; ; i++) {
@@ -531,7 +535,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (i == clen || msg[i] == 0x92
                     || (msg[i] == 0xc2 && msg[i+1] == 0x92)) {
                     int w = i - start;
-                    if (w > 0 && write(client->pty, msg+start, w) < w) {
+                    if (w > 0 && write(pclient->pty, msg+start, w) < w) {
                         lwsl_err("write INPUT to pty\n");
                         return -1;
                     }
@@ -577,7 +581,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 
         case LWS_CALLBACK_CLOSED:
             //fprintf(stderr, "callback_tty CALLBACK_CLOSED\n");
-            tty_client_destroy(client);
+            tty_client_destroy(wsi, client->pclient);
             lwsl_notice("client disconnected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
             if (server->once && server->client_count == 0) {
                 lwsl_notice("exiting due to the --once option.\n");
@@ -585,10 +589,105 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 lws_cancel_service(context);
                 exit(0);
             }
+            if (client->version_info != NULL) {
+                free(client->version_info);
+                client->version_info = NULL;
+            }
+            if (client->buffer != NULL) {
+                free(client->buffer);
+                client->buffer = NULL;
+            }
             break;
 
-        default:
+        case LWS_CALLBACK_PROTOCOL_INIT: /* per vhost */
+              lws_protocol_vh_priv_zalloc(lws_get_vhost(wsi),
+                                          lws_get_protocol(wsi),
+                                          sizeof(struct per_vhost_data__domterm));
+              break;
+
+        case LWS_CALLBACK_PROTOCOL_DESTROY: /* per vhost */
+            break;
+
+    default:
             //fprintf(stderr, "callback_tty default reason:%d\n", (int) reason);
+            break;
+    }
+
+    return 0;
+}
+
+int
+callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
+             void *user, void *in, size_t len) {
+    struct pty_client *pclient = (struct pty_client *) user;
+    switch (reason) {
+#if USE_ADOPT_FILE
+        case LWS_CALLBACK_RAW_RX_FILE: {
+            struct lws *wsclient_wsi;
+            long xsent = (pclient->sent_count - pclient->confirmed_count) & MASK28;
+            size_t avail = pclient->osize - pclient->olen;
+            if (xsent >= 2000 || pclient->paused) {
+                //fprintf(stderr, "RX paused:%d\n", client->paused);
+                pclient->paused = 1;
+                break;
+            }
+            size_t min_osent = pclient->olen;
+            FOREACH_WSCLIENT(wsclient_wsi, pclient) {
+                struct tty_client *tclient = (struct tty_client *) lws_wsi_user(wsclient_wsi);
+                if (tclient->osent <  min_osent)
+                    min_osent = tclient->osent;
+            }
+            FOREACH_WSCLIENT(wsclient_wsi, pclient) {
+                struct tty_client *tclient = (struct tty_client *) lws_wsi_user(wsclient_wsi);
+                tclient->osent -= min_osent;
+            }
+            if (min_osent < pclient->olen) {
+                memcpy(pclient->obuffer, pclient->obuffer+min_osent,
+                       pclient->olen - min_osent);
+            }
+            pclient->olen -= min_osent;
+            if (avail > 2500 - xsent)
+              avail = 2500 - xsent;
+            if (avail >= eof_len) {
+                ssize_t n = read(pclient->pty, pclient->obuffer+pclient->olen,
+                                 avail);
+                if (n <= 0) {
+                    n = 0;
+                    if (pclient->eof_seen == 0) {
+                        pclient->eof_seen = 1;
+                        memcpy(pclient->obuffer+pclient->olen,
+                               eof_message, eof_len);
+                        n = eof_len;
+                    }
+                }
+                pclient->olen += n;
+                pclient->sent_count = (pclient->sent_count + n) & MASK28;
+            }
+            FOREACH_WSCLIENT(wsclient_wsi, pclient) {
+              lws_callback_on_writable(wsclient_wsi);
+            }
+        }
+        break;
+        case LWS_CALLBACK_RAW_CLOSE_FILE: {
+            struct lws *wsclient_wsi = pclient->first_client_wsi;
+            while (wsclient_wsi != NULL) {
+                struct tty_client *tclient = (struct tty_client *) lws_wsi_user(wsclient_wsi);
+                if (pclient->eof_seen == 0)
+                    pclient->eof_seen = 1;
+                if (pclient->eof_seen < 2) {
+                    pclient->eof_seen = 2;
+                    memcpy(pclient->obuffer+pclient->olen,
+                           eof_message, eof_len);
+                    pclient->olen += eof_len;
+                }
+                lws_callback_on_writable(wsclient_wsi);
+                wsclient_wsi = tclient->next_client_wsi;
+            }
+        }
+        break;
+#endif
+    default:
+            //fprintf(stderr, "callback_pty default reason:%d\n", (int) reason);
             break;
     }
 
