@@ -30,7 +30,7 @@ The @code{ldomterm} application is similar, but uses an
 external browser.
 
 @emph{}
-@uref{images/domterm-panes-1.png,@image{images/domterm-panes-1}}
+@uref{images/domterm-panes-2.png,@image{images/domterm-panes-2}}
 
 This @uref{https://lwn.net/Articles/670062/,LWN article} provides
 background, motivation, and a summary of the functionality.
