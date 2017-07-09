@@ -333,7 +333,7 @@ sudo dnf install qt5-qtbase-devel  qt5-qtwebchannel-devel qt5-qtwebengine-devel
 Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compiler} to minimize the size of the JavaScript.
 (Current only the ``simple optimizations'' are done.
 Using the ``advanced optimizations'' would reduce the JavaScript file
-siew further, but causes some not-yet-resolved problems.)
+size further, but causes some not-yet-resolved problems.)
 
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm
