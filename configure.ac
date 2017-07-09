@@ -39,7 +39,7 @@ AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
 
 AC_ARG_WITH(closure_compiler,
-  AC_HELP_STRING("--with-closure-compiler[=@<:@=compiler.jar@:>],compress JavaScripr with Closure))
+  AC_HELP_STRING("--with-closure-compiler[=@<:@=compiler.jar@:>],compress JavaScript with Closure))
 
 AC_ARG_ENABLE(compiled-in-resources)
 
