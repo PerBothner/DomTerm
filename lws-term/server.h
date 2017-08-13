@@ -140,6 +140,9 @@ extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 
+extern int probe_domterm(void);
+extern int check_domterm(void);
+
 #if COMPILED_IN_RESOURCES
 struct resource {
   char *name;
@@ -152,3 +155,5 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
        VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)
+
+extern bool force_option;

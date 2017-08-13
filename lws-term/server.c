@@ -103,6 +103,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define FIREFOX_OPTION 1001
 #define QTDOMTERM_OPTION 1002
 #define ELECTRON_OPTION 1003
+#define FORCE_OPTION 2001
 
 // command line options
 static const struct option options[] = {
@@ -113,7 +114,8 @@ static const struct option options[] = {
         {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
         {"qtdomterm",    no_argument,       NULL, QTDOMTERM_OPTION},
         {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
-        {"electron"   ,  no_argument,       NULL, ELECTRON_OPTION},
+        {"electron",     no_argument,       NULL, ELECTRON_OPTION},
+        {"force",        no_argument,       NULL, FORCE_OPTION},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
         {"uid",          required_argument, NULL, 'u'},
@@ -420,8 +422,43 @@ get_domterm_jar_path()
 }
 
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
     int start = calc_command_start(argc, argv);
+    if (start < argc) {
+        char *cmd = argv[start];
+        if (start == 2 && strcmp(argv[1], "--force") == 0) // KLUDGE
+          force_option = 1;
+        if (strcmp(cmd, "is-domterm") == 0) {
+            // "Usage: dt-util is-domterm"
+            // "Succeeds if running on a DomTerm terminal; fails otherwise."
+            // "Typical usage: if dt-util is-domterm; then ...; fi"
+            exit(probe_domterm() > 0 ? 0 : -1);
+        } else if (strcmp(cmd, "html") == 0 || strcmp(cmd, "hcat") == 0) {
+            // "Usage: html html-data..."
+            // "Each 'html-data' must be a well-formed HTML fragment"
+            // "If there are no arguments, read html from standard input"
+            check_domterm();
+            start++;
+            if (start == argc) {
+                char buffer[1024];
+                fprintf(stdout, "\033]72;");
+                for (;;) {
+                    int r = fread(buffer, 1, sizeof(buffer), stdin);
+                    if (r <= 0 || fwrite(buffer, 1, r, stdout) <= 0)
+                      break;
+                }
+                fprintf(stdout, "\007");
+            } else {
+                while (start < argc)  {
+                    fprintf(stdout, "\033]72;%s\007", argv[start++]);
+                }
+            }
+            fflush(stderr);
+            exit(0);
+        }
+        //fprintf(stderr, "argc:%d start:%d cmd:%s\n", argc, start, cmd);
+    }
     server = tty_server_new(argc, argv, start);
 
     struct lws_context_creation_info info;
@@ -486,6 +523,9 @@ main(int argc, char **argv) {
                 break;
             case 'B':
                 browser_command = optarg == NULL ? "" : optarg;
+                break;
+            case FORCE_OPTION:
+                force_option = 1;
                 break;
             case CHROME_OPTION: {
                 char *cbin = chrome_command();
@@ -682,9 +722,13 @@ main(int argc, char **argv) {
     if (server->index != NULL) {
         lwsl_notice("  custom index.html: %s\n", server->index);
     }
-    if (port_specified >= 0 && browser_command == NULL)
-      fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
-              info.port, info.port);
+    if (port_specified >= 0 && browser_command == NULL) {
+        fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
+                info.port, info.port);
+#if 0
+        daemon(1, 0);
+#endif
+    }
 
     if (browser_command != NULL || port_specified < 0) { 
         char *url = xmalloc(100);

@@ -6,7 +6,15 @@
 #include <ctype.h>
 #include <string.h>
 #include <signal.h>
+#include <poll.h>
+#include <termios.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "whereami.h"
+
+bool force_option = 0;
 
 void *
 xmalloc(size_t size) {
@@ -112,4 +120,90 @@ get_executable_directory_length()
     if (executable_path == NULL)
         (void) get_executable_path();
     return dirname_length;
+}
+
+static int tty_in = -1;
+static int tty_out = -1;
+
+/** Are we running under DomTerm?
+ * Return 1 if true, 0 if else, -1 if error.
+ */
+int
+probe_domterm ()
+{
+    /* probe if TERM unset, or contains "xterm", or DOMTERM is set */
+    char *term_env = getenv("TERM");
+    char *domterm_env = getenv("DOMTERM");
+    if (! ((domterm_env && domterm_env[0])
+           || term_env == NULL || term_env[0] == '\0'
+           || strstr(term_env, "xterm") != NULL))
+        return 0;
+
+    if (tty_in < 0)
+        tty_in = open("/dev/tty", O_RDONLY);
+    if (tty_out < 0)
+        tty_out = open("/dev/tty", O_WRONLY);
+    int timeout = 1000;
+    struct pollfd pfd;
+    if (tty_in < 0 || tty_out < 0)
+        return -1;
+    int i = 0;
+    char msg1[] = "\033[>0c";
+    struct termios save_term;
+    struct termios tmp_term;
+    char response_prefix[] = "\033[>990;";
+    int response_prefix_length = sizeof(response_prefix)-1;
+    char buffer[50];
+    // close(tty_out);
+    pfd.fd = tty_in;
+    pfd.events = POLLIN;
+    pfd.revents = 0;
+    int result = 1;
+    tcgetattr(tty_in, &save_term);
+    tmp_term = save_term;
+    tmp_term.c_lflag &= ~(ICANON | ISIG | ECHO | ECHOCTL | ECHOE |      \
+                          ECHOK | ECHOKE | ECHONL | ECHOPRT );
+    tcsetattr(tty_in, TCSANOW, &tmp_term);
+
+    if (write(tty_out, msg1, sizeof(msg1)-1) != sizeof(msg1)-1)
+      return -1; // FIXME
+    while (i < response_prefix_length) {
+        int r = poll(&pfd, 1, timeout);
+        if (r <= 0) { /* error or timeout */
+            result = r;
+            break;
+        }
+        r = read(tty_in, buffer+i, response_prefix_length-i);
+        if (r <= 0) {
+            result = -1;
+            break;
+        }
+        i += r;
+        if (i > 0 && memcmp(buffer, response_prefix, i) != 0) {
+            result = 0;
+            break;
+        }
+    }
+    if (result >= 0) {
+        for (;;) {
+          if (read(tty_in, buffer, 1) <= 0) {
+              result = -1;
+              break;
+          }
+          if (buffer[0] == 'c')
+              break;
+        }
+    }
+    tcsetattr(tty_in, TCSANOW, &save_term);
+
+    return result;
+}
+
+void
+check_domterm ()
+{
+    if (force_option == 0 && probe_domterm() <= 0) {
+        fprintf(stderr, "domterm: don't seem to be running under DomTerm - use --force to force");
+        exit(-1);
+    }
 }
