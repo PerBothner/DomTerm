@@ -166,7 +166,7 @@ void print_help() {
                     "    --debug, -d             Set log level (0-9, default: 0)\n"
                     "    --version, -v           Print the version and exit\n"
                     "    --help, -h              Print this text and exit\n"
-                    "If no --port option is pecified, --browser is implied.\n",
+                    "If no --port option is specified, --browser is implied.\n",
             LDOMTERM_VERSION
     );
 }
