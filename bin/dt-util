@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 help_general() {
   echo "dt-util: various utilities for working in DomTerm"
