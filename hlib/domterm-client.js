@@ -1,4 +1,5 @@
 DomTerm._mask28 = 0xfffffff;
+DomTerm.usingAlax = false;
 
 // data can be a DomString or an ArrayBuffer.
 DomTerm._handleOutputData = function(dt, data) {
@@ -105,6 +106,7 @@ function connectAjax(name, prefix="", topNode=null)
         xhr.send(text);
         awaitingAjax = true;
     }
+
     function onUnload(evt) {
         var request = new XMLHttpRequest();
         request.open("POST",prefix+"close-"+sessionKey);
@@ -169,6 +171,7 @@ function loadHandler(event) {
     }
     if (location.search.search(/wait/) >= 0) {
     } else if (location.hash == "#ajax" || ! window.WebSocket) {
+        DomTerm.usingAjax = true;
         for (var i = 0; i < topNodes.length; i++)
             connectAjax("domterm", "", topNodes[i]);
     } else {
@@ -204,9 +207,11 @@ function unloadHandler(evt) {
                { callback(true); });
     }
     var request = new XMLHttpRequest();
-    request.open("GET","(WINDOW-CLOSED)");
+    // FIXME maybe use POST?
+    request.open("GET", "(WINDOW-CLOSED)");
     request.send(null);
 }
 
 window.addEventListener("load", loadHandler, false);
-window.addEventListener("beforeunload", unloadHandler, false);
+if (! usingAjax)
+    window.addEventListener("beforeunload", unloadHandler, false);
