@@ -16,6 +16,16 @@ public class WebWriter extends StringBufferedWriter
     }
 
     protected void writeRaw(String str) throws IOException {
-        terminal.insertOutput(str);
+        if (terminal != null)
+            terminal.insertOutput(str);
+    }
+
+    @Override
+    public void close() throws IOException {
+        super.close();
+        WebTerminal t = terminal;
+        terminal = null;
+        if (t != null)
+            t.close();
     }
 }

@@ -164,10 +164,12 @@ public class WebTerminalApp extends Application
             throw new RuntimeException(ex);
         }
     }
-    @Override public void stop() {
-        System.err.println("Application stop called");
-        if (exitOnStop)
+    @Override public void stop() throws Exception {
+        if (this == instance)
+            instance = null;
+        if (exitOnStop) {
             System.exit(0);
+        }
     }
 
     public static void startApp(Backend backend, String title, String[] args) {
