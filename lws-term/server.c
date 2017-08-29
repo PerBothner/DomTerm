@@ -421,10 +421,43 @@ get_domterm_jar_path()
     return get_bin_relative_path("/share/domterm/domterm.jar");
 }
 
+#if 0
+const char*
+state_to_json(int argc, char **argv, char **env)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jargv = json_object_new_array();
+    struct json_object *jenv = json_object_new_array();
+    const char *result;
+    char *cwd = getcwd(NULL, 0); /* FIXME used GNU extension */
+    int i;
+    for (i = 0; i < argc; i++)
+        json_object_array_add(jargv, json_object_new_string(argv[i]));
+    for (i = 0; ; i++) {
+        char *e = env[i++];
+        if (e == NULL)
+            break;
+        json_object_array_add(jenv, json_object_new_string(e));
+    }
+    json_object_object_add(jobj, "cwd", json_object_new_string(cwd));
+    free(cwd);
+    json_object_object_add(jobj, "argv", jargv);
+    json_object_object_add(jobj, "env", jenv);
+    //result = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PRETTY);
+    result = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
+    json_object_put(jobj);
+    return result;
+}
+#endif
+
 int
 main(int argc, char **argv)
 {
     int start = calc_command_start(argc, argv);
+#if 0
+    const char *ss = state_to_json(argc, argv, environ);
+    fprintf(stdout, "JSON: %s\n", ss);
+#endif
     if (start < argc) {
         char *cmd = argv[start];
         if (start == 2 && strcmp(argv[1], "--force") == 0) // KLUDGE
@@ -726,7 +759,12 @@ main(int argc, char **argv)
         fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
                 info.port, info.port);
 #if 0
+#if 0
         daemon(1, 0);
+#else
+        char *lock_path = NULL;
+        lws_daemonize(lock_path);
+#endif
 #endif
     }
 
