@@ -75,7 +75,6 @@ static const struct lws_extension extensions[] = {
 /*#define ZIP_MOUNT "/domterm" */
 #define ZIP_MOUNT "/" 
 
-#if USE_NEW_FOPS
 static struct lws_http_mount mount_domterm_zip = {
         NULL,                   /* linked-list pointer to next*/
         ZIP_MOUNT,              /* mountpoint in URL namespace on this vhost */
@@ -97,7 +96,6 @@ static struct lws_http_mount mount_domterm_zip = {
 
         { NULL, NULL } // sentinel
 };
-#endif
 
 #define CHROME_OPTION 1000
 #define FIREFOX_OPTION 1001
@@ -508,10 +506,8 @@ main(int argc, char **argv)
     info.options = LWS_SERVER_OPTION_VALIDATE_UTF8;
     info.extensions = extensions;
     info.timeout_secs = 5;
-#if USE_NEW_FOPS
     mount_domterm_zip.origin = get_resource_path();
     info.mounts = &mount_domterm_zip;
-#endif
 
     int debug_level = 0;
     char iface[128] = "";
@@ -736,10 +732,6 @@ main(int argc, char **argv)
         return 1;
     }
 
-#if !USE_NEW_FOPS
-    initialize_resource_map(context, get_domterm_jar_path());
-#endif
-
     lwsl_notice("TTY configuration:\n");
     if (server->credential != NULL)
         lwsl_notice("  credential: %s\n", server->credential);
@@ -796,18 +788,6 @@ main(int argc, char **argv)
 
     // libwebsockets main loop
     while (!force_exit) {
-#if ! USE_ADOPT_FILE
-        pthread_mutex_lock(&server->lock);
-        if (!LIST_EMPTY(&server->clients)) {
-            struct tty_client *client;
-            LIST_FOREACH(client, &server->clients, list) {
-                if (!STAILQ_EMPTY(&client->queue)) {
-                    lws_callback_on_writable(client->wsi);
-                }
-            }
-        }
-        pthread_mutex_unlock(&server->lock);
-#endif
         lws_service(context, 100);
     }
 

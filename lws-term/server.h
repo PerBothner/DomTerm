@@ -35,14 +35,6 @@
 
 #include "utils.h"
 
-#ifdef LWS_FOP_FLAG_COMPR_ACCEPTABLE_GZIP
-#define USE_NEW_FOPS 1
-#define USE_ADOPT_FILE 1
-#else
-#define USE_NEW_FOPS 0
-#define USE_ADOPT_FILE 0
-#endif
-
 extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
@@ -89,17 +81,7 @@ struct tty_client {
     // (Normally, this is only if an incomplete reportEvent message.)
     char *buffer;
     size_t len; // length of data in buffer
-#if USE_ADOPT_FILE
     struct lws *next_client_wsi;
-#endif
-
-#if USE_ADOPT_FILE
-#else
-    STAILQ_HEAD(pty, pty_data) queue;
-    pthread_mutex_t lock;
-
-    LIST_ENTRY(tty_client) list;
-#endif
 };
 #define MASK28 0xfffffff
 
