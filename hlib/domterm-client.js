@@ -1,5 +1,5 @@
 DomTerm._mask28 = 0xfffffff;
-DomTerm.usingAlax = false;
+DomTerm.usingAjax = false;
 
 // data can be a DomString or an ArrayBuffer.
 DomTerm._handleOutputData = function(dt, data) {
@@ -213,5 +213,5 @@ function unloadHandler(evt) {
 }
 
 window.addEventListener("load", loadHandler, false);
-if (! usingAjax)
+if (! DomTerm.usingAjax)
     window.addEventListener("beforeunload", unloadHandler, false);
