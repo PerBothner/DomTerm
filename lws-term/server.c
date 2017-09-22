@@ -41,14 +41,14 @@ default_browser_command(const char *url, int port)
 #ifdef DEFAULT_BROWSER_COMMAND
     subst_run_command(DEFAULT_BROWSER_COMMAND, url, port);
 #elif __APPLE__
-    subst_run_command("open %U > /dev/null 2>&1", url, port);
+    subst_run_command("open '%U' > /dev/null 2>&1", url, port);
 #elif defined(_WIN32) || defined(__CYGWIN__)
     ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
 #else
     // check if X server is running
     //if (system("xset -q > /dev/null 2>&1"))
     //return 1;
-    subst_run_command("xdg-open %U > /dev/null 2>&1", url, port);
+    subst_run_command("xdg-open '%U' > /dev/null 2>&1", url, port);
 #endif
 }
 
@@ -72,7 +72,6 @@ static const struct lws_extension extensions[] = {
         {NULL, NULL, NULL}
 };
 
-/*#define ZIP_MOUNT "/domterm" */
 #define ZIP_MOUNT "/" 
 
 static struct lws_http_mount mount_domterm_zip = {
@@ -343,7 +342,7 @@ chrome_command()
 char *
 chrome_app_command(char *chrome_cmd)
 {
-    char *crest = " --app=%U >/dev/null";
+    char *crest = " --app='%U' >/dev/null";
     char *buf = xmalloc(strlen(chrome_cmd)+strlen(crest)+1);
     sprintf(buf, "%s%s", chrome_cmd, crest);
     return buf;
@@ -576,7 +575,7 @@ main(int argc, char **argv)
                         "Warning: The --qtdomterm option is experimental "
                         "and not fully working!\n");
                 browser_command =
-                    get_bin_relative_path("/bin/qtdomterm --connect %U &");
+                    get_bin_relative_path("/bin/qtdomterm --connect '%U' &");
                 break;
             case 'i':
                 strncpy(iface, optarg, sizeof(iface));
