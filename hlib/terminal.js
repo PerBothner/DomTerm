@@ -97,12 +97,8 @@ if (typeof ResizeSensor == "undefined" && typeof require !== "undefined")
 /** @constructor */
 
 function DomTerm(name, topNode) {
-    // A unique name for this DomTerm instance.
-    // Should match the syntax for an XML NCName, as it is used to
-    // generate "id" attributes.  I.e. only allowed special characters
-    // are '_', '-', and '.'; the first character must be a letter or '_'.
-    // (Colons are technically allowed, but could cause problems.)
-    // Generated named have the format:  name + "__" + something.
+    // A unique name (the "session-name") for this DomTerm instance.
+    // Generated names have the format:  name + "__" + something.
     this.name = name;
 
     this._updateTimer = null;
@@ -1905,16 +1901,13 @@ DomTerm.prototype.isSpanNode = function(node) {
 DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.topNode = topNode;
     topNode.terminal = this;
-    var name = topNode.name;
-    if (name)
-        this.setSessionName(name);
+    if (this.name)
+        this.setSessionName(this.name);
 
     var helperNode = this._createPreNode();
-    helperNode.setAttribute("id", this.makeId("helper"));
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
     topNode.insertBefore(helperNode, topNode.firstChild);
     var rulerNode = document.createElement("span");
-    rulerNode.setAttribute("id", this.makeId("ruler"));
     rulerNode.setAttribute("class", "wrap");
     rulerNode.appendChild(document
                           .createTextNode("abcdefghijklmnopqrstuvwxyz"));
@@ -3729,10 +3722,7 @@ DomTerm.prototype.handleLink = function(event, href) {
 // Set the "session name" which is the "name" attribute of the toplevel div.
 // It can be used in stylesheets as well as the window title.
 DomTerm.prototype.setSessionName = function(title) {
-    this.topNode.setAttribute("name", title);
-    this.reportEvent("SESSION-NAME", JSON.stringify(title));
-    if (DomTerm.setLayoutTitle)
-        DomTerm.setLayoutTitle(this, title, this.windowName);
+    this.setWindowTitle(title, 30);
 }
 
 DomTerm.prototype.sessionName = function() {
@@ -3753,7 +3743,9 @@ DomTerm.prototype.setWindowTitle = function(title, option) {
         this.windowName = title;
         break;
     case 30:
-        this.setSessionName(title);
+        this.name = title;
+        this.topNode.setAttribute("name", title);
+        this.reportEvent("SESSION-NAME", JSON.stringify(title));
         break;
     }
     if (DomTerm.setLayoutTitle)
