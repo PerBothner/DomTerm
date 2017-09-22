@@ -1,6 +1,8 @@
 /* A glue layer for a layout mangager, initially GoldenLayout.
  */
 
+DomTerm.newSessionPid = 0;
+
 function _muxModeInfo(dt) {
     return "(MUX mode)";
 }
@@ -89,9 +91,15 @@ DomTerm.domTermToLayoutItem = function(dt) {
     return find(DomTerm.layoutManager.root);
 }
 
+DomTerm.domTermLayoutClosed = function(event) {
+    var dt = this.terminal;
+    if (dt)
+        dt.closeConnection();
+}
 DomTerm.domTermLayoutClose = function(dt) {
     var r = DomTerm.domTermToLayoutItem(dt);
     if (r) {
+        dt.reportEvent("WINDOW-CLOSED", "");
         var p = r.parent;
         if (p && p.type == 'stack'
             && p.contentItems.length == 1
@@ -170,6 +178,28 @@ DomTerm._indexInParent = function (component) {
 DomTerm._splitVertically = function(dt) {
     return dt.numColumns<4*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
 }
+
+DomTerm.layoutAddPane = function(dt, paneOp, sessionPid=0) {
+    DomTerm.newSessionPid = sessionPid;
+    switch (paneOp) {
+    case 1: // new pane
+        DomTerm.layoutAddSibling(dt);
+        break;
+    case 2: // tab
+        DomTerm.layoutAddTab(dt);
+        break;
+    case 10: // Left
+    case 11: // Right
+    case 12: // Above
+    case 13: // Below
+        DomTerm.layoutAddSibling(dt,
+                                 paneOp==12||paneOp==13,
+                                 paneOp==11||paneOp==13);
+        break;
+    }
+    DomTerm.newSessionPid = 0;
+}
+
 DomTerm.layoutAddSibling = function(
         dt,
         isColumn=DomTerm._splitVertically(dt),
@@ -247,7 +277,6 @@ DomTerm.newItemConfig = {
 };
 
 DomTerm.layoutResized = function(event) {
-    var t = this instanceof Element ? this.getAttribute("id") : this;
     var dt = this.terminal;
     if (dt && dt._rulerNode)
         dt.resizeHandler();
@@ -255,7 +284,7 @@ DomTerm.layoutResized = function(event) {
 
 DomTerm.layoutInit = function(term) {
     DomTerm.layoutManager = new GoldenLayout(DomTerm.layoutConfig);
-    DomTerm.layoutManager.registerComponent( 'domterm', function( container, componentState ){
+    DomTerm.layoutManager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
         var name;
         if (term != null) {
@@ -265,15 +294,21 @@ DomTerm.layoutInit = function(term) {
             term = null;
             container.getElement()[0].appendChild(el);
         } else {
+            var sessionPid = DomTerm.newSessionPid;
             el = document.createElement("div");
             el.setAttribute("class", "domterm");
             name = DomTerm.freshName();
             el.setAttribute("id", name);
             container.getElement()[0].appendChild(el);
-            connectHttp(el);
+            var query = sessionPid ? "connect-pid="+sessionPid : null;
+            connectHttp(el, query);
         }
         container.setTitle(name);
         container.on('resize', DomTerm.layoutResized, el);
+        //container.on('close', DomTerm.domTermLayoutClosed, el);
+        //container.on('destroy', DomTerm.domTermLayoutClosed, el);
+        container.on('beforeItemDestroyed', DomTerm.domTermLayoutClosed, el);
+        container.on('itemDestroyed', DomTerm.domTermLayoutClosed, el);
     });
 
     DomTerm.layoutManager.init();

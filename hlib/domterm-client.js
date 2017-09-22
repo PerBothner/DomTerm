@@ -31,6 +31,7 @@ function connect(name, wspath, wsprotocol, topNode=null) {
         topNode = document.getElementById(name);
     var wt = new DomTerm(name);
     var wsocket = new WebSocket(wspath, wsprotocol);
+    wt.closeConnection = function() { wsocket.close(); };
     wsocket.binaryType = "arraybuffer";
     wt.processInputCharacters = function(str) { wsocket.send(str); };
     wsocket.onmessage = function(evt) {
@@ -127,18 +128,20 @@ function connectAjax(name, prefix="", topNode=null)
     xhr.send("VERSION="+DomTerm.versionInfo);
 }
 
-function connectHttp(node) {
+function connectHttp(node, query=null) {
     var ws = location.hash.match(/ws=([^,&]*)/);
         var url;
         if (ws) {
             var path = ws[1];
             if (path == "same")
                 url = (location.protocol == "https:" ? "wss:" : "ws:")
-                + "//localhost:" + location.port + "/replsrc";
+                + "//localhost:" + location.port + "/replsrc/";
             else
                 url = "ws:"+path;
         } else
-            url = "ws://localhost:8025/websocket/replsrv";
+            url = "ws://localhost:8025/websocket/replsrv/";
+        if (query)
+            url = url + '?' + query;
         // A kludge - the libwebsockets server requires a protocol "domterm",
         // but the Java-WebServer server doesn't support that.  FIXME
         var wsprotocol = location.hash.indexOf("ws=same") >= 0
@@ -200,6 +203,7 @@ function loadHandler(event) {
 }
 
 function unloadHandler(evt) {
+    //dt.reportEvent("WINDOW-CLOSED", "");
     if (DomTerm.isElectron()) {
         const {app} = nodeRequire('electron').remote
         app.on('certificate-error',

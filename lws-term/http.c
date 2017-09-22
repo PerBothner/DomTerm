@@ -94,6 +94,8 @@ check_auth(struct lws *wsi) {
     return -1;
 }
 
+/** Callack for servering http - generally static files. */
+
 int
 callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
     unsigned char buffer[4096 + LWS_PRE], *p, *end;
@@ -128,12 +130,14 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 
             p = buffer + LWS_PRE;
             end = p + sizeof(buffer) - LWS_PRE;
+#if 0
             if (server->client_can_close
                 && strncmp((const char *) in, "/(WINDOW-CLOSED)", 16) == 0) {
                 force_exit = true;
                 lws_cancel_service(context);
                 exit(0);
             }
+#endif
             if (!strncmp((const char *) in, "/auth_token.js", 14)) {
                 size_t n = server->credential != NULL ? sprintf(buf, "var tty_auth_token = '%s';", server->credential) : 0;
 

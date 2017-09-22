@@ -1,4 +1,6 @@
 #include "server.h"
+#include <sys/file.h>
+#include <sys/un.h>
 
 #if 1
 #include "version.h"
@@ -9,6 +11,10 @@
 #ifndef DEFAULT_ARGV
 #define DEFAULT_ARGV {"/bin/bash", NULL }
 #endif
+
+static char *make_socket_name(void);
+static int create_command_socket(const char *);
+static int client_connect (char *socket_path, int start_server);
 
 void
 subst_run_command (const char *browser_command, const char *url, int port)
@@ -52,16 +58,32 @@ default_browser_command(const char *url, int port)
 #endif
 }
 
+static char *browser_command = NULL;
+static int paneOp = -1;
+static int port_specified = -1;
 volatile bool force_exit = false;
 struct lws_context *context;
 struct tty_server *server;
-char *(default_argv[]) = DEFAULT_ARGV;
+struct lws_vhost *vhost;
+struct lws *focused_wsi = NULL;
+struct lws_context_creation_info info;
+struct cmd_client *cclient;
+int last_session_number = 0;
+const char *(default_argv[]) = DEFAULT_ARGV;
 
-// websocket protocols
 static const struct lws_protocols protocols[] = {
+        /* http server for (mostly) static data */
         {"http-only", callback_http, 0,                          0},
+
+        /* websockets server for communicating with browser */
         {"domterm",   callback_tty,  sizeof(struct tty_client),  0},
+
+        /* callbacks for pty I/O, one pty for each session (process) */
         {"pty",       callback_pty,  sizeof(struct pty_client),  0},
+
+        /* Unix domain socket for client to send to commands to server */
+        {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
+
         {NULL,        NULL,          0,                          0}
 };
 
@@ -101,6 +123,17 @@ static struct lws_http_mount mount_domterm_zip = {
 #define QTDOMTERM_OPTION 1002
 #define ELECTRON_OPTION 1003
 #define FORCE_OPTION 2001
+#define DAEMONIZE_OPTION 2002
+#define NO_DAEMONIZE_OPTION 2003
+#define DETACHED_OPTION 2004
+#define PANE_OPTIONS_START 2100
+/* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
+#define PANE_OPTION (PANE_OPTIONS_START+1)
+#define TAB_OPTION (PANE_OPTIONS_START+2)
+#define LEFT_OPTION (PANE_OPTIONS_START+10)
+#define RIGHT_OPTION (PANE_OPTIONS_START+11)
+#define ABOVE_OPTION (PANE_OPTIONS_START+12)
+#define BELOW_OPTION (PANE_OPTIONS_START+13)
 
 // command line options
 static const struct option options[] = {
@@ -113,6 +146,15 @@ static const struct option options[] = {
         {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
         {"electron",     no_argument,       NULL, ELECTRON_OPTION},
         {"force",        no_argument,       NULL, FORCE_OPTION},
+        {"daemonize",    no_argument,       NULL, DAEMONIZE_OPTION},
+        {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
+        {"detached",     no_argument,       NULL, DETACHED_OPTION},
+        {"pane",         no_argument,       NULL, PANE_OPTION},
+        {"tab",          no_argument,       NULL, TAB_OPTION},
+        {"left",         no_argument,       NULL, LEFT_OPTION},
+        {"right",        no_argument,       NULL, RIGHT_OPTION},
+        {"above",        no_argument,       NULL, ABOVE_OPTION},
+        {"below",        no_argument,       NULL, BELOW_OPTION},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
         {"uid",          required_argument, NULL, 'u'},
@@ -132,7 +174,7 @@ static const struct option options[] = {
         {"help",         no_argument,       NULL, 'h'},
         {NULL, 0, 0,                              0}
 };
-static const char *opt_string = "p:B::i:c:u:g:s:r:I:aSC:K:A:Rt:Ood:vh";
+static const char *opt_string = "+p:B::i:c:u:g:s:r:I:aSC:K:A:Rt:Ood:vh";
 
 void print_help() {
     fprintf(stderr, "ldomterm is a terminal emulator that uses web technologies\n\n"
@@ -168,8 +210,25 @@ void print_help() {
     );
 }
 
+char **
+copy_argv(int argc, char * const*argv)
+{
+    if (argc == 0) {
+        argv = (char * const*)default_argv;
+        argc = 0;
+        while (argv[argc])
+            argc++;
+    }
+    char **copy = xmalloc(sizeof(char *) * (argc + 1));
+    for (int i = 0; i < argc; i++) {
+        copy[i] = strdup(argv[i]);
+    }
+    copy[argc] = NULL;
+    return copy;
+}
+
 struct tty_server *
-tty_server_new(int argc, char **argv, int start) {
+tty_server_new(int argc, char **argv) {
     struct tty_server *ts;
     size_t cmd_len = 0;
 
@@ -178,37 +237,12 @@ tty_server_new(int argc, char **argv, int start) {
     memset(ts, 0, sizeof(struct tty_server));
     LIST_INIT(&ts->clients);
     ts->client_count = 0;
+    ts->session_count = 0;
     ts->reconnect = 10;
     ts->sig_code = SIGHUP;
     ts->sig_name = strdup("SIGHUP");
 
-    int cmd_argc = argc - start;
-    if (cmd_argc == 0) {
-        start = 0;
-        argv = default_argv;
-        cmd_argc = 0;
-        while (argv[cmd_argc])
-            cmd_argc++;
-    }
-    char **cmd_argv = &argv[start];
-    ts->argv = xmalloc(sizeof(char *) * (cmd_argc + 1));
-    for (int i = 0; i < cmd_argc; i++) {
-        ts->argv[i] = strdup(cmd_argv[i]);
-        cmd_len += strlen(ts->argv[i]);
-        cmd_len++; // for intermediate space or final nul
-    }
-    ts->argv[cmd_argc] = NULL;
-
-    ts->command = xmalloc(cmd_len);
-    char *ptr = ts->command;
-    for (int i = 0; i < cmd_argc; i++) {
-        ptr = stpcpy(ptr, ts->argv[i]);
-        if (i != cmd_argc - 1) {
-            *ptr++ = ' ';
-        }
-    }
-    *ptr = '\0'; // redundant (as long as cmd_argc > 0)
-
+    ts->argv = copy_argv(argc, argv);
     return ts;
 }
 
@@ -220,7 +254,6 @@ tty_server_free(struct tty_server *ts) {
         free(ts->credential);
     if (ts->index != NULL)
         free(ts->index);
-    free(ts->command);
     free(ts->prefs_json);
     int i = 0;
     do {
@@ -249,44 +282,6 @@ sig_handler(int sig) {
     force_exit = true;
     lws_cancel_service(context);
     lwsl_notice("send ^C to force exit.\n");
-}
-
-int
-calc_command_start(int argc, char **argv) {
-    // make a copy of argc and argv
-    int argc_copy = argc;
-    char **argv_copy = xmalloc(sizeof(char *) * argc);
-    for (int i = 0; i < argc; i++) {
-        argv_copy[i] = strdup(argv[i]);
-    }
-
-    // do not print error message for invalid option
-    opterr = 0;
-    while (getopt_long(argc_copy, argv_copy, opt_string, options, NULL) != -1)
-        ;
-
-    int start = argc;
-    if (optind < argc) {
-        char *command = argv_copy[optind];
-        for (int i = 0; i < argc; i++) {
-            if (strcmp(argv[i], command) == 0) {
-                start = i;
-                break;
-            }
-        }
-    }
-
-    // free argv copy
-    for (int i = 0; i < argc; i++) {
-        free(argv_copy[i]);
-    }
-    free(argv_copy);
-
-    // reset for next use
-    opterr = 1;
-    optind = 0;
-
-    return start;
 }
 
 char *
@@ -413,14 +408,64 @@ electron_command(int quiet)
 }
 
 char *
+check_browser_specifier(const char *specifier)
+{
+    if (specifier == NULL || specifier[0] != '-')
+        return NULL;
+    if (strcmp(specifier, "--electron") == 0)
+      return electron_command(0);
+    if (strcmp(specifier, "--left") == 0 ||
+        strcmp(specifier, "--right") == 0 ||
+        strcmp(specifier, "--above") == 0 ||
+        strcmp(specifier, "--below") == 0 ||
+        strcmp(specifier, "--tab") == 0 ||
+        strcmp(specifier, "--pane") == 0 ||
+        strcmp(specifier, "--detached") == 0)
+      return strdup(specifier);
+    if (strcmp(specifier, "--browser") == 0)
+      return strdup(""); // later
+    if (strncmp(specifier, "--browser=", 10) == 0)
+      return strdup(specifier+10);
+    return NULL;
+}
+
+void
+do_run_browser(const char *browser_specifier, char *url, int port)
+{
+    if (browser_specifier==NULL)
+        browser_specifier=browser_command;
+    //else if (strcmp(browser_specifier, "--detached") == 0)
+    //    return;
+        if (browser_specifier == NULL && port_specified < 0) {
+            // The default is "--electron" if available
+            browser_specifier = electron_command(1);
+            if (browser_specifier == NULL)
+                browser_specifier = "";
+        }
+        if (strcmp(browser_specifier, "firefox") == 0)
+            browser_specifier = firefox_browser_command();
+        else if (strcmp(browser_specifier, "chrome") == 0
+                 || strcmp(browser_specifier, "google-chrome") == 0) {
+            browser_specifier = chrome_command();
+            if (browser_specifier == NULL) {
+                fprintf(stderr, "neither chrome or google-chrome command found\n");
+                exit(-1);
+            }
+        }
+        if (browser_specifier[0] == '\0')
+            default_browser_command(url, port);
+        else
+            subst_run_command(browser_specifier, url, port);
+}
+
+char *
 get_domterm_jar_path()
 {
     return get_bin_relative_path("/share/domterm/domterm.jar");
 }
 
-#if 0
 const char*
-state_to_json(int argc, char **argv, char **env)
+state_to_json(int argc, char *const*argv, char *const *env)
 {
     struct json_object *jobj = json_object_new_object();
     struct json_object *jargv = json_object_new_array();
@@ -431,7 +476,7 @@ state_to_json(int argc, char **argv, char **env)
     for (i = 0; i < argc; i++)
         json_object_array_add(jargv, json_object_new_string(argv[i]));
     for (i = 0; ; i++) {
-        char *e = env[i++];
+        const char *e = env[i];
         if (e == NULL)
             break;
         json_object_array_add(jenv, json_object_new_string(e));
@@ -445,55 +490,11 @@ state_to_json(int argc, char **argv, char **env)
     json_object_put(jobj);
     return result;
 }
-#endif
 
 int
 main(int argc, char **argv)
 {
-    int start = calc_command_start(argc, argv);
-#if 0
-    const char *ss = state_to_json(argc, argv, environ);
-    fprintf(stdout, "JSON: %s\n", ss);
-#endif
-    if (start < argc) {
-        char *cmd = argv[start];
-        if (start == 2 && strcmp(argv[1], "--force") == 0) // KLUDGE
-          force_option = 1;
-        if (strcmp(cmd, "is-domterm") == 0) {
-            // "Usage: dt-util is-domterm"
-            // "Succeeds if running on a DomTerm terminal; fails otherwise."
-            // "Typical usage: if dt-util is-domterm; then ...; fi"
-            exit(probe_domterm() > 0 ? 0 : -1);
-        } else if (strcmp(cmd, "html") == 0 || strcmp(cmd, "hcat") == 0) {
-            // "Usage: html html-data..."
-            // "Each 'html-data' must be a well-formed HTML fragment"
-            // "If there are no arguments, read html from standard input"
-            check_domterm();
-            start++;
-            if (start == argc) {
-                char buffer[1024];
-                fprintf(stdout, "\033]72;");
-                for (;;) {
-                    int r = fread(buffer, 1, sizeof(buffer), stdin);
-                    if (r <= 0 || fwrite(buffer, 1, r, stdout) <= 0)
-                      break;
-                }
-                fprintf(stdout, "\007");
-            } else {
-                while (start < argc)  {
-                    fprintf(stdout, "\033]72;%s\007", argv[start++]);
-                }
-            }
-            fflush(stderr);
-            exit(0);
-        }
-        //fprintf(stderr, "argc:%d start:%d cmd:%s\n", argc, start, cmd);
-    }
-    server = tty_server_new(argc, argv, start);
-
-    struct lws_context_creation_info info;
     memset(&info, 0, sizeof(info));
-    int port_specified = -1;
     info.port = 0;
     info.iface = NULL;
     info.protocols = protocols;
@@ -502,13 +503,14 @@ main(int argc, char **argv)
     info.gid = -1;
     info.uid = -1;
     info.max_http_header_pool = 16;
-    info.options = LWS_SERVER_OPTION_VALIDATE_UTF8;
+    info.options = LWS_SERVER_OPTION_VALIDATE_UTF8|LWS_SERVER_OPTION_EXPLICIT_VHOSTS;
     info.extensions = extensions;
     info.timeout_secs = 5;
     mount_domterm_zip.origin = get_resource_path();
     info.mounts = &mount_domterm_zip;
 
     int debug_level = 0;
+    int do_daemonize = 1;
     char iface[128] = "";
     bool ssl = false;
     char cert_path[1024] = "";
@@ -516,11 +518,10 @@ main(int argc, char **argv)
     char ca_path[1024] = "";
 
     struct json_object *client_prefs = json_object_new_object();
-    char *browser_command = NULL;
 
     // parse command line options
     int c;
-    while ((c = getopt_long(start, argv, opt_string, options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, opt_string, options, NULL)) != -1) {
         switch (c) {
             case 'h':
                 print_help();
@@ -554,6 +555,21 @@ main(int argc, char **argv)
                 break;
             case FORCE_OPTION:
                 force_option = 1;
+                break;
+            case NO_DAEMONIZE_OPTION:
+            case DAEMONIZE_OPTION:
+                do_daemonize = (c == DAEMONIZE_OPTION);
+                break;
+            case PANE_OPTION:
+            case TAB_OPTION:
+            case LEFT_OPTION:
+            case RIGHT_OPTION:
+            case BELOW_OPTION:
+            case ABOVE_OPTION:
+                paneOp = c - PANE_OPTIONS_START;
+                /* ... fall through ... */
+            case DETACHED_OPTION:
+                browser_command = argv[optind-1];
                 break;
             case CHROME_OPTION: {
                 char *cbin = chrome_command();
@@ -649,7 +665,7 @@ main(int argc, char **argv)
                 break;
             case 't':
                 optind--;
-                for (; optind < start && *argv[optind] != '-'; optind++) {
+                for (; optind < argc && *argv[optind] != '-'; optind++) {
                     char *option = strdup(optarg);
                     char *key = strsep(&option, "=");
                     if (key == NULL) {
@@ -667,13 +683,73 @@ main(int argc, char **argv)
                 return -1;
         }
     }
+
+    const char *cmd = argv[optind];
+    if (argv[optind] != NULL) {
+        if (cmd != NULL && strcmp(cmd, "is-domterm") == 0) {
+            // "Usage: dt-util is-domterm"
+            // "Succeeds if running on a DomTerm terminal; fails otherwise."
+            // "Typical usage: if dt-util is-domterm; then ...; fi"
+            exit(probe_domterm() > 0 ? 0 : -1);
+        } else if (strcmp(cmd, "html") == 0 || strcmp(cmd, "hcat") == 0) {
+            // "Usage: html html-data..."
+            // "Each 'html-data' must be a well-formed HTML fragment"
+            // "If there are no arguments, read html from standard input"
+            check_domterm();
+            int i = optind + 1;
+            if (i == argc) {
+                char buffer[1024];
+                fprintf(stdout, "\033]72;");
+                for (;;) {
+                    int r = fread(buffer, 1, sizeof(buffer), stdin);
+                    if (r <= 0 || fwrite(buffer, 1, r, stdout) <= 0)
+                      break;
+                }
+                fprintf(stdout, "\007");
+            } else {
+                while (i < argc)  {
+                    fprintf(stdout, "\033]72;%s\007", argv[i++]);
+                }
+            }
+            fflush(stderr);
+            exit(0);
+         }
+    }
+    char *socket_path = make_socket_name();
+    int socket = client_connect(socket_path, 0);
+    if (socket >= 0) {
+      const char *state_as_json = state_to_json(argc, argv, environ);
+      size_t jlen = strlen(state_as_json);
+      if (write(socket, state_as_json, jlen) != jlen
+          || write(socket, "\f", 1) != 1)
+        fatal("bad write to socket");
+      for (;;) {
+        char buf[100];
+        int n = read(socket, buf, sizeof(buf));
+        if (n <= 0)
+          break;
+        write(2, buf, n);
+      }
+      //if (close(socket) != 0)
+      //  fatal("bad close of socket");
+      //fprintf(stderr, "done client cmd:%s\n", cmd);
+      exit(0);
+    } else if (cmd != NULL && strcmp(cmd, "list") == 0) {
+      // We don't want to start the server
+      fprintf(stderr, "(no domterm sessions or server)\n", cmd);
+      exit(0);
+    }
+
+    server = tty_server_new(argc-optind, argv+optind);
     server->prefs_json = strdup(json_object_to_json_string(client_prefs));
     json_object_put(client_prefs);
 
+#if 0
     if (server->command == NULL || strlen(server->command) == 0) {
         fprintf(stderr, "ttyd: missing start command\n");
         return -1;
     }
+#endif
 
     if (port_specified < 0)
         server->client_can_close = true;
@@ -726,15 +802,22 @@ main(int argc, char **argv)
     signal(SIGTERM, sig_handler); // kill
 
     context = lws_create_context(&info);
+    vhost = lws_create_vhost(context, &info);
     if (context == NULL) {
         lwsl_err("libwebsockets init failed\n");
         return 1;
     }
 
+    char *cname = make_socket_name();
+    lws_sock_file_fd_type csocket;
+    csocket.filefd = create_command_socket(cname);
+    struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
+    cclient = (struct cmd_client *) lws_wsi_user(cmdwsi);
+    cclient->socket = csocket.filefd;
+
     lwsl_notice("TTY configuration:\n");
     if (server->credential != NULL)
         lwsl_notice("  credential: %s\n", server->credential);
-    lwsl_notice("  start command: %s\n", server->command);
     lwsl_notice("  reconnect timeout: %ds\n", server->reconnect);
     lwsl_notice("  close signal: %s (%d)\n", server->sig_name, server->sig_code);
     if (server->check_origin)
@@ -749,40 +832,18 @@ main(int argc, char **argv)
     if (port_specified >= 0 && browser_command == NULL) {
         fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
                 info.port, info.port);
-#if 0
-#if 0
+    }
+
+    handle_command(argc-optind, argv+optind, ".", NULL, NULL, 1);
+
+    if (do_daemonize) {
+#if 1
         daemon(1, 0);
 #else
         char *lock_path = NULL;
-        lws_daemonize(lock_path);
+        int r = lws_daemonize(lock_path);
+        fprintf(stderr, "lws_daemonize returned %d\n", r);
 #endif
-#endif
-    }
-
-    if (browser_command != NULL || port_specified < 0) { 
-        char *url = xmalloc(100);
-        int port = info.port;
-        sprintf(url, "http://localhost:%d/#ws=same", port);
-        if (browser_command == NULL && port_specified < 0) {
-            // The default is "--electron" if available
-            browser_command = electron_command(1);
-            if (browser_command == NULL)
-                browser_command = "";
-        }
-        if (strcmp(browser_command, "firefox") == 0)
-            browser_command = firefox_browser_command();
-        else if (strcmp(browser_command, "chrome") == 0
-                 || strcmp(browser_command, "google-chrome") == 0) {
-            browser_command = chrome_command();
-            if (browser_command == NULL) {
-                fprintf(stderr, "neither chrome or google-chrome command found\n");
-                exit(-1);
-            }
-        }
-        if (browser_command[0] == '\0')
-            default_browser_command(url, port);
-        else
-            subst_run_command(browser_command, url, port);
     }
 
     // libwebsockets main loop
@@ -796,4 +857,169 @@ main(int argc, char **argv)
     tty_server_free(server);
 
     return 0;
+}
+
+void
+setblocking(int fd, int state)
+{
+        int mode;
+
+        if ((mode = fcntl(fd, F_GETFL)) != -1) {
+                if (!state)
+                        mode |= O_NONBLOCK;
+                else
+                        mode &= ~O_NONBLOCK;
+                fcntl(fd, F_SETFL, mode);
+        }
+}
+
+static char *
+make_socket_name()
+{
+    uid_t uid = getuid();
+    char buf[100];
+    char *r;
+    sprintf(buf, "/tmp/domterm-%u.socket", uid);
+    r = xmalloc(strlen(buf)+1);
+    strcpy(r, buf);
+    return r;
+}
+
+static const char *server_socket_path = NULL;
+static void server_atexit_handler(void) {
+    if (server_socket_path == NULL)
+       return;
+    unlink(server_socket_path);
+    server_socket_path = NULL;
+}
+
+/* Create command server socket. */
+static int
+create_command_socket(const char *socket_path)
+{
+    struct sockaddr_un      sa;
+    size_t                  size;
+    mode_t                  mask;
+    int                     fd;
+
+    memset(&sa, 0, sizeof sa);
+    sa.sun_family = AF_UNIX;
+    if (strlen(socket_path) >= sizeof sa.sun_path) {
+        errno = ENAMETOOLONG;
+        return (-1);
+    }
+    strcpy(sa.sun_path, socket_path);
+    unlink(sa.sun_path);
+
+    if ((fd = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0)) == -1)
+        return (-1);
+
+    mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
+    if (bind(fd, (struct sockaddr *) &sa, sizeof(sa)) == -1)
+        return (-1);
+    umask(mask);
+    server_socket_path = socket_path;
+    atexit(server_atexit_handler);
+
+    if (listen(fd, 128) == -1)
+        return (-1);
+    setblocking(fd, 0);
+
+    return (fd);
+}
+
+void
+error(const char *format, ...)
+{
+    va_list args;
+    va_start (args, format);
+    vfprintf (stderr, format, args);
+    va_end (args);
+    fprintf (stderr, "\n");
+}
+
+void
+fatal(const char *format, ...)
+{
+    va_list args;
+    va_start (args, format);
+    vfprintf (stderr, format, args);
+    va_end (args);
+    fprintf (stderr, "\n");
+    exit(-1);
+}
+
+/*
+ * Get server create lock. If already held then server start is happening in
+ * another client, so block until the lock is released and return -2 to
+ * retry. Return -1 on failure to continue and start the server anyway.
+ */
+static int
+client_get_lock(char *lockfile)
+{
+        int lockfd;
+
+        lwsl_notice("lock file is %s\n", lockfile);
+
+        if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
+                lwsl_notice("open failed: %s\n", strerror(errno));
+                return (-1);
+        }
+
+        if (flock(lockfd, LOCK_EX|LOCK_NB) == -1) {
+                lwsl_notice("flock failed: %s\n", strerror(errno));
+                if (errno != EAGAIN)
+                        return (lockfd);
+                while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
+                        /* nothing */;
+                close(lockfd);
+                return (-2);
+        }
+        lwsl_notice("flock succeeded\n");
+
+        return (lockfd);
+}
+
+static int
+client_connect (char *socket_path, int start_server)
+{
+    struct sockaddr_un      sa;
+    int lockfd = -1, locked = 0;
+    char                   *lockfile = NULL;
+    int fd;
+
+    memset(&sa, 0, sizeof sa);
+    sa.sun_family = AF_UNIX;
+    if (strlen(socket_path) >= sizeof sa.sun_path) {
+        errno = ENAMETOOLONG;
+        fatal("socket name '%s' too long", socket_path);
+    }
+    strcpy(sa.sun_path, socket_path);
+
+ retry:
+    fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0)
+      fatal("cannot create client socket");
+    if (connect(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
+        //lwsl_notice("connect failed: %s\n", strerror(errno));
+        if (errno != ECONNREFUSED && errno != ENOENT)
+            goto failed;
+        if (!start_server)
+            goto failed;
+        close(fd);
+    }
+    if (locked && lockfd >= 0) {
+        free(lockfile);
+        close(lockfd);
+    }
+    //setblocking(fd, 0);
+    return (fd);
+
+ failed:
+    if (locked) {
+        free(lockfile);
+        close(lockfd);
+    }
+    close(fd);
+    return (-1);
 }

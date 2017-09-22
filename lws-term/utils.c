@@ -7,6 +7,7 @@
 #include <string.h>
 #include <signal.h>
 #include <poll.h>
+#include <pwd.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -203,7 +204,28 @@ void
 check_domterm ()
 {
     if (force_option == 0 && probe_domterm() <= 0) {
-        fprintf(stderr, "domterm: don't seem to be running under DomTerm - use --force to force");
+        fprintf(stderr, "domterm: don't seem to be running under DomTerm - use --force to force\n");
         exit(-1);
     }
+}
+
+const char *
+find_home(void)
+{
+        struct passwd           *pw;
+        static const char       *home;
+
+        if (home != NULL)
+                return (home);
+
+        home = getenv("HOME");
+        if (home == NULL || *home == '\0') {
+                pw = getpwuid(getuid());
+                if (pw != NULL)
+                        home = pw->pw_dir;
+                else
+                        home = NULL;
+        }
+
+        return (home);
 }
