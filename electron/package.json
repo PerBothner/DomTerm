@@ -1,5 +1,5 @@
 {
   "name"    : "DomTerm",
-  "version" : "0.74",
+  "version" : "@DOMTERM_VERSION@",
   "main"    : "main.js"
 }
