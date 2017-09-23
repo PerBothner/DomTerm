@@ -151,8 +151,26 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     pclient->detached = 0;
 }
 
+void put_to_env_array(char **arr, int max, char* eval)
+{
+    char *eq = index(eval, '=');
+    int name_len = eq - eval;
+    for (int i = 0; ; i++) {
+        if (arr[i] == NULL) {
+            if (i == max)
+                abort();
+            arr[i] = eval;
+            arr[i+1] = NULL;
+        }
+        if (strncmp(arr[i], eval, name_len+1) == 0) {
+            arr[i] = eval;
+            break;
+        }
+    }
+}
+
 struct pty_client *
-run_command(char*const*argv, const char*cwd, int replyfd)
+run_command(char*const*argv, const char*cwd, char **env, int replyfd)
 {
     struct lws *outwsi;
     int pty;
@@ -174,17 +192,20 @@ run_command(char*const*argv, const char*cwd, int replyfd)
                     chdir("/");
 
             }
-            if (setenv("TERM", "xterm-256color", true) < 0) {
-                perror("setenv");
-                exit(1);
-            }
+            int env_size = 0;
+            while (env[env_size] != NULL) env_size++;
+            int env_max = env_size + 10;
+            char **nenv = xmalloc((env_max + 1)*sizeof(const char*));
+            memcpy(nenv, env, (env_size + 1)*sizeof(const char*));
+
+            put_to_env_array(nenv, env_max, "TERM=xterm-256color");
+            put_to_env_array(nenv, env_max, "COLORTERM=truecolor");
             char* dinit = "DOMTERM=";
 #ifdef LWS_LIBRARY_VERSION
 #define SHOW_LWS_LIBRARY_VERSION "=" LWS_LIBRARY_VERSION
 #else
 #define SHOW_LWS_LIBRARY_VERSION ""
 #endif
-            //char **env = environ; /* by default */
             const char *lstr = ";libwebsockets" SHOW_LWS_LIBRARY_VERSION;
             char* pinit = ";tty=";
             char* ttyName = ttyname(0);
@@ -222,8 +243,7 @@ run_command(char*const*argv, const char*cwd, int replyfd)
                 offset += strlen(pidbuf);
             }
             ebuf[mlen] = '\0';
-            putenv(ebuf);
-            putenv("COLORTERM=truecolor");
+            put_to_env_array(nenv, env_max, ebuf);
 #if ENABLE_LD_PRELOAD
             int normal_user = getuid() == geteuid();
             char* domterm_home = get_bin_relative_path("");
@@ -235,11 +255,10 @@ run_command(char*const*argv, const char*cwd, int replyfd)
 #endif
                 char *buf = malloc(strlen(domterm_home)+strlen(fmt)-1);
                 sprintf(buf, fmt, domterm_home);
-                putenv(buf);
+                put_to_env_array(nenv, env_max, buf);
             }
 #endif
-            /*if (execvpe(argv[0], argv, env) < 0) {*/
-            if (execvp(argv[0], argv) < 0) {
+            if (execvpe(argv[0], argv, nenv) < 0) {
                 perror("execvp");
                 exit(1);
             }
@@ -330,7 +349,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->version_info = version_info;
         if (pclient == NULL) {
           // FIXME should use same argv as invoking window
-          pclient = run_command(server->argv, ".", -1);
+          pclient = run_command(server->argv, ".", environ, -1);
         }
         if (client->pclient == NULL)
             link_command(wsi, client, pclient);
@@ -649,8 +668,9 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
 
 void
 handle_command(int argc, char**argv, const char*cwd,
-               const char **env, struct lws *wsi, int replyfd)
+               char **env, struct lws *wsi, int replyfd)
 {
+    // FIXME should process options more generally
     char *browser_specifier = check_browser_specifier(argv[0]);
     int iarg = browser_specifier == NULL ? 0 : 1;
 
@@ -666,7 +686,7 @@ handle_command(int argc, char**argv, const char*cwd,
       }
       int skip = argc == 0 || is_executable ? 0 : 1;
       char**args = copy_argv(argc-skip, (char**)(argv+skip));
-      struct pty_client *pclient = run_command(args, cwd, replyfd);
+      struct pty_client *pclient = run_command(args, cwd, env, replyfd);
       display_session(browser_specifier, pclient, info.port);
     }
     else if (argc == iarg+2 && strcmp(argv[iarg], "attach") == 0){ 
@@ -729,7 +749,6 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             }
             jbuf[jpos] = 0;
             //fprintf(stderr, "from-client: %d bytes '%.*s'\n", jpos, jpos, jbuf);
-            fprintf(stderr, "from-client: %d bytes json\n", jpos);
             struct json_object *jobj
               = json_tokener_parse(jbuf);
             if (jobj == NULL)
@@ -742,7 +761,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             //   fatal("jswon no cwd");
             int argc = -1;
             const char **argv = NULL;
-            const char **env = NULL;
+            char **env = NULL;
             if (json_object_object_get_ex(jobj, "cwd", &jcwd)
                 && (cwd = strdup(json_object_get_string(jcwd))) != NULL) {
             }

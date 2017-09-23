@@ -834,7 +834,7 @@ main(int argc, char **argv)
                 info.port, info.port);
     }
 
-    handle_command(argc-optind, argv+optind, ".", NULL, NULL, 1);
+    handle_command(argc-optind, argv+optind, ".", environ, NULL, 1);
 
     if (do_daemonize) {
 #if 1

@@ -142,7 +142,7 @@ extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 extern void handle_command(int argc, char**argv, const char*cwd,
-                           const char **env, struct lws *wsi, int replyfd);
+                           char **env, struct lws *wsi, int replyfd);
 extern void do_run_browser(const char *specifier, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
 extern void fatal(const char *format, ...);
