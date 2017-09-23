@@ -3687,6 +3687,12 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 80: // set input mode
             this.setInputMode(this.getParameter(1, 112));
             break;
+        case 90:
+            if (DomTerm.layoutAddPane) {
+                DomTerm.layoutAddPane(this, this.getParameter(1, 0),
+                                      this.getParameter(2, 0));
+            }
+            break;
         case 99:
             if (this.getParameter(1, 0) == 99)
                 this.eofSeen();
