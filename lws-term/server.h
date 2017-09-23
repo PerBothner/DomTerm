@@ -36,6 +36,10 @@
 
 #include "utils.h"
 
+#define SERVER_KEY_LENGTH 20
+extern char server_key[SERVER_KEY_LENGTH];
+extern char *main_html_url;
+extern char *main_html_path;
 extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;

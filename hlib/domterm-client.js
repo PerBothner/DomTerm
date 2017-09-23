@@ -128,25 +128,28 @@ function connectAjax(name, prefix="", topNode=null)
     xhr.send("VERSION="+DomTerm.versionInfo);
 }
 
-function connectHttp(node, query=null) {
+function makeWsUrl(query=null) {
     var ws = location.hash.match(/ws=([^,&]*)/);
-        var url;
-        if (ws) {
-            var path = ws[1];
-            if (path == "same")
-                url = (location.protocol == "https:" ? "wss:" : "ws:")
-                + "//localhost:" + location.port + "/replsrc/";
-            else
-                url = "ws:"+path;
-        } else
-            url = "ws://localhost:8025/websocket/replsrv/";
-        if (query)
-            url = url + '?' + query;
-        // A kludge - the libwebsockets server requires a protocol "domterm",
-        // but the Java-WebServer server doesn't support that.  FIXME
-        var wsprotocol = location.hash.indexOf("ws=same") >= 0
-            ? "domterm" : [];
-    connect(null, url, wsprotocol, node);
+    var url;
+    if (ws) {
+        var path = ws[1];
+        if (path == "same")
+            url = (location.protocol == "https:" ? "wss:" : "ws:")
+            + "//"+location.hostname+":" + location.port + "/replsrc";
+        else
+            url = "ws:"+path;
+    } else
+        url = "ws://localhost:"+DomTerm.server_port+"/replsrc";
+    if (query)
+        url = url + '?' + query;
+    if (DomTerm.server_key)
+        url = url + (query ? '&' : '?') + 'server-key=' + DomTerm.server_key;
+    return url;
+}
+
+function connectHttp(node, query=null) {
+    var url = makeWsUrl(query);
+    connect(null, url, "domterm", node);
 }
 
 function _activeContentItemHandler(item) {
@@ -178,25 +181,9 @@ function loadHandler(event) {
         for (var i = 0; i < topNodes.length; i++)
             connectAjax("domterm", "", topNodes[i]);
     } else {
-        var ws = location.hash.match(/ws=([^,&]*)/);
-        var url;
-        if (ws) {
-            var path = ws[1];
-            if (path == "same")
-                url = (location.protocol == "https:" ? "wss:" : "ws:")
-                + "//"+location.hostname+":" + location.port + "/replsrc";
-            else
-                url = "ws:"+path;
-            url = url + "?" + location.hash.substring(1);
-        } else
-            url = "ws://localhost:8025/websocket/replsrv";
-        // A kludge - the libwebsockets server requires a protocol "domterm",
-        // but the Java-WebServer server doesn't support that.  FIXME
-        var wsprotocol = location.hash.indexOf("ws=same") >= 0
-            ? "domterm" : [];
+        var url = makeWsUrl(location.hash ? location.hash.substring(1) : null);
         for (var i = 0; i < topNodes.length; i++) {
-            //var name = topNodes[i].getAttribute("id");
-            connect(null, url, wsprotocol, topNodes[i]);
+            connect(null, url, "domterm", topNodes[i]);
         }
     }
 

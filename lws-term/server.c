@@ -12,6 +12,7 @@
 #define DEFAULT_ARGV {"/bin/bash", NULL }
 #endif
 
+static void make_html_file(int);
 static char *make_socket_name(void);
 static int create_command_socket(const char *);
 static int client_connect (char *socket_path, int start_server);
@@ -630,7 +631,7 @@ main(int argc, char **argv)
                 break;
             case 'I':
                 if (!strncmp(optarg, "~/", 2)) {
-                    const char* home = getenv("HOME");
+                    const char* home = find_home();
                     server->index = malloc(strlen(home) + strlen(optarg) - 1);
                     sprintf(server->index, "%s%s", home, optarg + 1);
                 } else {
@@ -762,6 +763,7 @@ main(int argc, char **argv)
     info.server_string = server_hdr;
 #endif
 
+#if 0
     if (strlen(iface) > 0) {
         info.iface = iface;
         if (endswith(info.iface, ".sock") || endswith(info.iface, ".socket")) {
@@ -774,6 +776,7 @@ main(int argc, char **argv)
 #endif
         }
     }
+#endif
     if (ssl) {
         info.ssl_cert_filepath = cert_path;
         info.ssl_private_key_filepath = key_path;
@@ -814,6 +817,7 @@ main(int argc, char **argv)
     struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
     cclient = (struct cmd_client *) lws_wsi_user(cmdwsi);
     cclient->socket = csocket.filefd;
+    make_html_file(info.port);
 
     lwsl_notice("TTY configuration:\n");
     if (server->credential != NULL)
@@ -873,24 +877,98 @@ setblocking(int fd, int state)
         }
 }
 
+const char *
+domterm_dir ()
+{
+    static const char *dir = NULL;
+    if (dir != NULL)
+      return dir;
+    const char *home = find_home();
+    const char *hdir = "/.domterm";
+    char *tmp = xmalloc(strlen(home)+strlen(hdir)+1);
+    sprintf(tmp, "%s%s", home, hdir);
+    dir = tmp;
+    if (mkdir(dir, S_IRWXU) != 0 && errno != EEXIST)
+        fatal("cannot create directory");
+    return dir;
+}
+
 static char *
 make_socket_name()
 {
-    uid_t uid = getuid();
+    const char *ddir = domterm_dir();
+    const char *sname = "/default.socket";
     char buf[100];
-    char *r;
-    sprintf(buf, "/tmp/domterm-%u.socket", uid);
-    r = xmalloc(strlen(buf)+1);
-    strcpy(r, buf);
+    char *r = xmalloc(strlen(ddir)+strlen(sname)+1);
+    sprintf(r, "%s%s", ddir, sname);
     return r;
+}
+
+char server_key[SERVER_KEY_LENGTH];
+
+static char html_template[] =
+    "<!DOCTYPE html>\n"
+    "<html><head>\n"
+    "<base href='http://%s:%d/'/>\n"
+    "<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>\n"
+    "<title>DomTerm</title>\n"
+    "<link type='text/css' rel='stylesheet' href='hlib/domterm-core.css'>\n"
+    "<link type='text/css' rel='stylesheet' href='hlib/domterm-standard.css'>\n"
+    "<link type='text/css' rel='stylesheet' href='hlib/goldenlayout-base.css'>\n"
+    "<link type='text/css' rel='stylesheet' href='hlib/domterm-layout.css'>\n"
+    "<link type='text/css' rel='stylesheet' href='hlib/domterm-default.css'>\n"
+    "<script type='text/javascript' src='hlib/domterm-all.js'> </script>\n"
+    "<script type='text/javascript'>\n"
+    "DomTerm.server_port = %d;\n"
+    "DomTerm.server_key = '%s';\n"
+    "if (DomTerm.isElectron()) {\n"
+    "    window.nodeRequire = require;\n"
+    "    delete window.require;\n"
+    "    delete window.exports;\n"
+    "    delete window.module;\n"
+    "}\n"
+    "</script>\n"
+    "<script type='text/javascript' src='hlib/jquery.min.js'> </script>\n"
+    "<script type='text/javascript' src='hlib/goldenlayout.js'> </script>\n"
+    "<script type='text/javascript' src='hlib/domterm-layout.js'> </script>\n"
+    "<script type='text/javascript' src='hlib/domterm-menus.js'> </script>\n"
+    "<script type='text/javascript' src='hlib/domterm-client.js'> </script>\n"
+    "</head>\n"
+    "<body></body>\n"
+  "</html>\n";
+
+char *main_html_url;
+char *main_html_path;
+
+static void
+make_html_file(int port)
+{
+    //uid_t uid = getuid();
+    const char *ddir = domterm_dir();
+    const char *fname = "/default.html";
+    const char*prefix = "file://";
+    char *buf = xmalloc(strlen(prefix)+strlen(ddir)+strlen(fname)+1);
+    sprintf(buf, "%s%s%s", prefix, ddir, fname);
+    main_html_url = buf;
+    main_html_path = buf+strlen(prefix);
+    FILE *hfile = fopen(main_html_path, "w");
+    if (server_key[0] == 0)
+        generate_random_string(server_key, SERVER_KEY_LENGTH);
+    fprintf(hfile, html_template, "localhost", port, port, server_key);
+    fclose(hfile);
 }
 
 static const char *server_socket_path = NULL;
 static void server_atexit_handler(void) {
-    if (server_socket_path == NULL)
-       return;
-    unlink(server_socket_path);
-    server_socket_path = NULL;
+    if (server_socket_path != NULL) {
+        unlink(server_socket_path);
+        server_socket_path = NULL;
+    }
+    if (main_html_url != NULL) {
+        unlink(main_html_path);
+        main_html_path = NULL;
+        main_html_url = NULL;
+    }
 }
 
 /* Create command server socket. */

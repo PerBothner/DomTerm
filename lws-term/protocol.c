@@ -455,6 +455,13 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             client->osent = 0;
           {
             char arg[100]; // FIXME
+            const char*server_key_arg = lws_get_urlarg_by_name(wsi, "server-key=", arg, sizeof(arg) - 1);
+            if (server_key_arg == NULL ||
+                memcmp(server_key_arg, server_key, SERVER_KEY_LENGTH) != 0) {
+              lwsl_notice("missing or non-matching server-key!\n");
+              lws_return_http_status(wsi, HTTP_STATUS_UNAUTHORIZED, NULL);
+              return -1;
+            }
             const char*connect_pid = lws_get_urlarg_by_name(wsi, "connect-pid=", arg, sizeof(arg) - 1);
             int cpid;
             //int cpid = connect_pid == NULL ? -2 : strtol(connect_pid, NULL, 10);
@@ -660,8 +667,7 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
         sprintf(buf, "\033[90;%d;%du", paneOp, session_pid);
         lws_write(focused_wsi, buf, strlen(buf), LWS_WRITE_BINARY);
     } else {
-        sprintf(buf, "http://localhost:%d/#ws=same&connect-pid=%d",
-                port, session_pid);
+        sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);
         do_run_browser(browser_specifier, buf, port);
     }
 }

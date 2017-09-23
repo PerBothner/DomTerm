@@ -14,6 +14,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "whereami.h"
+#include "version.h"
+#if HAVE_GETRANDOM
+extern int getrandom(void *buf, size_t buflen, unsigned int flags);
+#else
+#include <time.h>
+#endif
 
 bool force_option = 0;
 
@@ -228,4 +234,27 @@ find_home(void)
         }
 
         return (home);
+}
+
+void
+generate_random_string (char *buf, int nchars)
+{
+    static char wchars[] =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
+#if HAVE_GETRANDOM
+    getrandom(buf, nchars, 0);
+    // This "wastes" 2 bits per byte in the result from get random.
+    // We can avoid this by calling getrandom with ceiling(nchars*6 / 8),
+    // and the getting 6 bits a time from getrandom result.
+    for (int i = nchars; --i >= 0; )
+        buf[i] = wchars[buf[i] & 0x3F];
+#else
+    static int srand_called = 0;
+    if (! srand_called) {
+        srand(time(NULL));
+        srand_called = 1;
+    }
+    for (int i = nchars; --i >= 0; )
+        buf[i] = wchars[rand() & 0x3F];
+#endif
 }
