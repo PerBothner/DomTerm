@@ -1574,6 +1574,7 @@ See also @uref{https://mosh.org/,Mosh} (also @uref{https://lwn.net/Articles/7229
 * DOM structure::
 * Wire byte protocol::
 * The DomTerm JavaScript class::
+* Processes and security::
 * Architecture notes::
 @end menu
 
@@ -2277,6 +2278,78 @@ Overridable function called by the HTML sanitizer.
 @defun allowAttribute (name, value elementInfo, parents)
 Overridable function called by the HTML sanitizer.
 @end defun
+
+@node Processes and security
+@section Processes and security
+
+Normally, there is is a single per-user domterm server process.
+When you run the @code{domterm} command it will look for a
+domterm server process; if there is no running server, the
+@code{domterm} commoand wil ``daemonize'' itself and become the server.
+Otherwise, the @code{domterm} process will be a client,
+and forward the requested action to the server.
+
+Communication between a @code{domterm} client and a server
+uses Unix domain dockets.  By default, this socket will
+be bound to the file @code{.domterm/default.socket} in the user's
+home directory.  We make use of Unix file permission to
+ensure that the client and the server run on behalf of the same user.
+(This could be generalized to allow groups to co-operate, by setting
+permissions appropriately, but this has not been explored.)
+
+When you run a new session, that creates a new user process,
+under control of the domterm server.
+
+The above client-server architecture is same as used by @code{tmux}.
+
+The @dfn{front-end} is a separate program that handles the user interface.
+It is a web browser or an application that embeds a web browser, like
+Electron.  The domterm server is also a web server that
+supports both http and the WebSockets protocols.
+The domterm server forwards output from a user process
+to the associated browser and vice versa: The server uses a pty
+for the input/output of the user process, and forwards that input/output
+to the browser using a websocket connection.  Normally, the server
+creates a new browser instance, with a specified URL.  When
+the corresponding page is loaded, the browser runs JavaScript that requests
+a WebSocket connection with the server.
+
+The obvious concern is that a different malicious browser might try
+to establish a connection with the server, which would allow executing
+arbitrary commands on behalf of the user.  To thwart that, the server
+generates a 60-bit random key, and requires this server key to be present
+in any connection attempts.  This means the browser JavaScript process
+must know the server key when it creates a websocket connection.
+The server must pass the key to the browser in a secure way.
+A simple way is to pass the key along with the URL used to start
+the browser, but that would typically require the key to be
+part of the browser's command-line, which is not secure.
+(It can can viewed with tools like @code{ps}.)
+
+Instead, the server creates a new file @code{.domterm/default.html}
+in the user's home directory, and uses that as the URL:
+@example
+$ $@{BROWSER@} "file://$@{HOME@}/.domain/default.html"
+@end example
+This file (only readable by the user) includes the following:
+@example
+DomTerm.server_key = '$@{SERVER_KEY@}';
+@end example
+The @code{$@{SERVER_KEY@}} is substituted when the file is created,
+and used when the browser needs to make a websocket connection to the
+server.
+Again, we depend on Unix file permissions so only a process running
+as the correct user can read @code{default.html}, extract the
+server key, and make a valid connection back to the server.
+
+Obviously, it could be very useful to handle networked connections,
+with a browser on one machine managing a user process on another.
+While one can always run @code{ssh}, this does not support
+detaching from and re-attaching to a session smoothly.
+For now, you have to use @code{ssh} in combination with @code{tmux}
+or @code{screen}; we hope to have a smoother interface after studying
+the issue. It would presumably use forwarding using ssh,
+or @code{https}, or a combination.
 
 @node Architecture notes
 @section Architecture notes
