@@ -246,18 +246,23 @@ lm.utils.EventEmitter = function() {
 
 		args = Array.prototype.slice.call( arguments, 1 );
 
-		if( this._mSubscriptions[ sEvent ] ) {
-			for( i = 0; i < this._mSubscriptions[ sEvent ].length; i++ ) {
-				ctx = this._mSubscriptions[ sEvent ][ i ].ctx || {};
-				this._mSubscriptions[ sEvent ][ i ].fn.apply( ctx, args );
+		var subs = this._mSubscriptions[ sEvent ];
+
+		if( subs ) {
+        	subs = subs.slice();
+			for( i = 0; i < subs.length; i++ ) {
+				ctx = subs[ i ].ctx || {};
+                subs[ i ].fn.apply( ctx, args );
 			}
 		}
 
 		args.unshift( sEvent );
 
-		for( i = 0; i < this._mSubscriptions[ lm.utils.EventEmitter.ALL_EVENT ].length; i++ ) {
-			ctx = this._mSubscriptions[ lm.utils.EventEmitter.ALL_EVENT ][ i ].ctx || {};
-			this._mSubscriptions[ lm.utils.EventEmitter.ALL_EVENT ][ i ].fn.apply( ctx, args );
+		var allEventSubs = this._mSubscriptions[ lm.utils.EventEmitter.ALL_EVENT ].slice()
+
+		for( i = 0; i <allEventSubs.length; i++ ) {
+			ctx = allEventSubs[ i ].ctx || {};
+            allEventSubs[ i ].fn.apply( ctx, args );
 		}
 	};
 
@@ -355,6 +360,10 @@ lm.utils.DragListener.timeout = null;
 lm.utils.copy( lm.utils.DragListener.prototype, {
 	destroy: function() {
 		this._eElement.unbind( 'mousedown touchstart', this._fDown );
+        this._oDocument.unbind( 'mouseup touchend', this._fUp );
+        this._eElement = null;
+        this._oDocument = null;
+        this._eBody = null;
 	},
 
 	onMouseDown: function( oEvent ) {
@@ -405,6 +414,7 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 			this._eElement.removeClass( 'lm_dragging' );
 			this._oDocument.find( 'iframe' ).css( 'pointer-events', '' );
 			this._oDocument.unbind( 'mousemove touchmove', this._fMove );
+			this._oDocument.unbind( 'mouseup touchend', this._fUp );
 
 			if( this._bDragging === true ) {
 				this._bDragging = false;
@@ -1040,7 +1050,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	_$createRootItemAreas: function() {
 		var areaSize = 50;
 		var sides = { y2: 0, x2: 0, y1: 'y2', x1: 'x2' };
-		for( side in sides ) {
+		for( var side in sides ) {
 			var area = this.root._$getArea();
 			area.side = side;
 			if( sides [ side ] )
@@ -1515,6 +1525,11 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	}
 })();
 
+lm.config.itemDefaultConfig = {
+	isClosable: true,
+	reorderEnabled: true,
+	title: ''
+};
 lm.config.defaultConfig = {
 	openPopouts: [],
 	settings: {
@@ -1552,11 +1567,6 @@ lm.config.defaultConfig = {
 	}
 };
 
-lm.config.itemDefaultConfig = {
-	isClosable: true,
-	reorderEnabled: true,
-	title: ''
-};
 lm.container.ItemContainer = function( config, parent, layoutManager ) {
 	lm.utils.EventEmitter.call( this );
 
@@ -1751,16 +1761,6 @@ lm.utils.copy( lm.container.ItemContainer.prototype, {
 		}
 	}
 } );
-
-lm.errors.ConfigurationError = function( message, node ) {
-	Error.call( this );
-
-	this.name = 'Configuration Error';
-	this.message = message;
-	this.node = node;
-};
-
-lm.errors.ConfigurationError.prototype = new Error();
 
 /**
  * Pops a content item out into a new browser window.
@@ -2346,7 +2346,8 @@ lm.controls.Header = function( layoutManager, parent ) {
 	this.activeContentItem = null;
 	this.closeButton = null;
 	this.tabDropdownButton = null;
-	$( document ).mouseup( lm.utils.fnBind( this._hideAdditionalTabsDropdown, this ) );
+	this.hideAdditionalTabsDropdown = lm.utils.fnBind(this._hideAdditionalTabsDropdown, this);
+	$( document ).mouseup(this.hideAdditionalTabsDropdown);
 
 	this._lastVisibleTabIndex = -1;
 	this._tabControlOffset = this.layoutManager.config.settings.tabControlOffset;
@@ -2507,7 +2508,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		for( var i = 0; i < this.tabs.length; i++ ) {
 			this.tabs[ i ]._$destroy();
 		}
-
+		$( document ).off('mouseup', this.hideAdditionalTabsDropdown);
 		this.element.remove();
 	},
 
@@ -2824,6 +2825,7 @@ lm.controls.Tab = function( header, contentItem ) {
 	) {
 		this._dragListener = new lm.utils.DragListener( this.element );
 		this._dragListener.on( 'dragStart', this._onDragStart, this );
+		this.contentItem.on( 'destroy', this._dragListener.destroy, this._dragListener );
 	}
 
 	this._onTabClickFn = lm.utils.fnBind( this._onTabClick, this );
@@ -2833,6 +2835,7 @@ lm.controls.Tab = function( header, contentItem ) {
 
 	if( this.contentItem.config.isClosable ) {
 		this.closeElement.on( 'click touchstart', this._onCloseClickFn );
+		this.closeElement.on('mousedown', this._onCloseMousedown);
 	} else {
 		this.closeElement.remove();
 	}
@@ -2901,6 +2904,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 		this.element.off( 'mousedown touchstart', this._onTabClickFn );
 		this.closeElement.off( 'click touchstart', this._onCloseClickFn );
 		if( this._dragListener ) {
+			this.contentItem.off( 'destroy', this._dragListener.destroy, this._dragListener );
 			this._dragListener.off( 'dragStart', this._onDragStart );
 			this._dragListener = null;
 		}
@@ -2964,6 +2968,20 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	_onCloseClick: function( event ) {
 		event.stopPropagation();
 		this.header.parent.removeChild( this.contentItem );
+	},
+
+
+	/**
+	 * Callback to capture tab close button mousedown
+	 * to prevent tab from activating.
+	 *
+	 * @param (jQuery DOM event) event
+	 *
+	 * @private
+	 * @returns {void}
+	 */
+	_onCloseMousedown: function(event) {
+		event.stopPropagation();
 	}
 } );
 
@@ -3029,6 +3047,16 @@ lm.utils.copy( lm.controls.TransitionIndicator.prototype, {
 		};
 	}
 } );
+lm.errors.ConfigurationError = function( message, node ) {
+	Error.call( this );
+
+	this.name = 'Configuration Error';
+	this.message = message;
+	this.node = node;
+};
+
+lm.errors.ConfigurationError.prototype = new Error();
+
 /**
  * This is the baseclass that all content items inherit from.
  * Most methods provide a subset of what the sub-classes do.
@@ -4441,6 +4469,7 @@ lm.utils.copy( lm.items.Stack.prototype, {
 		this.header.setActiveContentItem( contentItem );
 		contentItem._$show();
 		this.emit( 'activeContentItemChanged', contentItem );
+		this.layoutManager.emit( 'activeContentItemChanged', contentItem );
 		this.emitBubblingEvent( 'stateChanged' );
 	},
 
@@ -4463,11 +4492,12 @@ lm.utils.copy( lm.items.Stack.prototype, {
 		var index = lm.utils.indexOf( contentItem, this.contentItems );
 		lm.items.AbstractContentItem.prototype.removeChild.call( this, contentItem, keepChild );
 		this.header.removeTab( contentItem );
-
-		if( this.contentItems.length > 0 ) {
-			this.setActiveContentItem( this.contentItems[ Math.max( index - 1, 0 ) ] );
-		} else {
-			this._activeContentItem = null;
+		if (this.header.activeContentItem === contentItem) {
+			if (this.contentItems.length > 0) {
+				this.setActiveContentItem(this.contentItems[Math.max(index - 1, 0)]);
+			} else {
+				this._activeContentItem = null;
+			}
 		}
 
 		this._$validateClosability();
