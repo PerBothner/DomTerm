@@ -10,6 +10,7 @@ class ProcessOptions : public QSharedData
 {
  public:
      ProcessOptions();
+     bool frontendOnly;
      QString url;
      // Cannot use QProcessEnvironment because we need to serialize it.
      QStringList environment;
@@ -22,8 +23,8 @@ class ProcessOptions : public QSharedData
 
      friend QDataStream& operator>>(QDataStream&, ProcessOptions&);
      friend QDataStream& operator<<(QDataStream&, const ProcessOptions&);
-};
 
+};
 QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state);
 QDataStream& operator>>(QDataStream& stream, ProcessOptions& state);
 

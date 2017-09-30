@@ -509,6 +509,9 @@ void TabWidget::closeOtherTabs(int index)
 
 void TabWidget::cloneTab()
 {
+    if (currentWebView()->m_processOptions->frontendOnly) {
+      currentWebView()->page()->runJavaScript("DomTerm.layoutAddTab(null);");
+    } else
     newTab(true);
 }
 void TabWidget::requestCloseTab()

@@ -102,6 +102,7 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
                 goto post_args;
             case 'h':
                 print_usage_and_exit(0);
+                break;
             case 'w':
                 processOptions->workdir = QString(optarg);
                 break;
@@ -117,8 +118,10 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
                 goto post_args;
             case '?':
                 print_usage_and_exit(1);
+                break;
             case 'v':
                 print_version_and_exit();
+                break;
         }
     }
  post_args:
@@ -145,9 +148,11 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
     const QString ws = processOptions->wsconnect;
     QString url = "qrc:/index.html";
     if (! ws.isEmpty()) {
-        if (ws.startsWith("http:") || ws.startsWith("https:"))
+        if (ws.startsWith("http:") || ws.startsWith("https:")
+            || ws.startsWith("file:")) {
             url = ws;
-        else {
+            processOptions->frontendOnly = true;
+        } else {
             url += "?ws=ws://";
             url += ws;
         }
