@@ -200,7 +200,6 @@ void BrowserMainWindow::setupMenu()
 
     m_viewMenubar = new QAction(this);
     updateMenubarActionText(true);
-    m_viewMenubar->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_M));
     connect(m_viewMenubar, SIGNAL(triggered()), this, SLOT(slotViewMenubar()));
     viewMenu->addAction(m_viewMenubar);
 
