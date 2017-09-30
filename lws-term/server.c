@@ -415,6 +415,8 @@ check_browser_specifier(const char *specifier)
         return NULL;
     if (strcmp(specifier, "--electron") == 0)
       return electron_command(0);
+    if (strcmp(specifier, "--qtwebengine") == 0)
+        return get_bin_relative_path("/bin/qtdomterm --connect '%U' &");
     if (strcmp(specifier, "--left") == 0 ||
         strcmp(specifier, "--right") == 0 ||
         strcmp(specifier, "--above") == 0 ||
