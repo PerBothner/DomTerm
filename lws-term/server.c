@@ -42,23 +42,6 @@ subst_run_command (const char *browser_command, const char *url, int port)
     system(cmd);
 }
 
-void
-default_browser_command(const char *url, int port)
-{
-#ifdef DEFAULT_BROWSER_COMMAND
-    subst_run_command(DEFAULT_BROWSER_COMMAND, url, port);
-#elif __APPLE__
-    subst_run_command("open '%U' > /dev/null 2>&1", url, port);
-#elif defined(_WIN32) || defined(__CYGWIN__)
-    ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
-#else
-    // check if X server is running
-    //if (system("xset -q > /dev/null 2>&1"))
-    //return 1;
-    subst_run_command("xdg-open '%U' > /dev/null 2>&1", url, port);
-#endif
-}
-
 static char *browser_command = NULL;
 static int paneOp = -1;
 static int port_specified = -1;
@@ -406,6 +389,36 @@ electron_command(int quiet)
     char *buf = xmalloc(strlen(epath) + strlen(app) + strlen(format));
     sprintf(buf, format, epath, app);
     return buf;
+}
+
+void
+default_browser_command(const char *url, int port)
+{
+#ifdef DEFAULT_BROWSER_COMMAND
+    subst_run_command(DEFAULT_BROWSER_COMMAND, url, port);
+#elif __APPLE__
+    subst_run_command("open '%U' > /dev/null 2>&1", url, port);
+#elif defined(_WIN32) || defined(__CYGWIN__)
+    ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
+#else
+    // check if X server is running
+    //if (system("xset -q > /dev/null 2>&1"))
+    //return 1;
+
+    // Prefer gnome-open or kde-open over xdg-open because xdg-open
+    // under Gnome defaults to using 'gio open', which does drops the "hash"
+    // part of a "file:" URL, and may also use a non-preferred browser.
+    char *path = find_in_path("gnome-open");
+    if (path == NULL)
+      path = find_in_path("kde-open");
+    if (path == NULL)
+      path = strdup("xdg-open");
+    char *pattern = xmalloc(strlen(path) + 40);
+    sprintf(pattern, "%s '%%U' > /dev/null 2>&1", path);
+    free(path);
+    subst_run_command(pattern, url, port);
+    free(pattern);
+#endif
 }
 
 char *
