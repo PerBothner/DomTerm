@@ -12,6 +12,8 @@
 #define DEFAULT_ARGV {"/bin/bash", NULL }
 #endif
 
+static struct options opts;
+
 static void make_html_file(int);
 static char *make_socket_name(void);
 static int create_command_socket(const char *);
@@ -42,8 +44,6 @@ subst_run_command (const char *browser_command, const char *url, int port)
     system(cmd);
 }
 
-static char *browser_command = NULL;
-static int paneOp = -1;
 static int port_specified = -1;
 volatile bool force_exit = false;
 struct lws_context *context;
@@ -139,6 +139,7 @@ static const struct option options[] = {
         {"right",        no_argument,       NULL, RIGHT_OPTION},
         {"above",        no_argument,       NULL, ABOVE_OPTION},
         {"below",        no_argument,       NULL, BELOW_OPTION},
+        {"socket-name",  required_argument, NULL, 'L'},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
         {"uid",          required_argument, NULL, 'u'},
@@ -158,7 +159,7 @@ static const struct option options[] = {
         {"help",         no_argument,       NULL, 'h'},
         {NULL, 0, 0,                              0}
 };
-static const char *opt_string = "+p:B::i:c:u:g:s:r:I:aSC:K:A:Rt:Ood:vh";
+static const char *opt_string = "+p:B::i:c:u:g:s:r:I:aSC:K:A:Rt:Ood:L:vh";
 
 void print_help() {
     fprintf(stderr, "ldomterm is a terminal emulator that uses web technologies\n\n"
@@ -421,35 +422,12 @@ default_browser_command(const char *url, int port)
 #endif
 }
 
-char *
-check_browser_specifier(const char *specifier)
-{
-    if (specifier == NULL || specifier[0] != '-')
-        return NULL;
-    if (strcmp(specifier, "--electron") == 0)
-      return electron_command(0);
-    if (strcmp(specifier, "--qtwebengine") == 0)
-        return get_bin_relative_path("/bin/qtdomterm --connect '%U' &");
-    if (strcmp(specifier, "--left") == 0 ||
-        strcmp(specifier, "--right") == 0 ||
-        strcmp(specifier, "--above") == 0 ||
-        strcmp(specifier, "--below") == 0 ||
-        strcmp(specifier, "--tab") == 0 ||
-        strcmp(specifier, "--pane") == 0 ||
-        strcmp(specifier, "--detached") == 0)
-      return strdup(specifier);
-    if (strcmp(specifier, "--browser") == 0)
-      return strdup(""); // later
-    if (strncmp(specifier, "--browser=", 10) == 0)
-      return strdup(specifier+10);
-    return NULL;
-}
 
 void
 do_run_browser(const char *browser_specifier, char *url, int port)
 {
     if (browser_specifier==NULL)
-        browser_specifier=browser_command;
+        browser_specifier = opts.browser_command;
     //else if (strcmp(browser_specifier, "--detached") == 0)
     //    return;
         if (browser_specifier == NULL && port_specified < 0) {
@@ -507,33 +485,19 @@ state_to_json(int argc, char *const*argv, char *const *env)
     return result;
 }
 
-int
-main(int argc, char **argv)
+int process_options(int argc, char **argv, struct options *opts)
 {
-    memset(&info, 0, sizeof(info));
-    info.port = 0;
-    info.iface = NULL;
-    info.protocols = protocols;
-    info.ssl_cert_filepath = NULL;
-    info.ssl_private_key_filepath = NULL;
-    info.gid = -1;
-    info.uid = -1;
-    info.max_http_header_pool = 16;
-    info.options = LWS_SERVER_OPTION_VALIDATE_UTF8|LWS_SERVER_OPTION_EXPLICIT_VHOSTS;
-    info.extensions = extensions;
-    info.timeout_secs = 5;
-    mount_domterm_zip.origin = get_resource_path();
-    info.mounts = &mount_domterm_zip;
-
-    int debug_level = 0;
-    int do_daemonize = 1;
-    char iface[128] = "";
-    bool ssl = false;
-    char cert_path[1024] = "";
-    char key_path[1024] = "";
-    char ca_path[1024] = "";
-
-    struct json_object *client_prefs = json_object_new_object();
+    opts->browser_command = NULL;
+    opts->paneOp = -1;
+    opts->force_option = 0;
+    opts->socket_name = NULL;
+    opts->do_daemonize = 1;
+    opts->ssl = false;
+    opts->debug_level = 0;
+    opts->iface[0] = '\0';
+    opts->cert_path[0] = '\0';
+    opts->key_path[0] = '\0';
+    opts->ca_path[0] = '\0';
 
     // parse command line options
     int c;
@@ -544,13 +508,13 @@ main(int argc, char **argv)
                 return 0;
             case 'v':
                 printf("ldomterm version %s\n", LDOMTERM_VERSION);
-                printf("Copyright %s Per Bothner and Shuanglei Tao\n", LDOMTERM_YEAR);
+                printf("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
                 return 0;
             case 'd':
-                debug_level = atoi(optarg);
+                opts->debug_level = atoi(optarg);
                 break;
             case 'R':
-                server->readonly = true;
+                opts->readonly = true;
                 break;
             case 'O':
                 server->check_origin = true;
@@ -567,14 +531,14 @@ main(int argc, char **argv)
                 }
                 break;
             case 'B':
-                browser_command = optarg == NULL ? "" : optarg;
+                opts->browser_command = optarg == NULL ? "" : optarg;
                 break;
             case FORCE_OPTION:
-                force_option = 1;
+                opts->force_option = 1;
                 break;
             case NO_DAEMONIZE_OPTION:
             case DAEMONIZE_OPTION:
-                do_daemonize = (c == DAEMONIZE_OPTION);
+                opts->do_daemonize = (c == DAEMONIZE_OPTION);
                 break;
             case PANE_OPTION:
             case TAB_OPTION:
@@ -582,10 +546,10 @@ main(int argc, char **argv)
             case RIGHT_OPTION:
             case BELOW_OPTION:
             case ABOVE_OPTION:
-                paneOp = c - PANE_OPTIONS_START;
+                opts->paneOp = c - PANE_OPTIONS_START;
                 /* ... fall through ... */
             case DETACHED_OPTION:
-                browser_command = argv[optind-1];
+                opts->browser_command = argv[optind-1];
                 break;
             case CHROME_OPTION: {
                 char *cbin = chrome_command();
@@ -593,25 +557,28 @@ main(int argc, char **argv)
                     fprintf(stderr, "neither chrome or google-chrome command found\n");
                     exit(-1);
                 }
-                browser_command = chrome_app_command(cbin);
+                opts->browser_command = chrome_app_command(cbin);
                 break;
             }
             case FIREFOX_OPTION:
-                browser_command = firefox_command();
+                opts->browser_command = firefox_command();
                 break;
             case ELECTRON_OPTION:
-                browser_command = electron_command(0);
+                opts->browser_command = electron_command(0);
                 break;
             case QTDOMTERM_OPTION:
                 fprintf(stderr,
                         "Warning: The --qtdomterm option is experimental "
                         "and not fully working!\n");
-                browser_command =
+                opts->browser_command =
                     get_bin_relative_path("/bin/qtdomterm --connect '%U' &");
                 break;
+            case 'L':
+                opts->socket_name = strdup(optarg);
+                break;
             case 'i':
-                strncpy(iface, optarg, sizeof(iface));
-                iface[sizeof(iface) - 1] = '\0';
+                strncpy(opts->iface, optarg, sizeof(opts->iface));
+                opts->iface[sizeof(opts->iface) - 1] = '\0';
                 break;
             case 'c':
                 if (strchr(optarg, ':') == NULL) {
@@ -663,22 +630,23 @@ main(int argc, char **argv)
                 }
                 break;
             case 'S':
-                ssl = true;
+                opts->ssl = true;
                 break;
             case 'C':
-                strncpy(cert_path, optarg, sizeof(cert_path) - 1);
-                cert_path[sizeof(cert_path) - 1] = '\0';
+                strncpy(opts->cert_path, optarg, sizeof(opts->cert_path) - 1);
+                opts->cert_path[sizeof(opts->cert_path) - 1] = '\0';
                 break;
             case 'K':
-                strncpy(key_path, optarg, sizeof(key_path) - 1);
-                key_path[sizeof(key_path) - 1] = '\0';
+                strncpy(opts->key_path, optarg, sizeof(opts->key_path) - 1);
+                opts->key_path[sizeof(opts->key_path) - 1] = '\0';
                 break;
             case 'A':
-                strncpy(ca_path, optarg, sizeof(ca_path) - 1);
-                ca_path[sizeof(ca_path) - 1] = '\0';
+                strncpy(opts->ca_path, optarg, sizeof(opts->ca_path) - 1);
+                opts->ca_path[sizeof(opts->ca_path) - 1] = '\0';
                 break;
             case '?':
                 break;
+#if 0
             case 't':
                 optind--;
                 for (; optind < argc && *argv[optind] != '-'; optind++) {
@@ -694,11 +662,37 @@ main(int argc, char **argv)
                     json_object_object_add(client_prefs, key, obj != NULL ? obj : json_object_new_string(value));
                 }
                 break;
+#endif
             default:
                 print_help();
                 return -1;
         }
     }
+    return 0;
+}
+
+int
+main(int argc, char **argv)
+{
+    memset(&info, 0, sizeof(info));
+    info.port = 0;
+    info.iface = NULL;
+    info.protocols = protocols;
+    info.ssl_cert_filepath = NULL;
+    info.ssl_private_key_filepath = NULL;
+    info.gid = -1;
+    info.uid = -1;
+    info.max_http_header_pool = 16;
+    info.options = LWS_SERVER_OPTION_VALIDATE_UTF8|LWS_SERVER_OPTION_EXPLICIT_VHOSTS;
+    info.extensions = extensions;
+    info.timeout_secs = 5;
+    mount_domterm_zip.origin = get_resource_path();
+    info.mounts = &mount_domterm_zip;
+
+    struct json_object *client_prefs = json_object_new_object();
+
+    if (process_options(argc, argv, &opts) != 0)
+        return -1;
 
     const char *cmd = argv[optind];
     if (argv[optind] != NULL) {
@@ -757,6 +751,7 @@ main(int argc, char **argv)
     }
 
     server = tty_server_new(argc-optind, argv+optind);
+    server->options = opts;
     server->prefs_json = strdup(json_object_to_json_string(client_prefs));
     json_object_put(client_prefs);
 
@@ -770,7 +765,7 @@ main(int argc, char **argv)
     if (port_specified < 0)
         server->client_can_close = true;
 
-    lws_set_log_level(debug_level, NULL);
+    lws_set_log_level(opts.debug_level, NULL);
 
 #if LWS_LIBRARY_VERSION_MAJOR >= 2
     char server_hdr[128] = "";
@@ -792,10 +787,10 @@ main(int argc, char **argv)
         }
     }
 #endif
-    if (ssl) {
-        info.ssl_cert_filepath = cert_path;
-        info.ssl_private_key_filepath = key_path;
-        info.ssl_ca_filepath = ca_path;
+    if (opts.ssl) {
+        info.ssl_cert_filepath = opts.cert_path;
+        info.ssl_private_key_filepath = opts.key_path;
+        info.ssl_ca_filepath = opts.ca_path;
         info.ssl_cipher_list = "ECDHE-ECDSA-AES256-GCM-SHA384:"
                 "ECDHE-RSA-AES256-GCM-SHA384:"
                 "DHE-RSA-AES256-GCM-SHA384:"
@@ -841,21 +836,21 @@ main(int argc, char **argv)
     lwsl_notice("  close signal: %s (%d)\n", server->sig_name, server->sig_code);
     if (server->check_origin)
         lwsl_notice("  check origin: true\n");
-    if (server->readonly)
+    if (server->options.readonly)
         lwsl_notice("  readonly: true\n");
     if (server->once)
         lwsl_notice("  once: true\n");
     if (server->index != NULL) {
         lwsl_notice("  custom index.html: %s\n", server->index);
     }
-    if (port_specified >= 0 && browser_command == NULL) {
+    if (port_specified >= 0 && server->options.browser_command == NULL) {
         fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
                 info.port, info.port);
     }
 
-    handle_command(argc-optind, argv+optind, ".", environ, NULL, 1);
+    handle_command(argc-optind, argv+optind, ".", environ, NULL, 1, &opts);
 
-    if (do_daemonize) {
+    if (opts.do_daemonize) {
 #if 1
         daemon(1, 0);
 #else
@@ -912,10 +907,33 @@ static char *
 make_socket_name()
 {
     const char *ddir = domterm_dir();
-    const char *sname = "/default.socket";
-    char buf[100];
-    char *r = xmalloc(strlen(ddir)+strlen(sname)+1);
-    sprintf(r, "%s%s", ddir, sname);
+    char *r;
+    char *socket_name = opts.socket_name;
+    if (socket_name != NULL && socket_name[0] != 0) {
+        int dot = -1;
+        for (int i = 0; ; i++) {
+            char ch = socket_name[i];
+            if (ch == 0)
+              break;
+            if (ch == '.')
+              dot = i;
+            if (ch == '/')
+              dot = -1;
+        }
+        char *ext = dot < 0 ? ".socket" : "";
+        int len = strlen(socket_name) + strlen(ext);
+        if (socket_name[0] != '/') {
+            r = xmalloc(len + strlen(ddir) + 2);
+            sprintf(r, "%s/%s%s", ddir, socket_name, ext);
+        } else {
+            r = xmalloc(len + 1);
+            sprintf(r, "s%s", socket_name, ext);
+        }
+    } else {
+        const char *sname = "/default.socket";
+        r = xmalloc(strlen(ddir)+strlen(sname)+1);
+        sprintf(r, "%s%s", ddir, sname);
+    }
     return r;
 }
 
@@ -959,11 +977,12 @@ static void
 make_html_file(int port)
 {
     //uid_t uid = getuid();
-    const char *ddir = domterm_dir();
-    const char *fname = "/default.html";
+    char *sname = make_socket_name();
+    char *sext = strrchr(sname, '.');
     const char*prefix = "file://";
-    char *buf = xmalloc(strlen(prefix)+strlen(ddir)+strlen(fname)+1);
-    sprintf(buf, "%s%s%s", prefix, ddir, fname);
+    const char *ext = ".html";
+    char *buf = xmalloc(strlen(prefix)+(sext-sname)+strlen(ext)+1);
+    sprintf(buf, "%s%.*s%s", prefix, sext-sname, sname, ext);
     main_html_url = buf;
     main_html_path = buf+strlen(prefix);
     FILE *hfile = fopen(main_html_path, "w");

@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
 
+#include "server.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -20,8 +22,6 @@ extern int getrandom(void *buf, size_t buflen, unsigned int flags);
 #else
 #include <time.h>
 #endif
-
-bool force_option = 0;
 
 void *
 xmalloc(size_t size) {
@@ -207,9 +207,9 @@ probe_domterm ()
 }
 
 void
-check_domterm ()
+check_domterm(void)
 {
-    if (force_option == 0 && probe_domterm() <= 0) {
+    if (server->options.force_option == 0 && probe_domterm() <= 0) {
         fprintf(stderr, "domterm: don't seem to be running under DomTerm - use --force to force\n");
         exit(-1);
     }

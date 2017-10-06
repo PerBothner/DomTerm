@@ -508,6 +508,10 @@ and create a new window to the left/right/above/below the old one.
 Equivalent to either @code{--right} or @code{--below} depending
 on the current window's width/height ratio.
 @item @code{--tab}
+Create new tab.
+
+@item @code{--detached}
+When creating a new session, it is detached, without a window.
 @end table
 
 @subheading Miscellaneous commands
@@ -555,6 +559,22 @@ List information about running sessions.
 @subheading Miscellaneous options
 
 @table @asis
+@item @code{-L} @var{socket-name}
+@itemx @code{--socket-name=}@var{socket-name}
+DomTerm uses a Unix Domain socket to communicate between
+the command-line and the server.
+By default the socket is the file @code{$HOME/.domain/default.socket},
+but this option overrides that.
+Using different socket names mean you get different servers
+that do not know about each other.
+If @var{socket-name} starts with @samp{/} then the filename is absolute;
+otherwise @code{$HOME/.domain/} is prepended.
+If there is no file extension, @code{.socket} is appended.
+
+DomTerm also creates a temporary @code{html} that has the
+same name as the socket, but with a @code{.html} extension.
+That is by default it is @code{$HOME/.domain/default.html},
+
 @item @code{--no-deaemonize}
 When a domterm backend (server) is created, it normally turns itself
 into a a @uref{https://en.wikipedia.org/wiki/Daemon_(computing),daemon}.

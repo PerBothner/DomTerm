@@ -533,7 +533,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 return 0;
             }
 
-            if (server->readonly)
+            if (server->options.readonly)
               return 0;
             size_t clen = client->len;
             unsigned char *msg = (unsigned char*) client->buffer;
@@ -673,35 +673,29 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
 }
 
 void
-handle_command(int argc, char**argv, const char*cwd,
-               char **env, struct lws *wsi, int replyfd)
+handle_command(int argc, char** argv, const char*cwd,
+               char **env, struct lws *wsi, int replyfd, struct options *opts)
 {
-    // FIXME should process options more generally
-    char *browser_specifier = check_browser_specifier(argv[0]);
-    int iarg = browser_specifier == NULL ? 0 : 1;
+    char *browser_specifier = opts->browser_command;
 
-    int is_executable = (iarg < argc && argv[iarg][0] != '-'
-                         && index(argv[iarg], '/') != NULL
-                         && access(argv[iarg], X_OK) == 0);
-    if (is_executable || argc == iarg || strcmp(argv[iarg], "new") == 0){ 
+    int is_executable = (argc > 0 && argv[0][0] != '-'
+                         && index(argv[0], '/') != NULL
+                         && access(argv[0], X_OK) == 0);
+    if (is_executable || argc == 0 || strcmp(argv[0], "new") == 0){ 
       //close(replyfd);
       //replyfd = -1;
-      if (iarg > 0) {
-        argc -= iarg;
-        argv += iarg;
-      }
       int skip = argc == 0 || is_executable ? 0 : 1;
       char**args = copy_argv(argc-skip, (char**)(argv+skip));
       struct pty_client *pclient = run_command(args, cwd, env, replyfd);
       display_session(browser_specifier, pclient, info.port);
     }
-    else if (argc == iarg+2 && strcmp(argv[iarg], "attach") == 0){ 
+    else if (argc == 2 && strcmp(argv[0], "attach") == 0){ 
       //close(replyfd);
       //replyfd = -1;
-      struct pty_client *pclient = find_session(argv[iarg+1]);
+      struct pty_client *pclient = find_session(argv[1]);
       display_session(browser_specifier, pclient, info.port);
     }
-    else if (strcmp(argv[iarg], "list") == 0) {
+    else if (strcmp(argv[0], "list") == 0) {
         FILE *out = fdopen(replyfd, "w");
         struct pty_client *pclient = pty_client_list;
         for (; pclient != NULL; pclient = pclient->next_pty_client) {
@@ -718,7 +712,7 @@ handle_command(int argc, char**argv, const char*cwd,
         fclose(out);
     } else {
         FILE *out = fdopen(replyfd, "w");
-        fprintf(out, "domterm: unknown command '%s'\n", argv[iarg]);
+        fprintf(out, "domterm: unknown command '%s'\n", argv[0]);
         fclose(out);
     }
 }
@@ -766,7 +760,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             // if (!json_object_object_get_ex(jobj, "cwd", &jcwd))
             //   fatal("jswon no cwd");
             int argc = -1;
-            const char **argv = NULL;
+            char **argv = NULL;
             char **env = NULL;
             if (json_object_object_get_ex(jobj, "cwd", &jcwd)
                 && (cwd = strdup(json_object_get_string(jcwd))) != NULL) {
@@ -788,11 +782,10 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 env[nenv] = NULL;
             }
             json_object_put(jobj);
-            if (argc > 0) {
-              argv++;
-              argc--;
-            }
-            handle_command(argc, argv, cwd, env, wsi, sockfd);
+            optind = 1;
+            struct options opts;
+            process_options(argc, argv, &opts);
+            handle_command(argc-optind, argv+optind, cwd, env, wsi, sockfd, &opts);
             // FIXME: free argv, cwd, env
             close(sockfd);
             break;

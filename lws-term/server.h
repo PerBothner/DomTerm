@@ -106,6 +106,21 @@ struct cmd_client {
 };
 #define MASK28 0xfffffff
 
+struct options {
+    bool readonly;                            // whether not allow clients to write to the TTY
+    bool ssl;
+    bool force_option;
+    int do_daemonize;
+    int debug_level;
+    char *browser_command;
+    int paneOp;
+    char iface[128];
+    char cert_path[1024];
+    char key_path[1024];
+    char ca_path[1024];
+    char *socket_name;
+};
+
 struct tty_server {
     LIST_HEAD(client, tty_client) clients;    // client list
     int client_count;                         // client count FIXME remove?
@@ -117,12 +132,12 @@ struct tty_server {
     char **argv;                              // command with arguments
     int sig_code;                             // close signal
     char *sig_name;                           // human readable signal string
-    bool readonly;                            // whether not allow clients to write to the TTY
     bool check_origin;                        // whether allow websocket connection from different origin
     bool once;                                // whether accept only one client and exit on disconnection
     bool client_can_close;
     char *socket_path;                        // UNIX domain socket path
     pthread_mutex_t lock;
+    struct options options;
 };
 
 extern int
@@ -146,15 +161,18 @@ extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 extern void handle_command(int argc, char**argv, const char*cwd,
-                           char **env, struct lws *wsi, int replyfd);
+                           char **env, struct lws *wsi, int replyfd,
+                           struct options *opts);
 extern void do_run_browser(const char *specifier, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
+extern int process_options(int argc, char **argv, struct options *options;);
 extern char ** copy_argv(int argc, char * const*argv);
 
 extern int probe_domterm(void);
-extern int check_domterm(void);
+extern void check_domterm(void);
+extern void generate_random_string (char *buf, int nchars);
 
 #if COMPILED_IN_RESOURCES
 struct resource {
@@ -168,5 +186,3 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
        VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)
-
-extern bool force_option;
