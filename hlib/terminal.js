@@ -3687,6 +3687,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 80: // set input mode
             this.setInputMode(this.getParameter(1, 112));
             break;
+        case 81: // get-window-contents
+            this.reportEvent("WINDOW-CONTENTS",
+                             this._receivedCount+","
+                             + JSON.stringify(dt.getAsHTML(false, true)));
+            break;
         case 90:
             if (DomTerm.layoutAddPane) {
                 DomTerm.layoutAddPane(this, this.getParameter(1, 0),
@@ -4418,17 +4423,23 @@ var escapeMap = {
     "'": '&#039;'
 };
 
-DomTerm.prototype.getAsHTML = function(saveMode=false) {
-    var string = "<!DOCTYPE html>\n";
+DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
+    var string = bodyOnly ? "" : "<!DOCTYPE html>\n";
     var dt = this;
 
-    function  escapeText(text) {
+    function escapeText(text) {
         // Assume single quote is not used in atributes
         return text.replace(/[&<>"]/g, function(m) { return escapeMap[m]; });
     };
 
+    function formatList(list) {
+        for (let i = 0; i < list.length; i++) {
+            formatDOM(list[i]); // , namespaces
+        }
+    }
+
     function formatDOM(node) {
-        var children, i = 0;
+        var i = 0;
         switch (node.nodeType) {
         case 1: // element
             var tagName = node.tagName.toLowerCase();
@@ -4490,10 +4501,7 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
                     string += '/>';
             } else {
                 string += '>';
-                children = node.childNodes;
-                for (i = 0; i < children.length; i++) {
-                    formatDOM(children[i]); // , namespaces
-                }
+                formatList(node.childNodes);
                 if (saveMode
                     && tagName == "title"
                     && node.parentNode instanceof Element
@@ -4534,7 +4542,10 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
         };
     };
 
-    formatDOM(document.documentElement);
+    if (bodyOnly)
+        formatList(document.getElementsByTagName("body")[0]);
+    else
+        formatDOM(document.documentElement);
     return string;
 };
 
