@@ -20,8 +20,10 @@ endif
 ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) $(OPENSSL_LIBS) $(JSON_C_LIBS) -lpthread -lutil -lz
 #CLIENT_DATA_DIR = @datadir_relative@/domterm
 CLIENT_DATA_DIR = .
-LWS_RESOURCES = repl-client.html hlib/domterm-all.js hlib/domterm-client.js \
-  hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
+LWS_RESOURCES = hlib/domterm-all.js hlib/domterm-client.js \
+  hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js \
+  hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css \
+  hlib/goldenlayout-base.css hlib/domterm-layout.css
 if ENABLE_COMPILED_IN_RESOURCES
 ldomterm_SOURCES += resources.c
 ldomterm_CFLAGS += -DCOMPILED_IN_RESOURCES
