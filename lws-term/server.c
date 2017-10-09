@@ -686,7 +686,9 @@ main(int argc, char **argv)
     info.options = LWS_SERVER_OPTION_VALIDATE_UTF8|LWS_SERVER_OPTION_EXPLICIT_VHOSTS;
     info.extensions = extensions;
     info.timeout_secs = 5;
+#ifdef RESOURCE_DIR
     mount_domterm_zip.origin = get_resource_path();
+#endif
     info.mounts = &mount_domterm_zip;
 
     struct json_object *client_prefs = json_object_new_object();

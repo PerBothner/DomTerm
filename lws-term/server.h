@@ -155,7 +155,9 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void
 extern int
 callback_cmd(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
+#ifdef RESOURCE_DIR
 extern char *get_resource_path();
+#endif
 extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
