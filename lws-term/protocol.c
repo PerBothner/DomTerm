@@ -331,6 +331,21 @@ find_session(const char *specifier)
     return session;
 }
 
+/** buf must be prepended by LWS_PRE bytes. */
+void
+write_to_browser(struct lws *wsi, unsigned char *buf, size_t len)
+{
+    struct tty_client *client = (struct tty_client *) lws_wsi_user(wsi);
+#if 1
+    struct pty_client *pclient = client->pclient;
+    pclient->sent_count = (pclient->sent_count + len) & MASK28;
+#else
+    client->sent_count = (client->sent_count + len) & MASK28;
+#endif
+    if (lws_write(wsi, buf, len, LWS_WRITE_BINARY) != len)
+        lwsl_err("lws_write\n");
+}
+
 void
 reportEvent(const char *name, char *data, size_t dlen,
             struct lws *wsi, struct tty_client *client)
@@ -375,14 +390,12 @@ reportEvent(const char *name, char *data, size_t dlen,
         int klen = json_object_get_string_len(obj);
         int kstr0 = klen != 1 ? -1 : kstr[0];
         if (isCanon && kstr0 != 3 && kstr0 != 4 && kstr0 != 26) {
-            char tbuf[40];
-            char *rbuf = dlen < 30 ? tbuf : xmalloc(dlen+10);
-            sprintf(rbuf, "\033]%d;%.*s\007", isEchoing ? 74 : 73, dlen, data);
-            size_t rlen = strlen(rbuf);
-            pclient->sent_count = (pclient->sent_count + rlen) & MASK28;
-            // FIXME per wsclient
-            if (lws_write(client->wsi, rbuf, rlen, LWS_WRITE_BINARY) < rlen)
-                lwsl_err("lws_write\n");
+            char tbuf[LWS_PRE+40];
+            char *rbuf = dlen < 30 ? tbuf : xmalloc(dlen+10+LWS_PRE);
+            sprintf(rbuf+LWS_PRE, "\033]%d;%.*s\007",
+                    isEchoing ? 74 : 73, dlen, data);
+            size_t rlen = strlen(rbuf+LWS_PRE);
+            write_to_browser(client->wsi, rbuf+LWS_PRE, rlen);
             if (rbuf != tbuf)
                 free (rbuf);
         } else {
@@ -493,21 +506,25 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             if (!client->initialized) {
               //if (send_initial_message(wsi) < 0)
               //    return -1;
-                char buf[60];
-                sprintf(buf, "\033]30;DomTerm#%d\007", pclient->session_number);
-                lws_write(wsi, buf, strlen(buf), LWS_WRITE_BINARY);
+                char buf[LWS_PRE+60];
+                char *p = &buf[LWS_PRE];
+                sprintf(p, "\033]30;DomTerm#%d\007", pclient->session_number);
+                write_to_browser(wsi, p, strlen(p));
                 client->initialized = true;
                 //break;
             }
             if (client->osent < pclient->olen) {
               //fprintf(stderr, "send %d sent:%ld\n", client->olen, client->sent_count);
               size_t dlen = pclient->olen - client->osent;
-              if (lws_write(wsi, pclient->obuffer + client->osent,
+              char *tmp = xmalloc(LWS_PRE+dlen); // Inefficient kludge FIXME
+              memcpy(tmp+LWS_PRE, pclient->obuffer + client->osent, dlen);
+              if (lws_write(wsi, tmp+LWS_PRE, ///pclient->obuffer + client->osent,
                             dlen, LWS_WRITE_BINARY)
                   < dlen) {
                     lwsl_err("lws_write\n");
                     break;
                 }
+              free(tmp);
               client->osent += dlen;
             }
             if (! pclient->paused)
@@ -664,8 +681,9 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
     }
     char buf[100];
     if (paneOp > 0) {
-        sprintf(buf, "\033[90;%d;%du", paneOp, session_pid);
-        lws_write(focused_wsi, buf, strlen(buf), LWS_WRITE_BINARY);
+        char *p = buf+LWS_PRE;
+        sprintf(p, "\033[90;%d;%du", paneOp, session_pid);
+        write_to_browser(focused_wsi, p, strlen(p));
     } else {
         sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);
         do_run_browser(browser_specifier, buf, port);
