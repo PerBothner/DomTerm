@@ -187,6 +187,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 
                 if (lws_write_http(wsi, resource->data, resource->length) < 0)
                     return 1;
+                lws_http_transaction_completed(wsi);
+                break;
 
             }
             lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
