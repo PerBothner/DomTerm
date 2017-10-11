@@ -72,12 +72,6 @@ struct pty_client {
     int paused;
     struct lws *first_client_wsi;
     struct lws **last_client_wsi_ptr;
-    char *obuffer; // output from child process
-    size_t olen; // used length of obuffer
-    size_t osize; // allocated size of obuffer
-    // both sent_count and confirmed_count are modulo MASK28.
-    long sent_count; // # bytes send to (any) tty_client
-    long confirmed_count; // # bytes confirmed received from (some) tty_client
     struct lws *pty_wsi;
 };
 
@@ -87,18 +81,25 @@ struct tty_client {
     bool initialized;
     //bool pty_started; = pclient!=NULL
     bool authenticated;
+#if 0
+    bool awaiting_initial_contents;
+#endif
     char hostname[100];
     char address[50];
     char *version_info; // received from client
-    size_t osent; // index in obuffer
-    //   The range in pclient->obuffer between osent and pclient->olen
-    //   has not yet been sent to this client.
+    // both sent_count and confirmed_count are modulo MASK28.
+    long sent_count; // # bytes sent to (any) tty_client
+    long confirmed_count; // # bytes confirmed received from (some) tty_client
     struct lws *wsi;
     // data received from client and not yet processed.
     // (Normally, this is only if an incomplete reportEvent message.)
     char *buffer;
     size_t len; // length of data in buffer
     struct lws *next_client_wsi;
+    char *obuffer_raw;
+    char *obuffer; // output from child process
+    size_t olen; // used length of obuffer
+    size_t osize; // allocated size of obuffer
 };
 
 struct cmd_client {
@@ -123,7 +124,7 @@ struct options {
 
 struct tty_server {
     LIST_HEAD(client, tty_client) clients;    // client list
-    int client_count;                         // client count FIXME remove?
+    int client_count;                         // client count
     int session_count;                        // client count
     char *prefs_json;                         // client preferences
     char *credential;                         // encoded basic auth credential

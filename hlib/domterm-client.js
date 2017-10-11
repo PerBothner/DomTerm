@@ -154,7 +154,6 @@ function connectHttp(node, query=null) {
 
 function _activeContentItemHandler(item) {
     var dt = DomTerm.layoutItemToDomTerm(item);
-    console.log(" activeContentItemHandler "+item+" dt:"+(dt?dt.name:dt));
     if (dt) {
         DomTerm.setFocus(dt);
     }
@@ -189,20 +188,4 @@ function loadHandler(event) {
 
 }
 
-function unloadHandler(evt) {
-    //dt.reportEvent("WINDOW-CLOSED", "");
-    if (DomTerm.isElectron()) {
-        const {app} = nodeRequire('electron').remote
-        app.on('certificate-error',
-               function (event, webContents, url, error, certificate, callback)
-               { callback(true); });
-    }
-    var request = new XMLHttpRequest();
-    // FIXME maybe use POST?
-    request.open("GET", "(WINDOW-CLOSED)");
-    request.send(null);
-}
-
 window.addEventListener("load", loadHandler, false);
-if (! DomTerm.usingAjax)
-    window.addEventListener("beforeunload", unloadHandler, false);

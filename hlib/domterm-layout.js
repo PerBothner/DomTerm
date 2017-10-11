@@ -93,24 +93,25 @@ DomTerm.domTermToLayoutItem = function(dt) {
 
 DomTerm.domTermLayoutClosed = function(event) {
     var dt = this.terminal;
-    if (dt)
+    if (dt) {
         dt.closeConnection();
+        DomTerm.domTermLayoutClose(dt, true);
+    }
 }
-DomTerm.domTermLayoutClose = function(dt) {
+DomTerm.domTermLayoutClose = function(dt, from_handler=false) {
     var r = DomTerm.domTermToLayoutItem(dt);
     if (r) {
-        dt.reportEvent("WINDOW-CLOSED", "");
         var p = r.parent;
         if (p && p.type == 'stack'
             && p.contentItems.length == 1
             && p.parent.type == 'root'
             && p.parent.contentItems.length == 1) {
-            window.unloadHandler(null);
             window.close();
         } else {
             DomTerm.selectNextPane(dt, true);
             dt = DomTerm.focusedTerm;
-            r.remove();
+            if (! from_handler)
+                r.remove();
             DomTerm.setFocus(dt);
             dt.maybeFocus();
         }
@@ -227,6 +228,8 @@ DomTerm.layoutAddSibling = function(
 };
 
 DomTerm.layoutAddTab = function(dt) {
+    if (dt == null)
+        dt = DomTerm.focusedTerm;
     if (! DomTerm.layoutManager)
         DomTerm.layoutInit(dt);
     var r = DomTerm.domTermToLayoutItem(dt);
@@ -305,10 +308,7 @@ DomTerm.layoutInit = function(term) {
         }
         container.setTitle(name);
         container.on('resize', DomTerm.layoutResized, el);
-        //container.on('close', DomTerm.domTermLayoutClosed, el);
-        //container.on('destroy', DomTerm.domTermLayoutClosed, el);
-        container.on('beforeItemDestroyed', DomTerm.domTermLayoutClosed, el);
-        container.on('itemDestroyed', DomTerm.domTermLayoutClosed, el);
+        container.on('destroy', DomTerm.domTermLayoutClosed, el);
     });
 
     DomTerm.layoutManager.init();
