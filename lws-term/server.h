@@ -69,6 +69,7 @@ struct pty_client {
     int eof_seen;  // 1 means seen; 2 reported to client
     bool exit;
     bool detached;
+    bool detachOnClose;
     int paused;
     struct lws *first_client_wsi;
     struct lws **last_client_wsi_ptr;

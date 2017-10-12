@@ -147,8 +147,11 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
       pwsi = nwsi;
     }
     // FIXME reclaim memory cleanup for tclient
-    if (pclient->first_client_wsi == NULL && ! pclient->detached) {
-        pty_destroy(pclient, 0);
+    if (pclient->first_client_wsi == NULL) {
+        if (pclient->detachOnClose)
+            pclient->detached = 1;
+        else
+            pty_destroy(pclient, 0);
     }
 }
 
@@ -172,6 +175,8 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     *pclient->last_client_wsi_ptr = wsi;
     pclient->last_client_wsi_ptr = &tclient->next_client_wsi;
     focused_wsi = wsi;
+    if (pclient->detached)
+        pclient->detachOnClose = 0;
     pclient->detached = 0;
     if (pclient->paused) {
 #if USE_RXFLOW
@@ -316,6 +321,7 @@ run_command(char*const*argv, const char*cwd, char **env, int replyfd)
             pclient->pixh = -1;
             pclient->pixw = -1;
             pclient->eof_seen = 0;
+            pclient->detachOnClose = 0;
             pclient->detached = 0;
             pclient->paused = 0;
             pclient->first_client_wsi = NULL;
@@ -455,6 +461,8 @@ reportEvent(const char *name, char *data, size_t dlen,
             free(pclient->session_name);
         pclient->session_name = session_name;
         json_object_put(obj);
+    } else if (strcmp(name, "DETACH") == 0) {
+        pclient->detachOnClose = 1;
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
         struct tty_client *tc = (struct tty_client *) lws_wsi_user(focused_wsi);

@@ -64,6 +64,13 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
             event.preventDefault();
         }
         break;
+    case 100: // 'd'
+        if (! event.ctrlKey) {
+            DomTerm.detach(this);
+            this.exitMuxMode();
+            event.preventDefault();
+        }
+        break;
     }
 }
 
@@ -248,6 +255,12 @@ DomTerm.domTermToLayoutElement = function(domterm) {
     }
     return null;
 }
+
+DomTerm.detach = function(dt) {
+    dt.reportEvent("DETACH", "");
+    dt.close();
+}
+
 DomTerm.setLayoutTitle = function(dt, title, wname) {
     var r = DomTerm.domTermToLayoutItem(dt);
     title = _escapeHTML(title);
