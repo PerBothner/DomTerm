@@ -716,7 +716,7 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
     }
 }
 
-void
+int
 handle_command(int argc, char** argv, const char*cwd,
                char **env, struct lws *wsi, int replyfd, struct options *opts)
 {
@@ -736,7 +736,13 @@ handle_command(int argc, char** argv, const char*cwd,
     else if (argc == 2 && strcmp(argv[0], "attach") == 0){ 
       //close(replyfd);
       //replyfd = -1;
-      struct pty_client *pclient = find_session(argv[1]);
+      char *session_specifier = argv[1];
+      struct pty_client *pclient = find_session(session_specifier);
+      if (pclient == NULL) {
+          FILE *out = fdopen(replyfd, "w");
+          fprintf(out, "no session '%s' found \n", session_specifier);
+          return -1;
+      }
 #if 0
       if (existing active tclient) {
         tclient = select-tclient;
@@ -766,7 +772,9 @@ handle_command(int argc, char** argv, const char*cwd,
         FILE *out = fdopen(replyfd, "w");
         fprintf(out, "domterm: unknown command '%s'\n", argv[0]);
         fclose(out);
+        return -1;
     }
+    return 0;
 }
 
 int
@@ -837,7 +845,9 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             optind = 1;
             struct options opts;
             process_options(argc, argv, &opts);
-            handle_command(argc-optind, argv+optind, cwd, env, wsi, sockfd, &opts);
+            int ret = handle_command(argc-optind, argv+optind,
+                                     cwd, env, wsi, sockfd, &opts);
+            // FIXME: send ret to caller.
             // FIXME: free argv, cwd, env
             close(sockfd);
             break;

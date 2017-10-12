@@ -163,9 +163,9 @@ extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
-extern void handle_command(int argc, char**argv, const char*cwd,
-                           char **env, struct lws *wsi, int replyfd,
-                           struct options *opts);
+extern int handle_command(int argc, char**argv, const char*cwd,
+                          char **env, struct lws *wsi, int replyfd,
+                          struct options *opts);
 extern void do_run_browser(const char *specifier, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
 extern void fatal(const char *format, ...);

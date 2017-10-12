@@ -850,9 +850,12 @@ main(int argc, char **argv)
                 info.port, info.port);
     }
 
-    handle_command(argc-optind, argv+optind, ".", environ, NULL, 1, &opts);
+    int ret = handle_command(argc-optind, argv+optind,
+                             ".", environ, NULL, 1, &opts);
+    if (ret != 0)
+        force_exit = 1;
 
-    if (opts.do_daemonize) {
+    if (opts.do_daemonize && ret == 0) {
 #if 1
         daemon(1, 0);
 #else
@@ -872,7 +875,7 @@ main(int argc, char **argv)
     // cleanup
     tty_server_free(server);
 
-    return 0;
+    return ret;
 }
 
 void
