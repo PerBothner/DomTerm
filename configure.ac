@@ -153,6 +153,7 @@ PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
   PKG_CHECK_MODULES(JSON_C, json-c)
   PKG_CHECK_MODULES(OPENSSL, openssl)
+  PKG_CHECK_MODULES(LIBCAP, libcap, true, true)
   case "${with_libwebsockets}" in
     "yes" | "")
       PKG_CHECK_MODULES(LIBWEBSOCKETS, libwebsockets)
