@@ -206,6 +206,14 @@ function DomTerm(name, topNode) {
 
     this.rightMarginWidth = 0;
 
+    // See https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser/9851769
+    // Internet Explorer 6-11
+    var isIE = /*@cc_on!@*/false || !!document.documentMode;
+    // Edge 20+
+    var isEdge = !isIE && !!window.StyleMedia;
+
+    this._useTabCharInDom = !isIE && !isEdge;
+
     // Number of vertical pixels available.
     this.availHeight = 0;
     // Number of horizontal pixels available.
@@ -591,7 +599,7 @@ DomTerm.prototype.tabToNextStop = function(isTabChar) {
     var w = nextStop-col;
     this.cursorRight(w);
     var prev;
-    if (isTabChar && this.outputBefore
+    if (isTabChar && this._useTabCharInDom && this.outputBefore
         && (prev = this.outputBefore.previousSibling) instanceof Text
         && endsWithSpaces(prev.data,  w)) {
         var span = this._createSpanNode();
