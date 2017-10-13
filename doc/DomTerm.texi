@@ -234,6 +234,8 @@ double-width characters really are two columns wide.
 Experimental IME (Input Method Editor) support.
 
 Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
+Text selections generally give you what you expect.
+In particular TAB characters are preserved.
 
 Future: Optional automatic pagination.
 
@@ -292,8 +294,8 @@ to the @code{build} subdirectory of the libwebsockets compiled source tree.
 (The files @code{@var{lws-build}/lib/libwebsockets.a}
 and @code{@var{lws-build}/include/libwebsockets.h} should exist.)
 
-While using libwebsockets version 2.2 or newer is strongly recommended.
-(Older versions do not support flow control or paging.)
+Libwebsockets version 2.2 or newer is required,
+as older versions do not support flow control or paging.
 
 On Fedora, you need to first:
 @example
@@ -1275,6 +1277,8 @@ Create a new terminal pane below the current one.
 Select the previous pane or tab.
 @item Control-Shift-M Right
 Select the next pane or tab.
+@item Control-Shift-M @code{d}
+Detach from current session and close the (sub-)window.
 @end table
 
 
@@ -1384,6 +1388,9 @@ on the browser and its settings.
 
 Using line-editing mode with the brower's builtin editor
 may exhibit various quirks.
+
+Microsoft Edge does at time of writing not handle the @code{tab-size}
+CSS property, so on that browser tab characters are always converted to spaces.
 
 @subheading Adding qtdomterm to the desktop
 
