@@ -555,7 +555,7 @@ DomTerm.prototype.atLineEnd = function() {
 
 DomTerm.prototype.atTabStop = function(col) {
     if (col >= this._tabDefaultStart)
-        if ((col & ~7) == 0)
+        if ((col & 7) == 0)
             return true;
     return this._tabsAdded && this._tabsAdded[col];
 }
