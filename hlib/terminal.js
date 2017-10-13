@@ -5821,7 +5821,8 @@ DomTerm.prototype.keyDownToString = function(event) {
     switch (key) {
     case 8: /* Backspace */ return "\x7F";
     case 9: /* Tab */    return "\t";
-    case 13: /* Return/Enter */ return "\r";
+    case 13: /* Return/Enter */
+        return this.automaticNewlineMode ? "\r\n" : "\r";
     case 27: /* Esc */   return "\x1B";
     case 33 /* PageUp*/: return this.specialKeySequence("5", "~", event);
     case 34 /* PageDown*/:return this.specialKeySequence("6", "~", event);
