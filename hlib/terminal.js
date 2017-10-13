@@ -533,6 +533,18 @@ DomTerm.prototype._adjustSpacer = function(needed) {
     }
 };
 
+/*
+DomTerm.prototype.atLineEnd = function() {
+    var parent = this.outputContainer;
+    var next = this.outputBefore;
+    while (next == null) {
+        next = parent.nextSibling;
+        parent = parent.parentNode;
+    }
+    return next.nodeName == "SPAN" && next.getAttribute("line") == "hard";
+}
+*/
+
 DomTerm.prototype.atTabStop = function(col) {
     if (col >= this._tabDefaultStart)
         if ((col & ~7) == 0)
@@ -545,16 +557,27 @@ DomTerm.prototype.atTabStop = function(col) {
 // Return the column number (0-origin) after a tab.
 // Default implementation assumes tabs every 8 columns.
 DomTerm.prototype.nextTabCol = function(col) {
-    if (this._tabsAdded == null && this._tabDefaultStart == 0)
-        return (col & ~7) + 8;
     var max = this.numColumns - 1;
+    if (this._tabsAdded == null && this._tabDefaultStart == 0) {
+        var r = (col & ~7) + 8;
+        return r < max ? r : max;
+    }
     for (var i = col; ; i++) {
         if (i >= max || this.atTabStop(i))
             return i;
     }
 };
 
-DomTerm.prototype.tabToNextStop = function() {
+DomTerm.prototype.tabToNextStop = function(isTabChar) {
+    function endsWithSpaces(str, w) {
+        var len = str.length;
+        if (len < w)
+            return false;
+        for (let i = w; i > 0; i--)
+            if (str.charCodeAt(len-i) != 32)
+                return false;
+        return true;
+    }
     var col = this.getCursorColumn();
     if (col == this.numColumns && (this.wraparoundMode & 2) != 0) {
         this.cursorLineStart(1);
@@ -565,7 +588,27 @@ DomTerm.prototype.tabToNextStop = function() {
     var nextStop = this.nextTabCol(col);
     if (nextStop <= col)
         return false;
-    this.cursorRight(nextStop-col);
+    var w = nextStop-col;
+    this.cursorRight(w);
+    var prev;
+    if (isTabChar && this.outputBefore
+        && (prev = this.outputBefore.previousSibling) instanceof Text
+        && endsWithSpaces(prev.data,  w)) {
+        var span = this._createSpanNode();
+        span.appendChild(document.createTextNode('\t'));
+        // For standard tabs, we prefer to set tab-size to 8, as that
+        // is preserved under re-flow.  However, with non-standard tab-stops,
+        // or if the nextCol is not divisible by 8 (because we're at the
+        // right column) use the actual next column.
+        var typical = this._tabsAdded == null && (nextStop & 7) == 0;
+        span.setAttribute('style', 'tab-size:'+(typical ? 8 : nextStop));
+        this.outputContainer.insertBefore(span, this.outputBefore);
+        var start = prev.data.length - w;
+        if (start == 0)
+            this.outputContainer.removeChild(prev);
+        else
+            prev.deleteData(start, w);
+    }
     return true;
 }
 
@@ -909,7 +952,28 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
         while (column < goalColumn) {
             if (parent==null||(current!=null&&parent!=current.parentNode))
                 this.log("BAD PARENT "+parent+" OF "+current);
-            if (current == lineEnd) {
+            var handled = false;
+            if (current && current.nodeName == "SPAN") {
+                var tcol = -1;
+                var st = parent.getAttribute("style");
+                if (st && st.startsWith("tab-size:")) {
+                    tcol = Number(st.substring(9));
+                }
+                if (! isNaN(tcol) && tcol > 0) {
+                    tcol = (column / tcol) * tcol + tcol;
+                    if (goalColumn >= tcol) {
+                        column = tcol;
+                        handled = true;
+                    } else {
+                        var text = document.createTextNode(DomTerm.makeSpaces(tcol-column));
+                        parent.insertBefore(text, current);
+                        parent.removeChild(current);
+                        current = text;
+                    }
+                }
+            }
+            if (handled) {
+            } else if (current == lineEnd) {
                 if (addSpaceAsNeeded) {
                     var str = DomTerm.makeSpaces(goalColumn-column);
                     if (current && current.previousSibling instanceof Text)
@@ -945,7 +1009,18 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                     }
                     var ch = text.codePointAt(i);
                     if (ch > 0xffff) i++;
-                    if (ch == 10 || ch == 13 || ch == 12) { // One of "\n\r\f"
+                    if (ch == 9) {
+                        // handle TAB *not* in a <span style='tab-size:pos'>
+                        var tcol = this.nextTabCol(column);
+                        if (goalColumn >= tcol)
+                            column = tcol;
+                        else {
+                            var w = tcol - column;
+                            text.replaceData(i, 1, DomTerm.makeSpaces(w));
+                            tlen += w - 1;
+                            i--;
+                        }
+                    } else if (ch == 10 || ch == 13 || ch == 12) { // One of "\n\r\f"
                         // Paranoia - we should never have raw "\n\r\f" in text,
                         // but it can happen if HTML is inserted and not cleaned up.
                         if (absLine == goalAbsLine) {
@@ -2579,7 +2654,19 @@ DomTerm.prototype.updateCursorCache = function() {
                 for (var i = 0; i < tlen;  i++) {
                     var ch = text.codePointAt(i);
                     if (ch > 0xffff) i++;
-                    if (ch == 10 || ch == 13 || ch == 12) {
+                    if (ch == 9) {
+                        var tcol = null;
+                        if (tlen == 1 && parent.nodeName == "SPAN") {
+                            var st = parent.getAttribute("style");
+                            if (st && st.startsWith("tab-size:")) {
+                                tcol = Number(st.substring(9));
+                            }
+                        }
+                        if (tcol)
+                            col = (col / tcol) * tcol + tcol;
+                        else
+                            col = this.nextTabCol(col);
+                    } else if (ch == 10 || ch == 13 || ch == 12) {
                         line++;
                         col = 0;
                         if (ch == 13 /*'\r'*/ && i+1<tlen
@@ -3270,7 +3357,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 73 /*'I'*/: // CHT Cursor Forward Tabulation
         for (var n = this.getParameter(0, 1);
-             --n >= 0 && this.tabToNextStop(); ) {
+             --n >= 0 && this.tabToNextStop(false); ) {
         }
         break;
     case 74 /*'J'*/:
@@ -4923,7 +5010,7 @@ DomTerm.prototype.insertString = function(str) {
             case 9 /*'\t'*/:
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 this._breakDeferredLines();
-                this.tabToNextStop();
+                this.tabToNextStop(true);
                 prevEnd = i + 1;  columnWidth = 0;
                 break;
             case 7 /*'\a'*/:
