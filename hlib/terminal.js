@@ -5866,8 +5866,22 @@ DomTerm.prototype.keyDownToString = function(event) {
         // Command-key on MacOS (Chrome or Firefox)
         return null;
     default:
-        if (event.ctrlKey && key >=65 && key <= 90) {
-            return String.fromCharCode(key-64);
+        if (event.ctrlKey) {
+            var code = -1;
+            if (key >=65 && key <= 90)
+                code = key-64;
+            if (key >= 219 && key <= 222)
+                code = key-192;
+            if (key == 32 || event.key=="@")
+                code = 0;
+            if (event.key == "?")
+                code = 127;
+            if (event.key=="^" || event.key=="~" || event.key=="`")
+                code = 30;
+            if (event.key=="_")
+                code = 31;
+            if (code >= 0)
+                return String.fromCharCode(code);
         }
         else if (event.altKey || event.metaKey) {
             var str = String.fromCharCode(key);
