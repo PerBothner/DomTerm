@@ -50,7 +50,7 @@ const char * get_mimetype(const char *file)
 
 int
 check_auth(struct lws *wsi) {
-    if (server->credential == NULL)
+    if (server->options.credential == NULL)
         return 0;
 
     int hdr_length = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_AUTHORIZATION);
@@ -69,7 +69,7 @@ check_auth(struct lws *wsi) {
                 break;
             }
         }
-        if (b64_text != NULL && !strcmp(b64_text, server->credential))
+        if (b64_text != NULL && !strcmp(b64_text, server->options.credential))
             return 0;
     }
 
@@ -139,7 +139,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             }
 #endif
             if (!strncmp((const char *) in, "/auth_token.js", 14)) {
-                size_t n = server->credential != NULL ? sprintf(buf, "var tty_auth_token = '%s';", server->credential) : 0;
+                size_t n = server->options.credential != NULL ? sprintf(buf, "var tty_auth_token = '%s';", server->options.credential) : 0;
 
                 if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end))
                     return 1;

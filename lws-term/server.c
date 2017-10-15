@@ -146,7 +146,6 @@ static const struct option options[] = {
         {"gid",          required_argument, NULL, 'g'},
         {"signal",       required_argument, NULL, 's'},
         {"reconnect",    required_argument, NULL, 'r'},
-        {"index",        required_argument, NULL, 'I'},
         {"ssl",          no_argument,       NULL, 'S'},
         {"ssl-cert",     required_argument, NULL, 'C'},
         {"ssl-key",      required_argument, NULL, 'K'},
@@ -159,7 +158,7 @@ static const struct option options[] = {
         {"help",         no_argument,       NULL, 'h'},
         {NULL, 0, 0,                              0}
 };
-static const char *opt_string = "+p:B::i:c:u:g:s:r:I:aSC:K:A:Rt:Ood:L:vh";
+static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
 void print_help() {
     fprintf(stderr, "ldomterm is a terminal emulator that uses web technologies\n\n"
@@ -223,9 +222,6 @@ tty_server_new(int argc, char **argv) {
     LIST_INIT(&ts->clients);
     ts->client_count = 0;
     ts->session_count = 0;
-    ts->reconnect = 10;
-    ts->sig_code = SIGHUP;
-    ts->sig_name = strdup("SIGHUP");
 
     ts->argv = copy_argv(argc, argv);
     return ts;
@@ -235,17 +231,15 @@ void
 tty_server_free(struct tty_server *ts) {
     if (ts == NULL)
         return;
-    if (ts->credential != NULL)
-        free(ts->credential);
-    if (ts->index != NULL)
-        free(ts->index);
+    if (ts->options.credential != NULL)
+        free(ts->options.credential);
     free(ts->prefs_json);
     int i = 0;
     do {
         free(ts->argv[i++]);
     } while (ts->argv[i] != NULL);
     free(ts->argv);
-    free(ts->sig_name);
+    free(ts->options.sig_name);
     if (ts->socket_path != NULL) {
         struct stat st;
         if (!stat(ts->socket_path, &st)) {
@@ -498,6 +492,11 @@ int process_options(int argc, char **argv, struct options *opts)
     opts->cert_path[0] = '\0';
     opts->key_path[0] = '\0';
     opts->ca_path[0] = '\0';
+    opts->credential = NULL;
+    opts->once = false;
+    opts->reconnect = 10;
+    opts->sig_code = SIGHUP;
+    opts->sig_name = strdup("SIGHUP");
 
     // parse command line options
     int c;
@@ -517,10 +516,10 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->readonly = true;
                 break;
             case 'O':
-                server->check_origin = true;
+                opts->check_origin = true;
                 break;
             case 'o':
-                server->once = true;
+                opts->once = true;
                 break;
             case 'p':
                 info.port = atoi(optarg);
@@ -585,7 +584,7 @@ int process_options(int argc, char **argv, struct options *opts)
                     fprintf(stderr, "ttyd: invalid credential, format: username:password\n");
                     return -1;
                 }
-                server->credential = base64_encode((const unsigned char *) optarg, strlen(optarg));
+                opts->credential = base64_encode((const unsigned char *) optarg, strlen(optarg));
                 break;
             case 'u':
                 info.uid = atoi(optarg);
@@ -596,8 +595,8 @@ int process_options(int argc, char **argv, struct options *opts)
             case 's': {
                 int sig = get_sig(optarg);
                 if (sig > 0) {
-                    server->sig_code = get_sig(optarg);
-                    server->sig_name = uppercase(strdup(optarg));
+                    opts->sig_code = get_sig(optarg);
+                    opts->sig_name = uppercase(strdup(optarg));
                 } else {
                     fprintf(stderr, "ttyd: invalid signal: %s\n", optarg);
                     return -1;
@@ -605,27 +604,9 @@ int process_options(int argc, char **argv, struct options *opts)
             }
                 break;
             case 'r':
-                server->reconnect = atoi(optarg);
-                if (server->reconnect <= 0) {
+                opts->reconnect = atoi(optarg);
+                if (opts->reconnect <= 0) {
                     fprintf(stderr, "ttyd: invalid reconnect: %s\n", optarg);
-                    return -1;
-                }
-                break;
-            case 'I':
-                if (!strncmp(optarg, "~/", 2)) {
-                    const char* home = find_home();
-                    server->index = malloc(strlen(home) + strlen(optarg) - 1);
-                    sprintf(server->index, "%s%s", home, optarg + 1);
-                } else {
-                    server->index = strdup(optarg);
-                }
-                struct stat st;
-                if (stat(server->index, &st) == -1) {
-                    fprintf(stderr, "Can not stat index.html: %s, error: %s\n", server->index, strerror(errno));
-                    return -1;
-                }
-                if (S_ISDIR(st.st_mode)) {
-                    fprintf(stderr, "Invalid index.html path: %s, is it a dir?\n", server->index);
                     return -1;
                 }
                 break;
@@ -832,19 +813,16 @@ main(int argc, char **argv)
     make_html_file(info.port);
 
     lwsl_notice("TTY configuration:\n");
-    if (server->credential != NULL)
-        lwsl_notice("  credential: %s\n", server->credential);
-    lwsl_notice("  reconnect timeout: %ds\n", server->reconnect);
-    lwsl_notice("  close signal: %s (%d)\n", server->sig_name, server->sig_code);
-    if (server->check_origin)
+    if (opts.credential != NULL)
+        lwsl_notice("  credential: %s\n", opts.credential);
+    lwsl_notice("  reconnect timeout: %ds\n", opts.reconnect);
+    lwsl_notice("  close signal: %s (%d)\n", opts.sig_name, opts.sig_code);
+    if (opts.check_origin)
         lwsl_notice("  check origin: true\n");
-    if (server->options.readonly)
+    if (opts.readonly)
         lwsl_notice("  readonly: true\n");
-    if (server->once)
+    if (opts.once)
         lwsl_notice("  once: true\n");
-    if (server->index != NULL) {
-        lwsl_notice("  custom index.html: %s\n", server->index);
-    }
     if (port_specified >= 0 && server->options.browser_command == NULL) {
         fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
                 info.port, info.port);

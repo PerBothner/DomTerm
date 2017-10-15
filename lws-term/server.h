@@ -74,6 +74,7 @@ struct pty_client {
     struct lws *first_client_wsi;
     struct lws **last_client_wsi_ptr;
     struct lws *pty_wsi;
+    char *saved_window_contents;
 };
 
 /** Data specific to a (browser) client connection. */
@@ -121,6 +122,12 @@ struct options {
     char key_path[1024];
     char ca_path[1024];
     char *socket_name;
+    bool check_origin;                        // whether allow websocket connection from different origin
+    bool once;                                // whether accept only one client and exit on disconnection
+    char *credential;                         // encoded basic auth credential
+    int reconnect;                            // reconnect timeout
+    int sig_code;                             // close signal
+    char *sig_name;                           // human readable signal string
 };
 
 struct tty_server {
@@ -128,14 +135,7 @@ struct tty_server {
     int client_count;                         // client count
     int session_count;                        // client count
     char *prefs_json;                         // client preferences
-    char *credential;                         // encoded basic auth credential
-    int reconnect;                            // reconnect timeout
-    char *index;                              // custom index.html
     char **argv;                              // command with arguments
-    int sig_code;                             // close signal
-    char *sig_name;                           // human readable signal string
-    bool check_origin;                        // whether allow websocket connection from different origin
-    bool once;                                // whether accept only one client and exit on disconnection
     bool client_can_close;
     char *socket_path;                        // UNIX domain socket path
     pthread_mutex_t lock;

@@ -97,8 +97,8 @@ pty_destroy(struct pty_client *pclient, int from_callback)
     pclient->exit = true;
 
     // kill process and free resource
-    lwsl_notice("sending %s to process %d\n", server->sig_name, pclient->pid);
-    if (kill(pclient->pid, server->sig_code) != 0) {
+    lwsl_notice("sending %s to process %d\n", server->options.sig_name, pclient->pid);
+    if (kill(pclient->pid, server->options.sig_code) != 0) {
         lwsl_err("kill: pid, errno: %d (%s)\n", pclient->pid, errno, strerror(errno));
     }
     int status;
@@ -499,7 +499,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     switch (reason) {
         case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
             //fprintf(stderr, "callback_tty FILTER_PROTOCOL_CONNECTION\n");
-            if (server->once && server->client_count > 0) {
+            if (server->options.once && server->client_count > 0) {
                 lwsl_notice("refuse to serve new client due to the --once option.\n");
                 return -1;
             }
