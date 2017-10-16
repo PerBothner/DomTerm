@@ -4321,6 +4321,58 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 30:
         this.setWindowTitle(text, code);
         break;
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+    case 14:
+    case 15:
+    case 16:
+    case 17:
+    case 18:
+    case 19:
+        var sname = code==10 ? "color" : code==11 ? "background-color" : null;
+        if (text=='?') {
+            var color = "inherit";
+            if (sname) {
+                color = window.
+                    getComputedStyle(DomTerm.focusedTerm.topNode)[sname];
+                // convert "rgb(R,G,B)" to "rgb:RRRR/GGGG/BBBB"
+                var match = color
+                    .match(/rgb[(]([0-9]+),[ ]*([0-9]+),[ ]*([0-9]+)[)]/);
+                if (match) {
+                    var r = Number(match[1]);
+                    var g = Number(match[2]);
+                    var b = Number(match[3]);
+                    if (! isNaN(r) && ! isNaN(g) && ! isNaN(b)) {
+                        color = "rgb:" + (r*256).toString(16)
+                            + "/" + (g*256).toString(16)
+                            + "/" + (b*256).toString(16);
+                    }
+                }
+                // Emacs looks at background-color to select
+                // light or dark theming.
+            }
+            this.processResponseCharacters("\x1b]"+code+";"+color+"\x1b\\");
+        } else {
+            if (sname) {
+                // convert "rgb:RRRR/GGGG/BBBB" to "rgb(R,G,B)"
+                var match = text
+                    .match(/rgb:([0-9a-fA-F]+)[/]([0-9a-fA-F]+)[/]([0-9a-fA-F]+)/);
+                if (match) {
+                    var r =  parseInt(match[1],16);
+                    var g =  parseInt(match[2],16);
+                    var b =  parseInt(match[3],16);
+                    if (! isNaN(r) && ! isNaN(g) && ! isNaN(b)) {
+                        text = "rgb(" + Math.round(r/256.0)
+                            + "," + Math.round(g/256.0)
+                            + "," + Math.round(b/256.0) +")";
+                    }
+                }
+                this.topNode.style[sname] = text;
+            }
+        }
+        break;
     case 71:
         // handle tcsetattr
         var canon = text.indexOf(" icanon ") >= 0;
