@@ -437,8 +437,9 @@ DomTerm.setFocus = function(term) {
     }
     if (term != null) {
         term.topNode.classList.add("domterm-active");
+        term.reportEvent("FOCUSED", ""); // to server
         if (term._sendFocus)
-            term.processResponseCharacters("\x1b[I");
+            term.processResponseCharacters("\x1b[I"); // to application
         document.title = term.windowTitle;
     }
     if (DomTerm.layoutManager)
@@ -452,7 +453,6 @@ DomTerm.prototype.maybeFocus = function() {
             this.inputLine.focus();
     }
 }
-
 
 DomTerm.prototype.hasFocus = function() {
     return DomTerm.focusedTerm == this;
