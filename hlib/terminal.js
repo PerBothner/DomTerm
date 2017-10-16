@@ -236,6 +236,8 @@ function DomTerm(name, topNode) {
     this._regionRight = this.numColumns;
 
     this.controlSequenceState = DomTerm.INITIAL_STATE;
+    this.parameters = new Array();
+    this._savedControlState = null;
 
     // The output position (cursor) - insert output before this node.
     // Usually equal to inputLine except for temporary updates,
@@ -257,8 +259,6 @@ function DomTerm(name, topNode) {
     this.inputFollowsOutput = true;
 
     this.inputLineNumber = 0;
-
-    this.parameters = new Array();
 
     // Map line number to beginning of each line.
     // This is either a block-level element like <div> or <body>,
@@ -357,6 +357,9 @@ function DomTerm(name, topNode) {
 
 DomTerm._instanceCounter = 0;
 DomTerm.layoutManager = null;
+// These are used to delimit "out-of-bound" urgent messages.
+DomTerm.URGENT_BEGIN = 19; // '\023' - device control 3
+DomTerm.URGENT_END = 20; // \024' - device control 4
 
 DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
@@ -3313,6 +3316,26 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
     }
 };
 
+DomTerm.prototype.pushControlState = function() {
+    var save = {
+        controlSequenceState: this.controlSequenceState,
+        parameters: this.parameters,
+        _savedControlState: this._savedControlState
+    };
+    this.controlSequenceState = DomTerm.INITIAL_STATE;
+    this.parameters = new Array();
+    this._savedControlState = save;
+}
+
+DomTerm.prototype.popControlState = function() {
+    var saved = this._savedControlState;
+    if (saved) {
+        this.controlSequenceState = saved.controlSequenceState;
+        this.parameters = saved.parameters;
+        this._savedControlState = saved.controlSequenceState;
+    }
+}
+
 DomTerm.prototype.handleControlSequence = function(last) {
     var param;
     var oldState = this.controlSequenceState;
@@ -4713,10 +4736,32 @@ DomTerm.prototype._doDeferredDeletion = function() {
 DomTerm.prototype.insertBytes = function(bytes) {
     if (this.verbosity >= 2)
         this.log("insertBytes "+this.name+" "+typeof bytes);
-    if (this.decoder == null)
-        this.decoder = new TextDecoder(); //label = "utf-8");
-    var str = this.decoder.decode(bytes, {stream:true});
-    this.insertString(str); 
+    var len = bytes.length;
+    while (len > 0) {
+        var urgent_begin = -1;
+        var urgent_end = -1;
+        for (var i = 0; i < len; i++) {
+            var ch = bytes[i];
+            if (ch == DomTerm.URGENT_BEGIN)
+                urgent_begin = i;
+            else if (ch == DomTerm.URGENT_END) {
+                urgent_end = i;
+                break;
+            }
+        }
+        if (urgent_end > urgent_begin && urgent_begin >= 0) {
+            this.insertString(new TextDecoder().decode(bytes.slice(urgent_begin, urgent_end+1)));
+            bytes.copyWithin(urgent_begin, urgent_end);
+            len -= urgent_end+1-urgent_begin;
+            bytes = bytes.slice(0, len);
+        } else {
+            if (this.decoder == null)
+                this.decoder = new TextDecoder(); //label = "utf-8");
+            var str = this.decoder.decode(bytes, {stream:true});
+            this.insertString(str);
+            len = 0;
+        }
+    }
 }
 
 DomTerm.prototype._pauseContinue = function(skip = false) {
@@ -4783,6 +4828,15 @@ DomTerm.prototype.insertString = function(str) {
     for (; i < slen; i++) {
         var ch = str.charCodeAt(i);
         //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
+        if (ch == DomTerm.URGENT_BEGIN || ch == DomTerm.URGENT_END) {
+            this.insertSimpleOutput(str, prevEnd, i, columnWidth);
+            prevEnd = i + 1;
+            if (ch == DomTerm.URGENT_BEGIN)
+                this.pushControlState();
+            else
+                this.popControlState();
+            continue;
+        }
         var state = this.controlSequenceState;
         switch (state) {
         case DomTerm.SEEN_SURROGATE_HIGH:

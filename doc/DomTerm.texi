@@ -575,7 +575,7 @@ If there is no file extension, @code{.socket} is appended.
 
 DomTerm also creates a temporary @code{html} that has the
 same name as the socket, but with a @code{.html} extension.
-That is by default it is @code{$HOME/.domain/default.html},
+That is by default it is @code{$HOME/.domain/default.html}.
 
 @item @code{--no-deaemonize}
 When a domterm backend (server) is created, it normally turns itself
@@ -2099,6 +2099,17 @@ This mode is useful when the input is a pipe or some other non-tty stream.
 End-of-file on the output stream.
 Calls the @code{eofSeen} method of @code{DomTerm},
 which may close the current window or other appropriate action.
+
+@item @code{"\x13"} @var{sequence} @code{"\x14"}
+An ``urgent'' command sequence:
+Same as @var{sequence}, but at higher priority.
+If the terminal is in the middle of some other escape sequence
+(or a multi-byte UTF-8 sequence), save the state,
+evaluate @var{sequence}, and restore the state.
+When DomTerm receives a sequence of bytes that contains
+an urgent sequence, it will execute that before handling preceding bytes.
+
+This is normally used for commands from the backend @code{domterm} server.
 @end table
 
 @subsubsection Stylesheet manipulation

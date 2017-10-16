@@ -7,7 +7,7 @@
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
 
 extern char **environ;
-static char eof_message[] = "\033[99;99u";
+static char eof_message[] = URGENT_START_STRING "\033[99;99u" URGENT_END_STRING;
 #define eof_len (sizeof(eof_message)-1)
 
 struct pty_client *pty_client_list;
@@ -716,7 +716,8 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
     char buf[100];
     if (paneOp > 0) {
         char *p = buf+LWS_PRE;
-        sprintf(p, "\033[90;%d;%du", paneOp, session_pid);
+        sprintf(p, URGENT_START_STRING "\033[90;%d;%du" URGENT_END_STRING,
+                paneOp, session_pid);
         write_to_browser(focused_wsi, p, strlen(p));
     } else {
         sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);

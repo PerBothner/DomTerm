@@ -190,3 +190,7 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
        VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)
+
+// These are used to delimit "out-of-bound" urgent messages.
+#define URGENT_START_STRING "\023"
+#define URGENT_END_STRING "\024"
