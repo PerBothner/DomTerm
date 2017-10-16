@@ -4692,8 +4692,10 @@ DomTerm.prototype._pauseContinue = function(skip = false) {
 }
 
 DomTerm.prototype.insertString = function(str) {
-    if (this.verbosity >= 2)
-        this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState);
+    if (this.verbosity >= 2) {
+        //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
+        this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
+    }
     if (this._pagingMode == 2) {
         this.parameters[1] = this.parameters[1] + str;
         return;
@@ -4876,7 +4878,22 @@ DomTerm.prototype.insertString = function(str) {
             }
             continue;
         case DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE:
-            if (ch == 7 || ch == 0 || ch == 27) {
+            if (ch == 92/*'\\'*/) {
+                // check for ST in the form of ESC '\\'
+                var p1 = this.parameters[1]
+                var len = p1.length;
+                if (i > prevEnd) {
+                    p1 = p1 + str.substring(prevEnd, i);
+                    len += i - prevEnd;
+                    prevEnd = i;
+                }
+                if (len > 0 && p1.charCodeAt(len-1) == 27) {
+                    p1 = p1.substring(0,len-1);
+                    ch = 0x9c;
+                }
+                this.parameters[1] = p1;
+            }
+            if (ch == 7 || ch == 0 || ch == 0x9c) {
                 this.parameters[1] =
                     this.parameters[1] + str.substring(prevEnd, i);
                 this.handleOperatingSystemControl(this.parameters[0], this.parameters[1]);
