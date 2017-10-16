@@ -457,7 +457,7 @@ such as @code{new} or @code{attach}.  For example:
 @example
 domterm --electron new
 domterm --below attach '#4'
-domterm --browser=firefox /bin/sh
+domterm --firefox /bin/sh
 @end example
 
 @table @asis
@@ -484,6 +484,11 @@ for @var{program} enables some special tricks to search for those browsers.
 @item @code{--electron}
 Use a front-end based on @uref{https://electron.atom.io/,Electron}.
 This is currently the nicest (and default) front-end.
+
+@item @code{--firefox}
+Same as @code{--browser=firefox}.
+(This used to start a @uref{https://en.wikipedia.org/wiki/XUL,XUL}
+application, but that is no longer supported.)
 
 @item @code{--chrome}
 This uses the Google Chrome browser,
@@ -1295,14 +1300,13 @@ Some front-end also have menu entries for copy and paste.
 Middle-button paste (i.e. cliicking the middle button pastes the
 contents of the @emph{selection}, rather than the clipboard)
 works on qtdomterm, and chrome-based browsers.
-It does not work on the Firefox/XUL application or in a Firefox
-browser window.
+It does not work in a Firefox browser window.
 
 @subheading Save the console contents as HTML
 
 Use the keyboard shortcut ctrl-shift-S to save the contents
 of the DomTerm console as an HTML file.
-Both qtdomterm and the Firefox/XUL front-end also offer menu entries for this.
+Both qtdomterm and the Electron front-end also offer menu entries for this.
 
 The saved file should be viewed with various css stylesheet
 files in the @code{hlib} subdirectory.  You can create a symlink
@@ -1375,7 +1379,7 @@ div.domterm[name="domterm-2"] @{ background-color: #EEF @}
 (These can all change as browsers change or work-arounds are implemented.)
 
 Middle-button paste: Works with Chrome and qtdomterm (on Linux);
-does not work on Firefox (or Firefox-XUL).
+does not work on Firefox.
 
 Exiting the inferior process can sometimes fail to automatically
 close the DomTerm window, due to browser security limitations.

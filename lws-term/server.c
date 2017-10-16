@@ -358,7 +358,7 @@ firefox_xul_command(char* app_path)
 char *
 firefox_command()
 {
-#if 1
+#if 0
     char *xulapp = firefox_xul_application();
     if (xulapp != NULL && access(xulapp, R_OK) == 0)
         return firefox_xul_command(xulapp);
