@@ -4635,8 +4635,8 @@ DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
             var skip = false;
             if (tagAttributes.length) {
                 for (i = 0; i < tagAttributes.length; i++) {
-                    var aname = tagAttributes[i].nodeName;
-                    var avalue = tagAttributes[i].nodeValue;
+                    var aname = tagAttributes[i].name;
+                    var avalue = tagAttributes[i].value;
                     if (aname=="line" && tagName=="span") {
                         if (avalue=="soft")
                             skip = true;
