@@ -161,9 +161,9 @@ static const struct option options[] = {
 static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
 void print_help() {
-    fprintf(stderr, "ldomterm is a terminal emulator that uses web technologies\n\n"
+    fprintf(stderr, "domterm is a terminal emulator/multipler that uses web technologies\n\n"
                     "USAGE:\n"
-                    "    ldomterm [options] [<command> [<arguments...>]]\n\n"
+                    "    domterm [options] [<command> [<arguments...>]]\n\n"
                     "VERSION:\n"
                     "    %s\n\n"
                     "OPTIONS:\n"
@@ -482,6 +482,7 @@ state_to_json(int argc, char *const*argv, char *const *env)
 int process_options(int argc, char **argv, struct options *opts)
 {
     opts->browser_command = NULL;
+    opts->something_done = false;
     opts->paneOp = -1;
     opts->force_option = 0;
     opts->socket_name = NULL;
@@ -504,11 +505,13 @@ int process_options(int argc, char **argv, struct options *opts)
         switch (c) {
             case 'h':
                 print_help();
-                return 0;
+                opts->something_done = true;
+                break;
             case 'v':
-                printf("ldomterm version %s\n", LDOMTERM_VERSION);
+                printf("domterm version %s\n", LDOMTERM_VERSION);
                 printf("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
-                return 0;
+                opts->something_done = true;
+                break;
             case 'd':
                 opts->debug_level = atoi(optarg);
                 break;
@@ -676,6 +679,8 @@ main(int argc, char **argv)
 
     if (process_options(argc, argv, &opts) != 0)
         return -1;
+    if (opts.something_done && argv[optind] == NULL)
+        exit(0);
 
     const char *cmd = argv[optind];
     if (argv[optind] != NULL) {

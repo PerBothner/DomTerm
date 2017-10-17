@@ -113,6 +113,7 @@ struct options {
     bool readonly;                            // whether not allow clients to write to the TTY
     bool ssl;
     bool force_option;
+    bool something_done;
     int do_daemonize;
     int debug_level;
     char *browser_command;
