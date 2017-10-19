@@ -101,11 +101,17 @@ function DomTerm(name, topNode) {
     // Generated names have the format:  name + "__" + something.
     this.name = name;
 
+    // Options/state that should be saved/restored on detach/attach.
+    // Restricted to properties that are JSON-serializable.
+    // WORK IN PROGRESS
+    var sstate = {};
+    this.sstate = sstate;
+
     this._updateTimer = null;
 
-    this.windowName = null;
-    this.windowTitle = null;
-    this.iconName = null;
+    sstate.windowName = null;
+    sstate.windowTitle = null;
+    sstate.iconName = null;
     
     // Input lines that have not been processed yet.
     // In some modes we support enhanced type-ahead: Input lines are queued
@@ -118,9 +124,9 @@ function DomTerm(name, topNode) {
 
     this.lineIdCounter = 0; // FIXME temporary debugging
 
-    this.insertMode = false;
+    sstate.insertMode = false;
     // If true, treat "\n" as "\r\n".
-    this.automaticNewlineMode = false;
+    sstate.automaticNewlineMode = false;
 
     // How are typed characters processed?
     // -1: character mode (each character/keystroke sent immediately to process)
@@ -285,22 +291,22 @@ function DomTerm(name, topNode) {
     // A span whose style is "correct" for _currentStyleMap.
     this._currentStyleSpan = null;
 
-    this.applicationCursorKeysMode = false;
-    this.originMode = false;
+    sstate.applicationCursorKeysMode = false;
+    sstate.originMode = false;
     // (wraparoundMode & 2) if wraparound enabled
     // (wraparoundMode & 1) if reverse wraparound should also be enabled
-    this.wraparoundMode = 2;
-    this.bracketedPasteMode = false;
+    sstate.wraparoundMode = 2;
+    sstate.bracketedPasteMode = false;
 
     // One of: 0 (no mouse handling); 9 (X10); 1000 (VT200);
     //   1001 (VT200_HIGHLIGHT); 1002 (BTN_EVENT); 1003 (ANY_EVENT)
-    this._mouseMode = 0;
+    sstate.mouseMode = 0;
 
     // How mouse coordinates are encoded in the response:
     // 0 - old single-byte; 1005 (UTF8-EXT); 1006 (SGR_EXT); 1015 (URXVT_EXT)
-    this._mouseCoordEncoding = 0;
+    sstate.mouseCoordEncoding = 0;
 
-    this._sendFocus = false;
+    sstate.sendFocus = false;
 
     /** @type {Array|null} */
     this.saved_DEC_private_mode_flags = null;
@@ -391,6 +397,7 @@ DomTerm.prototype._saveWindowContents = function() {
     var data = '{"rcount":'+this._receivedCount;
     if (this.usingAlternateScreenBuffer)
         data += ', "alternateBuffer":'+this.usingAlternateScreenBuffer;
+    data += ', "sstate":'+JSON.stringify(this.sstate);
     data += ', "html":'
         + JSON.stringify(this.getAsHTML(false, true))
         +'}';
@@ -465,15 +472,15 @@ DomTerm.setFocus = function(term) {
         return;
     if (current !== null) {
         current.topNode.classList.remove("domterm-active");
-        if (current._sendFocus)
+        if (current.sstate.sendFocus)
             current.processResponseCharacters("\x1b[O");
     }
     if (term != null) {
         term.topNode.classList.add("domterm-active");
         term.reportEvent("FOCUSED", ""); // to server
-        if (term._sendFocus)
+        if (term.sstate.sendFocus)
             term.processResponseCharacters("\x1b[I"); // to application
-        document.title = term.windowTitle;
+        document.title = term.sstate.windowTitle;
     }
     if (DomTerm.layoutManager)
         DomTerm.showFocusedPane(term);
@@ -620,7 +627,7 @@ DomTerm.prototype.tabToNextStop = function(isTabChar) {
         return true;
     }
     var col = this.getCursorColumn();
-    if (col == this.numColumns && (this.wraparoundMode & 2) != 0) {
+    if (col == this.numColumns && (this.sstate.wraparoundMode & 2) != 0) {
         this.cursorLineStart(1);
         if (this.atTabStop(0))
             return true;
@@ -836,8 +843,8 @@ DomTerm.prototype.saveCursor = function() {
         blink: this._currentStyleMap.get("text-blink"),
         underline: this._currentStyleMap.get("text-underline"),
         reverse: this._currentStyleMap.get("reverse"),
-        origin: this.originMode,
-        wraparound: this.wraparoundMode,
+        origin: this.sstate.originMode,
+        wraparound: this.sstate.wraparoundMode,
         glevel: this._Glevel,
         charset0: this._Gcharsets[0],
         charset1: this._Gcharsets[1],
@@ -882,8 +889,8 @@ DomTerm.prototype.restoreCursor = function() {
         this._pushStyle("text-blink", saved.blink);
         this._pushStyle("text-underline", saved.underline);
         this._pushStyle("reverse", saved.reverse);
-        this.originMode = saved.origin;
-        this.wraparoundMode = saved.wraparound;
+        this.sstate.originMode = saved.origin;
+        this.sstate.wraparoundMode = saved.wraparound;
     } else {
         this._Gcharsets[0] = null;
         this._Gcharsets[1] = null;
@@ -1349,7 +1356,7 @@ DomTerm.prototype.cursorDown = function(count) {
 
 DomTerm.prototype.cursorNewLine = function(autoNewline) {
     if (autoNewline) {
-        if (this.insertMode) {
+        if (this.sstate.insertMode) {
             this.insertRawOutput("\n"); // FIXME
             if (this.currentAbsLine >= 0)
                 this.currentAbsLine++;
@@ -1380,7 +1387,7 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
     var before = this.getCursorColumn();
     if (before < left)
         left = 0;
-    else if (before == this.numColumns && (this.wraparoundMode != 3))
+    else if (before == this.numColumns && (this.sstate.wraparoundMode != 3))
         count++;
     var goal = before - count;
     if (goal < left) {
@@ -2420,7 +2427,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     */
     if (ev.shiftKey || ev.target == this.topNode)
         return;
-    if (this._mouseMode == 0 && (! ev.altKey || ev.button != 0))
+    if (this.sstate.mouseMode == 0 && (! ev.altKey || ev.button != 0))
         return;
 
     var saveCol = this.currentCursorColumn;
@@ -2446,7 +2453,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     row += Math.floor(ydelta / this.charHeight);
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
 
-    if (this._mouseMode == 0 && ev.altKey) {
+    if (this.sstate.mouseMode == 0 && ev.altKey) {
         var curVLine = this.getAbsCursorLine();
         var goalVLine = row+this.homeLine;
         var curLine = curVLine;
@@ -2479,15 +2486,15 @@ DomTerm.prototype._mouseHandler = function(ev) {
     var button = Math.min(ev.which - 1, 2) | mod;
     switch (ev.type) {
     case 'mousedown':
-        if (this._mouseMode >= 1002)
+        if (this.sstate.mouseMode >= 1002)
             this.topNode.addEventListener("mousemove",
                                           this._mouseEventHandler);
         break;
     case 'mouseup':
-        if (this._mouseMode >= 1002)
+        if (this.sstate.mouseMode >= 1002)
             this.topNode.removeEventListener("mousemove",
                                              this._mouseEventHandler);
-        switch (this._mouseCoordEncoding) {
+        switch (this.sstate.mouseCoordEncoding) {
         case 1006: case 1015:
             final = "m";
             break;
@@ -2509,7 +2516,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     }
 
     if (this.verbosity >= 2)
-        this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" row:"+row+" col:"+col+" button:"+button+" mode:"+this._mouseMode+" ext_coord:"+this._mouseCoordEncoding);
+        this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" row:"+row+" col:"+col+" button:"+button+" mode:"+this.sstate.mouseMode+" ext_coord:"+this.sstate.mouseCoordEncoding);
 
     if (button < 0 || col < 0 || col >= this.numColumns
         || row < 0 || row >= this.numRows)
@@ -2517,7 +2524,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
 
     function encodeButton(button, dt) {
         var value = button;
-        switch (dt._mouseCoordEncoding) {
+        switch (dt.sstate.mouseCoordEncoding) {
         case 1005: // FIXME
         default:
             return String.fromCharCode(value+32);
@@ -2530,7 +2537,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     }
     function encodeCoordinate(val, prependSeparator, dt) {
         // Note val is 0-origin, to match xterm's EmitMousePosition
-        switch (dt._mouseCoordEncoding) {
+        switch (dt.sstate.mouseCoordEncoding) {
         case 1005:
             // FIXME UTF8 encoding
         default:
@@ -2540,7 +2547,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
         }
     }
     var result = "\x1b[";
-    switch (this._mouseCoordEncoding) {
+    switch (this.sstate.mouseCoordEncoding) {
     case 1006: result += "<"; break;
     case 1015: break;
     default:
@@ -3339,23 +3346,23 @@ DomTerm.prototype.getParameter = function(index, defaultValue) {
 
 DomTerm.prototype.get_DEC_private_mode = function(param) {
     switch (param) {
-    case 1: return this.applicationCursorKeysMode;
+    case 1: return this.sstate.applicationCursorKeysMode;
     case 3: return this.numColumns == 132;
     case 5: return this.topNode.getAttribute("reverse-video") != null;
-    case 6: return this.originMode;
-    case 7: return (this.wraparoundMode & 2) != 0;
-    case 45: return (this.wraparoundMode & 1) != 0;
+    case 6: return this.sstate.originMode;
+    case 7: return (this.sstate.wraparoundMode & 2) != 0;
+    case 45: return (this.sstate.wraparoundMode & 1) != 0;
     case 47: // fall though
     case 1047: return this.usingAlternateScreenBuffer;
     case 1048: return this._savedCursor != null;
     case 1049: return this.usingAlternateScreenBuffer;
-    case 2004: return this.bracketedPasteMode;
+    case 2004: return this.sstate.bracketedPasteMode;
     case 9: case 1000: case 1001: case 1002: case 1003:
-        return this._mouseMode == param;
+        return this.sstate.mouseMode == param;
     case 1004:
         return this._sendMouse;
     case 1005: case 1006: case 1015:
-        return this._mouseCoordEncoding == param;
+        return this.sstate.mouseCoordEncoding == param;
     }
 }
 /** Do DECSET or related option.
@@ -3364,7 +3371,7 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
     switch (param) {
     case 1:
         // Application Cursor Keys (DECCKM).
-        this.applicationCursorKeysMode = value;
+        this.sstate.applicationCursorKeysMode = value;
         break;
     case 3:
         this.forceWidthInColumns(value ? 132 : 80);
@@ -3376,19 +3383,19 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
             this.topNode.removeAttribute("reverse-video");
         break;
     case 6:
-        this.originMode = value;
+        this.sstate.originMode = value;
         break;
     case 7:
         if (value)
-            this.wraparoundMode |= 2;
+            this.sstate.wraparoundMode |= 2;
         else
-            this.wraparoundMode &= ~2;
+            this.sstate.wraparoundMode &= ~2;
         break;
     case 45:
         if (value)
-            this.wraparoundMode |= 1;
+            this.sstate.wraparoundMode |= 1;
         else
-            this.wraparoundMode &= ~1;
+            this.sstate.wraparoundMode &= ~1;
         break;
     case 9: case 1000: case 1001: case 1002: case 1003:
         var handler = this._mouseEventHandler;
@@ -3399,13 +3406,13 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
             this.topNode.removeEventListener("mouseup", handler);
             this.topNode.removeEventListener("wheel", handler);
         }
-        this._mouseMode = value ? param : 0;
+        this.sstate.mouseMode = value ? param : 0;
         break;
     case 1004: // Send FocusIn/FocusOut events.
-        this._sendFocus = true;
+        this.sstate.sendFocus = true;
         break;
     case 1005: case 1006: case 1015:
-        this._mouseCoordEncoding = value ? param : 0;
+        this.sstate.mouseCoordEncoding = value ? param : 0;
         break;
     case 47:
     case 1047:
@@ -3427,7 +3434,7 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
         }
         break;
     case 2004:
-        this.bracketedPasteMode = value;
+        this.sstate.bracketedPasteMode = value;
         break;
     }
 };
@@ -3460,12 +3467,12 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this._breakDeferredLines();
     switch (last) {
     case 64 /*'@'*/:
-        var saveInsertMode = this.insertMode;
-        this.insertMode = true;
+        var saveInsertMode = this.sstate.insertMode;
+        this.sstate.insertMode = true;
         param = this.getParameter(0, 1);
         this.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param, param);
         this.cursorLeft(param, false);
-        this.insertMode = saveInsertMode;
+        this.sstate.insertMode = saveInsertMode;
         break;
     case 65 /*'A'*/: // cursor up
         this.cursorDown(- this.getParameter(0, 1));
@@ -3478,7 +3485,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 68 /*'D'*/:
         this.cursorLeft(this.getParameter(0, 1),
-                        (this.wraparoundMode & 3) == 3);
+                        (this.sstate.wraparoundMode & 3) == 3);
         break;
     case 69 /*'E'*/: // Cursor Next Line (CNL)
         this._breakDeferredLines();
@@ -3493,14 +3500,14 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 71 /*'G'*/: // HPA- horizontal position absolute
     case 96 /*'`'*/:
         var line = this.getCursorLine();
-        this.cursorSet(this.originMode ? line - this._regionTop : line,
+        this.cursorSet(this.sstate.originMode ? line - this._regionTop : line,
                        this.getParameter(0, 1)-1,
-                       this.originMode);
+                       this.sstate.originMode);
         break;
     case 102 /*'f'*/:
     case 72 /*'H'*/: // CUP cursor position
         this.cursorSet(this.getParameter(0, 1)-1, this.getParameter(1, 1)-1,
-                      this.originMode);
+                      this.sstate.originMode);
         break;
     case 73 /*'I'*/: // CHT Cursor Forward Tabulation
         for (var n = this.getParameter(0, 1);
@@ -3556,10 +3563,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 97 /*'a'*/: // HPR
         var line = this.getCursorLine();
         var column = this.getCursorColumn();
-        this.cursorSet(this.originMode ? line - this._regionTop : line,
-                       this.originMode ? column - this._regionLeft : column
+        this.cursorSet(this.sstate.originMode ? line - this._regionTop : line,
+                       this.sstate.originMode ? column - this._regionLeft : column
                        + this.getParameter(0, 1),
-                       this.originMode);
+                       this.sstate.originMode);
         break;
     case 98 /*'b'*/: // Repeat the preceding graphic character (REP)
         param = this.getParameter(0, 1);
@@ -3606,16 +3613,16 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 100 /*'d'*/: // VPA Line Position Absolute
         var col = this.getCursorColumn();
         this.cursorSet(this.getParameter(0, 1)-1,
-                       this.originMode ? col - this._regionLeft : col,
-                       this.originMode);
+                       this.sstate.originMode ? col - this._regionLeft : col,
+                       this.sstate.originMode);
         break;
     case 101 /*'e'*/: // VPR
         var line = this.getCursorLine();
         var column = this.getCursorColumn();
-        this.cursorSet(this.originMode ? line - this._regionTop : line
+        this.cursorSet(this.sstate.originMode ? line - this._regionTop : line
                        + this.getParameter(0, 1),
-                       this.originMode ? column - this._regionLeft : column,
-                       this.originMode);
+                       this.sstate.originMode ? column - this._regionLeft : column,
+                       this.sstate.originMode);
     case 103 /*'g'*/: // TBC Tab Clear
         param = this.getParameter(0, 0);
         if (param <= 0)
@@ -3632,10 +3639,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
         else {
             switch (param) {
             case 4:
-                this.insertMode = true;
+                this.sstate.insertMode = true;
                 break;
             case 20:
-                this.automaticNewlineMode = true;
+                this.sstate.automaticNewlineMode = true;
                 break;
             }
         }
@@ -3648,10 +3655,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
         } else {
             switch (param) {
             case 4:
-                this.insertMode = false;
+                this.sstate.insertMode = false;
                 break;
             case 20:
-                this.automaticNewlineMode = false;
+                this.sstate.automaticNewlineMode = false;
                 break;
             }
         }
@@ -3771,7 +3778,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             var c = this.getCursorColumn();
             if (c == this.numColumns)
                 c--;
-            if (this.originMode) {
+            if (this.sstate.originMode) {
                 r -= this._regionTop;
                 c -= this._regionLeft;
             }
@@ -3823,7 +3830,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             bot = this.numRows;
         if (bot > top) {
             this._setRegionTB(top - 1, bot);
-            this.cursorSet(0, 0, this.originMode);
+            this.cursorSet(0, 0, this.sstate.originMode);
         }
         break;
     case 115 /*'s'*/:
@@ -3976,14 +3983,14 @@ DomTerm.prototype.sessionName = function() {
 DomTerm.prototype.setWindowTitle = function(title, option) {
     switch (option) {
     case 0:
-        this.windowName = title;
-        this.iconName = title;
+        this.sstate.windowName = title;
+        this.sstate.iconName = title;
         break;
     case 1:
-        this.iconName = title;
+        this.sstate.iconName = title;
         break;
     case 2:        
-        this.windowName = title;
+        this.sstate.windowName = title;
         break;
     case 30:
         this.name = title;
@@ -3991,14 +3998,12 @@ DomTerm.prototype.setWindowTitle = function(title, option) {
         this.reportEvent("SESSION-NAME", JSON.stringify(title));
         break;
     }
-    if (DomTerm.setLayoutTitle)
-        DomTerm.setLayoutTitle(this, this.sessionName(), this.windowName);
-    this.updateWindowTitle(this.formatWindowTitle());
+    this.updateWindowTitle();
 };
 
 DomTerm.prototype.formatWindowTitle = function() {
-    var str = this.windowName ? this.windowName
-        : this.iconName ? this.iconName
+    var str = this.sstate.windowName ? this.sstate.windowName
+        : this.sstate.iconName ? this.sstate.iconName
         : "";
     var sessionName = this.sessionName();
     //if (! sessionName)
@@ -4011,8 +4016,11 @@ DomTerm.prototype.formatWindowTitle = function() {
     return str;
 }
 
-DomTerm.prototype.updateWindowTitle = function(str) {
-    this.windowTitle = str;
+DomTerm.prototype.updateWindowTitle = function() {
+    if (DomTerm.setLayoutTitle)
+        DomTerm.setLayoutTitle(this, this.sessionName(), this.sstate.windowName);
+    var str = this.formatWindowTitle()
+    this.sstate.windowTitle = str;
     if (this.hasFocus())
         document.title = str;
 }
@@ -4024,12 +4032,12 @@ DomTerm.prototype.resetTerminal = function(full, saved) {
     this.controlSequenceState = DomTerm.INITIAL_STATE;
     this._setRegionTB(0, -1);
     this._setRegionLR(0, -1);
-    this.originMode = false;
-    this.bracketedPasteMode = false;
-    this.wraparoundMode = 2;
+    this.sstate.originMode = false;
+    this.sstate.bracketedPasteMode = false;
+    this.sstate.wraparoundMode = 2;
     this.forceWidthInColumns(-1);
-    this._mouseMode = 0;
-    this._mouseCoordEncoding = 0;
+    this.sstate.mouseMode = 0;
+    this.sstate.mouseCoordEncoding = 0;
     this._Glevel = 0;
     this._currentCommandGroup = null;
     this._currentCommandOutput = null;
@@ -4577,6 +4585,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this._vspacer.insertAdjacentHTML('beforebegin', data.html);
             var parent = main.parentNode;
             parent.removeChild(main);
+            this.sstate = data.sstate;
             if (data.alternateBuffer)
                 this.usingAlternateScreenBuffer = data.alternateBuffer;
             var dt = this;
@@ -4599,7 +4608,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             var home_offset = -1;
             dt.homeLine = dt._computeHomeLine(home_node, home_offset,
                                               dt.usingAlternateScreenBuffer);
-            this._checkTree(); // FIXME
+            this.updateWindowTitle();
         }
         break;
     case 110: // start prettyprinting-group
@@ -5298,7 +5307,7 @@ DomTerm.prototype.insertString = function(str) {
                     this._enterPaging(true);
                     return;
                 }
-                this.cursorNewLine(this.automaticNewlineMode);
+                this.cursorNewLine(this.sstate.automaticNewlineMode);
                 prevEnd = i + 1; columnWidth = 0;
                 break;
             case 27 /* Escape */:
@@ -5887,7 +5896,7 @@ DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPo
     if (goodLength == 0)
         textNode.parentNode.removeChild(textNode);
     else if (textNode.data.length != goodLength) {
-        if ((this.wraparoundMode & 2) != 0) {
+        if ((this.sstate.wraparoundMode & 2) != 0) {
             textNode.data = textData.substring(0, goodLength);
         } else {
             // FIXME handle surrogates
@@ -5925,7 +5934,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     }
     if (widthInColumns < 0)
         widthInColumns = this.strWidthInContext(str, this.outputContainer);
-    if (this.insertMode) {
+    if (this.sstate.insertMode) {
         var line = this.getAbsCursorLine();
         var col = this.getCursorColumn();
         var trunccol = this.numColumns-widthInColumns;
@@ -6067,7 +6076,7 @@ DomTerm.prototype.processResponseCharacters = function(str) {
 };
 
 DomTerm.prototype.reportText = function(text, suffix) {
-    if (this.bracketedPasteMode)
+    if (this.sstate.bracketedPasteMode)
         text = "\x1B[200~" + text + "\x1B[201~";
     if (suffix)
         text = text + suffix;
@@ -6108,7 +6117,7 @@ DomTerm.prototype.specialKeySequence = function(param, last, event) {
     }
     if (mods > 0)
         return csi+(param==""||param=="O"?"1":param)+";"+(mods+1)+last;
-    else if ((this.applicationCursorKeysMode && param == "") || param == "O")
+    else if ((this.sstate.applicationCursorKeysMode && param == "") || param == "O")
         return "\x1BO"+last;
     else
         return csi+param+last;
@@ -6120,7 +6129,7 @@ DomTerm.prototype.keyDownToString = function(event) {
     case 8: /* Backspace */ return "\x7F";
     case 9: /* Tab */    return "\t";
     case 13: /* Return/Enter */
-        return this.automaticNewlineMode ? "\r\n" : "\r";
+        return this.sstate.automaticNewlineMode ? "\r\n" : "\r";
     case 27: /* Esc */   return "\x1B";
     case 33 /* PageUp*/: return this.specialKeySequence("5", "~", event);
     case 34 /* PageDown*/:return this.specialKeySequence("6", "~", event);
@@ -6397,7 +6406,7 @@ DomTerm.prototype.setInputMode = function(mode) {
     if (wasEditing && ! this.isLineEditing()) {
         this._sendInputContents();
     }
-    this.automaticNewlineMode = ! this.clientDoesEcho;
+    this.sstate.automaticNewlineMode = ! this.clientDoesEcho;
 };
 
 DomTerm.prototype.getInputMode = function() {
