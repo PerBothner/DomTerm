@@ -207,9 +207,9 @@ probe_domterm ()
 }
 
 void
-check_domterm(void)
+check_domterm(struct options *opts)
 {
-    if (server->options.force_option == 0 && probe_domterm() <= 0) {
+    if (opts->force_option == 0 && probe_domterm() <= 0) {
         fprintf(stderr, "domterm: don't seem to be running under DomTerm - use --force to force\n");
         exit(-1);
     }

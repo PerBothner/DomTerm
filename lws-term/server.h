@@ -176,7 +176,7 @@ extern int process_options(int argc, char **argv, struct options *options;);
 extern char ** copy_argv(int argc, char * const*argv);
 
 extern int probe_domterm(void);
-extern void check_domterm(void);
+extern void check_domterm(struct options *);
 extern void generate_random_string (char *buf, int nchars);
 
 #if COMPILED_IN_RESOURCES
@@ -195,3 +195,25 @@ extern struct resource resources[];
 // These are used to delimit "out-of-bound" urgent messages.
 #define URGENT_START_STRING "\023"
 #define URGENT_END_STRING "\024"
+
+#define COMMAND_ALIAS 1
+#define COMMAND_IN_CLIENT 2
+#define COMMAND_IN_CLIENT_IF_NO_SERVER 4
+#define COMMAND_IN_SERVER 8
+
+/* The procedure that executes a command.
+ * The return value should be one of EXIT_SUCCESS, EXIT_FAILURE,
+ * or EXIT_IN_SERVER (if executed by command).
+ */
+typedef int (*action_t)(int argc, char** argv, const char*cwd,
+                        char **env, struct lws *wsi, int replyfd,
+                        struct options *opts);
+
+struct command {
+  const char *name;
+  int options;
+  const char *help;
+  action_t action;
+};
+
+extern struct command * find_command(const char *name);

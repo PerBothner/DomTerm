@@ -683,36 +683,19 @@ main(int argc, char **argv)
         exit(0);
 
     const char *cmd = argv[optind];
+    struct command *command;
     if (argv[optind] != NULL) {
-        if (cmd != NULL && strcmp(cmd, "is-domterm") == 0) {
-            // "Usage: dt-util is-domterm"
-            // "Succeeds if running on a DomTerm terminal; fails otherwise."
-            // "Typical usage: if dt-util is-domterm; then ...; fi"
-            exit(probe_domterm() > 0 ? 0 : -1);
-        } else if (strcmp(cmd, "html") == 0 || strcmp(cmd, "hcat") == 0) {
-            // "Usage: html html-data..."
-            // "Each 'html-data' must be a well-formed HTML fragment"
-            // "If there are no arguments, read html from standard input"
-            check_domterm();
-            int i = optind + 1;
-            if (i == argc) {
-                char buffer[1024];
-                fprintf(stdout, "\033]72;");
-                for (;;) {
-                    int r = fread(buffer, 1, sizeof(buffer), stdin);
-                    if (r <= 0 || fwrite(buffer, 1, r, stdout) <= 0)
-                      break;
-                }
-                fprintf(stdout, "\007");
-            } else {
-                while (i < argc)  {
-                    fprintf(stdout, "\033]72;%s\007", argv[i++]);
-                }
-            }
-            fflush(stderr);
-            exit(0);
-         }
-    }
+        command = find_command(argv[optind]);
+        if (command == NULL) {
+            fprintf(stderr, "domterm: unknown command '%s'\n", argv[optind]);
+            exit(EXIT_FAILURE);
+        }
+        if ((command->options & COMMAND_IN_CLIENT) != 0) {
+          exit((*command->action)(argc, argv,
+                                  NULL, NULL, NULL, 2, &opts));
+        }
+    } else
+      command = NULL;
     char *socket_path = make_socket_name();
     int socket = client_connect(socket_path, 0);
     if (socket >= 0) {
@@ -732,10 +715,10 @@ main(int argc, char **argv)
       //  fatal("bad close of socket");
       //fprintf(stderr, "done client cmd:%s\n", cmd);
       exit(0);
-    } else if (cmd != NULL && strcmp(cmd, "list") == 0) {
-      // We don't want to start the server
-      fprintf(stderr, "(no domterm sessions or server)\n", cmd);
-      exit(0);
+    } else if (command != NULL &&
+               (command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0) {
+          exit((*command->action)(argc, argv,
+                                  NULL, NULL, NULL, 2, &opts));
     }
 
     server = tty_server_new(argc-optind, argv+optind);
@@ -743,12 +726,6 @@ main(int argc, char **argv)
     server->prefs_json = strdup(json_object_to_json_string(client_prefs));
     json_object_put(client_prefs);
 
-#if 0
-    if (server->command == NULL || strlen(server->command) == 0) {
-        fprintf(stderr, "ttyd: missing start command\n");
-        return -1;
-    }
-#endif
 
     if (port_specified < 0)
         server->client_can_close = true;
