@@ -34,14 +34,6 @@ int html_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int list_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, int replyfd,
-                      struct options *opts)
-{
-    fprintf(stderr, "(no domterm sessions or server)\n");
-    return EXIT_SUCCESS;
-}
-
 static char is_domterm_help[] = "Usage: dt-util is-domterm\n"
     "Succeeds if running on a DomTerm terminal; fails otherwise.\n"
     "Typical usage: if dt-util is-domterm; then ...; fi\n";
@@ -61,11 +53,13 @@ struct command commands[] = {
     .help = html_help },
   { .name ="hcat",
     .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
+  { .name = "attach", .options = COMMAND_IN_SERVER,
+    .action = attach_action},
   { .name = "list",
     .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
     .action = list_action },
-  { .name = "new", .options = COMMAND_IN_SERVER },
-  { .name = "attach", .options = COMMAND_IN_SERVER },
+  { .name = "new", .options = COMMAND_IN_SERVER,
+    .action = new_action},
   { .name = 0 }
   };
 

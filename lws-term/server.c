@@ -684,13 +684,15 @@ main(int argc, char **argv)
 
     const char *cmd = argv[optind];
     struct command *command;
-    if (argv[optind] != NULL) {
-        command = find_command(argv[optind]);
+    if (cmd != NULL) {
+        command = find_command(cmd);
         if (command == NULL) {
-            fprintf(stderr, "domterm: unknown command '%s'\n", argv[optind]);
-            exit(EXIT_FAILURE);
+            if (index(cmd, '/') == NULL) {
+                fprintf(stderr, "domterm: unknown command '%s'\n", cmd);
+                exit(EXIT_FAILURE);
+            }
         }
-        if ((command->options & COMMAND_IN_CLIENT) != 0) {
+        else if ((command->options & COMMAND_IN_CLIENT) != 0) {
           exit((*command->action)(argc, argv,
                                   NULL, NULL, NULL, 2, &opts));
         }

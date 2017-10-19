@@ -735,59 +735,85 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
     }
 }
 
-int
-handle_command(int argc, char** argv, const char*cwd,
-               char **env, struct lws *wsi, int replyfd, struct options *opts)
+int new_action(int argc, char** argv, const char*cwd,
+                  char **env, struct lws *wsi, int replyfd,
+                  struct options *opts)
 {
-    char *browser_specifier = opts->browser_command;
-
-    int is_executable = (argc > 0 && argv[0][0] != '-'
-                         && index(argv[0], '/') != NULL
-                         && access(argv[0], X_OK) == 0);
-    if (is_executable || argc == 0 || strcmp(argv[0], "new") == 0){ 
-      //close(replyfd);
-      //replyfd = -1;
-      int skip = argc == 0 || is_executable ? 0 : 1;
-      char**args = copy_argv(argc-skip, (char**)(argv+skip));
-      struct pty_client *pclient = run_command(args, cwd, env, replyfd);
-      display_session(browser_specifier, pclient, info.port);
-    }
-    else if (argc == 2 && strcmp(argv[0], "attach") == 0){ 
-      //close(replyfd);
-      //replyfd = -1;
-      char *session_specifier = argv[1];
-      struct pty_client *pclient = find_session(session_specifier);
-      if (pclient == NULL) {
+    int skip = argc == 0 || index(argv[0], '/') != NULL ? 0 : 1;
+    char**args = copy_argv(argc-skip, (char**)(argv+skip));
+    char *argv0 = args[0];
+    if (index(argv0, '/') != NULL ? access(argv0, X_OK) != 0
+        : find_in_path(argv0) == NULL) {
           FILE *out = fdopen(replyfd, "w");
-          fprintf(out, "no session '%s' found \n", session_specifier);
-          return -1;
-      }
+          fprintf(out, "cannot execute '%s'\n", argv0);
+          fclose(out);
+          return EXIT_FAILURE;
+    }
+    struct pty_client *pclient = run_command(args, cwd, env, replyfd);
+    display_session(opts->browser_command, pclient, info.port);
+    return EXIT_SUCCESS;
+}
+
+int attach_action(int argc, char** argv, const char*cwd,
+                  char **env, struct lws *wsi, int replyfd,
+                  struct options *opts)
+{
+    char *session_specifier = argv[1];
+    struct pty_client *pclient = find_session(session_specifier);
+    if (pclient == NULL) {
+        FILE *out = fdopen(replyfd, "w");
+        fprintf(out, "no session '%s' found \n", session_specifier);
+        return EXIT_FAILURE;
+    }
 #if 0
-      if (existing active tclient) {
+    if (existing active tclient) {
         tclient = select-tclient;
         Send 'get-window-contents' command to tclient;
         mark pclient as awaiting_content;
         Server must save any subsequent output sent to browser, until response.
-      }
-#endif
-      display_session(browser_specifier, pclient, info.port);
     }
-    else if (strcmp(argv[0], "list") == 0) {
-        FILE *out = fdopen(replyfd, "w");
-        struct pty_client *pclient = pty_client_list;
+#endif
+    display_session(opts->browser_command, pclient, info.port);
+    return EXIT_SUCCESS;
+}
+
+int list_action(int argc, char** argv, const char*cwd,
+                      char **env, struct lws *wsi, int replyfd,
+                      struct options *opts)
+{
+    struct pty_client *pclient = pty_client_list;
+    FILE *out = fdopen(replyfd, "w");
+    if (pclient == NULL)
+       fprintf(stderr, "(no domterm sessions or server)\n");
+    else {
         for (; pclient != NULL; pclient = pclient->next_pty_client) {
-          fprintf(out, "pid: %d", pclient->pid);
-          fprintf(out, ", session#: %d", pclient->session_number);
-          if (pclient->session_name != NULL)
-            fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
-          int nwindows = 0;
-          struct lws *w;
-          FOREACH_WSCLIENT(w, pclient) { nwindows++; }
-          fprintf(out, ", #windows: %d", nwindows);
-          fprintf(out, "\n");
-        }
-        fclose(out);
+            fprintf(out, "pid: %d", pclient->pid);
+            fprintf(out, ", session#: %d", pclient->session_number);
+            if (pclient->session_name != NULL)
+              fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
+            int nwindows = 0;
+            struct lws *w;
+            FOREACH_WSCLIENT(w, pclient) { nwindows++; }
+            fprintf(out, ", #windows: %d", nwindows);
+            fprintf(out, "\n");
+       }
+    }
+    fclose(out);
+    return EXIT_SUCCESS;
+}
+
+int
+handle_command(int argc, char** argv, const char*cwd,
+               char **env, struct lws *wsi, int replyfd, struct options *opts)
+{
+    struct command *command = argc == 0 ? NULL : find_command(argv[0]);
+    if (command != NULL) {
+        return (*command->action)(argc, argv, cwd, env, wsi, replyfd, opts);
+    }
+    if (argc == 0 || index(argv[0], '/') != NULL) {
+        return new_action(argc, argv, cwd, env, wsi, replyfd, opts);
     } else {
+        // normally caught earlier
         FILE *out = fdopen(replyfd, "w");
         fprintf(out, "domterm: unknown command '%s'\n", argv[0]);
         fclose(out);
