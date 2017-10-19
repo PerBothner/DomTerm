@@ -183,7 +183,9 @@ function DomTerm(name, topNode) {
 
     this.topNode = null;
 
-    // ??? FIXME we want to get rid of this
+    // ??? FIXME do we want to get rid of this? at least rename it
+    // The <div class='interaction'> that is either the main or the
+    // alternate screen buffer.  Same as _currentBufferNode()
     this.initial = null;
 
     this._displayInfoWidget = null;
@@ -340,6 +342,12 @@ function DomTerm(name, topNode) {
     this._needSectionEndList = null;
     this._needSectionEndFence = null;
 
+    // As reported from backend;
+    // 0: Not the only window
+    // 1: this is the only window of the session, detach not set
+    // 2: this is the only window of the session, detach set
+    this._detachSaveNeeded = 1;
+
     if (topNode)
         this.initializeTerminal(topNode);
     var dt = this;
@@ -371,7 +379,29 @@ DomTerm.prototype.eofSeen = function() {
     this.close();
 };
 
+DomTerm.prototype.detach = function() {
+    this.reportEvent("DETACH", "");
+    if (this._detachSaveNeeded == 1)
+        this._detachSaveNeeded = 2;
+    this.close();
+}
+
+DomTerm.prototype._saveWindowContents = function() {
+    this._restoreInputLine();
+    var data = '{"rcount":'+this._receivedCount;
+    if (this.usingAlternateScreenBuffer)
+        data += ', "alternateBuffer":'+this.usingAlternateScreenBuffer;
+    data += ', "html":'
+        + JSON.stringify(this.getAsHTML(false, true))
+        +'}';
+    this.reportEvent("WINDOW-CONTENTS", data);
+    this._removeInputLine();
+}
+
 DomTerm.prototype.close = function() {
+    if (this._detachSaveNeeded == 2) {
+        this._saveWindowContents();
+    }
     if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
         DomTerm.domTermLayoutClose(this);
     else
@@ -656,8 +686,8 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
     var dt = this;
     dt._currentPprintGroup = null;
 
-    for (var cur = startNode.firstChild; ;) {
-        if (cur == null || cur == startNode)
+    for (var cur = startNode; ;) {
+        if (cur == null || cur == this._vspacer)
             break;
         var descend = false;
         if (cur instanceof Text) {
@@ -706,7 +736,12 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
             var tag = cur.tagName;
             if (cur.firstChild)
                 descend = true;
-            if (tag == "DIV" || tag == "PRE" || tag == "P") {
+            var classList = cur.classList;
+            if (tag == "DIV"
+                && (classList.contains("domterm-ruler")
+                    || classList.contains("resize-sensor")))
+                descend = false;
+            else if (tag == "DIV" || tag == "PRE" || tag == "P") {
                 var hasData = false;
                 var prevWasBlock = false;
                 // Check to see if cur has any non-block children:
@@ -786,6 +821,8 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     break;
             }
         }
+        if (cur == startNode)
+            break;
     }
 };
 
@@ -809,6 +846,25 @@ DomTerm.prototype.saveCursor = function() {
         charMapper: this.charMapper
     };
 };
+
+// Re-calculate alternate buffer's saveLastLine property.
+DomTerm.prototype._restoreSaveLastLine = function() {
+    if (this.usingAlternateScreenBuffer) {
+        var line = 0;
+        var dt = this;
+        var altBuffer = DomTerm._currentBufferNode(this, true);
+        function findAltBuffer(node) {
+            if (node == altBuffer) {
+                altBuffer.saveLastLine = line;
+                return node;
+            }
+            if (node == dt.lineStarts[line])
+                line++;
+            return null;
+        }
+        this._forEachElementIn(this.topNode, findAltBuffer);
+    }
+}
  
 DomTerm.prototype.restoreCursor = function() {
     var saved = this._savedCursor;
@@ -1900,6 +1956,21 @@ DomTerm.prototype._createLineNode = function(kind, text="") {
     return el;
 };
  
+DomTerm._currentBufferNode =
+    function(dt, alternate=dt.usingAlternateScreenBuffer) {
+    var bnode = null;
+    for (let node = dt.topNode.firstChild; node != null;
+         node = node.nextSibling) {
+        if (node.nodeName == 'DIV'
+            && node.getAttribute('class') == 'interaction') {
+            bnode = node;
+            if (! alternate)
+                break;
+        }
+    }
+    return bnode;
+}
+
 DomTerm.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         this._setRegionTB(0, -1);
@@ -1910,8 +1981,9 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             var nextLine = this.lineEnds.length;
             var bufNode = this._createBuffer(this._altBufferName);
             this.topNode.insertBefore(bufNode, this._vspacer);
-            bufNode.saveHomeLine = this.homeLine;
-            bufNode.saveInitial = this.initial;
+            var homeOffset = DomTerm._homeLineOffset(this);
+            var homeNode = this.lineStarts[this.homeLine - homeOffset];
+            homeNode.setAttribute("home-line", homeOffset);
             bufNode.saveLastLine = nextLine;
             bufNode.savedCursor = this._savedCursor;
             this._savedCursor = null;
@@ -1927,10 +1999,22 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
                 this._pauseLimit += bufNode.offsetTop;
         } else {
             var bufNode = this.initial;
-            this.initial = bufNode.saveInitial;
+            this.initial = DomTerm._currentBufferNode(this, false);
             this.lineStarts.length = bufNode.saveLastLine;
             this.lineEnds.length = bufNode.saveLastLine;
-            this.homeLine = bufNode.saveHomeLine;
+            var homeNode = null;
+            var homeOffset = -1;
+            this._forEachElementIn(this.initial,
+                                   function(node) {
+                                       var offset = node.getAttribute('home-line');
+                                       if (offset) {
+                                           homeNode = node;
+                                           homOffset = 0 + offset;
+                                           return node;
+                                       }
+                                       return false;
+                                   });
+            this.homeLine = this._computeHomeLine(homeNode, homeOffset, false);
             this._savedCursor = bufNode.savedCursor;
             this.moveToAbs(this.homeLine, 0, false);
             bufNode.parentNode.removeChild(bufNode);
@@ -1992,6 +2076,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
 
     var helperNode = this._createPreNode();
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
+    helperNode.classList.add("domterm-ruler");
     topNode.insertBefore(helperNode, topNode.firstChild);
     var rulerNode = document.createElement("span");
     rulerNode.setAttribute("class", "wrap");
@@ -2021,6 +2106,34 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     */
 };
 
+/*
+DomTerm.prototype._findHomeLine = function(bufNode) {
+    this._forEachElementIn(bufNode,
+                           function(node) {
+                               var offset = node.getAttribute('home-line');
+                               return offset != null ? node : null;
+                           });
+}
+*/
+
+DomTerm.prototype._computeHomeLine = function(home_node, home_offset,
+                                             alternate) {
+    var line = -1;
+    if (home_node) {
+        for (var l = this.lineStarts.length; --l >= 0; ) {
+            if (this.lineStarts[l] == home_node) {
+                line = l + home_offset;
+                break;
+            }
+        }
+    }
+    if (line < 0) {
+        line = alternate ? this.initial.saveLastLine : 0;
+    }
+    var minHome = this.lineStarts.length - this.numRows;
+    return minHome < line ? line : minHome;
+}
+
 DomTerm.prototype.resizeHandler = function() {
     var dt = this;
     // FIXME we want the resize-sensor to be a child of helperNode
@@ -2030,13 +2143,15 @@ DomTerm.prototype.resizeHandler = function() {
     dt.measureWindow();
     dt._displaySizeInfoWithTimeout();
 
+    var home_offset = DomTerm._homeLineOffset(dt);
+    var home_node = dt.lineStarts[dt.homeLine - home_offset];
     if (dt.availWidth != oldWidth) {
         dt._breakAllLines();
+        dt._restoreSaveLastLine();
         dt.resetCursorCache();
     }
-    var minHome = dt.lineStarts.length - dt.numRows;
-    var line0 = dt.usingAlternateScreenBuffer ? dt.initial.saveLastLine : 0;
-    dt.homeLine = minHome < line0 ? line0 : minHome;
+    dt.homeLine = dt._computeHomeLine(home_node, home_offset,
+                                     dt.usingAlternateScreenBuffer);
     dt._checkSpacer();
     dt._scrollIfNeeded();
 }
@@ -2558,13 +2673,15 @@ DomTerm.prototype.addInputLine = function() {
     this.inputLine = inputNode;
 };
 
-/*
 DomTerm.prototype._forEachElementIn = function(node, func) {
     for (var cur = node.firstChild; ;) {
         if (cur == null || cur == node)
             break;
-        if (cur instanceof Element)
-            func(cur);
+        if (cur instanceof Element) {
+            var r = func(cur);
+            if (r != null)
+                return r;
+        }
         if (cur instanceof Element && cur.firstChild) {
             cur = cur.firstChild;
         } else if (cur.nextSibling)
@@ -2581,8 +2698,8 @@ DomTerm.prototype._forEachElementIn = function(node, func) {
             }
         }
     }
+    return null;
 };
-*/
 
 DomTerm.prototype.resetCursorCache = function() {
     this.currentCursorColumn = -1;
@@ -2896,9 +3013,8 @@ DomTerm.prototype.eraseDisplay = function(param) {
         break;
     default:
         var startLine = param == 0 ? saveLine : this.homeLine;
-        if (this.usingAlternateScreenBuffer && startLine == this.homeLine
-            && param == 2 && this.initial.saveHomeLine > 0) {
-            // FIXME maybe this is a bad idea
+        if (param == 2 && this.usingAlternateScreenBuffer
+            && this.homeLine > this.initial.saveLastLine) {
             var saveHome = this.homeLine;
             this.homeLine = this.initial.saveLastLine;
             var homeAdjust = saveHome - this.homeLine;
@@ -3806,9 +3922,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.setInputMode(this.getParameter(1, 112));
             break;
         case 81: // get-window-contents
-            this.reportEvent("WINDOW-CONTENTS",
-                             this._receivedCount+","
-                             + JSON.stringify(dt.getAsHTML(false, true)));
+            this._saveWindowContents();
             break;
         case 90:
             if (DomTerm.layoutAddPane) {
@@ -4455,6 +4569,39 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 102:
         this.reportEvent("GET-HTML", JSON.stringify(this.getAsHTML(true)));
         break;
+    case 103:
+        var data = JSON.parse(text);
+        var main = this._vspacer.previousSibling;
+        if (main instanceof Element &&
+            main.getAttribute('class') == 'interaction') {
+            this._vspacer.insertAdjacentHTML('beforebegin', data.html);
+            var parent = main.parentNode;
+            parent.removeChild(main);
+            if (data.alternateBuffer)
+                this.usingAlternateScreenBuffer = data.alternateBuffer;
+            var dt = this;
+            function findInputLine(node) {
+                if (node.getAttribute('id') != 'input-cursor')
+                    return null;
+                dt._removeInputLine();
+                dt.inputLine = node;
+                dt.outputBefore = node;
+                dt.outputContainer = node.parentNode;
+                return node;
+            };
+            this.initial = DomTerm._currentBufferNode(this);
+            this._forEachElementIn(parent, findInputLine);
+            this.resetCursorCache();
+            this._restoreLineTables(this.topNode, 0);
+            this._breakAllLines();
+            dt._restoreSaveLastLine();
+            var home_node; // FIXME
+            var home_offset = -1;
+            dt.homeLine = dt._computeHomeLine(home_node, home_offset,
+                                              dt.usingAlternateScreenBuffer);
+            this._checkTree(); // FIXME
+        }
+        break;
     case 110: // start prettyprinting-group
         if (this._currentStyleSpan == this.outputContainer
             && this.outputContainer.getAttribute("class") == "term-style")
@@ -4593,9 +4740,23 @@ var escapeMap = {
     "'": '&#039;'
 };
 
+DomTerm._homeLineOffset = function(dt) {
+    var home_offset = 0;
+    while (dt.homeLine - home_offset >= 0) {
+        var home_node = dt.lineStarts[dt.homeLine - home_offset];
+        if (home_node.nodeName != "SPAN")
+            break;
+        home_offset++;
+    }
+    return home_offset;
+}
+
 DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
     var string = bodyOnly ? "" : "<!DOCTYPE html>\n";
     var dt = this;
+
+    var home_offset = DomTerm._homeLineOffset(dt);
+    var home_node = dt.lineStarts[dt.homeLine - home_offset];
 
     function escapeText(text) {
         // Assume single quote is not used in atributes
@@ -4619,7 +4780,8 @@ DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
             var cls = node.getAttribute("class");
 
             if (tagName == "div") {
-                if (id == "domterm__helper" || cls == "domterm-spacer"
+                if (cls == "domterm-pre domterm-ruler"
+                    || cls == "domterm-spacer"
                     || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
             } else if (tagName == "span") {
@@ -4633,6 +4795,10 @@ DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
 
             var s = '<' + tagName;
             var skip = false;
+
+            if (node == home_node)
+                s += ' ' + 'home-line="'+home_offset+ '"';
+
             if (tagAttributes.length) {
                 for (i = 0; i < tagAttributes.length; i++) {
                     var aname = tagAttributes[i].name;
@@ -4644,6 +4810,11 @@ DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
                             string += "\n";
                             skip = true;
                         }
+                    } else if (aname == "id" && tagName == "span") {
+                        if (node == dt.inputLine)
+                            avalue = "input-cursor";
+                        else
+                            continue;
                     } else if (aname == "class" && avalue == "domterm"
                              && tagName == "div")
                         avalue = DomTerm._savedSessionClassNoScript;
@@ -4712,9 +4883,13 @@ DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
         };
     };
 
-    if (bodyOnly)
-        formatList(document.getElementsByTagName("body")[0]);
-    else
+    if (bodyOnly) {
+        var list = this.topNode.childNodes;
+        for (let i = 0; i < list.length; i++) {
+            var el = list[i];
+            formatDOM(el); // , namespaces
+        }
+    } else
         formatDOM(document.documentElement);
     return string;
 };
@@ -6551,9 +6726,7 @@ DomTerm.prototype.inputHandler = function(event) {
 
 // For debugging: Checks a bunch of invariants
 DomTerm.prototype._checkTree = function() {
-    var node = this.initial;
-    if (node.saveInitial)
-        node = node.saveInitial;
+    var node = DomTerm._currentBufferNode(this, false);
     var dt = this;
     function error(str) {
         dt.log("ERROR: "+str);
@@ -6615,9 +6788,9 @@ DomTerm.prototype._checkTree = function() {
     if (this.lineStarts.length - this.homeLine > this.numRows)
         error("bad homeLine value!");
     if (this.usingAlternateScreenBuffer) {
-        var main = this.initial.saveInitial;
-        if (! main)
-            error("saveInitial of alternate-screenbuffer not set");
+        var main = DomTerm._currentBufferNode(this, false);
+        if (! main || main == this.initial)
+            error("missing main-screenbuffer");
         if (this._isAnAncestor(this.initial, main))
             error("alternate-screenbuffer nested in main-screenbuffer");
     }

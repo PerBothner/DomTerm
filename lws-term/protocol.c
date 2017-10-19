@@ -95,9 +95,14 @@ pty_destroy(struct pty_client *pclient, int from_callback)
 
     // stop event loop
     pclient->exit = true;
+    if (pclient->saved_window_contents != NULL) {
+        free(pclient->saved_window_contents);
+        pclient->saved_window_contents = NULL;
+    }
 
     // kill process and free resource
-    lwsl_notice("sending %s to process %d\n", server->options.sig_name, pclient->pid);
+    lwsl_notice("sending %s to process %d\n",
+                server->options.sig_name, pclient->pid);
     if (kill(pclient->pid, server->options.sig_code) != 0) {
         lwsl_err("kill: pid, errno: %d (%s)\n", pclient->pid, errno, strerror(errno));
     }
@@ -324,6 +329,7 @@ run_command(char*const*argv, const char*cwd, char **env, int replyfd)
             pclient->detachOnClose = 0;
             pclient->detached = 0;
             pclient->paused = 0;
+            pclient->saved_window_contents = NULL;
             pclient->first_client_wsi = NULL;
             pclient->last_client_wsi_ptr = &pclient->first_client_wsi;
             if (pclient->nrows >= 0)
@@ -465,28 +471,20 @@ reportEvent(const char *name, char *data, size_t dlen,
         pclient->detachOnClose = 1;
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
-        struct tty_client *tc = (struct tty_client *) lws_wsi_user(focused_wsi);
-        if (tc->pclient != NULL)
-          fprintf(stderr, "- p.pid:%d s#:%d\n", tc->pclient->pid,
-                  tc->pclient->session_number);
     }
-#if 0
     else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
-        char *comma;
-        long int count = strtol(data, &comma, 10);
-        char *comma = index(data, ',');
-        char *q = strchr(data, '"');
-        json_object *obj = json_tokener_parse(q);
-        const char *kstr = json_object_get_string(obj);
-        /// free obj etc
+        if (pclient->saved_window_contents != NULL)
+            free(pclient->saved_window_contents);
+        pclient->saved_window_contents = strdup(data);
+#if 0
         for (each tclient where awaiting_content) {
             if (tclient->awaiting_initial_contents) {
               send "init-contents", kstr;
               send buffer contents since count;
               tclient->awaiting_initial_contents = 0;
         }
-    }
 #endif
+    }
 }
 
 int
@@ -538,6 +536,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
               for (; pclient != NULL; pclient = pclient->next_pty_client) {
                 if (pclient->pid == cpid) {
                   link_command(wsi, client, pclient);
+                  if (pclient->saved_window_contents != NULL)
+                    lws_callback_on_writable(wsi);
                   break;
                 }
               }
@@ -563,6 +563,16 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 char *p = &buf[LWS_PRE];
                 sprintf(p, "\033]30;DomTerm#%d\007", pclient->session_number);
                 write_to_browser(wsi, p, strlen(p));
+                if (pclient->saved_window_contents != NULL) {
+                  char *buf = xmalloc(strlen(pclient->saved_window_contents)+40);
+                  sprintf(buf+LWS_PRE,
+                          URGENT_START_STRING "\033]103;%s\007" URGENT_END_STRING,
+                          pclient->saved_window_contents);
+                  int rlen = strlen(buf+LWS_PRE);
+                  write_to_browser(wsi, buf+LWS_PRE, rlen);
+                  free(pclient->saved_window_contents);
+                  pclient->saved_window_contents = NULL;
+                }
                 client->initialized = true;
                 //break;
             }

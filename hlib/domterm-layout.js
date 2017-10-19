@@ -66,7 +66,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
         break;
     case 100: // 'd'
         if (! event.ctrlKey) {
-            DomTerm.detach(this);
+            this.detach();
             this.exitMuxMode();
             event.preventDefault();
         }
@@ -254,11 +254,6 @@ DomTerm.domTermToLayoutElement = function(domterm) {
             return parentNode;
     }
     return null;
-}
-
-DomTerm.detach = function(dt) {
-    dt.reportEvent("DETACH", "");
-    dt.close();
 }
 
 DomTerm.setLayoutTitle = function(dt, title, wname) {
