@@ -160,40 +160,6 @@ static const struct option options[] = {
 };
 static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
-void print_help() {
-    fprintf(stderr, "domterm is a terminal emulator/multipler that uses web technologies\n\n"
-                    "USAGE:\n"
-                    "    domterm [options] [<command> [<arguments...>]]\n\n"
-                    "VERSION:\n"
-                    "    %s\n\n"
-                    "OPTIONS:\n"
-                    "    --browser[=command]     Create browser window for terminal.\n"
-                    "                            The command can have a '%U' which is replaced by a URL; otherwise ' %U' is append to the command,\n"
-                    "                            If no command specified, uses default browser\n"
-                    "    --port, -p              Port to listen (default: '0' for random port)\n"
-                    "    --interface, -i         Network interface to bind (eg: eth0), or UNIX domain socket path (eg: /var/run/ttyd.sock)\n"
-                    "    --credential, -c        Credential for Basic Authentication (format: username:password)\n"
-                    "    --uid, -u               User id to run with\n"
-                    "    --gid, -g               Group id to run with\n"
-                    "    --signal, -s            Signal to send to the command when exit it (default: SIGHUP)\n"
-                    "    --reconnect, -r         Time to reconnect for the client in seconds (default: 10)\n"
-                    "    --readonly, -R          Do not allow clients to write to the TTY\n"
-                    "    --client-option, -t     Send option to client (format: key=value), repeat to add more options\n"
-                    "    --check-origin, -O      Do not allow websocket connection from different origin\n"
-                    "    --once, -o              Accept only one client and exit on disconnection\n"
-                    "    --index, -I             Custom index.html path\n"
-                    "    --ssl, -S               Enable SSL\n"
-                    "    --ssl-cert, -C          SSL certificate file path\n"
-                    "    --ssl-key, -K           SSL key file path\n"
-                    "    --ssl-ca, -A            SSL CA file path for client certificate verification\n"
-                    "    --debug, -d             Set log level (0-9, default: 0)\n"
-                    "    --version, -v           Print the version and exit\n"
-                    "    --help, -h              Print this text and exit\n"
-                    "If no --port option is specified, --browser is implied.\n",
-            LDOMTERM_VERSION
-    );
-}
-
 char **
 copy_argv(int argc, char * const*argv)
 {
@@ -504,7 +470,7 @@ int process_options(int argc, char **argv, struct options *opts)
     while ((c = getopt_long(argc, argv, opt_string, options, NULL)) != -1) {
         switch (c) {
             case 'h':
-                print_help();
+                print_help(stderr);
                 opts->something_done = true;
                 break;
             case 'v':
@@ -648,7 +614,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
 #endif
             default:
-                print_help();
+                print_help(stderr);
                 return -1;
         }
     }
@@ -683,23 +649,22 @@ main(int argc, char **argv)
         exit(0);
 
     const char *cmd = argv[optind];
-    struct command *command;
-    if (cmd != NULL) {
-        command = find_command(cmd);
-        if (command == NULL) {
-            if (index(cmd, '/') == NULL) {
-                fprintf(stderr, "domterm: unknown command '%s'\n", cmd);
-                exit(EXIT_FAILURE);
-            }
-        }
-        else if ((command->options & COMMAND_IN_CLIENT) != 0) {
-          exit((*command->action)(argc, argv,
+    struct command *command = cmd == NULL ? NULL : find_command(cmd);
+    if (command == NULL && cmd != NULL && index(cmd, '/') == NULL) {
+        fprintf(stderr, "domterm: unknown command '%s'\n", cmd);
+        exit(EXIT_FAILURE);
+    }
+    int socket = -1;
+    if ((command == NULL ||
+         (command->options &
+          (COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER)) != 0))
+      socket = client_connect(make_socket_name(), 0);
+    if (command != NULL
+        && ((command->options & COMMAND_IN_CLIENT) != 0
+            || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
+                && socket < 0)))
+          exit((*command->action)(argc-optind, argv+optind,
                                   NULL, NULL, NULL, 2, &opts));
-        }
-    } else
-      command = NULL;
-    char *socket_path = make_socket_name();
-    int socket = client_connect(socket_path, 0);
     if (socket >= 0) {
       const char *state_as_json = state_to_json(argc, argv, environ);
       size_t jlen = strlen(state_as_json);
@@ -717,10 +682,6 @@ main(int argc, char **argv)
       //  fatal("bad close of socket");
       //fprintf(stderr, "done client cmd:%s\n", cmd);
       exit(0);
-    } else if (command != NULL &&
-               (command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0) {
-          exit((*command->action)(argc, argv,
-                                  NULL, NULL, NULL, 2, &opts));
     }
 
     server = tty_server_new(argc-optind, argv+optind);

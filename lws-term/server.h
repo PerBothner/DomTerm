@@ -212,15 +212,17 @@ typedef int (*action_t)(int argc, char** argv, const char*cwd,
 struct command {
   const char *name;
   int options;
-  const char *help;
   action_t action;
 };
 
 extern struct command * find_command(const char *name);
 extern int attach_action(int, char**, const char*, char **,
                          struct lws *, int, struct options *);
+extern int help_action(int, char**, const char*, char **,
+                       struct lws *, int, struct options *);
 extern int list_action(int, char**, const char*, char **,
                        struct lws *, int, struct options *);
 extern int new_action(int, char**, const char*, char **,
                       struct lws *, int, struct options *);
 extern char*find_in_path();
+extern void print_help(FILE*);
