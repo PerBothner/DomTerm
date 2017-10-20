@@ -66,7 +66,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
         break;
     case 100: // 'd'
         if (! event.ctrlKey) {
-            this.detach();
+            DomTerm.detach(this);
             this.exitMuxMode();
             event.preventDefault();
         }

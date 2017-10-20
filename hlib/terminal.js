@@ -385,12 +385,14 @@ DomTerm.prototype.eofSeen = function() {
     this.close();
 };
 
-DomTerm.prototype.detach = function() {
-    this.reportEvent("DETACH", "");
-    if (this._detachSaveNeeded == 1)
-        this._detachSaveNeeded = 2;
-    this.close();
-}
+DomTerm.detach = function(dt=DomTerm.focusedTerm) {
+    if (dt) {
+        dt.reportEvent("DETACH", "");
+        if (dt._detachSaveNeeded == 1)
+            dt._detachSaveNeeded = 2;
+        dt.close();
+    }
+};
 
 DomTerm.prototype._saveWindowContents = function() {
     this._restoreInputLine();

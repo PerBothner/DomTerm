@@ -118,6 +118,9 @@ DomTerm.createElectronMenus = function() {
                                              DomTerm.layoutAddSibling(DomTerm.focusedTerm, false, true); }}));
     const newTerminalMenuItem = new MenuItem({label: 'New Terminal',
                                               submenu: newTerminalMenu});
+    const detachMenuItem =
+          new MenuItem({label: 'Detach session',
+                        click: function() { DomTerm.detach(); }});
 
     const homePageItem = new MenuItem({label: 'DomTerm home page',
                                        click: function() { shell.openExternal('http://domterm.org') }});
@@ -131,6 +134,7 @@ DomTerm.createElectronMenus = function() {
     contextMenu.append(inputModeMenu);
     contextMenu.append(autoPagingItem);
     contextMenu.append(newTerminalMenuItem);
+    contextMenu.append(detachMenuItem);
     contextMenu.append(showInspectorItem);
 
     DomTerm.savedMenuBar =
@@ -158,6 +162,7 @@ DomTerm.createElectronMenus = function() {
                                 {label: 'Terminal',
                                  submenu: [
                                      cycleInputModesItem,
+                                     detachMenuItem,
                                      newTerminalMenuItem]},
                                 {label: 'Help',
                                  submenu: [
