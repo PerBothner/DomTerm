@@ -1981,8 +1981,8 @@ DomTerm mostly handles standard @uref{https://en.wikipedia.org/wiki/ANSI_escape_
 This section documents DomTerm-specific extensions.
 (@emph{Future:} We should also document what xterm features aren't implemented.)
 
-@strong{The following are preliminary code sequences,
-which may change based on experience and feedback.}
+@strong{The following code sequences
+may change based on experience and feedback.}
 
 @emph{Notation:}
 Literal characters are written as quoted string literals with
@@ -2099,21 +2099,29 @@ The value 112 (@code{'p'} for "pipe") is like line-editing mode,
 but the inferiors doesn't echo the input, so we have to do it.
 This mode is useful when the input is a pipe or some other non-tty stream.
 
+@item @code{"\e[81u\n"}
+Requent to send the state of the window as a @code{WINDOW-CONTENTS} response.
+
+@item @code{"\e[90;" @var{op} "u\n"}
+Create a new sub-window (pane), based on the @var{op}.
+
 @item @code{"\e[99;99u"}
 End-of-file on the output stream.
 Calls the @code{eofSeen} method of @code{DomTerm},
 which may close the current window or other appropriate action.
 
 @item @code{"\x13"} @var{sequence} @code{"\x14"}
+@itemx @code{"\x13"} @code{"\x16"} @var{sequence} @code{"\x14"}
 An ``urgent'' command sequence:
 Same as @var{sequence}, but at higher priority.
 If the terminal is in the middle of some other escape sequence
 (or a multi-byte UTF-8 sequence), save the state,
 evaluate @var{sequence}, and restore the state.
+For the second form only:
 When DomTerm receives a sequence of bytes that contains
 an urgent sequence, it will execute that before handling preceding bytes.
 
-This is normally used for commands from the backend @code{domterm} server.
+These are normally used for commands from the backend @code{domterm} server.
 @end table
 
 @subsubsection Stylesheet manipulation
@@ -2286,6 +2294,30 @@ in the default browser of the user's desktop.
 (In the future to better support remote desktops, the backend
 should support a proxy server: The @var{href} should be resolved
 based on the backend's environment.)
+
+@item @code{"\x92" "RECEIVED " @var{count} "\n"}
+This is used for flow-control.
+The @var{count} is the number of bytes received and processed
+by the front-end.
+
+@item @code{"\x92" "SESSION-NAME " @var{session-name} "\n"}
+Set @var{session-name} (a JSON-quoted string)
+as the name for this session.
+
+@item @code{"\x92" "DETACH\n"}
+Don't destroy the session when the last window is closed;
+instead detach it.
+(Don't necessary detach now, if there are other windows on the session.)
+
+@item @code{"\x92" "FOCUSED\n"}
+The current (sub-)window has focus.
+
+@item @code{"\x92" "WINDOW-CONTENTS " @var{rcount} "," @var{state} "\n"}
+Report enough of the browser part of the session state so that
+it can be reproduced when a window is sttached to the session.
+The @var{state} is a JSON-encoded structure.
+The @var{rcount} is similar to the value reported @code{RECEIVED},
+but as of the start of teh most recent urgent message.
 
 @item @code{"\x92" "VERSION " @var{version-info} "\n"}
 Sends @var{version-info} to the back-end.  Used during initialization.
