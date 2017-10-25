@@ -69,6 +69,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
             DomTerm.detach(this);
             this.exitMuxMode();
             event.preventDefault();
+            event.stopImmediatePropagation();
         }
         break;
     }

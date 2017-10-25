@@ -75,6 +75,13 @@ struct pty_client {
     struct lws **last_client_wsi_ptr;
     struct lws *pty_wsi;
     char *saved_window_contents;
+
+    // The following are used to attach to already-visible session.
+    char *preserved_output; // data send since window-contents request
+    size_t preserved_start; // start of valid data in preserved_output
+    size_t preserved_end; // end of valid data in preserved_output
+    size_t preserved_size; // allocated size of preserved_output
+    long preserved_sent_count;  // sent_count corresponding to preserved_output
 };
 
 /** Data specific to a (browser) client connection. */
@@ -83,9 +90,10 @@ struct tty_client {
     bool initialized;
     //bool pty_started; = pclient!=NULL
     bool authenticated;
-#if 0
-    bool awaiting_initial_contents;
-#endif
+
+    // 1: attach requested - need to get contents from existing window
+    // 2: sent window-contents request to browser
+    char requesting_contents;
     char hostname[100];
     char address[50];
     char *version_info; // received from client
@@ -102,6 +110,7 @@ struct tty_client {
     char *obuffer; // output from child process
     size_t olen; // used length of obuffer
     size_t osize; // allocated size of obuffer
+    int connection_number;
 };
 
 struct cmd_client {
@@ -133,8 +142,9 @@ struct options {
 
 struct tty_server {
     LIST_HEAD(client, tty_client) clients;    // client list
-    int client_count;                         // client count
-    int session_count;                        // client count
+    int client_count;                         // number of current_clients
+    int session_count;                        // session count
+    int connection_count;                     // clients requested (ever)
     char *prefs_json;                         // client preferences
     char **argv;                              // command with arguments
     bool client_can_close;
@@ -192,8 +202,9 @@ extern struct resource resources[];
   for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
        VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)
 
-// These are used to delimit "out-of-bound" urgent messages.
-#define URGENT_START_STRING "\023"
+// These are used to delimit "out-of-band" urgent messages.
+#define URGENT_START_STRING "\023\026"
+#define OUT_OF_BAND_START_STRING "\023"
 #define URGENT_END_STRING "\024"
 
 #define COMMAND_ALIAS 1

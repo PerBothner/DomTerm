@@ -372,7 +372,8 @@ function DomTerm(name, topNode) {
 DomTerm._instanceCounter = 0;
 DomTerm.layoutManager = null;
 // These are used to delimit "out-of-bound" urgent messages.
-DomTerm.URGENT_BEGIN = 19; // '\023' - device control 3
+DomTerm.URGENT_BEGIN1 = 19; // '\023' - device control 3
+DomTerm.URGENT_BEGIN2 = 22; // '\026' - device control 3
 DomTerm.URGENT_END = 20; // \024' - device control 4
 
 DomTerm.freshName = function() {
@@ -396,10 +397,13 @@ DomTerm.detach = function(dt=DomTerm.focusedTerm) {
 
 DomTerm.prototype._saveWindowContents = function() {
     this._restoreInputLine();
-    var data = '{"rcount":'+this._receivedCount;
+    var rcount = this._savedControlState ? this._savedControlState.receivedCount
+        : this._receivedCount;
+    var data =
+        rcount
+        + ',{"sstate":'+JSON.stringify(this.sstate);
     if (this.usingAlternateScreenBuffer)
         data += ', "alternateBuffer":'+this.usingAlternateScreenBuffer;
-    data += ', "sstate":'+JSON.stringify(this.sstate);
     data += ', "html":'
         + JSON.stringify(this.getAsHTML(false, true))
         +'}';
@@ -3445,10 +3449,13 @@ DomTerm.prototype.pushControlState = function() {
     var save = {
         controlSequenceState: this.controlSequenceState,
         parameters: this.parameters,
+        decoder: this.decoder,
+        receivedCount: this._receivedCount,
         _savedControlState: this._savedControlState
     };
     this.controlSequenceState = DomTerm.INITIAL_STATE;
     this.parameters = new Array();
+    this.decoder = new TextDecoder(); //label = "utf-8");
     this._savedControlState = save;
 }
 
@@ -3457,6 +3464,7 @@ DomTerm.prototype.popControlState = function() {
     if (saved) {
         this.controlSequenceState = saved.controlSequenceState;
         this.parameters = saved.parameters;
+        this.decoder = saved.decoder;
         this._savedControlState = saved.controlSequenceState;
     }
 }
@@ -4924,29 +4932,55 @@ DomTerm.prototype.insertBytes = function(bytes) {
         this.log("insertBytes "+this.name+" "+typeof bytes);
     var len = bytes.length;
     while (len > 0) {
+        if (this.decoder == null)
+            this.decoder = new TextDecoder(); //label = "utf-8");
         var urgent_begin = -1;
         var urgent_end = -1;
         for (var i = 0; i < len; i++) {
             var ch = bytes[i];
-            if (ch == DomTerm.URGENT_BEGIN)
+            if (ch == DomTerm.URGENT_BEGIN1)
                 urgent_begin = i;
             else if (ch == DomTerm.URGENT_END) {
                 urgent_end = i;
                 break;
             }
         }
-        if (urgent_end > urgent_begin && urgent_begin >= 0) {
-            this.insertString(new TextDecoder().decode(bytes.slice(urgent_begin, urgent_end+1)));
+        var plen = urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin) ? urgent_begin
+            : urgent_end >= 0 ? urgent_end : len;
+        var dlen; // amount consumed this iteration
+        if (urgent_end > urgent_begin && urgent_begin > 0
+            && bytes[urgent_begin+1] == DomTerm.URGENT_BEGIN2) {
+            this.pushControlState();
+            this.insertString(this.decoder
+                              .decode(bytes.slice(urgent_begin+1, urgent_end),
+                                      {stream:true}));
+            this.popControlState();
             bytes.copyWithin(urgent_begin, urgent_end);
-            len -= urgent_end+1-urgent_begin;
-            bytes = bytes.slice(0, len);
+            dlen = urgent_end+1-urgent_begin;
+            bytes = bytes.slice(0, len-dlen);
         } else {
-            if (this.decoder == null)
-                this.decoder = new TextDecoder(); //label = "utf-8");
-            var str = this.decoder.decode(bytes, {stream:true});
-            this.insertString(str);
-            len = 0;
+            if (plen > 0) {
+                this.insertString(this.decoder
+                                  .decode(bytes.slice(0, plen), {stream:true}));
+            }
+            if (plen == len) {
+                dlen = len;
+            } else {
+                // update receivedCount before calling pushControlState
+                this._receivedCount =
+                    (this._receivedCount + plen) & DomTerm._mask28;
+                if (plen == urgent_begin)
+                    this.pushControlState();
+                else if (plen == urgent_end)
+                    this.popControlState();
+                dlen = plen + 1;
+                bytes = bytes.slice(dlen, len);
+                len -= plen;
+                dlen = 1;
+            }
         }
+        len -= dlen;
+        this._receivedCount = (this._receivedCount + dlen) & DomTerm._mask28;
     }
 }
 
@@ -5014,15 +5048,6 @@ DomTerm.prototype.insertString = function(str) {
     for (; i < slen; i++) {
         var ch = str.charCodeAt(i);
         //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
-        if (ch == DomTerm.URGENT_BEGIN || ch == DomTerm.URGENT_END) {
-            this.insertSimpleOutput(str, prevEnd, i, columnWidth);
-            prevEnd = i + 1;
-            if (ch == DomTerm.URGENT_BEGIN)
-                this.pushControlState();
-            else
-                this.popControlState();
-            continue;
-        }
         var state = this.controlSequenceState;
         switch (state) {
         case DomTerm.SEEN_SURROGATE_HIGH:

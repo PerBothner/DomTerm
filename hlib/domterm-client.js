@@ -7,11 +7,12 @@ DomTerm._handleOutputData = function(dt, data) {
     if (data instanceof ArrayBuffer) {
         dt.insertBytes(new Uint8Array(data));
         dlen = data.byteLength;
+        // updating _receivedCount is handled by insertBytes
     } else {
         dt.insertString(data);
         dlen = data.length;
+        dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
     }
-    dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
     if (dt._pagingMode != 2
         && ((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
         dt._confirmedCount = dt._receivedCount;
