@@ -156,7 +156,7 @@ if test "$with_libwebsockets" != "no"; then
   PKG_CHECK_MODULES(LIBCAP, libcap, true, true)
   case "${with_libwebsockets}" in
     "yes" | "")
-      PKG_CHECK_MODULES(LIBWEBSOCKETS, libwebsockets)
+      PKG_CHECK_MODULES(LIBWEBSOCKETS, [libwebsockets >= 2.2.0])
       ;;
     *)
       #LIBWEBSOCKETS_LIBS="-L ${with_libwebsockets}/lib -lwebsockets"
