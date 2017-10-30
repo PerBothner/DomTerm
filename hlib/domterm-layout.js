@@ -81,22 +81,23 @@ DomTerm.layoutItemToDomTerm = function(item) {
     return item.element[0].firstChild.firstChild.terminal;
 };
 
+DomTerm._elementToLayoutItem = function(goal, item) {
+    if (item.element[0] == goal)
+        return item;
+    var citems = item.contentItems;
+    for (var i = 0; i < citems.length; i++) {
+        var r = DomTerm._elementToLayoutItem(goal, citems[i]);
+        if (r)
+            return r;
+    }
+    return null;
+}
+
 DomTerm.domTermToLayoutItem = function(dt) {
     if (! DomTerm.layoutManager)
         return null;
     var goal = DomTerm.domTermToLayoutElement(dt);
-    function find(item) {
-        if (item.element[0] == goal)
-            return item;
-        var citems = item.contentItems;
-        for (var i = 0; i < citems.length; i++) {
-            var r = find(citems[i]);
-            if (r)
-                return r;
-        }
-        return null;
-    };
-    return find(DomTerm.layoutManager.root);
+    return DomTerm._elementToLayoutItem(goal, DomTerm.layoutManager.root);
 }
 
 DomTerm.domTermLayoutClosed = function(event) {
@@ -126,14 +127,7 @@ DomTerm.domTermLayoutClose = function(dt, from_handler=false) {
     }
 }
 DomTerm._oldFocusedPane = null;
-DomTerm.showFocusedPane = function(dt) {
-    var stackPane;
-    if (dt == null)
-        stackPane = null;
-    else {
-        var p = DomTerm.domTermToLayoutItem(dt);
-        stackPane = p ? p.parent.element[0] : null;
-    }
+DomTerm.showFocusedPane = function(stackPane) { 
     if (DomTerm._oldFocusedPane != stackPane) {
         if (DomTerm._oldFocusedPane != null)
             DomTerm._oldFocusedPane.classList.remove("domterm-active");
@@ -322,4 +316,17 @@ DomTerm.layoutInit = function(term) {
 
     DomTerm.layoutManager.init();
     DomTerm.layoutManager.on('activeContentItemChanged', _activeContentItemHandler);
+
+    function checkClick(event) {
+        for (var t = event.target; t instanceof Element; t = t.parentNode) {
+            if (t.classList.contains("lm_header")) {
+                var item = DomTerm._elementToLayoutItem(t.parentNode,
+                                                        DomTerm.layoutManager.root);
+                DomTerm._selectLayoutPane(item._activeContentItem);
+                return;
+            }
+        }
+    }
+    DomTerm.layoutManager.root.element[0]
+        .addEventListener('click', checkClick, false);
 }

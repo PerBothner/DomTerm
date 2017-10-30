@@ -488,8 +488,16 @@ DomTerm.setFocus = function(term) {
             term.processResponseCharacters("\x1b[I"); // to application
         document.title = term.sstate.windowTitle;
     }
-    if (DomTerm.layoutManager)
-        DomTerm.showFocusedPane(term);
+    if (DomTerm.layoutManager) {
+        var stackPane;
+        if (term == null)
+            stackPane = null;
+        else {
+            var p = DomTerm.domTermToLayoutItem(term);
+            stackPane = p ? p.parent.element[0] : null;
+        }
+        DomTerm.showFocusedPane(stackPane);
+    }
     DomTerm.focusedTerm = term;
 }
 

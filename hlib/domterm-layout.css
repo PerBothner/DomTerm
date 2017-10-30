@@ -15,6 +15,7 @@ div.domterm-active div.lm_stack{background:#e1e1e1;border:2px solid magenta}
 .lm_splitter{background:#999999;opacity:.001;transition:opacity 200ms ease}
 .lm_splitter:hover,.lm_splitter.lm_dragging{background:#bbbbbb;opacity:1}
 .lm_header{height:20px}
+div.domterm-active div.lm_header {background-color: #ffe8ff}
 .lm_header.lm_selectable{cursor:pointer}
 .lm_header .lm_tab{font-family:Arial,sans-serif;font-size:12px;color:#888888;background:#fafafa;margin-right:2px;padding-bottom:4px;border-bottom:none}
 .lm_header .lm_tab{border:1px solid gray }
