@@ -356,9 +356,15 @@ find_session(const char *specifier)
 {
     struct pty_client *session = NULL;
     struct pty_client *pclient = pty_client_list;
+    char *pend;
+    pid_t pid = strtol(specifier, &pend, 10);
+    if (*pend != '\0' || *specifier == '\0')
+        pid = -1;
 
     for (; pclient != NULL; pclient = pclient->next_pty_client) {
         int match = 0;
+        if (pclient->pid == pid && pid != -1)
+            return pclient;
         if (pclient->session_name != NULL
             && strcmp(specifier, pclient->session_name) == 0)
             match = 1;
@@ -805,6 +811,7 @@ int attach_action(int argc, char** argv, const char*cwd,
     if (pclient == NULL) {
         FILE *out = fdopen(replyfd, "w");
         fprintf(out, "no session '%s' found \n", session_specifier);
+        fclose(out);
         return EXIT_FAILURE;
     }
 
