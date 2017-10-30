@@ -229,6 +229,8 @@ struct command {
 extern struct command * find_command(const char *name);
 extern int attach_action(int, char**, const char*, char **,
                          struct lws *, int, struct options *);
+extern int browse_action(int, char**, const char*, char **,
+                         struct lws *, int, struct options *);
 extern int help_action(int, char**, const char*, char **,
                        struct lws *, int, struct options *);
 extern int list_action(int, char**, const char*, char **,

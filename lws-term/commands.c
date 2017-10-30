@@ -45,6 +45,8 @@ struct command commands[] = {
     .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
   { .name = "attach", .options = COMMAND_IN_SERVER,
     .action = attach_action},
+  { .name = "browse", .options = COMMAND_IN_SERVER,
+    .action = browse_action},
   { .name = "list",
     .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
     .action = list_action },

@@ -745,12 +745,13 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 }
 
 void
-display_session(const char *browser_specifier, struct pty_client *pclient, int port)
+display_session(const char *browser_specifier, struct pty_client *pclient,
+                const char *url, int port)
 {
-    int session_pid = pclient->pid;
+    int session_pid = pclient == NULL ? -1 : pclient->pid;
     int paneOp = 0;
     if (browser_specifier != NULL && browser_specifier[0] == '-') {
-      if (strcmp(browser_specifier, "--detached") == 0) {
+      if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
           pclient->detached = 1;
           return;
       }
@@ -771,16 +772,24 @@ display_session(const char *browser_specifier, struct pty_client *pclient, int p
         browser_specifier = NULL;
         paneOp = 0;
     }
-    char buf[100];
+    char *buf = xmalloc(+LWS_PRE + (url == NULL ? 60 : strlen(url) + 20));
     if (paneOp > 0) {
         char *p = buf+LWS_PRE;
-        sprintf(p, URGENT_START_STRING "\033[90;%d;%du" URGENT_END_STRING,
-                paneOp, session_pid);
+        if (pclient != NULL)
+            sprintf(p, URGENT_START_STRING "\033[90;%d;%du" URGENT_END_STRING,
+                    paneOp, session_pid);
+        else
+            sprintf(p, URGENT_START_STRING "\033]104;%d,%s\007" URGENT_END_STRING,
+                    paneOp, url);
         write_to_browser(focused_wsi, p, strlen(p));
     } else {
-        sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);
+        if (pclient != NULL)
+            sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);
+        else
+            sprintf(buf, "%s", url);
         do_run_browser(browser_specifier, buf, port);
     }
+    free(buf);
 }
 
 int new_action(int argc, char** argv, const char*cwd,
@@ -798,7 +807,7 @@ int new_action(int argc, char** argv, const char*cwd,
           return EXIT_FAILURE;
     }
     struct pty_client *pclient = run_command(args, cwd, env, replyfd);
-    display_session(opts->browser_command, pclient, info.port);
+    display_session(opts->browser_command, pclient, NULL, info.port);
     return EXIT_SUCCESS;
 }
 
@@ -831,7 +840,16 @@ int attach_action(int argc, char** argv, const char*cwd,
         fprintf(stderr, "attach - requesting_contents\n");
     }
 
-    display_session(opts->browser_command, pclient, info.port);
+    display_session(opts->browser_command, pclient, NULL, info.port);
+    return EXIT_SUCCESS;
+}
+
+int browse_action(int argc, char** argv, const char*cwd,
+                  char **env, struct lws *wsi, int replyfd,
+                  struct options *opts)
+{
+    char *url = argv[1];
+    display_session(opts->browser_command, NULL, url, -1);
     return EXIT_SUCCESS;
 }
 

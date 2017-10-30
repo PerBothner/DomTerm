@@ -22,8 +22,12 @@ static char list_help[] = "Usage: domterm list\n"
 static char new_help[] = "Usage: domterm [options] new [command [arguments]\n"
   "Run executable 'command' with given 'arguments'.\n";
 
+static char browse_help[] = "Usage: domterm [options] browse url\n"
+  "Open the given url in a specified (sub-)window.\n";
+
 struct help_info help_table[] = {
   { "attach", attach_help},
+  { "browse", browse_help},
   { "html", html_help},
   { "hcat", html_help},
   { "is-domterm", is_domterm_help},

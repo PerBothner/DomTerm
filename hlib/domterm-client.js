@@ -153,13 +153,6 @@ function connectHttp(node, query=null) {
     connect(null, url, "domterm", node);
 }
 
-function _activeContentItemHandler(item) {
-    var dt = DomTerm.layoutItemToDomTerm(item);
-    if (dt) {
-        DomTerm.setFocus(dt);
-    }
-}
-
 function loadHandler(event) {
     DomTerm.setContextMenu();
     if (false) {

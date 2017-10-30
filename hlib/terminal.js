@@ -4629,6 +4629,17 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this.updateWindowTitle();
         }
         break;
+    case 104:
+        var m = text.match(/^([0-9]+),/);
+        if (m && DomTerm.layoutAddPane) {
+            var paneOp = Number(m[1]);
+            text = text.substring(m[1].length+1);
+            DomTerm.layoutAddPane(this, paneOp, 0,
+                                  {type: 'component',
+                                   componentName: 'browser',
+                                   url: text });
+        }
+        break;
     case 110: // start prettyprinting-group
         if (this._currentStyleSpan == this.outputContainer
             && this.outputContainer.getAttribute("class") == "term-style")

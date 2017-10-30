@@ -106,16 +106,16 @@ DomTerm.createElectronMenus = function() {
     newTerminalMenu.append(newPaneItem);
     newTerminalMenu.append(new MenuItem({label: 'New terminal above',
                                          click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, true, false); }}));
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, false); }}));
     newTerminalMenu.append(new MenuItem({label: 'New terminal below',
                                          click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, true, true); }}));
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, true); }}));
     newTerminalMenu.append(new MenuItem({label: 'New terminal left',
                                          click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, false, false); }}));
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, false); }}));
     newTerminalMenu.append(new MenuItem({label: 'New terminal right',
                                          click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, false, true); }}));
+                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, true); }}));
     const newTerminalMenuItem = new MenuItem({label: 'New Terminal',
                                               submenu: newTerminalMenu});
     const detachMenuItem =
