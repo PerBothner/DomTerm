@@ -82,7 +82,7 @@ maybe_exit()
 void
 pty_destroy(struct pty_client *pclient, int from_callback)
 {
-    //fprintf(stderr,"pty_destroy #%d from_callback:%d\n", pclient->session_number, from_callback);
+    //fprintf(stderr,"pty_destroy :%d from_callback:%d\n", pclient->session_number, from_callback);
     struct pty_client **p = &pty_client_list;
     struct pty_client *prev = NULL;
     for (;*p != NULL; p = &(*p)->next_pty_client) {
@@ -368,7 +368,7 @@ find_session(const char *specifier)
         if (pclient->session_name != NULL
             && strcmp(specifier, pclient->session_name) == 0)
             match = 1;
-        else if (specifier[0] == '#'
+        else if (specifier[0] == ':'
                  && strtol(specifier+1, NULL, 10) == pclient->session_number)
           match = 1;
         if (match) {
@@ -588,7 +588,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                   || pclient->saved_window_contents != NULL)) {
                 char buf[LWS_PRE+60];
                 char *p = &buf[LWS_PRE];
-                sprintf(p, "\033]30;DomTerm#%d\007", pclient->session_number);
+                sprintf(p, "\033]30;DomTerm:%d\007", pclient->session_number);
                 write_to_browser(wsi, p, strlen(p));
                 if (pclient->saved_window_contents != NULL) {
                   char *buf = xmalloc(strlen(pclient->saved_window_contents)+40);
