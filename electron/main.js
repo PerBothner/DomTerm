@@ -7,24 +7,34 @@ const url = require('url')
 let win
 
 function createWindow () {
-    // Create the browser window.
-    win = new BrowserWindow({width: 800, height: 600, show: false})
-
     // options = yargs(process.argv[1..]).wrap(100)
     // and load the index.html of the app.
     let argv = process.argv;
     let argc = argv.length;
     let openDevTools = false;
     var url = "http://localhost:7033/#ws=same";
+    var geometry = null;
     for (let i = 2; i < argc; i++) {
         let arg = argv[i];
         if (arg == "--devtools")
             openDevTools = true;
         else if (arg == "--url" && i+1 < argc)
             url = argv[++i];
+        else if (arg == "--geometry" && i+1 < argc)
+            geometry = argv[++i];
         else
             console.log("arg#"+i+": "+JSON.stringify(argv[i]));
     }
+
+    // Create the browser window.
+    var w = 800, h = 600;
+    var m = geometry ? geometry.match(/^([0-9]+)x([0-9]+)$/) : null;
+    if (m) {
+        w = Number(m[1]);
+        h = Number(m[2]);
+    }
+    win = new BrowserWindow({width: w, height: h, show: false})
+
     win.loadURL(url);
 
     if (openDevTools)

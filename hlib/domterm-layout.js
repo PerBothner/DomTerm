@@ -341,7 +341,7 @@ DomTerm.popoutWindow = function(item, dt) {
     }
     else
         dt.reportEvent("OPEN-WINDOW",
-                       "width="+w+"&height="+h+"&open="+encodeURIComponent(e));
+                       "geometry="+w+"x"+h+"&open="+encodeURIComponent(e));
     for (var i = 0; i < toRemove.length; i++) {
         remove(toRemove[i]);
     }

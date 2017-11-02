@@ -107,8 +107,8 @@ pty_destroy(struct pty_client *pclient, int from_callback)
     }
 
     // kill process and free resource
-    lwsl_notice("sending %s to process %d\n",
-                server->options.sig_name, pclient->pid);
+    lwsl_notice("sending %d to process %d\n",
+                server->options.sig_code, pclient->pid);
     if (kill(pclient->pid, server->options.sig_code) != 0) {
         lwsl_err("kill: pid, errno: %d (%s)\n", pclient->pid, errno, strerror(errno));
     }
@@ -498,13 +498,31 @@ reportEvent(const char *name, char *data, size_t dlen,
         pclient->session_name = session_name;
         json_object_put(obj);
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
+        static char gopt[] =  "geometry=";
+        char *g = strstr(data, gopt);
+        char *geom = NULL;
+        if (g != NULL) {
+            g += sizeof(gopt)-1;
+            char *gend = strstr(g, "&");
+            if (gend == NULL)
+                gend = g + strlen(g);
+            int glen = gend-g;
+            geom = xmalloc(glen+1);
+            memcpy(geom, g, glen);
+            geom[glen] = 0;
+        }
         char *o = strstr(data, "open=");
         if (o == NULL)
           o = "";
         char *buf = xmalloc(strlen(main_html_url)+strlen(o)+2);
         sprintf(buf, "%s#%s", main_html_url, o);
-        do_run_browser(NULL, buf, -1);
+        struct options opts;
+        init_options(&opts);
+        opts.geometry = geom;
+        do_run_browser(&opts, buf, -1);
         free(buf);
+        if (geom != NULL)
+            free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
         pclient->detachOnClose = 1;
     } else if (strcmp(name, "FOCUSED") == 0) {
@@ -751,10 +769,12 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 }
 
 void
-display_session(const char *browser_specifier, struct pty_client *pclient,
+display_session(struct options *options, struct pty_client *pclient,
                 const char *url, int port)
 {
     int session_pid = pclient == NULL ? -1 : pclient->pid;
+    const char *browser_specifier = options == NULL ? NULL
+      : options->browser_command;
     int paneOp = 0;
     if (browser_specifier != NULL && browser_specifier[0] == '-') {
       if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
@@ -793,7 +813,7 @@ display_session(const char *browser_specifier, struct pty_client *pclient,
             sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);
         else
             sprintf(buf, "%s", url);
-        do_run_browser(browser_specifier, buf, port);
+        do_run_browser(options, buf, port);
     }
     free(buf);
 }
@@ -813,7 +833,7 @@ int new_action(int argc, char** argv, const char*cwd,
           return EXIT_FAILURE;
     }
     struct pty_client *pclient = run_command(args, cwd, env, replyfd);
-    display_session(opts->browser_command, pclient, NULL, info.port);
+    display_session(opts, pclient, NULL, info.port);
     return EXIT_SUCCESS;
 }
 
@@ -846,7 +866,7 @@ int attach_action(int argc, char** argv, const char*cwd,
         fprintf(stderr, "attach - requesting_contents\n");
     }
 
-    display_session(opts->browser_command, pclient, NULL, info.port);
+    display_session(opts, pclient, NULL, info.port);
     return EXIT_SUCCESS;
 }
 
@@ -855,7 +875,7 @@ int browse_action(int argc, char** argv, const char*cwd,
                   struct options *opts)
 {
     char *url = argv[1];
-    display_session(opts->browser_command, NULL, url, -1);
+    display_session(opts, NULL, url, -1);
     return EXIT_SUCCESS;
 }
 

@@ -126,6 +126,7 @@ struct options {
     int do_daemonize;
     int debug_level;
     char *browser_command;
+    char *geometry;
     int paneOp;
     char iface[128];
     char cert_path[1024];
@@ -178,10 +179,11 @@ extern char *get_bin_relative_path(const char* app_path);
 extern int handle_command(int argc, char**argv, const char*cwd,
                           char **env, struct lws *wsi, int replyfd,
                           struct options *opts);
-extern void do_run_browser(const char *specifier, char *url, int port);
+extern void do_run_browser(struct options *, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
+extern void init_options(struct options *options;);
 extern int process_options(int argc, char **argv, struct options *options;);
 extern char ** copy_argv(int argc, char * const*argv);
 

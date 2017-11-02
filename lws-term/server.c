@@ -110,6 +110,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define DAEMONIZE_OPTION 2002
 #define NO_DAEMONIZE_OPTION 2003
 #define DETACHED_OPTION 2004
+#define GEOMETRY_OPTION 2005
 #define PANE_OPTIONS_START 2100
 /* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
 #define PANE_OPTION (PANE_OPTIONS_START+1)
@@ -133,6 +134,7 @@ static const struct option options[] = {
         {"daemonize",    no_argument,       NULL, DAEMONIZE_OPTION},
         {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
         {"detached",     no_argument,       NULL, DETACHED_OPTION},
+        {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
         {"pane",         no_argument,       NULL, PANE_OPTION},
         {"tab",          no_argument,       NULL, TAB_OPTION},
         {"left",         no_argument,       NULL, LEFT_OPTION},
@@ -205,7 +207,8 @@ tty_server_free(struct tty_server *ts) {
         free(ts->argv[i++]);
     } while (ts->argv[i] != NULL);
     free(ts->argv);
-    free(ts->options.sig_name);
+    if (ts->options.sig_name)
+        free(ts->options.sig_name);
     if (ts->socket_path != NULL) {
         struct stat st;
         if (!stat(ts->socket_path, &st)) {
@@ -336,19 +339,25 @@ firefox_command()
 }
 
 char *
-electron_command(int quiet)
+electron_command(int quiet, struct options *options)
 {
     char *epath = find_in_path("electron");
     char *app = get_bin_relative_path("/share/domterm/electron");
-    char *format = "%s %s --url '%U'&";
+    char *format = "%s %s%s%s --url '%U'&";
     if (epath == NULL) {
         if (quiet)
             return NULL;
         fprintf(stderr, "'electron' not found in PATH\n");
         exit(-1);
     }
-    char *buf = xmalloc(strlen(epath) + strlen(app) + strlen(format));
-    sprintf(buf, format, epath, app);
+    const char *g1 = "", *g2 = "";
+    if (options->geometry && options->geometry[0]) {
+        g1 = " --geometry ";
+        g2 = options->geometry;
+    }
+    char *buf = xmalloc(strlen(epath)+strlen(app)+strlen(format)
+                        +strlen(g1)+strlen(g2));
+    sprintf(buf, format, epath, app, g1, g2);
     return buf;
 }
 
@@ -384,18 +393,24 @@ default_browser_command(const char *url, int port)
 
 
 void
-do_run_browser(const char *browser_specifier, char *url, int port)
+do_run_browser(struct options *options, char *url, int port)
 {
-    if (browser_specifier==NULL)
-        browser_specifier = opts.browser_command;
+    const char *browser_specifier =
+      options == NULL || options->browser_command == NULL
+      ? opts.browser_command
+      : options->browser_command;
+    //if (browser_specifier==NULL)
+        //browser_specifier = opts.browser_command;
     //else if (strcmp(browser_specifier, "--detached") == 0)
     //    return;
-        if (browser_specifier == NULL && port_specified < 0) {
+    if (browser_specifier == NULL && port_specified < 0) {
             // The default is "--electron" if available
-            browser_specifier = electron_command(1);
+          browser_specifier = electron_command(1, options);
             if (browser_specifier == NULL)
                 browser_specifier = "";
-        }
+    }
+    if (strcmp(browser_specifier, "electron") == 0)
+        browser_specifier = electron_command(0, options);
         if (strcmp(browser_specifier, "firefox") == 0)
             browser_specifier = firefox_browser_command();
         else if (strcmp(browser_specifier, "chrome") == 0
@@ -445,9 +460,10 @@ state_to_json(int argc, char *const*argv, char *const *env)
     return result;
 }
 
-int process_options(int argc, char **argv, struct options *opts)
+void  init_options(struct options *opts)
 {
     opts->browser_command = NULL;
+    opts->geometry = NULL;
     opts->something_done = false;
     opts->paneOp = -1;
     opts->force_option = 0;
@@ -463,7 +479,12 @@ int process_options(int argc, char **argv, struct options *opts)
     opts->once = false;
     opts->reconnect = 10;
     opts->sig_code = SIGHUP;
-    opts->sig_name = strdup("SIGHUP");
+    opts->sig_name = NULL; // FIXME
+}
+
+int process_options(int argc, char **argv, struct options *opts)
+{
+    init_options(opts);
 
     // parse command line options
     int c;
@@ -517,7 +538,11 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->paneOp = c - PANE_OPTIONS_START;
                 /* ... fall through ... */
             case DETACHED_OPTION:
-                opts->browser_command = argv[optind-1];
+            case ELECTRON_OPTION:
+                opts->browser_command = optarg;
+                break;
+            case GEOMETRY_OPTION:
+                opts->geometry = optarg;
                 break;
             case CHROME_OPTION: {
                 char *cbin = chrome_command();
@@ -530,9 +555,6 @@ int process_options(int argc, char **argv, struct options *opts)
             }
             case FIREFOX_OPTION:
                 opts->browser_command = firefox_command();
-                break;
-            case ELECTRON_OPTION:
-                opts->browser_command = electron_command(0);
                 break;
             case QTDOMTERM_OPTION:
                 fprintf(stderr,
@@ -761,7 +783,10 @@ main(int argc, char **argv)
     if (opts.credential != NULL)
         lwsl_notice("  credential: %s\n", opts.credential);
     lwsl_notice("  reconnect timeout: %ds\n", opts.reconnect);
-    lwsl_notice("  close signal: %s (%d)\n", opts.sig_name, opts.sig_code);
+    lwsl_notice("  close signal: %s (%d)\n",
+                opts.sig_name != NULL ? opts.sig_name :
+                opts.sig_code == SIGHUP ? "SIGHUP" : "???",
+                opts.sig_code);
     if (opts.check_origin)
         lwsl_notice("  check origin: true\n");
     if (opts.readonly)
