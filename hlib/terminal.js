@@ -369,6 +369,14 @@ function DomTerm(name, topNode) {
         function(evt) { dt._mouseHandler(evt); };
 }
 
+DomTerm.makeElement = function(parent, name) {
+    var topNode = document.createElement("div");
+    topNode.setAttribute("class", "domterm");
+    topNode.setAttribute("id", name);
+    parent.appendChild(topNode);
+    return topNode;
+}
+
 DomTerm._instanceCounter = 0;
 DomTerm.layoutManager = null;
 // These are used to delimit "out-of-bound" urgent messages.
@@ -2166,7 +2174,7 @@ DomTerm.prototype.resizeHandler = function() {
 
     var home_offset = DomTerm._homeLineOffset(dt);
     var home_node = dt.lineStarts[dt.homeLine - home_offset];
-    if (dt.availWidth != oldWidth) {
+    if (dt.availWidth != oldWidth && dt.availWidth > 0) {
         dt._breakAllLines();
         dt._restoreSaveLastLine();
         dt.resetCursorCache();
@@ -2359,15 +2367,19 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
 };
 
 DomTerm.prototype.measureWindow = function()  {
+    var availHeight = this.topNode.clientHeight;
+    var clientWidth = this.topNode.clientWidth;
+    if (availHeight == 0 || clientWidth == 0) {
+        return;
+    }
     var ruler = this._rulerNode;
     var rbox = ruler.getBoundingClientRect();
     this.charWidth = rbox.width/26.0;
     this.charHeight = rbox.height;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
     if (this.verbosity >= 2)
-        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.topNode+" clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight);
-    var availHeight = this.topNode.clientHeight;
-    var availWidth = this.topNode.clientWidth - this.rightMarginWidth;
+        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.name+"["+this.topNode.getAttribute("class")+"] clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight+" rbox:"+rbox);
+    var availWidth = clientWidth - this.rightMarginWidth;
     var numRows = Math.floor(availHeight / this.charHeight);
     var numColumns = Math.floor(availWidth / this.charWidth);
     // KLUDGE Add some tolerance for rounding errors.
@@ -2664,8 +2676,6 @@ DomTerm.prototype.reportKeyEvent = function(key, str) {
 
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
                                            availHeight, availWidth) {
-    if (! numRows)
-        console.log("BAD numRows");
     this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
 };
 
@@ -4483,6 +4493,9 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 2:
     case 30:
         this.setWindowTitle(text, code);
+        break;
+    case 31:
+        this.topNode.setAttribute("pid", text);
         break;
     case 10:
     case 11:

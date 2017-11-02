@@ -30,6 +30,7 @@ function connect(name, wspath, wsprotocol, topNode=null) {
     }
     if (topNode == null)
         topNode = document.getElementById(name);
+    //console.log("connect1 new DomTerm "+name+" wspath:"+wspath+" pr:"+wsprotocol+" topN:"+topNode);
     var wt = new DomTerm(name);
     var wsocket = new WebSocket(wspath, wsprotocol);
     wt.closeConnection = function() { wsocket.close(); };
@@ -155,17 +156,24 @@ function connectHttp(node, query=null) {
 
 function loadHandler(event) {
     DomTerm.setContextMenu();
-    if (false) {
+    var m = location.hash.match(/open=([^&]*)/);
+    var open_encoded = m ? decodeURIComponent(m[1]) : null;
+    if (open_encoded) {
+        DomTerm._initSavedLayout(JSON.parse(open_encoded));
+        return;
+    }
+    var layoutInitAlways = false;
+    if (layoutInitAlways) {
+        var cpid = location.hash.match(/connect-pid=([0-9]*)/);
+        DomTerm.newSessionPid = cpid ? 0+cpid[1] : 0;
         DomTerm.layoutInit(null);
+        DomTerm.newSessionPid = 0;
         return;
     }
     var topNodes = document.getElementsByClassName("domterm");
     if (topNodes.length == 0) {
-        var topNode = document.createElement("div");
-        topNode.setAttribute("class", "domterm");
-        topNode.setAttribute("id", DomTerm.freshName());
         var bodyNode = document.getElementsByTagName("body")[0];
-        bodyNode.appendChild(topNode);
+        var topNode = DomTerm.makeElement(bodyNode, DomTerm.freshName());
         topNodes = [ topNode ];
     }
     if (location.search.search(/wait/) >= 0) {
@@ -179,7 +187,7 @@ function loadHandler(event) {
             connect(null, url, "domterm", topNodes[i]);
         }
     }
-
+    location.hash = "";
 }
 
 window.addEventListener("load", loadHandler, false);

@@ -227,7 +227,6 @@ run_command(char*const*argv, const char*cwd, char **env, int replyfd)
     int session_number = ++last_session_number;
 
     pid_t pid = forkpty(&pty, NULL, NULL, NULL);
-                                  //if (wsi == NULL)      pid = 888;
     switch (pid) {
     case -1: /* error */
             lwsl_err("forkpty\n");
@@ -498,12 +497,19 @@ reportEvent(const char *name, char *data, size_t dlen,
             free(pclient->session_name);
         pclient->session_name = session_name;
         json_object_put(obj);
+    } else if (strcmp(name, "OPEN-WINDOW") == 0) {
+        char *o = strstr(data, "open=");
+        if (o == NULL)
+          o = "";
+        char *buf = xmalloc(strlen(main_html_url)+strlen(o)+2);
+        sprintf(buf, "%s#%s", main_html_url, o);
+        do_run_browser(NULL, buf, -1);
+        free(buf);
     } else if (strcmp(name, "DETACH") == 0) {
         pclient->detachOnClose = 1;
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
-    }
-    else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
+    } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
         char *q = strchr(data, ',');
         long rcount;
         sscanf(data, "%ld", &rcount);
@@ -588,7 +594,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                   || pclient->saved_window_contents != NULL)) {
                 char buf[LWS_PRE+60];
                 char *p = &buf[LWS_PRE];
-                sprintf(p, "\033]30;DomTerm:%d\007", pclient->session_number);
+                sprintf(p, "\033]30;DomTerm:%d\007\033]31;%d\007", pclient->session_number, pclient->pid);
                 write_to_browser(wsi, p, strlen(p));
                 if (pclient->saved_window_contents != NULL) {
                   char *buf = xmalloc(strlen(pclient->saved_window_contents)+40);

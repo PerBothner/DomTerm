@@ -2,6 +2,7 @@
  */
 
 DomTerm.newSessionPid = 0;
+DomTerm._pendingTerminals = null;
 
 function _muxModeInfo(dt) {
     return "(MUX mode)";
@@ -58,11 +59,22 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
         }
         break;
     case 84: // T
-        if (event.ctrlKey) {
+        if (! event.ctrlKey) {
             DomTerm.layoutAddTab(this);
             this.exitMuxMode();
             event.preventDefault();
         }
+        break;
+    case 87: // W
+        if (event.shiftKey) {
+            var pane = DomTerm.domTermToLayoutItem(this);
+            var wholeStack = event.ctrlKey;
+            DomTerm.popoutWindow(wholeStack ? pane.parent : pane, this);
+        } else {
+            // FIXME make new window
+        }
+        this.exitMuxMode();
+        event.preventDefault();
         break;
     case 100: // 'd'
         if (! event.ctrlKey) {
@@ -271,12 +283,84 @@ DomTerm.setLayoutTitle = function(dt, title, wname) {
     }
 }
 
+DomTerm.popoutWindow = function(item, dt) {
+    var wholeStack = item.type == 'stack';
+    var w = dt.topNode.parentNode.offsetWidth;
+    var h = dt.topNode.parentNode.offsetHeight;
+    // FIXME adjust for menu bar height
+    function encode(item) {
+        if (item.componentName == "domterm") {
+            var topNode = item.element[0].firstChild.firstChild;
+            return '{"pid":'+topNode.getAttribute("pid")+'}';
+        } else if (item.componentName == "browser")
+            return '{"url":'+JSON.stringify(item.config.url)+'}';
+        else
+            return "{}";
+    }
+    function remove(item) {
+        if (item.componentName == "domterm")
+            DomTerm.detach(item.element[0].firstChild.firstChild.terminal);
+        else
+            item.remove(item);
+    }
+    var e;
+    var toRemove = new Array();
+    if (wholeStack) {
+        e = "[";
+        var items = item.contentItems;
+        for (var i = 0; i < items.length; i++) {
+            e = e + (i > 0 ? "," : "") + encode(items[i]);
+            toRemove[i] = items[i];
+        }
+        e = e + ']';
+    } else {
+        toRemove[0] = item;
+        e = encode(item);
+    }
+
+    // It would be preferable to create a new BrowserWindow in the same
+    // Electron application. It would presumably be faster and use less memory.
+    // (Potentially we could transfer saved data directly to the new window,
+    // without going via the server.)
+    // However, it doesn't work reliably.  Usually the new browser hangs.
+    if (false && DomTerm.isElectron()) {
+        let remote = nodeRequire('electron').remote;
+        //let app = nodeRequire('electron').app;
+        let BrowserWindow = remote.BrowserWindow;
+        let url = location.href;
+        let hash = url.indexOf('#');
+        if (hash >= 0)
+            url = url.substring(0, hash);
+        url = url + "#open=" + encodeURIComponent(e);
+        setTimeout(function () {
+                let win = new remote.BrowserWindow({width: w, height: h,
+                                                    useContentSize: true, show: false});
+                win.loadURL(url);
+            win.once('ready-to-show', function () { win.show(); win = null; });
+        }, 1000) ;//});
+    }
+    else
+        dt.reportEvent("OPEN-WINDOW",
+                       "width="+w+"&height="+h+"&open="+encodeURIComponent(e));
+    for (var i = 0; i < toRemove.length; i++) {
+        remove(toRemove[i]);
+    }
+}
+
 DomTerm.layoutConfig = {
-    //settings: { hasHeaders: false },
+    settings:  { showMaximiseIcon: false,
+                 popoutWholeStack: function(e) { return e.ctrlKey; },
+                 onPopoutClick: function(item, event) {
+                     var aitem = item.type != 'stack' ? item
+                         : item._activeContentItem;
+                     var dt = DomTerm.layoutItemToDomTerm(aitem);
+                     if (dt)
+                         DomTerm.popoutWindow(item, dt);
+                 }},
     content: [{
-            type: 'component',
-            componentName: 'domterm',
-            componentState: 'A'
+        type: 'component',
+        componentName: 'domterm',
+        componentState: 'A'
     }],
     dimensions: {
 	borderWidth: 3
@@ -307,13 +391,17 @@ DomTerm.layoutInit = function(term) {
             container.getElement()[0].appendChild(el);
         } else {
             var sessionPid = DomTerm.newSessionPid;
-            el = document.createElement("div");
-            el.setAttribute("class", "domterm");
             name = DomTerm.freshName();
-            el.setAttribute("id", name);
-            container.getElement()[0].appendChild(el);
-            var query = sessionPid ? "connect-pid="+sessionPid : null;
-            connectHttp(el, query);
+            el = DomTerm.makeElement(container.getElement()[0], name);
+            var config = container._config;
+            if (DomTerm._pendingTerminals) {
+                DomTerm._pendingTerminals.push(el);
+                if (sessionPid)
+                    el.setAttribute("pid", sessionPid);
+            } else {
+                var query = sessionPid ? "connect-pid="+sessionPid : null;
+                connectHttp(el, query);
+            }
         }
         container.setTitle(name);
         container.on('resize', DomTerm.layoutResized, el);
@@ -357,4 +445,46 @@ DomTerm.layoutInit = function(term) {
                              activeContentItemHandler);
     DomTerm.layoutManager.root.element[0]
         .addEventListener('click', checkClick, false);
+}
+
+DomTerm._initSavedLayout = function(data) {
+        if (data.pid) {
+            var bodyNode = document.getElementsByTagName("body")[0];
+            var topNode = DomTerm.makeElement(bodyNode, DomTerm.freshName());
+            var url = makeWsUrl("connect-pid="+data.pid);
+            connect(null, url, "domterm", topNode);
+        } else if (data instanceof Array) {
+            var n = data.length;
+            DomTerm._pendingTerminals = new Array();
+            for (var i = 0; i < n; i++) {
+                var w = data[i];
+                var newItemConfig = null;
+                if (w.pid) {
+                    DomTerm.newSessionPid = w.pid;
+                    newItemConfig = DomTerm.newItemConfig;
+                } else if (w.url) {
+                    newItemConfig = {type: 'component',
+                                     componentName: 'browser',
+                                     url: w.url };
+                }
+                if (newItemConfig) {
+                    if (i == 0) {
+                        DomTerm.layoutConfig.content = [newItemConfig];
+                        DomTerm.layoutInit(null);
+                    } else {
+                        var stack = DomTerm.layoutManager.root.contentItems[0];
+                        stack.addChild(newItemConfig);
+                    }
+                    DomTerm.newSessionPid = 0;
+                }
+            }
+            n = DomTerm._pendingTerminals.length;
+            for (var i = 0; i < n; i++) {
+                let el = DomTerm._pendingTerminals[i];
+                var pid = el.getAttribute("pid");
+                var query = pid ? "connect-pid="+pid : null;
+                connectHttp(el, query);
+            }
+            DomTerm._pendingTerminals = null;
+        }
 }
