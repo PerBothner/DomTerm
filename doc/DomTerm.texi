@@ -566,6 +566,14 @@ List information about running sessions.
 @subheading Miscellaneous options
 
 @table @asis
+@item @code{--geometry} @var{width}@code{x}@var{height}
+Specify initial size of new top-level windows.
+The default if not specified is currently @code{800x600}.
+The @var{width} and @var{height} are in pixel units
+and must be positive integers.
+
+Currently only works for the Electron front-end.
+
 @item @code{-L} @var{socket-name}
 @itemx @code{--socket-name=}@var{socket-name}
 DomTerm uses a Unix Domain socket to communicate between
@@ -582,10 +590,10 @@ DomTerm also creates a temporary @code{html} that has the
 same name as the socket, but with a @code{.html} extension.
 That is by default it is @code{$HOME/.domain/default.html}.
 
-@item @code{--no-deaemonize}
+@item @code{--no-daemonize}
 When a domterm backend (server) is created, it normally turns itself
 into a a @uref{https://en.wikipedia.org/wiki/Daemon_(computing),daemon}.
-This option prevents ``deamonizing'' - which is helpful for debugging.
+This option prevents ``daemonizing'' - which is helpful for debugging.
 
 @item @code{--port} @var{portnum}
 @emph{(Probably obsolete.)}
