@@ -80,9 +80,8 @@ maybe_exit()
 }
 
 void
-pty_destroy(struct pty_client *pclient, int from_callback)
+pty_destroy(struct pty_client *pclient)
 {
-    //fprintf(stderr,"pty_destroy :%d from_callback:%d\n", pclient->session_number, from_callback);
     struct pty_client **p = &pty_client_list;
     struct pty_client *prev = NULL;
     for (;*p != NULL; p = &(*p)->next_pty_client) {
@@ -120,8 +119,6 @@ pty_destroy(struct pty_client *pclient, int from_callback)
 #ifndef LWS_TO_KILL_SYNC
 #define LWS_TO_KILL_SYNC (-1)
 #endif
-    if (! from_callback)
-        lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     // FIXME free client; set pclient to NULL in all matching tty_clients.
 
     // remove from sessions list
@@ -162,7 +159,7 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
         if (pclient->detachOnClose)
             pclient->detached = 1;
         else
-            pty_destroy(pclient, 0);
+            lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
 }
 
@@ -1069,7 +1066,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                 lws_callback_on_writable(wsclient_wsi);
                 tclient->pclient = NULL;
             }
-            pty_destroy(pclient, 1);
+            pty_destroy(pclient);
         }
         break;
     default:
