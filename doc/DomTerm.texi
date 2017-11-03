@@ -10,6 +10,11 @@
 @codequoteundirected on
 @codequotebacktick on
 
+@macro mux-prefix
+Control-Shift-M
+@end macro
+
+
 @titlepage
 @title DomTerm - a terminal emulator and console using DOM and JavaScript
 @end titlepage
@@ -133,6 +138,7 @@ embedded in different modes and applications.
 * Features:: Features and screenshots
 * Downloading and building::
 * Applications::
+* Sessions and Windows::
 * Paging:: Paging and Pausing
 * Styling:: 
 * Java tools::
@@ -421,6 +427,7 @@ The @var{command} specifies one of a set of commands used to control
 If @var{command} is not specified, the default command is @code{new},
 which creates a new session using a default shell such as @code{/bin/bash}.
 
+@anchor{session-creating}
 @subheading Creating a new session
 
 Creating a new session is done with the @code{new} commands,
@@ -534,6 +541,17 @@ This test works over an @code{ssh} connection.
 (The test does require that either @code{DOMTERM} be non-empty,
 or that @code{TERM} be either empty or contain the string @code{xterm};
 otherwise it does not try to the request code.)
+
+@item @b{@code{browse}} @var{url}
+Create a new browser window or sub-window that displays @var{url}.
+This is implemented using an @code{iframe}.
+Access depends on the permissions of the browser (front-end).
+(A future command may proxy via the back-end server.)
+
+One use for this is to view documentation in a sub-window:
+@example
+$ domterm --above browse http://example.com/
+@end example
 @end table
 
 @subheading ``Printing'' html
@@ -949,6 +967,82 @@ $ dt-util disable-stylesheet 2
 @end example
 @end table
 
+@node Sessions and Windows
+@chapter Sessions and Windows
+
+DomTerm can ``multiplex'' multiple terminal emulators
+(similar to tmux or GNU Screen).
+
+@subheading Terminology
+
+A @dfn{session} is an emulated terminal with a process running under it.
+A @code{domterm} @dfn{server} manages one or more sessions.
+Typically, for each user there is at most a single @code{domterm} server
+running at a time, though it is possible to create more:
+The server is created as needed, and exits when there are no
+more sessions.
+(Note that @code{tmux} uses ``session'' to refer to multiple
+processes running under the same server.)
+
+Each session is usually displayed in a
+@dfn{domterm window} or @dfn{window} for short.
+If the session is not displayed in any window,
+we say it is @dfn{detached}.
+It is possible to display the same session in multiple windows.
+
+A @dfn{top-level window} is window or tab in a web browser
+(or embedded browser, like Electron).
+A top-level window may be split vertically and/or horizontally
+into one or more @dfn{tile}s (or panes).
+Each tile has one or more @dfn{tabs}, where each
+tab is a (sub-)window.  Only one of the tabs in a tile can be displayed
+at a time.  These tabs are managed by domterm, and are
+distinct from any tabs managed by a web browser or window manager
+(though they have similar purpose).
+
+A @dfn{non-session window} displays something other than
+a DomTerm session.  The @code{domterm browse} command creates
+a non-session window that displays a specified web page.
+One use of this for is viewing documentation.
+
+@subheading Managing sessions
+
+Creating a new session is done by invoke the @code{domterm} command with the
+@code{new} sub-command, or with no arguments.
+See @ref{session-creating,Creating a new session} for details.
+
+The sub-command @code{list} lists active session.
+
+The sub-command @code{attach} connects to an existing session,
+often a detached session.  You specify the session
+with a @dfn{session-specifier}.
+
+The can detach the current session using either the
+keyboard short-cur @code{@mux-prefix d} or a menu command (Electron only).
+More precisely, it marks the current session as @var{want-to-detach},
+and closes the current window.  If there are other windows on the
+session, they remain active, but the session is detached (rather than
+exits) when the last window on the session closes.
+
+When a session is detached, it saves the display state, so it can
+be re-created if the session is later attached.
+There is no auto-save in case of unintentional detach, such as
+network failure or a browser crash, but there are plans to implement that.
+
+@subsubheading Session specifiers
+
+A session specifier has one of the following forms:
+@table @asis
+@item @var{pid}
+The @var{pid} is the process ID (an integer) of the designed session.
+@item @code{:}@var{session-number}
+The session-number sequential number permanently associated with the session.
+@item @var{session-name}
+The @var{session -name} is a user-friendky name associated with the session,
+and displaying in the tab-bar and title-bar of windows disdplay the session.
+The default @var{session -name} is @samp{DomTerm:@var{session-number}}.
+@end table
+
 @node Paging
 @chapter Paging and Pausing
 
@@ -1211,9 +1305,9 @@ different front-ends may support some features differently.
 @table @asis
 @c FUTURE @item Control-Shift-P
 @c Enter/exit pager mode
-@c FUTURE @item Control-Shift-M
+@c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
-@item Control-Shift-M Control-D
+@item @mux-prefix Control-D
 @ On Electron toogle Developer Window.
 @item Control-Shift-C
 Copy the selected text to the clipboard.
@@ -1268,7 +1362,6 @@ Scroll to top or bottom, respectively.
 @end table
 
 See also the bindings for @ref{Paging} mode.
-
 @subsubheading Managing subwindows
 
 @table @asis
@@ -1278,19 +1371,19 @@ Create a new terminal in a new tab.
 Create a new terminal in a new pane (sub-window).
 The new pane is create to the right or below the current pane,
 depending on space.
-@item Control-Shift-M Control-Left
+@item @mux-prefix Control-Left
 Create a new terminal pane to the left of the current one.
-@item Control-Shift-M Control-Right
+@item @mux-prefix Control-Right
 Create a new terminal pane to the right of the current one.
-@item Control-Shift-M Control-Up
+@item @mux-prefix Control-Up
 Create a new terminal pane above the current one.
-@item Control-Shift-M Control-Down
+@item @mux-prefix Control-Down
 Create a new terminal pane below the current one.
-@item Control-Shift-M Left
+@item @mux-prefix Left
 Select the previous pane or tab.
-@item Control-Shift-M Right
+@item @mux-prefix Right
 Select the next pane or tab.
-@item Control-Shift-M @code{d}
+@item @mux-prefix @code{d}
 Detach from current session and close the (sub-)window.
 @end table
 
