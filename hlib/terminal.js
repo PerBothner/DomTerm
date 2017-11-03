@@ -424,7 +424,7 @@ DomTerm.prototype.close = function() {
         this._saveWindowContents();
     }
     if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
-        DomTerm.domTermLayoutClose(this);
+        DomTerm.domTermLayoutClose(this, DomTerm.domTermToLayoutItem(this));
     else
         window.close();
 };
@@ -497,14 +497,8 @@ DomTerm.setFocus = function(term) {
         document.title = term.sstate.windowTitle;
     }
     if (DomTerm.layoutManager) {
-        var stackPane;
-        if (term == null)
-            stackPane = null;
-        else {
-            var p = DomTerm.domTermToLayoutItem(term);
-            stackPane = p ? p.parent.element[0] : null;
-        }
-        DomTerm.showFocusedPane(stackPane);
+        var item = term ? DomTerm.domTermToLayoutItem(term) : null;
+        DomTerm.showFocusedPane(item);
     }
     DomTerm.focusedTerm = term;
 }
