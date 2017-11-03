@@ -211,6 +211,7 @@ doc/index.html: doc/DomTerm.texi
 	$(MAKEINFO) -I$(srcdir) --html --no-node-files $< -o doc
 
 DOC_IMAGES = \
+  doc/domterm1.svg \
   doc/images/domterm-1.png \
   doc/images/domterm-2.png \
   doc/images/domterm-panes-2.png \

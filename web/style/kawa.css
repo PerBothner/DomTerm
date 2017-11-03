@@ -210,10 +210,16 @@ div.navcol *.logo {
   font-size: xx-large
 }
 div.logo {
-  width:138px;
+  background-image: url(../images/domterm1.svg);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  width: 100%;
+  height: 180px;
   margin:0px auto;
 }
-div.logo img { border: none; padding: 10px }
+div.logo a img { border: none;  height: 90%; width: 90%; background-size: contain }
 
 code[class="literal"] strong { color: purple }
 p[class="synopsis"] code strong { color: purple }

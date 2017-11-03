@@ -10,7 +10,7 @@ body {
 
 div.navbar {
   position: absolute;
-  top: 112px; right: 0.2em; bottom: 0em; left: 0.2em;
+  top: 180px; right: 0.2em; bottom: 0em; left: 0.2em;
   height: auto;
   overflow: auto;
 }

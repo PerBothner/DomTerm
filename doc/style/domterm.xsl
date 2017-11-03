@@ -68,7 +68,7 @@
 </xsl:template>
 
 <xsl:template name="user.header.logo">
-  <div class="logo"><a href="index.html">DomTerm</a></div>
+  <a href="index.html" title="DomTerm"><div class="logo"></div></a>
 </xsl:template>
 
 </xsl:stylesheet>
