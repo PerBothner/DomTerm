@@ -11,7 +11,7 @@
 @codequotebacktick on
 
 @macro mux-prefix
-Control-Shift-M
+Control-Shift-A
 @end macro
 
 
@@ -1363,6 +1363,9 @@ Scroll to top or bottom, respectively.
 
 See also the bindings for @ref{Paging} mode.
 @subsubheading Managing subwindows
+
+The prefix key @mux-prefix when followed by some other key
+controls sessions and windows.
 
 @table @asis
 @item Control-Shift-T

@@ -6622,6 +6622,12 @@ DomTerm.prototype.keyDownHandler = function(event) {
             this._pageLine(key == 38 ? -1 : 1);
             event.preventDefault();
             return;
+        case 65: // Control-Shift-A
+            if (this.enterMuxMode) {
+                this.enterMuxMode();
+                event.preventDefault();
+            }
+            return;
         case 67: // Control-Shift-C
             if (this.doCopy())
                 event.preventDefault();
@@ -6629,12 +6635,6 @@ DomTerm.prototype.keyDownHandler = function(event) {
         case 73: // Control-shift-I
             this.nextInputMode();
             event.preventDefault();
-            return;
-        case 77: // Control-Shift-M
-            if (this.enterMuxMode) {
-                this.enterMuxMode();
-                event.preventDefault();
-            }
             return;
         case 78: // Control-Shift-N
             if (DomTerm.layoutAddSibling) {
