@@ -539,7 +539,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 /* ... fall through ... */
             case DETACHED_OPTION:
             case ELECTRON_OPTION:
-                opts->browser_command = optarg;
+                opts->browser_command = argv[optind-1];
                 break;
             case GEOMETRY_OPTION:
                 opts->geometry = optarg;
