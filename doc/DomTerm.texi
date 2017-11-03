@@ -22,17 +22,13 @@ Control-Shift-A
 @node Top
 @top DomTerm
 
-DomTerm is a combined terminal emulator and REPL console using web
-technologies - i.e. JavaScript
-and @uref{https://en.wikipedia.org/wiki/Document_Object_Model,DOM}:
-Users can type commands which
-gets sent to an application, which evaluates the command, and displays
-the results, typically in some kind of type-script format.
+The @code{domterm} application is terminal emulator, REPL console,
+and screen multiplexer (like @code{tmux} or GNU @code{screen}).
 
-The @code{qtdomterm} application is self-contained terminal emulator
-based on DomTerm and QtWebEngine.
-The @code{ldomterm} application is similar, but uses an
-external browser.
+The user interface and teeminal emulation
+is handled by a JavaScript library (called DomTerm).
+Communication between the application and the UI
+is done with Web Sockets.
 
 @emph{}
 @uref{images/domterm-panes-2.png,@image{images/domterm-panes-2}}
@@ -40,9 +36,9 @@ external browser.
 This @uref{https://lwn.net/Articles/670062/,LWN article} provides
 background, motivation, and a summary of the functionality.
 
-The name ``DomTerm'' refers to that it  works by manipulating the
-Document Object Model (DOM) of a browser: the nested structure of elements,
-text, and attributes.
+The name ``DomTerm'' is due tp that it  works by manipulating the
+@uref{https://en.wikipedia.org/wiki/Document_Object_Model,Document Object Model (DOM)} of a browser:
+the nested structure of elements, text, and attributes.
 (Also, most other appropriate names were already taken...) 
 
 DomTerm is Free Software (open-source)
@@ -55,9 +51,12 @@ was based on similar concepts, but was mostly written in Java using
 
 @itemize
 @item
-@strong{Architectural re-write (in-progress) to be more like @code{tmux}:
-The @code{domterm} command automatically starts server if not already running.
-In-progress session support.}
+The @code{domterm} command takes multiple sub-commands,
+similar to how @code{tmux} or @code{git}.
+The command automatically starts server if not already running.
+@item
+@ref{Sessions and Windows,Session managament}, with detachable sessions, as in
+@code{tmux} or GNU @code{screen}.
 @item
 A front-end based on @uref{https://electron.atom.io/,Electron}
 is now the preferred one.
@@ -96,13 +95,6 @@ within an input line.
 
 @item
 Switchable caret styles (using xterm escape sequences).
-
-@item
-You can save the console file as an offline-readable (x)html-file.
-
-@item
-Pretty-printing (Common Lisp style) is now handled by DomTerm.
-This means automatic re-flow on window re-size.
 @end itemize
 
 @subheading Why another terminal emulator
@@ -227,8 +219,10 @@ as seen in the nearby screenshot.
 Window size re-size will automatically re-do line-breaking.
 Copying the selection as text will only include hard newlines.
 Reports window resize to application.
-@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,@strong{Dynamic pretty-printing}} uses special commands to group
-logical blocks, and attempts to keep the text of a block on a single line.
+@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,@strong{Dynamic pretty-printing}} (Common Lisp style) uses special commands to group
+logical blocks, and attempts to keep the text of a block on a single line
+with automatic re-flow on window re-size.
+
 
 ``Print'' @ref{Hide/show buttons,hide/show buttons},
 using certain escape sequences enables @strong{text folding}.
