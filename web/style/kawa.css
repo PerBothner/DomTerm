@@ -143,7 +143,7 @@ html {
 span.ignore { display: none }
 
 div.navcol { 
-  background: #ab7;
+    background: #e0Ffd0;
 }
 
 /* Local navigation menu, along the left or right side */
@@ -175,12 +175,12 @@ list-style-type: none;
 div.navcol li { margin: 0 ; }
 div.navbar ul ul, div.navcol ul ul { margin-left: 0.6em; }
 
-div.navbar li { background-color: lightblue;  padding: 0px 4px;}
+div.navbar li { padding: 0px 4px;}
 div.navbar a { display: block; }
 
-div.navcol a {  text-decoration: none; }
+div.navcol a { text-decoration: none; }
 /* The following is redundant, but is needed for IE 6.0. */
-div.navheader ul a {  text-decoration: none; }
+div.navheader ul a { text-decoration: none; }
 
 div.navcol a:hover
 {
@@ -248,4 +248,3 @@ div[class="navcol"] div > ul > li { font-size: larger }
 /* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
 
 img { float: right; width: 50%; padding: 3px }
-div { overflow:auto}
