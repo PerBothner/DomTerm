@@ -756,26 +756,24 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
             }
         }
         if (cur instanceof Element) {
-            var tag = cur.tagName;
+            var tag = cur.tagName.toLowerCase();
             if (cur.firstChild)
                 descend = true;
             var classList = cur.classList;
-            if (tag == "DIV"
+            if (tag == "div"
                 && (classList.contains("domterm-ruler")
                     || classList.contains("resize-sensor")))
                 descend = false;
-            else if (tag == "DIV" || tag == "PRE" || tag == "P") {
+            else if (this.isBlockTag(tag)) {
                 var hasData = false;
-                var prevWasBlock = false;
+                var prevWasBlock = cur.parentNode.firstChild==cur
+                    && this.isBlockNode(cur.parentNode);
                 // Check to see if cur has any non-block children:
                 for (var ch = cur.firstChild; ch != null; ) {
                     var next = ch.nextSibling;
                     var isBlockNode = false;
                     if (ch instanceof Text) {
-                        if (ch.data == "\n" && prevWasBlock) {
-                            // The "write" routine adds newlines after these
-                            // block elements, for better human-readability.
-                            // Remote them here.
+                        if (prevWasBlock && ch.data.trim() == "") {
                             cur.removeChild(ch);
                             ch = next;
                             continue;
@@ -791,11 +789,17 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                 }
                 if (hasData) {
                     start = cur;
+                    if (tag != "pre"
+                        && (tag != "div"
+                            || ! cur.classList.contains("domterm-pre"))) {
+                        cur.classList.add("domterm-opaque");
+                        descend = false;
+                    }
                     this.lineStarts[startLine] = start;
                     this.lineEnds[startLine] = null;
                     startLine++;
                 }
-            } else if (tag == "SPAN") {
+            } else if (tag == "span") {
                 var line = cur.getAttribute("line");
                 var cls =  cur.getAttribute("class");
                 if (line) {
@@ -2065,9 +2069,14 @@ DomTerm.prototype.isObjectElement = function(node) {
 };
 
 DomTerm.prototype.isBlockNode = function(node) {
-    var tag = node.tagName;
-    return "P" == tag || "DIV" == tag || "PRE" == tag;
+    return node instanceof Element
+        && this.isBlockTag(node.tagName.toLowerCase());
 };
+
+DomTerm.prototype.isBlockTag = function(tag) { // lowercase tag
+    var einfo = this.elementInfo(tag, null);
+    return (einfo & DomTerm._ELEMENT_KIND_INLINE) == 0;
+}
 
 DomTerm.prototype._getOuterBlock = function(node) {
     for (var n = node; n; n = n.parentNode) {
@@ -4107,18 +4116,26 @@ DomTerm.prototype._unsafeInsertHTML = function(text) {
     }
 };
 
-// Bit 0 (value 1): Allow in inserted HTML
-// Bit 1 (value 2): Some attributes may need scrubbing
-// Bit 2 (value 4): "Phrasing [inline] content"
-// Bit 3 (value 8): Allow in SVG
-// Bit 4 (value 16): Void (empty) HTML element
+DomTerm._ELEMENT_KIND_ALLOW = 1; // Allow in inserted HTML
+DomTerm._ELEMENT_KIND_CHECK_JS_TAG = 2; // Check href/src for "javascript:"
+DomTerm._ELEMENT_KIND_INLINE = 4; // Phrasing [inline] content
+DomTerm._ELEMENT_KIND_SVG = 8; // Allow in SVG
+DomTerm._ELEMENT_KIND_EMPTY = 16; // Void (empty) HTML element, like <hr>
+DomTerm._ELEMENT_KIND_TABLE = 32; // allowed in table
+DomTerm._ELEMENT_KIND_SKIP_TAG = 64; // ignore (skip) element (tag)
+DomTerm._ELEMENT_KIND_CONVERT_TO_DIV = 128; // used for <body>
+DomTerm._ELEMENT_KIND_SKIP_FULLY = 256; // skip element (tag and contents)
+DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY = DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_SKIP_FULLY;
+
 DomTerm.prototype.elementInfo = function(tag, parents=null) {
     var v = DomTerm.HTMLinfo.hasOwnProperty(tag) ? DomTerm.HTMLinfo[tag] : 0;
 
-    if ((v & 8) == 8 && parents) { // If allow in SVG, check parents for svg
+    if ((v & DomTerm._ELEMENT_KIND_SVG) != 0 && parents) {
+        // If allow in SVG, check parents for svg
         for (var i = parents.length; --i >= 0; ) {
             if (parents[i] == "svg") {
-                v |= 1;
+                v |= DomTerm._ELEMENT_KIND_ALLOW;
+                v &= ~DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY;
                 break;
             }
         }
@@ -4133,7 +4150,7 @@ DomTerm.prototype.allowAttribute = function(name, value, einfo, parents) {
     //    return false;
     if (name.startsWith("on"))
         return false;
-    if ((einfo & 2) != 0) {
+    if ((einfo & DomTerm._ELEMENT_KIND_CHECK_JS_TAG) != 0) {
         if (name=="href" || name=="src") {
             // scrub for "javascript:"
             var amp = value.indexOf("&");
@@ -4152,127 +4169,146 @@ DomTerm.prototype.allowAttribute = function(name, value, einfo, parents) {
 
 // See elementInfo comment for bit values.
 DomTerm.HTMLinfo = {
-    "a": 7, // need to check "href" for "javascript:"
-    "abbr": 5,
-    "altGlyph": 12,
-    "altGlyphDef": 12,
-    "altGlyphItem": 12,
-    "animate": 12,
-    "animateColor": 12,
-    "animateMotion": 12,
-    "animateTransform": 12,
+    "a": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_CHECK_JS_TAG+DomTerm._ELEMENT_KIND_ALLOW,
+    "abbr": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "altGlyph": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "altGlyphDef": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "altGlyphItem": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "animate": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "animateColor": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "animateMotion": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "animateTransform": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "area": 0x14,
-    "b": 5,
-    "base": 0x10,//metadata
-    "basefont": 0x10, //obsolete
+    "b": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "base": DomTerm._ELEMENT_KIND_EMPTY,//metadata
+    "basefont": DomTerm._ELEMENT_KIND_EMPTY, //obsolete
+    "blockquote": DomTerm._ELEMENT_KIND_ALLOW,
     "br": 0x15,
-    "circle": 12,
-    "cite": 5,
-    "clipPath": 12,
-    "code": 5,
+    "body": DomTerm._ELEMENT_KIND_CONVERT_TO_DIV+DomTerm._ELEMENT_KIND_ALLOW,
+    "center": DomTerm._ELEMENT_KIND_ALLOW,
+    "circle": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "cite": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "clipPath": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "code": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "col": 0x11,
-    "color-profile": 12,
+    "color-profile": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "command": 0x15, // obsolete
-    "cursor": 12,
-    "dfn": 5,
-    "defs": 12,
-    "desc": 12,
-    "div": 1,
-    "ellipse": 12,
-    "em": 5,
+    "cursor": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "dd": DomTerm._ELEMENT_KIND_ALLOW,
+    "dfn": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "defs": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "desc": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "div": DomTerm._ELEMENT_KIND_ALLOW,
+    "ellipse": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "em": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "embed": 0x14,
-    "feBlend": 12,
-    "feColorMatrix": 12,
-    "feComponentTransfer": 12,
-    "feComposite": 12,
-    "feConvolveMatrix": 12,
-    "feDiffuseLighting": 12,
-    "feDisplacementMap": 12,
-    "feDistantLight": 12,
-    "feFlood": 12,
-    "feFuncA": 12,
-    "feFuncB": 12,
-    "feFuncG": 12,
-    "feFuncR": 12,
-    "feGaussianBlur": 12,
-    "feImage": 12,
-    "feMerge": 12,
-    "feMergeNode": 12,
-    "feMorphology": 12,
-    "feOffset": 12,
-    "fePointLight": 12,
-    "feSpecularLighting": 12,
-    "feSpotLight": 12,
-    "feTile": 12,
-    "feTurbulence": 12,
-    "filter": 12,
-    "font": 12,
-    "font-face": 12,
-    "font-face-format": 12,
-    "font-face-name": 12,
-    "font-face-src": 12,
-    "font-face-uri": 12,
-    "foreignObject": 12,
+    "feBlend": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feColorMatrix": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feComponentTransfer": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feComposite": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feConvolveMatrix": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feDiffuseLighting": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feDisplacementMap": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feDistantLight": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feFlood": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feFuncA": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feFuncB": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feFuncG": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feFuncR": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feGaussianBlur": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feImage": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feMerge": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feMergeNode": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feMorphology": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feOffset": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "fePointLight": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feSpecularLighting": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feSpotLight": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feTile": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "feTurbulence": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "filter": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "font": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "font-face": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "font-face-format": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "font-face-name": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "font-face-src": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "font-face-uri": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "foreignObject": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "frame": 0x10,
-    "g": 12,
-    "glyph": 12,
-    "glyphRef": 12,
-    "hkern": 12,
-    "hr": 0x11,
-    "i": 5,
-    //"iframe": 1, // ??? maybe
-    "image": 12, // FIXME
+    "g": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "glyph": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "glyphRef": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "h1": DomTerm._ELEMENT_KIND_ALLOW,
+    "h2": DomTerm._ELEMENT_KIND_ALLOW,
+    "h3": DomTerm._ELEMENT_KIND_ALLOW,
+    "h4": DomTerm._ELEMENT_KIND_ALLOW,
+    "h5": DomTerm._ELEMENT_KIND_ALLOW,
+    "h6": DomTerm._ELEMENT_KIND_ALLOW,
+    "head": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_ALLOW,
+    "hkern": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "hr": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
+    "html": 0x41,
+    "i": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    //"iframe": DomTerm._ELEMENT_KIND_ALLOW, // ??? maybe
+    "image": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE, // FIXME
     "img": 0x17, // need to check "src" for "javascript:"
     "input": 0x15,
     //"isindex": 0x10, //metadata
     "keygen": 0x15,
-    "line": 12,
-    "linearGradient": 12,
-    "link": 0x10, //metadata
-    "mark": 5,
-    "marker": 12,
-    "mask": 12,
-    "meta": 0x10, //metadata
-    "metadata": 12,
-    "missing-glyph": 12,
-    "mpath": 12,
-    "p": 1,
+    "line": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "linearGradient": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "link": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
+    "mark": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "marker": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "mask": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "meta": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
+    "metadata": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "missing-glyph": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "mpath": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "ol": DomTerm._ELEMENT_KIND_ALLOW,
+    "p": DomTerm._ELEMENT_KIND_ALLOW,
     //"para": 0x10, //???
-    "param": 0x10,
-    "path": 12,
-    "pattern": 12,
-    "polygon": 12,
-    "polyline": 12,
-    "pre": 1,
-    "q": 5,
-    "radialGradient": 12,
-    "rect": 12,
-    "samp": 5,
-    //"script": 12, // ?
-    "script": 0,
-    "set": 12,
-    "small": 5,
-    "source": 0x10,
-    "span": 5,
-    "stop": 12,
-    "strong": 5,
-    "style": 12,
-    "sub": 5,
-    "sup": 5,
+    "param": DomTerm._ELEMENT_KIND_EMPTY, // invalid
+    "path": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "pattern": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "polygon": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "polyline": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "pre": DomTerm._ELEMENT_KIND_ALLOW,
+    "q": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "radialGradient": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "rect": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "samp": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "script": DomTerm._ELEMENT_KIND_SKIP_FULLY+DomTerm._ELEMENT_KIND_ALLOW,
+    "set": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "small": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "source": DomTerm._ELEMENT_KIND_EMPTY, // invalid
+    "span": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "stop": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "strong": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "style": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_SKIP_FULLY+DomTerm._ELEMENT_KIND_ALLOW,
+    "sub": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "sup": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "svg": 13,
-    "switch": 12,
-    "symbol": 12,
-    "text": 12,
-    "textPath": 12,
-    "title": 12,
+    "switch": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "symbol": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "table": DomTerm._ELEMENT_KIND_ALLOW,
+    "tbody": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
+    "thead": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
+    "tfoot": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
+    "tr": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
+    "td": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
+    "text": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "textPath": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "title": DomTerm._ELEMENT_KIND_SKIP_FULLY+DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_ALLOW,
     //"track": 0x10,
-    "tref": 12,
-    "tspan": 12,
-    "u": 5,
-    "use": 12,
-    "view": 12,
-    "var": 5,
-    "vkern": 12,
+    "tref": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "tspan": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "u": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "ul": 1,
+    "use": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "view": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "var": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "vkern": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "wbr": 0x15,
     
     // Phrasing content:
@@ -4280,6 +4316,15 @@ DomTerm.HTMLinfo = {
 };
 
 DomTerm.prototype._scrubAndInsertHTML = function(str) {
+    function skipWhitespace(pos) {
+        for (; pos < len; pos++) {
+            let c = str.charCodeAt(pos);
+            if (c != 32 && (c < 8 || c > 13))
+                break;
+        }
+        return pos;
+    }
+    var doctypeRE = /^\s*<!DOCTYPE\s[^>]*>\s*/;
     var len = str.length;
     var start = 0;
     var ok = 0;
@@ -4329,6 +4374,15 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
             if (i + 1 == len)
                 break loop; // invalid
             ch = str.charCodeAt(i++);
+            if (ok == 0 && ch == 33) {
+                let m = str.match(doctypeRE);
+                if (m) {
+                    str = str.substring(m[0].length);
+                    len = str.length;
+                    i = 0;
+                    break;
+                }
+            }
             if (ch == 33 && i + 1 < len
                 && str.charCodeAt(i) == 45 && str.charCodeAt(i+1) == 45) {
                 // Saw comment start "<!--". Look for "-->".
@@ -4340,12 +4394,17 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                         && str.charCodeAt(i+1) == 45
                         && str.charCodeAt(i+2) == 62) {
                         i += 3;
-                        ok = i;
+                        if (activeTags.length == 0)
+                            i = skipWhitespace(i);
+                        str = str.substring(0, ok) + str.substring(i);
+                        len = str.length;
+                        i = ok;
                         break;
                     }
                 }
                 break;
             }
+
             var end = ch == 47; // '/';
             if (end)
                 ch = str.charCodeAt(i++);
@@ -4363,13 +4422,35 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                 if (ch != 62) // '>'
                     break loop; // invalid
                 var tag = str.substring(ok+2,i-1);
+                var einfo = this.elementInfo(tag, activeTags);
                 if (activeTags.length == 0) {
                     // maybe TODO: allow unbalanced "</foo>" to pop from foo.
                     break loop;
                 } else if (activeTags.pop() == tag) {
+                    if ((einfo & DomTerm._ELEMENT_KIND_CONVERT_TO_DIV) != 0) {
+                        i = skipWhitespace(i);
+                        str = str.substring(0, ok) + "</div>" + str.substring(i);
+                        len = str.length;
+                        ok = i = ok + 6;
+                    } else if ((einfo & DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY) != 0) {
+                        if ((einfo & DomTerm._ELEMENT_KIND_SKIP_FULLY) != 0)
+                            ok = activeTags.pop();
+                        if ((einfo & DomTerm._ELEMENT_KIND_INLINE) == 0)
+                            i = skipWhitespace(i);
+                        str = str.substring(0, ok) + str.substring(i);
+                        len = str.length;
+                        i = ok;
+                    } else if ((einfo & DomTerm._ELEMENT_KIND_INLINE) == 0) {
+                        let i2 = skipWhitespace(i);
+                        if (i2 > i) {
+                            str = str.substring(0, i) + str.substring(i2);
+                            len = str.length;
+                        }
+                    }
                     ok = i;
                     if (activeTags.length == 0
                         && (this.elementInfo(tag, activeTags) & 4) == 0) {
+                        this._breakDeferredLines();
                         this.freshLine();
                         var line = this.getAbsCursorLine();
                         var lstart = this.lineStarts[line];
@@ -4381,16 +4462,14 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                         var created = lstart.firstChild;
                         if (emptyLine && created.nextSibling == lend) {
                             lstart.removeChild(created);
-                            if (lend != null)
-                                lstart.removeChild(lend);
                             lstart.parentNode.insertBefore(created, lstart);
-                            lstart.parentNode.removeChild(lstart);
-                            this.lineStarts[line] = created;
-                            this.lineEnds[line] = null;
+                            var delta = this.lineStarts.length;
+                            this._restoreLineTables(created, line);
+                            delta = this.lineStarts.length - delta;
+                            this._restoreLineTables(lstart, line+delta+1);
                             this.resetCursorCache();
-                            this.outputContainer = created;
-                            this.outputBefore = null;
-                            this.freshLine();
+                            this.outputContainer = lstart;
+                            this.outputBefore = lend;
                         }
                         start = i;
                         //insert immediately, as new line
@@ -4401,8 +4480,11 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
             } else {
                 var tag = str.substring(ok+1,i-1);
                 var einfo = this.elementInfo(tag, activeTags);
-                if ((einfo & 1) == 0)
+                if ((einfo & DomTerm._ELEMENT_KIND_ALLOW) == 0)
                     break loop;
+                if ((einfo & DomTerm._ELEMENT_KIND_SKIP_FULLY) != 0) {
+                    activeTags.push(ok);
+                }
                 activeTags.push(tag);
                 // we've seen start tag - now check for attributes
                 for (;;) {
@@ -4454,6 +4536,25 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                     activeTags.pop();
                 } else if (ch != 62) // '>'
                     break loop; // invalid
+                else if ((einfo & DomTerm._ELEMENT_KIND_EMPTY) != 0)
+                    activeTags.pop();
+                if ((einfo & DomTerm._ELEMENT_KIND_CONVERT_TO_DIV) != 0) {
+                    str = str.substring(0, ok)
+                        + "<div" + str.substring(ok+5);
+                    len = str.length;
+                    i = ok + 5;
+                } else if ((einfo & DomTerm._ELEMENT_KIND_SKIP_TAG) != 0) {
+                    str = str.substring(0, ok) + str.substring(i);
+                    len = str.length;
+                    i = ok;
+                }
+                if ((einfo & DomTerm._ELEMENT_KIND_INLINE) == 0) {
+                    let i2 = skipWhitespace(i);
+                    if (i2 > i) {
+                        str = str.substring(0, i) + str.substring(i2);
+                        len = str.length;
+                    }
+                }
                 ok = i;
             }
             break;
@@ -4627,7 +4728,6 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this._forEachElementIn(parent, findInputLine);
             this.resetCursorCache();
             this._restoreLineTables(this.topNode, 0);
-            this._breakAllLines();
             dt._restoreSaveLastLine();
             var home_node; // FIXME
             var home_offset = -1;
@@ -5875,6 +5975,8 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
 
     for (var line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
+        if (start.classList.contains("domterm-opaque"))
+            continue;
         var end = this.lineEnds[line];
         if (start.alwaysMeasureForBreak
             || (end != null && end.offsetLeft > this.availWidth)) {
