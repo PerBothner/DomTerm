@@ -524,6 +524,11 @@ reportEvent(const char *name, char *data, size_t dlen,
         pclient->detachOnClose = 1;
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
+    } else if (strcmp(name, "ALINK") == 0) {
+        json_object *obj = json_tokener_parse(data);
+        const char *kstr = json_object_get_string(obj);
+        default_browser_command(kstr, 0);
+        json_object_put(obj);
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
         char *q = strchr(data, ',');
         long rcount;

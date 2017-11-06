@@ -3997,7 +3997,10 @@ DomTerm.prototype.handleBell = function() {
 
 DomTerm.prototype.handleLink = function(event, href) {
     event.preventDefault();
-    this.reportEvent("ALINK", JSON.stringify(href));
+    if (href.startsWith('#'))
+        window.location.hash = href;
+    else
+        this.reportEvent("ALINK", JSON.stringify(href));
 };
 
 // Set the "session name" which is the "name" attribute of the toplevel div.
