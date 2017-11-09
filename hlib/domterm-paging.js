@@ -51,10 +51,8 @@ DomTerm.prototype._pageScroll = function(delta) {
         scroll = vtop;
     // FIXME may do nothing if spacer size is empty
     this.topNode.scrollTop = scroll;
-    if (extend)
+    if (limit > vtop)
         this._pauseContinue();
-    else
-        this._temporaryAutoPaging = false;
 }
 
 DomTerm.prototype._pagePage = function(count) {
@@ -81,7 +79,6 @@ DomTerm.prototype._pageBottom = function() {
 DomTerm.prototype._enterPaging = function(pause) {
     // this._displayInputModeWithTimeout(displayString);
     this._pageNumericArgumentClear();
-    this._temporaryAutoPaging = false;
     this._pagingMode = pause ? 2 : 1;
     this.modeLineGenerator = _pagerModeInfo;
     this._updatePagerInfo();
@@ -124,7 +121,6 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         // C-Home start
         // C-End end
     case 13: // Enter
-        this._temporaryAutoPaging = this._pagingMode == 2;
         this._pageLine(this._pageNumericArgumentAndClear(1));
         event.preventDefault();
         break;
@@ -135,7 +131,6 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         event.preventDefault();
         break;
     case 32: // Space
-        this._temporaryAutoPaging = this._pagingMode == 2;
         // ... fall through ...
     case 34: // Page-down
         this._pagePage(this._pageNumericArgumentAndClear(1));
@@ -150,7 +145,6 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         event.preventDefault();
         break;
     case 40 /*Down*/:
-        this._temporaryAutoPaging = this._pagingMode == 2;
         // ... fall through ...
     case 38 /*Up*/:
         this._pageLine(key == 38 ? -1 : 1);
@@ -215,10 +209,6 @@ DomTerm.prototype._togglePaging = function() {
 */
 
 DomTerm.prototype._pauseNeeded = function() {
-    return (this._pagingMode > 0
-            || this._autoPaging || this._temporaryAutoPaging)
-        && this._vspacer.offsetTop + this.charHeight > this._pauseLimit
-    // && this._pauseLimit >= 0
-        && this._regionBottom == this.numRows
-        && this.getCursorLine() == this._regionBottom-1;
+    return (this._pagingMode > 0 || this._autoPaging)
+        && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };

@@ -151,8 +151,8 @@ function DomTerm(name, topNode) {
     this._pagingMode = 0;
     this._muxMode = false;
 
+    // User option: automatic paging enabled
     this._autoPaging = false;
-    this._temporaryAutoPaging = false;
     this._pauseLimit = -1;
     this._receivedCount = 0;
     this._confirmedCount = 0;
@@ -468,7 +468,6 @@ DomTerm.prototype.startCommandGroup = function() {
         this._currentCommandOutput = null;
         this._currentCommandHideable = false;
     }
-    this._temporaryAutoPaging = false;
 };
 
 // For debugging (may be overridden)
@@ -844,12 +843,8 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     break;
                 }
                 cur = cur.parentNode;
-                if (cur == startNode)
-                    break;
             }
         }
-        if (cur == startNode)
-            break;
     }
 };
 
@@ -1348,7 +1343,8 @@ DomTerm.prototype._restoreInputLine = function() {
             }
             this.inputLine.setAttribute("caret", cstyle);
         }
-        this.maybeFocus();
+        if (this._pagingMode == 0)
+            this.maybeFocus();
     }
 };
 
@@ -4468,11 +4464,9 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                             lstart.parentNode.insertBefore(created, lstart);
                             var delta = this.lineStarts.length;
                             this._restoreLineTables(created, line);
-                            delta = this.lineStarts.length - delta;
-                            this._restoreLineTables(lstart, line+delta+1);
-                            this.resetCursorCache();
                             this.outputContainer = lstart;
                             this.outputBefore = lend;
+                            this.resetCursorCache();
                         }
                         start = i;
                         //insert immediately, as new line
@@ -5128,7 +5122,6 @@ DomTerm.prototype._pauseContinue = function(skip = false) {
             this.insertString(text);
         this._confirmedCount = this._receivedCount;
         text = this.parameters[1];
-        // FIXME maybe this._temporaryAutoPaging = true;
         if (text == null || text.length < 500 || skip) {
             if (this.verbosity >= 2)
                 this.log("report RECEIVED "+this._confirmedCount);
@@ -5140,6 +5133,9 @@ DomTerm.prototype._pauseContinue = function(skip = false) {
 DomTerm.prototype.insertString = function(str) {
     if (this.verbosity >= 2) {
         //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
+        if (str.length > 200)
+            this.log("insertString "+JSON.stringify(str.substring(0,200))+"... state:"+this.controlSequenceState/*+" ms:"+ms*/);
+        else
         this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
     }
     if (this._pagingMode == 2) {
@@ -5565,19 +5561,28 @@ DomTerm.prototype.insertString = function(str) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
     }
 
-    if (window.requestAnimationFrame) {
-        if (this._updateTimer)
+    if (this._updateTimer) {
+        if (window.requestAnimationFrame)
             cancelAnimationFrame(this._updateTimer);
-        this._updateTimer = requestAnimationFrame(update);
-    } else {
-        if (this._updateTimer)
+        else
             clearTimeout(this._updateTimer);
-        this._updateTimer = setTimeout(update, 100);
+        this._updateTimer = null;
     }
+    if (this._pauseNeeded()) {
+        this.parameters[1] = "";
+        this._enterPaging(true);
+        update();
+        this.topNode.scrollTop = this._pauseLimit - this.availHeight;
+        return;
+    }
+    if (window.requestAnimationFrame)
+        this._updateTimer = requestAnimationFrame(update);
+    else
+        this._updateTimer = setTimeout(update, 100);
 };
 
 DomTerm.prototype._scrollIfNeeded = function() {
-    var last = this.topNode.lastChild;
+    var last = this.topNode.lastChild; // ??? always _vspacer
     var lastBottom = last.offsetTop + last.offsetHeight;
     if (lastBottom > this.topNode.scrollTop + this.availHeight) {
         if (this.verbosity >= 2)
@@ -6750,7 +6755,6 @@ DomTerm.prototype.keyDownHandler = function(event) {
             break;
        case 80: // Control-Shift-P
             if (this._currentlyPagingOrPaused()) {
-                this._temporaryAutoPaging = false;
                 this._pauseContinue();
                 this._exitPaging();
             } else
