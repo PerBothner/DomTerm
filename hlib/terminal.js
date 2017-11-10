@@ -3364,7 +3364,7 @@ DomTerm.prototype.color256 = function(u) {
 
 DomTerm.prototype.getParameter = function(index, defaultValue) {
     var arr = this.parameters;
-    return arr.length > index && arr[index] ? arr[index] : defaultValue;
+    return arr.length > index && arr[index] != null ? arr[index] : defaultValue;
 }
 
 DomTerm.prototype.get_DEC_private_mode = function(param) {
@@ -3957,6 +3957,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 81: // get-window-contents
             this._saveWindowContents();
+            break;
+        case 82:
+            this._detachSaveNeeded = this.getParameter(1,1);
             break;
         case 90:
             if (DomTerm.layoutAddPane) {

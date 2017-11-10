@@ -155,11 +155,18 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
       pwsi = nwsi;
     }
     // FIXME reclaim memory cleanup for tclient
-    if (pclient->first_client_wsi == NULL) {
+    struct lws *first_twsi = pclient->first_client_wsi;
+    if (first_twsi == NULL) {
         if (pclient->detachOnClose)
             pclient->detached = 1;
         else
             lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
+    }
+    // If only one client left, do detachSaveSend
+    if (first_twsi != NULL) {
+        struct tty_client *first_tclient = lws_wsi_user(first_twsi);
+        if (first_tclient->next_client_wsi == NULL)
+            first_tclient->detachSaveSend = true;
     }
 }
 
@@ -180,6 +187,20 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
 {
     tclient->pclient = pclient;
     tclient->next_client_wsi = NULL;
+    // If following this link_command there are now two clients,
+    // notify both clients they don't have to save on detatch
+    struct lws *first_twsi = pclient->first_client_wsi;
+    if (first_twsi != NULL) {
+        struct tty_client *first_tclient = lws_wsi_user(first_twsi);
+        if (first_tclient->next_client_wsi == NULL) {
+            // these was exctly one other tclient
+            tclient->detachSaveSend = true;
+            lws_callback_on_writable(wsi);
+            first_tclient->detachSaveSend = true;
+            lws_callback_on_writable(first_twsi);
+        }
+    } else if (pclient->detachOnClose)
+        tclient->detachSaveSend = true;
     *pclient->last_client_wsi_ptr = wsi;
     pclient->last_client_wsi_ptr = &tclient->next_client_wsi;
     focused_wsi = wsi;
@@ -561,6 +582,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 
         case LWS_CALLBACK_ESTABLISHED:
             client->initialized = false;
+            client->detachSaveSend = false;
             client->authenticated = false;
             client->requesting_contents = 0;
             client->wsi = wsi;
@@ -630,21 +652,35 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                       size_t end = pclient->preserved_end;
                       write_to_browser(wsi, pclient->preserved_output+start,
                                        end-start);
+                      write_to_browser(wsi, p, strlen(p));
                       pclient->preserved_output = NULL;
                   }
                 }
                 client->initialized = true;
                 //break;
             }
+            if (client->detachSaveSend) {
+                int tcount = 0;
+                struct lws *tty_wsi;
+                FOREACH_WSCLIENT(tty_wsi, pclient) {
+                    if (++tcount >= 2) break;
+                }
+                char buf[LWS_PRE+20];
+                char *p = &buf[LWS_PRE];
+                int code = tcount >= 2 ? 0 : pclient->detachOnClose ? 2 : 1;
+                sprintf(p, URGENT_START_STRING "\033[82;%du" URGENT_END_STRING,
+                        code);
+                write_to_browser(wsi, p, strlen(p));
+                client->detachSaveSend = false;
+            }
             if (client->olen > 0) {
                 write_to_browser(wsi, client->obuffer, client->olen);
                 client->olen = 0;
             }
             if (client->requesting_contents == 1) {
-                client->requesting_contents = 2;
-                fprintf(stderr, "send request contents\n");
                 write_to_browser(wsi, request_contents_message,
                                  sizeof(request_contents_message)-1);
+                client->requesting_contents = 2;
                 if (pclient->preserved_output == NULL) {
                     pclient->preserved_start = LWS_PRE;
                     pclient->preserved_end = LWS_PRE;
@@ -865,7 +901,6 @@ int attach_action(int argc, char** argv, const char*cwd,
             (struct tty_client *) lws_wsi_user(tty_wsi);
         tclient->requesting_contents = 1;
         lws_callback_on_writable(tty_wsi);
-        fprintf(stderr, "attach - requesting_contents\n");
     }
 
     display_session(opts, pclient, NULL, info.port);

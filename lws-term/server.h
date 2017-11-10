@@ -90,6 +90,7 @@ struct tty_client {
     bool initialized;
     //bool pty_started; = pclient!=NULL
     bool authenticated;
+    bool detachSaveSend; // need to send a detachSaveNeeded command
 
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser
@@ -183,7 +184,8 @@ extern void do_run_browser(struct options *, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
-extern void init_options(struct options *options;);
+extern void init_options(struct options *options);
+void default_browser_command(const char *url, int port);
 extern int process_options(int argc, char **argv, struct options *options;);
 extern char ** copy_argv(int argc, char * const*argv);
 
