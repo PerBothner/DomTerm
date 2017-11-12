@@ -2695,40 +2695,6 @@ Using WebSocket is convenient because it is built in to modern browsers,
 so the entire front-end (except @code{terminal.js})
 is readily available.
 
-@subsection A roadmap
-
-This is my vision of how terminals should be done in 2016.
-
-The ``terminal emulator'' application that a user runs
-(for example by clicking an icon or from an existing command line)
-should be a small program that parses command-line arguments,
-then fires up (if necessary) a front-end process and a back-end process,
-and connects the two.
-This application would have an option to connect to an existing
-back-end session, supporting the functionality of GNU Screen.
-
-The default backend would be a small WebSocket server that forks
-off a user process, by default using a PTY (when available), otherwise
-using pipes.
-It would be helpful if the back-end can also serve http/https, for
-serving the initial html page and JavaScript (unless those could be
-builtin to the front-end).  A builtin http server could also
-support images and other non-textual data, if you don't want to
-include it directly in the output,
-possibly using a @code{@uref{https://en.wikipedia.org/wiki/Data_URI_scheme,data}} URI.
-The @uref{https://libwebsockets.org/index.html,libwebsockets}
-library seems a possible base for a WebSockets+http server.
-
-More blue-sky, it would be nice if the terminal subsystem and/or the C library
-could have a special mode for PTYs running under DomTerm.
-For example, the terminal driver should not do canonical-mode
-input-line cooking, but should delegate that to DomTerm.
-(DomTerm approximates this by monitoring the terminal @code{canon}
-flag, but a more robust protocol would be better.)
-Type-ahead could also work better.
-It would also be nice to delimit output to standard error with the
-appropriate escape sequences.
-
 @subsection WebSocket server
 
 The included server uses @uref{http://java-websocket.org/,Java-WebServer},
