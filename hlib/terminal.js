@@ -6430,13 +6430,13 @@ DomTerm.prototype.printStyleSheet = function(specifier) {
     if (! rules)
         return "stylesheet rules not available";
     var count = rules.length;
-    var result = "";
+    var result = "[";
     for (var i = 0; i < count; i++) {
         if (i > 0)
-            result = result + " ";
+            result = result + ",";
         result = result + JSON.stringify(rules[i].cssText);
     }
-    return result;
+    return result+"]";
 };
 
 DomTerm.prototype.createStyleSheet = function() {

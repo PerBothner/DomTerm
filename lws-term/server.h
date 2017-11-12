@@ -192,6 +192,11 @@ extern char ** copy_argv(int argc, char * const*argv);
 extern int probe_domterm(void);
 extern void check_domterm(struct options *);
 extern void generate_random_string (char *buf, int nchars);
+extern void tty_save_set_raw(int tty_in);
+extern void tty_restore(int tty_in);
+extern int get_tty_in();
+extern int get_tty_out();
+extern void write_to_tty(const char *str, ssize_t len);
 
 #if COMPILED_IN_RESOURCES
 struct resource {

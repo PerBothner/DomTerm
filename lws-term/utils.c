@@ -132,6 +132,48 @@ get_executable_directory_length()
 static int tty_in = -1;
 static int tty_out = -1;
 
+static struct termios save_term;
+
+void
+tty_save_set_raw(int tty_in)
+{
+    struct termios tmp_term;
+    tcgetattr(tty_in, &save_term);
+    tmp_term = save_term;
+    tmp_term.c_lflag &= ~(ICANON | ISIG | ECHO | ECHOCTL | ECHOE |      \
+                          ECHOK | ECHOKE | ECHONL | ECHOPRT );
+    tcsetattr(tty_in, TCSANOW, &tmp_term);
+}
+
+void tty_restore(int tty_in)
+{
+    tcsetattr(tty_in, TCSANOW, &save_term);
+}
+
+int
+get_tty_in()
+{
+    if (tty_in < 0)
+        tty_in = open("/dev/tty", O_RDONLY);
+    return tty_in;
+}
+
+int
+get_tty_out()
+{
+    if (tty_out < 0)
+        tty_out = open("/dev/tty", O_WRONLY);
+    return tty_out;
+}
+
+void
+write_to_tty(const char *str, ssize_t len)
+{
+    if (len == -1)
+        len = strlen(str);
+    write(get_tty_out(), str, len);
+}
+
 /** Are we running under DomTerm?
  * Return 1 if true, 0 if else, -1 if error.
  */
@@ -146,18 +188,15 @@ probe_domterm ()
            || strstr(term_env, "xterm") != NULL))
         return 0;
 
-    if (tty_in < 0)
-        tty_in = open("/dev/tty", O_RDONLY);
-    if (tty_out < 0)
-        tty_out = open("/dev/tty", O_WRONLY);
+    get_tty_in();
+    get_tty_out();
     int timeout = 1000;
     struct pollfd pfd;
     if (tty_in < 0 || tty_out < 0)
         return -1;
     int i = 0;
     char msg1[] = "\033[>0c";
-    struct termios save_term;
-    struct termios tmp_term;
+    //struct termios save_term;
     char response_prefix[] = "\033[>990;";
     int response_prefix_length = sizeof(response_prefix)-1;
     char buffer[50];
@@ -166,11 +205,7 @@ probe_domterm ()
     pfd.events = POLLIN;
     pfd.revents = 0;
     int result = 1;
-    tcgetattr(tty_in, &save_term);
-    tmp_term = save_term;
-    tmp_term.c_lflag &= ~(ICANON | ISIG | ECHO | ECHOCTL | ECHOE |      \
-                          ECHOK | ECHOKE | ECHONL | ECHOPRT );
-    tcsetattr(tty_in, TCSANOW, &tmp_term);
+    tty_save_set_raw(tty_in);
 
     if (write(tty_out, msg1, sizeof(msg1)-1) != sizeof(msg1)-1)
       return -1; // FIXME
@@ -201,8 +236,7 @@ probe_domterm ()
               break;
         }
     }
-    tcsetattr(tty_in, TCSANOW, &save_term);
-
+    tty_restore(tty_in);
     return result;
 }
 
