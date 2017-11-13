@@ -129,7 +129,8 @@ embedded in different modes and applications.
 @menu
 * Features:: Features and screenshots
 * Downloading and building::
-* Applications::
+* domterm application:: The domterm command
+* Applications:: Other domterm application
 * Sessions and Windows::
 * Paging:: Paging and Pausing
 * Styling:: 
@@ -299,8 +300,9 @@ as older versions do not support flow control or paging.
 
 On Fedora, you need to first:
 @example
-sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel
+sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel
 @end example
+@c for libmagic: file-devel (Fedora); libmagic-dev (Debian/Ubuntu)
 
 This is the recommended ``backend'' and the default.
 @item --with-java_websocket
@@ -375,23 +377,8 @@ The latter (obviously) runs qtdomterm.
 The @code{qtdomterm} executable has no external dependencies
 (besides the Qt libraries), and you can copy to wherever you want it.
 
-@node Applications
-@chapter Applications
-
-The core of DomTerm is the JavaScript @code{terminal.js},
-but we also provides a few wrappers and applications that make use of it.
-
-The @code{domterm} command is normally an alias for @code{ldomterm}.
-
-@menu
-* domterm application::
-* qtdomterm application::
-* jdomterm script::
-* dt-util::dt-util - client-side utility
-@end menu
-
 @node domterm application
-@section The domterm command
+@chapter The domterm command
 
 The @code{domterm} command is the preferred away of using DomTerm.
 
@@ -525,6 +512,9 @@ When creating a new session, it is detached, without a window.
 @subheading Miscellaneous commands
 
 @table @asis
+@item @b{@code{help}} [@var{sub-help}]
+Print some help.  The @var{sub-help} may be a sub-command.
+
 @item @b{@code{is-domterm}}
 Succeeds (exits with code 0) if the current terminal is DomTerm;
 fails (exits with code -1) otherwise.
@@ -548,7 +538,7 @@ $ domterm --above browse http://example.com/
 @end example
 @end table
 
-@subheading ``Printing'' html
+@subheading ``Printing'' images or html
 
 @table @asis
 @item @b{@code{html}}
@@ -561,6 +551,36 @@ echo 'E = mc<sup>2</sup>' | domterm html
 domterm html 'E = mc<sup>2</sup>'
 @end example
 displays: @code{E = mc@sup{2}}.
+
+@item @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
+
+This script ``prints'' the contents of the named image file to domterm.
+This uses a ``@code{data:}'' URI with the file contents sent directly to domterm, so it works when working remotely.
+
+The @var{filename} must be a file that can be displayed
+by an HTML @code{<img>} element, most commonly a @code{png} or @code{jpg} file.
+
+By default (no @code{-n} is specified),
+the image has a @code{display: block} style
+(so it is automatically on a ``line'' by itself),'
+and gets a horizontal scroll bar if and only if it is too wide to fit.
+If @code{-n} is specified, then only a plain @code{<img>} element is written,
+which means you can write multiple images and other HTML on the same ``line''.
+
+@table @asis
+@item @code{--@var{attrname}=@var{attrvalue}}
+Specify the given attribute; for example: @code{--height=200}.
+Valid @var{attrnames} are the following, which
+are specified in the HTML specification:
+@code{alt}, @code{longdesc}, @code{height}, @code{width}, @code{border}, @code{hspace}, @code{vspace}, @code{class}.
+
+For example: @code{--width=600} scales the image width to be the given number
+of pixels (in the CSS meaning).  (The height is scaled proportionally,
+unless you also specify the @code{--height} option.)
+@end table
+
+@item @b{@code{fresh-line}}
+If not already at beginning of line, starts a fresh line
 @end table
 
 @subheading Sessions
@@ -621,6 +641,103 @@ This option is the default unless @code{--port} is specified.
 
 There are other @code{ldomterm} options which useful
 if you want to run DomTerm as a server.
+
+@subheading Working with styles
+
+@table @asis
+@item @b{@code{reverse-video}} @code{on}|@code{off}
+@end table
+
+@table @asis
+@item @b{@code{add-style}} @var{style-rule} ...
+
+If called for the first time, create and install a temporary
+stylesheet.
+This temporary stylesheet has a @code{name} attribute
+with the value @code{"(temporary-styles)"}.
+Add each @var{style-rule} to the temporary stylesheet.
+
+For example, to change the background color to pink:
+@example
+$ domterm add-style "div.domterm @{ --background-color: pink @}"
+@end example
+
+You can also set the @code{background-color} style directly:
+@example
+$ domterm add-style "div.domterm @{ background-color: pink @}"
+@end example
+Howeverm it is better to set the @code{--background-color} CSS variable,
+as that is required for reverse video and ``Background Color Erase'' to work.
+
+Inverse video (using CSS variables):
+@example
+$ domterm add-style "div.domterm @{ --background-color: black; --foreground-color: white @}"
+@end example
+
+Changing font size:
+@example
+$ domterm add-style "body @{ font-size: 14pt @}"
+@end example
+
+@item @b{@code{list-stylesheets}}
+List on the standard output the set of stylesheets associated with
+the domterm document, one per line:
+
+@example
+$ domterm list-stylesheets
+0: enabled  - "style/domterm-core.css"
+1: enabled  - "style/domterm-standard.css"
+2: enabled  "Default DomTerm styling" "style/domterm-default.css"
+3: enabled  - "(temporary-styles)"
+@end example
+After the sequence number, either @code{enabled} or @code{disabled}
+specified whether the stylesheet is disabled.
+If the stylesheet has a @code{title}, if is shown next (in json format);
+otherwise @code{-} is printed.
+If the stylesheet has the @code{href} attribute, it is shown next
+(in json format);
+otherwise, if it has the @code{code} attribute, that is shown;
+otherwise @code{-} is printed.
+
+@item @b{@code{load-stylesheet}} @var{name} @var{filename}
+
+Replace or create a new stylesheet with the given @var{name}.
+The content of the stylesheet are read from the given @var{filename}.
+If the @var{filename} is @code{-} then standard input is used.
+
+The @var{name} is used to set the non-standard @code{name} attribute
+of the created @code{<style>} element.  If there is an existing stylesheet
+with a matching @code{name} attribute, then that stylesheet is replaced;
+otherwise a new stylesheet is created.
+The @var{name} attribute is displayed by the @code{list-stylesheets} subcommand.
+
+@item @b{@code{print-stylesheet}} @var{index}
+Print out the style rules of the specified stylesheet,
+which is an @var{index} in the @code{list-stylesheets} output.
+
+@item @b{@code{disable-stylesheet}} @var{index}
+@itemx @b{@code{enable-stylesheet}} @var{index}
+Disable or enable the specified stylesheet.
+A @var{index} is an integer index into the
+list as shown by @code{list-stylesheets}.
+
+@example
+$ domterm disable-stylesheet 2
+@end example
+@end table
+
+@node Applications
+@chapter Other DomTerm Applications
+
+The core of DomTerm is the JavaScript @code{terminal.js},
+but we also provides a few wrappers and applications that make use of it.
+
+The @code{domterm} command is normally an alias for @code{ldomterm}.
+
+@menu
+* qtdomterm application::
+* jdomterm script::
+@end menu
 
 @node qtdomterm application
 @section The qtdomterm terminal emulator
@@ -795,170 +912,6 @@ re-bound to a DomTerm window.
 CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}...
 @end example
 
-@end table
-
-@node dt-util
-@section dt-util - client-side utility
-
-@strong{The dt-util script is going away.
-All of its functionality will be folded into the domterm command.
-The latter alread handles @code{is-domterm} and @code{html}.}
-
-The @code{dt-util} command provides a number of useful features
-when run in a DomTerm terminal.
-For example you can print pictures, or change the background color.
-The syntax is:
-@example
-dt-util @var{sub-command} [@var{option) ...}
-@end example
-
-The @var{sub-command} can be one described below.
-
-@subheading Miscellaneous
-@table @asis
-@item @b{@code{help}} [@var{sub-help}]
-Print some help.  The @var{sub-help} may be a sub-command.
-@item @b{@code{is-domterm}}
-Succeeds (exits with code 0) if the current terminal is DomTerm;
-fails (exits with code -1) otherwise.
-
-This test does not depend on environment variables,
-but instead sends a special request code, and checks the response.
-This test works over an @code{ssh} connection.
-(The test does require that either @code{DOMTERM} be non-empty,
-or that @code{TERM} be either empty or contain the string @code{xterm};
-otherwise it does not try to the request code.)
-@end table
-
-@subheading ``Printing'' images or html
-
-@table @asis
-@item @b{@code{html}}
-@itemx @b{@code{html}} @var{html-value} ...
-Use this to embed HTML content info the DomTerm page.
-If there are no arguments, read from standard input.
-Either of the following work:
-@example
-echo 'E = mc<sup>2</sup>' | dt-util html
-dt-util html 'E = mc<sup>2</sup>'
-@end example
-displays: @code{E = mc@sup{2}}.
-
-@item @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
-
-This script ``prints'' the contents of the named image file to domterm.
-This uses a ``@code{data:}'' URI with the file contents sent directly to domterm, so it works when working remotely.
-
-The @var{filename} must be a file that can be displayed
-by an HTML @code{<img>} element, most commonly a @code{png} or @code{jpg} file.
-
-By default (no @code{-n} is specified),
-the image has a @code{display: block} style
-(so it is automatically on a ``line'' by itself),'
-and gets a horizontal scroll bar if and only if it is too wide to fit.
-If @code{-n} is specified, then only a plain @code{<img>} element is written,
-which means you can write multiple images and other HTML on the same ``line''.
-
-@table @asis
-@item @code{--@var{attrname}=@var{attrvalue}}
-Specify the given attribute; for example: @code{--height=200}.
-Valid @var{attrnames} are the following, which
-are specified in the HTML specification:
-@code{alt}, @code{longdesc}, @code{height}, @code{width}, @code{border}, @code{hspace}, @code{vspace}, @code{class}.
-
-For example: @code{--width=600} scales the image width to be the given number
-of pixels (in the CSS meaning).  (The height is scaled proportionally,
-unless you also specify the @code{--height} option.)
-@end table
-
-@item @b{@code{fresh-line}}
-If not already at beginning of line, starts a fresh line
-@end table
-
-@subheading Working with styles
-
-@table @asis
-@item @b{@code{reverse-video}} @code{on}|@code{off}
-@end table
-
-(The following currently require Java.)
-
-@table @asis
-@item @b{@code{add-style}} @var{style-rule} ...
-
-If called for the first time, create and install a temporary
-stylesheet.
-This temporary stylesheet has a @code{name} attribute
-with the value @code{"(temporary-styles)"}.
-Add each @var{style-rule} to the temporary stylesheet.
-
-For example, to change the background color to pink:
-@example
-$ dt-util add-style "div.domterm @{ --background-color: pink @}"
-@end example
-
-You can also set the @code{background-color} style directly:
-@example
-$ dt-util add-style "div.domterm @{ background-color: pink @}"
-@end example
-Howeverm it is better to set the @code{--background-color} CSS variable,
-as that is required for reverse video and ``Background Color Erase'' to work.
-
-Inverse video (using CSS variables):
-@example
-$ dt-util add-style "div.domterm @{ --background-color: black; --foreground-color: white @}"
-@end example
-
-Changing font size:
-@example
-$ dt-util add-style "body @{ font-size: 14pt @}"
-@end example
-
-@item @b{@code{list-stylesheets}}
-List on the standard output the set of stylesheets associated with
-the domterm document, one per line:
-
-@example
-$ dt-util list-stylesheets
-0: enabled  - "style/domterm-core.css"
-1: enabled  - "style/domterm-standard.css"
-2: enabled  "Default DomTerm styling" "style/domterm-default.css"
-3: enabled  - "(temporary-styles)"
-@end example
-After the sequence number, either @code{enabled} or @code{disabled}
-specified whether the stylesheet is disabled.
-If the stylesheet has a @code{title}, if is shown next (in json format);
-otherwise @code{-} is printed.
-If the stylesheet has the @code{href} attribute, it is shown next
-(in json format);
-otherwise, if it has the @code{code} attribute, that is shown;
-otherwise @code{-} is printed.
-
-@item @b{@code{load-stylesheet}} @var{name} @var{filename}
-
-Replace or create a new stylesheet with the given @var{name}.
-The content of the stylesheet are read from the given @var{filename}.
-If the @var{filename} is @code{-} then standard input is used.
-
-The @var{name} is used to set the non-standard @code{name} attribute
-of the created @code{<style>} element.  If there is an existing stylesheet
-with a matching @code{name} attribute, then that stylesheet is replaced;
-otherwise a new stylesheet is created.
-The @var{name} attribute is displayed by the @code{list-stylesheets} subcommand.
-
-@item @b{@code{print-stylesheet}} @var{index}
-Print out the style rules of the specified stylesheet,
-which is an @var{index} in the @code{list-stylesheets} output.
-
-@item @b{@code{disable-stylesheet}} @var{index}
-@itemx @b{@code{enable-stylesheet}} @var{index}
-Disable or enable the specified stylesheet.
-A @var{index} is an integer index into the
-list as shown by @code{list-stylesheets}.
-
-@example
-$ dt-util disable-stylesheet 2
-@end example
 @end table
 
 @node Sessions and Windows
@@ -1140,8 +1093,7 @@ Scroll one line up or down.
 @chapter Styling
 
 The appearance of a DomTerm window is controlled by CSS stylesheets.
-You can change the stylesheets using the @ref{dt-util} command.
-If you use @code{qtdomterm}, see its documentation.
+You can change the stylesheets using @code{domterm} sub-commands.
 
 @subheading Reverse video (dark vs light)
 
@@ -1150,9 +1102,9 @@ light-colored (off-white) background.
 Reverse video switches these, by using alight-colored text
 on a dark background.
 
-You can enable reverse-video mode using the @code{dt-util} command:
+You can enable reverse-video mode using the command:
 @example
-dt-util reverse-video on
+domterm reverse-video on
 @end example
 
 Enabling reverse-video does not change stylesheet rules,
@@ -1168,7 +1120,7 @@ div.domterm[reverse-video] span[std="input"] @{ background-color: #808200 @}
 ``Reverse-video mode'' is any style where the background is darker
 than the foreground.  You can tweak individual style elements to
 achieve such a style, but its better to first explicitly set reverse-video mode
-(perhaps using the above @code{dt-util} command), because that
+(perhaps using the above command), because that
 selects a consistent whole.
 
 @subheading Color variables
@@ -1417,7 +1369,7 @@ hide/show buttons and dynamic line-(re-)breaking.
 Images will preserve their URLs.
 Relative URLs may need to be fixed, but absolute ones should be fine.
 ``Embedded'' images using a @code{data:} URL (including those
-loaded with the @code{dt-util image} command) will be saved embedded,
+loaded with the @code{image} sub-command) will be saved embedded,
 and Just Work.
 
 The resulting file is actually an XHTML file, so you can use
@@ -1435,9 +1387,6 @@ It will save the original bare web page, before any DomTerm interactions
 or other JavaScript modification.
 
 @subheading Changing appearance with CSS stylesheets
-
-You can use the @code{@ref{dt-util,dt-util}} application
-in a DomTerm window to change its appearance.
 
 On @code{@ref{qtdomterm application,qtdomterm}} you can use
 the @code{--stylesheet} option
@@ -2232,7 +2181,7 @@ A request to return a list of the stylesheets in the document.
 Result to client: @code{"\x9D"} @var{stylesheets} @code{"\n"}
 
 Each stylesheet is a JSON-formatted string, separated by @code{"\t"},
-suitable for printing by @code{dt-util list-stylesheets}.
+suitable for printing by the @code{list-stylesheets} command.
 
 @item @code{\e]91;"} @var{index} @code{"\a"}
 Disable the stylesheet that has index @var{index} in the list of
