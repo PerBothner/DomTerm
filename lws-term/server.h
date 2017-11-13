@@ -197,6 +197,7 @@ extern void tty_restore(int tty_in);
 extern int get_tty_in();
 extern int get_tty_out();
 extern void write_to_tty(const char *str, ssize_t len);
+extern const char * get_mimetype(const char *file);
 
 #if COMPILED_IN_RESOURCES
 struct resource {

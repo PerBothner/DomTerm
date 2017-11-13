@@ -17,6 +17,7 @@ AC_PROG_SED
 AC_PROG_MKDIR_P
 AC_PROG_LN_S
 AC_CHECK_FUNC([getrandom], [HAVE_GETRANDOM=1], [HAVE_GETRANDOM=0])
+AC_CHECK_LIB(magic, magic_open, [HAVE_LIBMAGIC=1; LIBMAGIC_LIBS=-lmagic], [HAVE_LIBMAGIC=0])
 
 AC_ARG_WITH(java,
   AS_HELP_STRING(--without-java,Build Java help library))
@@ -198,6 +199,8 @@ AC_SUBST(LIBWEBSOCKETS_CFLAGS)
 AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(HAVE_GETRANDOM)
+AC_SUBST(HAVE_LIBMAGIC)
+AC_SUBST(LIBMAGIC_LIBS)
 
 AC_CONFIG_FILES([Makefile hlib/domterm-version.js
                  lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h]

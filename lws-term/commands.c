@@ -1,5 +1,9 @@
 #include "server.h"
+#include "version.h"
 #include <stdlib.h>
+#include <magic.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 struct lws;
 
@@ -32,6 +36,99 @@ int html_action(int argc, char** argv, const char*cwd,
     }
     fflush(stderr);
     return EXIT_SUCCESS;
+}
+
+int imgcat_action(int argc, char** argv, const char*cwd,
+                  char **env, struct lws *wsi, int replyfd,
+                  struct options *opts)
+{
+    check_domterm(opts);
+    FILE *err = fdopen(replyfd, "w");
+    int asize = 0;
+    for (int i = 1; i < argc; i++) {
+        asize += strlen(argv[i]) + 4;
+    }
+    char *abuf = xmalloc(asize);
+    char *aptr = abuf;
+    char *overflow = NULL;
+    bool n_arg = false;
+    for (int i = 1; i < argc; i++) {
+        char *arg = argv[i];
+        if (arg[0] == '-') {
+            char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
+            int neq = eq ? eq - arg - 1: -1;
+            if (neq >= 0
+                && (memcmp(arg+2, "width=", neq) == 0
+                    || memcmp(arg+2, "height=", neq) == 0
+                    || memcmp(arg+2, "border=", neq) == 0
+                    || memcmp(arg+2, "align=", neq) == 0
+                    || memcmp(arg+2, "vspace=", neq) == 0
+                    || memcmp(arg+2, "hspace=", neq) == 0
+                    || memcmp(arg+2, "alt=", neq) == 0
+                    || memcmp(arg+2, "longdesc=", neq) == 0)) {
+              int n = sprintf(aptr, " %.*s'%s'", neq, arg+2, eq+1);
+              aptr += n;
+            } else if (neq >= 0
+                       && (memcmp(arg+2, "overflow=", neq) == 0
+                           || memcmp(arg+2, "overflow-x=", neq) == 0)) {
+                overflow = eq + 1;
+            } else if (arg[1] == 'n' && arg[2] == 0)
+              n_arg = true;
+            else {
+                fprintf(err, "%s: Invalid argument '%s'\n", argv[0], arg);
+                free(abuf);
+                fclose(err);
+                return EXIT_FAILURE;
+            }
+        } else {
+            *aptr = '\0';
+            if (access(arg, R_OK) != 0) {
+                 fprintf(err, "imgcat: No such file: %s\n", arg);
+                 fclose(err);
+                 return EXIT_FAILURE;
+            }
+            int fimg = open(arg, O_RDONLY);
+            struct stat stbuf;
+            if (fstat(fimg, &stbuf) != 0 || (!S_ISREG(stbuf.st_mode))) {
+              /* Handle error FIXME */
+            }
+            off_t len = stbuf.st_size;
+            unsigned char *img = mmap(NULL, len, PROT_READ, MAP_PRIVATE,
+                                      fimg, 0);
+            const char *mime;
+#if HAVE_LIBMAGIC
+            magic_t magic; // FIXME should cache
+            magic = magic_open(MAGIC_MIME_TYPE); 
+            magic_load(magic, NULL);
+            magic_compile(magic, NULL);
+            mime = magic_buffer(magic, img, len);
+            magic_close(magic);
+#else
+            mime = get_mimetype(arg);
+#endif
+            if (mime == NULL) {
+                 fprintf(err, "imgcat: unknown file type: %s\n", arg);
+                 fclose(err);
+                 return EXIT_FAILURE;
+            }
+            if (n_arg)
+                overflow = "";
+            else if (overflow == NULL)
+                overflow = "auto";
+            char *b64 = base64_encode(img, len);
+            munmap(img, len);
+            char *response = xmalloc(40+strlen(mime)+strlen(b64)
+                                     + strlen(abuf));
+            sprintf(response,
+                    n_arg ? "\033]72;%s<img%s src='data:%s;base64,%s'/>\007"
+                    : "\033]72;<div style='overflow-x: %s'><img%s src='data:%s;base64,%s'/></div>\007",
+                    overflow, abuf, mime, b64);
+            free(abuf);
+            free(b64);
+            write(get_tty_out(), response, strlen(response));
+            return EXIT_SUCCESS;
+        }
+    }
 }
 
 char *read_response(FILE *err)
@@ -235,6 +332,16 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
     fclose(out);
 }
 
+int freshline_action(int argc, char** argv, const char*cwd,
+                         char **env, struct lws *wsi, int replyfd,
+                         struct options *opts)
+{
+    check_domterm(opts);
+    char *cmd = "\033[20u";
+    write(get_tty_out(), cmd, strlen(cmd));
+    return EXIT_SUCCESS;
+}
+
 int reverse_video_action(int argc, char** argv, const char*cwd,
                          char **env, struct lws *wsi, int replyfd,
                          struct options *opts)
@@ -260,7 +367,7 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
         close(replyfd);
         return EXIT_FAILURE;
     }
-    char *cmd = on ? "\e[?5h" : "\e[?5l";
+    char *cmd = on ? "\033[?5h" : "\033[?5l";
     write(get_tty_out(), cmd, strlen(cmd));
     return EXIT_SUCCESS;
 }
@@ -272,6 +379,11 @@ struct command commands[] = {
   { .name ="html",
     .options = COMMAND_IN_CLIENT,
     .action = html_action },
+  { .name ="imgcat",
+    .options = COMMAND_IN_CLIENT,
+    .action = imgcat_action },
+  { .name ="image",
+    .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
   { .name ="add-style",
     .options = COMMAND_IN_CLIENT,
     .action = add_stylerule_action },
@@ -290,6 +402,9 @@ struct command commands[] = {
   { .name ="print-stylesheet",
     .options = COMMAND_IN_CLIENT,
     .action = print_stylesheet_action },
+  { .name ="fresh-line",
+    .options = COMMAND_IN_CLIENT,
+    .action = freshline_action },
   { .name ="hcat",
     .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
   { .name = "attach", .options = COMMAND_IN_SERVER,
