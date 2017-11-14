@@ -50,6 +50,8 @@ extern struct lws *focused_wsi;
 extern struct cmd_client *cclient;
 extern int last_session_number;
 extern const char *(default_argv[]);
+extern struct options *main_options;
+extern const char *settings_as_json;
 
 struct pty_data {
     char *data;
@@ -91,6 +93,7 @@ struct tty_client {
     //bool pty_started; = pclient!=NULL
     bool authenticated;
     bool detachSaveSend; // need to send a detachSaveNeeded command
+    bool uploadSettingsNeeded; // need to upload settings to client
 
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser
@@ -147,7 +150,6 @@ struct tty_server {
     int client_count;                         // number of current_clients
     int session_count;                        // session count
     int connection_count;                     // clients requested (ever)
-    char *prefs_json;                         // client preferences
     char **argv;                              // command with arguments
     bool client_can_close;
     char *socket_path;                        // UNIX domain socket path
@@ -170,6 +172,9 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void
 extern int
 callback_cmd(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
+extern int
+callback_inotify(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+
 #ifdef RESOURCE_DIR
 extern char *get_resource_path();
 #endif
@@ -177,6 +182,7 @@ extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
+const char *domterm_dir(void);
 extern int handle_command(int argc, char**argv, const char*cwd,
                           char **env, struct lws *wsi, int replyfd,
                           struct options *opts);
@@ -188,7 +194,9 @@ extern void init_options(struct options *options);
 void default_browser_command(const char *url, int port);
 extern int process_options(int argc, char **argv, struct options *options;);
 extern char ** copy_argv(int argc, char * const*argv);
-
+extern void request_upload_settings();
+extern void read_settings_file(struct options*);
+extern void watch_settings_file(void);
 extern int probe_domterm(void);
 extern void check_domterm(struct options *);
 extern void generate_random_string (char *buf, int nchars);

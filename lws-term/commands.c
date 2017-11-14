@@ -439,4 +439,3 @@ find_command(const char *name)
         cmd--;
     return cmd;
 }
-

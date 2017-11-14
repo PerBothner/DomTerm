@@ -3400,10 +3400,7 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
         this.forceWidthInColumns(value ? 132 : 80);
         break;
     case 5: // Reverse Video (DECSCNM)
-        if (value)
-            this.topNode.setAttribute("reverse-video", "yes");
-        else
-            this.topNode.removeAttribute("reverse-video");
+        this.setReverseVideo(value);
         break;
     case 6:
         this.sstate.originMode = value;
@@ -4082,6 +4079,23 @@ DomTerm.prototype.resetTerminal = function(full, saved) {
     // FIXME a bunch more
 };
 
+DomTerm.prototype.setReverseVideo = function(value) {
+    if (value)
+        this.topNode.setAttribute("reverse-video", "yes");
+    else
+        this.topNode.removeAttribute("reverse-video");
+}
+
+DomTerm.prototype._asBoolean = function(value) {
+    return value == "true" || value == "yes" || value == "on";
+}
+
+DomTerm.prototype.setSettings = function(obj) {
+    var stdark = obj["style.dark"];
+    if (stdark)
+        this.setReverseVideo(this._asBoolean(stdark));
+};
+
 DomTerm.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
     this._Glevel = g;
     this.charMapper = this._Gcharsets[g];
@@ -4675,6 +4689,9 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 777:
         // text is "\u001b]777;COMMAND"
         // Is printed by /etc/profile/vte.sh on Fedora
+        break;
+    case 89:
+        this.setSettings(JSON.parse(text));
         break;
     case 90:
         this.reportStylesheets();

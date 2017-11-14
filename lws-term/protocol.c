@@ -35,11 +35,6 @@ send_initial_message(struct lws *wsi) {
     if (lws_write(wsi, p, (size_t) n, LWS_WRITE_TEXT) < n) {
         return -1;
     }
-    // client preferences
-    n = sprintf((char *) p, "%c%s", SET_PREFERENCES, server->prefs_json);
-    if (lws_write(wsi, p, (size_t) n, LWS_WRITE_TEXT) < n) {
-        return -1;
-    }
 #endif
     return 0;
 }
@@ -583,6 +578,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         case LWS_CALLBACK_ESTABLISHED:
             client->initialized = false;
             client->detachSaveSend = false;
+            client->uploadSettingsNeeded = true;
             client->authenticated = false;
             client->requesting_contents = 0;
             client->wsi = wsi;
@@ -658,6 +654,17 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 }
                 client->initialized = true;
                 //break;
+            }
+            if (client->uploadSettingsNeeded) {
+                client->uploadSettingsNeeded = false;
+                if (settings_as_json != NULL) {
+                    char *buf = xmalloc(strlen(settings_as_json)+LWS_PRE+20);
+                    char *p = &buf[LWS_PRE];
+                    sprintf(p, URGENT_START_STRING "\033]89;%s\007" URGENT_END_STRING,
+                            settings_as_json);
+                    write_to_browser(wsi, p, strlen(p));
+                    free(buf);
+                }
             }
             if (client->detachSaveSend) {
                 int tcount = 0;
@@ -941,6 +948,20 @@ int list_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
+void
+request_upload_settings()
+{
+    for (struct pty_client *pclient = pty_client_list;
+         pclient != NULL; pclient = pclient->next_pty_client) {
+        struct lws *twsi;
+        FOREACH_WSCLIENT(twsi, pclient) {
+            struct tty_client *tclient = (struct tty_client *) lws_wsi_user(twsi);
+            tclient->uploadSettingsNeeded = true;
+            lws_callback_on_writable(twsi);
+        }
+    }
+}
+
 int
 handle_command(int argc, char** argv, const char*cwd,
                char **env, struct lws *wsi, int replyfd, struct options *opts)
@@ -1028,6 +1049,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             json_object_put(jobj);
             optind = 1;
             struct options opts;
+            init_options(&opts);
             process_options(argc, argv, &opts);
             int ret = handle_command(argc-optind, argv+optind,
                                      cwd, env, wsi, sockfd, &opts);

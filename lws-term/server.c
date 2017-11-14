@@ -13,6 +13,7 @@
 #endif
 
 static struct options opts;
+struct options *main_options = &opts;
 
 static void make_html_file(int);
 static char *make_socket_name(void);
@@ -67,6 +68,9 @@ static const struct lws_protocols protocols[] = {
 
         /* Unix domain socket for client to send to commands to server */
         {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
+
+        /* calling back for "inotify" to watch settings.ini */
+        {"inotify",    callback_inotify,  0,  0},
 
         {NULL,        NULL,          0,                          0}
 };
@@ -201,7 +205,6 @@ tty_server_free(struct tty_server *ts) {
         return;
     if (ts->options.credential != NULL)
         free(ts->options.credential);
-    free(ts->prefs_json);
     int i = 0;
     do {
         free(ts->argv[i++]);
@@ -484,8 +487,6 @@ void  init_options(struct options *opts)
 
 int process_options(int argc, char **argv, struct options *opts)
 {
-    init_options(opts);
-
     // parse command line options
     int c;
     while ((c = getopt_long(argc, argv, opt_string, options, NULL)) != -1) {
@@ -618,23 +619,6 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
             case '?':
                 break;
-#if 0
-            case 't':
-                optind--;
-                for (; optind < argc && *argv[optind] != '-'; optind++) {
-                    char *option = strdup(optarg);
-                    char *key = strsep(&option, "=");
-                    if (key == NULL) {
-                        fprintf(stderr, "ttyd: invalid client option: %s, format: key=value\n", optarg);
-                        return -1;
-                    }
-                    char *value = strsep(&option, "=");
-                    free(option);
-                    struct json_object *obj = json_tokener_parse(value);
-                    json_object_object_add(client_prefs, key, obj != NULL ? obj : json_object_new_string(value));
-                }
-                break;
-#endif
             default:
                 print_help(stderr);
                 return -1;
@@ -663,8 +647,8 @@ main(int argc, char **argv)
 #endif
     info.mounts = &mount_domterm_zip;
 
-    struct json_object *client_prefs = json_object_new_object();
-
+    init_options(&opts);
+    read_settings_file(&opts);
     if (process_options(argc, argv, &opts) != 0)
         return -1;
     if (opts.something_done && argv[optind] == NULL)
@@ -708,9 +692,6 @@ main(int argc, char **argv)
 
     server = tty_server_new(argc-optind, argv+optind);
     server->options = opts;
-    server->prefs_json = strdup(json_object_to_json_string(client_prefs));
-    json_object_put(client_prefs);
-
 
     if (port_specified < 0)
         server->client_can_close = true;
@@ -770,6 +751,8 @@ main(int argc, char **argv)
         lwsl_err("libwebsockets init failed\n");
         return 1;
     }
+
+    watch_settings_file();
 
     char *cname = make_socket_name();
     lws_sock_file_fd_type csocket;
