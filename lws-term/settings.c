@@ -8,6 +8,7 @@ static int inotify_fd;
 char*settings_fname = NULL;
 static struct json_object *settings_json_object = NULL;
 const char *settings_as_json;
+int64_t settings_counter = 0;
 
 int
 callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
@@ -45,6 +46,9 @@ read_settings_file(struct options *options)
         || fstat(settings_fd, &stbuf) != 0 || !S_ISREG(stbuf.st_mode)) {
         return;
     }
+    json_object_object_add(jobj, "##",
+                           json_object_new_int(++settings_counter));
+
     off_t slen = stbuf.st_size;
     unsigned char *sbuf = mmap(NULL, slen, PROT_READ|PROT_WRITE, MAP_PRIVATE,
                                settings_fd, 0);

@@ -4091,13 +4091,25 @@ DomTerm.prototype._asBoolean = function(value) {
     return value == "true" || value == "yes" || value == "on";
 }
 
+DomTerm._settingsCounter = -1;
+
 DomTerm.prototype.setSettings = function(obj) {
+    var settingsCounter = obj["##"];
+    if (DomTerm._settingsCounter == settingsCounter)
+        return;
+    DomTerm._settingsCounter = settingsCounter;
     var style_dark = obj["style.dark"];
     if (style_dark)
         this.setReverseVideo(this._asBoolean(style_dark));
+
     var style_user = obj["style.user"];
-    if (style_user)
+    if (style_user) {
         this.loadStyleSheet("user", style_user);
+        this._userStyleSet = true;
+    } else if (this._userStyleSet) {
+        this.loadStyleSheet("user", "");
+        this._userStyleSet = false;
+    }
 };
 
 DomTerm.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
