@@ -7,8 +7,7 @@ qtHaveModule(uitools):!embedded: QT += uitools
 else: DEFINES += QT_NO_UITOOLS HAVE_POSIX_OPENPT
 
 FORMS += \
-    savepagedialog.ui \
-    settings.ui
+    savepagedialog.ui
 
 HEADERS += \
     backend.h Pty.h kptydevice.h  kpty.h  kpty_p.h  kptyprocess.h kprocess.h \
@@ -17,7 +16,6 @@ HEADERS += \
     fullscreennotification.h \
     modelmenu.h \
     savepagedialog.h \
-    settings.h \
     tabwidget.h \
     webview.h
 
@@ -28,7 +26,6 @@ SOURCES += \
     fullscreennotification.cpp \
     modelmenu.cpp \
     savepagedialog.cpp \
-    settings.cpp \
     tabwidget.cpp \
     webview.cpp \
     main.cpp

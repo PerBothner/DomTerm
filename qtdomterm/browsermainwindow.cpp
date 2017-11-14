@@ -51,7 +51,6 @@
 #include "browsermainwindow.h"
 
 #include "browserapplication.h"
-#include "settings.h"
 #include "tabwidget.h"
 #include "webview.h"
 #include "processoptions.h"
@@ -63,11 +62,13 @@
 #include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QDialog>
 #include <QtWidgets/QInputDialog>
 
 #include <QWebEngineHistory>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
+#include <QVBoxLayout>
 
 #include <QtCore/QDebug>
 
@@ -191,9 +192,6 @@ void BrowserMainWindow::setupMenu()
     QAction *m_findPrevious = editMenu->addAction(tr("&Find Previous"));
     //m_findPrevious->setShortcuts(QKeySequence::FindPrevious);
     connect(m_findPrevious, SIGNAL(triggered()), this, SLOT(slotEditFindPrevious()));
-    editMenu->addSeparator();
-
-    editMenu->addAction(tr("&Preferences"), this, SLOT(slotPreferences()), tr("Ctrl+,"));
 
     // View
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
@@ -265,12 +263,6 @@ void BrowserMainWindow::loadUrl(const QUrl &url)
         return;
 
     m_tabWidget->loadUrlInCurrentTab(url);
-}
-
-void BrowserMainWindow::slotPreferences()
-{
-    SettingsDialog *s = new SettingsDialog(this);
-    s->show();
 }
 
 void BrowserMainWindow::slotUpdateWindowTitle(const QString &title)

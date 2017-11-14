@@ -91,7 +91,6 @@ private slots:
     void slotUpdateWindowTitle(const QString &title = QString());
 
     void loadUrl(const QUrl &url);
-    void slotPreferences();
 
     void slotFileNew();
     void slotFileOpen();
