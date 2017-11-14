@@ -558,9 +558,6 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->browser_command = firefox_command();
                 break;
             case QTDOMTERM_OPTION:
-                fprintf(stderr,
-                        "Warning: The --qtdomterm option is experimental "
-                        "and not fully working!\n");
                 opts->browser_command =
                     get_bin_relative_path("/bin/qtdomterm --connect '%U' &");
                 break;
@@ -901,6 +898,7 @@ static char html_template[] =
     "<script type='text/javascript' src='hlib/goldenlayout.js'> </script>\n"
     "<script type='text/javascript' src='hlib/domterm-layout.js'> </script>\n"
     "<script type='text/javascript' src='hlib/domterm-menus.js'> </script>\n"
+    "<script type='text/javascript' src='hlib/qwebchannel.js'> </script>\n"
     "<script type='text/javascript' src='hlib/domterm-client.js'> </script>\n"
     "</head>\n"
     "<body></body>\n"

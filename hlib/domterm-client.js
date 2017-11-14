@@ -1,5 +1,6 @@
 DomTerm._mask28 = 0xfffffff;
 DomTerm.usingAjax = false;
+DomTerm.usingQtWebEngine = !! location.hash.match(/[#&]qtwebengine/);
 
 // data can be a DomString or an ArrayBuffer.
 DomTerm._handleOutputData = function(dt, data) {
@@ -154,7 +155,17 @@ function connectHttp(node, query=null) {
     connect(null, url, "domterm", node);
 }
 
+function setupQWebChannel(channel) {
+    var backend = channel.objects.backend;
+    DomTerm.settingsHook = function(key, value) {
+        backend.setSetting(key, value);
+    };
+};
+
 function loadHandler(event) {
+    if (DomTerm.usingQtWebEngine) {
+        new QWebChannel(qt.webChannelTransport, setupQWebChannel);
+    }
     DomTerm.setContextMenu();
     var m = location.hash.match(/open=([^&]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;

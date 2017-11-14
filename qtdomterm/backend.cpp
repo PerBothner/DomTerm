@@ -395,6 +395,11 @@ void Backend::processInputCharacters(const QString &text)
     _shellProcess->sendData(data.constData(), data.length());
 }
 
+void Backend::setSetting(const QString& key, const QString& value)
+{
+  webView()->setSetting(key, value);
+}
+
 void Backend::reportEvent(const QString &name, const QString &data)
 {
     //fprintf(stderr, "reportEvent called name %s data %s canon:%d\n",     name.toUtf8().constData(), data.toUtf8().constData(), (int) isCanonicalMode()); fflush(stderr);

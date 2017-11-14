@@ -112,6 +112,7 @@ public:
 public slots:
     void changeInputMode(QAction*);
     void inputModeChanged(char mode);
+    void setSetting(const QString& key, const QString& value);
 signals:
     void finished();
 

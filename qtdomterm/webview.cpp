@@ -291,6 +291,19 @@ void WebView::setPage(WebPage *_page)
         channel->registerObject(QStringLiteral("backend"), m_backend);
         page()->setWebChannel(channel);
         m_backend->setSessionName(app->generateSessionName());
+    } else {
+        QWebChannel *channel = new QWebChannel(this);
+        m_backend = new Backend(m_processOptions, this);
+        channel->registerObject(QStringLiteral("backend"), m_backend);
+        //channel->registerObject(QStringLiteral("qtwebview"), this);
+        page()->setWebChannel(channel);
+    }
+}
+
+void WebView::setSetting(const QString& key, const QString& value)
+{
+    if (key=="style.qt") {
+        setStyleSheet(value);
     }
 }
 

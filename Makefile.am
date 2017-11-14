@@ -180,7 +180,7 @@ wsclasses.stamp: $(wsdomterm_jar_sources)
 	touch wsclasses.stamp
 
 MISC_COPY_TO_JAR = repl-client.html jfx-term.html \
-  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js
+  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js hlib/qwebchannel.js
 
 PLAIN_COPY_TO_JAR =  $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
   org/domterm/*.class org/domterm/javafx/*.class org/domterm/pty/*.class \

@@ -151,6 +151,8 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
         if (ws.startsWith("http:") || ws.startsWith("https:")
             || ws.startsWith("file:")) {
             url = ws;
+            url += url.indexOf('#') < 0 ? "#" : "&";
+            url += "qtwebengine";
             processOptions->frontendOnly = true;
         } else {
             url += "?ws=ws://";

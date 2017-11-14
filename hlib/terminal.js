@@ -4092,6 +4092,7 @@ DomTerm.prototype._asBoolean = function(value) {
 }
 
 DomTerm._settingsCounter = -1;
+DomTerm.settingsHook = null;
 
 DomTerm.prototype.setSettings = function(obj) {
     var settingsCounter = obj["##"];
@@ -4109,6 +4110,10 @@ DomTerm.prototype.setSettings = function(obj) {
     } else if (this._userStyleSet) {
         this.loadStyleSheet("user", "");
         this._userStyleSet = false;
+    }
+    if (DomTerm.settingsHook) {
+        var style_qt = obj["style.qt"];
+        DomTerm.settingsHook("style.qt", style_qt ? style_qt : "");
     }
 };
 
