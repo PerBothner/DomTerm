@@ -12,13 +12,11 @@ const char *settings_as_json;
 int
 callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len) {
-   fprintf(stderr, "callback_inotify reason:%d\n", (int) reason);
   //struct cmd_client *cclient = (struct cmd_client *) user;
     char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
     switch (reason) {
       case LWS_CALLBACK_RAW_RX_FILE: {
         ssize_t n = read(inotify_fd, buf, sizeof(buf));
-        fprintf(stderr, "inotify callback n:%d\n", (int) n);
         read_settings_file(main_options);
         break;
       }
@@ -126,16 +124,12 @@ read_settings_file(struct options *options)
         }
         *key_end = '\0';
         size_t value_length = value_end-value_start;
-        fprintf(stderr, "key: '%.*s' value: '%.*s'\n",
-                key_end-key_start, key_start,
-                value_length, value_start);
 
         if (strcmp(key_start, "window.geometry") == 0) {
             if (options->geometry != NULL)
                 free(options->geometry);
             options->geometry = xmalloc(value_length+1);
             memcpy(options->geometry, value_start, value_length);
-            fprintf(stderr, "set geometry %s\n", options->geometry);
             options->geometry[value_length] = '\0';
         }
         json_object_object_add(jobj, key_start,
@@ -148,7 +142,6 @@ read_settings_file(struct options *options)
     munmap(sbuf, slen);
     close(settings_fd);
     settings_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
-    fprintf(stderr, "setting-json: %s\n", settings_as_json);
     request_upload_settings();
 }
 
