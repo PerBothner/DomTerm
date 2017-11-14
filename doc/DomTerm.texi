@@ -777,7 +777,7 @@ are the width and height of the window, in pixels.
 
 The default is @code{800x600}.
 
-@item @code{@b{style.user} = @var{css-style-rules}
+@item @code{@b{style.user} =} @var{css-style-rules}
 Set the @code{user} stylesheet to the rules in @var{css-style-rules}.
 The latter is typically a multi-line value.
 
