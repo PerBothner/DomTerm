@@ -2132,6 +2132,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     }
     document.addEventListener("mousedown", docMouseDown, false);
     */
+    this.loadStyleSheet("user", "");
 };
 
 /*
@@ -4091,9 +4092,12 @@ DomTerm.prototype._asBoolean = function(value) {
 }
 
 DomTerm.prototype.setSettings = function(obj) {
-    var stdark = obj["style.dark"];
-    if (stdark)
-        this.setReverseVideo(this._asBoolean(stdark));
+    var style_dark = obj["style.dark"];
+    if (style_dark)
+        this.setReverseVideo(this._asBoolean(style_dark));
+    var style_user = obj["style.user"];
+    if (style_user)
+        this.loadStyleSheet("user", style_user);
 };
 
 DomTerm.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {

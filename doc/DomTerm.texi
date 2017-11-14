@@ -777,6 +777,10 @@ are the width and height of the window, in pixels.
 
 The default is @code{800x600}.
 
+@item @code{@b{style.user} = @var{css-style-rules}
+Set the @code{user} stylesheet to the rules in @var{css-style-rules}.
+The latter is typically a multi-line value.
+
 @item @code{@b{style.dark} =} @var{value}
 This option (if set) selects ``reverse video'', which is a color preference
 for a darker background and a ligher foreground (text).
