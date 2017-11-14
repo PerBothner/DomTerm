@@ -92,9 +92,6 @@ standalone terminal emulator program. It uses QtWebEngine.
 Mouse support using xterm protocols, used by @code{emacs} and @code{mc}.
 In addition, Alt-Click generates arrow-key events to move the caret
 within an input line.
-
-@item
-Switchable caret styles (using xterm escape sequences).
 @end itemize
 
 @subheading Why another terminal emulator
@@ -130,6 +127,7 @@ embedded in different modes and applications.
 * Features:: Features and screenshots
 * Downloading and building::
 * domterm application:: The domterm command
+* Settings: The settings.ini file
 * Applications:: Other domterm application
 * Sessions and Windows::
 * Paging:: Paging and Pausing
@@ -302,7 +300,7 @@ On Fedora, you need to first:
 @example
 sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel
 @end example
-@c for libmagic: file-devel (Fedora); libmagic-dev (Debian/Ubuntu)
+@c for libmagic: libmagic-dev (Debian/Ubuntu)
 
 This is the recommended ``backend'' and the default.
 @item --with-java_websocket
@@ -724,6 +722,67 @@ list as shown by @code{list-stylesheets}.
 @example
 $ domterm disable-stylesheet 2
 @end example
+@end table
+
+@node Settings
+@chapter The settings.ini file
+
+User preferences for DomTerm are key in the file @code{.domterm/settings.ini}
+in the user's home directory.
+If the @code{settings.ini} is changed it is automatically re-loaded.
+
+The syntax of @code{settings.ini} is a variant
+of the @uref{https://en.wikipedia.org/wiki/INI_file,INI file} format.
+A preference is written as:
+@example
+@var{keyword} = @var{value}
+@end example
+For example:
+@example
+window.geometry=800x600
+@end example
+Spaces before or after @code{=} are optional.
+A @var{keyword} should be a sequence of letters, numbers,
+periods or hyphens.
+The @var{value} is almost any sequence of characters (depending of
+the @var{keyword}), up to end of the line.
+
+Multi-line values are written as an empty line following the @samp{=},
+and then one or lines starting with a single space followed by @samp{|}.
+For example:
+@example
+style.user =
+ |div.domterm @{ --background-color: azure @}
+ |div.domterm-spacer @{background: none @}
+@end example
+In this cases the resulting @var{value} has two lines,
+with the two-character prefixes @samp{ |} removed.
+
+For a boolean @var{value} any
+one of @code{true}, @code{yes}, or @code{on}
+enable the preference;
+one of @code{false}, @code{no}, or @code{off}  disable the preference.
+
+Comment lines start with @code{#} in the first column.
+Comment lines and all-blank lines are ignored.
+
+@table @asis
+@item @code{@b{window.geometry} =} @var{geometry}
+Control the size of new top-level windows.
+(Currently only works for Electron windows.)
+The @var{geometry} has the same syntax as the @code{--geometry}
+command-line opton, @code{@var{W}x@var{H}},
+where @code{@var{W}} and @code{@var{H}}
+are the width and height of the window, in pixels.
+
+The default is @code{800x600}.
+
+@item @code{@b{style.dark} =} @var{value}
+This option (if set) selects ``reverse video'', which is a color preference
+for a darker background and a ligher foreground (text).
+
+The default is @code{off}, which selects
+lighter background and a darker foreground colors.
 @end table
 
 @node Applications
