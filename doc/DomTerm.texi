@@ -25,7 +25,7 @@ Control-Shift-A
 The @code{domterm} application is terminal emulator, REPL console,
 and screen multiplexer (like @code{tmux} or GNU @code{screen}).
 
-The user interface and teeminal emulation
+The user interface and terminal emulation
 is handled by a JavaScript library (called DomTerm).
 Communication between the application and the UI
 is done with Web Sockets.
