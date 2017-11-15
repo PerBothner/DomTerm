@@ -53,6 +53,7 @@
 #include "browserapplication.h"
 #include "tabwidget.h"
 #include "webview.h"
+#include "backend.h"
 #include "processoptions.h"
 
 #include <QtCore/QSettings>
@@ -229,8 +230,24 @@ void BrowserMainWindow::setupMenu()
 #endif
 #endif
 
+    newTerminalMenu = new QMenu(tr("New Terminal"), this);
+    newTerminalTab = newTerminalMenu->addAction("New terminal tab",
+                                                this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
+    newTerminalPane = newTerminalMenu->addAction("New terminal (right/below)",
+                                                 this, &BrowserMainWindow::slotNewTerminalPane); //, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    newTerminalAbove = newTerminalMenu->addAction("New terminal above",
+                                                  this, &BrowserMainWindow::slotNewTerminalAbove);
+    newTerminalBelow = newTerminalMenu->addAction("New terminal below",
+                                                  this, &BrowserMainWindow::slotNewTerminalBelow);
+    //QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Down)); 
+    newTerminalLeft = newTerminalMenu->addAction("New terminal left",
+                                                  this, &BrowserMainWindow::slotNewTerminalLeft);
+    newTerminalRight = newTerminalMenu->addAction("New terminal right",
+                                                  this, &BrowserMainWindow::slotNewTerminalRight);
+
     QMenu *terminalMenu = menuBar()->addMenu(tr("&Terminal"));
     terminalMenu->addAction(m_tabWidget->changeCaretAction());
+    terminalMenu->addMenu(newTerminalMenu);
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     //helpMenu->addAction(tr("About &Qt"), qApp, SLOT(aboutQt()));
@@ -272,6 +289,11 @@ void BrowserMainWindow::slotUpdateWindowTitle(const QString &title)
     } else {
         setWindowTitle(title);
     }
+}
+
+void  BrowserMainWindow::slotNewTerminal(int paneOp)
+{
+    emit webView()->backend()->layoutAddPane(paneOp);
 }
 
 void BrowserMainWindow::slotAboutApplication()

@@ -359,6 +359,8 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
         menu->addAction(webPage()->mainWindow()->m_viewMenubar);
 
         menu->addMenu(inputModeMenu);
+
+        menu->addMenu(webPage()->mainWindow()->newTerminalMenu);
     } else {
         menu = page()->createStandardContextMenu();
     }

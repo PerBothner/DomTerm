@@ -168,6 +168,11 @@ function setupQWebChannel(channel) {
         if (dt)
             dt.setInputMode(mode);
     });
+    backend.layoutAddPane.connect(function(paneOp) {
+        var dt = DomTerm.focusedTerm;
+        if (dt)
+            DomTerm.layoutAddPane(dt, paneOp);
+    });
 };
 
 function loadHandler(event) {

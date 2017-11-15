@@ -71,7 +71,7 @@ signals:
      * Emitted when the terminal process exits.
      */
     void finished();
-
+    void layoutAddPane(int paneOp);
     void writeInputMode(int mode);
     void writeSetCaretStyle(int style);
     void writeEncoded(int nbytes, const QString &encodedBytes);

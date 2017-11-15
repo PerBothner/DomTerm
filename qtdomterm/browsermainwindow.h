@@ -78,6 +78,7 @@ public:
 
 public:
     TabWidget *tabWidget() const;
+    WebView *webView() const { return currentTab(); }
     WebView *currentTab() const;
     Q_INVOKABLE void runScriptOnOpenViews(const QString &);
 
@@ -89,6 +90,14 @@ protected:
 
 private slots:
     void slotUpdateWindowTitle(const QString &title = QString());
+
+    void slotNewTerminal(int paneOp);
+    void slotNewTerminalTab() { slotNewTerminal(2); }
+    void slotNewTerminalPane() { slotNewTerminal(1); }
+    void slotNewTerminalAbove() { slotNewTerminal(12); }
+    void slotNewTerminalBelow() { slotNewTerminal(13); }
+    void slotNewTerminalLeft() { slotNewTerminal(10); }
+    void slotNewTerminalRight() { slotNewTerminal(11); }
 
     void loadUrl(const QUrl &url);
 
@@ -133,6 +142,14 @@ private:
 
     QAction *m_stop;
     QAction *m_viewMenubar;
+
+    QAction *newTerminalTab;
+    QAction *newTerminalPane;
+    QAction *newTerminalAbove;
+    QAction *newTerminalBelow;
+    QAction *newTerminalLeft;
+    QAction *newTerminalRight;
+    QMenu *newTerminalMenu;
 
     QIcon m_reloadIcon;
     QIcon m_stopIcon;
