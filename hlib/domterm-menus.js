@@ -91,17 +91,23 @@ DomTerm.createElectronMenus = function() {
 
 
     const quitItem = new MenuItem({label: 'Quit', role: 'quit'});
-    const newPaneItem = new MenuItem({label: 'New terminal (right/below)',
-                                      accelerator: 'Ctrl+Shift+A Enter',
+    const newWindowItem = new MenuItem({label: 'New terminal window',
+                                      accelerator: 'Ctrl+Shift+N',
                                       click: function() {
-                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm);
+                                          DomTerm.openNewWindow(DomTerm.focusedTerm, 0, 0, null);
                                       }});
     const newTabItem = new MenuItem({label: 'New terminal tab',
                                       accelerator: 'Ctrl+Shift+T',
                                       click: function() {
                                           DomTerm.layoutAddTab(DomTerm.focusedTerm);
                                       }});
+    const newPaneItem = new MenuItem({label: 'New terminal (right/below)',
+                                      accelerator: 'Ctrl+Shift+A Enter',
+                                      click: function() {
+                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm);
+                                      }});
     const newTerminalMenu = new Menu();
+    newTerminalMenu.append(newWindowItem);
     newTerminalMenu.append(newTabItem);
     newTerminalMenu.append(newPaneItem);
     newTerminalMenu.append(new MenuItem({label: 'New terminal above',
@@ -140,8 +146,8 @@ DomTerm.createElectronMenus = function() {
     DomTerm.savedMenuBar =
         Menu.buildFromTemplate([{label: 'File',
                                  submenu: [
+                                     newWindowItem,
                                      newTabItem,
-                                     newPaneItem,
                                      saveAsItem,
                                      quitItem]},
                                 {label: 'Edit',
@@ -162,8 +168,8 @@ DomTerm.createElectronMenus = function() {
                                 {label: 'Terminal',
                                  submenu: [
                                      cycleInputModesItem,
-                                     detachMenuItem,
-                                     newTerminalMenuItem]},
+                                     newTerminalMenuItem,
+                                     detachMenuItem]},
                                 {label: 'Help',
                                  submenu: [
                                      aboutItem,

@@ -176,7 +176,6 @@ public:
     ~TabWidget();
     void clear();
     void addWebAction(QAction *action, QWebEnginePage::WebAction webAction);
-    QAction *newTabAction() const;
     QAction *closeTabAction() const;
     QAction *saveAsAction() const { return m_saveAsAction; }
     QAction *changeCaretAction() const { return m_changeCaretAction; }
@@ -227,10 +226,7 @@ private:
     void setupPage(QWebEnginePage* page);
 
     QAction *m_recentlyClosedTabsAction;
-    QAction *m_newTabAction;
     QAction *m_closeTabAction;
-    QAction *m_nextTabAction;
-    QAction *m_previousTabAction;
     QAction *m_saveAsAction;
     QAction *m_changeCaretAction;
 

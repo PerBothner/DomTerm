@@ -208,10 +208,7 @@ void TabBar::mouseMoveEvent(QMouseEvent *event)
 TabWidget::TabWidget(QWidget *parent)
     : QTabWidget(parent)
     , m_recentlyClosedTabsAction(0)
-    , m_newTabAction(0)
     , m_closeTabAction(0)
-    , m_nextTabAction(0)
-    , m_previousTabAction(0)
     , m_saveAsAction(0)
     , m_changeCaretAction(0)
     , m_recentlyClosedTabsMenu(0)
@@ -232,34 +229,11 @@ TabWidget::TabWidget(QWidget *parent)
     setDocumentMode(true);
 
     // Actions
-    m_newTabAction = new QAction(QIcon(QLatin1String(":addtab.png")), tr("New &Tab"), this);
-    m_newTabAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
-    m_newTabAction->setIconVisibleInMenu(false);
-    connect(m_newTabAction, SIGNAL(triggered()), this, SLOT(cloneTab()));
 
     m_closeTabAction = new QAction(QIcon(QLatin1String(":closetab.png")), tr("&Close Tab"), this);
     m_closeTabAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_W));
     m_closeTabAction->setIconVisibleInMenu(false);
     connect(m_closeTabAction, SIGNAL(triggered()), this, SLOT(requestCloseTab()));
-
-    m_nextTabAction = new QAction(tr("Show Next Tab"), this);
-    QList<QKeySequence> shortcuts;
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_BraceRight));
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_PageDown));
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_BracketRight));
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Less));
-    m_nextTabAction->setShortcuts(shortcuts);
-    connect(m_nextTabAction, SIGNAL(triggered()), this, SLOT(nextTab()));
-
-    m_previousTabAction = new QAction(tr("Show Previous Tab"), this);
-    shortcuts.clear();
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::Key_BraceLeft));
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::Key_BracketLeft));
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::Key_Greater));
-    m_previousTabAction->setShortcuts(shortcuts);
-    connect(m_previousTabAction, SIGNAL(triggered()), this, SLOT(previousTab()));
-
     m_recentlyClosedTabsMenu = new QMenu(this);
     connect(m_recentlyClosedTabsMenu, SIGNAL(aboutToShow()),
             this, SLOT(aboutToShowRecentTabsMenu()));
@@ -388,11 +362,6 @@ void TabWidget::handleTabBarDoubleClicked(int index)
     newTab();
 }
 
-QAction *TabWidget::newTabAction() const
-{
-    return m_newTabAction;
-}
-
 QAction *TabWidget::closeTabAction() const
 {
     return m_closeTabAction;
@@ -401,16 +370,6 @@ QAction *TabWidget::closeTabAction() const
 QAction *TabWidget::recentlyClosedTabsAction() const
 {
     return m_recentlyClosedTabsAction;
-}
-
-QAction *TabWidget::nextTabAction() const
-{
-    return m_nextTabAction;
-}
-
-QAction *TabWidget::previousTabAction() const
-{
-    return m_previousTabAction;
 }
 
 WebView *TabWidget::currentWebView() const

@@ -77,6 +77,7 @@ signals:
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
 public slots:
+    void openNewWindow(int width, int height, const QString& url);
     void setSetting(const QString& key, const QString& value);
     void inputModeChanged(int mode);
     void processInputCharacters(const QString &text);

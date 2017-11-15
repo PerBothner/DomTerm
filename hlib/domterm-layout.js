@@ -329,29 +329,7 @@ DomTerm.popoutWindow = function(item, dt) {
         e = encode(item);
     }
 
-    // It would be preferable to create a new BrowserWindow in the same
-    // Electron application. It would presumably be faster and use less memory.
-    // (Potentially we could transfer saved data directly to the new window,
-    // without going via the server.)
-    // However, it doesn't work reliably.  Usually the new browser hangs.
-    if (false && DomTerm.isElectron()) {
-        let remote = nodeRequire('electron').remote;
-        let BrowserWindow = remote.BrowserWindow;
-        let url = location.href;
-        let hash = url.indexOf('#');
-        if (hash >= 0)
-            url = url.substring(0, hash);
-        url = url + "#open=" + encodeURIComponent(e);
-        setTimeout(function () {
-                let win = new remote.BrowserWindow({width: w, height: h,
-                                                    useContentSize: true, show: false});
-                win.loadURL(url);
-            win.once('ready-to-show', function () { win.show(); win = null; });
-        }, 1000) ;//});
-    }
-    else
-        dt.reportEvent("OPEN-WINDOW",
-                       "geometry="+w+"x"+h+"&open="+encodeURIComponent(e));
+    DomTerm.openNewWindow(dt, w, h, "open="+encodeURIComponent(e));
     for (var i = 0; i < toRemove.length; i++) {
         remove(toRemove[i]);
     }

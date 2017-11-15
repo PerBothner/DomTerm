@@ -395,6 +395,17 @@ void Backend::processInputCharacters(const QString &text)
     _shellProcess->sendData(data.constData(), data.length());
 }
 
+void Backend::openNewWindow(int /*width*/, int /*height*/, const QString& url)
+{
+    QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
+    QString saveUrl = options->url;
+    options->url = url;
+    fprintf(stderr, "openNewWindow url:%s save:%s\n",
+            url.toUtf8().constData(), saveUrl.toUtf8().constData());
+    BrowserApplication::instance()->newMainWindow(options);
+    options->url = saveUrl;
+}
+
 void Backend::setSetting(const QString& key, const QString& value)
 {
     webView()->setSetting(key, value);

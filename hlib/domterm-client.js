@@ -173,6 +173,15 @@ function setupQWebChannel(channel) {
         if (dt)
             DomTerm.layoutAddPane(dt, paneOp);
     });
+    DomTerm.openNewWindow = function(dt, width, height, parameter) {
+        let url = location.href;
+        let hash = url.indexOf('#');
+        if (hash >= 0)
+            url = url.substring(0, hash);
+        if (parameter)
+            url = url + "#" + parameter;
+        backend.openNewWindow(width, height, url);
+    }
 };
 
 function loadHandler(event) {

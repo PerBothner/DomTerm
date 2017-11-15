@@ -155,9 +155,11 @@ void BrowserMainWindow::setupMenu()
     // File
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
 
-    fileMenu->addAction(tr("&New Window"), this, SLOT(slotFileNew()),
-                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
-    fileMenu->addAction(m_tabWidget->newTabAction());
+    QAction*newTerminalWindow = fileMenu->addAction(tr("&New Window"), this, SLOT(slotFileNew()),
+                                            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    newTerminalTab = fileMenu->addAction("New terminal tab",
+                                         this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
+    fileMenu->addAction(newTerminalTab);
     fileMenu->addSeparator();
     fileMenu->addAction(m_tabWidget->closeTabAction());
     fileMenu->addSeparator();
@@ -222,8 +224,8 @@ void BrowserMainWindow::setupMenu()
 #endif
 
     newTerminalMenu = new QMenu(tr("New Terminal"), this);
-    newTerminalTab = newTerminalMenu->addAction("New terminal tab",
-                                                this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
+    newTerminalMenu->addAction(newTerminalWindow);
+    newTerminalMenu->addAction(newTerminalTab);
     newTerminalPane = newTerminalMenu->addAction("New terminal (right/below)",
                                                  this, &BrowserMainWindow::slotNewTerminalPane, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::Key_Enter));
     newTerminalAbove = newTerminalMenu->addAction("New terminal above",

@@ -6736,6 +6736,34 @@ DomTerm.prototype._adjustPauseLimit = function(node) {
         this._pauseLimit = limit;
 }
 
+DomTerm.openNewWindow = function(dt, width, height, parameter) {
+    // It would be preferable to create a new BrowserWindow in the same
+    // Electron application. It would presumably be faster and use less memory.
+    // (Potentially we could transfer saved data directly to the new window,
+    // without going via the server.)
+    // However, it doesn't work reliably.  Usually the new browser hangs.
+    if (false && DomTerm.isElectron()) {
+        let remote = nodeRequire('electron').remote;
+        let BrowserWindow = remote.BrowserWindow;
+        let url = location.href;
+        let hash = url.indexOf('#');
+        if (hash >= 0)
+            url = url.substring(0, hash);
+        if (parameter)
+            url = url + "#" + parameter;
+        setTimeout(function () {
+                let win = new remote.BrowserWindow({width: width, height: height,
+                                                    useContentSize: true, show: false});
+                win.loadURL(url);
+            win.once('ready-to-show', function () { win.show(); win = null; });
+        }, 1000) ;//});
+    }
+    else
+        dt.reportEvent("OPEN-WINDOW",
+                       (width || height ? ("geometry="+width+"x"+height) : "")
+                       +(parameter ? ("&" + parameter) : ""));
+}
+
 DomTerm.prototype._isOurEvent = function(event) {
     //return this._isAnAncestor(event.target, this.topNode);
     return DomTerm.focusedTerm == this;
@@ -6789,12 +6817,15 @@ DomTerm.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             return;
         case 78: // Control-Shift-N
+            DomTerm.openNewWindow(this, 0, 0, null);
+            event.preventDefault();
+            /*
             if (DomTerm.layoutAddSibling) {
                 DomTerm.layoutAddSibling(this);
-                event.preventDefault();
                 return;
             }
-            break;
+            */
+            return;
        case 80: // Control-Shift-P
             if (this._currentlyPagingOrPaused()) {
                 this._pauseContinue();
