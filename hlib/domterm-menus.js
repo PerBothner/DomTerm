@@ -92,7 +92,7 @@ DomTerm.createElectronMenus = function() {
 
     const quitItem = new MenuItem({label: 'Quit', role: 'quit'});
     const newPaneItem = new MenuItem({label: 'New terminal (right/below)',
-                                      accelerator: 'Ctrl+Shift+N',
+                                      accelerator: 'Ctrl+Shift+A Enter',
                                       click: function() {
                                           DomTerm.layoutAddSibling(DomTerm.focusedTerm);
                                       }});

@@ -98,6 +98,7 @@ private slots:
     void slotNewTerminalBelow() { slotNewTerminal(13); }
     void slotNewTerminalLeft() { slotNewTerminal(10); }
     void slotNewTerminalRight() { slotNewTerminal(11); }
+    void muxPrefixAction()  { slotNewTerminal(3); }
 
     void loadUrl(const QUrl &url);
 
@@ -132,11 +133,6 @@ private:
 
 private:
     TabWidget *m_tabWidget;
-
-    QAction *m_historyBack;
-    QMenu *m_historyBackMenu;
-    QAction *m_historyForward;
-    QMenu *m_historyForwardMenu;
 
     QAction *m_stop;
     QAction *m_viewMenubar;

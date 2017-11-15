@@ -204,6 +204,9 @@ DomTerm.layoutAddPane = function(dt, paneOp, sessionPid=0,
 {
     DomTerm.newSessionPid = sessionPid;
     switch (paneOp) {
+    case 3:
+        dt.enterMuxMode();
+        break;
     case 1: // new pane
         DomTerm.layoutAddSibling(dt, newItemConfig);
         break;

@@ -225,16 +225,21 @@ void BrowserMainWindow::setupMenu()
     newTerminalTab = newTerminalMenu->addAction("New terminal tab",
                                                 this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
     newTerminalPane = newTerminalMenu->addAction("New terminal (right/below)",
-                                                 this, &BrowserMainWindow::slotNewTerminalPane); //, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+                                                 this, &BrowserMainWindow::slotNewTerminalPane, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::Key_Enter));
     newTerminalAbove = newTerminalMenu->addAction("New terminal above",
-                                                  this, &BrowserMainWindow::slotNewTerminalAbove);
+                                                  this, &BrowserMainWindow::slotNewTerminalAbove,
+                                                  QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Up));
     newTerminalBelow = newTerminalMenu->addAction("New terminal below",
-                                                  this, &BrowserMainWindow::slotNewTerminalBelow);
-    //QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Down)); 
+                                                  this, &BrowserMainWindow::slotNewTerminalBelow,
+                                                  QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Down));
+    QShortcut *key_a = new QShortcut(Qt::CTRL | Qt::SHIFT | Qt::Key_A, this);
+    connect(key_a, SIGNAL(activated()), this, SLOT(muxPrefixAction()));
     newTerminalLeft = newTerminalMenu->addAction("New terminal left",
-                                                  this, &BrowserMainWindow::slotNewTerminalLeft);
+                                                 this, &BrowserMainWindow::slotNewTerminalLeft,
+                                                 QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Left));
     newTerminalRight = newTerminalMenu->addAction("New terminal right",
-                                                  this, &BrowserMainWindow::slotNewTerminalRight);
+                                                  this, &BrowserMainWindow::slotNewTerminalRight,
+                                                  QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Right));
 
     QMenu *terminalMenu = menuBar()->addMenu(tr("&Terminal"));
     terminalMenu->addAction(m_tabWidget->changeCaretAction());
