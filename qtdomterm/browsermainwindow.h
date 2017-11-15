@@ -115,7 +115,6 @@ private slots:
     void slotToggleInspector(bool enable);
     void slotAboutApplication();
 
-    void slotAboutToShowWindowMenu();
     void slotOpenActionUrl(QAction *action);
     void slotShowWindow();
     void slotSwapFocus();
@@ -138,7 +137,6 @@ private:
     QMenu *m_historyBackMenu;
     QAction *m_historyForward;
     QMenu *m_historyForwardMenu;
-    QMenu *m_windowMenu;
 
     QAction *m_stop;
     QAction *m_viewMenubar;

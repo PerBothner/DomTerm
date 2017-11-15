@@ -66,7 +66,6 @@
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QInputDialog>
 
-#include <QWebEngineHistory>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
 #include <QVBoxLayout>
@@ -92,8 +91,6 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
 BrowserMainWindow::BrowserMainWindow(QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
     , m_tabWidget(new TabWidget(this))
-    , m_historyBack(0)
-    , m_historyForward(0)
     , m_stop(0)
 {
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
@@ -215,12 +212,6 @@ void BrowserMainWindow::setupMenu()
 
     QAction *a = viewMenu->addAction(tr("&Full Screen"), this, SLOT(slotViewFullScreen(bool)),  Qt::Key_F11);
     a->setCheckable(true);
-
-    // Window
-    m_windowMenu = menuBar()->addMenu(tr("&Window"));
-    connect(m_windowMenu, SIGNAL(aboutToShow()),
-            this, SLOT(slotAboutToShowWindowMenu()));
-    slotAboutToShowWindowMenu();
 
 #if 0
     QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
@@ -436,24 +427,6 @@ TabWidget *BrowserMainWindow::tabWidget() const
 WebView *BrowserMainWindow::currentTab() const
 {
     return m_tabWidget->currentWebView();
-}
-
-void BrowserMainWindow::slotAboutToShowWindowMenu()
-{
-    m_windowMenu->clear();
-    m_windowMenu->addAction(m_tabWidget->nextTabAction());
-    m_windowMenu->addAction(m_tabWidget->previousTabAction());
-    m_windowMenu->addSeparator();
-
-    QList<BrowserMainWindow*> windows = BrowserApplication::instance()->mainWindows();
-    for (int i = 0; i < windows.count(); ++i) {
-        BrowserMainWindow *window = windows.at(i);
-        QAction *action = m_windowMenu->addAction(window->windowTitle(), this, SLOT(slotShowWindow()));
-        action->setData(i);
-        action->setCheckable(true);
-        if (window == this)
-            action->setChecked(true);
-    }
 }
 
 void BrowserMainWindow::slotShowWindow()
