@@ -494,6 +494,7 @@ DomTerm.setFocus = function(term) {
         if (term.sstate.sendFocus)
             term.processResponseCharacters("\x1b[I"); // to application
         document.title = term.sstate.windowTitle;
+        DomTerm.inputModeChanged(term, term.getInputMode());
     }
     if (DomTerm.layoutManager) {
         var item = term ? DomTerm.domTermToLayoutItem(term) : null;
@@ -6639,7 +6640,7 @@ DomTerm.prototype.nextInputMode = function() {
         displayString = "Input mode: automatic";
     }
     this.setInputMode(mode);
-    this.inputModeChanged(mode);
+    DomTerm.inputModeChanged(this, mode);
     this._displayInputModeWithTimeout(displayString);
 }
 
@@ -6650,8 +6651,8 @@ DomTerm.prototype._sendInputContents = function() {
     this.reportText(text);
 }
 
-DomTerm.prototype.inputModeChanged = function(mode) {
-    this.reportEvent("INPUT-MODE-CHANGED", '"'+String.fromCharCode(mode)+'"');
+DomTerm.inputModeChanged = function(dt, mode) {
+    dt.reportEvent("INPUT-MODE-CHANGED", '"'+String.fromCharCode(mode)+'"');
 }
 
 DomTerm.prototype.doLineEdit = function(key, str) {

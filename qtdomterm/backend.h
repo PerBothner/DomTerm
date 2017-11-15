@@ -78,6 +78,7 @@ signals:
     void writeOperatingSystemControl(int code, const QString& text);
 public slots:
     void setSetting(const QString& key, const QString& value);
+    void inputModeChanged(int mode);
     void processInputCharacters(const QString &text);
     void reportEvent(const QString &name, const QString &data);
     void setWindowSize(int nrows, int ncols, int pixw, int pixh);

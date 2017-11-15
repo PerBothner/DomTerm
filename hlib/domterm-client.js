@@ -160,6 +160,14 @@ function setupQWebChannel(channel) {
     DomTerm.settingsHook = function(key, value) {
         backend.setSetting(key, value);
     };
+    DomTerm.inputModeChanged = function(term, mode) {
+        backend.inputModeChanged(mode);
+    }
+    backend.writeInputMode.connect(function(mode) {
+        var dt = DomTerm.focusedTerm;
+        if (dt)
+            dt.setInputMode(mode);
+    });
 };
 
 function loadHandler(event) {

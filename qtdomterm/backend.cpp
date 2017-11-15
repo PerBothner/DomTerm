@@ -397,7 +397,12 @@ void Backend::processInputCharacters(const QString &text)
 
 void Backend::setSetting(const QString& key, const QString& value)
 {
-  webView()->setSetting(key, value);
+    webView()->setSetting(key, value);
+}
+
+void Backend::inputModeChanged(int mode)
+{
+    webView()->inputModeChanged((char) mode);
 }
 
 void Backend::reportEvent(const QString &name, const QString &data)
