@@ -412,12 +412,12 @@ do_run_browser(struct options *options, char *url, int port)
             if (browser_specifier == NULL)
                 browser_specifier = "";
     }
-    if (strcmp(browser_specifier, "electron") == 0)
+    if (strcmp(browser_specifier, "--electron") == 0)
         browser_specifier = electron_command(0, options);
-        if (strcmp(browser_specifier, "firefox") == 0)
-            browser_specifier = firefox_browser_command();
-        else if (strcmp(browser_specifier, "chrome") == 0
-                 || strcmp(browser_specifier, "google-chrome") == 0) {
+    if (strcmp(browser_specifier, "--firefox") == 0)
+        browser_specifier = firefox_browser_command();
+    else if (strcmp(browser_specifier, "--chrome") == 0
+             || strcmp(browser_specifier, "--google-chrome") == 0) {
             browser_specifier = chrome_command();
             if (browser_specifier == NULL) {
                 fprintf(stderr, "neither chrome or google-chrome command found\n");
