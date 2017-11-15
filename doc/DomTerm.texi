@@ -781,6 +781,16 @@ The default is @code{800x600}.
 Set the @code{user} stylesheet to the rules in @var{css-style-rules}.
 The latter is typically a multi-line value.
 
+@item @code{@b{style.qt} =} @var{css-style-rules}
+@code{qtdomterm} only: Set styling for QT user interface widgets.
+For example to specify the color green
+for text in @code{QMenu} do:
+@example
+style.qt =
+ |QMenu @{ color: green; @}
+@end example
+See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
+
 @item @code{@b{style.dark} =} @var{value}
 This option (if set) selects ``reverse video'', which is a color preference
 for a darker background and a ligher foreground (text).
@@ -838,46 +848,12 @@ This is one way to run commands on a remote server.
 Print a help message with options, and then exits.
 @item @code{--version}
 Print the version number, and then exits.
-@item @code{--stylesheet} @var{file}
-@itemx @code{-S} @var{file}
-Specify the name of a CSS stylesheet file.
-This file is used to style @emph{both} the DomTerm elements
-and the Qt user interface ``chrome''.  See below.
 @item @code{--remote-debugging-port=@var{debug-port}}
 Allow @uref{http://doc.qt.io/qt-5/qtwebengine-debugging.html,remote debugging}
 (using a Chromium-based browser, such as Google Chrome).
 This is useful for debugging DomTerm itself, as well as any
 inspecting any unusual HTML, CSS, or JavaScript you might throw at it.
 @end table
-
-@subheading Changing styles
-
-If you select @code{Edit} / @code{Preferences} / @code{Appearance} you can
-select a CSS stylesheet file, as well as additional style rules.
-This can be used to customize the appears of the terminal window.
-These preferences are saved.  If the file changes, it is automatically reloaded.
-
-The command-line option @code{--stylesheet} overrides the
-preferences (both the stylesheet file and the additional rules),
-which are ignored.
-The specified stylesheet is also used for Qt widget ``chrome'' - i.e.
-not the contents of the terminal window, but everything else.
-
-Suppose we start qtdomterm with the option @code{--stylesheet=mystyles.css}
-abd the file @code{mystyles.css} contains:
-
-@example
-div.domterm @{ background-color: #FEE @}
-div.domterm span[std="input"] @{ background-color: #DDF @}
-QMenu @{ color: green; @}
-@end example
-
-The two @code{div.domterm} rules apply to the DomTerm window.
-The first rule sets the general background to a light pink,
-while the second rule sets to that to input lines to a link blue.
-The third line line applies to QMenu widgets used in the
-user interfaces: It specifies to use green for menu text.
-See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
 
 @node jdomterm script
 @section The jdomterm terminal emulator script
