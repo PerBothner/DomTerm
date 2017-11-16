@@ -592,6 +592,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
             case QT_REMOTE_DEBUGGING_OPTION:
                 opts->qt_remote_debugging = strdup(optarg);
+                break;
             case 'L':
                 opts->socket_name = strdup(optarg);
                 break;
