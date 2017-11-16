@@ -143,6 +143,7 @@ struct options {
     int reconnect;                            // reconnect timeout
     int sig_code;                             // close signal
     char *sig_name;                           // human readable signal string
+    char *qt_remote_debugging;
 };
 
 struct tty_server {

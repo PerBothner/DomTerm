@@ -115,6 +115,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define NO_DAEMONIZE_OPTION 2003
 #define DETACHED_OPTION 2004
 #define GEOMETRY_OPTION 2005
+#define QT_REMOTE_DEBUGGING_OPTION 2006
 #define PANE_OPTIONS_START 2100
 /* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
 #define PANE_OPTION (PANE_OPTIONS_START+1)
@@ -160,6 +161,8 @@ static const struct option options[] = {
         {"check-origin", no_argument,       NULL, 'O'},
         {"once",         no_argument,       NULL, 'o'},
         {"debug",        required_argument, NULL, 'd'},
+        {"remote-debugging-port", required_argument, NULL, QT_REMOTE_DEBUGGING_OPTION},
+
         {"version",      no_argument,       NULL, 'v'},
         {"help",         no_argument,       NULL, 'h'},
         {NULL, 0, 0,                              0}
@@ -342,6 +345,30 @@ firefox_command()
 }
 
 char *
+qtwebengine_command(int quiet, struct options *options)
+{
+    int bsize = 100;
+    if (options->geometry && options->geometry[0])
+      bsize += strlen(options->geometry);
+    if (options->qt_remote_debugging)
+      bsize += strlen(options->qt_remote_debugging);
+    char *buf = xmalloc(bsize);
+    strcpy(buf, "/bin/qtdomterm");
+    if (options->geometry && options->geometry[0]) {
+        strcat(buf, " --geometry ");
+        strcat(buf, options->geometry);
+    }
+    if (options->qt_remote_debugging) {
+        strcat(buf, " --remote-debugging-port=");
+        strcat(buf, options->qt_remote_debugging);
+    }
+    strcat(buf, " --connect '%U' &");
+    char *result = get_bin_relative_path(buf);
+    free(buf);
+    return result;
+}
+
+char *
 electron_command(int quiet, struct options *options)
 {
     char *epath = find_in_path("electron");
@@ -412,6 +439,8 @@ do_run_browser(struct options *options, char *url, int port)
             if (browser_specifier == NULL)
                 browser_specifier = "";
     }
+    if (strcmp(browser_specifier, "--qtwebengine") == 0)
+        browser_specifier = qtwebengine_command(0, options);
     if (strcmp(browser_specifier, "--electron") == 0)
         browser_specifier = electron_command(0, options);
     if (strcmp(browser_specifier, "--firefox") == 0)
@@ -483,6 +512,7 @@ void  init_options(struct options *opts)
     opts->reconnect = 10;
     opts->sig_code = SIGHUP;
     opts->sig_name = NULL; // FIXME
+    opts->qt_remote_debugging = NULL;
 }
 
 int process_options(int argc, char **argv, struct options *opts)
@@ -558,9 +588,10 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->browser_command = firefox_command();
                 break;
             case QTDOMTERM_OPTION:
-                opts->browser_command =
-                    get_bin_relative_path("/bin/qtdomterm --connect '%U' &");
+                opts->browser_command = "--qtwebengine";
                 break;
+            case QT_REMOTE_DEBUGGING_OPTION:
+                opts->qt_remote_debugging = strdup(optarg);
             case 'L':
                 opts->socket_name = strdup(optarg);
                 break;

@@ -625,6 +625,15 @@ When a domterm backend (server) is created, it normally turns itself
 into a a @uref{https://en.wikipedia.org/wiki/Daemon_(computing),daemon}.
 This option prevents ``daemonizing'' - which is helpful for debugging.
 
+@item @code{--remote-debugging-port=@var{debug-port}}
+@emph{Only relevant for the @code{qtdomterm} front-end.}
+(For the Electron front-end, use menu item @i{Toggle Developer Tools}.
+If using a general web browser, use its debugger.)
+Allow @uref{http://doc.qt.io/qt-5/qtwebengine-debugging.html,remote debugging}
+(using a Chromium-based browser, such as Google Chrome).
+This is useful for debugging DomTerm itself, as well as any
+inspecting any unusual HTML, CSS, or JavaScript you might throw at it.
+
 @item @code{--port} @var{portnum}
 @emph{(Probably obsolete.)}
 Start a server, listening on the specified @var{portnum}.
@@ -848,11 +857,6 @@ This is one way to run commands on a remote server.
 Print a help message with options, and then exits.
 @item @code{--version}
 Print the version number, and then exits.
-@item @code{--remote-debugging-port=@var{debug-port}}
-Allow @uref{http://doc.qt.io/qt-5/qtwebengine-debugging.html,remote debugging}
-(using a Chromium-based browser, such as Google Chrome).
-This is useful for debugging DomTerm itself, as well as any
-inspecting any unusual HTML, CSS, or JavaScript you might throw at it.
 @end table
 
 @node jdomterm script

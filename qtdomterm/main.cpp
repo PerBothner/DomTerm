@@ -68,6 +68,7 @@ const struct option long_options[] = {
     // The following option is handled internally in QtWebEngine.
     // We just need to pass it through without complaint to the QApplication.
     {"remote-debugging-port", 1, NULL, 0},
+    {"geometry", 1, NULL, 0}, // TODO
     {NULL,      0, NULL,  0}
 };
 
