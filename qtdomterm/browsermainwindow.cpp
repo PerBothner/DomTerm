@@ -51,13 +51,12 @@
 #include "browsermainwindow.h"
 
 #include "browserapplication.h"
-#include "tabwidget.h"
 #include "webview.h"
 #include "backend.h"
 #include "processoptions.h"
 
 #include <QtCore/QSettings>
-
+#include <QtWidgets/QShortcut>
 #include <QtWidgets/QDesktopWidget>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QPlainTextEdit>
@@ -90,35 +89,24 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
 
 BrowserMainWindow::BrowserMainWindow(QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
-    , m_tabWidget(new TabWidget(this))
+    , m_webView(new WebView(processOptions, this))
     , m_stop(0)
 {
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
     setupMenu();
+    m_webView->newPage(processOptions);
 
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout;
     layout->setSpacing(0);
     layout->setMargin(0);
-    layout->addWidget(m_tabWidget);
+    layout->addWidget(m_webView);
     centralWidget->setLayout(layout);
     setCentralWidget(centralWidget);
 
-    connect(m_tabWidget, SIGNAL(loadPage(QString)),
-        this, SLOT(loadPage(QString)));
-    connect(m_tabWidget, &TabWidget::setCurrentTitle,
-            this, &BrowserMainWindow::slotUpdateWindowTitle);
-    connect(m_tabWidget, SIGNAL(geometryChangeRequested(QRect)),
-            this, SLOT(geometryChangeRequested(QRect)));
-    connect(m_tabWidget, SIGNAL(menuBarVisibilityChangeRequested(bool)),
-            menuBar(), SLOT(setVisible(bool)));
-    connect(m_tabWidget, SIGNAL(lastTabClosed()),
-            this, SLOT(close()));
-
     slotUpdateWindowTitle();
     loadDefaultState();
-    m_tabWidget->newTab(processOptions);
 }
 
 BrowserMainWindow::~BrowserMainWindow()
@@ -140,12 +128,6 @@ QSize BrowserMainWindow::sizeHint() const
     return size;
 }
 
-void BrowserMainWindow::runScriptOnOpenViews(const QString &source)
-{
-    for (int i = 0; i < tabWidget()->count(); ++i)
-        tabWidget()->webView(i)->page()->runJavaScript(source);
-}
-
 void BrowserMainWindow::setupMenu()
 {
     new QShortcut(QKeySequence(Qt::Key_F6), this, SLOT(slotSwapFocus()));
@@ -160,10 +142,12 @@ void BrowserMainWindow::setupMenu()
     newTerminalTab = fileMenu->addAction("New terminal tab",
                                          this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
     fileMenu->addAction(newTerminalTab);
+#if 0
     fileMenu->addSeparator();
     fileMenu->addAction(m_tabWidget->closeTabAction());
     fileMenu->addSeparator();
-    fileMenu->addAction(m_tabWidget->saveAsAction());
+    fileMenu->addAction(webView()->saveAsAction());
+#endif
     fileMenu->addSeparator();
 
 #if defined(Q_OS_OSX)
@@ -176,10 +160,10 @@ void BrowserMainWindow::setupMenu()
     QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
     QAction *m_copy = editMenu->addAction(tr("&Copy"));
     m_copy->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
-    m_tabWidget->addWebAction(m_copy, QWebEnginePage::Copy);
+    //m_tabWidget->addWebAction(m_copy, QWebEnginePage::Copy);
     QAction *m_paste = editMenu->addAction(tr("&Paste"));
     m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
-    m_tabWidget->addWebAction(m_paste, QWebEnginePage::Paste);
+    //m_tabWidget->addWebAction(m_paste, QWebEnginePage::Paste);
     editMenu->addSeparator();
 
     QAction *m_find = editMenu->addAction(tr("&Find"));
@@ -206,7 +190,6 @@ void BrowserMainWindow::setupMenu()
     shortcuts.append(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Period));
     shortcuts.append(Qt::Key_Escape);
     m_stop->setShortcuts(shortcuts);
-    m_tabWidget->addWebAction(m_stop, QWebEnginePage::Stop);
 
     viewMenu->addAction(tr("Zoom &In"), this, SLOT(slotViewZoomIn()), QKeySequence(Qt::CTRL | Qt::Key_Plus));
     viewMenu->addAction(tr("Zoom &Out"), this, SLOT(slotViewZoomOut()), QKeySequence(Qt::CTRL | Qt::Key_Minus));
@@ -244,7 +227,9 @@ void BrowserMainWindow::setupMenu()
                                                   QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Right));
 
     QMenu *terminalMenu = menuBar()->addMenu(tr("&Terminal"));
-    terminalMenu->addAction(m_tabWidget->changeCaretAction());
+#if 0
+    terminalMenu->addAction(webView()->changeCaretAction());
+#endif
     terminalMenu->addMenu(newTerminalMenu);
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
@@ -277,7 +262,8 @@ void BrowserMainWindow::loadUrl(const QUrl &url)
     if (!currentTab() || !url.isValid())
         return;
 
-    m_tabWidget->loadUrlInCurrentTab(url);
+    m_webView->loadUrl(url);
+    m_webView->setFocus();
 }
 
 void BrowserMainWindow::slotUpdateWindowTitle(const QString &title)
@@ -308,7 +294,7 @@ void BrowserMainWindow::slotAboutApplication()
 
 void BrowserMainWindow::slotFileNew()
 {
-    BrowserApplication::instance()->newMainWindow(tabWidget()->currentWebView()->m_processOptions);
+    BrowserApplication::instance()->newMainWindow(webView()->m_processOptions);
 }
 
 void BrowserMainWindow::slotFileOpen()
@@ -324,17 +310,6 @@ void BrowserMainWindow::slotFileOpen()
 
 void BrowserMainWindow::closeEvent(QCloseEvent *event)
 {
-    if (m_tabWidget->count() > 1) {
-        int ret = QMessageBox::warning(this, QString(),
-                           tr("Are you sure you want to close the window?"
-                              "  There are %1 tabs open").arg(m_tabWidget->count()),
-                           QMessageBox::Yes | QMessageBox::No,
-                           QMessageBox::No);
-        if (ret == QMessageBox::No) {
-            event->ignore();
-            return;
-        }
-    }
     event->accept();
     deleteLater();
 }
@@ -369,9 +344,11 @@ void BrowserMainWindow::slotEditFindPrevious()
 
 void BrowserMainWindow::slotViewZoomIn()
 {
+#if 0
     if (!currentTab())
         return;
     currentTab()->setZoomFactor(currentTab()->zoomFactor() + 0.1);
+#endif
 }
 
 void BrowserMainWindow::slotViewZoomOut()
@@ -426,14 +403,9 @@ void BrowserMainWindow::loadPage(const QString &page)
     loadUrl(url);
 }
 
-TabWidget *BrowserMainWindow::tabWidget() const
-{
-    return m_tabWidget;
-}
-
 WebView *BrowserMainWindow::currentTab() const
 {
-    return m_tabWidget->currentWebView();
+    return m_webView;
 }
 
 void BrowserMainWindow::slotShowWindow()

@@ -50,8 +50,8 @@
 
 #include "browserapplication.h"
 #include "browsermainwindow.h"
-#include "tabwidget.h"
 #include "webview.h"
+#include "savepagedialog.h"
 #include "backend.h"
 
 #include <QtGui/QClipboard>
@@ -61,6 +61,7 @@
 #include <QtWidgets/QVBoxLayout>
 #include <QtGui/QMouseEvent>
 #include <QWebChannel>
+#include <QWebEngineProfile>
 
 //#include <QWebEngineContextMenuData>
 
@@ -115,6 +116,15 @@ bool WebPage::certificateError(const QWebEngineCertificateError &error)
     }
     QMessageBox::critical(view(), tr("Certificate Error"), error.errorDescription(), QMessageBox::Ok, QMessageBox::NoButton);
     return false;
+}
+
+void WebView::newPage(QSharedDataPointer<ProcessOptions> processOptions)
+{
+    setPage(new WebPage(QWebEngineProfile::defaultProfile(), this));
+
+    //setupPage(newWebView->page());
+
+    this->setUrl(processOptions->url);
 }
 
 #if 0
@@ -272,6 +282,14 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
     selectedInputMode = autoInputMode;
     connect(inputModeGroup, &QActionGroup::triggered,
             this, &WebView::changeInputMode);
+
+    m_saveAsAction = new QAction(tr("Save As"), this);
+    m_saveAsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+    connect(m_saveAsAction, SIGNAL(triggered()), this, SLOT(requestSaveAs()));
+
+    m_changeCaretAction = new QAction(tr("Block caret (char mode only)"), this);
+    m_changeCaretAction->setCheckable(true);
+    connect(m_changeCaretAction, SIGNAL(triggered(bool)), this, SLOT(requestChangeCaret(bool)));
 }
 
 void WebView::setPage(WebPage *_page)
@@ -336,6 +354,32 @@ void WebView::inputModeChanged(char mode)
         action->setChecked(true);
         selectedInputMode = action;
     }
+}
+
+void WebView::requestSaveAs()
+{
+    //QWebEngineDownloadItem::SavePageFormat format = QWebEngineDownloadItem::SingleHtmlSaveFormat;
+    Backend* backend = this->backend();
+    backend->requestHtmlData();
+    QString filePath = backend->sessionName() + ".html";
+    SavePageDialog dlg(this, /*format,*/ filePath);
+    if (dlg.exec() != SavePageDialog::Accepted)
+        return;
+    filePath = dlg.filePath();
+    QString html = this->backend()->getSavedHtml();
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+      file.write(html.toUtf8());
+      file.close();
+    } else {
+      // REPORT ERROR FIXME!
+    }
+}
+
+void WebView::requestChangeCaret(bool set)
+{
+    m_backend->requestChangeCaret(set);
+    this->setBlockCaret(set);
 }
 
 void WebView::contextMenuEvent(QContextMenuEvent *event)

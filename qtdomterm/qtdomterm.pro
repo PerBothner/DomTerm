@@ -16,7 +16,6 @@ HEADERS += \
     fullscreennotification.h \
     modelmenu.h \
     savepagedialog.h \
-    tabwidget.h \
     webview.h
 
 SOURCES += \
@@ -26,7 +25,6 @@ SOURCES += \
     fullscreennotification.cpp \
     modelmenu.cpp \
     savepagedialog.cpp \
-    tabwidget.cpp \
     webview.cpp \
     main.cpp
 

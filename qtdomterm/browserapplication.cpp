@@ -51,7 +51,6 @@
 #include "browserapplication.h"
 
 #include "browsermainwindow.h"
-#include "tabwidget.h"
 #include "webview.h"
 
 #include <getopt.h>
@@ -359,15 +358,7 @@ void BrowserApplication::newLocalSocketConnection()
     stream >> *processOptions;
     QString url = processOptions->url;
     if (!url.isEmpty()) {
-        QSettings settings;
-        settings.beginGroup(QLatin1String("general"));
-        int openLinksIn = settings.value(QLatin1String("openLinksIn"), 0).toInt();
-        settings.endGroup();
-        if (openLinksIn == 1)
-            newMainWindow(processOptions);
-        else {
-            mainWindow()->tabWidget()->newTab(processOptions);
-        }
+        newMainWindow(processOptions);
         openUrl(url);
     }
     delete socket;

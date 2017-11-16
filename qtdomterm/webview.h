@@ -99,17 +99,23 @@ public:
     WebView(QSharedDataPointer<ProcessOptions> processOptions,
             QWidget *parent = 0);
     QSharedDataPointer<ProcessOptions> m_processOptions;
+    void newPage(QSharedDataPointer<ProcessOptions> processOptions);
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
     void setPage(WebPage *page);
     bool blockCaret() { return m_blockCaret; }
     void setBlockCaret(bool set) { m_blockCaret = set; }
 
+    QAction *saveAsAction() const { return m_saveAsAction; }
+    QAction *changeCaretAction() const { return m_changeCaretAction; }
+
     void loadUrl(const QUrl &url);
     QUrl url() const;
 
     inline int progress() const { return m_progress; }
 public slots:
+    void requestSaveAs();
+    void requestChangeCaret(bool);
     void changeInputMode(QAction*);
     void inputModeChanged(char mode);
     void setSetting(const QString& key, const QString& value);
@@ -133,6 +139,9 @@ private:
     WebPage *m_page;
     Backend *m_backend;
     bool m_blockCaret;
+
+    QAction *m_saveAsAction;
+    QAction *m_changeCaretAction;
 
     QAction *charInputMode;
     QAction *lineInputMode;

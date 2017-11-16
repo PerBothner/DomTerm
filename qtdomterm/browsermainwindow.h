@@ -59,9 +59,9 @@ QT_BEGIN_NAMESPACE
 class QWebEngineFrame;
 QT_END_NAMESPACE
 
-class TabWidget;
 class WebView;
 class ProcessOptions;
+
 
 /*!
     The MainWindow of the Browser Application.
@@ -77,10 +77,8 @@ public:
     QSize sizeHint() const;
 
 public:
-    TabWidget *tabWidget() const;
     WebView *webView() const { return currentTab(); }
     WebView *currentTab() const;
-    Q_INVOKABLE void runScriptOnOpenViews(const QString &);
 
 public slots:
     void loadPage(const QString &url);
@@ -132,7 +130,7 @@ private:
     void handleFindTextResult(bool found);
 
 private:
-    TabWidget *m_tabWidget;
+    WebView *m_webView;
 
     QAction *m_stop;
     QAction *m_viewMenubar;
