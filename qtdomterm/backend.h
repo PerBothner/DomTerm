@@ -9,12 +9,7 @@
 #include <QString>
 #include <QSharedDataPointer>
 
-class KPtyDevice;
 class ProcessOptions;
-namespace Konsole {
-    class Pty;
-}
-
 class WebView;
 
 class Backend : public QObject
@@ -53,12 +48,6 @@ tle
      */
     QString userTitle() const;
 
-    bool isCanonicalMode();
-    bool isEchoingMode();
-
-   /** Sends the specified @p signal to the terminal process. */
-    bool sendSignal(int signal);
-
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
     QString getSavedHtml() { return _savedHtml; }
@@ -80,24 +69,9 @@ public slots:
     void openNewWindow(int width, int height, const QString& url);
     void setSetting(const QString& key, const QString& value);
     void inputModeChanged(int mode);
-    void processInputCharacters(const QString &text);
-    void reportEvent(const QString &name, const QString &data);
-    void setWindowSize(int nrows, int ncols, int pixw, int pixh);
     void reloadStylesheet();
     void log(const QString& message);
 
-    /**
-     * Starts the terminal session.
-     *
-     * This creates the terminal process and connects the teletype to it.
-     */
-    void run();
-
-    /**
-     * Closes the terminal session.  This sends a hangup signal
-     * (SIGHUP) to the terminal process and causes the done(Session*)
-     * signal to be emitted.
-     */
     void close();
 
     /**
@@ -108,14 +82,11 @@ public slots:
     void setUserTitle( int, const QString & caption );
 
 private slots:
-    void done(int);
     QString parseSimpleJsonString(QString str, int start, int end);
     QString toJsonQuoted(QString str);
     void onReceiveBlock( const char * buffer, int len );
-    KPtyDevice *pty() const;
 private:
     QSharedDataPointer<ProcessOptions> _processOptions;
-    Konsole::Pty     *_shellProcess;
 
     bool           _wantedClose;
     int            _sessionId;

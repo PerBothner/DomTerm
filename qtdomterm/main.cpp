@@ -169,7 +169,6 @@ int main(int argc, char **argv)
     processOptions->environment = QProcessEnvironment::systemEnvironment().toStringList();
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    Q_INIT_RESOURCE(data);
 
     // The QApplication constructor recognizes and removes a --stylesheet
     // option, before parseArgs can see it.  So we pre-extract it.

@@ -10,7 +10,7 @@ FORMS += \
     savepagedialog.ui
 
 HEADERS += \
-    backend.h Pty.h kptydevice.h  kpty.h  kpty_p.h  kptyprocess.h kprocess.h \
+    backend.h \
     browserapplication.h \
     browsermainwindow.h \
     fullscreennotification.h \
@@ -19,7 +19,7 @@ HEADERS += \
     webview.h
 
 SOURCES += \
-    backend.cpp Pty.cpp kpty.cpp  kptydevice.cpp  kptyprocess.cpp kprocess.cpp \
+    backend.cpp \
     browserapplication.cpp \
     browsermainwindow.cpp \
     fullscreennotification.cpp \
@@ -27,8 +27,6 @@ SOURCES += \
     savepagedialog.cpp \
     webview.cpp \
     main.cpp
-
-RESOURCES += data/data.qrc
 
 build_all:!build_pass {
     CONFIG -= build_all

@@ -36,8 +36,6 @@
 #include <QFileSystemWatcher>
 
 #include "backend.h"
-#include "Pty.h"
-#include "kptyprocess.h"
 #include "browserapplication.h"
 #include "webview.h"
 
@@ -45,28 +43,13 @@ Backend::Backend(QSharedDataPointer<ProcessOptions> processOptions,
                  QObject *parent)
   :  QObject(parent),
      _processOptions(processOptions),
-     _shellProcess(0),
      _wantedClose(false)
 {
     addDomtermVersion("QtDomTerm");
-    _shellProcess = new Konsole::Pty();
-    connect(_shellProcess,SIGNAL(receivedData(const char *,int)),this,
-            SLOT(onReceiveBlock(const char *,int)) );
-#if 0
-   connect( _emulation,SIGNAL(sendData(const char *,int)),_shellProcess,
-             SLOT(sendData(const char *,int)) );
-   connect( _emulation,SIGNAL(lockPtyRequest(bool)),_shellProcess,SLOT(lockPty(bool)) );
-    connect( _emulation,SIGNAL(useUtf8Request(bool)),_shellProcess,SLOT(setUtf8Mode(bool)) );
-#endif
-    connect( _shellProcess,SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(done(int)) );
 }
-
-KPtyDevice *Backend::pty() const
-{ return _shellProcess->pty(); }
 
 Backend::~Backend()
 {
-    delete _shellProcess;
 }
 
 /** Encode an arbitrary sequence of bytes as an ASCII string.
@@ -212,44 +195,6 @@ void Backend::reloadStylesheet()
     _stylesheetLoaded = ! contents.isEmpty();
 }
 
-void Backend::run()
-{
-    reloadStylesheet();
-    loadSessionName();
-    connect(BrowserApplication::instance()->fileSystemWatcher(),
-            &QFileSystemWatcher::fileChanged,
-            this, &Backend::reloadStylesheet);
-    connect(BrowserApplication::instance(),
-            &BrowserApplication::reloadStyleSheet,
-            this, &Backend::reloadStylesheet);
-
-    _shellProcess->setWorkingDirectory(initialWorkingDirectory());
-
-    QStringList env = environment();
-    env += "TERM=xterm-256color";
-    env += "COLORTERM=truecolor";
-    const char *ttyName = pty()->ttyName();
-    QString domtermVar = "DOMTERM=";
-    domtermVar += domtermVersion();
-    domtermVar += ";tty=";
-    domtermVar += ttyName;
-    env += domtermVar;
-
-    QString exec = program();
-    /* if we do all the checking if this shell exists then we use it ;)
-     * Dont know about the arguments though.. maybe youll need some more checking im not sure
-     * However this works on Arch and FreeBSD now.
-     */
-    int result = _shellProcess->start(exec, arguments(),
-                                      env, 0, false);
-
-    if (result < 0) {
-        qDebug() << "CRASHED! result: " << result;
-        return;
-    }
-   emit started();
-}
-
 void Backend::setUserTitle(int /*what*/, const QString & /*caption*/)
 {
 #if 0
@@ -331,68 +276,9 @@ QString Backend::userTitle() const
     return _userTitle;
 }
 
-bool Backend::isCanonicalMode()
-{
-    struct ::termios ttmode;
-    pty()->tcGetAttr(&ttmode);
-    return (ttmode.c_lflag & ICANON) != 0;
-}
-
-bool Backend::isEchoingMode()
-{
-    struct ::termios ttmode;
-    pty()->tcGetAttr(&ttmode);
-    return (ttmode.c_lflag & ECHO) != 0;
-}
-
-bool Backend::sendSignal(int signal)
-{
-    int result = ::kill(_shellProcess->pid(),signal);
-
-     if ( result == 0 )
-     {
-         _shellProcess->waitForFinished();
-         return true;
-     }
-     else
-         return false;
-}
-
 void Backend::close()
 {
     _wantedClose = true;
-    if (!_shellProcess->isRunning() || !sendSignal(SIGHUP)) {
-        // Forced close.
-        QTimer::singleShot(1, this, SIGNAL(finished()));
-    }
-}
-
-void Backend::done(int exitStatus)
-{
-    QString message;
-    if (!_wantedClose || exitStatus != 0) {
-
-        if (_shellProcess->exitStatus() == QProcess::NormalExit) {
-            message.sprintf("Session '%s' exited with status %d.",
-                          _nameTitle.toUtf8().data(), exitStatus);
-        } else {
-            message.sprintf("Session '%s' crashed.",
-                          _nameTitle.toUtf8().data());
-        }
-    }
-
-    if ( !_wantedClose && _shellProcess->exitStatus() != QProcess::NormalExit )
-        message.sprintf("Session '%s' exited unexpectedly.",
-                        _nameTitle.toUtf8().data());
-    else
-        emit finished();
-
-}
-
-void Backend::processInputCharacters(const QString &text)
-{
-    QByteArray data = text.toUtf8();
-    _shellProcess->sendData(data.constData(), data.length());
 }
 
 void Backend::openNewWindow(int /*width*/, int /*height*/, const QString& url)
@@ -416,42 +302,6 @@ void Backend::inputModeChanged(int mode)
     webView()->inputModeChanged((char) mode);
 }
 
-void Backend::reportEvent(const QString &name, const QString &data)
-{
-    //fprintf(stderr, "reportEvent called name %s data %s canon:%d\n",     name.toUtf8().constData(), data.toUtf8().constData(), (int) isCanonicalMode()); fflush(stderr);
-    if (name=="KEY") {
-        int q = data.indexOf('"');
-        QString kstr = parseSimpleJsonString(data, q, data.length());
-        int kstr0 = kstr.length() != 1 ? -1 : kstr[0].unicode();
-        if (isCanonicalMode()
-            && kstr0 != 3 && kstr0 != 4 && kstr0 != 26) {
-            emit writeOperatingSystemControl(isEchoingMode() ? 74 : 73,
-                                             data);
-        } else
-            processInputCharacters(kstr);
-    } else if (name=="WS") {
-        QStringList words = data.split(QRegExp("\\s+"));
-        setWindowSize(words[0].toInt(), words[1].toInt(),
-                      (int) words[2].toFloat(), (int) words[3].toFloat());
-    } else if (name=="VERSION") {
-        addDomtermVersion(data);
-    } else if (name=="ALINK") {
-        QUrl url = parseSimpleJsonString(data, 0, data.length());
-        QDesktopServices::openUrl(url);
-    } else if (name=="SESSION-NAME") {
-        setSessionName(parseSimpleJsonString(data, 0, data.length()));
-    } else if (name=="INPUT-MODE-CHANGED") {
-      if (data.length() == 3)
-          webView()->inputModeChanged(data[1].cell());
-    } else if (name=="GET-HTML") {
-      int q = data.indexOf('"');
-      QString html = parseSimpleJsonString(data, q, data.length());
-      //fprintf(stderr, "reporttEvent name %s data %s canon:%d\n",     name.toUtf8().constData(), data.toUtf8().constData(), (int) isCanonicalMode()); fflush(stderr);
-      _savedHtml = html;
-    } else {
-        // unknown
-    }
-}
 void Backend::log(const QString& message)
 {
     if (false) {
@@ -459,11 +309,6 @@ void Backend::log(const QString& message)
         fprintf(stderr, "log called %s\n", message.toUtf8().constData());
         fflush(stderr);
     }
-}
-
-void Backend::setWindowSize(int nrows, int ncols, int /*pixw*/, int /*pixh*/)
-{
-    _shellProcess->setWindowSize(nrows, ncols);
 }
 
 void Backend::addDomtermVersion(const QString &info)

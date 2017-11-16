@@ -129,10 +129,6 @@ clean-am:
 	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
-	-rm -f qtdomterm/data/hlib/domterm-all.js \
-	  qtdomterm/data/hlib/domterm-core.css \
-	  qtdomterm/data/hlib/domterm-standard.css \
-	  qtdomterm/data/hlib/domterm-default.css
 
 websocket_sources = org/domterm/websocket/DomServer.java
 pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
@@ -261,26 +257,7 @@ upload-web: web/index.html
 	cd web && \
 	  rsync -v -r -u -l -p -t --relative . $(WEB_SERVER_ROOT)
 
-qtdomterm/data/hlib/domterm-all.js:
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-all.js .
-
-qtdomterm/data/hlib/domterm-core.css:
-	mkdir -p qtdomterm/data/hlib
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-core.css .
-
-qtdomterm/data/hlib/domterm-standard.css:
-	mkdir -p qtdomterm/data/hlib
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-standard.css .
-
-qtdomterm/data/hlib/domterm-default.css:
-	mkdir -p qtdomterm/data/hlib
-	cd qtdomterm/data/hlib && $(LN_S) ../../../hlib/domterm-default.css .
-
-bin/qtdomterm: \
-  qtdomterm/data/hlib/domterm-all.js \
-  qtdomterm/data/hlib/domterm-core.css \
-  qtdomterm/data/hlib/domterm-standard.css \
-  qtdomterm/data/hlib/domterm-default.css
+bin/qtdomterm:
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
 
 if WITH_JAVA
