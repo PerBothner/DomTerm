@@ -128,7 +128,7 @@ DomTerm.domTermLayoutClose = function(dt, r, from_handler=false) {
             && p.contentItems.length == 1
             && p.parent.type == 'root'
             && p.parent.contentItems.length == 1) {
-            window.close();
+            DomTerm.windowClose();
         } else {
             DomTerm.selectNextPane(r, true);
             dt = DomTerm.focusedTerm;
@@ -414,7 +414,7 @@ DomTerm.layoutInit = function(term) {
         } else {
             DomTerm.setFocus(null);
             if (item.config.componentName == "browser")
-                document.title = item.config.url;
+                DomTerm.setTitle(item.config.url);
             DomTerm.showFocusedPane(item);
         }
     }

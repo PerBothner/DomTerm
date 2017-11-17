@@ -49,7 +49,7 @@
 ****************************************************************************/
 
 #include "browserapplication.h"
-
+#include <unistd.h>
 #include <qtwebenginewidgetsglobal.h>
 #include <string.h>
 #include <getopt.h>
@@ -58,17 +58,16 @@
 
 const char* const short_options = "+vhw:e:c:S:";
 
+#define QT_OPTION 999
+
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
     {"help",    0, NULL, 'h'},
-    {"workdir", 1, NULL, 'w'},
-    {"execute", 1, NULL, 'e'},
     {"connect", 1, NULL, 'c'},
-    {"stylesheet", 1, NULL, 'S'},
     // The following option is handled internally in QtWebEngine.
     // We just need to pass it through without complaint to the QApplication.
-    {"remote-debugging-port", 1, NULL, 0},
-    {"geometry", 1, NULL, 0}, // TODO
+    {"remote-debugging-port", 1, NULL, QT_OPTION},
+    {"geometry", 1, NULL, QT_OPTION},
     {NULL,      0, NULL,  0}
 };
 
@@ -77,12 +76,9 @@ void print_usage_and_exit(int code)
     printf("QtDomTerm %s\n", QTDOMTERM_VERSION);
     puts("Usage: qtdomterm [OPTION]...\n");
     //puts("  -d,  --drop               Start in \"dropdown mode\" (like Yakuake or Tilda)");
-    puts("  -e,  --execute <command>  Execute command instead of shell");
     puts("  -c,  --connect HOST:PORT  Connect to websocket server");
     puts("  -h,  --help               Print this help");
     puts("  -v,  --version            Prints application version and exits");
-    puts("  -w,  --workdir <dir>      Start session with specified work directory");
-    puts("  -S,  --stylesheet <name>  Name of extra CSS stylesheet file");
     puts("\nHomepage: <https://domterm.org>");
     exit(code);
 }
@@ -99,75 +95,51 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
     for (;;) {
         int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
         switch(next_option) {
+            default:
             case -1:
                 goto post_args;
             case 'h':
                 print_usage_and_exit(0);
                 break;
-            case 'w':
-                processOptions->workdir = QString(optarg);
-                break;
             case 'c':
                 processOptions->wsconnect = QString(optarg);
-                break;
-            case 'S':
-                // Shouldn't happen - main turns -S to --stylesheet,
-                // and the QApplication contructor removes the latter.
-                break;
-            case 'e':
-                optind--;
-                goto post_args;
-            case '?':
-                print_usage_and_exit(1);
                 break;
             case 'v':
                 print_version_and_exit();
                 break;
+            case QT_OPTION:
+                break;
         }
     }
  post_args:
-    QStringList arguments;
-    QString program;
-    if (optind < argc) {
-        program = QString(argv[optind]);
-
-    } else {
-        const char *shell = getenv("SHELL");
-        if (shell == nullptr)
-            shell = "/bin/sh";
-        program = shell;
-    }
-    processOptions->program = program;
-    arguments += program;
-    while (++optind < argc) {
-        arguments += QString(argv[optind]);
-    }
-    processOptions->arguments = arguments;
-    if (processOptions->workdir.isEmpty())
-        processOptions->workdir = QDir::currentPath();
-
     const QString ws = processOptions->wsconnect;
-    QString url = "qrc:/index.html";
     if (! ws.isEmpty()) {
-        if (ws.startsWith("http:") || ws.startsWith("https:")
-            || ws.startsWith("file:")) {
-            url = ws;
-            url += url.indexOf('#') < 0 ? "#" : "&";
-            url += "qtwebengine";
-            processOptions->frontendOnly = true;
-        } else {
-            url += "?ws=ws://";
-            url += ws;
-        }
+        QString url = ws;
+        url += url.indexOf('#') < 0 ? "#" : "&";
+        url += "qtwebengine";
+        processOptions->frontendOnly = true;
+        processOptions->url = url;
+    } else {
+        char **nargv = new char*[argc+2];
+        char *name = strdup(argv[0]);
+        int len = strlen(name);
+        if (strcmp(name+len-9, "qtdomterm") == 0)
+          strcpy(name+len-9, "domterm");
+        else
+          name = (char*)"domterm";
+        nargv[0] = name;
+        nargv[1] = (char*)"--qtdomterm";
+        for (int i = 1; i < argc; i++)
+          nargv[i+1] = argv[i];
+        nargv[argc+1] = NULL;
+        execvp(name, nargv);
     }
-    processOptions->url = url;
 }
 
 int main(int argc, char **argv)
 {
     ProcessOptions* processOptions = new ProcessOptions();
     QSharedDataPointer<ProcessOptions> processOptionsPtr(processOptions);
-    processOptions->environment = QProcessEnvironment::systemEnvironment().toStringList();
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
@@ -195,6 +167,6 @@ int main(int argc, char **argv)
     if (!application.isTheOnlyBrowser())
         return 0;
 
-    application.newMainWindow(processOptionsPtr);
+    application.newMainWindow(processOptionsPtr->url, processOptionsPtr);
     return application.exec();
 }

@@ -72,7 +72,7 @@ class BrowserMainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    BrowserMainWindow(QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent = 0, Qt::WindowFlags flags = 0);
+    BrowserMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent = 0, Qt::WindowFlags flags = 0);
     ~BrowserMainWindow();
     QSize sizeHint() const;
 
@@ -101,7 +101,6 @@ private slots:
     void loadUrl(const QUrl &url);
 
     void slotFileNew();
-    void slotFileOpen();
     void slotEditFind();
     void slotEditFindNext();
     void slotEditFindPrevious();
@@ -132,7 +131,6 @@ private:
 private:
     WebView *m_webView;
 
-    QAction *m_stop;
     QAction *m_viewMenubar;
 
     QAction *newTerminalTab;
@@ -144,7 +142,6 @@ private:
     QMenu *newTerminalMenu;
 
     QIcon m_reloadIcon;
-    QIcon m_stopIcon;
 
     QString m_lastSearch;
     QString m_printerOutputFileName;

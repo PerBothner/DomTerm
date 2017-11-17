@@ -173,6 +173,8 @@ function setupQWebChannel(channel) {
         if (dt)
             DomTerm.layoutAddPane(dt, paneOp);
     });
+    DomTerm.windowClose = function() { backend.closeMainWindow(); };
+    DomTerm.setTitle = function(title) { backend.setWindowTitle(title); };
     DomTerm.openNewWindow = function(dt, width, height, parameter) {
         let url = location.href;
         let hash = url.indexOf('#');

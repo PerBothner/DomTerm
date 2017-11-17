@@ -118,13 +118,13 @@ bool WebPage::certificateError(const QWebEngineCertificateError &error)
     return false;
 }
 
-void WebView::newPage(QSharedDataPointer<ProcessOptions> processOptions)
+void WebView::newPage(const QString& url, QSharedDataPointer<ProcessOptions> processOptions)
 {
     setPage(new WebPage(QWebEngineProfile::defaultProfile(), this));
 
     //setupPage(newWebView->page());
-
-    this->setUrl(processOptions->url);
+    //fprintf(stderr, "WebView::newPage url:%s\n", url.toUtf8().constData());
+    this->setUrl(url);
 }
 
 #if 0

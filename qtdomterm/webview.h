@@ -99,7 +99,7 @@ public:
     WebView(QSharedDataPointer<ProcessOptions> processOptions,
             QWidget *parent = 0);
     QSharedDataPointer<ProcessOptions> m_processOptions;
-    void newPage(QSharedDataPointer<ProcessOptions> processOptions);
+    void newPage(const QString& url, QSharedDataPointer<ProcessOptions> processOptions);
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
     void setPage(WebPage *page);

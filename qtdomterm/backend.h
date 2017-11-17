@@ -27,20 +27,8 @@ public:
     void loadSessionName();
     void loadStylesheet(const QString& stylesheet, const QString& name);
 
-    QString program() const;
-    QStringList arguments() const;
-
-    /** Returns the session's current working directory. */
-    QString initialWorkingDirectory() const;
-
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
-    /**
-     * Returns the environment of this session as a list of strings like
-     * VARIABLE=VALUE
-     */
-    QStringList environment() const;
-
     /**
      * Return the session title set by the user (ie. the program running
      * in the terminal), or an empty string if the user has not set a custom ti
@@ -66,6 +54,8 @@ signals:
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
 public slots:
+    void setWindowTitle(const QString& title);
+    void closeMainWindow();
     void openNewWindow(int width, int height, const QString& url);
     void setSetting(const QString& key, const QString& value);
     void inputModeChanged(int mode);

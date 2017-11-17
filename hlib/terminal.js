@@ -419,6 +419,14 @@ DomTerm.prototype._saveWindowContents = function() {
     this._removeInputLine();
 }
 
+DomTerm.windowClose = function() {
+    window.close();
+}
+
+DomTerm.setTitle = function(title) {
+    document.title = title;
+}
+
 DomTerm.prototype.close = function() {
     if (this._detachSaveNeeded == 2) {
         this._saveWindowContents();
@@ -426,7 +434,7 @@ DomTerm.prototype.close = function() {
     if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
         DomTerm.domTermLayoutClose(this, DomTerm.domTermToLayoutItem(this));
     else
-        window.close();
+        DomTerm.windowClose();
 };
 
 DomTerm.prototype.startCommandGroup = function() {
@@ -493,7 +501,7 @@ DomTerm.setFocus = function(term) {
         term.reportEvent("FOCUSED", ""); // to server
         if (term.sstate.sendFocus)
             term.processResponseCharacters("\x1b[I"); // to application
-        document.title = term.sstate.windowTitle;
+        DomTerm.setTitle(term.sstate.windowTitle);
         DomTerm.inputModeChanged(term, term.getInputMode());
     }
     if (DomTerm.layoutManager) {
@@ -4054,7 +4062,7 @@ DomTerm.prototype.updateWindowTitle = function() {
     var str = this.formatWindowTitle()
     this.sstate.windowTitle = str;
     if (this.hasFocus())
-        document.title = str;
+        DomTerm.setTitle(str);
 }
 
 DomTerm.prototype.resetTerminal = function(full, saved) {

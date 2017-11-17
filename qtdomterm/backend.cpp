@@ -36,6 +36,7 @@
 #include <QFileSystemWatcher>
 
 #include "backend.h"
+#include "browsermainwindow.h"
 #include "browserapplication.h"
 #include "webview.h"
 
@@ -120,26 +121,6 @@ static QString encodeAsAscii(const char * buf, int len)
 void Backend::onReceiveBlock( const char * buf, int len )
 {
     emit writeEncoded(len, encodeAsAscii(buf, len));
-}
-
-QString Backend::program() const
-{
-    return _processOptions->program;
-}
-
-QStringList Backend::arguments() const
-{
-    return _processOptions->arguments;
-}
-
-QStringList Backend::environment() const
-{
-    return _processOptions->environment;
-}
-
-QString Backend::initialWorkingDirectory() const
-{
-    return _processOptions->workdir;
 }
 
 void Backend::setInputMode(char mode)
@@ -281,15 +262,22 @@ void Backend::close()
     _wantedClose = true;
 }
 
+void Backend::setWindowTitle(const QString& title)
+{
+    webView()->webPage()->mainWindow()->setWindowTitle(title);
+}
+
+void Backend::closeMainWindow()
+{
+    webView()->webPage()->mainWindow()->close();
+}
+
 void Backend::openNewWindow(int /*width*/, int /*height*/, const QString& url)
 {
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
-    QString saveUrl = options->url;
-    options->url = url;
-    fprintf(stderr, "openNewWindow url:%s save:%s\n",
-            url.toUtf8().constData(), saveUrl.toUtf8().constData());
-    BrowserApplication::instance()->newMainWindow(options);
-    options->url = saveUrl;
+    QString xurl = url + (url.indexOf('#') < 0 ? "#" : "&") + "qtwebengine";
+    //fprintf(stderr, "openNewWindow url: '%s'\n", xurl.toUtf8().constData());
+    BrowserApplication::instance()->newMainWindow(xurl, options);
 }
 
 void Backend::setSetting(const QString& key, const QString& value)

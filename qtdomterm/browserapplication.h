@@ -102,7 +102,7 @@ public:
 #endif
 
 public slots:
-    BrowserMainWindow *newMainWindow(QSharedDataPointer<ProcessOptions> processOption);
+    BrowserMainWindow *newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOption);
     void quitBrowser();
     const QString stylesheetFilename() { return m_stylesheetFilename; }
     const QString stylesheetRules() { return m_stylesheetRules; }

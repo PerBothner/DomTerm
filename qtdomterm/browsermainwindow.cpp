@@ -87,15 +87,14 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
     return wrapper;
 }
 
-BrowserMainWindow::BrowserMainWindow(QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
+BrowserMainWindow::BrowserMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
     , m_webView(new WebView(processOptions, this))
-    , m_stop(0)
 {
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
     setupMenu();
-    m_webView->newPage(processOptions);
+    m_webView->newPage(url, processOptions);
 
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout;
@@ -184,12 +183,6 @@ void BrowserMainWindow::setupMenu()
     updateMenubarActionText(true);
     connect(m_viewMenubar, SIGNAL(triggered()), this, SLOT(slotViewMenubar()));
     viewMenu->addAction(m_viewMenubar);
-
-    m_stop = viewMenu->addAction(tr("&Stop"));
-    QList<QKeySequence> shortcuts;
-    shortcuts.append(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Period));
-    shortcuts.append(Qt::Key_Escape);
-    m_stop->setShortcuts(shortcuts);
 
     viewMenu->addAction(tr("Zoom &In"), this, SLOT(slotViewZoomIn()), QKeySequence(Qt::CTRL | Qt::Key_Plus));
     viewMenu->addAction(tr("Zoom &Out"), this, SLOT(slotViewZoomOut()), QKeySequence(Qt::CTRL | Qt::Key_Minus));
@@ -294,18 +287,12 @@ void BrowserMainWindow::slotAboutApplication()
 
 void BrowserMainWindow::slotFileNew()
 {
-    BrowserApplication::instance()->newMainWindow(webView()->m_processOptions);
-}
-
-void BrowserMainWindow::slotFileOpen()
-{
-    QString file = QFileDialog::getOpenFileName(this, tr("Open Web Resource"), QString(),
-            tr("Web Resources (*.html *.htm *.svg *.png *.gif *.svgz);;All files (*.*)"));
-
-    if (file.isEmpty())
-        return;
-
-    loadPage(file);
+    QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
+    QString url = options->url;
+    int h = url.indexOf('#');
+    url = (h < 0 ? url : url.left(h)) + "#qtwebengine";
+    fprintf(stderr, "slotFileNew url: %s\n", url.toUtf8().constData());
+    BrowserApplication::instance()->newMainWindow(url, options);
 }
 
 void BrowserMainWindow::closeEvent(QCloseEvent *event)

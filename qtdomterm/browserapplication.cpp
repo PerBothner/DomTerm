@@ -331,9 +331,9 @@ void BrowserApplication::openUrl(const QUrl &url)
     mainWindow()->loadPage(url.toString());
 }
 
-BrowserMainWindow *BrowserApplication::newMainWindow(QSharedDataPointer<ProcessOptions> processOptions)
+BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions)
 {
-    BrowserMainWindow *browser = new BrowserMainWindow(processOptions);
+    BrowserMainWindow *browser = new BrowserMainWindow(url, processOptions);
     m_mainWindows.prepend(browser);
     browser->show();
     return browser;
@@ -358,7 +358,7 @@ void BrowserApplication::newLocalSocketConnection()
     stream >> *processOptions;
     QString url = processOptions->url;
     if (!url.isEmpty()) {
-        newMainWindow(processOptions);
+      newMainWindow(url, processOptions);
         openUrl(url);
     }
     delete socket;
@@ -399,20 +399,12 @@ ProcessOptions::ProcessOptions()
 QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state)
 {
     stream << state.url;
-    stream << state.environment;
-    stream << state.workdir;
-    stream << state.program;
-    stream << state.arguments;
     stream << state.wsconnect;
     return stream;
 }
 QDataStream& operator>>(QDataStream& stream, ProcessOptions& state)
 {
     stream >> state.url;
-    stream >> state.environment;
-    stream >> state.workdir;
-    stream >> state.program;
-    stream >> state.arguments;
     stream >> state.wsconnect;
     return stream;
 }

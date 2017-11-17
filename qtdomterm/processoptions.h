@@ -12,11 +12,6 @@ class ProcessOptions : public QSharedData
      ProcessOptions();
      bool frontendOnly;
      QString url;
-     // Cannot use QProcessEnvironment because we need to serialize it.
-     QStringList environment;
-     QString workdir;
-     QString program;
-     QStringList arguments;
      QString wsconnect;
 
      bool should_connect() const { return ! wsconnect.isEmpty(); }
