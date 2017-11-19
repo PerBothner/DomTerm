@@ -11,8 +11,10 @@ JAVA_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVA)
 CLIENT_DATA_DIR = .
 #CLIENT_DATA_DIR = @datadir_relative@/domterm
 
+if WITH_JAVA
 if ENABLE_PTY
 LIBPTY = lib/libdomterm-pty@LIBEXT@
+endif
 endif
 if WITH_QTWEBENGINE
 QTDOMTERM = bin/qtdomterm
@@ -23,6 +25,11 @@ if WITH_JAVA
 DOMTERM_JAR = $(domterm_jar_dir)/domterm.jar
 if WITH_JAVA_WEBSOCKET
 WSDOMTERM_JAR = $(domterm_jar_dir)/wsdomterm.jar
+endif
+else
+if ENABLE_COMPILED_IN_RESOURCES
+else
+DOMTERM_JAR = $(domterm_jar_dir)/domterm.jar
 endif
 endif
 DT_CFLAGS =
@@ -168,7 +175,9 @@ endif
 endif
 
 classes.stamp: $(domterm_jar_sources)
+if WITH_JAVA
 	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
+endif
 	touch classes.stamp
 
 wsclasses.stamp: $(wsdomterm_jar_sources)
@@ -178,16 +187,23 @@ wsclasses.stamp: $(wsdomterm_jar_sources)
 MISC_COPY_TO_JAR = repl-client.html jfx-term.html \
   hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js hlib/qwebchannel.js
 
-PLAIN_COPY_TO_JAR =  $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
+if WITH_JAVA
+PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
   org/domterm/*.class org/domterm/javafx/*.class org/domterm/pty/*.class \
   org/domterm/util/*.class
+else
+PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css
+endif
 
 $(DOMTERM_JAR): classes.stamp hlib/domterm-all.js $(MISC_COPY_TO_JAR)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
-	cp xulapp/domterm.xul tmp-for-jar/
+if WITH_JAVA
 	cd tmp-for-jar && \
 	  jar cmf $(abs_top_srcdir)/domterm-jar-manifest ../$(DOMTERM_JAR) .
+else
+	cd tmp-for-jar && zip -r ../$(DOMTERM_JAR) .
+endif
 	rm -rf tmp-for-jar
 
 $(WSDOMTERM_JAR): wsclasses.stamp wsclasses.stamp

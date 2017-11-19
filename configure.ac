@@ -32,7 +32,7 @@ AC_ARG_WITH(qtwebengine,
   AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
 AC_ARG_ENABLE(pty,
-  AS_HELP_STRING(--enable-pty,Enable support for PTYs (default true except on Windows)))
+  AS_HELP_STRING(--enable-pty,Enable support for PTYs from Java))
 
 AC_ARG_ENABLE(ld-preload,
   AS_HELP_STRING(--enable-ld-preload,Make use of LD_PRELOAD to modify standard functions))
@@ -79,7 +79,7 @@ AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 
 AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
 
-AM_CONDITIONAL(WITH_JAVA, test "$with_java" != "no")
+AM_CONDITIONAL(WITH_JAVA, test "$with_java" == "yes")
 
 if test "$with_java" = "no" && test -z "${with_java_websocket}"
 then
@@ -114,12 +114,6 @@ case ${with_javafx} in
 esac
 AM_CONDITIONAL(WITH_JAVAFX, test "$with_javafx" != "" -a "$with_javafx" != "no")
 
-if test -z "$enable_pty"; then
-  if test "$CLASSPATH_SEPARATOR" = ";" || test "$with_java" = "no"
-  then enable_pty="no"
-  else enable_pty="yes"
-  fi
-fi
 AM_CONDITIONAL(ENABLE_PTY, test "$enable_pty" = "yes")
 
 if test "$with_java" != "no"
