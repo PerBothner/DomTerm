@@ -13,6 +13,8 @@ class ProcessOptions : public QSharedData
      bool frontendOnly;
      QString url;
      QString wsconnect;
+     int defaultWidth = -1;
+     int defaultHeight = -1;
 
      bool should_connect() const { return ! wsconnect.isEmpty(); }
 

@@ -90,6 +90,8 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
 BrowserMainWindow::BrowserMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
     , m_webView(new WebView(processOptions, this))
+    , m_width(-1)
+    , m_height(-1)
 {
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
@@ -122,6 +124,8 @@ void BrowserMainWindow::loadDefaultState()
 
 QSize BrowserMainWindow::sizeHint() const
 {
+    if (m_width > 0 || m_height > 0)
+        return QSize(m_width, m_height);
     QRect desktopRect = QApplication::desktop()->screenGeometry();
     QSize size = desktopRect.size() * qreal(0.9);
     return size;
@@ -136,8 +140,9 @@ void BrowserMainWindow::setupMenu()
     // File
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
 
-    QAction*newTerminalWindow = fileMenu->addAction(tr("&New Window"), this, SLOT(slotFileNew()),
-                                            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    QAction*newTerminalWindow = fileMenu->addAction(tr("&New Window"), this, SLOT(slotFileNew())
+                                                    );
+    //    ,                                            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
     newTerminalTab = fileMenu->addAction("New terminal tab",
                                          this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
     fileMenu->addAction(newTerminalTab);
@@ -291,7 +296,6 @@ void BrowserMainWindow::slotFileNew()
     QString url = options->url;
     int h = url.indexOf('#');
     url = (h < 0 ? url : url.left(h)) + "#qtwebengine";
-    fprintf(stderr, "slotFileNew url: %s\n", url.toUtf8().constData());
     BrowserApplication::instance()->newMainWindow(url, options);
 }
 

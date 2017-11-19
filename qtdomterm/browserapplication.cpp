@@ -81,11 +81,9 @@
 
 QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
 
-BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet,QSharedDataPointer<ProcessOptions> processOptions)
+BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer<ProcessOptions> processOptions)
     : QApplication(argc, argv)
-    , m_localServer(0)
     , m_privateProfile(0)
-    , sawStyleSheetCommandLineOption(false)
     , nextSessionNameIndex(1)
 {
     nameTemplate = QLatin1String("domterm-%1");
@@ -95,10 +93,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet,
     QString serverName = QCoreApplication::applicationName()
         + QString::fromLatin1(QT_VERSION_STR).remove('.') + QLatin1String("webengine");
 
-    if (styleSheet != NULL) {
-        m_stylesheetFilename = QString(styleSheet);
-        sawStyleSheetCommandLineOption = true;
-    }
     m_fileSystemWatcher = new QFileSystemWatcher(this);
 
     QLocalSocket socket;
@@ -115,16 +109,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv, char *styleSheet,
 #else
     QApplication::setQuitOnLastWindowClosed(true);
 #endif
-
-    m_localServer = new QLocalServer(this);
-    connect(m_localServer, SIGNAL(newConnection()),
-            this, SLOT(newLocalSocketConnection()));
-    if (!m_localServer->listen(serverName)
-            && m_localServer->serverError() == QAbstractSocket::AddressInUseError) {
-        QLocalServer::removeServer(serverName);
-        if (!m_localServer->listen(serverName))
-            qWarning("Could not create local socket %s.", qPrintable(serverName));
-    }
 
 #ifndef QT_NO_OPENSSL
     if (!QSslSocket::supportsSsl()) {
@@ -222,17 +206,6 @@ void BrowserApplication::loadSettings()
 
     defaultSettings->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
 
-    if (! sawStyleSheetCommandLineOption) {
-        m_stylesheetFilename = settings.value(QLatin1String("userStyleSheetFile")).toString();
-        m_stylesheetRules = settings.value(QLatin1String("userStyleSheetRules")).toString();
-        emit reloadStyleSheet();
-    }
-    if (! m_stylesheetFilename.isEmpty()) {
-        m_fileSystemWatcher->addPath(m_stylesheetFilename);
-        connect(m_fileSystemWatcher, &QFileSystemWatcher::fileChanged,
-                this, &BrowserApplication::reloadStylesheet);
-    }
-
     defaultProfile->setHttpUserAgent(settings.value(QLatin1String("httpUserAgent")).toString());
     defaultProfile->setHttpAcceptLanguage(settings.value(QLatin1String("httpAcceptLanguage")).toString());
 
@@ -271,26 +244,9 @@ void BrowserApplication::clean()
             m_mainWindows.removeAt(i);
 }
 
-bool BrowserApplication::isTheOnlyBrowser() const
-{
-    return (m_localServer != 0);
-}
-
 QString BrowserApplication::generateSessionName()
 {
     return nameTemplate.arg(nextSessionNameIndex++);
-}
-
-void BrowserApplication::reloadStylesheet()
-{
-    QString filename = stylesheetFilename();
-    if (! filename.isEmpty()) {
-        QFile file(filename);
-        if (file.open(QFile::ReadOnly | QFile::Text)) {
-            QTextStream text(&file);
-            setStyleSheet(text.readAll());
-        }
-    }
 }
 
 void BrowserApplication::installTranslator(const QString &name)
@@ -331,12 +287,22 @@ void BrowserApplication::openUrl(const QUrl &url)
     mainWindow()->loadPage(url.toString());
 }
 
-BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions)
+BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, QSharedDataPointer<ProcessOptions> processOptions)
 {
     BrowserMainWindow *browser = new BrowserMainWindow(url, processOptions);
+    if (width > 0 || height > 0)
+        browser->setSize(width, height);
     m_mainWindows.prepend(browser);
     browser->show();
     return browser;
+}
+
+BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions)
+{
+    return newMainWindow(url,
+                         processOptions->defaultWidth,
+                         processOptions->defaultHeight,
+                         processOptions);
 }
 
 BrowserMainWindow *BrowserApplication::mainWindow()
@@ -345,25 +311,6 @@ BrowserMainWindow *BrowserApplication::mainWindow()
     //if (m_mainWindows.isEmpty())
     //    newMainWindow();
     return m_mainWindows[0];
-}
-
-void BrowserApplication::newLocalSocketConnection()
-{
-    QLocalSocket *socket = m_localServer->nextPendingConnection();
-    if (!socket)
-        return;
-    socket->waitForReadyRead(1000);
-    QDataStream stream(socket);
-    QSharedDataPointer<ProcessOptions> processOptions(new ProcessOptions());
-    stream >> *processOptions;
-    QString url = processOptions->url;
-    if (!url.isEmpty()) {
-      newMainWindow(url, processOptions);
-        openUrl(url);
-    }
-    delete socket;
-    mainWindow()->raise();
-    mainWindow()->activateWindow();
 }
 
 QNetworkAccessManager *BrowserApplication::networkAccessManager()
@@ -400,12 +347,16 @@ QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state)
 {
     stream << state.url;
     stream << state.wsconnect;
+    stream << state.defaultWidth;
+    stream << state.defaultHeight;
     return stream;
 }
 QDataStream& operator>>(QDataStream& stream, ProcessOptions& state)
 {
     stream >> state.url;
     stream >> state.wsconnect;
+    stream >> state.defaultWidth;
+    stream >> state.defaultHeight;
     return stream;
 }
 

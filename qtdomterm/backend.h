@@ -25,7 +25,6 @@ public:
     void requestHtmlData();
     void requestChangeCaret(bool);
     void loadSessionName();
-    void loadStylesheet(const QString& stylesheet, const QString& name);
 
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
@@ -59,7 +58,6 @@ public slots:
     void openNewWindow(int width, int height, const QString& url);
     void setSetting(const QString& key, const QString& value);
     void inputModeChanged(int mode);
-    void reloadStylesheet();
     void log(const QString& message);
 
     void close();
@@ -86,7 +84,6 @@ private:
     QString        _userTitle;
 
     QString        _domtermVersion;
-    bool           _stylesheetLoaded;
     QString        _savedHtml;
 };
 

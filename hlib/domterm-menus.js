@@ -94,7 +94,7 @@ DomTerm.createElectronMenus = function() {
     const newWindowItem = new MenuItem({label: 'New terminal window',
                                       accelerator: 'Ctrl+Shift+N',
                                       click: function() {
-                                          DomTerm.openNewWindow(DomTerm.focusedTerm, 0, 0, null);
+                                          DomTerm.openNewWindow(DomTerm.focusedTerm);
                                       }});
     const newTabItem = new MenuItem({label: 'New terminal tab',
                                       accelerator: 'Ctrl+Shift+T',

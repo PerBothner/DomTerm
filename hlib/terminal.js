@@ -4102,6 +4102,8 @@ DomTerm.prototype._asBoolean = function(value) {
 
 DomTerm._settingsCounter = -1;
 DomTerm.settingsHook = null;
+DomTerm.defaultWidth = -1;
+DomTerm.defaultHeight = -1;
 
 DomTerm.prototype.setSettings = function(obj) {
     var settingsCounter = obj["##"];
@@ -4120,6 +4122,20 @@ DomTerm.prototype.setSettings = function(obj) {
         this.loadStyleSheet("user", "");
         this._userStyleSet = false;
     }
+    var geom = obj["window.geometry"];
+    if (geom) {
+        try {
+            var m = geom.match(/^([0-9]+)x([0-9]+)$/);
+            if (m) {
+                DomTerm.defaultWidth = Number(m[1]);
+                DomTerm.defaultHeight = Number(m[2]);
+            }
+        } catch (e) { }
+    } else {
+        DomTerm.defaultWidth = -1;
+        DomTerm.defaultHeight = -1;
+    }
+
     if (DomTerm.settingsHook) {
         var style_qt = obj["style.qt"];
         DomTerm.settingsHook("style.qt", style_qt ? style_qt : "");
@@ -6744,7 +6760,8 @@ DomTerm.prototype._adjustPauseLimit = function(node) {
         this._pauseLimit = limit;
 }
 
-DomTerm.openNewWindow = function(dt, width, height, parameter) {
+DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth,
+                                 height=DomTerm.defaultHeight, parameter=null) {
     // It would be preferable to create a new BrowserWindow in the same
     // Electron application. It would presumably be faster and use less memory.
     // (Potentially we could transfer saved data directly to the new window,
@@ -6825,14 +6842,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             return;
         case 78: // Control-Shift-N
-            DomTerm.openNewWindow(this, 0, 0, null);
+            DomTerm.openNewWindow(this);
             event.preventDefault();
-            /*
-            if (DomTerm.layoutAddSibling) {
-                DomTerm.layoutAddSibling(this);
-                return;
-            }
-            */
             return;
        case 80: // Control-Shift-P
             if (this._currentlyPagingOrPaused()) {

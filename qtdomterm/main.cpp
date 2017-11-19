@@ -58,7 +58,8 @@
 
 const char* const short_options = "+vhw:e:c:S:";
 
-#define QT_OPTION 999
+#define QT_OPTION 1000
+#define GEOMETRY_OPTION 1001
 
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
@@ -67,7 +68,7 @@ const struct option long_options[] = {
     // The following option is handled internally in QtWebEngine.
     // We just need to pass it through without complaint to the QApplication.
     {"remote-debugging-port", 1, NULL, QT_OPTION},
-    {"geometry", 1, NULL, QT_OPTION},
+    {"geometry", 1, NULL, GEOMETRY_OPTION},
     {NULL,      0, NULL,  0}
 };
 
@@ -107,6 +108,11 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
             case 'v':
                 print_version_and_exit();
                 break;
+            case GEOMETRY_OPTION:
+                sscanf(optarg, "%dx%d",
+                       &processOptions->defaultWidth,
+                       &processOptions->defaultHeight);
+                break;
             case QT_OPTION:
                 break;
         }
@@ -143,29 +149,12 @@ int main(int argc, char **argv)
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
-    // The QApplication constructor recognizes and removes a --stylesheet
-    // option, before parseArgs can see it.  So we pre-extract it.
-    char *styleSheet = NULL;
     parseArgs(argc, argv, processOptions);
-    for (;;) {
-        if (optind < argc && strcmp(argv[optind], "-stylesheet") == 0)
-          argv[optind] = (char*) "--stylesheet";
-        int next_option =
-            getopt_long(argc, argv, short_options, long_options, NULL);
-        if (next_option < 0)
-            break;
-        if (next_option == 'S') {
-            styleSheet = optarg;
-            // Let QApplication see a stylesheet specified with -S.
-            if (strcmp(argv[optind-2], "-S") == 0)
-                argv[optind-2] = (char*) "--stylesheet";
-        }
-    }
     optind = 1;
 
-    BrowserApplication application(argc, argv, styleSheet, processOptionsPtr);
-    if (!application.isTheOnlyBrowser())
-        return 0;
+    BrowserApplication application(argc, argv, processOptionsPtr);
+    //if (!application.isTheOnlyBrowser())
+    // return 0;
 
     application.newMainWindow(processOptionsPtr->url, processOptionsPtr);
     return application.exec();

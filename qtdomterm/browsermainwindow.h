@@ -75,6 +75,7 @@ public:
     BrowserMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent = 0, Qt::WindowFlags flags = 0);
     ~BrowserMainWindow();
     QSize sizeHint() const;
+    void setSize(int width, int height) { m_width = width; m_height = height; }
 
 public:
     WebView *webView() const { return currentTab(); }
@@ -130,6 +131,7 @@ private:
 
 private:
     WebView *m_webView;
+    int m_width, m_height;
 
     QAction *m_viewMenubar;
 

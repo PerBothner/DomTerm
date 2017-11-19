@@ -61,7 +61,6 @@
 #include <QtNetwork/QAuthenticator>
 
 QT_BEGIN_NAMESPACE
-class QLocalServer;
 class QNetworkAccessManager;
 class QWebEngineProfile;
 class QFileSystemWatcher;
@@ -79,13 +78,13 @@ class BrowserApplication : public QApplication
     Q_OBJECT
 
 public:
-    BrowserApplication(int &argc, char **argv, char *styleSheet,
+    BrowserApplication(int &argc, char **argv,
                        QSharedDataPointer<ProcessOptions> processOptions);
     ~BrowserApplication();
     static BrowserApplication *instance();
     void loadSettings();
 
-    bool isTheOnlyBrowser() const;
+    //bool isTheOnlyBrowser() const;
     BrowserMainWindow *mainWindow();
     QList<BrowserMainWindow*> mainWindows();
     QIcon icon(const QUrl &url) const;
@@ -102,19 +101,13 @@ public:
 #endif
 
 public slots:
+  BrowserMainWindow *newMainWindow(const QString& url, int width, int height,
+                                   QSharedDataPointer<ProcessOptions> processOption);
     BrowserMainWindow *newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOption);
     void quitBrowser();
-    const QString stylesheetFilename() { return m_stylesheetFilename; }
-    const QString stylesheetRules() { return m_stylesheetRules; }
-    void reloadStylesheet();
-
-signals:
-    void reloadStyleSheet();
-
 private slots:
     void postLaunch();
     void openUrl(const QUrl &url);
-    void newLocalSocketConnection();
 
 private:
     void clean();
@@ -122,16 +115,12 @@ private:
     static QNetworkAccessManager *s_networkAccessManager;
 
     QList<QPointer<BrowserMainWindow> > m_mainWindows;
-    QLocalServer *m_localServer;
     QWebEngineProfile *m_privateProfile;
     mutable QIcon m_defaultIcon;
 
     QAuthenticator m_lastAuthenticator;
     QAuthenticator m_lastProxyAuthenticator;
-    QString m_stylesheetFilename;
-    QString m_stylesheetRules;
     QFileSystemWatcher *m_fileSystemWatcher;
-    bool sawStyleSheetCommandLineOption;
     QString nameTemplate;
     int nextSessionNameIndex;
 };

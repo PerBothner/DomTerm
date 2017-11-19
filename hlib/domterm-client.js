@@ -31,7 +31,6 @@ function connect(name, wspath, wsprotocol, topNode=null) {
     }
     if (topNode == null)
         topNode = document.getElementById(name);
-    //console.log("connect1 new DomTerm "+name+" wspath:"+wspath+" pr:"+wsprotocol+" topN:"+topNode);
     var wt = new DomTerm(name);
     var wsocket = new WebSocket(wspath, wsprotocol);
     wt.closeConnection = function() { wsocket.close(); };
@@ -175,7 +174,7 @@ function setupQWebChannel(channel) {
     });
     DomTerm.windowClose = function() { backend.closeMainWindow(); };
     DomTerm.setTitle = function(title) { backend.setWindowTitle(title); };
-    DomTerm.openNewWindow = function(dt, width, height, parameter) {
+    DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth, height=DomTerm.defaultHeight, parameter=null) {
         let url = location.href;
         let hash = url.indexOf('#');
         if (hash >= 0)

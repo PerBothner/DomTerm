@@ -147,35 +147,6 @@ void Backend::loadSessionName()
 {
     emit writeOperatingSystemControl(30, _nameTitle);
 }
-
-void Backend::loadStylesheet(const QString& stylesheet, const QString& name)
-{
-    emit writeOperatingSystemControl(96,
-            toJsonQuoted(name)+","+toJsonQuoted(stylesheet));
-}
-
-void Backend::reloadStylesheet()
-{
-    QString name = QString::fromLatin1("preferences");
-    QString stylesheetFilename =
-        BrowserApplication::instance()->stylesheetFilename();
-    QString stylesheetExtraRules =
-        BrowserApplication::instance()->stylesheetRules();
-    QString contents;
-    if (! stylesheetFilename.isEmpty()) {
-        QFile file(stylesheetFilename);
-        if (file.open(QFile::ReadOnly | QFile::Text)) {
-            QTextStream text(&file);
-            contents = text.readAll();
-        }
-    }
-    contents += stylesheetExtraRules;
-    if (! contents.isEmpty() || _stylesheetLoaded) {
-        loadStylesheet(contents, name);
-    }
-    _stylesheetLoaded = ! contents.isEmpty();
-}
-
 void Backend::setUserTitle(int /*what*/, const QString & /*caption*/)
 {
 #if 0
@@ -272,12 +243,11 @@ void Backend::closeMainWindow()
     webView()->webPage()->mainWindow()->close();
 }
 
-void Backend::openNewWindow(int /*width*/, int /*height*/, const QString& url)
+void Backend::openNewWindow(int width, int height, const QString& url)
 {
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     QString xurl = url + (url.indexOf('#') < 0 ? "#" : "&") + "qtwebengine";
-    //fprintf(stderr, "openNewWindow url: '%s'\n", xurl.toUtf8().constData());
-    BrowserApplication::instance()->newMainWindow(xurl, options);
+    BrowserApplication::instance()->newMainWindow(xurl, width, height, options);
 }
 
 void Backend::setSetting(const QString& key, const QString& value)
