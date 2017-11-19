@@ -250,6 +250,33 @@ To download the sources do:
 git clone https://github.com/PerBothner/DomTerm
 @end example
 
+@subheading Prerequisites
+
+(Please help out with instructions for other platforms, especially
+Debian/Ubuntu, MacOS, *BSD, and Windows 10.)
+
+@c for libmagic: libmagic-dev (Debian/Ubuntu)
+
+@subsubheading Fedora
+
+On Fedora, you need to first:
+@example
+sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel libcap-devel
+@end example
+If configuring @code{--with-qtwebengine} (recommended), also do:
+@example
+sudo dnf install gcc-c++ qt5-qtbase-devel qt5-qtwebengine-devel qt5-qtwebchannel-devel
+@end example
+If configuring with @code{--enable-compiled-in-resources} (for @code{xxd} - only needed at build time):
+@example
+sudo dnf install vim-common
+@end example
+For Java classes, do:
+@example
+sudo dnf install java-1.8.0-openjdk-devel
+@end example
+(You can also use Oracle JDK, version 8 or 9.)
+
 @subheading Building from source
 
 The core part of DomTerm is the JavaScript code @code{terminal.js},
@@ -265,7 +292,7 @@ with the Electron front-end.
 Another good application is @code{qtdomterm}.
 It uses the C++-based @uref{https://www.qt.io/,Qt toolkit}
 including @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}.
-Needed packages are included with Fedora 24.
+Needed packages are included with Fedora 27.
 (Reports of attempt to build or use qtdomterm on other platforms
 would be welcome.)
 
@@ -295,12 +322,6 @@ and @code{@var{lws-build}/include/libwebsockets.h} should exist.)
 
 Libwebsockets version 2.2 or newer is required,
 as older versions do not support flow control or paging.
-
-On Fedora, you need to first:
-@example
-sudo dnf install libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel
-@end example
-@c for libmagic: libmagic-dev (Debian/Ubuntu)
 
 This is the recommended ``backend'' and the default.
 @item --with-java_websocket
