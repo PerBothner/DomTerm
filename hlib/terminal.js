@@ -4261,6 +4261,9 @@ DomTerm.HTMLinfo = {
     "defs": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "desc": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "div": DomTerm._ELEMENT_KIND_ALLOW,
+    "dd": DomTerm._ELEMENT_KIND_ALLOW,
+    "dl": DomTerm._ELEMENT_KIND_ALLOW,
+    "dt": DomTerm._ELEMENT_KIND_ALLOW,
     "ellipse": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "em": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "embed": 0x14,
@@ -4316,6 +4319,7 @@ DomTerm.HTMLinfo = {
     "img": 0x17, // need to check "src" for "javascript:"
     "input": 0x15,
     //"isindex": 0x10, //metadata
+    "kbd": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "keygen": 0x15,
     "line": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "linearGradient": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
