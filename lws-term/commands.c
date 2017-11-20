@@ -19,22 +19,27 @@ int html_action(int argc, char** argv, const char*cwd,
                       struct options *opts)
 {
     check_domterm(opts);
-    int i = optind + 1;
+    int i = 1;
     if (i == argc) {
+        FILE *tout = fdopen(get_tty_out(), "w");
         char buffer[1024];
-        fprintf(stdout, "\033]72;");
+        fprintf(tout, "\033]72;");
         for (;;) {
             int r = fread(buffer, 1, sizeof(buffer), stdin);
-            if (r <= 0 || fwrite(buffer, 1, r, stdout) <= 0)
+            if (r <= 0 || fwrite(buffer, 1, r, tout) <= 0)
                 break;
         }
-        fprintf(stdout, "\007");
+        fprintf(tout, "\007");
+        fflush(tout);
     } else {
         while (i < argc)  {
-            fprintf(stdout, "\033]72;%s\007", argv[i++]);
+            char *arg = argv[i++];
+            char *response  = xmalloc(strlen(arg)+40);
+            sprintf(response, "\033]72;%s\007", arg);
+            write(get_tty_out(), response, strlen(response));
+            free(response);
         }
     }
-    fflush(stderr);
     return EXIT_SUCCESS;
 }
 
@@ -102,7 +107,6 @@ int imgcat_action(int argc, char** argv, const char*cwd,
             magic_load(magic, NULL);
             magic_compile(magic, NULL);
             mime = magic_buffer(magic, img, len);
-            magic_close(magic);
 #else
             mime = get_mimetype(arg);
 #endif
@@ -117,12 +121,15 @@ int imgcat_action(int argc, char** argv, const char*cwd,
                 overflow = "auto";
             char *b64 = base64_encode(img, len);
             munmap(img, len);
-            char *response = xmalloc(40+strlen(mime)+strlen(b64)
+            char *response = xmalloc(100+strlen(mime)+strlen(b64)
                                      + strlen(abuf));
-            sprintf(response,
+            int n = sprintf(response,
                     n_arg ? "\033]72;%s<img%s src='data:%s;base64,%s'/>\007"
                     : "\033]72;<div style='overflow-x: %s'><img%s src='data:%s;base64,%s'/></div>\007",
                     overflow, abuf, mime, b64);
+#if HAVE_LIBMAGIC
+            magic_close(magic);
+#endif
             free(abuf);
             free(b64);
             write(get_tty_out(), response, strlen(response));
@@ -379,6 +386,8 @@ struct command commands[] = {
   { .name ="html",
     .options = COMMAND_IN_CLIENT,
     .action = html_action },
+  { .name ="hcat",
+    .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
   { .name ="imgcat",
     .options = COMMAND_IN_CLIENT,
     .action = imgcat_action },
@@ -405,8 +414,6 @@ struct command commands[] = {
   { .name ="fresh-line",
     .options = COMMAND_IN_CLIENT,
     .action = freshline_action },
-  { .name ="hcat",
-    .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
   { .name = "attach", .options = COMMAND_IN_SERVER,
     .action = attach_action},
   { .name = "browse", .options = COMMAND_IN_SERVER,
