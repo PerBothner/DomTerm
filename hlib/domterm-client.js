@@ -162,6 +162,11 @@ function setupQWebChannel(channel) {
     DomTerm.inputModeChanged = function(term, mode) {
         backend.inputModeChanged(mode);
     }
+    backend.writeOperatingSystemControl.connect(function(code, text) {
+        var dt = DomTerm.focusedTerm;
+        if (dt)
+            dt.handleOperatingSystemControl(code, text);
+    });
     backend.writeInputMode.connect(function(mode) {
         var dt = DomTerm.focusedTerm;
         if (dt)
@@ -174,6 +179,7 @@ function setupQWebChannel(channel) {
     });
     DomTerm.windowClose = function() { backend.closeMainWindow(); };
     DomTerm.setTitle = function(title) { backend.setWindowTitle(title); };
+    DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
     DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth, height=DomTerm.defaultHeight, parameter=null) {
         let url = location.href;
         let hash = url.indexOf('#');

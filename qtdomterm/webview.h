@@ -114,6 +114,7 @@ public:
 
     inline int progress() const { return m_progress; }
 public slots:
+    QString generateSaveFileName();
     void requestSaveAs();
     void requestChangeCaret(bool);
     void changeInputMode(QAction*);

@@ -413,7 +413,7 @@ DomTerm.prototype._saveWindowContents = function() {
     if (this.usingAlternateScreenBuffer)
         data += ', "alternateBuffer":'+this.usingAlternateScreenBuffer;
     data += ', "html":'
-        + JSON.stringify(this.getAsHTML(false, true))
+        + JSON.stringify(this.getAsHTML(false))
         +'}';
     this.reportEvent("WINDOW-CONTENTS", data);
     this._removeInputLine();
@@ -4768,7 +4768,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this.measureWindow();
         break;
     case 102:
-        this.reportEvent("GET-HTML", JSON.stringify(this.getAsHTML(true)));
+        DomTerm.sendSavedHtml(this, this.getAsHTML(true));
         break;
     case 103:
         var data = JSON.parse(text);
@@ -4963,9 +4963,26 @@ DomTerm._homeLineOffset = function(dt) {
     return home_offset;
 }
 
-DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
-    var string = bodyOnly ? "" : "<!DOCTYPE html>\n";
+DomTerm.prototype.getAsHTML = function(saveMode=false) {
+    var string = "";
     var dt = this;
+
+    var titleInfo = "";
+    if (saveMode) {
+        titleInfo = dt.sstate.windowTitle;
+        titleInfo += " saved by DomTerm "+ DomTerm.versionString + " on ";
+        var now = new Date();
+        titleInfo += now.getFullYear();
+        var month = now.getMonth() + 1;
+        titleInfo += (month < 10 ? "-0" : "-") + month;
+        var date = now.getDate();
+        titleInfo += (date < 10 ? "-0" : "-") + date;
+        var hours = now.getHours();
+        titleInfo += (hours < 10 ? " 0" : " ") + hours;
+        var minutes = now.getMinutes();
+        titleInfo += (minutes < 10 ? ":0" : ":") + minutes;
+        string += "<!-- "+titleInfo + "-->\n";
+    }
 
     var home_offset = DomTerm._homeLineOffset(dt);
     var home_node = dt.lineStarts[dt.homeLine - home_offset];
@@ -5055,22 +5072,6 @@ DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
             } else {
                 string += '>';
                 formatList(node.childNodes);
-                if (saveMode
-                    && tagName == "title"
-                    && node.parentNode instanceof Element
-                    && node.parentNode.tagName.toLowerCase() == "head") {
-                    string += " saved ";
-                    var now = new Date();
-                    string += now.getFullYear();
-                    var month = now.getMonth() + 1;
-                    string += (month < 10 ? "-0" : "-") + month;
-                    var date = now.getDate();
-                    string += (date < 10 ? "-0" : "-") + date;
-                    var hours = now.getHours();
-                    string += (hours < 10 ? " 0" : " ") + hours;
-                    var minutes = now.getMinutes();
-                    string += (minutes < 10 ? ":0" : ":") + minutes;
-                }
                 string += '<\/' + tagName + '>';
             }
             if (tagName == 'div' || tagName == 'p' || tagName == 'body'
@@ -5095,14 +5096,15 @@ DomTerm.prototype.getAsHTML = function(saveMode=false, bodyOnly = false) {
         };
     };
 
-    if (bodyOnly) {
+    if (saveMode)
+        formatDOM(dt.topNode);
+    else {
         var list = this.topNode.childNodes;
         for (let i = 0; i < list.length; i++) {
             var el = list[i];
             formatDOM(el); // , namespaces
         }
-    } else
-        formatDOM(document.documentElement);
+    }
     return string;
 };
 
@@ -6762,6 +6764,10 @@ DomTerm.prototype._adjustPauseLimit = function(node) {
     var limit = node.offsetTop + this.availHeight;
     if (limit > this._pauseLimit)
         this._pauseLimit = limit;
+}
+
+DomTerm.sendSavedHtml = function(dt, html) {
+    dt.reportEvent("GET-HTML", JSON.stringify(html));
 }
 
 DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth,

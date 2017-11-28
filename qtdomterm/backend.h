@@ -54,6 +54,7 @@ signals:
     void writeOperatingSystemControl(int code, const QString& text);
 public slots:
     void setWindowTitle(const QString& title);
+    void setSavedHtml(const QString &info) { _savedHtml = info; }
     void closeMainWindow();
     void openNewWindow(int width, int height, const QString& url);
     void setSetting(const QString& key, const QString& value);

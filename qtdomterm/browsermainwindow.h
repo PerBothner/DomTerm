@@ -61,6 +61,7 @@ QT_END_NAMESPACE
 
 class WebView;
 class ProcessOptions;
+class BrowserApplication;
 
 
 /*!
@@ -72,7 +73,7 @@ class BrowserMainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    BrowserMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent = 0, Qt::WindowFlags flags = 0);
+    BrowserMainWindow(BrowserApplication*application, const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent = 0, Qt::WindowFlags flags = 0);
     ~BrowserMainWindow();
     QSize sizeHint() const;
     void setSize(int width, int height) { m_width = width; m_height = height; }
@@ -80,6 +81,7 @@ public:
 public:
     WebView *webView() const { return currentTab(); }
     WebView *currentTab() const;
+    BrowserApplication* application() { return m_application; }
 
 public slots:
     void loadPage(const QString &url);
@@ -130,6 +132,7 @@ private:
     void handleFindTextResult(bool found);
 
 private:
+    BrowserApplication *m_application;
     WebView *m_webView;
     int m_width, m_height;
 

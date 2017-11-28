@@ -85,6 +85,7 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
     : QApplication(argc, argv)
     , m_privateProfile(0)
     , nextSessionNameIndex(1)
+    , saveFileCounter(0)
 {
     nameTemplate = QLatin1String("domterm-%1");
     QCoreApplication::setOrganizationName(QLatin1String("DomTerm"));
@@ -289,7 +290,8 @@ void BrowserApplication::openUrl(const QUrl &url)
 
 BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, QSharedDataPointer<ProcessOptions> processOptions)
 {
-    BrowserMainWindow *browser = new BrowserMainWindow(url, processOptions);
+    BrowserMainWindow *browser =
+        new BrowserMainWindow(this, url, processOptions);
     if (width > 0 || height > 0)
         browser->setSize(width, height);
     m_mainWindows.prepend(browser);

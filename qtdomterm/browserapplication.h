@@ -92,6 +92,7 @@ public:
     QFileSystemWatcher* fileSystemWatcher() { return m_fileSystemWatcher; }
 
     QString generateSessionName();
+    int getSaveFileCount() { return ++saveFileCounter; }
 
     static CookieJar *cookieJar();
     static QNetworkAccessManager *networkAccessManager();
@@ -123,6 +124,7 @@ private:
     QFileSystemWatcher *m_fileSystemWatcher;
     QString nameTemplate;
     int nextSessionNameIndex;
+    int saveFileCounter;
 };
 
 #endif // BROWSERAPPLICATION_H

@@ -356,12 +356,20 @@ void WebView::inputModeChanged(char mode)
     }
 }
 
+QString WebView::generateSaveFileName()
+{
+    //return backend->sessionName() + ".html";
+    char buf[100];
+    sprintf(buf, "domterm%d.html", webPage()->mainWindow()->application()->getSaveFileCount());
+    return QString(buf);
+}
+
 void WebView::requestSaveAs()
 {
     //QWebEngineDownloadItem::SavePageFormat format = QWebEngineDownloadItem::SingleHtmlSaveFormat;
     Backend* backend = this->backend();
     backend->requestHtmlData();
-    QString filePath = backend->sessionName() + ".html";
+    QString filePath = generateSaveFileName();
     SavePageDialog dlg(this, /*format,*/ filePath);
     if (dlg.exec() != SavePageDialog::Accepted)
         return;

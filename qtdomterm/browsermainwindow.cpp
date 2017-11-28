@@ -87,8 +87,10 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
     return wrapper;
 }
 
-BrowserMainWindow::BrowserMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
+BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
+                                     const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
+    , m_application(application)
     , m_webView(new WebView(processOptions, this))
     , m_width(-1)
     , m_height(-1)
@@ -150,8 +152,8 @@ void BrowserMainWindow::setupMenu()
     fileMenu->addSeparator();
     fileMenu->addAction(m_tabWidget->closeTabAction());
     fileMenu->addSeparator();
-    fileMenu->addAction(webView()->saveAsAction());
 #endif
+    fileMenu->addAction(webView()->saveAsAction());
     fileMenu->addSeparator();
 
 #if defined(Q_OS_OSX)
