@@ -1,12 +1,9 @@
+#include "version.h"
 #include "server.h"
+
 #include <sys/file.h>
 #include <sys/un.h>
-
-#if 1
-#include "version.h"
-#else
-#define LDOMTERM_VERSION "1.2.2"
-#endif
+extern char **environ;
 
 #ifndef DEFAULT_ARGV
 #define DEFAULT_ARGV {"/bin/bash", NULL }
@@ -311,7 +308,7 @@ firefox_browser_command()
 char *
 firefox_xul_application()
 {
-    return get_bin_relative_path("/share/domterm/application.ini");
+    return get_bin_relative_path(DOMTERM_DIR_RELATIVE "/application.ini");
 }
 
 char *
@@ -372,7 +369,7 @@ char *
 electron_command(int quiet, struct options *options)
 {
     char *epath = find_in_path("electron");
-    char *app = get_bin_relative_path("/share/domterm/electron");
+    char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *format = "%s %s%s%s --url '%U'&";
     if (epath == NULL) {
         if (quiet)
@@ -462,7 +459,7 @@ do_run_browser(struct options *options, char *url, int port)
 char *
 get_domterm_jar_path()
 {
-    return get_bin_relative_path("/share/domterm/domterm.jar");
+    return get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm.jar");
 }
 
 const char*

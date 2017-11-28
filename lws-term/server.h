@@ -258,3 +258,10 @@ extern int new_action(int, char**, const char*, char **,
                       struct lws *, int, struct options *);
 extern char*find_in_path();
 extern void print_help(FILE*);
+
+#ifndef DOMTERM_DIR_RELATIVE
+/* Data directory, relative to binary's parent directory.
+   I.e. relative to $bindir/.. which is usually the same as $prefix,
+   using autotools terminology. */
+#define DOMTERM_DIR_RELATIVE "/share/domterm"
+#endif

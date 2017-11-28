@@ -19,7 +19,7 @@ if ENABLE_LD_PRELOAD
 ldomterm_CFLAGS += -DENABLE_LD_PRELOAD
 endif
 ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) $(OPENSSL_LIBS) $(JSON_C_LIBS) $(LIBCAP_LIBS) -lpthread -lutil -lz $(LIBMAGIC_LIBS)
-#CLIENT_DATA_DIR = @datadir_relative@/domterm
+#CLIENT_DATA_DIR = @DOMTERM_DIR_RELATIVE@
 CLIENT_DATA_DIR = .
 LWS_RESOURCES = hlib/domterm-all.js hlib/domterm-client.js \
   hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js \

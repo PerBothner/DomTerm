@@ -140,9 +140,12 @@ dnl decl comparing datadir to bindir or prefix.
 dnl If datadir and prefix set, remove prefix from datadir.
 dnl If bindir is set, use bindir without last component instead of prefix.
 dnl Otherwise default to "share"
-datadir_relative="share"
+DOMTERM_DIR_RELATIVE="/share/domterm"
 
-AC_SUBST(datadir_relative)
+AC_SUBST(DOMTERM_DIR_RELATIVE)
+
+bindir_parent=`echo "$bindir" | sed -e 's|[^/]*/bin||'`
+echo bindir: $bindir_parent: $bindir_parent dd: $datadir
 
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
