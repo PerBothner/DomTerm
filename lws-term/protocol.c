@@ -868,6 +868,12 @@ int new_action(int argc, char** argv, const char*cwd,
                   struct options *opts)
 {
     int skip = argc == 0 || index(argv[0], '/') != NULL ? 0 : 1;
+    if (skip == 1) {
+        optind = 1;
+        if (process_options(argc, argv, opts) < 0)
+          return EXIT_FAILURE;
+        skip = optind;
+    }
     char**args = copy_argv(argc-skip, (char**)(argv+skip));
     char *argv0 = args[0];
     if (index(argv0, '/') != NULL ? access(argv0, X_OK) != 0
@@ -886,7 +892,14 @@ int attach_action(int argc, char** argv, const char*cwd,
                   char **env, struct lws *wsi, int replyfd,
                   struct options *opts)
 {
-    char *session_specifier = argv[1];
+    optind = 1;
+    int r = process_options(argc, argv, opts);
+    if (optind >= argc) {
+        char *msg = "domterm attach: missing session specifier\n";
+        write(replyfd, msg, strlen(msg));
+        return EXIT_FAILURE;
+    }
+    char *session_specifier = argv[optind];
     struct pty_client *pclient = find_session(session_specifier);
     if (pclient == NULL) {
         FILE *out = fdopen(replyfd, "w");
