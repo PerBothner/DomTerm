@@ -14,6 +14,7 @@ LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.c utils.c protocol.c http.c whereami.c \
   commands.c help.c junzip.c settings.c
+nodist_ldomterm_SOURCES = git-describe.c
 ldomterm_CFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@
 if ENABLE_LD_PRELOAD
 ldomterm_CFLAGS += -DENABLE_LD_PRELOAD
@@ -26,13 +27,13 @@ LWS_RESOURCES = hlib/domterm-all.js hlib/domterm-client.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css \
   hlib/goldenlayout-base.css hlib/domterm-layout.css
 if ENABLE_COMPILED_IN_RESOURCES
-ldomterm_SOURCES += resources.c
+nodist_ldomterm_SOURCES += resources.c
 ldomterm_CFLAGS += -DCOMPILED_IN_RESOURCES
 else
 ldomterm_CFLAGS += -DRESOURCE_DIR='"../share/domterm"'
 endif
 XXD = xxd
-CLEANFILES = resources.c
+CLEANFILES = resources.c git-describe.c
 
 resources.c: ../client-data-links.stamp
 	echo '#include "server.h"' >tmp-resources.c
@@ -49,3 +50,8 @@ resources.c: ../client-data-links.stamp
 	echo '    { NULL, NULL, 0}' >>tmp-resources.c; \
 	echo '};' >>tmp-resources.c; \
 	mv tmp-resources.c resources.c
+
+git-describe.c:
+	test -d $(top_srcdir)/.git \
+	&& GIT_REVISION=`cd $(top_srcdir) && git describe --always --dirty --long --tags 2>/dev/null`; \
+	echo 'char git_describe[] = "'$${GIT_REVISION}'";' > $@

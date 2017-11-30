@@ -52,6 +52,7 @@ extern int last_session_number;
 extern const char *(default_argv[]);
 extern struct options *main_options;
 extern const char *settings_as_json;
+extern char git_describe[];
 
 struct pty_data {
     char *data;

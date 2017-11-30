@@ -41,6 +41,7 @@ bin/qtdomterm
 lws-term/ldomterm
 lws-term/resources.c
 lws-term/version.h
+lws-term/git-describe.h
 lws-term/tmp-resources
 qtdomterm/dt_version.h
 qtdomterm/moc_*.cpp

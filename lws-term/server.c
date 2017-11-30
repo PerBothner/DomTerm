@@ -523,7 +523,12 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->something_done = true;
                 break;
             case 'v':
-                printf("domterm version %s\n", LDOMTERM_VERSION);
+                if (git_describe[0])
+                    printf("domterm version %s (git describe: %s)\n",
+                           LDOMTERM_VERSION, git_describe);
+                else
+                    printf("domterm version %s\n",
+                           LDOMTERM_VERSION);
                 printf("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
                 opts->something_done = true;
                 break;
