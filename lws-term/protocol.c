@@ -437,7 +437,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->version_info = version_info;
         if (pclient == NULL) {
           // FIXME should use same argv as invoking window
-          pclient = run_command(server->argv, ".", environ, -1);
+          pclient = run_command(default_argv, ".", environ, -1);
         }
         if (client->pclient == NULL)
             link_command(wsi, client, pclient);
@@ -594,13 +594,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             client->connection_number = ++server->connection_count;
           {
             char arg[100]; // FIXME
-            const char*server_key_arg = lws_get_urlarg_by_name(wsi, "server-key=", arg, sizeof(arg) - 1);
-            if (server_key_arg == NULL ||
-                memcmp(server_key_arg, server_key, SERVER_KEY_LENGTH) != 0) {
-              lwsl_notice("missing or non-matching server-key!\n");
-              lws_return_http_status(wsi, HTTP_STATUS_UNAUTHORIZED, NULL);
-              return -1;
-            }
+            if (! check_server_key(wsi, arg, sizeof(arg) - 1))
+                return -1;
             const char*connect_pid = lws_get_urlarg_by_name(wsi, "connect-pid=", arg, sizeof(arg) - 1);
             int cpid;
             if (connect_pid != NULL
@@ -843,19 +838,21 @@ display_session(struct options *options, struct pty_client *pclient,
         browser_specifier = NULL;
         paneOp = 0;
     }
-    char *buf = xmalloc(+LWS_PRE + (url == NULL ? 60 : strlen(url) + 20));
+    char *buf = xmalloc(LWS_PRE + strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
     if (paneOp > 0) {
         char *p = buf+LWS_PRE;
         if (pclient != NULL)
             sprintf(p, URGENT_START_STRING "\033[90;%d;%du" URGENT_END_STRING,
                     paneOp, session_pid);
         else
-            sprintf(p, URGENT_START_STRING "\033]104;%d,%s\007" URGENT_END_STRING,
-                    paneOp, url);
+            sprintf(p, URGENT_START_STRING "\033]%d;%d,%s\007" URGENT_END_STRING,
+                    -port, paneOp, url);
         write_to_browser(focused_wsi, p, strlen(p));
     } else {
         if (pclient != NULL)
             sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);
+        else if (port == -105) // view saved file
+            sprintf(buf, "%s#view-saved=%s",  main_html_url, url);
         else
             sprintf(buf, "%s", url);
         do_run_browser(options, buf, port);
@@ -931,8 +928,17 @@ int browse_action(int argc, char** argv, const char*cwd,
                   char **env, struct lws *wsi, int replyfd,
                   struct options *opts)
 {
-    char *url = argv[1];
-    display_session(opts, NULL, url, -1);
+    optind = 1;
+    int r = process_options(argc, argv, opts);
+    if (optind != argc-1) {
+        FILE *err = fdopen(replyfd, "w");
+        fprintf(err, optind >= argc ? "domterm browse: missing url\n"
+                : "domterm browse: more than one url\n");
+        fclose(err);
+        return EXIT_FAILURE;
+    }
+    char *url = argv[optind];
+    display_session(opts, NULL, url, -104);
     return EXIT_SUCCESS;
 }
 

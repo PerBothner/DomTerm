@@ -12,7 +12,7 @@ get_resource_path()
       if (resource_path[0] != '/') {
           char *cmd_path = get_executable_path();
           int cmd_dir_length = get_executable_directory_length();
-          char *buf =xmalloc(cmd_dir_length + strlen(resource_path)
+          char *buf = xmalloc(cmd_dir_length + strlen(resource_path)
                              + sizeof(domterm_jar_name) + 2);
           sprintf(buf, "%.*s/%s/%s", cmd_dir_length, cmd_path, resource_path,
                   domterm_jar_name);
@@ -98,6 +98,17 @@ check_auth(struct lws *wsi) {
     return -1;
 }
 
+bool check_server_key(struct lws *wsi, char *arg, size_t alen)
+{
+    const char*server_key_arg = lws_get_urlarg_by_name(wsi, "server-key=", arg, alen);
+    if (server_key_arg != NULL &&
+        memcmp(server_key_arg, server_key, SERVER_KEY_LENGTH) == 0)
+      return true;
+    lwsl_notice("missing or non-matching server-key!\n");
+    lws_return_http_status(wsi, HTTP_STATUS_UNAUTHORIZED, NULL);
+    return false;
+}
+
 /** Callack for servering http - generally static files. */
 
 int
@@ -111,6 +122,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 char name[100], rip[50];
                 lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), name, sizeof(name), rip, sizeof(rip));
                 lwsl_notice("HTTP connect from %s (%s), path: %s\n", name, rip, in);
+                fprintf(stderr, "HTTP connect from %s (%s), path: %s\n", name, rip, in);
             }
 
             if (len < 1) {
@@ -164,7 +176,23 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 goto try_to_reuse;
             }
 
-            const char* fname  = in;
+#if 0
+            // "serving" a saved file may be better than having
+            // the browser get it with XmlHttpRequest.
+            if (!strncmp((const char *) in, "/get-saved-file/", 16)) {
+                size_t blen = strlen(in)+1;
+                char *buf = xmalloc(blen);
+                fprintf(stderr, "get-saved-file1 '%s'\n", in);
+                if (! check_server_key(wsi, buf, blen)) {
+                    free(buf);
+                fprintf(stderr, "get-saved-file failed\n");
+                    return -1;
+                }
+                char *fname = lws_get_urlarg_by_name(wsi, "name=", buf, blen);
+                fprintf(stderr, "http get-saved-file '%s'\n", fname);
+            }
+#endif
+            const char* fname = in;
             if (fname == NULL || strcmp(fname, "/") == 0)
                 fname = "/repl-client.html";
             const char* content_type = get_mimetype(fname);

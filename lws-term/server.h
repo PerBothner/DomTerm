@@ -208,6 +208,7 @@ extern int get_tty_in();
 extern int get_tty_out();
 extern void write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
+extern char *url_encode(char *in, int mode);
 
 #if COMPILED_IN_RESOURCES
 struct resource {
@@ -251,6 +252,8 @@ extern int attach_action(int, char**, const char*, char **,
                          struct lws *, int, struct options *);
 extern int browse_action(int, char**, const char*, char **,
                          struct lws *, int, struct options *);
+extern int view_saved_action(int, char**, const char*, char **,
+                             struct lws *, int, struct options *);
 extern int help_action(int, char**, const char*, char **,
                        struct lws *, int, struct options *);
 extern int list_action(int, char**, const char*, char **,
@@ -259,6 +262,7 @@ extern int new_action(int, char**, const char*, char **,
                       struct lws *, int, struct options *);
 extern char*find_in_path();
 extern void print_help(FILE*);
+extern bool check_server_key(struct lws *wsi, char *arg, size_t alen);
 
 #ifndef DOMTERM_DIR_RELATIVE
 /* Data directory, relative to binary's parent directory.

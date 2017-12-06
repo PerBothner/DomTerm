@@ -339,6 +339,51 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
     fclose(out);
 }
 
+int view_saved_action(int argc, char** argv, const char*cwd,
+                  char **env, struct lws *wsi, int replyfd,
+                  struct options *opts)
+{
+    optind = 1;
+    int r = process_options(argc, argv, opts);
+    FILE *err = fdopen(replyfd, "w");
+    if (optind != argc-1) {
+        fprintf(err, optind >= argc ? "domterm view-saved: missing file name\n"
+                : "domterm view-saved: more than one file name\n");
+        fclose(err);
+        return EXIT_FAILURE;
+    }
+    char *file = argv[optind];
+    char *p = file;
+    bool saw_scheme = false;
+    for (; *p && *p != '/'; p++) {
+      if (*p == ':') {
+        saw_scheme = 1;
+        break;
+      }
+    }
+    char *fscheme = saw_scheme ? "" : "file://";
+    char *fencoded = file;
+    if (! saw_scheme) {
+        if (file[0] != '/') {
+          fencoded = xmalloc(strlen(cwd)+strlen(file)+2);
+          sprintf(fencoded, "%s/%s", cwd, file);
+        }
+        if (access(fencoded, R_OK) != 0) {
+            fprintf(err, "domterm view-saved: No such file: %s\n", fencoded);
+            fclose(err);
+            return EXIT_FAILURE;
+        }
+    }
+    fencoded = url_encode(fencoded, 0);
+    char *url = xmalloc(strlen(main_html_url) + strlen(fencoded) + 40);
+    sprintf(url, "%s%s", fscheme, fencoded);
+    if (file != fencoded)
+        free(fencoded);
+    display_session(opts, NULL, url, -105);
+    free(url);
+    return EXIT_SUCCESS;
+}
+
 int freshline_action(int argc, char** argv, const char*cwd,
                          char **env, struct lws *wsi, int replyfd,
                          struct options *opts)
@@ -418,6 +463,8 @@ struct command commands[] = {
     .action = attach_action},
   { .name = "browse", .options = COMMAND_IN_SERVER,
     .action = browse_action},
+  { .name = "view-saved", .options = COMMAND_IN_SERVER,
+    .action = view_saved_action},
   { .name = "list",
     .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
     .action = list_action },

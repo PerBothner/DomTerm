@@ -191,6 +191,47 @@ function setupQWebChannel(channel) {
     }
 };
 
+function viewSavedFile(url, bodyNode) {
+    bodyNode.innerHTML = "<h2>waiting for file data ...</h2>";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.setRequestHeader("Content-Type", "text/plain");
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState != 4)
+            return;
+        var responseText = xhr.responseText;
+        if (! responseText) {
+            bodyNode.innerHTML = "<h2></h2>";
+            bodyNode.firstChild.appendChild(document.createTextNode("error loading "+url));
+            return;
+        }
+        bodyNode.innerHTML = responseText;
+        var topNode = bodyNode.firstChild;
+        var name = "domterm";
+        var dt = new DomTerm(name);
+        dt.initial = document.getElementById(dt.makeId("main"));
+        dt._initializeDomTerm(topNode);
+        dt.sstate.windowName = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
+        dt._restoreLineTables(topNode, 0);
+        dt._breakAllLines();
+        dt.updateWindowTitle();
+        function showHideHandler(e) {
+            var target = e.target;
+            if (target instanceof Element
+                && target.nodeName == "SPAN"
+                && target.getAttribute("std") == "hider") {
+                dt._showHideHandler(e);
+                e.preventDefault();
+            }
+        }
+        topNode.addEventListener("click", showHideHandler, false);
+        dt.setWindowSize = function(numRows, numColumns,
+                                    availHeight, availWidth) {
+        };
+    };
+    xhr.send("");
+}
+
 function loadHandler(event) {
     if (DomTerm.usingQtWebEngine) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
@@ -200,6 +241,12 @@ function loadHandler(event) {
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
         DomTerm._initSavedLayout(JSON.parse(open_encoded));
+        return;
+    }
+    m = location.hash.match(/view-saved=([^&]*)/);
+    if (m) {
+        var bodyNode = document.getElementsByTagName("body")[0];
+        viewSavedFile(decodeURIComponent(m[1]), bodyNode);
         return;
     }
     var layoutInitAlways = false;

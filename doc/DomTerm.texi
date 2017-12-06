@@ -2146,6 +2146,14 @@ The default policy is a work-in-progress.
 Simulate pressing @var{key}.  Used by auto-line mode.
 The @code{73} variant supresses echo.
 
+@item @code{"\e]104;" @var{op} @code{,} @var{url} "a\n"}
+Create a new sub-window (pane), based on the @var{op}.
+This displays the @var{url} webpage in an @code{<iframe>}.
+
+@item @code{"\e]105;" @var{op} @code{,} @var{saved-url} "a\n"}
+Create a new sub-window (pane), based on the @var{op}.
+This is displays the @var{saved-url}, a previously saved terminal session.
+
 @item @code{"\e[12u"}
 Start of error output.
 DomTerm places the following text inside a @code{<span>} element

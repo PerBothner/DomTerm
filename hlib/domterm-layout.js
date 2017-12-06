@@ -117,7 +117,7 @@ DomTerm.domTermToLayoutItem = function(dt) {
 DomTerm.domTermLayoutClosed = function(event) {
     var el = this.getElement()[0].firstChild;
     var dt = el.terminal;
-    if (dt)
+    if (dt && dt.closeConnection)
         dt.closeConnection();
     DomTerm.domTermLayoutClose(dt, this.parent, true);
 }
@@ -393,6 +393,15 @@ DomTerm.layoutInit = function(term) {
                 connectHttp(el, query);
             }
         }
+        container.setTitle(name);
+        container.on('resize', DomTerm.layoutResized, el);
+        container.on('destroy', DomTerm.domTermLayoutClosed, container);
+    });
+
+    DomTerm.layoutManager.registerComponent( 'view-saved', function( container, componentConfig ){
+        var url = container._config.url
+        var el = container.getElement()[0];
+        viewSavedFile(url, el);
         container.setTitle(name);
         container.on('resize', DomTerm.layoutResized, el);
         container.on('destroy', DomTerm.domTermLayoutClosed, container);

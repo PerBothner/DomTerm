@@ -2142,6 +2142,22 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     document.addEventListener("mousedown", docMouseDown, false);
     */
     this.loadStyleSheet("user", "");
+
+    this._mainBufferName = this.makeId("main")
+    this._altBufferName = this.makeId("alternate")
+
+    var mainNode = this._createBuffer(this._mainBufferName);
+    topNode.appendChild(mainNode);
+    var vspacer = document.createElement("div");
+    vspacer.setAttribute("class", "domterm-spacer");
+    vspacer.dtHeight = 0;
+    topNode.appendChild(vspacer);
+    this._vspacer = vspacer;
+
+    this.initial = mainNode;
+    var preNode = mainNode.firstChild;
+    this.outputContainer = preNode;
+    this.outputBefore = preNode.firstChild;
 };
 
 /*
@@ -2269,22 +2285,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
         this.history = new Array();
 
     this._initializeDomTerm(topNode);
-
-    this._mainBufferName = this.makeId("main")
-    this._altBufferName = this.makeId("alternate")
-
-    var mainNode = this._createBuffer(this._mainBufferName);
-    topNode.appendChild(mainNode);
-    var vspacer = document.createElement("div");
-    vspacer.setAttribute("class", "domterm-spacer");
-    vspacer.dtHeight = 0;
-    topNode.appendChild(vspacer);
-    this._vspacer = vspacer;
-
-    this.initial = mainNode;
-    var preNode = mainNode.firstChild;
-    this.outputContainer = preNode;
-    this.outputBefore = preNode.firstChild;
     this.addInputLine();
     this.outputBefore = this.inputLine;
     this.pendingInput = this.inputLine;
@@ -4804,13 +4804,14 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         }
         break;
     case 104:
+    case 105:
         var m = text.match(/^([0-9]+),/);
         if (m && DomTerm.layoutAddPane) {
             var paneOp = Number(m[1]);
             text = text.substring(m[1].length+1);
             DomTerm.layoutAddPane(this, paneOp, 0,
                                   {type: 'component',
-                                   componentName: 'browser',
+                                   componentName: code==104?'browser':'view-saved',
                                    url: text });
         }
         break;
@@ -4967,21 +4968,18 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
     var string = "";
     var dt = this;
 
-    var titleInfo = "";
+    var savedTime = "";
     if (saveMode) {
-        titleInfo = dt.sstate.windowTitle;
-        titleInfo += " saved by DomTerm "+ DomTerm.versionString + " on ";
         var now = new Date();
-        titleInfo += now.getFullYear();
+        savedTime += now.getFullYear();
         var month = now.getMonth() + 1;
-        titleInfo += (month < 10 ? "-0" : "-") + month;
+        savedTime += (month < 10 ? "-0" : "-") + month;
         var date = now.getDate();
-        titleInfo += (date < 10 ? "-0" : "-") + date;
+        savedTime += (date < 10 ? "-0" : "-") + date;
         var hours = now.getHours();
-        titleInfo += (hours < 10 ? " 0" : " ") + hours;
+        savedTime += (hours < 10 ? " 0" : " ") + hours;
         var minutes = now.getMinutes();
-        titleInfo += (minutes < 10 ? ":0" : ":") + minutes;
-        string += "<!-- "+titleInfo + "-->\n";
+        savedTime += (minutes < 10 ? ":0" : ":") + minutes;
     }
 
     var home_offset = DomTerm._homeLineOffset(dt);
@@ -5044,17 +5042,16 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
                             avalue = "input-cursor";
                         else
                             continue;
-                    } else if (aname == "class" && avalue == "domterm"
-                             && tagName == "div")
+                    } else if (aname == "class"
+                               && node.classList.contains("domterm")) {
                         avalue = DomTerm._savedSessionClassNoScript;
-                    else if ((tagName == "link" && aname == "href")
-                             || (tagName == "script" && aname == "src")) {
-                        avalue = avalue.replace("qrc:", "");
-                        if (avalue == "hlib/domterm-client.js")
-                            avalue = "hlib/domterm-saved.js";
-                        if (avalue == "hlib/qwebchannel.js")
-                            skip = true;
-                    } else if (aname=="breaking" && tagName=="span"
+                        if (saveMode) {
+                            if (savedTime)
+                                s += ' saved-time="' + savedTime+'"';
+                            s += ' saved-version="'+DomTerm.versionString+'"';
+                        }
+                    }
+                    else if (aname=="breaking" && tagName=="span"
                                && node.getAttribute("line"))
                         continue;
                     s += ' ' + aname+ // .toLowerCase() +
@@ -6457,7 +6454,7 @@ DomTerm.prototype.doCopy = function() {
 
 DomTerm.prototype.doSaveAs = function() {
     var dt = this;
-    this._pickFile(function(fname) {
+    this._pickSaveFile(function(fname) {
         if (fname)
             dt._writeFile(dt.getAsHTML(true), fname);
     });
@@ -6746,12 +6743,14 @@ DomTerm.prototype._writeFile = function(data, filePath) {
     }
 };
 
+DomTerm.saveFileCounter = 0;
+
 /* Request from user name for file to save.
    Then call callname(fname) is user-supplied name.
    If user cancels then fname will have a false value (null or undefined).
 */
-DomTerm.prototype._pickFile = function(callback) {
-    var fname = this.sessionName()+".html";
+DomTerm.prototype._pickSaveFile = function(callback) {
+    var fname = "domterm-saved-"+(++DomTerm.saveFileCounter)+".html";
     if (DomTerm.isElectron()) {
         const {dialog} = nodeRequire('electron').remote;
         dialog.showSaveDialog({defaultPath: fname}, callback);
