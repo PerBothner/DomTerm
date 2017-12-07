@@ -54,8 +54,6 @@ if WITH_LIBWEBSOCKETS
 else
 if WITH_QTWEBENGINE
 	cd bin && $(LN_S) qtdomterm domterm
-else
-	cd bin && $(LN_S) jdomterm domterm
 endif
 endif
 
@@ -298,7 +296,6 @@ if WITH_QTWEBENGINE
 	$(INSTALL_DATA) qtdomterm.desktop $(DESTDIR)$(datadir)/applications/
 	$(INSTALL_DATA) qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
-	$(INSTALL_SCRIPT) bin/jdomterm $(DESTDIR)$(pkgdatadir)
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
 	$(INSTALL_DATA) electron/package.json electron/main.js \
 	    $(DESTDIR)$(datadir)/domterm/electron/
@@ -316,15 +313,18 @@ if WITH_LIBWEBSOCKETS
 else
 if WITH_QTWEBENGINE
 	cd $(DESTDIR)$(bindir) && $(LN_S) qtdomterm$(EXEEXT) domterm
-else
-	cd $(DESTDIR)$(bindir) && $(LN_S) ../share/domterm/jdomterm domterm
 endif
 endif
 
-man1_MANS = doc/domterm.man
-if WITH_LIBWEBSOCKETS
-man1_MANS += doc/ldomterm.man
-endif
+doc/man/domterm.man: doc/help/domterm.rst
+	$(MKDIR_P) doc/man
+	rst2man doc/help/domterm.rst doc/man/domterm.man
+
+doc/man/qtdomterm.man: doc/help/qtdomterm.rst
+	$(MKDIR_P) doc/man
+	rst2man doc/help/qtdomterm.rst doc/man/qtdomterm.man
+
+man1_MANS = doc/man/domterm.man
 if WITH_QTWEBENGINE
-man1_MANS += doc/qtdomterm.man
+man1_MANS += doc/man/qtdomterm.man
 endif

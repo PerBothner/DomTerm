@@ -32,6 +32,7 @@ doc/The-DomTerm-JavaScript-class.html
 doc/To-do.html
 doc/Wire-byte-protocol.html
 doc/DomTerm.xml
+doc/man/*.man
 web/*.html
 web/images/*.png
 autom4te.cache/*
