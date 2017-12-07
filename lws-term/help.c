@@ -25,26 +25,13 @@ static char new_help[] = "Usage: domterm [options] new [command [arguments]\n"
 static char browse_help[] = "Usage: domterm [options] browse url\n"
   "Open the given url in a specified (sub-)window.\n";
 
-static char imgcat_help[] = "Usage: domterm image [-n] [--ATTRNAME=ATTRVALUE]... FILENAME\n"
-  "\"Print\" the contents of the named image file to domterm.\n"
-  "This uses a `data:` URI with the file contents sent directly to domterm.\n"
-  "\n"
-  "'--<attrname>=<attrvalue> - specify the given attribute; for example: --height=200\n"
-  "Valid <ATTRNAME>s: `alt`, `longdesc`, `height`, `width`, `border`, `hspace`, `vspace`, `class`\n"
-  "\n"
-  "If no -n is specified), the image has a 'display: block' style.\n"
-  "(so it is automatically on a 'line' by itself), and\n"
-  "gets a horizontal scroll bar if and only if it is too wide to fit.\n"
-  "If -n is specified, then only a plain <img> element is written,\n"
-  "hence you can write multiple images and other HTML on the same 'line'\n";
-
 struct help_info help_table[] = {
   { "attach", attach_help},
   { "browse", browse_help},
   { "html", html_help},
   { "hcat", html_help},
-  { "image", imgcat_help},
-  { "imgcat", imgcat_help},
+  { "image", "*imgcat"},
+  { "imgcat", "*imgcat"},
   { "is-domterm", is_domterm_help},
   { "list", list_help},
   { "new", new_help},

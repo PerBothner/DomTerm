@@ -44,7 +44,8 @@ endif
 all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM) bin/domterm share/domterm/application.ini \
   share/domterm/help/docutils.css \
   share/domterm/help/domterm.rst share/domterm/help/domterm.html \
-  share/domterm/help/qtdomterm.rst share/domterm/help/qtdomterm.html
+  share/domterm/help/qtdomterm.rst share/domterm/help/qtdomterm.html \
+  share/domterm/help/imgcat.rst share/domterm/help/imgcat.html
 
 # application.ini has to be copied, not linked; or it can't find domterm.jar
 share/domterm/application.ini: $(srcdir)/xulapp/application.ini
