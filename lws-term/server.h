@@ -199,7 +199,7 @@ extern char ** copy_argv(int argc, char * const*argv);
 extern void request_upload_settings();
 extern void read_settings_file(struct options*);
 extern void watch_settings_file(void);
-extern int probe_domterm(void);
+extern int probe_domterm(bool);
 extern void check_domterm(struct options *);
 extern void generate_random_string (char *buf, int nchars);
 extern void tty_save_set_raw(int tty_in);
@@ -209,6 +209,8 @@ extern int get_tty_out();
 extern void write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
 extern char *url_encode(char *in, int mode);
+extern void copy_file(FILE*in, FILE*out);
+extern void copy_html_file(FILE*in, FILE*out);
 
 #if COMPILED_IN_RESOURCES
 struct resource {

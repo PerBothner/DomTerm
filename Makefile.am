@@ -41,7 +41,10 @@ if WITH_LIBWEBSOCKETS
 SUBDIRS += lws-term
 endif
 
-all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM) bin/domterm share/domterm/application.ini
+all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM) bin/domterm share/domterm/application.ini \
+  share/domterm/help/docutils.css \
+  share/domterm/help/domterm.rst share/domterm/help/domterm.html \
+  share/domterm/help/qtdomterm.rst share/domterm/help/qtdomterm.html
 
 # application.ini has to be copied, not linked; or it can't find domterm.jar
 share/domterm/application.ini: $(srcdir)/xulapp/application.ini
@@ -130,7 +133,7 @@ run-shell: $(DOMTERM_JAR)
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
 	-rm -rf bin/ldomterm bin/domterm hlib/domterm-all.js \
-	  share/domterm/application.ini \
+	  share/domterm/application.ini share/domterm/help \
 	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
 	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
@@ -299,6 +302,9 @@ endif
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
 	$(INSTALL_DATA) electron/package.json electron/main.js \
 	    $(DESTDIR)$(datadir)/domterm/electron/
+	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/help
+	$(INSTALL_DATA) share/domterm/help/*.rst share/domterm/help/*.html \
+	  share/domterm/help/*.css $(DESTDIR)$(datadir)/domterm/help/
 
 install-ldomterm:
 	cd lws-term && $(MAKE) install
@@ -315,6 +321,24 @@ if WITH_QTWEBENGINE
 	cd $(DESTDIR)$(bindir) && $(LN_S) qtdomterm$(EXEEXT) domterm
 endif
 endif
+
+$(pkgdatadir)/help:
+	$(MKDIR_P) $(pkgdatadir)/help
+
+share/domterm/help:
+	$(MKDIR_P) share/domterm/help
+
+share/domterm/help/%.rst: doc/help/%.rst share/domterm/help
+	cd share/domterm/help && $(LN_S) ../../../$<
+
+RST2HTML = rst2html5
+RST2HTML_OPTS = --no-doc-title --initial-header-level=2 \
+  --link-stylesheet --stylesheet=docutils.css
+share/domterm/help/%.html: doc/help/%.rst share/domterm/help
+	$(RST2HTML) $(RST2HTML_OPTS) $< $@
+
+share/domterm/help/docutils.css: share/domterm/help
+	echo | $(RST2HTML) - - | sed -e '1,/<style /d' -e '/<\/style>/,$$d' >$@
 
 doc/man/domterm.man: doc/help/domterm.rst
 	$(MKDIR_P) doc/man

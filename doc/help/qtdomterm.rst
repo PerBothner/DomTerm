@@ -5,6 +5,7 @@ qtdomterm - terminal emulator and multiplexer using Qt
 Synopsis
 ========
 ``qtdomterm`` [options] [command arguments ...]
+
 ``qtdomterm --connect`` <url>
 
 Description

@@ -4,7 +4,7 @@ domterm - terminal emulator and multiplexer
 
 Synopsis
 ========
-``domterm`` [options] [command arguments ...]
+``domterm`` [*options*] [*command* *arguments* ...]
 
 Description
 ===========

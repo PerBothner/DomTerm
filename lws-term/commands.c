@@ -11,7 +11,16 @@ int is_domterm_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi, int replyfd,
                       struct options *opts)
 {
-    return probe_domterm() > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return probe_domterm(false) > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+void
+copy_html_file(FILE *in, FILE *out)
+{
+    fprintf(out, "\033]72;");
+    copy_file(in, out);
+    fprintf(out, "\007");
+    fflush(out);
 }
 
 int html_action(int argc, char** argv, const char*cwd,
@@ -22,15 +31,7 @@ int html_action(int argc, char** argv, const char*cwd,
     int i = 1;
     if (i == argc) {
         FILE *tout = fdopen(get_tty_out(), "w");
-        char buffer[1024];
-        fprintf(tout, "\033]72;");
-        for (;;) {
-            int r = fread(buffer, 1, sizeof(buffer), stdin);
-            if (r <= 0 || fwrite(buffer, 1, r, tout) <= 0)
-                break;
-        }
-        fprintf(tout, "\007");
-        fflush(tout);
+        copy_html_file(stdin, tout);
     } else {
         while (i < argc)  {
             char *arg = argv[i++];

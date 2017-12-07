@@ -219,7 +219,7 @@ write_to_tty(const char *str, ssize_t len)
  * Return 1 if true, 0 if else, -1 if error.
  */
 int
-probe_domterm ()
+probe_domterm(bool use_stdout)
 {
     /* probe if TERM unset, or contains "xterm", or DOMTERM is set */
     char *term_env = getenv("TERM");
@@ -229,26 +229,28 @@ probe_domterm ()
            || strstr(term_env, "xterm") != NULL))
         return 0;
 
-    get_tty_in();
-    get_tty_out();
+    int tin = use_stdout ? 0 : get_tty_in();
+    int tout = use_stdout ? 1 : get_tty_out();
     int timeout = 1000;
     struct pollfd pfd;
-    if (tty_in < 0 || tty_out < 0)
+    if (tin < 0 || tout < 0)
         return -1;
+    if (! isatty(tin) || ! isatty(tout))
+        return 0;
     int i = 0;
     char msg1[] = "\033[>0c";
     //struct termios save_term;
     char response_prefix[] = "\033[>990;";
     int response_prefix_length = sizeof(response_prefix)-1;
     char buffer[50];
-    // close(tty_out);
-    pfd.fd = tty_in;
+    // close(tout);
+    pfd.fd = tin;
     pfd.events = POLLIN;
     pfd.revents = 0;
     int result = 1;
-    tty_save_set_raw(tty_in);
+    tty_save_set_raw(tin);
 
-    if (write(tty_out, msg1, sizeof(msg1)-1) != sizeof(msg1)-1)
+    if (write(tout, msg1, sizeof(msg1)-1) != sizeof(msg1)-1)
       return -1; // FIXME
     while (i < response_prefix_length) {
         int r = poll(&pfd, 1, timeout);
@@ -256,7 +258,7 @@ probe_domterm ()
             result = r;
             break;
         }
-        r = read(tty_in, buffer+i, response_prefix_length-i);
+        r = read(tin, buffer+i, response_prefix_length-i);
         if (r <= 0) {
             result = -1;
             break;
@@ -269,7 +271,7 @@ probe_domterm ()
     }
     if (result >= 0) {
         for (;;) {
-          if (read(tty_in, buffer, 1) <= 0) {
+          if (read(tin, buffer, 1) <= 0) {
               result = -1;
               break;
           }
@@ -277,14 +279,14 @@ probe_domterm ()
               break;
         }
     }
-    tty_restore(tty_in);
+    tty_restore(tin);
     return result;
 }
 
 void
 check_domterm(struct options *opts)
 {
-    if (opts->force_option == 0 && probe_domterm() <= 0) {
+    if (opts->force_option == 0 && probe_domterm(false) <= 0) {
         fprintf(stderr, "domterm: don't seem to be running under DomTerm - use --force to force\n");
         exit(-1);
     }
@@ -332,4 +334,14 @@ generate_random_string (char *buf, int nchars)
     for (int i = nchars; --i >= 0; )
         buf[i] = wchars[rand() & 0x3F];
 #endif
+}
+
+void copy_file(FILE*in, FILE*out)
+{
+    char buffer[1024];
+    for (;;) {
+        int r = fread(buffer, 1, sizeof(buffer), in);
+        if (r <= 0 || fwrite(buffer, 1, r, out) <= 0)
+            break;
+    }
 }

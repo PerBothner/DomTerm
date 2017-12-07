@@ -48,6 +48,8 @@ struct help_info help_table[] = {
   { "is-domterm", is_domterm_help},
   { "list", list_help},
   { "new", new_help},
+  { "domterm", "*domterm"},
+  { "qtdomterm", "*qtdomterm"},
   { NULL, NULL }
 };
 
@@ -109,6 +111,29 @@ void print_help(FILE* out) {
     );
 }
 
+void print_help_file(const char* name, FILE *out)
+{
+    char *hdir = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/help");
+    char *buf = xmalloc(strlen(hdir)+strlen(name)+20);
+    if (probe_domterm(true) > 0) {
+        sprintf(buf, "%s/%s.html", hdir, name);
+        FILE *rfile = fopen(buf, "r");
+        if (rfile == NULL)
+            goto err;
+        copy_html_file(rfile, out);
+        return;
+    }
+    sprintf(buf, "%s/%s.rst", hdir, name);
+    FILE *rfile = fopen(buf, "r");
+    if (rfile == NULL)
+        goto err;
+    copy_file(rfile, out);
+    fclose(rfile);
+    return;
+  err:
+    fprintf(out, "cannot find help file %s\n", buf);
+}
+
 int help_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi, int replyfd,
                       struct options *opts)
@@ -125,7 +150,11 @@ int help_action(int argc, char** argv, const char*cwd,
           break;
         }
         if (strcmp(topic, p->command) == 0) {
-          fputs(p->help, out);
+          const char *h = p->help;
+          if (*h == '*')
+            print_help_file(h+1, out);
+          else
+            fputs(h, out);
           break;
         }
       }

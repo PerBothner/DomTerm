@@ -55,7 +55,7 @@ The @code{domterm} command takes multiple sub-commands,
 similar to how @code{tmux} or @code{git}.
 The command automatically starts server if not already running.
 @item
-@ref{Sessions and Windows,Session managament}, with detachable sessions, as in
+@ref{Sessions and Windows,Session management}, with detachable sessions, as in
 @code{tmux} or GNU @code{screen}.
 @item
 A front-end based on @uref{https://electron.atom.io/,Electron}
