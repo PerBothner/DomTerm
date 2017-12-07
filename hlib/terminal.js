@@ -3114,7 +3114,7 @@ DomTerm.prototype._forceWrap = function(absLine) {
  */
 DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
     var lineEnd = this.lineEnds[absLine];
-    if (lineEnd.getAttribute("line")=="soft") {
+    if (lineEnd != null && lineEnd.getAttribute("line")=="soft") {
         // Try to convert soft line break to hard break, using a <div>
         // FIXME: note that readline emits "UVW\e[0KX\rXYZ" for a soft
         // break between "UVW" and "XYZ", so we might want to optimize
@@ -7035,9 +7035,11 @@ DomTerm.prototype._checkTree = function() {
             cur = parent.nextSibling;
             parent = parent.parentNode;
         } else if (cur instanceof Element) {
-            if (istart < nlines && this.lineStarts[istart] == cur)
+            if (istart < nlines && this.lineStarts[istart] == cur) {
+                if (iend == istart && this.lineEnds[iend] == null)
+                    iend++;
                 istart++;
-            else if (istart + 1 < nlines && this.lineStarts[istart+1] == cur)
+            } else if (istart + 1 < nlines && this.lineStarts[istart+1] == cur)
                 error("line table out of order - missing line "+istart);
             if (iend < nlines && this.lineEnds[iend] == cur)
                 iend++;
@@ -7057,6 +7059,7 @@ DomTerm.prototype._checkTree = function() {
     if (istart != nlines || iend != nlines) {
         error("bad line table!");
     }
+    // NOTE this may happen after inserting html
     if (this.lineStarts.length - this.homeLine > this.numRows)
         error("bad homeLine value!");
     if (this.usingAlternateScreenBuffer) {
