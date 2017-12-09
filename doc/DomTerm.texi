@@ -1450,12 +1450,6 @@ the browser's @code{Save page as ...} command is not useful.
 It will save the original bare web page, before any DomTerm interactions
 or other JavaScript modification.
 
-@subheading Changing appearance with CSS stylesheets
-
-On @code{@ref{qtdomterm application,qtdomterm}} you can use
-the @code{--stylesheet} option
-or the @code{Edit} / @code{Preferences} / @code{Appearance} menu entry.
-
 @subheading Session names and session-specific styles
 
 Each ``session'' (terminal window) has a name,
@@ -1507,12 +1501,13 @@ may exhibit various quirks.
 Microsoft Edge does at time of writing not handle the @code{tab-size}
 CSS property, so on that browser tab characters are always converted to spaces.
 
-@subheading Adding qtdomterm to the desktop
+@subheading Adding domterm or qtdomterm to the desktop
 
 @subsubheading On Gnome or KDE
 
-Copy @code{qtdomterm/qtdomterm.desktop} to either
-@code{usr/share/applications} (if @code{qtdomterm} is installed
+Copy @code{domterm/qtdomterm.desktop} or
+@code{qtdomterm/qtdomterm.desktop} to either
+@code{usr/share/applications} (if @code{domterm} is installed
 in @code{/usr/bin} and you want it accessible to everyone),
 or in @code{~/.local/share/applications} (if you only wish to make
 accessible to a single user).
@@ -1595,6 +1590,15 @@ See the @ref{Wire byte protocol} section for the details.
 and are equivalent to readline's @code{"\001"} and @code{"\002"}.
 They are used to indicate escape sequences that don't move the cursor,
 which is needed for readline to calculate the column position.)
+
+@subheading Showing man pages as html
+
+To view the @code{bash} man page inline you can do the following.
+This works best with Automatic Pager set.
+
+@example
+man -Hcat bash 2>/dev/null|domterm hcat
+@end example
 
 @node To do
 @chapter Ideas and projects for DomTerm
