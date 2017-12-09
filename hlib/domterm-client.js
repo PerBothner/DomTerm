@@ -277,4 +277,14 @@ function loadHandler(event) {
     location.hash = "";
 }
 
+function handleMessage(event) {
+    var data = event.data;
+    var dt=DomTerm.focusedTerm;
+    if (data="serialize")
+        DomTerm.detach();
+    else
+        console.log("received message "+data+" dt:"+ dt);
+}
+
 window.addEventListener("load", loadHandler, false);
+window.addEventListener("message", handleMessage, false);
