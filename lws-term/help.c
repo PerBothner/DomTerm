@@ -122,10 +122,9 @@ void print_help_file(const char* name, FILE *out)
 }
 
 int help_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, int replyfd,
-                      struct options *opts)
+                char **env, struct lws *wsi, struct options *opts)
 {
-    FILE *out = fdopen(replyfd, "w");
+    FILE *out = fdopen(opts->fd_out, "w");
     int ecode = EXIT_SUCCESS;
     if (argc >= 2) {
       char *topic = argv[1];

@@ -230,7 +230,7 @@ void put_to_env_array(char **arr, int max, char* eval)
 }
 
 struct pty_client *
-run_command(char*const*argv, const char*cwd, char **env, int replyfd)
+run_command(char*const*argv, const char*cwd, char **env)
 {
     struct lws *outwsi;
     int pty;
@@ -437,7 +437,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->version_info = version_info;
         if (pclient == NULL) {
           // FIXME should use same argv as invoking window
-          pclient = run_command(default_argv, ".", environ, -1);
+          pclient = run_command(default_argv, ".", environ);
         }
         if (client->pclient == NULL)
             link_command(wsi, client, pclient);
@@ -838,8 +838,9 @@ display_session(struct options *options, struct pty_client *pclient,
         browser_specifier = NULL;
         paneOp = 0;
     }
-    char *buf = xmalloc(LWS_PRE + strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
+    char *buf;
     if (paneOp > 0) {
+        buf = xmalloc(LWS_PRE + (url == NULL ? 60 : strlen(url) + 60));
         char *p = buf+LWS_PRE;
         if (pclient != NULL)
             sprintf(p, URGENT_START_STRING "\033[90;%d;%du" URGENT_END_STRING,
@@ -849,20 +850,26 @@ display_session(struct options *options, struct pty_client *pclient,
                     -port, paneOp, url);
         write_to_browser(focused_wsi, p, strlen(p));
     } else {
+        buf = xmalloc(strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
         if (pclient != NULL)
-            sprintf(buf, "%s#connect-pid=%d", main_html_url, session_pid);
+            sprintf(buf, "%s#connect-pid=%d", main_html_url, pclient->pid);
         else if (port == -105) // view saved file
             sprintf(buf, "%s#view-saved=%s",  main_html_url, url);
         else
             sprintf(buf, "%s", url);
-        do_run_browser(options, buf, port);
+        if (browser_specifier
+            && strcmp(browser_specifier, "--print-url") == 0) {
+            int ulen = strlen(buf);
+            buf[ulen] = '\n';
+            write(options->fd_out, buf, ulen+1);
+        } else
+            do_run_browser(options, buf, port);
     }
     free(buf);
 }
 
-int new_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi, int replyfd,
-                  struct options *opts)
+int new_action(int argc, char** argv, const char*cwd, char **env,
+               struct lws *wsi, struct options *opts)
 {
     int skip = argc == 0 || index(argv[0], '/') != NULL ? 0 : 1;
     if (skip == 1) {
@@ -875,33 +882,32 @@ int new_action(int argc, char** argv, const char*cwd,
     char *argv0 = args[0];
     if (index(argv0, '/') != NULL ? access(argv0, X_OK) != 0
         : find_in_path(argv0) == NULL) {
-          FILE *out = fdopen(replyfd, "w");
+          FILE *out = fdopen(opts->fd_err, "w");
           fprintf(out, "cannot execute '%s'\n", argv0);
           fclose(out);
           return EXIT_FAILURE;
     }
-    struct pty_client *pclient = run_command(args, cwd, env, replyfd);
+    struct pty_client *pclient = run_command(args, cwd, env);
     display_session(opts, pclient, NULL, info.port);
     return EXIT_SUCCESS;
 }
 
 int attach_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi, int replyfd,
-                  struct options *opts)
+                  char **env, struct lws *wsi, struct options *opts)
 {
     optind = 1;
     int r = process_options(argc, argv, opts);
     if (optind >= argc) {
         char *msg = "domterm attach: missing session specifier\n";
-        write(replyfd, msg, strlen(msg));
+        write(opts->fd_err, msg, strlen(msg));
         return EXIT_FAILURE;
     }
     char *session_specifier = argv[optind];
     struct pty_client *pclient = find_session(session_specifier);
     if (pclient == NULL) {
-        FILE *out = fdopen(replyfd, "w");
-        fprintf(out, "no session '%s' found \n", session_specifier);
-        fclose(out);
+        FILE *err = fdopen(opts->fd_out, "w");
+        fprintf(err, "no session '%s' found \n", session_specifier);
+        fclose(err);
         return EXIT_FAILURE;
     }
 
@@ -925,13 +931,12 @@ int attach_action(int argc, char** argv, const char*cwd,
 }
 
 int browse_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi, int replyfd,
-                  struct options *opts)
+                  char **env, struct lws *wsi, struct options *opts)
 {
     optind = 1;
     int r = process_options(argc, argv, opts);
     if (optind != argc-1) {
-        FILE *err = fdopen(replyfd, "w");
+        FILE *err = fdopen(opts->fd_out, "w");
         fprintf(err, optind >= argc ? "domterm browse: missing url\n"
                 : "domterm browse: more than one url\n");
         fclose(err);
@@ -943,11 +948,10 @@ int browse_action(int argc, char** argv, const char*cwd,
 }
 
 int list_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, int replyfd,
-                      struct options *opts)
+                      char **env, struct lws *wsi, struct options *opts)
 {
     struct pty_client *pclient = pty_client_list;
-    FILE *out = fdopen(replyfd, "w");
+    FILE *out = fdopen(opts->fd_out, "w");
     if (pclient == NULL)
        fprintf(stderr, "(no domterm sessions or server)\n");
     else {
@@ -983,17 +987,17 @@ request_upload_settings()
 
 int
 handle_command(int argc, char** argv, const char*cwd,
-               char **env, struct lws *wsi, int replyfd, struct options *opts)
+               char **env, struct lws *wsi, struct options *opts)
 {
     struct command *command = argc == 0 ? NULL : find_command(argv[0]);
     if (command != NULL) {
-        return (*command->action)(argc, argv, cwd, env, wsi, replyfd, opts);
+        return (*command->action)(argc, argv, cwd, env, wsi, opts);
     }
     if (argc == 0 || index(argv[0], '/') != NULL) {
-        return new_action(argc, argv, cwd, env, wsi, replyfd, opts);
+        return new_action(argc, argv, cwd, env, wsi, opts);
     } else {
         // normally caught earlier
-        FILE *out = fdopen(replyfd, "w");
+        FILE *out = fdopen(opts->fd_err, "w");
         fprintf(out, "domterm: unknown command '%s'\n", argv[0]);
         fclose(out);
         return -1;
@@ -1017,12 +1021,37 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             size_t jblen = 512;
             char *jbuf = xmalloc(jblen);
             int jpos = 0;
+            struct options opts;
+            init_options(&opts);
             for (;;) {
                 if (jblen-jpos < 512) {
                     jblen = (3 * jblen) >> 1;
                     jbuf = xrealloc(jbuf, jblen);
                 }
-                int n = read(sockfd, jbuf+jpos, jblen-jpos);
+                struct msghdr msg;
+                struct iovec iov;
+                int myfds[2];
+                union u { // for alignment
+                    char buf[CMSG_SPACE(sizeof myfds)];
+                    struct cmsghdr align;
+                } u;
+                msg.msg_control = u.buf;
+                msg.msg_controllen = sizeof u.buf;
+                struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+                cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
+                iov.iov_base = jbuf+jpos;
+                iov.iov_len = jblen-jpos;
+                msg.msg_name = NULL;
+                msg.msg_namelen = 0;
+                msg.msg_iov = &iov;
+                msg.msg_iovlen = 1;
+                msg.msg_flags = 0;
+                ssize_t n = recvmsg(sockfd, &msg, 0);
+                if (msg.msg_controllen > 0) {
+                    memcpy(myfds, CMSG_DATA(cmsg), 2*sizeof(int));
+                    opts.fd_out = myfds[0];
+                    opts.fd_err = myfds[1];
+                }
                 if (n <= 0) {
                   break;
                 } else if (jbuf[jpos+n-1] == '\f') {
@@ -1067,11 +1096,9 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             }
             json_object_put(jobj);
             optind = 1;
-            struct options opts;
-            init_options(&opts);
             process_options(argc, argv, &opts);
             int ret = handle_command(argc-optind, argv+optind,
-                                     cwd, env, wsi, sockfd, &opts);
+                                     cwd, env, wsi, &opts);
             // FIXME: send ret to caller.
             // FIXME: free argv, cwd, env
             close(sockfd);

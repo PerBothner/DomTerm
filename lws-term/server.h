@@ -145,6 +145,8 @@ struct options {
     int sig_code;                             // close signal
     char *sig_name;                           // human readable signal string
     char *qt_remote_debugging;
+    int fd_out;
+    int fd_err;
 };
 
 struct tty_server {
@@ -186,7 +188,7 @@ extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 const char *domterm_dir(void);
 extern int handle_command(int argc, char**argv, const char*cwd,
-                          char **env, struct lws *wsi, int replyfd,
+                          char **env, struct lws *wsi,
                           struct options *opts);
 extern void do_run_browser(struct options *, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
@@ -240,7 +242,7 @@ extern struct resource resources[];
  * or EXIT_IN_SERVER (if executed by command).
  */
 typedef int (*action_t)(int argc, char** argv, const char*cwd,
-                        char **env, struct lws *wsi, int replyfd,
+                        char **env, struct lws *wsi,
                         struct options *opts);
 
 struct command {
@@ -251,17 +253,17 @@ struct command {
 
 extern struct command * find_command(const char *name);
 extern int attach_action(int, char**, const char*, char **,
-                         struct lws *, int, struct options *);
+                         struct lws *, struct options *);
 extern int browse_action(int, char**, const char*, char **,
-                         struct lws *, int, struct options *);
+                         struct lws *, struct options *);
 extern int view_saved_action(int, char**, const char*, char **,
-                             struct lws *, int, struct options *);
+                             struct lws *, struct options *);
 extern int help_action(int, char**, const char*, char **,
-                       struct lws *, int, struct options *);
+                       struct lws *, struct options *);
 extern int list_action(int, char**, const char*, char **,
-                       struct lws *, int, struct options *);
+                       struct lws *, struct options *);
 extern int new_action(int, char**, const char*, char **,
-                      struct lws *, int, struct options *);
+                      struct lws *, struct options *);
 extern char*find_in_path();
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, char *arg, size_t alen);

@@ -8,7 +8,7 @@
 struct lws;
 
 int is_domterm_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, int replyfd,
+                      char **env, struct lws *wsi,
                       struct options *opts)
 {
     return probe_domterm(false) > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
@@ -24,7 +24,7 @@ copy_html_file(FILE *in, FILE *out)
 }
 
 int html_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, int replyfd,
+                      char **env, struct lws *wsi,
                       struct options *opts)
 {
     check_domterm(opts);
@@ -45,11 +45,11 @@ int html_action(int argc, char** argv, const char*cwd,
 }
 
 int imgcat_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi, int replyfd,
+                  char **env, struct lws *wsi,
                   struct options *opts)
 {
     check_domterm(opts);
-    FILE *err = fdopen(replyfd, "w");
+    FILE *err = fdopen(opts->fd_err, "w");
     int asize = 0;
     for (int i = 1; i < argc; i++) {
         asize += strlen(argv[i]) + 4;
@@ -183,7 +183,7 @@ char *read_response(FILE *err)
 }
 
 int print_stylesheet_action(int argc, char** argv, const char*cwd,
-                            char **env, struct lws *wsi, int replyfd,
+                            char **env, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -191,11 +191,11 @@ int print_stylesheet_action(int argc, char** argv, const char*cwd,
     if (argc != 2) {
         char *msg = argc < 2 ? "(too few arguments to print-stylesheets)\n"
           : "(too many arguments to print-stylesheets)\n";
-        write(replyfd, msg, strlen(msg)+1);
-        close(replyfd);
+        write(opts->fd_err, msg, strlen(msg)+1);
+        close(opts->fd_err);
         return EXIT_FAILURE;
     }
-    FILE *out = fdopen(replyfd, "w");
+    FILE *out = fdopen(opts->fd_out, "w");
     FILE *tout = fdopen(get_tty_out(), "w");
     fprintf(tout, "\033]93;%s\007", argv[1]); fflush(tout);
     char *response = read_response(out);
@@ -210,21 +210,22 @@ int print_stylesheet_action(int argc, char** argv, const char*cwd,
 }
 
 int list_stylesheets_action(int argc, char** argv, const char*cwd,
-                            char **env, struct lws *wsi, int replyfd,
+                            char **env, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
     close(0);
     write_to_tty("\033]90;\007", -1);
-    FILE *out = fdopen(replyfd, "w");
-    char *response = read_response(out);
+    FILE *err = fdopen(opts->fd_err, "w");
+    char *response = read_response(err);
+    FILE *out = fdopen(opts->fd_out, "w");
     char *p = response;
     int i = 0;
     for (; *p != 0; ) {
-      fprintf(stdout, "%d: ", i++);
+      fprintf(out, "%d: ", i++);
       char *t = strchr(p, '\t');
       char *end = t != NULL ? t : p + strlen(p);
-      fprintf(stdout, "%.*s\n", end-p, p);
+      fprintf(out, "%.*s\n", end-p, p);
       if (t == NULL)
         break;
       p = t+1;
@@ -233,9 +234,10 @@ int list_stylesheets_action(int argc, char** argv, const char*cwd,
 }
 
 int load_stylesheet_action(int argc, char** argv, const char*cwd,
-                           char **env, struct lws *wsi, int replyfd,
+                           char **env, struct lws *wsi,
                            struct options *opts)
 {
+    int replyfd = opts->fd_err;
     check_domterm(opts);
     if (argc != 3) {
         char *msg = argc < 3 ? "too few arguments to load-stylesheet\n"
@@ -287,12 +289,13 @@ int load_stylesheet_action(int argc, char** argv, const char*cwd,
 }
 
 int maybe_disable_stylesheet(bool disable, int argc, char** argv,
-                             int replyfd, struct options *opts)
+                             struct options *opts)
 {
     check_domterm(opts);
     if (argc != 2) {
         char *msg = argc < 2 ? "(too few arguments to disable/enable-stylesheet)\n"
           : "(too many arguments to disable/enable-stylesheet)\n";
+        int replyfd = opts->fd_err;
         write(replyfd, msg, strlen(msg)+1);
         close(replyfd);
         return EXIT_FAILURE;
@@ -301,7 +304,7 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
     FILE *tout = fdopen(get_tty_out(), "w");
     fprintf(tout, "\033]%d;%s\007", disable?91:92, specifier);
     fflush(tout);
-    FILE *out = fdopen(replyfd, "w");
+    FILE *out = fdopen(opts->fd_out, "w");
     char *str = read_response(out);
     if (str != NULL && str[0]) {
         fprintf(out, "%s\n", str);
@@ -311,21 +314,21 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
 }
 
 int enable_stylesheet_action(int argc, char** argv, const char*cwd,
-                             char **env, struct lws *wsi, int replyfd,
+                             char **env, struct lws *wsi,
                              struct options *opts)
 {
-    return maybe_disable_stylesheet(false, argc, argv, replyfd, opts);
+    return maybe_disable_stylesheet(false, argc, argv, opts);
 }
 
 int disable_stylesheet_action(int argc, char** argv, const char*cwd,
-                             char **env, struct lws *wsi, int replyfd,
+                             char **env, struct lws *wsi,
                              struct options *opts)
 {
-    return maybe_disable_stylesheet(true, argc, argv, replyfd, opts);
+    return maybe_disable_stylesheet(true, argc, argv, opts);
 }
 
 int add_stylerule_action(int argc, char** argv, const char*cwd,
-                            char **env, struct lws *wsi, int replyfd,
+                            char **env, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -334,19 +337,18 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
         struct json_object *jobj = json_object_new_string(argv[i]);
         fprintf(out, "\033]94;%s\007",
                 json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN));
-        fprintf(stderr, "add-style %s -> %s\n", argv[i], json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN));
         json_object_put(jobj);
     }
     fclose(out);
 }
 
 int view_saved_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi, int replyfd,
+                  char **env, struct lws *wsi,
                   struct options *opts)
 {
     optind = 1;
     int r = process_options(argc, argv, opts);
-    FILE *err = fdopen(replyfd, "w");
+    FILE *err = fdopen(opts->fd_err, "w");
     if (optind != argc-1) {
         fprintf(err, optind >= argc ? "domterm view-saved: missing file name\n"
                 : "domterm view-saved: more than one file name\n");
@@ -386,7 +388,7 @@ int view_saved_action(int argc, char** argv, const char*cwd,
 }
 
 int freshline_action(int argc, char** argv, const char*cwd,
-                         char **env, struct lws *wsi, int replyfd,
+                         char **env, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
@@ -396,14 +398,15 @@ int freshline_action(int argc, char** argv, const char*cwd,
 }
 
 int reverse_video_action(int argc, char** argv, const char*cwd,
-                         char **env, struct lws *wsi, int replyfd,
+                         char **env, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
     if (argc > 2) {
         char *msg ="too many arguments to reverse-video\n";
-        write(replyfd, msg, strlen(msg)+1);
-        close(replyfd);
+        int err = opts->fd_err;
+        write(err, msg, strlen(msg)+1);
+        close(err);
         return EXIT_FAILURE;
     }
     char *opt = argc < 2 ? "on" : argv[1];
@@ -416,8 +419,8 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
       on = false;
     else {
         char *msg ="arguments to reverse-video is not on/off/yes/no/true/false\n";
-        write(replyfd, msg, strlen(msg)+1);
-        close(replyfd);
+        write(opts->fd_err, msg, strlen(msg)+1);
+        close(opts->fd_err);
         return EXIT_FAILURE;
     }
     char *cmd = on ? "\033[?5h" : "\033[?5l";

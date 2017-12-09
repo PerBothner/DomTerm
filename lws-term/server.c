@@ -121,6 +121,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define RIGHT_OPTION (PANE_OPTIONS_START+11)
 #define ABOVE_OPTION (PANE_OPTIONS_START+12)
 #define BELOW_OPTION (PANE_OPTIONS_START+13)
+#define PRINT_URL_OPTION (PANE_OPTIONS_START+14)
 
 // command line options
 static const struct option options[] = {
@@ -143,6 +144,7 @@ static const struct option options[] = {
         {"right",        no_argument,       NULL, RIGHT_OPTION},
         {"above",        no_argument,       NULL, ABOVE_OPTION},
         {"below",        no_argument,       NULL, BELOW_OPTION},
+        {"print-url",    no_argument,       NULL, PRINT_URL_OPTION},
         {"socket-name",  required_argument, NULL, 'L'},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
@@ -510,6 +512,8 @@ void  init_options(struct options *opts)
     opts->sig_code = SIGHUP;
     opts->sig_name = NULL; // FIXME
     opts->qt_remote_debugging = NULL;
+    opts->fd_out = STDOUT_FILENO;
+    opts->fd_err = STDERR_FILENO;
 }
 
 int process_options(int argc, char **argv, struct options *opts)
@@ -568,6 +572,7 @@ int process_options(int argc, char **argv, struct options *opts)
             case RIGHT_OPTION:
             case BELOW_OPTION:
             case ABOVE_OPTION:
+            case PRINT_URL_OPTION:
                 opts->paneOp = c - PANE_OPTIONS_START;
                 /* ... fall through ... */
             case DETACHED_OPTION:
@@ -701,20 +706,40 @@ main(int argc, char **argv)
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
                 && socket < 0)))
           exit((*command->action)(argc-optind, argv+optind,
-                                  NULL, NULL, NULL, 2, &opts));
+                                  NULL, NULL, NULL, &opts));
     if (socket >= 0) {
       const char *state_as_json = state_to_json(argc, argv, environ);
       size_t jlen = strlen(state_as_json);
-      if (write(socket, state_as_json, jlen) != jlen
-          || write(socket, "\f", 1) != 1)
-        fatal("bad write to socket");
-      for (;;) {
-        char buf[100];
-        int n = read(socket, buf, sizeof(buf));
-        if (n <= 0)
-          break;
-        write(2, buf, n);
-      }
+
+      struct msghdr msg;
+      int myfds[2];
+      myfds[0] = 1;
+      myfds[1] = 2;
+      union u { // for alignment
+          char buf[CMSG_SPACE(sizeof myfds)];
+          struct cmsghdr align;
+      } u;
+      msg.msg_control = u.buf;
+      msg.msg_controllen = sizeof u.buf;
+      struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+      cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
+      memcpy(CMSG_DATA(cmsg), myfds, sizeof(int) * 2);
+      msg.msg_controllen = cmsg->cmsg_len;
+      cmsg->cmsg_level = SOL_SOCKET;
+      cmsg->cmsg_type = SCM_RIGHTS;
+      struct iovec iov[2];
+      iov[0].iov_base = state_as_json;
+      iov[0].iov_len = jlen;
+      iov[1].iov_base = "\f";
+      iov[1].iov_len = 1;
+      msg.msg_name = NULL;
+      msg.msg_namelen = 0;
+      msg.msg_iov = iov;
+      msg.msg_iovlen = 2;
+      msg.msg_flags = 0;
+      errno = 0;
+      ssize_t n = sendmsg(socket, &msg, 0);
+
       //if (close(socket) != 0)
       //  fatal("bad close of socket");
       //fprintf(stderr, "done client cmd:%s\n", cmd);
@@ -813,7 +838,7 @@ main(int argc, char **argv)
     }
 
     int ret = handle_command(argc-optind, argv+optind,
-                             ".", environ, NULL, 1, &opts);
+                             ".", environ, NULL, &opts);
     if (ret != 0)
         force_exit = 1;
 
