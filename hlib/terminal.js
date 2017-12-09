@@ -4244,6 +4244,7 @@ DomTerm.HTMLinfo = {
     "b": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "base": DomTerm._ELEMENT_KIND_EMPTY,//metadata
     "basefont": DomTerm._ELEMENT_KIND_EMPTY, //obsolete
+    "big": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "blockquote": DomTerm._ELEMENT_KIND_ALLOW,
     "br": 0x15,
     "body": DomTerm._ELEMENT_KIND_CONVERT_TO_DIV+DomTerm._ELEMENT_KIND_ALLOW,
@@ -4369,6 +4370,7 @@ DomTerm.HTMLinfo = {
     //"track": 0x10,
     "tref": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "tspan": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "tt": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "u": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "ul": 1,
     "use": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
