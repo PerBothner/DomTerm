@@ -1099,9 +1099,12 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             process_options(argc, argv, &opts);
             int ret = handle_command(argc-optind, argv+optind,
                                      cwd, env, wsi, &opts);
-            // FIXME: send ret to caller.
-            // FIXME: free argv, cwd, env
+            close(opts.fd_out);
+            close(opts.fd_err);
+            char r = (char) ret;
+            write(sockfd, &r, 1);
             close(sockfd);
+            // FIXME: free argv, cwd, env
             break;
     default:
       //fprintf(stderr, "callback_cmd default reason:%d\n", (int) reason);

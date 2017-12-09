@@ -708,42 +708,45 @@ main(int argc, char **argv)
           exit((*command->action)(argc-optind, argv+optind,
                                   NULL, NULL, NULL, &opts));
     if (socket >= 0) {
-      const char *state_as_json = state_to_json(argc, argv, environ);
-      size_t jlen = strlen(state_as_json);
+        const char *state_as_json = state_to_json(argc, argv, environ);
+        size_t jlen = strlen(state_as_json);
 
-      struct msghdr msg;
-      int myfds[2];
-      myfds[0] = 1;
-      myfds[1] = 2;
-      union u { // for alignment
+        struct msghdr msg;
+        int myfds[2];
+        myfds[0] = STDOUT_FILENO;
+        myfds[1] = STDERR_FILENO;
+        union u { // for alignment
           char buf[CMSG_SPACE(sizeof myfds)];
           struct cmsghdr align;
-      } u;
-      msg.msg_control = u.buf;
-      msg.msg_controllen = sizeof u.buf;
-      struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-      cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
-      memcpy(CMSG_DATA(cmsg), myfds, sizeof(int) * 2);
-      msg.msg_controllen = cmsg->cmsg_len;
-      cmsg->cmsg_level = SOL_SOCKET;
-      cmsg->cmsg_type = SCM_RIGHTS;
-      struct iovec iov[2];
-      iov[0].iov_base = state_as_json;
-      iov[0].iov_len = jlen;
-      iov[1].iov_base = "\f";
-      iov[1].iov_len = 1;
-      msg.msg_name = NULL;
-      msg.msg_namelen = 0;
-      msg.msg_iov = iov;
-      msg.msg_iovlen = 2;
-      msg.msg_flags = 0;
-      errno = 0;
-      ssize_t n = sendmsg(socket, &msg, 0);
-
-      //if (close(socket) != 0)
-      //  fatal("bad close of socket");
-      //fprintf(stderr, "done client cmd:%s\n", cmd);
-      exit(0);
+        } u;
+        msg.msg_control = u.buf;
+        msg.msg_controllen = sizeof u.buf;
+        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
+        memcpy(CMSG_DATA(cmsg), myfds, sizeof(int) * 2);
+        msg.msg_controllen = cmsg->cmsg_len;
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_RIGHTS;
+        struct iovec iov[2];
+        iov[0].iov_base = (char*) state_as_json;
+        iov[0].iov_len = jlen;
+        iov[1].iov_base = "\f";
+        iov[1].iov_len = 1;
+        msg.msg_name = NULL;
+        msg.msg_namelen = 0;
+        msg.msg_iov = iov;
+        msg.msg_iovlen = 2;
+        msg.msg_flags = 0;
+        errno = 0;
+        ssize_t n1 = sendmsg(socket, &msg, 0);
+        char ret = -1;
+        ssize_t n2 = read(socket, &ret, 1);
+        //if (close(socket) != 0)
+        //  fatal("bad close of socket");
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+        close(socket);
+        exit(ret);
     }
 
     server = tty_server_new(argc-optind, argv+optind);
