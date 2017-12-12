@@ -241,8 +241,15 @@ function loadHandler(event) {
     if (m) {
         DomTerm.inAtomFlag = true;
         if (DomTerm.isInIFrame()) {
+            DomTerm.closeFromEof = function(dt) {
+                window.parent.postMessage("close-from-eof", "*"); }
             DomTerm.windowClose = function() {
                 window.parent.postMessage("close", "*"); }
+            DomTerm.newPane = function(paneOp, sessionPid, dt) {
+                window.parent.postMessage({"command": "new-pane",
+                                           "pane_op": paneOp,
+                                           "session_pid": sessionPid}, "*");
+            };
         }
     }
     DomTerm.setContextMenu();
@@ -291,7 +298,7 @@ function handleMessage(event) {
     var data = event.data;
     var dt=DomTerm.focusedTerm;
     if (data=="serialize")
-        DomTerm.detach();
+        DomTerm.detach(); //or maybe DomTerm.saveWindowContents();
     else if (data=="toggle-auto-paging")
         DomTerm.toggleAutoPaging();
     else

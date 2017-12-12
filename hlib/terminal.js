@@ -391,7 +391,7 @@ DomTerm.freshName = function() {
 DomTerm.prototype.eofSeen = function() {
     this.historySave();
     this.history.length = 0;
-    this.close();
+    DomTerm.closeFromEof(this);
 };
 
 DomTerm.detach = function(dt=DomTerm.focusedTerm) {
@@ -421,12 +421,21 @@ DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
     dt._removeInputLine();
 }
 
+DomTerm.closeFromEof = function(dt) {
+    dt.close();
+}
+
 DomTerm.windowClose = function() {
     window.close();
 }
 
 DomTerm.setTitle = function(title) {
     document.title = title;
+}
+
+DomTerm.newPane = function(paneOp, sessionPid, dt) {
+    if (DomTerm.layoutAddPane)
+        DomTerm.layoutAddPane(dt, paneOp, sessionPid);
 }
 
 DomTerm.prototype.close = function() {
@@ -3978,10 +3987,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._detachSaveNeeded = this.getParameter(1,1);
             break;
         case 90:
-            if (DomTerm.layoutAddPane) {
-                DomTerm.layoutAddPane(this, this.getParameter(1, 0),
-                                      this.getParameter(2, 0));
-            }
+            DomTerm.newPane(this.getParameter(1, 0),
+                            this.getParameter(2, 0),
+                            this);
             break;
         case 99:
             if (this.getParameter(1, 0) == 99)
