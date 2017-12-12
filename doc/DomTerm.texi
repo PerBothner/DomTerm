@@ -813,6 +813,8 @@ The default is @code{800x600}.
 Set the @code{user} stylesheet to the rules in @var{css-style-rules}.
 The latter is typically a multi-line value.
 
+See the @ref{Styling} section for examples.
+
 @item @code{@b{style.qt} =} @var{css-style-rules}
 @code{qtdomterm} only: Set styling for QT user interface widgets.
 For example to specify the color green
@@ -1159,18 +1161,34 @@ Scroll one line up or down.
 @chapter Styling
 
 The appearance of a DomTerm window is controlled by CSS stylesheets.
-You can change the stylesheets using @code{domterm} sub-commands.
+
+You can place stylesheet rules in the @ref{Settings,@code{~/.domterm/settings.ini}} file.
+For example:
+@example
+style.user=
+ |div.domterm @{ background-color: azure @}
+@end example
+
+You can also change the stylesheets using @code{domterm add-style} or
+@code{domterm load-stylesheet} sub-commands.  For example:
+@example
+$ domterm add-style "div.domterm @{ background-color: azure @}"
+@end example
 
 @subheading Reverse video (dark vs light)
 
 By default DomTerm uses uses dark-colored (black) foreground (text) on a
 light-colored (off-white) background.
-Reverse video switches these, by using alight-colored text
+Reverse video switches these, by using a light-colored text
 on a dark background.
 
 You can enable reverse-video mode using the command:
 @example
-domterm reverse-video on
+$ domterm reverse-video on
+@end example
+or in the @code{settings.ini} file:
+@example
+style.dark=on
 @end example
 
 Enabling reverse-video does not change stylesheet rules,
@@ -1191,9 +1209,9 @@ selects a consistent whole.
 
 @subheading Color variables
 
-DomTerm works best on a browser that supports
-@uref{https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_variables,CSS Variables}, which include Firefox, Google Chrome, and (soon) Edge.
-The following variables defined the main colors.
+DomTerm makes uses of
+@uref{https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_variables,CSS Variables}, which is supported by most modern browsers.
+The following variables define the main colors.
 
 @table @code
 @item --main-light-color
@@ -1252,6 +1270,11 @@ can add an override rule:
 @example
 div.domterm @{--dt-cyan: #00AAAA@}
 @end example
+The @code{mc} file browser by default sets the background to blue.
+You can adjust the shade of blue used like this:
+@example
+div.domterm @{--dt-blue: #4040a0 @}
+@end example
 
 @subheading End-of-file background
 
@@ -1264,6 +1287,30 @@ div.domterm-spacer @{background: none @}
 The spacer stripes alternatate between transparent and the value of @code{--spacer-color}.  You can change it thus:
 @example
 div.domterm-spacer @{--spacer-color: LemonChiffon@}
+@end example
+
+@subheading Prompt, input and error output
+The @code{std} attribute of a @code{<span>} element is used to
+indicate the logical kind of output.
+The attribute @code{std='prompt'} marks a prompt before an input line,
+while @code{std='prompt'} marks the input line itself.
+(These attribute can be set using escape sequences in the prompt.)
+You can change the colors used like this:
+@example
+span[std="prompt"] @{ background-color: lightgray @}
+span[std="input"] @{ color: blue; background-color: inherit @}
+@end example
+Note the use of @code{inherit} to override the setting in the
+default stylesheet.
+
+An application or library can use escape sequences to distinguish
+the error output (@code{stderr}) from regular output (@code{stdout}).
+(Most programs don't emit these escape sequences.
+It is difficult to do this reliably without modifying the
+program or the tty subsystem.)
+If so, by default, the text color is @code{red}; to turn this off, do:
+@example
+span[std="error"] @{ color: inherit @}
 @end example
 
 @subheading Background image
