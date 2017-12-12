@@ -58,6 +58,8 @@ The command automatically starts server if not already running.
 @ref{Sessions and Windows,Session management}, with detachable sessions, as in
 @code{tmux} or GNU @code{screen}.
 @item
+An experimental package @uref{https://github.com/PerBothner/atom-domterm,atom-domterm} for the @uref{https://atom.io/,Atom editor} is available.
+@item
 A front-end based on @uref{https://electron.atom.io/,Electron}
 is now the preferred one.
 @item
@@ -1680,7 +1682,7 @@ DomTerm includes a ``window manager''
 using @uref{http://golden-layout.com/,GoldenLayout})
 that supports panes and tabs.
 If DomTerm is integrated in an application with its
-own window manager,such as Atom or Visual Studio Code,
+own window manager, such as Atom or Visual Studio Code,
 it would make sense to instead integrate with the latter manager.
 
 Similarly, when running under a
