@@ -54,6 +54,7 @@ read_settings_file(struct options *options)
                                settings_fd, 0);
     unsigned char *send = sbuf + slen;
     unsigned char *sptr = sbuf;
+    char *emsg = "";
     for (;;) {
     next:
         if (sptr == send)
@@ -74,6 +75,10 @@ read_settings_file(struct options *options)
             if (sptr == send)
               goto eof;
             ch = *sptr;
+        }
+        if (ch == '|') {
+            emsg = "\n(continuation marker '|' must follow a single space)";
+            goto err;
         }
         if (ch == '\r' || ch == '\n') {
           sptr++;
@@ -140,8 +145,8 @@ read_settings_file(struct options *options)
                 json_object_new_string_len(value_start, value_length));
     }
  err:
-    fprintf(stderr, "error in %s at byte offset %d\n",
-            settings_fname, sptr - sbuf);
+    fprintf(stderr, "error in %s at byte offset %d%s\n",
+            settings_fname, sptr - sbuf, emsg);
  eof:
     munmap(sbuf, slen);
     close(settings_fd);
