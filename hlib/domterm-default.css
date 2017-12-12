@@ -3,25 +3,29 @@
 /* "\2936" is "arrow pointing downwards then curving leftward".
 It is used to indicate a wrapped line, rather like a hyphen. */
 span[breaking="yes"][line="soft"]:before {content: "\2936" "\A"; }
-/* Suggested by Tufte CSS - less harsh than pure white. */
 div.domterm {
     /* A light color used for the default background in normal mode,
-       or used for default foreground (text) in reverse-video mode. */
+       or used for default foreground (text) in reverse-video mode.
+       This value suggested by Tufte CSS - less harsh than pure white. */
     --main-light-color: #fffff8;
     /* A dark color used for the default foreground (text) in normal mode,
        or used for default background in reverse-video mode. */
     --main-dark-color: black;
+}
+div.domterm {
     color: black; background-color: #fffff8; /* fallback if var not handled */
-    color: var(--main-dark-color); background-color: var(--main-light-color);
     --background-color: var(--main-light-color);
     --foreground-color: var(--main-dark-color);
+    background-color: var(--background-color);
+    color: var(--foreground-color);
     --spacer-color:  #F0F0F8;
 }
 div.domterm[reverse-video] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
-    color: var(--main-light-color); background-color: var(--main-dark-color);
     --background-color: var(--main-dark-color);
     --foreground-color: var(--main-light-color);
+    background-color: var(--background-color);
+    color: var(--foreground-color);
     --spacer-color:  #101040;
 }
 div.domterm-spacer {
