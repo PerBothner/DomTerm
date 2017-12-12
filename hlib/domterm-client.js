@@ -236,8 +236,17 @@ function loadHandler(event) {
     if (DomTerm.usingQtWebEngine) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
+    var m;
+    m = location.hash.match(/atom([^&]*)/);
+    if (m) {
+        DomTerm.inAtomFlag = true;
+        if (DomTerm.isInIFrame()) {
+            DomTerm.windowClose = function() {
+                window.parent.postMessage("close", "*"); }
+        }
+    }
     DomTerm.setContextMenu();
-    var m = location.hash.match(/open=([^&]*)/);
+    m = location.hash.match(/open=([^&]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
         DomTerm._initSavedLayout(JSON.parse(open_encoded));
@@ -277,11 +286,14 @@ function loadHandler(event) {
     location.hash = "";
 }
 
+/* Used by atom-domterm (but only when !DomTermView.usingWebview) */
 function handleMessage(event) {
     var data = event.data;
     var dt=DomTerm.focusedTerm;
-    if (data="serialize")
+    if (data=="serialize")
         DomTerm.detach();
+    else if (data=="toggle-auto-paging")
+        DomTerm.toggleAutoPaging();
     else
         console.log("received message "+data+" dt:"+ dt);
 }

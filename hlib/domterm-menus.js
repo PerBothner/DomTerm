@@ -190,7 +190,7 @@ DomTerm.createElectronMenus = function() {
 }
 
 DomTerm.setContextMenu = function() {
-    if (DomTerm.isElectron()) {
+    if (DomTerm.isElectron() && ! DomTerm.isAtom()) {
         DomTerm.createElectronMenus();
     }
 }

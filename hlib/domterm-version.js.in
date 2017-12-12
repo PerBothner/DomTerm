@@ -1,11 +1,16 @@
 // @configure_input@
 DomTerm.versionString = "@DOMTERM_VERSION@";
 DomTerm.copyrightYear = 2017;
+DomTerm.inAtomFlag = false;
 
 DomTerm.isElectron = function() {
     return typeof process !== 'undefined' && process.versions
         && process.versions.electron !== undefined;
 }
+
+DomTerm.isAtom = function() { return DomTerm.inAtomFlag; }
+
+DomTerm.isInIFrame = function() { return window.parent != window; }
 
 DomTerm.versionInfo = "version="+DomTerm.versionString;
 

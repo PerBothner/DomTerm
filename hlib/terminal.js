@@ -403,20 +403,22 @@ DomTerm.detach = function(dt=DomTerm.focusedTerm) {
     }
 };
 
-DomTerm.prototype._saveWindowContents = function() {
-    this._restoreInputLine();
-    var rcount = this._savedControlState ? this._savedControlState.receivedCount
-        : this._receivedCount;
+DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
+    if (!dt)
+        return;
+    dt._restoreInputLine();
+    var rcount = dt._savedControlState ? dt._savedControlState.receivedCount
+        : dt._receivedCount;
     var data =
         rcount
-        + ',{"sstate":'+JSON.stringify(this.sstate);
-    if (this.usingAlternateScreenBuffer)
-        data += ', "alternateBuffer":'+this.usingAlternateScreenBuffer;
+        + ',{"sstate":'+JSON.stringify(dt.sstate);
+    if (dt.usingAlternateScreenBuffer)
+        data += ', "alternateBuffer":'+dt.usingAlternateScreenBuffer;
     data += ', "html":'
-        + JSON.stringify(this.getAsHTML(false))
+        + JSON.stringify(dt.getAsHTML(false))
         +'}';
-    this.reportEvent("WINDOW-CONTENTS", data);
-    this._removeInputLine();
+    dt.reportEvent("WINDOW-CONTENTS", data);
+    dt._removeInputLine();
 }
 
 DomTerm.windowClose = function() {
@@ -429,7 +431,7 @@ DomTerm.setTitle = function(title) {
 
 DomTerm.prototype.close = function() {
     if (this._detachSaveNeeded == 2) {
-        this._saveWindowContents();
+        DomTerm.saveWindowContents(this);
     }
     if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
         DomTerm.domTermLayoutClose(this, DomTerm.domTermToLayoutItem(this));
@@ -2453,6 +2455,13 @@ DomTerm.prototype._mouseHandler = function(ev) {
     if (ev.type == "mousedown") {
         DomTerm.setFocus(this);
     }
+    if (this.sstate.mouseMode == 0 && ev.button == 2
+        && DomTerm.isInIFrame()) {
+        // used by atom-domterm
+        ev.preventDefault();
+        window.parent.postMessage("context-menu", "*");
+        return;
+    }
     /* FUTURE POPUP
     if (ev.ctrlKey && ev.button == 2) {
         this.createContextMenu();
@@ -3963,7 +3972,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.setInputMode(this.getParameter(1, 112));
             break;
         case 81: // get-window-contents
-            this._saveWindowContents();
+            DomTerm.saveWindowContents(this);
             break;
         case 82:
             this._detachSaveNeeded = this.getParameter(1,1);
