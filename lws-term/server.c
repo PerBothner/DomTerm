@@ -425,7 +425,9 @@ void
 do_run_browser(struct options *options, char *url, int port)
 {
     const char *browser_specifier =
-      options == NULL || options->browser_command == NULL
+      ((options == NULL || options->browser_command == NULL)
+       && opts.browser_command != NULL
+       && strcmp(opts.browser_command, "--print-url") != 0)
       ? opts.browser_command
       : options->browser_command;
     //if (browser_specifier==NULL)
