@@ -4119,9 +4119,15 @@ DomTerm.prototype.setSettings = function(obj) {
     if (DomTerm._settingsCounter == settingsCounter)
         return;
     DomTerm._settingsCounter = settingsCounter;
+
     var style_dark = obj["style.dark"];
-    if (style_dark)
+    if (style_dark) {
         this.setReverseVideo(this._asBoolean(style_dark));
+        this._style_dark_set = true;
+    } else if (this._style_dark_set) {
+        this.setReverseVideo(false);
+        this._style_dark_set = false;
+    }
 
     var style_user = obj["style.user"];
     if (style_user) {
