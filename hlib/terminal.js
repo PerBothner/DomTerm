@@ -2468,7 +2468,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
         && DomTerm.isInIFrame()) {
         // used by atom-domterm
         ev.preventDefault();
-        window.parent.postMessage("context-menu", "*");
+        window.parent.postMessage("domterm-context-menu", "*");
         return;
     }
     /* FUTURE POPUP

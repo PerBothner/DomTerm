@@ -242,11 +242,11 @@ function loadHandler(event) {
         DomTerm.inAtomFlag = true;
         if (DomTerm.isInIFrame()) {
             DomTerm.closeFromEof = function(dt) {
-                window.parent.postMessage("close-from-eof", "*"); }
+                window.parent.postMessage("domterm-close-from-eof", "*"); }
             DomTerm.windowClose = function() {
-                window.parent.postMessage("close", "*"); }
+                window.parent.postMessage("domterm-close", "*"); }
             DomTerm.newPane = function(paneOp, sessionPid, dt) {
-                window.parent.postMessage({"command": "new-pane",
+                window.parent.postMessage({"command": "domterm-new-pane",
                                            "pane_op": paneOp,
                                            "session_pid": sessionPid}, "*");
             };
