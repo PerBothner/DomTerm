@@ -3954,6 +3954,20 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 15:
             this._pushStdMode("input");
+            // If there is existing content on the current line,
+            // move it into new input <span>.
+            var firstChild = this.outputContainer.nextSibling;
+            var newParent = this.outputContainer;
+            for (var child = firstChild;
+                 child != null
+                 && (child.tagName!="LINE"
+                     ||child.getAttribute("line")=="soft"); ) {
+                var next = child.nextSibling;
+                child.parentNode.removeChild(child);
+                newParent.appendChild(child);
+                child = next;
+            }
+            this.outputBefore = firstChild;
             this._adjustStyle();
             break;
         case 16:
