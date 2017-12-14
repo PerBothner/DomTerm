@@ -30,6 +30,7 @@ struct help_info help_table[] = {
   { "browse", browse_help},
   { "html", html_help},
   { "hcat", html_help},
+  { "window-specifier", "*window-specifier" },
   { "image", "*imgcat"},
   { "imgcat", "*imgcat"},
   { "is-domterm", is_domterm_help},

@@ -45,6 +45,7 @@ all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp
   share/domterm/help/docutils.css \
   share/domterm/help/domterm.rst share/domterm/help/domterm.html \
   share/domterm/help/qtdomterm.rst share/domterm/help/qtdomterm.html \
+  share/domterm/help/window-specifier.rst share/domterm/help/window-specifier.html \
   share/domterm/help/imgcat.rst share/domterm/help/imgcat.html
 
 # application.ini has to be copied, not linked; or it can't find domterm.jar
