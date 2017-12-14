@@ -1284,7 +1284,7 @@ DomTerm.prototype._removeCaret = function() {
         var child = inputLine.firstChild;
         inputLine.removeAttribute("caret");
         if (child instanceof Text) {
-            var text = this._followingText(inputLine.followingSibling);
+            var text = this._followingText(inputLine.nextSibling);
             if (text instanceof Text) {
                 text.insertData(0, child.data);
                 inputLine.removeChild(child);
