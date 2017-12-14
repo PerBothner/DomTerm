@@ -130,6 +130,7 @@ static const struct option options[] = {
         {"chrome",       no_argument,       NULL, CHROME_OPTION},
         {"google-chrome",no_argument,       NULL, CHROME_OPTION},
         {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
+        {"qt",           no_argument,       NULL, QTDOMTERM_OPTION},
         {"qtdomterm",    no_argument,       NULL, QTDOMTERM_OPTION},
         {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
         {"electron",     no_argument,       NULL, ELECTRON_OPTION},
@@ -288,15 +289,6 @@ chrome_command()
 }
 
 char *
-chrome_app_command(char *chrome_cmd)
-{
-    char *crest = " --app='%U' >/dev/null";
-    char *buf = xmalloc(strlen(chrome_cmd)+strlen(crest)+1);
-    sprintf(buf, "%s%s", chrome_cmd, crest);
-    return buf;
-}
-
-char *
 firefox_browser_command()
 {
     char *firefoxCommand = "firefox";
@@ -340,7 +332,7 @@ firefox_command()
     fprintf(stderr,
             "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
 #endif
-    return "firefox";
+    return firefox_browser_command();
 }
 
 char *
@@ -590,7 +582,7 @@ int process_options(int argc, char **argv, struct options *opts)
                     fprintf(stderr, "neither chrome or google-chrome command found\n");
                     exit(-1);
                 }
-                opts->browser_command = chrome_app_command(cbin);
+                opts->browser_command = cbin;
                 break;
             }
             case FIREFOX_OPTION:
