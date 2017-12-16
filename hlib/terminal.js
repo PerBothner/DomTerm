@@ -452,7 +452,8 @@ DomTerm.prototype.startCommandGroup = function() {
     var container = this.outputContainer;
     var containerTag = container.tagName;
     if ((containerTag == "PRE" || containerTag == "P"
-         || (containerTag == "DIV" && container.getAttribute("class") == "domterm-pre"))
+         || (containerTag == "DIV"
+             && container.classList.contains("domterm-pre")))
         && container.firstChild == this.outputBefore) {
         var commandGroup = document.createElement("div");
         commandGroup.setAttribute("class", "command-group");
@@ -855,7 +856,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
         } else {
             for (;;) {
                 if (cur.nodeName == "SPAN"
-                    && cur.getAttribute("class") == "pprint-group")
+                    && cur.classList.contains("pprint-group"))
                     this._popPprintGroup();
                 var next = cur.nextSibling;
                 if (next != null) {
@@ -1626,7 +1627,7 @@ DomTerm.prototype.isSavedSession = function() {
  */
 DomTerm.prototype._adjustStyle = function() {
     var parentSpan = this.outputContainer;
-    var inStyleSpan = parentSpan.getAttribute("class") == "term-style";
+    var inStyleSpan = parentSpan.classList.contains("term-style");
     var needBackground = false;
     if (! inStyleSpan && this._currentStyleMap.get("background-color") == null) {
         var block = this._getOuterBlock(parentSpan);
@@ -1710,13 +1711,13 @@ DomTerm.prototype._adjustStyle = function() {
         var previous = this.outputBefore ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
         if (previous instanceof Element
-            && previous.getAttribute("class") == "term-style"
+            && previous.classList.contains("term-style")
             && DomTerm._styleSpansMatch(styleSpan, previous)) {
             this.outputBefore = null;
             styleSpan = previous;
         } else {
             if (this.outputBefore instanceof Element
-                && this.outputBefore.getAttribute("class") == "term-style"
+                && this.outputBefore.classList.contains("term-style")
                 && DomTerm._styleSpansMatch(styleSpan, this.outputBefore)) {
                 styleSpan = this.outputBefore;
             } else {
@@ -4856,7 +4857,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         break;
     case 110: // start prettyprinting-group
         if (this._currentStyleSpan == this.outputContainer
-            && this.outputContainer.getAttribute("class") == "term-style")
+            && this.outputContainer.classList.contains("term-style"))
             this._popStyleSpan();
         //this._adjustStyle();
         var ppgroup = this._createSpanNode();
@@ -5733,7 +5734,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         var insertPosition = el.lastChild;
         if (insertPosition == null
             || insertPosition.nodeName != "SPAN"
-            || insertPosition.getAttribute("class") != "pprint-post-break")
+            || ! insertPosition.classList.contains("pprint-post-break"))
             insertPosition = null;
         for (var i = 0; ;  ) {
             var indent = i == n ? null : indentation[i++];
@@ -5761,7 +5762,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             && el.getAttribute("pre-break") == null
             && (el.firstChild == null
                 || el.firstChild.nodeName != "SPAN"
-                || el.firstChild.getAttribute("class") != "pprint-pre-break"))
+                || ! el.firstChild.classList.contains("pprint-pre-break")))
             el.setAttribute("pre-break", ""); // Needed for CSS
         el.setAttribute("breaking", "yes");
         return curPosition;
@@ -5813,7 +5814,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             var lineAttr;
             var skipChildren = false;
             if (el instanceof Text || dt.isObjectElement(el)
-                || el.getAttribute("class") == "wc-node") {
+                || el.classList.contains("wc-node")) {
                 skipChildren = true;
             } else if (el.nodeName == "SPAN"
                        && (lineAttr = el.getAttribute("line")) != null) {
@@ -5827,10 +5828,10 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     if (! sectionEnd)
                         sectionEnd = dt.lineEnds[line];
                 }
-            } else if (el.getAttribute("class") == "pprint-indent") {
+            } else if (el.classList.contains("pprint-indent")) {
                 skipChildren = true;
                 el.pprintGroup = pprintGroup;
-            } else if (el.getAttribute("class") == "pprint-group") {
+            } else if (el.classList.contains("pprint-group")) {
                 pprintGroup = el;
             }
             if (el instanceof Element) {
@@ -5877,7 +5878,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             var measureWidth = el instanceof Element ? el.measureWidth : 0;
             check_fits:
             if (el instanceof Text || dt.isObjectElement(el)
-                || el.getAttribute("class") == "wc-node") {
+                || el.classList.contains("wc-node")) {
                 skipChildren = true;
                 if (el instanceof Text)
                     dt._normalize1(el);
@@ -5965,7 +5966,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     }
                 }
                 sectionStartLine = line;
-            } else if (el.getAttribute("class") == "pprint-indent") {
+            } else if (el.classList.contains("pprint-indent")) {
                 skipChildren = true;
                 var extra = el.getAttribute("indentation");
                 var delta = el.getAttribute("delta");
@@ -5985,13 +5986,13 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     span.setAttribute("value", extra);
                     indentation.push(span);
                 }
-            } else if (el.getAttribute("class") == "pprint-group") {
+            } else if (el.classList.contains("pprint-group")) {
                 var previous = el.previousSibling;
                 el.indentLengthBeforeBlock = indentation.length;
                 el.saveSectionStartLine = sectionStartLine;
                 sectionStartLine = line;
                 if (previous && previous.nodeName == "SPAN"
-                    && previous.getAttribute("class") == "pprint-prefix") {
+                    && previous.classList.contains("pprint-prefix")) {
                     var prefix = previous.firstChild.data;
                     var span = dt._createSpanNode();
                     span.setAttribute("class", "indentation");
@@ -6060,7 +6061,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             for (var child = lineStart.firstChild;
                  child != null; ) {
                 var next = child.nextSibling;
-                if (child.getAttribute("class") == "pprint-indentation")
+                if (child.classList.contains("pprint-indentation"))
                     lineStart.removeChild(child);
                 child = next;
             }
