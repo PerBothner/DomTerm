@@ -3947,6 +3947,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 if (this._currentCommandHideable)
                     this.outputContainer.setAttribute("domterm-hidden", "false");
             }
+            this.outputContainer.classList.add("input-line");
             this._pushStdMode("prompt");
             if (param == 24)
                 this.inputLine.setAttribute("continuation", "true");

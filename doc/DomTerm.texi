@@ -1303,6 +1303,12 @@ span[std="input"] @{ color: blue; background-color: inherit @}
 Note the use of @code{inherit} to override the setting in the
 default stylesheet.
 
+If you want to change the style of the entire input line,
+you can use the @code{input-line} property:
+@example
+div.input-line @{ background-color: #FFFFE8 @}
+@end example
+
 An application or library can use escape sequences to distinguish
 the error output (@code{stderr}) from regular output (@code{stdout}).
 (Most programs don't emit these escape sequences.
