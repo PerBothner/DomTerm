@@ -454,7 +454,9 @@ DomTerm.prototype.startCommandGroup = function() {
     if ((containerTag == "PRE" || containerTag == "P"
          || (containerTag == "DIV"
              && container.classList.contains("domterm-pre")))
-        && container.firstChild == this.outputBefore) {
+        && container.firstChild == this.outputBefore
+        && (this._currentCommandGroup == null
+            || this._currentCommandGroup.firstChild != container)) {
         var commandGroup = document.createElement("div");
         commandGroup.setAttribute("class", "command-group");
         var oldGroup = this._currentCommandGroup;
