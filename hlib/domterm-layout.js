@@ -390,7 +390,7 @@ DomTerm.layoutInit = function(term) {
                     el.setAttribute("pid", sessionPid);
             } else {
                 var query = sessionPid ? "connect-pid="+sessionPid : null;
-                connectHttp(el, query);
+                DomTerm.connectHttp(el, query);
             }
         }
         container.setTitle(name);
@@ -450,8 +450,7 @@ DomTerm._initSavedLayout = function(data) {
         if (data.pid) {
             var bodyNode = document.getElementsByTagName("body")[0];
             var topNode = DomTerm.makeElement(bodyNode, DomTerm.freshName());
-            var url = makeWsUrl("connect-pid="+data.pid);
-            connect(null, url, "domterm", topNode);
+            DomTerm.connectHttp(topNode, "connect-pid="+data.pid);
         } else if (data instanceof Array) {
             var n = data.length;
             DomTerm._pendingTerminals = new Array();
@@ -482,7 +481,7 @@ DomTerm._initSavedLayout = function(data) {
                 let el = DomTerm._pendingTerminals[i];
                 var pid = el.getAttribute("pid");
                 var query = pid ? "connect-pid="+pid : null;
-                connectHttp(el, query);
+                DomTerm.connectHttp(el, query);
             }
             DomTerm._pendingTerminals = null;
         }

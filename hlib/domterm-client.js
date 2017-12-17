@@ -1,61 +1,3 @@
-DomTerm._mask28 = 0xfffffff;
-DomTerm.usingAjax = false;
-DomTerm.usingQtWebEngine = !! location.hash.match(/[#&]qtwebengine/);
-
-// data can be a DomString or an ArrayBuffer.
-DomTerm._handleOutputData = function(dt, data) {
-    var dlen;
-    if (data instanceof ArrayBuffer) {
-        dt.insertBytes(new Uint8Array(data));
-        dlen = data.byteLength;
-        // updating _receivedCount is handled by insertBytes
-    } else {
-        dt.insertString(data);
-        dlen = data.length;
-        dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
-    }
-    if (dt._pagingMode != 2
-        && ((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
-        dt._confirmedCount = dt._receivedCount;
-        dt.reportEvent("RECEIVED", dt._confirmedCount);
-    }
-    return dlen;
-}
-
-/** Connect using WebSockets */
-function connect(name, wspath, wsprotocol, topNode=null) {
-    if (name == null) {
-        name = topNode == null ? null : topNode.getAttribute("id");
-        if (name == null)
-            name = "domterm";
-    }
-    if (topNode == null)
-        topNode = document.getElementById(name);
-    var wt = new DomTerm(name);
-    if (false && DomTerm.inAtomFlag && DomTerm.isInIFrame()) { // FIXME
-        console.log("websocket in DomTermView");
-        wt.topNode = topNode;
-        DomTerm.focusedTerm = wt;
-        DomTerm.sendParentMessage("domterm-new-websocket", wspath, wsprotocol);
-        wt.closeConnection = function() {
-             DomTerm.sendParentMessage("domterm-socket-close"); }
-        wt.processInputCharacters = function(str) {
-            DomTerm.sendParentMessage("domterm-socket-send", str); }
-        return;
-    }
-    var wsocket = new WebSocket(wspath, wsprotocol);
-    wsocket.binaryType = "arraybuffer";
-    wt.closeConnection = function() { wsocket.close(); };
-    wt.processInputCharacters = function(str) { wsocket.send(str); };
-    wsocket.onmessage = function(evt) {
-	DomTerm._handleOutputData(wt, evt.data);
-    }
-    wsocket.onopen = function(e) {
-        wt.reportEvent("VERSION", DomTerm.versionInfo);
-        wt.initializeTerminal(topNode);
-    };
-}
-
 var maxAjaxInterval = 2000;
 
 /** Connect using XMLHttpRequest ("ajax") */
@@ -139,30 +81,6 @@ function connectAjax(name, prefix="", topNode=null)
     xhr.open("POST", prefix+"open.txt");
     xhr.onreadystatechange = handleAjaxOpen;
     xhr.send("VERSION="+DomTerm.versionInfo);
-}
-
-function makeWsUrl(query=null) {
-    var ws = location.hash.match(/ws=([^,&]*)/);
-    var url;
-    if (ws) {
-        var path = ws[1];
-        if (path == "same")
-            url = (location.protocol == "https:" ? "wss:" : "ws:")
-            + "//"+location.hostname+":" + location.port + "/replsrc";
-        else
-            url = "ws:"+path;
-    } else
-        url = "ws://localhost:"+DomTerm.server_port+"/replsrc";
-    if (query)
-        url = url + '?' + query;
-    if (DomTerm.server_key)
-        url = url + (query ? '&' : '?') + 'server-key=' + DomTerm.server_key;
-    return url;
-}
-
-function connectHttp(node, query=null) {
-    var url = makeWsUrl(query);
-    connect(null, url, "domterm", node);
 }
 
 function setupQWebChannel(channel) {
@@ -307,9 +225,9 @@ function loadHandler(event) {
         for (var i = 0; i < topNodes.length; i++)
             connectAjax("domterm", "", topNodes[i]);
     } else {
-        var url = makeWsUrl(location.hash ? location.hash.substring(1) : null);
+        var url = DomTerm._makeWsUrl(location.hash ? location.hash.substring(1) : null);
         for (var i = 0; i < topNodes.length; i++) {
-            connect(null, url, "domterm", topNodes[i]);
+            DomTerm.connectWS(null, url, "domterm", topNodes[i]);
         }
     }
     location.hash = "";
