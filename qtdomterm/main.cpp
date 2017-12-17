@@ -56,7 +56,7 @@
 #include <QProcessEnvironment>
 #include <QDir>
 
-const char* const short_options = "+vhw:e:c:S:";
+const char* const short_options = "+:vhw:e:c:S:";
 
 #define QT_OPTION 1000
 #define GEOMETRY_OPTION 1001
