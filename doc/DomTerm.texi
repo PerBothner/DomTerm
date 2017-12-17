@@ -574,6 +574,7 @@ domterm html 'E = mc<sup>2</sup>'
 displays: @code{E = mc@sup{2}}.
 
 @item @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
+@itemx @b{@code{imgcat}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
 
 This script ``prints'' the contents of the named image file to domterm.
 This uses a ``@code{data:}'' URI with the file contents sent directly to domterm, so it works when working remotely.
