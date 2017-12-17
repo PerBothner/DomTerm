@@ -418,7 +418,6 @@ DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
         + JSON.stringify(dt.getAsHTML(false))
         +'}';
     dt.reportEvent("WINDOW-CONTENTS", data);
-    dt._removeInputLine();
 }
 
 DomTerm.closeFromEof = function(dt) {
@@ -503,6 +502,7 @@ DomTerm.focusedTerm = null;
 
 DomTerm.setFocus = function(term) {
     var current = DomTerm.focusedTerm;
+    DomTerm.showFocusedTerm(term);
     if (current == term)
         return;
     if (current !== null) {
@@ -518,11 +518,16 @@ DomTerm.setFocus = function(term) {
         DomTerm.setTitle(term.sstate.windowTitle);
         DomTerm.inputModeChanged(term, term.getInputMode());
     }
+    //DomTerm.showFocusedTerm(term);
+    DomTerm.focusedTerm = term;
+}
+
+// Overridden for atom-domterm
+DomTerm.showFocusedTerm = function(term) {
     if (DomTerm.layoutManager) {
         var item = term ? DomTerm.domTermToLayoutItem(term) : null;
         DomTerm.showFocusedPane(item);
     }
-    DomTerm.focusedTerm = term;
 }
 
 DomTerm.prototype.maybeFocus = function() {
@@ -2468,10 +2473,11 @@ DomTerm.prototype._mouseHandler = function(ev) {
         DomTerm.setFocus(this);
     }
     if (this.sstate.mouseMode == 0 && ev.button == 2
-        && DomTerm.isInIFrame()) {
+        && DomTerm.sendParentMessage) {
+            //&& DomTerm.isInIFrame()) {
         // used by atom-domterm
         ev.preventDefault();
-        window.parent.postMessage("domterm-context-menu", "*");
+        DomTerm.sendParentMessage("domterm-context-menu");
         return;
     }
     /* FUTURE POPUP
@@ -4000,6 +4006,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 81: // get-window-contents
             DomTerm.saveWindowContents(this);
+            this._removeInputLine();
             break;
         case 82:
             this._detachSaveNeeded = this.getParameter(1,1);
@@ -4675,7 +4682,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
     }
     else {
         if (ok > start) {
-            this._unsafeInsertHTML(str.substring(start, ok)); 
+            this._unsafeInsertHTML(str.substring(start, ok));
             this.resetCursorCache();
         }
         this._updateLinebreaksStart(startLine);
