@@ -191,6 +191,9 @@ function loadHandler(event) {
         DomTerm.setLayoutTitle = function(dt, title, wname) {
             DomTerm.sendParentMessage("domterm-set-title", title, wname);
         };
+        DomTerm.displayInfoMessage = function(contents, dt) {
+            DomTerm.sendParentMessage("domterm-status-message", contents);
+        }
     }
     DomTerm.setContextMenu();
     m = location.hash.match(/open=([^&]*)/);

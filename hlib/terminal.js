@@ -195,6 +195,7 @@ function DomTerm(name, topNode) {
     this.initial = null;
 
     this._displayInfoWidget = null;
+    this._displayInfoShowing = false;
     this._displaySizePendingTimeouts = 0;
     this.modeLineGenerator = null;
 
@@ -2250,8 +2251,7 @@ DomTerm.prototype._displayInfoWithTimeout = function(text) {
     dt._displayInfoMessage(text);
     dt._displaySizePendingTimeouts++;
     function clear() {
-        var widget = dt._displayInfoWidget;
-        if (widget == null) {
+        if (! dt._displayInfoShowing) {
             dt._displaySizePendingTimeouts = 0;
         } else if (--dt._displaySizePendingTimeouts == 0) {
             dt._updatePagerInfo();
@@ -2261,12 +2261,7 @@ DomTerm.prototype._displayInfoWithTimeout = function(text) {
 };
 
 DomTerm.prototype._clearInfoMessage = function() {
-    var widget = this._displayInfoWidget;
-    if (widget != null) {
-        widget.parentNode.removeChild(widget);
-        this._displayInfoWidget = null;
-        this._displaySizePendingTimeouts = 0;
-    }
+    this._displayInfoMessage(null);
 }
 
 DomTerm.prototype._displaySizeInfoWithTimeout = function() {
@@ -2280,15 +2275,30 @@ DomTerm.prototype._displaySizeInfoWithTimeout = function() {
     this._displayInfoWithTimeout(text);
 };
 
-/** Display contents in _displayInfoWidget.
- * The contents is updated with innerHTML, so "<>&" must be escaped. */
 DomTerm.prototype._displayInfoMessage = function(contents) {
-    var div = this._displayInfoWidget;
+    DomTerm.displayInfoMessage(contents, this);
+    this._displayInfoShowing = contents != null;
+    if (contents == null)
+        this._displaySizePendingTimeouts = 0;
+}
+
+/** Display contents in _displayInfoWidget., or clear if null.
+ * The contents is updated with innerHTML, so "<>&" must be escaped.
+ * This method can be overridden. */
+DomTerm.displayInfoMessage = function(contents, dt) {
+    var div = dt._displayInfoWidget;
+    if (contents == null) {
+        if (div != null) {
+            div.parentNode.removeChild(div);
+            dt._displayInfoWidget = null;
+        }
+        return;
+    }
     if (div == null) {
         div = document.createElement("div");
         div.setAttribute("class", "domterm-show-info");
-        this.topNode.insertBefore(div, this.topNode.firstChild);
-        this._displayInfoWidget = div;
+        dt.topNode.insertBefore(div, dt.topNode.firstChild);
+        dt._displayInfoWidget = div;
     }
     div.innerHTML = contents;
 };
