@@ -8,10 +8,6 @@ function _muxModeInfo(dt) {
     return "(MUX mode)";
 }
 
-function _escapeHTML(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
 DomTerm.prototype.enterMuxMode = function() {
     this.modeLineGenerator = _muxModeInfo;
     this._muxMode = true;
@@ -279,12 +275,12 @@ DomTerm.domTermToLayoutElement = function(domterm) {
 
 DomTerm.setLayoutTitle = function(dt, title, wname) {
     var r = DomTerm.domTermToLayoutItem(dt);
-    title = _escapeHTML(title);
+    title = DomTerm.escapeText(title);
     if (r) {
         var p = r.parent;
         if (p.type == 'stack' && p._activeContentItem == r
             && wname) {
-            wname = _escapeHTML(wname);
+            wname = DomTerm.escapeText(wname);
             title = title+'<span class="domterm-windowname"> '+wname+'</span>';
         }
         r.setTitle(title);

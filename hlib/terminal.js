@@ -368,6 +368,14 @@ function DomTerm(name, topNode) {
         };
     this._mouseEventHandler =
         function(evt) { dt._mouseHandler(evt); };
+    this._mouseEnterHandler =
+        function(event) {
+            var ref;
+            if (dt.sstate.mouseMode == 0
+                && (ref = event.target.getAttribute("href"))) {
+                dt._displayInfoWithTimeout(DomTerm.escapeText(ref));
+            }
+        };
 }
 
 DomTerm.makeElement = function(parent, name) {
@@ -4244,6 +4252,14 @@ DomTerm.prototype._unsafeInsertHTML = function(text) {
             this.outputBefore.insertAdjacentHTML("beforebegin", text);
         else
             this.outputContainer.insertAdjacentHTML("beforeend", text);
+        var links = this.outputContainer.getElementsByTagName("a");
+        for (var i = links.length; --i >= 0; ) {
+            var link = links[i];
+            if (! link.hasMouseEnter) {
+                link.addEventListener("mouseenter", this._mouseEnterHandler, false);
+                link.hasMouseEnter = true;
+            }
+        }
     }
 };
 
@@ -5024,6 +5040,11 @@ var escapeMap = {
     "'": '&#039;'
 };
 
+DomTerm.escapeText = function(text) {
+    // Assume single quote is not used in attributes
+    return text.replace(/[&<>"]/g, function(m) { return escapeMap[m]; });
+};
+
 DomTerm._homeLineOffset = function(dt) {
     var home_offset = 0;
     while (dt.homeLine - home_offset >= 0) {
@@ -5055,11 +5076,6 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
 
     var home_offset = DomTerm._homeLineOffset(dt);
     var home_node = dt.lineStarts[dt.homeLine - home_offset];
-
-    function escapeText(text) {
-        // Assume single quote is not used in atributes
-        return text.replace(/[&<>"]/g, function(m) { return escapeMap[m]; });
-    };
 
     function formatList(list) {
         for (let i = 0; i < list.length; i++) {
@@ -5126,7 +5142,7 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
                                && node.getAttribute("line"))
                         continue;
                     s += ' ' + aname+ // .toLowerCase() +
-                        '="' + escapeText(avalue) + '"';
+                        '="' + DomTerm.escapeText(avalue) + '"';
                 }
             }
             if (skip)
@@ -5148,10 +5164,10 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
             break;
         case 2: // ATTRIBUTE (should only get here if passing in an attribute node)
             string += ' ' + node.name+ // .toLowerCase() +
-            '="' + escapeText(node.value) + '"'; // .toLowerCase()
+            '="' + DomTerm.escapeText(node.value) + '"'; // .toLowerCase()
             break;
         case 3: // TEXT
-            string += escapeText(node.nodeValue);
+            string += DomTerm.escapeText(node.nodeValue);
             break;
         case 4: // CDATA
             if (node.nodeValue.indexOf(']]'+'>') !== -1) {
