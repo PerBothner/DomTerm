@@ -233,7 +233,8 @@ function loadHandler(event) {
             DomTerm.connectWS(null, url, "domterm", topNodes[i]);
         }
     }
-    location.hash = "";
+    if (!DomTerm.inAtomFlag)
+        location.hash = "";
 }
 
 /* Used by atom-domterm (but only when !DomTermView.usingWebview) */
@@ -241,13 +242,18 @@ function handleMessage(event) {
     var data = event.data;
     var dt=DomTerm.focusedTerm;
     if (data=="serialize")
-        DomTerm.detach(); //or maybe DomTerm.saveWindowContents();
+        DomTerm.saveWindowContents();  //or maybe DomTerm.detach();
+    else if (data=="destroy-window")
+        dt.reportEvent("destroy-window", "");
+    else if (data=="detach")
+        DomTerm.detach();
     else if (data=="toggle-auto-paging")
         DomTerm.toggleAutoPaging();
     else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);
     else if (data.command=="socket-open") {
         dt.reportEvent("VERSION", DomTerm.versionInfo);
+        dt.reportEvent("DETACH", "");
         dt.initializeTerminal(dt.topNode);
     } else
         console.log("received message "+data+" dt:"+ dt);

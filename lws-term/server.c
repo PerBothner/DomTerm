@@ -648,7 +648,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->ca_path[sizeof(opts->ca_path) - 1] = '\0';
                 break;
             case '?':
-                break;
+                return -1;
             default:
                 print_help(stderr);
                 return -1;
@@ -733,12 +733,12 @@ main(int argc, char **argv)
         msg.msg_flags = 0;
         errno = 0;
         ssize_t n1 = sendmsg(socket, &msg, 0);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
         char ret = -1;
         ssize_t n2 = read(socket, &ret, 1);
         //if (close(socket) != 0)
         //  fatal("bad close of socket");
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
         close(socket);
         exit(ret);
     }

@@ -112,6 +112,8 @@ function DomTerm(name, topNode) {
     sstate.windowName = null;
     sstate.windowTitle = null;
     sstate.iconName = null;
+    this.sessionNumber = -1;
+    this.windowNumber = -1;
     
     // Input lines that have not been processed yet.
     // In some modes we support enhanced type-ahead: Input lines are queued
@@ -154,8 +156,10 @@ function DomTerm(name, topNode) {
     // User option: automatic paging enabled
     this._autoPaging = false;
     this._pauseLimit = -1;
+    // number of (non-urgent) bytes received and processed
     this._receivedCount = 0;
     this._confirmedCount = 0;
+    this._replayMode = false;
 
     this.caretStyle = 1; // only if *not* isLineEditing()
 
@@ -3546,6 +3550,10 @@ DomTerm.prototype.popControlState = function() {
         this.parameters = saved.parameters;
         this.decoder = saved.decoder;
         this._savedControlState = saved.controlSequenceState;
+        // Control sequences in "urgent messages" don't count to
+        // receivedCount. (They are typically window-specific and
+        // should not be replayed when another window is attached.)
+        this._receivedCount = saved.receivedCount;
     }
 }
 
@@ -4045,6 +4053,23 @@ DomTerm.prototype.handleControlSequence = function(last) {
                             this.getParameter(2, 0),
                             this);
             break;
+        case 91:
+            this.sessionNumber = this.getParameter(1, 0);
+            this.windowNumber = this.getParameter(2, 0)-1;
+            this.updateWindowTitle();
+            break;
+        case 96:
+            this._receivedCount = this.getParameter(1,0);
+            this._confirmedCount = this._receivedCount;
+            if (this.controlSequenceState)
+                this.controlSequenceState.receivedCount = this._receivedCount;
+            break;
+        case 97:
+            this._replayMode = true;
+            break;
+        case 98:
+            this._replayMode = false;
+            break;
         case 99:
             if (this.getParameter(1, 0) == 99)
                 this.eofSeen();
@@ -4088,7 +4113,20 @@ DomTerm.prototype.setSessionName = function(title) {
 
 DomTerm.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("name");
-    return sname ? sname : this.name;
+    sname = sname ? sname : this.name;
+    sname = sname + ':' + this.sessionNumber;
+    if (this.windowNumber >= 0) {
+        function format2Letters(n) {
+            var rem = n % 26;
+            var last = String.fromCharCode(97+rem);
+            if (n > 26)
+                return format2Letters((n - rem) / 26) + last;
+            else
+                return last;
+        }
+        sname = sname + format2Letters(this.windowNumber);
+    }
+    return sname;
 };
 
 DomTerm.prototype.setWindowTitle = function(title, option) {
@@ -4857,8 +4895,10 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 102:
         DomTerm.sendSavedHtml(this, this.getAsHTML(true));
         break;
-    case 103:
-        var data = JSON.parse(text);
+    case 103: // restore saved snapshot
+        var comma = text.indexOf(",");
+        var rcount = Number(text.substring(0,comma));
+        var data = JSON.parse(text.substring(comma+1));
         var main = this._vspacer.previousSibling;
         if (main instanceof Element &&
             main.getAttribute('class') == 'interaction') {
@@ -4887,6 +4927,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             var home_offset = -1;
             dt.homeLine = dt._computeHomeLine(home_node, home_offset,
                                               dt.usingAlternateScreenBuffer);
+            dt._receivedCount = rcount;
+            dt._confirmedCount = rcount;
             this.updateWindowTitle();
         }
         break;
@@ -5207,9 +5249,9 @@ DomTerm.prototype._doDeferredDeletion = function() {
 
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
 DomTerm.prototype.insertBytes = function(bytes) {
-    if (this.verbosity >= 2)
-        this.log("insertBytes "+this.name+" "+typeof bytes);
     var len = bytes.length;
+    if (this.verbosity >= 2)
+        this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+len+" received:"+this._receivedCount);
     while (len > 0) {
         if (this.decoder == null)
             this.decoder = new TextDecoder(); //label = "utf-8");
@@ -5226,40 +5268,40 @@ DomTerm.prototype.insertBytes = function(bytes) {
         }
         var plen = urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin) ? urgent_begin
             : urgent_end >= 0 ? urgent_end : len;
-        var dlen; // amount consumed this iteration
-        if (urgent_end > urgent_begin && urgent_begin > 0
+        if (urgent_end > urgent_begin && urgent_begin >= 0
             && bytes[urgent_begin+1] == DomTerm.URGENT_BEGIN2) {
             this.pushControlState();
             this.insertString(this.decoder
-                              .decode(bytes.slice(urgent_begin+1, urgent_end),
+                              .decode(bytes.slice(urgent_begin+2, urgent_end),
                                       {stream:true}));
             this.popControlState();
-            bytes.copyWithin(urgent_begin, urgent_end);
-            dlen = urgent_end+1-urgent_begin;
-            bytes = bytes.slice(0, len-dlen);
+            bytes.copyWithin(urgent_begin, urgent_end+1);
+            len = len-(urgent_end+1-urgent_begin);
+            bytes = bytes.slice(0, len);
         } else {
+            var dlen; // amount consumed this iteration
             if (plen > 0) {
                 this.insertString(this.decoder
                                   .decode(bytes.slice(0, plen), {stream:true}));
             }
             if (plen == len) {
-                dlen = len;
+                len = 0;
             } else {
                 // update receivedCount before calling pushControlState
                 this._receivedCount =
                     (this._receivedCount + plen) & DomTerm._mask28;
-                if (plen == urgent_begin)
-                    this.pushControlState();
-                else if (plen == urgent_end)
-                    this.popControlState();
                 dlen = plen + 1;
                 bytes = bytes.slice(dlen, len);
-                len -= plen;
-                dlen = 1;
+                len -= dlen;
+                if (plen == urgent_begin)
+                    this.pushControlState();
+                else { //plen == urgent_end
+                    this.popControlState();
+                    plen = 0;
+                }
             }
+            this._receivedCount = (this._receivedCount + plen) & DomTerm._mask28;
         }
-        len -= dlen;
-        this._receivedCount = (this._receivedCount + dlen) & DomTerm._mask28;
     }
 }
 
@@ -6389,9 +6431,11 @@ DomTerm.prototype.insertNode = function (node) {
 * By default just calls processInputCharacters.
 */
 DomTerm.prototype.processResponseCharacters = function(str) {
-    if (this.verbosity >= 3)
-        this.log("processResponse: "+JSON.stringify(str));
-    this.processInputCharacters(str);
+    if (! this._replayMode) {
+        if (this.verbosity >= 3)
+            this.log("processResponse: "+JSON.stringify(str));
+        this.processInputCharacters(str);
+    }
 };
 
 DomTerm.prototype.reportText = function(text, suffix) {
@@ -7234,7 +7278,7 @@ DomTerm._handleOutputData = function(dt, data) {
         dlen = data.length;
         dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
     }
-    if (dt._pagingMode != 2
+    if (dt._pagingMode != 2 && ! this._replayMode
         && ((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
         dt._confirmedCount = dt._receivedCount;
         dt.reportEvent("RECEIVED", dt._confirmedCount);
@@ -7252,8 +7296,9 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     if (topNode == null)
         topNode = document.getElementById(name);
     var wt = new DomTerm(name);
-    if (false && DomTerm.inAtomFlag && DomTerm.isInIFrame()) { // FIXME
-        console.log("websocket in DomTermView");
+    if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
+        // Have atom-domterm's DomTermView create the WebSocket.  This avoids
+        // the WebSocket being closed when the iframe is moved around.
         wt.topNode = topNode;
         DomTerm.focusedTerm = wt;
         DomTerm.sendParentMessage("domterm-new-websocket", wspath, wsprotocol);

@@ -71,8 +71,9 @@ struct pty_client {
     float pixh, pixw;
     int eof_seen;  // 1 means seen; 2 reported to client
     bool exit;
-    bool detached;
-    bool detachOnClose;
+    bool detached; // OLD
+    bool detachOnClose; // OLD
+    int detach_count;
     int paused;
     struct lws *first_client_wsi;
     struct lws **last_client_wsi_ptr;
@@ -82,6 +83,7 @@ struct pty_client {
     // The following are used to attach to already-visible session.
     char *preserved_output; // data send since window-contents request
     size_t preserved_start; // start of valid data in preserved_output
+#define PRESERVE_MIN (LWS_PRE + start_replay_len)
     size_t preserved_end; // end of valid data in preserved_output
     size_t preserved_size; // allocated size of preserved_output
     long preserved_sent_count;  // sent_count corresponding to preserved_output
@@ -93,6 +95,7 @@ struct tty_client {
     bool initialized;
     //bool pty_started; = pclient!=NULL
     bool authenticated;
+    bool detach_on_close;
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
 
@@ -116,6 +119,8 @@ struct tty_client {
     size_t olen; // used length of obuffer
     size_t osize; // allocated size of obuffer
     int connection_number;
+    int pty_window_number; // Numbered within each pty_client; -1 if only one
+    bool pty_window_update_needed;
 };
 
 struct cmd_client {

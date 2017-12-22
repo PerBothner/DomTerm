@@ -2290,6 +2290,9 @@ End-of-file on the output stream.
 Calls the @code{eofSeen} method of @code{DomTerm},
 which may close the current window or other appropriate action.
 
+@item @code{"\e]103;"} @var{state} @code{"a"}
+Send saved state to new window.
+
 @item @code{"\x13"} @var{sequence} @code{"\x14"}
 @itemx @code{"\x13"} @code{"\x16"} @var{sequence} @code{"\x14"}
 An ``urgent'' command sequence:
@@ -2713,8 +2716,12 @@ or @code{screen}; we hope to have a smoother interface after studying
 the issue. It would presumably use forwarding using ssh,
 or @code{https}, or a combination.
 
+Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
+
 @node Architecture notes
 @section Architecture notes
+
+@strong{Some of this is needs to be updated}
 
 @example
             --------------------
