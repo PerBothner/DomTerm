@@ -44,7 +44,7 @@ DomTerm.createElectronMenus = function() {
                                              DomTerm.toggleAutoPaging(); }});
     const showInspectorItem =
           new MenuItem({label: 'Toggle Developer Tools',
-                        accelerator: '',
+                        accelerator: 'Ctrl+Shift+I',
                         click: function(item, focusedWindow) {
                             if (focusedWindow)
                                 focusedWindow.toggleDevTools();
@@ -72,7 +72,7 @@ DomTerm.createElectronMenus = function() {
     const autoModeItem = new MenuItem({label: 'Auto mode', type: 'checkbox',
                                        click: inputModeClickHandler});
     const cycleInputModesItem = new MenuItem({label: 'Cycle input modes',
-                                              accelerator: 'Ctrl+Shift+I',
+                                              accelerator: 'Ctrl+Shift+L',
                                               click: inputModeClickHandler});
 
     const inputMenu = new Menu();

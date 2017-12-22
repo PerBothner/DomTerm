@@ -1373,8 +1373,6 @@ different front-ends may support some features differently.
 @c Enter/exit pager mode
 @c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
-@item @mux-prefix Control-D
-@ On Electron toogle Developer Window.
 @item Control-Shift-C
 Copy the selected text to the clipboard.
 (Control-C also works in line-editing mode.)
@@ -1383,7 +1381,7 @@ Paste text from the clipboard.
 (Control-V also works in line-editing mode.)
 @item Control-Shift-S
 Save the display to a file.
-@item Control-Shift-I
+@item Control-Shift-L
 Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
 @item Control-Shift-Home
@@ -1411,6 +1409,9 @@ Zoom out (makes text smaller).
 ``Un-zoom'' to normal size.
 @item F11
 Toggle full-screen mode.
+@item Control-Shift-I
+Toogle Developer Window, useful for debugging or examining
+the state of the Document Object Model.
 @end table
 
 @subsubheading Scrolling

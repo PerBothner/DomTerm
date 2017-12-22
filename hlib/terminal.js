@@ -6908,6 +6908,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 event.preventDefault();
             return;
         case 73: // Control-shift-I
+            return;
+        case 76: // Control-shift-L
             this.nextInputMode();
             event.preventDefault();
             return;
