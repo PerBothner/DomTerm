@@ -1095,6 +1095,16 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             } else if (current == lineEnd) {
                 if (addSpaceAsNeeded) {
                     var str = DomTerm.makeSpaces(goalColumn-column);
+                    var prev = current.previousSibling;
+                    // Motivation: handle '\t' while inside <span std="error">.
+                    // (Java stacktraces by default prints with tabs.)
+                    if (prev && prev.nodeName == "SPAN"
+                        && prev.getAttribute("std")
+                        && this._isAnAncestor(this.outputContainer,
+                                              current.previousSibling)) {
+                        parent = current.previousSibling;
+                        current = null;
+                    }
                     if (current && current.previousSibling instanceof Text)
                         current.previousSibling.appendData(str);
                     else
