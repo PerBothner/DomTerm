@@ -1,14 +1,14 @@
-all-am: ldomterm$(EXEEXT) ../bin/ldomterm$(EXEEXT)
+all-am: ldomterm$(EXEEXT) ../bin/domterm$(EXEEXT)
 
-# Note we use a hard link.  This is so when we execute ../bin/ldomterm,
+# Note we use a hard link.  This is so when we execute ../bin/domterm,
 # and then try figure out the executable's directory (so we can look for
 # resource files) we get ../bin and not the lws-term.
 # (This is to make execute-in-place and execute-after-install be similar.)
 LN_H = ln
-../bin/ldomterm$(EXEEXT): ldomterm$(EXEEXT)
+../bin/domterm$(EXEEXT): ldomterm$(EXEEXT)
 	cd .. && $(MKDIR_P) bin
-	@rm -f ../bin/ldomterm$(EXEEXT)
-	cd ../bin && $(LN_H) ../lws-term/ldomterm$(EXEEXT) ldomterm$(EXEEXT)
+	@rm -f ../bin/domterm$(EXEEXT)
+	cd ../bin && $(LN_H) ../lws-term/ldomterm$(EXEEXT) domterm$(EXEEXT)
 
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
@@ -55,3 +55,6 @@ git-describe.c:
 	test -d $(top_srcdir)/.git \
 	&& GIT_REVISION=`cd $(top_srcdir) && git describe --always --dirty --long --tags 2>/dev/null`; \
 	echo 'char git_describe[] = "'$${GIT_REVISION}'";' > $@
+
+install-exec-am: ../bin/domterm$(EXEEXT)
+	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) ../bin/domterm$(EXEEXT) "$(DESTDIR)$(bindir)"

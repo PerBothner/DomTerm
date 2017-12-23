@@ -753,7 +753,7 @@ main(int argc, char **argv)
 
 #if LWS_LIBRARY_VERSION_MAJOR >= 2
     char server_hdr[128] = "";
-    sprintf(server_hdr, "ldomterm/%s (libwebsockets/%s)", LDOMTERM_VERSION, LWS_LIBRARY_VERSION);
+    sprintf(server_hdr, "domterm/%s (libwebsockets/%s)", LDOMTERM_VERSION, LWS_LIBRARY_VERSION);
     info.server_string = server_hdr;
 #endif
 

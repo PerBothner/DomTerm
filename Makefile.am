@@ -41,7 +41,7 @@ if WITH_LIBWEBSOCKETS
 SUBDIRS += lws-term
 endif
 
-all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) $(LDOMTERM) bin/domterm share/domterm/application.ini \
+all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/application.ini \
   share/domterm/help/docutils.css \
   share/domterm/help/domterm.rst share/domterm/help/domterm.html \
   share/domterm/help/qtdomterm.rst share/domterm/help/qtdomterm.html \
@@ -52,15 +52,8 @@ all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp
 share/domterm/application.ini: $(srcdir)/xulapp/application.ini
 	cp $< $@
 
-bin/domterm:
-	@rm -f bin/domterm
-if WITH_LIBWEBSOCKETS
-	cd bin && $(LN_S) ldomterm domterm
-else
-if WITH_QTWEBENGINE
-	cd bin && $(LN_S) qtdomterm domterm
-endif
-endif
+bin/domterm$(EXEEXT):
+	cd lws-term && make ../bin/domterm$(EXEEXT)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	javah -cp $(DOMTERM_JAR) -d native/pty org.domterm.pty.PTY
@@ -121,20 +114,12 @@ SERVER_ARGS =
 run-server: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
 	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer $(SERVER_ARGS)
 
-# Start up DomTerm as a Firefox/XUL-based terminal emulator.
-# (Like run-xul, but automatically runs server and connects to it.)
-run-firefox: $(LIBPTY) domterm.jar d/domterm xulapp/domterm.jar
-	$(JAVA) -cp $(EXTRA_CLASSPATH)@CLASSPATH_SEPARATOR@domterm.jar@CLASSPATH_SEPARATOR@@conf_classpath@ -Djava.library.path=`pwd` org.domterm.websocket.DomServer --firefox $(SERVER_ARGS)
-
-run-chrome: $(LIBPTY) $(DOMTERM_JAR) d/domterm
-	$(JAVA) -cp $(EXTRA_CLASSPATH):$(DOMTERM_JAR) -Djava.library.path=`pwd` org.domterm.websocket.DomServer --chrome $(SERVER_ARGS)
-
 run-shell: $(DOMTERM_JAR)
 	CLASSPATH=$(DOMTERM_JAR) $(JAVA_WITH_PATH) org.domterm.javafx.RunProcess
 
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
-	-rm -rf bin/ldomterm bin/domterm hlib/domterm-all.js \
+	-rm -rf bin/domterm hlib/domterm-all.js \
 	  share/domterm/application.ini share/domterm/help \
 	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
 	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
@@ -289,9 +274,14 @@ endif
 ELECTRON_FILES = electron/package.json electron/main.js
 
 install-data-local:
-if WITH_JAVA
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
+if WITH_JAVA
 	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
+else
+if ENABLE_COMPILED_IN_RESOURCES
+else
+	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
+endif
 endif
 	$(MKDIR_P) $(DESTDIR)$(datadir)/applications \
 	    $(DESTDIR)$(datadir)/appdata
@@ -315,13 +305,6 @@ install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(bindir)
 if WITH_QTWEBENGINE
 	$(INSTALL_PROGRAM) bin/qtdomterm$(EXEEXT) $(DESTDIR)$(bindir)/qtdomterm$(EXEEXT)
-endif
-if WITH_LIBWEBSOCKETS
-	cd $(DESTDIR)$(bindir) && $(LN_S) ldomterm domterm
-else
-if WITH_QTWEBENGINE
-	cd $(DESTDIR)$(bindir) && $(LN_S) qtdomterm$(EXEEXT) domterm
-endif
 endif
 
 $(pkgdatadir)/help:
