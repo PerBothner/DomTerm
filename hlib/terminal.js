@@ -517,6 +517,8 @@ DomTerm.focusedTerm = null;
 DomTerm.setFocus = function(term) {
     var current = DomTerm.focusedTerm;
     DomTerm.showFocusedTerm(term);
+    if (term != null)
+        term.reportEvent("FOCUSED", ""); // to server
     if (current == term)
         return;
     if (current !== null) {
@@ -526,7 +528,6 @@ DomTerm.setFocus = function(term) {
     }
     if (term != null) {
         term.topNode.classList.add("domterm-active");
-        term.reportEvent("FOCUSED", ""); // to server
         if (term.sstate.sendFocus)
             term.processResponseCharacters("\x1b[I"); // to application
         DomTerm.setTitle(term.sstate.windowTitle);
@@ -4111,6 +4112,7 @@ DomTerm.prototype.setSessionName = function(title) {
     this.setWindowTitle(title, 30);
 }
 
+// FIXME misleading function name - this is not just the session name
 DomTerm.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("name");
     sname = sname ? sname : this.name;
