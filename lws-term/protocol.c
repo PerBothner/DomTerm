@@ -732,7 +732,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                   }
                   rcount = rcount & MASK28;
                   client->sent_count = rcount;
-                  sprintf(p, URGENT_START_STRING "\033[96;%du" URGENT_START_STRING, rcount);
+                  client->confirmed_count = rcount;
+                  sprintf(p, OUT_OF_BAND_START_STRING "\033[96;%du" URGENT_END_STRING, rcount);
                   write_to_browser(wsi, p, strlen(p), false);
                 }
                 client->initialized = true;

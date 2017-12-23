@@ -395,7 +395,7 @@ DomTerm._instanceCounter = 0;
 DomTerm.layoutManager = null;
 // These are used to delimit "out-of-bound" urgent messages.
 DomTerm.URGENT_BEGIN1 = 19; // '\023' - device control 3
-DomTerm.URGENT_BEGIN2 = 22; // '\026' - device control 3
+DomTerm.URGENT_BEGIN2 = 22; // '\026' - SYN synchronous idle
 DomTerm.URGENT_END = 20; // \024' - device control 4
 
 DomTerm.freshName = function() {
@@ -4061,8 +4061,8 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 96:
             this._receivedCount = this.getParameter(1,0);
             this._confirmedCount = this._receivedCount;
-            if (this.controlSequenceState)
-                this.controlSequenceState.receivedCount = this._receivedCount;
+            if (this._savedControlState)
+                this._savedControlState.receivedCount = this._receivedCount;
             break;
         case 97:
             this._replayMode = true;
@@ -4927,8 +4927,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             var home_offset = -1;
             dt.homeLine = dt._computeHomeLine(home_node, home_offset,
                                               dt.usingAlternateScreenBuffer);
-            dt._receivedCount = rcount;
-            dt._confirmedCount = rcount;
+            dt._receivedCount = 0;
+            dt._confirmedCount = 0;
             this.updateWindowTitle();
         }
         break;
@@ -5259,7 +5259,7 @@ DomTerm.prototype.insertBytes = function(bytes) {
         var urgent_end = -1;
         for (var i = 0; i < len; i++) {
             var ch = bytes[i];
-            if (ch == DomTerm.URGENT_BEGIN1)
+            if (ch == DomTerm.URGENT_BEGIN1 && urgent_begin < 0)
                 urgent_begin = i;
             else if (ch == DomTerm.URGENT_END) {
                 urgent_end = i;
