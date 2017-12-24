@@ -12,7 +12,7 @@
     } else {
         root.ResizeSensor = factory();
     }
-}(this, function () {
+}(typeof window !== 'undefined' ? window : this, function () {
 
     // Make sure it does not throw in a SSR (Server Side Rendering) situation
     if (typeof window === "undefined") {
@@ -50,6 +50,26 @@
             }
         } else {
             callback(elements);
+        }
+    }
+
+    /**
+    * Get element size
+    * @param {HTMLElement} element
+    * @returns {Object} {width, height}
+    */
+    function getElementSize(element) {
+        if (!element.getBoundingClientRect) {
+            return {
+                width: element.offsetWidth,
+                height: element.offsetHeight
+            }
+        }
+
+        var rect = element.getBoundingClientRect();
+        return {
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
         }
     }
 
@@ -93,27 +113,12 @@
         }
 
         /**
-         * @param {HTMLElement} element
-         * @param {String}      prop
-         * @returns {String|Number}
-         */
-        function getComputedStyle(element, prop) {
-            if (element.currentStyle) {
-                return element.currentStyle[prop];
-            }
-            if (window.getComputedStyle) {
-                return window.getComputedStyle(element, null).getPropertyValue(prop);
-            }
-
-            return element.style[prop];
-        }
-
-        /**
          *
          * @param {HTMLElement} element
          * @param {Function}    resized
          */
         function attachResizeEvent(element, resized) {
+            if (!element) return;
             if (element.resizedAttached) {
                 element.resizedAttached.add(resized);
                 return;
@@ -123,8 +128,9 @@
             element.resizedAttached.add(resized);
 
             element.resizeSensor = document.createElement('div');
+            element.resizeSensor.dir = 'ltr';
             element.resizeSensor.className = 'resize-sensor';
-            var style = 'position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; z-index: -1; visibility: hidden;';
+            var style = 'position: absolute; left: -10px; top: -10px; right: 0; bottom: 0; overflow: hidden; z-index: -1; visibility: hidden;';
             var styleChild = 'position: absolute; left: 0; top: 0; transition: 0s;';
 
             element.resizeSensor.style.cssText = style;
@@ -137,7 +143,7 @@
                 '</div>';
             element.appendChild(element.resizeSensor);
 
-            if (getComputedStyle(element, 'position') == 'static') {
+            if (element.resizeSensor.offsetParent !== element) {
                 element.style.position = 'relative';
             }
 
@@ -145,8 +151,9 @@
             var expandChild = expand.childNodes[0];
             var shrink = element.resizeSensor.childNodes[1];
             var dirty, rafId, newWidth, newHeight;
-            var lastWidth = element.offsetWidth;
-            var lastHeight = element.offsetHeight;
+            var size = getElementSize(element);
+            var lastWidth = size.width;
+            var lastHeight = size.height;
 
             var reset = function() {
                 expandChild.style.width = '100000px';
@@ -175,8 +182,9 @@
             };
 
             var onScroll = function() {
-                newWidth = element.offsetWidth;
-                newHeight = element.offsetHeight;
+                var size = getElementSize(element);
+                var newWidth = size.width;
+                var newHeight = size.height;
                 dirty = newWidth != lastWidth || newHeight != lastHeight;
 
                 if (dirty && !rafId) {
@@ -209,6 +217,7 @@
 
     ResizeSensor.detach = function(element, ev) {
         forEachElement(element, function(elem){
+            if (!elem) return;
             if(elem.resizedAttached && typeof ev == "function"){
                 elem.resizedAttached.remove(ev);
                 if(elem.resizedAttached.length()) return;
