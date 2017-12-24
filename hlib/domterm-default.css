@@ -44,12 +44,14 @@ div.domterm-spacer {
    Check with tests/256-colors.sh. */
 div.domterm { --monospace-family: "DejaVu Sans Mono","Everson Mono",FreeMono,Menlo,Terminal; }
 div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family),monospace }
-div.domterm[reverse-video] span[std="input"] { background-color: #808200 } /* a dark yellow */
+div.domterm[reverse-video] span[std="input"] { background-color: #404000 } /* a dark yellow */
 div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
 span[std="input"] { background-color: #FFFFD0 } /* a pale yellow */
 span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
+div.input-line { background-color: #FFFFE8}
+div.domterm[reverse-video] div.input-line { background-color: #181800 }
 div.domterm-show-info {
     bottom: 0px;
     right: 2px;
