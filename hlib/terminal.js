@@ -397,6 +397,7 @@ DomTerm.layoutManager = null;
 DomTerm.URGENT_BEGIN1 = 19; // '\023' - device control 3
 DomTerm.URGENT_BEGIN2 = 22; // '\026' - SYN synchronous idle
 DomTerm.URGENT_END = 20; // \024' - device control 4
+DomTerm.URGENT_COUNTED = 21;
 
 DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
@@ -3536,6 +3537,7 @@ DomTerm.prototype.pushControlState = function() {
         parameters: this.parameters,
         decoder: this.decoder,
         receivedCount: this._receivedCount,
+        count_urgent: false,
         _savedControlState: this._savedControlState
     };
     this.controlSequenceState = DomTerm.INITIAL_STATE;
@@ -3554,7 +3556,11 @@ DomTerm.prototype.popControlState = function() {
         // Control sequences in "urgent messages" don't count to
         // receivedCount. (They are typically window-specific and
         // should not be replayed when another window is attached.)
-        this._receivedCount = saved.receivedCount;
+        var old = this._receivedCount;
+        if (saved.count_urgent)
+            this._receivedCount = (this._receivedCount + 1) & DomTerm._mask28;
+        else
+            this._receivedCount = saved.receivedCount;
     }
 }
 
@@ -5291,23 +5297,19 @@ DomTerm.prototype.insertBytes = function(bytes) {
                 this.insertString(this.decoder
                                   .decode(bytes.slice(0, plen), {stream:true}));
             }
+            // update receivedCount before calling push/popControlState
+            this._receivedCount = (this._receivedCount + plen) & DomTerm._mask28;
             if (plen == len) {
                 len = 0;
             } else {
-                // update receivedCount before calling pushControlState
-                this._receivedCount =
-                    (this._receivedCount + plen) & DomTerm._mask28;
                 dlen = plen + 1;
                 bytes = bytes.slice(dlen, len);
                 len -= dlen;
                 if (plen == urgent_begin)
                     this.pushControlState();
-                else { //plen == urgent_end
+                else //plen == urgent_end
                     this.popControlState();
-                    plen = 0;
-                }
             }
-            this._receivedCount = (this._receivedCount + plen) & DomTerm._mask28;
         }
     }
 }
@@ -5706,6 +5708,8 @@ DomTerm.prototype.insertString = function(str) {
             case 16: case 17: case 18: case 19:
             case 20: case 21: case 22: case 23: case 25:
             case 28: case 29: case 30: case 31:
+                if (ch == DomTerm.URGENT_COUNTED && this._savedControlState)
+                    this._savedControlState.count_urgent = true;
                 // ignore
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 prevEnd = i + 1; columnWidth = 0;

@@ -86,3 +86,5 @@ span[caret][std="input"][value]:after {
     30% {background-color: inherit; color: inherit; text-decoration: inherit }
     100% {}
 }
+div.domterm a.subtle:not(:hover) { text-decoration: inherit; }
+div.domterm a.matched:not(:hover) { color: inherit; text-decoration: inherit; }

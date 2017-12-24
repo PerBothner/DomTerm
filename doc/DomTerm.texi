@@ -2292,19 +2292,28 @@ which may close the current window or other appropriate action.
 
 @item @code{"\e]103;"} @var{state} @code{"a"}
 Send saved state to new window.
+@end table
 
-@item @code{"\x13"} @var{sequence} @code{"\x14"}
-@itemx @code{"\x13"} @code{"\x16"} @var{sequence} @code{"\x14"}
-An ``urgent'' command sequence:
-Same as @var{sequence}, but at higher priority.
+@subsubsection Urgent messages
+
+@table @asis
+@item @code{"\x13"} @code{"\x15"} @var{sequence} @code{"\x14"}
+This is an ``urgent'' command sequence, which is the
+same as @var{sequence}, but at higher priority.
 If the terminal is in the middle of some other escape sequence
 (or a multi-byte UTF-8 sequence), save the state,
 evaluate @var{sequence}, and restore the state.
+
+@item @code{"\x13"} @var{sequence} @code{"\x14"}
+@itemx @code{"\x13"} @code{"\x16"} @var{sequence} @code{"\x14"}
+@emph{These variants are reserved for the domterm backend (server).}
+These are similar to the previous variant,
+but the @var{sequence} is not counted in the running count
+(used for flow control), nor is it included if an output log
+is saved (in case it is needed detach+attach).
 For the second form only:
 When DomTerm receives a sequence of bytes that contains
 an urgent sequence, it will execute that before handling preceding bytes.
-
-These are normally used for commands from the backend @code{domterm} server.
 @end table
 
 @subsubsection Stylesheet manipulation
@@ -2500,7 +2509,7 @@ Report enough of the browser part of the session state so that
 it can be reproduced when a window is sttached to the session.
 The @var{state} is a JSON-encoded structure.
 The @var{rcount} is similar to the value reported @code{RECEIVED},
-but as of the start of teh most recent urgent message.
+but as of the start of the most recent urgent message.
 
 @item @code{"\x92" "VERSION " @var{version-info} "\n"}
 Sends @var{version-info} to the back-end.  Used during initialization.
