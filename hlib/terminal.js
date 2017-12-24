@@ -2233,6 +2233,8 @@ DomTerm.prototype._computeHomeLine = function(home_node, home_offset,
     return minHome < line ? line : minHome;
 }
 
+DomTerm._checkStyleResize = function(dt) { dt.resizeHandler(); }
+
 DomTerm.prototype.resizeHandler = function() {
     var dt = this;
     // FIXME we want the resize-sensor to be a child of helperNode
@@ -4279,6 +4281,7 @@ DomTerm.prototype.setSettings = function(obj) {
         var style_qt = obj["style.qt"];
         DomTerm.settingsHook("style.qt", style_qt ? style_qt : "");
     }
+    DomTerm._checkStyleResize(this);
 };
 
 DomTerm.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
@@ -4918,7 +4921,6 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         var r = this.loadStyleSheet(args[0], args[1]);
         if (code == 95)
             this.processResponseCharacters("\x9D" + r + "\n");
-        this.measureWindow();
         break;
     case 102:
         DomTerm.sendSavedHtml(this, this.getAsHTML(true));
@@ -6689,6 +6691,7 @@ DomTerm.prototype.addStyleRule = function(styleRule) {
     } catch (e) {
 	this.log(e.toString());
     }
+    DomTerm._checkStyleResize(this);
 };
 
 DomTerm.prototype.loadStyleSheet = function(name, value) {
@@ -6717,8 +6720,11 @@ DomTerm.prototype.loadStyleSheet = function(name, value) {
     }
     ownerNode = document.createElement("style");
     ownerNode.setAttribute("name", name);
-    ownerNode.appendChild(document.createTextNode(value));
     parent.insertBefore(ownerNode, following);
+    if (value) {
+        ownerNode.appendChild(document.createTextNode(value));
+        DomTerm._checkStyleResize(this);
+    }
     return i;
 };
 
@@ -6769,6 +6775,7 @@ DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
     if (typeof styleSheet == "string")
         return styleSheet;
     styleSheet.disabled = disable;
+    DomTerm._checkStyleResize(this);
     return "";
 };
 
