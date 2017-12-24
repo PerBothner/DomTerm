@@ -13,13 +13,25 @@ import java.io.*;
  */
 
 public class DomTermErrorWriter extends FilterWriter {
-    public static final int ESCAPE = 27;
-
     public static final char[] START_ERR_MARKER = {
-        ESCAPE, '[', '1', '2', 'u'
+        19, // urgent-begin
+        21, // urgent-counted
+        27, // escape
+        (byte) '[',
+        (byte) '1',
+        (byte) '2',
+        (byte) 'u',
+        20 // urgent-end
     };
     public static final char[] END_ERR_MARKER = {
-        ESCAPE, '[', '1', '1', 'u'
+        19, // urgent-begin
+        21, // urgent-counted
+        27, // escape
+        (byte) '[',
+        (byte) '1',
+        (byte) '1',
+        (byte) 'u',
+        20 // urgent-end
     };
 
     public DomTermErrorWriter(Writer out) {
@@ -27,13 +39,31 @@ public class DomTermErrorWriter extends FilterWriter {
     }
 
     @Override
-    public void write(char cbuf[], int off, int len) throws IOException {
-        if (len > 0) {
-            synchronized (out) {
-                out.write(START_ERR_MARKER, 0, START_ERR_MARKER.length);
-                out.write(cbuf, off, len);
-                out.write(END_ERR_MARKER, 0, END_ERR_MARKER.length);
+    public void write(char buf[], int off, int len) throws IOException {
+        while (len > 0) {
+            int i;
+            for (i = 0; i < len; i++) {
+                char b = buf[off+i];
+                if (b == '\r' || b == '\n') {
+                    break;
+                }
             }
+            synchronized (out) {
+                if (i == 0) {
+                    i = 1;
+                    if (len >= 2 && buf[off] == '\r'
+                        && buf[off+1] == '\n')
+                        i = 2;
+                    out.write(buf, off, i);
+                } else {
+                    out.write(START_ERR_MARKER, 0, START_ERR_MARKER.length);
+                    out.write(buf, off, i);
+                    out.write(END_ERR_MARKER, 0, END_ERR_MARKER.length);
+                }
+                out.flush();
+            }
+            off += i;
+            len -= i;
         }
     }
 
