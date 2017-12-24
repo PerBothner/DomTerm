@@ -1290,6 +1290,14 @@ The spacer stripes alternatate between transparent and the value of @code{--spac
 div.domterm-spacer @{--spacer-color: LemonChiffon@}
 @end example
 
+@subheading Fonts
+
+The main monospace text font is set by the @code{--monospace-family} variable.
+For example:
+@example
+div.domterm @{ --monospace-family: "FreeMono","DejaVu Sans Mono" @}
+@end example
+
 @subheading Prompt, input and error output
 The @code{std} attribute of a @code{<span>} element is used to
 indicate the logical kind of output.

@@ -42,7 +42,8 @@ div.domterm-spacer {
    However, the first four in that list cause some vertical spacing issues,
    including background-color not being full-height.
    Check with tests/256-colors.sh. */
-div.domterm-pre, span.docutils.literal { font-family: "DejaVu Sans Mono","Everson Mono",FreeMono,Menlo,Terminal,monospace; }
+div.domterm { --monospace-family: "DejaVu Sans Mono","Everson Mono",FreeMono,Menlo,Terminal; }
+div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family),monospace }
 div.domterm[reverse-video] span[std="input"] { background-color: #808200 } /* a dark yellow */
 div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
 span[std="input"] { background-color: #FFFFD0 } /* a pale yellow */
