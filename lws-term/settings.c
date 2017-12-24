@@ -141,6 +141,13 @@ read_settings_file(struct options *options)
             memcpy(options->geometry, value_start, value_length);
             options->geometry[value_length] = '\0';
         }
+        if (strcmp(key_start, "open.file.application") == 0) {
+            if (options->openfile_application != NULL)
+                free(options->openfile_application);
+            options->openfile_application = xmalloc(value_length+1);
+            memcpy(options->openfile_application, value_start, value_length);
+            options->openfile_application[value_length] = '\0';
+        }
         json_object_object_add(jobj, key_start,
                 json_object_new_string_len(value_start, value_length));
     }

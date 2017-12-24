@@ -464,6 +464,145 @@ write_to_browser(struct lws *wsi, unsigned char *buf, size_t len, bool preserve)
     }
 }
 
+char *
+check_template(const char *template, json_object *obj)
+{
+    struct json_object *jfilename = NULL, *jposition = NULL, *jhref = NULL;
+    const char *filename =
+        json_object_object_get_ex(obj, "filename", &jfilename)
+        ? json_object_get_string(jfilename) : NULL;
+    const char *position =
+        json_object_object_get_ex(obj, "position", &jposition)
+        ? json_object_get_string(jposition) : NULL;
+    const char *href =
+        json_object_object_get_ex(obj, "href", &jhref)
+        ? json_object_get_string(jhref) : NULL;
+
+    int size = 0;
+    int i = 0;
+    for (i = 0; template[i]; i++) {
+        char ch = template[i];
+        if (ch == '%' && template[i+1]) {
+            char next = template[++i];
+            char prefix = 0;
+            if ((next == ':' || next == '+') && template[i+1]) {
+                prefix = next;
+                next = template[++i];
+            }
+            const char *field;
+            if (next == 'F') field = filename;
+            else if (next == 'U') field = href;
+            else if (next == 'P') field = position;
+            else field = "%";
+            if (field != NULL)
+              size += strlen(field) + (prefix ? 1 : 0);
+            else if (! prefix)
+                return NULL;
+        } else
+          size++;
+    }
+    char *buffer = xmalloc(size+1);
+    i = 0;
+    char *p = buffer;
+    for (i = 0; template[i]; i++) {
+        char ch = template[i];
+        if (ch == '%' && template[i+1]) {
+            char next = template[++i];
+            char prefix = 0;
+            if ((next == ':' || next == '+') && template[i+1]) {
+                prefix = next;
+                next = template[++i];
+            }
+            char t2[2];
+            const char *field;
+            if (next == 'F') field = filename;
+            else if (next == 'U') field = href;
+            else if (next == 'P') field = position;
+            else {
+                t2[0] = ch;
+                t2[1] = 0;
+                field = t2;
+            }
+            if (field != NULL) {
+                if (prefix)
+                    *p++ = prefix;
+                strcpy(p, field);
+                p += strlen(field);
+            }
+        } else {
+            if (ch == ' ') {
+                *p = 0;
+                if (strchr(buffer, ' ') == NULL) {
+                    char* ex = find_in_path(buffer);
+                    free(ex == NULL ? buffer : ex);
+                    if (ex == NULL)
+                        return NULL;
+                }
+            }
+            *p++ = ch;
+        }
+    }
+    *p = 0;
+    return buffer;
+}
+
+void
+handle_flink(json_object *obj)
+{
+    char *template = main_options->openfile_application;
+    if (template == NULL)
+        template = "atom-if-atom;emacs;atom;chrome;firefox;browser";
+    char *t = strdup(template);
+    char *p = t;
+    char *command = NULL;
+    for (;;) {
+        char *semi = strchr(p, ';');
+        if (semi != NULL)
+            *semi = 0;
+        if (strcmp(p, "emacs") == 0)
+            command = check_template("emacs %+P '%F' > /dev/null 2>&1 &", obj);
+        else if (strcmp(p, "atom") == 0 || strcmp(p, "atom-if-atom") == 0) {
+            struct json_object *jatom = NULL;
+            if (strcmp(p, "atom-if-atom") == 0
+                && ! (json_object_object_get_ex(obj, "isAtom", &jatom)
+                      && json_object_get_boolean(jatom)))
+              command = NULL;
+            else
+                command = check_template("atom '%F'%:P ", obj);
+        } else if (strcmp(p, "firefox") == 0)
+            command = check_template("firefox '%U'", obj);
+        else if (strcmp(p, "chrome") == 0 || strcmp(p, "google-chrome") == 0) {
+            char *chr = chrome_command();
+            if (chr == NULL)
+              command = NULL;
+            else {
+                char *buf = xmalloc(strlen(chr) + 40);
+                sprintf(buf, "%s '%%U'", chr);
+                command = check_template(buf, obj);
+                free(buf);
+            }
+        } else if (strcmp(p, "browser")==0) {
+            struct json_object *jhref;
+            if (json_object_object_get_ex(obj, "href", &jhref)) {
+              default_link_command(json_object_get_string(jhref));
+              break;
+            }
+        } else
+          command = check_template(p, obj);
+        if (command != NULL)
+           break;
+        if (semi != NULL)
+            p = semi+1;
+        else
+            break;
+    }
+    free(t);
+    if (command != NULL) {
+        system(command);
+        free(command);
+    }
+}
+
 void
 reportEvent(const char *name, char *data, size_t dlen,
             struct lws *wsi, struct tty_client *client)
@@ -595,7 +734,11 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "ALINK") == 0) {
         json_object *obj = json_tokener_parse(data);
         const char *kstr = json_object_get_string(obj);
-        default_browser_command(kstr, 0);
+        default_link_command(kstr);
+        json_object_put(obj);
+    } else if (strcmp(name, "FLINK") == 0) {
+        json_object *obj = json_tokener_parse(data);
+        handle_flink(obj);
         json_object_put(obj);
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
         char *q = strchr(data, ',');

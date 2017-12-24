@@ -254,9 +254,13 @@ get_bin_relative_path(const char* app_path)
     return buf;
 }
 
+/* Returns freshly allocated string or NULL. */
 char *
 find_in_path(const char *name)
 {
+    if (name[0] == '/' && access(name, X_OK) == 0)
+        return strdup(name);
+    // FIXME: if (strchr(name, '/') prepend working directory
     char *path = getenv("PATH");
     int plen = strlen(path);
     char *end = path + plen;
@@ -276,16 +280,24 @@ find_in_path(const char *name)
     }
 }
 
+/* Result is cached. */
 char *
 chrome_command()
 {
-    char *cbin = getenv("CHROME_BIN");
+    static char *cbin = NULL;
+    if (cbin)
+      return cbin[0] ? cbin : NULL;
+    cbin = getenv("CHROME_BIN");
     if (cbin != NULL && access(cbin, X_OK) == 0)
         return cbin;
-    char *path = find_in_path("chrome");
-    if (path != NULL)
-        return path;
-    return find_in_path("google-chrome");
+    cbin = find_in_path("chrome");
+    if (cbin != NULL)
+        return cbin;
+    cbin = find_in_path("google-chrome");
+    if (cbin != NULL)
+        return cbin;
+    cbin = "";
+    return NULL;
 }
 
 char *
@@ -412,6 +424,11 @@ default_browser_command(const char *url, int port)
 #endif
 }
 
+void
+default_link_command(const char *url)
+{
+    default_browser_command(url, 0);
+}
 
 void
 do_run_browser(struct options *options, char *url, int port)
@@ -489,6 +506,7 @@ void  init_options(struct options *opts)
 {
     opts->browser_command = NULL;
     opts->geometry = NULL;
+    opts->openfile_application = NULL;
     opts->something_done = false;
     opts->paneOp = -1;
     opts->force_option = 0;

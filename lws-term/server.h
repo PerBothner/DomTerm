@@ -137,6 +137,7 @@ struct options {
     int debug_level;
     char *browser_command;
     char *geometry;
+    char *openfile_application;
     int paneOp;
     char iface[128];
     char cert_path[1024];
@@ -202,7 +203,9 @@ extern char* check_browser_specifier(const char *specifier);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
 extern void init_options(struct options *options);
-void default_browser_command(const char *url, int port);
+extern void default_browser_command(const char *url, int port);
+extern char *chrome_command();
+extern void default_link_command(const char *url);
 extern int process_options(int argc, char **argv, struct options *options;);
 extern char ** copy_argv(int argc, char * const*argv);
 extern void request_upload_settings();

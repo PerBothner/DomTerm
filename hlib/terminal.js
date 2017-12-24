@@ -2382,7 +2382,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                  */
                                  if (target instanceof Element
                                      && target.nodeName == "A")
-                                     dt.handleLink(e, target.getAttribute("href"));
+                                     dt.handleLink(e, target);
                              },
                              false);
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
@@ -4104,12 +4104,28 @@ DomTerm.prototype.handleBell = function() {
     // Do nothing, for now.
 };
 
-DomTerm.prototype.handleLink = function(event, href) {
+DomTerm.prototype.handleLink = function(event, element) {
+    var href = element.getAttribute("href");
     event.preventDefault();
     if (href.startsWith('#'))
         window.location.hash = href;
-    else
-        this.reportEvent("ALINK", JSON.stringify(href));
+    else {
+        var m = href.match(/^file:(.*)#position=([0-9:-]*)$/);
+        if (m) {
+            var filename = decodeURIComponent(m[1]);
+            var obj = {
+                filename: filename,
+                position: m[2],
+                href: href,
+                text: element.textContent
+            };
+            if (DomTerm.isAtom())
+                obj.isAtom = true;
+            this.reportEvent("FLINK", JSON.stringify(obj));
+        }
+        else
+            this.reportEvent("ALINK", JSON.stringify(href));
+    }
 };
 
 // Set the "session name" which is the "name" attribute of the toplevel div.
