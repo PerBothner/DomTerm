@@ -4284,6 +4284,17 @@ DomTerm.charsetUK = function(ch) {
     return null;
 };
 
+DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
+    var links = node.getElementsByTagName("a");
+    for (var i = links.length; --i >= 0; ) {
+        var link = links[i];
+        if (! link.hasMouseEnter) {
+            link.addEventListener("mouseenter", dt._mouseEnterHandler, false);
+            link.hasMouseEnter = true;
+        }
+    }
+}
+
 DomTerm.prototype._unsafeInsertHTML = function(text) {
     if (this.verbosity >= 1)
         this.log("_unsafeInsertHTML "+JSON.stringify(text));
@@ -4292,14 +4303,7 @@ DomTerm.prototype._unsafeInsertHTML = function(text) {
             this.outputBefore.insertAdjacentHTML("beforebegin", text);
         else
             this.outputContainer.insertAdjacentHTML("beforeend", text);
-        var links = this.outputContainer.getElementsByTagName("a");
-        for (var i = links.length; --i >= 0; ) {
-            var link = links[i];
-            if (! link.hasMouseEnter) {
-                link.addEventListener("mouseenter", this._mouseEnterHandler, false);
-                link.hasMouseEnter = true;
-            }
-        }
+        DomTerm._addMouseEnterHandlers(this, this.outputContainer);
     }
 };
 
@@ -4925,6 +4929,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this.resetCursorCache();
             this._restoreLineTables(this.topNode, 0);
             dt._restoreSaveLastLine();
+            DomTerm._addMouseEnterHandlers(this);
             var home_node; // FIXME
             var home_offset = -1;
             dt.homeLine = dt._computeHomeLine(home_node, home_offset,
