@@ -2353,7 +2353,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     document.addEventListener("input",
                               function(e) { dt.inputHandler(e); },
                               true);
-    topNode.addEventListener("focus", function(e) { console.log("focus handler"); DomTerm.setFocus(dt); }, false);
+    topNode.addEventListener("focus", function(e) { DomTerm.setFocus(dt); }, false);
     function compositionStart(ev) {
         dt._composing = 1;
         dt._removeCaret();
@@ -2526,15 +2526,130 @@ DomTerm.prototype._mouseHandler = function(ev) {
     */
     if (ev.shiftKey || ev.target == this.topNode)
         return;
-    if (this.sstate.mouseMode == 0 && (! ev.altKey || ev.button != 0))
-        return;
 
+    var current_input_node = null;     // current std="input" element
+    var current_pre_node = null;       // current class="domterm-pre" element
+    var current_inputline_node = null; // current class="input-line"
+    var target_input_node = null;      // target std="input" element
+    var target_pre_node = null;        // target class="domterm-pre" element
+    var target_inputline_node = null;  // target class="input-line"
+    // readlineMode is used to translate a click to arrow-key movements.
+    // It is enabled on certain conditions when mouseMode is unset:
+    // either altKey is set or both target and current position are
+    // in the same <div class="input-line"> element.
+    var readlineMode = false;
+    var readlineForced = false; // basically if ev.altKey
+    if (this.sstate.mouseMode == 0) {
+        for (var v = ev.target; v != null && v != this.topNode;
+             v = v.parentNode) {
+            var cl = v.classList;
+            if (cl.contains("domterm-pre"))
+                target_pre_node = v;
+            if (cl.contains("input-line")) {
+                target_inputline_node = v;
+                break;
+            }
+        }
+        for (var v = this.outputContainer; v != null && v != this.topNode;
+             v = v.parentNode) {
+            var cl = v.classList;
+            if (cl.contains("domterm-pre"))
+                current_pre_node = v;
+            if (cl.contains("input-line")) {
+                current_inputline_node = v;
+                break;
+            }
+        }
+        if (target_pre_node != null && current_pre_node != null) {
+            readlineForced = ev.altKey;
+            readlineMode = readlineForced
+                || (target_inputline_node != null
+                    && target_inputline_node == current_inputline_node);
+            }
+        if (! readlineMode || (ev.button != 0 && ev.button != 1))
+            return;
+    }
+
+    // Get mouse coordinates relative to topNode.
+    var xdelta = ev.pageX;
+    var ydelta = ev.pageY + this.topNode.scrollTop;
+    for (var top = this.topNode; top != null; top = top.offsetParent) {
+        xdelta -= top.offsetLeft;
+        ydelta -= top.offsetTop;
+    }
+
+    // Temporarily set position to ev.target (with some adjustments if
+    // in readlineMode).  That way we can use updateCursorCache to get
+    // an initial approximation of the corresponding row/col.
+    // This gives us better results for variable-height lines
+    // (and to a less reliable extent: variable-width characters).
     var saveCol = this.currentCursorColumn;
     var saveLine = this.currentAbsLine;
     var saveBefore = this.outputBefore;
     var saveContainer = this.outputContainer;
+    var target = ev.target;
     this.outputContainer = ev.target;
     this.outputBefore = this.outputContainer.firstChild;
+    var adjustInTarget = true;
+
+    // Some readlineMode adjustments before we calculate row/col.
+    if (readlineMode) {
+        let child0 = target_pre_node.firstChild;
+        let child = child0;
+        // Get first target_pre_node child neither hider or prompt
+        while (child instanceof Element
+               && child.nodeName=="SPAN") {
+            let ltype = child.getAttribute("std");
+            if (ltype != "hider" && ltype != "prompt")
+                break;
+            child = child.nextSibling;
+        }
+        // If click is in prompt or hider element, go to following element
+        if (child instanceof Element
+            && xdelta <= child.offsetLeft
+            && ydelta < child0.offsetTop + child0.offsetHeight) {
+            target = child;
+            this.outputContainer = target_pre_node;
+            this.outputBefore = child;
+            adjustInTarget= false;
+            if (child instanceof Element
+                && child.getAttribute("std") == "input")
+                target_input_node = child;
+        }
+
+        // If both current and target lines starts with a prompt,
+        // we want to subtract prompt widths (in case they are different).
+        if (! readlineForced && target_pre_node != current_pre_node
+           && target_input_node) {
+            child = current_pre_node.firstChild;
+            while (child instanceof Element
+                   && child.nodeName=="SPAN") {
+                let ltype = child.getAttribute("std");
+                if (ltype != "hider" && ltype != "prompt")
+                    break;
+                child = child.nextSibling;
+            }
+            if (child instanceof Element
+                && child.getAttribute("std") == "input")
+                current_input_node = child;
+        }
+
+        // if the click is past the last character in the line, adjust.
+        let targetLineChild = target_pre_node.lastChild;
+        if (ev.target == target_pre_node
+            && targetLineChild && targetLineChild.getAttribute("line")
+            && ydelta >= targetLineChild.offsetTop
+            && xdelta >= targetLineChild.offsetLeft) {
+            var previousSibling = targetLineChild.previousSibling;
+            if (previousSibling instanceof Element
+                && previousSibling.getAttribute("std") == "input")
+                target_input_node = previousSibling;
+            this.outputContainer = targetLineChild.parentNode;
+            this.outputBefore = targetLineChild;
+            target = targetLineChild;
+            adjustInTarget= false;
+       }
+    }
     this.resetCursorCache();
     var row = this.getCursorLine();
     var col = this.getCursorColumn();
@@ -2542,42 +2657,80 @@ DomTerm.prototype._mouseHandler = function(ev) {
     this.currentAbsLine = saveLine;
     this.outputBefore = saveBefore;
     this.outputContainer = saveContainer;
-    var xdelta = ev.pageX - ev.target.offsetLeft;
-    var ydelta = ev.pageY + this.topNode.scrollTop - ev.target.offsetTop;
-    for (var top = this.topNode; top != null; top = top.offsetParent) {
-        xdelta -= top.offsetLeft;
-        ydelta -= top.offsetTop;
+
+    if (adjustInTarget) {
+        xdelta -= target.offsetLeft;
+        ydelta -= target.offsetTop;
+        // (xdelta,ydelta) are relative to ev.target
+        col += Math.floor(xdelta / this.charWidth);
+        row += Math.floor(ydelta / this.charHeight);
     }
-    col += Math.floor(xdelta / this.charWidth);
-    row += Math.floor(ydelta / this.charHeight);
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
 
-    if (this.sstate.mouseMode == 0 && ev.altKey) {
+    if (readlineMode) {
         var curVLine = this.getAbsCursorLine();
         var goalVLine = row+this.homeLine;
         var curLine = curVLine;
-        var goalLine = curVLine;
+        var goalLine = goalVLine;
         while (this.isSpanNode(this.lineStarts[goalLine]))
             goalLine--;
         while (this.isSpanNode(this.lineStarts[curLine]))
             curLine--;
-        if (curLine != goalLine)
-            return; // FIXME should allow as long as same "command-group"
+        var nLeft = 0, nRight = 0;
+        var output = "";
         var goalCol = col + (goalVLine - goalLine) * this.numColumns;
         var curCol = this.getCursorColumn()
             + (curVLine - curLine) * this.numColumns;
-        var delta = goalCol - curCol;
-        var arrow;
-        var n;
-        if (delta >= 0) {
-            arrow = this.specialKeySequence("", "C", null); // char-right
-            n = delta;
+        if (curLine != goalLine) {
+            nLeft = curCol;
+            nRight = goalCol;
+            if (current_input_node && target_input_node) {
+                nLeft -= Math.floor(current_input_node.offsetLeft / this.charWidth);
+                nRight -= Math.floor(target_input_node.offsetLeft / this.charWidth);
+            } else {
+                if (nLeft > nRight) {
+                    nLeft -= nRight;
+                    nRight = 0;
+                } else {
+                    nRight -= nLeft;
+                    nLeft = 0;
+                }
+            }
+            let aboveLine = goalLine > curLine ? curLine : goalLine;
+            let belowLine = goalLine > curLine ? goalLine : curLine;
+            var n = 0;
+            // abs(goalLine-curLine) is number of screen lines.
+            // We need number of logical lines.
+            for (var i = aboveLine; i < belowLine; i++) {
+                if (! this.isSpanNode(this.lineStarts[i]))
+                    n++;
+            }
+            // count characters before currentBefore in current_input_node
+            // LEFT that number
+            //var n = goalLine - curLine;
+            var moveVert = "";
+            if (goalLine > curLine)
+                moveVert = this.specialKeySequence("", "B", null);
+            else if (goalLine < curLine)
+                moveVert = this.specialKeySequence("", "A", null);
+            output = moveVert.repeat(n);
+            // DOWN (or UP if negative) (goalLine-curLine).
         } else {
-            n = -delta;
-            arrow = this.specialKeySequence("", "D", null); // char-left
+            var delta = goalCol - curCol;
+            if (delta >= 0)
+                nRight = delta;
+            else
+                nLeft = -delta;
         }
-        if (n > 0)
-            this.processInputCharacters(arrow.repeat(n));
+        if (nLeft > 0)  {
+            var moveLeft = this.specialKeySequence("", "D", null);
+            output = moveLeft.repeat(nLeft) + output;
+        }
+        if (nRight > 0)  {
+            var moveRight = this.specialKeySequence("", "C", null);
+            output = output + moveRight.repeat(nRight);
+        }
+        this.processInputCharacters(output);
         return;
     }
 
@@ -4001,7 +4154,6 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 if (this._currentCommandHideable)
                     this.outputContainer.setAttribute("domterm-hidden", "false");
             }
-            this.outputContainer.classList.add("input-line");
             this._pushStdMode("prompt");
             if (param == 24)
                 this.inputLine.setAttribute("continuation", "true");
@@ -4009,21 +4161,37 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.inputLine.removeAttribute("continuation");
             break;
         case 15:
+            var submode = this.getParameter(1, 1);
+            // 0 - client does not do line editing (no arrow key support)
+            // 1 - single-line line editing (a la GNU readline)
+            // 2 - first line of potentially multi-line (a la jline3)
             this._pushStdMode("input");
             // If there is existing content on the current line,
             // move it into new input <span>.
-            var firstChild = this.outputContainer.nextSibling;
             var newParent = this.outputContainer;
+            var firstChild = newParent.nextSibling;
             for (var child = firstChild;
                  child != null
-                 && (child.tagName!="LINE"
+                 && (child.tagName!="SPAN"
                      ||child.getAttribute("line")=="soft"); ) {
                 var next = child.nextSibling;
                 child.parentNode.removeChild(child);
                 newParent.appendChild(child);
                 child = next;
             }
-            this.outputBefore = firstChild;
+            this.outputBefore = newParent.firstChild;
+            var ln = newParent.parentNode;
+            var cl = ln.classList;
+            if (submode != 0 && cl.contains("domterm-pre")) {
+                var p = ln.parentNode;
+                if (submode==2) {
+                    var il = document.createElement("div");
+                    il.classList.add("input-line");
+                    p.insertBefore(il, ln);
+                    il.appendChild(ln);
+                } else if (! p.classList.contains("input-line"))
+                    cl.add("input-line");
+            }
             this._adjustStyle();
             break;
         case 16:
@@ -5649,14 +5817,12 @@ DomTerm.prototype.insertString = function(str) {
             case 13: // '\r' carriage return
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 //this.currentCursorColumn = column;
+                var oldContainer = this.outputContainer;
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && ! this.usingAlternateScreenBuffer
                     && (this._regionBottom == this.numRows
                         || this.getCursorLine() != this._regionBottom-1)) {
-                    var stdMode = this._getStdMode(); 
-                    if (stdMode && stdMode.getAttribute("std") == "input")
-                        this._pushStdMode(null);
                     if (this._pauseNeeded()) {
                         this.parameters[1] = str.substring(i);
                         update();
@@ -5668,6 +5834,15 @@ DomTerm.prototype.insertString = function(str) {
                 } else {
                     this._breakDeferredLines();
                     this.cursorLineStart(0);
+                }
+                if (oldContainer.firstChild == null
+                    && oldContainer != this.outputContainer
+                    && (oldContainer.getAttribute("std")
+                        || oldContainer == this._currentStyleSpan)) {
+                    if (this.outputBefore == oldContainer)
+                        this.outputBefore = oldContainer.nextSibling;
+                    let parent = oldContainer.parentNode;
+                    parent.removeChild(oldContainer);
                 }
                 prevEnd = i + 1; columnWidth = 0;
                 break;
