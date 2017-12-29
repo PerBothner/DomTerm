@@ -112,6 +112,7 @@ function DomTerm(name, topNode) {
     sstate.windowName = null;
     sstate.windowTitle = null;
     sstate.iconName = null;
+    sstate.lastWorkingPath = null;
     this.sessionNumber = -1;
     this.windowNumber = -1;
     
@@ -5059,6 +5060,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 7:
         // text is pwd as URL: "file://HOST/PWD"
         // Is printed by /etc/profile/vte.sh on Fedora
+        this.sstate.lastWorkingPath = text;
         break;
     case 777:
         // text is "\u001b]777;COMMAND"
@@ -5813,6 +5815,11 @@ DomTerm.prototype.insertString = function(str) {
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             break;
         case DomTerm.INITIAL_STATE:
+            if (DomTerm.isDelimiter(ch)
+                && this.linkify(str, prevEnd, i, columnWidth, ch)) {
+                prevEnd = i;
+                columnWidth = 0;
+            }
             switch (ch) {
             case 13: // '\r' carriage return
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
@@ -7552,6 +7559,129 @@ DomTerm._makeWsUrl = function(query=null) {
 DomTerm.connectHttp = function(node, query=null) {
     var url = DomTerm._makeWsUrl(query);
     DomTerm.connectWS(null, url, "domterm", node);
+}
+
+DomTerm.isDelimiter = function(ch) {
+    if (ch <= 32)
+        return true;
+    let str = '()<>[]{}`;|\'"';
+    for (let i = str.length; --i >= 0; )
+        if (str.charCodeAt(i) == ch)
+            return true;
+    return false;
+}
+
+DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
+    function rindexDelimiter(str, start, end) {
+        for (let i = end; --i >= start; )
+            if (DomTerm.isDelimiter(str.charCodeAt(i)))
+                return i;
+        return -1;
+    }
+    function isURL(str) {
+        return str.match(/^[-a-zA-Z][a-zA-Z0-9+.]*:.+/);
+    }
+    function isEmail(str) {
+        return str.match(/^[^@]+@[^@]+\.[^@]+$/);
+    }
+    let smode = this._getStdMode();
+    if (smode)
+        smode = smode.getAttribute("std");
+    if (smode == "input" || smode == "prompt" || smode == "hider")
+        return false;
+    let fstart = rindexDelimiter(str, start, end)+1;
+    let fragment = str.substring(fstart > 0 ? fstart : start, end);
+    let firstToMove = null;
+    if (fstart == 0) {
+        let previous = this.outputBefore != null ? this.outputBefore.previousSibling
+            : this.outputContainer.lastChild;
+        for (; previous != null; previous = previous.previousSibling) {
+            let pfragment = previous.textContent;
+            fstart = rindexDelimiter(pfragment, 0, pfragment.length)+1;
+            firstToMove = previous;
+            if (fstart > 0) {
+                if (! (previous instanceof Text)
+                    && fstart < pfragment.length-1)
+                    return false;
+                fragment = pfragment.substring(fstart) + fragment;
+                break;
+            }
+            fragment = pfragment + fragment;
+        }
+        if (previous == null && this.outputContainer.offsetLeft > 0)
+            return false;
+    }
+    let flength = fragment.length;
+    if (flength <= 1)
+        return false;
+    let href = null;
+    let m = null;
+    let colons = 0;
+    if (delimiter == 32 && fragment.charCodeAt(flength-1)==58
+        // FIXME should handle windows-style filename C:\XXXX
+        && ((m = fragment.match(/^([^:]+):([0-9]+:[0-9]+-[0-9]+:[0-9]+):$/)) != null
+            || (m = fragment.match(/^([^:]+):([0-9]+:[0-9]+-[0-9]+):$/)) != null
+            || (m = fragment.match(/^([^:]+):([0-9]+:[0-9]+):$/)) != null
+            || (m = fragment.match(/^([^:]+):([0-9]+):$/)) != null)) {
+        colons = 1;
+        let fname = m[1];
+        let position = m[2];
+        if (fname.charCodeAt(0) != 47 /*'/'*/) {
+            let dir = this.sstate.lastWorkingPath;
+            let m = dir.match(/^file:[/][/][^/]*([/].*)$/);
+            fname = m[1] + "/" + fname;
+        }
+        let encoded = "";
+        let sl;
+        while ((sl = fname.indexOf("/")) >= 0) {
+            encoded = encoded + encodeURIComponent(fname.substring(0,sl)) + "/";
+            fname = fname.substring(sl+1);
+        }
+        encoded = encoded + encodeURIComponent(fname);
+        href= "file://" + encoded+ "#position=" + position;
+    }
+    else if (isURL(fragment))
+        href = fragment;
+    else if (fragment.startsWith("www.") && isURL("http://"+fragment))
+        href = "http://"+fragment;
+    else if (isEmail(fragment)) {
+        href = "mailto:"+fragment;
+    } else
+        return false;
+    if (fstart > start && firstToMove == null) {
+        this.insertSimpleOutput(str, start, fstart, -1);
+        start = fstart;
+    }
+    let alink = document.createElement("a");
+    alink.setAttribute("class", "matched subtle");
+    alink.setAttribute("href", href);
+    this._pushIntoElement(alink);
+    if (end-colons > start)
+        this.insertSimpleOutput(str, start, end-colons, columnWidth-colons);
+    this.popFromElement();
+    let old = alink.firstChild;
+    for (let n = firstToMove; n && n != alink; ) {
+        let next = n.nextSibling;
+        if (n == firstToMove && fstart > 0) {
+            next = n.splitText(fstart);
+        } else
+            alink.insertBefore(n, old);
+        n = next;
+    }
+    DomTerm._addMouseEnterHandlers(this, alink.parentNode);
+    if (colons > 0) {
+        if (end == start && alink.lastChild instanceof Text) {
+            let data = alink.lastChild.data;
+            if (data.length > 1 && data.charAt(data.length-1) == ':')
+                alink.lastChild.deleteData(data.length-1, 1);
+            else
+                colons = 0;
+        }
+        if (colons > 0)
+            this.insertSimpleOutput(":", 0, 1, 1);
+    }
+    alink.normalize();
+    return true;
 }
 
 if (typeof exports === "object")
