@@ -70,11 +70,11 @@ div.domterm-popup-action:hover {
 }
 */
 
-span[caret="block"][std="input"], span[caret="blinking-block"][std="input"] {
+div.domterm span[caret="block"][std="input"], div.domterm span[caret="blinking-block"][std="input"] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
     background-color: var(--foreground-color); color: var(--background-color);
 }
-span[caret="underline"][std="input"], span[caret="blinking-underline"][std="input"]  {
+div.domterm div.domterm span[caret="underline"][std="input"], div.domterm span[caret="blinking-underline"][std="input"]  {
     text-decoration: underline
 }
 div.domterm-active span[caret="blinking-block"][std="input"],
