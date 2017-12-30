@@ -6398,8 +6398,14 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         if (start.alwaysMeasureForBreak
             || (end != null && end.offsetLeft > this.availWidth)) {
             changed = true; // FIXME needlessly conservative
-            var first = this.isBlockNode(start) ? start.firstChild
-                : start.nextSibling;
+            var first;
+            if (this.isBlockNode(start))
+                first = start.firstChild;
+            else {
+                while (start.nextSibling == null)
+                    start = start.parentNode;
+                first = start.nextSibling;
+            }
             breakLine(this, first, 0, this.availWidth);
         }
     }
