@@ -7579,7 +7579,7 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         return -1;
     }
     function isURL(str) {
-        return str.match(/^[-a-zA-Z][a-zA-Z0-9+.]*:.+/);
+        return str.match(/^[-a-zA-Z][a-zA-Z0-9+.]*:[/]*[^/].*/);
     }
     function isEmail(str) {
         return str.match(/^[^@]+@[^@]+\.[^@]+$/);
@@ -7648,16 +7648,18 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         href = "mailto:"+fragment;
     } else
         return false;
+    columnWidth -= colons;
     if (fstart > start && firstToMove == null) {
         this.insertSimpleOutput(str, start, fstart, -1);
         start = fstart;
+        columnWidth = -1;
     }
     let alink = document.createElement("a");
     alink.setAttribute("class", "matched subtle");
     alink.setAttribute("href", href);
     this._pushIntoElement(alink);
     if (end-colons > start)
-        this.insertSimpleOutput(str, start, end-colons, columnWidth-colons);
+        this.insertSimpleOutput(str, start, end-colons, columnWidth);
     this.popFromElement();
     let old = alink.firstChild;
     for (let n = firstToMove; n && n != alink; ) {
