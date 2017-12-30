@@ -134,20 +134,18 @@ read_settings_file(struct options *options)
         *key_end = '\0';
         size_t value_length = value_end-value_start;
 
-        if (strcmp(key_start, "window.geometry") == 0) {
-            if (options->geometry != NULL)
-                free(options->geometry);
-            options->geometry = xmalloc(value_length+1);
-            memcpy(options->geometry, value_start, value_length);
-            options->geometry[value_length] = '\0';
+#define HANDLE_SETTING(NAME, FIELD)                           \
+        if (strcmp(key_start, NAME) == 0) {                   \
+            if (options->FIELD != NULL)                       \
+                free(options->FIELD);                         \
+            options->FIELD = xmalloc(value_length+1);         \
+            memcpy(options->FIELD, value_start, value_length);\
+            options->FIELD[value_length] = '\0';              \
         }
-        if (strcmp(key_start, "open.file.application") == 0) {
-            if (options->openfile_application != NULL)
-                free(options->openfile_application);
-            options->openfile_application = xmalloc(value_length+1);
-            memcpy(options->openfile_application, value_start, value_length);
-            options->openfile_application[value_length] = '\0';
-        }
+
+        HANDLE_SETTING("window.geometry", geometry);
+        HANDLE_SETTING("open.file.application", openfile_application);
+        HANDLE_SETTING("open.link.application", openlink_application);
         json_object_object_add(jobj, key_start,
                 json_object_new_string_len(value_start, value_length));
     }

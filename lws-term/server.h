@@ -138,6 +138,7 @@ struct options {
     char *browser_command;
     char *geometry;
     char *openfile_application;
+    char *openlink_application;
     int paneOp;
     char iface[128];
     char cert_path[1024];

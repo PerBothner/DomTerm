@@ -546,12 +546,9 @@ check_template(const char *template, json_object *obj)
     return buffer;
 }
 
-void
-handle_flink(json_object *obj)
+bool
+handle_tlink(char *template, json_object *obj)
 {
-    char *template = main_options->openfile_application;
-    if (template == NULL)
-        template = "atom-if-atom;emacsclient;emacs;atom;chrome;firefox;browser";
     char *t = strdup(template);
     char *p = t;
     char *command = NULL;
@@ -599,10 +596,27 @@ handle_flink(json_object *obj)
             break;
     }
     free(t);
-    if (command != NULL) {
-        system(command);
-        free(command);
+    if (command == NULL)
+      return false;
+    system(command);
+    free(command);
+    return true;
+}
+
+void
+handle_link(json_object *obj)
+{
+    if (json_object_object_get_ex(obj, "filename", NULL)) {
+        char *template = main_options->openfile_application;
+        if (template == NULL)
+            template = "atom-if-atom;emacsclient;emacs;atom";
+        if (handle_tlink(template, obj))
+            return;
     }
+    char *template = main_options->openlink_application;
+    if (template == NULL)
+        template = "chrome;firefox;browser";
+    handle_tlink(template, obj);
 }
 
 void
@@ -733,14 +747,9 @@ reportEvent(const char *name, char *data, size_t dlen,
            client->requesting_contents = 1;
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
-    } else if (strcmp(name, "ALINK") == 0) {
+    } else if (strcmp(name, "LINK") == 0) {
         json_object *obj = json_tokener_parse(data);
-        const char *kstr = json_object_get_string(obj);
-        default_link_command(kstr);
-        json_object_put(obj);
-    } else if (strcmp(name, "FLINK") == 0) {
-        json_object *obj = json_tokener_parse(data);
-        handle_flink(obj);
+        handle_link(obj);
         json_object_put(obj);
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
         char *q = strchr(data, ',');

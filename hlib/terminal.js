@@ -1029,7 +1029,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             else {
                 var lastParent = this.lineEnds[lineCount-1];
                 if (lastParent == null)
-                   lastParent = this.lineStarts[lineCount-1]; 
+                    lastParent = this.lineStarts[lineCount-1];
                 for (;;) {
                     if (this.isBlockNode(lastParent))
                         break;
@@ -4281,21 +4281,23 @@ DomTerm.prototype.handleLink = function(event, element) {
     if (href.startsWith('#'))
         window.location.hash = href;
     else {
-        var m = href.match(/^file:(.*)#position=([0-9:-]*)$/);
-        if (m) {
-            var filename = decodeURIComponent(m[1]);
-            var obj = {
-                filename: filename,
-                position: m[2],
-                href: href,
-                text: element.textContent
-            };
-            if (DomTerm.isAtom())
-                obj.isAtom = true;
-            this.reportEvent("FLINK", JSON.stringify(obj));
+        var obj = {
+            href: href,
+            text: element.textContent
+        };
+        if (DomTerm.isAtom())
+            obj.isAtom = true;
+        var filename = null;
+        var m;
+        if ((m = href.match(/^file:(.*)#position=([0-9:-]*)$/)) != null) {
+            filename = m[1];
+            obj.position = m[2];
+        } else if ((m = href.match(/^file:([^&#]*)$/)) != null) {
+            filename = m[1];
         }
-        else
-            this.reportEvent("ALINK", JSON.stringify(href));
+        if (filename)
+            obj.filename = decodeURIComponent(filename);
+        this.reportEvent("LINK", JSON.stringify(obj));
     }
 };
 
@@ -5059,7 +5061,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         break;
     case 7:
         // text is pwd as URL: "file://HOST/PWD"
-        // Is printed by /etc/profile/vte.sh on Fedora
+        // Is printed by /etc/profile.d/vte.sh on Fedora
         this.sstate.lastWorkingPath = text;
         break;
     case 777:
@@ -7376,8 +7378,9 @@ DomTerm.prototype._checkTree = function() {
         error("bad inputLine");
     if (! this._isAnAncestor(this.outputContainer, this.initial))
         error("outputContainer not in initial");
-    if (! this._isAnAncestor(this.lineStarts[this.homeLine], this.initial))
-        error("homeLine not in initial");
+    for (let i = nlines; --i >= this.homeLine; )
+        if (! this._isAnAncestor(this.lineStarts[i], this.initial))
+            error("line "+i+" not in initial");
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
             if (this.currentAbsLine >= 0)

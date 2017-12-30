@@ -507,6 +507,7 @@ void  init_options(struct options *opts)
     opts->browser_command = NULL;
     opts->geometry = NULL;
     opts->openfile_application = NULL;
+    opts->openlink_application = NULL;
     opts->something_done = false;
     opts->paneOp = -1;
     opts->force_option = 0;
