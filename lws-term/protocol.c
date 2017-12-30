@@ -551,7 +551,7 @@ handle_flink(json_object *obj)
 {
     char *template = main_options->openfile_application;
     if (template == NULL)
-        template = "atom-if-atom;emacs;atom;chrome;firefox;browser";
+        template = "atom-if-atom;emacsclient;emacs;atom;chrome;firefox;browser";
     char *t = strdup(template);
     char *p = t;
     char *command = NULL;
@@ -561,6 +561,8 @@ handle_flink(json_object *obj)
             *semi = 0;
         if (strcmp(p, "emacs") == 0)
             command = check_template("emacs %+P '%F' > /dev/null 2>&1 &", obj);
+        else if (strcmp(p, "emacsclient") == 0)
+            command = check_template("emacsclient -n %+P '%F'", obj);
         else if (strcmp(p, "atom") == 0 || strcmp(p, "atom-if-atom") == 0) {
             struct json_object *jatom = NULL;
             if (strcmp(p, "atom-if-atom") == 0
