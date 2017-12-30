@@ -2540,7 +2540,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     // in the same <div class="input-line"> element.
     var readlineMode = false;
     var readlineForced = false; // basically if ev.altKey
-    if (this.sstate.mouseMode == 0) {
+    if (this.sstate.mouseMode == 0 && ! this.isLineEditing()) {
         for (var v = ev.target; v != null && v != this.topNode;
              v = v.parentNode) {
             var cl = v.classList;
