@@ -447,7 +447,7 @@ write_to_browser(struct lws *wsi, unsigned char *buf, size_t len, bool preserve)
     if (lws_write(wsi, buf, len, LWS_WRITE_BINARY) != len)
         lwsl_err("lws_write\n");
     struct pty_client *pclient = client->pclient;
-    if (preserve && pclient->preserved_output != NULL
+    if (preserve && pclient != NULL && pclient->preserved_output != NULL
         && should_backup_output(pclient)) {
         size_t needed = pclient->preserved_end + len + end_replay_len;
         if (needed > pclient->preserved_size) {
@@ -465,7 +465,7 @@ write_to_browser(struct lws *wsi, unsigned char *buf, size_t len, bool preserve)
 }
 
 char *
-check_template(const char *template, json_object *obj)
+check_template(char *template, json_object *obj)
 {
     struct json_object *jfilename = NULL, *jposition = NULL, *jhref = NULL;
     const char *filename =
@@ -479,7 +479,71 @@ check_template(const char *template, json_object *obj)
         ? json_object_get_string(jhref) : NULL;
 
     int size = 0;
-    int i = 0;
+    while (template[0] == '{') {
+        // a disjunction of clauses, separated by '|'
+        bool ok = false; // true when a previous clause was true
+        char *clause = &template[1];
+        for (char *p = clause; ; p++) {
+            char ch = *p;
+            if (ch == '\0')
+              return NULL;
+            if (ch == '|' || ch == '}') {
+                if (! ok) {
+                    bool negate = *clause=='!';
+                    if (negate)
+                      clause++;
+                    int clen = p - clause;
+                    if (clen > 1 && p[-1] == ':') {
+                        ok = strncmp(clause, href, clen) == 0;
+                    } else if (clause[0] == '.') {
+                        const char *h = href;
+                        const char *dot = NULL;
+                        for (;*h && *h != '#' && *h != '?'; h++)
+                          if (*h == '.')
+                            dot = h;
+                        ok = dot && clen == h - dot
+                          && memcmp(dot, clause, clen) == 0;
+                    } else if (clen == 7
+                               && memcmp(clause, "in-atom", clen) == 0) {
+                        struct json_object *jatom = NULL;
+                        ok = json_object_object_get_ex(obj, "isAtom", &jatom)
+                          && json_object_get_boolean(jatom);
+                    } else if (clen == 13
+                               && memcmp(clause, "with-position", clen) == 0) {
+                        ok = position != NULL;
+                    }
+                    if (negate)
+                        ok = ! ok;
+                }
+                clause = p + 1;
+            }
+            if (ch == '}') {
+              if (! ok)
+                return NULL;
+              template = clause;
+              break;
+            }
+        }
+    }
+    if (strcmp(template, "atom") == 0)
+        template = "atom '%F'%:P";
+    else if (strcmp(template, "emacs") == 0)
+        template = "emacs %+P '%F' > /dev/null 2>&1 ";
+    else if (strcmp(template, "emacsclient") == 0)
+        template = "emacsclient -n %+P '%F'";
+    else if (strcmp(template, "firefox") == 0
+             || strcmp(template, "chrome") == 0
+             || strcmp(template, "google-chrome") == 0) {
+        char *chr = strcmp(template, "firefox") == 0
+          ? firefox_browser_command()
+          : chrome_command();
+        if (chr == NULL)
+            return NULL;
+        char *buf = xmalloc(strlen(chr) + strlen(href)+4);
+        sprintf(buf, "%s '%s'", chr, href);
+        return buf;
+    }
+    int i;
     for (i = 0; template[i]; i++) {
         char ch = template[i];
         if (ch == '%' && template[i+1]) {
@@ -556,31 +620,7 @@ handle_tlink(char *template, json_object *obj)
         char *semi = strchr(p, ';');
         if (semi != NULL)
             *semi = 0;
-        if (strcmp(p, "emacs") == 0)
-            command = check_template("emacs %+P '%F' > /dev/null 2>&1 &", obj);
-        else if (strcmp(p, "emacsclient") == 0)
-            command = check_template("emacsclient -n %+P '%F'", obj);
-        else if (strcmp(p, "atom") == 0 || strcmp(p, "atom-if-atom") == 0) {
-            struct json_object *jatom = NULL;
-            if (strcmp(p, "atom-if-atom") == 0
-                && ! (json_object_object_get_ex(obj, "isAtom", &jatom)
-                      && json_object_get_boolean(jatom)))
-              command = NULL;
-            else
-                command = check_template("atom '%F'%:P ", obj);
-        } else if (strcmp(p, "firefox") == 0)
-            command = check_template("firefox '%U'", obj);
-        else if (strcmp(p, "chrome") == 0 || strcmp(p, "google-chrome") == 0) {
-            char *chr = chrome_command();
-            if (chr == NULL)
-              command = NULL;
-            else {
-                char *buf = xmalloc(strlen(chr) + 40);
-                sprintf(buf, "%s '%%U'", chr);
-                command = check_template(buf, obj);
-                free(buf);
-            }
-        } else if (strcmp(p, "browser")==0) {
+        if (strcmp(p, "browser")==0||strcmp(p, "default")==0) {
             struct json_object *jhref;
             if (json_object_object_get_ex(obj, "href", &jhref)) {
               default_link_command(json_object_get_string(jhref));
@@ -609,13 +649,17 @@ handle_link(json_object *obj)
     if (json_object_object_get_ex(obj, "filename", NULL)) {
         char *template = main_options->openfile_application;
         if (template == NULL)
-            template = "atom-if-atom;emacsclient;emacs;atom";
+            template =
+              "{in-atom}{with-position|!.html}atom;"
+              "{with-position|!.html}emacsclient;"
+              "{with-position|!.html}emacs;"
+              "{with-position|!.html}atom";
         if (handle_tlink(template, obj))
             return;
     }
     char *template = main_options->openlink_application;
     if (template == NULL)
-        template = "chrome;firefox;browser";
+        template = "{!mailto:}chrome;{!mailto:}firefox;default";
     handle_tlink(template, obj);
 }
 
