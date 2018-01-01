@@ -248,6 +248,8 @@ Filename with line number (as in errors messages) are turned into
 links for text editors.
 (You have to hover over them to see them.)
 
+You can @ref{link-handlers,customize how links are handled}.
+
 Optional @strong{automatic pagination}.
 
 @node Downloading and building
@@ -1752,7 +1754,7 @@ You can specify an editor or other handler for these special links,
 as described below.
 
 @anchor{link-handlers}
-@subheading Handlers for file position links
+@subheading Specifying handlers for clicked links
 
 If you click on a link (with a full URL, not one starts with @samp{#}),
 then the request is sent to the backend,
