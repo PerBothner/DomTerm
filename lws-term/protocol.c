@@ -617,20 +617,26 @@ handle_tlink(char *template, json_object *obj)
     char *p = t;
     char *command = NULL;
     for (;;) {
-        char *semi = strchr(p, ';');
-        if (semi != NULL)
+        while (*p && (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n'))
+            p++;
+        char *semi = p;
+        while (*semi && *semi != '\n' && *semi != ';')
+            semi++;
+        if (*p)
             *semi = 0;
+        else
+            semi = NULL;
         if (strcmp(p, "browser")==0||strcmp(p, "default")==0) {
             struct json_object *jhref;
             if (json_object_object_get_ex(obj, "href", &jhref)) {
-              default_link_command(json_object_get_string(jhref));
-              break;
+                default_link_command(json_object_get_string(jhref));
+                break;
             }
         } else
           command = check_template(p, obj);
         if (command != NULL)
            break;
-        if (semi != NULL)
+        if (semi)
             p = semi+1;
         else
             break;
