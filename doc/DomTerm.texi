@@ -246,7 +246,7 @@ Mouse clicks are translated to arrow-key characters.
 @ref{linkification,Turn URLs and mail adresses in output into links}.
 Filename with line number (as in errors messages) are turned into
 links for text editors.
-(You have to hove over them to see them.)
+(You have to hover over them to see them.)
 
 Optional @strong{automatic pagination}.
 
@@ -847,7 +847,7 @@ lighter background and a darker foreground colors.
 @itemx @code{@b{open.link.application} =} @var{application-list}
 List of applications to try when clicking on a link.
 If the link's @code{href} is a @code{file:} URL,
-then the @code{open.file.application} list is tried  first;
+then the @code{open.file.application} list is tried first;
 then the @code{open.link.application} list is tried.
 For a non-@code{file:} URL, only the @code{open.link.application} list is tried.
 
@@ -1760,14 +1760,22 @@ which will invoke an appropriate viewer, such as a browser.
 
 Which application to use depends on two preference variables:
 @code{open.file.application} and @code{open.link.application}.
-Both are lists of templates, separated by semi-colons:
-The default for @code{open.file.application} is
-@code{"atom-if-atom;emacsclient;emacs;atom"},
-while @code{open.file.application} defaults to @code{"chrome;firefox;browser"}.
-
+Both are lists of templates, separated by semi-colons or newlines.
 When opening a @code{file:} link both template lists are used
 (first @code{open.file.application} is tried then @code{open.link.application});
 otherwise, only @code{open.link.application} is tried.
+Here is the default, in @code{settings.ini} multi-line format:
+@example
+open.file.application =
+ |@{in-atom@}@{with-position|!.html@}atom
+ |@{with-position|!.html@}emacsclient
+ |@{with-position|!.html@}emacs
+ |@{with-position|!.html@}atom
+open.link.application =
+ |@{!mailto:@}chrome
+ |@{!mailto:@}firefox
+ |default
+@end example
 
 The following templates are supported:
 @table @asis
@@ -1783,19 +1791,57 @@ Equivalent to @code{"emacsclient -n %+P '%F'"}.
 Invoke the Atom editor on the specified file and
 optional (line,column)-position.
 Equivalent to @code{"atom '%F'%:P"}.
-@item @code{atom-if-atom}
-Equivalent to @code{atom}, but only if already running
-under @code{atom-domterm}.
 @item @code{firefox}
 @itemx @code{chrome}
 @itemx @code{google-chrome}
 Open the specified web browser (@code{chrome} and @code{google-chrome} are
 the same).
 Equivalent to the browser's executable path followed by @code{" '%U'"}.
-@item @code{browser}
-Open the system browser or other application.
+@item @code{default}
+@itemx @code{browser}
+Open the default browser or other registered application.
+@item @code{@{}@var{condition}@code{@}}@var{template}
+@itemx @code{@{}@var{condition}@code{|}@var{condition}...@code{@}}@var{template}
+Skip the @var{template} unless one of the @var{condition}s succeeds.
+There can be multiple @code{@{}@var{condition}@code{@}}-groups,
+in which cases all must succeed.
+
+A condition can be one of the following:
+@table @asis
+@item @code{in-atom}
+Succceeds if using @code{atom-domterm}.
+@item @code{with-position}
+Succceeds if the URL ends with @code{#position=@var{position}}.
+@item @code{@var{scheme}:}
+Matches if the URL-scheme is @var{scheme}.
+This is the part before the first colon, such as @code{http:}.
+The default uses @code{!mailto:} to supress using firefox or chrome
+for email addresses.
+@item @code{.@var{ext}}
+Matches if the URL has an "extension" matching @var{ext}.
+For example @code{.html} matches html files.
+@item @code{!}@var{condition}
+Suceeds if @var{condition} fails and vice versa.
+@end table
 @item @var{custom template}
-@emph{To do.}
+Useing @samp{%}-escapes to create a susyem shell command.
+The following escapes are supported:
+@table @asis
+@item @code{%U}
+Substitute the URL (the @code{href} attribue of the link).
+@item @code{%P}
+Substitute the value of the (line,colon) file position
+from the @code{#position=@var{position}} or the URL.
+@item @code{%:P}
+@itemx @code{%+P}
+Same as respectively @code{:%P} or @code{+%P} if the position
+is specified in the URL. Expands to nothing otherwise.
+@item @code{%F}
+Only succeeds for @code{file:} URL, which is converted to a file name.
+You should use quotes: @code{command '%F'}.
+@item @code{%%}
+A literal @samp{%}.
+@end table
 @end table
 
 @node To do
