@@ -2383,9 +2383,16 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                      dt.handleContextMenu(dt._popupMenu, e);
                                  } else
                                  */
-                                 if (target instanceof Element
-                                     && target.nodeName == "A")
-                                     dt.handleLink(e, target);
+                                 for (let n = target; n instanceof Element;
+                                      n = n.parentNode) {
+                                     let ntag = n.nodeName;
+                                     if (ntag == "A") {
+                                         dt.handleLink(e, n);
+                                         return;
+                                     }
+                                     if (ntag == "DIV")
+                                         break;
+                                 }
                              },
                              false);
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
@@ -7601,10 +7608,24 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     let fstart = rindexDelimiter(str, start, end)+1;
     let fragment = str.substring(fstart > 0 ? fstart : start, end);
     let firstToMove = null;
+    for (let p = this.outputContainer; p instanceof Element; p = p.parentNode) {
+        let ptag = p.nodeName;
+        if (ptag == "A")
+            return false;
+        if (ptag == "DIV")
+            break;
+    }
     if (fstart == 0) {
         let previous = this.outputBefore != null ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
         for (; previous != null; previous = previous.previousSibling) {
+            if (previous instanceof Element) {
+                // Allow wc-node (wide characters) and soft line-breaks.
+                // Should we allow other Element types?
+                if (! (previous.class == "wc-node"
+                       || previous.getAttribute("line") == "soft"))
+                    return false;
+            }
             let pfragment = previous.textContent;
             fstart = rindexDelimiter(pfragment, 0, pfragment.length)+1;
             firstToMove = previous;
@@ -7626,7 +7647,7 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     let href = null;
     let m = null;
     let colons = 0;
-    if (delimiter == 32 && fragment.charCodeAt(flength-1)==58
+    if (fragment.charCodeAt(flength-1)==58
         // FIXME should handle windows-style filename C:\XXXX
         && ((m = fragment.match(/^([^:]+):([0-9]+:[0-9]+-[0-9]+:[0-9]+):$/)) != null
             || (m = fragment.match(/^([^:]+):([0-9]+:[0-9]+-[0-9]+):$/)) != null
@@ -7669,7 +7690,8 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     this._pushIntoElement(alink);
     if (end-colons > start)
         this.insertSimpleOutput(str, start, end-colons, columnWidth);
-    this.popFromElement();
+    this.outputContainer = alink.parentNode;
+    this.outputBefore = alink.nextSibling;
     let old = alink.firstChild;
     for (let n = firstToMove; n && n != alink; ) {
         let next = n.nextSibling;
