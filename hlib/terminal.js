@@ -3721,7 +3721,7 @@ DomTerm.prototype.popControlState = function() {
         // should not be replayed when another window is attached.)
         var old = this._receivedCount;
         if (saved.count_urgent)
-            this._receivedCount = (this._receivedCount + 1) & DomTerm._mask28;
+            this._receivedCount = (this._receivedCount + 2) & DomTerm._mask28;
         else
             this._receivedCount = saved.receivedCount;
     }
@@ -5489,7 +5489,6 @@ DomTerm.prototype.insertBytes = function(bytes) {
             len = len-(urgent_end+1-urgent_begin);
             bytes = bytes.slice(0, len);
         } else {
-            var dlen; // amount consumed this iteration
             if (plen > 0) {
                 this.insertString(this.decoder
                                   .decode(bytes.slice(0, plen), {stream:true}));
@@ -5499,7 +5498,7 @@ DomTerm.prototype.insertBytes = function(bytes) {
             if (plen == len) {
                 len = 0;
             } else {
-                dlen = plen + 1;
+                var dlen = plen + 1; // amount consumed this iteration
                 bytes = bytes.slice(dlen, len);
                 len -= dlen;
                 if (plen == urgent_begin)
