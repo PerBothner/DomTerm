@@ -1813,6 +1813,24 @@ DomTerm.prototype._rootNode = function(node) {
     }
 };
 
+DomTerm._getAncestorDomTerm = function(node) {
+    for (let p = node; p instanceof Element; p = p.parentNode) {
+        if (p.nodeName=="DIV" && p.classList.contains("domterm"))
+            return p.terminal;
+    }
+    return null;
+}
+
+DomTerm._isInElement = function(node, name="A") {
+    for (let p = node; p instanceof Element; p = p.parentNode) {
+        let ptag = p.nodeName;
+        if (ptag == name)
+            return p;
+        if (ptag == "DIV" && name=="A")
+            break;
+    }
+}
+
 DomTerm.prototype._isAnAncestor = function(node, ancestor) {
     while (node != ancestor) {
         var parent = node.parentNode;
@@ -2387,7 +2405,8 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                       n = n.parentNode) {
                                      let ntag = n.nodeName;
                                      if (ntag == "A") {
-                                         dt.handleLink(e, n);
+                                         e.preventDefault();
+                                         DomTerm.handleLink(n);
                                          return;
                                      }
                                      if (ntag == "DIV")
@@ -2399,10 +2418,10 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
         chrome.contextMenus.onClicked.addListener(function(info) {
             switch (info.menuItemId) {
             case "context-paste":
-                dt.doPaste();
+                DomTerm.doPaste(dt);
                 break;
             case "context-copy":
-                dt.doCopy();
+                DomTerm.doCopy();
                 break;
             }
             dt.log("context menu even info:"+info);
@@ -2482,9 +2501,9 @@ DomTerm.prototype.handleContextMenu = function(menu, event) {
     //this.log("handleContextMenu");
     var id = event.target.getAttribute("id");
     if (id == "domterm-popup-copy") {
-        this.doCopy();
+        DomTerm.doCopy();
     } else if (id == "domterm-popup-paste") {
-        this.doPaste();
+        DomTerm.doPaste(this);
     }
 }
 
@@ -2522,7 +2541,10 @@ DomTerm.prototype._mouseHandler = function(ev) {
             //&& DomTerm.isInIFrame()) {
         // used by atom-domterm
         ev.preventDefault();
-        DomTerm.sendParentMessage("domterm-context-menu");
+        DomTerm._contextTarget = ev.target;
+        DomTerm._contextLink = DomTerm._isInElement(ev.target, "A");
+        DomTerm.sendParentMessage("domterm-context-menu",
+                                  DomTerm._isInElement(ev.target, "A")?"A":"");
         return;
     }
     /* FUTURE POPUP
@@ -4282,9 +4304,11 @@ DomTerm.prototype.handleBell = function() {
     // Do nothing, for now.
 };
 
-DomTerm.prototype.handleLink = function(event, element) {
+DomTerm.handleLink = function(element) {
+    let dt = DomTerm._getAncestorDomTerm(element);
+    if (! dt)
+        return;
     var href = element.getAttribute("href");
-    event.preventDefault();
     if (href.startsWith('#'))
         window.location.hash = href;
     else {
@@ -4304,7 +4328,7 @@ DomTerm.prototype.handleLink = function(event, element) {
         }
         if (filename)
             obj.filename = decodeURIComponent(filename);
-        this.reportEvent("LINK", JSON.stringify(obj));
+        dt.reportEvent("LINK", JSON.stringify(obj));
     }
 };
 
@@ -6799,12 +6823,46 @@ DomTerm.prototype.pasteText = function(str) {
     }
 };
 
-DomTerm.prototype.doPaste = function() {
-    this.maybeFocus();
+DomTerm.copyLink = function(element=DomTerm._contextLink) {
+    if (element instanceof Element) {
+        let href = element.getAttribute("href");
+        if (href)
+            DomTerm.copyText(href);
+    }
+}
+DomTerm.copyText = function(str) {
+    var container = document.firstElementChild.lastChild;
+    var element = document.createElement("span");
+    element.appendChild(document.createTextNode(str));
+    element.setAttribute("style", "position: fixed");
+    container.appendChild(element);
+    DomTerm.copyElement(element);
+    container.removeChild(element);
+}
+
+DomTerm.copyElement = function(element=DomTerm._contextLink) {
+    var selection = window.getSelection();
+    var range = document.createRange();
+    range.selectNodeContents(element);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    DomTerm.doCopy();
+    selection.removeAllRanges();
+}
+
+DomTerm.doContextCopy = function() {
+    if (DomTerm._contextLink && window.getSelection().isCollapsed)
+        DomTerm.copyElement();
+    else
+        DomTerm.doCopy();
+}
+
+DomTerm.doPaste = function(dt) {
+    dt.maybeFocus();
     return document.execCommand("paste", false);
 };
 
-DomTerm.prototype.doCopy = function() {
+DomTerm.doCopy = function() {
     return document.execCommand("copy", false);
 };
 
@@ -7204,7 +7262,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             }
             return;
         case 67: // Control-Shift-C
-            if (this.doCopy())
+            if (DomTerm.doCopy())
                 event.preventDefault();
             return;
         case 73: // Control-shift-I
@@ -7239,7 +7297,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         case 86: // Control-Shift-V
             // Google Chrome doesn't allow execCommand("paste") but Ctrl-Shift-V
             // works by default.  In Firefox, it's the other way round.
-            if (this.doPaste())
+            if (DomTerm.doPaste(this))
                 event.preventDefault();
             return;
         }
@@ -7607,13 +7665,8 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     let fstart = rindexDelimiter(str, start, end)+1;
     let fragment = str.substring(fstart > 0 ? fstart : start, end);
     let firstToMove = null;
-    for (let p = this.outputContainer; p instanceof Element; p = p.parentNode) {
-        let ptag = p.nodeName;
-        if (ptag == "A")
-            return false;
-        if (ptag == "DIV")
-            break;
-    }
+    if (DomTerm._isInElement(this.outputContainer, "A"))
+        return false;
     if (fstart == 0) {
         let previous = this.outputBefore != null ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
@@ -7657,7 +7710,9 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         let position = m[2];
         if (fname.charCodeAt(0) != 47 /*'/'*/) {
             let dir = this.sstate.lastWorkingPath;
-            let m = dir.match(/^file:[/][/][^/]*([/].*)$/);
+            let m = dir == null ? null : dir.match(/^file:[/][/][^/]*([/].*)$/);
+            if (! m)
+                return false;
             fname = m[1] + "/" + fname;
         }
         let encoded = "";

@@ -405,8 +405,8 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
         this->addAction(m_paste, QWebEnginePage::Paste);
         */
         // This doesn't show the shutcut keys - but they work.
-        menu->addAction(page()->action(QWebEnginePage::Paste));
         menu->addAction(page()->action(QWebEnginePage::Copy));
+        menu->addAction(page()->action(QWebEnginePage::Paste));
 
         menu->addAction(webPage()->mainWindow()->m_viewMenubar);
 

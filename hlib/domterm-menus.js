@@ -30,8 +30,9 @@ DomTerm.createElectronMenus = function() {
     const muxPrefix = 'CommandOrControl+Shift+M';
     const {remote} = nodeRequire('electron')
     const {Menu, MenuItem, shell} = remote
-    const copyItem = new MenuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',click() {
-        if (DomTerm.focusedTerm) DomTerm.focusedTerm.doCopy(); }});
+    const copyItem =
+          new MenuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
+                        click() { DomTerm.doCopy(); }});
     const pasteItem = new MenuItem({label: 'Paste', accelerator: 'CommandOrControl+Shift+V', role: 'paste' });
     var showingMenuBar = true;
     const showMenuBarItem = new MenuItem({label: 'Show menubar',
@@ -132,8 +133,20 @@ DomTerm.createElectronMenus = function() {
                                        click: function() { shell.openExternal('http://domterm.org') }});
     const aboutItem = new MenuItem({label: 'About DomTerm',
                                     click: DomTerm.showAboutMessage});
+    const openLinkItem = new MenuItem({label: 'Open Link',
+                                       click: function(mitem, bwin, ev) {
+                                           DomTerm.handleLink(DomTerm._contextLink);
+                                       }});
+    const copyLinkItem = new MenuItem({label: 'Copy Link Address',
+                                       click: function(mitem, bwin, ev) {
+                                           DomTerm.copyLink();
+                                       }});
+    const copyLinkTextItem =
+          new MenuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
+                        click() { DomTerm.doContextCopy(); }});
+    const copyLinkSep = new MenuItem({type: 'separator'});
 
-    const contextMenu = new Menu()
+    const contextMenu = new Menu();
     contextMenu.append(showMenuBarItem);
     contextMenu.append(copyItem);
     contextMenu.append(pasteItem);
@@ -142,6 +155,18 @@ DomTerm.createElectronMenus = function() {
     contextMenu.append(newTerminalMenuItem);
     contextMenu.append(detachMenuItem);
     contextMenu.append(showInspectorItem);
+    const contextLinkMenu = new Menu();
+    contextLinkMenu.append(openLinkItem);
+    contextLinkMenu.append(copyLinkItem);
+    contextLinkMenu.append(copyLinkSep);
+    contextLinkMenu.append(showMenuBarItem);
+    contextLinkMenu.append(copyLinkTextItem); // not plain copyItem
+    contextLinkMenu.append(pasteItem);
+    contextLinkMenu.append(inputModeMenu);
+    contextLinkMenu.append(autoPagingItem);
+    contextLinkMenu.append(newTerminalMenuItem);
+    contextLinkMenu.append(detachMenuItem);
+    contextLinkMenu.append(showInspectorItem);
 
     DomTerm.savedMenuBar =
         Menu.buildFromTemplate([{label: 'File',
@@ -178,14 +203,17 @@ DomTerm.createElectronMenus = function() {
 
     Menu.setApplicationMenu(showMenuBarItem ? DomTerm.savedMenuBar : null);
     window.addEventListener('contextmenu', (e) => {
-        e.preventDefault()
+        e.preventDefault();
         const dt = DomTerm.focusedTerm;
         const mode = dt ? dt.getInputMode() : 0;
         charModeItem.checked = mode == 99;
         lineModeItem.checked = mode == 108;
         autoModeItem.checked = mode == 97;
         autoPagingItem.checked = dt ? dt._autoPaging : false;
-        contextMenu.popup(remote.getCurrentWindow())
+        DomTerm._contextTarget = e.target;
+        DomTerm._contextLink = DomTerm._isInElement(e.target, "A");
+        let cmenu = DomTerm._contextLink ? contextLinkMenu : contextMenu;
+        cmenu.popup(remote.getCurrentWindow())
     }, false)
 }
 

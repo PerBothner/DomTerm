@@ -249,7 +249,13 @@ function handleMessage(event) {
         DomTerm.detach();
     else if (data=="toggle-auto-paging")
         DomTerm.toggleAutoPaging();
-    else if (data.command=="handle-output")
+    else if (data=="open-link")
+        DomTerm.handleLink(DomTerm._contextLink);
+    else if (data=="copy-link-address")
+        DomTerm.copyLink();
+     else if (data=="context-copy")
+        DomTerm.doContextCopy();
+   else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);
     else if (data.command=="socket-open") {
         dt.reportEvent("VERSION", DomTerm.versionInfo);
