@@ -1679,6 +1679,45 @@ and are equivalent to readline's @code{"\001"} and @code{"\002"}.
 They are used to indicate escape sequences that don't move the cursor,
 which is needed for readline to calculate the column position.)
 
+@anchor{tracking-cwd}
+@subsubheading Tracking current working directory
+
+It is useful for DomTerm to track the working directory of
+the process.  One reason is @ref{linkification,creating links} from
+compiler error messages.
+
+If you're using the Bash shell, you can set the @code{PROMPT_COMMAND}
+to send a special escape sequence, like the following.
+
+@example
+# Based on Orwellophile's answer to
+# @uref{https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command,https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command}
+# adding the LC_ALL=C trick from /etc/profile.d/vte.sh (on Fedora27)
+print_path_url() @{
+  local LC_ALL=C
+  local string="$PWD"
+  local strlen=$@{#string@}
+  local encoded=""
+  local pos c o
+
+  for (( pos=0 ; pos<strlen ; pos++ )); do
+     c=$@{string:$pos:1@}
+     case "$c" in
+        [-_.~a-zA-Z0-9/] ) o="$@{c@}" ;;
+        * )               printf -v o '%%%02x' "'$c"
+     esac
+     encoded+="$@{o@}"
+  done
+  printf "\033]7;file://%s%s\007" "$@{HOSTNAME:-@}" "$@{encoded@}"
+@}
+test "$PROMPT_COMMAND" = __vte_prompt_command || \
+    PROMPT_COMMAND="$PROMPT_COMMAND;print_path_url"
+@end example
+
+(On some platforms Gnome Terminal loads @code{vte.sh}
+which sets @code{PROMPT_COMMAND} to @code{__vte_prompt_command},
+which sends the same escape sequence as @code{print_path_url}.)
+
 @subheading Showing man pages as html
 
 To view the @code{bash} man page inline you can do the following.
@@ -1749,7 +1788,8 @@ or @code{file:/@var{filename}#position=@var{line}:@var{column}:}.
 If @var{filename} is relative, it is made absolute
 if the process directory is set.
 (The directory can be set using the escape
-sequence @code{"\e]7;file://@var{hostname}/@var{directory}\a"}.)
+sequence @code{"\e]7;file://@var{hostname}/@var{directory}\a"}.
+See @ref{tracking-cwd,the shell function @code{print_path_url}} above.)
 You can specify an editor or other handler for these special links,
 as described below.
 
