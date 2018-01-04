@@ -2412,6 +2412,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                      if (ntag == "DIV")
                                          break;
                                  }
+                                 dt._mouseHandler(e);
                              },
                              false);
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
@@ -2569,7 +2570,9 @@ DomTerm.prototype._mouseHandler = function(ev) {
     // in the same <div class="input-line"> element.
     var readlineMode = false;
     var readlineForced = false; // basically if ev.altKey
-    if (this.sstate.mouseMode == 0 && ! this.isLineEditing()) {
+    if (ev.type == "click"
+        && this.sstate.mouseMode == 0 && ! this.isLineEditing()
+        && window.getSelection().isCollapsed) {
         for (var v = ev.target; v != null && v != this.topNode;
              v = v.parentNode) {
             var cl = v.classList;
@@ -2596,9 +2599,12 @@ DomTerm.prototype._mouseHandler = function(ev) {
                 || (target_inputline_node != null
                     && target_inputline_node == current_inputline_node);
             }
-        if (! readlineMode || (ev.button != 0 && ev.button != 1))
-            return;
     }
+    if (this.sstate.mouseMode == 0
+        && (! readlineMode || (ev.button != 0 && ev.button != 1)))
+        return;
+    if (ev.type=="click" && !readlineMode)
+        return;
 
     // Get mouse coordinates relative to topNode.
     var xdelta = ev.pageX;
