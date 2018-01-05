@@ -1,6 +1,6 @@
 // @configure_input@
 DomTerm.versionString = "@DOMTERM_VERSION@";
-DomTerm.copyrightYear = 2017;
+DomTerm.copyrightYear = 2018;
 DomTerm.inAtomFlag = false;
 
 DomTerm.isElectron = function() {
