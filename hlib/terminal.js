@@ -1,4 +1,4 @@
-/** @license Copyright (c) 2015, 2016, 2017 Per Bothner.
+/** @license Copyright (c) 2015, 2016, 2017, 2018 Per Bothner.
  *
  * Converted to JavaScript from WebTerminal.java, which has the license:
  *
@@ -2196,6 +2196,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.measureWindow();
 
     this.topNode.addEventListener("mousedown", this._mouseEventHandler, true);
+    this.topNode.addEventListener("mouseup", this._mouseEventHandler, true);
     /*
     function docMouseDown(event) {
         if (! dt._isAnAncestor(event.target, dt.topNode)
@@ -2412,7 +2413,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                      if (ntag == "DIV")
                                          break;
                                  }
-                                 dt._mouseHandler(e);
                              },
                              false);
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
@@ -2560,51 +2560,47 @@ DomTerm.prototype._mouseHandler = function(ev) {
 
     var current_input_node = null;     // current std="input" element
     var current_pre_node = null;       // current class="domterm-pre" element
-    var current_inputline_node = null; // current class="input-line"
     var target_input_node = null;      // target std="input" element
     var target_pre_node = null;        // target class="domterm-pre" element
-    var target_inputline_node = null;  // target class="input-line"
     // readlineMode is used to translate a click to arrow-key movements.
     // It is enabled on certain conditions when mouseMode is unset:
     // either altKey is set or both target and current position are
-    // in the same <div class="input-line"> element.
+    // in the same multi-line-edit group.
     var readlineMode = false;
     var readlineForced = false; // basically if ev.altKey
-    if (ev.type == "click"
+    if (ev.type == "mouseup"
         && this.sstate.mouseMode == 0 && ! this.isLineEditing()
-        && window.getSelection().isCollapsed) {
+        && (window.getSelection().isCollapsed || ev.button == 1)) {
         for (var v = ev.target; v != null && v != this.topNode;
              v = v.parentNode) {
-            var cl = v.classList;
-            if (cl.contains("domterm-pre"))
+            if (v.classList.contains("domterm-pre")) {
                 target_pre_node = v;
-            if (cl.contains("input-line")) {
-                target_inputline_node = v;
                 break;
             }
         }
         for (var v = this.outputContainer; v != null && v != this.topNode;
              v = v.parentNode) {
-            var cl = v.classList;
-            if (cl.contains("domterm-pre"))
+            if (v.classList.contains("domterm-pre")) {
                 current_pre_node = v;
-            if (cl.contains("input-line")) {
-                current_inputline_node = v;
                 break;
             }
         }
         if (target_pre_node != null && current_pre_node != null) {
             readlineForced = ev.altKey;
+            let firstSibling = target_pre_node.parentNode.firstChild;
             readlineMode = readlineForced
-                || (target_inputline_node != null
-                    && target_inputline_node == current_inputline_node);
-            }
+                || (target_pre_node.classList.contains("input-line")
+                    && current_pre_node.classList.contains("input-line")
+                    && (target_pre_node == current_pre_node
+                        || (target_pre_node.parentNode == current_pre_node.parentNode
+                            && firstSibling instanceof Element
+                            && firstSibling.classList.contains("multi-line-edit"))));
+        }
     }
     if (this.sstate.mouseMode == 0
-        && (! readlineMode || (ev.button != 0 && ev.button != 1)))
+        && (! readlineMode || (ev.button != 0 && ev.button != 1))){
         return;
-    if (ev.type=="click" && !readlineMode)
-        return;
+    }
 
     // Get mouse coordinates relative to topNode.
     var xdelta = ev.pageX;
@@ -3683,10 +3679,8 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
     case 9: case 1000: case 1001: case 1002: case 1003:
         var handler = this._mouseEventHandler;
         if (value) {
-            this.topNode.addEventListener("mouseup", handler);
             this.topNode.addEventListener("wheel", handler);
         } else {
-            this.topNode.removeEventListener("mouseup", handler);
             this.topNode.removeEventListener("wheel", handler);
         }
         this.sstate.mouseMode = value ? param : 0;
@@ -4218,15 +4212,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.outputBefore = newParent.firstChild;
             var ln = newParent.parentNode;
             var cl = ln.classList;
-            if (submode != 0 && cl.contains("domterm-pre")) {
-                var p = ln.parentNode;
-                if (submode==2) {
-                    var il = document.createElement("div");
-                    il.classList.add("input-line");
-                    p.insertBefore(il, ln);
-                    il.appendChild(ln);
-                } else if (! p.classList.contains("input-line"))
-                    cl.add("input-line");
+            if (submode != 0 && cl.contains("domterm-pre")
+                && ! ln.parentNode.classList.contains("input-line")) {
+                cl.add("input-line");
+                if (submode==2)
+                    cl.add("multi-line-edit");
             }
             this._adjustStyle();
             break;
