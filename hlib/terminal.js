@@ -1023,6 +1023,8 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             if (! addSpaceAsNeeded)
                 return;
             var preNode = this._createPreNode();
+            this._setBackgroundColor(preNode,
+                                     this._getBackgroundColor(this._vspacer));
             // preNode.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
             if (lineCount == this.homeLine)
                 parent = this.initial;
@@ -1796,6 +1798,7 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
 DomTerm.prototype._addBlankLines = function(count, absLine, parent, oldStart) {
     for (var i = 0; i < count;  i++) {
         var preNode = this._createPreNode();
+        this._setBackgroundColor(preNode, this._currentStyleBackground());
         var newLine = this._createLineNode("hard", "\n");
         preNode.appendChild(newLine);
         parent.insertBefore(preNode, oldStart);
@@ -2027,8 +2030,6 @@ DomTerm.prototype._createPreNode = function() {
     // Prefer <div> over <pre> because Firefox adds extra lines when doing a Copy
     // spanning multiple <pre> nodes.
     var n = document.createElement("div");
-    var bg = this._currentStyleBackground();
-    this._setBackgroundColor(n, bg);
     n.setAttribute("class", "domterm-pre");
     return n;
 };
