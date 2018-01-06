@@ -17,7 +17,7 @@ span.term-style[reverse] {
 div.domterm {
     --dt-black: #000000; /* X: 0=black */
     --dt-red: #CD0000; /* X: 1=red3 */
-    --dt-green: #00CD00;; /* X: 2=green3 */
+    --dt-green: #00CD00; /* X: 2=green3 */
     --dt-yellow: #CDCD00; /* X: 3=yellow3*/
     --dt-blue: #0000CD; /* X: 4=blue3 */
     --dt-magenta: #CD00CD; /* X: 5=magenta3 */
