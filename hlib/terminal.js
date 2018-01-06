@@ -1722,8 +1722,8 @@ DomTerm.prototype._adjustStyle = function() {
         }
         if (reverse) {
             if (bgcolor || fgcolor) {
-                var tmp = bgcolor ? bgcolor : "var(--dt-bgcolor)";
-                bgcolor = fgcolor ? fgcolor : "var(--dt-fgcolor)";
+                var tmp = bgcolor ? bgcolor : "var(--background-color)";
+                bgcolor = fgcolor ? fgcolor : "var(--foreground-color)";
                 fgcolor = tmp;
             } else {
                 styleSpan.setAttribute("reverse", "yes");
@@ -1734,7 +1734,7 @@ DomTerm.prototype._adjustStyle = function() {
             styleAttr = styleAttr ? styleAttr+";"+fgstyle : fgstyle;
         }
         if (needBackground && ! bgcolor && ! reverse)
-            bgcolor = "var(--dt-bgcolor)";
+            bgcolor = "var(--background-color)";
         if (bgcolor) {
             var bgstyle = "background-color: "+bgcolor;
             styleAttr = styleAttr ? styleAttr+";"+bgstyle : bgstyle;
