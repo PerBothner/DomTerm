@@ -1091,7 +1091,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             var handled = false;
             if (current && current.nodeName == "SPAN") {
                 var tcol = -1;
-                var st = parent.getAttribute("style");
+                var st = current.getAttribute("style");
                 if (st && st.startsWith("tab-size:")) {
                     tcol = Number(st.substring(9));
                 }
@@ -1162,7 +1162,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                             column = tcol;
                         else {
                             var w = tcol - column;
-                            text.replaceData(i, 1, DomTerm.makeSpaces(w));
+                            tnode.replaceData(i, 1, DomTerm.makeSpaces(w));
                             tlen += w - 1;
                             i--;
                         }
@@ -3526,10 +3526,12 @@ DomTerm.prototype.eraseLineRight = function() {
     this._eraseLineEnd();
 }
 
+// New "whitespace" at the end of the line need to be set to Background Color.
 DomTerm.prototype._eraseLineEnd = function() {
     var line = this.lineStarts[this.getAbsCursorLine()];
     var bg = this._currentStyleBackground();
     var oldbg = this._getBackgroundColor(line);
+    // We need to change to "line background color"
     if (bg != oldbg) {
         this._setBackgroundColor(line, bg);
         var col = this.getCursorColumn();
@@ -3538,6 +3540,7 @@ DomTerm.prototype._eraseLineEnd = function() {
             var end = this.lineEnds[this.getAbsCursorLine()];
             if (oldbg == null)
                 oldbg = "var(-dt-bgcolor)";
+            // ... but existing text must keep existing color.
             for (var ch = line.firstChild;
                  ch != null && ch != end; ) {
                 var next = ch.nextSibling;
@@ -3545,6 +3548,8 @@ DomTerm.prototype._eraseLineEnd = function() {
                     var span = this._createSpanNode();
                     line.removeChild(ch);
                     span.appendChild(ch);
+                    if (ch == this.outputBefore)
+                        this.outputContainer = span;
                     line.insertBefore(span, next);
                     ch = span;
                 }
@@ -5669,7 +5674,7 @@ DomTerm.prototype.insertString = function(str) {
                 this.parameters[0] = null;
                 break;
             case 99 /*'c'*/: // Full Reset (RIS)
-                this.resetTerminal(True, True);
+                this.resetTerminal(true, true);
                 break;
             case 110 /*'n'*/: // LS2
             case 111 /*'o'*/: // LS3
