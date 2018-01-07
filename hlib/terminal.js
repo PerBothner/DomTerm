@@ -3329,14 +3329,8 @@ DomTerm.prototype.eraseDisplay = function(param) {
         }
         break;
     }
-    if (param == 0 || param == 2) {
-        var bg = this._currentStyleBackground();
-        if (bg != null) {
-             this.moveToAbs(this.numRows-1+this.homeLine, 0, true);
-        }
-        if (this._vspacer != null)
-            this._setBackgroundColor(this._vspacer, bg);
-    }
+    if ((param == 0 || param == 2) && this._vspacer != null)
+        this._setBackgroundColor(this._vspacer, this._currentStyleBackground());
     this.moveToAbs(saveLine, saveCol, true);
 };
 
