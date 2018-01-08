@@ -91,3 +91,8 @@ span[caret][std="input"][value]:after {
 }
 div.domterm a.subtle:not(:hover) { text-decoration: inherit; }
 div.domterm a.matched:not(:hover) { color: inherit; text-decoration: inherit; }
+div.domterm h2,
+div.domterm h3,
+div.domterm p,
+div.domterm dl {
+    margin-bottom: 0.3ex;  margin-top: 0.2ex }

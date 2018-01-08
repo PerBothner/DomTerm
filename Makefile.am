@@ -42,11 +42,10 @@ SUBDIRS += lws-term
 endif
 
 all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/application.ini \
-  share/domterm/help/docutils.css \
-  share/domterm/help/domterm.rst share/domterm/help/domterm.html \
-  share/domterm/help/qtdomterm.rst share/domterm/help/qtdomterm.html \
-  share/domterm/help/window-specifier.rst share/domterm/help/window-specifier.html \
-  share/domterm/help/imgcat.rst share/domterm/help/imgcat.html
+  share/domterm/help/domterm.adoc share/domterm/help/domterm.html \
+  share/domterm/help/qtdomterm.adoc share/domterm/help/qtdomterm.html \
+  share/domterm/help/window-specifier.adoc share/domterm/help/window-specifier.html \
+  share/domterm/help/imgcat.adoc share/domterm/help/imgcat.html
 
 # application.ini has to be copied, not linked; or it can't find domterm.jar
 share/domterm/application.ini: $(srcdir)/xulapp/application.ini
@@ -295,8 +294,8 @@ endif
 	$(INSTALL_DATA) electron/package.json electron/main.js \
 	    $(DESTDIR)$(datadir)/domterm/electron/
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/help
-	$(INSTALL_DATA) share/domterm/help/*.rst share/domterm/help/*.html \
-	  share/domterm/help/*.css $(DESTDIR)$(datadir)/domterm/help/
+	$(INSTALL_DATA) share/domterm/help/*.adoc share/domterm/help/*.html \
+	  $(DESTDIR)$(datadir)/domterm/help/
 
 install-ldomterm:
 	cd lws-term && $(MAKE) install
@@ -313,25 +312,28 @@ $(pkgdatadir)/help:
 share/domterm/help:
 	$(MKDIR_P) share/domterm/help
 
-share/domterm/help/%.rst: doc/help/%.rst share/domterm/help
+share/domterm/help/%.adoc: doc/help/%.adoc share/domterm/help
 	cd share/domterm/help && $(LN_S) ../../../$<
 
-RST2HTML = rst2html5
-RST2HTML_OPTS = --no-doc-title --initial-header-level=2 \
-  --link-stylesheet --stylesheet=docutils.css
-share/domterm/help/%.html: doc/help/%.rst share/domterm/help
-	$(RST2HTML) $(RST2HTML_OPTS) $< $@
+ASCIIDOCTOR = asciidoctor
+#ADOC2HTML_OPTS = --no-doc-title --initial-header-level=2 \
+#  --link-stylesheet --stylesheet=docutils.css
+ADOC2HTML_OPTS = -s
+ADOC2MAN_OPTS = -b manpage
 
-share/domterm/help/docutils.css: share/domterm/help
-	echo | $(RST2HTML) - - | sed -e '1,/<style /d' -e '/<\/style>/,$$d' >$@
+share/domterm/help/%.html: doc/help/%.adoc share/domterm/help
+	$(ASCIIDOCTOR) $(ADOC2HTML_OPTS) $< -o $@
 
-doc/man/domterm.man: doc/help/domterm.rst
+#share/domterm/help/docutils.css: share/domterm/help
+#	echo | $(RADOC2HTML) - - | sed -e '1,/<style /d' -e '/<\/style>/,$$d' >$@
+
+doc/man/domterm.man: doc/help/domterm.adoc
 	$(MKDIR_P) doc/man
-	rst2man doc/help/domterm.rst doc/man/domterm.man
+	$(ASCIIDOCTOR) doc/help/domterm.adoc -o doc/man/domterm.man
 
-doc/man/qtdomterm.man: doc/help/qtdomterm.rst
+doc/man/qtdomterm.man: doc/help/qtdomterm.adoc
 	$(MKDIR_P) doc/man
-	rst2man doc/help/qtdomterm.rst doc/man/qtdomterm.man
+	$(ASCIIDOCTOR) $(ADOC2MAN) doc/help/qtdomterm.adoc doc/man/qtdomterm.man
 
 man1_MANS = doc/man/domterm.man
 if WITH_QTWEBENGINE
