@@ -6,33 +6,67 @@ domterm - terminal emulator and multiplexer
 
 == Synopsis
 
-``domterm`` [*options*] [*command* *arguments* ...]
+``domterm`` [_options_] [_command_ _arguments_ ...]
 
 == Description
 
 DomTerm is a terminal emulator that supports embedded graphics and html;
 builtin tiling and tabs; session management; and more.
 
-The ``domterm`` commands manages terminal sessions, and
+The ``domterm`` command manages terminal sessions, and
 creates windows (and sub-windows) to display them.
 The display uses an embedded web browser (using electron
 or QtWebEngine); you can also use a regular desktop browser.
 
+If no arguments are specified, a new terminal window is created,
+as if using the `new` command.
+
 == Commands
+You can get help for a specific _command_ with the `help` command.
+For example: `domterm help new`.
 
-``help`` [*topic*]
+=== Sessions
+[horizontal]
+`help` [_topic_]:: Help on given _topic_.
+`new` [_command_ [_arguments_]]:: Create new termimal session and window
+_command_ [_arguments_]:: Short-hand for `new`. 
+`attach` _session_:: Attach to an existing session.
+`list`:: List terminal sessions.
 
-``new`` [command [arguments]]
+=== Subcommands for output
+[horizontal]
+`html` [or `hcat`]:: display html
+`image` [or `imgcat`]:: display image
+`fresh-line`:: if not at beginning of line, starts a fresh line
 
-``attach`` <session>
+=== Subcommands for styling
 
-``browse`` <url>
+[horizontal]
+`reverse-video` `on`|`off`:: switch between dark or light background
+`add-style`:: add a new rule to a temporary stylesheet
+`load-stylesheet`:: load new stylesheet from a file
+`list-stylesheets`:: list loaded stylesheets
+`print-stylesheet`:: print stylesheet rules from a loaded stylesheet
+`disable-stylesheet`:: disable a stylesheet
+`enable-stylesheet`:: enable a stylesheet
 
-and more ...
+=== Miscellaneous subcommands
+[horizontal]
+`browse` _url_:: view html or image in new web browser (sub-)window
+`is-domterm`:: succeeds if running under DomTerm
+``view-saved` _file_:: view save-as-html file
 
 == Options
 
---geometry WIDTHxHEIGHT::
+The commands that create a new (sub-)window
+(currently `new`, `attach`, `browse`, and `view-saved`) optionally
+take a window-specifier option to describe how to create the new window.
+See `help window-specifier` for details.
+
+`--version`::
+  Print version number and exit.
+`--help`, `-h`:: Print help and exit. Same as `domterm help`.
+`--geometry` __W__x__H__::
   The size of the main window.
 
 and more ...

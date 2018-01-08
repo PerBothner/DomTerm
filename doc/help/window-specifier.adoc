@@ -89,5 +89,6 @@ to `--browser=`_command_ `" %U"`.
     When creating a new session, it is detached, without a window.
 
 `--print-url`::
-   Do not open a new window.  Instead print out a URL that can be used
-   in a browser to open a window.  This is used by https://atom.io/packages/atom-domterm[atom-domterm].
+   Do not open a new window.  Instead print out a URL
+   that can be used in a browser to open a window.
+   This is used by https://atom.io/packages/atom-domterm[atom-domterm].
