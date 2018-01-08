@@ -41,11 +41,25 @@ if WITH_LIBWEBSOCKETS
 SUBDIRS += lws-term
 endif
 
-all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/application.ini \
-  share/domterm/help/domterm.adoc share/domterm/help/domterm.html \
-  share/domterm/help/qtdomterm.adoc share/domterm/help/qtdomterm.html \
-  share/domterm/help/window-specifier.adoc share/domterm/help/window-specifier.html \
-  share/domterm/help/imgcat.adoc share/domterm/help/imgcat.html
+man1_MANS = share/man/man1/domterm.1
+if WITH_QTWEBENGINE
+man1_MANS += share/man/man1/qtdomterm.1
+endif
+
+if WITH_ASCIIDOCTOR
+ADOC_GENERATED = \
+  share/domterm/help/domterm.html \
+  share/domterm/help/qtdomterm.html \
+  share/domterm/help/window-specifier.html \
+  share/domterm/help/imgcat.html \
+  $(man1_MANS)
+endif
+
+all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/application.ini $(ADOC_GENERATED) \
+  share/domterm/help/domterm.adoc \
+  share/domterm/help/qtdomterm.adoc \
+  share/domterm/help/window-specifier.adoc  \
+  share/domterm/help/imgcat.adoc
 
 # application.ini has to be copied, not linked; or it can't find domterm.jar
 share/domterm/application.ini: $(srcdir)/xulapp/application.ini
@@ -327,15 +341,10 @@ share/domterm/help/%.html: doc/help/%.adoc share/domterm/help
 #share/domterm/help/docutils.css: share/domterm/help
 #	echo | $(RADOC2HTML) - - | sed -e '1,/<style /d' -e '/<\/style>/,$$d' >$@
 
-doc/man/domterm.man: doc/help/domterm.adoc
+share/man/man1/domterm.1: doc/help/domterm.adoc
 	$(MKDIR_P) doc/man
-	$(ASCIIDOCTOR) doc/help/domterm.adoc -o doc/man/domterm.man
+	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) doc/help/domterm.adoc -o $@
 
-doc/man/qtdomterm.man: doc/help/qtdomterm.adoc
+share/man/man1/qtdomterm.1: doc/help/qtdomterm.adoc
 	$(MKDIR_P) doc/man
-	$(ASCIIDOCTOR) $(ADOC2MAN) doc/help/qtdomterm.adoc doc/man/qtdomterm.man
-
-man1_MANS = doc/man/domterm.man
-if WITH_QTWEBENGINE
-man1_MANS += doc/man/qtdomterm.man
-endif
+	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) doc/help/qtdomterm.adoc -o $@

@@ -28,6 +28,9 @@ AC_ARG_WITH(java_websocket,
 AC_ARG_WITH(libwebsockets,
   AS_HELP_STRING(--with-libwebsockets,Build server using libwebsockets))
 
+AC_ARG_WITH(asciidoctor,
+  AS_HELP_STRING(--with-asciidoctor,Use AsciiDoctor to build help and man pages))
+
 AC_ARG_WITH(qtwebengine,
   AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
@@ -74,6 +77,10 @@ case ${host} in
 esac
 
 AC_CHECK_PROGS(QMAKE, qmake-qt5 qmake, qmake)
+
+AS_IF([test -z "$with_asciidoctor"],
+    AC_CHECK_PROG(with_asciidoctor, asciidoctor, "yes", "no"))
+AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 
