@@ -1,8 +1,13 @@
+ifdef::basebackend-manpage[]
 :doctitle: qtdomterm(1)
 
 == Name
 
 qtdomterm - terminal emulator and multiplexer using Qt
+endif::[]
+ifndef::basebackend-manpage[]
+= qtdomterm - terminal emulator and multiplexer using Qt
+endif::[]
 
 == Synopsis
 

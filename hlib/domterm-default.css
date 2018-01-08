@@ -95,4 +95,7 @@ div.domterm h2,
 div.domterm h3,
 div.domterm p,
 div.domterm dl {
-    margin-bottom: 0.3ex;  margin-top: 0.2ex }
+    margin-top: 0.2ex; margin-bottom: 0.3ex; }
+div.domterm h1 {
+    margin-top: 0.2ex;
+    margin-bottom: 0.4ex; }

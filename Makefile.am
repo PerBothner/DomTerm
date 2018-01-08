@@ -56,10 +56,10 @@ ADOC_GENERATED = \
 endif
 
 all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/application.ini $(ADOC_GENERATED) \
-  share/domterm/help/domterm.adoc \
-  share/domterm/help/qtdomterm.adoc \
-  share/domterm/help/window-specifier.adoc  \
-  share/domterm/help/imgcat.adoc
+  share/domterm/help/domterm.txt \
+  share/domterm/help/qtdomterm.txt \
+  share/domterm/help/window-specifier.txt  \
+  share/domterm/help/imgcat.txt
 
 # application.ini has to be copied, not linked; or it can't find domterm.jar
 share/domterm/application.ini: $(srcdir)/xulapp/application.ini
@@ -308,7 +308,7 @@ endif
 	$(INSTALL_DATA) electron/package.json electron/main.js \
 	    $(DESTDIR)$(datadir)/domterm/electron/
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/help
-	$(INSTALL_DATA) share/domterm/help/*.adoc share/domterm/help/*.html \
+	$(INSTALL_DATA) share/domterm/help/*.txt share/domterm/help/*.html \
 	  $(DESTDIR)$(datadir)/domterm/help/
 
 install-ldomterm:
@@ -326,14 +326,17 @@ $(pkgdatadir)/help:
 share/domterm/help:
 	$(MKDIR_P) share/domterm/help
 
-share/domterm/help/%.adoc: doc/help/%.adoc share/domterm/help
-	cd share/domterm/help && $(LN_S) ../../../$<
-
 ASCIIDOCTOR = asciidoctor
 #ADOC2HTML_OPTS = --no-doc-title --initial-header-level=2 \
 #  --link-stylesheet --stylesheet=docutils.css
 ADOC2HTML_OPTS = -s
 ADOC2MAN_OPTS = -b manpage
+
+share/domterm/help/%.txt: doc/help/%.adoc share/domterm/help
+	$(SED) -e '/^ifdef::basebackend-manpage/,/^endif::/d' \
+	  -e '/^ifndef::basebackend-manpage/d' -e '/^endif::/d' \
+	  -e 's/^[+]$$//' \
+	< $< > $@
 
 share/domterm/help/%.html: doc/help/%.adoc share/domterm/help
 	$(ASCIIDOCTOR) $(ADOC2HTML_OPTS) $< -o $@

@@ -1,8 +1,12 @@
+ifdef::basebackend-manpage[]
 :doctitle: domterm(1)
 
 == Name
-
 domterm - terminal emulator and multiplexer
+endif::[]
+ifndef::basebackend-manpage[]
+= domterm - terminal emulator and multiplexer
+endif::[]
 
 == Synopsis
 

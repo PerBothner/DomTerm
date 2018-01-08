@@ -53,7 +53,7 @@ void print_help_file(const char* name, FILE *out)
         copy_html_file(rfile, out);
         return;
     }
-    sprintf(buf, "%s/%s.adoc", hdir, name);
+    sprintf(buf, "%s/%s.txt", hdir, name);
     FILE *rfile = fopen(buf, "r");
     if (rfile == NULL)
         goto err;
