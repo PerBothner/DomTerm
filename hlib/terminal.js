@@ -1583,6 +1583,12 @@ DomTerm.prototype._getStdMode = function() {
 };
 
 DomTerm.prototype._pushStdMode = function(styleValue) {
+    if (styleValue == null
+        && this._currentStyleMap.get("std")) {
+        this._pushStyle("std", null);
+        this._adjustStyle();
+        return;
+    }
     var stdElement = this._getStdMode();
     if (stdElement == null ? styleValue == null
         : stdElement.getAttribute("std") == styleValue)
@@ -1688,12 +1694,16 @@ DomTerm.prototype._adjustStyle = function() {
         styleSpan.setAttribute("class", "term-style");
         var styleAttr = null;
         var decoration = null;
+        var stdKind = null;
         var reverse = false;
         var fgcolor = null;
         var bgcolor = null;
         for (var key of this._currentStyleMap.keys()) {
             var value = this._currentStyleMap.get(key);
             switch (key) {
+            case "std":
+                stdKind = value;
+                break;
             case "reverse":
                 reverse = true;
                 break;
@@ -1743,6 +1753,8 @@ DomTerm.prototype._adjustStyle = function() {
             styleSpan.setAttribute("style", styleAttr);
         if (decoration)
             styleSpan.setAttribute("text-decoration", decoration);
+        if (stdKind)
+            styleSpan.setAttribute("std", stdKind);
 
         var previous = this.outputBefore ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
@@ -4151,7 +4163,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._pushStdMode(null);
             break;
         case 12:
-            this._pushStdMode("error");
+            this._pushStyle("std", "error");
             break;
         case 18: // End non-selectable prompt
             var container = this.outputContainer;
@@ -5886,8 +5898,6 @@ DomTerm.prototype.insertString = function(str) {
             case 12: // form feed
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 this._breakDeferredLines();
-                if (this._currentStyleMap.get("std") == "input")
-                    this._pushStdMode(null);
                 if (this._pauseNeeded()) {
                     this.parameters[1] = str.substring(i);
                     update();
