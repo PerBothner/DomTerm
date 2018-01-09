@@ -86,18 +86,18 @@ The size of the main window.
     into a disconnected server (a daemon). The option `--no-daemonize`
     option  prevents “daemonizing” - which is helpful for debugging.
 
-``--socket-name=``__name__
-    DomTerm uses a Unix Domain socket to communicate between the
-    command-line and the server. By default the socket is the file
-    $`HOME/.domain/default.socket,` but this option overrides
-    that. Using different socket names mean you get different servers
-    that do not know about each other. If _name_ starts with ‘/’
-    then the filename is absolute; otherwise `$HOME/.domain/` is
-    prepended. If there is no file extension, `.socket` is appended.
-
-    DomTerm also creates a temporary html that has the same name as
-    the socket, but with a `.html` extension. That is by default it
-    is `$HOME/.domain/default.html`.
+``--socket-name=``_name_::
+DomTerm uses a Unix Domain socket to communicate between the
+command-line and the server. By default the socket is the file
+$`HOME/.domain/default.socket,` but this option overrides
+that. Using different socket names mean you get different servers
+that do not know about each other. If _name_ starts with ‘/’
+then the filename is absolute; otherwise `$HOME/.domain/` is
+prepended. If there is no file extension, `.socket` is appended.
++
+DomTerm also creates a temporary html that has the same name as
+the socket, but with a `.html` extension. That is by default it
+is `$HOME/.domain/default.html`.
 
 == See also
 
