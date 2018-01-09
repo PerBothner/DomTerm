@@ -1,4 +1,12 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-window-specifier(1)
+
+== Name
+domterm - window specifier options
+endif::[]
+ifndef::basebackend-manpage[]
 == domterm window specifier options
+endif::[]
 
 == Synopsis
 

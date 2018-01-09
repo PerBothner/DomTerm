@@ -336,11 +336,17 @@ ASCIIDOCTOR = asciidoctor
 ADOC2HTML_OPTS = -s
 ADOC2MAN_OPTS = -b manpage
 
+if WITH_ASCIIDOCTOR
+share/domterm/help/%.txt: share/man/man1/%.1
+	man -l --nj --nh $< | \
+	  $(SED) -e '1,3d' -e '4s/^ *//' -e '$$d' > $@
+else
 share/domterm/help/%.txt: doc/help/%.adoc share/domterm/help
 	$(SED) -e '/^ifdef::basebackend-manpage/,/^endif::/d' \
 	  -e '/^ifndef::basebackend-manpage/d' -e '/^endif::/d' \
 	  -e 's/^[+]$$//' \
 	< $< > $@
+endif
 
 share/domterm/help/%.html: doc/help/%.adoc share/domterm/help
 	$(ASCIIDOCTOR) $(ADOC2HTML_OPTS) $< -o $@
@@ -349,5 +355,5 @@ share/domterm/help/%.html: doc/help/%.adoc share/domterm/help
 #	echo | $(RADOC2HTML) - - | sed -e '1,/<style /d' -e '/<\/style>/,$$d' >$@
 
 share/man/man1/%.1: doc/help/%.adoc
-	$(MKDIR_P) doc/man
+	$(MKDIR_P) doc/man/man1
 	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) $< -o $@

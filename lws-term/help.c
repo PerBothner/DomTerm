@@ -6,6 +6,11 @@ struct help_info {
   const char *help;
 };
 
+static bool html_option_seen = false;
+static bool man_option_seen = false;
+static bool text_option_seen = false;
+static char *pager_option = "";
+
 static char attach_help[] = "Usage: domterm attach session-specifier\n";
 
 static char is_domterm_help[] = "Usage: domterm is-domterm\n"
@@ -38,7 +43,7 @@ void print_help_file(const char* name, FILE *out)
 {
     char *hdir = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/help");
     char *buf = xmalloc(strlen(hdir)+strlen(name)+20);
-    if (probe_domterm(true) > 0) {
+    if (! text_option_seen && ! man_option_seen && probe_domterm(true) > 0) {
         sprintf(buf, "%s/%s.html", hdir, name);
         FILE *rfile = fopen(buf, "r");
         if (rfile == NULL)
@@ -64,10 +69,31 @@ void print_help(FILE* out) {
 int help_action(int argc, char** argv, const char*cwd,
                 char **env, struct lws *wsi, struct options *opts)
 {
-    FILE *out = fdopen(opts->fd_out, "w");
     int ecode = EXIT_SUCCESS;
-    if (argc >= 2) {
-      char *topic = argv[1];
+    char *topic = NULL;
+    for (int argi = 1; argi < argc; argi++) {
+        topic = argv[argi];
+        if (strcmp(topic, "--html") == 0)
+            html_option_seen = true;
+        else if (strcmp(topic, "--man") == 0)
+            man_option_seen = true;
+        else if (strcmp(topic, "--text") == 0)
+            text_option_seen = true;
+        else if (strcmp(topic, "--pager") == 0)
+            pager_option = ""; // FUTURE maybe allow --pager=xxx
+        else if (strcmp(topic, "--no-pager") == 0)
+            pager_option = NULL;
+        else if (topic[0] == '-' && topic[1] == '-') {
+            FILE *err = fdopen(opts->fd_err, "w");
+            fprintf(err, "unknown help option '%s'\n", topic);
+            fclose(err);
+            return EXIT_FAILURE;
+        }
+        else
+          break;
+    }
+    FILE *out = fdopen(opts->fd_out, "w");
+    if (topic != NULL) {
       struct help_info *p = help_table;
       for (; ; p++) {
         if (p->command == NULL) {
