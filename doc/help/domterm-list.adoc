@@ -1,0 +1,17 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-list(1)
+
+== Name
+domterm list - list running terminal sessions
+endif::[]
+ifndef::basebackend-manpage[]
+== domterm list - list running terminal sessions
+endif::[]
+
+== Synopsis
+
+`domterm` [_goptions_] `list`
+
+== Description
+
+List information about sessions running under the current server.

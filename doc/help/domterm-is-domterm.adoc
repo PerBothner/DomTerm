@@ -1,0 +1,28 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-is-domterm(1)
+
+== Name
+domterm list - list running terminal sessions
+endif::[]
+ifndef::basebackend-manpage[]
+== domterm list - list running terminal sessions
+endif::[]
+
+== Synopsis
+
+`domterm` [_goptions_] `is-domterm`
+
+== Description
+
+
+
+Succeeds (exits with code 0) if the current terminal is DomTerm;
+fails (exits with code -1) otherwise.
+
+This test does not depend on environment variables, but instead sends
+a special request code, and checks the response. This test works over
+an ssh connection. (The test does require that either DOMTERM be
+non-empty, or that TERM be either empty or contain the string xterm;
+otherwise it does not try to the request code.)
+
+Typical shell usage: `if domterm is-domterm; then ...; fi`

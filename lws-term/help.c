@@ -11,26 +11,19 @@ static bool man_option_seen = false;
 static bool text_option_seen = false;
 static char *pager_option = "";
 
-static char is_domterm_help[] = "Usage: domterm is-domterm\n"
-    "Succeeds if running on a DomTerm terminal; fails otherwise.\n"
-    "Typical shell usage: if domterm is-domterm; then ...; fi\n";
-
-static char list_help[] = "Usage: domterm list\n"
-  "List sessions running under current server.\n";
-
 struct help_info help_table[] = {
-  { "attach", "*domterm-attach"},
-  { "browse", "*domterm-browse"},
-  { "html", "*domterm-hcat"},
-  { "hcat", "*domterm-hcat"},
-  { "window-specifier", "*domterm-window-specifier" },
-  { "image", "*domterm-imgcat"},
-  { "imgcat", "*domterm-imgcat"},
-  { "is-domterm", is_domterm_help},
-  { "list", list_help},
-  { "new", "*domterm-new"},
-  { "domterm", "*domterm"},
-  { "qtdomterm", "*qtdomterm"},
+  { "attach", "domterm-attach"},
+  { "browse", "domterm-browse"},
+  { "html", "domterm-hcat"},
+  { "hcat", "domterm-hcat"},
+  { "window-specifier", "domterm-window-specifier" },
+  { "image", "domterm-imgcat"},
+  { "imgcat", "domterm-imgcat"},
+  { "is-domterm", "domterm-is-domterm"},
+  { "list", "domterm-list"},
+  { "new", "domterm-new"},
+  { "domterm", "domterm"},
+  { "qtdomterm", "qtdomterm"},
   { NULL, NULL }
 };
 
@@ -97,12 +90,8 @@ int help_action(int argc, char** argv, const char*cwd,
           break;
         }
         if (strcmp(topic, p->command) == 0) {
-          const char *h = p->help;
-          if (*h == '*')
-            print_help_file(h+1, out);
-          else
-            fputs(h, out);
-          break;
+            print_help_file(p->help, out);
+            break;
         }
       }
     } else {

@@ -24,7 +24,7 @@ You can specify a session one of these ways:
 
 * A process id.
 
-* A sesion name.
+* A session name.
 
 == Options
 
