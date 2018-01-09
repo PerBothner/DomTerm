@@ -11,8 +11,6 @@ static bool man_option_seen = false;
 static bool text_option_seen = false;
 static char *pager_option = "";
 
-static char attach_help[] = "Usage: domterm attach session-specifier\n";
-
 static char is_domterm_help[] = "Usage: domterm is-domterm\n"
     "Succeeds if running on a DomTerm terminal; fails otherwise.\n"
     "Typical shell usage: if domterm is-domterm; then ...; fi\n";
@@ -20,12 +18,9 @@ static char is_domterm_help[] = "Usage: domterm is-domterm\n"
 static char list_help[] = "Usage: domterm list\n"
   "List sessions running under current server.\n";
 
-static char browse_help[] = "Usage: domterm [options] browse url\n"
-  "Open the given url in a specified (sub-)window.\n";
-
 struct help_info help_table[] = {
-  { "attach", attach_help},
-  { "browse", browse_help},
+  { "attach", "*domterm-attach"},
+  { "browse", "*domterm-browse"},
   { "html", "*domterm-hcat"},
   { "hcat", "*domterm-hcat"},
   { "window-specifier", "*domterm-window-specifier" },

@@ -1,0 +1,32 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-attach(1)
+
+== Name
+domterm attach - attach to an existing terminal session
+endif::[]
+ifndef::basebackend-manpage[]
+== domterm attach - attach to an existing terminal session
+endif::[]
+
+== Synopsis
+
+`domterm` [_goptions_] `attach` [_noptions_] _session_
+
+== Description
+
+Open a new window and attach to an existing terminal session.
+Typically the session will have been detached, but it is ok
+to attach a new window to an existing session.
+
+You can specify a session one of these ways:
+
+* The character `#` followed by a session number.
+
+* A process id.
+
+* A sesion name.
+
+== Options
+
+See the `window-specifier` help topic for a list of options
+that specify if and how to create a new terminal window.

@@ -52,6 +52,8 @@ ADOC_GENERATED = \
   share/domterm/help/qtdomterm.html \
   share/domterm/help/domterm-window-specifier.html \
   share/domterm/help/domterm-new.html \
+  share/domterm/help/domterm-attach.html \
+  share/domterm/help/domterm-browse.html \
   share/domterm/help/domterm-hcat.html \
   share/domterm/help/domterm-imgcat.html \
   $(man1_MANS)
@@ -62,6 +64,8 @@ all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
   share/domterm/help/domterm-new.txt  \
+  share/domterm/help/domterm-attach.txt  \
+  share/domterm/help/domterm-browse.txt  \
   share/domterm/help/domterm-hcat.txt \
   share/domterm/help/domterm-imgcat.txt
 

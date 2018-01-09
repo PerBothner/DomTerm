@@ -1,0 +1,27 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-browse(1)
+
+== Name
+domterm browse - open a web page in a (sub-) window
+endif::[]
+ifndef::basebackend-manpage[]
+== domterm browse - open a web page in a (sub-) window
+endif::[]
+
+== Synopsis
+
+`domterm` [_goptions_] `browse` [_noptions_] _url_
+
+== Description
+
+Create a new browser window or sub-window that displays _url_.
+This is implemented using an `<iframe>`.
+Access depends on the permissions of the browser (front-end).
+
+One use for this is to view documentation in a sub-window:
+----
+$ domterm --above browse http://example.com/
+----
+== Options
+See the `window-specifier` help topic for a list of options
+that specify if and how to create a new terminal window.
