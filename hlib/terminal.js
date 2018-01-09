@@ -4991,16 +4991,15 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
         }
     }
     if (ok < len) {
-        var span = this._createSpanNode();
-        span.setAttribute("style", "background-color: #fbb");
-        this.insertNode(span);
-        span.appendChild(document.createTextNode(str.substring(ok, len)));
+        str = DomTerm.escapeText(str.substring(ok, len));
+        str = '<div style="color: red"><b>Inserted HTML invalid starting here:</b>'
+            + '<pre style="background-color: #fee">'
+            + str + '</pre></div>';
+        this._scrubAndInsertHTML(str);
     }
-    else {
-        if (ok > start) {
-            this._unsafeInsertHTML(str.substring(start, ok));
-            this.resetCursorCache();
-        }
+    else if (ok > start) {
+        this._unsafeInsertHTML(str.substring(start, ok));
+        this.resetCursorCache();
         this._updateLinebreaksStart(startLine);
     }
     //this.cursorColumn = -1;
