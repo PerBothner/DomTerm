@@ -770,7 +770,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     if (i+1 == dlen)
                         cur.parentNode.removeChild(cur);
                     else {
-                        cur.deleteData(i+1, dlen-i-1);
+                        cur.deleteData(0, i+1);
                     }
                     cur = line; // continue with Element case below
                     break;
