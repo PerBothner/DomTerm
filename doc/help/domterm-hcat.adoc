@@ -1,0 +1,26 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-hcat(1)
+
+== Name
+domterm hcat - print html to domterm terminal
+endif::[]
+ifndef::basebackend-manpage[]
+== domterm hcat - print html to domterm terminal
+endif::[]
+
+== Synopsis
+`domterm hcat` _html-data_...
+
+`domterm html` _html-data_...
+
+== Description
+Use this to embed HTML content info the DomTerm page.
+If there are no arguments, read from standard input.
+Each _html-data_ must be a well-formed HTML fragment.
+
+Either of the following work:
+----
+echo 'E = mc<sup>2</sup>' | domterm html
+domterm html 'E = mc<sup>2</sup>'
+----
+and displays: E = mc^2^.

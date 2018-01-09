@@ -1,10 +1,18 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-imgcat(1)
+
+== Name
+domterm imgcat - print image to domterm terminal
+endif::[]
+ifndef::basebackend-manpage[]
 == domterm imgcat - print image to domterm terminal
+endif::[]
 
 == Synopsis
 
-`domterm imgcat` [`-n`] [`--`\ *attrname*\ `=`\ *attrvalue*]... *filename*
+`domterm imgcat` [`-n`] [``--``__attrname__``=``__attrvalue__]... _filename_
 
-`domterm image` [`-n`] [`--`\ *attrname*\ `=`\ *attrvalue*]... *filename*
+`domterm image` [`-n`] [``--``__attrname__``=``__attrvalue__]... _filename_
 
 == Description
 
@@ -17,7 +25,7 @@ The file must be readable by the `domterm` command, but need not
 be readable by the browser.  If the terminal output is saved "As HTML"
 the image is saved as part of the html file.
 
-The *filename* must be a file that can be displayed by an HTML `<img>`
+The _filename_ must be a file that can be displayed by an HTML `<img>`
 element, most commonly a png or jpg file. 
 
 == Options
@@ -29,12 +37,12 @@ element, most commonly a png or jpg file.
   If `-n` is specified, then only a plain `<img>` element is written,
   hence you can write multiple images and other HTML on the same 'line'
 
-`--`\ *attrname*\ `=`\ *attrvalue*::
-  specify the given attribute; for example: `--height=200`
-  Valid *attrname*\ s are the following, which are defined by the HTML
+``--``__attrname__``=``__attrvalue__::
+  specify the given attribute; for example: `--height=200` .
+  Valid __attrname__s are the following, which are defined by the HTML
   specification: `alt`, `longdesc`, `height`, `width`,
   `border`, `hspace`, `vspace`, `class`.
-
-  For example: `--width=600` scales the image width to be the given number
-  of pixels (in the CSS meaning). (The height is scaled proportionally,
-  unless you also specify the `--height` option.)
++
+For example: `--width=600` scales the image width to be the given number
+of pixels (in the CSS meaning). (The height is scaled proportionally,
+unless you also specify the `--height` option.)

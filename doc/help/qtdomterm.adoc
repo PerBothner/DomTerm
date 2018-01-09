@@ -6,7 +6,7 @@ ifdef::basebackend-manpage[]
 qtdomterm - terminal emulator and multiplexer using Qt
 endif::[]
 ifndef::basebackend-manpage[]
-= qtdomterm - terminal emulator and multiplexer using Qt
+== qtdomterm - terminal emulator and multiplexer using Qt
 endif::[]
 
 == Synopsis

@@ -50,16 +50,20 @@ if WITH_ASCIIDOCTOR
 ADOC_GENERATED = \
   share/domterm/help/domterm.html \
   share/domterm/help/qtdomterm.html \
-  share/domterm/help/window-specifier.html \
-  share/domterm/help/imgcat.html \
+  share/domterm/help/domterm-window-specifier.html \
+  share/domterm/help/domterm-new.html \
+  share/domterm/help/domterm-hcat.html \
+  share/domterm/help/domterm-imgcat.html \
   $(man1_MANS)
 endif
 
 all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/application.ini $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
-  share/domterm/help/window-specifier.txt  \
-  share/domterm/help/imgcat.txt
+  share/domterm/help/domterm-window-specifier.txt  \
+  share/domterm/help/domterm-new.txt  \
+  share/domterm/help/domterm-hcat.txt \
+  share/domterm/help/domterm-imgcat.txt
 
 # application.ini has to be copied, not linked; or it can't find domterm.jar
 share/domterm/application.ini: $(srcdir)/xulapp/application.ini
@@ -344,10 +348,6 @@ share/domterm/help/%.html: doc/help/%.adoc share/domterm/help
 #share/domterm/help/docutils.css: share/domterm/help
 #	echo | $(RADOC2HTML) - - | sed -e '1,/<style /d' -e '/<\/style>/,$$d' >$@
 
-share/man/man1/domterm.1: doc/help/domterm.adoc
+share/man/man1/%.1: doc/help/%.adoc
 	$(MKDIR_P) doc/man
-	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) doc/help/domterm.adoc -o $@
-
-share/man/man1/qtdomterm.1: doc/help/qtdomterm.adoc
-	$(MKDIR_P) doc/man
-	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) doc/help/qtdomterm.adoc -o $@
+	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) $< -o $@

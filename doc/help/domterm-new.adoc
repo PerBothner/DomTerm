@@ -1,0 +1,33 @@
+ifdef::basebackend-manpage[]
+:doctitle: domterm-new(1)
+
+== Name
+domterm new - create new terminal session
+endif::[]
+ifndef::basebackend-manpage[]
+= domterm new - create new terminal session
+endif::[]
+
+== Synopsis
+
+`domterm` [_options_]  [_shell_ _arguments_ ...]
+
+`domterm` [_goptions_] `new` [_noptions_] [_shell_ _arguments_ ...]
+
+== Description
+
+The `domterm new` command creates a new terminal.
+If _shell_ is specified, it is the name of a command that
+is is executed with the specified _arguments_.
+Otherwise, the default commands (normally `/bin/bash`) is executed.
+
+The `new` command is the default for `domterm`, so you can leave it out.
+If you leave out `new` but specify a _shell_, then the _shell_ argument
+must be include a slash `/` in.  For example:
+
+    `domterm /bin/csh -v`
+
+== Options
+
+See the `window-specifier` help topic for a list of options
+that specify if and how to create a new terminal window.

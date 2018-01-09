@@ -12,15 +12,8 @@ static char is_domterm_help[] = "Usage: domterm is-domterm\n"
     "Succeeds if running on a DomTerm terminal; fails otherwise.\n"
     "Typical shell usage: if domterm is-domterm; then ...; fi\n";
 
-static char html_help[] = "Usage: domterm html html-data...\n"
-  "Each 'html-data' must be a well-formed HTML fragment\n"
-  "If there are no arguments, read html from standard input\n";
-
 static char list_help[] = "Usage: domterm list\n"
   "List sessions running under current server.\n";
-
-static char new_help[] = "Usage: domterm [options] new [command [arguments]\n"
-  "Run executable 'command' with given 'arguments'.\n";
 
 static char browse_help[] = "Usage: domterm [options] browse url\n"
   "Open the given url in a specified (sub-)window.\n";
@@ -28,14 +21,14 @@ static char browse_help[] = "Usage: domterm [options] browse url\n"
 struct help_info help_table[] = {
   { "attach", attach_help},
   { "browse", browse_help},
-  { "html", html_help},
-  { "hcat", html_help},
-  { "window-specifier", "*window-specifier" },
-  { "image", "*imgcat"},
-  { "imgcat", "*imgcat"},
+  { "html", "*domterm-hcat"},
+  { "hcat", "*domterm-hcat"},
+  { "window-specifier", "*domterm-window-specifier" },
+  { "image", "*domterm-imgcat"},
+  { "imgcat", "*domterm-imgcat"},
   { "is-domterm", is_domterm_help},
   { "list", list_help},
-  { "new", new_help},
+  { "new", "*domterm-new"},
   { "domterm", "*domterm"},
   { "qtdomterm", "*qtdomterm"},
   { NULL, NULL }

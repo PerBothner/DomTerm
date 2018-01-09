@@ -661,7 +661,7 @@ That is by default it is @code{$HOME/.domain/default.html}.
 
 @item @code{--no-daemonize}
 When a domterm backend (server) is created, it normally turns itself
-into a a @uref{https://en.wikipedia.org/wiki/Daemon_(computing),daemon}.
+into a @uref{https://en.wikipedia.org/wiki/Daemon_(computing),daemon}.
 This option prevents ``daemonizing'' - which is helpful for debugging.
 
 @item @code{--remote-debugging-port=@var{debug-port}}

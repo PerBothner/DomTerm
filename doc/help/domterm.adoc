@@ -5,12 +5,12 @@ ifdef::basebackend-manpage[]
 domterm - terminal emulator and multiplexer
 endif::[]
 ifndef::basebackend-manpage[]
-= domterm - terminal emulator and multiplexer
+== domterm - terminal emulator and multiplexer
 endif::[]
 
 == Synopsis
 
-``domterm`` [_options_] [_command_ _arguments_ ...]
+`domterm` [_options_] [_command_ _arguments_ ...]
 
 == Description
 
@@ -69,11 +69,35 @@ See `help window-specifier` for details.
 
 `--version`::
   Print version number and exit.
-`--help`, `-h`:: Print help and exit. Same as `domterm help`.
-`--geometry` __W__x__H__::
-  The size of the main window.
 
-and more ...
+`--help`, `-h`:: Print help and exit. Same as `domterm help`.
+
+`--geometry` __W__x__H__::
+    Specify initial size of new top-level windows. The default if
+    not specified is currently 800x600. The width and height are in
+    pixel units and must be positive integers.
+
+    Works for both the Electron and qtdomterm front-ends.
+The size of the main window.
+
+`--no-daemonize`::
+`--daemonize`::
+    When a domterm backend (server) is created, it normally turns itself
+    into a disconnected server (a daemon). The option `--no-daemonize`
+    option  prevents “daemonizing” - which is helpful for debugging.
+
+``--socket-name=``__name__
+    DomTerm uses a Unix Domain socket to communicate between the
+    command-line and the server. By default the socket is the file
+    $`HOME/.domain/default.socket,` but this option overrides
+    that. Using different socket names mean you get different servers
+    that do not know about each other. If _name_ starts with ‘/’
+    then the filename is absolute; otherwise `$HOME/.domain/` is
+    prepended. If there is no file extension, `.socket` is appended.
+
+    DomTerm also creates a temporary html that has the same name as
+    the socket, but with a `.html` extension. That is by default it
+    is `$HOME/.domain/default.html`.
 
 == See also
 
