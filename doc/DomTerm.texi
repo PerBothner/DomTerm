@@ -1370,6 +1370,25 @@ because of the @uref{https://en.wikipedia.org/wiki/Same-origin_policy,same-origi
 Work-arounds are being considered; please contact the maintainer if this
 is a feature you want.
 
+@subheading Session-specific styles
+
+Each ``session'' (terminal window) has a session number
+and an optional settable session name.
+See @ref{Names and titles} for the details.
+The session number sets the @code{session-number} attribute
+in the top-level @code{<div class="domterm">} element,
+while the session name sets the @code{name} attribute.
+
+You can use these to set different styles for different terminal windows.
+For example:
+
+@example
+div.domterm @{ background-color: #FFE @}
+div.domterm[session-number="1"] @{ background-color: #FEE @}
+div.domterm[name="compile"] @{ background-color: #EEF @}
+div.input-line @{ background-color: inherit @}
+@end example
+
 @node Java tools
 @chapter Java tools
 
@@ -1447,35 +1466,6 @@ Note that if DomTerm is running in a browser window,
 the browser's @code{Save page as ...} command is not useful.
 It will save the original bare web page, before any DomTerm interactions
 or other JavaScript modification.
-
-@subheading Session names and session-specific styles
-
-Each ``session'' (terminal window) has a name,
-which by default has the form @code{"DomTerm:@var{N}"}
-where @var{N} is an integer.
-The session name is usually shown in the window title bar,
-in the format @code{"@var{window-title} [@var{session-name}]"}.
-
-You can change the session name by ``printing'' a certain escape sequence.
-For example (using bash):
-@example
-echo -en "\e]30;@var{session-name}\007"
-@end example
-
-The @code{qtdomterm} application will give each session a
-fresh name of the form @code{domterm-@var{N}}.
-The Java WebSockets server will do the same.
-
-The session name is used to set the @code{name}
-attribute of the top domterm element,
-so you can use it to select different rules for different sessions.
-For example the following selects different background colors.
-
-@example
-div.domterm @{ background-color: #FFE @}
-div.domterm[name="domterm-1"] @{ background-color: #FEE @}
-div.domterm[name="domterm-2"] @{ background-color: #EEF @}
-@end example
 
 @subheading Browser quirks and limitions
 
