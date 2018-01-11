@@ -113,6 +113,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define DETACHED_OPTION 2004
 #define GEOMETRY_OPTION 2005
 #define QT_REMOTE_DEBUGGING_OPTION 2006
+#define SESSION_NAME_OPTION 2007
 #define PANE_OPTIONS_START 2100
 /* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
 #define PANE_OPTION (PANE_OPTIONS_START+1)
@@ -137,6 +138,8 @@ static const struct option options[] = {
         {"force",        no_argument,       NULL, FORCE_OPTION},
         {"daemonize",    no_argument,       NULL, DAEMONIZE_OPTION},
         {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
+        {"session-name", required_argument, NULL, SESSION_NAME_OPTION},
+        {"sn",           required_argument, NULL, SESSION_NAME_OPTION},
         {"detached",     no_argument,       NULL, DETACHED_OPTION},
         {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
         {"pane",         no_argument,       NULL, PANE_OPTION},
@@ -527,6 +530,7 @@ void  init_options(struct options *opts)
     opts->qt_remote_debugging = NULL;
     opts->fd_out = STDOUT_FILENO;
     opts->fd_err = STDERR_FILENO;
+    opts->session_name = NULL;
 }
 
 int process_options(int argc, char **argv, struct options *opts)
@@ -578,6 +582,9 @@ int process_options(int argc, char **argv, struct options *opts)
             case NO_DAEMONIZE_OPTION:
             case DAEMONIZE_OPTION:
                 opts->do_daemonize = (c == DAEMONIZE_OPTION);
+                break;
+            case SESSION_NAME_OPTION:
+                opts->session_name = optarg;
                 break;
             case PANE_OPTION:
             case TAB_OPTION:

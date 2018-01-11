@@ -73,6 +73,7 @@ struct pty_client {
     bool exit;
     bool detached; // OLD
     bool detachOnClose; // OLD
+    bool session_name_unique;
     int detach_count;
     int paused;
     struct lws *first_client_wsi;
@@ -154,6 +155,7 @@ struct options {
     char *qt_remote_debugging;
     int fd_out;
     int fd_err;
+    char *session_name;
 };
 
 struct tty_server {

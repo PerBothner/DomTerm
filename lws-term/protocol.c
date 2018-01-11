@@ -398,6 +398,7 @@ run_command(char*const*argv, const char*cwd, char **env)
             if (pclient->nrows >= 0)
                setWindowSize(pclient);
             pclient->session_number = session_number;
+            pclient->session_name_unique = false;
             pclient->pty_wsi = outwsi;
             // lws_change_pollfd ??
             // FIXME do on end: tty_client_destroy(client);
@@ -761,7 +762,29 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (pclient->session_name)
             free(pclient->session_name);
         pclient->session_name = session_name;
+        pclient->session_name_unique = true;
         json_object_put(obj);
+        for (struct pty_client *p = pty_client_list;
+             p != NULL; p = p->next_pty_client) {
+            if (p != pclient && p->session_name != NULL
+                && strcmp(session_name, p->session_name) == 0) {
+                struct lws *twsi;
+                struct pty_client *pp = p;
+                p->session_name_unique = false;
+                for (;;) {
+                    FOREACH_WSCLIENT(twsi, pp) {
+                        struct tty_client *t =
+                            (struct tty_client *) lws_wsi_user(twsi);
+                        t->pty_window_update_needed = true;
+                        lws_callback_on_writable(twsi);
+                    }
+                    if (! pclient->session_name_unique || pp == pclient)
+                        break;
+                    pp = pclient;
+                }
+                pclient->session_name_unique = false;
+            }
+        }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
         static char gopt[] =  "geometry=";
         char *g = strstr(data, gopt);
@@ -908,7 +931,17 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                   || pclient->saved_window_contents != NULL)) {
                 char buf[LWS_PRE+60];
                 char *p = &buf[LWS_PRE];
-                sprintf(p, URGENT_START_STRING "\033]30;DomTerm\007\033]31;%d\007" URGENT_END_STRING, pclient->pid);
+#define FORMAT_PID_SNUMBER "\033]31;%d\007\033[91;%d;%d\007"
+#define FORMAT_SNAME "\033]30;%s\007"
+                sprintf(p,
+                        pclient->session_name
+                        ? (URGENT_START_STRING FORMAT_PID_SNUMBER
+                           FORMAT_SNAME URGENT_END_STRING)
+                        : (URGENT_START_STRING FORMAT_PID_SNUMBER
+                           URGENT_END_STRING),
+                        pclient->pid,
+                        pclient->session_number, pclient->session_name_unique,
+                        pclient->session_name);
                 write_to_browser(wsi, p, strlen(p), false);
                 if (pclient->saved_window_contents != NULL) {
                   int rcount = pclient->preserved_sent_count;
@@ -947,8 +980,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 client->pty_window_update_needed = false;
                 char buf[LWS_PRE+60];
                 char *p = &buf[LWS_PRE];
-                sprintf(p, URGENT_START_STRING "\033[91;%d;%du" URGENT_END_STRING,
-                        pclient->session_number, client->pty_window_number+1);
+                sprintf(p, URGENT_START_STRING "\033[91;%d;%d;%du" URGENT_END_STRING,
+                        pclient->session_number, pclient->session_name_unique,
+                        client->pty_window_number+1);
                 write_to_browser(wsi, p, strlen(p), false);
             }
             if (client->uploadSettingsNeeded) {
@@ -1189,6 +1223,10 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
           return EXIT_FAILURE;
     }
     struct pty_client *pclient = run_command(args, cwd, env);
+    if (opts->session_name) {
+        pclient->session_name = strdup(opts->session_name);
+        opts->session_name = NULL;
+    }
     display_session(opts, pclient, NULL, info.port);
     return EXIT_SUCCESS;
 }

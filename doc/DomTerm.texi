@@ -626,7 +626,7 @@ If not already at beginning of line, starts a fresh line
 @item @b{@code{attach}} @var{session-specifier}
 Create a new window displaying an existing session.
 The same session (process) may be displayed in multiple windows.
-(Work-in-progress.)
+See @ref{session-specifier}.
 
 @item @b{@code{list}}
 List information about running sessions.
@@ -1056,7 +1056,7 @@ The sub-command @code{list} lists active session.
 
 The sub-command @code{attach} connects to an existing session,
 often a detached session.  You specify the session
-with a @dfn{session-specifier}.
+with a @ref{session-specifier}.
 
 The can detach the current session using either the
 keyboard short-cur @code{@mux-prefix d} or a menu command (Electron only).
@@ -1399,98 +1399,6 @@ a Frequently-Asked-Questions page.
 Notes about ``@emph{Front-end support}'' discuss how
 different front-ends may support some features differently.
 
-@subheading Keyboard shortcuts
-
-@table @asis
-@c FUTURE @item Control-Shift-P
-@c Enter/exit pager mode
-@c FUTURE @item @mux-prefix
-@c Prefix for Screen or TMux
-@item Control-Shift-C
-Copy the selected text to the clipboard.
-(Control-C also works in line-editing mode.)
-@item Control-Shift-V
-Paste text from the clipboard.
-(Control-V also works in line-editing mode.)
-@item Control-Shift-S
-Save the display to a file.
-@item Control-Shift-L
-Cycle between the input modes: automatic, to line, to character, and back.
-The resulting mode is displayed temporarily.
-@item Control-Shift-Home
-Scroll to top.
-@item Control-Shift-End
-Scroll to bottom.
-@item Control-Shift-PageUp
-@itemx Control-Shift-PageDown
-Scroll one ``page'' up or down.
-(Specifically, the viewport height minus a height of one line.)
-@item Control-Shift-Up
-@itemx Control-Shift-Down
-Scroll one line up or down.
-@end table
-
-The following are implemented by most browsers, rather than DomTerm,
-so it may not work on all browsers.
-@table @asis
-@item Contriol-Shift-Plus
-Zoom in (makes text bigger).
-@item Control-Shift-Minus
-@itemx Control-Minus
-Zoom out (makes text smaller).
-@item Control-0
-``Un-zoom'' to normal size.
-@item F11
-Toggle full-screen mode.
-@item Control-Shift-I
-Toogle Developer Window, useful for debugging or examining
-the state of the Document Object Model.
-@end table
-
-@subsubheading Scrolling
-
-@table @asis
-@item Control-Shift-PageUp
-@item Control-Shift-PageDown
-Scroll a page up or down, respectively.
-@item Control-Shift-Up
-@item Control-Shift-Down
-Scroll a line up or down, respectively.
-@item Control-Shift-Home
-@item Control-Shift-End
-Scroll to top or bottom, respectively.
-@end table
-
-See also the bindings for @ref{Paging} mode.
-@subsubheading Managing subwindows
-
-The prefix key @mux-prefix when followed by some other key
-controls sessions and windows.
-
-@table @asis
-@item Control-Shift-T
-Create a new terminal in a new tab.
-@item Control-Shift-N
-Create a new terminal in a new pane (sub-window).
-The new pane is create to the right or below the current pane,
-depending on space.
-@item @mux-prefix Control-Left
-Create a new terminal pane to the left of the current one.
-@item @mux-prefix Control-Right
-Create a new terminal pane to the right of the current one.
-@item @mux-prefix Control-Up
-Create a new terminal pane above the current one.
-@item @mux-prefix Control-Down
-Create a new terminal pane below the current one.
-@item @mux-prefix Left
-Select the previous pane or tab.
-@item @mux-prefix Right
-Select the next pane or tab.
-@item @mux-prefix @code{d}
-Detach from current session and close the (sub-)window.
-@end table
-
-
 @subheading Copy and Paste
 
 In character mode the ``standard'' keyboard shortcuts for copy and paste
@@ -1543,7 +1451,7 @@ or other JavaScript modification.
 @subheading Session names and session-specific styles
 
 Each ``session'' (terminal window) has a name,
-which by default has the form @code{"domterm-@var{N}"}
+which by default has the form @code{"DomTerm:@var{N}"}
 where @var{N} is an integer.
 The session name is usually shown in the window title bar,
 in the format @code{"@var{window-title} [@var{session-name}]"}.
@@ -1888,6 +1796,193 @@ You should use quotes: @code{command '%F'}.
 A literal @samp{%}.
 @end table
 @end table
+
+@menu
+* Keyboard shortcuts::
+* Names and titles::
+@end menu
+
+@node Keyboard shortcuts
+@section Keyboard shortcuts
+
+@table @asis
+@c FUTURE @item Control-Shift-P
+@c Enter/exit pager mode
+@c FUTURE @item @mux-prefix
+@c Prefix for Screen or TMux
+@item Control-Shift-C
+Copy the selected text to the clipboard.
+(Control-C also works in line-editing mode.)
+@item Control-Shift-V
+Paste text from the clipboard.
+(Control-V also works in line-editing mode.)
+@item Control-Shift-S
+Save the display to a file.
+@item Control-Shift-L
+Cycle between the input modes: automatic, to line, to character, and back.
+The resulting mode is displayed temporarily.
+@item Control-Shift-Home
+Scroll to top.
+@item Control-Shift-End
+Scroll to bottom.
+@item Control-Shift-PageUp
+@itemx Control-Shift-PageDown
+Scroll one ``page'' up or down.
+(Specifically, the viewport height minus a height of one line.)
+@item Control-Shift-Up
+@itemx Control-Shift-Down
+Scroll one line up or down.
+@end table
+
+The following are implemented by most browsers, rather than DomTerm,
+so it may not work on all browsers.
+@table @asis
+@item Contriol-Shift-Plus
+Zoom in (makes text bigger).
+@item Control-Shift-Minus
+@itemx Control-Minus
+Zoom out (makes text smaller).
+@item Control-0
+``Un-zoom'' to normal size.
+@item F11
+Toggle full-screen mode.
+@item Control-Shift-I
+Toogle Developer Window, useful for debugging or examining
+the state of the Document Object Model.
+@end table
+
+@subsubheading Scrolling
+
+@table @asis
+@item Control-Shift-PageUp
+@item Control-Shift-PageDown
+Scroll a page up or down, respectively.
+@item Control-Shift-Up
+@item Control-Shift-Down
+Scroll a line up or down, respectively.
+@item Control-Shift-Home
+@item Control-Shift-End
+Scroll to top or bottom, respectively.
+@end table
+
+See also the bindings for @ref{Paging} mode.
+@subsubheading Managing subwindows
+
+The prefix key @mux-prefix when followed by some other key
+controls sessions and windows.
+
+@table @asis
+@item Control-Shift-T
+Create a new terminal in a new tab.
+@item Control-Shift-N
+Create a new terminal in a new pane (sub-window).
+The new pane is create to the right or below the current pane,
+depending on space.
+@item @mux-prefix Control-Left
+Create a new terminal pane to the left of the current one.
+@item @mux-prefix Control-Right
+Create a new terminal pane to the right of the current one.
+@item @mux-prefix Control-Up
+Create a new terminal pane above the current one.
+@item @mux-prefix Control-Down
+Create a new terminal pane below the current one.
+@item @mux-prefix Left
+Select the previous pane or tab.
+@item @mux-prefix Right
+Select the next pane or tab.
+@item @mux-prefix @code{d}
+Detach from current session and close the (sub-)window.
+@end table
+
+@node Names and titles
+@section Names and titles
+
+Some notes on how sessions and windows are named and identified.
+
+@subsubheading Session name
+
+The session name is an optional user-specified name for a terminal session.
+It is recommended that this be unique, but that is not enforced.
+The session name can be specified with the @code{-session-name}
+(or @code{--sn}) option in the @code{domterm new} command.
+You can also dyamically change the session name with an escape sequence:
+@example
+echo -en "\e]30;@var{session-name}\007"
+@end example
+
+It is recommended (but not required) that a session name
+have the format of an ``identifier'': The first character should be a letter,
+and the rest should be letters, digits, hyphen, or underscore.
+
+@subsubheading Session number
+
+The session number is a positive integer associated with a terminal
+session.  It is unique within a domterm server.
+
+@anchor{session-specifier}
+@subsubheading Session specifier
+
+The @code{domterm attach} command requires a @dfn{session specifier},
+which can be any one of:
+@itemize
+@item
+A session name.
+@item
+A colon followed by a session number.
+@item
+A process number (pid).
+@end itemize
+
+@subsubheading DomTerm element attributes
+
+Each DomTerm instance in a browser has a corresponding
+@code{<div>} element which has @code{domterm} in its
+@code{class} attribute.
+The @code{<div class="domterm">} element also has the following
+identifying attributes, which can be used for session-specific @ref{Styling,styling}:
+@itemize
+@item
+@code{session-number=}@var{session-number}
+@item
+@code{pid=}@var{pid}
+@item
+@code{name=}@var{session-name}
+(but only if the @var{session-name} has been set).
+@end itemize
+
+@subsubheading Window name
+
+The window name is a short name displayed for each terminal
+in the window title or tab.
+It is constructed from up to 3 parts:
+@enumerate
+@item
+The session name, or @code{DomTerm} if the session name is not specified.
+@item
+If the session name is unset or not unique,
+we add a colon and the session number.
+@item
+If there is more than one window attached to the same terminal,
+then we add a period followed by window number.
+@end enumerate
+
+@subsubheading Window title and icon title
+
+The window and icon titles are strings sent by the application.
+The escape sequences are those of xterm.
+They are commonly sent by shells (for example using bash's
+@code{PROMPT_COMMAND}) and may include the current directory and maybe
+other information.
+Most terminal emulators include the window title string
+in the window title bar.
+
+@subsubheading Window and tab title bars
+
+When tabs are used, DomTerm displays the window name in each tab.
+For active tabs, DomTerm displays both the window name (normally the session name)
+and the window title (typically the current directory).
+This information may be shown in the main window title bar
+as well as the currently active tab.
 
 @node To do
 @chapter Ideas and projects for DomTerm

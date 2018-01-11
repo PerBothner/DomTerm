@@ -114,6 +114,7 @@ function DomTerm(name, topNode) {
     sstate.iconName = null;
     sstate.lastWorkingPath = null;
     this.sessionNumber = -1;
+    this.sessionNameUnique = false;
     this.windowNumber = -1;
     
     // Input lines that have not been processed yet.
@@ -2185,8 +2186,6 @@ DomTerm.prototype.isSpanNode = function(node) {
 DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.topNode = topNode;
     topNode.terminal = this;
-    if (this.name)
-        this.setSessionName(this.name);
 
     var helperNode = this._createPreNode();
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
@@ -4270,7 +4269,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 91:
             this.sessionNumber = this.getParameter(1, 0);
-            this.windowNumber = this.getParameter(2, 0)-1;
+            this.topNode.setAttribute("session-number", this.sessionNumber);
+            this.sessionNameUnique = this.getParameter(2, 0) != 0;
+            this.windowNumber = this.getParameter(3, 0)-1;
             this.updateWindowTitle();
             break;
         case 96:
@@ -4349,9 +4350,12 @@ DomTerm.prototype.setSessionName = function(title) {
 // FIXME misleading function name - this is not just the session name
 DomTerm.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("name");
-    sname = sname ? sname : this.name;
-    sname = sname + ':' + this.sessionNumber;
+    if (! sname)
+        sname = "DomTerm" + ":" + this.sessionNumber;
+    else if (! this.sessionNameUnique)
+        sname = sname + ":" + this.sessionNumber;
     if (this.windowNumber >= 0) {
+        /*
         function format2Letters(n) {
             var rem = n % 26;
             var last = String.fromCharCode(97+rem);
@@ -4361,6 +4365,8 @@ DomTerm.prototype.sessionName = function() {
                 return last;
         }
         sname = sname + format2Letters(this.windowNumber);
+        */
+        sname = sname + "." + this.windowNumber;
     }
     return sname;
 };
@@ -4374,12 +4380,13 @@ DomTerm.prototype.setWindowTitle = function(title, option) {
     case 1:
         this.sstate.iconName = title;
         break;
-    case 2:        
+    case 2:
         this.sstate.windowName = title;
         break;
     case 30:
         this.name = title;
         this.topNode.setAttribute("name", title);
+        this.sessionNameUnique = true;
         this.reportEvent("SESSION-NAME", JSON.stringify(title));
         break;
     }
