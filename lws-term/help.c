@@ -36,14 +36,19 @@ void print_help_file(const char* name, FILE *out)
         FILE *rfile = fopen(buf, "r");
         if (rfile == NULL)
             goto err;
+        fprintf(out, "\033[92;1u");
         copy_html_file(rfile, out);
+        fprintf(out, "\033[92;2u");
+        fflush(out); // FIXME avoid double fflush
         return;
     }
     sprintf(buf, "%s/%s.txt", hdir, name);
     FILE *rfile = fopen(buf, "r");
     if (rfile == NULL)
         goto err;
+    fprintf(out, "\033[92;1u");
     copy_file(rfile, out);
+    fprintf(out, "\033[92;2u");
     fclose(rfile);
     return;
   err:

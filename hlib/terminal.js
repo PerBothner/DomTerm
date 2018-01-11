@@ -157,6 +157,7 @@ function DomTerm(name, topNode) {
 
     // User option: automatic paging enabled
     this._autoPaging = false;
+    this._autoPagingTemporary = false;
     this._pauseLimit = -1;
     // number of (non-urgent) bytes received and processed
     this._receivedCount = 0;
@@ -2567,6 +2568,11 @@ DomTerm.prototype._mouseHandler = function(ev) {
         return;
     }
     */
+    if (ev.type == "mouseup" && this.sstate.mouseMode == 0
+        && this._currentlyPagingOrPaused()
+        && this.topNode.scrollTop+this.availHeight >= this._vspacer.offsetTop)
+            this._pauseContinue();
+
     if (ev.shiftKey || ev.target == this.topNode)
         return;
 
@@ -2583,6 +2589,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     if (ev.type == "mouseup"
         && this.sstate.mouseMode == 0 && ! this.isLineEditing()
         && (window.getSelection().isCollapsed || ev.button == 1)) {
+
         for (var v = ev.target; v != null && v != this.topNode;
              v = v.parentNode) {
             if (v.classList.contains("domterm-pre")) {
@@ -4273,6 +4280,19 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.sessionNameUnique = this.getParameter(2, 0) != 0;
             this.windowNumber = this.getParameter(3, 0)-1;
             this.updateWindowTitle();
+            break;
+        case 92:
+            switch (this.getParameter(1, 0)) {
+            case 1:
+                if (! this._autoPaging) {
+                    this._autoPaging = true;
+                    this._autoPagingTemporary = true;
+                }
+                break;
+            case 2:
+                this._autoPagingTemporary = this.outputContainer;
+                break;
+            }
             break;
         case 96:
             this._receivedCount = this.getParameter(1,0);

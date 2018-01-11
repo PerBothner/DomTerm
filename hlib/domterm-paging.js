@@ -209,6 +209,11 @@ DomTerm.prototype._togglePaging = function() {
 */
 
 DomTerm.prototype._pauseNeeded = function() {
+    if (this._autoPaging && this._autoPagingTemporary instanceof Element
+        && this.topNode.scrollTop+this.availHeight > this._autoPagingTemporary.offsetTop) {
+        this._autoPaging = false;
+        this._autoPagingTemporary = false;
+    }
     return (this._pagingMode > 0 || this._autoPaging)
         && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };
