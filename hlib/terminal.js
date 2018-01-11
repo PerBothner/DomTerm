@@ -113,8 +113,8 @@ function DomTerm(name, topNode) {
     sstate.windowTitle = null;
     sstate.iconName = null;
     sstate.lastWorkingPath = null;
-    this.sessionNumber = -1;
-    this.sessionNameUnique = false;
+    sstate.sessionNumber = -1;
+    sstate.sessionNameUnique = false;
     this.windowNumber = -1;
     
     // Input lines that have not been processed yet.
@@ -4275,9 +4275,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
                             this);
             break;
         case 91:
-            this.sessionNumber = this.getParameter(1, 0);
-            this.topNode.setAttribute("session-number", this.sessionNumber);
-            this.sessionNameUnique = this.getParameter(2, 0) != 0;
+            this.sstate.sessionNumber = this.getParameter(1, 0);
+            this.topNode.setAttribute("session-number", this.sstate.sessionNumber);
+            this.sstate.sessionNameUnique = this.getParameter(2, 0) != 0;
             this.windowNumber = this.getParameter(3, 0)-1;
             this.updateWindowTitle();
             break;
@@ -4371,9 +4371,9 @@ DomTerm.prototype.setSessionName = function(title) {
 DomTerm.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("name");
     if (! sname)
-        sname = "DomTerm" + ":" + this.sessionNumber;
-    else if (! this.sessionNameUnique)
-        sname = sname + ":" + this.sessionNumber;
+        sname = "DomTerm" + ":" + this.sstate.sessionNumber;
+    else if (! this.sstate.sessionNameUnique)
+        sname = sname + ":" + this.sstate.sessionNumber;
     if (this.windowNumber >= 0) {
         /*
         function format2Letters(n) {
@@ -4406,7 +4406,7 @@ DomTerm.prototype.setWindowTitle = function(title, option) {
     case 30:
         this.name = title;
         this.topNode.setAttribute("name", title);
-        this.sessionNameUnique = true;
+        this.sstate.sessionNameUnique = true;
         this.reportEvent("SESSION-NAME", JSON.stringify(title));
         break;
     }
@@ -5174,6 +5174,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             var parent = main.parentNode;
             parent.removeChild(main);
             this.sstate = data.sstate;
+            this.topNode.setAttribute("session-number",
+                                      this.sstate.sessionNumber);
             if (data.alternateBuffer)
                 this.usingAlternateScreenBuffer = data.alternateBuffer;
             var dt = this;
