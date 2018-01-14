@@ -106,7 +106,74 @@ base64_encode(const unsigned char *buffer, size_t length) {
     return ret;
 }
 
-/* Returns either in or a freshly malloc's urlencoding of in. */
+/* Parse an argument list (a list of possible-quoted "words").
+ * This follows extended shell syntax.
+ * The result is a single buffer containing both the
+ * pointers and all the strings.
+ * To free the buffer, free the result of this function;
+ * do not free any individual arguments.
+ */
+char**
+parse_args(const char *args)
+{
+    if (args == NULL)
+        return NULL;
+    int lengths = 0; // used for sum of strlen for all arguments
+    int argc = 0;
+    char **argv = NULL;
+    char context = -1; // '\', '"', 0 (in-word), or -1 (between words)
+    for (int pass = 0; pass < 2; pass++) {
+        const char *p = args;
+        char *q = NULL;
+        if (pass == 1) {
+            argv = xmalloc((argc+1) * sizeof(char*) + lengths + argc);
+            q = (char*) &argv[argc+1];
+            context = -1;
+            argc = 0;
+        }
+        for (;;) {
+            char ch = *p++;
+            if (ch == 0
+                || (context <= 0 && (ch == ' ' || ch == '\t'))) {
+              if (pass != 0)
+                  *q++ = '\0';
+              context = -1;
+              if (ch == 0)
+                break;
+              continue;
+            }
+            if (context < 0) {
+                context = 0;
+                if (pass == 1)
+                  argv[argc] = q;
+                argc++;
+            }
+            if ((ch == '\'' || ch == '"') && context <= 0) {
+              context = ch;
+              continue;
+            } else if (ch == context && (ch == '\'' || ch == '"')) {
+              context = 0;
+              continue;
+            } else if (ch == '\\' && *p) {
+                ch = *p++;
+                switch (ch) {
+                case 'n': ch = '\n';  break;
+                  // etc etc for other escapes FIXME
+                default: ;
+                }
+            }
+            if (pass == 0) {
+                lengths++;
+            } else {
+                *q++ = ch;
+            }
+        }
+    }
+    argv[argc] = NULL;
+    return argv;
+}
+
+/* Returns either 'in' or a freshly malloc'd urlencoding of 'in'. */
 char *
 url_encode(char *in, int mode)
 {

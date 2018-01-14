@@ -54,6 +54,17 @@ read_settings_file(struct options *options)
                                settings_fd, 0);
     unsigned char *send = sbuf + slen;
     unsigned char *sptr = sbuf;
+
+#define CLEAR_FIELD(FIELD)       \
+    if (options->FIELD) {        \
+        free(options->FIELD);    \
+        options->FIELD = NULL;   \
+    }
+    CLEAR_FIELD(geometry);
+    CLEAR_FIELD(openfile_application);
+    CLEAR_FIELD(openlink_application);
+    CLEAR_FIELD(shell_command);
+
     char *emsg = "";
     for (;;) {
     next:
@@ -136,8 +147,6 @@ read_settings_file(struct options *options)
 
 #define HANDLE_SETTING(NAME, FIELD)                           \
         if (strcmp(key_start, NAME) == 0) {                   \
-            if (options->FIELD != NULL)                       \
-                free(options->FIELD);                         \
             options->FIELD = xmalloc(value_length+1);         \
             memcpy(options->FIELD, value_start, value_length);\
             options->FIELD[value_length] = '\0';              \
@@ -146,6 +155,9 @@ read_settings_file(struct options *options)
         HANDLE_SETTING("window.geometry", geometry);
         HANDLE_SETTING("open.file.application", openfile_application);
         HANDLE_SETTING("open.link.application", openlink_application);
+
+        HANDLE_SETTING("shell.default", shell_command);
+
         json_object_object_add(jobj, key_start,
                 json_object_new_string_len(value_start, value_length));
     }
@@ -153,6 +165,10 @@ read_settings_file(struct options *options)
     fprintf(stderr, "error in %s at byte offset %d%s\n",
             settings_fname, sptr - sbuf, emsg);
  eof:
+    if (options->shell_argv)
+        free(options->shell_argv);
+    options->shell_argv = parse_args(options->shell_command);
+
     munmap(sbuf, slen);
     close(settings_fd);
     settings_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);

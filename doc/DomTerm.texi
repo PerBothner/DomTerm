@@ -466,6 +466,7 @@ $ domterm /bin/csh -v
 
 If @var{executable} is not specified, the default shell
 (for example @code{bin/bash}) is used.
+(See @code{shell.default} in @ref{Settings}.)
 
 The @var{executable} runs a new terminal window,
 as specified a @dfn{window specifier}.
@@ -815,6 +816,14 @@ Comment lines start with @code{#} in the first column.
 Comment lines and all-blank lines are ignored.
 
 @table @asis
+@item @code{@b{shell.default} =} @var{command}
+Specify a default ``shell'' command to execute when creating a new terminal.
+The command can include arguments, separated by spaces.
+You can uses quotes, as in a shell.
+
+The default is the value of the @code{SHELL} environment variable;
+if that is not set the default is @code{/bin/bash}.
+
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size of new top-level windows.
 (Currently works for either Electron or qtdomterm windows.)

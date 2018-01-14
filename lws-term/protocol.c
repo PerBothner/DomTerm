@@ -689,8 +689,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->initialized = false;
         client->version_info = version_info;
         if (pclient == NULL) {
-          // FIXME should use same argv as invoking window
-          pclient = run_command(default_argv, ".", environ);
+          pclient = run_command(default_command(main_options), ".", environ);
         }
         if (client->pclient == NULL) // FIXME merge with previous?
             link_command(wsi, client, pclient);
@@ -1213,7 +1212,8 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
           return EXIT_FAILURE;
         skip = optind;
     }
-    char**args = copy_argv(argc-skip, (char**)(argv+skip));
+    char**args = argc == skip ? default_command(opts)
+      : (char**)(argv+skip);
     char *argv0 = args[0];
     if (index(argv0, '/') != NULL ? access(argv0, X_OK) != 0
         : find_in_path(argv0) == NULL) {

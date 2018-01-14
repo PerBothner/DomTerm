@@ -49,7 +49,6 @@ extern struct lws_context_creation_info info; // FIXME rename
 extern struct lws *focused_wsi;
 extern struct cmd_client *cclient;
 extern int last_session_number;
-extern const char *(default_argv[]);
 extern struct options *main_options;
 extern const char *settings_as_json;
 extern char git_describe[];
@@ -156,6 +155,8 @@ struct options {
     int fd_out;
     int fd_err;
     char *session_name;
+    char *shell_command;
+    char **shell_argv;                        // parse_args(shell_command);
 };
 
 struct tty_server {
@@ -163,7 +164,6 @@ struct tty_server {
     int client_count;                         // number of current_clients
     int session_count;                        // session count
     int connection_count;                     // clients requested (ever)
-    char **argv;                              // command with arguments
     bool client_can_close;
     char *socket_path;                        // UNIX domain socket path
     pthread_mutex_t lock;
@@ -211,7 +211,7 @@ extern char *firefox_browser_command();
 extern char *chrome_command();
 extern void default_link_command(const char *url);
 extern int process_options(int argc, char **argv, struct options *options;);
-extern char ** copy_argv(int argc, char * const*argv);
+extern char** default_command(struct options *opts);
 extern void request_upload_settings();
 extern void read_settings_file(struct options*);
 extern void watch_settings_file(void);
@@ -227,6 +227,7 @@ extern const char * get_mimetype(const char *file);
 extern char *url_encode(char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
 extern void copy_html_file(FILE*in, FILE*out);
+extern char** parse_args(const char*);
 
 #if COMPILED_IN_RESOURCES
 struct resource {

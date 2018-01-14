@@ -5,8 +5,8 @@
 #include <sys/un.h>
 extern char **environ;
 
-#ifndef DEFAULT_ARGV
-#define DEFAULT_ARGV {"/bin/bash", NULL }
+#ifndef DEFAULT_SHELL
+#define DEFAULT_SHELL "/bin/bash"
 #endif
 
 static struct options opts;
@@ -51,7 +51,6 @@ struct lws *focused_wsi = NULL;
 struct lws_context_creation_info info;
 struct cmd_client *cclient;
 int last_session_number = 0;
-const char *(default_argv[]) = DEFAULT_ARGV;
 
 static const struct lws_protocols protocols[] = {
         /* http server for (mostly) static data */
@@ -172,23 +171,6 @@ static const struct option options[] = {
 };
 static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
-char **
-copy_argv(int argc, char * const*argv)
-{
-    if (argc == 0) {
-        argv = (char * const*)default_argv;
-        argc = 0;
-        while (argv[argc])
-            argc++;
-    }
-    char **copy = xmalloc(sizeof(char *) * (argc + 1));
-    for (int i = 0; i < argc; i++) {
-        copy[i] = strdup(argv[i]);
-    }
-    copy[argc] = NULL;
-    return copy;
-}
-
 struct tty_server *
 tty_server_new(int argc, char **argv) {
     struct tty_server *ts;
@@ -201,7 +183,6 @@ tty_server_new(int argc, char **argv) {
     ts->client_count = 0;
     ts->session_count = 0;
 
-    ts->argv = copy_argv(argc, argv);
     return ts;
 }
 
@@ -212,10 +193,6 @@ tty_server_free(struct tty_server *ts) {
     if (ts->options.credential != NULL)
         free(ts->options.credential);
     int i = 0;
-    do {
-        free(ts->argv[i++]);
-    } while (ts->argv[i] != NULL);
-    free(ts->argv);
     if (ts->options.sig_name)
         free(ts->options.sig_name);
     if (ts->socket_path != NULL) {
@@ -531,6 +508,20 @@ void  init_options(struct options *opts)
     opts->fd_out = STDOUT_FILENO;
     opts->fd_err = STDERR_FILENO;
     opts->session_name = NULL;
+    opts->shell_command = NULL;
+    opts->shell_argv = NULL;
+}
+
+static char **default_argv = NULL;
+
+char** default_command(struct options *opts)
+{
+    if (opts != NULL && opts->shell_argv != NULL)
+        return opts->shell_argv;
+    else if (main_options->shell_argv != NULL)
+        return main_options->shell_argv;
+    else
+        return default_argv;
 }
 
 int process_options(int argc, char **argv, struct options *opts)
@@ -702,6 +693,11 @@ main(int argc, char **argv)
     mount_domterm_zip.origin = get_resource_path();
 #endif
     info.mounts = &mount_domterm_zip;
+
+    char *shell = getenv("SHELL");
+    if (shell == NULL)
+        shell = DEFAULT_SHELL;
+    default_argv = parse_args(shell);
 
     init_options(&opts);
     read_settings_file(&opts);
