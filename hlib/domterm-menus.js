@@ -33,6 +33,9 @@ DomTerm.createElectronMenus = function() {
     const copyItem =
           new MenuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
                         click() { DomTerm.doCopy(); }});
+    const copyAsHtmlItem =
+          new MenuItem({label: 'Copy as HTML',
+                        click() { DomTerm.doCopy(true); }});
     const pasteItem = new MenuItem({label: 'Paste', accelerator: 'CommandOrControl+Shift+V', role: 'paste' });
     var showingMenuBar = true;
     const showMenuBarItem = new MenuItem({label: 'Show menubar',
@@ -178,6 +181,7 @@ DomTerm.createElectronMenus = function() {
                                 {label: 'Edit',
                                  submenu: [
                                      copyItem,
+                                     copyAsHtmlItem,
                                      pasteItem]},
                                 {label: 'View',
                                  submenu: [

@@ -1436,8 +1436,20 @@ and ctrl-shift-V to paste the contents of the clipboard.
 
 Some front-end also have menu entries for copy and paste.
 
+The selection is copied as both plain text (@code{text/plain})
+and formatted HTML (@code{text/html}) in case the receiving
+application can paste the latter.
+The HTML is slightly cleaned up from the raw DOM
+(in the same way @code{Save as HTML} does).
+Note that only inline styling is copied; no attempt is made
+to merge in style rules from stylesheets.
+
+The @code{Copy as HTML} command places the formatted HTML
+in the clipboard as @code{text/plain} so you can paste the HTML
+into a text editor.
+
 @emph{Front-end support}:
-Middle-button paste (i.e. cliicking the middle button pastes the
+Middle-button paste (i.e. clicking the middle button pastes the
 contents of the @emph{selection}, rather than the clipboard)
 works on qtdomterm, and chrome-based browsers.
 It does not work in a Firefox browser window.
@@ -1810,7 +1822,10 @@ A literal @samp{%}.
 @c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
 @item Control-Shift-C
-Copy the selected text to the clipboard.
+Copy the selection to the clipboard.
+It is copied as both plain text (@code{text/plain})
+and formatted HTML (@code{text/html}) in case the receiving
+application can paste the latter.
 (Control-C also works in line-editing mode.)
 @item Control-Shift-V
 Paste text from the clipboard.
@@ -2016,8 +2031,6 @@ This @uref{http://www.xarg.org/2010/03/generate-client-side-png-files-using-java
 Alternatively, a @code{<canvas>} element could be used.
 
 @subsubheading Improve copy and paste
-
-Handle exporting html to clipboard.
 
 Fix paste in line-editing mode.
 

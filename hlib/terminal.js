@@ -2158,7 +2158,7 @@ DomTerm.prototype.isBlockNode = function(node) {
 };
 
 DomTerm.prototype.isBlockTag = function(tag) { // lowercase tag
-    var einfo = this.elementInfo(tag, null);
+    var einfo = DomTerm._elementInfo(tag, null);
     return (einfo & DomTerm._ELEMENT_KIND_INLINE) == 0;
 }
 
@@ -4580,7 +4580,7 @@ DomTerm._ELEMENT_KIND_CONVERT_TO_DIV = 128; // used for <body>
 DomTerm._ELEMENT_KIND_SKIP_FULLY = 256; // skip element (tag and contents)
 DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY = DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_SKIP_FULLY;
 
-DomTerm.prototype.elementInfo = function(tag, parents=null) {
+DomTerm._elementInfo = function(tag, parents=null) {
     var v = DomTerm.HTMLinfo.hasOwnProperty(tag) ? DomTerm.HTMLinfo[tag] : 0;
 
     if ((v & DomTerm._ELEMENT_KIND_SVG) != 0 && parents) {
@@ -4882,7 +4882,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                 if (ch != 62) // '>'
                     break loop; // invalid
                 var tag = str.substring(ok+2,i-1);
-                var einfo = this.elementInfo(tag, activeTags);
+                var einfo = DomTerm._elementInfo(tag, activeTags);
                 if (activeTags.length == 0) {
                     // maybe TODO: allow unbalanced "</foo>" to pop from foo.
                     break loop;
@@ -4909,7 +4909,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                     }
                     ok = i;
                     if (activeTags.length == 0
-                        && (this.elementInfo(tag, activeTags) & 4) == 0) {
+                        && (DomTerm._elementInfo(tag, activeTags) & 4) == 0) {
                         this._breakDeferredLines();
                         this.freshLine();
                         var line = this.getAbsCursorLine();
@@ -4937,7 +4937,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                     break loop; // invalid - tag mismatch                    
             } else {
                 var tag = str.substring(ok+1,i-1);
-                var einfo = this.elementInfo(tag, activeTags);
+                var einfo = DomTerm._elementInfo(tag, activeTags);
                 if ((einfo & DomTerm._ELEMENT_KIND_ALLOW) == 0)
                     break loop;
                 if ((einfo & DomTerm._ELEMENT_KIND_SKIP_FULLY) != 0) {
@@ -5369,10 +5369,8 @@ DomTerm._homeLineOffset = function(dt) {
     return home_offset;
 }
 
-DomTerm.prototype.getAsHTML = function(saveMode=false) {
+DomTerm._nodeToHtml = function(node, dt, saveMode) {
     var string = "";
-    var dt = this;
-
     var savedTime = "";
     if (saveMode) {
         var now = new Date();
@@ -5387,8 +5385,8 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
         savedTime += (minutes < 10 ? ":0" : ":") + minutes;
     }
 
-    var home_offset = DomTerm._homeLineOffset(dt);
-    var home_node = dt.lineStarts[dt.homeLine - home_offset];
+    var home_offset = dt == null ? 0 : DomTerm._homeLineOffset(dt);
+    var home_node = dt == null ? null : dt.lineStarts[dt.homeLine - home_offset];
 
     function formatList(list) {
         for (let i = 0; i < list.length; i++) {
@@ -5438,7 +5436,7 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
                             skip = true;
                         }
                     } else if (aname == "id" && tagName == "span") {
-                        if (node == dt.inputLine)
+                        if (dt != null && node == dt.inputLine)
                             avalue = "input-cursor";
                         else
                             continue;
@@ -5462,7 +5460,7 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
                 break;
             string += s;
             if (!node.firstChild) {
-                if ((dt.elementInfo(tagName) & 0x10) == 0)
+                if ((DomTerm._elementInfo(tagName) & 0x10) == 0)
                     string += '></'+tagName+'>';
                 else
                     string += '/>';
@@ -5490,19 +5488,27 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
             string += node.nodeValue;
             string += ']]'+'>';
             break;
+        case 11: // DOCUMENT_FRAGMENT
+            for (let ch = node.firstChild; ch != null; ch = ch.nextSibling)
+                string += DomTerm._nodeToHtml(ch);
+            break;
         };
     };
+    formatDOM(node);
+    return string;
+}
 
+DomTerm.prototype.getAsHTML = function(saveMode=false) {
     if (saveMode)
-        formatDOM(dt.topNode);
+        return DomTerm._nodeToHtml(this.topNode, this, saveMode);
     else {
+        var string = "";
         var list = this.topNode.childNodes;
         for (let i = 0; i < list.length; i++) {
-            var el = list[i];
-            formatDOM(el); // , namespaces
+            string += DomTerm._nodeToHtml(list[i], this, saveMode);
         }
+        return string;
     }
-    return string;
 };
 
 DomTerm.prototype._doDeferredDeletion = function() {
@@ -6897,7 +6903,29 @@ DomTerm.doPaste = function(dt) {
     return document.execCommand("paste", false);
 };
 
-DomTerm.doCopy = function() {
+DomTerm._selectionAsHTML = function(sel = window.getSelection()) {
+    var hstring = "";
+    for(var i = 0; i < sel.rangeCount; i++) {
+        var fragment = sel.getRangeAt(i).cloneContents();
+        hstring += DomTerm._nodeToHtml(fragment, null, false);
+    }
+    return hstring;
+}
+
+DomTerm.doCopy = function(asHTML=false) {
+    function handler (event){
+        var sel = window.getSelection();
+        var html = DomTerm._selectionAsHTML(sel);
+        if (asHTML) {
+            event.clipboardData.setData('text/plain', html);
+        } else {
+            event.clipboardData.setData('text/plain', sel.toString());
+            event.clipboardData.setData('text/html', html);
+        }
+        event.preventDefault();
+        document.removeEventListener('copy', handler, true);
+    }
+    document.addEventListener('copy', handler, true);
     return document.execCommand("copy", false);
 };
 
