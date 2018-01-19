@@ -1555,91 +1555,6 @@ However, @code{tty=} might not be specified unless runnng under a pty.
 There seem to be some problems setting it with Qt.
 This variable is not set by Wayland.
 
-@anchor{bash-shell-prompt}
-@subheading Setting the Bash shell prompt
-
-You can place the following in your @code{~/.bashrc}
-to take advantage of DomTerm features:
-
-@example
-if [ "$PS1" != "" ]
-then
-  # Optionally override the system default - for all terminals
-  PS1='$ ' # or whatever
-
-  # Check if the DOMTERM variable includes the string "tty=@var{ttyname}"
-  # where @var{ttyname} is the output from the tty command
-  case ";$DOMTERM;" in
-    *";tty=`tty`;"*) ;;
-    *";tty="*) unset DOMTERM;;
-  esac
-
-  if [ -n "$DOMTERM" ]
-  then
-    # Add some DomTerm-specific escape sequences
-    PS1='\[\e[19u\e[16u\]▼\[\e[17u\e[14u\]'$PS1'\[\e[15u\]'
-    PS2='\[\e[14u\]'$PS2'\[\e[18u\]'
-  fi
-fi
-@end example
-
-This causes the prompt to have the @code{prompt} style
-(specifically to be in a @code{<span std="prompt">} element),
-while the remainder of the current line gets the @code{input} style
-(specifically, in a @code{<span std="input">} element).
-The appearance of these styles can be customized with CSS stylesheets.
-
-Furthermore, this prompt enables text folding:
-a @ref{Hide/show buttons,hide/show button}
-(click on the @code{▼} character), which hides/shows the output
-from the command.
-
-See the @ref{Wire byte protocol} section for the details.
-
-(The @code{"\["} and @code{"\]"} are bash syntax,
-and are equivalent to readline's @code{"\001"} and @code{"\002"}.
-They are used to indicate escape sequences that don't move the cursor,
-which is needed for readline to calculate the column position.)
-
-@anchor{tracking-cwd}
-@subsubheading Tracking current working directory
-
-It is useful for DomTerm to track the working directory of
-the process.  One reason is @ref{linkification,creating links} from
-compiler error messages.
-
-If you're using the Bash shell, you can set the @code{PROMPT_COMMAND}
-to send a special escape sequence, like the following.
-
-@example
-# Based on Orwellophile's answer to
-# @uref{https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command,https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command}
-# adding the LC_ALL=C trick from /etc/profile.d/vte.sh (on Fedora27)
-print_path_url() @{
-  local LC_ALL=C
-  local string="$PWD"
-  local strlen=$@{#string@}
-  local encoded=""
-  local pos c o
-
-  for (( pos=0 ; pos<strlen ; pos++ )); do
-     c=$@{string:$pos:1@}
-     case "$c" in
-        [-_.~a-zA-Z0-9/] ) o="$@{c@}" ;;
-        * )               printf -v o '%%%02x' "'$c"
-     esac
-     encoded+="$@{o@}"
-  done
-  printf "\033]7;file://%s%s\007" "$@{HOSTNAME:-@}" "$@{encoded@}"
-@}
-test "$PROMPT_COMMAND" = __vte_prompt_command || \
-    PROMPT_COMMAND="$PROMPT_COMMAND;print_path_url"
-@end example
-
-(On some platforms Gnome Terminal loads @code{vte.sh}
-which sets @code{PROMPT_COMMAND} to @code{__vte_prompt_command},
-which sends the same escape sequence as @code{print_path_url}.)
-
 @subheading Showing man pages as html
 
 To view the @code{bash} man page inline you can do the following.
@@ -1810,6 +1725,7 @@ A literal @samp{%}.
 
 @menu
 * Keyboard shortcuts::
+* Shell prompts::
 * Names and titles::
 @end menu
 
@@ -1907,6 +1823,100 @@ Select the next pane or tab.
 @item @mux-prefix @code{d}
 Detach from current session and close the (sub-)window.
 @end table
+
+@node Shell prompts
+@section Shell prompts
+
+Many interactive REPL-style programs (such as a ``shell") allow
+you to customize the string used to prompt for input.
+Putting certain DomTerm-specific @ref{Wire byte protocol,escape sequences}
+in the prompt enables some nice features.
+The following discussion focuses on the @code{bash} shell.
+
+@anchor{bash-shell-prompt}
+@subheading Setting the Bash shell prompt
+
+You can place the following in your @code{~/.bashrc}
+to take advantage of DomTerm features:
+
+@example
+if [ "$PS1" != "" ]
+then
+  # Optionally override the system default - for all terminals
+  PS1='$ ' # or whatever
+
+  # Check if the DOMTERM variable includes the string "tty=@var{ttyname}"
+  # where @var{ttyname} is the output from the tty command
+  case ";$DOMTERM;" in
+    *";tty=`tty`;"*) ;;
+    *";tty="*) unset DOMTERM;;
+  esac
+
+  if [ -n "$DOMTERM" ]
+  then
+    # Add some DomTerm-specific escape sequences
+    PS1='\[\e[19u\e[16u\]▼\[\e[17u\e[14u\]'$PS1'\[\e[15u\]'
+    PS2='\[\e[14u\]'$PS2'\[\e[18u\]'
+  fi
+fi
+@end example
+
+This causes the prompt to have the @code{prompt} style
+(specifically to be in a @code{<span std="prompt">} element),
+while the remainder of the current line gets the @code{input} style
+(specifically, in a @code{<span std="input">} element).
+The appearance of these styles can be customized with CSS stylesheets.
+
+Furthermore, this prompt enables text folding:
+a @ref{Hide/show buttons,hide/show button}
+(click on the @code{▼} character), which hides/shows the output
+from the command.
+
+See the @ref{Wire byte protocol} section for the details.
+
+(The @code{"\["} and @code{"\]"} are bash syntax,
+and are equivalent to readline's @code{"\001"} and @code{"\002"}.
+They are used to indicate escape sequences that don't move the cursor,
+which is needed for readline to calculate the column position.)
+
+@anchor{tracking-cwd}
+@subsubheading Tracking current working directory
+
+It is useful for DomTerm to track the working directory of
+the process.  One reason is @ref{linkification,creating links} from
+compiler error messages.
+
+If you're using the Bash shell, you can set the @code{PROMPT_COMMAND}
+to send a special escape sequence, like the following.
+
+@example
+# Based on Orwellophile's answer to
+# @uref{https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command,https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command}
+# adding the LC_ALL=C trick from /etc/profile.d/vte.sh (on Fedora27)
+print_path_url() @{
+  local LC_ALL=C
+  local string="$PWD"
+  local strlen=$@{#string@}
+  local encoded=""
+  local pos c o
+
+  for (( pos=0 ; pos<strlen ; pos++ )); do
+     c=$@{string:$pos:1@}
+     case "$c" in
+        [-_.~a-zA-Z0-9/] ) o="$@{c@}" ;;
+        * )               printf -v o '%%%02x' "'$c"
+     esac
+     encoded+="$@{o@}"
+  done
+  printf "\033]7;file://%s%s\007" "$@{HOSTNAME:-@}" "$@{encoded@}"
+@}
+test "$PROMPT_COMMAND" = __vte_prompt_command || \
+    PROMPT_COMMAND="$PROMPT_COMMAND;print_path_url"
+@end example
+
+(On some platforms Gnome Terminal loads @code{vte.sh}
+which sets @code{PROMPT_COMMAND} to @code{__vte_prompt_command},
+which sends the same escape sequence as @code{print_path_url}.)
 
 @node Names and titles
 @section Names and titles
