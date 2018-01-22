@@ -155,10 +155,12 @@ static const struct option options[] = {
         {"gid",          required_argument, NULL, 'g'},
         {"signal",       required_argument, NULL, 's'},
         {"reconnect",    required_argument, NULL, 'r'},
+#if HAVE_OPENSSL
         {"ssl",          no_argument,       NULL, 'S'},
         {"ssl-cert",     required_argument, NULL, 'C'},
         {"ssl-key",      required_argument, NULL, 'K'},
         {"ssl-ca",       required_argument, NULL, 'A'},
+#endif
         {"readonly",     no_argument,       NULL, 'R'},
         {"check-origin", no_argument,       NULL, 'O'},
         {"once",         no_argument,       NULL, 'o'},
@@ -493,13 +495,15 @@ void  init_options(struct options *opts)
     opts->force_option = 0;
     opts->socket_name = NULL;
     opts->do_daemonize = 1;
-    opts->ssl = false;
     opts->debug_level = 0;
     opts->iface[0] = '\0';
+#if HAVE_OPENSSL
+    opts->ssl = false;
     opts->cert_path[0] = '\0';
     opts->key_path[0] = '\0';
     opts->ca_path[0] = '\0';
     opts->credential = NULL;
+#endif
     opts->once = false;
     opts->reconnect = 10;
     opts->sig_code = SIGHUP;
@@ -649,6 +653,7 @@ int process_options(int argc, char **argv, struct options *opts)
                     return -1;
                 }
                 break;
+#if HAVE_OPENSSL
             case 'S':
                 opts->ssl = true;
                 break;
@@ -664,6 +669,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 strncpy(opts->ca_path, optarg, sizeof(opts->ca_path) - 1);
                 opts->ca_path[sizeof(opts->ca_path) - 1] = '\0';
                 break;
+#endif
             case '?':
                 return -1;
             default:
@@ -681,8 +687,10 @@ main(int argc, char **argv)
     info.port = 0;
     info.iface = NULL;
     info.protocols = protocols;
+#if HAVE_OPENSSL
     info.ssl_cert_filepath = NULL;
     info.ssl_private_key_filepath = NULL;
+#endif
     info.gid = -1;
     info.uid = -1;
     info.max_http_header_pool = 16;
@@ -793,6 +801,7 @@ main(int argc, char **argv)
         }
     }
 #endif
+#if HAVE_OPENSSL
     if (opts.ssl) {
         info.ssl_cert_filepath = opts.cert_path;
         info.ssl_private_key_filepath = opts.key_path;
@@ -816,6 +825,7 @@ main(int argc, char **argv)
         info.options |= LWS_SERVER_OPTION_REDIRECT_HTTP_TO_HTTPS;
 #endif
     }
+#endif
 
     signal(SIGINT, sig_handler);  // ^C
     signal(SIGTERM, sig_handler); // kill

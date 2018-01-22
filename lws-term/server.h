@@ -141,9 +141,11 @@ struct options {
     char *openlink_application;
     int paneOp;
     char iface[128];
+#if HAVE_OPENSSL
     char cert_path[1024];
     char key_path[1024];
     char ca_path[1024];
+#endif
     char *socket_name;
     bool check_origin;                        // whether allow websocket connection from different origin
     bool once;                                // whether accept only one client and exit on disconnection

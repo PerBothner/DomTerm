@@ -157,7 +157,12 @@ echo bindir: $bindir_parent: $bindir_parent dd: $datadir
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
   PKG_CHECK_MODULES(JSON_C, json-c)
-  PKG_CHECK_MODULES(OPENSSL, openssl)
+  if pkg-config openssl; then
+    OPENSSL_CFLAGS=`pkg-config --cflags openssl`
+    OPENSSL_LIBS=`pkg-config --libs openssl`
+  else
+    AC_MSG_WARN(openssl library not found)
+  fi
   PKG_CHECK_MODULES(LIBCAP, libcap, true, true)
   case "${with_libwebsockets}" in
     "yes" | "")
@@ -200,6 +205,8 @@ AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
 AC_SUBST(LIBWEBSOCKETS_LIBS)
 AC_SUBST(LIBWEBSOCKETS_CFLAGS)
+AC_SUBST(OPENSSL_LIBS)
+AC_SUBST(OPENSSL_CFLAGS)
 AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(HAVE_GETRANDOM)
