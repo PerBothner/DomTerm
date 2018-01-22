@@ -23,8 +23,8 @@ function makeDomTerm() {
             term.jclient.setWindowSize(numRows, numColumns,
                                     availHeight, availWidth); };
     term.close = function() { if (term && term.java) term.java.close(); }
-    term.doCopy = function() { if (term && term.java) term.java.doCopy(); }
-    term.doPaste = function() { if (term && term.java) term.java.doPaste(); }
+    DomTerm.doCopy = function() { if (term && term.java) term.java.doCopy(); return true; }
+    DomTerm.doPaste = function() { if (term && term.java) term.java.doPaste(); return true; }
     term.log =
         function(str) {
             if (term && term.java) term.java.log(str); }
