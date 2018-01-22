@@ -129,8 +129,9 @@ function DomTerm(name, topNode) {
     this.lineIdCounter = 0; // FIXME temporary debugging
 
     sstate.insertMode = false;
-    // If true, treat "\n" as "\r\n".
-    sstate.automaticNewlineMode = false;
+    // If non-zero, treat "\n" as "\r\n".
+    // Bit 1 controls output; bit 2 controls input (handling of Enter key).
+    sstate.automaticNewlineMode = 0;
 
     // How are typed characters processed?
     // -1: character mode (each character/keystroke sent immediately to process)
@@ -3950,7 +3951,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.sstate.insertMode = true;
                 break;
             case 20:
-                this.sstate.automaticNewlineMode = true;
+                this.sstate.automaticNewlineMode = this.getParameter(1, 3);
                 break;
             }
         }
@@ -3966,7 +3967,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 this.sstate.insertMode = false;
                 break;
             case 20:
-                this.sstate.automaticNewlineMode = false;
+                this.sstate.automaticNewlineMode = 0;
                 break;
             }
         }
@@ -5939,7 +5940,7 @@ DomTerm.prototype.insertString = function(str) {
                     this._enterPaging(true);
                     return;
                 }
-                this.cursorNewLine(this.sstate.automaticNewlineMode);
+                this.cursorNewLine((this.sstate.automaticNewlineMode & 1) != 0);
                 prevEnd = i + 1; columnWidth = 0;
                 break;
             case 27 /* Escape */:
@@ -6782,7 +6783,10 @@ DomTerm.prototype.keyDownToString = function(event) {
     case 8: /* Backspace */ return "\x7F";
     case 9: /* Tab */    return "\t";
     case 13: /* Return/Enter */
-        return this.sstate.automaticNewlineMode ? "\r\n" : "\r";
+        if ((this.sstate.automaticNewlineMode & 2) != 0)
+            return "\r\n";
+        else
+            return "\r";
     case 27: /* Esc */   return "\x1B";
     case 33 /* PageUp*/: return this.specialKeySequence("5", "~", event);
     case 34 /* PageDown*/:return this.specialKeySequence("6", "~", event);
@@ -7120,7 +7124,7 @@ DomTerm.prototype.setInputMode = function(mode) {
     if (wasEditing && ! this.isLineEditing()) {
         this._sendInputContents();
     }
-    this.sstate.automaticNewlineMode = ! this.clientDoesEcho;
+    this.sstate.automaticNewlineMode = this.clientDoesEcho ? 0 : 3;
 };
 
 DomTerm.prototype.getInputMode = function() {
