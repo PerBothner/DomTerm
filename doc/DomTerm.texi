@@ -319,7 +319,7 @@ or newer.  As of January 2018, the version in Fedora 27 in fine,
 but the version in Ubuntu is too old.
 @emph{Furthermore, the most recent libwebsockets in git is
 currently incompatible with domterm.}
-If you need to build libwebsoekcts from source, do the following:
+If you need to build libwebsockets from source, do the following:
 
 @example
 cd $WORKDIR
@@ -340,7 +340,7 @@ make
 @end example
 
 When running @code{./configure} in the @code{DomTerm} sources,
-specify @code{--with-libwebsockets=/h=$WORKDIR/libwebsockets/build}.
+specify @code{--with-libwebsockets=$WORKDIR/libwebsockets/build}.
 
 
 @subheading Building from source
