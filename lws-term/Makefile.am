@@ -25,7 +25,8 @@ CLIENT_DATA_DIR = .
 LWS_RESOURCES = hlib/domterm-all.js hlib/domterm-client.js \
   hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css \
-  hlib/goldenlayout-base.css hlib/domterm-layout.css
+  hlib/goldenlayout-base.css hlib/domterm-layout.css \
+  hlib/qwebchannel.js
 if ENABLE_COMPILED_IN_RESOURCES
 nodist_ldomterm_SOURCES += resources.c
 ldomterm_CFLAGS += -DCOMPILED_IN_RESOURCES
