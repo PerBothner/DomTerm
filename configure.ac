@@ -139,8 +139,6 @@ then
 fi
 
 AM_CONDITIONAL(ENABLE_LD_PRELOAD, test "$enable_ld_preload" = "yes")
-AM_CONDITIONAL(ENABLE_COMPILED_IN_RESOURCES,
-    test "$enable_compiled_in_resources" = "yes")
 
 dnl FIXME We might want to figure out datadir_relative by
 dnl decl comparing datadir to bindir or prefix.
@@ -152,7 +150,6 @@ DOMTERM_DIR_RELATIVE="/share/domterm"
 AC_SUBST(DOMTERM_DIR_RELATIVE)
 
 bindir_parent=`echo "$bindir" | sed -e 's|[^/]*/bin||'`
-echo bindir: $bindir_parent: $bindir_parent dd: $datadir
 
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
@@ -174,6 +171,21 @@ if test "$with_libwebsockets" != "no"; then
       LIBWEBSOCKETS_CFLAGS="-I${with_libwebsockets}/include"
       ;;
   esac
+  if test -z "$enable_compiled_in_resources"; then
+    AC_LANG(C)
+    AC_MSG_CHECKING([if LWS_WITH_ZIP_FOPS is enabled in libwebsockets])
+    save_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS $LIBWEBSOCKETS_CFLAGS"
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include <lws_config.h>
+    #ifndef LWS_WITH_ZIP_FOPS
+    #error missing LWS_WITH_ZIP_FOPS
+    #endif
+    ])],
+    [LWS_WITH_ZIP_FOPS=yes; enable_compiled_in_resources=no],
+    [LWS_WITH_ZIP_FOPS=no; enable_compiled_in_resources=yes])
+    AC_MSG_RESULT($LWS_WITH_ZIP_FOPS)
+    CFLAGS=$save_CFLAGS
+  fi
 fi
 ldomterm_misc_includes=
 if (which brew>&/dev/null)
@@ -194,6 +206,9 @@ case "$with_closure_compiler" in
 esac
 AM_CONDITIONAL(WITH_CLOSURE_COMPILER, test "$CLOSURE_COMPILER" != "NONE")
 AC_SUBST(CLOSURE_COMPILER)
+
+AM_CONDITIONAL(ENABLE_COMPILED_IN_RESOURCES,
+    test "$enable_compiled_in_resources" = "yes")
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
