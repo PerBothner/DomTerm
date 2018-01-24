@@ -1,6 +1,10 @@
 #include "server.h"
 //#include "html.h"
 
+#if ! COMPILED_IN_RESOURCES && ! defined(LWS_WITH_ZIP_FOPS)
+#error Must configure --enable-compiled-in-resources since zip support missing in libwebsockets
+#endif
+
 #ifdef RESOURCE_DIR
 static char *resource_path = NULL;
 static char domterm_jar_name[] = "domterm.jar";
