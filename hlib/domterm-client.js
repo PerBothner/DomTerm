@@ -107,7 +107,8 @@ function setupQWebChannel(channel) {
             DomTerm.layoutAddPane(dt, paneOp);
     });
     DomTerm.windowClose = function() { backend.closeMainWindow(); };
-    DomTerm.setTitle = function(title) { backend.setWindowTitle(title); };
+    DomTerm.setTitle = function(title) {
+        backend.setWindowTitle(title == null ? "" : title); };
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
     DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth, height=DomTerm.defaultHeight, parameter=null) {
         let url = location.href;
