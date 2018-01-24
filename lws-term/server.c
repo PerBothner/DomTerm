@@ -37,7 +37,7 @@ subst_run_command (const char *browser_command, const char *url, int port)
                 port,
                 clen - beforeW - 2, wpos+2);
     } else
-        sprintf(cmd, "%s %s", browser_command, url);
+        sprintf(cmd, "%s '%s'", browser_command, url);
     lwsl_notice("frontend command: %s\n", cmd);
     system(cmd);
 }
@@ -54,7 +54,7 @@ int last_session_number = 0;
 
 static const struct lws_protocols protocols[] = {
         /* http server for (mostly) static data */
-        {"http-only", callback_http, 0,                          0},
+        {"http-only", callback_http, sizeof(struct http_client),  0},
 
         /* websockets server for communicating with browser */
         {"domterm",   callback_tty,  sizeof(struct tty_client),  0},

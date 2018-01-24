@@ -123,6 +123,11 @@ struct tty_client {
     bool pty_window_update_needed;
 };
 
+struct http_client {
+    char *data;
+    int length;
+};
+
 struct cmd_client {
     int socket;
 };

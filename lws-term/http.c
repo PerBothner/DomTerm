@@ -113,6 +113,7 @@ bool check_server_key(struct lws *wsi, char *arg, size_t alen)
 
 int
 callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
+    struct http_client *hclient = (struct http_client *) user;
     unsigned char buffer[4096 + LWS_PRE], *p, *end;
     char buf[256];
 
@@ -215,10 +216,9 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     return 1;
                 if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
                     return 1;
-
-                if (lws_write_http(wsi, resource->data, resource->length) < 0)
-                    return 1;
-                lws_http_transaction_completed(wsi);
+                hclient->data = resource->data;
+                hclient->length = resource->length;
+                lws_callback_on_writable(wsi);
                 break;
 
             }
@@ -231,6 +231,18 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
               return -1; /* error or can't reuse connection: close the socket */
             break;
 #endif
+
+        case LWS_CALLBACK_HTTP_WRITEABLE:
+            if (hclient->length) {
+                int n = lws_write_http(wsi, hclient->data, hclient->length);
+                hclient->data = NULL;
+                hclient->length = 0;
+                if (n < 0)
+                    return 1;
+                goto try_to_reuse;
+            }
+            break;
+
 	case LWS_CALLBACK_HTTP_FILE_COMPLETION:
             if (lws_http_transaction_completed(wsi))
               return -1; /* error or can't reuse connection: close the socket */
