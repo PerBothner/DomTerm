@@ -1,7 +1,9 @@
 #include "server.h"
 #include "version.h"
 #include <stdlib.h>
+#if HAVE_LIBMAGIC
 #include <magic.h>
+#endif
 #include <sys/mman.h>
 #include <sys/stat.h>
 
