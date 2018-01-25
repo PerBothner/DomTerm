@@ -861,282 +861,283 @@ reportEvent(const char *name, char *data, size_t dlen,
 
 int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
-             void *user, void *in, size_t len) {
+             void *user, void *in, size_t len)
+{
     struct tty_client *client = (struct tty_client *) user;
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
     //fprintf(stderr, "callback_tty reason:%d\n", (int) reason);
 
     switch (reason) {
-        case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
-            //fprintf(stderr, "callback_tty FILTER_PROTOCOL_CONNECTION\n");
-            if (server->options.once && server->client_count > 0) {
-                lwsl_notice("refuse to serve new client due to the --once option.\n");
-                return -1;
-            }
-            break;
+    case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
+         //fprintf(stderr, "callback_tty FILTER_PROTOCOL_CONNECTION\n");
+         if (server->options.once && server->client_count > 0) {
+              lwsl_notice("refuse to serve new client due to the --once option.\n");
+              return -1;
+         }
+         break;
 
-        case LWS_CALLBACK_ESTABLISHED:
-            client->initialized = false;
-            client->detachSaveSend = false;
-            client->uploadSettingsNeeded = true;
-            client->authenticated = false;
-            client->requesting_contents = 0;
-            client->wsi = wsi;
-            client->buffer = NULL;
-            client->version_info = NULL;
-            client->pclient = NULL;
-            client->sent_count = 0;
-            client->confirmed_count = 0;
-            client->osize = 2048;
-            client->obuffer_raw = xmalloc(LWS_PRE+client->osize);
-            client->obuffer = client->obuffer_raw + LWS_PRE;
-            client->olen = 0;
-            client->detach_on_close = false;
-            client->connection_number = ++server->connection_count;
-            client->pty_window_number = -1;
-            client->pty_window_update_needed = false;
-          {
-            char arg[100]; // FIXME
-            if (! check_server_key(wsi, arg, sizeof(arg) - 1))
-                return -1;
-            const char*connect_pid = lws_get_urlarg_by_name(wsi, "connect-pid=", arg, sizeof(arg) - 1);
-            int cpid;
-            if (connect_pid != NULL
-                && (cpid = strtol(connect_pid, NULL, 10)) != 0) {
-              struct pty_client *pclient = pty_client_list;
-              for (; pclient != NULL; pclient = pclient->next_pty_client) {
-                if (pclient->pid == cpid) {
-                  link_command(wsi, client, pclient);
-                  break;
-                }
-              }
-            }
-          }
-            lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
-                                   client->hostname, sizeof(client->hostname),
-                                   client->address, sizeof(client->address));
-            // Defer start_pty so we can set up DOMTERM variable with version_info.
-            // start_pty(client);
+    case LWS_CALLBACK_ESTABLISHED:
+        client->initialized = false;
+        client->detachSaveSend = false;
+        client->uploadSettingsNeeded = true;
+        client->authenticated = false;
+        client->requesting_contents = 0;
+        client->wsi = wsi;
+        client->buffer = NULL;
+        client->version_info = NULL;
+        client->pclient = NULL;
+        client->sent_count = 0;
+        client->confirmed_count = 0;
+        client->osize = 2048;
+        client->obuffer_raw = xmalloc(LWS_PRE+client->osize);
+        client->obuffer = client->obuffer_raw + LWS_PRE;
+        client->olen = 0;
+        client->detach_on_close = false;
+        client->connection_number = ++server->connection_count;
+        client->pty_window_number = -1;
+        client->pty_window_update_needed = false;
+        {
+             char arg[100]; // FIXME
+             if (! check_server_key(wsi, arg, sizeof(arg) - 1))
+                  return -1;
+             const char*connect_pid = lws_get_urlarg_by_name(wsi, "connect-pid=", arg, sizeof(arg) - 1);
+             int cpid;
+             if (connect_pid != NULL
+                 && (cpid = strtol(connect_pid, NULL, 10)) != 0) {
+                  struct pty_client *pclient = pty_client_list;
+                  for (; pclient != NULL; pclient = pclient->next_pty_client) {
+                       if (pclient->pid == cpid) {
+                            link_command(wsi, client, pclient);
+                            break;
+                       }
+                  }
+             }
+        }
+        lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
+                               client->hostname, sizeof(client->hostname),
+                               client->address, sizeof(client->address));
+        // Defer start_pty so we can set up DOMTERM variable with version_info.
+        // start_pty(client);
 
-            server->client_count++;
+        server->client_count++;
 
-            lwsl_notice("client connected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
-            break;
+        lwsl_notice("client connected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
+        break;
 
-        case LWS_CALLBACK_SERVER_WRITEABLE:
-            //fprintf(stderr, "callback_tty CALLBACK_SERVER_WRITEABLE init:%d connect:%d\n", (int) client->initialized, client->connection_number);
-            if (! client->initialized
-              && (pclient->preserved_output == NULL
-                  || pclient->saved_window_contents != NULL)) {
-                char buf[LWS_PRE+60];
-                char *p = &buf[LWS_PRE];
+    case LWS_CALLBACK_SERVER_WRITEABLE:
+         //fprintf(stderr, "callback_tty CALLBACK_SERVER_WRITEABLE init:%d connect:%d\n", (int) client->initialized, client->connection_number);
+         if (! client->initialized
+             && (pclient->preserved_output == NULL
+                 || pclient->saved_window_contents != NULL)) {
+              char buf[LWS_PRE+60];
+              char *p = &buf[LWS_PRE];
 #define FORMAT_PID_SNUMBER "\033]31;%d\007\033[91;%d;%d\007"
 #define FORMAT_SNAME "\033]30;%s\007"
-                sprintf(p,
-                        pclient->session_name
-                        ? (URGENT_START_STRING FORMAT_PID_SNUMBER
-                           FORMAT_SNAME URGENT_END_STRING)
-                        : (URGENT_START_STRING FORMAT_PID_SNUMBER
-                           URGENT_END_STRING),
-                        pclient->pid,
-                        pclient->session_number, pclient->session_name_unique,
-                        pclient->session_name);
-                write_to_browser(wsi, p, strlen(p), false);
-                if (pclient->saved_window_contents != NULL) {
-                  int rcount = pclient->preserved_sent_count;
-                  char *buf = xmalloc(strlen(pclient->saved_window_contents)+40);
-                  sprintf(buf+LWS_PRE,
-                          URGENT_START_STRING "\033]103;%d,%s\007" URGENT_END_STRING,
-                          pclient->preserved_sent_count,
-                          pclient->saved_window_contents);
-                  int rlen = strlen(buf+LWS_PRE);
-                  write_to_browser(wsi, buf+LWS_PRE, rlen, false);
-                  if (! should_backup_output(pclient)) {
-                      free(pclient->saved_window_contents);
-                      pclient->saved_window_contents = NULL;
-                  }
-                  if (pclient->preserved_output != NULL) {
-                      size_t start = pclient->preserved_start;
-                      size_t end = pclient->preserved_end;
-                      rcount += end - start;
-                      start -= start_replay_len;
-                      memcpy(pclient->preserved_output+start, start_replay_mode, start_replay_len);
-                      memcpy(pclient->preserved_output+end, end_replay_mode, end_replay_len);
-                      end += end_replay_len;
-                      write_to_browser(wsi, pclient->preserved_output+start,
-                                       end-start, false);
-                  }
-                  rcount = rcount & MASK28;
-                  client->sent_count = rcount;
-                  client->confirmed_count = rcount;
-                  sprintf(p, OUT_OF_BAND_START_STRING "\033[96;%du" URGENT_END_STRING, rcount);
-                  write_to_browser(wsi, p, strlen(p), false);
-                }
-                client->initialized = true;
-                //break;
-            }
-            if (client->pty_window_update_needed) {
-                client->pty_window_update_needed = false;
-                char buf[LWS_PRE+60];
-                char *p = &buf[LWS_PRE];
-                sprintf(p, URGENT_START_STRING "\033[91;%d;%d;%du" URGENT_END_STRING,
-                        pclient->session_number, pclient->session_name_unique,
-                        client->pty_window_number+1);
-                write_to_browser(wsi, p, strlen(p), false);
-            }
-            if (client->uploadSettingsNeeded) {
-                client->uploadSettingsNeeded = false;
-                if (settings_as_json != NULL) {
-                    char *buf = xmalloc(strlen(settings_as_json)+LWS_PRE+20);
-                    char *p = &buf[LWS_PRE];
-                    sprintf(p, URGENT_START_STRING "\033]89;%s\007" URGENT_END_STRING,
-                            settings_as_json);
-                    write_to_browser(wsi, p, strlen(p), false);
-                    free(buf);
-                }
-            }
-            if (client->detachSaveSend) {
-                int tcount = 0;
-                struct lws *tty_wsi;
-                FOREACH_WSCLIENT(tty_wsi, pclient) {
-                    if (++tcount >= 2) break;
-                }
-                char buf[LWS_PRE+20];
-                char *p = &buf[LWS_PRE];
-                int code = tcount >= 2 ? 0 : pclient->detachOnClose ? 2 : 1;
-                sprintf(p, URGENT_START_STRING "\033[82;%du" URGENT_END_STRING,
-                        code);
-                write_to_browser(wsi, p, strlen(p), false);
-                client->detachSaveSend = false;
-            }
-            if (client->olen > 0) {
-                write_to_browser(wsi, client->obuffer, client->olen, true);
-                client->olen = 0;
-            }
-            if (client->requesting_contents == 1) {
-                write_to_browser(wsi, request_contents_message,
-                                 sizeof(request_contents_message)-1, false);
-                client->requesting_contents = 2;
-                if (pclient->preserved_output == NULL) {
-                    pclient->preserved_start =  PRESERVE_MIN;
-                    pclient->preserved_end = pclient->preserved_start;
-                    pclient->preserved_size = 1024;
-                    pclient->preserved_output =
+              sprintf(p,
+                      pclient->session_name
+                      ? (URGENT_START_STRING FORMAT_PID_SNUMBER
+                         FORMAT_SNAME URGENT_END_STRING)
+                      : (URGENT_START_STRING FORMAT_PID_SNUMBER
+                         URGENT_END_STRING),
+                      pclient->pid,
+                      pclient->session_number, pclient->session_name_unique,
+                      pclient->session_name);
+              write_to_browser(wsi, p, strlen(p), false);
+              if (pclient->saved_window_contents != NULL) {
+                   int rcount = pclient->preserved_sent_count;
+                   char *buf = xmalloc(strlen(pclient->saved_window_contents)+40);
+                   sprintf(buf+LWS_PRE,
+                           URGENT_START_STRING "\033]103;%d,%s\007" URGENT_END_STRING,
+                           pclient->preserved_sent_count,
+                           pclient->saved_window_contents);
+                   int rlen = strlen(buf+LWS_PRE);
+                   write_to_browser(wsi, buf+LWS_PRE, rlen, false);
+                   if (! should_backup_output(pclient)) {
+                        free(pclient->saved_window_contents);
+                        pclient->saved_window_contents = NULL;
+                   }
+                   if (pclient->preserved_output != NULL) {
+                        size_t start = pclient->preserved_start;
+                        size_t end = pclient->preserved_end;
+                        rcount += end - start;
+                        start -= start_replay_len;
+                        memcpy(pclient->preserved_output+start, start_replay_mode, start_replay_len);
+                        memcpy(pclient->preserved_output+end, end_replay_mode, end_replay_len);
+                        end += end_replay_len;
+                        write_to_browser(wsi, pclient->preserved_output+start,
+                                         end-start, false);
+                   }
+                   rcount = rcount & MASK28;
+                   client->sent_count = rcount;
+                   client->confirmed_count = rcount;
+                   sprintf(p, OUT_OF_BAND_START_STRING "\033[96;%du" URGENT_END_STRING, rcount);
+                   write_to_browser(wsi, p, strlen(p), false);
+              }
+              client->initialized = true;
+              //break;
+         }
+         if (client->pty_window_update_needed) {
+              client->pty_window_update_needed = false;
+              char buf[LWS_PRE+60];
+              char *p = &buf[LWS_PRE];
+              sprintf(p, URGENT_START_STRING "\033[91;%d;%d;%du" URGENT_END_STRING,
+                      pclient->session_number, pclient->session_name_unique,
+                      client->pty_window_number+1);
+              write_to_browser(wsi, p, strlen(p), false);
+         }
+         if (client->uploadSettingsNeeded) {
+              client->uploadSettingsNeeded = false;
+              if (settings_as_json != NULL) {
+                   char *buf = xmalloc(strlen(settings_as_json)+LWS_PRE+20);
+                   char *p = &buf[LWS_PRE];
+                   sprintf(p, URGENT_START_STRING "\033]89;%s\007" URGENT_END_STRING,
+                           settings_as_json);
+                   write_to_browser(wsi, p, strlen(p), false);
+                   free(buf);
+              }
+         }
+         if (client->detachSaveSend) {
+              int tcount = 0;
+              struct lws *tty_wsi;
+              FOREACH_WSCLIENT(tty_wsi, pclient) {
+                   if (++tcount >= 2) break;
+              }
+              char buf[LWS_PRE+20];
+              char *p = &buf[LWS_PRE];
+              int code = tcount >= 2 ? 0 : pclient->detachOnClose ? 2 : 1;
+              sprintf(p, URGENT_START_STRING "\033[82;%du" URGENT_END_STRING,
+                      code);
+              write_to_browser(wsi, p, strlen(p), false);
+              client->detachSaveSend = false;
+         }
+         if (client->olen > 0) {
+              write_to_browser(wsi, client->obuffer, client->olen, true);
+              client->olen = 0;
+         }
+         if (client->requesting_contents == 1) {
+              write_to_browser(wsi, request_contents_message,
+                               sizeof(request_contents_message)-1, false);
+              client->requesting_contents = 2;
+              if (pclient->preserved_output == NULL) {
+                   pclient->preserved_start =  PRESERVE_MIN;
+                   pclient->preserved_end = pclient->preserved_start;
+                   pclient->preserved_size = 1024;
+                   pclient->preserved_output =
                         xmalloc(pclient->preserved_size);
-                }
-                pclient->preserved_sent_count = client->sent_count;
-            }
-            if (! pclient && client->obuffer != NULL) {
-                memcpy(client->obuffer, eof_message, eof_len);
-                write_to_browser(wsi, client->obuffer, eof_len, false);
-                free(client->obuffer_raw);
-                client->obuffer = NULL;
-                client->obuffer_raw = NULL;
-            }
-            break;
+              }
+              pclient->preserved_sent_count = client->sent_count;
+         }
+         if (! pclient && client->obuffer != NULL) {
+              memcpy(client->obuffer, eof_message, eof_len);
+              write_to_browser(wsi, client->obuffer, eof_len, false);
+              free(client->obuffer_raw);
+              client->obuffer = NULL;
+              client->obuffer_raw = NULL;
+         }
+         break;
 
-        case LWS_CALLBACK_RECEIVE:
-            // receive data from websockets client (browser)
-            //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
-            if (client->buffer == NULL) {
-                client->buffer = xmalloc(len + 1);
-                client->len = len;
-                memcpy(client->buffer, in, len);
-            } else {
-                client->buffer = xrealloc(client->buffer, client->len + len + 1);
-                memcpy(client->buffer + client->len, in, len);
-                client->len += len;
-            }
-            client->buffer[client->len] = '\0';
+    case LWS_CALLBACK_RECEIVE:
+         // receive data from websockets client (browser)
+         //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
+         if (client->buffer == NULL) {
+              client->buffer = xmalloc(len + 1);
+              client->len = len;
+              memcpy(client->buffer, in, len);
+         } else {
+              client->buffer = xrealloc(client->buffer, client->len + len + 1);
+              memcpy(client->buffer + client->len, in, len);
+              client->len += len;
+         }
+         client->buffer[client->len] = '\0';
 
-            // check if there are more fragmented messages
-            if (lws_remaining_packet_payload(wsi) > 0 || !lws_is_final_fragment(wsi)) {
-                return 0;
-            }
-
-            if (server->options.readonly)
+         // check if there are more fragmented messages
+         if (lws_remaining_packet_payload(wsi) > 0 || !lws_is_final_fragment(wsi)) {
               return 0;
-            size_t clen = client->len;
-            unsigned char *msg = (unsigned char*) client->buffer;
-            struct pty_client *pclient = client->pclient;
-            // FIXME handle PENDING
-            int start = 0;
-            for (int i = 0; ; i++) {
-                if (i+1 == clen && msg[i] >= 128)
-                    break;
-                // 0x92 (utf-8 0xc2,0x92) "Private Use 2".
-                if (i == clen || msg[i] == 0x92
-                    || (msg[i] == 0xc2 && msg[i+1] == 0x92)) {
-                    int w = i - start;
-                    if (w > 0 && write(pclient->pty, msg+start, w) < w) {
+         }
+
+         if (server->options.readonly)
+              return 0;
+         size_t clen = client->len;
+         unsigned char *msg = (unsigned char*) client->buffer;
+         struct pty_client *pclient = client->pclient;
+         // FIXME handle PENDING
+         int start = 0;
+         for (int i = 0; ; i++) {
+              if (i+1 == clen && msg[i] >= 128)
+                   break;
+              // 0x92 (utf-8 0xc2,0x92) "Private Use 2".
+              if (i == clen || msg[i] == 0x92
+                  || (msg[i] == 0xc2 && msg[i+1] == 0x92)) {
+                   int w = i - start;
+                   if (w > 0 && write(pclient->pty, msg+start, w) < w) {
                         lwsl_err("write INPUT to pty\n");
                         return -1;
-                    }
-                    if (i == clen) {
+                   }
+                   if (i == clen) {
                         start = clen;
                         break;
-                    }
-                    // look for reported event
-                    if (msg[i] == 0xc2)
-                      i++;
-                    unsigned char* eol = memchr(msg+i, '\n', clen-i);
-                    if (eol) {
+                   }
+                   // look for reported event
+                   if (msg[i] == 0xc2)
+                        i++;
+                   unsigned char* eol = memchr(msg+i, '\n', clen-i);
+                   if (eol) {
                         unsigned char *p = (char*) msg+i;
                         char* cname = (char*) ++p;
                         while (p < eol && *p != ' ')
-                          p++;
+                             p++;
                         *p = '\0';
                         if (p < eol)
-                          p++;
+                             p++;
                         while (p < eol && *p == ' ')
-                          p++;
+                             p++;
                         // data is from p to eol
                         char *data = (char*) p;
                         *eol = '\0';
                         size_t dlen = eol - p;
                         reportEvent(cname, data, dlen, wsi, client);
                         i = eol - msg;
-                    } else {
+                   } else {
                         break;
-                    }
-                    start = i+1;
-                }
-            }
-            if (start < clen) {
+                   }
+                   start = i+1;
+              }
+         }
+         if (start < clen) {
               memmove(client->buffer, client->buffer+start, clen-start);
               client->len = clen - start;
-            }
-            else if (client->buffer != NULL) {
-                free(client->buffer);
-                client->buffer = NULL;
-            }
-            break;
+         }
+         else if (client->buffer != NULL) {
+              free(client->buffer);
+              client->buffer = NULL;
+         }
+         break;
 
-        case LWS_CALLBACK_CLOSED:
-            //fprintf(stderr, "callback_tty CALLBACK_CLOSED\n");
-            if (focused_wsi == wsi)
-                focused_wsi = NULL;
-            tty_client_destroy(wsi, client);
-            lwsl_notice("client disconnected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
-            if (client->version_info != NULL) {
-                free(client->version_info);
-                client->version_info = NULL;
-            }
-            if (client->buffer != NULL) {
-                free(client->buffer);
-                client->buffer = NULL;
-            }
-            break;
+    case LWS_CALLBACK_CLOSED:
+         //fprintf(stderr, "callback_tty CALLBACK_CLOSED\n");
+         if (focused_wsi == wsi)
+              focused_wsi = NULL;
+         tty_client_destroy(wsi, client);
+         lwsl_notice("client disconnected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
+         if (client->version_info != NULL) {
+              free(client->version_info);
+              client->version_info = NULL;
+         }
+         if (client->buffer != NULL) {
+              free(client->buffer);
+              client->buffer = NULL;
+         }
+         break;
 
-        case LWS_CALLBACK_PROTOCOL_INIT: /* per vhost */
-              break;
+    case LWS_CALLBACK_PROTOCOL_INIT: /* per vhost */
+         break;
 
-        case LWS_CALLBACK_PROTOCOL_DESTROY: /* per vhost */
-            break;
+    case LWS_CALLBACK_PROTOCOL_DESTROY: /* per vhost */
+         break;
 
     default:
-            //fprintf(stderr, "callback_tty default reason:%d\n", (int) reason);
-            break;
+         //fprintf(stderr, "callback_tty default reason:%d\n", (int) reason);
+         break;
     }
 
     return 0;
