@@ -83,7 +83,7 @@ struct pty_client {
     // The following are used to attach to already-visible session.
     char *preserved_output; // data send since window-contents request
     size_t preserved_start; // start of valid data in preserved_output
-#define PRESERVE_MIN (LWS_PRE + start_replay_len)
+#define PRESERVE_MIN 0
     size_t preserved_end; // end of valid data in preserved_output
     size_t preserved_size; // allocated size of preserved_output
     long preserved_sent_count;  // sent_count corresponding to preserved_output
