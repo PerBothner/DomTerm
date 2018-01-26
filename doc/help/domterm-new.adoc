@@ -5,7 +5,7 @@ ifdef::basebackend-manpage[]
 domterm new - create new terminal session
 endif::[]
 ifndef::basebackend-manpage[]
-= domterm new - create new terminal session
+== domterm new - create new terminal session
 endif::[]
 
 == Synopsis
