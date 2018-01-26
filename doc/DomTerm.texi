@@ -293,7 +293,7 @@ sudo dnf install java-1.8.0-openjdk-devel
 
 (Tested on Ubuntu 17.10.1)
 
-You need to install the following prereuisites:
+You need to install the following prerequisites:
 @example
 sudo apt-get install git gcc make automake libjson-c-dev pkg-config asciidoctor libmagic-dev
 @end example
@@ -304,7 +304,7 @@ sudo apt-get install qt5-qmake qt5-default libqt5webengine5 libqt5webchannel5-de
 
 @c FIXME asciiodoctor should be optional
 
-In the future you should be able to do @code{apt-get install libwebsockets-dev}, but at the tme of writing the available package is too old,
+In the future you should be able to do @code{apt-get install libwebsockets-dev}, but at the time of writing the available package is too old,
 so you have to build libwebsockets from source - see below.
 
 If you need to build libwebsockets from source:
@@ -317,21 +317,11 @@ sudo apt-get install cmake
 The @code{domterm} server requires libwebsockets version 2.2
 or newer.  As of January 2018, the version in Fedora 27 in fine,
 but the version in Ubuntu is too old.
-@emph{Furthermore, the most recent libwebsockets in git is
-currently incompatible with domterm.}
 If you need to build libwebsockets from source, do the following:
 
 @example
 cd $WORKDIR
 git clone https://github.com/warmcat/libwebsockets
-@end example
-
-@emph{Select a working version (temporary work-around)}:
-@example
-git checkout 516001db8a6ac1a10b75e6a9d152831de274e8be
-@end example
-Then
-@example
 cd libwebsockets
 mkdir build
 cd build
