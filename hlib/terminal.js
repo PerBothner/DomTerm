@@ -2220,7 +2220,8 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     }
     document.addEventListener("mousedown", docMouseDown, false);
     */
-    this.loadStyleSheet("user", "");
+    if (! DomTerm._userStyleSet)
+        this.loadStyleSheet("user", "");
 
     this._mainBufferName = this.makeId("main")
     this._altBufferName = this.makeId("alternate")
@@ -4496,10 +4497,10 @@ DomTerm.prototype.setSettings = function(obj) {
     var style_user = obj["style.user"];
     if (style_user) {
         this.loadStyleSheet("user", style_user);
-        this._userStyleSet = true;
-    } else if (this._userStyleSet) {
+        DomTerm._userStyleSet = true;
+    } else if (DomTerm._userStyleSet) {
         this.loadStyleSheet("user", "");
-        this._userStyleSet = false;
+        DomTerm._userStyleSet = false;
     }
     var geom = obj["window.geometry"];
     if (geom) {
