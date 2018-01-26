@@ -48,6 +48,7 @@ signals:
      */
     void finished();
     void layoutAddPane(int paneOp);
+    void detachSession();
     void writeInputMode(int mode);
     void writeSetCaretStyle(int style);
     void writeEncoded(int nbytes, const QString &encodedBytes);

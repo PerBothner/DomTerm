@@ -257,7 +257,7 @@ void Backend::setSetting(const QString& key, const QString& value)
 
 void Backend::inputModeChanged(int mode)
 {
-    webView()->inputModeChanged((char) mode);
+    webView()->mainWindow()->inputModeChanged((char) mode);
 }
 
 void Backend::log(const QString& message)

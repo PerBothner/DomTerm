@@ -106,6 +106,9 @@ function setupQWebChannel(channel) {
         if (dt)
             DomTerm.layoutAddPane(dt, paneOp);
     });
+    backend.detachSession.connect(function() {
+        DomTerm.detach();
+    });
     DomTerm.windowClose = function() { backend.closeMainWindow(); };
     DomTerm.setTitle = function(title) {
         backend.setWindowTitle(title == null ? "" : title); };

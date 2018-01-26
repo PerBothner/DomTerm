@@ -198,10 +198,10 @@ void BrowserMainWindow::setupMenu()
     QAction *a = viewMenu->addAction(tr("&Full Screen"), this, SLOT(slotViewFullScreen(bool)),  Qt::Key_F11);
     a->setCheckable(true);
 
-#if 0
-    QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
+#if 1
+    //QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
 #if defined(QWEBENGINEINSPECTOR)
-    a = toolsMenu->addAction(tr("Enable Web &Inspector"), this, SLOT(slotToggleInspector(bool)));
+    a = viewMenu->addAction(tr("Enable Web &Inspector"), this, SLOT(slotToggleInspector(bool)));
     a->setCheckable(true);
 #endif
 #endif
@@ -226,15 +226,67 @@ void BrowserMainWindow::setupMenu()
                                                   this, &BrowserMainWindow::slotNewTerminalRight,
                                                   QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Right));
 
+    inputModeGroup = new QActionGroup(this);
+    inputModeGroup->setExclusive(true);
+    charInputMode = new QAction(tr("&Char mode"), inputModeGroup);
+    lineInputMode = new QAction(tr("&Line mode"), inputModeGroup);
+    autoInputMode = new QAction(tr("&Auto mode"), inputModeGroup);
+    inputModeGroup->addAction(charInputMode);
+    inputModeGroup->addAction(lineInputMode);
+    inputModeGroup->addAction(autoInputMode);
+    inputModeMenu = new QMenu(tr("&Input mode"), this);
+    int nmodes = 3;
+    for (int i = 0; i < nmodes; i++) {
+        QAction *action = inputModeGroup->actions().at(i);
+        action->setCheckable(true);
+        inputModeMenu->addAction(action);
+    }
+    autoInputMode->setChecked(true);
+    selectedInputMode = autoInputMode;
+    connect(inputModeGroup, &QActionGroup::triggered,
+            this, &BrowserMainWindow::changeInputMode);
+
     QMenu *terminalMenu = menuBar()->addMenu(tr("&Terminal"));
-#if 0
-    terminalMenu->addAction(webView()->changeCaretAction());
-#endif
+    terminalMenu->addMenu(inputModeMenu);
+    //terminalMenu->addAction(webView()->changeCaretAction());
     terminalMenu->addMenu(newTerminalMenu);
+    detachAction = terminalMenu->addAction("&Detach", this,
+                                           &BrowserMainWindow::slotDetach);
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     //helpMenu->addAction(tr("About &Qt"), qApp, SLOT(aboutQt()));
     helpMenu->addAction(tr("About QtDomTerm"), this, SLOT(slotAboutApplication()));
+}
+
+void BrowserMainWindow::changeInputMode(QAction* action)
+{
+    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
+    if(!inputMode)
+        qFatal("scrollPosition is NULL");
+    if (action != selectedInputMode) {
+        char mode = action == charInputMode ? 'c'
+          : action == lineInputMode ? 'l'
+          : 'a';
+        inputModeChanged(mode);
+        webView()->backend()->setInputMode(mode);
+    }
+}
+
+void BrowserMainWindow::inputModeChanged(char mode)
+{
+  QAction* action = mode == 'a' ? autoInputMode
+    : mode == 'l' ? lineInputMode
+    : charInputMode;
+#if 0
+    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
+    if(!inputMode)
+        qFatal("scrollPosition is NULL");
+#endif
+    if (action != selectedInputMode) {
+        selectedInputMode->setChecked(false);
+        action->setChecked(true);
+        selectedInputMode = action;
+    }
 }
 
 void BrowserMainWindow::slotViewMenubar()
@@ -278,6 +330,11 @@ void BrowserMainWindow::slotUpdateWindowTitle(const QString &title)
 void  BrowserMainWindow::slotNewTerminal(int paneOp)
 {
     emit webView()->backend()->layoutAddPane(paneOp);
+}
+
+void  BrowserMainWindow::slotDetach()
+{
+    emit webView()->backend()->detachSession();
 }
 
 void BrowserMainWindow::slotAboutApplication()

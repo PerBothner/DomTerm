@@ -118,7 +118,7 @@ bool WebPage::certificateError(const QWebEngineCertificateError &error)
     return false;
 }
 
-void WebView::newPage(const QString& url, QSharedDataPointer<ProcessOptions> processOptions)
+void WebView::newPage(const QString& url, QSharedDataPointer<ProcessOptions> /*processOptions*/)
 {
     setPage(new WebPage(QWebEngineProfile::defaultProfile(), this));
 
@@ -263,26 +263,6 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
         qInfo() << "Render process exited with code" << statusCode << status;
     });
 
-    inputModeGroup = new QActionGroup(this);
-    inputModeGroup->setExclusive(true);
-    charInputMode = new QAction(tr("&Char mode"), inputModeGroup);
-    lineInputMode = new QAction(tr("&Line mode"), inputModeGroup);
-    autoInputMode = new QAction(tr("&Auto mode"), inputModeGroup);
-    inputModeGroup->addAction(charInputMode);
-    inputModeGroup->addAction(lineInputMode);
-    inputModeGroup->addAction(autoInputMode);
-    inputModeMenu = new QMenu(tr("&Input mode"), this);
-    int nmodes = 3;
-    for (int i = 0; i < nmodes; i++) {
-        QAction *action = inputModeGroup->actions().at(i);
-        action->setCheckable(true);
-        inputModeMenu->addAction(action);
-    }
-    autoInputMode->setChecked(true);
-    selectedInputMode = autoInputMode;
-    connect(inputModeGroup, &QActionGroup::triggered,
-            this, &WebView::changeInputMode);
-
     m_saveAsAction = new QAction(tr("Save As"), this);
     m_saveAsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
     connect(m_saveAsAction, SIGNAL(triggered()), this, SLOT(requestSaveAs()));
@@ -322,37 +302,6 @@ void WebView::setSetting(const QString& key, const QString& value)
 {
     if (key=="style.qt") {
         setStyleSheet(value);
-    }
-}
-
-void WebView::changeInputMode(QAction* action)
-{
-    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
-    if(!inputMode)
-        qFatal("scrollPosition is NULL");
-    if (action != selectedInputMode) {
-        char mode = action == charInputMode ? 'c'
-          : action == lineInputMode ? 'l'
-          : 'a';
-        inputModeChanged(mode);
-        backend()->setInputMode(mode);
-    }
-}
-
-void WebView::inputModeChanged(char mode)
-{
-  QAction* action = mode == 'a' ? autoInputMode
-    : mode == 'l' ? lineInputMode
-    : charInputMode;
-#if 0
-    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
-    if(!inputMode)
-        qFatal("scrollPosition is NULL");
-#endif
-    if (action != selectedInputMode) {
-        selectedInputMode->setChecked(false);
-        action->setChecked(true);
-        selectedInputMode = action;
     }
 }
 
@@ -408,11 +357,10 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
         menu->addAction(page()->action(QWebEnginePage::Copy));
         menu->addAction(page()->action(QWebEnginePage::Paste));
 
-        menu->addAction(webPage()->mainWindow()->m_viewMenubar);
-
-        menu->addMenu(inputModeMenu);
-
-        menu->addMenu(webPage()->mainWindow()->newTerminalMenu);
+        menu->addAction(mainWindow()->m_viewMenubar);
+        menu->addMenu(mainWindow()->inputModeMenu);
+        menu->addMenu(mainWindow()->newTerminalMenu);
+        menu->addAction(mainWindow()->detachAction);
     } else {
         menu = page()->createStandardContextMenu();
     }

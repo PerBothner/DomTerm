@@ -56,6 +56,7 @@
 #include <QtCore/QUrl>
 
 QT_BEGIN_NAMESPACE
+class QActionGroup;
 class QWebEngineFrame;
 QT_END_NAMESPACE
 
@@ -85,6 +86,8 @@ public:
 
 public slots:
     void loadPage(const QString &url);
+    void changeInputMode(QAction*);
+    void inputModeChanged(char mode);
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -100,6 +103,7 @@ private slots:
     void slotNewTerminalLeft() { slotNewTerminal(10); }
     void slotNewTerminalRight() { slotNewTerminal(11); }
     void muxPrefixAction()  { slotNewTerminal(3); }
+    void slotDetach();
 
     void loadUrl(const QUrl &url);
 
@@ -145,6 +149,7 @@ private:
     QAction *newTerminalLeft;
     QAction *newTerminalRight;
     QMenu *newTerminalMenu;
+    QAction *detachAction;
 
     QIcon m_reloadIcon;
 
@@ -152,6 +157,13 @@ private:
     QString m_printerOutputFileName;
     friend class BrowserApplication;
     friend class WebView;
+
+    QAction *charInputMode;
+    QAction *lineInputMode;
+    QAction *autoInputMode;
+    QActionGroup* inputModeGroup;
+    QAction *selectedInputMode;
+    QMenu *inputModeMenu;
 };
 
 #endif // BROWSERMAINWINDOW_H

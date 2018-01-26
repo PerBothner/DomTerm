@@ -55,7 +55,6 @@
 #include <QWebEngineView>
 
 QT_BEGIN_NAMESPACE
-class QActionGroup;
 class QMouseEvent;
 class QNetworkProxy;
 class QNetworkReply;
@@ -102,6 +101,7 @@ public:
     void newPage(const QString& url, QSharedDataPointer<ProcessOptions> processOptions);
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
+    BrowserMainWindow *mainWindow() { return m_page->mainWindow(); }
     void setPage(WebPage *page);
     bool blockCaret() { return m_blockCaret; }
     void setBlockCaret(bool set) { m_blockCaret = set; }
@@ -117,8 +117,6 @@ public slots:
     QString generateSaveFileName();
     void requestSaveAs();
     void requestChangeCaret(bool);
-    void changeInputMode(QAction*);
-    void inputModeChanged(char mode);
     void setSetting(const QString& key, const QString& value);
 signals:
     void finished();
@@ -143,13 +141,6 @@ private:
 
     QAction *m_saveAsAction;
     QAction *m_changeCaretAction;
-
-    QAction *charInputMode;
-    QAction *lineInputMode;
-    QAction *autoInputMode;
-    QActionGroup* inputModeGroup;
-    QAction *selectedInputMode;
-    QMenu *inputModeMenu;
 };
 
 #endif
