@@ -56,6 +56,7 @@
 #include "processoptions.h"
 
 #include <QtCore/QSettings>
+#include <QtGui/QDesktopServices>
 #include <QtWidgets/QShortcut>
 #include <QtWidgets/QDesktopWidget>
 #include <QtWidgets/QFileDialog>
@@ -142,9 +143,10 @@ void BrowserMainWindow::setupMenu()
     // File
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
 
-    QAction*newTerminalWindow = fileMenu->addAction(tr("&New Window"), this, SLOT(slotFileNew())
-                                                    );
-    //    ,                                            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    QAction*newTerminalWindow =
+        fileMenu->addAction(tr("&New Window"), this,
+                            &BrowserMainWindow::slotFileNew,
+                            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
     newTerminalTab = fileMenu->addAction("New terminal tab",
                                          this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
     fileMenu->addAction(newTerminalTab);
@@ -254,8 +256,9 @@ void BrowserMainWindow::setupMenu()
                                            &BrowserMainWindow::slotDetach);
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-    //helpMenu->addAction(tr("About &Qt"), qApp, SLOT(aboutQt()));
     helpMenu->addAction(tr("About QtDomTerm"), this, SLOT(slotAboutApplication()));
+    helpMenu->addAction(tr("DomTerm home page"), this,
+                        &BrowserMainWindow::slotOpenHomePage);
 }
 
 void BrowserMainWindow::changeInputMode(QAction* action)
@@ -332,9 +335,14 @@ void  BrowserMainWindow::slotNewTerminal(int paneOp)
     emit webView()->backend()->layoutAddPane(paneOp);
 }
 
-void  BrowserMainWindow::slotDetach()
+void BrowserMainWindow::slotDetach()
 {
     emit webView()->backend()->detachSession();
+}
+
+void BrowserMainWindow::slotOpenHomePage()
+{
+    QDesktopServices::openUrl(QUrl("http://domterm.org/"));
 }
 
 void BrowserMainWindow::slotAboutApplication()

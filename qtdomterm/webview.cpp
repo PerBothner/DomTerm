@@ -309,7 +309,7 @@ QString WebView::generateSaveFileName()
 {
     //return backend->sessionName() + ".html";
     char buf[100];
-    sprintf(buf, "domterm%d.html", webPage()->mainWindow()->application()->getSaveFileCount());
+    sprintf(buf, "domterm-saved-%d.html", webPage()->mainWindow()->application()->getSaveFileCount());
     return QString(buf);
 }
 

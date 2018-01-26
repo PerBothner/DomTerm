@@ -104,6 +104,7 @@ private slots:
     void slotNewTerminalRight() { slotNewTerminal(11); }
     void muxPrefixAction()  { slotNewTerminal(3); }
     void slotDetach();
+    void slotOpenHomePage();
 
     void loadUrl(const QUrl &url);
 

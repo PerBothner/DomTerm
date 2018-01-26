@@ -31,7 +31,6 @@
 #include <QUrl>
 #include <QRegExp>
 #include <QtDebug>
-#include <QDesktopServices>
 #include <QTimer>
 #include <QFileSystemWatcher>
 
