@@ -3,7 +3,7 @@ DomTerm.savedMenuBar = null;
 DomTerm.aboutMessage = function() {
     var s = '<h2>Welcome to DomTerm.</h2>\n';
     s += '<p>DomTerm is terminal emulator based on web technologies. ';
-    s += 'Features include embedded graphicss and html; tabs and sub-windows; save as html.</p>\n';
+    s += 'Features include embedded graphics and html; tabs and sub-windows; detachable session.</p>\n';
     s += '<p>Home page: <a href="http://domterm.org/" target="_blank"><code>http://domterm.org</code></a>.</p>\n';
     s += '<p>DomTerm version '+DomTerm.versionString+'.';
     if (DomTerm.isElectron()) {
@@ -214,8 +214,6 @@ DomTerm.createElectronMenus = function() {
         lineModeItem.checked = mode == 108;
         autoModeItem.checked = mode == 97;
         autoPagingItem.checked = dt ? dt._autoPaging : false;
-        DomTerm._contextTarget = e.target;
-        DomTerm._contextLink = DomTerm._isInElement(e.target, "A");
         let cmenu = DomTerm._contextLink ? contextLinkMenu : contextMenu;
         cmenu.popup(remote.getCurrentWindow())
     }, false)

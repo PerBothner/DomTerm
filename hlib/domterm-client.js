@@ -83,8 +83,40 @@ function connectAjax(name, prefix="", topNode=null)
     xhr.send("VERSION="+DomTerm.versionInfo);
 }
 
+DomTerm.handleSimpleMessage = function(command) {
+    if (command=="serialize")
+        DomTerm.saveWindowContents();  //or maybe DomTerm.detach();
+    else if (command=="destroy-window")
+        dt.reportEvent("destroy-window", "");
+    else if (command=="detach")
+        DomTerm.detach();
+    else if (command=="toggle-auto-paging")
+        DomTerm.toggleAutoPaging();
+    else if (command=="open-link")
+        DomTerm.handleLink(DomTerm._contextLink);
+    else if (command=="copy-link-address")
+        DomTerm.copyLink();
+    else if (command=="copy")
+        DomTerm.doCopy();
+    else if (command=="context-copy")
+        DomTerm.doContextCopy();
+}
+
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
+    DomTerm.showContextMenu = function(contextType) {
+        backend.showContextMenu(contextType);
+        return false;
+    }
+    DomTerm.doCopy = function(asHTML=false) {
+        var sel = window.getSelection();
+        var html = DomTerm._selectionAsHTML(sel);
+        if (asHTML) {
+            backend.setClipboard(html, "");
+        } else {
+            backend.setClipboard(sel.toString(), html);
+        }
+    }
     DomTerm.settingsHook = function(key, value) {
         backend.setSetting(key, value);
     };
@@ -108,6 +140,10 @@ function setupQWebChannel(channel) {
     });
     backend.detachSession.connect(function() {
         DomTerm.detach();
+    });
+    backend.handleSimpleMessage.connect(DomTerm.handleSimpleMessage);
+    backend.copyAsHTML.connect(function() {
+        DomTerm.doCopy(true);
     });
     DomTerm.windowClose = function() { backend.closeMainWindow(); };
     DomTerm.setTitle = function(title) {
@@ -189,6 +225,10 @@ function loadHandler(event) {
                 ipcRenderer.sendToHost(command, ...args);
              }
         }
+        DomTerm.showContextMenu = function(contextType) {
+            DomTerm.sendParentMessage("domterm-context-menu", contextType);
+            return true;
+        }
         DomTerm.newPane = function(paneOp, sessionPid, dt) {
             DomTerm.sendParentMessage("domterm-new-pane", paneOp, sessionPid);
         };
@@ -245,21 +285,9 @@ function loadHandler(event) {
 function handleMessage(event) {
     var data = event.data;
     var dt=DomTerm.focusedTerm;
-    if (data=="serialize")
-        DomTerm.saveWindowContents();  //or maybe DomTerm.detach();
-    else if (data=="destroy-window")
-        dt.reportEvent("destroy-window", "");
-    else if (data=="detach")
-        DomTerm.detach();
-    else if (data=="toggle-auto-paging")
-        DomTerm.toggleAutoPaging();
-    else if (data=="open-link")
-        DomTerm.handleLink(DomTerm._contextLink);
-    else if (data=="copy-link-address")
-        DomTerm.copyLink();
-     else if (data=="context-copy")
-        DomTerm.doContextCopy();
-   else if (data.command=="handle-output")
+    if (data instanceof String)
+	DomTerm.handleSimpleMessage(data);
+    else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);
     else if (data.command=="socket-open") {
         dt.reportEvent("VERSION", DomTerm.versionInfo);

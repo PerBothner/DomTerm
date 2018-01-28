@@ -270,6 +270,16 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
     m_changeCaretAction = new QAction(tr("Block caret (char mode only)"), this);
     m_changeCaretAction->setCheckable(true);
     connect(m_changeCaretAction, SIGNAL(triggered(bool)), this, SLOT(requestChangeCaret(bool)));
+    m_openAction = new QAction(tr("Open Link"), this);
+    connect(m_openAction, &QAction::triggered,
+	    this,  &WebView::slotOpenLink);
+    m_copyLinkAddress = new QAction(tr("Copy Link Address"), this);
+    connect(m_copyLinkAddress, &QAction::triggered,
+	    this, &WebView::slotCopyLinkAddress);
+    m_copyInContext = new QAction(tr("&Copy"), this);
+    m_copyInContext->setShortcut(QKeySequence(Qt::CTRL|Qt::SHIFT|Qt::Key_C));
+    connect(m_copyInContext, &QAction::triggered,
+	    this, &WebView::slotCopyInContext);
 }
 
 void WebView::setPage(WebPage *_page)
@@ -339,6 +349,12 @@ void WebView::requestChangeCaret(bool set)
     this->setBlockCaret(set);
 }
 
+void WebView::showContextMenu(const QString& contextType)
+{
+    fprintf(stderr, "WebView::showContextMenu %s\n", contextType.toUtf8().constData());
+    this->contextTypeForMenu = contextType;
+}
+
 void WebView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu *menu;
@@ -353,9 +369,16 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
         m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
         this->addAction(m_paste, QWebEnginePage::Paste);
         */
-        // This doesn't show the shutcut keys - but they work.
-        menu->addAction(page()->action(QWebEnginePage::Copy));
-        menu->addAction(page()->action(QWebEnginePage::Paste));
+	if (contextTypeForMenu.contains("A")) {
+            menu->addAction(m_openAction);
+	    menu->addAction(m_copyLinkAddress);
+            menu->addSeparator();
+            menu->addAction(m_copyInContext);
+	} else {
+            menu->addAction(mainWindow()->m_copy);
+        }
+        //menu->addAction(page()->action(QWebEnginePage::Paste));
+        menu->addAction(mainWindow()->m_paste);
 
         menu->addAction(mainWindow()->m_viewMenubar);
         menu->addMenu(mainWindow()->inputModeMenu);
@@ -368,6 +391,21 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
     //menu->addAction(page()->action(QWebEnginePage::SavePage));
     connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
     menu->popup(event->globalPos());
+}
+
+void WebView::slotOpenLink()
+{
+    const QString command = "open-link";
+    emit backend()->handleSimpleMessage(command);
+}
+
+void WebView::slotCopyLinkAddress()
+{
+    emit backend()->handleSimpleMessage("copy-link-address");
+}
+void WebView::slotCopyInContext()
+{
+    emit backend()->handleSimpleMessage("context-copy");
 }
 
 void WebView::wheelEvent(QWheelEvent *event)

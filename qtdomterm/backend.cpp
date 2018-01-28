@@ -33,6 +33,8 @@
 #include <QtDebug>
 #include <QTimer>
 #include <QFileSystemWatcher>
+#include <QMimeData>
+#include <QtGui/QClipboard>
 
 #include "backend.h"
 #include "browsermainwindow.h"
@@ -249,9 +251,25 @@ void Backend::openNewWindow(int width, int height, const QString& url)
     BrowserApplication::instance()->newMainWindow(xurl, width, height, options);
 }
 
+void Backend::showContextMenu(const QString& contextType)
+{
+    webView()->showContextMenu(contextType);
+}
+
 void Backend::setSetting(const QString& key, const QString& value)
 {
     webView()->setSetting(key, value);
+}
+
+void Backend::setClipboard(const QString& textPlain, const QString& textHtml)
+{
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    QMimeData *data = new QMimeData();
+    if (textPlain.size() > 0)
+        data->setText(textPlain);
+    if (textHtml.size() > 0)
+        data->setHtml(textHtml);
+    clipboard->setMimeData(data);
 }
 
 void Backend::inputModeChanged(int mode)

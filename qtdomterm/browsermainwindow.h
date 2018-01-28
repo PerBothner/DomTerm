@@ -105,6 +105,9 @@ private slots:
     void muxPrefixAction()  { slotNewTerminal(3); }
     void slotDetach();
     void slotOpenHomePage();
+    void slotCopy();
+    void slotCopyAsHTML();
+    void slotPaste();
 
     void loadUrl(const QUrl &url);
 
@@ -142,6 +145,8 @@ private:
     int m_width, m_height;
 
     QAction *m_viewMenubar;
+    QAction *m_copy;
+    QAction *m_paste;
 
     QAction *newTerminalTab;
     QAction *newTerminalPane;

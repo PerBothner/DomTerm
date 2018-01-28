@@ -108,7 +108,7 @@ public:
 
     QAction *saveAsAction() const { return m_saveAsAction; }
     QAction *changeCaretAction() const { return m_changeCaretAction; }
-
+    void showContextMenu(const QString& contextType);
     void loadUrl(const QUrl &url);
     QUrl url() const;
 
@@ -131,6 +131,9 @@ private slots:
     void setProgress(int progress);
     void loadFinished(bool success);
     void onIconChanged(const QIcon &icon);
+    void slotOpenLink();
+    void slotCopyLinkAddress();
+    void slotCopyInContext();
 
 private:
     QUrl m_initialUrl;
@@ -138,9 +141,13 @@ private:
     WebPage *m_page;
     Backend *m_backend;
     bool m_blockCaret;
+    QString contextTypeForMenu;
 
     QAction *m_saveAsAction;
     QAction *m_changeCaretAction;
+    QAction *m_openAction;
+    QAction *m_copyLinkAddress;
+    QAction *m_copyInContext;
 };
 
 #endif

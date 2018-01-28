@@ -38,6 +38,7 @@ tle
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
     QString getSavedHtml() { return _savedHtml; }
+    //void handleSimpleMessage(QString msg);
 
 signals:
     /** Emitted when the terminal process starts. */
@@ -48,7 +49,9 @@ signals:
      */
     void finished();
     void layoutAddPane(int paneOp);
+    void copyAsHTML();
     void detachSession();
+    void handleSimpleMessage(const QString& msg);
     void writeInputMode(int mode);
     void writeSetCaretStyle(int style);
     void writeEncoded(int nbytes, const QString &encodedBytes);
@@ -58,7 +61,9 @@ public slots:
     void setSavedHtml(const QString &info) { _savedHtml = info; }
     void closeMainWindow();
     void openNewWindow(int width, int height, const QString& url);
+    void showContextMenu(const QString& contextType);
     void setSetting(const QString& key, const QString& value);
+    void setClipboard(const QString& plain, const QString& html);
     void inputModeChanged(int mode);
     void log(const QString& message);
 

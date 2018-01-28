@@ -166,10 +166,13 @@ void BrowserMainWindow::setupMenu()
 
     // Edit
     QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
-    QAction *m_copy = editMenu->addAction(tr("&Copy"));
+    m_copy = editMenu->addAction(tr("&Copy"),
+                                 this, &BrowserMainWindow::slotCopy);
     m_copy->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
-    //m_tabWidget->addWebAction(m_copy, QWebEnginePage::Copy);
-    QAction *m_paste = editMenu->addAction(tr("&Paste"));
+    editMenu->addAction(tr("Copy as HTML"), this,
+                            &BrowserMainWindow::slotCopyAsHTML);
+    m_paste = editMenu->addAction(tr("&Paste"),
+                                  this, &BrowserMainWindow::slotPaste);
     m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
     //m_tabWidget->addWebAction(m_paste, QWebEnginePage::Paste);
     editMenu->addSeparator();
@@ -338,6 +341,21 @@ void  BrowserMainWindow::slotNewTerminal(int paneOp)
 void BrowserMainWindow::slotDetach()
 {
     emit webView()->backend()->detachSession();
+}
+
+void BrowserMainWindow::slotCopy()
+{
+    emit webView()->backend()->handleSimpleMessage("copy");
+}
+
+void BrowserMainWindow::slotPaste()
+{
+    webView()->webPage()->triggerAction(QWebEnginePage::Paste);
+}
+
+void BrowserMainWindow::slotCopyAsHTML()
+{
+    emit webView()->backend()->copyAsHTML();
 }
 
 void BrowserMainWindow::slotOpenHomePage()

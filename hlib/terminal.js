@@ -2546,22 +2546,24 @@ DomTerm.prototype.createContextMenu = function() {
 };
 */
 
+DomTerm.showContextMenu = null;
+
 DomTerm.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
         this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY);
     if (ev.type == "mousedown") {
         DomTerm.setFocus(this);
     }
-    if (this.sstate.mouseMode == 0 && ev.button == 2
-        && DomTerm.sendParentMessage) {
-            //&& DomTerm.isInIFrame()) {
-        // used by atom-domterm
-        ev.preventDefault();
+    if (this.sstate.mouseMode == 0 && ev.button == 2) {
         DomTerm._contextTarget = ev.target;
         DomTerm._contextLink = DomTerm._isInElement(ev.target, "A");
-        DomTerm.sendParentMessage("domterm-context-menu",
-                                  DomTerm._isInElement(ev.target, "A")?"A":"");
-        return;
+        if (DomTerm.showContextMenu) {
+            //&& DomTerm.isInIFrame()) {
+            // used by atom-domterm
+            if (DomTerm.showContextMenu(DomTerm._contextLink?"A":""))
+                ev.preventDefault();
+            return;
+        }
     }
     /* FUTURE POPUP
     if (ev.ctrlKey && ev.button == 2) {
