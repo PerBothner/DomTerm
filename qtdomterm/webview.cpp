@@ -351,7 +351,6 @@ void WebView::requestChangeCaret(bool set)
 
 void WebView::showContextMenu(const QString& contextType)
 {
-    fprintf(stderr, "WebView::showContextMenu %s\n", contextType.toUtf8().constData());
     this->contextTypeForMenu = contextType;
 }
 
