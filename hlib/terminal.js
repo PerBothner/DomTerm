@@ -7722,7 +7722,7 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         return -1;
     }
     function isURL(str) {
-        return str.match(/^[-a-zA-Z][a-zA-Z0-9+.]*:[/]*[^/].*/);
+        return str.match(/^[-a-z][a-z0-9+.]*:[/]*[^/:].*/);
     }
     function isEmail(str) {
         return str.match(/^[^@]+@[^@]+\.[^@]+$/);
