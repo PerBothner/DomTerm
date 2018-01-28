@@ -333,15 +333,18 @@ char *
 qtwebengine_command(int quiet, struct options *options)
 {
     int bsize = 100;
-    if (options->geometry && options->geometry[0])
-      bsize += strlen(options->geometry);
+    char *geometry = options->geometry;
+    if (geometry == NULL || !options->geometry[0])
+        geometry = main_options->geometry;
+    if (geometry)
+        bsize += strlen(geometry);
     if (options->qt_remote_debugging)
       bsize += strlen(options->qt_remote_debugging);
     char *buf = xmalloc(bsize);
     strcpy(buf, "/bin/qtdomterm");
-    if (options->geometry && options->geometry[0]) {
+    if (geometry && geometry[0]) {
         strcat(buf, " --geometry ");
-        strcat(buf, options->geometry);
+        strcat(buf, geometry);
     }
     if (options->qt_remote_debugging) {
         strcat(buf, " --remote-debugging-port=");
