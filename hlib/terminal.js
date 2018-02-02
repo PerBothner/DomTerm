@@ -94,6 +94,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 if (typeof ResizeSensor == "undefined" && typeof require !== "undefined")
     var ResizeSensor = require("./ResizeSensor.js");
 
+if (typeof WcWidth == "undefined" && typeof require !== "undefined")
+    var WcWidth = require("./wcwidth.js");
+
 /** @constructor */
 
 function DomTerm(name, topNode) {
@@ -386,6 +389,7 @@ function DomTerm(name, topNode) {
                 dt._displayInfoWithTimeout(DomTerm.escapeText(ref));
             }
         };
+    this.wcwidth = new WcWidth();
 }
 
 DomTerm.makeElement = function(parent, name) {
@@ -657,6 +661,14 @@ DomTerm.prototype.atLineEnd = function() {
     return next.nodeName == "SPAN" && next.getAttribute("line") == "hard";
 }
 */
+
+DomTerm.prototype.wcwidthInContext = function(ucs, context) {
+    return this.wcwidth.wcwidthInContext(ucs, context);
+}
+
+DomTerm.prototype.strWidthInContext = function(str, context) {
+    return this.wcwidth.strWidthInContext(str, context);
+}
 
 DomTerm.prototype.atTabStop = function(col) {
     if (col >= this._tabDefaultStart)
