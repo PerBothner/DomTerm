@@ -33,7 +33,8 @@ is done with Web Sockets.
 @emph{}
 @uref{images/domterm-panes-2.png,@image{images/domterm-panes-2}}
 
-This @uref{https://lwn.net/Articles/670062/,LWN article} provides
+This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emulator, OpenSource.org article} provides an overview of the functionality.
+This @uref{https://lwn.net/Articles/670062/,old LWN article} provides
 background, motivation, and a summary of the functionality.
 
 The name ``DomTerm'' is due tp that it  works by manipulating the
@@ -142,6 +143,9 @@ embedded in different modes and applications.
 
 @node Features
 @chapter Features and screenshots
+
+This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emulator, OpenSource.org article} provides an overview of DomTerm's functionality.
+(It should be merged into the following.)
 
 @c The @emph is a dummy to force the @image inside a paragraph
 @emph{}

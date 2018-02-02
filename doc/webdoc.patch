@@ -15,25 +15,6 @@
  </body>
 --- web/Features.html.orig	2015-12-27 10:03:44.046089061 -0800
 +++ web/Features.html	2015-12-27 10:19:21.672456921 -0800
-@@ -31,7 +31,8 @@
- </div>
- <div class="chapter">
- <div class="titlepage"><div><div><h1 class="title">
--<a name="Features"></a>Features and screenshots</h1></div></div></div>
-+        <a name="Features"></a>Features and screenshots</h1></div></div></div>
-+<div>
- <p>
- <a class="ulink" href="images/domterm-2.png" target="_top"><span class="inlinemediaobject"><img src="images/domterm-2.png"></span></a>
- A <span class="bold"><strong>full-featured terminal emulator</strong></span>, like <code class="literal">xterm</code>.
-@@ -42,6 +43,8 @@
- (Click on image to see the full-size screenshot.)
- Emacs (shown later) and GNU readline also work well.
- </p>
-+</div>
-+<div>
- <p><a class="ulink" href="images/domterm-polygon-1.png" target="_top"><span class="inlinemediaobject"><img src="images/domterm-polygon-1.png"></span></a>
- A back-end <span class="bold"><strong>can “print” images, graphics, and rich text</strong></span>.
- Here you can see evaluating and “printing”
 @@ -58,6 +61,8 @@
  <p>The image later (with the yellow circle) shows printing
  <a class="ulink" href="https://en.wikipedia.org/wiki/Scalable_Vector_Graphics" target="_top">SVG</a>.
