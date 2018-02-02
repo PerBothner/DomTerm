@@ -2123,7 +2123,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
                                        var offset = node.getAttribute('home-line');
                                        if (offset) {
                                            homeNode = node;
-                                           homOffset = 0 + offset;
+                                           homeOffset = 0 + parseInt(offset, 10);
                                            return node;
                                        }
                                        return false;
