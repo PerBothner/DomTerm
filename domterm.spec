@@ -26,8 +26,6 @@ Requires:       json-c
 Requires(preun): %{_sbindir}/alternatives
 Requires(posttrans): %{_sbindir}/alternatives
 
-# Java is needed for the stylesheet-manipulating subcommands of dt-util.
-# This may change (it's just an implementation legacy).
 # The domterm package also includes Java client and server classes
 # that are useful for Java applications (for example Kawa).
 # It is convenient to put them in the same domterm.jar as the
