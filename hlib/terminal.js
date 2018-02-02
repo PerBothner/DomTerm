@@ -207,6 +207,8 @@ function DomTerm(name, topNode) {
     this._displaySizePendingTimeouts = 0;
     this.modeLineGenerator = null;
 
+    this._miscOptions = {};
+
     // Used if needed to add extra space at the bottom, for proper scrolling.
     // See note in eraseDisplay.
     this._vspacer = null;
@@ -2508,8 +2510,56 @@ DomTerm.prototype.measureWindow = function()  {
     this.availWidth = availWidth;
     if (this.verbosity >= 2)
         this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" numCols:"+this.numColumns+" numRows:"+this.numRows);
-    this.topNode.setAttribute("style",
-                              "--wchar-width: "+(this.charWidth * 2)+"px");
+
+    this._updateMiscOptions();
+};
+
+DomTerm.prototype.setMiscOptions = function(map) {
+    this._miscOptions = map;
+    this._updateMiscOptions();
+};
+
+DomTerm.prototype._updateMiscOptions = function(map) {
+    var map = this._miscOptions;
+    var style = "";
+
+    // handle 'foreground' and 'background'
+    const foreground = map.foreground;
+    const background = map.background;
+    let hex3re = /^#[0-9a-fA-F]{3}$/;
+    let hex6re = /^#[0-9a-fA-F]{6}$/;
+    const fgCols = foreground && foreground.match(hex6re) ? 2
+          : foreground && foreground.match(hex3re) ? 1 : 0;
+    const bgCols = background && background.match(hex6re) ? 2
+          : background && background.match(hex3re) ? 1 : 0;
+    if (fgCols && bgCols) {
+        let fgSum = 0, bgSum = 0;
+        for (let i = 0; i < 3; i++) {
+            fgSum += parseInt(foreground.substring(1+fgCols*i, 3+fgCols*i), 16);
+            bgSum += parseInt(background.substring(1+bgCols*i, 3+bgCols*i), 16);
+        }
+        if (foreground.length == 4)
+            fgSum = 17 * fgSum;
+        if (background.length == 4)
+            bgSum = 17 * bgSum;
+        let darkStyle = fgSum > bgSum;
+        if (darkStyle) {
+            style += "--main-light-color:"+foreground
+                +";--main-dark-color:"+background+";";
+        } else {
+            style += "--main-light-color:"+background
+                +";--main-dark-color:"+foreground+";";
+        }
+        this.setReverseVideo(darkStyle);
+    } else {
+        if (foreground)
+            style += "--foreground-color: "+foreground+";";
+        if (background)
+            style += "--background-color: "+background+";";
+    }
+
+    style += "--wchar-width: "+(this.charWidth * 2)+"px";
+    this.topNode.setAttribute("style", style);
 };
 
 /* FUTURE POPUP
