@@ -2491,7 +2491,7 @@ it is in a @code{<span class="pprint-prefix">} preceding element.
 If there is a block suffix, it follows the @code{"pprint-group"} element.
 
 @item @code{<span class="pprint-prefix">} @var{per-line-prefix} @code{</span>}
-A pre-line prefix.  This must be the previous sibling
+A per-line prefix.  This must be the previous sibling
 of a @code{<span class="pprint-group">} element.
 It is displayed just before the logical group, and also
 for each continuation line, at the same indentation.
@@ -2517,7 +2517,7 @@ or @code{required}.
 
 @item @var{indentation} ::= @code{<span class="pprint-indentation">..</span>}
 These represent actual calculated indentatation.
-They are only inserted when if a line-break is inserted,
+They are only inserted when and if a line-break is inserted,
 and removed if the line-break is removed.
 
 @item @code{<span line="@var{kind}" @var{line-attribute}... > [@var{pre-break-child}] [@var{non-break-child}] [@var{indentation}] [@var{post-break-child}] </span>}
