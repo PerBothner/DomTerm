@@ -2236,7 +2236,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.attachResizeSensor();
     this.measureWindow();
     // Should be zero - support for topNode.offsetLeft!=0 is broken
-    this._topLeft = dt.topNode.getBoundingClientRect().left;
+    this._topLeft = dt.topNode.offsetLeft;
 
     this.topNode.addEventListener("mousedown", this._mouseEventHandler, true);
     this.topNode.addEventListener("mouseup", this._mouseEventHandler, true);
@@ -6368,7 +6368,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     }
                     var next = el.nextSibling;
                     if (countColumns && el instanceof Element)
-			el.measureWidth =
+                        el.measureWidth =
                             beforeCol * dt.charWidth - el.measureLeft;
                     if (next != null) {
                         el = next;
@@ -6663,7 +6663,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     for (var line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
         if (start.breakNeeded) {
-	    start.breakNeeded = false;
+            start.breakNeeded = false;
             var first;
             if (this.isBlockNode(start))
                 first = start.firstChild;
