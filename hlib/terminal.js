@@ -4887,7 +4887,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
     var ok = 0;
     var i = 0;
     var startLine = this.getAbsCursorLine();
-    startLine._widthMode = DomTerm._WIDTH_MODE_VARIABLE_SEEN;
+    this.lineStarts[startLine]._widthMode = DomTerm._WIDTH_MODE_VARIABLE_SEEN;
     var activeTags = new Array();
     loop:
     for (;;) {
