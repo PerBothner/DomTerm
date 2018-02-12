@@ -29,4 +29,4 @@ In this case `qtdomterm` is only used for the user interface.
 
 domterm(1)
 
-http://domterm.org/ - the DomTerm home page
+https://domterm.org/ - the DomTerm home page

@@ -4,7 +4,7 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>BSD-3-Clause</project_license>
   <name>qrdomterm</name>
-   <url type="homepage">http://domterm.org/</url>
+   <url type="homepage">https://domterm.org/</url>
   <provides>
     <binary>qtdomterm</binary>
   </provides>

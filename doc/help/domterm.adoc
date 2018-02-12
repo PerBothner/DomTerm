@@ -103,4 +103,4 @@ is `$HOME/.domain/default.html`.
 
 qtdomterm(1)
 
-http://domterm.org/ - the DomTerm home page
+https://domterm.org/ - the DomTerm home page

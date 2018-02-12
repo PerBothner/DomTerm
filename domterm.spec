@@ -4,7 +4,7 @@ Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
 License:        BSD
-URL:            http://domterm.org/  
+URL:            https://domterm.org/  
 %global commit0 6968552cad997b9f70794054f7c93a233ce97700
 %global gittag0 HEAD
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
