@@ -82,9 +82,7 @@ size_t zf_read(JZFile *zfile, void *buf, size_t size)
 
 // Read ZIP file end record. Will move within file.
 int jzReadEndRecord(JZFile *zip) {
-    long fileSize, readBytes, i;
-
-    if(zf_seek_end(zip, -ZIP_END_DIRECTORY_LENGTH)) {
+    if (zf_seek_end(zip, -ZIP_END_DIRECTORY_LENGTH)) {
         return Z_ERRNO;
     }
 

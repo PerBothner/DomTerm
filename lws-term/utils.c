@@ -274,12 +274,12 @@ get_tty_out()
     return tty_out;
 }
 
-void
+bool
 write_to_tty(const char *str, ssize_t len)
 {
     if (len == -1)
         len = strlen(str);
-    write(get_tty_out(), str, len);
+    return write(get_tty_out(), str, len) == len;
 }
 
 /** Are we running under DomTerm?

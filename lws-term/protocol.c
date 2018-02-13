@@ -123,7 +123,7 @@ pty_destroy(struct pty_client *pclient)
     lwsl_notice("sending %d to process %d\n",
                 server->options.sig_code, pclient->pid);
     if (kill(pclient->pid, server->options.sig_code) != 0) {
-        lwsl_err("kill: pid, errno: %d (%s)\n", pclient->pid, errno, strerror(errno));
+        lwsl_err("kill: pid: %d, errno: %d (%s)\n", pclient->pid, errno, strerror(errno));
     }
     int status;
     while (waitpid(pclient->pid, &status, 0) == -1 && errno == EINTR)
@@ -276,9 +276,6 @@ run_command(char*const*argv, const char*cwd, char **env)
 {
     struct lws *outwsi;
     int pty;
-    int bytes;
-    char buf[BUF_SIZE];
-    fd_set des_set;
     int session_number = ++last_session_number;
 
     pid_t pid = forkpty(&pty, NULL, NULL, NULL);
@@ -290,8 +287,8 @@ run_command(char*const*argv, const char*cwd, char **env)
             if (cwd == NULL || chdir(cwd) != 0) {
                 const char *home = find_home();
                 if (home == NULL || chdir(home) != 0)
-                    chdir("/");
-
+                    if (chdir("/") != 0)
+                        lwsl_err("chdir failed\n");
             }
             int env_size = 0;
             while (env[env_size] != NULL) env_size++;
@@ -439,7 +436,7 @@ find_session(const char *specifier)
 
 /** buf must be prepended by LWS_PRE bytes. */
 static void
-write_to_browser(struct lws *wsi, unsigned char *buf, size_t len)
+write_to_browser(struct lws *wsi, void *buf, size_t len)
 {
     if (lws_write(wsi, buf, len, LWS_WRITE_BINARY) != len)
         lwsl_err("lws_write\n");
@@ -623,9 +620,8 @@ handle_tlink(char *template, json_object *obj)
             break;
     }
     free(t);
-    if (command == NULL)
-      return false;
-    system(command);
+    if (command == NULL || system(command) != 0)
+        return false;
     free(command);
     return true;
 }
@@ -702,13 +698,12 @@ reportEvent(const char *name, char *data, size_t dlen,
             char tbuf[LWS_PRE+40];
             char *rbuf = dlen < 30 ? tbuf : xmalloc(dlen+10+LWS_PRE);
             sprintf(rbuf+LWS_PRE, URGENT_WRAP("\033]%d;%.*s\007"),
-                    isEchoing ? 74 : 73, dlen, data);
+                    isEchoing ? 74 : 73, (int) dlen, data);
             size_t rlen = strlen(rbuf+LWS_PRE);
             write_to_browser(client->wsi, rbuf+LWS_PRE, rlen);
             if (rbuf != tbuf)
                 free (rbuf);
         } else {
-          int bytesAv;
           int to_drain = 0;
           if (pclient->paused) {
             struct termios term;
@@ -832,7 +827,7 @@ reportEvent(const char *name, char *data, size_t dlen,
                     pclient->preserved_output+pclient->preserved_start+updated,
                     new_length);
             pclient->preserved_start = PRESERVE_MIN;
-            pclient->preserved_end = PRESERVE_MIN; + new_length;
+            pclient->preserved_end = PRESERVE_MIN + new_length;
         }
         pclient->preserved_sent_count = rcount;
     } else {
@@ -948,9 +943,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
               if (pclient->saved_window_contents != NULL) {
                    int rcount = pclient->preserved_sent_count;
                    n = snprintf(p, avail,
-                                URGENT_WRAP("\033]103;%d,%s\007"),
-                                pclient->preserved_sent_count,
-                                pclient->saved_window_contents);
+                                URGENT_WRAP("\033]103;%ld,%s\007"),
+                                (long) pclient->preserved_sent_count,
+                                (char *) pclient->saved_window_contents);
                    ADJUST_P;
                    if (! should_backup_output(pclient)) {
                         free(pclient->saved_window_contents);
@@ -961,7 +956,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                         size_t end = pclient->preserved_end;
                         n = snprintf(p, avail, "%s%.*s%s",
                                      start_replay_mode,
-                                     end-start,
+                                     (int) (end-start),
                                      pclient->preserved_output+start,
                                      end_replay_mode);
                         ADJUST_P;
@@ -1008,7 +1003,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          }
          if (client->olen > 0) {
               client->sent_count = (client->sent_count + client->olen) & MASK28;
-              n = snprintf(p, avail, "%.*s", client->olen, client->obuffer);
+              n = snprintf(p, avail, "%.*s",
+                           (int) client->olen, client->obuffer);
               ADJUST_P;
               client->olen = 0;
          }
@@ -1089,7 +1085,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                         i++;
                    unsigned char* eol = memchr(msg+i, '\n', clen-i);
                    if (eol) {
-                        unsigned char *p = (char*) msg+i;
+                        unsigned char *p = msg+i;
                         char* cname = (char*) ++p;
                         while (p < eol && *p != ' ')
                              p++;
@@ -1203,7 +1199,8 @@ display_session(struct options *options, struct pty_client *pclient,
             && strcmp(browser_specifier, "--print-url") == 0) {
             int ulen = strlen(buf);
             buf[ulen] = '\n';
-            write(options->fd_out, buf, ulen+1);
+            if (write(options->fd_out, buf, ulen+1) <= 0)
+                lwsl_err("write failed\n");
         } else
             do_run_browser(options, buf, port);
     }
@@ -1243,10 +1240,11 @@ int attach_action(int argc, char** argv, const char*cwd,
                   char **env, struct lws *wsi, struct options *opts)
 {
     optind = 1;
-    int r = process_options(argc, argv, opts);
+    process_options(argc, argv, opts);
     if (optind >= argc) {
         char *msg = "domterm attach: missing session specifier\n";
-        write(opts->fd_err, msg, strlen(msg));
+        if (write(opts->fd_err, msg, strlen(msg)) <= 0)
+            lwsl_err("write failed\n");
         return EXIT_FAILURE;
     }
     char *session_specifier = argv[optind];
@@ -1281,7 +1279,7 @@ int browse_action(int argc, char** argv, const char*cwd,
                   char **env, struct lws *wsi, struct options *opts)
 {
     optind = 1;
-    int r = process_options(argc, argv, opts);
+    process_options(argc, argv, opts);
     if (optind != argc-1) {
         FILE *err = fdopen(opts->fd_out, "w");
         fprintf(err, optind >= argc ? "domterm browse: missing url\n"
@@ -1449,7 +1447,8 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             close(opts.fd_out);
             close(opts.fd_err);
             char r = (char) ret;
-            write(sockfd, &r, 1);
+            if (write(sockfd, &r, 1) != 1)
+                lwsl_err("write failed\n");
             close(sockfd);
             // FIXME: free argv, cwd, env
             break;

@@ -39,8 +39,12 @@ int html_action(int argc, char** argv, const char*cwd,
             char *arg = argv[i++];
             char *response  = xmalloc(strlen(arg)+40);
             sprintf(response, "\033]72;%s\007", arg);
-            write(get_tty_out(), response, strlen(response));
+            ssize_t r = write(get_tty_out(), response, strlen(response));
             free(response);
+            if (r <= 0) {
+                lwsl_err("write failed\n");
+                return EXIT_FAILURE;
+            }
         }
     }
     return EXIT_SUCCESS;
@@ -124,21 +128,26 @@ int imgcat_action(int argc, char** argv, const char*cwd,
                 overflow = "auto";
             char *b64 = base64_encode(img, len);
             munmap(img, len);
-            char *response = xmalloc(100+strlen(mime)+strlen(b64)
-                                     + strlen(abuf));
-            int n = sprintf(response,
+            int rsize = 100+strlen(mime)+strlen(b64)+ strlen(abuf);
+            char *response = xmalloc(rsize);
+            int n = snprintf(response, rsize,
                     n_arg ? "\033]72;%s<img%s src='data:%s;base64,%s'/>\007"
                     : "\033]72;<div style='overflow-x: %s'><img%s src='data:%s;base64,%s'/></div>\007",
                     overflow, abuf, mime, b64);
+            if (n >= rsize)
+                 fatal("buffer overflow");
 #if HAVE_LIBMAGIC
             magic_close(magic);
 #endif
             free(abuf);
             free(b64);
-            write(get_tty_out(), response, strlen(response));
-            return EXIT_SUCCESS;
+            if (write(get_tty_out(), response, strlen(response)) <= 0) {
+                lwsl_err("write failed\n");
+                return EXIT_FAILURE;
+            }
         }
     }
+    return EXIT_SUCCESS;
 }
 
 char *read_response(FILE *err)
@@ -176,7 +185,7 @@ char *read_response(FILE *err)
         }
     }
     if (msg) {
-        fprintf(err, msg);
+        fputs(msg, err);
         free(buf);
         buf = NULL;
     }
@@ -193,7 +202,8 @@ int print_stylesheet_action(int argc, char** argv, const char*cwd,
     if (argc != 2) {
         char *msg = argc < 2 ? "(too few arguments to print-stylesheets)\n"
           : "(too many arguments to print-stylesheets)\n";
-        write(opts->fd_err, msg, strlen(msg)+1);
+        if (write(opts->fd_err, msg, strlen(msg)+1) <= 0)
+            lwsl_err("writed failed\n");
         close(opts->fd_err);
         return EXIT_FAILURE;
     }
@@ -217,7 +227,8 @@ int list_stylesheets_action(int argc, char** argv, const char*cwd,
 {
     check_domterm(opts);
     close(0);
-    write_to_tty("\033]90;\007", -1);
+    if (! write_to_tty("\033]90;\007", -1))
+         return EXIT_FAILURE;
     FILE *err = fdopen(opts->fd_err, "w");
     char *response = read_response(err);
     FILE *out = fdopen(opts->fd_out, "w");
@@ -227,7 +238,7 @@ int list_stylesheets_action(int argc, char** argv, const char*cwd,
       fprintf(out, "%d: ", i++);
       char *t = strchr(p, '\t');
       char *end = t != NULL ? t : p + strlen(p);
-      fprintf(out, "%.*s\n", end-p, p);
+      fprintf(out, "%.*s\n", (int) (end-p), p);
       if (t == NULL)
         break;
       p = t+1;
@@ -244,7 +255,8 @@ int load_stylesheet_action(int argc, char** argv, const char*cwd,
     if (argc != 3) {
         char *msg = argc < 3 ? "too few arguments to load-stylesheet\n"
           : "too many arguments to load-stylesheet\n";
-        write(replyfd, msg, strlen(msg)+1);
+        if (write(replyfd, msg, strlen(msg)+1) <= 0)
+            lwsl_err("write failed\n");
         close(replyfd);
         return EXIT_FAILURE;
     }
@@ -298,7 +310,8 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
         char *msg = argc < 2 ? "(too few arguments to disable/enable-stylesheet)\n"
           : "(too many arguments to disable/enable-stylesheet)\n";
         int replyfd = opts->fd_err;
-        write(replyfd, msg, strlen(msg)+1);
+        if (write(replyfd, msg, strlen(msg)+1) <= 0)
+            lwsl_err("write failed\n");
         close(replyfd);
         return EXIT_FAILURE;
     }
@@ -342,6 +355,7 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
         json_object_put(jobj);
     }
     fclose(out);
+    return EXIT_SUCCESS;
 }
 
 int view_saved_action(int argc, char** argv, const char*cwd,
@@ -349,7 +363,7 @@ int view_saved_action(int argc, char** argv, const char*cwd,
                   struct options *opts)
 {
     optind = 1;
-    int r = process_options(argc, argv, opts);
+    process_options(argc, argv, opts);
     FILE *err = fdopen(opts->fd_err, "w");
     if (optind != argc-1) {
         fprintf(err, optind >= argc ? "domterm view-saved: missing file name\n"
@@ -395,7 +409,8 @@ int freshline_action(int argc, char** argv, const char*cwd,
 {
     check_domterm(opts);
     char *cmd = "\033[20u";
-    write(get_tty_out(), cmd, strlen(cmd));
+    if (write(get_tty_out(), cmd, strlen(cmd)) <= 0)
+        return EXIT_FAILURE;
     return EXIT_SUCCESS;
 }
 
@@ -407,7 +422,8 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
     if (argc > 2) {
         char *msg ="too many arguments to reverse-video\n";
         int err = opts->fd_err;
-        write(err, msg, strlen(msg)+1);
+        if (write(err, msg, strlen(msg)+1) <= 0)
+            lwsl_err("write failed\n");
         close(err);
         return EXIT_FAILURE;
     }
@@ -421,12 +437,14 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
       on = false;
     else {
         char *msg ="arguments to reverse-video is not on/off/yes/no/true/false\n";
-        write(opts->fd_err, msg, strlen(msg)+1);
+        if (write(opts->fd_err, msg, strlen(msg)+1) <= 0)
+            lwsl_err("write failed\n");
         close(opts->fd_err);
         return EXIT_FAILURE;
     }
     char *cmd = on ? "\033[?5h" : "\033[?5l";
-    write(get_tty_out(), cmd, strlen(cmd));
+    if (write(get_tty_out(), cmd, strlen(cmd)) <= 0)
+        return EXIT_FAILURE;
     return EXIT_SUCCESS;
 }
 

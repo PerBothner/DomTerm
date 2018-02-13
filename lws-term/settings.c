@@ -16,12 +16,12 @@ callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
   //struct cmd_client *cclient = (struct cmd_client *) user;
     char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
     switch (reason) {
-      case LWS_CALLBACK_RAW_RX_FILE: {
-        ssize_t n = read(inotify_fd, buf, sizeof(buf));
-        read_settings_file(main_options);
-        break;
-      }
-      default:
+    case LWS_CALLBACK_RAW_RX_FILE: {
+         if (read(inotify_fd, buf, sizeof buf) > 0)
+              read_settings_file(main_options);
+         break;
+    }
+    default:
       //fprintf(stderr, "callback_inotify default reason:%d\n", (int) reason);
         break;
     }
@@ -50,10 +50,10 @@ read_settings_file(struct options *options)
                            json_object_new_int(++settings_counter));
 
     off_t slen = stbuf.st_size;
-    unsigned char *sbuf = mmap(NULL, slen, PROT_READ|PROT_WRITE, MAP_PRIVATE,
-                               settings_fd, 0);
-    unsigned char *send = sbuf + slen;
-    unsigned char *sptr = sbuf;
+    char *sbuf = mmap(NULL, slen, PROT_READ|PROT_WRITE, MAP_PRIVATE,
+                      settings_fd, 0);
+    char *send = sbuf + slen;
+    char *sptr = sbuf;
 
 #define CLEAR_FIELD(FIELD)       \
     if (options->FIELD) {        \
@@ -69,18 +69,18 @@ read_settings_file(struct options *options)
     for (;;) {
     next:
         if (sptr == send)
-          goto eof;
-        unsigned ch = *sptr;
+            goto eof;
+        char ch = *sptr;
         if (ch == '#') {
           for (;;) {
             if (sptr == send)
-              goto eof;
+                goto eof;
             ch = *sptr++;
             if (ch == '\r' ||ch == '\n')
               goto next;
           }
         }
-        unsigned char *sline = sptr;
+        //char *sline = sptr;
         while (ch == ' ' || ch == '\t') {
             ++sptr;
             if (sptr == send)
@@ -97,8 +97,8 @@ read_settings_file(struct options *options)
         }
         //if (sptr != sline)
         //  goto err;
-        unsigned char *key_start = sptr;
-        unsigned char *key_end = NULL;
+        char *key_start = sptr;
+        char *key_end = NULL;
 
         for (;;) {
             if ((ch == '=' || ch == ' ' || ch == '\t') && key_end == NULL)
@@ -115,10 +115,10 @@ read_settings_file(struct options *options)
         sptr++; // skip '='
         while (sptr < send && (*sptr == ' ' || *sptr == '\t'))
           sptr++;
-        unsigned char *value_start = sptr;
+        char *value_start = sptr;
         while (sptr < send && *sptr != '\r' && *sptr != '\n')
           sptr++;
-        unsigned char*value_end = sptr;
+        char*value_end = sptr;
         if (sptr < send)
           sptr++;
         if (value_start == value_end) {
@@ -129,10 +129,10 @@ read_settings_file(struct options *options)
             if (sptr < send)
               sptr++;
           }
-          unsigned char *psrc = value_start;
-          unsigned char *pdst = value_start;
+          char *psrc = value_start;
+          char *pdst = value_start;
           while (psrc < sptr) {
-            unsigned ch = *psrc++;
+            char ch = *psrc++;
             *pdst++ = ch;
             if (ch == '\n' && psrc[0] == ' ' && psrc[1] == '|') {
               if (psrc-1 == value_start)
@@ -162,8 +162,8 @@ read_settings_file(struct options *options)
                 json_object_new_string_len(value_start, value_length));
     }
  err:
-    fprintf(stderr, "error in %s at byte offset %d%s\n",
-            settings_fname, sptr - sbuf, emsg);
+    fprintf(stderr, "error in %s at byte offset %ld%s\n",
+            settings_fname, (long) (sptr - sbuf), emsg);
  eof:
     if (options->shell_argv)
         free(options->shell_argv);

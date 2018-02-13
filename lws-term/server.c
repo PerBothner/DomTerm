@@ -27,19 +27,20 @@ subst_run_command (const char *browser_command, const char *url, int port)
     if (upos) {
       size_t beforeU = upos - browser_command;
       sprintf(cmd, "%.*s%s%.*s",
-              beforeU, browser_command,
+              (int) beforeU, browser_command,
               url,
-              clen - beforeU - 2, upos+2);
+              (int) (clen - beforeU - 2), upos+2);
     } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
         size_t beforeW = wpos - browser_command;
         sprintf(cmd, "%.*s%d%.*s",
-                beforeW, browser_command,
+                (int) beforeW, browser_command,
                 port,
-                clen - beforeW - 2, wpos+2);
+                (int) (clen - beforeW - 2), wpos+2);
     } else
         sprintf(cmd, "%s '%s'", browser_command, url);
     lwsl_notice("frontend command: %s\n", cmd);
-    system(cmd);
+    if (system(cmd) != 0)
+         fatal("system could not execute %s\n", cmd);
 }
 
 static int port_specified = -1;
@@ -175,10 +176,7 @@ static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
 struct tty_server *
 tty_server_new(int argc, char **argv) {
-    struct tty_server *ts;
-    size_t cmd_len = 0;
-
-    ts = xmalloc(sizeof(struct tty_server));
+    struct tty_server *ts = xmalloc(sizeof(struct tty_server));
 
     memset(ts, 0, sizeof(struct tty_server));
     LIST_INIT(&ts->clients);
@@ -194,7 +192,6 @@ tty_server_free(struct tty_server *ts) {
         return;
     if (ts->options.credential != NULL)
         free(ts->options.credential);
-    int i = 0;
     if (ts->options.sig_name)
         free(ts->options.sig_name);
     if (ts->socket_path != NULL) {
@@ -225,7 +222,6 @@ get_bin_relative_path(const char* app_path)
 {
     char* path = get_executable_path();
     int dirname_length = get_executable_directory_length();
-    int i;
 
     if (dirname_length > 4 && memcmp(path+dirname_length-4, "/bin", 4)==0)
       dirname_length -= 4;
@@ -252,7 +248,7 @@ find_in_path(const char *name)
         if (colon == NULL)
             colon = end;
         if (path != colon) {
-            sprintf(buf, "%.*s/%s", colon-path, path, name);
+             sprintf(buf, "%.*s/%s", (int) (colon-path), path, name);
             if (access(buf, X_OK) == 0)
                 return buf;
         }
@@ -302,7 +298,6 @@ firefox_xul_application()
 char *
 firefox_xul_command(char* app_path)
 {
-    char* path = NULL;
     char *fcommand = firefox_browser_command();
     int allocated_app_path = app_path == NULL;
     if (allocated_app_path)
@@ -770,6 +765,8 @@ main(int argc, char **argv)
         close(STDERR_FILENO);
         char ret = -1;
         ssize_t n2 = read(socket, &ret, 1);
+        if (n1 < 0 || n2 != 1)
+             ret = -1;
         //if (close(socket) != 0)
         //  fatal("bad close of socket");
         close(socket);
@@ -876,7 +873,8 @@ main(int argc, char **argv)
 
     if (opts.do_daemonize && ret == 0) {
 #if 1
-        daemon(1, 0);
+        if (daemon(1, 0) != 0)
+            lwsl_err("daemonizing failed\n");
 #else
         char *lock_path = NULL;
         int r = lws_daemonize(lock_path);
@@ -951,7 +949,7 @@ make_socket_name()
             sprintf(r, "%s/%s%s", ddir, socket_name, ext);
         } else {
             r = xmalloc(len + 1);
-            sprintf(r, "s%s", socket_name, ext);
+            sprintf(r, "%s%s", socket_name, ext);
         }
     } else {
         const char *sname = "/default.socket";
@@ -1007,7 +1005,7 @@ make_html_file(int port)
     const char*prefix = "file://";
     const char *ext = ".html";
     char *buf = xmalloc(strlen(prefix)+(sext-sname)+strlen(ext)+1);
-    sprintf(buf, "%s%.*s%s", prefix, sext-sname, sname, ext);
+    sprintf(buf, "%s%.*s%s", prefix, (int) (sext-sname), sname, ext);
     main_html_url = buf;
     main_html_path = buf+strlen(prefix);
     FILE *hfile = fopen(main_html_path, "w");
@@ -1035,7 +1033,6 @@ static int
 create_command_socket(const char *socket_path)
 {
     struct sockaddr_un      sa;
-    size_t                  size;
     mode_t                  mask;
     int                     fd;
 
@@ -1086,6 +1083,7 @@ fatal(const char *format, ...)
     exit(-1);
 }
 
+#if 0
 /*
  * Get server create lock. If already held then server start is happening in
  * another client, so block until the lock is released and return -2 to
@@ -1116,6 +1114,7 @@ client_get_lock(char *lockfile)
 
         return (lockfd);
 }
+#endif
 
 static int
 client_connect (char *socket_path, int start_server)
@@ -1133,7 +1132,6 @@ client_connect (char *socket_path, int start_server)
     }
     strcpy(sa.sun_path, socket_path);
 
- retry:
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0)
       fatal("cannot create client socket");
