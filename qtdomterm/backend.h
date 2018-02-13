@@ -28,12 +28,6 @@ public:
 
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
-    /**
-     * Return the session title set by the user (ie. the program running
-     * in the terminal), or an empty string if the user has not set a custom ti
-tle
-     */
-    QString userTitle() const;
 
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
@@ -69,15 +63,7 @@ public slots:
 
     void close();
 
-    /**
-     * Changes the session title or other customizable aspects of the terminal
-     * emulation display. For a list of what may be changed see the
-     * Emulation::titleChanged() signal.
-     */
-    void setUserTitle( int, const QString & caption );
-
 private slots:
-    QString parseSimpleJsonString(QString str, int start, int end);
     QString toJsonQuoted(QString str);
     void onReceiveBlock( const char * buffer, int len );
 private:
@@ -88,7 +74,6 @@ private:
 
     QString        _nameTitle;
     QString        _displayTitle;
-    QString        _userTitle;
 
     QString        _domtermVersion;
     QString        _savedHtml;
