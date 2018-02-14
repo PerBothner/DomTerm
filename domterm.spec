@@ -1,16 +1,14 @@
 Name:           domterm
-Version:        0.74
+Version:        0.96
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
-License:        BSD
+License:        BSD1
 URL:            https://domterm.org/  
-%global commit0 6968552cad997b9f70794054f7c93a233ce97700
+%global commit0 44b2f62b546eb93dd1bb2c285ec9a814b892d42b
 %global gittag0 HEAD
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}.tar.gz#/DomTerm-%{commit0}.tar.gz
-#Source0: DomTerm.tar.gz
-#Source0:        https://github.com/PerBothner/DomTerm/archive/%{version}/DomTerm-%{version}.tar.gz
+Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}/DomTerm-%{commit0}.tar.gz
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: desktop-file-utils
@@ -45,9 +43,8 @@ Hide/unhide a command's output.
 
 %package -n qtdomterm
 Summary:        A terminal emulator using Qt and web technologies
-# qtdomterm currently uses some GPL-licensed files for the "backend".
-# It is likely we will want to remove those backend files, and
-# just use ldomterm instead.  But until then ...
+# qtdomterm still uses some GPL-licensed files: primarily backend.cpp,
+# which at this point has very little left of the original GPL source.
 License:        GPLv2+
 Requires(preun): %{_sbindir}/alternatives
 Requires(posttrans): %{_sbindir}/alternatives
@@ -67,9 +64,6 @@ autoreconf
 %make_install
 # Let alternatives manage the symlink to %%{_bindir}/domterm
 rm %{buildroot}%{_bindir}/domterm
-
-%preun
-%{_sbindir}/alternatives --remove domterm %{_bindir}/ldomterm
 
 %preun -n qtdomterm
 %{_sbindir}/alternatives --remove domterm %{_bindir}/qtdomterm
@@ -94,11 +88,27 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{bui
 %{_datadir}/domterm/defaults/preferences/prefs.js
 %{_datadir}/domterm/domterm.jar
 %{_datadir}/domterm/jdomterm
+%{_datadir}/domterm/help/domterm-attach.html
+%{_datadir}/domterm/help/domterm-attach.txt
+%{_datadir}/domterm/help/domterm-browse.html
+%{_datadir}/domterm/help/domterm-browse.txt
+%{_datadir}/domterm/help/domterm-hcat.html
+%{_datadir}/domterm/help/domterm-hcat.txt
+%{_datadir}/domterm/help/domterm.html
+%{_datadir}/domterm/help/domterm-imgcat.html
+%{_datadir}/domterm/help/domterm-imgcat.txt
+%{_datadir}/domterm/help/domterm-is-domterm.html
+%{_datadir}/domterm/help/domterm-is-domterm.txt
+%{_datadir}/domterm/help/domterm-list.html
+%{_datadir}/domterm/help/domterm-list.txt
+%{_datadir}/domterm/help/domterm-new.html
+%{_datadir}/domterm/help/domterm-new.txt
+%{_datadir}/domterm/help/domterm.txt
+%{_datadir}/domterm/help/domterm-window-specifier.html
+%{_datadir}/domterm/help/domterm-window-specifier.txt
 %{_datadir}/applications/domterm.desktop
 %{_datadir}/appdata/domterm.appdata.xml
 %{_mandir}/man1/domterm.1*
-%{_mandir}/man1/ldomterm.1*
-%{_mandir}/man1/dt-util.1*
 %license COPYING
 
 %files -n qtdomterm
@@ -106,8 +116,12 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{bui
 %{_mandir}/man1/qtdomterm.1*
 %{_datadir}/applications/qtdomterm.desktop
 %{_datadir}/appdata/qtdomterm.appdata.xml
+%{_datadir}/domterm/help/qtdomterm.html
+%{_datadir}/domterm/help/qtdomterm.txt
 %license COPYING
 
 %changelog
+* Mon Feb 12 2018 Per Bothner <per@bothner.com> - 0.96-1
+- Update.
 * Sat Apr  8 2017 Per Bothner <per@bothner.com> - 0.74-1
 - Initial version.
