@@ -147,8 +147,8 @@ clean-am:
 	-rm -rf bin/domterm hlib/domterm-all.js \
 	  share/domterm/application.ini share/domterm/help \
 	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
-	@WITH_QTWEBENGINE_TRUE@ cd qtdomterm && $(MAKE) clean
-	@WITH_QTWEBENGINE_TRUE@ rm -rf bin/qtdomterm
+	cd qtdomterm && $(MAKE) clean
+	rm -rf bin/qtdomterm
 
 websocket_sources = org/domterm/websocket/DomServer.java
 pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
