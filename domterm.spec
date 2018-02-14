@@ -5,7 +5,7 @@ Summary:        A terminal emulator based on web technologies
 
 License:        BSD1
 URL:            https://domterm.org/  
-%global commit0 44b2f62b546eb93dd1bb2c285ec9a814b892d42b
+%global commit0 b568fcc44444e7f74359e526859dcdef76455ca5
 %global gittag0 HEAD
 %global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
 Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}/DomTerm-%{commit0}.tar.gz
