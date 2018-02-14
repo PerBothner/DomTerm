@@ -345,9 +345,10 @@ ADOC2HTML_OPTS = -s
 ADOC2MAN_OPTS = -b manpage
 
 if WITH_ASCIIDOCTOR
-share/domterm/help/%.txt: share/man/man1/%.1
-	man -l --nj --nh $< | \
-	  $(SED) -e '1,3d' -e '4s/^ *//' -e '$$d' > $@
+share/domterm/help/%.txt: doc/help/%.adoc
+	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) $< -o - \
+	  | man -l --nj --nh - \
+	  | $(SED) -e '1,3d' -e '4s/^ *//' -e '$$d' > $@
 else
 share/domterm/help/%.txt: doc/help/%.adoc share/domterm/help
 	$(SED) -e '/^ifdef::basebackend-manpage/,/^endif::/d' \
