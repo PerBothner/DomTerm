@@ -31,7 +31,8 @@ void print_help_file(const char* name, FILE *out)
 {
     char *hdir = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/help");
     char *buf = xmalloc(strlen(hdir)+strlen(name)+20);
-    if (! text_option_seen && ! man_option_seen && probe_domterm(true) > 0) {
+    bool is_domterm = probe_domterm(true) > 0;
+    if (! text_option_seen && ! man_option_seen && is_domterm) {
         sprintf(buf, "%s/%s.html", hdir, name);
         FILE *rfile = fopen(buf, "r");
         if (rfile == NULL)
@@ -46,9 +47,11 @@ void print_help_file(const char* name, FILE *out)
     FILE *rfile = fopen(buf, "r");
     if (rfile == NULL)
         goto err;
-    fprintf(out, "\033[92;1u");
+    if (is_domterm)
+        fprintf(out, "\033[92;1u");
     copy_file(rfile, out);
-    fprintf(out, "\033[92;2u");
+    if (is_domterm)
+        fprintf(out, "\033[92;2u");
     fclose(rfile);
     return;
   err:
