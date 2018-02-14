@@ -103,7 +103,7 @@ void SavePageDialog::on_chooseFilePathButton_clicked()
     ensureFileSuffix(/*pageFormat()*/);
 }
 
-void SavePageDialog::on_formatComboBox_currentIndexChanged(int idx)
+void SavePageDialog::on_formatComboBox_currentIndexChanged(int /*idx*/)
 {
   ensureFileSuffix(/*indexToFormat(idx)*/);
 }
