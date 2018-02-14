@@ -229,7 +229,7 @@ extern void tty_save_set_raw(int tty_in);
 extern void tty_restore(int tty_in);
 extern int get_tty_in();
 extern int get_tty_out();
-extern void write_to_tty(const char *str, ssize_t len);
+extern bool write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
 extern char *url_encode(char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
