@@ -6318,6 +6318,14 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
         for (var el = start; el != null; ) {
             var lineAttr;
             var skipChildren = false;
+            if (el instanceof Element) {
+                if (countColumns) {
+                    el.measureLeft = beforeCol * dt.charWidth;
+                } else {
+                    el.measureLeft = el.offsetLeft;
+                    el.measureWidth = el.offsetWidth;
+                }
+            }
             if (el instanceof Text) {
                 if (! countColumns)
                     skipChildren = true;
@@ -6348,14 +6356,6 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 el.pprintGroup = pprintGroup;
             } else if (el.classList.contains("pprint-group")) {
                 pprintGroup = el;
-            }
-            if (el instanceof Element) {
-                if (countColumns) {
-	            el.measureLeft = beforeCol * dt.charWidth;
-	        } else {
-                    el.measureLeft = el.offsetLeft;
-                    el.measureWidth = el.offsetWidth;
-	        }
             }
             if (el.firstChild != null && ! skipChildren)
                 el = el.firstChild;
@@ -6419,7 +6419,8 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 var beforeMeasure = beforePos + startOffset;
                 measureWidth = afterMeasure - beforeMeasure;
                 var right = afterMeasure - startOffset;
-                if (right > availWidth) {
+                if (right > availWidth
+                    && (beforePos > 0 || el instanceof Text)) {
                     var lineNode = dt._createLineNode("soft");
                     var indentWidth;
                     if (el instanceof Text) {
@@ -6439,7 +6440,6 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                         insertIntoLines(dt, lineNode);
                         el = lineNode;
                         indentWidth = addIndentation(dt, el, countColumns);
-                        var oldWidth = afterMeasure - beforeMeasure;
                         rest = document.createTextNode(rest);
                         el.parentNode.insertBefore(rest, el.nextSibling);
                         next = rest;
@@ -6449,9 +6449,13 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
                     line++;
-                    beforeMeasure +=
-                        (countColumns ? dt.numColumns : lineNode.offsetLeft)
-                        - beforePos;
+                    if (! countColumns)
+                        beforeMeasure += lineNode.offsetLeft - beforePos;
+                    else if (el instanceof Element)
+                        beforeMeasure = el.measureLeft;
+                    else
+                        beforeMeasure += dt.charWidth
+                          * dt.strWidthInContext(el.previousSibgling.data, el);
                     beforePos = indentWidth;
                     startOffset = beforeMeasure - beforePos;
                     dobreak = true;
