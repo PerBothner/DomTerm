@@ -1,8 +1,12 @@
 #include "server.h"
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/inotify.h>
 #include <sys/mman.h>
+#ifndef NAME_MAX
+#define NAME_MAX 1024
+#endif
 
 static int inotify_fd;
 char*settings_fname = NULL;

@@ -253,6 +253,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
               return -1; /* error or can't reuse connection: close the socket */
             break;
 
+#if HAVE_OPENSSL
         case LWS_CALLBACK_OPENSSL_PERFORM_CLIENT_CERT_VERIFICATION:
             if (!len || (SSL_get_verify_result((SSL *) in) != X509_V_OK)) {
                 int err = X509_STORE_CTX_get_error((X509_STORE_CTX *) user);
@@ -262,6 +263,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 return 1;
             }
             break;
+#endif
 
         default:
             break;
