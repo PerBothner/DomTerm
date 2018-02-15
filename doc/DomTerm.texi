@@ -299,7 +299,7 @@ sudo dnf install java-1.8.0-openjdk-devel
 
 You need to install the following prerequisites:
 @example
-sudo apt-get install git gcc make automake libjson-c-dev pkg-config asciidoctor libmagic-dev
+sudo apt-get install git gcc make automake libjson-c-dev pkg-config asciidoctor libmagic-dev zlib1g-dev
 @end example
 If configuring @code{--with-qtwebengine} (recommended), also do:
 @example
@@ -316,6 +316,25 @@ If you need to build libwebsockets from source:
 sudo apt-get install cmake
 @end example
 
+@subsubheading Windows using Linux for Windows
+
+Microsoft Windows is now supported using
+@uref{https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux, Windows Subsystem for Linux (WSL)}.
+This has been tested using the Ubuntu distrubution:
+Follow the above Ununtu instructions (without the optional qt packages),
+including (currently) building libwebsockets from source (below).
+
+Other distributions (such as Fedora) should work but have not
+been tested.
+
+The only supported and tested front-end (at the time of writing)
+is the Win32 Firefox browser, which should be in its default location
+@code{c:\Program Files (x86)\Mozilla Firefox\firefox.exe}.
+You should invoke domterm with the @code{--firefox} option.
+
+Domterm looks for the user settings file in
+@code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.
+
 @subsubheading Building libwebsockets, if needed
 
 The @code{domterm} server requires libwebsockets version 2.2
@@ -329,7 +348,15 @@ git clone https://github.com/warmcat/libwebsockets
 cd libwebsockets
 mkdir build
 cd build
-cmake ..
+cmake -DLWS_WITH_SSL=0 -DLWS_WITH_ZIP_FOPS=1 ..
+@end example
+The @code{-D} optional are suggested but not required:
+@code{-DLWS_WITH_SSL=0} avoids a needless dependency on OpenSSL;
+while @code{-DLWS_WITH_ZIP_FOPS=1} is required if configuring
+with @code{--disable-compiled-in-resources} (the default).
+
+Finally:
+@example
 make
 @end example
 
@@ -824,6 +851,8 @@ $ domterm disable-stylesheet 2
 
 User preferences for DomTerm are key in the file @code{.domterm/settings.ini}
 in the user's home directory.
+(On WSL (Windows Subsystem for Linux) the file is
+@code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.)
 If the @code{settings.ini} is changed it is automatically re-loaded.
 
 The syntax of @code{settings.ini} is a variant
