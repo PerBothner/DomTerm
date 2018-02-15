@@ -909,12 +909,79 @@ setblocking(int fd, int state)
         }
 }
 
-const char *
-domterm_dir ()
+static int is_WSL_cache;
+static bool
+is_WindowsSubsystemForLinux()
+{
+    if (is_WSL_cache)
+        return is_WSL_cache > 0;
+    int r;
+    int f = open("/proc/version", O_RDONLY);
+    if (f < 0)
+        r = false;
+    else {
+        char buf[512];
+        int i = 0;
+        for (;;) {
+            size_t avail = sizeof(buf) - 1 - i;
+            if (avail <= 0)
+                break;
+            ssize_t n = read(f, buf+i, avail);
+            if (n <= 0)
+                break;
+            i += n;
+        }
+        buf[i] = '\0';
+        r = strstr(buf, "Microsoft") != NULL;
+        close(f);
+    }
+    is_WSL_cache = r ? 1 : -1;
+    return r;
+}
+
+static char *userprofile_cache;
+
+char *get_WSL_userprofile()
+{
+    if (userprofile_cache == NULL) {
+        FILE *f = popen("/mnt/c/Windows/System32/cmd.exe /C \"echo %USERPROFILE%\"", "r");
+        if (f == NULL)
+            return NULL;
+        char buf[512];
+        int i = 0;
+        for (;;) {
+            size_t avail = sizeof(buf) - 1 - i;
+            if (avail <= 0)
+                return NULL;
+            size_t n = fread(buf+i, 1, avail, f);
+            if (n == 0)
+                break;
+            i += n;
+        }
+        fclose(f);
+        buf[i] = '\0';
+        userprofile_cache = strdup(buf);
+    }
+    return userprofile_cache;
+}
+
+static const char *
+domterm_dir(bool settings)
 {
     static const char *dir = NULL;
     if (dir != NULL)
       return dir;
+    if (is_WindowsSubsystemForLinux()) {
+        char *user_profile = get_WSL_userprofile();
+        fprintf(stderr, "wsl userprofile: %s\n", user_profile);
+        if (user_profile) {
+            if (settings) {
+                // FIXME: use use %USERPROFILE%\AppData\Roaming\DomTerm
+            } else {
+                // FIXME: use use %USERPROFILE%\AppData\Local\DomTerm
+            }
+        }
+    }
     const char *home = find_home();
     const char *hdir = "/.domterm";
     char *tmp = xmalloc(strlen(home)+strlen(hdir)+1);
@@ -925,10 +992,22 @@ domterm_dir ()
     return dir;
 }
 
+const char *
+domterm_settings_dir()
+{
+    return domterm_dir(true);
+}
+
+const char *
+domterm_tmp_dir()
+{
+    return domterm_dir(false);
+}
+
 static char *
 make_socket_name()
 {
-    const char *ddir = domterm_dir();
+    const char *ddir = domterm_tmp_dir();
     char *r;
     char *socket_name = opts.socket_name;
     if (socket_name != NULL && socket_name[0] != 0) {

@@ -202,7 +202,8 @@ extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
-const char *domterm_dir(void);
+const char *domterm_settings_dir(void);
+const char *domterm_tmp_dir(void);
 extern int handle_command(int argc, char**argv, const char*cwd,
                           char **env, struct lws *wsi,
                           struct options *opts);
