@@ -319,7 +319,8 @@ probe_domterm(bool use_stdout)
 
     if (write(tout, msg1, sizeof(msg1)-1) != sizeof(msg1)-1)
       return -1; // FIXME
-    while (i < response_prefix_length) {
+    int match = 0;
+    while (i < response_prefix_length && result > 0) {
         int r = poll(&pfd, 1, timeout);
         if (r <= 0) { /* error or timeout */
             result = r;
@@ -331,12 +332,16 @@ probe_domterm(bool use_stdout)
             break;
         }
         i += r;
-        if (i > 0 && memcmp(buffer, response_prefix, i) != 0) {
-            result = 0;
-            break;
+        while (match < i && result > 0) {
+            if (buffer[match] == response_prefix[match])
+                match++;
+            else
+                result = 0;
         }
     }
-    if (result >= 0) {
+    if (match >= 3 && memchr(buffer, 'c', i) == NULL) {
+        // We got a valid but non-matching response.
+        // Scan until we see the final 'c'.
         for (;;) {
           if (read(tin, buffer, 1) <= 0) {
               result = -1;
