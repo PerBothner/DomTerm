@@ -282,6 +282,11 @@ chrome_command()
     cbin = getenv("CHROME_BIN");
     if (cbin != NULL && access(cbin, X_OK) == 0)
         return cbin;
+    if (is_WindowsSubsystemForLinux()) {
+#define CHROME_EXE "/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+	if (access(CHROME_EXE, X_OK) == 0)
+            return "'" CHROME_EXE "' '%U' >/dev/null 2>&1 &";
+    }
     cbin = find_in_path("chrome");
     if (cbin != NULL)
         return cbin;
