@@ -13,7 +13,7 @@ static struct options opts;
 struct options *main_options = &opts;
 
 static void make_html_file(int);
-static char *make_socket_name(void);
+static char *make_socket_name(bool);
 static int create_command_socket(const char *);
 static int client_connect (char *socket_path, int start_server);
 
@@ -24,11 +24,22 @@ subst_run_command (const char *browser_command, const char *url, int port)
     char *cmd = xmalloc(clen + strlen(url) + 10);
     char *upos = strstr(browser_command, "%U");
     char *wpos;
+    const char *url_fixed = url;
+    char *url_tmp = NULL;
+    if (is_WindowsSubsystemForLinux() && strstr(browser_command, ".exe") != NULL) {
+        char *wsl_prefix = "file:///mnt/c/";
+	int wsl_prefix_length = strlen(wsl_prefix);
+        if (memcmp(url, wsl_prefix, wsl_prefix_length) == 0) {
+            url_tmp = xmalloc(strlen(url));
+	    url_fixed = url_tmp;
+            sprintf(url_tmp, "file:///c:/%s", url+wsl_prefix_length);
+	}
+    }
     if (upos) {
       size_t beforeU = upos - browser_command;
       sprintf(cmd, "%.*s%s%.*s",
               (int) beforeU, browser_command,
-              url,
+              url_fixed,
               (int) (clen - beforeU - 2), upos+2);
     } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
         size_t beforeW = wpos - browser_command;
@@ -37,10 +48,13 @@ subst_run_command (const char *browser_command, const char *url, int port)
                 port,
                 (int) (clen - beforeW - 2), wpos+2);
     } else
-        sprintf(cmd, "%s '%s'", browser_command, url);
+        sprintf(cmd, "%s '%s'", browser_command, url_fixed);
+    if (url_tmp != NULL)
+        free(url_tmp);
     lwsl_notice("frontend command: %s\n", cmd);
-    if (system(cmd) != 0)
-         fatal("system could not execute %s\n", cmd);
+    int r = system(cmd);
+    if (! WIFEXITED(r) || (WEXITSTATUS(r) != 0 && ! is_WindowsSubsystemForLinux()))
+        fatal("system could not execute %s (return code: %x)\n", cmd, r);
 }
 
 static int port_specified = -1;
@@ -281,11 +295,16 @@ chrome_command()
 char *
 firefox_browser_command()
 {
-    char *firefoxCommand = "firefox";
+    // FIXME first check "browser.firefox" in settings.ini
+    if (is_WindowsSubsystemForLinux())
+        return "'/mnt/c/Program Files (x86)/Mozilla Firefox/firefox.exe'";
+    char *firefoxCommand = find_in_path("firefox");
+    if (firefoxCommand != NULL)
+        return firefoxCommand;
     char *firefoxMac ="/Applications/Firefox.app/Contents/MacOS/firefox";
     if (access(firefoxMac, X_OK) == 0)
         return firefoxMac;
-    return firefoxCommand;
+    return "firefox";
 }
 
 /** Try to find the "application.ini" file for the DomTerm XUL application. */
@@ -722,7 +741,7 @@ main(int argc, char **argv)
     if ((command == NULL ||
          (command->options &
           (COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER)) != 0))
-      socket = client_connect(make_socket_name(), 0);
+      socket = client_connect(make_socket_name(false), 0);
     if (command != NULL
         && ((command->options & COMMAND_IN_CLIENT) != 0
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
@@ -839,7 +858,7 @@ main(int argc, char **argv)
 
     watch_settings_file();
 
-    char *cname = make_socket_name();
+    char *cname = make_socket_name(false);
     lws_sock_file_fd_type csocket;
     csocket.filefd = create_command_socket(cname);
     struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
@@ -909,10 +928,10 @@ setblocking(int fd, int state)
         }
 }
 
-static int is_WSL_cache;
-static bool
+bool
 is_WindowsSubsystemForLinux()
 {
+    static int is_WSL_cache;
     if (is_WSL_cache)
         return is_WSL_cache > 0;
     int r;
@@ -960,54 +979,75 @@ char *get_WSL_userprofile()
         }
         fclose(f);
         buf[i] = '\0';
+        char *nl = strchr(buf, '\n');
+        if (nl)
+            *nl = '\0';
+        char *cr = strchr(buf, '\r');
+        if (cr)
+            *cr = '\0';
         userprofile_cache = strdup(buf);
     }
     return userprofile_cache;
 }
 
 static const char *
-domterm_dir(bool settings)
+domterm_dir(bool settings, bool check_wsl)
 {
-    static const char *dir = NULL;
-    if (dir != NULL)
-      return dir;
-    if (is_WindowsSubsystemForLinux()) {
-        char *user_profile = get_WSL_userprofile();
-        fprintf(stderr, "wsl userprofile: %s\n", user_profile);
-        if (user_profile) {
-            if (settings) {
-                // FIXME: use use %USERPROFILE%\AppData\Roaming\DomTerm
-            } else {
-                // FIXME: use use %USERPROFILE%\AppData\Local\DomTerm
-            }
-        }
+    char *user_profile;
+    char *user_prefix = "C:\\Users\\";
+    size_t user_prefix_length;
+    char *tmp;
+    if (check_wsl && is_WindowsSubsystemForLinux()
+	&& (user_profile = get_WSL_userprofile()) != NULL
+	&& strlen(user_profile) > (user_prefix_length = strlen(user_prefix))
+	&& memcmp(user_profile, user_prefix, user_prefix_length) == 0) {
+	const char *fmt = "/mnt/c/Users/%s/AppData/%s/DomTerm";
+	char *subdir = settings ? "Roaming" : "Local";
+	tmp = xmalloc(strlen(fmt) - 3 + strlen(subdir) + strlen(user_profile) - user_prefix_length);
+	sprintf(tmp, fmt, user_profile+user_prefix_length, subdir);
+    } else {
+        const char *home = find_home();
+	const char *hdir = "/.domterm";
+	tmp = xmalloc(strlen(home)+strlen(hdir)+1);
+	sprintf(tmp, "%s%s", home, hdir);
     }
-    const char *home = find_home();
-    const char *hdir = "/.domterm";
-    char *tmp = xmalloc(strlen(home)+strlen(hdir)+1);
-    sprintf(tmp, "%s%s", home, hdir);
-    dir = tmp;
-    if (mkdir(dir, S_IRWXU) != 0 && errno != EEXIST)
-        fatal("cannot create directory");
-    return dir;
+    if (mkdir(tmp, S_IRWXU) != 0 && errno != EEXIST)
+        fatal("cannot create directory '%s'\n, tmp");
+    return tmp;
 }
 
 const char *
 domterm_settings_dir()
 {
-    return domterm_dir(true);
+    static const char *dir = NULL;
+    if (dir == NULL)
+      dir = domterm_dir(true, true);
+    return dir;
 }
 
 const char *
-domterm_tmp_dir()
+domterm_socket_dir()
 {
-    return domterm_dir(false);
+    static const char *dir = NULL;
+    if (dir == NULL)
+      dir = domterm_dir(false, false);
+    return dir;
+}
+
+const char *
+domterm_genhtml_dir()
+{
+    static const char *dir = NULL;
+    if (dir == NULL)
+      dir = domterm_dir(false, true);
+    return dir;
 }
 
 static char *
-make_socket_name()
+make_socket_name(bool html_filename)
 {
-    const char *ddir = domterm_tmp_dir();
+    const char *ddir = html_filename ? domterm_genhtml_dir()
+        : domterm_socket_dir();
     char *r;
     char *socket_name = opts.socket_name;
     if (socket_name != NULL && socket_name[0] != 0) {
@@ -1021,17 +1061,24 @@ make_socket_name()
             if (ch == '/')
               dot = -1;
         }
-        char *ext = dot < 0 ? ".socket" : "";
-        int len = strlen(socket_name) + strlen(ext);
+	int socket_name_length = strlen(socket_name);
+        char *ext;
+	if (html_filename) {
+            ext = dot < 0 ? ".html" : "";
+	    if (dot >= 0)
+                socket_name_length = dot;
+	} else
+            ext = dot < 0 ? ".socket" : "";
+        int len = socket_name_length + strlen(ext);
         if (socket_name[0] != '/') {
             r = xmalloc(len + strlen(ddir) + 2);
-            sprintf(r, "%s/%s%s", ddir, socket_name, ext);
+            sprintf(r, "%s/%.*s%s", ddir, socket_name_length, socket_name, ext);
         } else {
             r = xmalloc(len + 1);
-            sprintf(r, "%s%s", socket_name, ext);
+            sprintf(r, "%.*s%s", socket_name_length, socket_name, ext);
         }
     } else {
-        const char *sname = "/default.socket";
+      const char *sname = html_filename ? "/default.html" : "/default.socket";
         r = xmalloc(strlen(ddir)+strlen(sname)+1);
         sprintf(r, "%s%s", ddir, sname);
     }
@@ -1079,7 +1126,7 @@ static void
 make_html_file(int port)
 {
     //uid_t uid = getuid();
-    char *sname = make_socket_name();
+    char *sname = make_socket_name(true);
     char *sext = strrchr(sname, '.');
     const char*prefix = "file://";
     const char *ext = ".html";
