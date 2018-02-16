@@ -421,14 +421,23 @@ default_browser_command(const char *url, int port)
     // Prefer gnome-open or kde-open over xdg-open because xdg-open
     // under Gnome defaults to using 'gio open', which does drops the "hash"
     // part of a "file:" URL, and may also use a non-preferred browser.
-    char *path = find_in_path("gnome-open");
-    if (path == NULL)
-      path = find_in_path("kde-open");
-    if (path == NULL)
-      path = strdup("xdg-open");
+    char *path;
+    bool free_needed = false;
+    if (is_WindowsSubsystemForLinux())
+        path = "/mnt/c/Windows/System32/cmd.exe /c start";
+    else {
+        path = find_in_path("gnome-open");
+        if (path == NULL)
+            path = find_in_path("kde-open");
+        if (path != NULL)
+            free_needed = true;
+        else
+            path = strdup("xdg-open");
+    }
     char *pattern = xmalloc(strlen(path) + 40);
     sprintf(pattern, "%s '%%U' > /dev/null 2>&1", path);
-    free(path);
+    if (free_needed)
+        free(path);
     subst_run_command(pattern, url, port);
     free(pattern);
 #endif
