@@ -68,6 +68,9 @@ read_settings_file(struct options *options)
     CLEAR_FIELD(openfile_application);
     CLEAR_FIELD(openlink_application);
     CLEAR_FIELD(shell_command);
+    CLEAR_FIELD(command_firefox);
+    CLEAR_FIELD(command_chrome);
+    CLEAR_FIELD(command_electron);
 
     char *emsg = "";
     for (;;) {
@@ -161,6 +164,9 @@ read_settings_file(struct options *options)
         HANDLE_SETTING("open.link.application", openlink_application);
 
         HANDLE_SETTING("shell.default", shell_command);
+        HANDLE_SETTING("command.firefox", command_firefox);
+        HANDLE_SETTING("command.chrome", command_chrome);
+        HANDLE_SETTING("command.electron", command_electron);
 
         json_object_object_add(jobj, key_start,
                 json_object_new_string_len(value_start, value_length));

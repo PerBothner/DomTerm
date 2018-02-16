@@ -144,6 +144,9 @@ struct options {
     char *geometry;
     char *openfile_application;
     char *openlink_application;
+    char *command_firefox;
+    char *command_chrome;
+    char *command_electron;;
     int paneOp;
     char iface[128];
 #if HAVE_OPENSSL

@@ -277,6 +277,8 @@ char *
 chrome_command()
 {
     static char *cbin = NULL;
+    if (main_options->command_chrome != NULL)
+        return main_options->command_chrome;
     if (cbin)
       return cbin[0] ? cbin : NULL;
     cbin = getenv("CHROME_BIN");
@@ -300,7 +302,8 @@ chrome_command()
 char *
 firefox_browser_command()
 {
-    // FIXME first check "browser.firefox" in settings.ini
+    if (main_options->command_firefox != NULL)
+        return main_options->command_firefox;
     if (is_WindowsSubsystemForLinux())
         return "'/mnt/c/Program Files (x86)/Mozilla Firefox/firefox.exe'";
     char *firefoxCommand = find_in_path("firefox");
@@ -378,15 +381,17 @@ qtwebengine_command(int quiet, struct options *options)
 char *
 electron_command(int quiet, struct options *options)
 {
-    char *epath = find_in_path("electron");
-    char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
-    char *format = "%s %s%s%s --url '%U'&";
+    char *epath = main_options->command_electron != NULL
+        ? strdup(main_options->command_electron)
+        : find_in_path("electron");
     if (epath == NULL) {
         if (quiet)
             return NULL;
         fprintf(stderr, "'electron' not found in PATH\n");
         exit(-1);
     }
+    char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
+    char *format = "%s %s%s%s --url '%U'&";
     const char *g1 = "", *g2 = "";
     if (options->geometry && options->geometry[0]) {
         g1 = " --geometry ";
@@ -395,6 +400,7 @@ electron_command(int quiet, struct options *options)
     char *buf = xmalloc(strlen(epath)+strlen(app)+strlen(format)
                         +strlen(g1)+strlen(g2));
     sprintf(buf, format, epath, app, g1, g2);
+    free(epath);
     return buf;
 }
 
@@ -512,6 +518,9 @@ void  init_options(struct options *opts)
     opts->geometry = NULL;
     opts->openfile_application = NULL;
     opts->openlink_application = NULL;
+    opts->command_firefox = NULL;
+    opts->command_chrome = NULL;
+    opts->command_electron = NULL;
     opts->something_done = false;
     opts->paneOp = -1;
     opts->force_option = 0;
