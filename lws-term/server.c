@@ -272,6 +272,23 @@ find_in_path(const char *name)
     }
 }
 
+char *
+fix_for_windows(char * fname)
+{
+    if (is_WindowsSubsystemForLinux()) {
+        int fname_length = strlen(fname);
+        static char mnt_prefix[] = "/mnt/";
+        static int mnt_prefix_length = sizeof(mnt_prefix)-1;
+        if (memcmp(fname, mnt_prefix, mnt_prefix_length) == 0
+            && fname_length > mnt_prefix_length) {
+            char *buf = xmalloc(fname_length);
+            sprintf(buf, "%c:/%s", fname[mnt_prefix_length], fname+mnt_prefix_length+1);
+            return buf;
+        }
+    }
+    return fname;
+}
+
 /* Result is cached. */
 char *
 chrome_command()
@@ -391,15 +408,18 @@ electron_command(int quiet, struct options *options)
         exit(-1);
     }
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
+    char *app_fixed = fix_for_windows(app);
     char *format = "%s %s%s%s --url '%U'&";
     const char *g1 = "", *g2 = "";
     if (options->geometry && options->geometry[0]) {
         g1 = " --geometry ";
         g2 = options->geometry;
     }
-    char *buf = xmalloc(strlen(epath)+strlen(app)+strlen(format)
+    char *buf = xmalloc(strlen(epath)+strlen(app_fixed)+strlen(format)
                         +strlen(g1)+strlen(g2));
-    sprintf(buf, format, epath, app, g1, g2);
+    sprintf(buf, format, epath, app_fixed, g1, g2);
+    if (app_fixed != app)
+        free(app_fixed);
     free(epath);
     return buf;
 }
