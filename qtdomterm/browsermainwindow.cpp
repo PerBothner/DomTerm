@@ -360,7 +360,7 @@ void BrowserMainWindow::slotCopyAsHTML()
 
 void BrowserMainWindow::slotOpenHomePage()
 {
-    QDesktopServices::openUrl(QUrl("http://domterm.org/"));
+    QDesktopServices::openUrl(QUrl("https://domterm.org/"));
 }
 
 void BrowserMainWindow::slotAboutApplication()
@@ -369,7 +369,7 @@ void BrowserMainWindow::slotAboutApplication()
         "Version %1"
         "<p>QtDomTerm is a terminal emulator based on DomTerm (%1) and QtWebEngine (%3). "
         "<p>Copyright %2 Per Bothner."
-        "<p>The DomTerm home page is <a href=\"http://domterm.org/\">http://domterm.org/</a>.")
+        "<p>The DomTerm home page is <a href=\"https://domterm.org/\">https://domterm.org/</a>.")
                        .arg(QCoreApplication::applicationVersion())
                        .arg(QTDOMTERM_YEAR)
                        .arg(qVersion()));
