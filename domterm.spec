@@ -21,8 +21,6 @@ BuildRequires: qt5-qtwebchannel-devel
 BuildRequires: qt5-qtwebengine-devel
 
 Requires:       json-c
-Requires(preun): %{_sbindir}/alternatives
-Requires(posttrans): %{_sbindir}/alternatives
 
 # The domterm package also includes Java client and server classes
 # that are useful for Java applications (for example Kawa).
@@ -39,15 +37,13 @@ Good handling of Unicode, CJK wide characters, and IME support.
 Experimental builtin pager (like simplified 'less').
 Builtin basic input line editor with history.
 Styling using CSS.
-Hide/unhide a command's output.
+Hide/show a command's output.
 
 %package -n qtdomterm
 Summary:        A terminal emulator using Qt and web technologies
 # qtdomterm still uses some GPL-licensed files: primarily backend.cpp,
 # which at this point has very little left of the original GPL source.
 License:        GPLv2+
-Requires(preun): %{_sbindir}/alternatives
-Requires(posttrans): %{_sbindir}/alternatives
 %description -n qtdomterm
 
 A terminal emulator using Qt and web technologies
@@ -62,32 +58,21 @@ autoreconf
 
 %install
 %make_install
-# Let alternatives manage the symlink to %%{_bindir}/domterm
-rm %{buildroot}%{_bindir}/domterm
-
-%preun -n qtdomterm
-%{_sbindir}/alternatives --remove domterm %{_bindir}/qtdomterm
-
-%posttrans
-%{_sbindir}/alternatives --install %{_bindir}/domterm domterm %{_bindir}/ldomterm 80
-
-%posttrans -n qtdomterm
-%{_sbindir}/alternatives --install %{_bindir}/domterm domterm %{_bindir}/qtdomterm 70
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{buildroot}%{_datadir}/applications/qtdomterm.desktop
 
 %files
-%{_bindir}/ldomterm
-%{_bindir}/dt-util
-%dir %{_datadir}/domterm
+%dir
+%{_bindir}/domterm
 %{_datadir}/domterm/application.ini
 %{_datadir}/domterm/chrome.manifest
 %{_datadir}/domterm/defaults/
 %{_datadir}/domterm/defaults/preferences/
 %{_datadir}/domterm/defaults/preferences/prefs.js
 %{_datadir}/domterm/domterm.jar
-%{_datadir}/domterm/jdomterm
+%{_datadir}/domterm/electron/main.js
+%{_datadir}/domterm/electron/package.json
 %{_datadir}/domterm/help/domterm-attach.html
 %{_datadir}/domterm/help/domterm-attach.txt
 %{_datadir}/domterm/help/domterm-browse.html
