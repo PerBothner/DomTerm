@@ -4580,6 +4580,21 @@ DomTerm.prototype.setSettings = function(obj) {
         return;
     DomTerm._settingsCounter = settingsCounter;
 
+    this.linkAllowedUrlSchemes = DomTerm.prototype.linkAllowedUrlSchemes;
+    var link_conditions = "";
+    var val = obj["open.file.application"];
+    var a = val ? val : "";
+    val = obj["open.link.application"];
+    if (val)
+        a += val;
+    for (;;) {
+        var m = a.match(/^[^{]*{([^:}]*)\b([a-zA-Z][-a-zA-Z0-9+.]*:)([^]*)$/);
+        if (! m)
+            break;
+        this.linkAllowedUrlSchemes += m[2];
+        a = m[1]+m[3];
+    }
+
     var style_dark = obj["style.dark"];
     if (style_dark) {
         this.setReverseVideo(this._asBoolean(style_dark));
@@ -7939,7 +7954,10 @@ DomTerm.isDelimiter = (function() {
     }
 })();
 
+DomTerm.prototype.linkAllowedUrlSchemes = ":http:https:file:ftp:mailto:";
+
 DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
+    const dt = this;
     function rindexDelimiter(str, start, end) {
         for (let i = end; --i >= start; )
             if (DomTerm.isDelimiter(str.charCodeAt(i)))
@@ -7947,7 +7965,8 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         return -1;
     }
     function isURL(str) {
-        return str.match(/^[-a-z][a-z0-9+.]*:[/]*[^/:].*/);
+        const m = str.match(/^([a-zA-Z][-a-zA-Z0-9+.]*:)[/]*[^/:].*/);
+        return m && dt.linkAllowedUrlSchemes.indexOf(":"+m[1]) >= 0;
     }
     function isEmail(str) {
         return str.match(/^[^@]+@[^@]+\.[^@]+$/);
