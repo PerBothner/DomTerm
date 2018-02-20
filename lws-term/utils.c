@@ -121,7 +121,7 @@ parse_args(const char *args)
     int lengths = 0; // used for sum of strlen for all arguments
     int argc = 0;
     char **argv = NULL;
-    char context = -1; // '\', '"', 0 (in-word), or -1 (between words)
+    char context = -1; // '\'', '"', 0 (in-word), or -1 (between words)
     for (int pass = 0; pass < 2; pass++) {
         const char *p = args;
         char *q = NULL;
@@ -416,4 +416,40 @@ void copy_file(FILE*in, FILE*out)
         if (r <= 0 || fwrite(buffer, 1, r, out) <= 0)
             break;
     }
+}
+
+const char *
+extract_command_from_list(const char *list, const char **startp,
+                          const char **endp, const char **cmd_endp)
+{
+    const char *p = list;
+    while (*p && (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n'))
+        p++;
+    if (startp)
+        *startp = p;
+    const char *cmd_end = NULL;
+    char context = 0; // '\'', '"', or 0
+    for (;; p++) {
+        char ch = *p;
+        if (ch == context && context > 0)
+            context = 0;
+        else if (context == 0 && (ch == '\'' || ch == '"')) {
+            context = ch;
+        } else if (ch == 0 || (context == 0 && (ch == ';' || ch == '\n'))) {
+            if (cmd_end == NULL)
+                cmd_end = p;
+            break;
+        } else if (cmd_end == NULL
+                   && (ch == ' ' || ch == '\t' || ch == '\r'))
+            cmd_end = p;
+    }
+    if (endp) {
+        const char *end = p;
+        while (end > list && (end[-1] == ' '|| end[-1]=='\t'))
+            end--;
+        *endp = end;
+    }
+    if (cmd_endp)
+        *cmd_endp = cmd_end;
+    return p;
 }

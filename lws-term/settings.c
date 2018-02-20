@@ -71,6 +71,7 @@ read_settings_file(struct options *options)
     CLEAR_FIELD(command_firefox);
     CLEAR_FIELD(command_chrome);
     CLEAR_FIELD(command_electron);
+    CLEAR_FIELD(default_frontend);
 
     char *emsg = "";
     for (;;) {
@@ -167,6 +168,7 @@ read_settings_file(struct options *options)
         HANDLE_SETTING("command.firefox", command_firefox);
         HANDLE_SETTING("command.chrome", command_chrome);
         HANDLE_SETTING("command.electron", command_electron);
+        HANDLE_SETTING("frontend.default", default_frontend);
 
         json_object_object_add(jobj, key_start,
                 json_object_new_string_len(value_start, value_length));

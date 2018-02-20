@@ -443,7 +443,7 @@ write_to_browser(struct lws *wsi, void *buf, size_t len)
 }
 
 char *
-check_template(char *template, json_object *obj)
+check_template(const char *template, json_object *obj)
 {
     struct json_object *jfilename = NULL, *jposition = NULL, *jhref = NULL;
     const char *filename =
@@ -460,8 +460,8 @@ check_template(char *template, json_object *obj)
     while (template[0] == '{') {
         // a disjunction of clauses, separated by '|'
         bool ok = false; // true when a previous clause was true
-        char *clause = &template[1];
-        for (char *p = clause; ; p++) {
+        const char *clause = &template[1];
+        for (const char *p = clause; ; p++) {
             char ch = *p;
             if (ch == '\0')
               return NULL;
@@ -595,23 +595,21 @@ handle_tlink(char *template, json_object *obj)
     char *p = t;
     char *command = NULL;
     for (;;) {
-        while (*p && (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n'))
-            p++;
-        char *semi = p;
-        while (*semi && *semi != '\n' && *semi != ';')
-            semi++;
-        if (*p)
+        const char *start = NULL;
+        char *semi = (char*)
+            extract_command_from_list(p, &start, NULL, NULL);
+        if (semi)
             *semi = 0;
         else
             semi = NULL;
-        if (strcmp(p, "browser")==0||strcmp(p, "default")==0) {
+        if (strcmp(start, "browser")==0||strcmp(start, "default")==0) {
             struct json_object *jhref;
             if (json_object_object_get_ex(obj, "href", &jhref)) {
                 default_link_command(json_object_get_string(jhref));
                 break;
             }
         } else
-          command = check_template(p, obj);
+          command = check_template(start, obj);
         if (command != NULL)
            break;
         if (semi)

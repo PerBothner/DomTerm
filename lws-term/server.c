@@ -329,9 +329,10 @@ firefox_browser_command()
     char *firefoxMac ="/Applications/Firefox.app/Contents/MacOS/firefox";
     if (access(firefoxMac, X_OK) == 0)
         return firefoxMac;
-    return "firefox";
+    return NULL;
 }
 
+#if 0
 /** Try to find the "application.ini" file for the DomTerm XUL application. */
 char *
 firefox_xul_application()
@@ -353,6 +354,7 @@ firefox_xul_command(char* app_path)
         free(app_path);
     return buf;
 }
+#endif
 
 char *
 firefox_command()
@@ -365,13 +367,23 @@ firefox_command()
     fprintf(stderr,
             "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
 #endif
-    return firefox_browser_command();
+    char *firefox = firefox_browser_command();
+    return firefox ? firefox : "firefox";
 }
 
 char *
 qtwebengine_command(int quiet, struct options *options)
 {
-    int bsize = 100;
+    char *cmd = get_bin_relative_path("/bin/qtdomterm");
+    if (cmd == NULL || access(cmd, X_OK) != 0) {
+        if (cmd == NULL)
+            free(cmd);
+        if (quiet)
+            return NULL;
+        fprintf(stderr, "'qtdomterm' missing\n");
+        exit(-1);
+    }
+    int bsize = strlen(cmd)+100;
     char *geometry = options->geometry;
     if (geometry == NULL || !options->geometry[0])
         geometry = main_options->geometry;
@@ -380,7 +392,8 @@ qtwebengine_command(int quiet, struct options *options)
     if (options->qt_remote_debugging)
       bsize += strlen(options->qt_remote_debugging);
     char *buf = xmalloc(bsize);
-    strcpy(buf, "/bin/qtdomterm");
+    strcpy(buf, cmd);
+    free(cmd);
     if (geometry && geometry[0]) {
         strcat(buf, " --geometry ");
         strcat(buf, geometry);
@@ -390,9 +403,7 @@ qtwebengine_command(int quiet, struct options *options)
         strcat(buf, options->qt_remote_debugging);
     }
     strcat(buf, " --connect '%U' &");
-    char *result = get_bin_relative_path(buf);
-    free(buf);
-    return result;
+    return buf;
 }
 
 char *
@@ -474,6 +485,7 @@ do_run_browser(struct options *options, char *url, int port)
 {
     const char *browser_specifier =
       ((options == NULL || options->browser_command == NULL)
+       && opts.default_frontend == NULL
        && opts.browser_command != NULL
        && strcmp(opts.browser_command, "--print-url") != 0)
       ? opts.browser_command
@@ -483,17 +495,67 @@ do_run_browser(struct options *options, char *url, int port)
     //else if (strcmp(browser_specifier, "--detached") == 0)
     //    return;
     if (browser_specifier == NULL && port_specified < 0) {
-            // The default is "--electron" if available
-          browser_specifier = electron_command(1, options);
-            if (browser_specifier == NULL)
-                browser_specifier = "";
+        char *default_frontend = main_options->default_frontend;
+        if (default_frontend == NULL)
+            default_frontend = "electron;qt;chrome;firefox;browser";
+        const char *p = default_frontend;
+        for (;;) {
+            const char *argv0_end = NULL;
+            const char *start = NULL;
+            const char *end = NULL;
+            const char *semi = extract_command_from_list(p, &start, &end, &argv0_end);
+            int cmd_length = end-start;
+            if (cmd_length > 0) {
+                char *cmd = xmalloc(cmd_length + 1);
+                memcpy(cmd, start, cmd_length);
+                cmd[cmd_length] = '\0';
+                int argv0_length = argv0_end-start;
+                if (strcmp(cmd, "electron") == 0) {
+                     browser_specifier = electron_command(1, options);
+                     if (browser_specifier != NULL) {
+                         free (cmd);
+                         break;
+                     }
+                } else if (strcmp(cmd, "qt") == 0
+                           || strcmp(cmd, "qtdomterm") == 0
+                           || strcmp(cmd, "qtwebengine") == 0) {
+                    browser_specifier = qtwebengine_command(1, options);
+                    if (browser_specifier != NULL)
+                        break;
+                } else if (strcmp(cmd, "firefox") == 0) {
+                    browser_specifier = firefox_browser_command();
+                    if (browser_specifier != NULL)
+                        break;
+                } else if (strcmp(cmd, "chrome") == 0
+                             || strcmp(cmd, "google-chrome") == 0) {
+                        browser_specifier = chrome_command(); 
+                    if (browser_specifier != NULL)
+                        break;
+                } else {
+                    char save_argv0_end = cmd[argv0_length];
+                    cmd[argv0_length] = '\0';
+                    browser_specifier = find_in_path(cmd);
+                    cmd[argv0_length] = save_argv0_end;
+                    if (browser_specifier != NULL) {
+                        browser_specifier = cmd;
+                        break;
+                    }
+                }
+                free(cmd);
+            }
+            if (*semi == 0) {
+                fprintf(stderr, "no front-end command found\n");
+                exit(-1);
+            }
+            p = semi+1;
+        }
     }
     if (strcmp(browser_specifier, "--qtwebengine") == 0)
         browser_specifier = qtwebengine_command(0, options);
     if (strcmp(browser_specifier, "--electron") == 0)
         browser_specifier = electron_command(0, options);
     if (strcmp(browser_specifier, "--firefox") == 0)
-        browser_specifier = firefox_browser_command();
+        browser_specifier = firefox_command();
     else if (strcmp(browser_specifier, "--chrome") == 0
              || strcmp(browser_specifier, "--google-chrome") == 0) {
             browser_specifier = chrome_command();
@@ -502,10 +564,10 @@ do_run_browser(struct options *options, char *url, int port)
                 exit(-1);
             }
         }
-        if (browser_specifier[0] == '\0')
-            default_browser_command(url, port);
-        else
-            subst_run_command(browser_specifier, url, port);
+    if (browser_specifier[0] == '\0')
+        default_browser_command(url, port);
+    else
+        subst_run_command(browser_specifier, url, port);
 }
 
 char *
@@ -550,6 +612,7 @@ void  init_options(struct options *opts)
     opts->command_firefox = NULL;
     opts->command_chrome = NULL;
     opts->command_electron = NULL;
+    opts->default_frontend = NULL;
     opts->something_done = false;
     opts->paneOp = -1;
     opts->force_option = 0;

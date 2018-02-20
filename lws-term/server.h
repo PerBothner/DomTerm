@@ -146,7 +146,8 @@ struct options {
     char *openlink_application;
     char *command_firefox;
     char *command_chrome;
-    char *command_electron;;
+    char *command_electron;
+    char *default_frontend;
     int paneOp;
     char iface[128];
 #if HAVE_OPENSSL
@@ -239,6 +240,8 @@ extern char *url_encode(char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
 extern void copy_html_file(FILE*in, FILE*out);
 extern char** parse_args(const char*);
+extern const char *extract_command_from_list(const char *, const char **,
+                                             const char**, const char **);
 
 #if COMPILED_IN_RESOURCES
 struct resource {
