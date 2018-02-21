@@ -29,10 +29,17 @@ Commands that take window specifiers include `new`, `attach`,
 
 == Create top-level window
 
+If there is no window-specifier option, the default is given by the
+`frontend.default` preference in the `settings.ini` file.  That is
+a list of possible browser commands (simi;ar to what might
+follow yje `--broeser=` option).
+The first command in the list that executable is used.
+If the preference is unset, the default is currently
+`electron;qt;chrome;firefox;browser`, though that may change.
+
 The best user experience is currently either `--electron` or `-qt`.
 Both of these look and feel like traditional terminal emulator application,
 with a menubar and popup menu suitable for a terminal (rather than a browser).
-The default is `--electron` but that may change.
 
 `--electron`::
     Use a front-end based on https://electron.atom.io/[Electron].

@@ -52,6 +52,9 @@ was based on similar concepts, but was mostly written in Java using
 
 @itemize
 @item
+DomTerm is now tested and supported on both Ubuntu
+and Microsoft Windows Subsystem for Linux (WSL), running Ubuntu.
+@item
 The @code{domterm} command takes multiple sub-commands,
 similar to how @code{tmux} or @code{git}.
 The command automatically starts server if not already running.
@@ -90,11 +93,6 @@ Optionally uses Google's Closure compiler to reduce the size of the JavaScript.
 @item
 The qtdomterm application is designed to replace your favorite
 standalone terminal emulator program. It uses QtWebEngine.
-
-@item
-Mouse support using xterm protocols, used by @code{emacs} and @code{mc}.
-In addition, Alt-Click generates arrow-key events to move the caret
-within an input line.
 @end itemize
 
 @subheading Why another terminal emulator
@@ -270,8 +268,8 @@ git clone https://github.com/PerBothner/DomTerm
 
 @subheading Prerequisites
 
-(Please help out with instructions for other platforms, especially
-MacOS, *BSD, and Windows 10.)
+Please help out with instructions for other platforms, especially
+MacOS, *BSD, and native (non-WSL) Windows.
 
 @subsubheading Fedora
 
@@ -318,22 +316,10 @@ sudo apt-get install cmake
 
 @subsubheading Windows using Linux for Windows
 
-Microsoft Windows is now supported using
-@uref{https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux, Windows Subsystem for Linux (WSL)}.
-This has been tested using the Ubuntu distrubution:
-Follow the above Ubuntu instructions (without the optional qt packages),
-including (currently) building libwebsockets from source (below).
+Follow the instruction for your installed distribution
+(without the optional qt packages).  Ubuntu has been tested.
 
-Other distributions (such as Fedora) should work but have not
-been tested.
-
-The only supported and tested front-end (at the time of writing)
-is the Win32 Firefox browser, which should be in its default location
-@code{c:\Program Files (x86)\Mozilla Firefox\firefox.exe}.
-You should invoke domterm with the @code{--firefox} option.
-
-Domterm looks for the user settings file in
-@code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.
+See more Windows instructions @ref{building-on-WSL,below}.
 
 @subsubheading Building libwebsockets, if needed
 
@@ -363,30 +349,52 @@ make
 When running @code{./configure} in the @code{DomTerm} sources,
 specify @code{--with-libwebsockets=$WORKDIR/libwebsockets/build}.
 
+@subsubheading Optional: Electron
+
+The Electron framework provides a nicer domterm front-end
+than a regular web browser.  It is similar to using qtdomterm,
+but it is easier to install electron on platforms that don't have
+qt/qtwebengine packages easily available.
+
+Grab a suitable package from
+@uref{https://github.com/electron/electron/releases/latest,here}.
+Get the @code{zip} file with the plainest name (no @code{-symbols}
+or @code{-pdb}).
+For example, at the time of writing the current release is 1.8.2, so
+for Windows you want @code{electron-v1.8.2-win32-x64.zip}.
+Unzip into a freshly-created directory.
+
+On Windows Subsystem for Linux (WSL), you need to unzip into a
+directory on a Windows partition, not a Linux partition.
+For example, assuming the Windows user name is @code{wuser}
+and Electron version number @var{version}, do:
+@example
+cd /mnt/c/User/@var{wuser}
+mkdir electron-@var{version}
+cd electron-@var{version}
+unzip  /mnt/c/User/@var{wuser}/Downloads/electron-v@var{version}-win32-x64.zip
+@end example
+
+So that the @code{domterm} executable can find the electron executable,
+you can create an entry in @ref{Settings,@code{settings.ini}}:
+@example
+command.electron = @var{/path/to/electron}/electron
+@end example
+or (on WSL):
+@example
+command.electron = /mnt/c/User/@var{wuser}/electron-@var{version}/electron.exe
+@end example
+
+Alternatively, you can create a symlink in your @code{PATH} to electron.
+For example, on WSL (where @code{~/bin} is in the default @code{PATH}):
+@example
+cd ~/bin
+ln -s /mnt/c/User/@var{wuser}/electron-@var{version}/electron.exe electron
+@end example
 
 @subheading Building from source
 
-The core part of DomTerm is the JavaScript code @code{terminal.js},
-which defines the @code{DomTerm} class.
-You can use @code{terminal.js} in your own application.
-However, there is also some utility code, include standalone
-terminal emulator applications.
-
-The best terminal emulator experience at this time
-is probably the combination of libwebsockets 2.2
-with the Electron front-end.
-
-Another good application is @code{qtdomterm}.
-It uses the C++-based @uref{https://www.qt.io/,Qt toolkit}
-including @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}.
-Needed packages are included with Fedora 27.
-(Reports of attempt to build or use qtdomterm on other platforms
-would be welcome.)
-
-Building the sample applications and libraries is a two-part process:
-
-If building from the @code{git} respository,
-first do:
+If building from the @code{git} respository, first do:
 @example
 autoreconf
 @end example
@@ -399,6 +407,19 @@ Then run the @code{configure} script:
 @end example
 where @var{configure-options} can be:
 @table @code
+@item --prefix=@var{install-prefix}
+Set the root of the tree into which @code{make install}
+will install the built domterm.
+The default is @code{/usr/local}.
+The @code{domterm} and @code{qtdomterm} executables are
+installed in @var{install-prefix}@code{/bin},
+@code{man} pages are installed in @var{install-prefix}@code{/share/man},
+and other ``resources'' are installed
+in @var{install-prefix}@code{/share/domterm}.
+
+On WSL the @var{install-prefix} should be on a Windows partition,
+at least if you want to use the Electron front-end (which is recommended).
+
 @item --with-libwebsockets[=@var{lws-build}]
 Build the C application @code{ldomterm},
 which uses @uref{https://libwebsockets.org/,libwebsockets}.
@@ -422,13 +443,8 @@ This options adds the classes in @code{java_websocket.jar} to @code{domterm.jar}
 @item --with-asciidoctor
 Generates help and man pages using AsciiDoctor.
 The default is to do so if @code{asciidoctor} is in the path.
-@item --enable-pty
-Compile support for PTYs (pseudo-teletypes).
-This allows character mode: sending individual characters (rather than lines)
-from the front-end to the back-end.
-This is the default, except on Windows (which doesn't support PTYs).
 @item --with-javafx[=@var{library-name}]
-Use JavaFX to run standalone applications.
+Enable using JavaFX to run standalone applications.
 The @code{@var{library-name}} does not need to be specified if using Java SE 8.
 It may be needed for OpenJDK or Java SE 7,
 in which case it is either a path to @code{jfxrt.jar},
@@ -457,10 +473,10 @@ This feature causes the html, JavaScript and css files needed by DomTerm
 to be compiled into the executable.
 Otherwise, they are served from the compressed @code{domterm.jar}.
 
-@item --enable-ld-preload
-This is an experimental feature to preload a library to interpose
-some system functions.  Most importantly it overrides @code{tcgetattr}
-so that DomTerm gets notified on term terminal mode changes.
+@c @item --enable-ld-preload
+@c This is an experimental feature to preload a library to interpose
+@c some system functions.  Most importantly it overrides @code{tcgetattr}
+@c so that DomTerm gets notified on term terminal mode changes.
 @end table
 
 Then just:
@@ -477,14 +493,48 @@ or
 bin/qtdomterm
 @end example
 Either starts up a useable terminal emulator in a fresh window.
-The former starts up a @code{bash} shell, running in a PTY,
-with a libwebsockets server.  It also starts a stripped-down browser window,
-using that for the input and output
-of the @code{bash} shell.
-The latter (obviously) runs qtdomterm.
+(The latter is equivalent to @code{bin/domterm --qt}.)
 
-The @code{qtdomterm} executable has no external dependencies
-(besides the Qt libraries), and you can copy to wherever you want it.
+Optionally, you can install the built files
+into the configured @var{install-prefix} directory:
+@example
+make install
+@end example
+
+@anchor{building-on-WSL}
+@subsubheading Windows using Linux for Windows
+
+Microsoft Windows is now supported using
+@uref{https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux, Windows Subsystem for Linux (WSL)}.
+This has been tested using the Ubuntu distrubution:
+Follow the above Ubuntu instructions (without the optional qt packages),
+including (currently) building libwebsockets from source.
+
+Other distributions (such as Fedora) should work but have not
+been tested.
+
+It is also recommended that you install electron, as described above.
+Electron is a Windows executable, and it needs to be able to read
+the ``electron application'' files in @code{share/domterm/electron}.
+Hence, if you run @code{domterm} in-place (without @code{make install}),
+the @code{clone}'d source directory must be on a Windows partition.
+Alternatively, if you run domterm as installed by @code{make install},
+then the @var{install-prefix} must be on a Windows partition.
+
+If you want want to use a web browser, Win32 versions of
+both Firefox and Google Chrome work pretty well.
+The default location (for Firefox 
+@code{c:\Program Files (x86)\Mozilla Firefox\firefox.exe})
+should work out-of-the-box.  Otherwise specify
+@code{command.firefox} or @code{commmand.chrome} in
+@ref{Settings,@code{settings.ini}}.
+
+Note that the Microsft Edge browser does not work
+(for reason not yet known).
+(Internet Explorer wll probably never be supported.)
+
+Domterm looks for the user settings file in
+@code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.
 
 @node domterm application
 @chapter The domterm command
@@ -596,9 +646,9 @@ so you get a fresh chrome-less window (with no menubar or toolbar).
 This works well and the performance is good.
 This method provides no menubar or context-menu customization (so far).
 
-@item @code{--qtdomterm}
+@item @code{--qt}
+@itemx @code{--qtdomterm}
 @itemx @code{--qtwebengine}
-Experimental (not all functionality is working).
 Either option (they do the same thing)
 runs @code{qtdomterm} with the @code{--connect} option,
 after starting up a websockets server.
@@ -898,6 +948,8 @@ You can uses quotes, as in a shell.
 
 The default is the value of the @code{SHELL} environment variable;
 if that is not set the default is @code{/bin/bash}.
+
+@item @code{@b{frontend.default} = } @var{application-list}
 
 @item @code{@b{command.firefox} =} @var{command}
 @itemx @code{@b{command.chrome} =} @var{command}
@@ -2085,16 +2137,17 @@ report to DomTerm the current directory, so it can resolve
 relative files names to absolsute @code{file:} links.
 
 @example
-MAKE=/usr/bin/make
+BASE_MAKE=/usr/bin/make
 if test -t 1 && is_domterm
 then
   print_path_url
-  $MAKE "$@@"
+  export MAKE=`command -v $0`
+  $BASE_MAKE "$@@"
   ex=$?
   print_path_url
   exit $ex
 else
-  $MAKE "$@@"
+  $BASE_MAKE "$@@"
 fi
 @end example
 This uses the @code{is_domterm} and @code{print_path_url}
