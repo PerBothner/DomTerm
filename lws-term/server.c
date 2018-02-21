@@ -409,14 +409,21 @@ qtwebengine_command(int quiet, struct options *options)
 char *
 electron_command(int quiet, struct options *options)
 {
-    char *epath = main_options->command_electron != NULL
-        ? strdup(main_options->command_electron)
-        : find_in_path("electron");
+    bool epath_free_needed = false;
+    char *epath = main_options->command_electron;
     if (epath == NULL) {
-        if (quiet)
-            return NULL;
-        fprintf(stderr, "'electron' not found in PATH\n");
-        exit(-1);
+        char *ppath = find_in_path("electron");
+        if (ppath == NULL && is_WindowsSubsystemForLinux())
+            ppath = find_in_path("electron.exe");
+        if (ppath == NULL) {
+            if (quiet)
+                return NULL;
+            fprintf(stderr, "'electron' not found in PATH\n");
+            exit(-1);
+        }
+        epath = realpath(ppath, NULL);
+        free(ppath);
+        epath_free_needed = true;
     }
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *app_fixed = fix_for_windows(app);
@@ -431,7 +438,8 @@ electron_command(int quiet, struct options *options)
     sprintf(buf, format, epath, app_fixed, g1, g2);
     if (app_fixed != app)
         free(app_fixed);
-    free(epath);
+    if (epath_free_needed)
+        free(epath);
     return buf;
 }
 
