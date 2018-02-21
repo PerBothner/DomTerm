@@ -61,7 +61,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/application.ini $(ADOC_GENERATED) \
+all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -73,8 +73,9 @@ all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp
   share/domterm/help/domterm-is-domterm.txt \
   share/domterm/help/domterm-list.txt
 
-# application.ini has to be copied, not linked; or it can't find domterm.jar
-share/domterm/application.ini: $(srcdir)/xulapp/application.ini
+# On WSL (Windows Subsystem for Linux) 'electron' is a Windows executable,
+# so main.js must be copied, bit linked:
+share/domterm/electron/main.js: electron/main.js
 	cp $< $@
 
 bin/domterm$(EXEEXT):
@@ -145,7 +146,7 @@ run-shell: $(DOMTERM_JAR)
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
 	-rm -rf bin/domterm hlib/domterm-all.js \
-	  share/domterm/application.ini share/domterm/help \
+	  share/domterm/electron/main.js share/domterm/help \
 	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
 	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm
@@ -288,13 +289,6 @@ upload-web: web/index.html
 
 bin/qtdomterm:
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
-
-if WITH_JAVA
-xulapp_DATA = xulapp/application.ini xulapp/chrome.manifest
-xulappprefs_DATA = xulapp/defaults/preferences/prefs.js
-xulappdir = $(datadir)/domterm
-xulappprefsdir = $(datadir)/domterm/defaults/preferences
-endif
 
 ELECTRON_FILES = electron/package.json electron/main.js
 

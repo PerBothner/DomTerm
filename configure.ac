@@ -231,8 +231,4 @@ AC_SUBST(LIBMAGIC_LIBS)
 AC_CONFIG_FILES([Makefile hlib/domterm-version.js
                  lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h]
                  share/domterm/electron/package.json:electron/package.json)
-AC_CONFIG_LINKS(share/domterm/chrome.manifest:xulapp/chrome.manifest
-                share/domterm/defaults/preferences/prefs.js:xulapp/defaults/preferences/prefs.js
-                share/domterm/electron/main.js:electron/main.js)
-
 AC_OUTPUT
