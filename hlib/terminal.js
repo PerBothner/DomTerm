@@ -8044,14 +8044,19 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         return false;
     let href = null;
     let m = null;
-    let colons = 0;
-    if (fragment.charCodeAt(flength-1)==58
+    let afterLen = 0;
+    let afterStr = "";
+    // FIXME Only handles "GNU-style" (including javac) error messages.
+    // See problemMatcher.ts in vscode source and compile.el in emacs source
+    // for a list of other patterns we might consider supporting.
+    if (fragment.charCodeAt(flength-1)==58/*':'*/
         // FIXME should handle windows-style filename C:\XXXX
         && ((m = fragment.match(/^([^:]+):([0-9]+:[0-9]+-[0-9]+:[0-9]+):$/)) != null
             || (m = fragment.match(/^([^:]+):([0-9]+:[0-9]+-[0-9]+):$/)) != null
             || (m = fragment.match(/^([^:]+):([0-9]+:[0-9]+):$/)) != null
             || (m = fragment.match(/^([^:]+):([0-9]+):$/)) != null)) {
-        colons = 1;
+        afterLen = 1;
+        afterStr = ":";
         let fname = m[1];
         let position = m[2];
         if (fname.charCodeAt(0) != 47 /*'/'*/) {
@@ -8070,15 +8075,28 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         encoded = encoded + encodeURIComponent(fname);
         href= "file://" + encoded+ "#position=" + position;
     }
-    else if (isURL(fragment))
-        href = fragment;
-    else if (fragment.startsWith("www.") && isURL("http://"+fragment))
-        href = "http://"+fragment;
-    else if (isEmail(fragment)) {
-        href = "mailto:"+fragment;
-    } else
-        return false;
-    columnWidth -= colons;
+    else {
+        if (flength > 1) {
+            // The characters '.' ',' '?' '!' are allowed in a link,
+            // but not as the final character.
+            let last = fragment.charCodeAt(flength-1);
+            if (last == 46/*'.'*/ || last == 44/*','*/
+                || last == 33/*'!'*/ || last == 63/*'?'*/) {
+                afterStr = fragment.substring(flength-1, flength);
+                fragment = fragment.substring(0, flength-1);
+                afterLen = 1;
+            }
+        }
+        if (isURL(fragment))
+            href = fragment;
+        else if (fragment.startsWith("www.") && isURL("http://"+fragment))
+            href = "http://"+fragment;
+        else if (isEmail(fragment)) {
+            href = "mailto:"+fragment;
+        } else
+            return false;
+    }
+    columnWidth -= afterLen;
     if (fstart > start && firstToMove == null) {
         this.insertSimpleOutput(str, start, fstart, -1);
         start = fstart;
@@ -8088,8 +8106,8 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     alink.setAttribute("class", "matched subtle");
     alink.setAttribute("href", href);
     this._pushIntoElement(alink);
-    if (end-colons > start)
-        this.insertSimpleOutput(str, start, end-colons, columnWidth);
+    if (end-afterLen > start)
+        this.insertSimpleOutput(str, start, end-afterLen, columnWidth);
     this.outputContainer = alink.parentNode;
     this.outputBefore = alink.nextSibling;
     let old = alink.firstChild;
@@ -8102,16 +8120,17 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         n = next;
     }
     DomTerm._addMouseEnterHandlers(this, alink.parentNode);
-    if (colons > 0) {
+    if (afterLen > 0) {
         if (end == start && alink.lastChild instanceof Text) {
             let data = alink.lastChild.data;
-            if (data.length > 1 && data.charAt(data.length-1) == ':')
-                alink.lastChild.deleteData(data.length-1, 1);
+            if (data.length > afterLen
+                && data.charAt(data.length-afterLen) == afterStr)
+                alink.lastChild.deleteData(data.length-afterLen, afterLen);
             else
-                colons = 0;
+                afterLen = 0;
         }
-        if (colons > 0)
-            this.insertSimpleOutput(":", 0, 1, 1);
+        if (afterLen > 0)
+            this.insertSimpleOutput(afterStr, 0, afterLen, afterLen);
     }
     alink.normalize();
     return true;
