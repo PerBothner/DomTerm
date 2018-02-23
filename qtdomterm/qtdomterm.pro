@@ -13,7 +13,6 @@ HEADERS += \
     backend.h \
     browserapplication.h \
     browsermainwindow.h \
-    fullscreennotification.h \
     modelmenu.h \
     savepagedialog.h \
     webview.h
@@ -22,7 +21,6 @@ SOURCES += \
     backend.cpp \
     browserapplication.cpp \
     browsermainwindow.cpp \
-    fullscreennotification.cpp \
     modelmenu.cpp \
     savepagedialog.cpp \
     webview.cpp \
