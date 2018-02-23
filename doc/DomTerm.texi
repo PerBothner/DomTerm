@@ -510,8 +510,7 @@ This has been tested using the Ubuntu distrubution:
 Follow the above Ubuntu instructions (without the optional qt packages),
 including (currently) building libwebsockets from source.
 
-Other distributions (such as Fedora) should work but have not
-been tested.
+Other distributions should work but have not been tested.
 
 It is also recommended that you install electron, as described above.
 Electron is a Windows executable, and it needs to be able to read
@@ -951,11 +950,31 @@ if that is not set the default is @code{/bin/bash}.
 
 @item @code{@b{frontend.default} = } @var{application-list}
 
+The browser-like program used to create new top-level windows,
+unless overridden by a specific window-specifier command.
+
+The @var{application-list} is a list of commmand front-end,
+separated by newlines or semi-colons.  The commands are tried
+left-to-right, until one is found that exists and is executable.
+The default is currently:
+@example
+frontend.default = electron;qt;chrome;firefox;browser
+@end example
+The commmands @code{electron}, @code{qt}, @code{chrome},
+@code{firefox}, or @code{browser} are equivalent to the
+corresponding windows-specifier @code{--electron} and so on.
+Otherwise a command may be include command-line arguments
+(possibly quoted), optionally including @code{%U},
+similar to the @var{program} in a @code{--browser=@var{program}} option.
+
 @item @code{@b{command.firefox} =} @var{command}
 @itemx @code{@b{command.chrome} =} @var{command}
 @itemx @code{@b{command.electron} =} @var{command}
 Command to use for respectively @code{--firefox},
 @code{--chrome}, or @code{--electron}.
+
+The default for these is to search in the @code{PATH},
+possibly with some platform-depending knowledge of default locations.
 
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size of new top-level windows.
@@ -989,6 +1008,27 @@ for a darker background and a ligher foreground (text).
 
 The default is @code{off}, which selects
 lighter background and a darker foreground colors.
+
+@item @code{@b{style.caret} =} @var{value}
+Change the style of the caret (text input cursor).
+The @var{value} can be one of these (unquoted) words:
+@code{block}, @code{blinking-block},
+@code{underline}, @code{blinking-underline},
+@code{bar}, or @code{blinking-bar}.
+
+The default is @code{blinking-block}. Note that
+both @code{blinking-block} and @code{blinking-underline}
+only blink 20 times after each change or focus.
+To change the number of blinks set the CSS variable @code{--caret-blink-count}.
+For example to blink indefinitely, add this to @code{settings.ini}:
+@example
+style.user= div.domterm @{ --caret-blink-count: infinite @}
+@end example
+
+Currently, the @code{style.caret} setting is ignored
+in line-editing mode.
+Also, @code{bar} and @code{blinking-bar} are the same and use
+the browser's native text cursor, which may be blinking or not.
 
 @item @code{@b{open.file.application} =} @var{application-list}
 @itemx @code{@b{open.link.application} =} @var{application-list}
