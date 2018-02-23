@@ -169,6 +169,7 @@ function DomTerm(name, topNode) {
     this._replayMode = false;
 
     this.caretStyle = 1; // only if *not* isLineEditing()
+    this.caretStyleFromSettings = -1;
 
     this.verbosity = 0;
 
@@ -1374,6 +1375,8 @@ DomTerm.prototype._removeInputLine = function() {
 };
 
 DomTerm.prototype.setCaretStyle = function(style) {
+    if (style == 1 && this.caretStyleFromSettings >= 0)
+        style = this.caretStyleFromSettings;
     this.caretStyle = style;
 };
 
@@ -4602,6 +4605,26 @@ DomTerm.prototype.setSettings = function(obj) {
     } else if (this._style_dark_set) {
         this.setReverseVideo(false);
         this._style_dark_set = false;
+    }
+    var cstyle = obj["style.caret"];
+    if (cstyle) {
+        cstyle = String(cstyle).trim();
+        switch (cstyle) {
+        case "blinking-block": cstyle = 0; break;
+        case "block": cstyle = 2; break;
+        case "blinking-underline": cstyle = 3; break;
+        case "underline": cstyle = 4; break;
+        case "blinking-bar": cstyle = 5; break;
+        case "bar": cstyle = 6; break;
+        default: cstyle = Number(cstyle); break;
+        }
+    }
+    if (cstyle >= 0 && cstyle <= 6) {
+        if (this.caretStyleFromSettings != cstyle)
+            this.caretStyle = cstyle;
+        this.caretStyleFromSettings = cstyle;
+    } else {
+        this.caretStyleFromSettings = -1;
     }
 
     var style_user = obj["style.user"];
