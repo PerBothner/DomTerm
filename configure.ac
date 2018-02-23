@@ -34,8 +34,8 @@ AC_ARG_WITH(asciidoctor,
 AC_ARG_WITH(qtwebengine,
   AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
-AC_ARG_ENABLE(pty,
-  AS_HELP_STRING(--enable-pty,Enable support for PTYs from Java))
+AC_ARG_ENABLE(java-pty,
+  AS_HELP_STRING(--enable-java-pty,Enable support for PTYs from Java))
 
 AC_ARG_ENABLE(ld-preload,
   AS_HELP_STRING(--enable-ld-preload,Make use of LD_PRELOAD to modify standard functions))
@@ -121,7 +121,7 @@ case ${with_javafx} in
 esac
 AM_CONDITIONAL(WITH_JAVAFX, test "$with_javafx" != "" -a "$with_javafx" != "no")
 
-AM_CONDITIONAL(ENABLE_PTY, test "$enable_pty" = "yes")
+AM_CONDITIONAL(ENABLE_JAVA_PTY, test "$enable_java_pty" = "yes")
 
 if test "$with_java" != "no"
 then

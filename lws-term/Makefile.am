@@ -59,3 +59,4 @@ git-describe.c:
 
 install-exec-am: ../bin/domterm$(EXEEXT)
 	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) ../bin/domterm$(EXEEXT) "$(DESTDIR)$(bindir)"
+EXTRA_DIST = junzip.h server.h whereami.h utils.h

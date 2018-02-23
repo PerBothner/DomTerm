@@ -1,4 +1,34 @@
 DIST_SUBDIRS = lws-term
+EXTRA_DIST = \
+  hlib/terminal.js $(MISC_COPY_TO_JAR) $(JS_LIBS) $(CLIENT_DATA_FILES) \
+  $(domterm_jar_sources) domterm-jar-manifest bin/jdomterm \
+  domterm.desktop qtdomterm.desktop \
+  electron/main.js \
+  doc/DomTerm.texi doc/webdoc.patch \
+  doc/style/domterm.xsl doc/style/docbook-to-html.xsl \
+  doc/help/domterm.adoc \
+  doc/help/domterm-attach.adoc \
+  doc/help/domterm-browse.adoc \
+  doc/help/domterm-hcat.adoc \
+  doc/help/domterm-imgcat.adoc \
+  doc/help/domterm-is-domterm.adoc \
+  doc/help/domterm-list.adoc \
+  doc/help/domterm-new.adoc \
+  doc/help/domterm-window-specifier.adoc \
+  doc/help/qtdomterm.adoc \
+  $(DOC_IMAGES) \
+  qtdomterm/LICENSE qtdomterm/qtdomterm.pro qtdomterm/processoptions.h \
+  qtdomterm/backend.cpp qtdomterm/backend.h \
+  qtdomterm/browserapplication.cpp qtdomterm/browserapplication.h \
+  qtdomterm/browsermainwindow.cpp qtdomterm/browsermainwindow.h \
+  qtdomterm/modelmenu.cpp qtdomterm/modelmenu.h \
+  qtdomterm/savepagedialog.cpp qtdomterm/savepagedialog.h \
+  qtdomterm/webview.cpp qtdomterm/webview.h \
+  qtdomterm/main.cpp qtdomterm/savepagedialog.ui \
+  native/preloads.cc \
+  native/pty/apue.h native/pty/error.c native/pty/pty.c \
+  native/pty/pty_fork.c native/pty/pty_fork.h
+
 SUBDIRS = .
 JAVA_HOME = @JAVA_HOME@
 SED = @SED@
@@ -12,7 +42,7 @@ CLIENT_DATA_DIR = .
 #CLIENT_DATA_DIR = @datadir_relative@/domterm
 
 if WITH_JAVA
-if ENABLE_PTY
+if ENABLE_JAVA_PTY
 LIBPTY = lib/libdomterm-pty@LIBEXT@
 endif
 endif
@@ -61,7 +91,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: d/domterm $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js $(ADOC_GENERATED) \
+all-am: $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -101,9 +131,6 @@ $(LIBPTY): native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 
 d/domterm: d/domterm.ti
 	tic -o. $<
-
-run-pty: libpty@LIBEXT@ d/domterm $(DOMTERM_JAR)
-	$(JAVA_WITH_PATH) -Djava.library.path=`pwd` -jar  $(DOMTERM_JAR) --pty
 
 JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js hlib/wcwidth.js
 
@@ -162,7 +189,7 @@ javafx_sources =\
     org/domterm/javafx/Main.java
 javafx_pty_sources = org/domterm/pty/RunPty.java
 
-domterm_jar_sources = \
+base_domterm_jar_sources = \
   org/domterm/Backend.java \
   org/domterm/DomHttpServer.java \
   org/domterm/ClassBackend.java \
@@ -174,19 +201,22 @@ domterm_jar_sources = \
   org/domterm/util/Util.java \
   org/domterm/util/WTDebug.java \
   org/domterm/util/Utf8WriterOutputStream.java
+domterm_jar_sources = $(base_domterm_jar_sources)
 wsdomterm_jar_sources =
 if WITH_JAVA_WEBSOCKET
   wsdomterm_jar_sources += $(websocket_sources)
 endif
-if ENABLE_PTY
+if ENABLE_JAVA_PTY
   domterm_jar_sources += $(pty_sources)
 endif
 if WITH_JAVAFX
   domterm_jar_sources += $(javafx_sources)
-if ENABLE_PTY
+if ENABLE_JAVA_PTY
   domterm_jar_sources += $(javafx_pty_sources)
 endif
 endif
+dist_java_sources = $(base_domterm_jar_sources) $(pty_sources) \
+  $(javafx_sources) $(javafx_pty_sources)
 
 classes.stamp: $(domterm_jar_sources)
 if WITH_JAVA
