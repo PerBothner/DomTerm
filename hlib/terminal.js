@@ -7588,16 +7588,16 @@ DomTerm.prototype.keyDownHandler = function(event) {
             this.nextInputMode();
             event.preventDefault();
             return;
-        case 78: // Control-Shift-N
-            DomTerm.openNewWindow(this);
-            event.preventDefault();
-            return;
-       case 80: // Control-Shift-P
+        case 77: // Control-Shift-M
             if (this._currentlyPagingOrPaused()) {
                 this._pauseContinue();
                 this._exitPaging();
             } else
                 this._enterPaging(true);
+            event.preventDefault();
+            return;
+        case 78: // Control-Shift-N
+            DomTerm.openNewWindow(this);
             event.preventDefault();
             return;
         case 83: // Control-Shift-S
@@ -8126,7 +8126,7 @@ function _pagerModeInfo(dt) {
     if (dt._pageNumericArgument) {
         return prefix+": numeric argument: "+st._pageNumericArgument;
     }
-    return prefix+": type SPACE for more; Ctrl-Shift-P to exit paging";
+    return prefix+": type SPACE for more; Ctrl-Shift-M to exit paging";
 }
 
 DomTerm.prototype._updatePagerInfo = function() {
@@ -8232,7 +8232,7 @@ DomTerm.prototype._pageNumericArgumentAndClear = function(def = 1) {
 
 DomTerm.prototype._pageKeyHandler = function(event, key, press) {
     var arg = this._pageNumericArgument;
-    // Shift-PagUp and Shift-PageDown should maybe work in all modes?
+    // Shift-PageUp and Shift-PageDown should maybe work in all modes?
     // Ctrl-Shift-Up / C-S-Down to scroll by one line, in all modes?
     if (this.verbosity >= 2)
         this.log("page-key key:"+key+" event:"+event+" press:"+press);
@@ -8269,7 +8269,7 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         this._pageLine(key == 38 ? -1 : 1);
         event.preventDefault();
         break;
-    case 80: // 'P'
+    case 77: // 'M'
         var oldMode = this._pagingMode;
         if (oldMode==2)
             this._pauseContinue();
