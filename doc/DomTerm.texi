@@ -266,6 +266,14 @@ To download the sources do:
 git clone https://github.com/PerBothner/DomTerm
 @end example
 
+Alternatively, it may be easier to grab one of the sporadic
+@uref{https://github.com/PerBothner/DomTerm/releases,releases}.
+A file named @code{domterm-@var{version}.tar.gz} is a GNU-style release;
+it includes some generated files (such as the @code{configure} script),
+for convenience.
+A file named @code{domterm-@var{version}-wsl.zip} contains
+compiled installable files for WSL (Windows Subsystem for Linux).
+
 @subheading Prerequisites
 
 Please help out with instructions for other platforms, especially
@@ -304,8 +312,6 @@ If configuring @code{--with-qtwebengine} (recommended), also do:
 sudo apt-get install qt5-qmake qt5-default libqt5webengine5 libqt5webchannel5-dev qtwebengine5-dev
 @end example
 
-@c FIXME asciiodoctor should be optional
-
 In the future you should be able to do @code{apt-get install libwebsockets-dev}, but at the time of writing the available package is too old,
 so you have to build libwebsockets from source - see below.
 
@@ -314,12 +320,37 @@ If you need to build libwebsockets from source:
 sudo apt-get install cmake
 @end example
 
-@subsubheading Windows using Linux for Windows
+@subsubheading Windows using WSL (Linux for Windows)
 
-Follow the instruction for your installed distribution
-(without the optional qt packages).  Ubuntu has been tested.
+For building from source on WSL (Windows Subsystem for  Linux)
+see the @ref{building-on-WSL,instructions below}.
 
-See more Windows instructions @ref{building-on-WSL,below}.
+@anchor{wsl-binary-release}
+Alternatively, you can use of the pre-compiled
+@uref{https://github.com/PerBothner/DomTerm/releases,releases}.
+Download @code{domterm-@var{version}-wsl.zip}.
+Then create a directory on a Windows partition, @code{cd} to it,
+and @code{unzip} the downloaded file into the partition.
+For example (assuming your Windows user name is @code{@var{wuser}}):
+@example
+cd /mnt/c/@var{wuser}
+mkdir DomTerm
+cd DomTerm
+unzip /mnt/c/User/wuser/Downloads/domterm-@var{version}-wsl.zip
+@end example
+
+These library dependencies are needed:
+@example
+apt-get install libjson-c2 libmagic1 zlib1g
+@end example
+
+Optionally you can create a symlink for @code{domterm}:
+@example
+cd ~/bin
+ln -s /mnt/c/@var{wuser}/DomTerm/bin/domterm domterm
+@end example
+
+@ref{installing-electron,Installing Electron} is highly recommended.
 
 @subsubheading Building libwebsockets, if needed
 
@@ -349,6 +380,7 @@ make
 When running @code{./configure} in the @code{DomTerm} sources,
 specify @code{--with-libwebsockets=$WORKDIR/libwebsockets/build}.
 
+@anchor{installing-electron}
 @subsubheading Optional: Electron
 
 The Electron framework provides a nicer domterm front-end
@@ -507,7 +539,8 @@ make install
 Microsoft Windows is now supported using
 @uref{https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux, Windows Subsystem for Linux (WSL)}.
 This has been tested using the Ubuntu distrubution:
-Follow the above Ubuntu instructions (without the optional qt packages),
+Follow the above Ubuntu instructions for getting prerequsities
+(without the optional qt packages),
 including (currently) building libwebsockets from source.
 
 Other distributions should work but have not been tested.
