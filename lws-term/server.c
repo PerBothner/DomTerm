@@ -128,6 +128,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define GEOMETRY_OPTION 2005
 #define QT_REMOTE_DEBUGGING_OPTION 2006
 #define SESSION_NAME_OPTION 2007
+#define SETTINGS_FILE_OPTION 2008
 #define PANE_OPTIONS_START 2100
 /* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
 #define PANE_OPTION (PANE_OPTIONS_START+1)
@@ -154,6 +155,7 @@ static const struct option options[] = {
         {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
         {"session-name", required_argument, NULL, SESSION_NAME_OPTION},
         {"sn",           required_argument, NULL, SESSION_NAME_OPTION},
+        {"settings",     required_argument, NULL, SETTINGS_FILE_OPTION},
         {"detached",     no_argument,       NULL, DETACHED_OPTION},
         {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
         {"pane",         no_argument,       NULL, PANE_OPTION},
@@ -643,6 +645,7 @@ void  init_options(struct options *opts)
     opts->fd_out = STDOUT_FILENO;
     opts->fd_err = STDERR_FILENO;
     opts->session_name = NULL;
+    opts->settings_file = NULL;
     opts->shell_command = NULL;
     opts->shell_argv = NULL;
 }
@@ -659,9 +662,24 @@ char** default_command(struct options *opts)
         return default_argv;
 }
 
+void prescan_options(int argc, char **argv, struct options *opts)
+{
+    // parse command line options
+    int c;
+    optind = 1;
+    while ((c = getopt_long(argc, argv, opt_string, options, NULL)) != -1) {
+        switch (c) {
+            case SETTINGS_FILE_OPTION:
+                opts->settings_file = optarg;
+                break;
+        }
+    }
+}
+
 int process_options(int argc, char **argv, struct options *opts)
 {
     // parse command line options
+    optind = 1;
     int c;
     while ((c = getopt_long(argc, argv, opt_string, options, NULL)) != -1) {
         switch (c) {
@@ -712,6 +730,8 @@ int process_options(int argc, char **argv, struct options *opts)
             case SESSION_NAME_OPTION:
                 opts->session_name = optarg;
                 break;
+            case SETTINGS_FILE_OPTION:
+                break; // handled in prescan_options
             case PANE_OPTION:
             case TAB_OPTION:
             case LEFT_OPTION:
@@ -839,6 +859,7 @@ main(int argc, char **argv)
     default_argv = parse_args(shell);
 
     init_options(&opts);
+    prescan_options(argc, argv, &opts);
     read_settings_file(&opts);
     if (process_options(argc, argv, &opts) != 0)
         return -1;

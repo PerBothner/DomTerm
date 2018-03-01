@@ -9,7 +9,7 @@
 #endif
 
 static int inotify_fd;
-char*settings_fname = NULL;
+static char*settings_fname = NULL;
 static struct json_object *settings_json_object = NULL;
 const char *settings_as_json;
 int64_t settings_counter = 0;
@@ -40,10 +40,15 @@ read_settings_file(struct options *options)
         json_object_put(settings_json_object);
     struct json_object *jobj = json_object_new_object();
     settings_json_object = jobj;
-    const char *ddir = domterm_settings_dir();
-    settings_fname = xmalloc(strlen(ddir) + 40);
-    sprintf(settings_fname, "%s/settings.ini", ddir);
-    //notify_add_watch(inotify_fd, settings_fname, IN_MODIFY);
+    if (settings_fname == NULL) {
+        if (options->settings_file != NULL)
+            settings_fname = options->settings_file;
+        else {
+            const char *ddir = domterm_settings_dir();
+            settings_fname = xmalloc(strlen(ddir) + 40);
+            sprintf(settings_fname, "%s/settings.ini", ddir);
+        }
+    }
     int settings_fd = open(settings_fname, O_RDONLY);
     struct stat stbuf;
     if (settings_fd == -1

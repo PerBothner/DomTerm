@@ -166,6 +166,7 @@ struct options {
     int fd_out;
     int fd_err;
     char *session_name;
+    char *settings_file;
     char *shell_command;
     char **shell_argv;                        // parse_args(shell_command);
 };
