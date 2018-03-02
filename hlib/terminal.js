@@ -119,6 +119,7 @@ function DomTerm(name, topNode) {
     sstate.sessionNumber = -1;
     sstate.sessionNameUnique = false;
     this.windowNumber = -1;
+    this._settingsCounterInstance = -1;
     
     // Input lines that have not been processed yet.
     // In some modes we support enhanced type-ahead: Input lines are queued
@@ -4579,9 +4580,9 @@ DomTerm.defaultHeight = -1;
 
 DomTerm.prototype.setSettings = function(obj) {
     var settingsCounter = obj["##"];
-    if (DomTerm._settingsCounter == settingsCounter)
+    if (this._settingsCounterInstance == settingsCounter)
         return;
-    DomTerm._settingsCounter = settingsCounter;
+    this._settingsCounterInstance = settingsCounter;
 
     this.linkAllowedUrlSchemes = DomTerm.prototype.linkAllowedUrlSchemes;
     var link_conditions = "";
@@ -4627,26 +4628,29 @@ DomTerm.prototype.setSettings = function(obj) {
         this.caretStyleFromSettings = -1;
     }
 
-    var style_user = obj["style.user"];
-    if (style_user) {
-        this.loadStyleSheet("user", style_user);
-        DomTerm._userStyleSet = true;
-    } else if (DomTerm._userStyleSet) {
-        this.loadStyleSheet("user", "");
-        DomTerm._userStyleSet = false;
-    }
-    var geom = obj["window.geometry"];
-    if (geom) {
-        try {
-            var m = geom.match(/^([0-9]+)x([0-9]+)$/);
-            if (m) {
-                DomTerm.defaultWidth = Number(m[1]);
-                DomTerm.defaultHeight = Number(m[2]);
-            }
-        } catch (e) { }
-    } else {
-        DomTerm.defaultWidth = -1;
-        DomTerm.defaultHeight = -1;
+    if (DomTerm._settingsCounter != settingsCounter) {
+        DomTerm._settingsCounter = settingsCounter;
+        var style_user = obj["style.user"];
+        if (style_user) {
+            this.loadStyleSheet("user", style_user);
+            DomTerm._userStyleSet = true;
+        } else if (DomTerm._userStyleSet) {
+            this.loadStyleSheet("user", "");
+            DomTerm._userStyleSet = false;
+        }
+        var geom = obj["window.geometry"];
+        if (geom) {
+            try {
+                var m = geom.match(/^([0-9]+)x([0-9]+)$/);
+                if (m) {
+                    DomTerm.defaultWidth = Number(m[1]);
+                    DomTerm.defaultHeight = Number(m[2]);
+                }
+            } catch (e) { }
+        } else {
+            DomTerm.defaultWidth = -1;
+            DomTerm.defaultHeight = -1;
+        }
     }
 
     if (DomTerm.settingsHook) {
