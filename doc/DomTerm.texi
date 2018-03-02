@@ -1595,6 +1595,45 @@ because of the @uref{https://en.wikipedia.org/wiki/Same-origin_policy,same-origi
 Work-arounds are being considered; please contact the maintainer if this
 is a feature you want.
 
+@subheading Example: A ``solarized'' theme
+
+The @uref{http://ethanschoonover.com/solarized,Solarized colorscheme}
+aims for muted balanced colors for both light and dark styles.
+Put the following in your @ref{Settings} for a
+solarized dark look.
+
+@example
+style.dark=yes
+style.user=
+ | div.domterm @{ --solar-base03: #002b36; --solar-base02: #073642;
+ |   --solar-base01: #586e75; --solar-base00: #657b83;
+ |   --solar-base0: #839496; --solar-base1: #93a1a1;
+ |   --solar-base2: #eee8d5; --solar-base3: #fdf6e3;
+ |   --solar-yellow: #b58900; --solar-orange:  #cb4b16; --solar-red: #dc322f;
+ |   --solar-magenta: #d33682; --solar-violet: #6c71c4;
+ |   --solar-blue: #268bd2; --solar-cyan: #2aa198; --solar-green: #859900 @}
+ | div.domterm @{  --main-light-color: var(--solar-base3);
+ |   --main-dark-color: var(--solar-base03) @}
+ | div.domterm[reverse-video] @{ --background-color: var(--solar-base03);
+ |   --foreground-color: var(--solar-base0) @}
+ | div.domterm span[std="input"] @{ background-color: var(--solar-base2) @}
+ | div.domterm[reverse-video] span[std="input"] @{
+ |   background-color: var(--solar-base02) @}
+ | div.domterm-spacer @{background: none @}
+ | div.domterm div.input-line, div.domterm[reverse-video] div.input-line @{
+ |   background-color: var(--background-color); @}
+@end example
+
+The above is merely a suggested start.  The last few lines are optional.
+You might want to tweak prompt and error colors. You could also change
+the ``standard'' colors, for example:
+@example
+ | div.domterm @{--dt-blue: var(--solar-blue) @}
+@end example
+
+For a light solarized look, change the @code{style.dark=yes}
+to @code{style.dark=no}.
+
 @subheading Session-specific styles
 
 Each ``session'' (terminal window) has a session number
