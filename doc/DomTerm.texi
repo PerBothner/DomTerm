@@ -815,6 +815,15 @@ DomTerm also creates a temporary @code{html} that has the
 same name as the socket, but with a @code{.html} extension.
 That is by default it is @code{$HOME/.domain/default.html}.
 
+@item @code{--settings=}@var{filename}
+
+Specify the location of the @ref{Settings} file containing user preferences.
+(The default is @code{.domterm/settings.ini} in the user's home directory,
+except on WSL (Windows Subsystem for Linux).)
+
+Note this flag won't have much if any effect if you specify it
+when there is already a running domterm server.
+
 @item @code{--no-daemonize}
 When a domterm backend (server) is created, it normally turns itself
 into a @uref{https://en.wikipedia.org/wiki/Daemon_(computing),daemon}.
@@ -931,10 +940,11 @@ $ domterm disable-stylesheet 2
 @node Settings
 @chapter The settings.ini file
 
-User preferences for DomTerm are key in the file @code{.domterm/settings.ini}
-in the user's home directory.
+User preferences for DomTerm are normally in the file
+@code{.domterm/settings.ini} in the user's home directory.
 (On WSL (Windows Subsystem for Linux) the file is
 @code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.)
+You can override this default with the @code{-settings} command-line argument.
 If the @code{settings.ini} is changed it is automatically re-loaded.
 
 The syntax of @code{settings.ini} is a variant

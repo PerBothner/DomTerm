@@ -80,6 +80,15 @@ See `help window-specifier` for details.
     Works for both the Electron and qtdomterm front-ends.
 The size of the main window.
 
+``--settings=``_filename_::
+Specify the location of the settings file containing user preferences.
+The default is `.domterm/settings.ini` in the user’s home directory,
+except on WSL (Windows Subsystem for Linux),
+where it is ``c:\Users\``_USER_``\AppData\Roaming\DomTerm\settings.ini``.
++
+Note this flag won’t have much if any effect if you specify it when there
+is already a running domterm server.
+
 `--no-daemonize`::
 `--daemonize`::
     When a domterm backend (server) is created, it normally turns itself

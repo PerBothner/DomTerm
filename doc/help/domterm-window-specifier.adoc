@@ -30,9 +30,9 @@ Commands that take window specifiers include `new`, `attach`,
 == Create top-level window
 
 If there is no window-specifier option, the default is given by the
-`frontend.default` preference in the `settings.ini` file.  That is
-a list of possible browser commands (simi;ar to what might
-follow yje `--broeser=` option).
+`frontend.default` preference (by default read in the `settings.ini` file).
+That is a list of possible browser commands (similar to what might
+follow the `--browser=` option).
 The first command in the list that executable is used.
 If the preference is unset, the default is currently
 `electron;qt;chrome;firefox;browser`, though that may change.
