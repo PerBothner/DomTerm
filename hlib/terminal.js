@@ -3481,20 +3481,15 @@ DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         }
         if (pname == "PRE" || pname == "P" || pname == "DIV") {
             var newBlock = this._splitNode(parent, lineEnd.nextSibling);
+            var oldNextLine = this.lineStarts[absLine+1];
             this.lineStarts[absLine+1] = newBlock;
+            newBlock._widthColumns = oldNextLine._widthColumns;
+            newBlock._widthMode = oldNextLine._widthMode;
+            oldNextLine._widthColumns = undefined;
+            oldNextLine._widthMode = undefined;
         }
         // otherwise we have a non-standard line
         // Regardless, do:
-        var lineStart = this.lineStarts[absLine];
-        if (lineEnd._widthMode == DomTerm._WIDTH_MODE_NORMAL
-            && lineEnd._widthColumns !== undefined
-            && lineStart._widthColumns !== undefined) {
-            this.lineStart._widthColumns += lineEnd._widthColumns;
-        } else {
-            if (lineEnd._widthMode > lineStart._widthMode)
-                lineStart._widthMode = lineEnd._widthMode;
-            lineStart._widthColumns = undefined;
-        }
         lineEnd.setAttribute("line", "hard");
         lineEnd.removeAttribute("breaking");
         var child = lineEnd.firstChild;
@@ -4929,6 +4924,8 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
     var ok = 0;
     var i = 0;
     var startLine = this.getAbsCursorLine();
+    // FIXME could be smarter - we should avoid _WIDTH_MODE_VARIABLE_SEEN
+    // until we actually see something that needs it.
     this.lineStarts[startLine]._widthMode = DomTerm._WIDTH_MODE_VARIABLE_SEEN;
     var activeTags = new Array();
     loop:
@@ -6444,11 +6441,12 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             var dobreak = false;
             var skipChildren = false;
             var measureWidth = el instanceof Element ? el.measureWidth : 0;
+            const isText = el instanceof Text;
             check_fits:
-            if (el instanceof Text || dt.isObjectElement(el)
+            if (isText || dt.isObjectElement(el)
                 || el.classList.contains("wc-node")) {
                 skipChildren = true;
-                if (el instanceof Text)
+                if (isText)
                     dt._normalize1(el);
                 next = el.nextSibling;
                 var afterMeasure;
@@ -6462,10 +6460,11 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 measureWidth = afterMeasure - beforeMeasure;
                 var right = afterMeasure - startOffset;
                 if (right > availWidth
-                    && (beforePos > 0 || el instanceof Text)) {
+                    && (beforePos > 0 || isText)) {
                     var lineNode = dt._createLineNode("soft");
                     var indentWidth;
-                    if (el instanceof Text) {
+                    var oldel = el;
+                    if (isText) {
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
                         var rest = dt._breakString(el, lineNode, beforePos,
                                                    right, availWidth, didbreak,
@@ -6490,14 +6489,22 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                         el.parentNode.insertBefore(lineNode, el);
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
+                    lineNode._widthMode = dt.lineStarts[line]._widthMode;
                     line++;
                     if (! countColumns)
                         beforeMeasure += lineNode.offsetLeft - beforePos;
-                    else if (el instanceof Element)
+                    else if (isText) {
+                        let beforeColumns = oldel.parentNode == null ? 0
+                            : dt.strWidthInContext(oldel.data, el);
+                        beforeMeasure += dt.charWidth * beforeColumns;
+                        let oldWidthCols = dt.lineStarts[line-1]._widthColumns;
+                        if (oldWidthCols) {
+                            let beforeCols = beforeMeasure / dt.charWidth;
+                            dt.lineStarts[line-1]._widthColumns = beforeCols;
+                            lineNode._widthColumns = oldWidthCols - beforeCols;
+                        }
+                    } else
                         beforeMeasure = el.measureLeft;
-                    else
-                        beforeMeasure += dt.charWidth
-                          * dt.strWidthInContext(el.previousSibgling.data, el);
                     beforePos = indentWidth;
                     startOffset = beforeMeasure - beforePos;
                     dobreak = true;
@@ -6610,14 +6617,14 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     };
 
     function breakNeeded(dt, lineNo, lineStart) {
-	var wmode = lineStart._widthMode;
+        var wmode = lineStart._widthMode;
         if (! DomTerm._forceMeasureBreaks
             && wmode < DomTerm._WIDTH_MODE_VARIABLE_SEEN
             && lineStart._widthColumns !== undefined) {
             return lineStart._widthColumns > dt.numColumns;
         }
-	var end = dt.lineEnds[lineNo];
-	return end != null && end.offsetLeft > dt.availWidth;
+        var end = dt.lineEnds[lineNo];
+        return end != null && end.offsetLeft > dt.availWidth;
     }
 
     if (startLine < 0) {
@@ -6631,7 +6638,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     }
 
     var delta = 0;
-    var prevLine = null;
+    var prevLine = this.lineStarts[lineStart];
     // First remove any existing soft line breaks.
     for (var line = startLine+1;  line < this.lineStarts.length;  line++) {
         var lineStart = this.lineStarts[line];
@@ -6639,11 +6646,11 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             this.lineStarts[line-delta] = this.lineStarts[line];
             this.lineEnds[line-delta-1] = this.lineEnds[line-1];
         }
-        if (! this.isSpanNode(lineStart))
+        let lineAttr = lineStart.getAttribute("line");
+        if (! this.isSpanNode(lineStart) || ! lineAttr) {
+            prevLine = lineStart;
             continue;
-        var lineAttr = lineStart.getAttribute("line");
-        if (! lineAttr)
-            continue;
+        }
         if (lineStart.getAttribute("breaking")=="yes") {
             lineStart.removeAttribute("breaking");
             for (var child = lineStart.firstChild;
