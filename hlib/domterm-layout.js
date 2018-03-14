@@ -29,10 +29,10 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
         this.exitMuxMode();
         event.preventDefault();
         break;
-    case 27: // Escape
-        this.exitMuxMode();
-        event.preventDefault();
-        break;
+    case 16: /*Shift*/
+    case 17: /*Control*/
+    case 18: /*Alt*/
+        return;
     case 40 /*Down*/:
     case 38 /*Up*/:
     case 37 /*Left*/:
@@ -80,6 +80,11 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
             event.preventDefault();
             event.stopImmediatePropagation();
         }
+        break;
+    default:
+    case 27: // Escape
+        this.exitMuxMode();
+        event.preventDefault();
         break;
     }
 }
@@ -156,6 +161,7 @@ DomTerm._selectLayoutPane = function(component) {
     if (p.type == 'stack')
         p.setActiveContentItem(component);
     DomTerm.setFocus(dt);
+    dt.maybeFocus();
 }
 DomTerm.selectNextPane = function(item, forwards) {
     var r = item;

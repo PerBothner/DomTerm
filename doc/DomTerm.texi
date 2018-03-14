@@ -2471,6 +2471,15 @@ Terminal emulators for Atom:
 Various Electron @uref{https://github.com/sindresorhus/awesome-electron,Awesome links}
 @uref{https://electron.atom.io/community/,Community links}.
 
+@subheading Keymaps
+
+We should use a ``keymap'' structure to manage keybindings,
+and you should be able add/modify keymaps from the settings.ini.
+A small candidate library is
+@uref{https://github.com/marijnh/browserkeymap,browserkeymap}.
+It also also worth looking at @uref{https://craig.is/killing/mice,mousetrap},
+though that doesn't have a proper ``keymap'' concept.
+
 @subheading Readline style hooks and improvements
 
 The idea is the line-editing mode would provide the

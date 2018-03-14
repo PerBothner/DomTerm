@@ -132,7 +132,7 @@ $(LIBPTY): native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 d/domterm: d/domterm.ti
 	tic -o. $<
 
-JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/bililiteRange.js hlib/wcwidth.js
+JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js
 
 HLIB_FIXED_FILES = hlib/domterm-client.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
