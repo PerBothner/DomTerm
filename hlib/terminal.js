@@ -7490,7 +7490,7 @@ DomTerm.prototype._popFromCaret = function(saved) {
 }
 
 
-DomTerm.prototype.doLineEdit = function(key, str) {
+DomTerm.prototype.doLineEdit = function(key, str, ctrlKey = false) {
     if (this.verbosity >= 2)
         this.log("doLineEdit "+key+" "+JSON.stringify(str));
     this.editorAddLine();
@@ -7515,7 +7515,7 @@ DomTerm.prototype.doLineEdit = function(key, str) {
     }
     switch (key) {
     case 8: // Backspace
-        this.editorBackspace(this.numericArgumentGet(), true, false);
+        this.editorBackspace(this.numericArgumentGet(), true, ctrlKey);
         break;
     case 27: // Esc
         this._numericArgument = null;
@@ -7526,13 +7526,13 @@ DomTerm.prototype.doLineEdit = function(key, str) {
         this._numericArgument = null;
         break;
     case 37:  // Left
-        this.editorBackspace(this.numericArgumentGet(), false, false);
+        this.editorBackspace(this.numericArgumentGet(), false, ctrlKey);
         break;
     case 39: // Right
-        this.editorBackspace(- this.numericArgumentGet(), false, false);
+        this.editorBackspace(- this.numericArgumentGet(), false, ctrlKey);
         break;
     case 46: // Delete
-        this.editorBackspace(- this.numericArgumentGet(), true, false);
+        this.editorBackspace(- this.numericArgumentGet(), true, ctrlKey);
         break;
     default:
         let sel = window.getSelection();
@@ -7721,11 +7721,6 @@ DomTerm.prototype.keyDownHandler = function(event) {
         }
         if (! sel.isCollapsed)
             return;
-        if (event.ctrlKey && this.isLineEditing()) {
-            let count = (key == 37 ? 1 : -1) * this.numericArgumentGet();
-            this.editorBackspace(count, false, true);
-            return;
-        }
     }
 
     if (this._currentlyPagingOrPaused()) {
@@ -7783,7 +7778,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (str) {
                 event.preventDefault();
                 //this.log("KEY "+key+" "+JSON.stringify(str));
-                this.doLineEdit(key, str);
+                this.doLineEdit(key, str, event.ctrlKey);
             }
         }
     } else {
