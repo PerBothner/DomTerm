@@ -131,6 +131,7 @@ embedded in different modes and applications.
 * Settings: The settings.ini file
 * Applications:: Other domterm application
 * Sessions and Windows::
+* Input line editing::
 * Paging:: Paging and Pausing
 * Styling:: 
 * Java tools::
@@ -206,8 +207,8 @@ or run as a standard terminal emulator application.
 
 Optional @strong{input editing}.  In @dfn{character mode},
 each character is sent to the application, like a traditional terminal.
-In @dfn{line mode}, the browser does the editing, and send the input line
-to the back-end when Enter is typed.
+In @dfn{line mode}, the browser @ref{Input line editing,does the editing},
+and sends the input line to the back-end when Enter is typed.
 A history of previous lines is available, accessible
 with the Up/Down arrow keys.
 @dfn{Automatic mode} switches between character mode and line mode
@@ -1068,9 +1069,7 @@ For example to blink indefinitely, add this to @code{settings.ini}:
 style.user= div.domterm @{ --caret-blink-count: infinite @}
 @end example
 
-Currently, the @code{style.caret} setting is ignored
-in line-editing mode.
-Also, @code{bar} and @code{blinking-bar} are the same and use
+Currently, @code{bar} and @code{blinking-bar} are the same and use
 the browser's native text cursor, which may be blinking or not.
 
 @item @code{@b{open.file.application} =} @var{application-list}
@@ -1309,14 +1308,93 @@ and displaying in the tab-bar and title-bar of windows disdplay the session.
 The default @var{session -name} is @samp{DomTerm:@var{session-number}}.
 @end table
 
+@node Input line editing
+@chapter Input line editing
+
+In ``line-editing mode'' most keystrokes add to or modify
+an editing area in the domterm window, but are not sent to
+the application until you type Enter.
+This enables editing of input lines similar to GNU readliune.
+
+The keystroke @kbd{ctrl-shift-@key{L}} cycles between char mode (most
+characters sent immeditably to the application),
+line mode (most characaters modify local editring area), and
+auto mode (automatically switches between char mode and line mode
+depending on whether the application requests ``raw'' (char) input
+or ``canonical'' (line) input).
+
+The following special key are supported.
+@var{N} is a repeat count, which by default is 1.
+The word ``caret'' refers to the text cursor
+(as opposed to the mouse cursor).
+
+@table @asis
+@item @kbd{@key{Left}}
+@itemx @kbd{@key{Right}}
+Move caret @var{N} characters left or right.
+@item @kbd{Ctrl-@key{Left}}
+@itemx @kbd{Ctrl-@key{Right}}
+Move caret @var{N} words left or right.
+@item @kbd{Shift-Left}
+@itemx @kbd{Shift-Right}
+Extends the current selection by one character.
+(If there is no selection, the caret position is treated as
+a zero-size selection.)
+@item @kbd{Ctrl-Shift-Left}
+@itemx @kbd{Ctrl-Shift-Right}
+Extends the current selection by one word.
+@item @kbd{@key{Home}}
+@itemx @kbd{@key{End}}
+Move caret to start/end of line.
+@item @kbd{@key{Backspace}}
+@itemx @kbd{@key{Delete}}
+Delete @var{N} characters to the left or right of the caret.
+@item @kbd{Ctrl-@key{Backspace}}
+@itemx @kbd{Ctrl-@key{Delete}}
+Delete @var{N} words to the left or right of the caret.
+@item @kbd{Ctrl-@key{C}}
+@itemx @kbd{Ctrl-Shift-@key{C}}
+Copy selection to clipboard.
+(Selection can be partly or fully outside input area.)
+@item @kbd{Ctrl-@key{V}}
+@itemx @kbd{Ctrl-Shift-@key{V}}
+Paste selection from clipboard.
+@item @kbd{Ctrl-@key{X}}
+@itemx @kbd{Ctrl-Shift-@key{X}}
+Cut (deleted) selection and copy to clipboard.
+The selection should be wholly within the input area.
+@item @kbd{@key{Up}}
+@itemx @kbd{@key{Down}}
+Move up/down in history.
+If the current command is multi-line, first moves within the current
+command before moving to commands in the history.
+@item @kbd{Alt-@key{Minus}}
+@itemx @kbd{Alt-@var{digit}}
+Set or extend a repeat count.
+For example @kbd{Alt-1 Alt-2 Left} moves 12 characters left, while
+@kbd{Alt-Minus Alt-2 Ctrl-Left} move 2 characters right (because of the minus).
+@end table
+
+The ``standard'' mouse commands should work as expected.
+If you click before/after the input area,
+the caret is moved to the start/end of the input area.
+
+@emph{Not implemented yet, but planned:}
+Searching in history.
+Various emacs-style key-bindings, such as @kbd{Ctrl-@key{T}}.
+User-settable key-bindings.
+Command-completion, using some protocol to be defined.
+A plug-in replacement for GNU @code{readline} using @code{LD_PRELOAD}
+would be nice. (The idea is for an enhanced readline to detect it is running
+under DomTerm, in which case it would delegate most editing to DomTerm.
+This would allow using bash completion logic.)
+Auto-completion (completion as you type).
+
 @node Paging
 @chapter Paging and Pausing
 
-@emph{This feature is experimental. It requires ``back-end'' support,
-which has not been implemented yet for qtdomterm or @code{DomHttpServer}.
-It also requires libwebsockets version 2.2 or greater.}
-
-@emph{Key-bindings and other aspects are likely to change.}
+@emph{This feature is experimental.
+Key-bindings and other aspects are likely to change.}
 
 DomTerm includes a builtin ``pager'' that gives you
 functionality similar to programs like @code{less}.
