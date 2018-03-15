@@ -2129,7 +2129,6 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             // FIXME should scroll top of new buffer to top of window.
             var nextLine = this.lineEnds.length;
             var bufNode = this._createBuffer(this._altBufferName);
-            console.log("after _createBuffer in setAlternateScreenBuffer");
             this.topNode.insertBefore(bufNode, this._vspacer);
             var homeOffset = DomTerm._homeLineOffset(this);
             var homeNode = this.lineStarts[this.homeLine - homeOffset];
@@ -2282,7 +2281,6 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this._altBufferName = this.makeId("alternate")
 
     var mainNode = this._createBuffer(this._mainBufferName);
-    console.log("after _createBuffer in _initializeDomTerm");
     topNode.appendChild(mainNode);
     var vspacer = document.createElement("div");
     vspacer.setAttribute("class", "domterm-spacer");
@@ -2482,7 +2480,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                              function(e) {
                                  dt.pasteText(e.clipboardData.getData("text"));
                                  e.preventDefault(); },
-                              true);
+                              false);
     window.addEventListener("unload",
                             function(event) { dt.historySave(); });
     topNode.addEventListener("click",
@@ -5358,15 +5356,6 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
                 if (node.classList.contains('editing'))
                     dt._inputLine = node;
                 return true;
-                /*
-                if (node.getAttribute('std') != 'caret')
-                    return true;
-                //dt._removeInputLine();
-                dt._caretNode = node;
-                dt.outputBefore = node;
-                dt.outputContainer = node.parentNode;
-                return node;
-                */
             };
             this.initial = DomTerm._currentBufferNode(this);
             this._forEachElementIn(parent, findInputLine);
@@ -5809,7 +5798,7 @@ DomTerm.prototype.requestUpdateDisplay = function() {
 DomTerm.prototype.insertString = function(str) {
     if (this.verbosity >= 2) {
         //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
-        if (str.length > 20000)
+        if (str.length > 200)
             this.log("insertString "+JSON.stringify(str.substring(0,200))+"... state:"+this.controlSequenceState/*+" ms:"+ms*/);
         else
         this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
@@ -7735,6 +7724,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             return;
         }
     }
+
     if (this._currentlyPagingOrPaused()) {
         this._pageKeyHandler(event, key, false);
         return;
