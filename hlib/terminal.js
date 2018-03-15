@@ -7204,6 +7204,9 @@ DomTerm.doContextCopy = function() {
 }
 
 DomTerm.doPaste = function(dt) {
+    let sel = document.getSelection();
+    if (sel.rangeCount == 0)
+        sel.collapse(dt._caretNode, 0);
     dt.maybeFocus();
     return document.execCommand("paste", false);
 };
