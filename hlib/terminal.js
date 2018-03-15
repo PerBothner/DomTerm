@@ -7744,7 +7744,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             event.preventDefault();
         } else if (key == 13) {
             event.preventDefault();
-            if (event.shiftKey) {
+            if (false && event.shiftKey) { // FIXME needs work
                 this.pasteText("\n");
             } else {
                 this.processEnter();
@@ -8534,19 +8534,33 @@ DomTerm.prototype.editorMoveToPosition = function(node, offset) {
 }
 
 DomTerm.prototype.editorInsertString = function(str, inserting=true) {
-    let saved = this._pushToCaret();
-    if (inserting) {
-        this.insertRawOutput(str);
-        let line = this.lineStarts[this.getAbsCursorLine()];
-        line._widthColumns += this.strWidthInContext(str, line);
-        this._updateLinebreaksStart(this.getAbsCursorLine(), true);
-    } else {
-        let saveInserting = this.sstate.insertMode;
-        this.sstate.insertMode = inserting;
-        this.insertSimpleOutput(str, 0, str.length, -1);
-        this.sstate.insertMode = saveInserting;
+    for (;;) {
+        let nl = str.indexOf('\n');
+        let str1 = nl < 0 ? str : str.substring(0, nl);
+        if (str1 != "") {
+            let saved = this._pushToCaret();
+            if (inserting) {
+                this.insertRawOutput(str1);
+                let line = this.lineStarts[this.getAbsCursorLine()];
+                line._widthColumns += this.strWidthInContext(str1, line);
+                this._updateLinebreaksStart(this.getAbsCursorLine(), true);
+            } else {
+                let saveInserting = this.sstate.insertMode;
+                this.sstate.insertMode = inserting;
+                this.insertSimpleOutput(str1, 0, str.length, -1);
+                this.sstate.insertMode = saveInserting;
+            }
+            this._popFromCaret(saved);
+        }
+        if (nl < 0)
+            break;
+        // FIXME break existing line
+        // insert _createLineNode("hard")
+        // maybe insert prompt
+        // update line tables
+        this.cursorNewLine(1);
+        str = str.substring(nl+1);
     }
-    this._popFromCaret(saved);
 }
 
 DomTerm.prototype.editorDeleteRange = function(range) {
