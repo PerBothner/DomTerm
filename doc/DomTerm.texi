@@ -1352,6 +1352,9 @@ Delete @var{N} characters to the left or right of the caret.
 @item @kbd{Ctrl-@key{Backspace}}
 @itemx @kbd{Ctrl-@key{Delete}}
 Delete @var{N} words to the left or right of the caret.
+@item @kbd{@key{Enter}}
+Send input line to application.
+Also, if line is non-empty, add it to the hostory list.
 @item @kbd{Ctrl-@key{C}}
 @itemx @kbd{Ctrl-Shift-@key{C}}
 Copy selection to clipboard.
@@ -1381,6 +1384,8 @@ the caret is moved to the start/end of the input area.
 
 @emph{Not implemented yet, but planned:}
 Searching in history.
+Handle multi-line input areas. (@kbd{Shift-@key{Enter}} would add
+a newline to the input area, without sending anything to the application.)
 Various emacs-style key-bindings, such as @kbd{Ctrl-@key{T}}.
 User-settable key-bindings.
 Command-completion, using some protocol to be defined.
