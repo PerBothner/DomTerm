@@ -5,10 +5,10 @@ Summary:        A terminal emulator based on web technologies
 
 License:        BSD1
 URL:            https://domterm.org/  
-%global commit0 b568fcc44444e7f74359e526859dcdef76455ca5
-%global gittag0 HEAD
-%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit0}/DomTerm-%{commit0}.tar.gz
+%global commit 0095972847ade6c5895693a68770a8d97e7b3413
+# %global gittag0 HEAD
+%global shortcommit %(c=%{commit}; echo ${c:0:7})
+Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit}/DomTerm-%{commit}.tar.gz
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: desktop-file-utils
@@ -26,7 +26,7 @@ Requires:       json-c
 # that are useful for Java applications (for example Kawa).
 # It is convenient to put them in the same domterm.jar as the
 # much-bigger JavaScript and style files.  However, these Java classes
-# are not needed for the ldomterm or qtdomterm applications.
+# are not needed for the domterm or qtdomterm applications.
 Recommends:     java
 
 %description
@@ -49,7 +49,7 @@ License:        GPLv2+
 A terminal emulator using Qt and web technologies
 
 %prep
-%autosetup -n DomTerm-%{commit0}
+%autosetup -n DomTerm-%{commit}
 
 %build
 autoreconf
@@ -65,11 +65,6 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{bui
 %files
 %dir
 %{_bindir}/domterm
-%{_datadir}/domterm/application.ini
-%{_datadir}/domterm/chrome.manifest
-%{_datadir}/domterm/defaults/
-%{_datadir}/domterm/defaults/preferences/
-%{_datadir}/domterm/defaults/preferences/prefs.js
 %{_datadir}/domterm/domterm.jar
 %{_datadir}/domterm/electron/main.js
 %{_datadir}/domterm/electron/package.json
@@ -106,6 +101,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{bui
 %license COPYING
 
 %changelog
+* Thu Mar 15 2018 Per Bothner <per@bothner.com> - 0.99-1
+  Update for DomTerm 0.99.
 * Mon Feb 12 2018 Per Bothner <per@bothner.com> - 0.96-1
 - Update.
 * Sat Apr  8 2017 Per Bothner <per@bothner.com> - 0.74-1
