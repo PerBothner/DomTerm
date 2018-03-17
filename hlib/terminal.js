@@ -5288,10 +5288,11 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 73:
     case 74:
         var tb = text.indexOf('\t');
-        var keyName = parseInt(text.substring(0, tb), 10);
-        var kstr = JSON.parse(text.substring(tb+1));
-        if (this.verbosity >= 2)
+        var keyName = tb < 0 ? text : text.substring(0, tb);
+        if (this.verbosity >= 2) {
+            var kstr = tb < 0 ? "?" : JSON.parse(text.substring(tb+1));
             this.log("OSC KEY k:"+keyName+" kstr:"+this.toQuoted(kstr));
+        }
         this._clientWantsEditing = 1;
         if (code == 73 && this._inputLine) {
             this._inputLine.setAttribute("domterm-noecho", "true");
