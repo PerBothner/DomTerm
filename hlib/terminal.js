@@ -97,6 +97,9 @@ if (typeof ResizeSensor == "undefined" && typeof require !== "undefined")
 if (typeof WcWidth == "undefined" && typeof require !== "undefined")
     var WcWidth = require("./wcwidth.js");
 
+if (typeof browserKeymap == "undefined" && typeof require !== "undefined")
+    var browserKeymap = require("./browserkeymap.js");
+
 /** @constructor */
 
 function DomTerm(name, topNode) {
@@ -3071,8 +3074,8 @@ DomTerm.prototype.reportEvent = function(name, data) {
     this.processInputCharacters("\x92"+name+" "+data+"\n");
 };
 
-DomTerm.prototype.reportKeyEvent = function(key, str) {
-    this.reportEvent("KEY", ""+key+" "+JSON.stringify(str));
+DomTerm.prototype.reportKeyEvent = function(keyName, str) {
+    this.reportEvent("KEY", ""+keyName+"\t"+JSON.stringify(str));
 };
 
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
@@ -5284,16 +5287,16 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         break;
     case 73:
     case 74:
-        var sp = text.indexOf(' ');
-        var key = parseInt(text.substring(0, sp), 10);
-        var kstr = JSON.parse(text.substring(sp+1));
+        var tb = text.indexOf('\t');
+        var keyName = parseInt(text.substring(0, tb), 10);
+        var kstr = JSON.parse(text.substring(tb+1));
         if (this.verbosity >= 2)
-            this.log("OSC KEY k:"+key+" kstr:"+this.toQuoted(kstr));
+            this.log("OSC KEY k:"+keyName+" kstr:"+this.toQuoted(kstr));
         this._clientWantsEditing = 1;
         if (code == 73 && this._inputLine) {
             this._inputLine.setAttribute("domterm-noecho", "true");
         }
-        this.doLineEdit(key, kstr);
+        this.doLineEdit(keyName);
         break;
     case 7:
         // text is pwd as URL: "file://HOST/PWD"
@@ -7490,57 +7493,67 @@ DomTerm.prototype._popFromCaret = function(saved) {
 }
 
 
-DomTerm.prototype.doLineEdit = function(key, str, ctrlKey = false) {
+DomTerm.prototype.doLineEdit = function(keyName) {
     if (this.verbosity >= 2)
-        this.log("doLineEdit "+key+" "+JSON.stringify(str));
+        this.log("doLineEdit "+keyName);
     this.editorAddLine();
-    if (key == -13      // key-press event
-        || key == 13) { // key-down event
+    switch (keyName) {
+    case "Enter":
         this.processEnter();
         return;
-    }
-    switch (key) {
-    case 38: /*Up*/
+    case "Up":
         if (this._atTopInputLine()) {
             this.historyMove(-1);
             return;
         }
         break;
-    case 40: /*Down*/
+    case "Down":
         if (this._atBottomInputLine()) {
             this.historyMove(1);
             return;
         }
         break;
-    }
-    switch (key) {
-    case 8: // Backspace
-        this.editorBackspace(this.numericArgumentGet(), true, ctrlKey);
+    case "Backspace":
+        this.editorBackspace(this.numericArgumentGet(), true, false);
         break;
-    case 27: // Esc
+    case "Ctrl-Backspace":
+        this.editorBackspace(this.numericArgumentGet(), true, true);
+        break;
+    case "Esc":
         this._numericArgument = null;
         break;
-    case 35: // End
-    case 36: // Home
-        this.editorMoveHomeOrEnd(key==35);
+    case "End":
+    case "Home":
+        this.editorMoveHomeOrEnd(keyName=="End");
         this._numericArgument = null;
         break;
-    case 37:  // Left
-        this.editorBackspace(this.numericArgumentGet(), false, ctrlKey);
+    case "Left":
+        this.editorBackspace(this.numericArgumentGet(), false, false);
         break;
-    case 39: // Right
-        this.editorBackspace(- this.numericArgumentGet(), false, ctrlKey);
+    case "Ctrl-Left":
+        this.editorBackspace(this.numericArgumentGet(), false, true);
         break;
-    case 46: // Delete
-        this.editorBackspace(- this.numericArgumentGet(), true, ctrlKey);
+    case "Right":
+        this.editorBackspace(- this.numericArgumentGet(), false, false);
+        break;
+    case "Ctrl-Right":
+        this.editorBackspace(- this.numericArgumentGet(), false, true);
+        break;
+    case "Delete":
+        this.editorBackspace(- this.numericArgumentGet(), true, false);
+        break;
+    case "Ctrl-Delete":
+        this.editorBackspace(- this.numericArgumentGet(), true, true);
         break;
     default:
-        let sel = window.getSelection();
-        if (! sel.isCollapsed) {
-            this.editorBackspace(1, true, false);
+        if (keyName.length >= 0) {
+            let str = keyName.substring(1, keyName.length-1);
+            let sel = window.getSelection();
+            if (! sel.isCollapsed) {
+                this.editorBackspace(1, true, false);
+            }
+            this.editorInsertString(str.repeat(this.numericArgumentGet()));
         }
-        str = str.repeat(this.numericArgumentGet());
-        this.editorInsertString(str);
     }
 };
 
@@ -7621,7 +7634,8 @@ DomTerm.prototype._isOurEvent = function(event) {
 DomTerm.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event);
+        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+browserKeymap.keyName(event));
+    let keyName = browserKeymap.keyName(event);
 
     if (! this._isOurEvent(event))
         return;
@@ -7761,7 +7775,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
                 this._clientWantsEditing = 0;
-            this.reportKeyEvent(64 - key, // ctrl-C -> -3; ctrl-D -> -4
+            this.reportKeyEvent(keyName,
                                 this.keyDownToString(event));
         } else if (key == 38/*Up*/) {
             if (this._atTopInputLine()) {
@@ -7778,7 +7792,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (str) {
                 event.preventDefault();
                 //this.log("KEY "+key+" "+JSON.stringify(str));
-                this.doLineEdit(key, str, event.ctrlKey);
+                this.doLineEdit(keyName);
             }
         }
     } else {
@@ -7786,7 +7800,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         if (str) {
             event.preventDefault();
             if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
-                this.reportKeyEvent(key, str);
+                this.reportKeyEvent(keyName, str);
             else
                 this.processInputCharacters(str);
         }
@@ -7796,9 +7810,10 @@ DomTerm.prototype.keyDownHandler = function(event) {
 DomTerm.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which);
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+browserKeymap.keyName(event));
     if (! this._isOurEvent(event))
         return;
+    let keyName = browserKeymap.keyName(event);
     if (this._composing > 0)
         return;
     if (this._currentlyPagingOrPaused()) {
@@ -7812,15 +7827,14 @@ DomTerm.prototype.keyPressHandler = function(event) {
     this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
         event.preventDefault();
-        var str = String.fromCharCode(key);
-        this.doLineEdit(-key, str);
+        this.doLineEdit(keyName);
     } else {
         if (event.which !== 0
             && key != 8
             && ! event.ctrlKey) {
             var str = String.fromCharCode(key);
             if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
-                this.reportKeyEvent(-key, str);
+                this.reportKeyEvent(keyName, str);
             else
                 this.processInputCharacters(str);
             event.preventDefault();
@@ -8254,7 +8268,7 @@ DomTerm.prototype._currentlyPagingOrPaused = function() {
 function _pagerModeInfo(dt) {
     var prefix =  dt._pagingMode == 2 ? "<b>PAUSED</b>" : "<b>PAGER</b>";
     if (dt._numericArgument) {
-        return prefix+": numeric argument: "+st._numericArgument;
+        return prefix+": numeric argument: "+dt._numericArgument;
     }
     return prefix+": type SPACE for more; Ctrl-Shift-M to exit paging";
 }
@@ -8423,7 +8437,7 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         break;
     case 67:
         if (event.ctrlKey) { // ctrl-C
-            this.reportKeyEvent(3, this.keyDownToString(event));
+            this.reportKeyEvent(keyName, this.keyDownToString(event));
             this._pauseContinue(true);
             this._adjustPauseLimit(this.outputContainer);
             event.preventDefault();
