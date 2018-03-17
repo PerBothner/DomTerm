@@ -5,8 +5,8 @@ Summary:        A terminal emulator based on web technologies
 
 License:        BSD1
 URL:            https://domterm.org/  
-%global commit 0095972847ade6c5895693a68770a8d97e7b3413
-# %global gittag0 HEAD
+%global commit 24991c4ff8430554b9421cdca4813da6ddf8d01d
+# %%global gittag0 HEAD
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit}/DomTerm-%{commit}.tar.gz
 BuildRequires: autoconf
@@ -15,6 +15,8 @@ BuildRequires: desktop-file-utils
 BuildRequires: pkgconfig(libwebsockets)
 BuildRequires: pkgconfig(json-c)
 BuildRequires: pkgconfig(openssl)
+BuildRequires: gcc
+BuildRequires: gcc-c++
 BuildRequires: java-devel
 BuildRequires: qt5-qtbase-devel
 BuildRequires: qt5-qtwebchannel-devel
