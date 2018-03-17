@@ -2998,9 +2998,11 @@ can be changed by overwriting the @code{elementInfo}
 and @code{allowAttribute} functions in @code{terminal.js}.
 The default policy is a work-in-progress.
 
-@item @code{"\e]73;" key "\a"}
-@itemx @code{"\e]74;" key "\a"}
-Simulate pressing @var{key}.  Used by auto-line mode.
+@item @code{"\e]73;" @var{keyName} "\a"}
+@itemx @code{"\e]74;" keyName "\a"}
+@itemx @code{"\e]73;" @var{keyName} "\t" @var{kstr} "\a"}
+@itemx @code{"\e]74;" @var{keyName} "\t" @var{kstr} "\a"}
+Simulate pressing @var{keyName}.  Used by auto-line mode.
 The @code{73} variant supresses echo.
 
 @item @code{"\e]104;" @var{op} @code{,} @var{url} "a\n"}
@@ -3273,14 +3275,14 @@ The @var{data} can be any text not including a @code{"\n"}
 @item @code{"\x92" "WS " @var{rows} " " @var{cols} " " @var{height} " " @var{width} "\n"}
 Report window size from DomTerm to the back-end.
 
-@item @code{"\x92" "KEY " @var{kcode} " " @var{kchars} "\n"}
+@item @code{"\x92" "KEY " @var{keyname} "\t" @var{kchars} "\n"}
 Used by auto-line mode to report a key event to back-end.
-The @var{kcode} is a numeric key code,
-while @var{kchars} is as string literal (JSON-formatted)
+The @var{keyName} is an encoding of the key event in the
+style of @uref{https://github.com/marijnh/browserkeymap,browserkeymap};
+@var{kchars} is a string literal (JSON-formatted)
 of the characters that are normally transmitted to the back-end.
-(If the events was a key-press event, the @var{kcode} is negated first.)
-In auto-line mode, if the pty is in canonical mode, then @var{key}
-is returned to DomTerm (using @code{"\e]74;" @var{key} "\a"});
+In auto-line mode, if the pty is in canonical mode, then @var{keyName}
+is returned to DomTerm (using @code{"\e]74;" @var{keyName} "\a"});
 otherwise @var{kchars} are sent to the pty.
 
 @item @code{"\x92" "LINK " @var{ref-info} "\n"}
