@@ -3351,7 +3351,10 @@ DomTerm.prototype.handleEnter = function(text) {
     var spanNode;
     var line = this.getCursorLine();
     if (oldInputLine != null) {
-        this.historyAdd(text, oldInputLine.getAttribute("continuation") == "true");
+        let noecho = oldInputLine.getAttribute("domterm-noecho");
+        let cont = oldInputLine.getAttribute("continuation");
+        if (noecho == null || noecho == "false")
+            this.historyAdd(text, cont == "true");
         this.outputContainer = oldInputLine;
         this.outputBefore = null;
         oldInputLine.classList.remove("editing");
@@ -5294,7 +5297,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this.log("OSC KEY k:"+keyName+" kstr:"+this.toQuoted(kstr));
         }
         this._clientWantsEditing = 1;
-        if (code == 73 && this._inputLine) {
+        this.editorAddLine();
+        if (code == 73) {
             this._inputLine.setAttribute("domterm-noecho", "true");
         }
         this.doLineEdit(keyName);
@@ -7493,69 +7497,98 @@ DomTerm.prototype._popFromCaret = function(saved) {
     this.resetCursorCache();
 }
 
+DomTerm.commandMap = new Object();
+DomTerm.commandMap['backward-char'] = function(dt, key) {
+    dt.editorBackspace(dt.numericArgumentGet(), false, false);
+    return true; }
+DomTerm.commandMap['backward-word'] = function(dt, key) {
+    dt.editorBackspace(dt.numericArgumentGet(), false, true);
+    return true; }
+DomTerm.commandMap['forward-char'] = function(dt, key) {
+    dt.editorBackspace(- dt.numericArgumentGet(), false, false);
+    return true; }
+DomTerm.commandMap['forward-word'] = function(dt, key) {
+    dt.editorBackspace(- dt.numericArgumentGet(), false, true);
+    return true; }
+DomTerm.commandMap['backward-delete-char'] = function(dt, key) {
+    dt.editorBackspace(dt.numericArgumentGet(), true, false);
+    return true; }
+DomTerm.commandMap['backward-delete-word'] = function(dt, key) {
+    dt.editorBackspace(dt.numericArgumentGet(), true, true);
+    return true; }
+DomTerm.commandMap['forward-delete-char'] = function(dt, key) {
+    dt.editorBackspace(- dt.numericArgumentGet(), true, false);
+    return true; }
+DomTerm.commandMap['forward-delete-word'] = function(dt, key) {
+    dt.editorBackspace(- dt.numericArgumentGet(), true, true);
+    return true; }
+DomTerm.commandMap['beginning-of-line'] = function(dt, key) {
+    this.editorMoveHomeOrEnd(false); this._numericArgument = null;
+    return true; }
+DomTerm.commandMap['end-of-line'] = function(dt, key) {
+    this.editorMoveHomeOrEnd(true); this._numericArgument = null;
+    return true; }
+DomTerm.commandMap['up-line-or-history'] = function(dt, key) {
+    if (dt._atTopInputLine()) {
+        dt.historyMove(-1);
+        return true;
+    }
+    return false;
+}
+DomTerm.commandMap['down-line-or-history'] = function(dt, key) {
+    if (dt._atBottomInputLine()) {
+        dt.historyMove(1);
+        return true;
+    }
+    return false;
+}
+DomTerm.commandMap['accept-line'] = function(dt, key) {
+    this.processEnter();
+    return true; }
+
+DomTerm.lineEditKeymap = new browserKeymap({
+    "Left": 'backward-char',
+    "Ctrl-Left": 'backward-word',
+    "Right": 'forward-char',
+    "Ctrl-Right": 'forward-word',
+    "Backspace": "backward-delete-char",
+    "Ctrl-Backspace": "backward-delete-word",
+    "Delete": "forward-delete-char",
+    "Ctrl-Delete": "forward-delete-word",
+    "Home": "beginning-of-line",
+    "End": "end-of-line",
+    "Down": "down-line-or-history",
+    "Up": "up-line-or-history",
+    "Enter": "accept-line"
+});
 
 DomTerm.prototype.doLineEdit = function(keyName) {
     if (this.verbosity >= 2)
         this.log("doLineEdit "+keyName);
     this.editorAddLine();
-    switch (keyName) {
-    case "Enter":
-        this.processEnter();
-        return;
-    case "Up":
-        if (this._atTopInputLine()) {
-            this.historyMove(-1);
-            return;
-        }
-        break;
-    case "Down":
-        if (this._atBottomInputLine()) {
-            this.historyMove(1);
-            return;
-        }
-        break;
-    case "Backspace":
-        this.editorBackspace(this.numericArgumentGet(), true, false);
-        break;
-    case "Ctrl-Backspace":
-        this.editorBackspace(this.numericArgumentGet(), true, true);
-        break;
-    case "Esc":
-        this._numericArgument = null;
-        break;
-    case "End":
-    case "Home":
-        this.editorMoveHomeOrEnd(keyName=="End");
-        this._numericArgument = null;
-        break;
-    case "Left":
-        this.editorBackspace(this.numericArgumentGet(), false, false);
-        break;
-    case "Ctrl-Left":
-        this.editorBackspace(this.numericArgumentGet(), false, true);
-        break;
-    case "Right":
-        this.editorBackspace(- this.numericArgumentGet(), false, false);
-        break;
-    case "Ctrl-Right":
-        this.editorBackspace(- this.numericArgumentGet(), false, true);
-        break;
-    case "Delete":
-        this.editorBackspace(- this.numericArgumentGet(), true, false);
-        break;
-    case "Ctrl-Delete":
-        this.editorBackspace(- this.numericArgumentGet(), true, true);
-        break;
-    default:
-        if (keyName.length >= 0) {
-            let str = keyName.substring(1, keyName.length-1);
-            let sel = window.getSelection();
-            if (! sel.isCollapsed) {
-                this.editorBackspace(1, true, false);
+    let keymaps = [ DomTerm.lineEditKeymap ];
+    for (let map of keymaps) {
+        let commandName = map.lookup(keyName);
+        if (commandName) {
+            let command = DomTerm.commandMap[commandName];
+            if (command) {
+                let ret = command(this, keyName);
+                if (ret) {
+                    return ret;
+                }
             }
-            this.editorInsertString(str.repeat(this.numericArgumentGet()));
         }
     }
+    if (keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/) {
+        let str = keyName.substring(1, keyName.length-1);
+        let sel = window.getSelection();
+        if (! sel.isCollapsed) {
+            this.editorBackspace(1, true, false);
+        }
+        this.editorInsertString(str.repeat(this.numericArgumentGet()));
+        return true;
+    }
+    return false;
 };
 
 DomTerm.prototype._writeFile = function(data, filePath) {
@@ -7778,23 +7811,9 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 this._clientWantsEditing = 0;
             this.reportKeyEvent(keyName,
                                 this.keyDownToString(event));
-        } else if (key == 38/*Up*/) {
-            if (this._atTopInputLine()) {
-                event.preventDefault();
-                this.historyMove(-1);
-            }
-        } else if (key == 40/*Down*/) {
-            if (this._atBottomInputLine()) {
-                event.preventDefault();
-                this.historyMove(1);
-            }
         } else {
-            var str = this.keyDownToString(event);
-            if (str) {
+            if (this.doLineEdit(keyName))
                 event.preventDefault();
-                //this.log("KEY "+key+" "+JSON.stringify(str));
-                this.doLineEdit(keyName);
-            }
         }
     } else {
         var str = this.keyDownToString(event);
@@ -7827,8 +7846,8 @@ DomTerm.prototype.keyPressHandler = function(event) {
     }
     this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
-        event.preventDefault();
-        this.doLineEdit(keyName);
+        if (this.doLineEdit(keyName))
+            event.preventDefault();
     } else {
         if (event.which !== 0
             && key != 8
