@@ -1348,6 +1348,8 @@ DomTerm.prototype._followingText = function(cur) {
     }
 };
 
+// "Normalize" caret by moving caret text to following node.
+// Doesn't actually remove the _caretNode node, for that use _removeInputLine.
 DomTerm.prototype._removeCaret = function() {
     var caretNode = this._caretNode;
     if (caretNode && caretNode.getAttribute("caret")) {
@@ -4685,6 +4687,17 @@ DomTerm.prototype.setSettings = function(obj) {
             DomTerm.defaultWidth = -1;
             DomTerm.defaultHeight = -1;
         }
+
+        var lineeditMap = obj["keymap.line-edit"];
+        if (lineeditMap != null) {
+            let map = "{" + lineeditMap.trim().replace(/\n/g, ",") + "}";
+            try {
+                DomTerm.lineEditKeymap =
+                    DomTerm.lineEditKeymapDefault.update(JSON.parse(map));
+            } catch (e) {
+            }
+        } else
+            DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
     }
 
     if (DomTerm.settingsHook) {
@@ -7523,10 +7536,10 @@ DomTerm.commandMap['forward-delete-word'] = function(dt, key) {
     dt.editorBackspace(- dt.numericArgumentGet(), true, true);
     return true; }
 DomTerm.commandMap['beginning-of-line'] = function(dt, key) {
-    this.editorMoveHomeOrEnd(false); this._numericArgument = null;
+    dt.editorMoveHomeOrEnd(false); this._numericArgument = null;
     return true; }
 DomTerm.commandMap['end-of-line'] = function(dt, key) {
-    this.editorMoveHomeOrEnd(true); this._numericArgument = null;
+    dt.editorMoveHomeOrEnd(true); this._numericArgument = null;
     return true; }
 DomTerm.commandMap['up-line-or-history'] = function(dt, key) {
     if (dt._atTopInputLine()) {
@@ -7543,24 +7556,26 @@ DomTerm.commandMap['down-line-or-history'] = function(dt, key) {
     return false;
 }
 DomTerm.commandMap['accept-line'] = function(dt, key) {
-    this.processEnter();
+    dt.processEnter();
     return true; }
 
-DomTerm.lineEditKeymap = new browserKeymap({
+// "Mod-" is Cmd on Mac and Ctrl otherwise.
+DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Left": 'backward-char',
-    "Ctrl-Left": 'backward-word',
+    "Mod-Left": 'backward-word',
     "Right": 'forward-char',
-    "Ctrl-Right": 'forward-word',
+    "Mod-Right": 'forward-word',
     "Backspace": "backward-delete-char",
-    "Ctrl-Backspace": "backward-delete-word",
+    "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
-    "Ctrl-Delete": "forward-delete-word",
+    "Mod-Delete": "forward-delete-word",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Down": "down-line-or-history",
     "Up": "up-line-or-history",
     "Enter": "accept-line"
-});
+}, {});
+DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
 DomTerm.prototype.doLineEdit = function(keyName) {
     if (this.verbosity >= 2)
@@ -7580,6 +7595,9 @@ DomTerm.prototype.doLineEdit = function(keyName) {
         }
     }
     if (keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/) {
+        let ch = keyName.length == 3 ? keyName.charCodeAt(1) : -1;
+        if (ch >= 0 && ch < 32)
+            return false;
         let str = keyName.substring(1, keyName.length-1);
         let sel = window.getSelection();
         if (! sel.isCollapsed) {
