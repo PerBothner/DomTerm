@@ -2703,7 +2703,8 @@ DomTerm.prototype._mouseHandler = function(ev) {
     if (ev.type == "mouseup") {
         let sel = document.getSelection();
         if (sel.isCollapsed) {
-            if (this.isLineEditing() && this._inputLine != null) {
+            if (this.isLineEditing() && this._inputLine != null
+               && sel.focusNode != null) {
                 this.editorMoveToPosition(sel.focusNode, sel.focusOffset);
             }
             // we don't want a visible caret
@@ -7493,6 +7494,8 @@ DomTerm.prototype.setInputMode = function(mode) {
         this.clientDoesEcho = false;
         break;
     }
+    if (this.isLineEditing())
+        this.editorAddLine();
     this._restoreInputLine();
     if (wasEditing && ! this.isLineEditing()) {
         this._sendInputContents();
@@ -7614,6 +7617,7 @@ DomTerm.commandMap['backward-search-history'] = function(dt, key) {
     let observer = new MutationObserver(search);
     observer.observe(dt._miniBuffer,
                      { attributes: false, childList: true, characterData: true, subtree: true });
+    dt._miniBuffer.observer = observer;
     dt._searchMode = true;
     dt.historySearchForwards = false;
     dt.historySearchStart =
@@ -7895,8 +7899,12 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 DomTerm.displayInfoInWidget(null, this);
                 this.historySearchSaved = this._miniBuffer.textContent;
                 this.historyAdd(this._inputLine.textContent, false);
-                this._miniBuffer = null;
                 this._searchMode = false;
+                if (this._miniBuffer.observer) {
+                    this._miniBuffer.observer.disconnect();
+                    this._miniBuffer.observer = undefined;
+                }
+                this._miniBuffer = null;
                 if (keyName == "Tab") {
                     this.maybeFocus();
                     event.preventDefault();
@@ -7968,6 +7976,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
     this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
         if (this._searchMode) {
+            this._miniBuffer.focus();
             return;
         }
         else if (this.doLineEdit(keyName))
