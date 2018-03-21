@@ -134,8 +134,9 @@ embedded in different modes and applications.
 * Input line editing::
 * Paging:: Paging and Pausing
 * Styling:: 
-* Java tools::
+* Keyboard shortcuts::
 * Tips:: Tips and solutions
+* Java tools::
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
 @end menu
@@ -1736,25 +1737,104 @@ div.domterm[name="compile"] @{ background-color: #EEF @}
 div.input-line @{ background-color: inherit @}
 @end example
 
-@node Java tools
-@chapter Java tools
+@node Keyboard shortcuts
+@chapter Keyboard shortcuts
 
-The @code{domterm.jar} by default includes various useful Java classes
-(in addition
-to all the JavaScript and styling for DomTerm itself).
+This does not list @ref{Input line editing,shortcuts specific to line-editing mode}.
 
-The class @code{org.domterm.javafx.WebTerminalApp} creates a DomTerm
-window in the current Java process, without requiring a server.
-It is used by the @uref{https://www.gnu.org/software/kawa/REPL-Console.html#Running-a-Command-Interpreter-in-a-new-Window,Kawa @code{-wjavafx} option}.
-This does require JavaFX.
+@table @asis
+@c FUTURE @item Control-Shift-P
+@c Enter/exit pager mode
+@c FUTURE @item @mux-prefix
+@c Prefix for Screen or TMux
+@item @kbd{Control-Shift-@key{C}}
+Copy the selection to the clipboard.
+It is copied as both plain text (@code{text/plain})
+and formatted HTML (@code{text/html}) in case the receiving
+application can paste the latter.
+(@kbd{Control-@key{C}} also works in line-editing mode.)
+@item (@kbd{Control-Shift-@key{V}}
+Paste text from the clipboard.
+(@kbd{Control-@key{V}} also works in line-editing mode.)
+@item @kbd{Control-Shift-@key{S}}
+Save the display to a file.
+@item @kbd{Control-Shift-@key{L}}
+Cycle between the input modes: automatic, to line, to character, and back.
+The resulting mode is displayed temporarily.
+@item @kbd{Control-Shift-@key{Home}}
+Scroll to top.
+@item @kbd{Control-Shift-@key{End}}
+Scroll to bottom.
+@item @kbd{Control-Shift-@key{PageUp}}
+@itemx @kbd{Control-Shift-@key{PageDown}}
+Scroll one ``page'' up or down.
+(Specifically, the viewport height minus a height of one line.)
+@item @kbd{Control-Shift-@key{Up}}
+@itemx @kbd{Control-Shift-@key{Down}}
+Scroll one line up or down.
+@end table
 
-The @code{org.domterm.DomHttpServer} is a webserver that can be used
-as a server (back-end) component of DomTerm.
-It does not use WebSockets but uses plain HTTP (with ``Ajax'') instead.
-It only depends on the @code{HttpServer} that is a standard part of the JDK.
+The following are implemented by most browsers, rather than DomTerm,
+so it may not work on all browsers.
+@table @asis
+@item @kbd{Control-Shift-@key{Plus}}
+Zoom in (makes text bigger).
+(Does not work in atom-domterm.)
+@item @kbd{Control-Shift-@key{Minus}}
+@itemx @kbd{Control-@key{Minus}}
+Zoom out (makes text smaller).
+(Does not work in atom-domterm.)
+@item @kbd{Control-@key{0}}
+``Un-zoom'' to normal size.
+@item @kbd{@key{F11}}
+Toggle full-screen mode.
+@item @kbd{Control-Shift-@key{I}}
+Toogle Developer Window, useful for debugging or examining
+the state of the Document Object Model.
+@end table
 
-The @code{jdomterm} script starts up @code{DomHttpServer} along with
-an optional front-end.
+@subsubheading Scrolling
+
+@table @asis
+@item @kbd{Control-Shift-@key{PageUp}}
+@item @kbd{Control-Shift-@key{PageDown}}
+Scroll a page up or down, respectively.
+@item @kbd{Control-Shift-@key{Up}}
+@item @kbd{Control-Shift-@key{Down}}
+Scroll a line up or down, respectively.
+@item @kbd{Control-Shift-@key{Home}}
+@item @kbd{Control-Shift-@key{End}}
+Scroll to top or bottom, respectively.
+@end table
+
+See also the bindings for @ref{Paging} mode.
+@subsubheading Managing subwindows
+
+The prefix key @kbd{@mux-prefix} when followed by some other key
+controls sessions and windows.
+
+@table @asis
+@item @kbd{Control-Shift-@key{T}}
+Create a new terminal in a new tab.
+@item @kbd{Control-Shift-@key{N}}
+Create a new terminal in a new pane (sub-window).
+The new pane is create to the right or below the current pane,
+depending on space.
+@item @kbd{@mux-prefix Control-@key{Left}}
+Create a new terminal pane to the left of the current one.
+@item @kbd{@mux-prefix Control-@key{Right}}
+Create a new terminal pane to the right of the current one.
+@item @kbd{@mux-prefix Control-@key{Up}}
+Create a new terminal pane above the current one.
+@item @kbd{@mux-prefix Control-@key{Down}}
+Create a new terminal pane below the current one.
+@item @kbd{@mux-prefix @key{Left}}
+Select the previous pane or tab.
+@item @kbd{@mux-prefix @key{Right}}
+Select the next pane or tab.
+@item @kbd{@mux-prefix @key{d}}
+Detach from current session and close the (sub-)window.
+@end table
 
 @node Tips
 @chapter Tips and solutions
@@ -2075,107 +2155,9 @@ A literal @samp{%}.
 @end table
 
 @menu
-* Keyboard shortcuts::
 * Shell prompts::  Shell prompts and tricks
 * Names and titles::
 @end menu
-
-@node Keyboard shortcuts
-@section Keyboard shortcuts
-
-@table @asis
-@c FUTURE @item Control-Shift-P
-@c Enter/exit pager mode
-@c FUTURE @item @mux-prefix
-@c Prefix for Screen or TMux
-@item Control-Shift-C
-Copy the selection to the clipboard.
-It is copied as both plain text (@code{text/plain})
-and formatted HTML (@code{text/html}) in case the receiving
-application can paste the latter.
-(Control-C also works in line-editing mode.)
-@item Control-Shift-V
-Paste text from the clipboard.
-(Control-V also works in line-editing mode.)
-@item Control-Shift-S
-Save the display to a file.
-@item Control-Shift-L
-Cycle between the input modes: automatic, to line, to character, and back.
-The resulting mode is displayed temporarily.
-@item Control-Shift-Home
-Scroll to top.
-@item Control-Shift-End
-Scroll to bottom.
-@item Control-Shift-PageUp
-@itemx Control-Shift-PageDown
-Scroll one ``page'' up or down.
-(Specifically, the viewport height minus a height of one line.)
-@item Control-Shift-Up
-@itemx Control-Shift-Down
-Scroll one line up or down.
-@end table
-
-The following are implemented by most browsers, rather than DomTerm,
-so it may not work on all browsers.
-@table @asis
-@item Contriol-Shift-Plus
-Zoom in (makes text bigger).
-(Does not work in atom-domterm.)
-@item Control-Shift-Minus
-@itemx Control-Minus
-Zoom out (makes text smaller).
-(Does not work in atom-domterm.)
-@item Control-0
-``Un-zoom'' to normal size.
-@item F11
-Toggle full-screen mode.
-@item Control-Shift-I
-Toogle Developer Window, useful for debugging or examining
-the state of the Document Object Model.
-@end table
-
-@subsubheading Scrolling
-
-@table @asis
-@item Control-Shift-PageUp
-@item Control-Shift-PageDown
-Scroll a page up or down, respectively.
-@item Control-Shift-Up
-@item Control-Shift-Down
-Scroll a line up or down, respectively.
-@item Control-Shift-Home
-@item Control-Shift-End
-Scroll to top or bottom, respectively.
-@end table
-
-See also the bindings for @ref{Paging} mode.
-@subsubheading Managing subwindows
-
-The prefix key @mux-prefix when followed by some other key
-controls sessions and windows.
-
-@table @asis
-@item Control-Shift-T
-Create a new terminal in a new tab.
-@item Control-Shift-N
-Create a new terminal in a new pane (sub-window).
-The new pane is create to the right or below the current pane,
-depending on space.
-@item @mux-prefix Control-Left
-Create a new terminal pane to the left of the current one.
-@item @mux-prefix Control-Right
-Create a new terminal pane to the right of the current one.
-@item @mux-prefix Control-Up
-Create a new terminal pane above the current one.
-@item @mux-prefix Control-Down
-Create a new terminal pane below the current one.
-@item @mux-prefix Left
-Select the previous pane or tab.
-@item @mux-prefix Right
-Select the next pane or tab.
-@item @mux-prefix @code{d}
-Detach from current session and close the (sub-)window.
-@end table
 
 @node Shell prompts
 @section Shell prompts and tricks
@@ -2447,6 +2429,26 @@ For active tabs, DomTerm displays both the window name (normally the session nam
 and the window title (typically the current directory).
 This information may be shown in the main window title bar
 as well as the currently active tab.
+
+@node Java tools
+@chapter Java tools
+
+The @code{domterm.jar} by default includes various useful Java classes
+(in addition
+to all the JavaScript and styling for DomTerm itself).
+
+The class @code{org.domterm.javafx.WebTerminalApp} creates a DomTerm
+window in the current Java process, without requiring a server.
+It is used by the @uref{https://www.gnu.org/software/kawa/REPL-Console.html#Running-a-Command-Interpreter-in-a-new-Window,Kawa @code{-wjavafx} option}.
+This does require JavaFX.
+
+The @code{org.domterm.DomHttpServer} is a webserver that can be used
+as a server (back-end) component of DomTerm.
+It does not use WebSockets but uses plain HTTP (with ``Ajax'') instead.
+It only depends on the @code{HttpServer} that is a standard part of the JDK.
+
+The @code{jdomterm} script starts up @code{DomHttpServer} along with
+an optional front-end.
 
 @node To do
 @chapter Ideas and projects for DomTerm
@@ -3470,7 +3472,7 @@ Otherwise, the @code{domterm} process will be a client,
 and forward the requested action to the server.
 
 Communication between a @code{domterm} client and a server
-uses Unix domain dockets.  By default, this socket will
+uses Unix domain sockets.  By default, this socket will
 be bound to the file @code{.domterm/default.socket} in the user's
 home directory.  We make use of Unix file permission to
 ensure that the client and the server run on behalf of the same user.
