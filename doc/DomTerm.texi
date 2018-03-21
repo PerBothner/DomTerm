@@ -1330,11 +1330,11 @@ The word ``caret'' refers to the text cursor
 (as opposed to the mouse cursor).
 
 @table @asis
-@item @kbd{@key{Left}}
-@itemx @kbd{@key{Right}}
+@item @kbd{@key{Left}} (@code{backward-char})
+@itemx @kbd{@key{Right}} (@code{forward-char})
 Move caret @var{N} characters left or right.
-@item @kbd{Ctrl-@key{Left}}
-@itemx @kbd{Ctrl-@key{Right}}
+@item @kbd{Ctrl-@key{Left}} (@code{backward-word})
+@itemx @kbd{Ctrl-@key{Right}} (@code{backward-word})
 Move caret @var{N} words left or right.
 @item @kbd{Shift-Left}
 @itemx @kbd{Shift-Right}
@@ -1344,16 +1344,16 @@ a zero-size selection.)
 @item @kbd{Ctrl-Shift-Left}
 @itemx @kbd{Ctrl-Shift-Right}
 Extends the current selection by one word.
-@item @kbd{@key{Home}}
-@itemx @kbd{@key{End}}
+@item @kbd{@key{Home}} (@code{beginning-of-line})
+@itemx @kbd{@key{End}} (@code{end-of-line})
 Move caret to start/end of line.
-@item @kbd{@key{Backspace}}
-@itemx @kbd{@key{Delete}}
+@item @kbd{@key{Backspace}} (@code{backward-delete-char})
+@itemx @kbd{@key{Delete}} (@code{forward-delete-char})
 Delete @var{N} characters to the left or right of the caret.
-@item @kbd{Ctrl-@key{Backspace}}
-@itemx @kbd{Ctrl-@key{Delete}}
+@item @kbd{Ctrl-@key{Backspace}} (@code{backward-delete-word})
+@itemx @kbd{Ctrl-@key{Delete}} (@code{forward-delete-word})
 Delete @var{N} words to the left or right of the caret.
-@item @kbd{@key{Enter}}
+@item @kbd{@key{Enter}} (@code{accept-line})
 Send input line to application.
 Also, if line is non-empty, add it to the hostory list.
 @item @kbd{Ctrl-@key{C}}
@@ -1367,16 +1367,26 @@ Paste selection from clipboard.
 @itemx @kbd{Ctrl-Shift-@key{X}}
 Cut (deleted) selection and copy to clipboard.
 The selection should be wholly within the input area.
-@item @kbd{@key{Up}}
-@itemx @kbd{@key{Down}}
+@item @kbd{@key{Up}} (@code{up-line-or-history})
+@itemx @kbd{@key{Down}} (@code{down-line-or-history})
 Move up/down in history.
 If the current command is multi-line, first moves within the current
 command before moving to commands in the history.
+@item @kbd{Ctrl-@key{R}} (@code{backward-search-history})
+Enter @ref{history-search-mode}.
 @item @kbd{Alt-@key{Minus}}
 @itemx @kbd{Alt-@var{digit}}
 Set or extend a repeat count.
 For example @kbd{Alt-1 Alt-2 Left} moves 12 characters left, while
 @kbd{Alt-Minus Alt-2 Ctrl-Left} move 2 characters right (because of the minus).
+@item @kbd{Ctrl-@key{A}} (@code{beginning-of-line})
+@itemx @kbd{Ctrl-@key{B}} (@code{backward-char})
+@itemx @kbd{Ctrl-@key{D}} (@code{delete-char})
+@itemx @kbd{Ctrl-@key{E}} (@code{end-of-line})
+@itemx @kbd{Ctrl-@key{F}} (@code{forward-char})
+@itemx @kbd{Alt-@key{B}} (@code{backward-word})
+@itemx @kbd{Alt-@key{F}} (@code{forward-word})
+Emacs-style alternate keybindings.
 @end table
 
 The ``standard'' mouse commands should work as expected.
@@ -1384,7 +1394,6 @@ If you click before/after the input area,
 the caret is moved to the start/end of the input area.
 
 @emph{Not implemented yet, but planned:}
-Searching in history.
 Handle multi-line input areas. (@kbd{Shift-@key{Enter}} would add
 a newline to the input area, without sending anything to the application.)
 Various emacs-style key-bindings, such as @kbd{Ctrl-@key{T}}.
@@ -1395,6 +1404,37 @@ would be nice. (The idea is for an enhanced readline to detect it is running
 under DomTerm, in which case it would delegate most editing to DomTerm.
 This would allow using bash completion logic.)
 Auto-completion (completion as you type).
+
+@anchor{history-search-mode}
+@subheading Searching in history
+
+The @kbd{Ctrl-@key{R}} key enters history-search mode.
+As you type characters, a search string is created, which
+is matched against the items in the history list.
+
+@table @asis
+@item @kbd{@var{printable-char}}
+Append (or insert) @var{printable-char} to the search string,
+which may update the selected history item.
+@item @kbd{@key{Left}}
+@itemx @kbd{@key{Right}}
+Move caret within search string.
+@item @kbd{@key{Backspace}}
+@itemx  @kbd{@key{Delete}}
+Delete character from search string. This may change the selected history item.
+@item @kbd{Ctrl-@key{R}}
+@itemx @kbd{Ctrl-@key{S}}
+Search for previous/next history item matching the current search string.
+If the search string is empty, use previous search string.
+For example @kbd{Ctrl-@key{R} Ctrl-@key{R}} repeats previous search.
+@item @kbd{@key{Enter}}
+Exit search mode, accept current item, and send it to the application.
+@item @kbd{@key{Up}}
+@itemx @kbd{@key{Down}}
+Exit search mode, and move to previous/next history item.
+@item @kbd{@key{Tab}}
+Exit search mode, accept current item, but continue editing it.
+@end table
 
 @node Paging
 @chapter Paging and Pausing
