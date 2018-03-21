@@ -275,6 +275,9 @@ function DomTerm(name, topNode) {
     // In this case _caretSpan is required to be within _inputLine.
     this._inputLine = null;
 
+    this._miniBuffer = null;
+    this._searchMode = false;
+
     // True if _inputLine should move with outputBefore.
     this.inputFollowsOutput = true;
 
@@ -338,6 +341,9 @@ function DomTerm(name, topNode) {
 
     this.history = null;
     this.historyCursor = -1;
+    this.historySearchStart = -1;
+    this.historySearchForwards = false;
+    this.historySearchSaved = "";
     this.historyStorageKey = "DomTerm.history";
     this.historyStorageMax = 200;
 
@@ -2403,9 +2409,8 @@ DomTerm.prototype._displayInfoMessage = function(contents) {
 }
 
 /** Display contents in _displayInfoWidget., or clear if null.
- * The contents is updated with innerHTML, so "<>&" must be escaped.
- * This method can be overridden. */
-DomTerm.displayInfoMessage = function(contents, dt) {
+ * The contents is updated with innerHTML, so "<>&" must be escaped. */
+DomTerm.displayInfoInWidget = function(contents, dt) {
     var div = dt._displayInfoWidget;
     if (contents == null) {
         if (div != null) {
@@ -2422,6 +2427,23 @@ DomTerm.displayInfoMessage = function(contents, dt) {
     }
     div.innerHTML = contents;
 };
+
+/** Display contents using displayInfoInWidget or something equivalent. */
+DomTerm.displayInfoMessage = DomTerm.displayInfoInWidget;
+
+DomTerm.prototype.showMiniBuffer = function(prefix, postfix) {
+    DomTerm.displayInfoInWidget(prefix, this);
+    let miniBuffer = this._createSpanNode();
+    miniBuffer.classList.add("editing");
+    miniBuffer.setAttribute("std", "input");
+    this._miniBuffer = miniBuffer;
+    var div = this._displayInfoWidget;
+    div.appendChild(miniBuffer);
+    div.insertAdjacentHTML("beforeend", postfix);
+    document.getSelection().collapse(miniBuffer, 0);
+    miniBuffer.contentEditable = true;
+    div.contentEditable = false;
+}
 
 DomTerm.prototype.initializeTerminal = function(topNode) {
     try {
@@ -3307,6 +3329,32 @@ DomTerm.prototype.historyAdd = function(str, append) {
         this.history.push(str);
     this.historyCursor = -1;
 };
+
+DomTerm.prototype.historySearch =
+function(str, forwards = this.historySearchForwards) {
+    let step = forwards ? 1 : -1;
+    for (let i = this.historySearchStart;
+         (i += step) >= 0 && i < this.history.length; ) {
+        if (this.history[i].indexOf(str) >= 0) {
+            i -= this.historyCursor >= 0 ? this.historyCursor
+                : this.history.length;
+            this.historyMove(i);
+            if (this._displayInfoWidget
+                && this._displayInfoWidget.firstChild instanceof Text) {
+                let prefix = this._displayInfoWidget.firstChild;
+                if (prefix.data.startsWith("failed "))
+                    prefix.deleteData(0, 7);
+            }
+            return;
+        }
+    }
+    if (this._displayInfoWidget
+        && this._displayInfoWidget.firstChild instanceof Text) {
+        let prefix = this._displayInfoWidget.firstChild;
+        if (! prefix.data.startsWith("failed "))
+            prefix.insertData(0, "failed ");
+    }
+}
 
 DomTerm.prototype.historyMove = function(delta) {
     var str = this.grabInput(this._inputLine);
@@ -7558,6 +7606,21 @@ DomTerm.commandMap['down-line-or-history'] = function(dt, key) {
 DomTerm.commandMap['accept-line'] = function(dt, key) {
     dt.processEnter();
     return true; }
+DomTerm.commandMap['backward-search-history'] = function(dt, key) {
+    dt.showMiniBuffer("backward history search: \u2018", "\u2019");
+    function search(mrecords, observer) {
+        dt.historySearch(dt._miniBuffer.textContent);
+    }
+    let observer = new MutationObserver(search);
+    observer.observe(dt._miniBuffer,
+                     { attributes: false, childList: true, characterData: true, subtree: true });
+    dt._searchMode = true;
+    dt.historySearchForwards = false;
+    dt.historySearchStart =
+        dt.historyCursor < 0 ? dt.history.length
+        : dt.historyCursor;
+    return true;
+}
 
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
@@ -7569,6 +7632,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
     "Mod-Delete": "forward-delete-word",
+    "Ctrl-R": "backward-search-history",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Down": "down-line-or-history",
@@ -7580,6 +7644,7 @@ DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 DomTerm.prototype.doLineEdit = function(keyName) {
     if (this.verbosity >= 2)
         this.log("doLineEdit "+keyName);
+
     this.editorAddLine();
     let keymaps = [ DomTerm.lineEditKeymap ];
     for (let map of keymaps) {
@@ -7801,6 +7866,44 @@ DomTerm.prototype.keyDownHandler = function(event) {
     if (this.isLineEditing()) {
         if (! this.useStyledCaret())
             this.maybeFocus();
+        if (this._searchMode) {
+            if (keyName == "Backspace" || keyName == "Delete"
+                || keyName == "Left" || keyName == "Right"
+                || keyName == "Ctrl" || keyName == "Alt") {
+                return;
+            }
+            if (keyName == "Ctrl-R" || keyName == "Ctrl-S") {
+                this.historySearchForwards = keyName == "Ctrl-S";
+                this.historySearchStart =
+                    this.historyCursor >= 0 ? this.historyCursor
+                    : this.history.length;
+                this.historySearch(this._miniBuffer.textContent);
+                event.preventDefault();
+                if (this._displayInfoWidget
+                    && this._displayInfoWidget.firstChild instanceof Text) {
+                    let prefix = this._displayInfoWidget.firstChild;
+                    let dirstr = this.historySearchForwards ? "forward" : "backward";
+                    let m = prefix.data.match(/^(.*)(forward|backward)(.*)$/);
+                    if (m)
+                        prefix.data = m[1] + dirstr + m[3];
+                }
+                return;
+            }
+            if (keyName == "Esc" || keyName == "Enter" || keyName == "Tab"
+                || keyName == "Down" || keyName == "Up"
+                || event.ctrlKey || event.altKey) {
+                DomTerm.displayInfoInWidget(null, this);
+                this.historySearchSaved = this._miniBuffer.textContent;
+                this.historyAdd(this._inputLine.textContent, false);
+                this._miniBuffer = null;
+                this._searchMode = false;
+                if (keyName == "Tab") {
+                    this.maybeFocus();
+                    event.preventDefault();
+                    return;
+                }
+            }
+        }
         if (event.altKey
             && ((key >= 48 && key <= 57)
                 || (key==189 && this._numericArgument == null))) {
@@ -7864,7 +7967,10 @@ DomTerm.prototype.keyPressHandler = function(event) {
     }
     this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
-        if (this.doLineEdit(keyName))
+        if (this._searchMode) {
+            return;
+        }
+        else if (this.doLineEdit(keyName))
             event.preventDefault();
     } else {
         if (event.which !== 0
