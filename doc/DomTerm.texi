@@ -1082,6 +1082,10 @@ then the @code{open.link.application} list is tried.
 For a non-@code{file:} URL, only the @code{open.link.application} list is tried.
 
 For details, see @ref{link-handlers}.
+
+@item @code{@b{keymap.line-edit} =} @var{keymap-overrides}
+Add or replace keybindings for @ref{Input line editing,input line editing}.
+(Changing other keybindings is planned but not yet implemented.)
 @end table
 
 @node Applications
@@ -1324,17 +1328,19 @@ auto mode (automatically switches between char mode and line mode
 depending on whether the application requests ``raw'' (char) input
 or ``canonical'' (line) input).
 
-The following special key are supported.
+The following special keys are supported.
 @var{N} is a repeat count, which by default is 1.
 The word ``caret'' refers to the text cursor
 (as opposed to the mouse cursor).
+The names in parentheses are the corresponding action names that
+can be used if changing the key-bindings.
 
 @table @asis
 @item @kbd{@key{Left}} (@code{backward-char})
 @itemx @kbd{@key{Right}} (@code{forward-char})
 Move caret @var{N} characters left or right.
 @item @kbd{Ctrl-@key{Left}} (@code{backward-word})
-@itemx @kbd{Ctrl-@key{Right}} (@code{backward-word})
+@itemx @kbd{Ctrl-@key{Right}} (@code{forward-word})
 Move caret @var{N} words left or right.
 @item @kbd{Shift-Left}
 @itemx @kbd{Shift-Right}
@@ -1378,7 +1384,7 @@ Enter @ref{history-search-mode}.
 @itemx @kbd{Alt-@var{digit}}
 Set or extend a repeat count.
 For example @kbd{Alt-1 Alt-2 Left} moves 12 characters left, while
-@kbd{Alt-Minus Alt-2 Ctrl-Left} move 2 characters right (because of the minus).
+@kbd{Alt-Minus Alt-2 Ctrl-Left} moves 2 words right (because of the minus).
 @item @kbd{Ctrl-@key{A}} (@code{beginning-of-line})
 @itemx @kbd{Ctrl-@key{B}} (@code{backward-char})
 @itemx @kbd{Ctrl-@key{D}} (@code{delete-char})
@@ -1396,8 +1402,9 @@ the caret is moved to the start/end of the input area.
 @emph{Not implemented yet, but planned:}
 Handle multi-line input areas. (@kbd{Shift-@key{Enter}} would add
 a newline to the input area, without sending anything to the application.)
-Various emacs-style key-bindings, such as @kbd{Ctrl-@key{T}}.
-User-settable key-bindings.
+Emacs-style key-bindings should be controlled by a separate option;
+some bindings are missing, such as @kbd{Ctrl-@key{T}},
+and the ones prefixed by @kbd{Esc}.
 Command-completion, using some protocol to be defined.
 A plug-in replacement for GNU @code{readline} using @code{LD_PRELOAD}
 would be nice. (The idea is for an enhanced readline to detect it is running
@@ -1435,6 +1442,23 @@ Exit search mode, and move to previous/next history item.
 @item @kbd{@key{Tab}}
 Exit search mode, accept current item, but continue editing it.
 @end table
+
+@subheading Changing keybindings
+
+You can override the keymap (map from keystrokes to action)
+used for input line editing (but not yet override other kind-bindings).
+The @code{keymap.line-edit} is a list (separated by commas or newlines),
+where each item is a quoted keystroke string, followed by a colon,
+followed by an action name. An action name is a string,
+but quotes are optional.  The following example disables
+the binding for @kbd{Ctrl-A} and adds a binding that
+maps @kbd{Ctrl-H} to the @code{beginning-of-line} action.
+
+@example
+keymap.line-edit =
+ | "Ctrl-A": ignore-action
+ | 'Ctrl-H': beginning-of-line
+@end example
 
 @node Paging
 @chapter Paging and Pausing
