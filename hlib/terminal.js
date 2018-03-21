@@ -7894,7 +7894,12 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 this.historySearchStart =
                     this.historyCursor >= 0 ? this.historyCursor
                     : this.history.length;
-                this.historySearch(this._miniBuffer.textContent);
+                let str = this._miniBuffer.textContent;
+                if (str == "") {
+                    str = this.historySearchSaved;
+                    this._miniBuffer.innerText = str;
+                }
+                this.historySearch(str);
                 event.preventDefault();
                 if (this._displayInfoWidget
                     && this._displayInfoWidget.firstChild instanceof Text) {
