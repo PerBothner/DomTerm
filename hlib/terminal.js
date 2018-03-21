@@ -4740,6 +4740,8 @@ DomTerm.prototype.setSettings = function(obj) {
         var lineeditMap = obj["keymap.line-edit"];
         if (lineeditMap != null) {
             let map = "{" + lineeditMap.trim().replace(/\n/g, ",") + "}";
+            map = map.replace(/("[^"]+")\s*:\s*([^"',\s]+)/g, '$1: "$2"')
+                .replace(/('[^']+')\s*:\s*([^"',\s]+)/g, '$1: "$2"');
             try {
                 DomTerm.lineEditKeymap =
                     DomTerm.lineEditKeymapDefault.update(JSON.parse(map));
