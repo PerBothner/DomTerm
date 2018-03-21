@@ -7606,6 +7606,10 @@ DomTerm.commandMap['down-line-or-history'] = function(dt, key) {
     }
     return false;
 }
+DomTerm.commandMap['ignore-action'] = function(dt, key) {
+    return true; }
+DomTerm.commandMap['default-action'] = function(dt, key) {
+    return false; }
 DomTerm.commandMap['accept-line'] = function(dt, key) {
     dt.processEnter();
     return true; }
@@ -7628,6 +7632,7 @@ DomTerm.commandMap['backward-search-history'] = function(dt, key) {
 
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
+    "Ctrl-R": "backward-search-history",
     "Left": 'backward-char',
     "Mod-Left": 'backward-word',
     "Right": 'forward-char',
@@ -7636,12 +7641,20 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
     "Mod-Delete": "forward-delete-word",
-    "Ctrl-R": "backward-search-history",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Down": "down-line-or-history",
     "Up": "up-line-or-history",
-    "Enter": "accept-line"
+    "Enter": "accept-line",
+    // The following should be controlled by a user preference
+    // for emacs-like keybindings. FIXME
+    "Alt-B": "backward-word",
+    "Alt-F": "forward-word",
+    "Ctrl-A": "beginning-of-line",
+    "Ctrl-B": "backward-char",
+    "Ctrl-D": "delete-char",
+    "Ctrl-E": "end-of-line",
+    "Ctrl-F": "forward-char"
 }, {});
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
