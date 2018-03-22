@@ -7,6 +7,8 @@ the results, typically in some kind of type-script format.
 
 See the [home page](https://domterm.org/) for more information.
 
+![DomTerm screenshot with panes](doc/images/domterm-panes-1.png)
+
 Recent advances:
 
 * There is now a DomTerm mailing list at domterm-discuss@domterm.org
