@@ -218,8 +218,6 @@ function DomTerm(name, topNode) {
     // -1 if unknown. */
     this.currentCursorColumn = -1;
 
-    this._savedCursor = null;
-
     this.rightMarginWidth = 0;
 
     // See https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser/9851769
@@ -850,8 +848,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                 descend = false;
             else if (this.isBlockTag(tag)) {
                 var hasData = false;
-                var prevWasBlock = cur.parentNode.firstChild==cur
-                    && this.isBlockNode(cur.parentNode);
+                var prevWasBlock = false;
                 // Check to see if cur has any non-block children:
                 for (var ch = cur.firstChild; ch != null; ) {
                     var next = ch.nextSibling;
@@ -938,7 +935,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
 };
 
 DomTerm.prototype.saveCursor = function() {
-    this._savedCursor = {
+    this.sstate.savedCursor = {
         line: this.getCursorLine(),
         column: this.getCursorColumn(),
         fgcolor:  this._currentStyleMap.get("color"),
@@ -978,7 +975,7 @@ DomTerm.prototype._restoreSaveLastLine = function() {
 }
  
 DomTerm.prototype.restoreCursor = function() {
-    var saved = this._savedCursor;
+    var saved = this.sstate.savedCursor;
     if (saved) {
         this.moveToAbs(saved.line+this.homeLine, saved.column, true);
         this._Gcharsets[0] = saved.charset0;
@@ -2145,8 +2142,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             var homeNode = this.lineStarts[this.homeLine - homeOffset];
             homeNode.setAttribute("home-line", homeOffset);
             bufNode.saveLastLine = nextLine;
-            bufNode.savedCursor = this._savedCursor;
-            this._savedCursor = null;
+            this.sstate.savedCursorMain = this.sstate.savedCursor;
+            this.sstate.savedCursor = undefined;
             var newLineNode = bufNode.firstChild;
             this.homeLine = nextLine;
             this.outputContainer = newLineNode;
@@ -2175,7 +2172,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
                                        return true;
                                    });
             this.homeLine = this._computeHomeLine(homeNode, homeOffset, false);
-            this._savedCursor = bufNode.savedCursor;
+            this.sstate.savedCursor = this.sstate.savedCursorMain;
+            this.sstate.savedCursorMain = undefined;
             this.moveToAbs(this.homeLine, 0, false);
             bufNode.parentNode.removeChild(bufNode);
             if (this._pauseLimit >= 0)
@@ -3838,7 +3836,7 @@ DomTerm.prototype.get_DEC_private_mode = function(param) {
     case 45: return (this.sstate.wraparoundMode & 1) != 0;
     case 47: // fall though
     case 1047: return this.usingAlternateScreenBuffer;
-    case 1048: return this._savedCursor != null;
+    case 1048: return this.sstate.savedCursor !== undefined;
     case 1049: return this.usingAlternateScreenBuffer;
     case 2004: return this.sstate.bracketedPasteMode;
     case 9: case 1000: case 1001: case 1002: case 1003:
