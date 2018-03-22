@@ -1,6 +1,7 @@
 #include "server.h"
 #include "version.h"
 #include <limits.h>
+#include <sys/stat.h>
 
 #define BUF_SIZE 1024
 
@@ -1220,8 +1221,10 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
     char**args = argc == skip ? default_command(opts)
       : (char**)(argv+skip);
     char *argv0 = args[0];
-    if (index(argv0, '/') != NULL ? access(argv0, X_OK) != 0
-        : find_in_path(argv0) == NULL) {
+    char *cmd = index(argv0, '/') ? argv0 : find_in_path(argv0);
+    struct stat sbuf;
+    if (cmd == NULL || access(cmd, X_OK) != 0
+        || lstat(cmd, &sbuf) != 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
           FILE *out = fdopen(opts->fd_err, "w");
           fprintf(out, "cannot execute '%s'\n", argv0);
           fclose(out);
