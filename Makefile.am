@@ -270,7 +270,7 @@ DOC_IMAGES = \
   doc/domterm1.svg \
   doc/images/domterm-1.png \
   doc/images/domterm-2.png \
-  doc/images/domterm-panes-2.png \
+  doc/images/domterm-panes-1.png \
   doc/images/domterm-sh-svg.png \
   doc/images/domterm-polygon-1.png \
   doc/images/emacs-in-firefox-1.png
