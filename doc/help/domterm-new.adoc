@@ -28,7 +28,7 @@ is used; otherwise `/bin/bash` is used for the default.
 
 The `new` command is the default for `domterm`, so you can leave it out.
 If you leave out `new` but specify a _shell_, then the _shell_ argument
-must be contain a slash `/`.  For example:
+must contain a slash `/`.  For example:
 
     domterm /bin/csh -v
 
