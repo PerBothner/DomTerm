@@ -5,19 +5,27 @@
   <project_license>BSD-3-Clause</project_license>
   <name>domterm</name>
   <url type="homepage">https://domterm.org/</url>
+  <summary>A Terminal Emulator supporting html and graphics</summary>
   <description>
     <p>
 A terminal emulator based on web technologies.
 You can "print" images, tables, and other HTML forms.
 Supports 24-bit color; xterm mouse events; solid xterm emulation.
 Good handling of Unicode, CJK wide characters, and IME support.
-Builtin basic input line editor with history.
+Builtin input line editor with history.
 Styling using CSS.
 Hide/unhide a commands's output.
-Experimental builtin pager (simplified less).
     </p>
   </description>
   <provides>
     <binary>domterm</binary>
   </provides>
+  <screenshots>
+    <screenshot type="default">
+      <image>http://domterm.org/images/domterm-panes-1.png</image>
+    </screenshot>
+  </screenshots>
+  <update_contact>per@bothner.com</update_contact>
+  <!-- for appstream-util validate - may do something useful later -->
+  <translation type="gettext">domterm</translation>
 </component>
