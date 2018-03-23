@@ -1,8 +1,8 @@
 DIST_SUBDIRS = lws-term
 EXTRA_DIST = \
   hlib/terminal.js $(MISC_COPY_TO_JAR) $(JS_LIBS) $(CLIENT_DATA_FILES) \
-  $(domterm_jar_sources) domterm-jar-manifest bin/jdomterm \
-  domterm.desktop qtdomterm.desktop domterm.appdata.xml  qtdomterm.appdata.xml \
+  $(domterm_jar_sources) domterm-jar-manifest bin/jdomterm domterm.spec \
+  domterm.desktop qtdomterm.desktop domterm.appdata.xml qtdomterm.appdata.xml \
   electron/main.js \
   doc/DomTerm.texi doc/webdoc.patch \
   doc/style/domterm.xsl doc/style/docbook-to-html.xsl \
