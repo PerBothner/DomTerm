@@ -1,14 +1,16 @@
 Name:           domterm
-Version:        0.99
+%global version 0.99
+Version:        %{version}
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
 License:        BSD1
-URL:            https://domterm.org/  
+URL:            https://domterm.org/
+%global gtag %{version}
 %global commit 24991c4ff8430554b9421cdca4813da6ddf8d01d
 # %%global gittag0 HEAD
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
-Source0:  https://github.com/PerBothner/DomTerm/archive/%{commit}/DomTerm-%{commit}.tar.gz
+Source0: https://github.com/PerBothner/DomTerm/releases/download/%{gtag}/domterm-%{version}.tar.gz
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: desktop-file-utils
@@ -51,11 +53,11 @@ License:        GPLv2+
 A terminal emulator using Qt and web technologies
 
 %prep
-%autosetup -n DomTerm-%{commit}
+%autosetup -n domterm-%{version}
 
 %build
 autoreconf
-%configure --disable-pty --with-qtwebengine --with-java --with-libwebsockets
+%configure --with-qtwebengine --with-java --disable-java-pty --with-libwebsockets
 %make_build
 
 %install
