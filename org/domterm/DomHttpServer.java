@@ -12,7 +12,6 @@ import java.net.URLConnection;
 import org.domterm.*;
 import org.domterm.util.StringBufferedWriter;
 import org.domterm.util.WTDebug;
-import org.domterm.pty.*;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -326,7 +325,8 @@ public class DomHttpServer implements HttpHandler {
             System.arraycopy(args, i, restArgs, 0, restArgs.length);
             if (mode == 'T' || mode == ' ') {
                 try {
-                    PTY.checkLoaded();
+                    //PTY.checkLoaded();
+                    Class.forName("org.domterm.pty.PTY");
                     mode = 'T';
                 } catch (Throwable ex) {
                     if (mode == ' ') {
@@ -340,10 +340,12 @@ public class DomHttpServer implements HttpHandler {
                 if (mode == 'S')
                     backend = new ProcessBackend(restArgs);
                 else
-                    backend = new PtyBackend(restArgs, domtermPath);
-             } catch (Throwable ex) {
+                    backend =
+                        ProcessBackend.tryPtyOrProcessBackend(restArgs,
+                                                              domtermPath);
+            } catch (Throwable ex) {
                  fatal("caught "+ex);
-             }
+            }
         }
         return backend;
     }
@@ -388,7 +390,7 @@ public class DomHttpServer implements HttpHandler {
 
     static String domtermPath;
 
-    // 1: run Firefox in -app mode
+    // 1: run Firefox
     // 2: run Chrome in --app mode
     // 2: run qtdomterm
     static int runBrowser = -1;
@@ -447,9 +449,7 @@ public class DomHttpServer implements HttpHandler {
             } else if (runBrowser == 1) { // --firefox
                 String firefoxCommand = firefoxCommand();
                 Process process = Runtime.getRuntime()
-                    .exec(new String[] { firefoxCommand, "-app",
-                                         domtermPath+"/share/domterm/application.ini",
-                                         "-ajax", "http://localhost:"+port+"/domterm/" });
+                    .exec(new String[] { firefoxCommand, defaultUrl });
             } else if (runBrowser == 2) { // --chrome
                 String chromeCommand = chromeCommand();
                 String appArg = "--app="+defaultUrl;

@@ -112,7 +112,6 @@ bin/domterm$(EXEEXT):
 	cd lws-term && make ../bin/domterm$(EXEEXT)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
-	javah -cp $(DOMTERM_JAR) -d native/pty org.domterm.pty.PTY
 	touch native/pty/org_domterm_pty_PTY.h
 
 lib/domterm-preloads$(LIBEXT): native/preloads.cc
@@ -220,7 +219,7 @@ dist_java_sources = $(base_domterm_jar_sources) $(pty_sources) \
 
 classes.stamp: $(domterm_jar_sources)
 if WITH_JAVA
-	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
+	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ -h native/pty $?
 endif
 	touch classes.stamp
 

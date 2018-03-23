@@ -64,4 +64,27 @@ public class ProcessBackend extends Backend {
             System.exit(-1);
         } 
     }
+
+    String domtermPath;
+
+    /**
+     * Try to construct a PtyBackend; fall back to ProcessBackend.
+     */
+    public static Backend
+    tryPtyOrProcessBackend(String[] restArgs, String domtermPath)
+        throws java.lang.Exception
+    {
+        try {
+            if (domtermPath == null)
+                domtermPath = System.getProperty("java.library.path");
+            if (domtermPath != null && domtermPath.endsWith("/lib"))
+                domtermPath = domtermPath.substring(0, domtermPath.length()-4);
+            return (Backend)
+                Class.forName("org.domterm.pty.PtyBackend")
+                .getConstructor(String[].class,String.class)
+                .newInstance(restArgs, domtermPath);
+        } catch (Throwable ex) {
+            return new ProcessBackend(restArgs);
+        }
+    }
 }

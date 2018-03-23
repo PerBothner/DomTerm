@@ -1,7 +1,6 @@
 package org.domterm.javafx;
 
 import org.domterm.*;
-import org.domterm.pty.*;
 import java.lang.reflect.Method;
 import javafx.application.Application;
 
@@ -56,7 +55,8 @@ public class Main {
             System.arraycopy(args, i, restArgs, 0, restArgs.length);
             if (mode == 'T' || mode == ' ') {
                 try {
-                    PTY.checkLoaded();
+                    //PTY.checkLoaded();
+                    Class.forName("org.domterm.pty.PTY");
                     mode = 'T';
                 } catch (Throwable ex) {
                     if (mode == ' ') {
@@ -70,7 +70,8 @@ public class Main {
                 if (mode == 'S')
                     mainClient = new ProcessBackend(restArgs);
                 else
-                    mainClient = new PtyBackend(restArgs, null);
+                    mainClient = ProcessBackend.tryPtyOrProcessBackend(restArgs,
+                                                                       null);
              } catch (Throwable ex) {
                  usage("caught "+ex);
              }
