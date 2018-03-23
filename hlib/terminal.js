@@ -7685,7 +7685,8 @@ DomTerm.prototype.doLineEdit = function(keyName) {
         if (! sel.isCollapsed) {
             this.editorBackspace(1, true, false);
         }
-        this.editorInsertString(str.repeat(this.numericArgumentGet()));
+        let count = this.numericArgumentGet();
+        this.editorInsertString(str.repeat(count >= 0 ? count : 1));
         return true;
     }
     return false;
