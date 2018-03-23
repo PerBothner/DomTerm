@@ -1,5 +1,5 @@
 Name:           domterm
-%global version 0.99
+%global version 0.99.2
 Version:        %{version}
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
@@ -17,6 +17,7 @@ BuildRequires: desktop-file-utils
 BuildRequires: pkgconfig(libwebsockets)
 BuildRequires: pkgconfig(json-c)
 BuildRequires: pkgconfig(openssl)
+BuildRequires: asciidoctor
 BuildRequires: gcc
 BuildRequires: gcc-c++
 BuildRequires: java-devel
@@ -67,7 +68,9 @@ autoreconf
 desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{buildroot}%{_datadir}/applications/qtdomterm.desktop
 
 %files
-%dir
+%dir %{_datadir}/domterm
+%dir %{_datadir}/domterm/electron
+%dir %{_datadir}/domterm/help
 %{_bindir}/domterm
 %{_datadir}/domterm/domterm.jar
 %{_datadir}/domterm/electron/main.js

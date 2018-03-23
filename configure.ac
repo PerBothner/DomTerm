@@ -1,5 +1,5 @@
 dnl Autoconf script for DomTerm
-AC_INIT([DomTerm],[0.99],,domterm) dnl Also update package.json and domterm.spec
+AC_INIT([DomTerm],[0.99.2],,domterm) dnl Also update package.json and domterm.spec
 AC_CONFIG_SRCDIR([doc/DomTerm.texi])
 AM_MAINTAINER_MODE([enable])
 
