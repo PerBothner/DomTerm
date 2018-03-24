@@ -173,7 +173,7 @@ clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
 	-rm -rf bin/domterm hlib/domterm-all.js \
 	  share/domterm/electron/main.js share/domterm/help \
-	  doc/domterm.1 doc/ldomterm.1 doc/qtdomterm.1 doc/qt-util.1
+	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm
 
@@ -333,18 +333,29 @@ endif
 endif
 	$(MKDIR_P) $(DESTDIR)$(datadir)/applications \
 	    $(DESTDIR)$(datadir)/appdata
-	$(INSTALL_DATA) domterm.desktop $(DESTDIR)$(datadir)/applications/
-	$(INSTALL_DATA) domterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
+	$(INSTALL_DATA) $(srcdir)/domterm.desktop $(DESTDIR)$(datadir)/applications/
+	$(INSTALL_DATA) $(srcdir)/domterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 if WITH_QTWEBENGINE
-	$(INSTALL_DATA) qtdomterm.desktop $(DESTDIR)$(datadir)/applications/
-	$(INSTALL_DATA) qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
+	$(INSTALL_DATA) $(srcdir)/qtdomterm.desktop $(DESTDIR)$(datadir)/applications/
+	$(INSTALL_DATA) $(srcdir)/qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
-	$(INSTALL_DATA) electron/package.json electron/main.js \
+	$(INSTALL_DATA) $(srcdir)/electron/package.json $(srcdir)/electron/main.js \
 	    $(DESTDIR)$(datadir)/domterm/electron/
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/help
 	$(INSTALL_DATA) share/domterm/help/*.txt share/domterm/help/*.html \
 	  $(DESTDIR)$(datadir)/domterm/help/
+
+uninstall-local:
+	rm -f $(DESTDIR)$(datadir)/applications/domterm.desktop \
+	  $(DESTDIR)$(datadir)/applications/qtdomterm.desktop \
+	  $(DESTDIR)$(datadir)/appdata/domterm.appdata.xml \
+	  $(DESTDIR)$(datadir)/appdata/qtdomterm.appdata.xml
+	rm -f $(DESTDIR)$(bindir)/domterm$(EXEEXT)
+if WITH_QTWEBENGINE
+	rm -f $(DESTDIR)$(bindir)/qtdomterm$(EXEEXT)
+endif
+	rm -rf $(DESTDIR)$(datadir)/domterm
 
 install-ldomterm:
 	cd lws-term && $(MAKE) install
