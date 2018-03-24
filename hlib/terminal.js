@@ -7837,7 +7837,9 @@ DomTerm.prototype.keyDownHandler = function(event) {
             this._pageLine(key == 38 ? -1 : 1);
             event.preventDefault();
             return;
-        case 67: // Control-Shift-C
+        case 67: // Control[-Shift]-C
+            if (! event.shiftKey && document.getSelection().isCollapsed)
+                break;
             if (DomTerm.doCopy())
                 event.preventDefault();
             return;
@@ -8673,6 +8675,8 @@ DomTerm.prototype.editorAddLine = function() {
         this._inputLine = inputNode;
         this._restoreInputLine();
         this._numericArgument = null;
+    } else if (this._inputLine.parentNode == null) {
+        this._restoreInputLine();
     }
 }
 
