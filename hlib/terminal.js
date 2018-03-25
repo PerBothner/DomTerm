@@ -2262,6 +2262,14 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this.topNode.addEventListener("mousedown", this._mouseEventHandler, true);
     this.topNode.addEventListener("mouseup", this._mouseEventHandler, true);
 
+    this.topNode.addEventListener("contextmenu",
+                                  function(e) {
+                                      if (dt.sstate.mouseMode != 0
+                                          || (DomTerm.showContextMenu
+                                              && DomTerm.showContextMenu(dt, e, DomTerm._contextLink?"A":"")))
+                                          e.preventDefault();
+                                  }, false);
+
     document.addEventListener("selectionchange", function() {
         let sel = document.getSelection();
         if (! sel.isCollapsed &&  this._composing <= 0 && dt.isLineEditing()) {
@@ -2716,13 +2724,6 @@ DomTerm.prototype._mouseHandler = function(ev) {
     if (this.sstate.mouseMode == 0 && ev.button == 2) {
         DomTerm._contextTarget = ev.target;
         DomTerm._contextLink = DomTerm._isInElement(ev.target, "A");
-        if (DomTerm.showContextMenu) {
-            //&& DomTerm.isInIFrame()) {
-            // used by atom-domterm
-            if (DomTerm.showContextMenu(DomTerm._contextLink?"A":""))
-                ev.preventDefault();
-            return;
-        }
     }
     /* FUTURE POPUP
     if (ev.ctrlKey && ev.button == 2) {

@@ -104,7 +104,7 @@ DomTerm.handleSimpleMessage = function(command) {
 
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
-    DomTerm.showContextMenu = function(contextType) {
+    DomTerm.showContextMenu = function(dt, e, contextType) {
         backend.showContextMenu(contextType);
         return false;
     }
@@ -225,7 +225,7 @@ function loadHandler(event) {
                 ipcRenderer.sendToHost(command, ...args);
              }
         }
-        DomTerm.showContextMenu = function(contextType) {
+        DomTerm.showContextMenu = function(dt, e, contextType) {
             DomTerm.sendParentMessage("domterm-context-menu", contextType);
             return true;
         }

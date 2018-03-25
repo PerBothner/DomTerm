@@ -206,17 +206,16 @@ DomTerm.createElectronMenus = function() {
                                ]);
 
     Menu.setApplicationMenu(showMenuBarItem ? DomTerm.savedMenuBar : null);
-    window.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const dt = DomTerm.focusedTerm;
-        const mode = dt ? dt.getInputMode() : 0;
+    DomTerm.showContextMenu = function(dt, e, contextType) {
+        const mode = dt.getInputMode();
         charModeItem.checked = mode == 99;
         lineModeItem.checked = mode == 108;
         autoModeItem.checked = mode == 97;
-        autoPagingItem.checked = dt ? dt._autoPaging : false;
-        let cmenu = DomTerm._contextLink ? contextLinkMenu : contextMenu;
-        cmenu.popup(remote.getCurrentWindow())
-    }, false)
+        autoPagingItem.checked = dt._autoPaging;
+        let cmenu = contextType=="A" ? contextLinkMenu : contextMenu;
+        cmenu.popup(remote.getCurrentWindow());
+        return true;
+    };
 }
 
 DomTerm.setContextMenu = function() {
