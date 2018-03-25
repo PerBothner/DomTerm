@@ -2705,8 +2705,8 @@ DomTerm.showContextMenu = null;
 
 DomTerm.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
-        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY);
-    if (ev.type == "mouseup") {
+        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button);
+    if (this.sstate.mouseMode == 0 && ev.button == 0 && ev.type == "mouseup") {
         let sel = document.getSelection();
         if (sel.isCollapsed) {
             if (this.isLineEditing() && this._inputLine != null
