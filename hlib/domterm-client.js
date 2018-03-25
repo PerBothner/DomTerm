@@ -285,8 +285,8 @@ function loadHandler(event) {
 function handleMessage(event) {
     var data = event.data;
     var dt=DomTerm.focusedTerm;
-    if (data instanceof String)
-	DomTerm.handleSimpleMessage(data);
+    if (typeof data == "string" || data instanceof String)
+        DomTerm.handleSimpleMessage(data);
     else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);
     else if (data.command=="socket-open") {
