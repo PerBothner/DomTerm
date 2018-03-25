@@ -7588,10 +7588,10 @@ DomTerm.commandMap['forward-delete-word'] = function(dt, key) {
     dt.editorBackspace(- dt.numericArgumentGet(), true, true);
     return true; }
 DomTerm.commandMap['beginning-of-line'] = function(dt, key) {
-    dt.editorMoveHomeOrEnd(false); this._numericArgument = null;
+    dt.editorMoveHomeOrEnd(false); dt._numericArgument = null;
     return true; }
 DomTerm.commandMap['end-of-line'] = function(dt, key) {
-    dt.editorMoveHomeOrEnd(true); this._numericArgument = null;
+    dt.editorMoveHomeOrEnd(true); dt._numericArgument = null;
     return true; }
 DomTerm.commandMap['up-line-or-history'] = function(dt, key) {
     if (dt._atTopInputLine()) {
