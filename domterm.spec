@@ -1,5 +1,5 @@
 Name:           domterm
-%global version 0.99.2
+%global version 1.0
 Version:        %{version}
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
@@ -108,6 +108,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{bui
 %license COPYING
 
 %changelog
+* Mon Mar 26 2018 Per Bothner <per@bothner.com> - 1.0-1
+  Update for DomTerm 1.0
 * Thu Mar 15 2018 Per Bothner <per@bothner.com> - 0.99-1
   Update for DomTerm 0.99.
 * Mon Feb 12 2018 Per Bothner <per@bothner.com> - 0.96-1
