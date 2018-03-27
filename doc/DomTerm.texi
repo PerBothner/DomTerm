@@ -48,6 +48,10 @@ The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
 was based on similar concepts, but was mostly written in Java using
 @uref{https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm, Javafx WebView}.
 
+There is a mailing list at @email{domterm-discuss@@domterm.org}
+with an @uref{http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,information page}
+and @uref{http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archives}.
+
 @subheading Recent advances:
 
 @itemize
@@ -73,26 +77,12 @@ This uses @uref{http://golden-layout.com/,GoldenLayout}.
 An experimental @ref{Paging,pager} with optional
 automatic pause on each page.
 @item
-DomTerm now handles the @code{vttest} terminal test program
-very well, including BCE (Background Color Erase).
-@item
 The preferred ``backend` is now @uref{https://libwebsockets.org/,libwebsockets}.
 This is light-weight, does not require Java, is actively maintained,
 and enables serving http and the WebSockets on the same port.
 @item
 Support for CJK (Chinese, Japanese, and Korean) characters is improved:
 Double-width characters now really are two columns wide.
-@item
-There is now a DomTerm mailing list at @email{domterm-discuss@@domterm.org}
-with an @uref{http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,information page}
-and @uref{http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archives}.
-
-@item
-Optionally uses Google's Closure compiler to reduce the size of the JavaScript.
-
-@item
-The qtdomterm application is designed to replace your favorite
-standalone terminal emulator program. It uses QtWebEngine.
 @end itemize
 
 @subheading Why another terminal emulator
@@ -152,7 +142,8 @@ This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emu
 @image{images/domterm-2}
 A @strong{full-featured terminal emulator}, like @code{xterm}.
 It is mostly compatible with setting @code{TERM=xterm-256color},
-as many terminal emulators do.
+as many terminal emulators do, and does very well on
+the @uref{http://invisible-island.net/vttest/,@code{vttest}} terminal test program.
 Here you see the @code{mc} (Midnight Commander) file browser
 running in the stand-alone DomTerm application.
 @ifdocbook
@@ -2531,11 +2522,6 @@ See also the @uref{http://www.ecma-international.org/publications/standards/Ecma
 Error recovery and state transitions should follow
 @uref{http://www.vt100.net/emu/dec_ansi_parser,this}.
 
-@subsubheading  Use vttest for testing
-
-The xterm distribution includes @uref{http://invisible-island.net/vttest/,vttest}.
-Most of the tests work now, but there are more worth fixing.
-
 @subsubheading Support Sixel graphics
 
 @uref{https://en.wikipedia.org/wiki/Sixel,Sixel} is an old raster
@@ -2548,16 +2534,17 @@ Alternatively, a @code{<canvas>} element could be used.
 
 @subsubheading Improve copy and paste
 
-Fix paste in line-editing mode.
-
 Think about how to do multi-line paste.
+
+Copying to HTML should convert @code{<div class='domterm-pre'>} to
+@code{<pre>} so pasting without stylesheets works better.
 
 @subheading Improve standalone terminal emulator
 
 Handle saving and truncating scrolled-out output.
 
-While @code{qtdomterm} supports tabs, moving a tab from from
-one window to another window does not work.
+In @code{qtdomterm} consider using @code{QDockWidget} so panes
+can be moved between windows.
 
 Implement ``drop-down'' mode.
 
@@ -2587,6 +2574,8 @@ that supports panes and tabs.
 If DomTerm is integrated in an application with its
 own window manager, such as Atom or Visual Studio Code,
 it would make sense to instead integrate with the latter manager.
+
+Theia and Jupyter use @uref{https://phosphorjs.github.io/,PhosphorJS}.
 
 Similarly, when running under a
 @uref{https://en.wikipedia.org/wiki/Tiling_window_manager,tiling window manager}
@@ -2620,14 +2609,13 @@ Terminal emulators for Atom:
 Various Electron @uref{https://github.com/sindresorhus/awesome-electron,Awesome links}
 @uref{https://electron.atom.io/community/,Community links}.
 
-@subheading Keymaps
+@subheading Extend use of keymaps
 
-We should use a ``keymap'' structure to manage keybindings,
-and you should be able add/modify keymaps from the settings.ini.
-A small candidate library is
-@uref{https://github.com/marijnh/browserkeymap,browserkeymap}.
-It also also worth looking at @uref{https://craig.is/killing/mice,mousetrap},
-though that doesn't have a proper ``keymap'' concept.
+Keybindings for line-edit mode are controlled
+by a keymap data structure
+(based on @uref{https://github.com/marijnh/browserkeymap,browserkeymap},
+and the defaut bindings can be changed by the serrttngs file.
+This needs to be generalized to other modes.
 
 @subheading Readline style hooks and improvements
 
@@ -2697,43 +2685,57 @@ they should be bundled in a zip archive (like LibreOffice does).
 Tools to convert to and from Jupyter format would be nice,
 so we should avoid gratuitous conceptual incompatibility.
 
-@subheading Detachable and remote sessions
+@subheading Detachable sessions
 
-Detachable sessions means that a front-end
+Detachable sessions (similatr to GNU Screen and tmux) means that a front-end
 can disconnect from a session, while the session (child process) persists.
-The same or a different front-end can later re-attach to the session
+The same or a different front-end can later re-attach to the session.
 
-The GNU Screen and tmux programs support detachable sessions
-(along with many other features).  These know the display state,
-so they can re-create it on a re-attach.  The problem is that
-DomTerm has more complex state and features, which you won't
-be able to use with screen or tmux.
+DomTerm implements detachable sessions using a combination
+of check-pointing the display state, plus having the backend
+recording output commands since last check-point.
 
-A simpler solution that only deals with session management is
-@uref{http://www.brain-dump.org/projects/abduco/,abduco},
-or @uref{http://dtach.sourceforge.net,dtach}. These just ``pass through''
-escape sequences, without trying to simulate the display.
-The downside is this depends on client re-draw (using
-sigwinch or ctrl-L), which is fine for a program like emacs,
-but doesn't redraw previous commands, and doesn't work with a
-console-based REPL.
-
-Handling explicit detach can be done by having the front-end serialize
-the important aspects of state, and send it back to the back-end.
-On a re-attach, the back-end can send the saved front-end state back
-to the front-end.
-
-However, this doesn't handle unexpected detaches, as when the
-connection dies.  To support this, the back-end has to know the
-critical parts of the front-end state.  This means the back-end
-has to track the front-end state by simulating the actions of
-the various escape sections.  One way to do that is to use a
-@uref{https://github.com/dhamaniasad/HeadlessBrowsers,``headless'' web browser}
-such as (the presumably rekativey heavy-duty) @uref{http://phantomjs.org/,PhantomJS}.
-Chromium has a @uref{https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md,@code{--headless} option}.
-Using QtWebEngine in headless mode makes sense if we also use qtdomterm.
+This can can handle unexpected detaches, as when a
+connection dies. However, it's a bit heavy-handed:
+check-pointing should only save parts of the state that have changed.
+(This gets a bit tricky when there may be multiple windows displaying
+the same session, combined with not-yet-implemented auto-trunctating of
+old output.)
 
 See also @uref{https://mosh.org/,Mosh} (also @uref{https://lwn.net/Articles/722923/,LWN article}), and @uref{https://mistertea.github.io/EternalTCP/,EternalTerminal}.
+
+@subheading Remote sessions
+
+A DomTerm front-end can used used to display
+sessions running on remote backends.
+The challenge is having the remote sessions persist if connection is lost.
+Managing state for a detached session is handled by the domterm backend,
+which therefore needs to run remotely.  However, the part that
+manages windows and commands needs to run locally.
+
+The solution is to run the backend in proxy mode.
+Supposed the user types:
+@example
+domterm @var{user}@@@var{host} @var{command}
+@end example
+This can be implemented bying having the (local) backend do:
+@example
+ssh @var{user}@@@var{host} domterm --pipe @var{command}
+@end example
+(A password may have to be requested.)
+The @code{--pipe} option is a special kind of window-specifier:
+Instead of output being sent to the browser, it is written to stdout;
+input from stdin is (mostly) sent to the @var{command}.
+(``Mostly'' because the remote domterm processes certain
+escape sequences.  For example the @code{"WS"} sequences
+is used to change the pty window size.)
+
+The local domterm backend acts as a proxy for the remote backend.
+
+It is also useful to be able to connect to a remote backend, directly from
+a browser, without having to install a local @code{domterm} command.
+That requires a remote @code{https} server, and has some more
+permission and security complications.
 
 @node Technical documentation
 @chapter Technical documentation
@@ -3664,27 +3666,6 @@ such as telnet, ssh, or WebSocket.
 Using WebSocket is convenient because it is built in to modern browsers,
 so the entire front-end (except @code{terminal.js})
 is readily available.
-
-@subsection WebSocket server
-
-The included server uses @uref{http://java-websocket.org/,Java-WebServer},
-which is very compact and light-weight.
-The @code{java_websocket.jar} is checked in for convenience
-(though that may change).
-
-Each connection to the server creates a new process, but using the
-same @var{command} and @var{arg}s.
-(Multiple connections using @code{--process} will fail for some
-unknown reason.)
-
-(An older WebSocket server uses libraries from the
-@uref{https://tyrus.java.net/,Tyrus project}.
-These libraries are much bigger, but this implementation
-could be suitable for a JavaEE environment as it follows JSR-356.)
-
-If using PTYs, which requires native code anyway, it may be better
-to use a server written in C or C++, such as
-@uref{https://libwebsockets.org/,libwebsockets}.
 
 @subsection Line vs character input modes
 
