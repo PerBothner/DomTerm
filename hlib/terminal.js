@@ -7151,16 +7151,20 @@ DomTerm.prototype.specialKeySequence = function(param, last, event) {
         return csi+param+last;
 };
 
+DomTerm.prototype.keyEnterToString  = function() {
+    if ((this.sstate.automaticNewlineMode & 2) != 0)
+        return "\r\n";
+    else
+        return "\r";
+}
+
 DomTerm.prototype.keyDownToString = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     switch (key) {
     case 8: /* Backspace */ return "\x7F";
     case 9: /* Tab */    return "\t";
     case 13: /* Return/Enter */
-        if ((this.sstate.automaticNewlineMode & 2) != 0)
-            return "\r\n";
-        else
-            return "\r";
+        return event.altKey ? "\x1B\r" : this.keyEnterToString();
     case 27: /* Esc */   return "\x1B";
     case 33 /* PageUp*/: return this.specialKeySequence("5", "~", event);
     case 34 /* PageDown*/:return this.specialKeySequence("6", "~", event);
@@ -7233,6 +7237,26 @@ DomTerm.prototype.keyDownToString = function(event) {
 };
 
 DomTerm.prototype.pasteText = function(str) {
+    if (true) { // xterm has an 'allowPasteControls' flag
+        let raw = str;
+        let len = raw.length;
+        str = "";
+        let start = 0;
+        for (let i = 0; ; i++) {
+            let ch = i >= len ? -1 : raw.charCodeAt(i);
+            if ((ch < 32 && ch != 8 && ch != 9 && ch != 13)
+                || (ch >= 128 && ch < 160)
+                || ch < 0) {
+                str += raw.substring(start, i);
+                if (ch == 10)
+                    str += this.keyEnterToString();
+                start = i + 1;
+            }
+            if (ch < 0)
+                break;
+        }
+    }
+
     if (this.isLineEditing()) {
         this.editorInsertString(str);
     } else {
