@@ -2307,7 +2307,7 @@ then
   if [ -n "$DOMTERM" ]
   then
     # Add some DomTerm-specific escape sequences
-    PS1='\[\e[19u\e[16u\]▼\[\e[17u\e[14u\]'$PS1'\[\e[15u\]'
+    PS1='\[\e]119;'$BASHPID'\a\e[14u\e[16u\]▼\[\e[17u\]'$PS1'\[\e[15u\]'
     PS2='\[\e[14u\]'$PS2'\[\e[18u\]'
   fi
 fi
@@ -3128,12 +3128,25 @@ the value 2 means the first line of a multi-line editing group (as @uref{https:/
 Delimit a @ref{Hide/show buttons,hide/show "button"}, with @code{"\e[16u"} before
 and @code{"\e[17u"} after.
 
-@item @code{"\e[19u"}
+@item @code{"\e]119;"} @var{context-id} @code{"\a"}
+@itemx @code{"\e[19u"}  (deprecated)
 
 Start a @ref{command group}.
-This command implicitly does a "fresh line" and ends any existing command group,
-You can write this string before writing
-an input prompt string.
+This command implicitly does a "fresh line" and ends any
+existing command group with the same @var{context-id}.
+(The @code{"\e[19u"} variant is equivalent to
+an empty @var{context-id} - i.e. @code{"\e]119;\a"}.)
+Creates a nested command-group
+if there is no existing command group with the same @var{context-id}.
+
+You can write this string before writing an input prompt string.
+The @var{content-id} is commonly the process-id of the REPL.
+
+@item @code{"\e]120;"} @var{group-id} @code{"\a"}
+(Experimental) Enter a new command-group without closing any current group.
+
+@item @code{"\e]121;"} @var{group-id} @code{"\a"}
+(Experimental) Exit the command-group with the given @var{group-id}.
 
 @item @code{"\e[20u"}
 Starts a "fresh line": If at the beginning of line, does nothing.
@@ -3164,7 +3177,7 @@ End-of-file on the output stream.
 Calls the @code{eofSeen} method of @code{DomTerm},
 which may close the current window or other appropriate action.
 
-@item @code{"\e]103;"} @var{state} @code{"a"}
+@item @code{"\e]103;"} @var{state} @code{"\a"}
 Send saved state to new window.
 @end table
 

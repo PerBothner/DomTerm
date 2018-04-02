@@ -483,7 +483,7 @@ DomTerm.prototype.close = function() {
         DomTerm.windowClose();
 };
 
-DomTerm.prototype.startCommandGroup = function() {
+DomTerm.prototype.startCommandGroup = function(parentKey, pushing=0) {
     var container = this.outputContainer;
     var containerTag = container.tagName;
     if ((containerTag == "PRE" || containerTag == "P"
@@ -492,28 +492,49 @@ DomTerm.prototype.startCommandGroup = function() {
         && container.firstChild == this.outputBefore
         && (this._currentCommandGroup == null
             || this._currentCommandGroup.firstChild != container)) {
-        var commandGroup = document.createElement("div");
-        commandGroup.setAttribute("class", "command-group");
+        var commandGroup = null;
         var oldGroup = this._currentCommandGroup;
-        var oldOutput = this._currentCommandOutput;
-        if (oldGroup && ! this._isAnAncestor(container, oldGroup)) {
-            oldGroup = null;
-            oldOutput = null;
+        if (pushing >= 0) {
+            commandGroup = document.createElement("div");
+            commandGroup.setAttribute("class", "command-group");
+            if (parentKey)
+                commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
         }
-        if (oldGroup) {
-            var cur = container;
-            var parent = container.parentNode;
-            var oldBefore = oldGroup.nextSibling;
-            for (;;) {
-                this._moveNodes(cur, oldGroup.parentNode, oldBefore);
-                if (parent == oldGroup)
+        var oldOutput = this._currentCommandOutput;
+        if (pushing <= 0) {
+            for (let p = oldGroup; ;  p = p.parentNode) {
+                if (! (p instanceof Element)) {
+                    oldGroup = null;
                     break;
-                cur = parent.nextSibling;
-                parent = parent.parentNode;
+                }
+                if (p.classList.contains("command-group")
+                    && (p.getAttribute("group-parent-id") == parentKey
+                        ||  p.getAttribute("group-id") == parentKey)) {
+                    oldGroup = p;
+                    break;
+                }
+            }
+            if (oldGroup && ! this._isAnAncestor(container, oldGroup)) {
+                oldGroup = null;
+                oldOutput = null;
+            }
+            if (oldGroup) {
+                var cur = container;
+                var parent = container.parentNode;
+                var oldBefore = oldGroup.nextSibling;
+                for (;;) {
+                    this._moveNodes(cur, oldGroup.parentNode, oldBefore);
+                    if (parent == oldGroup)
+                        break;
+                    cur = parent.nextSibling;
+                    parent = parent.parentNode;
+                }
             }
         }
-        container.parentNode.insertBefore(commandGroup, container);
-        commandGroup.appendChild(container);
+        if (pushing >= 0) {
+            container.parentNode.insertBefore(commandGroup, container);
+            commandGroup.appendChild(container);
+        }
         // this._moveNodes(firstChild, newParent, null)
         // Remove old empty domterm-output container.
         if (oldOutput && oldOutput.firstChild == null
@@ -4439,7 +4460,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             break;
         case 19:
             this.freshLine();
-            this.startCommandGroup();
+            this.startCommandGroup(null);
             break;
         case 20:
             this.freshLine();
@@ -5564,6 +5585,18 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this.lineStarts[this.getAbsCursorLine()].alwaysMeasureForBreak = true;
         line._needSectionEndNext = this._needSectionEndList;
         this._needSectionEndList = line;
+        break;
+    case 119:
+        this.freshLine();
+        this.startCommandGroup(text, 0); // new sibling group
+        break;
+    case 120:
+        this.freshLine();
+        this.startCommandGroup(text, 1); // new child group
+        break;
+    case 121:
+        this.freshLine();
+        this.startCommandGroup(text, -1); // exit group
         break;
     default:
         // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
