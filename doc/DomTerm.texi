@@ -2760,21 +2760,26 @@ has a certain well-behaved form.
 A top-level ``DomTerm window'' is a @code{<div>} element
 whose @code{class} is @code{domterm}.
 
-@item @var{domterm-toplevel} ::= @var{internal-div-elements} @var{block-content}@sup{*}
+@item @var{domterm-toplevel} ::= @var{internal-div-elements} @var{domterm-buffer}@sup{+} @var{spacer}@sup{*}
 
 You don't need to create @var{domterm-toplevel} - it is created and managed by
 DomTerm, based on data from the back-end.
 
-Currently, the @var{block-content} is a single
-@code{<div class="interaction">}
-with an @code{id} attribute of the form @code{@var{xxx}_main}.
-This is the xterm ``normal screen buffer''.
+@item @var{domterm-buffer} ::= @code{<div class="interaction" buffer="@var{name}">} @var{block-content}@sup{*} @code{</div>}
 
-More structure will be supported, for example individual @code{<div>}
-to wrap each command and its output.
+There are one or two @var{domterm-buffer} elements,
+for respectively the ``normal'' and ``alternative'' screen buffer.
+These contain all the ``actual'' content.
+If there is a single buffer, the @var{name} is @code{"main only"};
+if there are two buffers, the respective values for @var{name}
+are @code{"main"} and @code{"alternate"}.
 
 @item @var{internal-div-elements}
 One or more invisible @code{<div>} elements used by the implementation.
+
+@item @var{spacer} ::=  @code{<div class="domterm-spacer"/>}
+
+Blank space at the bottom, used to support scrolling.
 
 @item @var{block-content} ::= @var{logical-line} | @code{<div>} @var{block-content}@sup{*} @code{</div>} | @var{opaque-line}
 
@@ -2939,12 +2944,16 @@ or a complex object graph.
 Xterm supports an ``alternate screen buffer'' which is used
 by character-based programs like emacs.
 Switching to the alternate buffer creates a new @code{<div class="interaction">},
-with an @code{id} attribute of the form @code{@var{xxx}_alternate}.
-It is the sibling of the normal screen buffer
+with a @code{buffer} attribute valued @code{"alternate"}
+(and an @code{id} attribute of the form @code{@var{xxx}_alternate}).
+It is the sibling of the normal screen buffer,
+which has a @code{buffer} attribute valued @code{"main"}
 (with @code{id} attribute of the form @code{@var{xxx}_normal}).
 This @code{<div>} contains one or more @var{logical-line}s.
 Returning to the normal screen deletes the @code{<div>} for the
-alternative screen, along with all of its contents.
+alternative screen, along with all of its contents,
+and changes the @code{buffer} attribute back to @code{"main only"}.
+
 
 @anchor{DOM-pretty-printing}
 @subsubheading Pretty-printing and line-breaking

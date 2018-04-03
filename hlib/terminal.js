@@ -2157,7 +2157,8 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             var col = this.getCursorColumn();
             // FIXME should scroll top of new buffer to top of window.
             var nextLine = this.lineEnds.length;
-            var bufNode = this._createBuffer(this._altBufferName);
+            this.initial.setAttribute("buffer", "main");
+            var bufNode = this._createBuffer(this._altBufferName, "alternate");
             this.topNode.insertBefore(bufNode, this._vspacer);
             var homeOffset = DomTerm._homeLineOffset(this);
             var homeNode = this.lineStarts[this.homeLine - homeOffset];
@@ -2178,6 +2179,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
         } else {
             var bufNode = this.initial;
             this.initial = DomTerm._currentBufferNode(this, false);
+            this.initial.setAttribute("buffer", "main only");
             this.lineStarts.length = bufNode.saveLastLine;
             this.lineEnds.length = bufNode.saveLastLine;
             var homeNode = null;
@@ -2318,7 +2320,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this._mainBufferName = this.makeId("main")
     this._altBufferName = this.makeId("alternate")
 
-    var mainNode = this._createBuffer(this._mainBufferName);
+    var mainNode = this._createBuffer(this._mainBufferName, "main only");
     topNode.appendChild(mainNode);
     var vspacer = document.createElement("div");
     vspacer.setAttribute("class", "domterm-spacer");
@@ -2573,9 +2575,10 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     }
 };
 
-DomTerm.prototype._createBuffer = function(bufName) {
+DomTerm.prototype._createBuffer = function(idName, bufName) {
     var bufNode = document.createElement("div");
-    bufNode.setAttribute("id", bufName);
+    bufNode.setAttribute("id", idName);
+    bufNode.setAttribute("buffer", bufName);
     bufNode.setAttribute("class", "interaction");
     this._addBlankLines(1, this.lineEnds.length, bufNode, null);
     return bufNode;
