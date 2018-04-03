@@ -103,3 +103,8 @@ div.domterm dl {
 div.domterm h1 {
     margin-top: 0.2ex;
     margin-bottom: 0.4ex; }
+/* Below match "main" but not "main only" */
+div.domterm div.interaction[buffer="main"] {
+    border-bottom:  thick double green }
+div.interaction[buffer~="main"] div.command-group {
+    border-top: thin dashed gray }
