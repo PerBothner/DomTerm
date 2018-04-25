@@ -5284,7 +5284,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
     }
     if (ok < len) {
         str = DomTerm.escapeText(str.substring(ok, len));
-        str = '<div style="color: red"><b>Inserted HTML invalid starting here:</b>'
+        str = '<div style="color: red"><b>Inserted invalid HTML starting here:</b>'
             + '<pre style="background-color: #fee">'
             + str + '</pre></div>';
         this._scrubAndInsertHTML(str);
