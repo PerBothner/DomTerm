@@ -9,9 +9,9 @@ ifndef::basebackend-manpage[]
 endif::[]
 
 == Synopsis
-`domterm hcat` _html-data_...
+`domterm hcat` [``--base=``__base-url__] _html-filename_...
 
-`domterm html` _html-data_...
+`domterm html` [``--base=``__base-url__] _html-data_...
 
 == Description
 Use this to embed HTML content info the DomTerm page.
@@ -24,3 +24,15 @@ echo 'E = mc<sup>2</sup>' | domterm html
 domterm html 'E = mc<sup>2</sup>'
 ----
 and displays: E = mc^2^.
+
+The `hcat` command takes the name of an html file, rather than literal html.
+(With no arguments `hcat` is the same as `html`.)
+The following are equivalent:
+----
+domterm hcat /path/to/doc.html
+cat /path/to/doc.html | domterm html --base=/path/to/
+----
+Relative URLs are resolved relative to the _base-url_,
+which can be an absolute URL or a filename or directory.
+The default is the current working directory,
+or (in the case of the `hcat` command) the directory of the file.

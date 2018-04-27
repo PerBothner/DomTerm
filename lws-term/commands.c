@@ -25,27 +25,100 @@ copy_html_file(FILE *in, FILE *out)
     fflush(out);
 }
 
+static void print_base_element(const char *base_url, FILE *tout)
+{
+    char *colon = strchr(base_url, ':');
+    char *sl = colon ? strchr(base_url, '/') : NULL;
+    if (colon && (! sl || colon < sl))
+        fprintf(tout, "<base href='%s'/>", base_url);
+    else {
+        struct stat stbuf;
+        size_t baselen = strlen(base_url);
+        fputs("<base href='file://", tout);
+        for (const char *p = base_url; *p; ) {
+            char ch = *p++;
+            if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+                || (ch >= '0' && ch <= '9') || ch == '/'
+                || ch == '-' || ch == '_' || ch == '.' || ch == '~')
+                fputc(ch, tout);
+            else
+                fprintf(tout, "%%%02x", ch & 0xFF);
+        }
+        if (baselen > 0 && base_url[baselen-1] != '/'
+            && stat(base_url, &stbuf) == 0 && S_ISDIR(stbuf.st_mode))
+            fputc('/', tout);
+        fputs("'/>", tout);
+    }
+}
+
 int html_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi,
                       struct options *opts)
 {
+    bool is_hcat = argc > 0 && strcmp(argv[0], "hcat") == 0;
     check_domterm(opts);
     int i = 1;
-    if (i == argc) {
-        FILE *tout = fdopen(get_tty_out(), "w");
-        copy_html_file(stdin, tout);
-    } else {
-        while (i < argc)  {
-            char *arg = argv[i++];
-            char *response  = xmalloc(strlen(arg)+40);
-            sprintf(response, "\033]72;%s\007", arg);
-            ssize_t r = write(get_tty_out(), response, strlen(response));
-            free(response);
-            if (r <= 0) {
-                lwsl_err("write failed\n");
+    char *base_url = NULL;
+    for (i = 1; i < argc; i++) {
+        char *arg = argv[i];
+        if (arg[0] == '-') {
+            char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
+            int neq = eq ? eq - arg - 1: -1;
+            if (neq >= 0
+                && (memcmp(arg+2, "base-url=", neq) == 0
+                    || memcmp(arg+2, "base=", neq) == 0)) {
+                base_url = eq+1;
+            } else {
+                FILE *err = fdopen(opts->fd_err, "w");
+                fprintf(err, "%s: Invalid argument '%s'\n", argv[0], arg);
+                fclose(err);
                 return EXIT_FAILURE;
             }
+        } else
+            break;
+    }
+    FILE *tout = fdopen(get_tty_out(), "w");
+    fprintf(tout, "\033]72;");
+    if (is_hcat && i < argc) {
+        while (i < argc)  {
+            char *fname = argv[i++];
+            FILE *fin = fopen(fname, "r");
+            if (fin == NULL) {
+                FILE *err = fdopen(opts->fd_err, "w");
+                fprintf(err, "missing html file '%s'\n", fname);
+                fclose(err);
+                fprintf(tout, "\007");
+                return EXIT_FAILURE;
+            }
+            if (base_url != NULL)
+                print_base_element(base_url, tout);
+            else {
+                char *rpath = realpath(fname, NULL);
+                print_base_element(rpath, tout);
+                free(rpath);
+            }
+            copy_file(fin, tout);
+            fclose(fin);
         }
+    } else {
+        if (base_url == NULL)
+            base_url = cwd != NULL ? strdup(cwd) : getcwd(NULL, 0);
+        if (base_url != NULL) {
+            print_base_element(base_url, tout);
+        }
+        if (i == argc) {
+            copy_file(stdin, tout);
+        } else {
+            while (i < argc)  {
+                fputs(argv[i++], tout);
+            }
+        }
+    }
+    fprintf(tout, "\007");
+    fflush(tout);
+    if (ferror(tout) != 0) {
+        lwsl_err("write failed\n");
+        return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }

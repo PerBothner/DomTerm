@@ -4898,7 +4898,7 @@ DomTerm.HTMLinfo = {
     "animateTransform": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "area": 0x14,
     "b": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "base": DomTerm._ELEMENT_KIND_EMPTY,//metadata
+    "base": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_CHECK_JS_TAG+DomTerm._ELEMENT_KIND_ALLOW,
     "basefont": DomTerm._ELEMENT_KIND_EMPTY, //obsolete
     "big": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "blockquote": DomTerm._ELEMENT_KIND_ALLOW,
@@ -5050,6 +5050,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
     }
     var doctypeRE = /^\s*<!DOCTYPE\s[^>]*>\s*/;
     var len = str.length;
+    var baseUrl = null;
     var start = 0;
     var ok = 0;
     var i = 0;
@@ -5248,10 +5249,29 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                         if (ch == quote)
                             break;
                     }
-                    var attrvalue = str.substring(valstart,i-1);
+                    let valend = i-1;
+                    var attrvalue = str.substring(valstart, valend);
                     if (! this.allowAttribute(attrname, attrvalue,
                                               einfo, activeTags))
                         break loop;
+                    if ((einfo & DomTerm._ELEMENT_KIND_CHECK_JS_TAG) != 0
+                        && (attrname=="href" || attrname=="src")) {
+                        if (tag == "base" && attrname == "href") {
+                            baseUrl = attrvalue;
+                        } else if (baseUrl != null
+                                   && attrvalue.indexOf(":") < 0) {
+                            // resolve attrvalue relative to baseUrl
+                            try {
+                                attrvalue = new URL(attrvalue, baseUrl).href;
+                                i = valstart + attrvalue.length+1;
+                            } catch (e) {
+                                break loop;
+                            }
+                            console.log("resolve url "+attrvalue);
+                            str = str.substring(0, valstart) + attrvalue
+                                + str.substring(valend);
+                        }
+                    }
                     ch = str.charCodeAt(i++); // safe because of prior i+1
 
                 }

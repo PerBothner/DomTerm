@@ -726,8 +726,10 @@ $ domterm --above browse http://example.com/
 @subheading ``Printing'' images or html
 
 @table @asis
-@item @b{@code{html}}
-@itemx @b{@code{html}} @var{html-value} ...
+@item @b{@code{html}} [@code{--base=}@var{base-url}] 
+@itemx @b{@code{html}} [@code{--base=}@var{base-url}] @var{html-value} ...
+@itemx @b{@code{hcat}} [@code{--base=}@var{base-url}] @var{filename}@code{.html} ...
+
 Use this to embed HTML content info the DomTerm page.
 If there are no arguments, read from standard input.
 Either of the following work:
@@ -736,6 +738,23 @@ echo 'E = mc<sup>2</sup>' | domterm html
 domterm html 'E = mc<sup>2</sup>'
 @end example
 displays: @code{E = mc@sup{2}}.
+
+The @var{html-value} can be a complete html file,
+but elements such as @code{<html>}, @code{<body>} or @code{<style>}
+are ignored.
+
+Relative URLs are resolved relative to the @var{base-url},
+which can be an absolute URL or a filename or directory;
+the default is the current working directory.
+
+The @code{hcat} command takes the name of an html file, rather than
+literal html.
+(With no arguments @code{hcat} is the same as @code{html}.)
+The following are equivalent:
+@example
+domterm hcat /path/to/doc.html
+cat /path/to/doc.html | domterm html --base=/path/to/
+@end example
 
 @item @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
 @itemx @b{@code{imgcat}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
@@ -2234,7 +2253,7 @@ like @code{xterm} from within DomTerm, the @code{xterm} will inherit
 the @code{DOMTERM} variable will be misleadingly set.
 
 So it is better to probe the terminal itself.
-You can ise the @code{domterm is-domterm} command:
+You can use the @code{domterm is-domterm} command:
 @example
 if domterm is-domterm
 then
@@ -2276,7 +2295,7 @@ fi
 @end example
 
 The @code{is_domterm} function only tests if the current terminal
-is domterm; it does not check if stdanard input/output have been re-directed.
+is domterm; it does not check if standard input/output have been re-directed.
 To check that, you can use the @code{test} builtin with the @code{-t} option:
 @example
 if test -t 0 -a -t 1 -a -t 2 && is_domterm
@@ -2521,6 +2540,14 @@ See also the @uref{http://www.ecma-international.org/publications/standards/Ecma
 
 Error recovery and state transitions should follow
 @uref{http://www.vt100.net/emu/dec_ansi_parser,this}.
+
+@subsubheading Embedded HTML
+
+If the @code{src} attribute of @code{<img>} is a relative URL
+(or optionally a @code{file:} URL), then
+the @code{domterm html} command should read the file
+and embed it as a @code{data:} URL.
+(As long as no @code{--base} option is specified.)
 
 @subsubheading Support Sixel graphics
 
@@ -3064,11 +3091,18 @@ then the @var{rules} are only active for a DomTerm element whose
 session name is @var{name}.
 
 @item @code{"\e]72;" @var{html-text} "\a"}
-Insert HTML text.
+Insert HTML text (a fragment).
+The @var{html-text} can be a complete html file,
+but elements such as @code{<html>}, @code{<body>} or @code{<style>}
+are ignored.
 
 The HTML is sanity-checked for safety.
-It needs to be well-formed XML; thus to write a horizontal line
-you must write @code{<hr/>} (with the extra ``@code{/}'').
+
+A @code{<base href="@var{base-url}"/>} element in the @var{html-text}
+is skipped, except that the @var{base-url} is used for subsequent
+relative URLs (for @code{src} attributes for @code{<img>} elements,
+and for @code{href} attributes for @code{<a>} elements) in the same
+@var{html-text}.
 
 The actual policy for allowed elements and attributes
 can be changed by overwriting the @code{elementInfo}
