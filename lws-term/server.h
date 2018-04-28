@@ -44,6 +44,7 @@ extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
 extern struct lws_vhost *vhost;
+extern int http_port;
 //extern struct tty_client *focused_client;
 extern struct lws_context_creation_info info; // FIXME rename
 extern struct lws *focused_wsi;

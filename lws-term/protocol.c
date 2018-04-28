@@ -1235,7 +1235,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
         pclient->session_name = strdup(opts->session_name);
         opts->session_name = NULL;
     }
-    display_session(opts, pclient, NULL, info.port);
+    display_session(opts, pclient, NULL, http_port);
     return EXIT_SUCCESS;
 }
 
@@ -1274,7 +1274,7 @@ int attach_action(int argc, char** argv, const char*cwd,
         lws_callback_on_writable(tty_wsi);
     }
 
-    display_session(opts, pclient, NULL, info.port);
+    display_session(opts, pclient, NULL, http_port);
     return EXIT_SUCCESS;
 }
 

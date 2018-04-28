@@ -61,6 +61,7 @@ static int port_specified = -1;
 volatile bool force_exit = false;
 struct lws_context *context;
 struct tty_server *server;
+int http_port;
 struct lws_vhost *vhost;
 struct lws *focused_wsi = NULL;
 struct lws_context_creation_info info;
@@ -985,11 +986,16 @@ main(int argc, char **argv)
     signal(SIGTERM, sig_handler); // kill
 
     context = lws_create_context(&info);
-    vhost = lws_create_vhost(context, &info);
     if (context == NULL) {
         lwsl_err("libwebsockets init failed\n");
         return 1;
     }
+    vhost = lws_create_vhost(context, &info);
+#if LWS_LIBRARY_VERSION_NUMBER >= 2004000
+    http_port = lws_get_vhost_port(vhost);
+#else
+    http_port = info.port;
+#endif
 
     watch_settings_file();
 
@@ -999,7 +1005,7 @@ main(int argc, char **argv)
     struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
     cclient = (struct cmd_client *) lws_wsi_user(cmdwsi);
     cclient->socket = csocket.filefd;
-    make_html_file(info.port);
+    make_html_file(http_port);
 
     lwsl_notice("TTY configuration:\n");
     if (opts.credential != NULL)
@@ -1017,7 +1023,7 @@ main(int argc, char **argv)
         lwsl_notice("  once: true\n");
     if (port_specified >= 0 && server->options.browser_command == NULL) {
         fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
-                info.port, info.port);
+                http_port, http_port);
     }
 
     int ret = handle_command(argc-optind, argv+optind,
