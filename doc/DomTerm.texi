@@ -2590,6 +2590,12 @@ A possible start is @uref{https://atom.io/packages/term2,term2}.
 @uref{http://nwjs.io/,NW.js} (formerly node-webkit).
 @item
 @uref{http://webkitgtk.org/,WebKitGtk+}
+@item
+@uref{https://github.com/zserge/webview/,webview} uses
+Cocoa/WebKit on macOS, gtk-webkit2 on Linux and MSHTML (IE10/11) on Windows.
+It appears to work, and to be slightly zippier.
+Menus would have to be added using JavaScript
+(perhaps using @uref{https://phosphorjs.github.io/,PhosphorJS}).
 @end itemize
 
 @subsubheading Using alternate window managers
