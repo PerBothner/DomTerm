@@ -232,8 +232,10 @@ MISC_COPY_TO_JAR = repl-client.html jfx-term.html \
 
 if WITH_JAVA
 PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
-  org/domterm/*.class org/domterm/javafx/*.class org/domterm/pty/*.class \
-  org/domterm/util/*.class
+  org/domterm/*.class org/domterm/javafx/*.class org/domterm/util/*.class
+if ENABLE_JAVA_PTY
+PLAIN_COPY_TO_JAR += org/domterm/pty/*.class
+endif
 else
 PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css
 endif
