@@ -991,7 +991,7 @@ main(int argc, char **argv)
         return 1;
     }
     vhost = lws_create_vhost(context, &info);
-#if LWS_LIBRARY_VERSION_NUMBER >= 2004000
+#if LWS_LIBRARY_VERSION_MAJOR >= 3
     http_port = lws_get_vhost_port(vhost);
 #else
     http_port = info.port;
