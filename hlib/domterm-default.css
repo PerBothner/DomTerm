@@ -78,7 +78,7 @@ div.domterm span[caret="block"][std="caret"], div.domterm span[caret="blinking-b
 div.domterm {
     --caret-blink-count: 20
 }
-div.domterm div.domterm span[caret="underline"][std="caret"], div.domterm span[caret="blinking-underline"][std="caret"] {
+div.domterm span[caret="underline"][std="caret"], div.domterm span[caret="blinking-underline"][std="caret"] {
     text-decoration: underline
 }
 div.domterm-active span[caret="blinking-block"][std="caret"],
