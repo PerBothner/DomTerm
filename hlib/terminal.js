@@ -100,6 +100,8 @@ if (typeof WcWidth == "undefined" && typeof require !== "undefined")
 if (typeof browserKeymap == "undefined" && typeof require !== "undefined")
     var browserKeymap = require("./browserkeymap.js");
 
+DomTerm.DEFAULT_CARET_STYLE = 1; // blinking-block
+
 /** @constructor */
 
 function DomTerm(name, topNode) {
@@ -173,8 +175,10 @@ function DomTerm(name, topNode) {
     this._confirmedCount = 0;
     this._replayMode = false;
 
-    this.caretStyle = 1; // only if *not* isLineEditing()
+    this.caretStyle = DomTerm.DEFAULT_CARET_STYLE;
+    this._usingSelectionCaret = false;
     this.caretStyleFromSettings = -1;
+    this.caretStyleFromCharSeq = -1;
 
     this.verbosity = 0;
 
@@ -1374,14 +1378,14 @@ DomTerm.prototype._followingText = function(cur) {
 
 // "Normalize" caret by moving caret text to following node.
 // Doesn't actually remove the _caretNode node, for that use _removeInputLine.
-DomTerm.prototype._removeCaret = function() {
+DomTerm.prototype._removeCaret = function(normalize=true) {
     var caretNode = this._caretNode;
     if (caretNode && caretNode.getAttribute("caret")) {
         var child = caretNode.firstChild;
         caretNode.removeAttribute("caret");
         if (child instanceof Text) {
             var text = this._followingText(caretNode.nextSibling);
-            if (text instanceof Text) {
+            if (normalize && text instanceof Text) {
                 text.insertData(0, child.data);
                 caretNode.removeChild(child);
             } else {
@@ -1398,6 +1402,7 @@ DomTerm.prototype._removeInputLine = function() {
         var caretParent = this._caretNode.parentNode;
         if (this.isLineEditing()) {
             if (this._inputLine != null && this._inputLine.parentNode != null) {
+                // FIXME this may break selection
                 if (this.outputBefore == this._inputLine)
                     this.outputBefore = this._inputLine.nextSibling;
                 this._inputLine.parentNode.removeChild(this._inputLine);
@@ -1411,13 +1416,26 @@ DomTerm.prototype._removeInputLine = function() {
 };
 
 DomTerm.prototype.setCaretStyle = function(style) {
-    if (style == 1 && this.caretStyleFromSettings >= 0)
-        style = this.caretStyleFromSettings;
+    if (style == DomTerm.DEFAULT_CARET_STYLE) {
+        if (this.caretStyleFromSettings >= 0)
+            style = this.caretStyleFromSettings;
+        this.caretStyleFromCharSeq = -1;
+    } else
+        this.caretStyleFromCharSeq = style;
+    if (style < 5 && this.caretStyle >= 5) {
+        let sel = document.getSelection();
+        if (sel.focusNode == this._caretNode
+            && sel.anchorNode == this._caretNode
+            && sel.focusOffset == 0 && sel.anchorOffset == 0) {
+            console.log("setCaret removeAllRanges");
+            sel.removeAllRanges();
+        }
+    }
     this.caretStyle = style;
 };
 
 DomTerm.prototype.useStyledCaret = function() {
-    return this.caretStyle < 5;
+    return this.caretStyle < 5 && ! this._usingSelectionCaret;
 };
 
 DomTerm.prototype.isLineEditing = function() {
@@ -1470,14 +1488,33 @@ DomTerm.prototype._restoreCaret = function() {
 }
 
 DomTerm.prototype._restoreInputLine = function() {
-    if (this.inputFollowsOutput) {
-        let inputLine = this.isLineEditing() ? this._inputLine : this._caretNode;
-        if (inputLine != null && this.outputBefore != inputLine) {
+    let inputLine = this.isLineEditing() ? this._inputLine : this._caretNode;
+    if (this.inputFollowsOutput && inputLine != null) {
+        let lineno;
+        if (this.isLineEditing()) {
+            lineno = this.getAbsCursorLine();
+            inputLine.startLineNumber = lineno;
+        }
+        if (this.outputBefore != inputLine) {
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
             this.outputBefore = inputLine;
             this._restoreCaret();
             if (this._pagingMode == 0)
                 this.maybeFocus();
+            if (this.isLineEditing()) {
+                let dt = this;
+                // Takes time proportional to the number of lines in _inputLine
+                // times lines below the input.  Both are likely to be small.
+                this._forEachElementIn(inputLine,
+                                       function (el) {
+                                           if (el.nodeName == "SPAN"
+                                               && el.getAttribute("Line")=="hard") {
+                                               DomTerm._insertIntoLines(dt, el, lineno++);
+                                               return false;
+                                           }
+                                           return true;
+                                       });
+        }
         }
     }
 };
@@ -2295,13 +2332,37 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
 
     document.addEventListener("selectionchange", function() {
         let sel = document.getSelection();
-        if (! sel.isCollapsed &&  this._composing <= 0 && dt.isLineEditing()) {
+        let point = sel.isCollapsed;
+        dt._usingSelectionCaret = ! point && dt.isLineEditing();
+        if (dt.isLineEditing() && dt._inputLine != null
+            && sel.focusNode != null
+            && (sel.focusNode != dt._caretNode || sel.focusOffset != 0)) {
+            dt._restoreInputLine();
             let r = new Range();
             r.selectNodeContents(dt._inputLine);
-            if (r.comparePoint(sel.focusNode, sel.focusOffset) == 0)
-                dt.editorMoveToPosition(sel.focusNode, sel.focusOffset);
-            else
-                dt._restoreCaret();
+            if (r.comparePoint(sel.focusNode, sel.focusOffset) == 0) {
+                if (dt._caretNode.firstChild == sel.focusNode) {
+                    console.log("handle _caretNode.firstChild == sel.focusNode");
+                }
+                // The focusNode may the text child of dt._caretNode.
+                // In that case save it before calling _removeCaret.
+                let focusNode = sel.focusNode;
+                let focusOffset = sel.focusOffset;
+                dt._removeCaret(false);
+                r.setStart(focusNode, focusOffset);
+                r.insertNode(dt._caretNode);
+                dt._inputLine.normalize();
+                // same position, but "normalized"
+                // Chrome likes this better, after Shift-Left when no selection
+                if (point)
+                    sel.collapse(dt._caretNode, 0);
+                else
+                    sel.extend(dt._caretNode, 0);
+            } else
+                dt._usingSelectionCaret = false;
+        }
+        if (point) {
+            dt._restoreCaret();
         }
     });
 
@@ -2505,7 +2566,8 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
       function(e) { dt.inputHandler(e); }, true);
     if (! DomTerm.isAtom()) { // kludge for Atom
         topNode.addEventListener("focusin", function(e) {
-            DomTerm.setFocus(dt);}, false);
+            DomTerm.setFocus(dt);
+        }, false);
     }
     function compositionStart(ev) {
         dt._composing = 1;
@@ -2733,14 +2795,10 @@ DomTerm.prototype._mouseHandler = function(ev) {
     if (this.sstate.mouseMode == 0 && ev.button == 0 && ev.type == "mouseup") {
         let sel = document.getSelection();
         if (sel.isCollapsed) {
-            if (this.isLineEditing() && this._inputLine != null
-               && sel.focusNode != null) {
-                this.editorMoveToPosition(sel.focusNode, sel.focusOffset);
-            }
-            // we don't want a visible caret
+            // we don't want a visible caret FIXME handle caretStyle >= 5
             sel.removeAllRanges();
-            this.maybeFocus();
         }
+        this.maybeFocus();
     }
     if (ev.type == "mousedown") {
         DomTerm.setFocus(this);
@@ -4323,7 +4381,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 113 /*'q'*/:
         if (oldState == DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE) {
             // Set cursor style (DECSCUSR, VT520).
-            this.setCaretStyle(this.getParameter(0, 0));
+            this.setCaretStyle(this.getParameter(0, 1));
         }
         break;
     case 114 /*'r'*/:
@@ -4734,11 +4792,12 @@ DomTerm.prototype.setSettings = function(obj) {
         }
     }
     if (cstyle >= 0 && cstyle <= 6) {
-        if (this.caretStyleFromSettings != cstyle)
-            this.caretStyle = cstyle;
+        if (this.caretStyleFromCharSeq < 0)
+            this.setCaretStyle(cstyle);
         this.caretStyleFromSettings = cstyle;
     } else {
         this.caretStyleFromSettings = -1;
+        this.setCaretStyle(DomTerm.DEFAULT_CARET_STYLE);
     }
 
     if (DomTerm._settingsCounter != settingsCounter) {
@@ -5928,12 +5987,15 @@ DomTerm.prototype.requestUpdateDisplay = function() {
 }
 
 DomTerm.prototype.insertString = function(str) {
+    var slen = str.length;
+    if (slen == 0)
+        return;
     if (this.verbosity >= 2) {
         //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
         if (str.length > 200)
             this.log("insertString "+JSON.stringify(str.substring(0,200))+"... state:"+this.controlSequenceState/*+" ms:"+ms*/);
         else
-        this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
+            this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
     }
     if (this._pagingMode == 2) {
         this.parameters[1] = this.parameters[1] + str;
@@ -5951,10 +6013,10 @@ DomTerm.prototype.insertString = function(str) {
     };
     */
     var dt = this;
+    // FIXME this breaks selections overlapping the _inputLine
     if (this.useStyledCaret())
         this._removeInputLine();
     this._doDeferredDeletion();
-    var slen = str.length;
     var i = 0;
     var prevEnd = 0;
     var columnWidth = 0; // number of columns since prevEnv
@@ -7649,33 +7711,57 @@ DomTerm.prototype._popFromCaret = function(saved) {
 
 DomTerm.commandMap = new Object();
 DomTerm.commandMap['backward-char'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), false, false);
+    dt.editorBackspace(dt.numericArgumentGet(), "move", "char");
     return true; }
 DomTerm.commandMap['backward-word'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), false, true);
+    dt.editorBackspace(dt.numericArgumentGet(), "move", "word");
     return true; }
 DomTerm.commandMap['forward-char'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), false, false);
+    dt.editorBackspace(- dt.numericArgumentGet(), "move", "char");
     return true; }
 DomTerm.commandMap['forward-word'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), false, true);
+    dt.editorBackspace(- dt.numericArgumentGet(), "move", "word");
+    return true; }
+DomTerm.commandMap['backward-char-extend'] = function(dt, key) {
+    dt.editorBackspace(dt.numericArgumentGet(), "extend", "char");
+    return true; }
+DomTerm.commandMap['backward-word-extend'] = function(dt, key) {
+    dt.editorBackspace(dt.numericArgumentGet(), "extend", "word");
+    return true; }
+DomTerm.commandMap['forward-char-extend'] = function(dt, key) {
+    dt.editorBackspace(- dt.numericArgumentGet(), "extend", "char");
+    return true; }
+DomTerm.commandMap['forward-word-extend'] = function(dt, key) {
+    dt.editorBackspace(- dt.numericArgumentGet(), "extend", "word");
     return true; }
 DomTerm.commandMap['backward-delete-char'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), true, false);
+    dt.editorBackspace(dt.numericArgumentGet(), "delete", "char");
     return true; }
 DomTerm.commandMap['backward-delete-word'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), true, true);
+    dt.editorBackspace(dt.numericArgumentGet(), "delete", "word");
     return true; }
 DomTerm.commandMap['forward-delete-char'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), true, false);
+    dt.editorBackspace(- dt.numericArgumentGet(), "delete", "char");
     return true; }
 DomTerm.commandMap['forward-delete-word'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), true, true);
+    dt.editorBackspace(- dt.numericArgumentGet(), "delete", "word");
     return true; }
 DomTerm.commandMap['beginning-of-line'] = function(dt, key) {
-    dt.editorMoveHomeOrEnd(false); dt._numericArgument = null;
+    dt.editorMoveStartOrEndLine(false); dt._numericArgument = null;
     return true; }
 DomTerm.commandMap['end-of-line'] = function(dt, key) {
+    dt.editorMoveStartOrEndLine(true); dt._numericArgument = null;
+    return true; }
+DomTerm.commandMap['beginning-of-line-extend'] = function(dt, key) {
+    dt.editorMoveStartOrEndLine(false, "extend"); dt._numericArgument = null;
+    return true; }
+DomTerm.commandMap['end-of-line-extend'] = function(dt, key) {
+    dt.editorMoveStartOrEndLine(true, "extend"); dt._numericArgument = null;
+    return true; }
+DomTerm.commandMap['beginning-of-input'] = function(dt, key) {
+    dt.editorMoveHomeOrEnd(false); dt._numericArgument = null;
+    return true; }
+DomTerm.commandMap['end-of-input'] = function(dt, key) {
     dt.editorMoveHomeOrEnd(true); dt._numericArgument = null;
     return true; }
 DomTerm.commandMap['up-line-or-history'] = function(dt, key) {
@@ -7698,6 +7784,11 @@ DomTerm.commandMap['default-action'] = function(dt, key) {
     return false; }
 DomTerm.commandMap['accept-line'] = function(dt, key) {
     dt.processEnter();
+    if (dt._lineEditingMode == 0 && dt.autoLazyCheckInferior)
+        dt._clientWantsEditing = 0;
+    return true; }
+DomTerm.commandMap['insert-newline'] = function(dt, key) {
+    dt.editorInsertString("\n");
     return true; }
 DomTerm.commandMap['backward-search-history'] = function(dt, key) {
     dt.showMiniBuffer("backward history search: \u2018", "\u2019");
@@ -7723,22 +7814,36 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Mod-Left": 'backward-word',
     "Right": 'forward-char',
     "Mod-Right": 'forward-word',
+    "Shift-Left": "backward-char-extend",
+    "Shift-Mod-Left": "backward-word-extend",
+    "Shift-Right": "forward-char-extend",
+    "Shift-Mod-Right": "forward-word-extend",
+    "Shift-End": "end-of-line-extend",
+    "Shift-Home": "beginning-of-line-extend",
+    //"Shift-Mod-Home": "beginning-of-input-extend",
+    //"Shift-Mod-End": "end-of-input-extend",
     "Backspace": "backward-delete-char",
     "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
     "Mod-Delete": "forward-delete-word",
+    //"Mod-Home": "beginning-of-input",
+    //"Mod-End": "end-of-input",
+    "Ctrl-Home": "beginning-of-input",
+    "Ctrl-End": "end-of-input",
+    "End": "end-of-line",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Down": "down-line-or-history",
     "Up": "up-line-or-history",
     "Enter": "accept-line",
+    "Shift-Enter": "insert-newline",
     // The following should be controlled by a user preference
     // for emacs-like keybindings. FIXME
     "Alt-B": "backward-word",
     "Alt-F": "forward-word",
     "Ctrl-A": "beginning-of-line",
     "Ctrl-B": "backward-char",
-    "Ctrl-D": "delete-char",
+    "Ctrl-D": "forward-delete-char",
     "Ctrl-E": "end-of-line",
     "Ctrl-F": "forward-char"
 }, {});
@@ -7769,7 +7874,7 @@ DomTerm.prototype.doLineEdit = function(keyName) {
         let str = keyName.substring(1, keyName.length-1);
         let sel = window.getSelection();
         if (! sel.isCollapsed) {
-            this.editorBackspace(1, true, false);
+            this.editorBackspace(1, "delete", "char");
         }
         let count = this.numericArgumentGet();
         this.editorInsertString(str.repeat(count >= 0 ? count : 1));
@@ -7857,7 +7962,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
     if (this.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+browserKeymap.keyName(event));
     let keyName = browserKeymap.keyName(event);
-
+    if (! keyName && event.key)
+        keyName = event.key;
     if (! this._isOurEvent(event))
         return;
     if (this._composing > 0 || event.which === 229)
@@ -7940,26 +8046,12 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 // FIXME narrow selection to _inputLine
                 if (DomTerm.doCopy())
                     event.preventDefault();
-                this.editorBackspace(1, true, false);
+                this.editorBackspace(1, "delete", "char");
                 return;
             }
             break;
         }
     }
-    if ((key == 37 || key == 39) // Left or Right
-        && (event.ctrlKey || event.shiftKey)) {
-        let sel = document.getSelection();
-        if (event.shiftKey) {
-            if (sel.isCollapsed) {
-                this._removeCaret();
-                sel.collapse(this._caretNode, 0);
-            }
-            return;
-        }
-        if (! sel.isCollapsed)
-            return;
-    }
-
     if (this._currentlyPagingOrPaused()) {
         this._pageKeyHandler(event, key, false);
         return;
@@ -8790,6 +8882,11 @@ DomTerm.prototype.editorMoveToRangeStart = function(range) {
     this._restoreCaret();
 }
 
+DomTerm.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
+    this.editorBackspace(toEnd ? -Infinity : Infinity,
+                         action, "char", "line");
+}
+
 DomTerm.prototype.editorMoveHomeOrEnd = function(toEnd) {
     let r = new Range();
     r.selectNodeContents(this._inputLine);
@@ -8853,25 +8950,68 @@ DomTerm.editorNonWordChar = function(ch) {
     return " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{|}".indexOf(ch) >= 0;
 }
 
-DomTerm.prototype.editorBackspace = function(count, doDelete, doWords) {
+/**
+ * unit: "char", "word"
+ * action: one of "move", "extend" (extend selection), or "delete"
+ * stopAt: one of "", "line" (stop before moving to different hard line),
+ * or "visible-line" (stop before moving to different screen line).
+ */
+DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
+    let doDelete = action == "delete";
+    let doWords = unit == "word";
+    let doLines = unit == "line";
     let backwards = count > 0;
     let todo = backwards ? count : -count;
     let dt = this;
     let wordCharSeen = false;
     let range;
-
+    let linesCount = 0;
     function fun(node) {
         if (node == dt._caretNode)
             return false;
-        if (! (node instanceof Text))
+        if (! (node instanceof Text)) {
+            if (node.nodeName == "SPAN"
+                && node.getAttribute("line") != null) {
+                let stopped = false;
+                if (stopAt == "visible-line")
+                    stopped = true;
+                else if (node.textContent == "")
+                    return false;
+                else if (stopAt == "line")
+                    stopped = true;
+                linesCount++;
+                if (stopped) {
+                    backwards = !backwards;
+                    todo = 0;
+                } else if (doWords) {
+                    if (wordCharSeen)
+                        todo--;
+                    wordCharSeen = false;
+                } else
+                    todo--;
+                if (todo == 0) {
+                    if (backwards)
+                        range.setStartBefore(node);
+                    else {
+                        let next = node.nextSibling;
+                        if (next instanceof Element
+                            && next.getAttribute("std") == "prompt")
+                            node = next;
+                        range.setEndAfter(node);
+                    }
+                    return null;
+                }
+            }
             return true;
+        }
+        // else: node instanceof Text
+        if (unit == "line")
+            return false;
         var data = node.data;
         let dlen = data.length;
         let istart = backwards ? dlen : 0;
         let index = istart;
         for (;; ) {
-            if (index == (backwards ? 0 : dlen))
-                return false;
             if (todo == 0) {
                 if (backwards)
                     range.setStart(node, index);
@@ -8879,6 +9019,8 @@ DomTerm.prototype.editorBackspace = function(count, doDelete, doWords) {
                     range.setEnd(node, index);
                 return null;
             }
+            if (index == (backwards ? 0 : dlen))
+                return false;
             let i0 = index;
             let c = data.charCodeAt(backwards ? --index : index++);
             let clen = 1;
@@ -8910,9 +9052,8 @@ DomTerm.prototype.editorBackspace = function(count, doDelete, doWords) {
         return false;
     }
     let sel = document.getSelection();
-    if (! sel.isCollapsed) {
+    if (! sel.isCollapsed && action != "extend") {
         if (doDelete) {
-            let sel = document.getSelection();
             for (let i = sel.rangeCount; --i >= 0; ) {
                 let r = new Range();
                 r.selectNodeContents(this._inputLine);
@@ -8938,18 +9079,47 @@ DomTerm.prototype.editorBackspace = function(count, doDelete, doWords) {
             range.setEndBefore(this._caretNode);
         else
             range.setStartAfter(this._caretNode);
+        if (action == "extend" && sel.isCollapsed)
+            sel.collapse(dt._caretNode, 0);
         this._forEachElementIn(this._inputLine, fun, true, backwards,
                                this._caretNode);
         if (doDelete) {
             this.editorDeleteRange(range);
+            if (linesCount > 0)
+                this._updateAutomaticPrompts();
             this._restoreCaret();
+        } else if (action=="extend") {
+            sel.extend(backwards?range.startContainer:range.endContainer,
+                       backwards?range.startOffset:range.endOffset);
         } else {
             if (! backwards)
                 range.collapse();
             dt.editorMoveToRangeStart(range);
         }
     }
+    return todo;
 }
+
+/* DEBUGGING
+DomTerm.prototype._showSelection = function() {
+    let sel = document.getSelection();
+    if (sel.anchorNode == null)
+        return "sel[no-ranges]";
+    let r = new Range();
+    let n = this._inputLine;
+    if (!n || !n.parentNode)
+        n = this.initial;
+    r.setStart(n, 0);
+    r.setEnd(sel.anchorNode, sel.anchorOffset);
+    let r1 = r.toString();
+    r.setEnd(sel.focusNode, sel.focusOffset);
+    let aa=sel.anchorNode instanceof Text ? "text["+sel.anchorNode.data+"]"
+        : "element["+sel.anchorNode.tagName+"."+sel.anchorNode.getAttribute("class")+"]";
+    let ff=sel.focusNode instanceof Text ? "text["+sel.focusNode.data+"]"
+        : "element["+sel.focusNode.tagName+"."+sel.focusNode.getAttribute("class")+"]";
+    return "secl[anchor:"+aa+",to-anchor:"+r1+",focus:"+ff+",to-focus:"+r.toString()+",col:"+sel.isCollapsed+"]";
+}
+*/
 
 if (typeof exports === "object")
     module.exports = DomTerm;
