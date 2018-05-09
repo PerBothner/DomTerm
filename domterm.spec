@@ -1,5 +1,5 @@
 Name:           domterm
-%global version 1.0.1
+%global version 1.0.2
 Version:        %{version}
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
