@@ -6,6 +6,7 @@
 #define BUF_SIZE 1024
 
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
+#define UNCONFIRMED_LIMIT 2000
 
 extern char **environ;
 
@@ -1484,7 +1485,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (tavail < avail)
                     avail = tavail;
             }
-            if (min_unconfirmed >= 2000 || avail == 0 || pclient->paused) {
+            if (min_unconfirmed >= UNCONFIRMED_LIMIT || avail == 0 || pclient->paused) {
                 if (! pclient->paused) {
 #if USE_RXFLOW
                     lws_rx_flow_control(wsi, 0|LWS_RXFLOW_REASON_FLAG_PROCESS_NOW);
