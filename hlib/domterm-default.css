@@ -94,7 +94,7 @@ span[caret][std="caret"][value]:after {
     100% {}
 }
 div.domterm a.subtle:not(:hover) { text-decoration: inherit; }
-div.domterm a.matched:not(:hover) { color: inherit; text-decoration: inherit; }
+div.domterm a.plain:not(:hover) { color: inherit; text-decoration: inherit; }
 div.domterm h2,
 div.domterm h3,
 div.domterm p,

@@ -5411,7 +5411,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             if (url) {
                 let newLink = document.createElement("A");
                 newLink.setAttribute("href", url);
-                newLink.setAttribute("class", "subtle");
+                newLink.setAttribute("class", "plain");
                 this._pushIntoElement(newLink);
                 DomTerm._addMouseEnterHandlers(this, newLink.parentNode);
             }
@@ -8600,7 +8600,7 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         columnWidth = -1;
     }
     let alink = document.createElement("a");
-    alink.setAttribute("class", "matched subtle");
+    alink.setAttribute("class", "matched plain");
     alink.setAttribute("href", href);
     this._pushIntoElement(alink);
     if (end-afterLen > start)
