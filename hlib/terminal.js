@@ -5397,6 +5397,26 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 31:
         this.topNode.setAttribute("pid", text);
         break;
+    case 8:
+        var semi = text.indexOf(';');
+        if (semi >= 0) {
+            let options = text.substring(0, semi);
+            let url = text.substring(semi+1);
+            let oldLink = DomTerm._isInElement(this.outputContainer, "A");
+            if (oldLink) {
+                while (this.outputContainer != oldLink)
+                    this._popStyleSpan();
+                this._popStyleSpan();
+            }
+            if (url) {
+                let newLink = document.createElement("A");
+                newLink.setAttribute("href", url);
+                newLink.setAttribute("class", "subtle");
+                this._pushIntoElement(newLink);
+                DomTerm._addMouseEnterHandlers(this, newLink.parentNode);
+            }
+        }
+        break;
     case 10:
     case 11:
     case 12:
@@ -8437,22 +8457,22 @@ DomTerm.isDelimiter = (function() {
     let mask2 = 0; // mask for char values 64..95
     let mask3 = 0; // mask for char values 96..127
     for (let i = delimiterChars.length; --i >= 0; ) {
-	let ch = delimiterChars.charCodeAt(i);
-	if (ch >= 32 && ch < 64)
-	    mask1 |= 1 << (ch - 32);
-	else if (ch >= 64 && ch < 96)
-	    mask2 |= 1 << (ch - 64);
-	else if (ch >= 96 && ch < 128)
-	    mask3 |= 1 << (ch - 96);
+        let ch = delimiterChars.charCodeAt(i);
+        if (ch >= 32 && ch < 64)
+            mask1 |= 1 << (ch - 32);
+        else if (ch >= 64 && ch < 96)
+            mask2 |= 1 << (ch - 64);
+        else if (ch >= 96 && ch < 128)
+            mask3 |= 1 << (ch - 96);
     }
     return function(ch) {
-	if (ch < 64)
-	    return ch <= 32 ? true : (mask1 & (1 << (ch - 32))) != 0;
-	else if (ch < 128)
-	    return ch < 96 ? (mask2 & (1 << (ch - 64))) != 0
-	    : (mask3 & (1 << (ch - 96))) != 0;
-	else
-	    return false;
+        if (ch < 64)
+            return ch <= 32 ? true : (mask1 & (1 << (ch - 32))) != 0;
+        else if (ch < 128)
+            return ch < 96 ? (mask2 & (1 << (ch - 64))) != 0
+            : (mask3 & (1 << (ch - 96))) != 0;
+        else
+            return false;
     }
 })();
 
