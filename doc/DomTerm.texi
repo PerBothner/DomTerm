@@ -2047,7 +2047,45 @@ However, @code{tty=} might not be specified unless runnng under a pty.
 There seem to be some problems setting it with Qt.
 This variable is not set by Wayland.
 
-@subheading Showing man pages as html
+@subheading Various programs
+
+@subsubheading ls - showing files as links
+
+Newer versions of the GNU @code{ls} programs support a
+@code{--hyperlink} option that creates a @code{file:}
+link for each filename.
+The escape sequence is also recognized by gnome-terminal,
+and should be harmless for other xterm-like terminals.
+Consider adding this to your shell init file:
+@example
+case "$TERM" in
+  *xterm*) alias ls='ls --hyperlink=auto';;
+esac
+@end example
+
+@subsubheading pandoc Printing markdown and other document types
+
+The @uref{https://pandoc.org/,pandoc} program can convert
+documents between multiple document formats.
+To view a Markdown document @code{doc.md} you can do:
+@example
+pandoc -t html doc.md | domterm hcat
+@end example
+You might optionally use the @code{--standalone} flag to force
+images to be ``inlined'' in the terminal output:
+@example
+pandoc -t html -standalone --metadata pagetitle=dummy doc.md | domterm hcat
+@end example
+(The @code{--metadata pagetitle=dummy} is to silence an annoying warning.)
+
+@subsubheading gnuplot
+
+The @uref{http://www.gnuplot.info/,gnuplot} graphing application
+has builtin support for
+@uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,``printing'' graphical output}
+to the DomTerm console
+
+@subsubheading Showing man pages as html
 
 To view the @code{bash} man page inline you can do the following.
 This works best with Automatic Pager set.
