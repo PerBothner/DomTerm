@@ -5006,6 +5006,8 @@ DomTerm.HTMLinfo = {
     "feSpotLight": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "feTile": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "feTurbulence": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
+    "figcaption": DomTerm._ELEMENT_KIND_ALLOW,
+    "figure": DomTerm._ELEMENT_KIND_ALLOW,
     "filter": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "font": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "font-face": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
@@ -5025,6 +5027,7 @@ DomTerm.HTMLinfo = {
     "h5": DomTerm._ELEMENT_KIND_ALLOW,
     "h6": DomTerm._ELEMENT_KIND_ALLOW,
     "head": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_ALLOW,
+    "header": DomTerm._ELEMENT_KIND_ALLOW,
     "hkern": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "hr": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
     "html": 0x41,
@@ -5290,26 +5293,34 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                         else
                             break loop; // invalid - junk in element start
                     }
-                    if (ch != 61) // '='
-                        break loop; // invalid - name not followed by '='
                     var attrname = str.substring(attrstart,attrend);
-                    if (i == len)
-                        break loop; // invalid
-                    for (ch = 32; ch <= 32 && i < len; )
+                    while (ch <= 32 && i < len)
                         ch = str.charCodeAt(i++);
-                    var quote = i == len ? -1 : ch;
-                    if (quote != 34 && quote != 39) // '"' or '\''
-                        break loop; // invalid
-                    var valstart = i;
-                    for (;;) {
-                        if (i+1 >= len) //i+1 to allow for '/' or '>'
+                    let valstart, valendl
+                    if (ch == 61) { // '='
+                        if (i == len)
                             break loop; // invalid
-                        ch = str.charCodeAt(i++);
-                        if (ch == quote)
-                            break;
+                        for (ch = 32; ch <= 32 && i < len; )
+                            ch = str.charCodeAt(i++);
+                        var quote = i == len ? -1 : ch;
+                        if (quote != 34 && quote != 39) // '"' or '\''
+                            break loop; // invalid
+                        valstart = i;
+                        for (;;) {
+                            if (i+1 >= len) //i+1 to allow for '/' or '>'
+                                break loop; // invalid
+                            ch = str.charCodeAt(i++);
+                            if (ch == quote)
+                                break;
+                        }
+                        valend = i-1;
+                    } else {
+                        if (ch == '/' || ch == '>' || ch == '<')
+                            i--;
+                        valstart = i;
+                        valend = i;
                     }
-                    let valend = i-1;
-                    var attrvalue = str.substring(valstart, valend);
+                    let attrvalue = str.substring(valstart, valend);
                     if (! this.allowAttribute(attrname, attrvalue,
                                               einfo, activeTags))
                         break loop;
