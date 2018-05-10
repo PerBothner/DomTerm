@@ -444,6 +444,8 @@ write_to_browser(struct lws *wsi, void *buf, size_t len)
         lwsl_err("lws_write\n");
 }
 
+static char localhost_localdomain[] = "localhost.localdomain";
+
 char *
 check_template(const char *template, json_object *obj)
 {
@@ -457,6 +459,30 @@ check_template(const char *template, json_object *obj)
     const char *href =
         json_object_object_get_ex(obj, "href", &jhref)
         ? json_object_get_string(jhref) : NULL;
+    if (filename[0] == '/' && filename[1] == '/') {
+        if (filename[3] == '/')
+            filename = filename + 3;
+        else {
+            char *colon = strchr(filename+2, '/');
+            if (colon == NULL)
+                return NULL;
+            int fhlen = colon - (filename + 2);
+            if (fhlen == sizeof(localhost_localdomain)-1
+                && strncmp(filename+2, localhost_localdomain, fhlen) == 0)
+                filename = filename + 2 + fhlen;
+            else {
+                char hbuf[HOST_NAME_MAX+1];
+                int r = gethostname(hbuf, sizeof(hbuf));
+                if (r != 0)
+                    return NULL;
+                if (fhlen == strlen(hbuf)
+                    && strncmp(filename+2, hbuf, fhlen) == 0)
+                    filename = filename + 2 + fhlen;
+                else
+                    return NULL;
+            }
+        }
+    }
 
     int size = 0;
     while (template[0] == '{') {
