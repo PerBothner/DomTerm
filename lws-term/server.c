@@ -122,6 +122,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define FIREFOX_OPTION 1001
 #define QTDOMTERM_OPTION 1002
 #define ELECTRON_OPTION 1003
+#define CHROME_APP_OPTION 1004
 #define FORCE_OPTION 2001
 #define DAEMONIZE_OPTION 2002
 #define NO_DAEMONIZE_OPTION 2003
@@ -145,6 +146,7 @@ static const struct option options[] = {
         {"port",         required_argument, NULL, 'p'},
         {"browser",      optional_argument, NULL, 'B'},
         {"chrome",       no_argument,       NULL, CHROME_OPTION},
+        {"chrome-app",   no_argument,       NULL, CHROME_APP_OPTION},
         {"google-chrome",no_argument,       NULL, CHROME_OPTION},
         {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
         {"qt",           no_argument,       NULL, QTDOMTERM_OPTION},
@@ -749,11 +751,17 @@ int process_options(int argc, char **argv, struct options *opts)
             case GEOMETRY_OPTION:
                 opts->geometry = optarg;
                 break;
-            case CHROME_OPTION: {
+            case CHROME_OPTION:
+            case CHROME_APP_OPTION: {
                 char *cbin = chrome_command();
                 if (cbin == NULL) {
                     fprintf(stderr, "neither chrome or google-chrome command found\n");
                     exit(-1);
+                }
+                if (c == CHROME_APP_OPTION) {
+                    char *b = xmalloc(strlen(cbin)+12);
+                    sprintf(b, "%s -app='%%U'", cbin);
+                    cbin = b;
                 }
                 opts->browser_command = cbin;
                 break;

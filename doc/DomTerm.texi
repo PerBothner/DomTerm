@@ -664,12 +664,17 @@ Same as @code{--browser=firefox}.
 application, but that is no longer supported.)
 
 @item @code{--chrome}
-This uses the Google Chrome browser,
+Creates a new window/tab in the Google Chrome browser.
+Same as @code{--browser=chrome}.
+
+@item @code{--chrome-app}
+This uses the Google Chrome browser, but
 started using the @code{--app=} option,
 so you get a fresh chrome-less window (with no menubar or toolbar).
 
 This works well and the performance is good.
-This method provides no menubar or context-menu customization (so far).
+This method provides no menubar or context-menu customization so far,
+though that is planned.
 
 @item @code{--qt}
 @itemx @code{--qtdomterm}
