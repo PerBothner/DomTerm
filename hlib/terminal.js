@@ -195,6 +195,7 @@ function DomTerm(name, topNode) {
 
     // Used to implement clientDoesEscho handling.
     this._deferredForDeletion = null;
+    this.deferredForDeletionTimeout = 2000;
 
     this.topNode = null;
 
@@ -426,6 +427,26 @@ DomTerm.URGENT_COUNTED = 21;
 
 DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
+}
+
+DomTerm._deleteDataTail = function(text, count) {
+    if (count == 0)
+        return;
+    let dlen = text.length;
+    if (count == dlen)
+        text.parentNode.removeChild(text);
+    else
+        text.deleteData(dlen-count, count);
+}
+
+DomTerm._deleteData = function(text, start, count) {
+    if (count == 0)
+        return;
+    let dlen = text.length;
+    if (count == dlen)
+        text.parentNode.removeChild(text);
+    else
+        text.deleteData(start, count);
 }
 
 DomTerm.prototype.eofSeen = function() {
@@ -773,11 +794,7 @@ DomTerm.prototype.tabToNextStop = function(isTabChar) {
         var typical = this._tabsAdded == null && (nextStop & 7) == 0;
         span.setAttribute('style', 'tab-size:'+(typical ? 8 : nextStop));
         this.outputContainer.insertBefore(span, this.outputBefore);
-        var start = prev.data.length - w;
-        if (start == 0)
-            this.outputContainer.removeChild(prev);
-        else
-            prev.deleteData(start, w);
+        DomTerm._deleteDataTail(prev, w);
     }
     return true;
 }
@@ -829,11 +846,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                         cur.parentNode.insertBefore(document.createTextNode(data.substring(0,i)), cur);
                     var line = this._createLineNode("hard", "\n");
                     cur.parentNode.insertBefore(line, cur);
-                    if (i+1 == dlen)
-                        cur.parentNode.removeChild(cur);
-                    else {
-                        cur.deleteData(0, i+1);
-                    }
+                    DomTerm._deleteData(cur, 0, i+1);
                     cur = line; // continue with Element case below
                     break;
                 }
@@ -844,10 +857,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     wcnode.setAttribute("class", "wc-node");
                     wcnode.appendChild(document.createTextNode(String.fromCodePoint(ch)));
                     cur.parentNode.insertBefore(wcnode, cur.nextSibling);
-                    if (i == 0)
-                        cur.parentNode.removeChild(cur);
-                    else
-                        cur.deleteData(i, dlen-i);
+                    DomTerm._deleteData(cur, i, dlen-i);
                     cur = wcnode;
                     if (i1 < dlen) {
                         data = data.substring(i1, dlen);
@@ -1400,14 +1410,9 @@ DomTerm.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput) {
         this._removeCaret();
         var caretParent = this._caretNode.parentNode;
-        if (this.isLineEditing()) {
-            if (this._inputLine != null && this._inputLine.parentNode != null) {
-                // FIXME this may break selection
-                if (this.outputBefore == this._inputLine)
-                    this.outputBefore = this._inputLine.nextSibling;
-                this._inputLine.parentNode.removeChild(this._inputLine);
-            }
-        } else if (caretParent != null) {
+        if (caretParent != null && ! this.isLineEditing()) {
+            // FIXME Is this needed/desirable? maybe just _removeCaret
+            // That would avoid need for _restoreCaretNode.
             if (this.outputBefore==this._caretNode)
                 this.outputBefore = this.outputBefore.nextSibling;
             caretParent.removeChild(this._caretNode);
@@ -1427,10 +1432,10 @@ DomTerm.prototype.setCaretStyle = function(style) {
         if (sel.focusNode == this._caretNode
             && sel.anchorNode == this._caretNode
             && sel.focusOffset == 0 && sel.anchorOffset == 0) {
-            console.log("setCaret removeAllRanges");
             sel.removeAllRanges();
         }
     }
+    this._caretNode.removeAttribute("caret");
     this.caretStyle = style;
 };
 
@@ -1444,46 +1449,55 @@ DomTerm.prototype.isLineEditing = function() {
 }
 
 DomTerm.prototype._restoreCaret = function() {
-        if (this.useStyledCaret()) {
-            if (! (this._caretNode.firstChild instanceof Text)
-                || this._caretNode.firstChild.data.length == 0) {
-                var text = this._followingText(this._caretNode);
-                if (text instanceof Text && text.data.length > 0) {
-                    var tdata = text.data;
-                    var sz = 1;
-                    if (tdata.length >= 2) {
-                        var ch0 = tdata.charCodeAt(0);
-                        var ch1 = tdata.charCodeAt(1);
-                        if (ch0 >= 0xD800 && ch0 <= 0xDBFF
-                            && ch1 >= 0xDC00 && ch1 <= 0xDFFF)
-                            sz = 2;
-                    }
-                    var ch = tdata.substring(0, sz);
-                    this._caretNode.appendChild(document.createTextNode(ch));
-                    if (sz == text.length)
-                        text.parentNode.removeChild(text);
-                    else
-                        text.deleteData(0, sz);
-                    this._caretNode.removeAttribute("value");
+    if (this.useStyledCaret()) {
+        if (! this._caretNode.getAttribute("caret")
+            && (! (this._caretNode.firstChild instanceof Text)
+                || this._caretNode.firstChild.data.length == 0)) {
+            var text = this._followingText(this._caretNode);
+            if (text instanceof Text && text.data.length > 0) {
+                var tdata = text.data;
+                var sz = 1;
+                if (tdata.length >= 2) {
+                    var ch0 = tdata.charCodeAt(0);
+                    var ch1 = tdata.charCodeAt(1);
+                    if (ch0 >= 0xD800 && ch0 <= 0xDBFF
+                        && ch1 >= 0xDC00 && ch1 <= 0xDFFF)
+                        sz = 2;
                 }
-                else
-                    this._caretNode.setAttribute("value", " ");
+                var ch = tdata.substring(0, sz);
+                this._caretNode.appendChild(document.createTextNode(ch));
+                let ptext = text.parentNode;
+                DomTerm._deleteData(text, 0, sz);
+                this._caretNode.removeAttribute("value");
+                if (this._caretNode.parentNode == this._deferredForDeletion
+                    && ptext != this._deferredForDeletion)
+                    this._deferredForDeletion.textAfter += ch;
             }
-            var cstyle;
-            switch (this.caretStyle) {
-            default:
-                cstyle = "blinking-block"; break;
-            case 2:
-                cstyle = "block"; break;
-            case 3:
-                cstyle = "blinking-underline"; break;
-            case 4:
-                cstyle = "underline"; break;
-            }
-            this._caretNode.setAttribute("caret", cstyle);
+            else
+                this._caretNode.setAttribute("value", " ");
         }
+        var cstyle;
+        switch (this.caretStyle) {
+        default:
+            cstyle = "blinking-block"; break;
+        case 2:
+            cstyle = "block"; break;
+        case 3:
+            cstyle = "blinking-underline"; break;
+        case 4:
+            cstyle = "underline"; break;
+        }
+        this._caretNode.setAttribute("caret", cstyle);
+    }
     else {
         document.getSelection().collapse(this._caretNode, 0);
+    }
+}
+
+DomTerm.prototype._restoreCaretNode = function() {
+    if (this._caretNode.parentNode == null) {
+        this.outputContainer.insertBefore(this._caretNode, this.outputBefore);
+        this.outputBefore = this._caretNode;
     }
 }
 
@@ -1495,10 +1509,10 @@ DomTerm.prototype._restoreInputLine = function() {
             lineno = this.getAbsCursorLine();
             inputLine.startLineNumber = lineno;
         }
-        if (this.outputBefore != inputLine) {
+        if (this.outputBefore != inputLine && this.outputContainer != inputLine
+           && this.outputContainer.parentNode != inputLine) {
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
             this.outputBefore = inputLine;
-            this._restoreCaret();
             if (this._pagingMode == 0)
                 this.maybeFocus();
             if (this.isLineEditing()) {
@@ -1514,8 +1528,10 @@ DomTerm.prototype._restoreInputLine = function() {
                                            }
                                            return true;
                                        });
+            }
         }
-        }
+        this._restoreCaret();
+
     }
 };
 
@@ -1631,10 +1647,7 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
         }
         if (tcount > 0) {
             var after = tstr.substring(len-tcount);
-            if (tcount == len)
-                prev.parentNode.removeChild(prev);
-            else
-                prev.deleteData(len-tcount, tcount);
+            DomTerm._deleteDataTail(prev, tcount);
             count -= tcols;
 
             var following = this.outputBefore;
@@ -3184,6 +3197,94 @@ DomTerm.prototype.reportKeyEvent = function(keyName, str) {
     this.reportEvent("KEY", ""+keyName+"\t"+JSON.stringify(str));
 };
 
+DomTerm.prototype._initPendingInput = function(str) {
+    if (this._deferredForDeletion &&
+        this._deferredForDeletion != this.outputContainer) {
+        this._doDeferredDeletion();
+    }
+    var pending = this._deferredForDeletion;
+    if (pending == null) {
+        this._removeCaret();
+        var pending = this._createSpanNode();
+        pending.textBefore = "";
+        pending.textAfter = "";
+        pending.pendingEcho = "";
+        pending.classList.add("pending");
+
+        this._deferredForDeletion = pending;
+        this._requestDeletePendingEcho();
+        this._restoreCaretNode();
+        this._caretNode.parentNode.insertBefore(pending, this._caretNode);
+        pending.appendChild(this._caretNode);
+        if (this.outputBefore == this._caretNode)
+            this.outputContainer = pending;
+    }
+    return pending;
+}
+
+DomTerm.prototype._addPendingInput = function(str) {
+    var pending = this._initPendingInput();
+    this._caretNode.parentNode.insertBefore(document.createTextNode(str),
+                                            this._caretNode);
+    pending.pendingEcho += str;
+    pending.normalize();
+    this._restoreCaret();
+}
+
+DomTerm._PENDING_LEFT = 2;
+DomTerm._PENDING_RIGHT = DomTerm._PENDING_LEFT+1;
+DomTerm._PENDING_DELETE = 4;
+
+DomTerm.prototype._editPendingInput = function(forwards, doDelete) {
+    var pending = this._initPendingInput();
+    this._removeCaret();
+    let text = forwards ? this._caretNode.nextSibling
+        : this._caretNode.previousSibling;
+    let outerText = null;
+    if (text == null) {
+        outerText = forwards ? pending.nextSibling : pending.previousSibling;
+        text = outerText;
+    }
+    if (text instanceof Text && text.data.length > 0) {
+        let ch = text.data.substring(forwards ? 0 : text.data.length-1,
+                                     forwards ? 1 : text.data.length);
+        let chlen = 1;
+        // FIXME adjust ch/chlen if a surroagte
+        text.deleteData(forwards ? 0 : text.data.length-chlen, chlen);
+        if (outerText != null) {
+            if (forwards)
+                pending.textAfter = pending.textAfter + ch;
+            else
+                pending.textBefore = ch + pending.textBefore;
+        }
+        if (! doDelete) {
+            let prevText = forwards ? this._caretNode.previousSibling : this._caretNode.nextSibling;
+            if (prevText == null) {
+                prevText = document.createTextNode(ch);
+                this._caretNode.parentNode.insertBefore(prevText,
+                                                        forwards ? this._caretNode
+                                                        : this._caretNode.nextSibling);
+            } else
+                prevText.insertData(forwards ? prevText.data.length : 0,
+                                    ch);
+        }
+        let code = (forwards ? DomTerm._PENDING_RIGHT : DomTerm._PENDING_LEFT)
+            + (doDelete ? DomTerm._PENDING_DELETE : 0);
+        pending.pendingEcho += String.fromCharCode(code);
+        pending.normalize();
+        if (outerText)
+            outerText.parentNode.normalize();
+        this._restoreCaret();
+    }
+}
+
+DomTerm.prototype._respondSimpleInput = function(str, keyName) {
+    if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
+        this.reportKeyEvent(keyName, str);
+    else
+        this.processInputCharacters(str);
+}
+
 DomTerm.prototype.setWindowSize = function(numRows, numColumns,
                                            availHeight, availWidth) {
     this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
@@ -3488,8 +3589,12 @@ DomTerm.prototype.handleEnter = function(text) {
         if (noecho == null || noecho == "false")
             this.historyAdd(text, cont == "true");
         this.outputContainer = oldInputLine;
-        this.outputBefore = null;
-        oldInputLine.classList.remove("editing");
+        this.outputBefore = this._caretNode;
+        oldInputLine.classList.add("pending");
+        let wrap = this._createSpanNode();
+        wrap.setAttribute("std", "input");
+        oldInputLine.parentNode.insertBefore(wrap, oldInputLine);
+        wrap.appendChild(oldInputLine);
     }
     if (! this.clientDoesEcho) {
         this._inputLine = null; // To avoid confusing cursorLineStart
@@ -3498,6 +3603,7 @@ DomTerm.prototype.handleEnter = function(text) {
     this._inputLine = null;
     if (this.clientDoesEcho) {
         this._deferredForDeletion = oldInputLine;
+        this._requestDeletePendingEcho();
         this.currentAbsLine = line+this.homeLine;
         this.currentCursorColumn = -1;
     }
@@ -5914,12 +6020,18 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
 DomTerm.prototype._doDeferredDeletion = function() {
     var deferred = this._deferredForDeletion;
     if (deferred) {
-        var child = deferred.firstChild;
-        while (child && child != this.outputBefore) {
-            var next = child.nextSibling;
-            deferred.removeChild(child);
-            child = next;
+        this._removeCaret();
+        this.outputContainer = deferred.parentNode;
+        this.outputContainer.insertBefore(this._caretNode, deferred);
+        this.outputBefore = this._caretNode;
+        if (deferred.textBefore) {
+            this.outputContainer.insertBefore(document.createTextNode(deferred.textBefore), this.outputBefore);
         }
+        if (deferred.textAfter) {
+            this.outputContainer.insertBefore(document.createTextNode(deferred.textAfter), this.outputBefore ? this.outputBefore.nextSibling : null);
+        }
+        deferred.normalize;
+        deferred.parentNode.removeChild(deferred);
         this._deferredForDeletion = null;
     }
 }
@@ -6017,6 +6129,18 @@ DomTerm.prototype.requestUpdateDisplay = function() {
         this._updateTimer = setTimeout(this._updateDisplay, 100);
 }
 
+DomTerm.prototype._requestDeletePendingEcho = function() {
+    if (this._deferredForDeletion == null)
+        return;
+    if (this._deletePendingEchoTimer != null)
+        clearTimeout(this._deletePendingEchoTimer);
+    var dt = this;
+    function clear() { dt._deletePendingEchoTimer = null;
+                       dt._doDeferredDeletion(); };
+    let timeout = dt.deferredForDeletionTimeout;
+    this._deletePendingEchoTimer = setTimeout(clear, timeout);
+}
+
 DomTerm.prototype.insertString = function(str) {
     var slen = str.length;
     if (slen == 0)
@@ -6047,7 +6171,24 @@ DomTerm.prototype.insertString = function(str) {
     // FIXME this breaks selections overlapping the _inputLine
     if (this.useStyledCaret())
         this._removeInputLine();
-    this._doDeferredDeletion();
+    var pendingEchoNode = this._deferredForDeletion;
+    let pendingEchoBlock = null;
+    if (pendingEchoNode) {
+        if (! pendingEchoNode.pendingEcho
+            || pendingEchoNode.pendingEcho.length == 1)
+            pendingEchoNode = null;
+        else {
+            pendingEchoBlock = this._getOuterBlock(pendingEchoNode);
+            let r = document.createRange();
+            r.selectNode(pendingEchoBlock);
+            r.setEndBefore(pendingEchoNode);
+            pendingEchoNode.oldBefore = r.toString();
+            r.selectNode(pendingEchoBlock);
+            r.setStartAfter(pendingEchoNode);
+            pendingEchoNode.oldAfter = r.toString();
+        }
+        this._doDeferredDeletion();
+    }
     var i = 0;
     var prevEnd = 0;
     var columnWidth = 0; // number of columns since prevEnv
@@ -6324,8 +6465,6 @@ DomTerm.prototype.insertString = function(str) {
                     }
                     this.cursorLineStart(1);
                     i++;
-                    if (this.isLineEditing())
-                        this.editorAddLine();
                 } else {
                     this._breakDeferredLines();
                     this.cursorLineStart(0);
@@ -6465,6 +6604,100 @@ DomTerm.prototype.insertString = function(str) {
     }
     if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
         this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
+    }
+
+    // Check if output "accounts for" partial prefix of pendingEcho.
+    // If so restore deferred pendingEcho for rest of old pendingEcho.
+    if (pendingEchoNode
+        && pendingEchoBlock == this._getOuterBlock(this.outputContainer)) {
+        let oldBefore = pendingEchoNode.oldBefore;
+        let oldAfter = pendingEchoNode.oldAfter;
+        let newLine = pendingEchoBlock.textContent;
+        if (oldBefore.length + oldAfter.length <= newLine.length
+            && this.outputBefore != null
+            && oldBefore == newLine.substring(0, oldBefore.length)
+            && oldAfter == newLine.substring(newLine.length-oldAfter.length)) {
+            let newText = newLine.substring(oldBefore.length,
+                                            newLine.length-oldAfter.length);
+            let oldText = pendingEchoNode.textBefore + pendingEchoNode.textAfter;
+            let oldIndex = pendingEchoNode.textBefore.length;
+            let r = document.createRange();
+            r.selectNode(pendingEchoBlock);
+            this._restoreCaretNode();
+            r.setEndBefore(this._caretNode);
+            let newIndex = r.toString().length - oldBefore.length;
+            let delta = newText.length - oldText.length;
+            let pendingEcho = pendingEchoNode.pendingEcho;
+            let plen = pendingEcho.length;
+            let caret = this._caretNode;
+            let prevNode = caret.previousSibling;
+            let nextNode = caret.nextSibling;
+            let insertOnly = true;
+            for (let i = plen; --i >= 0; ) {
+                if (pendingEcho.charCodeAt(i) < 16) insertOnly = false;
+            }
+            if (insertOnly && delta > 0 && newIndex == oldIndex + delta
+                && (pendingEchoNode.textBefore + pendingEcho.substring(0,delta)
+                    == newText.substring(0, newIndex))
+                && pendingEchoNode.textAfter == newText.substring(newIndex)) {
+                this._addPendingInput(pendingEchoNode.pendingEcho.substring(delta));
+            } else if ((newIndex == 0
+                        || (prevNode instanceof Text
+                            && prevNode.data.length >= newIndex))
+                       && (newIndex == newText.length
+                           || (nextNode instanceof Text
+                               && nextNode.data.length >= newText.length - newIndex))) {
+                // slow checking for more complex pendingEcho
+                let text = oldText;
+                let index = oldIndex;
+                for (let i = 0; i < plen; ) {
+                    let ch = pendingEcho.charCodeAt(i);
+                    if (ch >= 8) {
+                        text = text.substring(0, index) + String.fromCharCode(ch) + text.substring(index);
+                        index++;
+                    } else {
+                        let ldelta = 0;
+                        let rdelta = 0;
+                        switch (ch) {
+                        case DomTerm._PENDING_LEFT:
+                            ldelta = -1; rdelta = -1; break;
+                        case DomTerm._PENDING_RIGHT:
+                            ldelta = 1; rdelta = 1; break;
+                        case DomTerm._PENDING_LEFT+DomTerm._PENDING_DELETE:
+                            ldelta = -1; rdelta = 0; break;
+                        case DomTerm._PENDING_RIGHT+DomTerm._PENDING_DELETE:
+                            ldelta = 0; rdelta = 1; break;
+                        }
+                        text = text.substring(0, index+ldelta) + text.substring(index+rdelta);
+                        index += ldelta;
+                    }
+                    if (++i == len)
+                        break;
+                    if (text == newText && index == newIndex) {
+                        // found match.  Note we don't stop the loop,
+                        // because a later match is better than a partial match.
+                        if (pendingEchoNode.parentNode == null) {
+                            DomTerm._deleteDataTail(prevNode, newIndex);
+                            DomTerm._deleteData(nextNode,
+                                                0, newText.length-newIndex);
+                            pendingEchoNode = this._initPendingInput();
+                        }
+                        pendingEchoNode.textBefore = text.substring(0, index);
+                        pendingEchoNode.textAfter = text.substring(index);
+                        pendingEchoNode.pendingEcho = pendingEcho.substring(i);
+                    }
+                }
+                if (pendingEchoNode.parentNode != null) {
+                    let t1 = text.substring(0, index);
+                    let t2 = text.substring(index);
+                    let parent = caret.parentNode;
+                    if (t1)
+                        parent.insertBefore(document.createTextNode(t1), caret);
+                    if (t2)
+                        parent.appendChild(document.createTextNode(t2));
+                }
+            }
+        }
     }
 
     if (this._pauseNeeded()) {
@@ -7414,6 +7647,7 @@ DomTerm.prototype.pasteText = function(str) {
     if (this.isLineEditing()) {
         this.editorInsertString(str);
     } else {
+        this._addPendingInput(str);
         this.reportText(str, null);
     }
 };
@@ -7717,6 +7951,8 @@ DomTerm.prototype._sendInputContents = function() {
     if (this._inputLine != null) {
         var text = this.grabInput(this._inputLine);
         this._deferredForDeletion = this._inputLine;
+        this._requestDeletePendingEcho();
+        this._addPendingInput(text);
         this.reportText(text);
     }
 }
@@ -8178,10 +8414,13 @@ DomTerm.prototype.keyDownHandler = function(event) {
         var str = this.keyDownToString(event);
         if (str) {
             event.preventDefault();
-            if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
-                this.reportKeyEvent(keyName, str);
-            else
-                this.processInputCharacters(str);
+            if (keyName == "Left" || keyName == "Right") {
+                this._editPendingInput(keyName == "Right", false);
+            }
+            if (keyName == "Backspace" || keyName == "Delete") {
+                this._editPendingInput(keyName == "Delete", true);
+            }
+            this._respondSimpleInput(str, keyName);
         }
     }
 };
@@ -8216,10 +8455,8 @@ DomTerm.prototype.keyPressHandler = function(event) {
             && key != 8
             && ! event.ctrlKey) {
             var str = String.fromCharCode(key);
-            if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
-                this.reportKeyEvent(keyName, str);
-            else
-                this.processInputCharacters(str);
+            this._addPendingInput(str);
+            this._respondSimpleInput (str, keyName);
             event.preventDefault();
         }
     }
@@ -8237,6 +8474,7 @@ DomTerm.prototype.inputHandler = function(event) {
             this._inputLine.removeChild(ch);
             ch = next;
         }
+        this._addPendingInput(text);
         this.reportText(text, null);
     }
 };
@@ -8258,6 +8496,9 @@ DomTerm.prototype._checkTree = function() {
            && this.currentAbsLine >= nlines))
         error("bad currentAbsLine");
     var isSavedSession = this.isSavedSession();
+    if (this._caretNode.parentNode != null && this._inputLine == null
+        && this._caretNode != this.outputBefore)
+        error("bad _caretNode");
     if ((this.outputBefore
          && this.outputBefore.parentNode != this.outputContainer)
         || this.outputContainer == null
@@ -8428,7 +8669,18 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     var wsocket = new WebSocket(wspath, wsprotocol);
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
-    wt.processInputCharacters = function(str) { wsocket.send(str); };
+    wt.processInputCharacters = function(str) {
+        /* TEST LATENCY
+        let delay = DomTerm._extraDelayForTesting;
+        if (delay === undefined)
+            DomTerm._extraDelayForTesting = delay = 600;
+        if (delay) {
+            setTimeout(function() { wsocket.send(str); }, delay);
+            return;
+        }
+        */
+        wsocket.send(str);
+    };
     wsocket.onmessage = function(evt) {
         DomTerm._handleOutputData(wt, evt.data);
     }

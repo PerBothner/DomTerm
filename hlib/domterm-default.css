@@ -108,3 +108,4 @@ div.domterm div.interaction[buffer="main"] {
     border-bottom:  thick double green }
 div.interaction[buffer~="main"] div.command-group {
     border-top: thin dashed gray }
+span.pending { background-color: lightgrey }
