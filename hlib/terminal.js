@@ -2626,8 +2626,11 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
                                       n = n.parentNode) {
                                      let ntag = n.nodeName;
                                      if (ntag == "A") {
-                                         e.preventDefault();
-                                         DomTerm.handleLink(n);
+                                         if (! n.classList.contains("plain")
+                                             || e.ctrlKey) {
+                                             e.preventDefault();
+                                             DomTerm.handleLink(n);
+                                         }
                                          return;
                                      }
                                      if (ntag == "DIV")

@@ -2137,6 +2137,8 @@ If using an input editor library that handles multi-line input commands
 
 DomTerm will scan the output for text that "looks" like a URL or
 a mail address, and turn it into a clickable link.
+To reduce accidental clicks, these automatic links are only active
+if you also hold the control key; you can also use teh context menu.
 
 The links are only visible when you hover the mouse over them.
 (This is because what is a link is a guess, and so we don't want to clutter
