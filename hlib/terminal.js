@@ -214,6 +214,9 @@ function DomTerm(name, topNode) {
     // Used if needed to add extra space at the bottom, for proper scrolling.
     // See note in eraseDisplay.
     this._vspacer = null;
+    this.scrollOnKeystroke = true;
+    this._usingScrollBar = false;
+    this._disableScrollOnOutput = false;
 
     // Current line number, 0-origin, relative to start topNode
     // -1 if unknown. */
@@ -2332,6 +2335,9 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     // Should be zero - support for topNode.offsetLeft!=0 is broken
     this._topLeft = dt.topNode.offsetLeft;
 
+    topNode.addEventListener('wheel',
+                             function(e) { dt._disableScrollOnOutput = true; },
+                             {passive: true});
     this.topNode.addEventListener("mousedown", this._mouseEventHandler, true);
     this.topNode.addEventListener("mouseup", this._mouseEventHandler, true);
 
@@ -2808,15 +2814,21 @@ DomTerm.showContextMenu = null;
 DomTerm.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
         this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button);
-    if (this.sstate.mouseMode == 0 && ev.button == 0 && ev.type == "mouseup") {
-        let sel = document.getSelection();
-        if (sel.isCollapsed) {
-            // we don't want a visible caret FIXME handle caretStyle >= 5
-            sel.removeAllRanges();
+
+    if (ev.type == "mouseup") {
+        this._usingScrollBar = false;
+        if (this.sstate.mouseMode == 0 && ev.button == 0) {
+            let sel = document.getSelection();
+            if (sel.isCollapsed) {
+                // we don't want a visible caret FIXME handle caretStyle >= 5
+                sel.removeAllRanges();
+            }
+            this.maybeFocus();
         }
-        this.maybeFocus();
     }
     if (ev.type == "mousedown") {
+        if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
+            this._usingScrollBar = true;
         DomTerm.setFocus(this);
     }
     if (this.sstate.mouseMode == 0 && ev.button == 2) {
@@ -5446,7 +5458,6 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                             } catch (e) {
                                 break loop;
                             }
-                            console.log("resolve url "+attrvalue);
                             str = str.substring(0, valstart) + attrvalue
                                 + str.substring(valend);
                         }
@@ -6159,6 +6170,8 @@ DomTerm.prototype.insertString = function(str) {
         this.parameters[1] = this.parameters[1] + str;
         return;
     }
+    if (this._disableScrollOnOutput && this._scrollNeeded() == this.topNode.scrollTop)
+        this._disableScrollOnOutput = false;
     /*
     var indexTextEnd = function(str, start) {
         var len = str.length;
@@ -6714,15 +6727,28 @@ DomTerm.prototype.insertString = function(str) {
     this.requestUpdateDisplay();
 };
 
-DomTerm.prototype._scrollIfNeeded = function() {
+DomTerm.prototype._scrollNeeded = function() {
     var last = this.topNode.lastChild; // ??? always _vspacer
     var lastBottom = last.offsetTop + last.offsetHeight;
-    if (lastBottom > this.topNode.scrollTop + this.availHeight) {
+    return lastBottom - this.availHeight;
+};
+
+DomTerm.prototype._scrollIfNeeded = function() {
+    let needed = this._scrollNeeded();
+    if (needed > this.topNode.scrollTop) {
         if (this.verbosity >= 2)
             this.log("scroll-needed was:"+this.topNode.scrollTop+" to "
-                     +(lastBottom - this.availHeight));
-        this.topNode.scrollTop = lastBottom - this.availHeight;
+                     +needed);
+        if (this._usingScrollBar || this._disableScrollOnOutput)
+            this._disableScrollOnOutput = true;
+        else
+            this.topNode.scrollTop = needed;
     }
+}
+
+DomTerm.prototype._enableScroll = function() {
+    this._disableScrollOnOutput = false;
+    this._scrollIfNeeded();
 }
 
 DomTerm.prototype._breakDeferredLines = function() {
@@ -8283,6 +8309,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         switch (key) {
         case 33 /*PageUp*/:
         case 34 /*PageDown*/:
+            this._disableScrollOnOutput = true;
             this._pagePage(key == 33 ? -1 : 1);
             event.preventDefault();
             return;
@@ -8291,11 +8318,13 @@ DomTerm.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             return;
         case 36 /*Home*/:
+            this._disableScrollOnOutput = true;
             this._pageTop();
             event.preventDefault();
             return;
         case 38 /*Up*/:
         case 40 /*Down*/:
+            this._disableScrollOnOutput = true;
             this._pageLine(key == 38 ? -1 : 1);
             event.preventDefault();
             return;
@@ -8416,6 +8445,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
     } else {
         var str = this.keyDownToString(event);
         if (str) {
+            if (this.scrollOnKeystroke)
+                this._enableScroll();
             event.preventDefault();
             if (keyName == "Left" || keyName == "Right") {
                 this._editPendingInput(keyName == "Right", false);
@@ -8445,6 +8476,8 @@ DomTerm.prototype.keyPressHandler = function(event) {
         this._muxKeyHandler(event, key, true);
         return;
     }
+    if (this.scrollOnKeystroke)
+        this._enableScroll();
     this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
         if (this._searchMode) {
@@ -9120,6 +9153,8 @@ DomTerm.prototype._pauseNeeded = function() {
 };
 
 DomTerm.prototype.editorAddLine = function() {
+    if (this.scrollOnKeystroke)
+        this._enableScroll();
     if (this._inputLine == null) {
         this._removeInputLine();
         var inputNode = this._createSpanNode();
