@@ -1,10 +1,9 @@
 Name:           domterm
-%global version 1.0.2
-Version:        %{version}
+Version:        1.0.2
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
-License:        BSD1
+License:        BSD
 URL:            https://domterm.org/
 %global gtag %{version}
 %global commit 24991c4ff8430554b9421cdca4813da6ddf8d01d
@@ -70,29 +69,11 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/domterm.desktop %{bui
 %files
 %dir %{_datadir}/domterm
 %dir %{_datadir}/domterm/electron
-%dir %{_datadir}/domterm/help
 %{_bindir}/domterm
 %{_datadir}/domterm/domterm.jar
 %{_datadir}/domterm/electron/main.js
 %{_datadir}/domterm/electron/package.json
-%{_datadir}/domterm/help/domterm-attach.html
-%{_datadir}/domterm/help/domterm-attach.txt
-%{_datadir}/domterm/help/domterm-browse.html
-%{_datadir}/domterm/help/domterm-browse.txt
-%{_datadir}/domterm/help/domterm-hcat.html
-%{_datadir}/domterm/help/domterm-hcat.txt
-%{_datadir}/domterm/help/domterm.html
-%{_datadir}/domterm/help/domterm-imgcat.html
-%{_datadir}/domterm/help/domterm-imgcat.txt
-%{_datadir}/domterm/help/domterm-is-domterm.html
-%{_datadir}/domterm/help/domterm-is-domterm.txt
-%{_datadir}/domterm/help/domterm-list.html
-%{_datadir}/domterm/help/domterm-list.txt
-%{_datadir}/domterm/help/domterm-new.html
-%{_datadir}/domterm/help/domterm-new.txt
-%{_datadir}/domterm/help/domterm.txt
-%{_datadir}/domterm/help/domterm-window-specifier.html
-%{_datadir}/domterm/help/domterm-window-specifier.txt
+%{_datadir}/domterm/help/
 %{_datadir}/applications/domterm.desktop
 %{_datadir}/appdata/domterm.appdata.xml
 %{_mandir}/man1/domterm.1*
