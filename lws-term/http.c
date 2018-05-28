@@ -108,6 +108,8 @@ bool check_server_key(struct lws *wsi, char *arg, size_t alen)
     if (server_key_arg != NULL &&
         memcmp(server_key_arg, server_key, SERVER_KEY_LENGTH) == 0)
       return true;
+    if (main_options->http_server)
+        return true;
     lwsl_notice("missing or non-matching server-key!\n");
     lws_return_http_status(wsi, HTTP_STATUS_UNAUTHORIZED, NULL);
     return false;
@@ -198,8 +200,13 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             }
 #endif
             const char* fname = in;
-            if (fname == NULL || strcmp(fname, "/") == 0)
-                fname = "/repl-client.html";
+            if (fname == NULL || strcmp(fname, "/") == 0) {
+                if (main_options->http_server)
+                    fname = main_html_path;
+                else
+                    fname = "/repl-client.html";
+                fflush(stderr);
+            }
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)
               content_type = "text/html";

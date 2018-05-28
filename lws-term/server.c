@@ -626,6 +626,7 @@ void  init_options(struct options *opts)
     opts->command_chrome = NULL;
     opts->command_electron = NULL;
     opts->default_frontend = NULL;
+    opts->http_server = false;
     opts->something_done = false;
     opts->paneOp = -1;
     opts->force_option = 0;
@@ -1029,15 +1030,18 @@ main(int argc, char **argv)
         lwsl_notice("  readonly: true\n");
     if (opts.once)
         lwsl_notice("  once: true\n");
+    int ret;
     if (port_specified >= 0 && server->options.browser_command == NULL) {
-        fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/#ws=same\n",
+        fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/\n",
                 http_port, http_port);
-    }
-
-    int ret = handle_command(argc-optind, argv+optind,
+        opts.http_server = true;
+        ret = 0;
+    } else {
+        ret = handle_command(argc-optind, argv+optind,
                              ".", environ, NULL, &opts);
     if (ret != 0)
         force_exit = 1;
+    }
 
     if (opts.do_daemonize && ret == 0) {
 #if 1

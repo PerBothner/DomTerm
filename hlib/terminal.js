@@ -8729,14 +8729,12 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
 DomTerm._makeWsUrl = function(query=null) {
     var ws = location.hash.match(/ws=([^,&]*)/);
     var url;
-    if (ws) {
-        var path = ws[1];
-        if (path == "same")
-            url = (location.protocol == "https:" ? "wss:" : "ws:")
+    if (DomTerm.server_port==undefined || (ws && ws[1]=="same"))
+        url = (location.protocol == "https:" ? "wss:" : "ws:")
             + "//"+location.hostname+":" + location.port + "/replsrc";
-        else
-            url = "ws:"+path;
-    } else
+    else if (ws)
+        url = "ws:"+ws[1];
+    else
         url = "ws://localhost:"+DomTerm.server_port+"/replsrc";
     if (query)
         url = url + '?' + query;
