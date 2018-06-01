@@ -433,9 +433,12 @@ electron_command(int quiet, struct options *options)
     char *app_fixed = fix_for_windows(app);
     char *format = "%s %s%s%s --url '%U'&";
     const char *g1 = "", *g2 = "";
-    if (options->geometry && options->geometry[0]) {
+    char *geometry = options->geometry;
+    if (geometry == NULL || ! geometry[0])
+        geometry = main_options->geometry;
+    if (geometry && geometry[0]) {
         g1 = " --geometry ";
-        g2 = options->geometry;
+        g2 = geometry;
     }
     char *buf = xmalloc(strlen(epath)+strlen(app_fixed)+strlen(format)
                         +strlen(g1)+strlen(g2));
