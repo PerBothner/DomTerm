@@ -16,7 +16,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "whereami.h"
-#include "version.h"
 #if HAVE_GETRANDOM
 extern int getrandom(void *buf, size_t buflen, unsigned int flags);
 #else

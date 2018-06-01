@@ -1,4 +1,3 @@
-#include "version.h"
 #include "server.h"
 
 #include <sys/file.h>
@@ -633,12 +632,12 @@ void  init_options(struct options *opts)
     opts->socket_name = NULL;
     opts->do_daemonize = 1;
     opts->debug_level = 0;
-    opts->iface[0] = '\0';
+    opts->iface = NULL;
 #if HAVE_OPENSSL
     opts->ssl = false;
-    opts->cert_path[0] = '\0';
-    opts->key_path[0] = '\0';
-    opts->ca_path[0] = '\0';
+    opts->cert_path = NULL;
+    opts->key_path = NULL;
+    opts->ca_path = NULL;
     opts->credential = NULL;
 #endif
     opts->once = false;
@@ -780,8 +779,8 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->socket_name = strdup(optarg);
                 break;
             case 'i':
-                strncpy(opts->iface, optarg, sizeof(opts->iface));
-                opts->iface[sizeof(opts->iface) - 1] = '\0';
+                if (opts->iface != NULL)
+                    free(opts->iface);
                 break;
             case 'c':
                 if (strchr(optarg, ':') == NULL) {
@@ -819,16 +818,19 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->ssl = true;
                 break;
             case 'C':
-                strncpy(opts->cert_path, optarg, sizeof(opts->cert_path) - 1);
-                opts->cert_path[sizeof(opts->cert_path) - 1] = '\0';
+                if (opts->cert_path != NULL)
+                    free(opts->cert_path);
+                opts->cert_path = strdup(optarg);
                 break;
             case 'K':
-                strncpy(opts->key_path, optarg, sizeof(opts->key_path) - 1);
-                opts->key_path[sizeof(opts->key_path) - 1] = '\0';
+                if (opts->key_path != NULL)
+                    free(opts->key_path);
+                opts->key_path = strdup(optarg);
                 break;
             case 'A':
-                strncpy(opts->ca_path, optarg, sizeof(opts->ca_path) - 1);
-                opts->ca_path[sizeof(opts->ca_path) - 1] = '\0';
+                if (opts->ca_path != NULL)
+                    free(opts->ca_path);
+                opts->ca_path = strdup(optarg);
                 break;
 #endif
             case '?':
@@ -983,7 +985,7 @@ main(int argc, char **argv)
                 "!DHE-RSA-AES256-SHA256:"
                 "!AES256-GCM-SHA384:"
                 "!AES256-SHA256";
-        if (strlen(info.ssl_ca_filepath) > 0)
+        if (info.ssl_ca_filepath != NULL && strlen(info.ssl_ca_filepath) > 0)
             info.options |= LWS_SERVER_OPTION_REQUIRE_VALID_OPENSSL_CLIENT_CERT;
 #if LWS_LIBRARY_VERSION_MAJOR >= 2
         info.options |= LWS_SERVER_OPTION_REDIRECT_HTTP_TO_HTTPS;
@@ -1032,8 +1034,8 @@ main(int argc, char **argv)
         lwsl_notice("  once: true\n");
     int ret;
     if (port_specified >= 0 && server->options.browser_command == NULL) {
-        fprintf(stderr, "Server start on port %d. You can browse http://localhost:%d/\n",
-                http_port, http_port);
+        fprintf(stderr, "Server start on port %d. You can browse %s://localhost:%d/\n",
+                http_port, opts.ssl ? "https" : "http", http_port);
         opts.http_server = true;
         ret = 0;
     } else {

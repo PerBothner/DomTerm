@@ -1,5 +1,4 @@
 #include "server.h"
-#include "version.h"
 
 struct help_info {
   const char *command;

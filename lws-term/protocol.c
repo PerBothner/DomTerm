@@ -1,5 +1,4 @@
 #include "server.h"
-#include "version.h"
 #include <limits.h>
 #include <sys/stat.h>
 

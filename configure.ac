@@ -151,12 +151,14 @@ AC_SUBST(DOMTERM_DIR_RELATIVE)
 
 bindir_parent=`echo "$bindir" | sed -e 's|[^/]*/bin||'`
 
+HAVE_OPENSSL=0
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
   PKG_CHECK_MODULES(JSON_C, json-c)
   if pkg-config openssl; then
     OPENSSL_CFLAGS=`pkg-config --cflags openssl`
     OPENSSL_LIBS=`pkg-config --libs openssl`
+    HAVE_OPENSSL=1
   else
     AC_MSG_WARN(openssl library not found)
   fi
@@ -226,6 +228,7 @@ AC_SUBST(DOMTERM_VERSION)
 AC_SUBST(DOMTERM_YEAR)
 AC_SUBST(HAVE_GETRANDOM)
 AC_SUBST(HAVE_LIBMAGIC)
+AC_SUBST(HAVE_OPENSSL)
 AC_SUBST(LIBMAGIC_LIBS)
 
 AC_CONFIG_FILES([Makefile hlib/domterm-version.js

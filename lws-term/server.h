@@ -2,6 +2,8 @@
 #include "lws_config.h"
 #endif
 
+#include "version.h"
+
 #define _GNU_SOURCE
 
 #include <stdio.h>
@@ -151,11 +153,11 @@ struct options {
     char *command_electron;
     char *default_frontend;
     int paneOp;
-    char iface[128];
+    char *iface;
 #if HAVE_OPENSSL
-    char cert_path[1024];
-    char key_path[1024];
-    char ca_path[1024];
+    char *cert_path;
+    char *key_path;
+    char *ca_path;
 #endif
     char *socket_name;
     bool check_origin;                        // whether allow websocket connection from different origin
