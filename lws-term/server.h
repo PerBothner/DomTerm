@@ -216,14 +216,13 @@ extern bool is_WindowsSubsystemForLinux(void);
 extern int handle_command(int argc, char**argv, const char*cwd,
                           char **env, struct lws *wsi,
                           struct options *opts);
-extern void display_session(struct options *, struct pty_client *,
-                            const char *, int);
-extern void do_run_browser(struct options *, char *url, int port);
+extern int display_session(struct options *, struct pty_client *,
+                           const char *, int);
+extern int do_run_browser(struct options *, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
 extern void init_options(struct options *options);
-extern void default_browser_command(const char *url, int port);
 extern char *firefox_browser_command();
 extern char *chrome_command();
 extern void default_link_command(const char *url);

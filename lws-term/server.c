@@ -16,8 +16,9 @@ static char *make_socket_name(bool);
 static int create_command_socket(const char *);
 static int client_connect (char *socket_path, int start_server);
 
-void
-subst_run_command (const char *browser_command, const char *url, int port)
+int
+subst_run_command(struct options *opts, const char *browser_command,
+                  const char *url, int port)
 {
     size_t clen = strlen(browser_command);
     char *cmd = xmalloc(clen + strlen(url) + 10);
@@ -51,11 +52,61 @@ subst_run_command (const char *browser_command, const char *url, int port)
     if (url_tmp != NULL)
         free(url_tmp);
     lwsl_notice("frontend command: %s\n", cmd);
-    int r = system(cmd);
-    if (! WIFEXITED(r) || (WEXITSTATUS(r) != 0 && ! is_WindowsSubsystemForLinux()))
-        fatal("system could not execute %s (return code: %x)\n", cmd, r);
+    char **args;
+    char *dollar = strchr(cmd, '$');
+    char *arg0;
+    if (dollar == NULL) {
+        args = parse_args(cmd);
+        arg0 = find_in_path(args[0]);
+        if (arg0 == NULL) {
+            FILE *err = fdopen(opts->fd_err, "w");
+            fprintf(err, "no executable front-end (browser) '%s'",
+                    args[0]);
+            fclose(err);
+            return EXIT_FAILURE;
+        }
+    } else {
+#if 1
+        int r = system(cmd);
+        if (! WIFEXITED(r) || (WEXITSTATUS(r) != 0 && ! is_WindowsSubsystemForLinux())) {
+            FILE *err = fdopen(opts->fd_err, "w");
+            fprintf(err, "system could not execute %s (return code: %x)\n", cmd, r);
+            fclose(err);
+            return EXIT_FAILURE;
+        }
+        return EXIT_SUCCESS;
+#else
+        char *shell = getenv("SHELL");
+        if (shell == NULL)
+            shell = DEFAULT_SHELL;
+        char **shell_argv = parse_args(shell);
+        int shell_argc = 0;
+        while (shell_argv[shell_argc])
+            shell_argc++;
+        args = xmalloc((shell_argc+3) * sizeof(char*));
+        int i;
+        for (i = 0; i < shell_argc; i++)
+            args[i] = shell_argv[i];
+        args[i++] = "-c";
+        args[i++] = cmd[0] == '$' && cmd[1] == ' ' ? cmd + 2 : cmd;
+        args[i] = NULL;
+        arg0 = args[0];
+#endif
+    }
+    pid_t pid = fork();
+    if (pid == 0) {
+        daemon(1, 0);
+        execv(arg0, args);
+        exit(-1);
+    } else if (pid > 0) {// master
+        free(args);
+    } else {
+        char *msg = "could not fork front-end command\n";
+        write(opts->fd_err, msg, strlen(msg)+1);
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
-
 static int port_specified = -1;
 volatile bool force_exit = false;
 struct lws_context *context;
@@ -406,7 +457,7 @@ qtwebengine_command(int quiet, struct options *options)
         strcat(buf, " --remote-debugging-port=");
         strcat(buf, options->qt_remote_debugging);
     }
-    strcat(buf, " --connect '%U' &");
+    strcat(buf, " --connect '%U'");
     return buf;
 }
 
@@ -431,7 +482,7 @@ electron_command(int quiet, struct options *options)
     }
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *app_fixed = fix_for_windows(app);
-    char *format = "%s %s%s%s --url '%U'&";
+    char *format = "%s %s%s%s --url '%U'";
     const char *g1 = "", *g2 = "";
     char *geometry = options->geometry;
     if (geometry == NULL || ! geometry[0])
@@ -450,52 +501,47 @@ electron_command(int quiet, struct options *options)
     return buf;
 }
 
-void
-default_browser_command(const char *url, int port)
+/** A freshly allocated command for 'open a URL'. */
+
+static char *
+default_browser_command()
 {
 #ifdef DEFAULT_BROWSER_COMMAND
-    subst_run_command(DEFAULT_BROWSER_COMMAND, url, port);
+    return strdup(DEFAULT_BROWSER_COMMAND);
 #elif __APPLE__
-    subst_run_command("open '%U' > /dev/null 2>&1", url, port);
-#elif defined(_WIN32) || defined(__CYGWIN__)
-    ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
+    return strdup("open");
 #else
-    // check if X server is running
-    //if (system("xset -q > /dev/null 2>&1"))
-    //return 1;
-
     // Prefer gnome-open or kde-open over xdg-open because xdg-open
     // under Gnome defaults to using 'gio open', which does drops the "hash"
     // part of a "file:" URL, and may also use a non-preferred browser.
     char *path;
     bool free_needed = false;
     if (is_WindowsSubsystemForLinux())
-        path = "/mnt/c/Windows/System32/cmd.exe /c start";
+        path =strdup( "/mnt/c/Windows/System32/cmd.exe /c start");
     else {
         path = find_in_path("gnome-open");
         if (path == NULL)
             path = find_in_path("kde-open");
-        if (path != NULL)
-            free_needed = true;
-        else
+        if (path == NULL)
             path = strdup("xdg-open");
     }
-    char *pattern = xmalloc(strlen(path) + 40);
-    sprintf(pattern, "%s '%%U' > /dev/null 2>&1", path);
-    if (free_needed)
-        free(path);
-    subst_run_command(pattern, url, port);
-    free(pattern);
+    return path;
 #endif
 }
 
 void
 default_link_command(const char *url)
 {
-    default_browser_command(url, 0);
+#if !defined(DEFAULT_BROWSER_COMMAND) && (defined(_WIN32)||defined(__CYGWIN__))
+    ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
+#else
+    char *pattern = default_browser_command();
+    subst_run_command(main_options, pattern, url, 0);
+    free(pattern);
+#endif
 }
 
-void
+int
 do_run_browser(struct options *options, char *url, int port)
 {
     const char *browser_specifier =
@@ -580,9 +626,8 @@ do_run_browser(struct options *options, char *url, int port)
             }
         }
     if (browser_specifier[0] == '\0')
-        default_browser_command(url, port);
-    else
-        subst_run_command(browser_specifier, url, port);
+        browser_specifier = default_browser_command();
+    return subst_run_command(options, browser_specifier, url, port);
 }
 
 char *
@@ -1170,7 +1215,7 @@ domterm_dir(bool settings, bool check_wsl)
 	sprintf(tmp, "%s%s", home, hdir);
     }
     if (mkdir(tmp, S_IRWXU) != 0 && errno != EEXIST)
-        fatal("cannot create directory '%s'\n, tmp");
+        fatal("cannot create directory '%s'", tmp);
     return tmp;
 }
 

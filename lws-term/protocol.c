@@ -1173,7 +1173,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     return 0;
 }
 
-void
+int
 display_session(struct options *options, struct pty_client *pclient,
                 const char *url, int port)
 {
@@ -1184,7 +1184,7 @@ display_session(struct options *options, struct pty_client *pclient,
     if (browser_specifier != NULL && browser_specifier[0] == '-') {
       if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
           pclient->detached = 1;
-          return;
+          return EXIT_SUCCESS;
       }
        if (strcmp(browser_specifier, "--pane") == 0)
           paneOp = 1;
@@ -1204,6 +1204,7 @@ display_session(struct options *options, struct pty_client *pclient,
         paneOp = 0;
     }
     char *buf;
+    int r = EXIT_SUCCESS;
     if (paneOp > 0) {
         buf = xmalloc(LWS_PRE + (url == NULL ? 60 : strlen(url) + 60));
         char *p = buf+LWS_PRE;
@@ -1229,9 +1230,10 @@ display_session(struct options *options, struct pty_client *pclient,
             if (write(options->fd_out, buf, ulen+1) <= 0)
                 lwsl_err("write failed\n");
         } else
-            do_run_browser(options, buf, port);
+            r = do_run_browser(options, buf, port);
     }
     free(buf);
+    return r;
 }
 
 int new_action(int argc, char** argv, const char*cwd, char **env,
@@ -1261,8 +1263,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
         pclient->session_name = strdup(opts->session_name);
         opts->session_name = NULL;
     }
-    display_session(opts, pclient, NULL, http_port);
-    return EXIT_SUCCESS;
+    return display_session(opts, pclient, NULL, http_port);
 }
 
 int attach_action(int argc, char** argv, const char*cwd,
