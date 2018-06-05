@@ -1,6 +1,10 @@
 #include "server.h"
 //#include "html.h"
 
+#if HAVE_OPENSSL
+#include <openssl/ssl.h>
+#endif
+
 #if ! COMPILED_IN_RESOURCES && ! defined(LWS_WITH_ZIP_FOPS)
 #error Must configure --enable-compiled-in-resources since zip support missing in libwebsockets
 #endif
