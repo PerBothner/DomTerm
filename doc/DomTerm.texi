@@ -819,7 +819,7 @@ The default if not specified is currently @code{800x600}.
 The @var{width} and @var{height} are in pixel units
 and must be positive integers.
 
-Works for both the Electron and qtdomterm front-ends.
+Works for the Electron, qtdomterm, and @code{--chrome-app} front-ends,
 
 @item @code{-L} @var{socket-name}
 @itemx @code{--socket-name=}@var{socket-name}
@@ -1071,7 +1071,8 @@ possibly with some platform-depending knowledge of default locations.
 
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size of new top-level windows.
-(Currently works for either Electron or qtdomterm windows.)
+(Currently works for either Electron or qtdomterm windows,
+as well as ones started with @code{--chrome-app}.)
 The @var{geometry} has the same syntax as the @code{--geometry}
 command-line opton, @code{@var{W}x@var{H}},
 where @code{@var{W}} and @code{@var{H}}

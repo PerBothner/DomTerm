@@ -299,3 +299,8 @@ function handleMessage(event) {
 
 window.addEventListener("load", loadHandler, false);
 window.addEventListener("message", handleMessage, false);
+
+(function(geometry) {
+    if (geometry)
+        window.resizeTo(geometry[1], geometry[2]);
+})(location.hash.match(/geometry=([0-9][0-9]*)x([0-9][0-9]*)/));

@@ -16,13 +16,23 @@ static char *make_socket_name(bool);
 static int create_command_socket(const char *);
 static int client_connect (char *socket_path, int start_server);
 
+static char *
+geometry_option(struct options *options)
+{
+    char *geometry = options->geometry;
+    if (geometry == NULL || !options->geometry[0])
+        geometry = main_options->geometry;
+    return geometry != NULL && !options->geometry[0] ? NULL : geometry;
+}
+
 int
 subst_run_command(struct options *opts, const char *browser_command,
                   const char *url, int port)
 {
     size_t clen = strlen(browser_command);
-    char *cmd = xmalloc(clen + strlen(url) + 10);
+    char *cmd = xmalloc(clen + strlen(url) + 40);
     char *upos = strstr(browser_command, "%U");
+    char *gpos = strstr(browser_command, "%g");
     char *wpos;
     const char *url_fixed = url;
     char *url_tmp = NULL;
@@ -37,10 +47,22 @@ subst_run_command(struct options *opts, const char *browser_command,
     }
     if (upos) {
       size_t beforeU = upos - browser_command;
-      sprintf(cmd, "%.*s%s%.*s",
+      char *g1 = "";
+      char *g2 = "";
+      int skip = 2;
+      if (gpos == upos+2) {
+          char *geometry = geometry_option(opts);
+          skip = 4;
+          if (geometry) {
+              g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
+              g2 = geometry;
+          }
+      }
+      sprintf(cmd, "%.*s%s%s%s%.*s",
               (int) beforeU, browser_command,
               url_fixed,
-              (int) (clen - beforeU - 2), upos+2);
+              g1, g2,
+              (int) (clen - beforeU - skip), upos+skip);
     } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
         size_t beforeW = wpos - browser_command;
         sprintf(cmd, "%.*s%d%.*s",
@@ -439,9 +461,7 @@ qtwebengine_command(int quiet, struct options *options)
         exit(-1);
     }
     int bsize = strlen(cmd)+100;
-    char *geometry = options->geometry;
-    if (geometry == NULL || !options->geometry[0])
-        geometry = main_options->geometry;
+    char *geometry = geometry_option(options);
     if (geometry)
         bsize += strlen(geometry);
     if (options->qt_remote_debugging)
@@ -449,7 +469,7 @@ qtwebengine_command(int quiet, struct options *options)
     char *buf = xmalloc(bsize);
     strcpy(buf, cmd);
     free(cmd);
-    if (geometry && geometry[0]) {
+    if (geometry) {
         strcat(buf, " --geometry ");
         strcat(buf, geometry);
     }
@@ -484,10 +504,8 @@ electron_command(int quiet, struct options *options)
     char *app_fixed = fix_for_windows(app);
     char *format = "%s %s%s%s --url '%U'";
     const char *g1 = "", *g2 = "";
-    char *geometry = options->geometry;
-    if (geometry == NULL || ! geometry[0])
-        geometry = main_options->geometry;
-    if (geometry && geometry[0]) {
+    char *geometry = geometry_option(options);
+    if (geometry) {
         g1 = " --geometry ";
         g2 = geometry;
     }
@@ -807,8 +825,8 @@ int process_options(int argc, char **argv, struct options *opts)
                     exit(-1);
                 }
                 if (c == CHROME_APP_OPTION) {
-                    char *b = xmalloc(strlen(cbin)+12);
-                    sprintf(b, "%s -app='%%U'", cbin);
+                    char *b = xmalloc(strlen(cbin)+20);
+                    sprintf(b, "%s --app='%%U%%g'", cbin);
                     cbin = b;
                 }
                 opts->browser_command = cbin;
