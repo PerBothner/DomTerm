@@ -177,8 +177,9 @@ function DomTerm(name, topNode) {
 
     this.caretStyle = DomTerm.DEFAULT_CARET_STYLE;
     this._usingSelectionCaret = false;
-    this.caretStyleFromSettings = -1;
-    this.caretStyleFromCharSeq = -1;
+    this.caretStyleFromSettings = -1; // style.caret from settings.ini
+    sstate.caretStyleFromCharSeq = -1; // caret from escape sequence
+    sstate.showCaret = true;
 
     this.verbosity = 0;
 
@@ -1427,9 +1428,9 @@ DomTerm.prototype.setCaretStyle = function(style) {
     if (style == DomTerm.DEFAULT_CARET_STYLE) {
         if (this.caretStyleFromSettings >= 0)
             style = this.caretStyleFromSettings;
-        this.caretStyleFromCharSeq = -1;
+        this.sstate.caretStyleFromCharSeq = -1;
     } else
-        this.caretStyleFromCharSeq = style;
+        this.sstate.caretStyleFromCharSeq = style;
     if (style < 5 && this.caretStyle >= 5) {
         let sel = document.getSelection();
         if (sel.focusNode == this._caretNode
@@ -1443,7 +1444,8 @@ DomTerm.prototype.setCaretStyle = function(style) {
 };
 
 DomTerm.prototype.useStyledCaret = function() {
-    return this.caretStyle < 5 && ! this._usingSelectionCaret;
+    return this.caretStyle < 5 && ! this._usingSelectionCaret
+        && this.sstate.showCaret;
 };
 
 DomTerm.prototype.isLineEditing = function() {
@@ -1493,7 +1495,11 @@ DomTerm.prototype._restoreCaret = function() {
         this._caretNode.setAttribute("caret", cstyle);
     }
     else {
-        document.getSelection().collapse(this._caretNode, 0);
+        let sel = document.getSelection();
+        if (this.sstate.showCaret)
+            sel.collapse(this._caretNode, 0);
+        else
+            sel.removeAllRanges();
     }
 }
 
@@ -4037,6 +4043,10 @@ DomTerm.prototype.get_DEC_private_mode = function(param) {
     case 5: return this.topNode.getAttribute("reverse-video") != null;
     case 6: return this.sstate.originMode;
     case 7: return (this.sstate.wraparoundMode & 2) != 0;
+    case 12: // Stop/start blinking cursor (AT&T 610) - sent by emacs
+        return false; // FIXME
+    case 25: // Hide/show cursor (DECTCEM) - sent by emacs
+        return this.sstate.showCaret;
     case 45: return (this.sstate.wraparoundMode & 1) != 0;
     case 47: // fall though
     case 1047: return this.usingAlternateScreenBuffer;
@@ -4073,6 +4083,13 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
             this.sstate.wraparoundMode |= 2;
         else
             this.sstate.wraparoundMode &= ~2;
+        break;
+    case 12: // Stop/start blinking cursor (AT&T 610)
+        // Not sure how this should be combined with caretStyleFromCharSeq.
+        // Emacs sends this, but only to set/reset it temporarily.
+        break;
+    case 25: // Hide/show cursor (DECTCEM) - sent by emacs
+        this.sstate.showCaret = value;
         break;
     case 45:
         if (value)
@@ -4913,7 +4930,7 @@ DomTerm.prototype.setSettings = function(obj) {
         }
     }
     if (cstyle >= 0 && cstyle <= 6) {
-        if (this.caretStyleFromCharSeq < 0)
+        if (this.sstate.caretStyleFromCharSeq < 0)
             this.setCaretStyle(cstyle);
         this.caretStyleFromSettings = cstyle;
     } else {
