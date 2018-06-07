@@ -1447,7 +1447,7 @@ Delete @var{N} characters to the left or right of the caret.
 Delete @var{N} words to the left or right of the caret.
 @item @kbd{@key{Enter}} (@code{accept-line})
 Send input line to application.
-Also, if line is non-empty, add it to the hostory list.
+Also, if line is non-empty, add it to the history list.
 @item @kbd{Ctrl-@key{C}}
 @itemx @kbd{Ctrl-Shift-@key{C}}
 Copy selection to clipboard.
@@ -1532,7 +1532,7 @@ Exit search mode, accept current item, but continue editing it.
 @subheading Changing keybindings
 
 You can override the keymap (map from keystrokes to action)
-used for input line editing (but not yet override other kind-bindings).
+used for input line editing (but not yet override other key-bindings).
 The @code{keymap.line-edit} is a list (separated by commas or newlines),
 where each item is a quoted keystroke string, followed by a colon,
 followed by an action name. An action name is a string,
