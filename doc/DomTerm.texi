@@ -1425,17 +1425,20 @@ Move caret @var{N} characters left or right.
 @item @kbd{Ctrl-@key{Left}} (@code{backward-word})
 @itemx @kbd{Ctrl-@key{Right}} (@code{forward-word})
 Move caret @var{N} words left or right.
-@item @kbd{Shift-Left}
-@itemx @kbd{Shift-Right}
-Extends the current selection by one character.
-(If there is no selection, the caret position is treated as
-a zero-size selection.)
-@item @kbd{Ctrl-Shift-Left}
-@itemx @kbd{Ctrl-Shift-Right}
-Extends the current selection by one word.
 @item @kbd{@key{Home}} (@code{beginning-of-line})
 @itemx @kbd{@key{End}} (@code{end-of-line})
 Move caret to start/end of line.
+@item @kbd{Shift-Left} (@code{backward-char-extend})
+@itemx @kbd{Shift-Right} (@code{forward-char-extend})
+Extends the current selection by one character.
+(If there is no selection, the caret position is treated as
+a zero-size selection.)
+@item @kbd{Ctrl-Shift-Left} (@code{backward-word-extend})
+@itemx @kbd{Ctrl-Shift-Right} (@code{forward-word-extend})
+Extends the current selection by one word.
+@item @kbd{@key{Shift-Home}} (@code{beginning-of-line-extend})
+@itemx @kbd{@key{Shift-End}} (@code{end-of-line-extend})
+Extend selection to start/end of line.
 @item @kbd{@key{Backspace}} (@code{backward-delete-char})
 @itemx @kbd{@key{Delete}} (@code{forward-delete-char})
 Delete @var{N} characters to the left or right of the caret.
