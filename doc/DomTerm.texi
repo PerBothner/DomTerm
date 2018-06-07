@@ -247,6 +247,9 @@ You can @ref{link-handlers,customize how links are handled}.
 
 Optional @strong{automatic pagination}.
 
+@strong{Predictive echo} (similar to @code{mosh}), which is
+useful for slow connections.
+
 @node Downloading and building
 @chapter Downloading and building
 
@@ -1289,6 +1292,17 @@ CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}.
 @node Remote serving
 @chapter Remote serving
 
+To start DomTerm as a web server, run the @code{domterm} command
+with the @code{--port} option.
+It is highly recommended that you use https,
+with the @code{--ssl} option - see below.
+
+It is of course possible to run the @code{ssh} command from a
+DomTerm session, but that does not provide a persistent session on
+the remote server if the connection fails.
+There are plans to be able to connect over ssh to a remote domterm server,
+but that is not yet implemented.
+
 @subheading Using https
 
 To use https you need a certificate.
@@ -1886,7 +1900,7 @@ It is copied as both plain text (@code{text/plain})
 and formatted HTML (@code{text/html}) in case the receiving
 application can paste the latter.
 (@kbd{Control-@key{C}} also works in line-editing mode.)
-@item (@kbd{Control-Shift-@key{V}}
+@item @kbd{Control-Shift-@key{V}}
 Paste text from the clipboard.
 (@kbd{Control-@key{V}} also works in line-editing mode.)
 @item @kbd{Control-Shift-@key{S}}
@@ -2524,7 +2538,7 @@ The session name is an optional user-specified name for a terminal session.
 It is recommended that this be unique, but that is not enforced.
 The session name can be specified with the @code{-session-name}
 (or @code{--sn}) option in the @code{domterm new} command.
-You can also dyamically change the session name with an escape sequence:
+You can also dynamically change the session name with an escape sequence:
 @example
 echo -en "\e]30;@var{session-name}\007"
 @end example
@@ -2718,6 +2732,11 @@ Menus would have to be added using JavaScript
 (perhaps using @uref{https://phosphorjs.github.io/,PhosphorJS}).
 @end itemize
 
+In @code{qtdomterm} consider using @code{QDockWidget} so panes
+can be moved between windows.
+
+Implement ``drop-down'' mode.
+
 @subsubheading Using alternate window managers
 
 DomTerm includes a ``window manager''
@@ -2875,14 +2894,14 @@ manages windows and commands needs to run locally.
 The solution is to run the backend in proxy mode.
 Supposed the user types:
 @example
-domterm @var{user}@@@var{host} @var{command}
+domterm [@var{user}]@@@var{host} @var{command}
 @end example
 This can be implemented bying having the (local) backend do:
 @example
-ssh @var{user}@@@var{host} domterm --pipe @var{command}
+ssh [@var{user}@@]@var{host} domterm --browser-pipe @var{command}
 @end example
 (A password may have to be requested.)
-The @code{--pipe} option is a special kind of window-specifier:
+The @code{--browser-pipe} option is a special kind of window-specifier:
 Instead of output being sent to the browser, it is written to stdout;
 input from stdin is (mostly) sent to the @var{command}.
 (``Mostly'' because the remote domterm processes certain
@@ -2895,6 +2914,13 @@ It is also useful to be able to connect to a remote backend, directly from
 a browser, without having to install a local @code{domterm} command.
 That requires a remote @code{https} server, and has some more
 permission and security complications.
+
+@subheading Documentation
+
+Create screencasts, maybe using @uref{https://github.com/phw/peek,Peek},
+or Byzanz.
+Consider using @uref{https://github.com/critiqjo/key-mon,key-mon}
+(available on Fedora) to display clicks etc.
 
 @node Technical documentation
 @chapter Technical documentation
@@ -3185,7 +3211,7 @@ may change based on experience and feedback.}
 
 @emph{Notation:}
 Literal characters are written as quoted string literals with
-escape sequences as understoof by bash's @code{echo -e}.
+escape sequences as understood by bash's @code{echo -e}.
 Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 @code{"\xHH"} is the 8-bit characters whose value is HH (hexadecimal).
 
