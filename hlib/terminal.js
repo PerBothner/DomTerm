@@ -1710,8 +1710,8 @@ DomTerm.prototype._pushBgStdColor = function(name) {
     this._pushStyle("background-color", this.mapColorName(name));
 }
 
-DomTerm.prototype._getStdElement = function() {
-    for (var stdElement = this.outputContainer;
+DomTerm.prototype._getStdElement = function(element=this.outputContainer) {
+    for (var stdElement = element;
          stdElement instanceof Element;
          stdElement = stdElement.parentNode) {
         if (stdElement.getAttribute("std"))
@@ -1719,8 +1719,8 @@ DomTerm.prototype._getStdElement = function() {
     }
     return null;
 };
-DomTerm.prototype._getStdMode = function() {
-    let el = this._getStdElement();
+DomTerm.prototype._getStdMode = function(element=this.outputContainer) {
+    let el = this._getStdElement(element);
     return el == null ? null : el.getAttribute("std");
 }
 
@@ -3612,10 +3612,12 @@ DomTerm.prototype.handleEnter = function(text) {
         this.outputContainer = oldInputLine;
         this.outputBefore = this._caretNode;
         oldInputLine.classList.add("pending");
-        let wrap = this._createSpanNode();
-        wrap.setAttribute("std", "input");
-        oldInputLine.parentNode.insertBefore(wrap, oldInputLine);
-        wrap.appendChild(oldInputLine);
+        if (this._getStdMode(oldInputLine.parentNode) !== "input") {
+            let wrap = this._createSpanNode();
+            wrap.setAttribute("std", "input");
+            oldInputLine.parentNode.insertBefore(wrap, oldInputLine);
+            wrap.appendChild(oldInputLine);
+        }
     }
     if (! this.clientDoesEcho) {
         this._inputLine = null; // To avoid confusing cursorLineStart
