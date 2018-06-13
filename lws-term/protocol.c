@@ -458,7 +458,7 @@ check_template(const char *template, json_object *obj)
     const char *href =
         json_object_object_get_ex(obj, "href", &jhref)
         ? json_object_get_string(jhref) : NULL;
-    if (filename[0] == '/' && filename[1] == '/') {
+    if (filename != NULL && filename[0] == '/' && filename[1] == '/') {
         if (filename[3] == '/')
             filename = filename + 3;
         else {
