@@ -1,9 +1,10 @@
+'use strict';
+
 /**
  * Copyright Marc J. Schmidt. See the LICENSE file at the top-level
  * directory of this distribution and at
  * https://github.com/marcj/css-element-queries/blob/master/LICENSE.
  */
-;
 (function (root, factory) {
     if (typeof define === "function" && define.amd) {
         define(factory);
@@ -82,6 +83,9 @@
      * @constructor
      */
     var ResizeSensor = function(element, callback) {
+       
+        var observer;
+       
         /**
          *
          * @constructor
@@ -93,9 +97,9 @@
             };
 
             var i, j;
-            this.call = function() {
+            this.call = function(sizeInfo) {
                 for (i = 0, j = q.length; i < j; i++) {
-                    q[i].call();
+                    q[i].call(this, sizeInfo);
                 }
             };
 
@@ -105,7 +109,7 @@
                     if(q[i] !== ev) newQueue.push(q[i]);
                 }
                 q = newQueue;
-            }
+            };
 
             this.length = function() {
                 return q.length;
@@ -143,49 +147,77 @@
                 '</div>';
             element.appendChild(element.resizeSensor);
 
-            if (element.resizeSensor.offsetParent !== element) {
+            var position = window.getComputedStyle(element).getPropertyValue('position');
+            if ('absolute' !== position && 'relative' !== position && 'fixed' !== position) {
                 element.style.position = 'relative';
             }
 
             var expand = element.resizeSensor.childNodes[0];
             var expandChild = expand.childNodes[0];
             var shrink = element.resizeSensor.childNodes[1];
-            var dirty, rafId, newWidth, newHeight;
+
+            var dirty, rafId;
             var size = getElementSize(element);
             var lastWidth = size.width;
             var lastHeight = size.height;
-
-            var reset = function() {
+            var initialHiddenCheck = true, resetRAF_id;
+            
+            
+            var resetExpandShrink = function () {
                 expandChild.style.width = '100000px';
                 expandChild.style.height = '100000px';
-
+        
                 expand.scrollLeft = 100000;
                 expand.scrollTop = 100000;
-
+        
                 shrink.scrollLeft = 100000;
                 shrink.scrollTop = 100000;
             };
 
-            reset();
+            var reset = function() {
+                // Check if element is hidden
+                if (initialHiddenCheck) {
+                    if (!expand.scrollTop && !expand.scrollLeft) {
+
+                        // reset
+                        resetExpandShrink();
+
+                        // Check in next frame
+                        if (!resetRAF_id){
+                            resetRAF_id = requestAnimationFrame(function(){
+                                resetRAF_id = 0;
+                                
+                                reset();
+                            });
+                        }
+                        
+                        return;
+                    } else {
+                        // Stop checking
+                        initialHiddenCheck = false;
+                    }
+                }
+
+                resetExpandShrink();
+            };
+            element.resizeSensor.resetSensor = reset;
 
             var onResized = function() {
                 rafId = 0;
 
                 if (!dirty) return;
 
-                lastWidth = newWidth;
-                lastHeight = newHeight;
+                lastWidth = size.width;
+                lastHeight = size.height;
 
                 if (element.resizedAttached) {
-                    element.resizedAttached.call();
+                    element.resizedAttached.call(size);
                 }
             };
 
             var onScroll = function() {
-                var size = getElementSize(element);
-                var newWidth = size.width;
-                var newHeight = size.height;
-                dirty = newWidth != lastWidth || newHeight != lastHeight;
+                size = getElementSize(element);
+                dirty = size.width !== lastWidth || size.height !== lastHeight;
 
                 if (dirty && !rafId) {
                     rafId = requestAnimationFrame(onResized);
@@ -204,21 +236,61 @@
 
             addEvent(expand, 'scroll', onScroll);
             addEvent(shrink, 'scroll', onScroll);
+            
+            // Fix for custom Elements
+            requestAnimationFrame(reset);
+        }
+         
+        if (typeof ResizeObserver !== "undefined") {
+            observer = new ResizeObserver(function(element){
+                forEachElement(element, function (elem) {
+                    callback.call(
+                        this,
+                        {
+                            width: elem.contentRect.width,
+                            height: elem.contentRect.height
+                        }
+                   );
+                });
+            });
+            if (element !== undefined) {
+                forEachElement(element, function(elem){
+                   observer.observe(elem);
+                });
+            }
+        }
+        else {
+            forEachElement(element, function(elem){
+                attachResizeEvent(elem, callback);
+            });
         }
 
-        forEachElement(element, function(elem){
-            attachResizeEvent(elem, callback);
-        });
-
         this.detach = function(ev) {
-            ResizeSensor.detach(element, ev);
+            if (typeof ResizeObserver != "undefined") {
+                forEachElement(element, function(elem){
+                    observer.unobserve(elem);
+                });
+            }
+            else {
+                ResizeSensor.detach(element, ev);
+            }
         };
+
+        this.reset = function() {
+            element.resizeSensor.resetSensor();
+        };
+    };
+
+    ResizeSensor.reset = function(element, ev) {
+        forEachElement(element, function(elem){
+            elem.resizeSensor.resetSensor();
+        });
     };
 
     ResizeSensor.detach = function(element, ev) {
         forEachElement(element, function(elem){
             if (!elem) return;
-            if(elem.resizedAttached && typeof ev == "function"){
+            if(elem.resizedAttached && typeof ev === "function"){
                 elem.resizedAttached.remove(ev);
                 if(elem.resizedAttached.length()) return;
             }
