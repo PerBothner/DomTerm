@@ -22,7 +22,7 @@ geometry_option(struct options *options)
     char *geometry = options->geometry;
     if (geometry == NULL || !options->geometry[0])
         geometry = main_options->geometry;
-    return geometry != NULL && !options->geometry[0] ? NULL : geometry;
+    return geometry != NULL && ! geometry[0] ? NULL : geometry;
 }
 
 int
