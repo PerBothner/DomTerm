@@ -1308,40 +1308,28 @@ make_socket_name(bool html_filename)
 
 char server_key[SERVER_KEY_LENGTH];
 
-static char html_template[] =
-    "<!DOCTYPE html>\n"
-    "<html><head>\n"
-    "<base href='http://%s:%d/'/>\n"
-    "<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>\n"
-    "<title>DomTerm</title>\n"
-    "<link type='text/css' rel='stylesheet' href='hlib/domterm-core.css'>\n"
-    "<link type='text/css' rel='stylesheet' href='hlib/domterm-standard.css'>\n"
-    "<link type='text/css' rel='stylesheet' href='hlib/goldenlayout-base.css'>\n"
-    "<link type='text/css' rel='stylesheet' href='hlib/domterm-layout.css'>\n"
-    "<link type='text/css' rel='stylesheet' href='hlib/domterm-default.css'>\n"
-    "<script type='text/javascript' src='hlib/domterm-all.js'> </script>\n"
-    "<script type='text/javascript'>\n"
-    "DomTerm.server_port = %d;\n"
-    "DomTerm.server_key = '%s';\n"
-    "if (DomTerm.isElectron()) {\n"
-    "    window.nodeRequire = require;\n"
-    "    delete window.require;\n"
-    "    delete window.exports;\n"
-    "    delete window.module;\n"
-    "}\n"
-    "</script>\n"
-    "<script type='text/javascript' src='hlib/jquery.min.js'> </script>\n"
-    "<script type='text/javascript' src='hlib/goldenlayout.js'> </script>\n"
-    "<script type='text/javascript' src='hlib/domterm-layout.js'> </script>\n"
-    "<script type='text/javascript' src='hlib/domterm-menus.js'> </script>\n"
-    "<script type='text/javascript' src='hlib/qwebchannel.js'> </script>\n"
-    "<script type='text/javascript' src='hlib/domterm-client.js'> </script>\n"
-    "</head>\n"
-    "<body></body>\n"
-  "</html>\n";
-
 char *main_html_url;
 char *main_html_path;
+
+static const char * standard_stylesheets[] = {
+    "hlib/domterm-core.css",
+    "hlib/domterm-standard.css",
+    "hlib/goldenlayout-base.css",
+    "hlib/nwjs-menu-browser.css",
+    "hlib/domterm-layout.css",
+    "hlib/domterm-default.css",
+    NULL
+};
+static const char * standard_jslibs[] = {
+    "hlib/jquery.min.js",
+    "hlib/goldenlayout.js",
+    "hlib/domterm-layout.js",
+    "hlib/domterm-menus.js",
+    "hlib/qwebchannel.js",
+    "hlib/nwjs-menu-browser.js",
+    "hlib/domterm-client.js",
+    NULL
+};
 
 static void
 make_html_file(int port)
@@ -1358,7 +1346,50 @@ make_html_file(int port)
     FILE *hfile = fopen(main_html_path, "w");
     if (server_key[0] == 0)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
-    fprintf(hfile, html_template, "localhost", port, port, server_key);
+    //fprintf(hfile, html_template, "localhost", port, port, server_key);
+    char base[40];
+    sprintf(base, "http://%s:%d/", "127.0.0.1", port);
+
+    fprintf(hfile,
+            "<!DOCTYPE html>\n"
+            "<html><head>\n"
+            "<base href='http://%s:%d/'/>\n" // FIXME no longer needed?
+            "<meta http-equiv='Content-Type' content='text/html;"
+            " charset=UTF-8'>\n"
+            "<title>DomTerm</title>\n",
+            base);
+    const char **p;
+    for (p = standard_stylesheets; *p; p++) {
+        fprintf(hfile,
+                "<link type='text/css' rel='stylesheet' href='%s%s'>\n",
+                base, *p);
+    }
+    fprintf(hfile,
+            "<script type='text/javascript' src='%shlib/domterm-all.js'>"
+            " </script>\n"
+            "<script type='text/javascript'>\n"
+            "DomTerm.server_port = %d;\n"
+            "DomTerm.server_key = '%.*s';\n"
+            "console.log('after setting server_key');\n"
+            "if (DomTerm.isElectron()) {\n"
+            "    window.nodeRequire = require;\n"
+            "    delete window.require;\n"
+            "    delete window.exports;\n"
+            "    delete window.module;\n"
+            "}\n"
+            "</script>\n",
+            base, port, SERVER_KEY_LENGTH, server_key);
+    for (p = standard_jslibs; *p; p++) {
+        fprintf(hfile,
+                "<script type='text/javascript' src='%s%s'> </script>\n",
+                base, *p);
+    }
+    fprintf(hfile,
+            "</head>\n"
+            "<body></body>\n"
+            "</html>\n");
+
+    //fprintf(hfile, html_template, "127.0.0.1", port, "127.0.0.1", port, port, server_key);
     fclose(hfile);
 }
 
