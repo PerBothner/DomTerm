@@ -371,7 +371,8 @@ DomTerm.layoutResized = function(event) {
 }
 
 DomTerm.layoutInit = function(term) {
-    DomTerm.layoutManager = new GoldenLayout(DomTerm.layoutConfig);
+    DomTerm.layoutManager = new GoldenLayout(DomTerm.layoutConfig,
+                                             term.topNode.parentNode);
     DomTerm.layoutManager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
         var name;

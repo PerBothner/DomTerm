@@ -101,6 +101,7 @@ if (typeof browserKeymap == "undefined" && typeof require !== "undefined")
     var browserKeymap = require("./browserkeymap.js");
 
 DomTerm.DEFAULT_CARET_STYLE = 1; // blinking-block
+DomTerm.INFO_TIMEOUT = 800;
 
 /** @constructor */
 
@@ -711,12 +712,14 @@ DomTerm.prototype._checkSpacer = function() {
 };
 DomTerm.prototype._adjustSpacer = function(needed) {
     var vspacer = this._vspacer;
-    if (needed > 0) {
-        vspacer.style.height = needed + "px";
-        vspacer.dtHeight = needed;
-    } else if (vspacer.dtHeight != 0) {
-        vspacer.style.height = "";
-        vspacer.dtHeight = 0;
+    if (vspacer.dtHeight != needed) {
+        if (needed > 0) {
+            vspacer.style.height = needed + "px";
+            vspacer.dtHeight = needed;
+        } else if (vspacer.dtHeight != 0) {
+            vspacer.style.height = "";
+            vspacer.dtHeight = 0;
+        }
     }
 };
 
@@ -2498,7 +2501,7 @@ DomTerm.prototype._displayInfoWithTimeout = function(text) {
             dt._updatePagerInfo();
         }
     };
-    setTimeout(clear, 2000);
+    setTimeout(clear, DomTerm.INFO_TIMEOUT);
 };
 
 DomTerm.prototype._clearInfoMessage = function() {
@@ -2697,6 +2700,8 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
 
 DomTerm.prototype.measureWindow = function()  {
     var availHeight = this.topNode.clientHeight;
+    if (this.verbosity >= 2)
+        console.log("measureWindow "+this.name+" avH:"+availHeight);
     var clientWidth = this.topNode.clientWidth;
     if (availHeight == 0 || clientWidth == 0) {
         return;
@@ -4740,6 +4745,11 @@ DomTerm.prototype.handleBell = function() {
     // Do nothing, for now.
 };
 
+DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
+    if (dt != null)
+        dt.reportEvent("LINK", JSON.stringify(obj));
+}
+
 DomTerm.handleLink = function(element) {
     let dt = DomTerm._getAncestorDomTerm(element);
     if (! dt)
@@ -4764,7 +4774,7 @@ DomTerm.handleLink = function(element) {
         }
         if (filename)
             obj.filename = decodeURIComponent(filename);
-        dt.reportEvent("LINK", JSON.stringify(obj));
+        DomTerm.requestOpenLink(obj, dt);
     }
 };
 
@@ -7734,11 +7744,12 @@ DomTerm.doContextCopy = function() {
         DomTerm.doCopy();
 }
 
-DomTerm.doPaste = function(dt) {
+DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     let sel = document.getSelection();
     if (sel.rangeCount == 0)
         sel.collapse(dt._caretNode, 0);
-    dt.maybeFocus();
+    if (dt != null)
+        dt.maybeFocus();
     return document.execCommand("paste", false);
 };
 

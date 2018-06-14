@@ -264,6 +264,12 @@ function loadHandler(event) {
     if (topNodes.length == 0) {
         var bodyNode = document.getElementsByTagName("body")[0];
         var topNode = DomTerm.makeElement(bodyNode, DomTerm.freshName());
+        if (bodyNode.firstElementChild.classList.contains("nwjs-menu")) {
+            var wrapTopNode = document.createElement("div");
+            wrapTopNode.setAttribute("class", "below-menubar");
+            bodyNode.insertBefore(wrapTopNode, topNode);
+            wrapTopNode.appendChild(topNode);
+        }
         topNodes = [ topNode ];
     }
     if (location.search.search(/wait/) >= 0) {

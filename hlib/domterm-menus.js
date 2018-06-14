@@ -18,45 +18,56 @@ DomTerm.aboutMessage = function() {
 }
 
 DomTerm.showAboutMessage = function() {
-    const {BrowserWindow} = nodeRequire('electron').remote
-    let win = new BrowserWindow({width: 500, height: 400,
-                                 title: 'About DomTerm', show: false});
-    win.setMenu(null)
-    win.loadURL('data:text/html,'+encodeURIComponent(DomTerm.aboutMessage()));
-    win.show();
+    let msg = DomTerm.aboutMessage();
+    if (DomTerm.isElectron()) {
+        const {BrowserWindow} = nodeRequire('electron').remote
+        let win = new BrowserWindow({width: 500, height: 400,
+                                     title: 'About DomTerm', show: false});
+        win.setMenu(null)
+        win.loadURL('data:text/html,'+encodeURIComponent(msg));
+        win.show();
+    } else {
+        let win = window.open("", "About DomTerm", 'height=500,width=400');
+        win.document.title = "About DomTerm";
+        win.document.body.innerHTML = msg;
+    }
 }
 
-DomTerm.createElectronMenus = function() {
+DomTerm.createMenus = function(options) {
+    let platform = options.platform;
+    let menuItem = options.menuItem;
+    let popup = options.popup;
+    let Menu = options.Menu;
+
     const muxPrefix = 'CommandOrControl+Shift+M';
-    const {remote} = nodeRequire('electron')
-    const {Menu, MenuItem, shell} = remote
     const copyItem =
-          new MenuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
+          menuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
                         click() { DomTerm.doCopy(); }});
     const copyAsHtmlItem =
-          new MenuItem({label: 'Copy as HTML',
-                        click() { DomTerm.doCopy(true); }});
-    const pasteItem = new MenuItem({label: 'Paste', accelerator: 'CommandOrControl+Shift+V', role: 'paste' });
+          menuItem({label: 'Copy as HTML',
+                    click() { DomTerm.doCopy(true); }});
+    const pasteItem = platform == "electron"
+          ? menuItem({label: 'Paste', accelerator: 'CommandOrControl+Shift+V',
+                      role: 'paste' })
+          : menuItem({label: 'Paste', accelerator: 'CommandOrControl+Shift+V',
+                      click() { DomTerm.doPaste(); }});
     var showingMenuBar = true;
-    const showMenuBarItem = new MenuItem({label: 'Show menubar',
-                                          type: 'checkbox',
-                                          click: function(menuItem, browserWindow, event) { showingMenuBar = ! showingMenuBar; Menu.setApplicationMenu(showingMenuBar ? DomTerm.savedMenuBar : null); },
-                                          checked: true});
-    const autoPagingItem = new MenuItem({label: 'Automatic Pager',
+    const showMenuBarItem = menuItem({label: 'Show menubar',
+                                      type: 'checkbox',
+                                      click: function() {
+                                          showingMenuBar = ! showingMenuBar;
+                                          options.showMenubar(showingMenuBar);
+                                      },
+                                      checked: true});
+    const autoPagingItem = menuItem({label: 'Automatic Pager',
                                          type: 'checkbox',
                                          click: function() {
                                              DomTerm.toggleAutoPaging(); }});
-    const showInspectorItem =
-          new MenuItem({label: 'Toggle Developer Tools',
-                        accelerator: 'Ctrl+Shift+I',
-                        click: function(item, focusedWindow) {
-                            if (focusedWindow)
-                                focusedWindow.toggleDevTools();
-                        }});
-    function inputModeClickHandler(menuItem, browserWindow, event) {
+    function inputModeClickHandler(menuItem) {
         const dt = DomTerm.focusedTerm;
         if (! dt)
             return;
+        console.log("inputModeClickHandler "+menuItem.label);
         if (menuItem == cycleInputModesItem)
             dt.nextInputMode();
         else {
@@ -69,43 +80,43 @@ DomTerm.createElectronMenus = function() {
     }
     // These are logically radio buttons, but I'm having
     // trouble getting that to work.
-    const charModeItem = new MenuItem({label: 'Char mode', type: 'checkbox',
-                                       click: inputModeClickHandler});
-    const lineModeItem = new MenuItem({label: 'Line mode', type: 'checkbox',
-                                       click: inputModeClickHandler});
-    const autoModeItem = new MenuItem({label: 'Auto mode', type: 'checkbox',
-                                       click: inputModeClickHandler});
-    const cycleInputModesItem = new MenuItem({label: 'Cycle input modes',
-                                              accelerator: 'Ctrl+Shift+L',
-                                              click: inputModeClickHandler});
+    const charModeItem = menuItem({label: 'Char mode', type: 'checkbox',
+                                   click: inputModeClickHandler});
+    const lineModeItem = menuItem({label: 'Line mode', type: 'checkbox',
+                                   click: inputModeClickHandler});
+    const autoModeItem = menuItem({label: 'Auto mode', type: 'checkbox',
+                                   click: inputModeClickHandler});
+    const cycleInputModesItem = menuItem({label: 'Cycle input modes',
+                                          accelerator: 'Ctrl+Shift+L',
+                                          click: inputModeClickHandler});
 
     const inputMenu = new Menu();
     inputMenu.append(charModeItem);
     inputMenu.append(lineModeItem);
     inputMenu.append(autoModeItem);
-    const inputModeMenu = new MenuItem({label: 'Input mode',
-                                        submenu: inputMenu});
-    const saveAsItem = new MenuItem({label: 'Save as HTML',
-                                     accelerator: 'Ctrl+Shift+S',
-                                     click: function() {
-                                         const dt = DomTerm.focusedTerm;
-                                         if (dt)
-                                             dt.doSaveAs();
-                                     }});
+    const inputModeMenu = menuItem({label: 'Input mode',
+                                    submenu: inputMenu});
+    const saveAsItem = menuItem({label: 'Save as HTML',
+                                 accelerator: 'Ctrl+Shift+S',
+                                 click: function() {
+                                     const dt = DomTerm.focusedTerm;
+                                     if (dt)
+                                         dt.doSaveAs();
+                                 }});
 
-
-    const quitItem = new MenuItem({label: 'Quit', role: 'quit'});
-    const newWindowItem = new MenuItem({label: 'New terminal window',
-                                      accelerator: 'Ctrl+Shift+N',
-                                      click: function() {
-                                          DomTerm.openNewWindow(DomTerm.focusedTerm);
-                                      }});
-    const newTabItem = new MenuItem({label: 'New terminal tab',
+    const quitItem =  platform == "electron" ? menuItem({label: 'Quit', role: 'quit'})
+          : menuItem({label: 'Quit', click: DomTerm.windowClose });
+    const newWindowItem = menuItem({label: 'New terminal window',
+                                    accelerator: 'Ctrl+Shift+N',
+                                    click: function() {
+                                        DomTerm.openNewWindow(DomTerm.focusedTerm);
+                                    }});
+    const newTabItem = menuItem({label: 'New terminal tab',
                                       accelerator: 'Ctrl+Shift+T',
                                       click: function() {
                                           DomTerm.layoutAddTab(DomTerm.focusedTerm);
                                       }});
-    const newPaneItem = new MenuItem({label: 'New terminal (right/below)',
+    const newPaneItem = menuItem({label: 'New terminal (right/below)',
                                       accelerator: 'Ctrl+Shift+A Enter',
                                       click: function() {
                                           DomTerm.layoutAddSibling(DomTerm.focusedTerm);
@@ -114,40 +125,41 @@ DomTerm.createElectronMenus = function() {
     newTerminalMenu.append(newWindowItem);
     newTerminalMenu.append(newTabItem);
     newTerminalMenu.append(newPaneItem);
-    newTerminalMenu.append(new MenuItem({label: 'New terminal above',
-                                         click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, false); }}));
-    newTerminalMenu.append(new MenuItem({label: 'New terminal below',
-                                         click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, true); }}));
-    newTerminalMenu.append(new MenuItem({label: 'New terminal left',
-                                         click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, false); }}));
-    newTerminalMenu.append(new MenuItem({label: 'New terminal right',
-                                         click: function() {
-                                             DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, true); }}));
-    const newTerminalMenuItem = new MenuItem({label: 'New Terminal',
-                                              submenu: newTerminalMenu});
+    newTerminalMenu.append(menuItem({label: 'New terminal above',
+                                     click: function() {
+                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, false); }}));
+    newTerminalMenu.append(menuItem({label: 'New terminal below',
+                                     click: function() {
+                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, true); }}));
+    newTerminalMenu.append(menuItem({label: 'New terminal left',
+                                     click: function() {
+                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, false); }}));
+    newTerminalMenu.append(menuItem({label: 'New terminal right',
+                                     click: function() {
+                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, true); }}));
+    const newTerminalMenuItem = menuItem({label: 'New Terminal',
+                                          submenu: newTerminalMenu});
     const detachMenuItem =
-          new MenuItem({label: 'Detach session',
-                        click: function() { DomTerm.detach(); }});
-
-    const homePageItem = new MenuItem({label: 'DomTerm home page',
-                                       click: function() { shell.openExternal('http://domterm.org') }});
-    const aboutItem = new MenuItem({label: 'About DomTerm',
-                                    click: DomTerm.showAboutMessage});
-    const openLinkItem = new MenuItem({label: 'Open Link',
-                                       click: function(mitem, bwin, ev) {
-                                           DomTerm.handleLink(DomTerm._contextLink);
-                                       }});
-    const copyLinkItem = new MenuItem({label: 'Copy Link Address',
-                                       click: function(mitem, bwin, ev) {
-                                           DomTerm.copyLink();
-                                       }});
+          menuItem({label: 'Detach session',
+                    click: function() { DomTerm.detach(); }});
+    let openLink = options.requestOpenLink;
+    const homePageItem = ! openLink ? null
+          : menuItem({label: 'DomTerm home page',
+                      click: function() { openLink('http://domterm.org') }});
+    const aboutItem = menuItem({label: 'About DomTerm',
+                                click: DomTerm.showAboutMessage});
+    const openLinkItem = menuItem({label: 'Open Link',
+                                   click: function(mitem, bwin, ev) {
+                                       DomTerm.handleLink(DomTerm._contextLink);
+                                   }});
+    const copyLinkItem = menuItem({label: 'Copy Link Address',
+                                   click: function(mitem, bwin, ev) {
+                                       DomTerm.copyLink();
+                                   }});
     const copyLinkTextItem =
-          new MenuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
-                        click() { DomTerm.doContextCopy(); }});
-    const copyLinkSep = new MenuItem({type: 'separator'});
+          menuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
+                    click() { DomTerm.doContextCopy(); }});
+    const copyLinkSep = menuItem({type: 'separator'});
 
     const contextMenu = new Menu();
     contextMenu.append(showMenuBarItem);
@@ -157,7 +169,6 @@ DomTerm.createElectronMenus = function() {
     contextMenu.append(autoPagingItem);
     contextMenu.append(newTerminalMenuItem);
     contextMenu.append(detachMenuItem);
-    contextMenu.append(showInspectorItem);
     const contextLinkMenu = new Menu();
     contextLinkMenu.append(openLinkItem);
     contextLinkMenu.append(copyLinkItem);
@@ -169,43 +180,69 @@ DomTerm.createElectronMenus = function() {
     contextLinkMenu.append(autoPagingItem);
     contextLinkMenu.append(newTerminalMenuItem);
     contextLinkMenu.append(detachMenuItem);
-    contextLinkMenu.append(showInspectorItem);
+    const showInspectorItem = platform != "electron" ? null
+          : menuItem({label: 'Toggle Developer Tools',
+                      accelerator: 'Ctrl+Shift+I',
+                      click: function(item, focusedWindow) {
+                          if (focusedWindow)
+                              focusedWindow.toggleDevTools();
+                      }});
+    if (showInspectorItem != null) {
+        contextMenu.append(showInspectorItem);
+        contextLinkMenu.append(showInspectorItem);
+    }
 
-    DomTerm.savedMenuBar =
-        Menu.buildFromTemplate([{label: 'File',
-                                 submenu: [
-                                     newWindowItem,
-                                     newTabItem,
-                                     saveAsItem,
-                                     quitItem]},
-                                {label: 'Edit',
-                                 submenu: [
-                                     copyItem,
-                                     copyAsHtmlItem,
-                                     pasteItem]},
-                                {label: 'View',
-                                 submenu: [
-                                     showMenuBarItem,
-                                     {role: 'togglefullscreen'},
-                                     {type: 'separator'},
-                                     {role: 'resetzoom'},
-                                     {role: 'zoomin'},
-                                     {role: 'zoomout'},
-                                     {type: 'separator'},
-                                     showInspectorItem
-                                 ]},
-                                {label: 'Terminal',
-                                 submenu: [
-                                     cycleInputModesItem,
-                                     newTerminalMenuItem,
-                                     detachMenuItem]},
-                                {label: 'Help',
-                                 submenu: [
-                                     aboutItem,
-                                     homePageItem]}
-                               ]);
+    let fileMenu = new Menu();
+    fileMenu.append(newWindowItem);
+    fileMenu.append(newTabItem);
+    fileMenu.append(saveAsItem);
+    fileMenu.append(quitItem);
+    //let fileMenuItem = menuItem({label: 'File', submenu: fileMenu});
+    let editMenu = new Menu();
+    editMenu.append(copyItem);
+    editMenu.append(copyAsHtmlItem);
+    editMenu.append(pasteItem);
 
+    let viewMenu = new Menu();
+    viewMenu.append(showMenuBarItem);
+    if (platform=="electron") {
+        viewMenu.append(menuItem({role: 'togglefullscreen'}));
+        viewMenu.append(menuItem({type: 'separator'}));
+        viewMenu.append(menuItem({role: 'resetzoom'}));
+        viewMenu.append(menuItem({role: 'zoomin'}));
+        viewMenu.append(menuItem({role: 'zoomout'}));
+        viewMenu.append(menuItem({type: 'separator'}));
+    } else {
+        viewMenu.append(menuItem({label: "Full screen", type: 'checkbox',
+                                  click: function() {
+                                      console.log("fullscreen "+document.webkitFullscreenElement+" en:"+document.webkitFullscreenEnabled);
+                                  }}));
+    }
+    if (showInspectorItem != null)
+        viewMenu.append(showInspectorItem);
+    let terminalMenu = new Menu();
+    terminalMenu.append(cycleInputModesItem);
+    terminalMenu.append(newTerminalMenuItem);
+    terminalMenu.append(detachMenuItem);
+    let helpMenu = new Menu();
+    helpMenu.append(aboutItem);
+    if (homePageItem != null)
+        helpMenu.append(homePageItem);
+
+    let menuBar = new Menu({ type: 'menubar' });
+    menuBar.append(menuItem({label: 'File', submenu: fileMenu}));
+    menuBar.append(menuItem({label: 'Edit', submenu: editMenu}));
+    menuBar.append(menuItem({label: 'View', submenu: viewMenu}));
+    menuBar.append(menuItem({label: 'Terminal', submenu: terminalMenu}));
+    menuBar.append(menuItem({label: 'Help', submenu: helpMenu}));
+    if (platform=="electron") {
+        menuBar = Menu.buildFromTemplate(menuBar.items);
+    } else {
+        window.menuBar = menuBar;
+    }
+    DomTerm.savedMenuBar = menuBar;
     Menu.setApplicationMenu(showMenuBarItem ? DomTerm.savedMenuBar : null);
+
     DomTerm.showContextMenu = function(dt, e, contextType) {
         const mode = dt.getInputMode();
         charModeItem.checked = mode == 99;
@@ -213,13 +250,57 @@ DomTerm.createElectronMenus = function() {
         autoModeItem.checked = mode == 97;
         autoPagingItem.checked = dt._autoPaging;
         let cmenu = contextType=="A" ? contextLinkMenu : contextMenu;
-        cmenu.popup(remote.getCurrentWindow());
-        return true;
+        popup(cmenu, e);
     };
 }
 
 DomTerm.setContextMenu = function() {
     if (DomTerm.isElectron() && ! DomTerm.isAtom()) {
-        DomTerm.createElectronMenus();
+        const {remote} = nodeRequire('electron')
+        const {Menu, MenuItem} = remote
+        function menuItem(options) {
+            return new MenuItem(options);
+        }
+        function popup(cmenu, e) {
+            cmenu.popup(remote.getCurrentWindow());
+        }
+        DomTerm.createMenus({platform: "electron",
+                             popup: popup,
+                             menuItem: menuItem,
+                             Menu: Menu,
+                             requestOpenLink: remote.shell.openExternal,
+                             showMenubar: function(show) {
+                                 Menu.setApplicationMenu(show ? DomTerm.savedMenuBar : null);
+                             }
+});
+    } else if (! DomTerm.isAtom()
+               && ! DomTerm.usingQtWebEngine
+               && typeof nwjsMenuBrowser !== 'undefined') {
+        function menuItem(options) {
+            return new nwjsMenuBrowser.MenuItem(options);
+        }
+        function popup(cmenu, e) {
+            if (! e.ctrlKey && ! e.shiftKey) {
+	        e.preventDefault();
+	        cmenu.popup(e.clientX, e.clientY);
+            }
+        }
+        DomTerm.createMenus({platform: "nwjs",
+                             popup: popup,
+                             menuItem: menuItem,
+                             Menu: nwjsMenuBrowser.Menu,
+                             requestOpenLink: function(url) {
+                                 DomTerm.requestOpenLink({href: url});
+                             },
+                             showMenubar: function(show) {
+                                 let m = document.getElementsByClassName('menubar');
+                                 if (m.length == 0)
+                                     return;
+                                 if (show)
+                                     m[0].removeAttribute('domterm-hidden');
+                                 else
+                                     m[0].setAttribute('domterm-hidden', 'true');
+                             }
+                            });
     }
 }
