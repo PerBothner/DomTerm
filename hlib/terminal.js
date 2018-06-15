@@ -8251,26 +8251,24 @@ DomTerm.sendSavedHtml = function(dt, html) {
 
 DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth,
                                  height=DomTerm.defaultHeight, parameter=null) {
-    // It would be preferable to create a new BrowserWindow in the same
-    // Electron application. It would presumably be faster and use less memory.
-    // (Potentially we could transfer saved data directly to the new window,
-    // without going via the server.)
-    // However, it doesn't work reliably.  Usually the new browser hangs.
-    if (false && DomTerm.isElectron()) {
-        let remote = nodeRequire('electron').remote;
-        let BrowserWindow = remote.BrowserWindow;
+    if (DomTerm.isElectron()) {
         let url = location.href;
         let hash = url.indexOf('#');
         if (hash >= 0)
             url = url.substring(0, hash);
         if (parameter)
             url = url + "#" + parameter;
-        setTimeout(function () {
-                let win = new remote.BrowserWindow({width: width, height: height,
-                                                    useContentSize: true, show: false});
-                win.loadURL(url);
-            win.once('ready-to-show', function () { win.show(); win = null; });
-        }, 1000) ;//});
+        const { ipcRenderer } = nodeRequire('electron');
+        ipcRenderer.send('request-mainprocess-action',
+                         { action: 'new-window', width: width, height: height, url: url });
+    } else if (true) {
+        let url = location.href;
+        let hash = url.indexOf('#');
+        if (hash >= 0)
+            url = url.substring(0, hash);
+        if (parameter)
+            url = url + "#" + parameter;
+        window.open(url, "_blank", "width="+width+",height="+height);
     }
     else
         dt.reportEvent("OPEN-WINDOW",
