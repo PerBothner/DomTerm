@@ -1321,6 +1321,7 @@ static const char * standard_stylesheets[] = {
     NULL
 };
 static const char * standard_jslibs[] = {
+    "hlib/screenfull.min.js",
     "hlib/jquery.min.js",
     "hlib/goldenlayout.js",
     "hlib/domterm-layout.js",
@@ -1370,7 +1371,6 @@ make_html_file(int port)
             "<script type='text/javascript'>\n"
             "DomTerm.server_port = %d;\n"
             "DomTerm.server_key = '%.*s';\n"
-            "console.log('after setting server_key');\n"
             "if (DomTerm.isElectron()) {\n"
             "    window.nodeRequire = require;\n"
             "    delete window.require;\n"
