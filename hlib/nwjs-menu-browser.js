@@ -127,6 +127,8 @@ var MenuItem = function () {
 
 		var enabled = settings.enabled;
 		if (typeof settings.enabled === 'undefined') enabled = true;
+		var visible = settings.visible;
+		if (typeof settings.visible === 'undefined') visible = true;
 
 		if (submenu) {
 			submenu.parentMenuItem = this;
@@ -183,6 +185,15 @@ var MenuItem = function () {
 			},
 			set: function set(inputEnabled) {
 				enabled = inputEnabled;
+			}
+		});
+
+		Object.defineProperty(this, 'visible', {
+			get: function get() {
+				return visible;
+			},
+			set: function set(inputVisible) {
+				visible = inputVisible;
 			}
 		});
 
@@ -515,7 +526,13 @@ var Menu = function () {
 
 			menubarSubmenu = menubarSubmenu || this.menubarSubmenu;
 			this.menubarSubmenu = menubarSubmenu;
-			if (!Menu._topmostMenu) Menu._topmostMenu = this;
+			if (!Menu._topmostMenu) {
+				Menu._topmostMenu = this;
+				var el = Menu.contextMenuParent || document.body;
+				Menu._listenerElement = el;
+				el.addEventListener('mouseup', Menu._mouseHandler, false);
+				el.addEventListener('mousedown', Menu._mouseHandler, false);
+			}
 
 			if (this.node) {
 				menuNode = this.node;
@@ -559,15 +576,12 @@ var Menu = function () {
 			menuNode.style.top = y + 'px';
 			menuNode.classList.add('show');
 
-			if (this.node) {
-				if (this.node.parentNode) {
-					if (menuNode === this.node) return;
-					this.node.parentNode.replaceChild(menuNode, this.node);
-				} else {
-					document.body.appendChild(this.node);
-				}
+			if (this.node.parentNode) {
+				if (menuNode === this.node) return;
+				this.node.parentNode.replaceChild(menuNode, this.node);
 			} else {
-				document.body.appendChild(menuNode);
+				var _el = Menu.contextMenuParent || document.body;
+				_el.appendChild(this.node);
 			}
 		}
 	}, {
@@ -577,7 +591,15 @@ var Menu = function () {
 				this.node.parentNode.removeChild(this.node);
 				this.node = null;
 			}
-			if (this.parentMenu == null) Menu._topmostMenu = null;
+			if (this.parentMenu == null) {
+				Menu._topmostMenu = null;
+				var el = Menu._listenerElement;
+				if (el) {
+					el.removeEventListener('mouseup', Menu._mouseHandler, false);
+					el.removeEventListener('mousedown', Menu._mouseHandler, false);
+					Menu._listenerElement = null;
+				}
+			}
 
 			if (this.type === 'menubar') {
 				this.clearActiveSubmenuStyling();
@@ -612,8 +634,10 @@ var Menu = function () {
 			menuNode.jsMenu = this;
 			this.items.forEach(function (item) {
 				item.parentMenu = _this2;
-				var itemNode = item.buildItem(menuNode, _this2.type === 'menubar');
-				menuNode.appendChild(itemNode);
+				if (item.visible) {
+					var itemNode = item.buildItem(menuNode, _this2.type === 'menubar');
+					menuNode.appendChild(itemNode);
+				}
 				//itemNode.jsMenu = this;
 			});
 			return menuNode;
@@ -699,7 +723,7 @@ var Menu = function () {
 		key: '_mouseHandler',
 		value: function _mouseHandler(e) {
 			var inMenubar = Menu._menubarNode != null && __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__is_decendant__["a" /* default */])(Menu._menubarNode, e.target);
-			var menubarHandler = !(e.currentTarget instanceof Document);
+			var menubarHandler = e.currentTarget == Menu._menubarNode;
 			var miNode = e.target;
 			while (miNode && !miNode.jsMenuItem) {
 				miNode = miNode.parentNode;
@@ -745,7 +769,7 @@ var Menu = function () {
 					item.parentMenu.popdownAll();
 					if (item.type === 'checkbox') item.checked = !item.checked;
 
-					if (item.click) item.click(this);
+					if (item.click) item.click(item);
 				}
 			}
 		}
@@ -778,6 +802,11 @@ var Menu = function () {
 	return Menu;
 }();
 
+// Parent node for context menu popup.  If null, document.body is the default.
+
+
+Menu.contextMenuParent = null;
+
 /* FUTURE
 Menu._keydownListener = function(e) {
     console.log("menu.key-down "+e.key);
@@ -794,11 +823,6 @@ Menu._keydownListen = function(value) {
 }
 Menu._keydownListen(true);
 */
-// FIXME these only when "active" popup
-
-
-document.addEventListener('mouseup', Menu._mouseHandler, false);
-document.addEventListener('mousedown', Menu._mouseHandler, false);
 
 /* harmony default export */ __webpack_exports__["a"] = (Menu);
 // Local Variables:
