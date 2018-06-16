@@ -205,18 +205,72 @@ DomTerm.createMenus = function(options) {
 
     let viewMenu = new Menu();
     viewMenu.append(showMenuBarItem);
+
     if (platform=="electron") {
         viewMenu.append(menuItem({role: 'togglefullscreen'}));
+    } else if (typeof screenfull !== "undefined") {
+        let fullscreenExitItem;
+        let fullscreenAllItem = menuItem({label: "Full screen (all)", type: 'checkbox',
+                                          click: function() {
+                                              console.log("fullscreen "+screenfull.isFullscreen+" en:"+screenfull.enabled);
+                                              fullscreenExitItem.visible = true;
+                                              if (screenfull.isFullscreen)
+                                                  screenfull.exit();
+                                              else
+                                                  screenfull.request();
+                                          }})
+        let fullscreenCurrentItem = menuItem({label: "Full screen (current)", type: 'checkbox',
+                                              click: function() {
+                                                  console.log("fullscreen "+screenfull.isFullscreen+" en:"+screenfull.enabled);
+                                                  let dt = DomTerm.focusedTerm;
+                                                  let requesting = ! screenfull.isFullscreen;
+                                                  if (! requesting) {
+                                                      requesting =
+                                                          screenfull.element.nodeName != "DIV";
+                                                      screenfull.exit();
+                                                  }
+                                                  if (requesting) {
+                                                      fullscreenExitItem.visible = true;
+                                                      if (dt)
+                                                          screenfull.request(dt.topNode);
+                                                      else
+                                                          screenfull.request();
+                                                  }
+                                              }})
+        fullscreenExitItem = menuItem({label: "Exit full screen",
+                                       visible: false, // hidden unless fullscreen
+                                       click: function() {
+                                           if (screenfull.isFullscreen)
+                                               screenfull.exit();
+                                           fullscreenExitItem.visible = false;
+                                       }});
+        if (screenfull.enabled) {
+	    screenfull.on('change', () => {
+                fullscreenAllItem.checked = false;
+                fullscreenCurrentItem.checked = false;
+                if (screenfull.isFullscreen) {
+                    Menu.contextMenuParent = screenfull.element;
+                    if (screenfull.element && screenfull.element.nodeName == "DIV")
+                        fullscreenCurrentItem.checked = true;
+                    else
+                        fullscreenAllItem.checked = true;
+                } else {
+                    Menu.contextMenuParent = null;
+                }
+                showMenuBarItem.enabled = ! fullscreenCurrentItem.checked;
+	    });
+        }
+        viewMenu.append(fullscreenAllItem);
+        viewMenu.append(fullscreenCurrentItem);
+        contextMenu.append(fullscreenExitItem);
+    }
+
+    if (platform=="electron") {
         viewMenu.append(menuItem({type: 'separator'}));
         viewMenu.append(menuItem({role: 'resetzoom'}));
         viewMenu.append(menuItem({role: 'zoomin'}));
         viewMenu.append(menuItem({role: 'zoomout'}));
         viewMenu.append(menuItem({type: 'separator'}));
-    } else {
-        viewMenu.append(menuItem({label: "Full screen", type: 'checkbox',
-                                  click: function() {
-                                      console.log("fullscreen "+document.webkitFullscreenElement+" en:"+document.webkitFullscreenEnabled);
-                                  }}));
     }
     if (showInspectorItem != null)
         viewMenu.append(showInspectorItem);
