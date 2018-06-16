@@ -129,10 +129,14 @@ embedded in different modes and applications.
 * Java tools::
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
+* Credits:: Credits
 @end menu
 
 @node Features
 @chapter Features and screenshots
+
+DomTerm is designed and implemented by Per Bothner,
+but it makes use of a number of support libraries.
 
 This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emulator, OpenSource.org article} provides an overview of DomTerm's functionality.
 (It should be merged into the following.)
@@ -3980,3 +3984,51 @@ Chrome (version 52) seems to have from problems with @code{break-all}.
 @end itemize
 
 Hence we need to do the job ourselves.
+
+@node Credits
+@chapter Credits
+
+DomTerm is implemented by Per Bothner, but
+makes use of multiple libraries and tools.
+
+The back-end uses Andy Green's @uref{https://libwebsockets.org/,libwebsockets}
+for its http and websockets server and event polling library.
+
+The C back-end was hased on Shuanglei Tao's @uref{https://github.com/tsl0922/ttyd,ttyd}.
+
+An older version of the back-end was Java-based.
+It made use of @uref{https://github.com/TooTallNate/Java-WebSocket/,Java WebSockets}.
+This is no longer supported, but a simplified Java server is still supported.
+It uses @code{XMLHttpRequest} (``ajax'') and the @code{com.sun.net.httpserver.HttpServer}
+bundled with JSK.
+
+Some optional Java code (not used by the default @code{domterm} command),
+including a JavaFX embedding, 
+was written while I worked at Oracle, and is copyright Oracle.
+
+@uref{https://golden-layout.com/,GoldenLayout} provides tiling and tabs.
+
+The @uref{https://github.com/2xAA/nwjs-menu-browser, nwjs-menu-browser} library by Sam Wray
+is used to implement the menubar and context menu on ``generic'' platforms
+(i.e. not Electron, Atom, or Qt).
+DomTerm currently uses a @uref{https://github.com/PerBothner/nwjs-menu-browser,fork}.
+
+The @uref{https://github.com/sindresorhus/screenfull.js/,screenfull.js} library
+by Sindre Sorhus is provides a browser-independent wrapper for entering and exiting Full Screen.
+
+ResizeSensor is used to watch when a DomTerm window or sub-window is re-sized.
+It is part of  Marc J. Schmidt's
+@uref{https://github.com/marcj/css-element-queries,CSS Element Queries}.
+
+Marijn Haverbeke's @uref{https://github.com/marijnh/browserkeymap,Browser Keymap} package
+provides a simple key-binding manager.
+
+Gregory Pakosz's @uref{https://github.com/gpakosz/whereami,Where Am I?} library
+is used to get the absolute path for the current @code{domterm} executable.
+
+Eli Gray's @uref{https://github.com/eligrey/FileSaver.js/,FileSaver.js} is
+for the ``Save as HTML'' feature.
+
+The wcwidth library (used to determine which characers are ``double-width'')
+has a convoluted history - see the source code.  It has been re-factored
+somewhat for DomTerm.
