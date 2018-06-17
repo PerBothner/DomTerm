@@ -128,6 +128,7 @@ struct tty_client {
 
 struct http_client {
     char *data;
+    char *ptr;
     int length;
 };
 

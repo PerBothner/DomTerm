@@ -124,7 +124,7 @@ bool check_server_key(struct lws *wsi, char *arg, size_t alen)
 int
 callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
     struct http_client *hclient = (struct http_client *) user;
-    unsigned char buffer[4096 + LWS_PRE], *p, *end;
+    unsigned char buffer[4096 + LWS_PRE], *start = &buffer[LWS_PRE], *p, *end;
     char buf[256];
 
     switch (reason) {
@@ -209,7 +209,6 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     fname = main_html_path;
                 else
                     fname = "/repl-client.html";
-                fflush(stderr);
             }
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)
@@ -219,24 +218,18 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             while (resource->name != NULL && strcmp(resource->name, fname+1) != 0)
                 resource++;
             if (resource->name != NULL) {
-                if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end))
-                    return 1;
-                if (lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
-                                                 (const unsigned char *) content_type,
-                                                 strlen(content_type), &p, end)) // ???
-                    return 1;
-                if (lws_add_http_header_content_length(wsi,
-                                                       resource->length, &p, end))
-                    return 1;
-                if (lws_finalize_http_header(wsi, &p, end))
-                    return 1;
-                if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
-                    return 1;
-                hclient->data = resource->data;
-                hclient->length = resource->length;
-                lws_callback_on_writable(wsi);
-                break;
+                if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK,
+                                               content_type, resource->length, &p, end))
+                        return 1;
+                if (lws_finalize_write_http_header(wsi, start, &p, end))
+                        return 1;
 
+                hclient->data = resource->data;
+                hclient->ptr = resource->data;
+                hclient->length = resource->length;
+                /* write the body separately */
+                lws_callback_on_writable(wsi);
+                return 0;
             }
             lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
             goto try_to_reuse;
@@ -250,12 +243,23 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 
         case LWS_CALLBACK_HTTP_WRITEABLE:
             if (hclient->length) {
-                int n = lws_write_http(wsi, hclient->data, hclient->length);
-                hclient->data = NULL;
-                hclient->length = 0;
-                if (n < 0)
+                int max_chunk = 2000;
+                int cur_chunk = hclient->length > max_chunk ? max_chunk : hclient->length;
+                hclient->length -= cur_chunk;
+                if (lws_write(wsi, (uint8_t *)hclient->ptr, cur_chunk,
+                              hclient->length > 0 ? LWS_WRITE_HTTP : LWS_WRITE_HTTP_FINAL)
+                    != cur_chunk)
                     return 1;
-                goto try_to_reuse;
+                if (hclient->length > 0) {
+                    hclient->ptr += cur_chunk;
+                    lws_callback_on_writable(wsi);
+                } else {
+                    hclient->data = NULL;
+                    hclient->ptr = NULL;
+                    if (lws_http_transaction_completed(wsi))
+                        return -1;
+                }
+                return 0;
             }
             break;
 
@@ -277,7 +281,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 #endif
 
         default:
-            break;
+            return lws_callback_http_dummy(wsi, reason, user, in, len);
     }
 
     return 0;
