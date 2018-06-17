@@ -225,7 +225,7 @@ extern void fatal(const char *format, ...);
 extern const char *find_home(void);
 extern void init_options(struct options *options);
 extern char *firefox_browser_command();
-extern char *chrome_command();
+extern char *chrome_command(bool app_mode);
 extern void default_link_command(const char *url);
 extern int process_options(int argc, char **argv, struct options *options;);
 extern char** default_command(struct options *opts);

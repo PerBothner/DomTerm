@@ -541,7 +541,7 @@ check_template(const char *template, json_object *obj)
              || strcmp(template, "google-chrome") == 0) {
         char *chr = strcmp(template, "firefox") == 0
           ? firefox_browser_command()
-          : chrome_command();
+          : chrome_command(false);
         if (chr == NULL)
             return NULL;
         char *buf = xmalloc(strlen(chr) + strlen(href)+4);
@@ -1144,7 +1144,6 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          break;
 
     case LWS_CALLBACK_CLOSED:
-         //fprintf(stderr, "callback_tty CALLBACK_CLOSED\n");
          if (focused_wsi == wsi)
               focused_wsi = NULL;
          tty_client_destroy(wsi, client);

@@ -82,7 +82,7 @@ subst_run_command(struct options *opts, const char *browser_command,
         arg0 = find_in_path(args[0]);
         if (arg0 == NULL) {
             FILE *err = fdopen(opts->fd_err, "w");
-            fprintf(err, "no executable front-end (browser) '%s'",
+            fprintf(err, "no executable front-end (browser) '%s'\n",
                     args[0]);
             fclose(err);
             return EXIT_FAILURE;
@@ -368,8 +368,22 @@ fix_for_windows(char * fname)
 
 /* Result is cached. */
 char *
-chrome_command()
+chrome_command(bool app_mode)
 {
+    if (app_mode) {
+        static char *abin = NULL;
+        if (abin != NULL)
+            return abin[0] ? abin : NULL;
+        char *c = chrome_command(false); // recusive, for simplicity
+        if (c == NULL) {
+            abin = ""; // cache as "not found"
+            return NULL;
+        }
+        char *args = " --app='%U%g'";
+        abin = xmalloc(strlen(c)+strlen(args)+1);
+        sprintf(abin, "%s%s", c, args);
+        return abin;
+    }
     static char *cbin = NULL;
     if (main_options->command_chrome != NULL)
         return main_options->command_chrome;
@@ -389,7 +403,7 @@ chrome_command()
     cbin = find_in_path("google-chrome");
     if (cbin != NULL)
         return cbin;
-    cbin = "";
+    cbin = ""; // cache as "not found"
     return NULL;
 }
 
@@ -448,17 +462,14 @@ firefox_command()
     return firefox ? firefox : "firefox";
 }
 
-char *
-qtwebengine_command(int quiet, struct options *options)
+static char *
+qtwebengine_command(struct options *options)
 {
     char *cmd = get_bin_relative_path("/bin/qtdomterm");
     if (cmd == NULL || access(cmd, X_OK) != 0) {
         if (cmd == NULL)
             free(cmd);
-        if (quiet)
-            return NULL;
-        fprintf(stderr, "'qtdomterm' missing\n");
-        exit(-1);
+        return NULL;
     }
     int bsize = strlen(cmd)+100;
     char *geometry = geometry_option(options);
@@ -481,8 +492,8 @@ qtwebengine_command(int quiet, struct options *options)
     return buf;
 }
 
-char *
-electron_command(int quiet, struct options *options)
+static char *
+electron_command(struct options *options)
 {
     bool epath_free_needed = false;
     char *epath = main_options->command_electron;
@@ -490,12 +501,8 @@ electron_command(int quiet, struct options *options)
         char *ppath = find_in_path("electron");
         if (ppath == NULL && is_WindowsSubsystemForLinux())
             ppath = find_in_path("electron.exe");
-        if (ppath == NULL) {
-            if (quiet)
-                return NULL;
-            fprintf(stderr, "'electron' not found in PATH\n");
-            exit(-1);
-        }
+        if (ppath == NULL)
+            return NULL;
         epath = realpath(ppath, NULL);
         free(ppath);
         epath_free_needed = true;
@@ -576,7 +583,7 @@ do_run_browser(struct options *options, char *url, int port)
     if (browser_specifier == NULL && port_specified < 0) {
         char *default_frontend = main_options->default_frontend;
         if (default_frontend == NULL)
-            default_frontend = "electron;qt;chrome;firefox;browser";
+            default_frontend = "electron;qt;chrome-app;firefox;browser";
         const char *p = default_frontend;
         for (;;) {
             const char *argv0_end = NULL;
@@ -589,8 +596,9 @@ do_run_browser(struct options *options, char *url, int port)
                 memcpy(cmd, start, cmd_length);
                 cmd[cmd_length] = '\0';
                 int argv0_length = argv0_end-start;
+                bool app_mode;
                 if (strcmp(cmd, "electron") == 0) {
-                     browser_specifier = electron_command(1, options);
+                     browser_specifier = electron_command(options);
                      if (browser_specifier != NULL) {
                          free (cmd);
                          break;
@@ -598,16 +606,17 @@ do_run_browser(struct options *options, char *url, int port)
                 } else if (strcmp(cmd, "qt") == 0
                            || strcmp(cmd, "qtdomterm") == 0
                            || strcmp(cmd, "qtwebengine") == 0) {
-                    browser_specifier = qtwebengine_command(1, options);
+                    browser_specifier = qtwebengine_command(options);
                     if (browser_specifier != NULL)
                         break;
                 } else if (strcmp(cmd, "firefox") == 0) {
                     browser_specifier = firefox_browser_command();
                     if (browser_specifier != NULL)
                         break;
-                } else if (strcmp(cmd, "chrome") == 0
-                             || strcmp(cmd, "google-chrome") == 0) {
-                        browser_specifier = chrome_command(); 
+                } else if ((app_mode = ! strcmp(cmd, "chrome-app"))
+                           || ! strcmp(cmd, "chrome")
+                           || ! strcmp(cmd, "google-chrome")) {
+                    browser_specifier = chrome_command(app_mode);
                     if (browser_specifier != NULL)
                         break;
                 } else {
@@ -629,18 +638,33 @@ do_run_browser(struct options *options, char *url, int port)
             p = semi+1;
         }
     }
-    if (strcmp(browser_specifier, "--qtwebengine") == 0)
-        browser_specifier = qtwebengine_command(0, options);
-    if (strcmp(browser_specifier, "--electron") == 0)
-        browser_specifier = electron_command(0, options);
+    if (strcmp(browser_specifier, "--qtwebengine") == 0) {
+        browser_specifier = qtwebengine_command(options);
+        if (browser_specifier == NULL) {
+            static char msg[] = "'qtdomterm' missing\n";
+            write(options->fd_err, msg, sizeof(msg)-1);
+            return EXIT_FAILURE;
+        }
+    }
+    if (strcmp(browser_specifier, "--electron") == 0) {
+        browser_specifier = electron_command(options);
+        if (browser_specifier == NULL) {
+            static char msg[] = "'electron' not found in PATH\n";
+            write(options->fd_err, msg, sizeof(msg)-1);
+            return EXIT_FAILURE;
+        }
+    }
+    bool app_mode;
     if (strcmp(browser_specifier, "--firefox") == 0)
         browser_specifier = firefox_command();
-    else if (strcmp(browser_specifier, "--chrome") == 0
-             || strcmp(browser_specifier, "--google-chrome") == 0) {
-            browser_specifier = chrome_command();
+    else if ((app_mode = ! strcmp(browser_specifier, "--chrome-app"))
+             || ! strcmp(browser_specifier, "--chrome")
+             || ! strcmp(browser_specifier, "--google-chrome")) {
+        browser_specifier = chrome_command(app_mode);
             if (browser_specifier == NULL) {
-                fprintf(stderr, "neither chrome or google-chrome command found\n");
-                exit(-1);
+                static char msg[] = "neither chrome or google-chrome command found\n";
+                write(options->fd_err, msg, sizeof(msg)-1);
+                return EXIT_FAILURE;
             }
         }
     if (browser_specifier[0] == '\0')
@@ -819,15 +843,10 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
             case CHROME_OPTION:
             case CHROME_APP_OPTION: {
-                char *cbin = chrome_command();
+                char *cbin = chrome_command(c == CHROME_APP_OPTION);
                 if (cbin == NULL) {
                     fprintf(stderr, "neither chrome or google-chrome command found\n");
                     exit(-1);
-                }
-                if (c == CHROME_APP_OPTION) {
-                    char *b = xmalloc(strlen(cbin)+20);
-                    sprintf(b, "%s --app='%%U%%g'", cbin);
-                    cbin = b;
                 }
                 opts->browser_command = cbin;
                 break;
@@ -1108,7 +1127,7 @@ main(int argc, char **argv)
         ret = handle_command(argc-optind, argv+optind,
                              ".", environ, NULL, &opts);
     if (ret != 0)
-        force_exit = 1;
+        exit(ret);
     }
 
     if (opts.do_daemonize && ret == 0) {
