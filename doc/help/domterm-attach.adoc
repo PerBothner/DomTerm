@@ -20,7 +20,7 @@ to attach a new window to an existing session.
 
 You can specify a session one of these ways:
 
-* The character `#` followed by a session number.
+* A colon (`:`) followed by a session number.
 
 * A process id.
 
