@@ -7607,7 +7607,7 @@ DomTerm.prototype.keyDownToString = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     switch (key) {
     case 8: /* Backspace */ return "\x7F";
-    case 9: /* Tab */    return "\t";
+    case 9: /* Tab */   return event.shiftKey ? "\x1B[Z" : "\t";
     case 13: /* Return/Enter */
         return event.altKey ? "\x1B\r" : this.keyEnterToString();
     case 27: /* Esc */   return "\x1B";
