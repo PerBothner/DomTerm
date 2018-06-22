@@ -113,6 +113,7 @@ struct tty_client {
     char *obuffer_raw;
     char *obuffer; // output from child process
     size_t olen; // used length of obuffer
+    size_t ocount; // amount to increment sent_count (ocount <= olen)
     size_t osize; // allocated size of obuffer
     int connection_number;
     int pty_window_number; // Numbered within each pty_client; -1 if only one
@@ -213,6 +214,7 @@ extern int display_session(struct options *, struct pty_client *,
                            const char *, int);
 extern int do_run_browser(struct options *, char *url, int port);
 extern char* check_browser_specifier(const char *specifier);
+extern void printf_to_browser(struct tty_client *, const char *, ...);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
 extern void init_options(struct options *options);
