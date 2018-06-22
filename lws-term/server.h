@@ -17,7 +17,6 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
-#include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -55,12 +54,6 @@ extern int last_session_number;
 extern struct options *main_options;
 extern const char *settings_as_json;
 extern char git_describe[];
-
-struct pty_data {
-    char *data;
-    int len;
-    STAILQ_ENTRY(pty_data) list;
-};
 
 /** Data specific to a pty process. */
 struct pty_client {
@@ -177,7 +170,6 @@ struct options {
 };
 
 struct tty_server {
-    LIST_HEAD(client, tty_client) clients;    // client list
     int client_count;                         // number of current_clients
     int session_count;                        // session count
     int connection_count;                     // clients requested (ever)
