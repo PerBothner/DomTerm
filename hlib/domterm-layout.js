@@ -298,6 +298,7 @@ DomTerm.popoutWindow = function(item, dt) {
     var sizeElement = item.element[0];
     if (! wholeStack)
         sizeElement = sizeElement.firstChild;
+    console.log("popoutWindow whole:"+wholeStack);
     var w = sizeElement.offsetWidth;
     var h = sizeElement.offsetHeight;
     // FIXME adjust for menu bar height
@@ -331,7 +332,9 @@ DomTerm.popoutWindow = function(item, dt) {
         e = encode(item);
     }
 
-    DomTerm.openNewWindow(dt, w, h, "open="+encodeURIComponent(e));
+    let newurl = DomTerm.mainLocation+"#open="+encodeURIComponent(e);
+    console.log("popupWindow "+newurl+" e:"+e);
+    DomTerm.openNewWindow(dt, { width: w, height: h, url: newurl });
     for (var i = 0; i < toRemove.length; i++) {
         remove(toRemove[i]);
     }
@@ -371,8 +374,8 @@ DomTerm.layoutResized = function(event) {
 }
 
 DomTerm.layoutInit = function(term) {
-    DomTerm.layoutManager = new GoldenLayout(DomTerm.layoutConfig,
-                                             term.topNode.parentNode);
+    let top = DomTerm.layoutTop || document.body;
+    DomTerm.layoutManager = new GoldenLayout(DomTerm.layoutConfig, top);
     DomTerm.layoutManager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
         var name;
@@ -399,6 +402,10 @@ DomTerm.layoutInit = function(term) {
         container.setTitle(name);
         container.on('resize', DomTerm.layoutResized, el);
         container.on('destroy', DomTerm.domTermLayoutClosed, container);
+
+        if (top !== document.body)
+            new ResizeSensor(DomTerm.layoutManager.container,
+                             function() { console.log("layout/resize"); DomTerm.layoutManager.updateSize(); });
     });
 
     DomTerm.layoutManager.registerComponent( 'view-saved', function( container, componentConfig ){

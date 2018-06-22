@@ -202,6 +202,7 @@ function viewSavedFile(url, bodyNode) {
 }
 
 function loadHandler(event) {
+    DomTerm.layoutTop = document.body;
     if (DomTerm.usingQtWebEngine) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
@@ -252,6 +253,14 @@ function loadHandler(event) {
         viewSavedFile(decodeURIComponent(m[1]), bodyNode);
         return;
     }
+    var bodyNode = document.getElementsByTagName("body")[0];
+    if (bodyNode.firstElementChild
+        && bodyNode.firstElementChild.classList.contains("nwjs-menu")) {
+        var wrapTopNode = document.createElement("div");
+        wrapTopNode.setAttribute("class", "below-menubar");
+        bodyNode.appendChild(wrapTopNode);
+        DomTerm.layoutTop = wrapTopNode;
+    }
     var layoutInitAlways = false;
     if (layoutInitAlways) {
         var cpid = location.hash.match(/connect-pid=([0-9]*)/);
@@ -262,15 +271,8 @@ function loadHandler(event) {
     }
     var topNodes = document.getElementsByClassName("domterm");
     if (topNodes.length == 0) {
-        var bodyNode = document.getElementsByTagName("body")[0];
-        var topNode = DomTerm.makeElement(bodyNode, DomTerm.freshName());
-        if (bodyNode.firstElementChild.classList.contains("nwjs-menu")) {
-            var wrapTopNode = document.createElement("div");
-            wrapTopNode.setAttribute("class", "below-menubar");
-            bodyNode.insertBefore(wrapTopNode, topNode);
-            wrapTopNode.appendChild(topNode);
-        }
-        topNodes = [ topNode ];
+        topNodes = [ DomTerm.makeElement(DomTerm.layoutTop,
+                                         DomTerm.freshName()) ];
     }
     if (location.search.search(/wait/) >= 0) {
     } else if (location.hash == "#ajax" || ! window.WebSocket) {
