@@ -805,7 +805,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 info.port = atoi(optarg);
                 port_specified = info.port;
                 if (info.port < 0) {
-                    fprintf(stderr, "ttyd: invalid port: %s\n", optarg);
+                    fprintf(stderr, "domterm: invalid port: %s\n", optarg);
                     return -1;
                 }
                 break;
@@ -868,7 +868,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
             case 'c':
                 if (strchr(optarg, ':') == NULL) {
-                    fprintf(stderr, "ttyd: invalid credential, format: username:password\n");
+                    fprintf(stderr, "domterm: invalid credential, format: username:password\n");
                     return -1;
                 }
                 opts->credential = base64_encode((const unsigned char *) optarg, strlen(optarg));
@@ -885,7 +885,7 @@ int process_options(int argc, char **argv, struct options *opts)
                     opts->sig_code = get_sig(optarg);
                     opts->sig_name = uppercase(strdup(optarg));
                 } else {
-                    fprintf(stderr, "ttyd: invalid signal: %s\n", optarg);
+                    fprintf(stderr, "domterm: invalid signal: %s\n", optarg);
                     return -1;
                 }
             }
@@ -893,7 +893,7 @@ int process_options(int argc, char **argv, struct options *opts)
             case 'r':
                 opts->reconnect = atoi(optarg);
                 if (opts->reconnect <= 0) {
-                    fprintf(stderr, "ttyd: invalid reconnect: %s\n", optarg);
+                    fprintf(stderr, "domterm: invalid reconnect: %s\n", optarg);
                     return -1;
                 }
                 break;
