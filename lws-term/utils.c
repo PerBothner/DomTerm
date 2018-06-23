@@ -452,3 +452,17 @@ extract_command_from_list(const char *list, const char **startp,
         *cmd_endp = cmd_end;
     return p;
 }
+
+char *
+getenv_from_array(char* key, char**envarray)
+{
+    char **p = envarray ? envarray : environ;
+    int keylen = strlen(key);
+    for (; *p; p++) {
+        char *e = *p;
+        if (memcmp(e, key, keylen) == 0
+            && e[keylen] == '=')
+            return e + keylen + 1;
+    }
+    return NULL;
+}

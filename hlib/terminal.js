@@ -5747,6 +5747,9 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
                                    url: text });
         }
         break;
+    case 108:
+        DomTerm.openNewWindow(this, JSON.parse(text));
+        break;
     case 110: // start prettyprinting-group
         if (this._currentStyleSpan == this.outputContainer
             && this.outputContainer.classList.contains("term-style"))
@@ -8249,31 +8252,31 @@ DomTerm.sendSavedHtml = function(dt, html) {
     dt.reportEvent("GET-HTML", JSON.stringify(html));
 }
 
-DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth,
-                                 height=DomTerm.defaultHeight, parameter=null) {
+DomTerm.openNewWindow = function(dt, options={}) {
+    let url = options.url;
+    if (! url)
+        url = DomTerm.mainLocation;
+    let width = options.width || DomTerm.defaultWidth;
+    let height = options.height || DomTerm.defaultHeight;
+    if (options.geometry) {
+        let m = options.geometry.match(/geometry=([0-9][0-9]*)x([0-9][0-9]*)/);
+        if (m) {
+            width = geometry[1];
+            height = geometry[2];
+        }
+    }
+
     if (DomTerm.isElectron()) {
-        let url = location.href;
-        let hash = url.indexOf('#');
-        if (hash >= 0)
-            url = url.substring(0, hash);
-        if (parameter)
-            url = url + "#" + parameter;
         const { ipcRenderer } = nodeRequire('electron');
         ipcRenderer.send('request-mainprocess-action',
                          { action: 'new-window', width: width, height: height, url: url });
     } else if (true) {
-        let url = location.href;
-        let hash = url.indexOf('#');
-        if (hash >= 0)
-            url = url.substring(0, hash);
-        if (parameter)
-            url = url + "#" + parameter;
         window.open(url, "_blank", "width="+width+",height="+height);
-    }
-    else
+    } else
         dt.reportEvent("OPEN-WINDOW",
-                       (width || height ? ("geometry="+width+"x"+height) : "")
-                       +(parameter ? ("&" + parameter) : ""));
+                       url + (url.indexOf('#') < 0 ? '#' : '&') +
+                       ((width && height) ? ("geometry="+width+"x"+height) : "")
+                      );
 }
 
 DomTerm.prototype._isOurEvent = function(event) {

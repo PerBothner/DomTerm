@@ -149,14 +149,10 @@ function setupQWebChannel(channel) {
     DomTerm.setTitle = function(title) {
         backend.setWindowTitle(title == null ? "" : title); };
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
-    DomTerm.openNewWindow = function(dt, width=DomTerm.defaultWidth, height=DomTerm.defaultHeight, parameter=null) {
-        let url = location.href;
-        let hash = url.indexOf('#');
-        if (hash >= 0)
-            url = url.substring(0, hash);
-        if (parameter)
-            url = url + "#" + parameter;
-        backend.openNewWindow(width, height, url);
+    DomTerm.openNewWindow = function(dt, options={}) {
+        let width = options.width || DomTerm.defaultWidth;
+        let height = options.height || DomTerm.defaultHeight;
+        backend.openNewWindow(width, height, options.url);
     }
 };
 
@@ -203,6 +199,12 @@ function viewSavedFile(url, bodyNode) {
 
 function loadHandler(event) {
     DomTerm.layoutTop = document.body;
+    let url = location.href;
+    let hash = url.indexOf('#');
+    if (hash >= 0)
+        url = url.substring(0, hash);
+    DomTerm.mainLocation = url;
+
     if (DomTerm.usingQtWebEngine) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
@@ -280,9 +282,9 @@ function loadHandler(event) {
         for (var i = 0; i < topNodes.length; i++)
             connectAjax("domterm", "", topNodes[i]);
     } else {
-        var url = DomTerm._makeWsUrl(location.hash ? location.hash.substring(1) : null);
+        var wsurl = DomTerm._makeWsUrl(location.hash ? location.hash.substring(1) : null);
         for (var i = 0; i < topNodes.length; i++) {
-            DomTerm.connectWS(null, url, "domterm", topNodes[i]);
+            DomTerm.connectWS(null, wsurl, "domterm", topNodes[i]);
         }
     }
     if (!DomTerm.inAtomFlag)

@@ -219,7 +219,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 resource++;
             if (resource->name != NULL) {
                 if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK,
-                                               content_type, resource->length, &p, end))
+                                                content_type, resource->length,
+                                                &p, end))
                         return 1;
                 if (lws_finalize_write_http_header(wsi, start, &p, end))
                         return 1;

@@ -220,7 +220,12 @@ static const struct option options[] = {
         {"chrome",       no_argument,       NULL, CHROME_OPTION},
         {"chrome-app",   no_argument,       NULL, CHROME_APP_OPTION},
         {"google-chrome",no_argument,       NULL, CHROME_OPTION},
+        {"google-chrome",no_argument,       NULL, CHROME_OPTION},
         {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
+        // TODO:  "--chrome-window" --> --new-window '%U'
+        // "--chrome-tab" --> --new-tab '%U'
+        // "--firefox-window" --> --new-window '%U'
+        // "--firefox-tab" --> --new-tab '%U'
         {"qt",           no_argument,       NULL, QTDOMTERM_OPTION},
         {"qtdomterm",    no_argument,       NULL, QTDOMTERM_OPTION},
         {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
@@ -565,20 +570,41 @@ default_link_command(const char *url)
 #endif
 }
 
+void
+browser_run_browser(struct options *options, char *url,
+                    struct tty_client *tclient)
+{
+    struct json_object *jobj = json_object_new_object();
+    json_object_object_add(jobj, "url",  json_object_new_string(url));
+    char *geometry = geometry_option(options);
+    if (geometry)
+        json_object_object_add(jobj, "geometry", json_object_new_string(geometry));
+    const char *json_data = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
+    printf_to_browser(tclient,
+                      URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
+                      json_data);
+    json_object_put(jobj);
+}
+
 int
 do_run_browser(struct options *options, char *url, int port)
 {
-    const char *browser_specifier =
-      ((options == NULL || options->browser_command == NULL)
-       && opts.default_frontend == NULL
-       && opts.browser_command != NULL
-       && strcmp(opts.browser_command, "--print-url") != 0)
-      ? opts.browser_command
-      : options->browser_command;
-    //if (browser_specifier==NULL)
-        //browser_specifier = opts.browser_command;
-    //else if (strcmp(browser_specifier, "--detached") == 0)
-    //    return;
+    const char *browser_specifier;
+    if (options != NULL && options->browser_command != NULL) {
+        browser_specifier = options->browser_command;
+        opts.browser_command = browser_specifier;
+    } else {
+        browser_specifier = opts.browser_command;
+    }
+    bool do_electron = false;
+#if 0
+    if (options != NULL && options->browser_command == NULL
+        && options->requesting_session && options->requesting_session->recent_tclient) {
+        browser_run_browser(options, url,
+                            options->requesting_session->recent_tclient);
+        return EXIT_SUCCESS;
+    }
+#endif
     if (browser_specifier == NULL && port_specified < 0) {
         char *default_frontend = main_options->default_frontend;
         if (default_frontend == NULL)
@@ -600,6 +626,7 @@ do_run_browser(struct options *options, char *url, int port)
                      browser_specifier = electron_command(options);
                      if (browser_specifier != NULL) {
                          free (cmd);
+                         do_electron = true;
                          break;
                      }
                 } else if (strcmp(cmd, "qt") == 0
@@ -647,6 +674,7 @@ do_run_browser(struct options *options, char *url, int port)
     }
     if (strcmp(browser_specifier, "--electron") == 0) {
         browser_specifier = electron_command(options);
+        do_electron = true;
         if (browser_specifier == NULL) {
             static char msg[] = "'electron' not found in PATH\n";
             write(options->fd_err, msg, sizeof(msg)-1);
@@ -665,7 +693,27 @@ do_run_browser(struct options *options, char *url, int port)
                 write(options->fd_err, msg, sizeof(msg)-1);
                 return EXIT_FAILURE;
             }
+    }
+
+    if (do_electron) {
+        // If there is an existing Electron instance, we want to re-use it.
+        // Otherwise, we get a multi-second delay on startup.
+        // Other browsers seem to "combine" user commands better.
+        for (struct pty_client *p = pty_client_list;
+             p != NULL; p = p->next_pty_client) {
+            struct lws *twsi;
+            FOREACH_WSCLIENT(twsi, p) {
+                struct tty_client *t =
+                    (struct tty_client *) lws_wsi_user(twsi);
+                if (t->version_info && strstr(t->version_info, ";electron=")) {
+                    fprintf(stderr, "found electron client\n");
+                    browser_run_browser(options, url, t);
+                    return EXIT_SUCCESS;
+                }
+            }
         }
+    }
+
     if (browser_specifier[0] == '\0')
         browser_specifier = default_browser_command();
     return subst_run_command(options, browser_specifier, url, port);
@@ -677,7 +725,7 @@ get_domterm_jar_path()
     return get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm.jar");
 }
 
-const char*
+static struct json_object *
 state_to_json(int argc, char *const*argv, char *const *env)
 {
     struct json_object *jobj = json_object_new_object();
@@ -698,10 +746,7 @@ state_to_json(int argc, char *const*argv, char *const *env)
     free(cwd);
     json_object_object_add(jobj, "argv", jargv);
     json_object_object_add(jobj, "env", jenv);
-    //result = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PRETTY);
-    result = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
-    json_object_put(jobj);
-    return result;
+    return jobj;
 }
 
 void  init_options(struct options *opts)
@@ -722,6 +767,7 @@ void  init_options(struct options *opts)
     opts->do_daemonize = 1;
     opts->debug_level = 0;
     opts->iface = NULL;
+    opts->requesting_session = NULL;
 #if HAVE_OPENSSL
     opts->ssl = false;
     opts->cert_path = NULL;
@@ -984,7 +1030,9 @@ main(int argc, char **argv)
           exit((*command->action)(argc-optind, argv+optind,
                                   NULL, NULL, NULL, &opts));
     if (socket >= 0) {
-        const char *state_as_json = state_to_json(argc, argv, environ);
+        json_object *jobj = state_to_json(argc, argv, environ);
+        const char *state_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
+
         size_t jlen = strlen(state_as_json);
 
         struct msghdr msg;
@@ -1017,6 +1065,7 @@ main(int argc, char **argv)
         ssize_t n1 = sendmsg(socket, &msg, 0);
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
+        json_object_put(jobj);
         char ret = -1;
         ssize_t n2 = read(socket, &ret, 1);
         if (n1 < 0 || n2 != 1)
@@ -1369,7 +1418,6 @@ make_html_file(int port)
     FILE *hfile = fopen(main_html_path, "w");
     if (server_key[0] == 0)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
-    //fprintf(hfile, html_template, "localhost", port, port, server_key);
     char base[40];
     sprintf(base, "http://%s:%d/", "127.0.0.1", port);
 

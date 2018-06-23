@@ -45,6 +45,7 @@ extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
 extern struct lws_vhost *vhost;
+extern struct pty_client *pty_client_list;
 extern int http_port;
 //extern struct tty_client *focused_client;
 extern struct lws_context_creation_info info; // FIXME rename
@@ -74,6 +75,7 @@ struct pty_client {
     struct lws *first_client_wsi;
     struct lws **last_client_wsi_ptr;
     struct lws *pty_wsi;
+    struct tty_client *recent_tclient;
     char *saved_window_contents;
 
     // The following are used to attach to already-visible session.
@@ -147,6 +149,7 @@ struct options {
     char *command_chrome;
     char *command_electron;
     char *default_frontend;
+    struct pty_client *requesting_session;
     int paneOp;
     char *iface;
 #if HAVE_OPENSSL
@@ -237,6 +240,7 @@ extern bool write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
 extern char *url_encode(char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
+extern char *getenv_from_array(char* key, char**envarray);
 extern void copy_html_file(FILE*in, FILE*out);
 extern char** parse_args(const char*);
 extern const char *extract_command_from_list(const char *, const char **,

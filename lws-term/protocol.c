@@ -423,6 +423,7 @@ run_command(char*const*argv, const char*cwd, char **env)
             pclient->preserved_output = NULL;
             pclient->first_client_wsi = NULL;
             pclient->last_client_wsi_ptr = &pclient->first_client_wsi;
+            pclient->recent_tclient = NULL;
             if (pclient->nrows >= 0)
                setWindowSize(pclient);
             pclient->session_number = session_number;
@@ -817,16 +818,11 @@ reportEvent(const char *name, char *data, size_t dlen,
             memcpy(geom, g, glen);
             geom[glen] = 0;
         }
-        char *o = strstr(data, "open=");
-        if (o == NULL)
-          o = "";
-        char *buf = xmalloc(strlen(main_html_url)+strlen(o)+2);
-        sprintf(buf, "%s#%s", main_html_url, o);
         struct options opts;
         init_options(&opts);
         opts.geometry = geom;
-        do_run_browser(&opts, buf, -1);
-        free(buf);
+        fprintf(stderr, "OPEN-WINDOW '%s' geom:%s\n", data, geom);
+        do_run_browser(&opts, data, -1);
         if (geom != NULL)
             free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
@@ -1118,6 +1114,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          size_t clen = client->len;
          unsigned char *msg = (unsigned char*) client->buffer;
          struct pty_client *pclient = client->pclient;
+         if (pclient)
+             pclient->recent_tclient = client;
          // FIXME handle PENDING
          int start = 0;
          for (int i = 0; ; i++) {
@@ -1389,6 +1387,26 @@ handle_command(int argc, char** argv, const char*cwd,
                char **env, struct lws *wsi, struct options *opts)
 {
     struct command *command = argc == 0 ? NULL : find_command(argv[0]);
+    char *domterm_env_value = getenv_from_array("DOMTERM", env);
+    if (domterm_env_value) {
+        static char pid_key[] = ";pid=";
+        int current_session_pid = 0;
+        char *p = strstr(domterm_env_value, pid_key);
+        if (p)
+            sscanf(p+(sizeof(pid_key)-1), "%d", &current_session_pid);
+        if (current_session_pid) {
+            struct pty_client *pclient = pty_client_list;
+            for (; pclient != NULL; pclient = pclient->next_pty_client) {
+                if (pclient->pid == current_session_pid) {
+                    fprintf(stderr, "handle_command %s pid:%d session:%s=%d\n",
+                            argc == 0 ? "-" : argv[0],
+                            current_session_pid, pclient->session_name, pclient->session_number);
+                    opts->requesting_session = pclient;
+                    break;
+                }
+            }
+        }
+    }
     if (command != NULL) {
         return (*command->action)(argc, argv, cwd, env, wsi, opts);
     }
