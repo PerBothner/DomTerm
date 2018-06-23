@@ -931,6 +931,10 @@ int
 main(int argc, char **argv)
 {
     memset(&info, 0, sizeof(info));
+#if LWS_LIBRARY_VERSION_NUMBER <= 2004002
+    // See "problems with big dynamic content" thread on libwebsockets list
+    info.keepalive_timeout = 0x7fffffff;
+#endif
     info.port = 0;
     info.iface = NULL;
     info.protocols = protocols;
