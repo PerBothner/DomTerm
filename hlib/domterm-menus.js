@@ -126,15 +126,19 @@ DomTerm.createMenus = function(options) {
     newTerminalMenu.append(newTabItem);
     newTerminalMenu.append(newPaneItem);
     newTerminalMenu.append(menuItem({label: 'New terminal above',
+                                     accelerator: 'Ctrl+Shift+A Ctrl+Up',
                                      click: function() {
                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, false); }}));
     newTerminalMenu.append(menuItem({label: 'New terminal below',
+                                     accelerator: 'Ctrl+Shift+A Ctrl+Down',
                                      click: function() {
                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, true); }}));
     newTerminalMenu.append(menuItem({label: 'New terminal left',
+                                     accelerator: 'Ctrl+Shift+A Ctrl+Left',
                                      click: function() {
                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, false); }}));
     newTerminalMenu.append(menuItem({label: 'New terminal right',
+                                     accelerator: 'Ctrl+Shift+A Ctrl+Right',
                                      click: function() {
                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, true); }}));
     const newTerminalMenuItem = menuItem({label: 'New Terminal',
