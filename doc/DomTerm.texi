@@ -2470,6 +2470,42 @@ and are equivalent to readline's @code{"\001"} and @code{"\002"}.
 They are used to indicate escape sequences that don't move the cursor,
 which is needed for readline to calculate the column position.)
 
+@anchor{zsh-shell-prompt}
+@subheading Setting the Zsh shell prompt
+
+For zsh, the syntax is slightly different from bash,
+but it's the same basic idea.
+Putting the following into you @code{~/.zshrc} works:
+
+@example
+if [ "$PS1" != "" ]
+then
+  if [ -n "$DOMTERM" ]
+  then
+     ZSHPID=`sh -c 'echo $PPID'`
+     PS1=$'%@{\e]119;zsh'$ZSHPID$'\a\e[14u\e[16u%@}▼%@{\e[17u%@}'$PS1$'%@{\e[15u\e]75;> \a%@}'
+  fi
+fi
+@end example
+
+@anchor{fish-shell-prompt}
+@subheading Setting the Fish Shell (fish) prompt
+
+For @code{fish} (the Fish Shell) put the following
+in your @code{~/.config/fish/functions/fish_prompt.fish}:
+@example
+function fish_prompt --description 'Write out the prompt'
+  # generic prompt used for non-DomTerm terminals and as base for DomTerm
+  set -l suffix '$ '
+  set -l prompt (prompt_pwd)"$suffix"
+
+  if test -n "$DOMTERM"
+    set prompt '\e]119;fish\a\e[14u\e[16u▼\e[17u'$prompt'\e[15u\e]75;> \a'
+  end
+  echo -nes "$prompt"
+end
+@end example
+
 @anchor{tracking-cwd}
 @subheading Tracking current working directory
 
@@ -3116,7 +3152,7 @@ the @code{<span>} to be empty.
 
 The ``associated output'' for a hide/show button
 is the set of sibling elements following the button,
-as well as sibling elemets of the button's parent
+as well as sibling elements of the button's parent
 (assuming that parent is a @code{<pre>} or @code{<p>} element).
 Only elements that have the @code{domterm-hidden} attribute are affected.
 Hiding is done by changing the value the @code{domterm-hidden} from
