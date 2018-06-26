@@ -304,7 +304,7 @@ void put_to_env_array(char **arr, int max, char* eval)
 }
 
 struct pty_client *
-run_command(char*const*argv, const char*cwd, char **env)
+run_command(const char *cmd, char*const*argv, const char*cwd, char **env)
 {
     struct lws *outwsi;
     int pty;
@@ -388,7 +388,7 @@ run_command(char*const*argv, const char*cwd, char **env)
                 put_to_env_array(nenv, env_max, buf);
             }
 #endif
-            if (execvpe(argv[0], argv, nenv) < 0) {
+            if (execve(cmd, argv, nenv) < 0) {
                 perror("execvp");
                 exit(1);
             }
@@ -717,7 +717,12 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->initialized = false;
         client->version_info = version_info;
         if (pclient == NULL) {
-          pclient = run_command(default_command(main_options), ".", environ);
+            char** argv = default_command(main_options);
+            char *cmd = find_in_path(argv[0]);
+            if (cmd != NULL) {
+                pclient = run_command(cmd, argv, ".", environ);
+                free(cmd);
+            }
         }
         if (client->pclient == NULL) // FIXME merge with previous?
             link_command(wsi, client, pclient);
@@ -1274,7 +1279,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
     char**args = argc == skip ? default_command(opts)
       : (char**)(argv+skip);
     char *argv0 = args[0];
-    char *cmd = index(argv0, '/') ? argv0 : find_in_path(argv0);
+    char *cmd = find_in_path(argv0);
     struct stat sbuf;
     if (cmd == NULL || access(cmd, X_OK) != 0
         || lstat(cmd, &sbuf) != 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
@@ -1283,7 +1288,8 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
           fclose(out);
           return EXIT_FAILURE;
     }
-    struct pty_client *pclient = run_command(args, cwd, env);
+    struct pty_client *pclient = run_command(cmd, args, cwd, env);
+    free(cmd);
     if (opts->session_name) {
         pclient->session_name = strdup(opts->session_name);
         opts->session_name = NULL;

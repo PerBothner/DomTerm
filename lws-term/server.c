@@ -333,7 +333,7 @@ get_bin_relative_path(const char* app_path)
 char *
 find_in_path(const char *name)
 {
-    if (name[0] == '/' && access(name, X_OK) == 0)
+    if (index(name, '/') && access(name, X_OK) == 0)
         return strdup(name);
     // FIXME: if (strchr(name, '/') prepend working directory
     char *path = getenv("PATH");
