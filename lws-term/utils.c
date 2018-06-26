@@ -456,6 +456,7 @@ extract_command_from_list(const char *list, const char **startp,
 char *
 getenv_from_array(char* key, char**envarray)
 {
+    extern char **environ;  // Needed on MacOS.
     char **p = envarray ? envarray : environ;
     int keylen = strlen(key);
     for (; *p; p++) {
