@@ -494,6 +494,9 @@ check_template(const char *template, json_object *obj)
                 && strncmp(filename+2, localhost_localdomain, fhlen) == 0)
                 filename = filename + 2 + fhlen;
             else {
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 128
+#endif
                 char hbuf[HOST_NAME_MAX+1];
                 int r = gethostname(hbuf, sizeof(hbuf));
                 if (r != 0)
@@ -1433,8 +1436,11 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             //fprintf(stderr, "callback_cmd RAW_RX reason:%d socket:%d getpid:%d\n", (int) reason, socket, getpid());
             struct sockaddr sa;
             socklen_t slen = sizeof sa;
-            //int sockfd = accept(socket, &sa, &slen);
+#ifdef SOCK_CLOEXEC
             int sockfd = accept4(socket, &sa, &slen, SOCK_CLOEXEC);
+#else
+            int sockfd = accept(socket, &sa, &slen);
+#endif
             size_t jblen = 512;
             char *jbuf = xmalloc(jblen);
             int jpos = 0;
