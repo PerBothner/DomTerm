@@ -2,18 +2,21 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
+#if HAVE_INOTIFY
 #include <sys/inotify.h>
+#endif
 #include <sys/mman.h>
 #ifndef NAME_MAX
 #define NAME_MAX 1024
 #endif
 
-static int inotify_fd;
 static char*settings_fname = NULL;
 static struct json_object *settings_json_object = NULL;
 const char *settings_as_json;
 int64_t settings_counter = 0;
 
+#if HAVE_INOTIFY
+static int inotify_fd;
 int
 callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len) {
@@ -32,6 +35,7 @@ callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
 
     return 0;
 }
+#endif
 
 void
 read_settings_file(struct options *options)
@@ -195,9 +199,11 @@ read_settings_file(struct options *options)
 void
 watch_settings_file()
 {
+#if HAVE_INOTIFY
     inotify_fd = inotify_init();
     inotify_add_watch(inotify_fd, settings_fname, IN_MODIFY);
     lws_sock_file_fd_type ifd;
     ifd.filefd = inotify_fd;
     lws_adopt_descriptor_vhost(vhost, 0, ifd, "inotify", NULL);
+#endif
 }

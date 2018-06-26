@@ -153,8 +153,10 @@ static const struct lws_protocols protocols[] = {
         /* Unix domain socket for client to send to commands to server */
         {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
 
+#if HAVE_INOTIFY
         /* calling back for "inotify" to watch settings.ini */
         {"inotify",    callback_inotify,  0,  0},
+#endif
 
         {NULL,        NULL,          0,                          0}
 };
