@@ -548,6 +548,14 @@ var Menu = function () {
 					item.submenu.popdown();
 				}
 			});
+			if (this.node.parentNode) {
+				if (menuNode === this.node) return;
+				this.node.parentNode.replaceChild(menuNode, this.node);
+			} else {
+				var _el = Menu.contextMenuParent || document.body;
+				_el.appendChild(this.node);
+			}
+
 			var width = menuNode.clientWidth;
 			var height = menuNode.clientHeight;
 
@@ -555,7 +563,7 @@ var Menu = function () {
 				setRight = true;
 				if (submenu) {
 					var node = this.parentMenuItem.node;
-					x = node.offsetWidth + (window.innerWidth - node.offsetLeft - node.offsetWidth) - 2;
+					x = window.innerWidth - node.parentNode.offsetLeft + 2;
 				} else {
 					x = 0;
 				}
@@ -575,14 +583,6 @@ var Menu = function () {
 
 			menuNode.style.top = y + 'px';
 			menuNode.classList.add('show');
-
-			if (this.node.parentNode) {
-				if (menuNode === this.node) return;
-				this.node.parentNode.replaceChild(menuNode, this.node);
-			} else {
-				var _el = Menu.contextMenuParent || document.body;
-				_el.appendChild(this.node);
-			}
 		}
 	}, {
 		key: 'popdown',
