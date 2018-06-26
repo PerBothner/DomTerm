@@ -589,7 +589,7 @@ browser_run_browser(struct options *options, char *url,
 int
 do_run_browser(struct options *options, char *url, int port)
 {
-    const char *browser_specifier;
+    char *browser_specifier;
     if (options != NULL && options->browser_command != NULL) {
         browser_specifier = options->browser_command;
         opts.browser_command = browser_specifier;
@@ -1428,7 +1428,7 @@ make_html_file(int port)
             "<meta http-equiv='Content-Type' content='text/html;"
             " charset=UTF-8'>\n"
             "<title>DomTerm</title>\n",
-            base);
+            base, port);
     const char **p;
     for (p = standard_stylesheets; *p; p++) {
         fprintf(hfile,
@@ -1493,6 +1493,9 @@ create_command_socket(const char *socket_path)
     strcpy(sa.sun_path, socket_path);
     unlink(sa.sun_path);
 
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif
     if ((fd = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0)) == -1)
         return (-1);
 
