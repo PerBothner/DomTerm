@@ -2482,7 +2482,7 @@ if [ "$PS1" != "" ]
 then
   if [ -n "$DOMTERM" ]
   then
-     ZSHPID=`sh -c 'echo $PPID'`
+     ZSHPID=$$
      PS1=$'%@{\e]119;zsh'$ZSHPID$'\a\e[14u\e[16u%@}▼%@{\e[17u%@}'$PS1$'%@{\e[15u\e]75;> \a%@}'
   fi
 fi
@@ -2494,13 +2494,14 @@ fi
 For @code{fish} (the Fish Shell) put the following
 in your @code{~/.config/fish/functions/fish_prompt.fish}:
 @example
+set FISHPID %self
 function fish_prompt --description 'Write out the prompt'
   # generic prompt used for non-DomTerm terminals and as base for DomTerm
   set -l suffix '$ '
   set -l prompt (prompt_pwd)"$suffix"
 
   if test -n "$DOMTERM"
-    set prompt '\e]119;fish\a\e[14u\e[16u▼\e[17u'$prompt'\e[15u\e]75;> \a'
+    set prompt '\e]119;fish'$FISHPID'\a\e[14u\e[16u▼\e[17u'$prompt'\e[15u\e]75;> \a'
   end
   echo -nes "$prompt"
 end
