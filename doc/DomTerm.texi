@@ -428,7 +428,7 @@ ln -s /mnt/c/User/@var{wuser}/electron-@var{version}/electron.exe electron
 
 If building from the @code{git} respository, first do:
 @example
-autoreconf
+autoreconf -i
 @end example
 This runs the GNU autotools (@code{aclocal}, @code{autoconf},
 and @code{automake}).
