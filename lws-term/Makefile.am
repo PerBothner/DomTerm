@@ -6,7 +6,7 @@ all-am: ldomterm$(EXEEXT) ../bin/domterm$(EXEEXT)
 # (This is to make execute-in-place and execute-after-install be similar.)
 LN_H = ln
 ../bin/domterm$(EXEEXT): ldomterm$(EXEEXT)
-	cd .. && $(MKDIR_P) bin
+	$(MKDIR_P) ../bin
 	@rm -f ../bin/domterm$(EXEEXT)
 	cd ../bin && $(LN_H) ../lws-term/ldomterm$(EXEEXT) domterm$(EXEEXT)
 
