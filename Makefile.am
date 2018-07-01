@@ -402,3 +402,12 @@ share/domterm/help/%.html: doc/help/%.adoc share/domterm/help
 share/man/man1/%.1: doc/help/%.adoc
 	$(MKDIR_P) doc/man/man1
 	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) $< -o $@
+
+# helper rule for updating hlib/wcwidth.js
+# (Does not handle combining adjacent ranges - do that manually.)
+EAST_ASIAN_WIDTH_TXT = /tmp/EastAsianWidth.txt
+wcwidth-list.txt: $(EAST_ASIAN_WIDTH_TXT)
+	sed -n \
+	  -e 's/^\([0-9A-F][0-9A-F]*\);[FW].*$$/    0x\1, 0x\1,/p' \
+	  -e 's/^\([0-9A-F][0-9A-F]*\)..\([0-9A-F][0-9A-F]*\);[FW].*$$/    0x\1, 0x\2,/p' \
+	   $(EAST_ASIAN_WIDTH_TXT) | tr A-Z a-z > wcwidth-list.txt
