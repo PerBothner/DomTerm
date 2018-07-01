@@ -6900,11 +6900,13 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             if (indent instanceof Element) {
                 indent = indent.cloneNode(false);
                 el.insertBefore(indent, insertPosition);
-		if (countColumns)
-                    curPosition +=
-                        dt.strWidthInContext(el.textContent, el) * dt.charWidth;
-                else
-                    curPosition = el.offsetLeft + el.offsetWidth;
+                if (countColumns) {
+                    let t = indent.getAttribute("value");
+                    if (! t)
+                        t = el.textContent;
+                    curPosition += dt.strWidthInContext(t, el) * dt.charWidth;
+                } else
+                    curPosition += indent.offsetWidth;
                 goalPosition = curPosition;
             }
             else

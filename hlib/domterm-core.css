@@ -64,3 +64,4 @@ span[line][breaking="yes"] > span.pprint-pre-break :after { content: "\A" }
 span[line] > span.pprint-pre-break { display: none }
 span[line][breaking="yes"] > span.pprint-post-break { display: inline }
 span[line] > span.pprint-post-break { display: none }
+span.pprint-indentation[value]:before { content: attr(value); }
