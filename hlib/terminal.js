@@ -6994,10 +6994,11 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 skipChildren = true;
             } else if (el.nodeName == "SPAN"
                        && (lineAttr = el.getAttribute("line")) != null) {
-                skipChildren = true;
                 if ((lineAttr == "hard" || lineAttr == "soft")
-                    && el.outerPprintGroup == null)
+                    && el.outerPprintGroup == null) {
+                    skipChildren = true;
                     break;
+                }
                 if (lineAttr == "linear") {
                     var group = el.outerPprintGroup;
                     var sectionEnd = group ? group.sectionEnd : null;
