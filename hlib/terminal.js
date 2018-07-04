@@ -4654,6 +4654,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             var hider = this._createSpanNode();
             hider.setAttribute("std", "hider");
             this._pushIntoElement(hider);
+            hider.parentNode.hasHider = true;
             this._currentCommandHideable = true;
             break;
         case 17:
@@ -5773,6 +5774,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         }
         this._pushIntoElement(ppgroup);
         this._pushPprintGroup(ppgroup);
+        if (ppgroup.parentNode.hasHider)
+            ppgroup.setAttribute("domterm-hidden", "false");
         break;
     case 111: // end prettyprinting-group
         if (this._currentPprintGroup != null) {
@@ -5847,6 +5850,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             }
         }
         this.insertNode(line);
+        if (line.parentNode.hasHider)
+            line.setAttribute("domterm-hidden", "false");
         if (this._needSectionEndList) {
             var absLine = this.getAbsCursorLine();
             while (this.lineStarts[absLine].nodeName=="SPAN")
