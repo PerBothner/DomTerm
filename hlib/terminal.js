@@ -5815,31 +5815,36 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         var kind = code == 115 ? "fill"
             : code == 116 ? "linear"
             : code == 117 ? "miser" : "required";
+        let lineStart = this.lineStarts[this.getAbsCursorLine()];
+        if (lineStart._widthMode < DomTerm._WIDTH_MODE_TAB_SEEN)
+            lineStart._widthMode = DomTerm._WIDTH_MODE_TAB_SEEN;
         var line = this._createLineNode(kind);
         text = text.trim();
         if (text.length > 0) {
             try {
                 var strings = JSON.parse("["+text+"]");
+                let nobreakStr = strings[2];
                 if (strings[0]) {
                     line.setAttribute("pre-break", strings[0]);
                 }
                 if (strings[1]) {
                     line.setAttribute("post-break", strings[1]);
                 }
-                if (strings[2]) {
+                if (nobreakStr) {
                     var nonbreak = this._createSpanNode();
                     nonbreak.setAttribute("class", "pprint-non-break");
-                    nonbreak.appendChild(document.createTextNode(strings[2]));
+                    nonbreak.appendChild(document.createTextNode(nobreakStr));
                     line.appendChild(nonbreak);
+                    let w = this.strWidthInContext(nobreakStr,
+                                                    this.outputContainer);
+                    if (lineStart._widthColumns !== undefined)
+                        lineStart._widthColumns += w;
+                    if (this.currentCursorColumn >= 0)
+                        this.currentCursorColumn += w;
                 }
             } catch (e) {
                 this.log("bad line-break specifier '"+text+"' - caught "+e);
             }
-        }
-        {
-            let lineStart = this.lineStarts[this.getAbsCursorLine()];
-            if (lineStart._widthMode < DomTerm._WIDTH_MODE_TAB_SEEN)
-	        lineStart._widthMode = DomTerm._WIDTH_MODE_TAB_SEEN;
         }
         this.insertNode(line);
         if (this._needSectionEndList) {
