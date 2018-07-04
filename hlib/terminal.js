@@ -6883,6 +6883,8 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             || insertPosition.nodeName != "SPAN"
             || ! insertPosition.classList.contains("pprint-post-break"))
             insertPosition = null;
+        let previousIdentElement = null;
+        let previousStartPosition = 0;
         for (var i = 0; ;  ) {
             var indent = i == n ? null : indentation[i++];
             if ((indent == null || indent instanceof Element)
@@ -6898,19 +6900,32 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             if (indent == null)
                 break;
             if (indent instanceof Element) {
-                indent = indent.cloneNode(false);
-                el.insertBefore(indent, insertPosition);
-                if (countColumns) {
-                    let t = indent.getAttribute("value");
-                    if (! t)
+                let t = indent.getAttribute("value");
+                let tprev;
+                if (previousIdentElement && t
+                    && (tprev = previousIdentElement.getAttribute("value"))) {
+                    t = tprev + t;
+                    previousIdentElement.setAttribute("value", t);
+                    indent = previousIdentElement;
+                } else {
+                    previousStartPosition = curPosition;
+                    indent = indent.cloneNode(false);
+                    previousIdentElement = indent;
+                    el.insertBefore(indent, insertPosition);
+                    if (! t && countColumns)
                         t = el.textContent;
-                    curPosition += dt.strWidthInContext(t, el) * dt.charWidth;
-                } else
-                    curPosition += indent.offsetWidth;
+                }
+                let w = countColumns
+                    ? dt.strWidthInContext(t, el) * dt.charWidth
+                    : indent.offsetWidth;
+                curPosition = previousStartPosition + w;
                 goalPosition = curPosition;
             }
-            else
+            else {
+                if (indent >= curPosition + 0.5)
+                    previousIdentElement = null;
                 goalPosition = indent;
+            }
         }
         if (el.getAttribute("line") != "soft"
             && el.getAttribute("pre-break") == null
