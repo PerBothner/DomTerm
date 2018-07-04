@@ -3925,7 +3925,7 @@ DomTerm.prototype.deleteCharactersRight = function(count) {
         : this.outputContainer.firstChild;
     if (count < 0)
 	this.lineStarts[lineNo]._widthColumns = colNo;
-    else if (this.lineStarts[lineNo] !== undefined)
+    else if (this.lineStarts[lineNo]._widthColumns !== undefined)
 	this.lineStarts[lineNo]._widthColumns -= count - todo;
     return todo <= 0;
 };
