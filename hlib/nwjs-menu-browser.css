@@ -33,7 +33,7 @@ div.below-menubar { flex: 1 1 0; min-height: 0;}
 	z-index: 2147483647;
 }
 
-.contextmenu.show {
+.contextmenu {
 	opacity: 1;
 	transition: opacity 30ms;
 	pointer-events: all;
@@ -43,7 +43,7 @@ div.below-menubar { flex: 1 1 0; min-height: 0;}
     transition: opacity 250ms;
 }
 
-.contextmenu.submenu.show {
+.contextmenu.submenu {
 	transition: opacity 150ms;
 	transition-timing-function: step-end;
 }
@@ -63,8 +63,7 @@ div.below-menubar { flex: 1 1 0; min-height: 0;}
 	width: 100%;
 }
 
-.contextmenu .menu-item.normal:hover,
-.contextmenu .menu-item.checkbox:hover,
+.contextmenu .menu-item.active,
 .menu-item.normal.submenu-active {
 	background-color: #499BFE;
 	color: #fff;
@@ -179,7 +178,7 @@ li.menu-item.separator {
     padding: 0 9px;
 }
 
-.contextmenu.menubar-submenu.show {
+.contextmenu.menubar-submenu {
     transition: opacity 0ms;
 }
 

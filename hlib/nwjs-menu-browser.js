@@ -252,22 +252,64 @@ var MenuItem = function () {
 	}, {
 		key: '_mouseoverHandle_menubarTop',
 		value: function _mouseoverHandle_menubarTop() {
-			if (this.parentMenu.hasActiveSubmenu) {
+			var pmenu = this.parentMenu.node;
+			if (pmenu.activeItemNode) {
+				pmenu.activeItemNode.classList.remove('active');
+				pmenu.activeItemNode = null;
+			}
+			if (pmenu && pmenu.querySelector('.submenu-active')) {
 				if (this.node.classList.contains('submenu-active')) return;
 
 				this.parentMenu.clearActiveSubmenuStyling(this.node);
 				this.node.classList.add('submenu-active');
-
-				if (this.parentMenu.currentSubmenu) {
-					this.parentMenu.currentSubmenu.popdown();
-					this.parentMenu.currentSubmenu = null;
-				}
-
-				if (this.submenu) {
-					this.submenu.popup(this.node.offsetLeft, this.node.clientHeight, true, true);
-					this.parentMenu.currentSubmenu = this.submenu;
-				}
+				this.select(this.node, true, true, true);
 			}
+		}
+	}, {
+		key: 'doit',
+		value: function doit() {
+			if (!this.submenu) {
+				this.parentMenu.popdownAll();
+				if (this.type === 'checkbox') this.checked = !this.checked;
+				if (this.click) this.click(this);
+			}
+		}
+	}, {
+		key: 'select',
+		value: function select(node, turnOn, popupSubmenu) {
+			var menubarSubmenu = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+
+			var pmenu = this.parentMenu.node;
+			if (pmenu.activeItemNode) {
+				pmenu.activeItemNode.classList.remove('active');
+				pmenu.activeItemNode = null;
+			}
+			if (pmenu.currentSubmenu) {
+				pmenu.currentSubmenu.popdown();
+				pmenu.currentSubmenu.parentMenuItem.node.classList.remove('submenu-active');
+				pmenu.currentSubmenu = null;
+			}
+			if (this.submenu && popupSubmenu) this.selectSubmenu(node, menubarSubmenu);else node.classList.add('active');
+			this.parentMenu.node.activeItemNode = this.node;
+		}
+	}, {
+		key: 'selectSubmenu',
+		value: function selectSubmenu(node, menubarSubmenu) {
+			this.parentMenu.node.currentSubmenu = this.submenu;
+			if (this.submenu.node) return;
+
+			var parentNode = node.parentNode;
+			var x = void 0,
+			    y = void 0;
+			if (menubarSubmenu) {
+				x = node.offsetLeft;
+				y = node.clientHeight;
+			} else {
+				x = parentNode.offsetWidth + parentNode.offsetLeft - 2;
+				y = parentNode.offsetTop + node.offsetTop - 4;
+			}
+			this.popupSubmenu(x, y, menubarSubmenu);
+			node.classList.add('submenu-active');
 		}
 	}, {
 		key: 'buildItem',
@@ -317,11 +359,10 @@ var MenuItem = function () {
 			if (this.submenu && !menuBarTopLevel) {
 				text = '▶︎';
 
-				node.addEventListener('mouseout', function (e) {
+				node.addEventListener('mouseleave', function (e) {
 					if (node !== e.target) {
 						if (!__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__is_decendant__["a" /* default */])(node, e.target)) _this2.submenu.popdown();
 					}
-					node.classList.add('submenu-active');
 				});
 			}
 
@@ -354,25 +395,7 @@ var MenuItem = function () {
 
 			if (!menuBarTopLevel) {
 				node.addEventListener('mouseenter', function () {
-					if (_this2.parentMenu.currentSubmenu) {
-						_this2.parentMenu.currentSubmenu.popdown();
-						_this2.parentMenu.currentSubmenu.parentMenuItem.node.classList.remove('submenu-active');
-						_this2.parentMenu.currentSubmenu = null;
-					}
-					if (_this2.submenu) {
-						_this2.parentMenu.currentSubmenu = _this2.submenu;
-						if (_this2.submenu.node) {
-							if (_this2.submenu.node.classList.contains('show')) {
-								return;
-							}
-						}
-
-						var parentNode = node.parentNode;
-
-						var x = parentNode.offsetWidth + parentNode.offsetLeft - 2;
-						var y = parentNode.offsetTop + node.offsetTop - 4;
-						_this2.submenu.popup(x, y, true, menuBarTopLevel);
-					}
+					_this2.select(node, true, true);
 				});
 			}
 
@@ -393,6 +416,15 @@ var MenuItem = function () {
 			node.title = this.tooltip;
 			this.node = node;
 			return node;
+		}
+	}, {
+		key: 'popupSubmenu',
+		value: function popupSubmenu(x, y) {
+			var menubarSubmenu = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+			this.submenu.popup(x, y, true, menubarSubmenu);
+			this.submenu.node.menuItem = this.node;
+			this.parentMenu.node.currentSubmenu = this.submenu;
 		}
 	}]);
 
@@ -491,7 +523,6 @@ var Menu = function () {
 		};
 
 		this.node = null;
-		this.currentSubmenu = null;
 		this.parentMenuItem = null;
 
 		function isValidType() {
@@ -541,13 +572,8 @@ var Menu = function () {
 				menuNode.jsMenu = this;
 				this.node = menuNode;
 			}
+			Menu._currentMenuNode = menuNode;
 
-			this.items.forEach(function (item) {
-				if (item.submenu) {
-					item.node.classList.remove('submenu-active');
-					item.submenu.popdown();
-				}
-			});
 			if (this.node.parentNode) {
 				if (menuNode === this.node) return;
 				this.node.parentNode.replaceChild(menuNode, this.node);
@@ -587,7 +613,16 @@ var Menu = function () {
 	}, {
 		key: 'popdown',
 		value: function popdown() {
+			this.items.forEach(function (item) {
+				if (item.submenu) {
+					item.submenu.popdown();
+				} else {
+					item.node = null;
+				}
+			});
 			if (this.node && this.type !== 'menubar') {
+				Menu._currentMenuNode = this.node.parentMenuNode;
+				if (this.menubarSubmenu) this.node.menuItem.classList.remove('submenu-active');
 				this.node.parentNode.removeChild(this.node);
 				this.node = null;
 			}
@@ -604,14 +639,6 @@ var Menu = function () {
 			if (this.type === 'menubar') {
 				this.clearActiveSubmenuStyling();
 			}
-
-			this.items.forEach(function (item) {
-				if (item.submenu) {
-					item.submenu.popdown();
-				} else {
-					item.node = null;
-				}
-			});
 		}
 	}, {
 		key: 'popdownAll',
@@ -632,6 +659,7 @@ var Menu = function () {
 			if (menubarSubmenu) menuNode.classList.add('menubar-submenu');
 
 			menuNode.jsMenu = this;
+			menuNode.parentMenuNode = Menu._currentMenuNode;
 			this.items.forEach(function (item) {
 				item.parentMenu = _this2;
 				if (item.visible) {
@@ -698,15 +726,6 @@ var Menu = function () {
 			}
 		}
 	}, {
-		key: 'hasActiveSubmenu',
-		get: function get() {
-			if (this.node && this.node.querySelector('.submenu-active')) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-	}, {
 		key: 'topmostMenu',
 		get: function get() {
 			var menu = this;
@@ -755,21 +774,20 @@ var Menu = function () {
 				var item = miNode.jsMenuItem;
 				if (e.type == "mousedown") {
 					item.node.classList.toggle('submenu-active');
+					// FIXME use select method
 					if (item.submenu) {
 						if (item.node.classList.contains('submenu-active')) {
-							item.submenu.popup(item.node.offsetLeft, item.node.clientHeight, true, true);
-							item.parentMenu.currentSubmenu = item.submenu;
+							item.parentMenu.node.activeItemNode = item.node;
+							item.popupSubmenu(item.node.offsetLeft, item.node.clientHeight, true);
 						} else {
 							item.submenu.popdown();
-							item.parentMenu.currentSubmenu = null;
+							item.parentMenu.node.currentSubmenu = null;
+							item.parentMenu.node.activeItemNode = null;
 						}
 					}
 				}
-				if (e.type == "mouseup" && !item.submenu) {
-					item.parentMenu.popdownAll();
-					if (item.type === 'checkbox') item.checked = !item.checked;
-
-					if (item.click) item.click(item);
+				if (e.type == "mouseup") {
+					item.doit();
 				}
 			}
 		}
@@ -807,22 +825,71 @@ var Menu = function () {
 
 Menu.contextMenuParent = null;
 
-/* FUTURE
-Menu._keydownListener = function(e) {
-    console.log("menu.key-down "+e.key);
-}
+Menu._currentMenuNode = null;
+
+Menu._keydownListener = function (e) {
+	function nextItem(menuNode, curNode, forwards) {
+		var nullSeen = false;
+		var next = curNode;
+		for (;;) {
+			next = !next ? null : forwards ? next.nextSibling : next.previousSibling;
+			if (!next) {
+				next = forwards ? menuNode.firstChild : menuNode.lastChild;
+				if (nullSeen || !next) return null;
+				nullSeen = true;
+			}
+			if (next instanceof Element && next.classList.contains("menu-item") && !next.classList.contains("disabled")) return next;
+		}
+	}
+	function nextMenu(forwards) {
+		var menubarNode = nwjsMenuBrowser.Menu._topmostMenu.parentMenu.node;
+		var next = nextItem(menubarNode, menubarNode.activeItemNode, forwards);
+		if (next) next.jsMenuItem.select(next, true, true, true);
+		return next;
+	}
+	var menuNode = Menu._currentMenuNode;
+	if (menuNode) {
+		var active = menuNode.activeItemNode;
+		switch (e.keyCode) {
+			case 27: // Escape
+			case 37:
+				// Left
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.keyCode == 37 && menuNode.jsMenu.menubarSubmenu && nextMenu(false)) return;
+				menuNode.jsMenu.popdown();
+				break;
+			case 13:
+				// Enter
+				e.preventDefault();
+				e.stopPropagation();
+				if (active) active.jsMenuItem.doit();
+				break;
+			case 39:
+				// Right
+				e.preventDefault();
+				e.stopPropagation();
+				if (active && active.jsMenuItem.submenu) active.jsMenuItem.selectSubmenu(active);else if (Menu._topmostMenu.menubarSubmenu) nextMenu(true);
+				break;
+			case 38: // Up
+			case 40:
+				// Down
+				e.preventDefault();
+				e.stopPropagation();
+				var next = nextItem(menuNode, menuNode.activeItemNode, e.keyCode == 40);
+				if (next) next.jsMenuItem.select(next, true, false);
+				break;
+		}
+	}
+};
 Menu._keydownListening = false;
-Menu._keydownListen = function(value) {
-    if (value != Menu._keydownListening) {
-        if (value)
-            document.addEventListener('keydown', Menu._keydownListener, false);
-        else
-            document.removeEventListener('keydown', Menu._keydownListener, false);
-    }
-    Menu._keydownListening = value;
-}
+Menu._keydownListen = function (value) {
+	if (value != Menu._keydownListening) {
+		if (value) document.addEventListener('keydown', Menu._keydownListener, true);else document.removeEventListener('keydown', Menu._keydownListener, true);
+	}
+	Menu._keydownListening = value;
+};
 Menu._keydownListen(true);
-*/
 
 /* harmony default export */ __webpack_exports__["a"] = (Menu);
 // Local Variables:
