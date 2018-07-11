@@ -117,6 +117,7 @@ subst_run_command(struct options *opts, const char *browser_command,
     }
     pid_t pid = fork();
     if (pid == 0) {
+        putenv("ELECTRON_DISABLE_SECURITY_WARNINGS=true");
         daemon(1, 0);
         execv(arg0, args);
         exit(-1);
