@@ -685,8 +685,6 @@ started using the @code{--app=} option,
 so you get a fresh chrome-less window (with no menubar or toolbar).
 
 This works well and the performance is good.
-This method provides no menubar or context-menu customization so far,
-though that is planned.
 
 @item @code{--qt}
 @itemx @code{--qtdomterm}
@@ -2732,27 +2730,6 @@ can be moved between windows.
 
 Implement ``drop-down'' mode.
 
-@subsubheading Implement our own menus
-
-We should implement our own context-menu and optionally a menubar
-using some portable JavaScript library.
-Currently, menus are implemented when embedded in Electron, Qt, or Atom,
-but not for other embeddings or when using a desktop browser.
-
-If we implement our menubar and context menu and they look reasonably nice,
-then there is little need to use Electron or Qt:
-Using Chrome with the @code{--app} flag should be just as nice,
-and presumably use less memory.
-@uref{https://github.com/zserge/webview/,Webview} is another (zippier) option.
-
-Most promising is PhosphorJS
-(has other useful features, but uses TypeScript, and is a bit heavy).
-Other options:
-@uref{https://github.com/s-yadav/contextMenu.js,contextMenu.js}
-(not actively maintained, doesn't have all we need,
-but has the basics and can be enhanced);
-@uref{https://jqueryui.com/menu/,JQuery UI Menu}.
-
 @subheading Support other embeddable browsers
 
 Some toolkits to explore for integrated browser/application:
@@ -2772,8 +2749,6 @@ A possible start is @uref{https://atom.io/packages/term2,term2}.
 @uref{https://github.com/zserge/webview/,webview} uses
 Cocoa/WebKit on macOS, gtk-webkit2 on Linux and MSHTML (IE10/11) on Windows.
 It appears to work, and to be slightly zippier.
-Menus would have to be added using JavaScript
-(perhaps using @uref{https://phosphorjs.github.io/,PhosphorJS}).
 @end itemize
 
 In @code{qtdomterm} consider using @code{QDockWidget} so panes
