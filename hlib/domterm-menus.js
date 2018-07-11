@@ -1,3 +1,6 @@
+//var { Menu, MenuItem} = require("./mwjs-menu-browser.js");
+//import { Menu, MenuItem} from "./mwjs-menu-browser.js";
+
 DomTerm.savedMenuBar = null;
 
 DomTerm.aboutMessage = function() {
@@ -39,6 +42,9 @@ DomTerm.createMenus = function(options) {
     let popup = options.popup;
     let Menu = options.Menu;
 
+    function showMenubar(show) {
+        Menu.setApplicationMenu(show ? DomTerm.savedMenuBar : null);
+    }
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
           menuItem({label: 'Copy', accelerator: 'CommandOrControl+Shift+C',
@@ -56,7 +62,7 @@ DomTerm.createMenus = function(options) {
                                       type: 'checkbox',
                                       click: function() {
                                           showingMenuBar = ! showingMenuBar;
-                                          options.showMenubar(showingMenuBar);
+                                          showMenubar(showingMenuBar);
                                       },
                                       checked: true});
     const autoPagingItem = menuItem({label: 'Automatic Pager',
@@ -295,11 +301,9 @@ DomTerm.createMenus = function(options) {
     menuBar.append(menuItem({label: 'Help', submenu: helpMenu}));
     if (platform=="electron") {
         menuBar = Menu.buildFromTemplate(menuBar.items);
-    } else {
-        window.menuBar = menuBar;
     }
     DomTerm.savedMenuBar = menuBar;
-    Menu.setApplicationMenu(showMenuBarItem ? DomTerm.savedMenuBar : null);
+    showMenubar(showMenuBarItem);
 
     DomTerm.showContextMenu = function(dt, e, contextType) {
         const mode = dt.getInputMode();
@@ -326,16 +330,11 @@ DomTerm.setContextMenu = function() {
                              popup: popup,
                              menuItem: menuItem,
                              Menu: Menu,
-                             requestOpenLink: remote.shell.openExternal,
-                             showMenubar: function(show) {
-                                 Menu.setApplicationMenu(show ? DomTerm.savedMenuBar : null);
-                             }
-});
-    } else if (! DomTerm.isAtom()
-               && ! DomTerm.usingQtWebEngine
-               && typeof nwjsMenuBrowser !== 'undefined') {
+                             requestOpenLink: remote.shell.openExternal
+                            });
+    } else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine) {
         function menuItem(options) {
-            return new nwjsMenuBrowser.MenuItem(options);
+            return new MenuItem(options);
         }
         function popup(cmenu, e) {
             if (! e.ctrlKey && ! e.shiftKey) {
@@ -343,21 +342,12 @@ DomTerm.setContextMenu = function() {
 	        cmenu.popup(e.clientX, e.clientY);
             }
         }
-        DomTerm.createMenus({platform: "nwjs",
+        DomTerm.createMenus({platform: "generic",
                              popup: popup,
                              menuItem: menuItem,
-                             Menu: nwjsMenuBrowser.Menu,
+                             Menu: Menu,
                              requestOpenLink: function(url) {
                                  DomTerm.requestOpenLink({href: url});
-                             },
-                             showMenubar: function(show) {
-                                 let m = document.getElementsByClassName('menubar');
-                                 if (m.length == 0)
-                                     return;
-                                 if (show)
-                                     m[0].removeAttribute('domterm-hidden');
-                                 else
-                                     m[0].setAttribute('domterm-hidden', 'true');
                              }
                             });
     }
