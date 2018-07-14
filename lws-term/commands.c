@@ -186,6 +186,12 @@ int imgcat_action(int argc, char** argv, const char*cwd,
             magic_load(magic, NULL);
             magic_compile(magic, NULL);
             mime = magic_buffer(magic, img, len);
+            if (mime && strcmp(mime, "text/plain") == 0) {
+                // This is mainly for svg.
+                const char *mime2 = get_mimetype(arg);
+                if (mime2)
+                    mime = mime2;
+            }
 #else
             mime = get_mimetype(arg);
 #endif
