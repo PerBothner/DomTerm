@@ -26,7 +26,7 @@ LWS_RESOURCES = hlib/domterm-all.js hlib/domterm-client.js \
   hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css \
   hlib/goldenlayout-base.css hlib/domterm-layout.css \
-  hlib/nwjs-menu-browser.js  hlib/nwjs-menu-browser.css hlib/screenfull.min.js \
+  hlib/jsMenus.js  hlib/jsMenus.css hlib/screenfull.min.js \
   hlib/qwebchannel.js
 if ENABLE_COMPILED_IN_RESOURCES
 nodist_ldomterm_SOURCES += resources.c

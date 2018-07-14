@@ -1389,7 +1389,7 @@ static const char * standard_stylesheets[] = {
     "hlib/domterm-core.css",
     "hlib/domterm-standard.css",
     "hlib/goldenlayout-base.css",
-    "hlib/nwjs-menu-browser.css",
+    "hlib/jsMenus.css",
     "hlib/domterm-layout.css",
     "hlib/domterm-default.css",
     NULL
@@ -1401,7 +1401,7 @@ static const char * standard_jslibs[] = {
     "hlib/domterm-layout.js",
     "hlib/domterm-menus.js",
     "hlib/qwebchannel.js",
-    "hlib/nwjs-menu-browser.js",
+    "hlib/jsMenus.js",
     "hlib/domterm-client.js",
     NULL
 };

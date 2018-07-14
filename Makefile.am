@@ -228,7 +228,7 @@ wsclasses.stamp: $(wsdomterm_jar_sources)
 	touch wsclasses.stamp
 
 MISC_COPY_TO_JAR = repl-client.html jfx-term.html \
-  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/screenfull.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/nwjs-menu-browser.css hlib/nwjs-menu-browser.js hlib/domterm-menus.js hlib/qwebchannel.js
+  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/screenfull.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/jsMenus.css hlib/jsMenus.js hlib/domterm-menus.js hlib/qwebchannel.js
 
 if WITH_JAVA
 PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
