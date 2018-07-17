@@ -3355,6 +3355,12 @@ the value 2 means the first line of a multi-line editing group (as @uref{https:/
 Delimit a @ref{Hide/show buttons,hide/show "button"}, with @code{"\e[16u"} before
 and @code{"\e[17u"} after.
 
+@item @code{"\e[83;"} @var{mode} @code{"u"}
+Delimit a span to be controlled by a show/hide button (previously printed).
+If @var{mode} is 1 or 2 it starts a span, while @var{mode} 0 ends the span.
+The span is initially visible if @var{mode} is 1, and
+is hidden if @var{mode} is 2.
+
 @item @code{"\e]119;"} @var{context-id} @code{"\a"}
 @itemx @code{"\e[19u"}  (deprecated)
 

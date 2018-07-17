@@ -4686,6 +4686,20 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 82:
             this._detachSaveNeeded = this.getParameter(1,1);
             break;
+        case 83: // push/pop domterm-hidden span
+            param = this.getParameter(1, 0);
+            if (param == 0) { // pop
+                if (this.outputBefore == null) {
+                    this.outputBefore = this.outputContainer.nextSibling;
+                    this.outputContainer = this.outputContainer.parentNode;
+                }
+            } else {
+                let span = this._createSpanNode();
+                span.setAttribute("domterm-hidden",
+                                  param == 1 ? "false" : "true");
+                this._pushIntoElement(span);
+            }
+            break;
         case 90:
             DomTerm.newPane(this.getParameter(1, 0),
                             this.getParameter(2, 0),
