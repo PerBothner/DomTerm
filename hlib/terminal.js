@@ -3201,6 +3201,7 @@ DomTerm.prototype._showHideHandler = function(event) {
             }
         }
     }
+    this.requestUpdateDisplay();
 };
 
 DomTerm.prototype.freshLine = function() {
