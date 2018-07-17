@@ -4654,6 +4654,8 @@ DomTerm.prototype.handleControlSequence = function(last) {
             var hider = this._createSpanNode();
             hider.setAttribute("std", "hider");
             this._pushIntoElement(hider);
+            hider.outerStyleSpan = this._currentStyleSpan;
+            this._currentStyle = hider;
             hider.parentNode.hasHider = true;
             this._currentCommandHideable = true;
             break;
@@ -4662,8 +4664,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
                                                   this._showHideEventHandler,
                                                   true);
             if (this.isSpanNode(this.outputContainer) // sanity check
-                && this.outputContainer.getAttribute("std") == "hider")
+                && this.outputContainer.getAttribute("std") == "hider") {
+                if (this.outputContainer == this._currentStyleSpan)
+                    this._currentStyleSpan = this.outputContainer.outerStyle;
                 this.popFromElement();
+            }
             break;
         case 19:
             this.freshLine();
