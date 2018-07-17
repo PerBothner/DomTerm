@@ -2436,9 +2436,11 @@ DomTerm.prototype._findHomeLine = function(bufNode) {
 DomTerm.prototype._computeHomeLine = function(home_node, home_offset,
                                              alternate) {
     var line = -1;
+    var home_line = -1;
     if (home_node) {
         for (var l = this.lineStarts.length; --l >= 0; ) {
             if (this.lineStarts[l] == home_node) {
+                home_line = l;
                 line = l + home_offset;
                 break;
             }
@@ -2448,7 +2450,8 @@ DomTerm.prototype._computeHomeLine = function(home_node, home_offset,
         line = alternate ? this.initial.saveLastLine : 0;
     }
     var minHome = this.lineStarts.length - this.numRows;
-    return minHome < line ? line : minHome;
+    return line <= minHome ? minHome
+        : line < this.lineStarts.length ? line : home_line;
 }
 
 DomTerm._checkStyleResize = function(dt) { dt.resizeHandler(); }
