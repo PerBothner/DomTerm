@@ -4020,10 +4020,10 @@ was written while I worked at Oracle, and is copyright Oracle.
 
 @uref{https://golden-layout.com/,GoldenLayout} provides tiling and tabs.
 
-The @uref{https://github.com/2xAA/nwjs-menu-browser, nwjs-menu-browser} library by Sam Wray
-is used to implement the menubar and context menu on ``generic'' platforms
-(i.e. not Electron, Atom, or Qt).
-DomTerm currently uses a @uref{https://github.com/PerBothner/nwjs-menu-browser,fork}.
+Menubar and context (popup) menus on ``generic'' platforms
+(i.e. not Electron, Atom, or Qt) are implemented using
+@uref{https://github.com/PerBothner/jsMenus,jsMenus}, which is
+based on Sam Wray's @uref{https://github.com/2xAA/nwjs-menu-browser, nwjs-menu-browser} library.
 
 The @uref{https://github.com/sindresorhus/screenfull.js/,screenfull.js} library
 by Sindre Sorhus is provides a browser-independent wrapper for entering and exiting Full Screen.
