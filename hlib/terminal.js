@@ -2468,6 +2468,7 @@ DomTerm.prototype.resizeHandler = function() {
     var home_offset = DomTerm._homeLineOffset(dt);
     var home_node = dt.lineStarts[dt.homeLine - home_offset];
     if (dt.availWidth != oldWidth && dt.availWidth > 0) {
+        dt._removeCaret();
         dt._breakAllLines();
         dt._restoreSaveLastLine();
         dt.resetCursorCache();
@@ -2849,13 +2850,6 @@ DomTerm.prototype._mouseHandler = function(ev) {
         DomTerm._contextTarget = ev.target;
         DomTerm._contextLink = DomTerm._isInElement(ev.target, "A");
     }
-    /* FUTURE POPUP
-    if (ev.ctrlKey && ev.button == 2) {
-        this.createContextMenu();
-        ev.preventDefault();
-        return;
-    }
-    */
     if (ev.type == "mouseup" && this.sstate.mouseMode == 0
         && this._currentlyPagingOrPaused()
         && this.topNode.scrollTop+this.availHeight >= this._vspacer.offsetTop)
