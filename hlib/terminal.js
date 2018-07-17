@@ -3146,6 +3146,7 @@ DomTerm.prototype.showHideMarkers = [
     "\u25B6", "\u25BC", // black right-pointing / down-pointing triangle
     "\u25B8", "\u25BE", // black right-pointing / down-pointing small triangle
     "\u25B7", "\u25BD", // white right-pointing / down-pointing triangle
+    "\u2295", "\u2296", // circled plus / circled minus
     "\u229E", "\u229F"  // squared plus / squared minus
 ];
 
