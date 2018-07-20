@@ -661,7 +661,10 @@ DomTerm.SEEN_ESC_SS2 = 14;
 DomTerm.SEEN_ESC_SS3 = 15;
 DomTerm.SEEN_SURROGATE_HIGH = 16;
 
-// values for _widthMode field of lineStarts
+// Possible values for _widthMode field of elements in lineStarts table.
+// This is related to the _widthColumns field in the same elements,
+// which (if not undefined) is the number of columns in the current
+// (displayed) line.
 DomTerm._WIDTH_MODE_NORMAL = 0;
 DomTerm._WIDTH_MODE_TAB_SEEN = 1; // tab *or* pprint-node seen
 DomTerm._WIDTH_MODE_VARIABLE_SEEN = 2; // HTML or variable-width font
@@ -6802,7 +6805,7 @@ DomTerm.prototype._scrollNeeded = function() {
 DomTerm.prototype._scrollIfNeeded = function() {
     let needed = this._scrollNeeded();
     if (needed > this.topNode.scrollTop) {
-        if (this.verbosity >= 2)
+        if (this.verbosity >= 3)
             this.log("scroll-needed was:"+this.topNode.scrollTop+" to "
                      +needed);
         if (this._usingScrollBar || this._disableScrollOnOutput)
@@ -6881,7 +6884,8 @@ DomTerm.prototype._unbreakLines = function(startLine, single=false) {
                 if (prev instanceof Text)
                     this._normalize1(prev);
                 if (prevLine) {
-                    if (prevLine._widthColumns)
+                    if (prevLine._widthColumns !== undefined
+                        && lineStart._widthColumns !== undefined)
                         prevLine._widthColumns += lineStart._widthColumns;
                     if (lineStart._widthMode > prevLine._widthMode)
                         prevLine._widthMode = lineStart._widthMode;
@@ -7282,8 +7286,12 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
 
     function breakNeeded(dt, lineNo, lineStart) {
         var wmode = lineStart._widthMode;
+        // NOTE: If might be worthwhile using widthColums tracking also
+        // for the wmode == DomTerm._WIDTH_MODE_TAB_SEEN case,
+        // but we have to adjust for pre-break./post-break/non-break
+        // and indentation columns. Tabs are need extra care.
         if (! DomTerm._forceMeasureBreaks
-            && wmode < DomTerm._WIDTH_MODE_VARIABLE_SEEN
+            && wmode < DomTerm._WIDTH_MODE_TAB_SEEN
             && lineStart._widthColumns !== undefined) {
             return lineStart._widthColumns > dt.numColumns;
         }
@@ -7533,7 +7541,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
 DomTerm.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false) {
     // Contending optimizations:
     // If we're on the last line, we may be doing bulk output,
-    // so avoid acessing offsetLeft (expensive because it forces layout).
+    // so avoid accessing offsetLeft (expensive because it forces layout).
     // If we're not on the last, we may be doing cursor adressing,
     // and we want to avoid calling _breakAllLines needlessly.
     if (this._deferredLinebreaksStart < 0
