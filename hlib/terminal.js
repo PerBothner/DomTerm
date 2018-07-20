@@ -5054,10 +5054,16 @@ DomTerm.prototype._unsafeInsertHTML = function(text) {
     if (this.verbosity >= 1)
         this.log("_unsafeInsertHTML "+JSON.stringify(text));
     if (text.length > 0) {
-        if (this.outputBefore != null)
-            this.outputBefore.insertAdjacentHTML("beforebegin", text);
-        else
+        if (this.outputBefore == null)
             this.outputContainer.insertAdjacentHTML("beforeend", text);
+        else if (this.outputBefore instanceof Element)
+            this.outputBefore.insertAdjacentHTML("beforebegin", text);
+        else {
+            let tmp = document.createElement("span");
+            this.outputContainer.insertBefore(tmp. this.outputBefore);
+            tmp.insertAdjacentHTML("beforebegin", text);
+            this.outputContainer.removeChild(tmp);
+        }
         DomTerm._addMouseEnterHandlers(this, this.outputContainer);
     }
 };
