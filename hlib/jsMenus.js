@@ -3,10 +3,16 @@ class Menu {
 		const typeEnum = ['contextmenu', 'menubar'];
 		let items = [];
 		let type = isValidType(settings.type) ? settings.type : 'contextmenu';
-
+		let beforeShow = settings.beforeShow;
 		Object.defineProperty(this, 'items', {
 			get: () => {
 				return items;
+			}
+		});
+
+		Object.defineProperty(this, 'beforeShow', {
+			get: () => {
+				return beforeShow;
 			}
 		});
 
@@ -24,7 +30,6 @@ class Menu {
 				console.error('appended item must be an instance of MenuItem');
 				return false;
 			}
-			item.parentMenu = this;
 			let index = items.push(item);
 			return index;
 		};
@@ -36,7 +41,6 @@ class Menu {
 			}
 
 			items.splice(index, 0, item);
-			item.parentMenu = this;
 			return true;
 		};
 
@@ -62,7 +66,6 @@ class Menu {
 		};
 
 		this.node = null;
-		this.parentMenuItem = null;
 
 		function isValidType(typeIn = '', debug = false) {
 			if(typeEnum.indexOf(typeIn) < 0) {
@@ -79,11 +82,10 @@ class Menu {
 		return false;
 	}
 
-	popup(x, y, submenu = false, menubarSubmenu = false) {
-		let menuNode;
+	popup(x, y, itemNode = null, menubarSubmenu = false) {
 		let setRight = false;
 
-		submenu = submenu || this.submenu;
+		let submenu = itemNode != null || this.submenu;
 		this.submenu = menubarSubmenu;
 
 		menubarSubmenu = menubarSubmenu || this.menubarSubmenu;
@@ -96,13 +98,9 @@ class Menu {
 			el.addEventListener('mousedown', Menu._mouseHandler, false);
 		}
 
-		if(this.node) {
-			menuNode = this.node;
-		} else {
-			menuNode = this.buildMenu(submenu, menubarSubmenu);
-			menuNode.jsMenu = this;
-			this.node = menuNode;
-		}
+		let menuNode = this.buildMenu(submenu, menubarSubmenu);
+		menuNode.jsMenu = this;
+		this.node = menuNode;
 		Menu._currentMenuNode = menuNode;
 
 		if(this.node.parentNode) {
@@ -119,8 +117,7 @@ class Menu {
 		if((x + width) > window.innerWidth) {
 			setRight = true;
 			if(submenu) {
-				let node = this.parentMenuItem.node;
-				x = window.innerWidth - node.parentNode.offsetLeft + 2;
+				x = window.innerWidth - itemNode.parentNode.offsetLeft + 2;
 			} else {
 				x = 0;
 			}
@@ -140,7 +137,6 @@ class Menu {
 
 		menuNode.style.top = y + 'px';
 		menuNode.classList.add('show');
-
 	}
 
 	popdown() {
@@ -158,7 +154,7 @@ class Menu {
 			this.node.parentNode.removeChild(this.node);
 			this.node = null;
 		}
-		if (this.parentMenu == null) {
+		if (this == Menu._topmostMenu) {
 			Menu._topmostMenu = null;
 			let el = Menu._listenerElement;
 			if (el) {
@@ -173,26 +169,28 @@ class Menu {
 		}
 	}
 
-	popdownAll() {
-		this.topmostMenu.popdown();
+	static popdownAll() {
+		Menu._topmostMenu.popdown();
 		return;
 	}
 
 	buildMenu(submenu = false, menubarSubmenu = false) {
-		let menuNode = this.menuNode;
+		if (this.beforeShow)
+			(this.beforeShow)(this);
+		let menuNode = document.createElement('ul');
+		menuNode.classList.add('nwjs-menu', this.type);
 		if(submenu) menuNode.classList.add('submenu');
 		if(menubarSubmenu) menuNode.classList.add('menubar-submenu');
 
 		menuNode.jsMenu = this;
 		menuNode.parentMenuNode = Menu._currentMenuNode;
 		this.items.forEach(item => {
-			item.parentMenu = this;
+			if (item.beforeShow)
+				(item.beforeShow)(item);
 			if (item.visible) {
-				let itemNode = item.buildItem(menuNode,
-							      this.type === 'menubar');
-				menuNode.appendChild(itemNode);
+				item.buildItem(menuNode,
+					       this.type === 'menubar');
 			}
-			//itemNode.jsMenu = this;
 		});
 		return menuNode;
 	}
@@ -238,7 +236,7 @@ class Menu {
 		}
 		if (e.type=="mousedown" && !miNode) {
 			if (Menu._topmostMenu)
-				Menu._topmostMenu.popdownAll();
+				Menu.popdownAll();
 		}
 		if ((inMenubar == menubarHandler) && miNode) {
 			let item = miNode.jsMenuItem;
@@ -247,12 +245,13 @@ class Menu {
 				// FIXME use select method
 				if(item.submenu) {
 					if(item.node.classList.contains('submenu-active')) {
-						item.parentMenu.node.activeItemNode = item.node;
+						miNode.jsMenu.node.activeItemNode = item.node;
+
 						item.popupSubmenu(item.node.offsetLeft, item.node.clientHeight, true);
 					} else {
 						item.submenu.popdown();
-						item.parentMenu.node.currentSubmenu = null;
-						item.parentMenu.node.activeItemNode = null;
+						miNode.jsMenu.node.currentSubmenu = null;
+						miNode.jsMenu.node.activeItemNode = null;
 					}
 				}
 			}
@@ -283,32 +282,6 @@ class Menu {
 			menubar.node = newNode;
 		}
 		Menu._menubar = menubar;
-	}
-
-	get menuNode() {
-		let node = document.createElement('ul');
-		node.classList.add('nwjs-menu', this.type);
-		return node;
-	}
-
-	get parentMenu() {
-		if(this.parentMenuItem) {
-			return this.parentMenuItem.parentMenu;
-		} else {
-			return undefined;
-		}
-	}
-
-	get topmostMenu() {
-		let menu = this;
-
-		while(menu.parentMenu) {
-			if(menu.parentMenu) {
-				menu = menu.parentMenu;
-			}
-		}
-
-		return menu;
 	}
 
 	clearActiveSubmenuStyling(notThisNode) {
@@ -379,12 +352,13 @@ Menu._keydownListener = function(e) {
 			}
 			if (next instanceof Element
 			    && next.classList.contains("menu-item")
+			    && next.jsMenuItem.type != 'separator'
 			    && ! (next.classList.contains("disabled")))
 				return next;
 		}
 	}
-	function nextMenu(forwards) {
-		let menubarNode = Menu._topmostMenu.parentMenu.node;
+	function nextMenu(menuNode, forwards) {
+		let menubarNode = menuNode.menuItem.parentNode;
 		let next = nextItem(menubarNode,
 				    menubarNode.activeItemNode,
 				    forwards);
@@ -403,7 +377,7 @@ Menu._keydownListener = function(e) {
 			e.stopPropagation();
 			if (e.keyCode == 37
 			    && menuNode.jsMenu.menubarSubmenu
-			    && nextMenu(false))
+			    && nextMenu(menuNode, false))
 				return;
 			menuNode.jsMenu.popdown();
 			break;
@@ -419,7 +393,7 @@ Menu._keydownListener = function(e) {
 			if (active && active.jsMenuItem.submenu)
 				active.jsMenuItem.selectSubmenu(active);
 			else if (Menu._topmostMenu.menubarSubmenu)
-				nextMenu(true);
+				nextMenu(menuNode, true);
 			break;
 		case 38: // Up
 		case 40: // Down
@@ -449,28 +423,6 @@ Menu._keydownListen(true);
 class MenuItem {
 	constructor(settings = {}) {
 
-		const modifierSymbols = {
-			shift: '⇧',
-			ctrl: '⌃',
-			alt: '⌥',
-			cmd: '⌘',
-			super: '⌘',
-			command: '⌘'
-		};
-
-		const keySymbols = {
-			up: '↑',
-			esc: '⎋',
-			tab: '⇥',
-			left: '←',
-			down: '↓',
-			right: '→',
-			pageUp: '⇞',
-			escape: '⎋',
-			pageDown: '⇟',
-			backspace: '⌫',
-			space: 'Space'
-		};
 
 		const modifiersEnum = ['cmd', 'command', 'super', 'shift', 'ctrl', 'alt'];
 		const typeEnum = ['separator', 'checkbox', 'normal'];
@@ -484,14 +436,17 @@ class MenuItem {
 		if(typeof settings.enabled === 'undefined') enabled = true;
 		let visible = settings.visible;
 		if(typeof settings.visible === 'undefined') visible = true;
-
-		if(submenu) {
-			submenu.parentMenuItem = this;
-		}
+		let beforeShow = settings.beforeShow;
 
 		Object.defineProperty(this, 'type', {
 			get: () => {
 				return type;
+			}
+		});
+
+		Object.defineProperty(this, 'beforeShow', {
+			get: () => {
+				return beforeShow;
 			}
 		});
 
@@ -506,7 +461,6 @@ class MenuItem {
 					return;
 				} else {
 					submenu = inputMenu;
-					submenu.parentMenuItem = this;
 				}
 			}
 		});
@@ -599,7 +553,7 @@ class MenuItem {
 	}
 
 	_mouseoverHandle_menubarTop() {
-		let pmenu = this.parentMenu.node;
+		let pmenu = this.node.jsMenuNode;
 		if (pmenu.activeItemNode) {
 			pmenu.activeItemNode.classList.remove('active');
 			pmenu.activeItemNode = null;
@@ -607,7 +561,6 @@ class MenuItem {
 		if (pmenu && pmenu.querySelector('.submenu-active')) {
 			if(this.node.classList.contains('submenu-active')) return;
 
-			this.parentMenu.clearActiveSubmenuStyling(this.node);
 			this.node.classList.add('submenu-active');
 			this.select(this.node, true, true, true);
 		}
@@ -615,7 +568,7 @@ class MenuItem {
 
 	doit() {
 		if (! this.submenu) {
-			this.parentMenu.popdownAll();
+			Menu.popdownAll();
 			if(this.type === 'checkbox')
 				this.checked = !this.checked;
 			if(this.click) this.click(this);
@@ -623,25 +576,25 @@ class MenuItem {
 	}
 
 	select(node, turnOn, popupSubmenu, menubarSubmenu = false) {
-		let pmenu = this.parentMenu.node;
+		let pmenu = node.jsMenuNode;
 		if (pmenu.activeItemNode) {
 			pmenu.activeItemNode.classList.remove('active');
+			pmenu.activeItemNode.classList.remove('submenu-active');
 			pmenu.activeItemNode = null;
 		}
 		if(pmenu.currentSubmenu) {
 			pmenu.currentSubmenu.popdown();
-			pmenu.currentSubmenu.parentMenuItem.node.classList.remove('submenu-active');
 			pmenu.currentSubmenu = null;
-                }
+		}
 		if(this.submenu && popupSubmenu)
 			this.selectSubmenu(node, menubarSubmenu);
 		else
 			node.classList.add('active');
-		this.parentMenu.node.activeItemNode = this.node;
+		this.node.jsMenuNode.activeItemNode = this.node;
 	}
 
 	selectSubmenu(node, menubarSubmenu) {
-		this.parentMenu.node.currentSubmenu = this.submenu;
+		node.jsMenuNode.currentSubmenu = this.submenu;
 		if(this.submenu.node)
 			return;
 
@@ -712,14 +665,17 @@ class MenuItem {
 		}
 
 		if(this.modifiers && !menuBarTopLevel) {
-			let mods = this.modifiers.split('+');
+			if (MenuItem.useModifierSymbols) {
+				let mods = this.modifiers.split('+');
 
-			// Looping this way to keep order of symbols - required by macOS
-			for(let symbol in modifierSymbols) {
-				if(mods.indexOf(symbol) > -1) {
-					text += modifierSymbols[symbol];
+				// Looping this way to keep order of symbols - required by macOS
+				for(let symbol in MenuItem.modifierSymbols) {
+					if(mods.indexOf(symbol) > -1) {
+						text += MenuItem.modifierSymbols[symbol];
+					}
 				}
-			}
+			} else
+				text += this.modifiers + "+";
 		}
 
 		if(this.key && !menuBarTopLevel) {
@@ -738,7 +694,7 @@ class MenuItem {
 			node.classList.add('disabled');
 		}
 
-		if(!menuBarTopLevel) {
+		if(!menuBarTopLevel && this.type != 'separator') {
 			node.addEventListener('mouseenter', () => {
 				this.select(node, true, true);
 			});
@@ -760,15 +716,41 @@ class MenuItem {
 
 		node.title = this.tooltip;
 		this.node = node;
-		return node;
+		menuNode.appendChild(node);
 	}
 
 	popupSubmenu(x, y, menubarSubmenu = false) {
-		this.submenu.popup(x, y, true, menubarSubmenu);
+		this.submenu.popup(x, y, this.node, menubarSubmenu);
 		this.submenu.node.menuItem = this.node;
-		this.parentMenu.node.currentSubmenu = this.submenu;
+		this.node.jsMenuNode.currentSubmenu = this.submenu;
 	}
 }
+
+MenuItem.modifierSymbols = {
+	shift: '⇧',
+	ctrl: '⌃',
+	alt: '⌥',
+	cmd: '⌘',
+	super: '⌘',
+	command: '⌘'
+};
+
+MenuItem.keySymbols = {
+	up: '↑',
+	esc: '⎋',
+	tab: '⇥',
+	left: '←',
+	down: '↓',
+	right: '→',
+	pageUp: '⇞',
+	escape: '⎋',
+	pageDown: '⇟',
+	backspace: '⌫',
+	space: 'Space'
+};
+MenuItem.useModifierSymbols =
+	(typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
+         : typeof os != "undefined" ? os.platform() == "darwin" : false);
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = { Menu: Menu, MenuItem: MenuItem };
