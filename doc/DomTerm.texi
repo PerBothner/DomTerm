@@ -352,6 +352,25 @@ ln -s /mnt/c/@var{wuser}/DomTerm/bin/domterm domterm
 
 @ref{installing-electron,Installing Electron} is highly recommended.
 
+@subsubheading  MacOS (using Homebrew)
+
+@example
+brew install automake
+brew install json-c
+brew install libwebsockets
+brew install asciidoctor
+@end example
+
+There are some issues about openssl that I'm not clear about.
+A reported work-around is to do:
+@example
+export LDFLAGS="-L/usr/local/opt/openssl/lib -L/usr/local/lib -L/usr/local/opt/expat/lib"
+export CFLAGS="-I/usr/local/opt/openssl/include/ -I/usr/local/include -I/usr/local/opt/expat/include"
+export CPPFLAGS="-I/usr/local/opt/openssl/include/ -I/usr/local/include -I/usr/local/opt/expat/include"
+@end example
+
+A cleaner solution/fix would be welcome.
+
 @subsubheading Building libwebsockets, if needed
 
 The @code{domterm} server requires libwebsockets version 2.2
