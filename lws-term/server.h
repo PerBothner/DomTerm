@@ -70,6 +70,7 @@ struct pty_client {
     bool detached; // OLD
     bool detachOnClose; // OLD
     bool session_name_unique;
+    bool packet_mode;
     int detach_count;
     int paused;
     struct lws *first_client_wsi;
@@ -149,6 +150,7 @@ struct options {
     char *command_chrome;
     char *command_electron;
     char *default_frontend;
+    char *tty_packet_mode;
     struct pty_client *requesting_session;
     int paneOp;
     char *iface;

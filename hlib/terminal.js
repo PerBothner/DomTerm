@@ -145,7 +145,7 @@ function DomTerm(name, topNode) {
 
     // How are typed characters processed?
     // -1: character mode (each character/keystroke sent immediately to process)
-    // 1: line mode (local editing, sent to process when Enter types).
+    // 1: line mode (local editing, sent to process when Enter typed).
     // 0: auto mode (either line and character depending on _clientWantsEditing)
     this._lineEditingMode = 0;
     // 1: client/inferior is in "canonical mode; 0: non-canonical mode.
@@ -194,8 +194,12 @@ function DomTerm(name, topNode) {
     // If isLineEditing() is false, the client is always responsible
     // for echo, so this setting is ignored in that case.
     this.clientDoesEcho = true;
+    // True if pty in ECHO mode
+    this._clientPtyEcho = true;
+    // True if EXTPROC tty flag is set. (Linux-only)
+    this._clientPtyExtProc = false;
 
-    // Used to implement clientDoesEscho handling.
+    // Used to implement clientDoesEcho handling.
     this._deferredForDeletion = null;
     this.deferredForDeletionTimeout = 2000;
 
@@ -1456,10 +1460,13 @@ DomTerm.prototype.useStyledCaret = function() {
 
 DomTerm.prototype.isLineEditing = function() {
     return this._lineEditingMode + this._clientWantsEditing > 0
+        || (this._clientPtyExtProc + this._clientPtyEcho
+            + this._clientWantsEditing == 3)
         || this._composing > 0;
 }
 
 DomTerm.prototype._restoreCaret = function() {
+    this._restoreCaretNode();
     if (this.useStyledCaret()) {
         if (! this._caretNode.getAttribute("caret")
             && (! (this._caretNode.firstChild instanceof Text)
@@ -1502,10 +1509,12 @@ DomTerm.prototype._restoreCaret = function() {
     }
     else {
         let sel = document.getSelection();
-        if (this.sstate.showCaret)
-            sel.collapse(this._caretNode, 0);
-        else
-            sel.removeAllRanges();
+        if (sel.isCollapsed) {
+            if (this.sstate.showCaret)
+                sel.collapse(this._caretNode, 0);
+            else
+                sel.removeAllRanges();
+        }
     }
 }
 
@@ -1516,7 +1525,7 @@ DomTerm.prototype._restoreCaretNode = function() {
     }
 }
 
-DomTerm.prototype._restoreInputLine = function() {
+DomTerm.prototype._restoreInputLine = function(caretToo = true) {
     let inputLine = this.isLineEditing() ? this._inputLine : this._caretNode;
     if (this.inputFollowsOutput && inputLine != null) {
         let lineno;
@@ -1545,7 +1554,8 @@ DomTerm.prototype._restoreInputLine = function() {
                                        });
             }
         }
-        this._restoreCaret();
+        if (caretToo)
+            this._restoreCaret();
 
     }
 };
@@ -2368,7 +2378,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
         if (dt.isLineEditing() && dt._inputLine != null
             && sel.focusNode != null
             && (sel.focusNode != dt._caretNode || sel.focusOffset != 0)) {
-            dt._restoreInputLine();
+            dt._restoreInputLine(false);
             let r = new Range();
             r.selectNodeContents(dt._inputLine);
             if (r.comparePoint(sel.focusNode, sel.focusOffset) == 0) {
@@ -2380,7 +2390,10 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
                 let focusNode = sel.focusNode;
                 let focusOffset = sel.focusOffset;
                 dt._removeCaret(false);
-                r.setStart(focusNode, focusOffset);
+                if (focusNode == dt._caretNode)
+                    r.setStartAfter(focusNode);
+                else
+                    r.setStart(focusNode, focusOffset);
                 r.insertNode(dt._caretNode);
                 dt._inputLine.normalize();
                 // same position, but "normalized"
@@ -3208,8 +3221,10 @@ DomTerm.prototype.freshLine = function() {
     var lineno = this.getAbsCursorLine();
     var line = this.lineStarts[lineno];
     var end = this.lineEnds[lineno];
-    if (line.firstChild == this.outputBefore)
-        return;
+    for (let n = line; n != null; n = n.firstChild) {
+        if (n == this.outputContainer && n.firstChild == this.outputBefore)
+            return;
+    }
     this.cursorLineStart(1);
 };
 
@@ -3611,14 +3626,17 @@ DomTerm.prototype.handleEnter = function(text) {
     var oldInputLine = this._inputLine;
     var spanNode;
     var line = this.getCursorLine();
+    let suppressEcho = ((! this._clientPtyEcho
+                         && (! this._clientPtyExtProc
+                             || ! this._clientWantsEditing))
+                        || text == null);
     if (oldInputLine != null) {
         let noecho = oldInputLine.getAttribute("domterm-noecho");
         let cont = oldInputLine.getAttribute("continuation");
-        if (noecho == null || noecho == "false")
+        if (text != null && (noecho == null || noecho == "false"))
             this.historyAdd(text, cont == "true");
         this.outputContainer = oldInputLine;
         this.outputBefore = this._caretNode;
-        oldInputLine.classList.add("pending");
         if (this._getStdMode(oldInputLine.parentNode) !== "input") {
             let wrap = this._createSpanNode();
             wrap.setAttribute("std", "input");
@@ -3626,12 +3644,13 @@ DomTerm.prototype.handleEnter = function(text) {
             wrap.appendChild(oldInputLine);
         }
     }
-    if (! this.clientDoesEcho) {
+    if (! suppressEcho) {
         this._inputLine = null; // To avoid confusing cursorLineStart
         this.cursorLineStart(1);
     }
     this._inputLine = null;
-    if (this.clientDoesEcho) {
+    if (suppressEcho) {
+        oldInputLine.classList.add("pending");
         this._deferredForDeletion = oldInputLine;
         this._requestDeletePendingEcho();
         this.currentAbsLine = line+this.homeLine;
@@ -5661,14 +5680,35 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         // handle tcsetattr
         var canon = text.indexOf(" icanon ") >= 0;
         var echo = text.indexOf(" echo ") >= 0;
+        var extproc = text.indexOf(" extproc ") >= 0;
         this.autoLazyCheckInferior = false;
+        if (canon == 0 && this.isLineEditing() && this._inputLine) {
+            let text = this.grabInput(this._inputLine);
+            let r = new Range();
+            r.selectNodeContents(this._inputLine);
+            r.setStartBefore(this._caretNode);
+            let afterText = r.toString();
+            this.handleEnter(null);
+            this.reportText(text);
+            let afterCount = this.strWidthInContext(afterText, this._inputLine);
+            if (afterCount > 0) {
+                this.processInputCharacters
+                    (this.specialKeySequence("", "D", null).repeat(afterCount));
+            }
+            this._doDeferredDeletion();
+        }
         this._clientWantsEditing = canon ? 1 : 0;
+        this._clientPtyEcho = echo ? 1 : 0;
+        this._clientPtyExtProc = extproc ? 1 : 0;
         break;
     case 72:
         this._scrubAndInsertHTML(text);
         break;
     case 73:
     case 74:
+        this._clientPtyEcho = code != 73;
+        if (this._clientWantsEditing)
+            return;
         var tb = text.indexOf('\t');
         var keyName = tb < 0 ? text : text.substring(0, tb);
         if (this.verbosity >= 2) {
@@ -5677,9 +5717,6 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         }
         this._clientWantsEditing = 1;
         this.editorAddLine();
-        if (code == 73) {
-            this._inputLine.setAttribute("domterm-noecho", "true");
-        }
         this.doLineEdit(keyName);
         break;
     case 7:
@@ -9266,6 +9303,9 @@ DomTerm.prototype.editorAddLine = function() {
     } else if (this._inputLine.parentNode == null) {
         this._restoreInputLine();
     }
+    if (! this._clientPtyEcho
+        && (this._clientWantsEditing != 0 || this._clientPtyExtProc == 0))
+        this._inputLine.setAttribute("domterm-noecho", "true");
 }
 
 // FIXME combine with _pageNumericArgumentGet

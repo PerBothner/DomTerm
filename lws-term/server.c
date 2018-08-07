@@ -206,6 +206,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define QT_REMOTE_DEBUGGING_OPTION 2006
 #define SESSION_NAME_OPTION 2007
 #define SETTINGS_FILE_OPTION 2008
+#define TTY_PACKET_MODE_OPTION 2009
 #define PANE_OPTIONS_START 2100
 /* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
 #define PANE_OPTION (PANE_OPTIONS_START+1)
@@ -239,6 +240,7 @@ static const struct option options[] = {
         {"session-name", required_argument, NULL, SESSION_NAME_OPTION},
         {"sn",           required_argument, NULL, SESSION_NAME_OPTION},
         {"settings",     required_argument, NULL, SETTINGS_FILE_OPTION},
+        {"tty-packet-mode",optional_argument,NULL,TTY_PACKET_MODE_OPTION},
         {"detached",     no_argument,       NULL, DETACHED_OPTION},
         {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
         {"pane",         no_argument,       NULL, PANE_OPTION},
@@ -771,6 +773,7 @@ void  init_options(struct options *opts)
     opts->debug_level = 0;
     opts->iface = NULL;
     opts->requesting_session = NULL;
+    opts->tty_packet_mode = NULL;
 #if HAVE_OPENSSL
     opts->ssl = false;
     opts->cert_path = NULL;
@@ -870,6 +873,19 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
             case SESSION_NAME_OPTION:
                 opts->session_name = optarg;
+                break;
+            case TTY_PACKET_MODE_OPTION:
+                if (optarg != NULL) {
+#if !defined(TIOCPKT)
+                    if (strcmp(optarg, "yes") == 0)
+                        fprintf(stderr, "warning - tty package mode not available\n");
+#endif
+#if ! defined(EXTPROC)
+                    if (strcmp(optarg, "extproc") == 0)
+                        fprintf(stderr, "warning - tty package mode EXTPROC not available\n");
+#endif
+                }
+                opts->tty_packet_mode = optarg == NULL ? "yes" : optarg;
                 break;
             case SETTINGS_FILE_OPTION:
                 break; // handled in prescan_options

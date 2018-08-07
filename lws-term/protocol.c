@@ -1,11 +1,18 @@
 #include "server.h"
 #include <limits.h>
 #include <sys/stat.h>
+#include <termios.h>
+#include <utmp.h>
 
 #define BUF_SIZE 1024
 
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
 #define UNCONFIRMED_LIMIT 2000
+
+#if defined(TIOCPKT)
+// See https://stackoverflow.com/questions/21641754/when-pty-pseudo-terminal-slave-fd-settings-are-changed-by-tcsetattr-how-ca
+#define USE_PTY_PACKET_MODE 1
+#endif
 
 extern char **environ;
 
@@ -303,19 +310,50 @@ void put_to_env_array(char **arr, int max, char* eval)
     }
 }
 
-struct pty_client *
-run_command(const char *cmd, char*const*argv, const char*cwd, char **env)
+static struct pty_client *
+run_command(const char *cmd, char*const*argv, const char*cwd,
+            char **env, struct options *opts)
 {
     struct lws *outwsi;
-    int pty;
     int session_number = ++last_session_number;
 
-    pid_t pid = forkpty(&pty, NULL, NULL, NULL);
+    int master;
+    int slave;
+    bool packet_mode = false;
+
+    if (openpty(&master, &slave,NULL, NULL, NULL)) {
+        lwsl_err("openpty\n");
+        return NULL;
+    }
+#if USE_PTY_PACKET_MODE
+    if (! (opts->tty_packet_mode
+           && strcmp(opts->tty_packet_mode, "no") == 0)) {
+        int nonzero = 1;
+        packet_mode = ioctl(master, TIOCPKT, &nonzero) == 0;
+    }
+#if EXTPROC
+    if (packet_mode
+        && (opts->tty_packet_mode == NULL
+            || strcmp(opts->tty_packet_mode, "extproc") == 0)) {
+        struct termios tio;
+        tcgetattr(slave, &tio);
+        tio.c_lflag |= EXTPROC;
+        tcsetattr(slave, TCSANOW, &tio);
+    }
+#endif
+#endif
+
+            pid_t pid = fork();
     switch (pid) {
     case -1: /* error */
             lwsl_err("forkpty\n");
+            close(master);
+            close(slave);
             break;
     case 0: /* child */
+            close(master);
+            if (login_tty(slave))
+                _exit(1);
             if (cwd == NULL || chdir(cwd) != 0) {
                 const char *home = find_home();
                 if (home == NULL || chdir(home) != 0)
@@ -394,12 +432,14 @@ run_command(const char *cmd, char*const*argv, const char*cwd, char **env)
             }
             break;
         default: /* parent */
+            close(slave);
             lwsl_notice("started process, pid: %d\n", pid);
             lws_sock_file_fd_type fd;
-            fd.filefd = pty;
+            fd.filefd = master;
             //if (tclient == NULL)              return NULL;
             outwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "pty", NULL);
             struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
+            pclient->packet_mode = packet_mode;
             pclient->next_pty_client = NULL;
             server->session_count++;
             if (pty_client_last == NULL)
@@ -409,7 +449,7 @@ run_command(const char *cmd, char*const*argv, const char*cwd, char **env)
             pty_client_last = pclient;
 
             pclient->pid = pid;
-            pclient->pty = pty;
+            pclient->pty = master;
             pclient->nrows = -1;
             pclient->ncols = -1;
             pclient->pixh = -1;
@@ -720,7 +760,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             char** argv = default_command(main_options);
             char *cmd = find_in_path(argv[0]);
             if (cmd != NULL) {
-                pclient = run_command(cmd, argv, ".", environ);
+                pclient = run_command(cmd, argv, ".", environ, main_options);
                 free(cmd);
             }
         }
@@ -1288,7 +1328,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
           fclose(out);
           return EXIT_FAILURE;
     }
-    struct pty_client *pclient = run_command(cmd, args, cwd, env);
+    struct pty_client *pclient = run_command(cmd, args, cwd, env, opts);
     free(cmd);
     if (opts->session_name) {
         pclient->session_name = strdup(opts->session_name);
@@ -1561,9 +1601,11 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                   + tclient->ocount;
                 if (unconfirmed < min_unconfirmed)
                   min_unconfirmed = unconfirmed;
-                if (tclient->ocount < 1000)
-                    obuffer_extend(tclient, 1000);
                 int tavail = tclient->osize - tclient->olen;
+                if (tavail < 1000) {
+                    obuffer_extend(tclient, 1000);
+                    tavail = tclient->osize - tclient->olen;
+                }
                 if (tavail < avail)
                     avail = tavail;
             }
@@ -1584,7 +1626,39 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                         (struct tty_client *) lws_wsi_user(wsclient_wsi);
                     if (data_start == NULL) {
                         data_start = tclient->obuffer+tclient->olen;
-                        ssize_t n = read(pclient->pty, data_start, avail);
+                        ssize_t n;
+                        if (pclient->packet_mode) {
+#if USE_PTY_PACKET_MODE
+                            // We know data_start > obuffer_raw, so
+                            // it's safe to access data_start[-1].
+                            char save_byte = data_start[-1];
+                            n = read(pclient->pty, data_start-1, avail+1);
+                            char pcmd = data_start[-1];
+                            data_start[-1] = save_byte;
+#if TIOCPKT_IOCTL
+                            if (n == 1 && (pcmd & TIOCPKT_IOCTL) != 0) {
+                                struct termios tio;
+                                tcgetattr(pclient->pty, &tio);
+                                const char* icanon_str = (tio.c_lflag & ICANON) != 0 ? "icanon" :  "-icanon";
+                                const char* echo_str = (tio.c_lflag & ECHO) != 0 ? "echo" :  "-echo";
+                                const char *extproc_str = "";
+#if EXTPROC
+                                if ((tio.c_lflag & EXTPROC) != 0)
+                                    extproc_str = " extproc";
+#endif
+                                n = sprintf(data_start,
+                                            "\033]71; %s %s%s lflag:%x\007",
+                                            icanon_str, echo_str,
+                                            extproc_str,  tio.c_lflag);
+                            }
+                            else
+#endif
+                                if (n > 0)
+                                    n--;
+#endif
+                        } else {
+                            n = read(pclient->pty, data_start, avail);
+                        }
                         if (n >= 0) {
                           tclient->olen += n;
                           tclient->ocount += n;
