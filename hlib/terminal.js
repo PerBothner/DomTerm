@@ -8412,7 +8412,8 @@ DomTerm.prototype.doLineEdit = function(keyName) {
         this.editorInsertString(str);
 
         if (this._inputLine.classList.contains("noecho")
-            && ! this.sstate.hiddenText) {
+            && ! this.sstate.hiddenText
+            && this.passwordShowCharTimeout) {
             // Temporarily display inserted char(s), with dots for other chars.
             // After timeout all chars shown as dots.
             let r = new Range();

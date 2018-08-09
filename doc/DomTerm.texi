@@ -253,6 +253,7 @@ Optional @strong{automatic pagination}.
 
 @strong{Predictive echo} (similar to @code{mosh}), which is
 useful for slow connections.
+Nicer @ref{password-fields, @strong{password fields}}.
 
 @node Downloading and building
 @chapter Downloading and building
@@ -1566,6 +1567,24 @@ keymap.line-edit =
  | "Ctrl-A": ignore-action
  | 'Ctrl-H': beginning-of-line
 @end example
+
+@anchor{password-fields}
+@subheading Password fields
+
+A ``password field'' is an input area where the typed characters
+are hidden or obscured.  DomTerm will display each character
+as a black circle instead of the actual character.
+(The replacement character is the @code{passwordHideChar} property.)
+The most recently typed character is displayed briefly (depending on
+the @code{passwordShowCharTimeout} property) before it too is replaced
+by a black circle.
+On Enter, all circles are removed.
+
+Using these circles makes it easier see how many characters you've typed,
+and to move around using the mouse or cursor keys.
+
+A password field is automatically created when we're in line-editing mode
+and echoing is turned off by the program reading the input.
 
 @node Paging
 @chapter Paging and Pausing
