@@ -202,6 +202,9 @@ function DomTerm(name, topNode) {
     // Used to implement clientDoesEcho handling.
     this._deferredForDeletion = null;
     this.deferredForDeletionTimeout = 2000;
+    // this.passwordHideChar = "\u2022"; // Bullet = used by Chrome
+    this.passwordHideChar = "\u25CF"; // Black circle - used by Firefox/IE
+    this.passwordShowCharTimeout = 800;
 
     this.topNode = null;
 
@@ -1400,10 +1403,30 @@ DomTerm.prototype._followingText = function(cur) {
     }
 };
 
+DomTerm.prototype._showPassword = function() {
+    let input = this._inputLine;
+    if (input && input.classList.contains("noecho")
+        && this.sstate.hiddenText) {
+        DomTerm._replaceTextContents(input, this.sstate.hiddenText);
+        this.sstate.hiddenText = undefined;
+    }
+}
+
+DomTerm.prototype._hidePassword = function() {
+    let input = this._inputLine;
+    if (input && input.classList.contains("noecho")) {
+        let ctext = this.sstate.hiddenText || input.textContent;
+        let clen =  DomTerm._countCodePoints(ctext);
+        DomTerm._replaceTextContents(input, this.passwordHideChar.repeat(clen));
+        this.sstate.hiddenText = ctext;
+    }
+}
+
 // "Normalize" caret by moving caret text to following node.
 // Doesn't actually remove the _caretNode node, for that use _removeInputLine.
 DomTerm.prototype._removeCaret = function(normalize=true) {
     var caretNode = this._caretNode;
+    this._showPassword();
     if (caretNode && caretNode.getAttribute("caret")) {
         var child = caretNode.firstChild;
         caretNode.removeAttribute("caret");
@@ -1465,8 +1488,52 @@ DomTerm.prototype.isLineEditing = function() {
         || this._composing > 0;
 }
 
+/** Number of Unicode code points in string */
+DomTerm._countCodePoints = function(str) {
+    let n = 0;
+    for (let i = str.length; --i >= 0; ) {
+        let ch = str.charCodeAt(i);
+        if (ch < 0xDC00 || ch > 0xDFFF) // if not low/trailing surrogate
+            n++;
+    }
+    return n;
+}
+
+/** Find index in string after skipping specifie dUnicode code points */
+DomTerm._indexCodePoint = function(str, index) {
+    let len = str.length;
+    let j = 0;
+    for (let i = 0; ; i++) {
+        if (j == index)
+            return i;
+        if (i >= len)
+            return -1;
+        let ch = str.charCodeAt(i);
+        if (ch < 0xDC00 || ch > 0xDFFF) // if not low/trailing surrogate
+            j++;
+    }
+}
+
+DomTerm._replaceTextContents = function(el, text) {
+    function replace(n) {
+        let d = n.data;
+        let dlen = DomTerm._indexCodePoint(text, DomTerm._countCodePoints(d));
+        if (dlen < 0) {
+            console.log("error in _replaceTextContents");
+            return el;
+        }
+        n.data = text.substring(0, dlen);
+        text = text.substring(dlen);
+        return null;
+    }
+    DomTerm._forEachTextIn(el, replace);
+};
+
 DomTerm.prototype._restoreCaret = function() {
     this._restoreCaretNode();
+    let cparent = this._caretNode.parentNode;
+    if (! this._suppressHidePassword)
+        this._hidePassword();
     if (this.useStyledCaret()) {
         if (! this._caretNode.getAttribute("caret")
             && (! (this._caretNode.firstChild instanceof Text)
@@ -3374,6 +3441,32 @@ DomTerm.prototype._forEachElementIn = function(node, func, allNodes=false, backw
     return null;
 };
 
+DomTerm._forEachTextIn = function(el, fun) {
+    let n = el;
+    for (;;) {
+        if (n instanceof Text) {
+            let r = fun(n);
+            if (r != null)
+                return r;
+        }
+        let next = n.firstChild
+        if (next) {
+            n = next;
+        } else {
+            for (;;) {
+                next = n.nextSibling;
+                if (next) {
+                    n = next;
+                    break;
+                }
+                n = n.parentNode;
+                if (n == el)
+                    return null;
+            }
+        }
+    }
+}
+
 DomTerm.prototype.resetCursorCache = function() {
     this.currentCursorColumn = -1;
     this.currentAbsLine = -1;
@@ -3631,9 +3724,9 @@ DomTerm.prototype.handleEnter = function(text) {
                              || ! this._clientWantsEditing))
                         || text == null);
     if (oldInputLine != null) {
-        let noecho = oldInputLine.getAttribute("domterm-noecho");
+        let noecho = oldInputLine.classList.contains("noecho");
         let cont = oldInputLine.getAttribute("continuation");
-        if (text != null && (noecho == null || noecho == "false"))
+        if (text != null && ! noecho)
             this.historyAdd(text, cont == "true");
         this.outputContainer = oldInputLine;
         this.outputBefore = this._caretNode;
@@ -3644,7 +3737,7 @@ DomTerm.prototype.handleEnter = function(text) {
             wrap.appendChild(oldInputLine);
         }
     }
-    if (! suppressEcho) {
+    if (! suppressEcho && ! this.sstate.hiddenText) {
         this._inputLine = null; // To avoid confusing cursorLineStart
         this.cursorLineStart(1);
     }
@@ -7664,8 +7757,19 @@ DomTerm.prototype.processInputCharacters = function(str) {
 
 DomTerm.prototype.processEnter = function() {
     this._restoreInputLine();
-    var text = this.grabInput(this._inputLine);
+    let oldInput = this._inputLine;
+    let passwordField = oldInput.classList.contains("noecho")
+        && this.sstate.hiddenText;
+    var text = passwordField ? this.sstate.hiddenText
+        : this.grabInput(this._inputLine);
     this.handleEnter(text);
+    if (passwordField) {
+        this.sstate.hiddenText = undefined;
+        while (oldInput.firstChild)
+            oldInput.removeChild(oldInput.firstChild);
+        if (this.outputContainer == oldInput)
+            this.outputBefore = null;
+    }
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
     this.reportText(text, "\n");
@@ -8303,7 +8407,31 @@ DomTerm.prototype.doLineEdit = function(keyName) {
             this.editorBackspace(1, "delete", "char");
         }
         let count = this.numericArgumentGet();
-        this.editorInsertString(str.repeat(count >= 0 ? count : 1));
+        if (count >= 0)
+            str = str.repeat(count);
+        this.editorInsertString(str);
+
+        if (this._inputLine.classList.contains("noecho")
+            && ! this.sstate.hiddenText) {
+            // Temporarily display inserted char(s), with dots for other chars.
+            // After timeout all chars shown as dots.
+            let r = new Range();
+            r.selectNodeContents(this._inputLine);
+            let wlength = DomTerm._countCodePoints(r.toString());
+            r.setEndBefore(this._caretNode);
+            let wbefore = DomTerm._countCodePoints(r.toString());
+            let ctext = this._inputLine.textContent;
+            let wstr = DomTerm._countCodePoints(str);
+            let before = this.passwordHideChar.repeat(wbefore-wstr);
+            let after = this.passwordHideChar.repeat(wlength-wbefore);
+            DomTerm._replaceTextContents(this._inputLine, before + str + after);
+            this.sstate.hiddenText = ctext;
+            let dt = this;
+            setTimeout(function() { dt._suppressHidePassword = false;
+                                    dt._hidePassword(); },
+                       this.passwordShowCharTimeout);
+            this._suppressHidePassword = true;
+        }
         return true;
     }
     return false;
@@ -9305,7 +9433,7 @@ DomTerm.prototype.editorAddLine = function() {
     }
     if (! this._clientPtyEcho
         && (this._clientWantsEditing != 0 || this._clientPtyExtProc == 0))
-        this._inputLine.setAttribute("domterm-noecho", "true");
+        this._inputLine.classList.add("noecho");
 }
 
 // FIXME combine with _pageNumericArgumentGet
@@ -9357,6 +9485,7 @@ DomTerm.prototype.editorMoveToPosition = function(node, offset) {
 }
 
 DomTerm.prototype.editorInsertString = function(str, inserting=true) {
+    this._showPassword();
     for (;;) {
         let nl = str.indexOf('\n');
         let str1 = nl < 0 ? str : str.substring(0, nl);

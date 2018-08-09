@@ -47,7 +47,6 @@ span[line="soft"] { padding: 0px; margin: 0px;}
 span[std="prompt"] { margin: 0px; padding: 0px; border: 0px }
 span[std="prompt"][value]:before { content: attr(value) }
 *[domterm-hidden="true"] { display: none }
-*[domterm-noecho="true"] { visibility: hidden }
 
 span[line][breaking="yes"]:before {content: "\A"; }
 span.indentation[value]:after { content: attr(value); }

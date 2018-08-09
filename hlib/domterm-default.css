@@ -60,17 +60,6 @@ div.domterm-show-info {
     border: 2px solid blue;
 }
 
-/* FUTURE POPUP
-div.domterm-main-popup {
-}
-div.domterm-main-popup div {
-    border:  thin solid black;
-}
-div.domterm-popup-action:hover {
-    background-color: lightblue
-}
-*/
-
 div.domterm span[caret="block"][std="caret"], div.domterm span[caret="blinking-block"][std="caret"] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
     background-color: var(--foreground-color); color: var(--background-color);
