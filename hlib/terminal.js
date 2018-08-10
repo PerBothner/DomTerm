@@ -5824,6 +5824,20 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         // text is "\u001b]777;COMMAND"
         // Is printed by /etc/profile/vte.sh on Fedora
         break;
+    case 88:
+        var obj = JSON.parse(text);
+        if (typeof obj.passwordHideChar == "string"
+            && obj.passwordHideChar.length == 1)
+            this.passwordHideChar = obj.passwordHideChar;
+        if (typeof obj.passwordShowCharTimeout == "number")
+            this.passwordShowCharTimeout = obj.passwordShowCharTimeout;
+        if (typeof obj.deferredForDeletionTimeout == "number")
+            this.deferredForDeletionTimeout = obj.deferredForDeletionTimeout;
+        if (typeof obj.historyStorageKey == "string")
+            this.historyStorageKey = obj.historyStorageKey;
+        if (typeof obj.historyStorageMax == "number")
+            this.historyStorageMax = obj.historyStorageMax;
+        break;
     case 89:
         this.setSettings(JSON.parse(text));
         break;
@@ -6354,7 +6368,10 @@ DomTerm.prototype._requestDeletePendingEcho = function() {
     function clear() { dt._deletePendingEchoTimer = null;
                        dt._doDeferredDeletion(); };
     let timeout = dt.deferredForDeletionTimeout;
-    this._deletePendingEchoTimer = setTimeout(clear, timeout);
+    if (timeout)
+        this._deletePendingEchoTimer = setTimeout(clear, timeout);
+    else
+        clear();
 }
 
 DomTerm.prototype.insertString = function(str) {
