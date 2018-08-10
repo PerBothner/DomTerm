@@ -4906,8 +4906,11 @@ DomTerm.handleLink = function(element) {
         } else if ((m = href.match(/^file:([^&#]*)$/)) != null) {
             filename = m[1];
         }
-        if (filename)
+        if (filename) {
+            if (filename.startsWith("///"))
+                filename = filename.substring(2);
             obj.filename = decodeURIComponent(filename);
+        }
         DomTerm.requestOpenLink(obj, dt);
     }
 };

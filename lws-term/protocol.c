@@ -523,8 +523,8 @@ check_template(const char *template, json_object *obj)
         json_object_object_get_ex(obj, "href", &jhref)
         ? json_object_get_string(jhref) : NULL;
     if (filename != NULL && filename[0] == '/' && filename[1] == '/') {
-        if (filename[3] == '/')
-            filename = filename + 3;
+        if (filename[2] == '/')
+            filename = filename + 2;
         else {
             char *colon = strchr(filename+2, '/');
             if (colon == NULL)
@@ -692,7 +692,7 @@ handle_tlink(char *template, json_object *obj)
         const char *start = NULL;
         char *semi = (char*)
             extract_command_from_list(p, &start, NULL, NULL);
-        if (semi)
+        if (*semi)
             *semi = 0;
         else
             semi = NULL;

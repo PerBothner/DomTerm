@@ -417,6 +417,14 @@ void copy_file(FILE*in, FILE*out)
     }
 }
 
+/** Look for a 'command' in list.
+ * A command is any string ending in a *non-quoted* ';' or '\n' or end of string.
+ * Returns the end of the command.
+ * If startp is on-NULL, it is set to the first non-whitespace char.
+ * If endp is non-NULL it is the end of the command without trailing whitespace.
+ * If cmd_endp is non-NULL it is set to the end of an initial "command" -
+ *   i.e. first whitespace char or same as endp.
+ */
 const char *
 extract_command_from_list(const char *list, const char **startp,
                           const char **endp, const char **cmd_endp)
