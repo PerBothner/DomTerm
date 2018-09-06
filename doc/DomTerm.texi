@@ -2720,7 +2720,7 @@ an optional front-end.
 @node To do
 @chapter Ideas and projects for DomTerm
 
-@subheading Basic terminal emulator functionality
+@subheading Terminal emulator functionality
 
 @subsubheading Document any discrepances from xterm and ANSI
 
@@ -2752,6 +2752,15 @@ to interleave graphics and text, without requiring separate windows.
 This @uref{http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/,JavaScript utility} may be useful in converting raster data (post-sixel-decoding) to PNG, which could the be displayed with a @code{data:} URI.
 Alternatively, a @code{<canvas>} element could be used.
 
+@subsubheading Highlighting
+
+We may want to support syntax coloring (including in REPL input lines)
+and other highlighting.
+If the DomTerm element is not the only element in the @code{<document>}'s
+@code{<body>} then the selection may be lost to another ``widget''
+unless we simulate the selection as a highlighted range.
+The @uref{https://markjs.io/,mark.js} package may be useful.
+
 @subsubheading Improve copy and paste
 
 Think about how to do multi-line paste.
@@ -2759,14 +2768,13 @@ Think about how to do multi-line paste.
 Copying to HTML should convert @code{<div class='domterm-pre'>} to
 @code{<pre>} so pasting without stylesheets works better.
 
-@subheading Improve standalone terminal emulator
+@subsubheading Scroll limit
 
 Handle saving and truncating scrolled-out output.
-
-In @code{qtdomterm} consider using @code{QDockWidget} so panes
-can be moved between windows.
-
-Implement ``drop-down'' mode.
+Most terminal emulators have ``max number of lines in scroll buffer'' setting.
+What makes this a little tricky is because there may multiple
+windows attached to the same session.  So this would require changes
+to the protocol for saving/restoring and syncorinizing sessions.
 
 @subheading Support other embeddable browsers
 
@@ -4034,6 +4042,45 @@ a `class` attribute (for example `green-foreground-style` and
 `underlined-style`).  A default stylesheet can map each style class to
 the correspoding CSS rules.  This has the advantage that one could
 override the highlighting appearance with a custom style sheet.
+
+@subsection Predictive echo
+
+@uref{https://mosh.org/,Mosh} implements local ``tentative echo'', which
+makes network latency less a problem.
+DomTerm implements this leveraging the ``deferred deletion''
+mechanism (used for line mode echo).
+
+To do this we use a @code{<span>} that contains predicted input:
+an optional text node, the @code{_caretNode}, and an optional text node.
+The node has 3 additional properties: @code{textBefore}, @code{textAfter},
+and @code{pendingEcho}.  When output arrives from the server,
+the function @code{_doDeferredDeletion} is called,
+which replaces the span by the @code{textBefore} and @code{textAfter},
+with the @code{_caretNode} in between; this is ``real'' (confirmed) output,
+before processing the new output.
+We also @code{_doDeferredDeletion} when unable to do echo predication.
+
+Handling keyboard input is as follows:
+First, if @code{_deferredForDeletion} is null, we set it to a fresh span
+that wraps the @code{_caretNode}.
+As needed,  any text node immediately before or after can be moved
+into the @code{_deferredForDeletion} span, also setting @code{textBefore}
+and  @code{textAfter}.
+Then, for a printing character, we insert it before the caret,
+and append it to @code{pendingEcho}.
+For left or right arrow, delete, or backspace, if possible we adjust the
+@code{_deferredForDeletion} span appropriately,
+and add a special code to @code{pendingEcho}.
+If not possible, we @code{_doDeferredDeletion}, which we
+also do for other keys.
+
+Calling @code{_doDeferredDeletion} just before handling output
+is correct but suboptimal if the output only contains part
+of the pending echo.
+In that case we try to create (after handling output) a new
+@code{_deferredForDeletion} span, whose @code{pendingEcho} string
+is a tail of the previous value.
+(We only do this if there are no changes to any other (logical) line.)
 
 @subsection Line-breaking / pretty-printing
 
