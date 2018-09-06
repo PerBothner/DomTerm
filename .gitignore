@@ -10,7 +10,7 @@ Makefile
 aclocal.m4
 config.log
 config.status
-domterm.jar
+autotools-aux
 xulapp/domterm-chrome.jar
 native/pty/org_domterm_pty_PTY.h
 hlib/domterm-all.js
