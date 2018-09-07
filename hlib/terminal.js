@@ -538,17 +538,32 @@ DomTerm.prototype.startCommandGroup = function(parentKey, pushing=0) {
                 commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
         }
         var oldOutput = this._currentCommandOutput;
+        let prevGroup = oldGroup;
         if (pushing <= 0) {
             for (let p = oldGroup; ;  p = p.parentNode) {
                 if (! (p instanceof Element)) {
                     oldGroup = null;
                     break;
                 }
-                if (p.classList.contains("command-group")
-                    && (p.getAttribute("group-parent-id") == parentKey
-                        ||  p.getAttribute("group-id") == parentKey)) {
-                    oldGroup = p;
-                    break;
+                if (p.classList.contains("command-group")) {
+                    let gpid = p.getAttribute("group-parent-id");
+                    let gid = p.getAttribute("group-id");
+                    if (pushing == 0) {
+                        if ((gpid || ! gid) && gpid == parentKey) {
+                            oldGroup = p;
+                            break;
+                        }
+                        if ((gid || ! gpid) && gid == parentKey) {
+                            oldGroup = prevGroup;
+                            break;
+                        }
+                    } else {
+                        if (gid == parentKey) {
+                            oldGroup = p;
+                            break;
+                        }
+                    }
+                    prevGroup = p;
                 }
             }
             if (oldGroup && ! this._isAnAncestor(container, oldGroup)) {
