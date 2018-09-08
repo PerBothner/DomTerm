@@ -1514,7 +1514,7 @@ DomTerm._countCodePoints = function(str) {
     return n;
 }
 
-/** Find index in string after skipping specifie dUnicode code points */
+/** Find index in string after skipping specified Unicode code points */
 DomTerm._indexCodePoint = function(str, index) {
     let len = str.length;
     let j = 0;
@@ -3249,22 +3249,28 @@ DomTerm.prototype._showHideHandler = function(event) {
     var target = event.target;
     var child = target.firstChild;
     if (target.tagName == "SPAN"
-        && (child instanceof Text | child == null)) {
-        var oldText = child == null ? "" : child.data;
-        var markers = this.showHideMarkers;
-        var i = markers.length;
-        while (i >= 0 && oldText != markers[i])
-            --i;
-        var wasHidden;
-        var oldHidingValue = target.getAttribute("domterm-hiding");
-        if (oldHidingValue)
-            wasHidden = oldHidingValue == "true";
-        else if (i < 0)
-            wasHidden = false;
-        else
-            wasHidden = (i & 1) == 0;
-        if (child && i >= 0)
-            child.data = markers[wasHidden ? i+1 : i-1];
+        && (child instanceof Text || child == null)) {
+        let oldText = child == null ? "" : child.data;
+        let showText = target.getAttribute("show");
+        let hideText = target.getAttribute("hide");
+        let wasHidden;
+        if (showText !== null && hideText !== null) {
+            wasHidden = oldText == showText;
+            child.data = wasHidden ? hideText : showText;
+        } else {
+            var markers = this.showHideMarkers;
+            var i = markers.length;
+            while (--i >= 0 && oldText != markers[i]) {}
+            var oldHidingValue = target.getAttribute("domterm-hiding");
+            if (oldHidingValue)
+                wasHidden = oldHidingValue == "true";
+            else if (i < 0)
+                wasHidden = false;
+            else
+                wasHidden = (i & 1) == 0;
+            if (child && i >= 0)
+                child.data = markers[wasHidden ? i+1 : i-1];
+        }
         target.setAttribute("domterm-hiding", wasHidden ? "false" : "true");
 
         // For all following-siblings of the start-node,
@@ -4796,6 +4802,24 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 && this.outputContainer.getAttribute("std") == "hider") {
                 if (this.outputContainer == this._currentStyleSpan)
                     this._currentStyleSpan = this.outputContainer.outerStyle;
+                let t = this.outputContainer.firstChild;
+                if (t instanceof Text
+                    && DomTerm._countCodePoints(t.data) == 2) {
+                    let split = DomTerm._indexCodePoint(t.data, 1);
+                    let hide = t.data.substring(0, split);
+                    let show = t.data.substring(split);
+                    // optimize if matching showHideMarkers
+                    let markers = this.showHideMarkers;
+                    let i = markers.length;
+                    while ((i -= 2) >= 0
+                           && (show != markers[i] || hide != markers[i+1])) {
+                    }
+                    if (i < 0) {
+                        this.outputContainer.setAttribute("show", show);
+                        this.outputContainer.setAttribute("hide", hide);
+                    }
+                    t.data = hide;
+                }
                 this.popFromElement();
             }
             break;

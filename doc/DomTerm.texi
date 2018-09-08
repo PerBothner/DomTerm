@@ -3400,6 +3400,15 @@ the value 2 means the first line of a multi-line editing group (as @uref{https:/
 
 Delimit a @ref{Hide/show buttons,hide/show "button"}, with @code{"\e[16u"} before
 and @code{"\e[17u"} after.
+The text between should be 1 or 2 characters (code points).
+The first character is displayed when contents are visible (shown)
+and that when clicked causes contents to be hidden.
+If there is a second character, it is the character used when
+contents are hidden
+and that when clicked causes contents to be shown.
+If the first character matches a "hide" entry in the predefined
+@code{showHideMarkers} table, then the second character
+defaults to the corresponding "show" entry.
 
 @item @code{"\e[83;"} @var{mode} @code{"u"}
 Delimit a span to be controlled by a show/hide button (previously printed).
