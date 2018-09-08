@@ -4714,7 +4714,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this._pushStdMode(null);
             break;
         case 12:
-            this._pushStyle("std", "error");
+            this._pushStdMode("error");
             break;
         case 18: // End non-selectable prompt
             var container = this.outputContainer;
