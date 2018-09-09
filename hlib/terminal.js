@@ -682,6 +682,7 @@ DomTerm.SEEN_ESC_CHARSET3 = 13;
 DomTerm.SEEN_ESC_SS2 = 14;
 DomTerm.SEEN_ESC_SS3 = 15;
 DomTerm.SEEN_SURROGATE_HIGH = 16;
+DomTerm.SEEN_CR = 17;
 
 // Possible values for _widthMode field of elements in lineStarts table.
 // This is related to the _widthColumns field in the same elements,
@@ -3937,6 +3938,23 @@ DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
     }
 };
 
+// Clean up readline when input is an exact multiple of the line length.
+// Then cursor is alone on an empty final line.  Readlines sends "\e[A\r\n".
+// (Zsh/fish are worse.)
+DomTerm.prototype._fixEmptyLastInputLine = function() {
+    this._clearWrap();
+    let ln = this.getAbsCursorLine();
+    if (ln == this.lineStarts.length - 2) {
+        let last = this.lineStarts[ln+1];
+        let lastText = last.textContent;
+        if (lastText == '\n' || lastText == ' \n') {
+            last.parentNode.removeChild(last);
+            this.lineStarts.length = ln + 1;
+            this.lineEnds.length = ln + 1;
+        }
+    }
+}
+
 DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
     var attrs = oldElement.attributes;
     for (var i = attrs.length; --i >= 0; ) {
@@ -6715,6 +6733,10 @@ DomTerm.prototype.insertString = function(str) {
             }
             this.controlSequenceState = DomTerm.INITIAL_STATE;
             break;
+        case DomTerm.SEEN_CR:
+            if (ch != 10)
+                this.controlSequenceState = DomTerm.INITIAL_STATE;
+            /* falls through */
         case DomTerm.INITIAL_STATE:
             if (DomTerm._doLinkify && DomTerm.isDelimiter(ch)
                 && this.linkify(str, prevEnd, i, columnWidth, ch)) {
@@ -6737,11 +6759,13 @@ DomTerm.prototype.insertString = function(str) {
                         this._enterPaging(true);
                         return;
                     }
+                    this._fixEmptyLastInputLine();
                     this.cursorLineStart(1);
                     i++;
                 } else {
                     this._breakDeferredLines();
                     this.cursorLineStart(0);
+                    this.controlSequenceState = DomTerm.SEEN_CR;
                 }
                 if (oldContainer.firstChild == null
                     && oldContainer != this.outputContainer
@@ -6764,6 +6788,10 @@ DomTerm.prototype.insertString = function(str) {
                     this._updateDisplay();
                     this._enterPaging(true);
                     return;
+                }
+                if (this.controlSequenceState == DomTerm.SEEN_CR) {
+                    this._fixEmptyLastInputLine();
+                    this.controlSequenceState =  DomTerm.INITIAL_STATE;
                 }
                 this.cursorNewLine((this.sstate.automaticNewlineMode & 1) != 0);
                 if (this.isLineEditing())
