@@ -2865,12 +2865,6 @@ This needs to be generalized to other modes.
 The idea is the line-editing mode would provide the
 functionality of readline or similar programs.
 
-@subsubheading Improved history support in line-editing mode
-
-While DomTerm has basic history support (previous/next line),
-we should implement searching (ctrl-R in readline),
-as well as saving the history (in local storage).
-
 @subsubheading Readline hooks to recognize when it's running under DomTerm
 
 The idea is readline would delegate basic line editing
@@ -2887,13 +2881,49 @@ want to interrupt the server needlessly.
 Readline should at least behave as if the screen width were infinite,
 delegating line-wrapping to DomTerm.
 
-@subsubheading Customizable key sequences, as in readline
-
 @subsubheading Event forwarding to inferior
 
 A process may "print"/paint graphics with event handlers.
 For example a button.  On clicking the button, the click
 should be bundled as an event objects sent back to the inferior.
+
+@subsubheading Shift selection
+
+Zsh editor (zle) supports Emacs-like mark and region.
+Emacs has a ``shift-selection'' state, which we would like to emulate.
+
+On mouse selection, or a shift-motion command (such as Shift-Right),
+should set the region in shift-selection mode:
+We send Ctrl-Space to the client (setting the mark) at the ``anchor''
+and move the cursor as needed.  We also (locally to DomTerm) set the
+``shift-selection'' mode.
+If when in shift-selection mode any (special) key is pressed @emph{without} the shift
+modfier, then shift-selection mode is turned off, the selection is collapsed,
+and Escape - Ctrl-Space is sent to decativate the region.
+
+Can do this lazily, so we only get the selection highlighting:
+On mouse selection or shift-motion command
+
+@subheading JavaScript extension
+
+It may be useful to load new JavaScript libraries into DomTerm.
+We can do this when loading a DomTerm web-page, by
+having the server add @code{<script>} elements to the
+generated web page.
+More flexible is do it dynamically:
+@example
+domterm load-javascript "foo.js"
+@end example
+This works by essentialy doing @code{createElement("script")}.
+
+For this to be useful we need to better define the DomTerm JavaScipt
+API with extension hooks.
+
+@subsubheading Plotting
+
+A useful extension library would be a plotting library.
+The @uref{https://plot.ly/javascript/,Plotly} looks powerful
+(and big), and controlled by a JSON-able data structure.
 
 @subheading Saved notebooks
 
