@@ -98,3 +98,4 @@ div.domterm div.interaction[buffer="main"] {
 div.interaction[buffer~="main"] div.command-group {
     border-top: thin dashed gray }
 span.pending { background-color: lightgrey }
+span.pending span[std="prompt"] { color: green, background-color: lightgrey }

@@ -597,6 +597,7 @@ DomTerm.prototype.startCommandGroup = function(parentKey, pushing=0) {
         this._currentCommandGroup = commandGroup;
         this._currentCommandOutput = null;
         this._currentCommandHideable = false;
+        this.sstate.continuationPromptPattern = undefined;
     }
 };
 
@@ -1440,6 +1441,7 @@ DomTerm.prototype._hidePassword = function() {
 
 // "Normalize" caret by moving caret text to following node.
 // Doesn't actually remove the _caretNode node, for that use _removeInputLine.
+// FIXME maybe rename to _removeCaretText
 DomTerm.prototype._removeCaret = function(normalize=true) {
     var caretNode = this._caretNode;
     this._showPassword();
@@ -1459,11 +1461,24 @@ DomTerm.prototype._removeCaret = function(normalize=true) {
     }
 }
 
+DomTerm.prototype._removeInputFromLineTable = function() {
+    let startLine = this.getAbsCursorLine();
+    let seenAfter = false;
+    function removeInputLineBreaks(lineStart, lineno) {
+        if (lineStart.getAttribute("line"))
+            return true;
+        seenAfter = true;
+        if (seenAfter)
+            return false;
+    }
+    this._adjustLines(startLine, removeInputLineBreaks);
+}
+
 DomTerm.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput) {
         this._removeCaret();
         var caretParent = this._caretNode.parentNode;
-        if (caretParent != null && ! this.isLineEditing()) {
+        if (caretParent != null) {
             // FIXME Is this needed/desirable? maybe just _removeCaret
             // That would avoid need for _restoreCaretNode.
             if (this.outputBefore==this._caretNode)
@@ -1637,11 +1652,10 @@ DomTerm.prototype._restoreInputLine = function(caretToo = true) {
                                        });
             }
         }
-        if (caretToo)
-            this._restoreCaret();
-
     }
-};
+    if (caretToo)
+        this._restoreCaret();
+}
 
 /** Move cursor to beginning of line, relative.
  * @param deltaLines line number to move to, relative to current line.
@@ -3626,7 +3640,7 @@ DomTerm.prototype.grabInput = function(input) {
         return "";
     if (input instanceof Text)
         return input.data;
-    if (this.isSpanNode(input) && input.getAttribute("line"))
+    if (this.isSpanNode(input) && input.getAttribute("std")=="prompt")
         return "";
     var result = "";
     for (var n = input.firstChild; n != null;
@@ -3716,6 +3730,7 @@ DomTerm.prototype.historyMove = function(delta) {
         child = next;
     }
     inputLine.appendChild(this._caretNode);
+    this._removeInputFromLineTable();
     this._restoreCaret();
     this.editorInsertString(str);
     this._scrollIfNeeded();
@@ -3738,13 +3753,15 @@ DomTerm.prototype.handleEnter = function(text) {
     // For now we only support the normal case when outputBefore == inputLine.
     var oldInputLine = this._inputLine;
     var spanNode;
-    var line = this.getCursorLine();
-    let suppressEcho = ((! this._clientPtyEcho
+    var line = this.getAbsCursorLine();
+    let suppressEcho = ((this._clientPtyEcho
                          && (! this._clientPtyExtProc
                              || ! this._clientWantsEditing))
                         || text == null);
     if (oldInputLine != null) {
         let noecho = oldInputLine.classList.contains("noecho");
+        if (noecho)
+            oldInputLine.classList.remove("noecho");
         let cont = oldInputLine.getAttribute("continuation");
         if (text != null && ! noecho)
             this.historyAdd(text, cont == "true");
@@ -3757,19 +3774,26 @@ DomTerm.prototype.handleEnter = function(text) {
             wrap.appendChild(oldInputLine);
         }
     }
-    if (! suppressEcho && ! this.sstate.hiddenText) {
-        this._inputLine = null; // To avoid confusing cursorLineStart
-        this.cursorLineStart(1);
-    }
     this._inputLine = null;
     if (suppressEcho) {
+        this._removeInputFromLineTable();
         oldInputLine.classList.add("pending");
         this._deferredForDeletion = oldInputLine;
         this._requestDeletePendingEcho();
         this.currentAbsLine = line+this.homeLine;
         this.currentCursorColumn = -1;
+        this.resetCursorCache();
+    } else if (! this.sstate.hiddenText) {
+        this._removeCaret();
+        let inputParent = oldInputLine.parentNode;
+        this.outputContainer = inputParent;
+        this.outputBefore = oldInputLine;
+        this._removeInputLine();
+        this.outputContainer = oldInputLine.parentNode;
+        this.outputBefore = oldInputLine.nextSibling;
+        this.resetCursorCache();
+        this.cursorLineStart(1);
     }
-    this.resetCursorCache();
     return text;
 };
 
@@ -4753,6 +4777,8 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 14:
         case 24:
             var curOutput = this._currentCommandOutput;
+            /*
+            NOT CLEAR IF THIS IS USEFUL - CAN'T REPRODUCE
             if (curOutput
                 && curOutput.firstChild == this.outputContainer
                && curOutput.firstChild == curOutput.lastChild) {
@@ -4763,6 +4789,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 if (this._currentCommandHideable)
                     this.outputContainer.setAttribute("domterm-hidden", "false");
             }
+            */
             this._pushStdMode("prompt");
             if (this._inputLine != null) {
                 if (param == 24)
@@ -5233,7 +5260,7 @@ DomTerm.prototype._unsafeInsertHTML = function(text) {
             this.outputBefore.insertAdjacentHTML("beforebegin", text);
         else {
             let tmp = document.createElement("span");
-            this.outputContainer.insertBefore(tmp. this.outputBefore);
+            this.outputContainer.insertBefore(tmp, this.outputBefore);
             tmp.insertAdjacentHTML("beforebegin", text);
             this.outputContainer.removeChild(tmp);
         }
@@ -5832,9 +5859,10 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         var canon = text.indexOf(" icanon ") >= 0;
         var echo = text.indexOf(" echo ") >= 0;
         var extproc = text.indexOf(" extproc ") >= 0;
-        this.autoLazyCheckInferior = false;
         if (canon == 0 && this.isLineEditing() && this._inputLine) {
             let text = this.grabInput(this._inputLine);
+            this._restoreInputLine();
+
             let r = new Range();
             r.selectNodeContents(this._inputLine);
             r.setStartBefore(this._caretNode);
@@ -6107,6 +6135,15 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this.freshLine();
         this.startCommandGroup(text, -1); // exit group
         break;
+    case 122:
+        this.sstate.continuationPromptPattern = text;
+        break;
+    case 123:
+        if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
+            this._clientWantsEditing = 1;
+        if (this.isLineEditing())
+            this.editorContinueInput();
+        break;
     default:
         // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
     }
@@ -6304,7 +6341,7 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
 
 DomTerm.prototype._doDeferredDeletion = function() {
     var deferred = this._deferredForDeletion;
-    if (deferred) {
+    if (deferred && deferred.parentNode) {
         this._removeCaret();
         this.outputContainer = deferred.parentNode;
         this.outputContainer.insertBefore(this._caretNode, deferred);
@@ -7058,7 +7095,34 @@ DomTerm.prototype._breakDeferredLines = function() {
 DomTerm._doLinkify = true;
 DomTerm._forceMeasureBreaks = false;
 
+DomTerm.prototype._adjustLines = function(startLine, action) {
+    var delta = 0;
+    var prevLine = this.lineStarts[startLine];
+    var skipRest = false;
+    for (var line = startLine+1;  line < this.lineStarts.length;  line++) {
+        var lineStart = this.lineStarts[line];
+        if (delta > 0) {
+            this.lineStarts[line-delta] = this.lineStarts[line];
+            this.lineEnds[line-delta-1] = this.lineEnds[line-1];
+        }
+        let lineAttr = lineStart.getAttribute("line");
+        if (action(lineStart, line-delta)) {
+            delta++;
+        } else
+	    prevLine = lineStart;
+    }
+    if (delta == 0)
+        return false;
+    // Update line tables
+    var lineCount = this.lineEnds.length;
+    this.lineEnds[lineCount-delta-1] = this.lineEnds[lineCount-1];
+    this.lineStarts.length = lineCount-delta;
+    this.lineEnds.length = lineCount-delta;
+    return true;
+}
+
 // Remove existing soft line breaks.
+// FIXME use _adjustLines
 DomTerm.prototype._unbreakLines = function(startLine, single=false) {
     var delta = 0;
     var prevLine = this.lineStarts[startLine];
@@ -7119,6 +7183,27 @@ DomTerm.prototype._unbreakLines = function(startLine, single=false) {
     this.lineStarts.length = lineCount-delta;
     this.lineEnds.length = lineCount-delta;
     return true; // FIXME needlessly conservative
+}
+
+DomTerm._insertIntoLines = function(dt, el, line) {
+    var lineCount = dt.lineStarts.length;
+    var lineEnd = dt.lineEnds[line];
+
+    for (var i = lineCount; --i > line; ) {
+        dt.lineStarts[i+1] = dt.lineStarts[i];
+        dt.lineEnds[i+1] = dt.lineEnds[i];
+    }
+    dt.lineEnds[line+1] = lineEnd;
+    dt.lineStarts[line+1] = el;
+    dt.lineEnds[line] = el;
+    // FIXME following lines are duplicated with moveToAbs
+    lineCount++;
+    var homeLine = dt.homeLine;
+    if (lineCount > homeLine + dt.numRows) {
+        homeLine = lineCount - dt.numRows;
+        //goalLine -= homeLine - dt.homeLine;
+        dt.homeLine = homeLine;
+    }
 }
 
 DomTerm.prototype._breakAllLines = function(startLine = -1) {
@@ -7188,27 +7273,6 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             el.setAttribute("pre-break", ""); // Needed for CSS
         el.setAttribute("breaking", "yes");
         return curPosition;
-    };
-
-    function insertIntoLines(dt, el) {
-        var lineCount = dt.lineStarts.length;
-        var lineEnd = dt.lineEnds[line];
-
-        for (var i = lineCount; --i > line; ) {
-            dt.lineStarts[i+1] = dt.lineStarts[i];
-            dt.lineEnds[i+1] = dt.lineEnds[i];
-        }
-        dt.lineEnds[line+1] = lineEnd;
-        dt.lineStarts[line+1] = el;
-        dt.lineEnds[line] = el;
-        // FIXME following lines are duplicated with moveToAbs
-        lineCount++;
-        var homeLine = dt.homeLine;
-        if (lineCount > homeLine + dt.numRows) {
-            homeLine = lineCount - dt.numRows;
-            //goalLine -= homeLine - dt.homeLine;
-            dt.homeLine = homeLine;
-        }
     };
 
     // Using two passes is an optimization, because mixing offsetLeft
@@ -7361,14 +7425,14 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                             el.parentNode.removeChild(lineNode);
                             break check_fits;
                         }
-                        insertIntoLines(dt, lineNode);
+                        DomTerm._insertIntoLines(dt, lineNode, line);
                         el = lineNode;
                         indentWidth = addIndentation(dt, el, countColumns);
                         rest = document.createTextNode(rest);
                         el.parentNode.insertBefore(rest, el.nextSibling);
                         next = rest;
                     } else { // dt.isObjectElement(el) or wc-node
-                        insertIntoLines(dt, lineNode);
+                        DomTerm._insertIntoLines(dt, lineNode, line);
                         el.parentNode.insertBefore(lineNode, el);
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
@@ -7425,7 +7489,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     startOffset -= indentWidth;
                     beforePos = indentWidth;
                     if (lineAttr != "hard") {
-                        insertIntoLines(dt, el);
+                        DomTerm._insertIntoLines(dt, el, line);
                         line++;
                     }
                     measureWidth = 0;
@@ -7744,13 +7808,13 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     this.currentAbsLine = absLine;
     let column = this.currentCursorColumn;
     if (column >= 0)
-	this.currentCursorColumn = (column += widthInColumns);
+        this.currentCursorColumn = (column += widthInColumns);
     else
-	column = this.getCursorColumn();
+        column = this.getCursorColumn();
     let lineStart = this.lineStarts[absLine];
     if (lineStart._widthColumns !== undefined
-	&& lineStart._widthColumns < column)
-	lineStart._widthColumns = column;
+        && lineStart._widthColumns < column)
+        lineStart._widthColumns = column;
 };
 
 DomTerm.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false) {
@@ -7855,6 +7919,7 @@ DomTerm.prototype.processEnter = function() {
         if (this.outputContainer == oldInput)
             this.outputBefore = null;
     }
+    this._restoreCaret();
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
     this.reportText(text, "\n");
@@ -8311,7 +8376,7 @@ DomTerm.inputModeChanged = function(dt, mode) {
 
 DomTerm.prototype._pushToCaret = function() {
     let saved = {
-        before: this.outputBefore, container: this.outputContainer }
+        before: this.outputBefore, container: this.outputContainer };
     this.outputBefore = this._caretNode;
     this.outputContainer = this._caretNode.parentNode;
     this.resetCursorCache();
@@ -8380,18 +8445,14 @@ DomTerm.commandMap['end-of-input'] = function(dt, key) {
     dt.editorMoveHomeOrEnd(true); dt._numericArgument = null;
     return true; }
 DomTerm.commandMap['up-line-or-history'] = function(dt, key) {
-    if (dt._atTopInputLine()) {
+    if (! dt.editorMoveLines(true, dt.numericArgumentGet()))
         dt.historyMove(-1);
-        return true;
-    }
-    return false;
+    return true;
 }
 DomTerm.commandMap['down-line-or-history'] = function(dt, key) {
-    if (dt._atBottomInputLine()) {
-        dt.historyMove(1);
-        return true;
-    }
-    return false;
+    if (! dt.editorMoveLines(false, dt.numericArgumentGet()))
+        dt.historyMove(1)
+    return true;
 }
 DomTerm.commandMap['ignore-action'] = function(dt, key) {
     return true; }
@@ -8451,7 +8512,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Down": "down-line-or-history",
     "Up": "up-line-or-history",
     "Enter": "accept-line",
-    "Shift-Enter": "insert-newline",
+    "Alt-Enter": "insert-newline",
     // The following should be controlled by a user preference
     // for emacs-like keybindings. FIXME
     "Alt-B": "backward-word",
@@ -8460,7 +8521,9 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-B": "backward-char",
     "Ctrl-D": "forward-delete-char",
     "Ctrl-E": "end-of-line",
-    "Ctrl-F": "forward-char"
+    "Ctrl-F": "forward-char",
+    "Ctrl-N": "down-line-or-history",
+    "Ctrl-P": "up-line-or-history"
 }, {});
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
@@ -8498,6 +8561,7 @@ DomTerm.prototype.doLineEdit = function(keyName) {
 
         if (this._inputLine.classList.contains("noecho")
             && ! this.sstate.hiddenText
+            && this._isAnAncestor(this._caretNode, this._inputLine) // paranoia
             && this.passwordShowCharTimeout) {
             // Temporarily display inserted char(s), with dots for other chars.
             // After timeout all chars shown as dots.
@@ -8759,16 +8823,6 @@ DomTerm.prototype.keyDownHandler = function(event) {
             this._numericArgument = this._numericArgument == null ? c
                 : this._numericArgument + c;
             event.preventDefault();
-        } else if (key == 13) {
-            event.preventDefault();
-            if (false && event.shiftKey) { // FIXME needs work
-                this.pasteText("\n");
-            } else {
-                this.processEnter();
-                if (this._lineEditingMode == 0 && this.autoLazyCheckInferior) {
-                    this._clientWantsEditing = 0;
-                }
-            }
         }
         else if (event.ctrlKey
                  && (key == 67 // ctrl-C
@@ -8796,7 +8850,10 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (keyName == "Backspace" || keyName == "Delete") {
                 this._editPendingInput(keyName == "Delete", true);
             }
-            this._respondSimpleInput(str, keyName);
+            if (key == 13 && event.altKey)
+                this.reportText(str, null);
+            else
+                this._respondSimpleInput(str, keyName);
         }
     }
 };
@@ -8936,37 +8993,6 @@ DomTerm.prototype._checkTree = function() {
         if (this._isAnAncestor(this.initial, main))
             error("alternate-screenbuffer nested in main-screenbuffer");
     }
-};
-
-DomTerm.prototype._atBottomInputLine = function() {
-    if (this._inputLine == null)
-        return true;
-    var r2 = document.createRange();
-    r2.selectNode(this._inputLine);
-    return this._countLinesBetween(this._caretNode, 0,
-                                   r2.endContainer, r2.endOffset) <= 0;
-};
-DomTerm.prototype._atTopInputLine = function() {
-    if (this._inputLine == null)
-        return true;
-    return this._countLinesBetween(this._inputLine, 0,
-                                   this._caretNode, 0) <= 0;
-};
-
-DomTerm.prototype._countLinesBetween = function(startNode, startOffset,
-                                                endNode, endOffset) {
-    var range = document.createRange();
-    range.setStart(startNode, startOffset);
-    range.setEnd(endNode, endOffset);
-    // FIXME rather expensive - but it doesn't matter for short inputs
-    var textBefore = range.cloneContents().textContent;
-    var textLength = textBefore.length;
-    var count = 0;
-    for (var i = 0; i < textLength;  i++) {
-        if (textBefore.charCodeAt(i) == 10)
-            count++
-    }
-    return count;
 };
 
 // For debugging
@@ -9533,6 +9559,72 @@ DomTerm.prototype.numericArgumentGet = function() {
     return Number(s);
 }
 
+DomTerm.prototype.editorMoveLines = function(backwards, count) {
+    if (count == 0)
+        return true;
+    let delta1 = backwards ? -1 : 1;
+    let goalColumn = this.sstate.goalColumn;
+    let save = this._pushToCaret();
+    let oldColumn = this.getCursorColumn();
+    let oldLine = this.getAbsCursorLine();
+    this._popFromCaret(save);
+    this.editorMoveStartOrEndLine(false);
+    save = this._pushToCaret();
+    // start of (logical) line (after prompt)
+    let startColumn = this.getCursorColumn();
+    let startLine = this.getAbsCursorLine();
+    this._popFromCaret(save);
+    // calculate start (logical) column number (after prompt).
+    let column = oldColumn - startColumn
+        + this.numColumns * (oldLine - startLine);
+    if (goalColumn && goalColumn > column)
+        column = goalColumn;
+    let line = startLine;
+    if (backwards) {
+        for (;;) {
+            if (count <= 0)
+                break;
+            if (! this._newlineInInputLine(line))
+                break;
+            line--;
+            let ln = this.lineStarts[line];
+            if (ln.nodeName != "SPAN" || ln.getAttribute("line") == "hard")
+                count--;
+        }
+    } else {
+        for (;;) {
+            if (count <= 0)
+                break;
+            if (! this._newlineInInputLine(line+1))
+                break;
+            line++;
+            let ln = this.lineStarts[line];
+            if (ln.nodeName != "SPAN" || ln.getAttribute("line") == "hard")
+                count--;
+        }
+    }
+    this._removeCaret();
+    let parent, next;
+    if (! this._newlineInInputLine(line)) {
+        parent = this._inputLine;
+        next = parent.firstChild;
+    } else {
+        var node = this.lineStarts[line];
+        parent = node.parentNode;
+        next = node.nextSibling;
+        if (next instanceof Element
+            && next.getAttribute("std") == "prompt") {
+            node = next;
+            next = node.nextSibling;
+        }
+    }
+    parent.insertBefore(this._caretNode, next);
+    this.editorBackspace(- column, "move", "char", "line");
+    this.sstate.goalColumn = column;
+    this._restoreCaret();
+    return count <= 0;
+}
+
 DomTerm.prototype.editorMoveToRangeStart = function(range) {
     this._removeCaret();
     if (range.startContainer == this._caretNode)
@@ -9549,6 +9641,7 @@ DomTerm.prototype.editorMoveToRangeStart = function(range) {
 DomTerm.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
     this.editorBackspace(toEnd ? -Infinity : Infinity,
                          action, "char", "line");
+    this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
 DomTerm.prototype.editorMoveHomeOrEnd = function(toEnd) {
@@ -9557,6 +9650,7 @@ DomTerm.prototype.editorMoveHomeOrEnd = function(toEnd) {
     if (toEnd)
         r.setStart(r.endContainer, r.endOffset);
     this.editorMoveToRangeStart(r);
+    this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
 DomTerm.prototype.editorMoveToPosition = function(node, offset) {
@@ -9570,8 +9664,102 @@ DomTerm.prototype.editorMoveToPosition = function(node, offset) {
     this.editorMoveToRangeStart(r);
 }
 
+DomTerm.prototype._updateAutomaticPrompts = function() {
+    var pattern = this.sstate.continuationPromptPattern;
+    var initialPrompt = "";
+    var initialPromptNode = null;//this._currentPromptNode;
+    if (this._inputLine && this._inputLine.previousSibling instanceof Element
+        && this._inputLine.previousSibling.getAttribute("std") == "prompt")
+        initialPromptNode = this._inputLine.previousSibling;
+    else if (this._inputLine && this._inputLine.parentNode instanceof Element
+             && this._inputLine.parentNode.getAttribute("std") == "input"
+             && this._inputLine.parentNode.previousSibling instanceof Element
+             && this._inputLine.parentNode.previousSibling.getAttribute("std") == "prompt")
+        initialPromptNode = this._inputLine.parentNode.previousSibling;
+    let lineno = 0;
+    if (initialPromptNode) {
+        // FIXME don't need to calculate this if pattern has no padding
+        // or if padding has the form %99Px
+        initialPrompt = initialPromptNode.textContent;
+        var prev = initialPromptNode.previousSibling;
+        if (prev && prev.nodeName == "SPAN"
+            && prev.getAttribute("std") == "hider")
+            initialPrompt = prev.textContent + initialPrompt;
+        let initialNumber = this._getIntegerBefore(initialPrompt);
+        if (initialNumber > 0)
+            lineno += initialNumber;
+    }
+    if (! pattern) {
+        pattern = this.promptPatternFromInitial(initialPrompt);
+    }
+
+    let startNum = this._inputLine.startLineNumber + 1;
+    for (let i = startNum; i < this.lineStarts.length; i++) {
+        if (! this._newlineInInputLine(i))
+            break;
+        let start = this.lineStarts[i];
+        if (start.getAttribute("line") != "hard")
+            continue;
+        let next = start.nextSibling;
+        if (next && next.nodeName == "SPAN"
+            && next.getAttribute("std") == "prompt") {
+            let newPrompt = this._continuationPrompt(pattern, ++lineno,
+                                                 initialPrompt.length);
+            let oldPrompt = next.getAttribute("value");
+            let w = this.strWidthInContext(newPrompt, start);
+            if (oldPrompt)
+                w -= this.strWidthInContext(oldPrompt, start);
+            if (start._widthColumns  !== undefined)
+                start._widthColumns += w;
+            next.setAttribute("value", newPrompt);
+        }
+    }
+}
+
+// True if this is an internal line break in multi-line _inputLine.
+// False if the linebreak immediately before or after the _inputLine.
+// Unspecified for other linebreaks.
+DomTerm.prototype._newlineInInputLine = function(i) {
+    // OR:
+    // let start = this.lineStarts[i];
+    // return start.nodeName == "SPAN" &&  start != this._inputLine.nextSibling
+    return i > 0 && i < this.lineStarts.length
+        && this.lineStarts[i] == this.lineEnds[i-1];
+}
+
+DomTerm.prototype.editorContinueInput = function() {
+    let outputParent = this.outputContainer.parentNode; // command-output
+    let previous = outputParent.previousSibling; // domterm-pre input-line
+    let previousInputLineNode = previous.lastChild;
+    let previousInputStd = previousInputLineNode.previousSibling;
+    let editSpan =  this._createSpanNode();
+    editSpan.classList.add("editing");
+    editSpan.setAttribute("std", "input");
+    this._removeCaret();
+    previousInputStd.insertBefore(editSpan, previousInputStd.firstChild);
+    this._moveNodes(editSpan.nextSibling, editSpan, null);
+    editSpan.appendChild(previousInputLineNode);
+    let lastLine = this.outputContainer.firstChild;
+    previous.appendChild(lastLine);
+    outputParent.removeChild(this.outputContainer);
+    outputParent.parentNode.removeChild(outputParent)
+    this._inputLine = editSpan;
+    let lastLineNo = this.lineStarts.length-1;
+    this.lineStarts[lastLineNo] = this.lineEnds[lastLineNo-1]
+    let prompt = this._createSpanNode();
+    prompt.setAttribute("std", "prompt");
+    editSpan.appendChild(prompt);
+    this.editorMoveHomeOrEnd(true);
+    this.outputContainer=editSpan.parentNode;
+    this.outputBefore=editSpan;
+    this.resetCursorCache()
+    this._inputLine.startLineNumber = this.getAbsCursorLine();
+    this._updateAutomaticPrompts();
+}
+
 DomTerm.prototype.editorInsertString = function(str, inserting=true) {
     this._showPassword();
+    this._updateLinebreaksStart(this.getAbsCursorLine(), true);
     for (;;) {
         let nl = str.indexOf('\n');
         let str1 = nl < 0 ? str : str.substring(0, nl);
@@ -9581,7 +9769,6 @@ DomTerm.prototype.editorInsertString = function(str, inserting=true) {
                 this.insertRawOutput(str1);
                 let line = this.lineStarts[this.getAbsCursorLine()];
                 line._widthColumns += this.strWidthInContext(str1, line);
-                this._updateLinebreaksStart(this.getAbsCursorLine(), true);
             } else {
                 let saveInserting = this.sstate.insertMode;
                 this.sstate.insertMode = inserting;
@@ -9592,11 +9779,22 @@ DomTerm.prototype.editorInsertString = function(str, inserting=true) {
         }
         if (nl < 0)
             break;
-        // FIXME break existing line
-        // insert _createLineNode("hard")
-        // maybe insert prompt
-        // update line tables
-        this.cursorNewLine(1);
+        let saved = this._pushToCaret();
+        let newline = this._createLineNode("hard", "\n");
+        let lineno = this.getAbsCursorLine();
+        DomTerm._insertIntoLines(this, newline, lineno);
+        this.insertNode(newline);
+        let prompt = this._createSpanNode();
+        prompt.setAttribute("std", "prompt");
+        this._pushIntoElement(prompt);
+        this.popFromElement();
+        this._updateAutomaticPrompts();
+        //let pwidth = this.strWidthInContext(promptString, prompt);
+        //newline._widthColumns += pwidth; FIXME
+        this.currentAbsLine = lineno+1;
+        this.currentCursorColumn = -1; // FIXME pwidth;
+        //this._updateLinebreaksStart(this.getAbsCursorLine(), true);
+        this._popFromCaret(saved);
         str = str.substring(nl+1);
     }
 }
@@ -9622,6 +9820,7 @@ DomTerm.editorNonWordChar = function(ch) {
  * or "visible-line" (stop before moving to different screen line).
  */
 DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
+    this.sstate.goalColumn = undefined;
     let doDelete = action == "delete";
     let doWords = unit == "word";
     let doLines = unit == "line";
@@ -9631,6 +9830,7 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     let wordCharSeen = false;
     let range;
     let linesCount = 0;
+
     function fun(node) {
         if (node == dt._caretNode)
             return false;
@@ -9764,6 +9964,109 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     }
     return todo;
 }
+
+DomTerm.prototype._lastDigit = function(str) {
+    for (var j = str.length; --j >= 0; ) {
+        var d = str.charCodeAt(j);
+        if (d >= 48 && d <= 57)
+            return j+1;
+    }
+    return -1;
+}
+
+DomTerm.prototype._getIntegerBefore = function(str, last) {
+    if (! last)
+        last = this._lastDigit(str);
+    for (var j = last; --j >= 0; ) {
+        var d = str.charCodeAt(j);
+        if (d < 48 || d > 57)
+            return Number(str.substring(j+1, last));
+    }
+    return -1;
+}
+
+/** Create prompt for a continuation line.
+ * initial: The prompt for the initial line of the multi-line input/
+ * pattern: A pattern to use to generate the prompt.
+ *  '%N' - include line number here
+ *  '%P<digits><c>' - include padding here, repeating following character <c>
+ *     as needed to bring the width as specified by <digits>
+ *  '%P<c>' - as before, but use width from initial prompt
+ *  '%%' - include literal "%" here
+ */
+DomTerm.prototype._continuationPrompt = function(pattern, lineno, width) {
+    var padding = null;
+    var part1 = ""; // build text before the padding
+    var part2 = ""; // build text after the padding
+    var previous = 0;
+    var prev = 0; // index of end of previous '%' sequence
+    var plength = pattern.length;
+    for (;;) {
+        var pc = pattern.indexOf("%", prev);
+        if (pc < 0 || pc + 1 == plength) {
+            part2 = part2 + pattern.substring(prev);
+            break;
+        }
+        var ch1 = pattern.charAt(pc+1);
+        if (ch1 == '%')
+            pc++;
+        var before = pattern.substring(prev, pc);
+        if (ch1 == "N") {
+            if (lineno >= 0)
+                before = before + lineno;
+            pc++;
+        }
+        if (padding)
+            part2 = part2 + before;
+        else
+            part1 = part1 + before;
+        if (ch1 == "P" && pc + 2 < plength) {
+            var w = -1;
+            pc += 2;
+            for (;;) {
+                var ch2 = pattern.charCodeAt(pc);
+                if (ch2 < 48 || ch2 > 57)
+                    break;
+                ch2 -= 48;
+                w = w == -1 ? ch2 : (10 * w) + ch2;
+                pc++;
+            }
+            if (w >= 0)
+                width = w;
+            padding = pattern.charAt(pc);
+        }
+        prev = pc + 1;
+    }
+    var neededPadding = width ? width - part1.length - part2.length : 0;
+    if (padding == null || neededPadding <= 0)
+        return part1 + part2;
+    else
+        return part1 + padding.repeat(neededPadding) + part2;
+};
+
+/** Create a default continuation prompt pattern based on initial prompt.
+ * The result is "%P%N" followed by a suffix designed to align
+ * with a line number in the initial prompt.
+ */
+DomTerm.prototype.promptPatternFromInitial = function(initialPrompt) {
+    return 4 * initialPrompt.length > this.numColumns ? "> " : "%P.> ";
+    /*
+    var width = initialPrompt.length;
+    var lastd = this._lastDigit(initialPrompt);
+    var j = width;
+    while (--j >= 0) {
+        var ch = initialPrompt.charCodeAt(j);
+        if (ch != 32 && ch != 58) // neither ' ' nor ':'
+            break;
+    }
+    j++;
+    var suffix = initialPrompt.substring(j);
+    var pattern = "%P.%N";
+    if (lastd > 0)
+        pattern = pattern + ".".repeat(j - lastd);
+    return pattern + suffix;
+*/
+};
 
 /* DEBUGGING
 DomTerm.prototype._showSelection = function() {
