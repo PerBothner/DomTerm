@@ -52,6 +52,7 @@ function connectAjax(name, prefix="", topNode=null)
         }
         xhr.open("POST", prefix+"io-"+sessionKey);
         xhr.onreadystatechange = handleAjaxIO;
+        xhr.responseType = "text";
         var text = pendingInput;
         if (text.length > 0)
             ajaxInterval = 0;
