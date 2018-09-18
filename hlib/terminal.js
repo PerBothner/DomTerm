@@ -3445,18 +3445,16 @@ DomTerm.prototype._forEachElementIn = function(node, func, allNodes=false, backw
         if (doChildren && cur instanceof Element
             && (next = backwards?cur.lastChild:cur.firstChild) != null) {
             cur = next;
-        } else if ((next = backwards?cur.previousSibling:cur.nextSibling) != null)
-            cur = next;
-        else {
+        } else {
             for (;;) {
-                cur = cur.parentNode;
-                if (cur == node)
-                    break;
                 next = backwards?cur.previousSibling:cur.nextSibling;
                 if (next != null) {
                     cur = next;
                     break;
                 }
+                cur = cur.parentNode;
+                if (cur == node)
+                    break;
             }
         }
     }
@@ -3476,14 +3474,14 @@ DomTerm._forEachTextIn = function(el, fun) {
             n = next;
         } else {
             for (;;) {
+                if (n == el)
+                    return null;
                 next = n.nextSibling;
                 if (next) {
                     n = next;
                     break;
                 }
                 n = n.parentNode;
-                if (n == el)
-                    return null;
             }
         }
     }
