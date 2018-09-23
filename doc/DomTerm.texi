@@ -1470,6 +1470,9 @@ Delete @var{N} words to the left or right of the caret.
 @item @kbd{@key{Enter}} (@code{accept-line})
 Send input line to application.
 Also, if line is non-empty, add it to the history list.
+@item @kbd{Alt-@key{Enter}} (@code{insert-newline})
+Insert a literal newline.  Splits the current line at the current position,
+creating two new lines, with the caret after the new break.
 @item @kbd{Ctrl-@key{C}}
 @itemx @kbd{Ctrl-Shift-@key{C}}
 Copy selection to clipboard.
@@ -1498,6 +1501,8 @@ For example @kbd{Alt-1 Alt-2 Left} moves 12 characters left, while
 @itemx @kbd{Ctrl-@key{D}} (@code{delete-char})
 @itemx @kbd{Ctrl-@key{E}} (@code{end-of-line})
 @itemx @kbd{Ctrl-@key{F}} (@code{forward-char})
+@itemx @kbd{Ctrl-@key{N}} (@code{down-line-or-history})
+@itemx @kbd{Ctrl-@key{P}} (@code{up-line-or-history})
 @itemx @kbd{Alt-@key{B}} (@code{backward-word})
 @itemx @kbd{Alt-@key{F}} (@code{forward-word})
 Emacs-style alternate keybindings.
@@ -1508,8 +1513,6 @@ If you click before/after the input area,
 the caret is moved to the start/end of the input area.
 
 @emph{Not implemented yet, but planned:}
-Handle multi-line input areas. (@kbd{Shift-@key{Enter}} would add
-a newline to the input area, without sending anything to the application.)
 Emacs-style key-bindings should be controlled by a separate option;
 some bindings are missing, such as @kbd{Ctrl-@key{T}},
 and the ones prefixed by @kbd{Esc}.
@@ -3515,6 +3518,22 @@ which may close the current window or other appropriate action.
 
 @item @code{"\e]103;"} @var{state} @code{"\a"}
 Send saved state to new window.
+
+@item @code{"\e]122;"} @var{pattern} @code{"\a"}
+
+Set continuation prompt template.
+This is used for non-initial lines in a multi-line input editing area.
+The template uses print-style @code{%} escapes to indicate
+things to fill out.
+It is similar to the one used for JLine.
+
+@item @code{"\e]123;\a"}
+
+Extend previous input line for editing.  Typically used after reading an input
+line that is syntactically incomplete, but valid ``so far``.
+The previous input is ``re-opened'' for editing, and
+a fresh empty line added.
+
 @end table
 
 @subsubsection Urgent messages
@@ -3551,7 +3570,7 @@ Result to client: @code{"\x9D"} @var{stylesheets} @code{"\n"}
 Each stylesheet is a JSON-formatted string, separated by @code{"\t"},
 suitable for printing by the @code{list-stylesheets} command.
 
-@item @code{\e]91;"} @var{index} @code{"\a"}
+@item @code{"\e]91;"} @var{index} @code{"\a"}
 Disable the stylesheet that has index @var{index} in the list of
 stylesheets in the document.
 
@@ -3559,22 +3578,22 @@ Result to client: @code{"\x9D"} @var{message} @code{"\n"}
 where @var{message} is empty if there was no problem,
 and is otherwise an error message.
 
-@item @code{\e]92;"} @var{index} @code{"\a"}
+@item @code{"\e]92;"} @var{index} @code{"\a"}
 As above, but enable the specified stylesheet.
 
-@item @code{\e]93;"} @var{index} @code{"\a"}
+@item @code{"\e]93;"} @var{index} @code{"\a"}
 Return the contents of the specified stylesheet.
 
 On success the result is @code{"\x9D"} @var{rule}@sup{*} @code{"\x9D"}
 where each is a JSON-quoted string.
 On failure, the result is a (non-quoted) error message.
 
-@item @code{\e]94;"} @var{rule} @code{"\a"}
+@item @code{"\e]94;"} @var{rule} @code{"\a"}
 If necessary, create a new temporary stylesheet,
 and add the specified JSON-quoted rule to the end of it.
 
-@item @code{\e]95;"} @var{name} @code{","} @var{styles} @code{"\a"}
-@itemx @code{\e]96;"} @var{name} @code{","} @var{styles} @code{"\a"}
+@item @code{"\e]95;"} @var{name} @code{","} @var{styles} @code{"\a"}
+@itemx @code{"\e]96;"} @var{name} @code{","} @var{styles} @code{"\a"}
 
 Create or replace a stylesheet with the given @var{name}.
 If there is a @code{<style>} with a @code{name} attribute equal to @var{name},
