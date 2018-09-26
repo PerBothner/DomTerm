@@ -4823,6 +4823,8 @@ DomTerm.prototype.handleControlSequence = function(last) {
                         this.outputContainer.setAttribute("hide", hide);
                     }
                     t.data = hide;
+                    if (this.currentCursorColumn > 0)
+                        this.currentCursorColumn--;
                 }
                 this.popFromElement();
             }
