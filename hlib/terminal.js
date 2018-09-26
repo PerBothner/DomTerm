@@ -2749,11 +2749,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     topNode.addEventListener("click",
                              function(e) {
                                  var target = e.target;
-                                 /* FUTURE POPUP
-                                 if (dt._isAnAncestor(target, dt._popupMenu)) {
-                                     dt.handleContextMenu(dt._popupMenu, e);
-                                 } else
-                                 */
                                  for (let n = target; n instanceof Element;
                                       n = n.parentNode) {
                                      let ntag = n.nodeName;
@@ -2902,40 +2897,6 @@ DomTerm.prototype._updateMiscOptions = function(map) {
     style += "--wchar-width: "+(this.charWidth * 2)+"px";
     this.topNode.setAttribute("style", style);
 };
-
-/* FUTURE POPUP
-DomTerm.prototype.handleContextMenu = function(menu, event) {
-    //this.log("handleContextMenu");
-    var id = event.target.getAttribute("id");
-    if (id == "domterm-popup-copy") {
-        DomTerm.doCopy();
-    } else if (id == "domterm-popup-paste") {
-        DomTerm.doPaste(this);
-    }
-}
-
-DomTerm.prototype.createContextMenu = function() {
-    var menu = this._popupMenu;
-    if (menu != null)
-        return;
-    // Copy and Paste run into security issues.
-    // Other "menu-style" actions should be possible.
-    var copyDiv = document.createElement("div");
-    copyDiv.appendChild(document.createTextNode("Copy"));
-    copyDiv.setAttribute("class", "domterm-popup-action");
-    copyDiv.setAttribute("id", "domterm-popup-copy");
-    var pasteDiv = document.createElement("div");
-    pasteDiv.appendChild(document.createTextNode("Paste"));
-    pasteDiv.setAttribute("class", "domterm-popup-action");
-    pasteDiv.setAttribute("id", "domterm-popup-paste");
-    menu = document.createElement("div");
-    menu.setAttribute("class", "domterm-main-popup");
-    menu.appendChild(copyDiv);
-    menu.appendChild(pasteDiv);
-    this.topNode.insertBefore(menu, this.topNode.firstChild);
-    this._popupMenu = menu;
-};
-*/
 
 DomTerm.showContextMenu = null;
 
