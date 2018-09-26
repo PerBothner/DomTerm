@@ -861,8 +861,11 @@ DomTerm.prototype.resetTabs = function() {
     this._tabDefaultStart = 0;
 };
 
-DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
+DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText = false) {
+    this.lineStarts.length = startLine;
+    this.lineEnds.length = startLine;
     var start = null;
+    var startBlock = null;
     var dt = this;
     dt._currentPprintGroup = null;
 
@@ -870,7 +873,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
         if (cur == null || cur == this._vspacer)
             break;
         var descend = false;
-        if (cur instanceof Text) {
+        if (cur instanceof Text && ! skipText) {
             var data = cur.data;
             var dlen = data.length;
             for (var i = 0; i < dlen; i++) {
@@ -939,6 +942,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                 }
                 if (hasData) {
                     start = cur;
+                    startBlock = cur;
                     start._widthMode = DomTerm._WIDTH_MODE_NORMAL;
                     if (tag != "pre"
                         && (tag != "div"
@@ -961,11 +965,11 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine) {
                     //this.currentCursorColumn = -1;
                     this._setPendingSectionEnds(cur);
                     if (line == "hard" || line == "br") {
-                        if (start != null && cur.parentNode == start
+                        if (startBlock != null && cur.parentNode == startBlock
                             && cur.nextSibling == null) { // normal case
                             this.lineEnds[startLine-1] = cur;
                             start = null;
-                        } else if (startLine > 0) { // shouldn't happen
+                        } else if (startLine > 0) {
                             this.lineEnds[startLine-1] = cur;
                             this.lineStarts[startLine] = cur;
                             startLine++;
@@ -3737,7 +3741,6 @@ DomTerm.prototype.handleEnter = function(text) {
     }
     this._inputLine = null;
     if (suppressEcho) {
-        this._removeInputFromLineTable();
         oldInputLine.classList.add("pending");
         this._deferredForDeletion = oldInputLine;
         this._requestDeletePendingEcho();
@@ -3920,23 +3923,6 @@ DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         lineEnd.appendChild(document.createTextNode("\n"));
     }
 };
-
-// Clean up readline when input is an exact multiple of the line length.
-// Then cursor is alone on an empty final line.  Readlines sends "\e[A\r\n".
-// (Zsh/fish are worse.)
-DomTerm.prototype._fixEmptyLastInputLine = function() {
-    this._clearWrap();
-    let ln = this.getAbsCursorLine();
-    if (ln == this.lineStarts.length - 2) {
-        let last = this.lineStarts[ln+1];
-        let lastText = last.textContent;
-        if (lastText == '\n' || lastText == ' \n') {
-            last.parentNode.removeChild(last);
-            this.lineStarts.length = ln + 1;
-            this.lineEnds.length = ln + 1;
-        }
-    }
-}
 
 DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
     var attrs = oldElement.attributes;
@@ -4738,8 +4724,6 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 14:
         case 24:
             var curOutput = this._currentCommandOutput;
-            /*
-            NOT CLEAR IF THIS IS USEFUL - CAN'T REPRODUCE
             if (curOutput
                 && curOutput.firstChild == this.outputContainer
                && curOutput.firstChild == curOutput.lastChild) {
@@ -4750,10 +4734,10 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 if (this._currentCommandHideable)
                     this.outputContainer.setAttribute("domterm-hidden", "false");
             }
-            */
+
             this._pushStdMode("prompt");
             if (this._inputLine != null) {
-                if (param == 24)
+                if (this.getParameter(0, 0) == 24)
                     this._inputLine.setAttribute("continuation", "true");
                 else
                     this._inputLine.removeAttribute("continuation");
@@ -4765,9 +4749,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
             // 1 - single-line line editing (a la GNU readline)
             // 2 - first line of potentially multi-line (a la jline3)
             this._pushStdMode("input");
+            var newParent = this.outputContainer;
+            let prev = newParent.previousSibling;
+
             // If there is existing content on the current line,
             // move it into new input <span>.
-            var newParent = this.outputContainer;
             var firstChild = newParent.nextSibling;
             for (var child = firstChild;
                  child != null
@@ -4787,6 +4773,58 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 if (submode==2)
                     cl.add("multi-line-edit");
             }
+
+            // Move old/tentative input to after previous output:
+            // If the line number of the new prompt matches that of a
+            // previous continuation line, move the latter to here.
+            if (prev && prev.getAttribute("std")=="prompt") {
+                let lnum = prev.getAttribute("value");
+                lnum = this._getIntegerBefore(lnum || prev.textContent);
+                let gr = this._currentCommandGroup;
+                let plin;
+                let dt = this;
+                for (; lnum && gr; gr = gr ? gr.previousSibling : null) {
+                    for (let plin = gr.lastChild; plin != null && gr != null;
+                         plin = plin.previousSibling) {
+                        if (! (plin instanceof Element
+                               && plin.classList.contains("input-line")))
+                            continue;
+                        function fun(node) {
+                            if (node.tagName == "SPAN"
+                                && node.getAttribute("std") == "prompt"
+                                && node.previousSibling instanceof Element
+                                && node.previousSibling.getAttribute("line")) {
+                                let val = node.lineno;
+                                if (val && val <= lnum) {
+                                    gr = null;
+                                    return val == lnum ? node : null;
+                                }
+                                return false;
+                            }
+                            return true;
+                        }
+                        let pr = this._forEachElementIn(plin, fun, false, true);
+                        if (pr) {
+                            // FIXME broken if pr is nested
+                            this.outputContainer = plin;
+                            this.outputBefore = plin.firstChild;
+                            this.resetCursorCache();
+                            let startLine = this.getAbsCursorLine();
+                            this._moveNodes(pr.nextSibling, newParent, null);
+                            pr.parentNode.removeChild(pr.previousSibling);
+                            pr.parentNode.removeChild(pr);
+                            this.outputContainer = prev.nextSibling;
+                            this.outputBefore = null;
+                            // FIXME rather non-optimal
+                            this._restoreLineTables(plin, startLine, true)
+                            this._updateLinebreaksStart(startLine);
+                            this.resetCursorCache();
+                            this.cursorLineStart(1);
+                        }
+                    }
+                }
+            }
+
             this._adjustStyle();
             break;
         case 16:
@@ -5842,6 +5880,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         this._clientWantsEditing = canon ? 1 : 0;
         this._clientPtyEcho = echo ? 1 : 0;
         this._clientPtyExtProc = extproc ? 1 : 0;
+        this.autoLazyCheckInferior = extproc ? 0 : 1;
         break;
     case 72:
         this._scrubAndInsertHTML(text);
@@ -6317,7 +6356,29 @@ DomTerm.prototype._doDeferredDeletion = function() {
         if (deferred.textAfter) {
             this.outputContainer.insertBefore(document.createTextNode(deferred.textAfter), this.outputBefore ? this.outputBefore.nextSibling : null);
         }
-        deferred.normalize;
+        deferred.normalize();
+        let toMove = new Array();
+        function movePrompts(node) {
+            if (node.nodeName == "SPAN") {
+                if (node.getAttribute("line")) {
+                    toMove.push(node);
+                    return false;
+                }
+                if (node.getAttribute("std") == "prompt") {
+                    if (node.defaultPattern)
+                        node.setAttribute("value", "");
+                    node.setAttribute("expecting-echo", true);
+                    toMove.push(node);
+                    return false;
+                }
+            }
+            return true;
+        }
+        this._forEachElementIn(deferred, movePrompts);
+        let toMoveCount = toMove.length;
+        for (let i = 0; i < toMoveCount; i++) {
+            deferred.parentNode.insertBefore(toMove[i], deferred);
+        }
         deferred.parentNode.removeChild(deferred);
         this._deferredForDeletion = null;
     }
@@ -6759,8 +6820,13 @@ DomTerm.prototype.insertString = function(str) {
                         this._enterPaging(true);
                         return;
                     }
-                    this._fixEmptyLastInputLine();
                     this.cursorLineStart(1);
+                    if (this.outputBefore instanceof Element
+                        && this.outputBefore.getAttribute("expecting-echo")) {
+                        this.outputBefore.removeAttribute("expecting-echo");
+                        this.outputBefore = this.outputBefore.nextSibling;
+                        this.resetCursorCache();
+                    }
                     i++;
                 } else {
                     this._breakDeferredLines();
@@ -6790,7 +6856,6 @@ DomTerm.prototype.insertString = function(str) {
                     return;
                 }
                 if (this.controlSequenceState == DomTerm.SEEN_CR) {
-                    this._fixEmptyLastInputLine();
                     this.controlSequenceState =  DomTerm.INITIAL_STATE;
                 }
                 this.cursorNewLine((this.sstate.automaticNewlineMode & 1) != 0);
@@ -7695,11 +7760,14 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     var absLine = this.getAbsCursorLine();
     var fits = true;
     if (this.outputBefore instanceof Element
-        && this.outputBefore.getAttribute("line")
-        && this.outputBefore.previousSibling instanceof Element
-        && this.outputBefore.previousSibling.getAttribute("std")) {
-        this.outputContainer = this.outputBefore.previousSibling;
-        this.outputBefore = null;
+        && this.outputBefore.getAttribute("line")) {
+        let prev = this.outputBefore.previousSibling;
+        if (prev instanceof Element
+            && prev.getAttribute("std")
+            && prev.getAttribute("std") != "prompt") {
+            this.outputContainer = this.outputBefore.previousSibling;
+            this.outputBefore = null;
+        }
     }
     if (widthInColumns < 0)
         widthInColumns = this.strWidthInContext(str, this.outputContainer);
@@ -8025,6 +8093,7 @@ DomTerm.prototype.pasteText = function(str) {
     }
 
     if (editing) {
+        this.editorAddLine();
         this.editorInsertString(str);
     } else {
         this._addPendingInput(str);
@@ -8826,10 +8895,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (keyName == "Backspace" || keyName == "Delete") {
                 this._editPendingInput(keyName == "Delete", true);
             }
-            if (key == 13 && event.altKey)
-                this.reportText(str, null);
-            else
-                this._respondSimpleInput(str, keyName);
+            this._respondSimpleInput(str, keyName);
         }
     }
 };
@@ -9665,7 +9731,8 @@ DomTerm.prototype._updateAutomaticPrompts = function() {
         if (initialNumber > 0)
             lineno += initialNumber;
     }
-    if (! pattern) {
+    let defaultPattern = ! pattern;
+    if (defaultPattern) {
         pattern = this.promptPatternFromInitial(initialPrompt);
     }
 
@@ -9687,6 +9754,8 @@ DomTerm.prototype._updateAutomaticPrompts = function() {
                 w -= this.strWidthInContext(oldPrompt, start);
             if (start._widthColumns  !== undefined)
                 start._widthColumns += w;
+            next.lineno = lineno; // MAYBE use attribute (better save/restore)
+            next.defaultPattern = defaultPattern;
             next.setAttribute("value", newPrompt);
         }
     }
@@ -9775,13 +9844,16 @@ DomTerm.prototype.editorInsertString = function(str, inserting=true) {
     }
 }
 
-DomTerm.prototype.editorDeleteRange = function(range) {
+DomTerm.prototype.editorDeleteRange = function(range, linesCount = -1) {
     let str = range.toString();
     range.deleteContents();
+    range.commonAncestorContainer.normalize();
     let lineNum = this.getAbsCursorLine();
     this._unbreakLines(lineNum, true);
     let line = this.lineStarts[lineNum];
     line._widthColumns -= this.strWidthInContext(str, line);
+    if (linesCount != 0)
+        this._restoreLineTables(line, lineNum, true);
     this._updateLinebreaksStart(lineNum, true);
 }
 
@@ -9925,7 +9997,7 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
         this._forEachElementIn(this._inputLine, fun, true, backwards,
                                this._caretNode);
         if (doDelete) {
-            this.editorDeleteRange(range);
+            this.editorDeleteRange(range, linesCount);
             if (linesCount > 0)
                 this._updateAutomaticPrompts();
             this._restoreCaret();
