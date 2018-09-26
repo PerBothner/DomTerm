@@ -5853,13 +5853,15 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             return;
         var tb = text.indexOf('\t');
         var keyName = tb < 0 ? text : text.substring(0, tb);
-        if (this.verbosity >= 2) {
-            var kstr = tb < 0 ? "?" : JSON.parse(text.substring(tb+1));
+        var kstr = tb < 0 ? "?" : JSON.parse(text.substring(tb+1));
+        if (this.verbosity >= 2)
             this.log("OSC KEY k:"+keyName+" kstr:"+this.toQuoted(kstr));
-        }
         this._clientWantsEditing = 1;
         this.editorAddLine();
-        this.doLineEdit(keyName);
+        if (keyName == "paste")
+            this.editorInsertString(kstr);
+        else
+            this.doLineEdit(keyName);
         break;
     case 7:
         // text is pwd as URL: "file://HOST/PWD"
@@ -7999,6 +8001,8 @@ DomTerm.prototype.keyDownToString = function(event) {
 };
 
 DomTerm.prototype.pasteText = function(str) {
+    let editing = this.isLineEditing();
+    let nl_asis = true; // leave '\n' as-is (rather than convert to '\r')?
     if (true) { // xterm has an 'allowPasteControls' flag
         let raw = str;
         let len = raw.length;
@@ -8006,7 +8010,8 @@ DomTerm.prototype.pasteText = function(str) {
         let start = 0;
         for (let i = 0; ; i++) {
             let ch = i >= len ? -1 : raw.charCodeAt(i);
-            if ((ch < 32 && ch != 8 && ch != 9 && ch != 13)
+            if ((ch < 32 && ch != 8 && ch != 9 && ch != 13
+                 && ! (ch == 10 && nl_asis))
                 || (ch >= 128 && ch < 160)
                 || ch < 0) {
                 str += raw.substring(start, i);
@@ -8019,11 +8024,14 @@ DomTerm.prototype.pasteText = function(str) {
         }
     }
 
-    if (this.isLineEditing()) {
+    if (editing) {
         this.editorInsertString(str);
     } else {
         this._addPendingInput(str);
-        this.reportText(str, null);
+        if (this.sstate.bracketedPasteMode || this._lineEditingMode != 0)
+            this.reportText(str, null);
+        else
+            this.reportKeyEvent("paste", str);
     }
 };
 
@@ -8353,6 +8361,9 @@ DomTerm.prototype._popFromCaret = function(saved) {
 }
 
 DomTerm.commandMap = new Object();
+DomTerm.commandMap['paste-text'] = function(dt, key) {
+    DomTerm.doPaste(dt);
+    return true; }
 DomTerm.commandMap['backward-char'] = function(dt, key) {
     dt.editorBackspace(dt.numericArgumentGet(), "move", "char");
     return true; }
@@ -8449,6 +8460,8 @@ DomTerm.commandMap['backward-search-history'] = function(dt, key) {
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-R": "backward-search-history",
+    "Mod-V": "paste-text",
+    "Ctrl-Shift-V": "paste-text",
     "Left": 'backward-char',
     "Mod-Left": 'backward-word',
     "Right": 'forward-char',
