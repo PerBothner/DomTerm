@@ -5408,7 +5408,7 @@ DomTerm.HTMLinfo = {
     "hr": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
     "html": 0x41,
     "i": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    //"iframe": DomTerm._ELEMENT_KIND_ALLOW, // ??? maybe
+    "iframe": DomTerm._ELEMENT_KIND_ALLOW,
     "image": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE, // FIXME
     "img": 0x17, // need to check "src" for "javascript:"
     "input": 0x15,
