@@ -395,7 +395,7 @@ DomTerm.layoutInit = function(term) {
         } else {
             var sessionPid = DomTerm.newSessionPid;
             name = DomTerm.freshName();
-            el = DomTerm.makeElement(name, true);
+            el = DomTerm.makeElement(name);
             container._contentElement1 = el.parentNode;
             var config = container._config;
             if (DomTerm._pendingTerminals) {
@@ -482,7 +482,7 @@ DomTerm.layoutInit = function(term) {
 
 DomTerm._initSavedLayout = function(data) {
         if (data.pid) {
-            var topNode = DomTerm.makeElement(DomTerm.freshName(), true);
+            var topNode = DomTerm.makeElement(DomTerm.freshName());
             DomTerm.connectHttp(topNode, "connect-pid="+data.pid);
         } else if (data instanceof Array) {
             var n = data.length;

@@ -420,7 +420,7 @@ function DomTerm(name, topNode) {
     this.wcwidth = new WcWidth();
 }
 
-DomTerm.makeElement = function(name, wrap) {
+DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout()) {
     let topNode = document.createElement("div");
     topNode.setAttribute("class", "domterm");
     topNode.setAttribute("id", name);
@@ -636,7 +636,6 @@ DomTerm.setFocus = function(term) {
         DomTerm.setTitle(term.sstate.windowTitle);
         DomTerm.inputModeChanged(term, term.getInputMode());
     }
-    //DomTerm.showFocusedTerm(term);
     DomTerm.focusedTerm = term;
 }
 
@@ -9098,6 +9097,10 @@ DomTerm._handleOutputData = function(dt, data) {
         dt.reportEvent("RECEIVED", dt._confirmedCount);
     }
     return dlen;
+}
+
+DomTerm.wrapForLayout = function() {
+    return window == top;
 }
 
 /** Connect using WebSockets */
