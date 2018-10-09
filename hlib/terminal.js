@@ -420,12 +420,19 @@ function DomTerm(name, topNode) {
     this.wcwidth = new WcWidth();
 }
 
-DomTerm.makeElement = function(parent, name) {
-    var topNode = document.createElement("div");
+DomTerm.makeElement = function(name, wrap) {
+    let topNode = document.createElement("div");
     topNode.setAttribute("class", "domterm");
     topNode.setAttribute("id", name);
-    if (parent)
-        parent.appendChild(topNode);
+    let lcontent;
+    if (wrap) {
+        lcontent = document.createElement("div"); // FUTURE: iframe
+        lcontent.setAttribute("class", "domterm-wrapper");
+        DomTerm.layoutTop.appendChild(lcontent);
+    } else {
+        lcontent = DomTerm.layoutTop;
+    }
+    lcontent.appendChild(topNode);
     return topNode;
 }
 
@@ -637,7 +644,7 @@ DomTerm.setFocus = function(term) {
 DomTerm.showFocusedTerm = function(term) {
     if (DomTerm.layoutManager) {
         var item = term ? DomTerm.domTermToLayoutItem(term) : null;
-        DomTerm.showFocusedPane(item);
+        DomTerm.showFocusedPane(item, term ? term.topNode.parentNode : null);
     }
 }
 
@@ -649,6 +656,9 @@ DomTerm.prototype.doFocus = function() {
 DomTerm.prototype.maybeFocus = function() {
     if (this.hasFocus()) {
         this.topNode.focus();
+        // Sometimes needed when called by DomTerm._selectLayoutPane when
+        // using alternate buffer.  Not sure what is happening.
+        this._scrollIfNeeded();
     }
 }
 

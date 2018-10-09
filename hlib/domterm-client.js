@@ -274,8 +274,7 @@ function loadHandler(event) {
     }
     var topNodes = document.getElementsByClassName("domterm");
     if (topNodes.length == 0) {
-        topNodes = [ DomTerm.makeElement(DomTerm.layoutTop,
-                                         DomTerm.freshName()) ];
+        topNodes = [ DomTerm.makeElement(DomTerm.freshName(), true) ];
     }
     if (location.search.search(/wait/) >= 0) {
     } else if (location.hash == "#ajax" || ! window.WebSocket) {

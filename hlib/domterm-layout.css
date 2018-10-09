@@ -2,8 +2,10 @@
  * Various tweaks for DomTerm.
  */
 .lm_content{background:#e1e1e1;border:2px solid #cccccc}
-.lm_goldenlayout { --focused-pane-color: magenta}
-div.domterm-active div.lm_content{background:#e1e1e1;
+.domterm-wrapper { width: 100%; height: 100% }
+.domterm-wrapper.lm_content { position: absolute; z-index: 1 }
+body { --focused-pane-color: magenta}
+.lm_content.domterm-active {background:#e1e1e1;
                                   border:2px solid var(--focused-pane-color)}
 /*
 .lm_stack{background:#e1e1e1;border:2px solid pink } / *#cccccc}* /
@@ -15,8 +17,7 @@ div.domterm-active div.lm_stack{background:#e1e1e1;border:2px solid magenta}
 .lm_splitter{background:#999999;opacity:.001;transition:opacity 200ms ease}
 .lm_splitter:hover,.lm_splitter.lm_dragging{background:#bbbbbb;opacity:1}
 .lm_header{height:20px}
-div.domterm-active div.lm_header {background-color: #ffe8ff}
-.lm_header.lm_selectable{cursor:pointer}
+.lm_header {cursor:pointer; background-color:#f0c0d0}
 .lm_header .lm_tab{font-family:Arial,sans-serif;font-size:12px;color:#888888;background:#fafafa;margin-right:2px;padding-bottom:4px;border-bottom:none}
 .lm_header .lm_tab{border:1px solid gray }
 .lm_header .lm_tab{border-radius: 5px 5px 0px 0px}
@@ -30,7 +31,6 @@ div.lm_header li.lm_tab span.domterm-windowname {display: none }
 .lm_header .lm_tab.lm_active{border-bottom:none;box-shadow:2px -2px 2px -2px rgba(0,0,0,0.2);padding-bottom:5px}
 .lm_header .lm_tab.lm_active .lm_close_tab{opacity:1}
 .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,.lm_stack.lm_bottom .lm_header .lm_tab.lm_active{box-shadow:2px 2px 2px -2px rgba(0,0,0,0.2)}
-.lm_selected .lm_header{background-color:#452500}
 .lm_tab:hover,.lm_tab.lm_active{background:#e1e1e1;color:#777777}
 div.domterm-active .lm_tab.lm_active {color: var(--focused-pane-color)}
 .lm_header .lm_controls .lm_tabdropdown:before{color:#000000}

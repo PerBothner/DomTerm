@@ -92,12 +92,13 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
 /** Map a layoutItem (GoldenLayout contentItem?) to a DomTerm instance.
 */
 DomTerm.layoutItemToDomTerm = function(item) {
-    var element = item.element[0].firstChild.firstChild;
+    var element = item.container.getElement()[0].firstChild;
     return element.classList.contains("domterm") ? element.terminal : null;
 };
 
 DomTerm._elementToLayoutItem = function(goal, item) {
-    if (item.element[0] == goal)
+    if (item.element[0] == goal
+        || (item.container && item.container.getElement()[0] == goal))
         return item;
     var citems = item.contentItems;
     for (var i = 0; i < citems.length; i++) {
@@ -111,8 +112,12 @@ DomTerm._elementToLayoutItem = function(goal, item) {
 DomTerm.domTermToLayoutItem = function(dt) {
     if (! DomTerm.layoutManager)
         return null;
-    var goal = DomTerm.domTermToLayoutElement(dt);
-    return DomTerm._elementToLayoutItem(goal, DomTerm.layoutManager.root);
+    var node = dt.topNode;
+    var goal = node.parentNode;
+    if (goal instanceof Element && goal.classList.contains("lm_content"))
+        return DomTerm._elementToLayoutItem(goal, DomTerm.layoutManager.root);
+    else
+        return null;
 }
 
 DomTerm.domTermLayoutClosed = function(event) {
@@ -131,6 +136,9 @@ DomTerm.domTermLayoutClose = function(dt, r, from_handler=false) {
             && p.parent.contentItems.length == 1) {
             DomTerm.windowClose();
         } else {
+            let lcontent = dt.topNode.parentNode;
+            if (lcontent && lcontent.parentNode)
+                lcontent.parentNode.removeChild(lcontent);
             DomTerm.selectNextPane(r, true);
             dt = DomTerm.focusedTerm;
             if (! from_handler)
@@ -144,15 +152,21 @@ DomTerm.domTermLayoutClose = function(dt, r, from_handler=false) {
 
 DomTerm._oldFocusedPane = null;
 DomTerm._oldFocusedItem = null;
-DomTerm.showFocusedPane = function(item) {
+DomTerm._oldFocusedContent = null;
+DomTerm.showFocusedPane = function(item, lcontent) {
     DomTerm._oldFocusedItem = item;
     var stackPane = item == null ? null : item.parent.element[0];
     if (DomTerm._oldFocusedPane != stackPane) {
         if (DomTerm._oldFocusedPane != null)
             DomTerm._oldFocusedPane.classList.remove("domterm-active");
+        if (DomTerm._oldFocusedContent != null)
+            DomTerm._oldFocusedContent.classList.remove("domterm-active");
         if (stackPane != null)
             stackPane.classList.add("domterm-active");
+        if (lcontent != null)
+            lcontent.classList.add("domterm-active");
         DomTerm._oldFocusedPane = stackPane;
+        DomTerm._oldFocusedContent = lcontent;
     }
 };
 DomTerm._selectLayoutPane = function(component) {
@@ -161,6 +175,7 @@ DomTerm._selectLayoutPane = function(component) {
     if (p.type == 'stack')
         p.setActiveContentItem(component);
     DomTerm.setFocus(dt);
+    DomTerm.showFocusedPane(component, dt.topNode.parentNode);
     dt.maybeFocus();
 }
 DomTerm.selectNextPane = function(item, forwards) {
@@ -267,18 +282,6 @@ DomTerm.layoutAddTab = function(dt, newItemConfig = DomTerm.newItemConfig) {
         r.parent.addChild(newItemConfig); // FIXME index after r
 };
 
-DomTerm.domTermToLayoutElement = function(domterm) {
-    var node = domterm.topNode;
-    var parentNode = node.parentNode;
-    if (parentNode instanceof Element && parentNode.classList.contains("lm_content")) {
-        parentNode = parentNode.parentNode
-        if (parentNode instanceof Element
-            && parentNode.classList.contains("lm_item_container"))
-            return parentNode;
-    }
-    return null;
-}
-
 DomTerm.setLayoutTitle = function(dt, title, wname) {
     var r = DomTerm.domTermToLayoutItem(dt);
     title = DomTerm.escapeText(title);
@@ -297,14 +300,14 @@ DomTerm.popoutWindow = function(item, dt) {
     var wholeStack = item.type == 'stack';
     var sizeElement = item.element[0];
     if (! wholeStack)
-        sizeElement = sizeElement.firstChild;
+        sizeElement = item.container._contentElement1;
     console.log("popoutWindow whole:"+wholeStack);
     var w = sizeElement.offsetWidth;
     var h = sizeElement.offsetHeight;
     // FIXME adjust for menu bar height
     function encode(item) {
         if (item.componentName == "domterm") {
-            var topNode = item.element[0].firstChild.firstChild;
+            var topNode = item.container._contentElement1.firstChild;
             return '{"pid":'+topNode.getAttribute("pid")+'}';
         } else if (item.componentName == "browser")
             return '{"url":'+JSON.stringify(item.config.url)+'}';
@@ -313,9 +316,13 @@ DomTerm.popoutWindow = function(item, dt) {
     }
     function remove(item) {
         if (item.componentName == "domterm")
-            DomTerm.detach(item.element[0].firstChild.firstChild.terminal);
-        else
+            DomTerm.detach(item.container._contentElement1.firstChild.terminal);
+        else {
+            let lcontent = item.container._contentElement1;
+            if (lcontent && lcontent.parentNode)
+                lcontent.parentNode.removeChild(lcontent);
             item.remove(item);
+        }
     }
     var e;
     var toRemove = new Array();
@@ -384,11 +391,12 @@ DomTerm.layoutInit = function(term) {
             term.detachResizeSensor();
             name = term.sessionName();
             term = null;
-            container.getElement()[0].appendChild(el);
+            container._contentElement1 = el.parentNode;
         } else {
             var sessionPid = DomTerm.newSessionPid;
             name = DomTerm.freshName();
-            el = DomTerm.makeElement(container.getElement()[0], name);
+            el = DomTerm.makeElement(name, true);
+            container._contentElement1 = el.parentNode;
             var config = container._config;
             if (DomTerm._pendingTerminals) {
                 DomTerm._pendingTerminals.push(el);
@@ -399,6 +407,7 @@ DomTerm.layoutInit = function(term) {
                 DomTerm.connectHttp(el, query);
             }
         }
+        el.parentNode.classList.add("lm_content");
         container.setTitle(name);
         container.on('resize', DomTerm.layoutResized, el);
         container.on('destroy', DomTerm.domTermLayoutClosed, container);
@@ -434,7 +443,7 @@ DomTerm.layoutInit = function(term) {
             DomTerm.setFocus(null);
             if (item.config.componentName == "browser")
                 DomTerm.setTitle(item.config.url);
-            DomTerm.showFocusedPane(item);
+            DomTerm.showFocusedPane(item, item.container._contentElement1);
         }
     }
 
@@ -454,12 +463,26 @@ DomTerm.layoutInit = function(term) {
                              activeContentItemHandler);
     DomTerm.layoutManager.root.element[0]
         .addEventListener('click', checkClick, false);
+    DomTerm.layoutManager.on('stateChanged',
+                             function() {
+                                 let item = DomTerm._oldFocusedItem;
+                                 if (item && item.parent
+                                     && item.parent.type == "stack") {
+                                     let st = item.parent;
+                                     let act = st._activeContentItem;
+                                     if (item !== act) {
+                                         item.container._contentElement1
+                                             .classList.remove("domterm-active");
+                                         act.container._contentElement1
+                                             .classList.add("domterm-active");
+                                     }
+                                 }
+                             });
 }
 
 DomTerm._initSavedLayout = function(data) {
         if (data.pid) {
-            var bodyNode = document.getElementsByTagName("body")[0];
-            var topNode = DomTerm.makeElement(bodyNode, DomTerm.freshName());
+            var topNode = DomTerm.makeElement(DomTerm.freshName(), true);
             DomTerm.connectHttp(topNode, "connect-pid="+data.pid);
         } else if (data instanceof Array) {
             var n = data.length;
