@@ -358,7 +358,7 @@ DomTerm.layoutConfig = {
         componentState: 'A'
     }],
     dimensions: {
-	borderWidth: 3
+	borderWidth: 1
     }
 };
 DomTerm.newItemConfig = {
