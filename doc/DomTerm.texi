@@ -524,6 +524,7 @@ size further, but causes some not-yet-resolved problems.)
 This feature causes the html, JavaScript and css files needed by DomTerm
 to be compiled into the executable.
 Otherwise, they are served from the compressed @code{domterm.jar}.
+This requires libwebsockets version 3.0.99 or newer.
 
 @c @item --enable-ld-preload
 @c This is an experimental feature to preload a library to interpose

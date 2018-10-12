@@ -5,6 +5,9 @@
 #include <openssl/ssl.h>
 #endif
 
+#if COMPILED_IN_RESOURCES && LWS_LIBRARY_VERSION_NUMBER < (3*1000000+0*1000+99)
+#error Configuring with --enable-compiled-in-resources requires a newer version of libwebsockts.
+#endif
 #if ! COMPILED_IN_RESOURCES && ! defined(LWS_WITH_ZIP_FOPS)
 #error Must configure --enable-compiled-in-resources since zip support missing in libwebsockets
 #endif
