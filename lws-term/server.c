@@ -1434,52 +1434,57 @@ make_html_file(int port)
     sprintf(buf, "%s%.*s%s", prefix, (int) (sext-sname), sname, ext);
     main_html_url = buf;
     main_html_path = buf+strlen(prefix);
-    FILE *hfile = fopen(main_html_path, "w");
     if (server_key[0] == 0)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
     char base[40];
     sprintf(base, "http://%s:%d/", "127.0.0.1", port);
+    struct sbuf obuf[1];
+    sbuf_init(obuf);
 
-    fprintf(hfile,
-            "<!DOCTYPE html>\n"
-            "<html><head>\n"
-            "<base href='http://%s:%d/'/>\n" // FIXME no longer needed?
-            "<meta http-equiv='Content-Type' content='text/html;"
-            " charset=UTF-8'>\n"
-            "<title>DomTerm</title>\n",
-            base, port);
+    sbuf_printf(obuf,
+                "<!DOCTYPE html>\n"
+                "<html><head>\n"
+                "<base href='http://%s:%d/'/>\n" // FIXME no longer needed?
+                "<meta http-equiv='Content-Type' content='text/html;"
+                " charset=UTF-8'>\n"
+                "<title>DomTerm</title>\n",
+                base, port);
     const char **p;
     for (p = standard_stylesheets; *p; p++) {
-        fprintf(hfile,
-                "<link type='text/css' rel='stylesheet' href='%s%s'>\n",
-                base, *p);
+        sbuf_printf(obuf,
+                    "<link type='text/css' rel='stylesheet' href='%s%s'>\n",
+                    base, *p);
     }
-    fprintf(hfile,
-            "<script type='text/javascript' src='%shlib/domterm-all.js'>"
-            " </script>\n"
-            "<script type='text/javascript'>\n"
-            "DomTerm.server_port = %d;\n"
-            "DomTerm.server_key = '%.*s';\n"
-            "if (DomTerm.isElectron()) {\n"
-            "    window.nodeRequire = require;\n"
-            "    delete window.require;\n"
-            "    delete window.exports;\n"
-            "    delete window.module;\n"
-            "}\n"
-            "</script>\n",
-            base, port, SERVER_KEY_LENGTH, server_key);
+    sbuf_printf(obuf,
+                "<script type='text/javascript' src='%shlib/domterm-all.js'>"
+                " </script>\n"
+                "<script type='text/javascript'>\n"
+                "DomTerm.server_port = %d;\n"
+                "DomTerm.server_key = '%.*s';\n"
+                "if (DomTerm.isElectron()) {\n"
+                "    window.nodeRequire = require;\n"
+                "    delete window.require;\n"
+                "    delete window.exports;\n"
+                "    delete window.module;\n"
+                "}\n"
+                "</script>\n",
+                base, port, SERVER_KEY_LENGTH, server_key);
     for (p = standard_jslibs; *p; p++) {
-        fprintf(hfile,
-                "<script type='text/javascript' src='%s%s'> </script>\n",
-                base, *p);
+        sbuf_printf(obuf,
+                    "<script type='text/javascript' src='%s%s'> </script>\n",
+                    base, *p);
     }
-    fprintf(hfile,
-            "</head>\n"
-            "<body></body>\n"
-            "</html>\n");
+    sbuf_printf(obuf,
+                "</head>\n"
+                "<body></body>\n"
+                "</html>\n");
 
-    //fprintf(hfile, html_template, "127.0.0.1", port, "127.0.0.1", port, port, server_key);
-    fclose(hfile);
+    int hfile = open(main_html_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
+    if (hfile < 0
+        || write(hfile, obuf->buffer, obuf->len) != obuf->len
+        || close(hfile) != 0)
+        lwsl_err("writing %s failed\n", main_html_path);
+    sbuf_free(obuf);
 }
 
 static const char *server_socket_path = NULL;

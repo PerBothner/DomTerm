@@ -475,3 +475,66 @@ getenv_from_array(char* key, char**envarray)
     }
     return NULL;
 }
+
+void sbuf_init(struct sbuf *buf)
+{
+    buf->buffer = NULL;
+    buf->len = 0;
+    buf->size = 0;
+}
+
+void sbuf_free(struct sbuf *buf)
+{
+    if (buf->buffer != NULL)
+        free(buf->buffer);
+    sbuf_init(buf);
+}
+
+void
+sbuf_extend(struct sbuf *buf, int needed)
+{
+    int min_size = buf->len + needed;
+    if (min_size > buf->size) {
+        int xsize = (3 * buf->size) >> 1;
+        if (min_size < xsize)
+            min_size = xsize;
+        buf->size = min_size;
+        buf->buffer = realloc(buf->buffer, min_size);
+    }
+}
+char *
+sbuf_blank(struct sbuf *buf, int space)
+{
+    sbuf_extend(buf, space);
+    char *p = buf->buffer + buf->len;
+    buf->len += space;
+    return p;
+}
+
+void
+sbuf_vprintf(struct sbuf *buf, const char *format, va_list ap)
+{
+    sbuf_extend(buf, 80);
+    int avail = buf->size - buf->len;
+    va_list ap2;
+    va_copy(ap2, ap);
+    int len = vsnprintf(buf->buffer + buf->len, avail, format, ap2);
+    va_end(ap2);
+    if (len >= avail) {
+        va_copy(ap2, ap);
+        sbuf_extend(buf, len+1);
+        avail = buf->size - buf->len;
+        len = vsnprintf(buf->buffer + buf->len, avail, format, ap2);
+        va_end(ap2);
+    }
+    buf->len += len;
+}
+
+void
+sbuf_printf(struct sbuf *buf, const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    sbuf_vprintf(buf, format, ap);
+    va_end(ap);
+}

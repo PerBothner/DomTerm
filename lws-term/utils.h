@@ -29,4 +29,17 @@ get_sig(const char *sig_name);
 char *
 base64_encode(const unsigned char *buffer, size_t length);
 
+struct sbuf {
+    char *buffer;
+    size_t len;
+    size_t size;
+};
+
+extern void sbuf_init(struct sbuf *buf);
+extern void sbuf_free(struct sbuf *buf);
+extern void sbuf_extend(struct sbuf *buf, int needed);
+extern char *sbuf_blank(struct sbuf *buf, int space);
+extern void sbuf_printf(struct sbuf *buf, const char *format, ...);
+extern void sbuf_vprintf(struct sbuf *buf, const char *format, va_list ap);
+
 #endif //TTYD_UTIL_H
