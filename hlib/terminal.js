@@ -8391,15 +8391,15 @@ DomTerm.prototype.nextInputMode = function() {
     var mode;
     var displayString;
     if (this._lineEditingMode == 0) {
-        // was 'auto', change to 'line'
-        mode = 108; // 'l'
-        displayString = "Input mode: line";
-    } else if (this._lineEditingMode > 0) {
-        // was 'line' change to 'char'
+        // was 'auto', change to 'char'
         mode = 99; // 'c'
         displayString = "Input mode: character";
+    } else if (this._lineEditingMode < 0) {
+        // was 'char' change to 'line'
+        mode = 108; // 'l'
+        displayString = "Input mode: line";
     } else {
-        // was 'char' change to 'auto'
+        // was 'line' change to 'auto'
         mode = 97; // 'a'
         displayString = "Input mode: automatic";
     }
