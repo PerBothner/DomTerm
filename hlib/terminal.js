@@ -8573,6 +8573,14 @@ DomTerm.commandMap['ignore-action'] = function(dt, key) {
     return true; }
 DomTerm.commandMap['default-action'] = function(dt, key) {
     return false; }
+DomTerm.commandMap['numeric-argument'] = function(dt, key) {
+    let klen = key.length;
+    let c = key.charAt(klen-1);
+    dt._numericArgument = dt._numericArgument == null ? c
+        : dt._numericArgument + c;
+    dt._displayInfoMessage("count: "+dt._numericArgument);
+    return true;
+}
 DomTerm.commandMap['accept-line'] = function(dt, key) {
     dt.processEnter();
     if (dt._lineEditingMode == 0 && dt.autoLazyCheckInferior)
@@ -8597,6 +8605,44 @@ DomTerm.commandMap['backward-search-history'] = function(dt, key) {
         : dt.historyCursor;
     return true;
 }
+
+DomTerm.commandMap['insert-char'] = function(dt, keyName) {
+    let ch = keyName.length == 3 ? keyName.charCodeAt(1) : -1;
+    if (ch >= 0 && ch < 32)
+        return false;
+    let str = keyName.substring(1, keyName.length-1);
+    let sel = window.getSelection();
+    if (! sel.isCollapsed) {
+        dt.editorBackspace(1, "delete", "char");
+    }
+    let count = dt.numericArgumentGet();
+    if (count >= 0)
+        str = str.repeat(count);
+    dt.editorInsertString(str);
+
+    if (dt._inputLine.classList.contains("noecho")
+        && ! dt.sstate.hiddenText
+        && dt.passwordShowCharTimeout) {
+        // Temporarily display inserted char(s), with dots for other chars.
+        // After timeout all chars shown as dots.
+        let r = new Range();
+        r.selectNodeContents(dt._inputLine);
+        let wlength = DomTerm._countCodePoints(r.toString());
+        r.setEndBefore(dt._caretNode);
+        let wbefore = DomTerm._countCodePoints(r.toString());
+        let ctext = dt._inputLine.textContent;
+        let wstr = DomTerm._countCodePoints(str);
+        let before = dt.passwordHideChar.repeat(wbefore-wstr);
+        let after = dt.passwordHideChar.repeat(wlength-wbefore);
+        DomTerm._replaceTextContents(dt._inputLine, before + str + after);
+        dt.sstate.hiddenText = ctext;
+        setTimeout(function() { dt._suppressHidePassword = false;
+                                dt._hidePassword(); },
+                   dt.passwordShowCharTimeout);
+        dt._suppressHidePassword = true;
+    }
+    return true;
+};
 
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
@@ -8630,6 +8676,17 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Up": "up-line-or-history",
     "Enter": "accept-line",
     "Alt-Enter": "insert-newline",
+    "Alt-0": "numeric-argument",
+    "Alt-1": "numeric-argument",
+    "Alt-2": "numeric-argument",
+    "Alt-3": "numeric-argument",
+    "Alt-4": "numeric-argument",
+    "Alt-5": "numeric-argument",
+    "Alt-6": "numeric-argument",
+    "Alt-7": "numeric-argument",
+    "Alt-8": "numeric-argument",
+    "Alt-9": "numeric-argument",
+    "Alt--": "numeric-argument",
     // The following should be controlled by a user preference
     // for emacs-like keybindings. FIXME
     "Alt-B": "backward-word",
@@ -8640,7 +8697,8 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-E": "end-of-line",
     "Ctrl-F": "forward-char",
     "Ctrl-N": "down-line-or-history",
-    "Ctrl-P": "up-line-or-history"
+    "Ctrl-P": "up-line-or-history",
+    "(keypress)": "insert-char"
 }, {});
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
@@ -8649,9 +8707,16 @@ DomTerm.prototype.doLineEdit = function(keyName) {
         this.log("doLineEdit "+keyName);
 
     this.editorAddLine();
+    let isKeyPress = keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/;
     let keymaps = [ DomTerm.lineEditKeymap ];
     for (let map of keymaps) {
+        /*
+        if (typeof map == "function")
+            commandName = map(this, keyName);
+        */
         let commandName = map.lookup(keyName);
+        if (! commandName && isKeyPress)
+            commandName = map.lookup("(keypress)");
         if (commandName) {
             let command = DomTerm.commandMap[commandName];
             if (command) {
@@ -8661,45 +8726,6 @@ DomTerm.prototype.doLineEdit = function(keyName) {
                 }
             }
         }
-    }
-    if (keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/) {
-        let ch = keyName.length == 3 ? keyName.charCodeAt(1) : -1;
-        if (ch >= 0 && ch < 32)
-            return false;
-        let str = keyName.substring(1, keyName.length-1);
-        let sel = window.getSelection();
-        if (! sel.isCollapsed) {
-            this.editorBackspace(1, "delete", "char");
-        }
-        let count = this.numericArgumentGet();
-        if (count >= 0)
-            str = str.repeat(count);
-        this.editorInsertString(str);
-
-        if (this._inputLine.classList.contains("noecho")
-            && ! this.sstate.hiddenText
-            && this._isAnAncestor(this._caretNode, this._inputLine) // paranoia
-            && this.passwordShowCharTimeout) {
-            // Temporarily display inserted char(s), with dots for other chars.
-            // After timeout all chars shown as dots.
-            let r = new Range();
-            r.selectNodeContents(this._inputLine);
-            let wlength = DomTerm._countCodePoints(r.toString());
-            r.setEndBefore(this._caretNode);
-            let wbefore = DomTerm._countCodePoints(r.toString());
-            let ctext = this._inputLine.textContent;
-            let wstr = DomTerm._countCodePoints(str);
-            let before = this.passwordHideChar.repeat(wbefore-wstr);
-            let after = this.passwordHideChar.repeat(wlength-wbefore);
-            DomTerm._replaceTextContents(this._inputLine, before + str + after);
-            this.sstate.hiddenText = ctext;
-            let dt = this;
-            setTimeout(function() { dt._suppressHidePassword = false;
-                                    dt._hidePassword(); },
-                       this.passwordShowCharTimeout);
-            this._suppressHidePassword = true;
-        }
-        return true;
     }
     return false;
 };
@@ -8933,15 +8959,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 }
             }
         }
-        if (event.altKey
-            && ((key >= 48 && key <= 57)
-                || (key==189 && this._numericArgument == null))) {
-            let c = String.fromCharCode(key == 189 ? 45 : key);
-            this._numericArgument = this._numericArgument == null ? c
-                : this._numericArgument + c;
-            event.preventDefault();
-        }
-        else if (event.ctrlKey
+        if (event.ctrlKey
                  && (key == 67 // ctrl-C
                      || key == 90 // ctrl-Z
                      || (key == 68 // ctrl-D
@@ -8951,10 +8969,8 @@ DomTerm.prototype.keyDownHandler = function(event) {
                 this._clientWantsEditing = 0;
             this.reportKeyEvent(keyName,
                                 this.keyDownToString(event));
-        } else {
-            if (this.doLineEdit(keyName))
-                event.preventDefault();
-        }
+        } else if (this.doLineEdit(keyName))
+            event.preventDefault();
     } else {
         var str = this.keyDownToString(event);
         if (str) {
