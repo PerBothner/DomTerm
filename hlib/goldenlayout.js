@@ -1,4 +1,17 @@
-(function($){var lm={"config":{},"container":{},"controls":{},"errors":{},"items":{},"utils":{}};
+
+
+
+
+
+
+(function($){
+
+
+
+var lm={"config":{},"container":{},"controls":{},"errors":{},"items":{},"utils":{}};
+
+
+
 lm.utils.F = function() {
 };
 
@@ -196,6 +209,9 @@ lm.utils.filterXss = function( input, keepTags ) {
 lm.utils.stripTags = function( input ) {
 	return $.trim( input.replace( /(<([^>]+)>)/ig, '' ) );
 };
+
+
+
 /**
  * A generic and very fast EventEmitter
  * implementation. On top of emitting the
@@ -321,6 +337,9 @@ lm.utils.EventEmitter = function() {
  * @type {String}
  */
 lm.utils.EventEmitter.ALL_EVENT = '__all';
+
+
+
 lm.utils.DragListener = function( eElement, nButtonCode ) {
 	lm.utils.EventEmitter.call( this );
 
@@ -439,6 +458,9 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 		};
 	}
 } );
+
+
+
 /**
  * The main class that will be exposed as GoldenLayout.
  *
@@ -1056,7 +1078,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 			if( sides [ side ] )
 				area[ side ] = area[ sides [ side ] ] - areaSize;
 			else
-				area[ side ] = areaSize;			
+				area[ side ] = areaSize;
 			area.surface = ( area.x2 - area.x1 ) * ( area.y2 - area.y1 );
 			this._itemAreas.push( area );
 		}
@@ -1201,7 +1223,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	 */
 	_bindEvents: function() {
 		if( this._isFullPage ) {
-			$( window ).resize( this._resizeFunction );
+			$( window ).on( 'resize', this._resizeFunction );
 		}
 		$( window ).on( 'unload beforeunload', this._unloadFunction );
 	},
@@ -1220,7 +1242,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 
 	/**
 	 * Extends the default config with the user specific settings and applies
-	 * derivations. Please note that there's a seperate method (AbstractContentItem._extendItemNode)
+	 * derivations. Please note that there's a separate method (AbstractContentItem._extendItemNode)
 	 * that deals with the extension of item configs
 	 *
 	 * @param   {Object} config
@@ -1275,7 +1297,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 			'<div class="lm_bg"></div>' +
 			'</div>' );
 
-		popInButton.click( lm.utils.fnBind( function() {
+		popInButton.on( 'click', lm.utils.fnBind( function() {
 			this.emit( 'popIn' );
 		}, this ) );
 
@@ -1508,28 +1530,55 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	}
 } );
 
+// Create our dependency variables inside the current scope
+if( typeof $ === 'undefined' ) {
+	var $;
+}
+
+if( typeof React === 'undefined' ) {
+	var React;
+}
+
+if( typeof ReactDOM === 'undefined' ) {
+	var ReactDOM;
+}
+
 /**
  * Expose the Layoutmanager as the single entrypoint using UMD
  */
 (function() {
 	/* global define */
-	if( typeof define === 'function' && define.amd ) {
+	if( typeof exports === 'object' ) {
+		if ( typeof require === 'function' ) {
+			$ = require( 'jquery' );
+			try {
+				// Webpack optional require.
+				// Will warn rather than error if react and react-dom aren't found.
+				React = require( 'react' );
+				ReactDOM = require( 'react-dom' );
+			} catch ( e ) {}
+		}
+		module.exports = lm.LayoutManager;
+	} else if( typeof define === 'function' && define.amd ) {
 		define( [ 'jquery' ], function( jquery ) {
 			$ = jquery;
 			return lm.LayoutManager;
 		} ); // jshint ignore:line
-	} else if( typeof exports === 'object' ) {
-		module.exports = lm.LayoutManager;
 	} else {
 		window.GoldenLayout = lm.LayoutManager;
 	}
 })();
+
+
 
 lm.config.itemDefaultConfig = {
 	isClosable: true,
 	reorderEnabled: true,
 	title: ''
 };
+
+
+
 lm.config.defaultConfig = {
 	openPopouts: [],
 	settings: {
@@ -1566,6 +1615,8 @@ lm.config.defaultConfig = {
 		tabDropdown: 'additional tabs'
 	}
 };
+
+
 
 lm.container.ItemContainer = function( config, parent, layoutManager ) {
 	lm.utils.EventEmitter.call( this );
@@ -1755,6 +1806,8 @@ lm.utils.copy( lm.container.ItemContainer.prototype, {
 	}
 } );
 
+
+
 /**
  * Pops a content item out into a new browser window.
  * This is achieved by
@@ -1790,7 +1843,6 @@ lm.utils.copy( lm.controls.BrowserPopout.prototype, {
 	toConfig: function() {
 		if( this.isInitialised === false ) {
 			throw new Error( 'Can\'t create config, layout not yet initialised' );
-			return;
 		}
 		return {
 			dimensions: {
@@ -1820,6 +1872,7 @@ lm.utils.copy( lm.controls.BrowserPopout.prototype, {
 			try {
 				this.getWindow().close();
 			} catch( e ) {
+				//
 			}
 		}
 	},
@@ -2015,6 +2068,9 @@ lm.utils.copy( lm.controls.BrowserPopout.prototype, {
 		setTimeout( lm.utils.fnBind( this.emit, this, [ 'closed' ] ), 50 );
 	}
 } );
+
+
+
 /**
  * This class creates a temporary container
  * for the component whilst it is being dragged
@@ -2227,6 +2283,8 @@ lm.utils.copy( lm.controls.DragProxy.prototype, {
 	}
 } );
 
+
+
 /**
  * Allows for any DOM item to create a component on drag
  * start tobe dragged into the Layout
@@ -2283,6 +2341,8 @@ lm.utils.copy( lm.controls.DragSource.prototype, {
 	}
 } );
 
+
+
 lm.controls.DropTargetIndicator = function() {
 	this.element = $( lm.controls.DropTargetIndicator._template );
 	$( document.body ).append( this.element );
@@ -2312,6 +2372,9 @@ lm.utils.copy( lm.controls.DropTargetIndicator.prototype, {
 		this.element.hide();
 	}
 } );
+
+
+
 /**
  * This class represents a header above a Stack ContentItem.
  *
@@ -2341,7 +2404,7 @@ lm.controls.Header = function( layoutManager, parent ) {
 	this.dockButton = null;
 	this.tabDropdownButton = null;
 	this.hideAdditionalTabsDropdown = lm.utils.fnBind(this._hideAdditionalTabsDropdown, this);
-	$( document ).mouseup(this.hideAdditionalTabsDropdown);
+	$( document ).on( 'mouseup', this.hideAdditionalTabsDropdown );
 
 	this._lastVisibleTabIndex = -1;
 	this._tabControlOffset = this.layoutManager.config.settings.tabControlOffset;
@@ -2426,6 +2489,8 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	setActiveContentItem: function( contentItem ) {
 		var i, j, isActive, activeTab;
 
+		if (this.activeContentItem === contentItem) return;
+		
 		for( i = 0; i < this.tabs.length; i++ ) {
 			isActive = this.tabs[ i ].contentItem === contentItem;
 			this.tabs[ i ].setActive( isActive );
@@ -2560,7 +2625,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 
 		if( this.parent._header && this.parent._header.dock ) {
 			var button = lm.utils.fnBind( this.parent.dock, this.parent );
-			var label = this._getHeaderSetting( 'dock' );
+			label = this._getHeaderSetting( 'dock' );
 			this.dockButton = new lm.controls.HeaderButton( this, label, 'lm_dock', button );
 		}
 
@@ -2763,6 +2828,8 @@ lm.utils.copy( lm.controls.Header.prototype, {
 } );
 
 
+
+
 lm.controls.HeaderButton = function( header, label, cssClass, action ) {
 	this._header = header;
 	this.element = $( '<li class="' + cssClass + '" title="' + label + '"></li>' );
@@ -2778,6 +2845,9 @@ lm.utils.copy( lm.controls.HeaderButton.prototype, {
 		this.element.remove();
 	}
 } );
+
+
+
 lm.controls.Splitter = function( isVertical, size, grabSize ) {
 	this._isVertical = isVertical;
 	this._size = size;
@@ -2819,6 +2889,8 @@ lm.utils.copy( lm.controls.Splitter.prototype, {
 		return element;
 	}
 } );
+
+
 
 /**
  * Represents an individual tab within a Stack's header
@@ -2970,12 +3042,9 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	_onTabClick: function( event ) {
 		// left mouse button or tap
 		if( event.button === 0 || event.type === 'touchstart' ) {
-			var activeContentItem = this.header.parent.getActiveContentItem();
-			if( this.contentItem !== activeContentItem ) {
-				this.header.parent.setActiveContentItem( this.contentItem );
-			}
-
-			// middle mouse button
+			this.header.parent.setActiveContentItem( this.contentItem );
+			
+		// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
 			this._onCloseClick( event );
 		}
@@ -3012,6 +3081,8 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	}
 } );
 
+
+
 lm.controls.TransitionIndicator = function() {
 	this._element = $( '<div class="lm_transition_indicator"></div>' );
 	$( document.body ).append( this._element );
@@ -3032,12 +3103,12 @@ lm.utils.copy( lm.controls.TransitionIndicator.prototype, {
 		 * TODO - This is not quite as cool as expected. Review.
 		 */
 		return;
-		this._toElement = toElement;
-		this._animationStartTime = lm.utils.now();
-		this._fromDimensions = this._measure( fromElement );
-		this._fromDimensions.opacity = 0.8;
-		this._element.show().css( this._fromDimensions );
-		lm.utils.animFrame( lm.utils.fnBind( this._nextAnimationFrame, this ) );
+		// this._toElement = toElement;
+		// this._animationStartTime = lm.utils.now();
+		// this._fromDimensions = this._measure( fromElement );
+		// this._fromDimensions.opacity = 0.8;
+		// this._element.show().css( this._fromDimensions );
+		// lm.utils.animFrame( lm.utils.fnBind( this._nextAnimationFrame, this ) );
 	},
 
 	_nextAnimationFrame: function() {
@@ -3074,6 +3145,9 @@ lm.utils.copy( lm.controls.TransitionIndicator.prototype, {
 		};
 	}
 } );
+
+
+
 lm.errors.ConfigurationError = function( message, node ) {
 	Error.call( this );
 
@@ -3083,6 +3157,8 @@ lm.errors.ConfigurationError = function( message, node ) {
 };
 
 lm.errors.ConfigurationError.prototype = new Error();
+
+
 
 /**
  * This is the baseclass that all content items inherit from.
@@ -3710,6 +3786,8 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	}
 } );
 
+
+
 /**
  * @param {[type]} layoutManager [description]
  * @param {[type]} config      [description]
@@ -3795,6 +3873,8 @@ lm.utils.copy( lm.items.Component.prototype, {
 	}
 } );
 
+
+
 lm.items.Root = function( layoutManager, config, containerElement ) {
 	lm.items.AbstractContentItem.call( this, layoutManager, config, null );
 	this.isRoot = true;
@@ -3879,6 +3959,8 @@ lm.utils.copy( lm.items.Root.prototype, {
 		}
 	}
 } );
+
+
 
 
 
@@ -4123,7 +4205,7 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 		this.emitBubblingEvent( 'stateChanged' );
 		this._validateDocking();
 	},
-	
+
 	/**
 	 * Invoked recursively by the layout manager. AbstractContentItem.init appends
 	 * the contentItem's DOM elements to the container, RowOrColumn init adds splitters
@@ -4205,7 +4287,7 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 					totalWidth -= headerSize - this._splitterSize;
 				}
 		}
-	
+
 		for( i = 0; i < this.contentItems.length; i++ ) {
 			if( this._isColumn ) {
 				itemSize = Math.floor( totalHeight * ( this.contentItems[ i ].config.height / 100 ) );
@@ -4543,6 +4625,8 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 	}
 } );
 
+
+
 lm.items.Stack = function( layoutManager, config, parent ) {
 	lm.items.AbstractContentItem.call( this, layoutManager, config, parent );
 
@@ -4641,13 +4725,15 @@ lm.utils.copy( lm.items.Stack.prototype, {
 			throw new Error( 'contentItem is not a child of this stack' );
 		}
 
-		if( this._activeContentItem !== null ) {
-			this._activeContentItem._$hide();
-		}
+		if (this._activeContentItem !== contentItem) {
+			if( this._activeContentItem !== null ) {
+				this._activeContentItem._$hide();
+			}
 
-		this._activeContentItem = contentItem;
-		this.header.setActiveContentItem( contentItem );
-		contentItem._$show();
+			this._activeContentItem = contentItem;
+			this.header.setActiveContentItem( contentItem );
+			contentItem._$show();
+                }
 		this.emit( 'activeContentItemChanged', contentItem );
 		this.layoutManager.emit( 'activeContentItemChanged', contentItem );
 		this.emitBubblingEvent( 'stateChanged' );
@@ -5082,6 +5168,8 @@ lm.utils.copy( lm.items.Stack.prototype, {
 	}
 } );
 
+
+
 lm.utils.BubblingEvent = function( name, origin ) {
 	this.name = name;
 	this.origin = origin;
@@ -5091,6 +5179,9 @@ lm.utils.BubblingEvent = function( name, origin ) {
 lm.utils.BubblingEvent.prototype.stopPropagation = function() {
 	this.isPropagationStopped = true;
 };
+
+
+
 /**
  * Minifies and unminifies configs by replacing frequent keys
  * and values with one letter substitutes. Config options must
@@ -5290,6 +5381,8 @@ lm.utils.copy( lm.utils.ConfigMinifier.prototype, {
 	}
 } );
 
+
+
 /**
  * An EventEmitter singleton that propagates events
  * across multiple windows. This is a little bit trickier since
@@ -5425,6 +5518,9 @@ lm.utils.EventHub.prototype._propagateToChildren = function( args ) {
 lm.utils.EventHub.prototype.destroy = function() {
 	$( window ).off( 'gl_child_event', this._boundOnEventFromChild );
 };
+
+
+
 /**
  * A specialised GoldenLayout component that binds GoldenLayout container
  * lifecycle events to react components
@@ -5456,9 +5552,23 @@ lm.utils.copy( lm.utils.ReactComponentHandler.prototype, {
 	 * @returns {void}
 	 */
 	_render: function() {
-		this._reactComponent = ReactDOM.render( this._getReactComponent(), this._container.getElement()[ 0 ] );
-		this._originalComponentWillUpdate = this._reactComponent.componentWillUpdate || function() {
-			};
+		ReactDOM.render( this._getReactComponent(), this._container.getElement()[ 0 ] );
+	},
+
+	/**
+	 * Fired by react when the component is created.
+	 * <p>
+	 * Note: This callback is used instead of the return from `ReactDOM.render` because
+	 *	   of https://github.com/facebook/react/issues/10309.
+	 * </p>
+	 *
+	 * @private
+	 * @arg {React.Ref} component The component instance created by the `ReactDOM.render` call in the `_render` method.
+	 * @returns {void}
+	 */
+	_gotReactComponent: function(component) {
+		this._reactComponent = component;
+		this._originalComponentWillUpdate = this._reactComponent.componentWillUpdate || function() {};
 		this._reactComponent.componentWillUpdate = this._onUpdate.bind( this );
 		if( this._container.getState() ) {
 			this._reactComponent.setState( this._container.getState() );
@@ -5523,8 +5633,16 @@ lm.utils.copy( lm.utils.ReactComponentHandler.prototype, {
 		var defaultProps = {
 			glEventHub: this._container.layoutManager.eventHub,
 			glContainer: this._container,
+			ref: this._gotReactComponent.bind( this )
 		};
 		var props = $.extend( defaultProps, this._container._config.props );
 		return React.createElement( this._reactClass, props );
 	}
-} );})(window.$);
+} );
+
+
+
+
+})(window.$);
+
+
