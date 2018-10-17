@@ -156,6 +156,10 @@ HAVE_OPENSSL=0
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
   PKG_CHECK_MODULES(JSON_C, json-c)
+  dnl kludge around broken OpenSSL config in MacOS:
+  OPENSSL_CONFIG=/usr/local/opt/openssl/lib/pkgconfig
+  test -d "$OPENSSL_CONFIG" && \
+      export PKG_CONFIG_PATH="$OPENSSL_CONFIG:$PKG_CONFIG_PATH"
   if pkg-config openssl; then
     OPENSSL_CFLAGS=`pkg-config --cflags openssl`
     OPENSSL_LIBS=`pkg-config --libs openssl`
