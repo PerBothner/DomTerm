@@ -3902,7 +3902,7 @@ Overridable function called by the HTML sanitizer.
 Normally, there is is a single per-user domterm server process.
 When you run the @code{domterm} command it will look for a
 domterm server process; if there is no running server, the
-@code{domterm} commoand wil ``daemonize'' itself and become the server.
+@code{domterm} command will ``daemonize'' itself and become the server.
 Otherwise, the @code{domterm} process will be a client,
 and forward the requested action to the server.
 
