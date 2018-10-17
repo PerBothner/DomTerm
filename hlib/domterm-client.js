@@ -105,8 +105,8 @@ DomTerm.handleSimpleMessage = function(command) {
 
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
-    DomTerm.showContextMenu = function(dt, e, contextType) {
-        backend.showContextMenu(contextType);
+    DomTerm.showContextMenu = function(options) {
+        backend.showContextMenu(options.contextType);
         return false;
     }
     DomTerm.doCopy = function(asHTML=false) {
@@ -135,9 +135,7 @@ function setupQWebChannel(channel) {
             dt.setInputMode(mode);
     });
     backend.layoutAddPane.connect(function(paneOp) {
-        var dt = DomTerm.focusedTerm;
-        if (dt)
-            DomTerm.layoutAddPane(dt, paneOp);
+        DomTerm.newPane(paneOp);
     });
     backend.detachSession.connect(function() {
         DomTerm.detach();
@@ -198,52 +196,75 @@ function viewSavedFile(url, bodyNode) {
     xhr.send("");
 }
 
-function loadHandler(event) {
-    DomTerm.layoutTop = document.body;
-    let url = location.href;
-    let hash = url.indexOf('#');
-    if (hash >= 0)
-        url = url.substring(0, hash);
-    DomTerm.mainLocation = url;
-
-    if (DomTerm.usingQtWebEngine) {
-        new QWebChannel(qt.webChannelTransport, setupQWebChannel);
-    }
-    var m;
-    m = location.hash.match(/atom([^&]*)/);
-    if (m) {
-        DomTerm.inAtomFlag = true;
-        if (DomTerm.isInIFrame()) {
+function setupParentMessages1() {
             DomTerm.sendParentMessage = function(command, ...args) {
                 window.parent.postMessage({"command": command, "args": args}, "*");
             }
-            DomTerm.closeFromEof = function(dt) {
-                DomTerm.sendParentMessage("domterm-close-from-eof"); }
             DomTerm.showFocusedTerm = function(dt) {
                 DomTerm.sendParentMessage("domterm-focused"); }
             DomTerm.windowClose = function() {
                 DomTerm.sendParentMessage("domterm-close"); }
+}
+function setupParentMessages2() {
+        DomTerm.showContextMenu = function(options) {
+            DomTerm.sendParentMessage("domterm-context-menu", options);
+            return ! DomTerm.usingQtWebEngine;
+        }
+        DomTerm.newPane = function(paneOp, options) {
+            DomTerm.sendParentMessage("domterm-new-pane", paneOp, options);
+        };
+        DomTerm.setLayoutTitle = function(dt, title, wname) {
+            DomTerm.sendParentMessage("domterm-set-title", title, wname);
+        };
+}
+
+// True if we should create each domterm element in a separate <iframe>.
+// That is better for security, makes for cleaner selection handling,
+// separates 'id' spaces.  However, it adds some overhead.
+// Only relevant when using a layout manager like GoldenLayout.
+DomTerm.useIFrame = true;
+
+function loadHandler(event) {
+    DomTerm.layoutTop = document.body;
+    let url = location.href;
+    let hashPos = url.indexOf('#');
+    let uhash = "";
+    if (hashPos >= 0) {
+        uhash = url.substring(hashPos);
+        url = url.substring(0, hashPos);
+    }
+    if (DomTerm.useIFrame)
+        DomTerm.mainLocation = "http://127.0.0.1:"+DomTerm.server_port+"/simple.html";
+    else
+        DomTerm.mainLocation = url;
+    var m;
+    if (! DomTerm.server_key && (m = url.match(/[#&]server-key=([^&]*)/))) {
+        DomTerm.server_key = m[1];
+    }
+
+    if (DomTerm.usingQtWebEngine && ! DomTerm.isInIFrame()) {
+        new QWebChannel(qt.webChannelTransport, setupQWebChannel);
+    }
+    m = location.hash.match(/atom([^&]*)/);
+    if (m) {
+        DomTerm.inAtomFlag = true;
+        if (DomTerm.isInIFrame()) {
+            setupParentMessages1();
+            DomTerm.closeFromEof = function(dt) {
+                DomTerm.sendParentMessage("domterm-close-from-eof"); }
         } else {
             DomTerm.sendParentMessage = function(command, ...args) {
                 const {ipcRenderer} = nodeRequire('electron');
                 ipcRenderer.sendToHost(command, ...args);
              }
         }
-        DomTerm.showContextMenu = function(dt, e, contextType) {
-            DomTerm.sendParentMessage("domterm-context-menu", contextType);
-            return true;
-        }
-        DomTerm.newPane = function(paneOp, sessionPid, dt) {
-            DomTerm.sendParentMessage("domterm-new-pane", paneOp, sessionPid);
-        };
-        DomTerm.setLayoutTitle = function(dt, title, wname) {
-            DomTerm.sendParentMessage("domterm-set-title", title, wname);
-        };
+        setupParentMessages2();
         DomTerm.displayInfoMessage = function(contents, dt) {
             DomTerm.sendParentMessage("domterm-status-message", contents);
         }
     }
-    DomTerm.setContextMenu();
+    if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
+        DomTerm.setContextMenu();
     m = location.hash.match(/open=([^&]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
@@ -265,16 +286,29 @@ function loadHandler(event) {
         DomTerm.layoutTop = wrapTopNode;
     }
     var layoutInitAlways = false;
-    if (layoutInitAlways) {
+    if (layoutInitAlways && ! DomTerm.isInIFrame()) {
         var cpid = location.hash.match(/connect-pid=([0-9]*)/);
-        DomTerm.newSessionPid = cpid ? 0+cpid[1] : 0;
         DomTerm.layoutInit(null);
-        DomTerm.newSessionPid = 0;
         return;
     }
     var topNodes = document.getElementsByClassName("domterm");
+    if (DomTerm.useIFrame) {
+        if (! DomTerm.isInIFrame()) {
+            let ifr = DomTerm.makeIFrameWrapper(DomTerm.mainLocation+uhash);
+            DomTerm.sendChildMessage = function(lcontent, command, ...args) {
+                lcontent.contentWindow.postMessage({"command": command, "args": args}, "*");
+            }
+            return;
+        } else {
+            setupParentMessages1();
+            setupParentMessages2();
+            DomTerm.setTitle = function(title) {
+                DomTerm.sendParentMessage("set-window-title", title); }
+        }
+    }
     if (topNodes.length == 0) {
-        topNodes = [ DomTerm.makeElement(DomTerm.freshName()) ];
+        let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
+        topNodes = [ DomTerm.makeElement(name) ];
     }
     if (location.search.search(/wait/) >= 0) {
     } else if (location.hash == "#ajax" || ! window.WebSocket) {
@@ -291,10 +325,17 @@ function loadHandler(event) {
         location.hash = "";
 }
 
-/* Used by atom-domterm (but only when !DomTermView.usingWebview) */
+/* Used by atom-domterm or if useIFrame. */
 function handleMessage(event) {
     var data = event.data;
     var dt=DomTerm.focusedTerm;
+    let iframe = null;
+    for (let ch = DomTerm.layoutTop.firstChild; ch != null; ch = ch.nextSibling) {
+        if (ch.tagName == "IFRAME" && ch.contentWindow == event.source) {
+            iframe = ch;
+            break;
+        }
+    }
     if (typeof data == "string" || data instanceof String)
         DomTerm.handleSimpleMessage(data);
     else if (data.command=="handle-output")
@@ -303,8 +344,55 @@ function handleMessage(event) {
         dt.reportEvent("VERSION", DomTerm.versionInfo);
         dt.reportEvent("DETACH", "");
         dt.initializeTerminal(dt.topNode);
+    } else if (data.command=="domterm-context-menu") {
+        let options = data.args[0];
+        let x = options.clientX;
+        let y = options.clienty;
+        if (iframe && x !== undefined && y !== undefined) {
+            x = x + iframe.offsetLeft + iframe.clientLeft;
+            y = y + iframe.offsetTop + iframe.clientTop;
+            options = Object.assign({}, options, { "clientX": x, "clientY": y});
+        }
+        DomTerm.showContextMenu(options);
+    } else if (data.command=="domterm-new-pane") {
+        DomTerm.newPane(data.args[0], data.args[1]);
+    } else if (data.command=="domterm-next-pane") {
+        if (DomTerm.layoutManager)
+            DomTerm.selectNextPane(data.args[0], iframe);
+    } else if (data.command=="set-window-title") {
+        DomTerm.setTitle(data.args[0]);
+    } else if (data.command=="layout-close") {
+        if (DomTerm.layoutManager)
+            DomTerm.domTermLayoutClose(iframe,
+                                       DomTerm._elementToLayoutItem(iframe));
+        else
+            DomTerm.windowClose();
+    } else if (data.command=="focus-event") {
+        let originMode = data.args[0];
+        if (DomTerm.layoutManager)
+            DomTerm._selectLayoutPane(DomTerm._elementToLayoutItem(iframe), originMode);
+        else {
+            DomTerm._focusChild(iframe, originMode);
+            DomTerm._oldFocusedContent = iframe;
+        }
+    } else if (data.command=="domterm-set-title") {
+        if (iframe)
+            DomTerm.setLayoutTitle(iframe,
+                                   data.args[0], data.args[1]);
+    } else if (data.command=="set-focused") { // message to child
+        let op = data.args[0];
+        let dt = DomTerm.focusedTerm;
+        if (dt) {
+            dt.setFocused(op);
+        }
+    } else if (data.command=="domterm-socket-close") { // message to child
+        let dt = DomTerm.focusedTerm;
+        if (dt)
+            dt.closeConnection();
+    } else if (data.args.length == 0) {
+        DomTerm.handleSimpleMessage(data.command);
     } else
-        console.log("received message "+data+" dt:"+ dt);
+        console.log("received message "+data+" command:"+data.command+" dt:"+ dt);
 }
 
 window.addEventListener("load", loadHandler, false);

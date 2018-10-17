@@ -125,12 +125,38 @@ bool check_server_key(struct lws *wsi, char *arg, size_t alen)
     return false;
 }
 
+#define LBUFSIZE 4096
+int
+write_simple_response(struct lws *wsi, struct http_client *hclient,
+                      const char *content_type,
+                      unsigned char *content_data, unsigned int content_length,
+                      bool owns_data, unsigned char *buffer)
+{
+    uint8_t *start = buffer+LWS_PRE, *p = start,
+        *end = &buffer[LBUFSIZE - LWS_PRE - 1];
+
+    if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK,
+                                    content_type, content_length,
+                                    &p, end))
+        return 1;
+    if (lws_finalize_write_http_header(wsi, start, &p, end))
+        return 1;
+
+    hclient->owns_data = owns_data;
+    hclient->data = content_data;
+    hclient->ptr = content_data;
+    hclient->length = content_length;
+    /* write the body separately */
+    lws_callback_on_writable(wsi);
+    return 0;
+}
+
 /** Callack for servering http - generally static files. */
 
 int
 callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
     struct http_client *hclient = (struct http_client *) user;
-    unsigned char buffer[4096 + LWS_PRE], *start = &buffer[LWS_PRE], *p, *end;
+    unsigned char buffer[LBUFSIZE + LWS_PRE], *start = &buffer[LWS_PRE], *p, *end;
     char buf[256];
 
     switch (reason) {
@@ -219,24 +245,26 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)
               content_type = "text/html";
+            if (strcmp(fname, "/simple.html") == 0) {
+                struct sbuf sb[1];
+                sbuf_init(sb);
+                make_html_text(sb, http_port, true);
+                char *data = sb->buffer;
+                int dlen = sb->len;
+                sb->buffer = NULL;
+                sbuf_free(sb);
+                return write_simple_response(wsi, hclient, content_type,
+                                             data, dlen,
+                                             true, buffer);
+            }
 #if COMPILED_IN_RESOURCES
             struct resource *resource = &resources[0];
             while (resource->name != NULL && strcmp(resource->name, fname+1) != 0)
                 resource++;
             if (resource->name != NULL) {
-                if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK,
-                                                content_type, resource->length,
-                                                &p, end))
-                        return 1;
-                if (lws_finalize_write_http_header(wsi, start, &p, end))
-                        return 1;
-
-                hclient->data = resource->data;
-                hclient->ptr = resource->data;
-                hclient->length = resource->length;
-                /* write the body separately */
-                lws_callback_on_writable(wsi);
-                return 0;
+                return write_simple_response(wsi, hclient, content_type,
+                                             resource->data, resource->length,
+                                             false, buffer);
             }
             lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
             goto try_to_reuse;
@@ -261,6 +289,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     hclient->ptr += cur_chunk;
                     lws_callback_on_writable(wsi);
                 } else {
+                    if (hclient->owns_data)
+                        free(hclient->data);
                     hclient->data = NULL;
                     hclient->ptr = NULL;
                     if (lws_http_transaction_completed(wsi))

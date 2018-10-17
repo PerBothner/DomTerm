@@ -1382,9 +1382,6 @@ handle_command(int argc, char** argv, const char*cwd,
             struct pty_client *pclient = pty_client_list;
             for (; pclient != NULL; pclient = pclient->next_pty_client) {
                 if (pclient->pid == current_session_pid) {
-                    fprintf(stderr, "handle_command %s pid:%d session:%s=%d\n",
-                            argc == 0 ? "-" : argv[0],
-                            current_session_pid, pclient->session_name, pclient->session_number);
                     opts->requesting_session = pclient;
                     break;
                 }

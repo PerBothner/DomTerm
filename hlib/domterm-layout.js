@@ -1,7 +1,6 @@
 /* A glue layer for a layout mangager, initially GoldenLayout.
  */
 
-DomTerm.newSessionPid = 0;
 DomTerm._pendingTerminals = null;
 
 function _muxModeInfo(dt) {
@@ -20,9 +19,11 @@ DomTerm.prototype.exitMuxMode = function() {
     this._updatePagerInfo();
 }
 
+/** Runs in DomTerm sub-window. */
 DomTerm.prototype._muxKeyHandler = function(event, key, press) {
     if (this.verbosity >= 2)
         this.log("mux-key key:"+key+" event:"+event+" press:"+press);
+    let paneOp = 0;
     switch (key) {
     case 13: // Enter
         DomTerm.layoutAddSibling(this);
@@ -33,17 +34,23 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
     case 17: /*Control*/
     case 18: /*Alt*/
         return;
-    case 40 /*Down*/:
-    case 38 /*Up*/:
     case 37 /*Left*/:
+        if (paneOp == 0) paneOp = 10;
+        /* fall through */
+    case 38 /*Up*/:
+        if (paneOp == 0) paneOp = 12;
+        /* fall through */
     case 39 /*Right*/:
+        if (paneOp == 0) paneOp = 11;
+        /* fall through */
+    case 40 /*Down*/:
+        if (paneOp == 0) paneOp = 13;
         if (event.ctrlKey) {
-            DomTerm.layoutAddSibling(this, null, key==38||key==40, key==39||key==40);
+            DomTerm.newPane(paneOp);
             this.exitMuxMode();
             event.preventDefault();
         } else {
-            DomTerm.selectNextPane(DomTerm.domTermToLayoutItem(this),
-                                   key==39||key==40);
+            DomTerm.selectNextPane(key==39||key==40);
             this.exitMuxMode();
             event.preventDefault();
         }
@@ -57,7 +64,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
         break;
     case 84: // T
         if (! event.ctrlKey) {
-            DomTerm.layoutAddTab(this);
+            DomTerm.newPane(2);
             this.exitMuxMode();
             event.preventDefault();
         }
@@ -96,7 +103,7 @@ DomTerm.layoutItemToDomTerm = function(item) {
     return element.classList.contains("domterm") ? element.terminal : null;
 };
 
-DomTerm._elementToLayoutItem = function(goal, item) {
+DomTerm._elementToLayoutItem = function(goal, item = DomTerm.layoutManager.root) {
     if (item.element[0] == goal
         || (item.container && item.container.getElement()[0] == goal))
         return item;
@@ -115,19 +122,21 @@ DomTerm.domTermToLayoutItem = function(dt) {
     var node = dt.topNode;
     var goal = node.parentNode;
     if (goal instanceof Element && goal.classList.contains("lm_content"))
-        return DomTerm._elementToLayoutItem(goal, DomTerm.layoutManager.root);
+        return DomTerm._elementToLayoutItem(goal);
     else
         return null;
 }
 
 DomTerm.domTermLayoutClosed = function(event) {
-    var el = this.getElement()[0].firstChild;
-    var dt = el.terminal;
-    if (dt && dt.closeConnection)
-        dt.closeConnection();
-    DomTerm.domTermLayoutClose(dt, this.parent, true);
+    var el = this.getElement()[0];
+    if (! DomTerm.useIFrame) {
+        var dt = el.firstChild.terminal;
+        if (dt && dt.closeConnection)
+            dt.closeConnection();
+    }
+    DomTerm.domTermLayoutClose(el, this.parent, true);
 }
-DomTerm.domTermLayoutClose = function(dt, r, from_handler=false) {
+DomTerm.domTermLayoutClose = function(lcontent, r, from_handler=false) {
     if (r) {
         var p = r.parent;
         if (p && p.type == 'stack'
@@ -136,49 +145,86 @@ DomTerm.domTermLayoutClose = function(dt, r, from_handler=false) {
             && p.parent.contentItems.length == 1) {
             DomTerm.windowClose();
         } else {
-            let lcontent = dt.topNode.parentNode;
+            DomTerm.selectNextPane(true, lcontent);
             if (lcontent && lcontent.parentNode)
                 lcontent.parentNode.removeChild(lcontent);
-            DomTerm.selectNextPane(r, true);
-            dt = DomTerm.focusedTerm;
             if (! from_handler)
                 r.remove();
-            DomTerm.setFocus(dt);
-            if (dt != null)
-                dt.maybeFocus();
         }
     }
 }
 
+// The current lm_stack
 DomTerm._oldFocusedPane = null;
+
+// The current (or previous) lm.items.Component
 DomTerm._oldFocusedItem = null;
+
+// The current domterm-wrapper Element.
+// Same as DomTerm._oldFocusedItem.container._contentElement1
 DomTerm._oldFocusedContent = null;
-DomTerm.showFocusedPane = function(item, lcontent) {
-    DomTerm._oldFocusedItem = item;
-    var stackPane = item == null ? null : item.parent.element[0];
-    if (DomTerm._oldFocusedPane != stackPane) {
+
+DomTerm.showFocusedPane = function(item, lcontent = item.container._contentElement1) {
+    DomTerm.showFocusedPaneL(item, lcontent);
+    DomTerm.showFocusedPaneF(lcontent);
+};
+DomTerm.showFocusedPaneL = function(item, lcontent = item.container._contentElement1) {
+    if (DomTerm._oldFocusedItem != item) {
+        var stackPane = item && item.parent.element ? item.parent.element[0] : null;
         if (DomTerm._oldFocusedPane != null)
             DomTerm._oldFocusedPane.classList.remove("domterm-active");
-        if (DomTerm._oldFocusedContent != null)
-            DomTerm._oldFocusedContent.classList.remove("domterm-active");
         if (stackPane != null)
             stackPane.classList.add("domterm-active");
+        DomTerm._oldFocusedPane = stackPane;
+        DomTerm._oldFocusedItem = item;
+    }
+};
+DomTerm.showFocusedPaneF = function(lcontent) {
+    if (DomTerm._oldFocusedContent != lcontent) {
+        if (DomTerm._oldFocusedContent != null)
+            DomTerm._oldFocusedContent.classList.remove("domterm-active");
         if (lcontent != null)
             lcontent.classList.add("domterm-active");
-        DomTerm._oldFocusedPane = stackPane;
+
         DomTerm._oldFocusedContent = lcontent;
     }
 };
-DomTerm._selectLayoutPane = function(component) {
-    var dt = DomTerm.layoutItemToDomTerm(component);
-    var p = component.parent;
-    if (p.type == 'stack')
-        p.setActiveContentItem(component);
-    DomTerm.setFocus(dt);
-    DomTerm.showFocusedPane(component, dt.topNode.parentNode);
-    dt.maybeFocus();
+/* Must be called in layout-manager context. */
+DomTerm._selectLayoutPane = function(component, originMode) {
+    if (DomTerm.useIFrame) {
+        DomTerm._focusChild(component.container._contentElement1, originMode);
+    } else {
+        var dt = DomTerm.layoutItemToDomTerm(component);
+        DomTerm.setFocus(dt);
+        dt.maybeFocus();
+    }
+    component.parent.setActiveContentItem(component);
+    DomTerm._focusChild(component.container._contentElement1, originMode);
 }
-DomTerm.selectNextPane = function(item, forwards) {
+DomTerm._focusChild = function(iframe, originMode) {
+    let oldContent = DomTerm._oldFocusedContent;
+    if (iframe !== oldContent || originMode=="C") {
+        if (DomTerm.useIFrame) {
+            if (oldContent != null)
+                DomTerm.sendChildMessage(oldContent, "set-focused", 0);
+            if (originMode != "F")
+                DomTerm.sendChildMessage(iframe, "set-focused", 2);
+        } else {
+            if (oldContent != null)
+                oldContent.firstChild.terminal.setFocused(0);
+            if (originMode != "F" && iframe.firstChild.terminal) //originMode != "A")
+                iframe.firstChild.terminal.setFocused(2);
+        }
+    }
+}
+
+/* Can be called in either DomTerm sub-window or layout-manager context. */
+DomTerm.selectNextPane = function(forwards, wrapper=DomTerm._oldFocusedContent) {
+    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+        DomTerm.sendParentMessage("domterm-next-pane", forwards);
+        return;
+    }
+    let item = DomTerm._elementToLayoutItem(wrapper);
     var r = item;
     for (;;) {
         var p = r.parent;
@@ -197,7 +243,7 @@ DomTerm.selectNextPane = function(item, forwards) {
                     : next.contentItems[next.contentItems.length-1];
             }
             if (next != item)
-                DomTerm._selectLayoutPane(next);
+                DomTerm._selectLayoutPane(next, "X");
             return;
         } else {
             r = p;
@@ -216,38 +262,15 @@ DomTerm._splitVertically = function(dt) {
     return dt.numColumns<4*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
 }
 
-DomTerm.layoutAddPane = function(dt, paneOp, sessionPid=0,
-                                 newItemConfig = DomTerm.newItemConfig)
-{
-    DomTerm.newSessionPid = sessionPid;
-    switch (paneOp) {
-    case 3:
-        dt.enterMuxMode();
-        break;
-    case 1: // new pane
-        DomTerm.layoutAddSibling(dt, newItemConfig);
-        break;
-    case 2: // tab
-        DomTerm.layoutAddTab(dt, newItemConfig);
-        break;
-    case 10: // Left
-    case 11: // Right
-    case 12: // Above
-    case 13: // Below
-        DomTerm.layoutAddSibling(dt, newItemConfig,
-                                 paneOp==12||paneOp==13,
-                                 paneOp==11||paneOp==13);
-        break;
-    }
-    DomTerm.newSessionPid = 0;
-}
-
 DomTerm.layoutAddSibling = function(dt, newItemConfig = null,
                                     isColumn=DomTerm._splitVertically(dt),
                                     addAfter=true)
 {
     if (newItemConfig == null)
         newItemConfig = DomTerm.newItemConfig;
+    else if (typeof newItemConfig == "number")
+        newItemConfig = Object.assign({sessionPid: newItemConfig },
+                                      DomTerm.newItemConfig);
     if (! DomTerm.layoutManager)
         DomTerm.layoutInit(dt);
     var r = dt == null ? DomTerm._oldFocusedItem
@@ -271,7 +294,12 @@ DomTerm.layoutAddSibling = function(dt, newItemConfig = null,
     }
 };
 
-DomTerm.layoutAddTab = function(dt, newItemConfig = DomTerm.newItemConfig) {
+DomTerm.layoutAddTab = function(dt, newItemConfig = null) {
+    if (newItemConfig == null)
+        newItemConfig = DomTerm.newItemConfig;
+    else if (typeof newItemConfig == "number")
+        newItemConfig = Object.assign({sessionPid: newItemConfig },
+                                      DomTerm.newItemConfig);
     if (dt == null)
         dt = DomTerm.focusedTerm;
     if (! DomTerm.layoutManager)
@@ -282,16 +310,23 @@ DomTerm.layoutAddTab = function(dt, newItemConfig = DomTerm.newItemConfig) {
         r.parent.addChild(newItemConfig); // FIXME index after r
 };
 
-DomTerm.setLayoutTitle = function(dt, title, wname) {
-    var r = DomTerm.domTermToLayoutItem(dt);
+// item is an iframe if useIFrame; a DomTerm otherwise.
+DomTerm.setLayoutTitle = function(item, title, wname) {
     title = DomTerm.escapeText(title);
+    if (wname) {
+        wname = DomTerm.escapeText(wname);
+        title = title+'<span class="domterm-windowname"> '+wname+'</span>';
+    }
+    let r;
+    if (! DomTerm.useIFrame)
+        r = DomTerm.domTermToLayoutItem(item);
+    else if (DomTerm.layoutManager)
+        r = DomTerm._elementToLayoutItem(item);
+    else {
+        item.layoutTitle = title;
+        return;
+    }
     if (r) {
-        var p = r.parent;
-        if (p.type == 'stack' && p._activeContentItem == r
-            && wname) {
-            wname = DomTerm.escapeText(wname);
-            title = title+'<span class="domterm-windowname"> '+wname+'</span>';
-        }
         r.setTitle(title);
     }
 }
@@ -301,7 +336,6 @@ DomTerm.popoutWindow = function(item, dt) {
     var sizeElement = item.element[0];
     if (! wholeStack)
         sizeElement = item.container._contentElement1;
-    console.log("popoutWindow whole:"+wholeStack);
     var w = sizeElement.offsetWidth;
     var h = sizeElement.offsetHeight;
     // FIXME adjust for menu bar height
@@ -340,7 +374,6 @@ DomTerm.popoutWindow = function(item, dt) {
     }
 
     let newurl = DomTerm.mainLocation+"#open="+encodeURIComponent(e);
-    console.log("popupWindow "+newurl+" e:"+e);
     DomTerm.openNewWindow(dt, { width: w, height: h, url: newurl });
     for (var i = 0; i < toRemove.length; i++) {
         remove(toRemove[i]);
@@ -382,32 +415,56 @@ DomTerm.layoutResized = function(event) {
 
 DomTerm.layoutInit = function(term) {
     let top = DomTerm.layoutTop || document.body;
+    let lcontent = DomTerm._oldFocusedContent;
     DomTerm.layoutManager = new GoldenLayout(DomTerm.layoutConfig, top);
     DomTerm.layoutManager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
         var name;
-        if (term != null) {
+        let wrapped;
+        /*if (term != null) {
             el = term.topNode;
             term.detachResizeSensor();
             name = term.sessionName();
             term = null;
-            container._contentElement1 = el.parentNode;
+            wrapped = el.parentNode;
+        } else*/ if (lcontent != null) {
+            wrapped = lcontent;
+            container._contentElement1 = wrapped;
+            if (DomTerm.useIFrame) {
+                name = wrapped.layoutTitle;
+                wrapped.layoutTitle = undefined;
+            } else
+                name = DomTerm.freshName();
+            lcontent = null;
         } else {
-            var sessionPid = DomTerm.newSessionPid;
-            name = DomTerm.freshName();
-            el = DomTerm.makeElement(name);
-            container._contentElement1 = el.parentNode;
             var config = container._config;
+            var sessionPid = config.sessionPid;
+            if (DomTerm.useIFrame) {
+                let url = DomTerm.mainLocation;
+                if (sessionPid)
+                    url += (url.indexOf('#') >= 0 ? '&' : '#')
+                    + "connect-pid="+sessionPid;
+                wrapped = DomTerm.makeIFrameWrapper(url);
+                if (DomTerm._oldFocusedItem == null)
+                    DomTerm._oldFocusedItem = container.parent;
+                name = wrapped.name;
+            } else {
+                name = DomTerm.freshName();
+                el = DomTerm.makeElement(name);
+                wrapped = el.parentNode;
+            }
+            container._contentElement1 = wrapped;
             if (DomTerm._pendingTerminals) {
                 DomTerm._pendingTerminals.push(el);
-                if (sessionPid)
+                if (config.sessionPid)
                     el.setAttribute("pid", sessionPid);
-            } else {
+            } else if (! DomTerm.useIFrame) {
                 var query = sessionPid ? "connect-pid="+sessionPid : null;
                 DomTerm.connectHttp(el, query);
             }
         }
-        el.parentNode.classList.add("lm_content");
+        DomTerm.showFocusedPaneL(container.parent, wrapped);
+        wrapped.classList.add("lm_content");
         container.setTitle(name);
         container.on('resize', DomTerm.layoutResized, el);
         container.on('destroy', DomTerm.domTermLayoutClosed, container);
@@ -436,23 +493,17 @@ DomTerm.layoutInit = function(term) {
     });
 
     function activeContentItemHandler(item) {
-        var dt = DomTerm.layoutItemToDomTerm(item);
-        if (dt) {
-            DomTerm.setFocus(dt);
-        } else {
-            DomTerm.setFocus(null);
-            if (item.config.componentName == "browser")
-                DomTerm.setTitle(item.config.url);
-            DomTerm.showFocusedPane(item, item.container._contentElement1);
-        }
+        if (item.config.componentName == "browser")
+            DomTerm.setTitle(item.config.url);
+        DomTerm._focusChild(item.container._contentElement1, "A");
+        DomTerm.showFocusedPane(item);
     }
 
     function checkClick(event) {
         for (var t = event.target; t instanceof Element; t = t.parentNode) {
             if (t.classList.contains("lm_header")) {
-                var item = DomTerm._elementToLayoutItem(t.parentNode,
-                                                        DomTerm.layoutManager.root);
-                DomTerm._selectLayoutPane(item._activeContentItem);
+                var item = DomTerm._elementToLayoutItem(t.parentNode);
+                DomTerm._selectLayoutPane(item._activeContentItem, "C");
                 return;
             }
         }
@@ -491,8 +542,8 @@ DomTerm._initSavedLayout = function(data) {
                 var w = data[i];
                 var newItemConfig = null;
                 if (w.pid) {
-                    DomTerm.newSessionPid = w.pid;
-                    newItemConfig = DomTerm.newItemConfig;
+                    newItemConfig = Object.assign({sessionPid: w.pid },
+                                                  DomTerm.newItemConfig);
                 } else if (w.url) {
                     newItemConfig = {type: 'component',
                                      componentName: 'browser',
@@ -506,7 +557,6 @@ DomTerm._initSavedLayout = function(data) {
                         var stack = DomTerm.layoutManager.root.contentItems[0];
                         stack.addChild(newItemConfig);
                     }
-                    DomTerm.newSessionPid = 0;
                 }
             }
             n = DomTerm._pendingTerminals.length;

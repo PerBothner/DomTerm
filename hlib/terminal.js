@@ -420,15 +420,38 @@ function DomTerm(name, topNode) {
     this.wcwidth = new WcWidth();
 }
 
+DomTerm.makeIFrameWrapper = function(location) {
+    let ifr = document.createElement("iframe");
+    let name = DomTerm.freshName();
+    ifr.setAttribute("name", name);
+    if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
+        location = location
+            + (location.indexOf('#') >= 0 ? '&' : '#')
+            + "server-key=" + DomTerm.server_key;
+    }
+    ifr.setAttribute("src", location);
+    ifr.setAttribute("class", "domterm-wrapper");
+    for (let ch = DomTerm.layoutTop.firstChild; ; ch = ch.nextSibling) {
+        if (ch == null || ch.tagName != "IFRAME") {
+            DomTerm.layoutTop.insertBefore(ifr, ch);
+            break;
+        }
+    }
+    return ifr;
+}
+
 DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout()) {
     let topNode = document.createElement("div");
     topNode.setAttribute("class", "domterm");
     topNode.setAttribute("id", name);
     let lcontent;
     if (wrap) {
-        lcontent = document.createElement("div"); // FUTURE: iframe
+        lcontent = document.createElement("div");
         lcontent.setAttribute("class", "domterm-wrapper");
+        lcontent.setAttribute("name", name)
         DomTerm.layoutTop.appendChild(lcontent);
+        if (DomTerm._oldFocusedContent == null)
+            DomTerm._oldFocusedContent = lcontent;
     } else {
         lcontent = DomTerm.layoutTop;
     }
@@ -475,6 +498,11 @@ DomTerm.prototype.eofSeen = function() {
 };
 
 DomTerm.detach = function(dt=DomTerm.focusedTerm) {
+    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
+        && DomTerm._oldFocusedContent) {
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "detach");
+        return;
+    }
     if (dt) {
         dt.reportEvent("DETACH", "");
         if (dt._detachSaveNeeded == 1)
@@ -508,20 +536,33 @@ DomTerm.windowClose = function() {
     window.close();
 }
 
+/* Should be overridden if used in an iframe. */
 DomTerm.setTitle = function(title) {
     document.title = title;
 }
 
-DomTerm.newPane = function(paneOp, sessionPid, dt) {
-    if (DomTerm.layoutAddPane)
-        DomTerm.layoutAddPane(dt, paneOp, sessionPid);
+/* Can be called in either DomTerm sub-window or layout-manager context. */
+DomTerm.newPane = function(paneOp, options = null) {
+    if (DomTerm.useIFrame && DomTerm.isInIFrame())
+        DomTerm.sendParentMessage("domterm-new-pane", paneOp, options);
+    else if (paneOp == 1 && DomTerm.layoutAddSibling)
+        DomTerm.layoutAddSibling(null, options);
+    else if (paneOp == 2 && DomTerm.layoutAddTab)
+        DomTerm.layoutAddTab(null, options);
+    else if (DomTerm.layoutAddSibling) {
+        DomTerm.layoutAddSibling(null, options,
+                                 paneOp==12||paneOp==13, paneOp==11||paneOp==13);
+    }
+    //DomTerm.newSessionPid = 0;
 }
 
 DomTerm.prototype.close = function() {
     if (this._detachSaveNeeded == 2) {
         DomTerm.saveWindowContents(this);
     }
-    if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
+    if (DomTerm.useIFrame)
+        DomTerm.sendParentMessage("layout-close");
+    else if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
         DomTerm.domTermLayoutClose(this, DomTerm.domTermToLayoutItem(this));
     else
         DomTerm.windowClose();
@@ -615,26 +656,45 @@ DomTerm.prototype.log = function(str) {
     console.log(str);
 };
 
-DomTerm.focusedTerm = null;
+DomTerm.focusedTerm = null; // used if !useIFrame
 
-DomTerm.setFocus = function(term) {
-    var current = DomTerm.focusedTerm;
-    DomTerm.showFocusedTerm(term);
-    if (term != null)
-        term.reportEvent("FOCUSED", ""); // to server
-    if (current == term)
-        return;
-    if (current !== null) {
-        current.topNode.classList.remove("domterm-active");
-        if (current.sstate.sendFocus)
-            current.processResponseCharacters("\x1b[O");
+DomTerm.prototype.setFocused = function(focused) {
+    if (focused > 0) {
+        this.reportEvent("FOCUSED", ""); // to server
+        this.topNode.classList.add("domterm-active");
+        DomTerm.setTitle(this.sstate.windowTitle);
+        DomTerm.inputModeChanged(this, this.getInputMode());
+        if (focused == 2)
+            this.maybeFocus();
+    } else {
+        this.topNode.classList.remove("domterm-active");
     }
-    if (term != null) {
-        term.topNode.classList.add("domterm-active");
-        if (term.sstate.sendFocus)
-            term.processResponseCharacters("\x1b[I"); // to application
-        DomTerm.setTitle(term.sstate.windowTitle);
-        DomTerm.inputModeChanged(term, term.getInputMode());
+    if (this.sstate.sendFocus)
+        this.processResponseCharacters(focused ? "\x1b[I" : "\x1b[O");
+}
+
+// originMode can be one of (should simplify):
+// "F" - focusin event (in inferior frame)
+// "X" - selectNextPane
+// "N" - initializeDomTerm
+// "A" - activeContentItemHandler (event handler called by GoldenLayout)
+// "C" - layoutInit
+// "S" - mousedown [only if !useIFrame]
+DomTerm.setFocus = function(term, originMode="") {
+    if (DomTerm.useIFrame) {
+        //DomTerm.focusedTerm = term;
+        if (originMode == "F" || originMode == "N")
+            term.setFocused(1);
+        DomTerm.sendParentMessage("focus-event", originMode);
+    } else {
+        DomTerm.showFocusedTerm(term);
+        var current = DomTerm.focusedTerm;
+        if (current == term)
+            return;
+        if (current !== null)
+            current.setFocused(0);
+        if (term != null)
+            term.setFocused(1);
     }
     DomTerm.focusedTerm = term;
 }
@@ -647,6 +707,7 @@ DomTerm.showFocusedTerm = function(term) {
     }
 }
 
+// Convenience function for Theia package
 DomTerm.prototype.doFocus = function() {
     DomTerm.setFocus(this);
     this.maybeFocus();
@@ -654,15 +715,12 @@ DomTerm.prototype.doFocus = function() {
 
 DomTerm.prototype.maybeFocus = function() {
     if (this.hasFocus()) {
-        this.topNode.focus();
-        // Sometimes needed when called by DomTerm._selectLayoutPane when
-        // using alternate buffer.  Not sure what is happening.
-        this._scrollIfNeeded();
+        this.topNode.focus({preventScroll: true});
     }
 }
 
 DomTerm.prototype.hasFocus = function() {
-    return DomTerm.focusedTerm == this;
+    return this.topNode.classList.contains("domterm-active");
 }
 
 // States of escape sequences handler state machine.
@@ -2460,7 +2518,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     wrapDummy.setAttribute("breaking", "yes");
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
-    DomTerm.setFocus(this);
+    DomTerm.setFocus(this, "N");
     var dt = this;
     this.attachResizeSensor();
     this.measureWindow();
@@ -2470,16 +2528,21 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     topNode.addEventListener('wheel',
                              function(e) { dt._disableScrollOnOutput = true; },
                              {passive: true});
-    this.topNode.addEventListener("mousedown", this._mouseEventHandler, true);
-    this.topNode.addEventListener("mouseup", this._mouseEventHandler, true);
-
-    this.topNode.addEventListener("contextmenu",
-                                  function(e) {
-                                      if (dt.sstate.mouseMode != 0
-                                          || (DomTerm.showContextMenu
-                                              && DomTerm.showContextMenu(dt, e, DomTerm._contextLink?"A":"")))
-                                          e.preventDefault();
-                                  }, false);
+    this.topNode.addEventListener("mousedown", this._mouseEventHandler, false);
+    this.topNode.addEventListener("mouseup", this._mouseEventHandler, false);
+    function handleContextMenu(e) {
+        if (dt.sstate.mouseMode != 0
+            || (DomTerm.showContextMenu
+                && ! e.ctrlKey && ! e.shiftKey
+                && DomTerm.showContextMenu({"contextType":
+                                            DomTerm._contextLink?"A":"",
+                                            "inputMode": dt.getInputMode(),
+                                            "autoPaging": dt._autoPaging,
+                                            "clientX": e.clientX,
+                                            "clientY": e.clientY })))
+            e.preventDefault();
+    }
+    this.topNode.addEventListener("contextmenu", handleContextMenu, false);
 
     document.addEventListener("selectionchange", function() {
         let sel = document.getSelection();
@@ -2724,7 +2787,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
       function(e) { dt.inputHandler(e); }, true);
     if (! DomTerm.isAtom()) { // kludge for Atom
         topNode.addEventListener("focusin", function(e) {
-            DomTerm.setFocus(dt);
+            DomTerm.setFocus(dt, "F");
         }, false);
     }
     function compositionStart(ev) {
@@ -2931,7 +2994,8 @@ DomTerm.prototype._mouseHandler = function(ev) {
     if (ev.type == "mousedown") {
         if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
             this._usingScrollBar = true;
-        DomTerm.setFocus(this);
+        if (! DomTerm.useIFrame)
+            DomTerm.setFocus(this, "S");
     }
     if (this.sstate.mouseMode == 0 && ev.button == 2) {
         DomTerm._contextTarget = ev.target;
@@ -6009,13 +6073,12 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 104:
     case 105:
         var m = text.match(/^([0-9]+),/);
-        if (m && DomTerm.layoutAddPane) {
+        if (m) {
             var paneOp = Number(m[1]);
-            text = text.substring(m[1].length+1);
-            DomTerm.layoutAddPane(this, paneOp, 0,
-                                  {type: 'component',
-                                   componentName: code==104?'browser':'view-saved',
-                                   url: text });
+            DomTerm.newPane(paneOp,
+                            {type: 'component',
+                             componentName: code==104?'browser':'view-saved',
+                             url: text.substring(m[1].length+1) });
         }
         break;
     case 108:
@@ -9100,7 +9163,7 @@ DomTerm._handleOutputData = function(dt, data) {
 }
 
 DomTerm.wrapForLayout = function() {
-    return window == top;
+    return ! DomTerm.isInIFrame();
 }
 
 /** Connect using WebSockets */

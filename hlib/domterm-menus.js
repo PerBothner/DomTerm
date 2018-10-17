@@ -134,19 +134,19 @@ DomTerm.createMenus = function(options) {
     newTerminalMenu.append(menuItem({label: 'New terminal above',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Up',
                                      click: function() {
-                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, false); }}));
+                                         DomTerm.newPane(12); }}));
     newTerminalMenu.append(menuItem({label: 'New terminal below',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Down',
                                      click: function() {
-                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, true, true); }}));
+                                         DomTerm.newPane(13); }}));
     newTerminalMenu.append(menuItem({label: 'New terminal left',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Left',
                                      click: function() {
-                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, false); }}));
+                                         DomTerm.newPane(10); }}));
     newTerminalMenu.append(menuItem({label: 'New terminal right',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Right',
                                      click: function() {
-                                         DomTerm.layoutAddSibling(DomTerm.focusedTerm, null, false, true); }}));
+                                         DomTerm.newPane(11); }}));
     const newTerminalMenuItem = menuItem({label: 'New Terminal',
                                           submenu: newTerminalMenu});
     const detachMenuItem =
@@ -305,14 +305,18 @@ DomTerm.createMenus = function(options) {
     DomTerm.savedMenuBar = menuBar;
     showMenubar(showMenuBarItem);
 
-    DomTerm.showContextMenu = function(dt, e, contextType) {
-        const mode = dt.getInputMode();
-        charModeItem.checked = mode == 99;
-        lineModeItem.checked = mode == 108;
-        autoModeItem.checked = mode == 97;
-        autoPagingItem.checked = dt._autoPaging;
-        let cmenu = contextType=="A" ? contextLinkMenu : contextMenu;
-        popup(cmenu, e);
+    DomTerm.showContextMenu = function(options) {
+        const mode = options.inputMode;
+        if (mode) {
+            charModeItem.checked = mode == 99;
+            lineModeItem.checked = mode == 108;
+            autoModeItem.checked = mode == 97;
+        }
+        if (options.autoPaging)
+            autoPagingItem.checked = options.autoPaging;
+        let cmenu = options.contextType=="A" ? contextLinkMenu : contextMenu;
+        popup(cmenu, options);
+        return true;
     };
 }
 
@@ -323,7 +327,7 @@ DomTerm.setContextMenu = function() {
         function menuItem(options) {
             return new MenuItem(options);
         }
-        function popup(cmenu, e) {
+        function popup(cmenu, options) {
             cmenu.popup(remote.getCurrentWindow());
         }
         DomTerm.createMenus({platform: "electron",
@@ -336,11 +340,12 @@ DomTerm.setContextMenu = function() {
         function menuItem(options) {
             return new MenuItem(options);
         }
-        function popup(cmenu, e) {
-            if (! e.ctrlKey && ! e.shiftKey) {
-	        e.preventDefault();
-	        cmenu.popup(e.clientX, e.clientY);
-            }
+        function popup(cmenu, options) {
+            let clientX = options.clientX || 0;
+            let clientY = options.clientY || 0;
+            if (cmenu.node)
+                cmenu.popdown();
+            cmenu.popup(clientX, clientY);
         }
         DomTerm.createMenus({platform: "generic",
                              popup: popup,

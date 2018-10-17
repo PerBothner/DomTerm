@@ -121,6 +121,7 @@ struct tty_client {
 };
 
 struct http_client {
+    bool owns_data;
     char *data;
     char *ptr;
     int length;
@@ -241,6 +242,7 @@ extern char *url_encode(char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
 extern char *getenv_from_array(char* key, char**envarray);
 extern void copy_html_file(FILE*in, FILE*out);
+extern void make_html_text(struct sbuf *obuf, int port, bool simple);
 extern char** parse_args(const char*);
 extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);
