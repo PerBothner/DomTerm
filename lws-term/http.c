@@ -5,11 +5,46 @@
 #include <openssl/ssl.h>
 #endif
 
-#if COMPILED_IN_RESOURCES && LWS_LIBRARY_VERSION_NUMBER < (3*1000000+0*1000+99)
-#error Configuring with --enable-compiled-in-resources requires a newer version of libwebsockts.
-#endif
 #if ! COMPILED_IN_RESOURCES && ! defined(LWS_WITH_ZIP_FOPS)
 #error Must configure --enable-compiled-in-resources since zip support missing in libwebsockets
+#endif
+
+#if LWS_LIBRARY_VERSION_NUMBER < (3*1000000+0*1000+0)
+// Copied and simplified from libwebsockets 3.x source.
+#ifndef LWS_ILLEGAL_HTTP_CONTENT_LEN
+#define LWS_ILLEGAL_HTTP_CONTENT_LEN ((lws_filepos_t)-1ll)
+#endif
+static int
+lws_add_http_common_headers(struct lws *wsi, unsigned int code,
+                            const char *content_type, lws_filepos_t content_len,
+                            unsigned char **p, unsigned char *end)
+{
+    if (lws_add_http_header_status(wsi, code, p, end))
+        return 1;
+    if (lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
+                                     (unsigned char *)content_type,
+                                     (int)strlen(content_type), p, end))
+        return 1;
+    if (content_len != LWS_ILLEGAL_HTTP_CONTENT_LEN
+        && lws_add_http_header_content_length(wsi, content_len,
+                                              p, end))
+        return 1;
+    return 0;
+}
+static int
+lws_finalize_write_http_header(struct lws *wsi, unsigned char *start,
+                               unsigned char **pp, unsigned char *end)
+{
+    unsigned char *p;
+    int len;
+    if (lws_finalize_http_header(wsi, pp, end))
+        return 1;
+    p = *pp;
+    len = (int)((char *)p - (char *)start);
+    if (lws_write(wsi, start, len, LWS_WRITE_HTTP_HEADERS) != len)
+        return 1;
+    return 0;
+}
 #endif
 
 #ifdef RESOURCE_DIR
@@ -200,18 +235,11 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             if (!strncmp((const char *) in, "/auth_token.js", 14)) {
                 size_t n = server->options.credential != NULL ? sprintf(buf, "var tty_auth_token = '%s';", server->options.credential) : 0;
 
-                if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end))
-                    return 1;
-                if (lws_add_http_header_by_token(wsi,
-                                                 WSI_TOKEN_HTTP_CONTENT_TYPE,
-                                                 (unsigned char *) "application/javascript",
-                                                 22, &p, end))
-                    return 1;
-                if (lws_add_http_header_content_length(wsi, (unsigned long) n, &p, end))
-                    return 1;
-                if (lws_finalize_http_header(wsi, &p, end))
-                    return 1;
-                if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+                if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK,
+                                            "application/javascript",
+                                                (unsigned long) n, &p, end)
+                    || lws_finalize_write_http_header(wsi, buffer+LWS_PRE,
+                                                      &p, end))
                     return 1;
                 if (n > 0 && lws_write_http(wsi, buf, n) < 0) {
                     return 1;
