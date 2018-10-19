@@ -3482,9 +3482,11 @@ DomTerm.prototype.setWindowSize = function(numRows, numColumns,
 * If the value is true, continue with children; if false, skip children.
 */
 DomTerm.prototype._forEachElementIn = function(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild) {
+    let starting = true;
     for (var cur = start; ;) {
-        if (cur == null || cur == node)
+        if (cur == null || (cur == node && !starting))
             break;
+        starting = false;
         let doChildren = true
         if (allNodes || cur instanceof Element) {
             var r = func(cur);
@@ -9953,26 +9955,35 @@ DomTerm.editorNonWordChar = function(ch) {
     return " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{|}".indexOf(ch) >= 0;
 }
 
-/**
- * unit: "char", "word"
- * action: one of "move", "extend" (extend selection), or "delete"
- * stopAt: one of "", "line" (stop before moving to different hard line),
- * or "visible-line" (stop before moving to different screen line).
- */
-DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
-    this.sstate.goalColumn = undefined;
-    let doDelete = action == "delete";
+DomTerm.prototype.scanInRange = function(range, backwards, state) {
+    let unit = state.unit;
     let doWords = unit == "word";
-    let doLines = unit == "line";
-    let backwards = count > 0;
-    let todo = backwards ? count : -count;
-    let dt = this;
+    let stopAt = state.stopAt;
     let wordCharSeen = false;
-    let range;
-    let linesCount = 0;
-
+    let firstNode = backwards ? range.endContainer : range.startContainer;
+    let lastNode = backwards ? range.startContainer : range.endContainer;
+    let skipFirst;
+    if (firstNode instanceof CharacterData)
+        skipFirst = 0;
+    else if (backwards)
+        skipFirst = 1 + firstNode.childNodes.length - range.endOffset;
+    else
+        skipFirst = 1 + range.startOffset;
+    let lastNonSkip = lastNode instanceof CharacterData ? 1
+        : backwards ? lastNode.childNodes.length - range.startOffset
+        : range.endOffset;
+    let caretNode = this.caretNode;
     function fun(node) {
-        if (node == dt._caretNode)
+        if (skipFirst > 0) {
+            skipFirst--;
+            return node == firstNode;
+        }
+        if (node.parentNode == lastNode) {
+            if (lastNonSkip == 0)
+                return null;
+            lastNonSkip--;
+        }
+        if (node == caretNode)
             return false;
         if (! (node instanceof Text)) {
             if (node.nodeName == "SPAN"
@@ -9984,28 +9995,36 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
                     return false;
                 else if (stopAt == "line")
                     stopped = true;
-                linesCount++;
+                state.linesCount++;
                 if (stopped) {
-                    backwards = !backwards;
-                    todo = 0;
+                    state.todo = 0;
                 } else if (doWords) {
                     if (wordCharSeen)
-                        todo--;
+                        state.todo--;
                     wordCharSeen = false;
                 } else
-                    todo--;
-                if (todo == 0) {
-                    if (backwards)
-                        range.setStartBefore(node);
-                    else {
+                    state.todo--;
+                if (state.todo == 0) {
+                    if (backwards == stopped) {
                         let next = node.nextSibling;
                         if (next instanceof Element
                             && next.getAttribute("std") == "prompt")
                             node = next;
-                        range.setEndAfter(node);
+                    }
+                    if (backwards) {
+                        if (stopped)
+                            range.setStartAfter(node);
+                        else
+                            range.setStartBefore(node);
+                    } else {
+                        if (stopped)
+                            range.setEndBefore(node);
+                        else
+                            range.setEndAfter(node);
                     }
                     return null;
                 }
+                return false;
             }
             return true;
         }
@@ -10015,17 +10034,21 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
         var data = node.data;
         let dlen = data.length;
         let istart = backwards ? dlen : 0;
+        if (node == firstNode)
+            istart = backwards ? range.endOffset : range.startOffset;
+        let dend = node !== lastNode ? (backwards ? 0 : dlen)
+            : (backwards ? range.startOffset : dlen = range.endOffset);
         let index = istart;
         for (;; ) {
-            if (todo == 0) {
+            if (state.todo == 0) {
                 if (backwards)
                     range.setStart(node, index);
                 else
                     range.setEnd(node, index);
                 return null;
             }
-            if (index == (backwards ? 0 : dlen))
-                return false;
+            if (index == dend)
+                return node == lastNode ? null : false;
             let i0 = index;
             let c = data.charCodeAt(backwards ? --index : index++);
             let clen = 1;
@@ -10044,18 +10067,36 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
                 if (sep && wordCharSeen) {
                     index = i0;
                 } else {
-                    todo++;
+                    state.todo++;
                 }
                 wordCharSeen = ! sep;
             }
-            todo--;
-        }
-        if (doDelete) {
-            // FIXME remove node
-            node.parentNode.insertBefore(dt._caretNode, before);
+            state.todo--;
         }
         return false;
     }
+    this._forEachElementIn(range.commonAncestorContainer, fun, true, backwards,
+                           firstNode);
+}
+
+/**
+ * unit: "char", "word"
+ * action: one of "move", "extend" (extend selection), or "delete"
+ * stopAt: one of "", "line" (stop before moving to different hard line),
+ * or "visible-line" (stop before moving to different screen line).
+ */
+DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
+    this.sstate.goalColumn = undefined;
+    let doDelete = action == "delete";
+    let doWords = unit == "word";
+    let doLines = unit == "line";
+    let backwards = count > 0;
+    let todo = backwards ? count : -count;
+    let dt = this;
+    let wordCharSeen = false; //
+    let range;
+    let linesCount = 0;
+
     let sel = document.getSelection();
     if (! sel.isCollapsed && action != "extend") {
         if (doDelete) {
@@ -10086,8 +10127,10 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
             range.setStartAfter(this._caretNode);
         if (action == "extend" && sel.isCollapsed)
             sel.collapse(dt._caretNode, 0);
-        this._forEachElementIn(this._inputLine, fun, true, backwards,
-                               this._caretNode);
+        let scanState = { linesCount: 0, todo: todo, unit: unit, stopAt: stopAt };
+        this.scanInRange(range, backwards, scanState);
+        linesCount = scanState.linesCount;
+        todo = scanState.todo;
         if (doDelete) {
             this.editorDeleteRange(range, linesCount);
             if (linesCount > 0)
