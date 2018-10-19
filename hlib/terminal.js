@@ -4949,6 +4949,14 @@ DomTerm.prototype.handleControlSequence = function(last) {
         case 20:
             this.freshLine();
             break;
+        case 44:
+            var param = this.getParameter(1, 0);
+            switch (param) {
+            case 0:
+                this.popFromElement();
+                break;
+            }
+            break;
         case 80: // set input mode
             this.setInputMode(this.getParameter(1, 112));
             break;
@@ -5929,6 +5937,17 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
                 this.topNode.style[sname] = text;
             }
         }
+        break;
+    case 44:
+        var span = this._createSpanNode();
+        span.setAttribute("class", "diagnostic");
+        if (text)
+            span.setAttribute("info", text);
+        var options;
+        try {
+            options = JSON.parse("{"+text+"}");
+        } catch (e) { options = {}; }
+        this._pushIntoElement(span);
         break;
     case 71:
         // handle tcsetattr

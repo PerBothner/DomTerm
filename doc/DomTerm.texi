@@ -3496,7 +3496,7 @@ based on properties of @var{object}.
 For example to change the character used hide characters
 in @ref{password-fields,password fields} to ``bullet'' you can do:
 @example
-echo -en '\e]88;@{"passwordHideChar": "\\u2022"@}\a'
+echo -en '\e[88;@{"passwordHideChar": "\\u2022"@}\a'
 @end example
 Allowed properties include:
 @code{passwordHideChar}, @code{passwordShowCharTimeout},
@@ -3556,6 +3556,31 @@ is saved (in case it is needed detach+attach).
 For the second form only:
 When DomTerm receives a sequence of bytes that contains
 an urgent sequence, it will execute that before handling preceding bytes.
+@end table
+
+@subsubsection Diagnostic (error) messages
+
+@table @asis
+@item @code{"\e]44;"} @var{options} @code{"\a"}
+
+Start of a new diagnostic - an error message or similar.
+This creates and enters a node @code{<span>} element
+with @code{class="diagnostic"}, and @code{info="@var{options}"}.
+The @var{options} should be a JSON-formatted object with the
+outer @code{@{} and @code{@}} stripped off.
+Currently the only @var{options} defined is @code{repl: true} to
+indicate this was an error/warning in a previous REPL command.
+
+@item @code{"\e[44;0u"}
+
+End of current diagnostic.  This exits the previously-entered
+@code{<span class="diagnostic">}.
+
+@item @code{"\e[44;"} @var{parameter} @code{"u"}
+
+Furure extension, planned for marking start and/or end of specific
+parts of a diagnostic.
+
 @end table
 
 @subsubsection Stylesheet manipulation
