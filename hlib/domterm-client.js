@@ -1,5 +1,11 @@
 var maxAjaxInterval = 2000;
 
+// True if we should create each domterm element in a separate <iframe>.
+// That is better for security, makes for cleaner selection handling,
+// separates 'id' spaces.  However, it adds some overhead.
+// Only relevant when using a layout manager like GoldenLayout.
+DomTerm.useIFrame = true;
+
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
 {
@@ -109,14 +115,18 @@ function setupQWebChannel(channel) {
         backend.showContextMenu(options.contextType);
         return false;
     }
+
     DomTerm.doCopy = function(asHTML=false) {
-        var sel = window.getSelection();
-        var html = DomTerm._selectionAsHTML(sel);
-        if (asHTML) {
-            backend.setClipboard(html, "");
-        } else {
-            backend.setClipboard(sel.toString(), html);
+        if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
+            && DomTerm._oldFocusedContent) {
+            DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+                                     "request-selection", asHTML);
+            return true;
         }
+        DomTerm.valueToClipboard(DomTerm._selectionValue(asHTML));
+    }
+    DomTerm.valueToClipboard = function(values) {
+        backend.setClipboard(values.plain, values.html);
     }
     DomTerm.settingsHook = function(key, value) {
         backend.setSetting(key, value);
@@ -218,13 +228,9 @@ function setupParentMessages2() {
         };
 }
 
-// True if we should create each domterm element in a separate <iframe>.
-// That is better for security, makes for cleaner selection handling,
-// separates 'id' spaces.  However, it adds some overhead.
-// Only relevant when using a layout manager like GoldenLayout.
-DomTerm.useIFrame = true;
-
 function loadHandler(event) {
+    if (DomTerm.layoutInit === undefined || window.GoldenLayout === undefined)
+        useIFrame = false;
     DomTerm.layoutTop = document.body;
     let url = location.href;
     let hashPos = url.indexOf('#');
@@ -264,7 +270,8 @@ function loadHandler(event) {
         }
     }
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
-        DomTerm.setContextMenu();
+        if (DomTerm.setContextMenu)
+            DomTerm.setContextMenu();
     m = location.hash.match(/open=([^&]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
@@ -389,6 +396,13 @@ function handleMessage(event) {
         let dt = DomTerm.focusedTerm;
         if (dt)
             dt.closeConnection();
+    } else if (data.command=="request-selection") { // parent to child
+        DomTerm.sendParentMessage("selection-value",
+                                   DomTerm._selectionValue(data.args[0]));
+    } else if (data.command=="selection-value") {
+        DomTerm.valueToClipboard(data.args[0]);
+    } else if (data.command=="copy-selection") { // message to child
+        DomTerm.doCopy(data.args[0]);
     } else if (data.args.length == 0) {
         DomTerm.handleSimpleMessage(data.command);
     } else

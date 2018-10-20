@@ -8249,16 +8249,24 @@ DomTerm._selectionAsHTML = function(sel = window.getSelection()) {
     return hstring;
 }
 
+DomTerm._selectionValue = function(asHTML) {
+    var sel = window.getSelection();
+    var html = DomTerm._selectionAsHTML(sel);
+    return asHTML ? { plain: html, html: "" }
+    : { plain: sel.toString(), html: html };
+}
 DomTerm.doCopy = function(asHTML=false) {
+    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
+        && DomTerm._oldFocusedContent) {
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "copy-selection", asHTML);
+        return true;
+    }
     function handler (event){
-        var sel = window.getSelection();
-        var html = DomTerm._selectionAsHTML(sel);
-        if (asHTML) {
-            event.clipboardData.setData('text/plain', html);
-        } else {
-            event.clipboardData.setData('text/plain', sel.toString());
-            event.clipboardData.setData('text/html', html);
-        }
+        let r = DomTerm._selectionValue(asHTML);
+        if (r.plain)
+            event.clipboardData.setData('text/plain', r.plain);
+        if (r.html)
+            event.clipboardData.setData('text/html', r.html);
         event.preventDefault();
         document.removeEventListener('copy', handler, true);
     }
