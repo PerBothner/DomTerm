@@ -4958,7 +4958,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             }
             break;
         case 80: // set input mode
-            this.setInputMode(this.getParameter(1, 112));
+            DomTerm.setInputMode(this.getParameter(1, 112), this);
             break;
         case 81: // get-window-contents
             DomTerm.saveWindowContents(this);
@@ -8441,33 +8441,42 @@ DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
     return "";
 };
 
-DomTerm.prototype.setInputMode = function(mode) {
-    var wasEditing = this.isLineEditing();
+DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
+    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
+        && DomTerm._oldFocusedContent) {
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+                                 "set-input-mode", mode);
+        return;
+    }
+    var wasEditing = dt.isLineEditing();
     switch (mode) {
+    case 0: //next
+        dt.nextInputMode();
+        return;
     case 97 /*'a'*/: //auto
-        this._lineEditingMode = 0;
-        this.clientDoesEcho = true;
+        dt._lineEditingMode = 0;
+        dt.clientDoesEcho = true;
         break;
     case 99 /*'c'*/: //char
-        this._lineEditingMode = -1;
-        this.clientDoesEcho = true;
+        dt._lineEditingMode = -1;
+        dt.clientDoesEcho = true;
         break;
     case 108 /*'l'*/: //line
-        this._lineEditingMode = 1;
-        this.clientDoesEcho = true;
+        dt._lineEditingMode = 1;
+        dt.clientDoesEcho = true;
         break;
     case 112 /*'p'*/: //pipe
-        this._lineEditingMode = 1;
-        this.clientDoesEcho = false;
+        dt._lineEditingMode = 1;
+        dt.clientDoesEcho = false;
         break;
     }
-    if (this.isLineEditing())
-        this.editorAddLine();
-    this._restoreInputLine();
-    if (wasEditing && ! this.isLineEditing()) {
-        this._sendInputContents();
+    if (dt.isLineEditing())
+        dt.editorAddLine();
+    dt._restoreInputLine();
+    if (wasEditing && ! dt.isLineEditing()) {
+        dt._sendInputContents();
     }
-    this.sstate.automaticNewlineMode = this.clientDoesEcho ? 0 : 3;
+    dt.sstate.automaticNewlineMode = dt.clientDoesEcho ? 0 : 3;
 };
 
 DomTerm.prototype.getInputMode = function() {
@@ -8495,7 +8504,7 @@ DomTerm.prototype.nextInputMode = function() {
         mode = 97; // 'a'
         displayString = "Input mode: automatic";
     }
-    this.setInputMode(mode);
+    DomTerm.setInputMode(mode, this);
     DomTerm.inputModeChanged(this, mode);
     this._displayInputModeWithTimeout(displayString);
 }

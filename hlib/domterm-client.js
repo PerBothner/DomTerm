@@ -140,9 +140,7 @@ function setupQWebChannel(channel) {
             dt.handleOperatingSystemControl(code, text);
     });
     backend.writeInputMode.connect(function(mode) {
-        var dt = DomTerm.focusedTerm;
-        if (dt)
-            dt.setInputMode(mode);
+        DomTerm.setInputMode(mode);
     });
     backend.layoutAddPane.connect(function(paneOp) {
         DomTerm.newPane(paneOp);
@@ -386,6 +384,8 @@ function handleMessage(event) {
         if (iframe)
             DomTerm.setLayoutTitle(iframe,
                                    data.args[0], data.args[1]);
+    } else if (data.command=="set-input-mode") { // message to child
+        DomTerm.setInputMode(data.args[0]);
     } else if (data.command=="set-focused") { // message to child
         let op = data.args[0];
         let dt = DomTerm.focusedTerm;

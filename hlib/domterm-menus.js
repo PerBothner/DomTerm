@@ -70,19 +70,10 @@ DomTerm.createMenus = function(options) {
                                          click: function() {
                                              DomTerm.toggleAutoPaging(); }});
     function inputModeClickHandler(menuItem) {
-        const dt = DomTerm.focusedTerm;
-        if (! dt)
-            return;
-        console.log("inputModeClickHandler "+menuItem.label);
-        if (menuItem == cycleInputModesItem)
-            dt.nextInputMode();
-        else {
-            let mode = menuItem == charModeItem ? 99
-                : menuItem == lineModeItem ? 108
-                : 97;
-            dt.setInputMode(mode);
-        }
-            
+        DomTerm.setInputMode(menuItem == charModeItem ? 99
+                             : menuItem == lineModeItem ? 108
+                             : menuItem == autoModeItem ? 97
+                             : 0);
     }
     // These are logically radio buttons, but I'm having
     // trouble getting that to work.
