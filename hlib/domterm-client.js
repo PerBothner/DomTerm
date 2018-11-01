@@ -1,10 +1,12 @@
 var maxAjaxInterval = 2000;
 
+DomTerm.simpleLayout = false;
+
 // True if we should create each domterm element in a separate <iframe>.
 // That is better for security, makes for cleaner selection handling,
 // separates 'id' spaces.  However, it adds some overhead.
 // Only relevant when using a layout manager like GoldenLayout.
-DomTerm.useIFrame = true;
+DomTerm.useIFrame = ! DomTerm.simpleLayout;
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
@@ -268,7 +270,7 @@ function loadHandler(event) {
         }
     }
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
-        if (DomTerm.setContextMenu)
+        if (DomTerm.setContextMenu && ! DomTerm.simpleLayout)
             DomTerm.setContextMenu();
     m = location.hash.match(/open=([^&]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;

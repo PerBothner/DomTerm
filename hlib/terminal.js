@@ -9217,7 +9217,7 @@ DomTerm._handleOutputData = function(dt, data) {
 }
 
 DomTerm.wrapForLayout = function() {
-    return ! DomTerm.isInIFrame();
+    return ! DomTerm.isInIFrame() && ! DomTerm.simpleLayout;
 }
 
 /** Connect using WebSockets */
