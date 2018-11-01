@@ -1257,7 +1257,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
     char *cmd = find_in_path(argv0);
     struct stat sbuf;
     if (cmd == NULL || access(cmd, X_OK) != 0
-        || lstat(cmd, &sbuf) != 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
+        || stat(cmd, &sbuf) != 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
           FILE *out = fdopen(opts->fd_err, "w");
           fprintf(out, "cannot execute '%s'\n", argv0);
           fclose(out);
