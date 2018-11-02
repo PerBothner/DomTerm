@@ -220,9 +220,6 @@ function setupParentMessages2() {
             DomTerm.sendParentMessage("domterm-context-menu", options);
             return ! DomTerm.usingQtWebEngine;
         }
-        DomTerm.newPane = function(paneOp, options) {
-            DomTerm.sendParentMessage("domterm-new-pane", paneOp, options);
-        };
         DomTerm.setLayoutTitle = function(dt, title, wname) {
             DomTerm.sendParentMessage("domterm-set-title", title, wname);
         };
@@ -361,7 +358,7 @@ function handleMessage(event) {
             options = Object.assign({}, options, { "clientX": x, "clientY": y});
         }
         DomTerm.showContextMenu(options);
-    } else if (data.command=="domterm-new-pane") {
+    } else if (data.command=="domterm-new-pane") { // either direction
         DomTerm.newPane(data.args[0], data.args[1]);
     } else if (data.command=="domterm-next-pane") {
         if (DomTerm.layoutManager)

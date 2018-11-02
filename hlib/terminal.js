@@ -542,15 +542,19 @@ DomTerm.setTitle = function(title) {
 }
 
 /* Can be called in either DomTerm sub-window or layout-manager context. */
-DomTerm.newPane = function(paneOp, options = null) {
-    if (DomTerm.useIFrame && DomTerm.isInIFrame())
+DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
+    if (paneOp == 1 && dt) // convert to --right or --below
+        paneOp = DomTerm._splitVertically(dt) ? 13 : 11;
+    if (paneOp == 1 && DomTerm.useIFrame && ! DomTerm.isInIFrame())
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "domterm-new-pane", paneOp, options);
+    else if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("domterm-new-pane", paneOp, options);
-    else if (paneOp == 1 && DomTerm.layoutAddSibling)
-        DomTerm.layoutAddSibling(null, options);
-    else if (paneOp == 2 && DomTerm.layoutAddTab)
-        DomTerm.layoutAddTab(null, options);
+    else if (paneOp == 1 && DomTerm.layoutAddSibling) {
+        DomTerm.layoutAddSibling(dt, options);
+    } else if (paneOp == 2 && DomTerm.layoutAddTab)
+        DomTerm.layoutAddTab(dt, options);
     else if (DomTerm.layoutAddSibling) {
-        DomTerm.layoutAddSibling(null, options,
+        DomTerm.layoutAddSibling(dt, options,
                                  paneOp==12||paneOp==13, paneOp==11||paneOp==13);
     }
     //DomTerm.newSessionPid = 0;

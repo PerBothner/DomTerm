@@ -26,7 +26,7 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
     let paneOp = 0;
     switch (key) {
     case 13: // Enter
-        DomTerm.layoutAddSibling(this);
+        DomTerm.newPane(1, null, this);
         this.exitMuxMode();
         event.preventDefault();
         break;
@@ -258,10 +258,12 @@ DomTerm._indexInParent = function (component) {
     return i;
 }
 
+// True if pane should be split into a vertical stack, with new pane --below.
 DomTerm._splitVertically = function(dt) {
-    return dt.numColumns<4*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
+    return dt.numColumns < 3*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
 }
 
+/* Can only be called in layout-manager context. */
 DomTerm.layoutAddSibling = function(dt, newItemConfig = null,
                                     isColumn=DomTerm._splitVertically(dt),
                                     addAfter=true)

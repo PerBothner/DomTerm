@@ -116,7 +116,7 @@ DomTerm.createMenus = function(options) {
     const newPaneItem = menuItem({label: 'New terminal (right/below)',
                                       accelerator: 'Ctrl+Shift+A Enter',
                                       click: function() {
-                                          DomTerm.layoutAddSibling(DomTerm.focusedTerm);
+                                          DomTerm.newPane(1);
                                       }});
     const newTerminalMenu = new Menu();
     newTerminalMenu.append(newWindowItem);
