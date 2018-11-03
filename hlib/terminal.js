@@ -9250,15 +9250,21 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
     wt.processInputCharacters = function(str) {
-        /* TEST LATENCY
+        if (this.verbosity >= 1) {
+            let jstr = str.length > 200
+                ? JSON.stringify(str.substring(0,200))+"..."
+                : JSON.stringify(str);
+            this.log("processInputCharacters "+str.length+": "+jstr);
+        }
         let delay = DomTerm._extraDelayForTesting;
+        /* TEST LATENCY
         if (delay === undefined)
             DomTerm._extraDelayForTesting = delay = 600;
+        */
         if (delay) {
             setTimeout(function() { wsocket.send(str); }, delay);
             return;
         }
-        */
         wsocket.send(str);
     };
     wsocket.onmessage = function(evt) {
