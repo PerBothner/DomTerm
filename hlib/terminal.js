@@ -272,7 +272,8 @@ function DomTerm(name, topNode) {
 
     // The output position (cursor) - insert output before this node.
     // If null, append output to the end of the output container's children.
-    /** @type {Node|null} */
+    // If an integer, the outputContainer is a Text.
+    /** @type {Node|Number|null} */
     this.outputBefore = null;
 
     // The parent node of the output position.
@@ -887,7 +888,7 @@ DomTerm.prototype.tabToNextStop = function(isTabChar) {
     var w = nextStop-col;
     this.cursorRight(w);
     var prev;
-    if (isTabChar && this._useTabCharInDom && this.outputBefore
+    if (isTabChar && this._useTabCharInDom && this._fixOutputPosition()
         && (prev = this.outputBefore.previousSibling) instanceof Text
         && endsWithSpaces(prev.data,  w)) {
         var span = this._createSpanNode();
@@ -1276,7 +1277,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             if (parent==null||(current!=null&&parent!=current.parentNode))
                 this.log("BAD PARENT "+parent+" OF "+current);
             var handled = false;
-            if (current && current.nodeName == "SPAN") {
+            if (current instanceof Element && current.nodeName == "SPAN") {
                 var tcol = -1;
                 var st = current.getAttribute("style");
                 if (st && st.startsWith("tab-size:")) {
@@ -1319,9 +1320,17 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                     goalColumn = column;
                 break;
             }
-            else if (current instanceof Text) {
-                var tnode = current;
-                var tstart = 0;
+            else if (current instanceof Text || parent instanceof Text) {
+                let tnode, tstart;
+                if (current instanceof Text) {
+                    tnode = current;
+                    tstart = 0;
+                } else {
+                    tnode = parent;
+                    tstart = current;
+                    current = tnode;
+                    parent = tnode.parentNode;
+                }
                 var before;
                 while ((before = tnode.previousSibling) instanceof Text) {
                     // merge nodes
@@ -1337,8 +1346,9 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
                 var i = tstart;
                 for (; i < tlen;  i++) {
                     if (absLine >= goalAbsLine && column >= goalColumn) {
-                        tnode.splitText(i);
-                        break;
+                        parent = tnode;
+                        current = i;
+                        break mainLoop;
                     }
                     var ch = text.codePointAt(i);
                     if (ch > 0xffff) i++;
@@ -1384,33 +1394,33 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             //if (parent==null||(current!=null&&parent!=current.parentNode))            error("BAD PARENT "+WTDebug.pnode(parent)+" OF "+WTDebug.pnode(current));
             // If there is a child, go the the first child next.
             var ch;
-            if (current != null) {
-                var valueAttr = ! (current instanceof Element) ? null
-                    : current.getAttribute("value");
-                if (current instanceof Element
-                    && this.isObjectElement(current))
-                    column += 1;
-                else if (valueAttr
-                         && current.getAttribute("std")=="prompt") {
-                    var w = this.strWidthInContext(valueAttr, current);
-                    column += w;
-                    if (column > goalColumn) {
-                        column -= w;
-                        var t = document.createTextNode(valueAttr);
-                        current.insertBefore(t, current.firstChild);
-                        current.removeAttribute("value");
-                        parent = current;
-                        current = t;
-                        continue;
-                    }
-                } else {
-                    ch = current.firstChild;
-                    if (ch != null) {
-                        parent = current;
-                        if (! ch)
-                            console.log("setting current to null 1");
-                        current = ch;
-                        continue;
+            if (current instanceof Node) {
+                if (current instanceof Element) {
+                    var valueAttr = current.getAttribute("value");
+                    if (this.isObjectElement(current))
+                        column += 1;
+                    else if (valueAttr
+                             && current.getAttribute("std")=="prompt") {
+                        var w = this.strWidthInContext(valueAttr, current);
+                        column += w;
+                        if (column > goalColumn) {
+                            column -= w;
+                            var t = document.createTextNode(valueAttr);
+                            current.insertBefore(t, current.firstChild);
+                            current.removeAttribute("value");
+                            parent = current;
+                            current = t;
+                            continue;
+                        }
+                    } else {
+                        ch = current.firstChild;
+                        if (ch != null) {
+                            parent = current;
+                            if (! ch)
+                                console.log("setting current to null 1");
+                            current = ch;
+                            continue;
+                        }
                     }
                 }
                 // Otherwise, go to the next sibling.
@@ -1451,17 +1461,12 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             }
         }
     }
-    //console.log("after mainLoop parent:%s", parent);
     if (parent == this.topNode && this.isBlockNode(current)) {
         parent = current;
         current = parent.firstChild;
     }
-    var oldBefore = this.outputBefore;
     this.outputContainer = parent;
     this.outputBefore = current;
-    if (oldBefore != current && oldBefore instanceof Text
-        && oldBefore.previousSibling instanceof Text)
-        this._normalize1(oldBefore.previousSibling);
     this.currentAbsLine = absLine;
     this.currentCursorColumn = column;
 };
@@ -1693,6 +1698,7 @@ DomTerm.prototype._restoreCaret = function() {
 
 DomTerm.prototype._restoreCaretNode = function() {
     if (this._caretNode.parentNode == null) {
+        this._fixOutputPosition();
         this.outputContainer.insertBefore(this._caretNode, this.outputBefore);
         this.outputBefore = this._caretNode;
     }
@@ -1706,6 +1712,7 @@ DomTerm.prototype._restoreInputLine = function(caretToo = true) {
             lineno = this.getAbsCursorLine();
             inputLine.startLineNumber = lineno;
         }
+        this._fixOutputPosition();
         if (this.outputBefore != inputLine && this.outputContainer != inputLine
            && this.outputContainer.parentNode != inputLine) {
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
@@ -1809,14 +1816,20 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
         this.cursorSet(line, left, false);
         return;
     }
-    var prev = this.outputBefore ? this.outputBefore.previousSibling
-        : this.outputContainer.lastChild;
     // Optimize common case
+    let tcount, prev;
+    if (this.outputContainer instanceof Text) {
+        prev = this.outputContainer;
+        tcount = prev.data.length - this.outputBefore;
+    } else {
+        prev = this.outputBefore ? this.outputBefore.previousSibling
+            : this.outputContainer.lastChild;
+        tcount = 0;
+    }
     if (prev instanceof Text) {
         var tstr = prev.textContent;
         var len = tstr.length;
         var tcols = 0;
-        var tcount = 0;
         for (;;) {
             if (tcols == count)
                 break;
@@ -1842,32 +1855,18 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
             }
             tcols += chcols;
         }
-        if (tcount > 0) {
-            var after = tstr.substring(len-tcount);
-            DomTerm._deleteDataTail(prev, tcount);
-            count -= tcols;
-
-            var following = this.outputBefore;
-            var input = this._inputLine != null ? this._inputLine
-                : this._caretNode;
-            var inputOk = input == following
-                && this.inputFollowsOutput
-                && input.firstChild == null;
-            if (inputOk)
-                following = following.nextSibling;
-            if (following && following.nodeType == 3/*TEXT_NODE*/) {
-                following.replaceData(0, 0, after);
-            } else {
-                var nafter = document.createTextNode(after);
-                this.outputContainer.insertBefore(nafter, following);
-                if (! inputOk) {
-                    this.outputBefore = nafter;
-                    this._removeInputLine();
-                }
-            }
-            if (this.currentCursorColumn > 0)
-                this.currentCursorColumn -= tcols;
+        if (tcount == 0) {
+            this.outputContainer=prev.parentNode;
+            this.outputBefore=prev.nextSibling;
+        } else if (len==tcount) {
+            this.outputContainer=prev.parentNode;
+            this.outputBefore=prev;
+        } else if (tcount > 0) {
+            this.outputContainer = prev;
+            this.outputBefore = len - tcount;
         }
+        if (tcount > 0 && this.currentCursorColumn > 0)
+            this.currentCursorColumn -= tcols;
     }
     if (count > 0) {
         this.columnSet(goal);
@@ -1924,6 +1923,7 @@ DomTerm.prototype._pushStdMode = function(styleValue) {
         : stdElement.getAttribute("std") == styleValue)
         return;
     if (stdElement != null) {
+        this._fixOutputPosition();
         var cur = this.outputBefore;
         var parent = this.outputContainer;
         while (parent != stdElement.parentNode) {
@@ -1957,8 +1957,9 @@ DomTerm.prototype._splitNode = function(node, splitPoint) {
 };
 
 DomTerm.prototype._popStyleSpan = function() {
+    this._fixOutputPosition();
     var parentSpan = this.outputContainer;
-    if (this.outputBefore) {
+    if (this.outputBefore != null) {
         // split into new child
         this._splitNode(parentSpan, this.outputBefore);
     }
@@ -1999,6 +2000,10 @@ DomTerm.prototype.isSavedSession = function() {
  */
 DomTerm.prototype._adjustStyle = function() {
     var parentSpan = this.outputContainer;
+    if (parentSpan instanceof Text)
+        parentSpan = parentSpan.parentNode;
+    if (this._currentStyleSpan === parentSpan)
+        return;
     var inStyleSpan = parentSpan.classList.contains("term-style");
     var needBackground = false;
     if (! inStyleSpan && this._currentStyleMap.get("background-color") == null) {
@@ -2081,7 +2086,7 @@ DomTerm.prototype._adjustStyle = function() {
             styleSpan.setAttribute("text-decoration", decoration);
         if (stdKind)
             styleSpan.setAttribute("std", stdKind);
-
+        this._fixOutputPosition();
         var previous = this.outputBefore ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
         if (previous instanceof Element
@@ -2201,6 +2206,7 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
         this._clearWrap(absLine+count-1);
         end = this.lineStarts[absLine+count];
     }
+    this._fixOutputPosition();
     var cur = this.outputBefore;
     var parent = this.outputContainer;
     for (;;) {
@@ -3553,9 +3559,13 @@ DomTerm.prototype.resetCursorCache = function() {
 DomTerm.prototype.updateCursorCache = function() {
     var goal = this.outputBefore;
     var goalParent = this.outputContainer;
+    if (goal instanceof Number) { // and goalParent instanceof Text
+        goal = goalParent.nextSibling;
+        goalParent = goalParent.parentNode;
+    }
     var line = this.currentAbsLine;
     if (line < 0) {
-        var n = this._getOuterBlock(goal ? goal : goalParent);
+        var n = this._getOuterBlock(goal instanceof Element ? goal : goalParent);
         var len = this.lineStarts.length;
         var home = this.homeLine;
         // homeLine may be invalid after _breakAllLines
@@ -3622,7 +3632,7 @@ DomTerm.prototype.updateCursorCache = function() {
             if (cur instanceof Text) {
                 var tnode = cur;
                 var text = tnode.textContent;
-                var tlen = text.length;
+                var tlen = cur == this.outputContainer ? this.outputBefore : text.length;
                 for (var i = 0; i < tlen;  i++) {
                     var ch = text.codePointAt(i);
                     if (ch > 0xffff) i++;
@@ -3648,6 +3658,8 @@ DomTerm.prototype.updateCursorCache = function() {
                     else
                         col += this.wcwidthInContext(ch, cur.parentNode);
                 }
+                if (cur == this.outputContainer)
+                    break;
             }
             cur = cur.nextSibling;
         }
@@ -3678,6 +3690,18 @@ DomTerm.prototype.getCursorColumn = function() {
         this.updateCursorCache();
     return this.currentCursorColumn;
 };
+
+DomTerm.prototype._fixOutputPosition = function() {
+    if (this.outputContainer instanceof Text) {
+        let tnode = this.outputContainer;
+        let pos = this.outputBefore;
+        this.outputBefore = pos == 0 ? tnode
+            : pos == tnode.data.length ? tnode.nextSibling
+            : tnode.splitText(pos);
+        this.outputContainer = tnode.parentNode;
+    }
+    return this.outputBefore;
+}
 
 DomTerm.prototype.grabInput = function(input) {
     if (input == null)
@@ -4047,6 +4071,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete=false) {
 DomTerm.prototype.deleteCharactersRight = function(count) {
     var todo = count >= 0 ? count : 999999999;
     // Note that the traversal logic is similar to move.
+    this._fixOutputPosition();
     var current = this.outputBefore;
     var parent = this.outputContainer;
     var lineNo = this.getAbsCursorLine();
@@ -4122,6 +4147,7 @@ DomTerm.prototype.deleteCharactersRight = function(count) {
             current = current.nextSibling;
         }
     }
+    this._fixOutputPosition();
     this.outputBefore = previous != null ? previous.nextSibling
         : this.outputContainer.firstChild;
     if (count < 0)
@@ -4160,6 +4186,7 @@ DomTerm.prototype._eraseLineEnd = function() {
                     var span = this._createSpanNode();
                     line.removeChild(ch);
                     span.appendChild(ch);
+                    this._fixOutputPosition();
                     if (ch == this.outputBefore)
                         this.outputContainer = span;
                     line.insertBefore(span, next);
@@ -4489,6 +4516,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 98 /*'b'*/: // Repeat the preceding graphic character (REP)
         param = this.getParameter(0, 1);
+        this._fixOutputPosition();
         var prev = this.outputBefore == null ? this.outputContainer.lastChild
             : this.outputBefore.previousSibling;
         if (prev instanceof Text) {
@@ -4843,6 +4871,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
                 newParent.appendChild(child);
                 child = next;
             }
+            this._fixOutputPosition();
             this.outputBefore = newParent.firstChild;
             var ln = newParent.parentNode;
             var cl = ln.classList;
@@ -5347,6 +5376,7 @@ DomTerm.prototype._unsafeInsertHTML = function(text) {
         else if (this.outputBefore instanceof Element)
             this.outputBefore.insertAdjacentHTML("beforebegin", text);
         else {
+            this._fixOutputPosition();
             let tmp = document.createElement("span");
             this.outputContainer.insertBefore(tmp, this.outputBefore);
             tmp.insertAdjacentHTML("beforebegin", text);
@@ -6906,6 +6936,8 @@ DomTerm.prototype.insertString = function(str) {
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 //this.currentCursorColumn = column;
                 var oldContainer = this.outputContainer;
+                if (oldContainer instanceof Text)
+                    oldContainer = oldContainer.parentNode;
                 // FIXME adjust for _regionLeft
                 if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && ! this.usingAlternateScreenBuffer
@@ -7868,6 +7900,10 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     }
     if (widthInColumns < 0)
         widthInColumns = this.strWidthInContext(str, this.outputContainer);
+    if (this.outputBefore instanceof Text) {
+        this.outputContainer = this.outputBefore;
+        this.outputBefore = 0;
+    }
     if (this.sstate.insertMode) {
         var line = this.getAbsCursorLine();
         var col = this.getCursorColumn();
@@ -7895,11 +7931,34 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             }
         }
     } else {
+        if (this.outputContainer instanceof Text) {
+            let oldStr = this.outputContainer.data.substring(this.outputBefore);
+            if (oldStr.startsWith(str)) {
+                // Editors sometimes move the cursor right by re-sending.
+                // Optimize this case.  This avoids changing the DOM, which is
+                // desirble (for one it avoids messing with the selection).
+                this.outputBefore += str.length;
+                str = null;
+            }
+            else {
+                let oldColWidth = this.strWidthInContext(oldStr, this.outputContainer);
+                // optimize if new string is less wide than old text
+                if (widthInColumns <= oldColWidth
+                    // For simplicty: no double-width chars
+                    && widthInColumns == str.length
+                    && oldColWidth == oldStr.length) {
+                    let strCharLen = DomTerm._countCodePoints(str);
+                    let oldLength = DomTerm._indexCodePoint(oldStr, strCharLen);
+                    this.outputContainer.replaceData(0, oldLength, str);
+                    this.outputBefore += str.length;
+                    str = null;
+                }
+            }
+        }
         // FIXME optimize if end of line
-        fits = this.deleteCharactersRight(widthInColumns);
+        fits = str == null || this.deleteCharactersRight(widthInColumns);
     }
-    if (this._currentStyleSpan != this.outputContainer)
-        this._adjustStyle();
+    this._adjustStyle();
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
         // maybe adjust line/absLine? FIXME
@@ -7932,7 +7991,8 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         }
     }
     else {
-        this.insertRawOutput(str);
+        if (str != null)
+            this.insertRawOutput(str);
         this._updateLinebreaksStart(absLine);
     }
     this.currentAbsLine = absLine;
@@ -7965,7 +8025,7 @@ DomTerm.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false
 
 DomTerm.prototype.insertRawOutput = function(str) {
     var node
-        = this.outputBefore != null ? this.outputBefore.previousSibling
+        = this._fixOutputPosition() != null ? this.outputBefore.previousSibling
         : this.outputContainer.lastChild;
     if (node instanceof Text)
         node.appendData(str);
@@ -8006,6 +8066,9 @@ DomTerm.prototype.popFromElement = function() {
  *   (Should not have any parents or siblings.)
  */
 DomTerm.prototype.insertNode = function (node) {
+    this._fixOutputPosition();
+    if (this.outputBefore != null && this.outputBefore.parentNode != this.outputContainer)
+        debuffer;
     this.outputContainer.insertBefore(node, this.outputBefore);
 };
 
@@ -8052,7 +8115,7 @@ DomTerm.prototype.processEnter = function() {
     this._restoreCaret();
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
-    this.reportText(text, "\n");
+    this.reportText(text, this._clientPtyExtProc ? "\n" : this.keyEnterToString());
 };
 
 /** param is either a numerical code, as as string (e.g. "15" for F5);
@@ -8529,6 +8592,7 @@ DomTerm.inputModeChanged = function(dt, mode) {
 }
 
 DomTerm.prototype._pushToCaret = function() {
+    this._fixOutputPosition();
     let saved = {
         before: this.outputBefore, container: this.outputContainer };
     this.outputBefore = this._caretNode;
@@ -9349,6 +9413,7 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     if (DomTerm._isInElement(this.outputContainer, "A"))
         return false;
     if (fstart == 0) {
+        this._fixOutputPosition();
         let previous = this.outputBefore != null ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
         for (; previous != null; previous = previous.previousSibling) {
