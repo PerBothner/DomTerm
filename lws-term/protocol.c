@@ -771,6 +771,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (isCanon && kstr0 != 3 && kstr0 != 4 && kstr0 != 26) {
             printf_to_browser(client, URGENT_WRAP("\033]%d;%.*s\007"),
                               isEchoing ? 74 : 73, (int) dlen, data);
+            lws_callback_on_writable(wsi);
         } else {
           int to_drain = 0;
           if (pclient->paused) {
@@ -1573,7 +1574,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                                 tcgetattr(pclient->pty, &tio);
                                 const char* icanon_str = (tio.c_lflag & ICANON) != 0 ? "icanon" :  "-icanon";
                                 const char* echo_str = (tio.c_lflag & ECHO) != 0 ? "echo" :  "-echo";
-                                const char *extproc_str = "";
+                                const char* extproc_str = "";
 #if EXTPROC
                                 if ((tio.c_lflag & EXTPROC) != 0)
                                     extproc_str = " extproc";
@@ -1581,7 +1582,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                                 n = sprintf(data_start,
                                             "\033]71; %s %s%s lflag:%x\007",
                                             icanon_str, echo_str,
-                                            extproc_str,  tio.c_lflag);
+                                            extproc_str, tio.c_lflag);
                             }
                             else
 #endif
