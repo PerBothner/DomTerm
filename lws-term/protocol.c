@@ -851,11 +851,13 @@ reportEvent(const char *name, char *data, size_t dlen,
             free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
         bool val = strcmp(data,"0")!=0;
-        pclient->detachOnClose = val; // OLD
-        client->detach_on_close = (bool)val;
-        if (pclient->preserved_output == NULL
-            && client->requesting_contents == 0)
-           client->requesting_contents = 1;
+        if (pclient != NULL) {
+            pclient->detachOnClose = val; // OLD
+            client->detach_on_close = (bool)val;
+            if (pclient->preserved_output == NULL
+                && client->requesting_contents == 0)
+                client->requesting_contents = 1;
+        }
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
     } else if (strcmp(name, "LINK") == 0) {
