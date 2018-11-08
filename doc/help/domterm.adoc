@@ -36,6 +36,7 @@ For example: `domterm help new`.
 _command_ [_arguments_]:: Short-hand for `new`. 
 `attach` _session_:: Attach to an existing session.
 `list`:: List terminal sessions.
+`status`:: List sessions, windows, versions.
 
 === Subcommands for output
 [horizontal]

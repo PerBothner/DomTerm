@@ -119,7 +119,9 @@ embedded in different modes and applications.
 * Downloading and building::
 * domterm application:: The domterm command
 * Settings: The settings.ini file
-* Applications:: Other domterm application
+* Applications:: Other domterm applications
+* Frontsend:: Frontends including browsers
+* Remote serving::
 * Sessions and Windows::
 * Input line editing::
 * Paging:: Paging and Pausing
@@ -746,6 +748,12 @@ This test works over an @code{ssh} connection.
 or that @code{TERM} be either empty or contain the string @code{xterm};
 otherwise it does not try to the request code.)
 
+@item @b{@code{status}}
+
+Prints various bits of information about the backend,
+sessions, windows, and version numbers.
+The infomration displayed and the format are likely to change.
+
 @item @b{@code{browse}} @var{url}
 Create a new browser window or sub-window that displays @var{url}.
 This is implemented using an @code{iframe}.
@@ -833,6 +841,9 @@ See @ref{session-specifier}.
 
 @item @b{@code{list}}
 List information about running sessions.
+
+The @code{status} command shows more information,
+including some information about each window.
 @end table
 
 @subheading Miscellaneous options
@@ -1311,6 +1322,105 @@ CLASSPATH=@var{my-application.jar} domterm --class @var{my.ClassName} @var{arg}.
 
 @end table
 
+@node Frontends
+@chapter Frontends including browsers
+
+A @dfn{frontend} is a program that handles the user interface
+for a session, in a @dfn{window}.
+A frontend is either a web browser, or some application
+that has an embedded @dfn{web engine}.
+You have a number of options for a frontend, with different
+advantages and limitions.
+The two most polished frontends at this point are
+the Electron and Qt frontends.
+
+Multiple different frontends can talk to the same backend
+at the same time.
+
+@subheading Browser quirks and limitions
+
+(These can all change as browsers change or work-arounds are implemented.)
+
+Exiting the inferior process can sometimes fail to automatically
+close the DomTerm window, due to browser security limitations.
+It currently works on Google Chrome, but not Firefox.
+
+Saving the console display to a file in a browser may
+save to the browser's ``Downloads'' area.
+You may be able to save the file elsewhere, depending
+on the browser and its settings.
+
+Microsoft Edge does at time of writing not handle the @code{tab-size}
+CSS property, so on that browser tab characters are always converted to spaces.
+
+@subsubheading Copy and paste
+
+Copy and Paste menu items are only known to work with the
+Electron and Qt front-ends.
+The others may run into security restrictions.
+A future workaround may be to have the backend
+handle clipboard access, using programs such as
+@code{xclip}, @code{xsel} (older), or @code{pbcopy}/@code{pbpaste} (Mac OS).
+
+The keyboard shortcuts Ctrl-Shift-C and Ctrl-Shift-V
+work on all tested platforms.
+
+Middle-button paste seems to work on most frontends (on Linux)..
+
+@subsubheading Note on menus
+
+The Electron and Qt front-ends use their respective
+menu interfaces, which works well.
+
+Most other frontends use a menu package written in JavaScript
+that works fairly well, but has some minor issues.
+One is that all menus are constrained to the main window.
+Also (as mentioned above) copy and paste menu items may
+not work due to browser security restrictions.
+
+@subheading Electron
+
+Start the Electron frontend (if available) with the @code{--electron} option.
+
+@subheading Qt
+
+Start the Qt frontend (if available) with the @code{--qt} option.
+
+@subheading Desktop browser
+
+Modern desktop browsers should work ok,
+but note the limitations mentioned above (most notabley copy and paste).
+However, only Firefox and Chrome are tested frequently.
+
+@subsubheading Firefox
+
+To open a Firefox window or tab use the @code{--firefox} specifier.
+Recent versions of Firefox should work well.
+
+Exiting the inferior process (such as by typing @code{exit} in a shell)
+does not automatically close the browser window.
+
+@subsubheading Chrome
+
+To open a Google Chrome window or tab use the @code{--chrome} specifier.
+
+The @code{--chrome-app} specifier creates a top-level Chrome window
+without the standard Chrome location bar or other header ``chrome''.
+
+@subheading Embedded in other environments
+
+@subsubheading Atom
+
+There is a fairly nice package for embedding DomTerm panes
+in the @uref{https://atom.io/,Atom} text editor framework.
+See @uref{https://github.com/PerBothner/atom-domterm,the repository}.
+
+@subsubheading Theia
+
+There is an experimental package for the
+@uref{https://www.theia-ide.org/,Theia IDE}.
+See @uref{https://github.com/PerBothner/theia,this fork}.
+
 @node Remote serving
 @chapter Remote serving
 
@@ -1386,7 +1496,7 @@ Creating a new session is done by invoke the @code{domterm} command with the
 @code{new} sub-command, or with no arguments.
 See @ref{session-creating,Creating a new session} for details.
 
-The sub-command @code{list} lists active session.
+The sub-command @code{list} lists active sessions.
 
 The sub-command @code{attach} connects to an existing session,
 often a detached session.  You specify the session
@@ -2098,28 +2208,6 @@ Note that if DomTerm is running in a browser window,
 the browser's @code{Save page as ...} command is not useful.
 It will save the original bare web page, before any DomTerm interactions
 or other JavaScript modification.
-
-@subheading Browser quirks and limitions
-
-(These can all change as browsers change or work-arounds are implemented.)
-
-Middle-button paste: Works with Chrome and qtdomterm (on Linux);
-does not work on Firefox.
-
-Exiting the inferior process can sometimes fail to automatically
-close the DomTerm window, due to browser security limitations.
-It currently works on Google Chrome, but not Firefox.
-
-Saving the console display to a file in a browser may
-save to the browser's ``Downloads'' area.
-You may be able to save the file elsewhere, depending
-on the browser and its settings.
-
-Using line-editing mode with the brower's builtin editor
-may exhibit various quirks.
-
-Microsoft Edge does at time of writing not handle the @code{tab-size}
-CSS property, so on that browser tab characters are always converted to spaces.
 
 @subheading Adding domterm or qtdomterm to the desktop
 
