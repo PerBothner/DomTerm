@@ -10,7 +10,7 @@
 #define NAME_MAX 1024
 #endif
 
-static char*settings_fname = NULL;
+char* settings_fname = NULL;
 static struct json_object *settings_json_object = NULL;
 const char *settings_as_json;
 int64_t settings_counter = 0;

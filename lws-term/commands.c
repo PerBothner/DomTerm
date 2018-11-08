@@ -486,6 +486,10 @@ int status_action(int argc, char** argv, const char*cwd,
     struct pty_client *pclient = pty_client_list;
     FILE *out = fdopen(opts->fd_out, "w");
     print_version(out);
+    if (settings_fname)
+        fprintf(out, "Reading settings from: %s\n", settings_fname);
+    if (backend_socket_name != NULL)
+        fprintf(out, "Backend command socket: %s\n", backend_socket_name);
     if (pclient == NULL)
        fprintf(out, "(no domterm sessions or server)\n");
     else {

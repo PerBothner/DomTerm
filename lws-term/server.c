@@ -10,6 +10,7 @@ extern char **environ;
 
 static struct options opts;
 struct options *main_options = &opts;
+char *backend_socket_name;
 
 static void make_html_file(int);
 static char *make_socket_name(bool);
@@ -1176,6 +1177,7 @@ main(int argc, char **argv)
     watch_settings_file();
 
     char *cname = make_socket_name(false);
+    backend_socket_name = cname;
     lws_sock_file_fd_type csocket;
     csocket.filefd = create_command_socket(cname);
     struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);

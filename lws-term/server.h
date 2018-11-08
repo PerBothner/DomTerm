@@ -41,6 +41,8 @@
 extern char server_key[SERVER_KEY_LENGTH];
 extern char *main_html_url;
 extern char *main_html_path;
+extern char *backend_socket_name;
+extern char *settings_fname;
 extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
