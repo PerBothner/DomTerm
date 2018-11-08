@@ -1274,8 +1274,6 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
         // At this point we're at the correct line; scan to the desired column.
         mainLoop:
         while (column < goalColumn) {
-            if (parent==null||(current!=null&&parent!=current.parentNode))
-                this.log("BAD PARENT "+parent+" OF "+current);
             var handled = false;
             if (current instanceof Element && current.nodeName == "SPAN") {
                 var tcol = -1;
@@ -1472,32 +1470,17 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
 };
 
 DomTerm.prototype._followingText = function(cur) {
-    for (;;) {
-        if (cur instanceof Text)
-            return cur;
-        else if (cur instanceof Element) {
-            var line = cur.getAttribute("line");
-            if (line != null)
-                return null;
-            if (cur.getAttribute("line") != null)
-                return cur;
-            if (cur.firstChild)
-                cur = cur.firstChild;
-            else {
-                for (;;) {
-                    if (cur == null)
-                        return null;
-                    if (cur.nextSibling) {
-                        cur = cur.nextSibling;
-                        break;
-                    }
-                    cur = cur.parentNode;
-                }
-            }
-        }
-        else
+    function check(node) {
+        if (node == cur)
+            return false;
+        if (node.tagName == "SPAN" && node.getAttribute("line"))
             return null;
+        if (node instanceof Text)
+            return node;
+        return true;
     }
+    return this._forEachElementIn(this._getOuterBlock(cur), check,
+                                  true, false, cur);
 };
 
 DomTerm.prototype._showPassword = function() {
@@ -1529,7 +1512,7 @@ DomTerm.prototype._removeCaret = function(normalize=true) {
         var child = caretNode.firstChild;
         caretNode.removeAttribute("caret");
         if (child instanceof Text) {
-            var text = this._followingText(caretNode.nextSibling);
+            var text = this._followingText(caretNode);
             if (normalize && text instanceof Text) {
                 text.insertData(0, child.data);
                 caretNode.removeChild(child);
