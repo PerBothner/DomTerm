@@ -78,6 +78,7 @@ struct pty_client {
     struct lws *pty_wsi;
     struct tty_client *recent_tclient;
     char *saved_window_contents;
+    char *ttyname;
 
     // The following are used to attach to already-visible session.
     char *preserved_output; // data send since window-contents request
@@ -293,10 +294,9 @@ extern int view_saved_action(int, char**, const char*, char **,
                              struct lws *, struct options *);
 extern int help_action(int, char**, const char*, char **,
                        struct lws *, struct options *);
-extern int list_action(int, char**, const char*, char **,
-                       struct lws *, struct options *);
 extern int new_action(int, char**, const char*, char **,
                       struct lws *, struct options *);
+extern void print_version(FILE*);
 extern char*find_in_path();
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, char *arg, size_t alen);

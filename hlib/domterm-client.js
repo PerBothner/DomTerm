@@ -89,7 +89,7 @@ function connectAjax(name, prefix="", topNode=null)
 
     xhr.open("POST", prefix+"open.txt");
     xhr.onreadystatechange = handleAjaxOpen;
-    xhr.send("VERSION="+DomTerm.versionInfo);
+    xhr.send("VERSION="+JSON.stringify(DomTerm.versionInfo));
 }
 
 DomTerm.handleSimpleMessage = function(command) {
@@ -345,7 +345,7 @@ function handleMessage(event) {
     else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);
     else if (data.command=="socket-open") {
-        dt.reportEvent("VERSION", DomTerm.versionInfo);
+        dt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
         dt.reportEvent("DETACH", "");
         dt.initializeTerminal(dt.topNode);
     } else if (data.command=="domterm-context-menu") {

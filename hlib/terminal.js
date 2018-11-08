@@ -9335,7 +9335,7 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
         DomTerm._handleOutputData(wt, evt.data);
     }
     wsocket.onopen = function(e) {
-        wt.reportEvent("VERSION", DomTerm.versionInfo);
+        wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
         wt.initializeTerminal(topNode);
     };
 }

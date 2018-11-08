@@ -3,9 +3,26 @@ DomTerm.versionString = "@DOMTERM_VERSION@";
 DomTerm.copyrightYear = @DOMTERM_YEAR@;
 DomTerm.inAtomFlag = false;
 
+DomTerm.versions = {};
+DomTerm.versions.domterm = DomTerm.versionString;
+
+if (typeof process !== 'undefined' && process.versions
+    && process.versions.electron)
+    DomTerm.versions = Object.assign(DomTerm.versions, process.versions.electron);
+if (typeof navigator !== 'undefined' && navigator.userAgent) {
+    let m;
+    if ((m = navigator.userAgent.match(/Electron[/]([^ ]+)/)))
+        DomTerm.versions.electron = m[1];
+    if ((m = navigator.userAgent.match(/Chrome[/]([^ ]+)/)))
+        DomTerm.versions.chrome = m[1];
+    if ((m = navigator.userAgent.match(/Firefox[/]([^ ]+)/)))
+        DomTerm.versions.firefox = m[1];
+    if ((m = navigator.userAgent.match(/Atom[/]([^ ]+)/)))
+        DomTerm.versions.atom = m[1];
+}
+
 DomTerm.isElectron = function() {
-    return typeof process !== 'undefined' && process.versions
-        && process.versions.electron !== undefined;
+    return DomTerm.versions.electron;
 }
 
 DomTerm.isAtom = function() { return DomTerm.inAtomFlag; }
@@ -13,7 +30,3 @@ DomTerm.isAtom = function() { return DomTerm.inAtomFlag; }
 DomTerm.isInIFrame = function() { return window.parent != window; }
 
 DomTerm.versionInfo = "version="+DomTerm.versionString;
-
-if (DomTerm.isElectron())
-    DomTerm.versionInfo =
-        DomTerm.versionInfo + ';electron=' + process.versions.electron;

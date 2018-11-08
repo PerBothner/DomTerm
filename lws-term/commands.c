@@ -436,6 +436,101 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
+int list_action(int argc, char** argv, const char*cwd,
+                      char **env, struct lws *wsi, struct options *opts)
+{
+    struct pty_client *pclient = pty_client_list;
+    FILE *out = fdopen(opts->fd_out, "w");
+    if (pclient == NULL)
+       fprintf(out, "(no domterm sessions or server)\n");
+    else {
+        for (; pclient != NULL; pclient = pclient->next_pty_client) {
+            fprintf(out, "pid: %d", pclient->pid);
+            fprintf(out, ", session#: %d", pclient->session_number);
+            if (pclient->session_name != NULL)
+              fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
+            int nwindows = 0;
+            struct lws *w;
+            FOREACH_WSCLIENT(w, pclient) { nwindows++; }
+            fprintf(out, ", #windows: %d", nwindows);
+            fprintf(out, "\n");
+       }
+    }
+    fclose(out);
+    return EXIT_SUCCESS;
+}
+
+const char *
+json_get_property(struct json_object *jobj, char *fname)
+{
+    struct json_object *jval = NULL;
+    const char *result = NULL;
+    if (json_object_object_get_ex(jobj, fname, &jval)) {
+        return json_object_get_string(jval);
+    }
+    return NULL;
+}
+bool
+json_print_property(FILE *out, struct json_object *jobj, char *fname,
+                    char *prefix, char *label)
+{
+    const char *val = json_get_property(jobj, fname);
+    if (val)
+        fprintf(out, "%s%s: %s", prefix, label == NULL? fname : label, val);
+    return val != NULL;
+}
+
+int status_action(int argc, char** argv, const char*cwd,
+                      char **env, struct lws *wsi, struct options *opts)
+{
+    struct pty_client *pclient = pty_client_list;
+    FILE *out = fdopen(opts->fd_out, "w");
+    print_version(out);
+    if (pclient == NULL)
+       fprintf(out, "(no domterm sessions or server)\n");
+    else {
+        for (; pclient != NULL; pclient = pclient->next_pty_client) {
+            fprintf(out, "session#: %d, ", pclient->session_number);
+            fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
+            if (pclient->session_name != NULL)
+              fprintf(out, ", name: %s\n", pclient->session_name); // FIXME-quote?
+            if (pclient->paused)
+                fprintf(out, ", paused");
+            fprintf(out, "\n");
+            int nwindows = 0;
+            struct lws *w;
+            FOREACH_WSCLIENT(w, pclient) {
+                struct tty_client *tclient =
+                    (struct tty_client *) lws_wsi_user(w);
+                int number = tclient->pty_window_number;
+                if (number >= 0)
+                    fprintf(out, "  window %d:", number);
+                else
+                    fprintf(out, "  window:", number);
+                struct json_object *vobj =
+                    json_tokener_parse(tclient->version_info);
+                char *prefix = " ";
+                if (json_print_property(out, vobj, "atom", prefix, NULL))
+                    prefix = ", ";
+                if (json_print_property(out, vobj, "electron", prefix, NULL))
+                    prefix = ", ";
+                if (json_print_property(out, vobj, "chrome", prefix, NULL))
+                    prefix = ", ";
+                if (json_print_property(out, vobj, "firefox", prefix, NULL))
+                    prefix = ", ";
+                //fprintf(out, " %s\n", tclient->version_info);
+                fprintf(out, "\n");
+                json_object_put(vobj);
+                nwindows++;
+            }
+            if (nwindows == 0)
+                fprintf(out, "  (detached)\n");
+       }
+    }
+    fclose(out);
+    return EXIT_SUCCESS;
+}
+
 int view_saved_action(int argc, char** argv, const char*cwd,
                   char **env, struct lws *wsi,
                   struct options *opts)
@@ -570,6 +665,9 @@ struct command commands[] = {
   { .name = "list",
     .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
     .action = list_action },
+  { .name = "status",
+    .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
+    .action = status_action },
   { .name = "reverse-video",
     .options = COMMAND_IN_CLIENT,
     .action = reverse_video_action },

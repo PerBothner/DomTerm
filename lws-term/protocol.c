@@ -118,6 +118,10 @@ pty_destroy(struct pty_client *pclient)
 
     // stop event loop
     pclient->exit = true;
+    if (pclient->ttyname != NULL) {
+        free(pclient->ttyname);
+        pclient->ttyname = NULL;
+    }
     if (pclient->saved_window_contents != NULL) {
         free(pclient->saved_window_contents);
         pclient->saved_window_contents = NULL;
@@ -407,13 +411,15 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
             }
             break;
         default: /* parent */
-            close(slave);
             lwsl_notice("started process, pid: %d\n", pid);
+            char *tname = strdup(ttyname(slave));
+            close(slave);
             lws_sock_file_fd_type fd;
             fd.filefd = master;
             //if (tclient == NULL)              return NULL;
             outwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "pty", NULL);
             struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
+            pclient->ttyname = tname;
             pclient->packet_mode = packet_mode;
             pclient->next_pty_client = NULL;
             server->session_count++;
@@ -1328,30 +1334,6 @@ int browse_action(int argc, char** argv, const char*cwd,
     }
     char *url = argv[optind];
     display_session(opts, NULL, url, -104);
-    return EXIT_SUCCESS;
-}
-
-int list_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, struct options *opts)
-{
-    struct pty_client *pclient = pty_client_list;
-    FILE *out = fdopen(opts->fd_out, "w");
-    if (pclient == NULL)
-       fprintf(stderr, "(no domterm sessions or server)\n");
-    else {
-        for (; pclient != NULL; pclient = pclient->next_pty_client) {
-            fprintf(out, "pid: %d", pclient->pid);
-            fprintf(out, ", session#: %d", pclient->session_number);
-            if (pclient->session_name != NULL)
-              fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
-            int nwindows = 0;
-            struct lws *w;
-            FOREACH_WSCLIENT(w, pclient) { nwindows++; }
-            fprintf(out, ", #windows: %d", nwindows);
-            fprintf(out, "\n");
-       }
-    }
-    fclose(out);
     return EXIT_SUCCESS;
 }
 

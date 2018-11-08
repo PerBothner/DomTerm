@@ -820,6 +820,21 @@ void prescan_options(int argc, char **argv, struct options *opts)
     }
 }
 
+void
+print_version (FILE *out)
+{
+    if (git_describe[0])
+        fprintf(out, "DomTerm version %s (git describe: %s)\n",
+               LDOMTERM_VERSION, git_describe);
+    else
+        fprintf(out, "DomTerm version %s\n",
+               LDOMTERM_VERSION);
+    fprintf(out, "Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
+#ifdef LWS_LIBRARY_VERSION
+    fprintf(out, "Using Libwebsockets " LWS_LIBRARY_VERSION "\n");
+#endif
+}
+
 int process_options(int argc, char **argv, struct options *opts)
 {
     // parse command line options
@@ -832,13 +847,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->something_done = true;
                 break;
             case 'v':
-                if (git_describe[0])
-                    printf("domterm version %s (git describe: %s)\n",
-                           LDOMTERM_VERSION, git_describe);
-                else
-                    printf("domterm version %s\n",
-                           LDOMTERM_VERSION);
-                printf("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
+                print_version(stdout);
                 opts->something_done = true;
                 break;
             case 'd':
