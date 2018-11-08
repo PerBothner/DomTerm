@@ -7949,7 +7949,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                     && oldColWidth == oldStr.length) {
                     let strCharLen = DomTerm._countCodePoints(str);
                     let oldLength = DomTerm._indexCodePoint(oldStr, strCharLen);
-                    this.outputContainer.replaceData(0, oldLength, str);
+                    this.outputContainer.replaceData(this.outputBefore, oldLength, str);
                     this.outputBefore += str.length;
                     str = null;
                 }
