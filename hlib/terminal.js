@@ -9413,8 +9413,9 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     if (DomTerm._isInElement(this.outputContainer, "A"))
         return false;
     if (fstart == 0) {
-        this._fixOutputPosition();
-        let previous = this.outputBefore != null ? this.outputBefore.previousSibling
+        let container = this.outputContainer;
+        let previous = container instanceof Text ? container
+            : this.outputBefore != null ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
         for (; previous != null; previous = previous.previousSibling) {
             if (previous instanceof Element) {
@@ -9425,7 +9426,9 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
                     return false;
             }
             let pfragment = previous.textContent;
-            fstart = rindexDelimiter(pfragment, 0, pfragment.length)+1;
+            let pfraglen = previous == container ? this.outputBefore
+                : pfragment.length;
+            fstart = rindexDelimiter(pfragment, 0, pfraglen)+1;
             firstToMove = previous;
             if (fstart > 0) {
                 if (! (previous instanceof Text)
