@@ -14,8 +14,8 @@
 
 // Should standard error be redirected to standard output, but
 // wrapped with appropriate escape codes?
-// This doesn't work completely/reliabley, so it is disabled.
-#define WRAP_STDERR 0
+// This doesn't work completely/reliably, so it is disabled.
+#define WRAP_STDERR 1
 
 static char* domtermEnv = getenv("DOMTERM");
 
@@ -25,7 +25,7 @@ static bool inDomTerm()
   if (checkState == 0)
     {
       //char *tname = ttyname(1);
-      //checkState = 1; // FIXME
+      checkState = 1; // FIXME
     }
   return checkState > 0;
 }
@@ -67,6 +67,9 @@ int dup2(int oldfd, int newfd)
 #define ERR_START_LENGTH 5
 #define ERR_END_LENGTH 5
 
+typedef ssize_t (*writev_type)(int, const struct iovec *, int);
+static writev_type original_writev = (writev_type) dlsym(RTLD_NEXT, "writev");
+
 ssize_t write(int fd, const void *buf, size_t count)
 {
   typedef ssize_t (*write_type)(int,const void*,size_t);
@@ -80,7 +83,23 @@ ssize_t write(int fd, const void *buf, size_t count)
   iovs[1].iov_len = count;
   iovs[2].iov_base = (void*) ERR_END;
   iovs[2].iov_len = ERR_END_LENGTH;
-  return writev(1, iovs, 3);
+  return original_writev(1, iovs, 3);
+}
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
+{
+    if (! inDomTerm() || fd != 2 || iovcnt > 8)
+        return (*original_writev)(fd, iov, iovcnt);
+    struct iovec iovx[10];
+    iovx[0].iov_base = (void*) ERR_START;
+    iovx[0].iov_len = ERR_START_LENGTH;
+    for (int i = 0; i < iovcnt; i++) {
+        iovx[i+1].iov_base = iov[i].iov_base;
+        iovx[i+1].iov_len = iov[i].iov_len;
+    }
+    iovx[iovcnt+1].iov_base = (void*) ERR_END;
+    iovx[iovcnt+1].iov_len = ERR_END_LENGTH;
+    return original_writev(1, iovx, iovcnt+2);
 }
 
 #if 0

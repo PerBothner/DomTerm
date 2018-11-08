@@ -115,6 +115,7 @@ native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	touch native/pty/org_domterm_pty_PTY.h
 
 lib/domterm-preloads$(LIBEXT): native/preloads.cc
+	$(MKDIR_P) lib
 	$(CXX) $(DT_CFLAGS) -Wall -fPIC -shared -o $@ native/preloads.cc
 
 PTY_COMMON_PARAMS = -fno-strict-aliasing -fPIC -W -Wall  -Wno-unused -Wno-parentheses -fno-omit-frame-pointer
