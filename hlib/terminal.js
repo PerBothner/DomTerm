@@ -2981,6 +2981,9 @@ DomTerm.prototype._mouseHandler = function(ev) {
         }
     }
     if (ev.type == "mousedown") {
+        // Kludge for qtdomterm - otherwise these buttons clear the selection.
+        if (ev.button == 1 || ev.button == 2)
+            ev.preventDefault();
         if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
             this._usingScrollBar = true;
         if (! DomTerm.useIFrame)
