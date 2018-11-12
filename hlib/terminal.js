@@ -1645,8 +1645,12 @@ DomTerm.prototype._restoreCaret = function() {
                 }
                 var ch = tdata.substring(0, sz);
                 this._caretNode.appendChild(document.createTextNode(ch));
+                let ptext = text.parentNode;
                 DomTerm._deleteData(text, 0, sz);
                 this._caretNode.removeAttribute("value");
+                if (this._caretNode.parentNode == this._deferredForDeletion
+                    && ptext != this._deferredForDeletion)
+                    this._deferredForDeletion.textAfter += ch;
             }
             else
                 this._caretNode.setAttribute("value", " ");
