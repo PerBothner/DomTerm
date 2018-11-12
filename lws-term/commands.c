@@ -514,6 +514,8 @@ int status_action(int argc, char** argv, const char*cwd,
                 struct json_object *vobj =
                     json_tokener_parse(tclient->version_info);
                 char *prefix = " ";
+                if (json_print_property(out, vobj, "qtwebengine", prefix, NULL))
+                    prefix = ", ";
                 if (json_print_property(out, vobj, "atom", prefix, NULL))
                     prefix = ", ";
                 if (json_print_property(out, vobj, "electron", prefix, NULL))

@@ -11,6 +11,8 @@ if (typeof process !== 'undefined' && process.versions
     DomTerm.versions = Object.assign(DomTerm.versions, process.versions.electron);
 if (typeof navigator !== 'undefined' && navigator.userAgent) {
     let m;
+    if ((m = navigator.userAgent.match(/QtWebEngine[/]([^ ]+)/)))
+        DomTerm.versions.qtwebengine = m[1];
     if ((m = navigator.userAgent.match(/Electron[/]([^ ]+)/)))
         DomTerm.versions.electron = m[1];
     if ((m = navigator.userAgent.match(/Chrome[/]([^ ]+)/)))
