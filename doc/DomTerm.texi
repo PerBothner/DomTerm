@@ -764,6 +764,14 @@ One use for this is to view documentation in a sub-window:
 @example
 $ domterm --above browse http://example.com/
 @end example
+
+@item @b{@code{view-saved}} @var{filename}
+The @var{filename} is an HTML file of a previously saved session.
+Open the session is ``view'' mode: Lines will be re-wrapped
+on window re-size, links are clickable, and hide/show buttons work.
+
+May not work on a desktop browser due to permission issues, but does work
+on Electron and Qt.
 @end table
 
 @subheading ``Printing'' images or html
@@ -1349,6 +1357,10 @@ Saving the console display to a file in a browser may
 save to the browser's ``Downloads'' area.
 You may be able to save the file elsewhere, depending
 on the browser and its settings.
+
+The @code{view-saved} command require permission to read from
+the file-system, so may not work in a desktop browsers.
+It works on Electron and Qt.
 
 Microsoft Edge does at time of writing not handle the @code{tab-size}
 CSS property, so on that browser tab characters are always converted to spaces.
