@@ -8,7 +8,7 @@ DomTerm.simpleLayout = false;
 // Only relevant when using a layout manager like GoldenLayout.
 DomTerm.useIFrame = ! DomTerm.simpleLayout
     // This is a kludge FIXME
-    && location.hash.match(/view-saved=([^&]*)/);
+    && ! location.hash.match(/view-saved=([^&]*)/);
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
