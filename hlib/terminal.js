@@ -1983,7 +1983,6 @@ DomTerm._styleSpansMatch = function(newSpan, oldSpan) {
  * A CSS selector "domterm-noscript" is used for fall-back styling for
  * the non-JavaScript case. */
 DomTerm._savedSessionClassNoScript = "domterm domterm-saved-session domterm-noscript";
-DomTerm._savedSessionClass = "domterm domterm-saved-session";
 
 DomTerm.prototype.isSavedSession = function() {
     var cl = this.topNode == null ? null : this.topNode.getAttribute("class");
@@ -8344,13 +8343,41 @@ DomTerm.doCopy = function(asHTML=false) {
     return document.execCommand("copy", false);
 };
 
-DomTerm.prototype.doSaveAs = function() {
-    var dt = this;
-    this._pickSaveFile(function(fname) {
-        if (fname)
-            dt._writeFile(dt.getAsHTML(true), fname);
-    });
+DomTerm.doSaveAs = function(dt = DomTerm.focusedTerm) {
+    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()) {
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+                                 "request-save-file");
+        return;
+    }
+    if (! dt)
+        return;
+    let data = dt.getAsHTML(true);
+    if (DomTerm.useIFrame && DomTerm.isInIFrame())
+        DomTerm.sendParentMessage("save-file", data);
+    else
+        DomTerm.saveFile(data);
 };
+
+DomTerm.saveFile = function(data) {
+    var fname = "domterm-saved-"+(++DomTerm.saveFileCounter)+".html";
+    if (DomTerm.isElectron()) {
+        const {dialog} = nodeRequire('electron').remote;
+        var fs = nodeRequire('fs');
+        function callback(filePath) {
+            if (filePath)
+                fs.writeFile(filePath, data, function (err) {
+                    if (err)
+                        alert("An error ocurred creating the file "+ err.message);
+                });
+        }
+        dialog.showSaveDialog({defaultPath: fname}, callback);
+    } else {
+        let filePath = prompt("save contents as: ", fname);
+        if (filePath)
+            saveAs(new Blob([data], {type: "text/html;charset=utf-8"}),
+                   filePath, true);
+    }
+}
 
 DomTerm.prototype.getSelectedText = function() {
     return window.getSelection().toString();
@@ -8839,35 +8866,7 @@ DomTerm.prototype.doLineEdit = function(keyName) {
     return false;
 };
 
-DomTerm.prototype._writeFile = function(data, filePath) {
-    if (DomTerm.isElectron()) {
-        var fs = nodeRequire('fs');
-        if (filePath) {
-            fs.writeFile(filePath, data, function (err) {
-                alert("An error ocurred creating the file "+ err.message);
-            });
-        }
-    } else {
-        saveAs(new Blob([data], {type: "text/html;charset=utf-8"}),
-               filePath, true);
-    }
-};
-
 DomTerm.saveFileCounter = 0;
-
-/* Request from user name for file to save.
-   Then call callname(fname) is user-supplied name.
-   If user cancels then fname will have a false value (null or undefined).
-*/
-DomTerm.prototype._pickSaveFile = function(callback) {
-    var fname = "domterm-saved-"+(++DomTerm.saveFileCounter)+".html";
-    if (DomTerm.isElectron()) {
-        const {dialog} = nodeRequire('electron').remote;
-        dialog.showSaveDialog({defaultPath: fname}, callback);
-    } else {
-        callback(prompt("save contents as: ", fname));
-    }
-};
 
 DomTerm.prototype._adjustPauseLimit = function(node) {
     var limit = node.offsetTop + this.availHeight;
@@ -8952,7 +8951,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             return;
         case 83: // Control-Shift-S
-            this.doSaveAs();
+            DomTerm.doSaveAs(this);
             event.preventDefault();
             return;
         case 84: // Control-Shift-T

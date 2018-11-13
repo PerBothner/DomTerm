@@ -96,9 +96,7 @@ DomTerm.createMenus = function(options) {
     const saveAsItem = menuItem({label: 'Save as HTML',
                                  accelerator: 'Ctrl+Shift+S',
                                  click: function() {
-                                     const dt = DomTerm.focusedTerm;
-                                     if (dt)
-                                         dt.doSaveAs();
+                                     DomTerm.doSaveAs();
                                  }});
 
     const quitItem =  platform == "electron" ? menuItem({label: 'Quit', role: 'quit'})

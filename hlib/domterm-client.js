@@ -6,7 +6,9 @@ DomTerm.simpleLayout = false;
 // That is better for security, makes for cleaner selection handling,
 // separates 'id' spaces.  However, it adds some overhead.
 // Only relevant when using a layout manager like GoldenLayout.
-DomTerm.useIFrame = ! DomTerm.simpleLayout;
+DomTerm.useIFrame = ! DomTerm.simpleLayout
+    // This is a kludge FIXME
+    && location.hash.match(/view-saved=([^&]*)/);
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
@@ -186,6 +188,7 @@ function viewSavedFile(url, bodyNode) {
         dt.initial = document.getElementById(dt.makeId("main"));
         dt._initializeDomTerm(topNode);
         dt.sstate.windowName = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
+        dt.topNode.classList.remove("domterm-noscript");
         dt._restoreLineTables(topNode, 0);
         dt._breakAllLines();
         dt.updateWindowTitle();
@@ -276,7 +279,7 @@ function loadHandler(event) {
         return;
     }
     m = location.hash.match(/view-saved=([^&]*)/);
-    if (m) {
+    if (m && (! DomTerm.useIFrame || DomTerm.isInIFrame())) {
         var bodyNode = document.getElementsByTagName("body")[0];
         viewSavedFile(decodeURIComponent(m[1]), bodyNode);
         return;
@@ -371,6 +374,8 @@ function handleMessage(event) {
                                        DomTerm._elementToLayoutItem(iframe));
         else
             DomTerm.windowClose();
+    } else if(data.command=="save-file") {
+        DomTerm.saveFile(data.args[0]);
     } else if (data.command=="focus-event") {
         let originMode = data.args[0];
         if (DomTerm.layoutManager)
@@ -385,6 +390,8 @@ function handleMessage(event) {
                                    data.args[0], data.args[1]);
     } else if (data.command=="set-input-mode") { // message to child
         DomTerm.setInputMode(data.args[0]);
+    } else if (data.command=="request-save-file") { // message to child
+        DomTerm.doSaveAs();
     } else if (data.command=="set-focused") { // message to child
         let op = data.args[0];
         let dt = DomTerm.focusedTerm;
