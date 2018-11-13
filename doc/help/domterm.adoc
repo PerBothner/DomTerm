@@ -59,7 +59,7 @@ _command_ [_arguments_]:: Short-hand for `new`.
 [horizontal]
 `browse` _url_:: view html or image in new web browser (sub-)window
 `is-domterm`:: succeeds if running under DomTerm
-``view-saved` _file_:: view save-as-html file
+`view-saved` _file_:: view save-as-html file
 
 == Options
 
