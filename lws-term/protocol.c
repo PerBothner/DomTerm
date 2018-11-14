@@ -1564,7 +1564,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                                     extproc_str = " extproc";
 #endif
                                 n = sprintf(data_start,
-                                            "\033]71; %s %s%s lflag:%x\007",
+                                            URGENT_WRAP("\033]71; %s %s%s lflag:%x\007"),
                                             icanon_str, echo_str,
                                             extproc_str, tio.c_lflag);
                             }
