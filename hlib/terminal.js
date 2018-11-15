@@ -9581,7 +9581,7 @@ DomTerm.prototype._pageScrollAbsolute = function(percent) {
     var vtop = this._vspacer.offsetTop;
     if (limit > vtop) {// set _displayPostEofPage mode
         var vpad = limit - vtop;
-        var maxpad = this.availHeight - charHeight; // matches 'less'
+        var maxpad = this.availHeight - this.charHeight; // matches 'less'
         this._adjustSpacer(vpad > maxMap ? maxpad : vpad);
     }
     this.topNode.scrollTop = scrollTop;
