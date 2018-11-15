@@ -7,7 +7,7 @@
 #define BUF_SIZE 1024
 
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
-#define UNCONFIRMED_LIMIT 2000
+#define UNCONFIRMED_LIMIT 8000
 
 #if defined(TIOCPKT)
 // See https://stackoverflow.com/questions/21641754/when-pty-pseudo-terminal-slave-fd-settings-are-changed-by-tcsetattr-how-ca
