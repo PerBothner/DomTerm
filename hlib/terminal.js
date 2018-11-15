@@ -762,8 +762,9 @@ DomTerm.SEEN_CR = 17;
 // which (if not undefined) is the number of columns in the current
 // (displayed) line.
 DomTerm._WIDTH_MODE_NORMAL = 0;
-DomTerm._WIDTH_MODE_TAB_SEEN = 1; // tab *or* pprint-node seen
-DomTerm._WIDTH_MODE_VARIABLE_SEEN = 2; // HTML or variable-width font
+DomTerm._WIDTH_MODE_TAB_SEEN = 1; // tab seen
+DomTerm._WIDTH_MODE_PPRINT_SEEN = 2; // tab *or* pprint-node seen
+DomTerm._WIDTH_MODE_VARIABLE_SEEN = 3; // HTML or variable-width font
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -1048,14 +1049,14 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText =
                             start = cur;
                         }
                     } else {
-                        start._widthMode = DomTerm._WIDTH_MODE_TAB_SEEN;
+                        start._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
                         cur._needSectionEndNext = this._needSectionEndList;
                         this._needSectionEndList = cur;
                     }
                 } else if (cls == "wc-node") {
                     descend = false;
                 } else if (cls == "pprint-group") {
-                    start._widthMode = DomTerm._WIDTH_MODE_TAB_SEEN;
+                    start._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
                     this._pushPprintGroup(cur);
                 }
             }
@@ -6148,8 +6149,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         //this._adjustStyle();
         {
             let lineStart = this.lineStarts[this.getAbsCursorLine()];
-            if (lineStart._widthMode < DomTerm._WIDTH_MODE_TAB_SEEN)
-	        lineStart._widthMode = DomTerm._WIDTH_MODE_TAB_SEEN;
+            if (lineStart._widthMode < DomTerm._WIDTH_MODE_PPRINT_SEEN)
+	        lineStart._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
         }
         var ppgroup = this._createSpanNode();
         ppgroup.setAttribute("class", "pprint-group");
@@ -6209,8 +6210,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             : code == 116 ? "linear"
             : code == 117 ? "miser" : "required";
         let lineStart = this.lineStarts[this.getAbsCursorLine()];
-        if (lineStart._widthMode < DomTerm._WIDTH_MODE_TAB_SEEN)
-            lineStart._widthMode = DomTerm._WIDTH_MODE_TAB_SEEN;
+        if (lineStart._widthMode < DomTerm._WIDTH_MODE_PPRINT_SEEN)
+            lineStart._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
         var line = this._createLineNode(kind);
         text = text.trim();
         if (text.length > 0) {
@@ -7727,11 +7728,11 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     function breakNeeded(dt, lineNo, lineStart) {
         var wmode = lineStart._widthMode;
         // NOTE: If might be worthwhile using widthColums tracking also
-        // for the wmode == DomTerm._WIDTH_MODE_TAB_SEEN case,
+        // for the wmode == DomTerm._WIDTH_MODE_PPRINT_SEEN case,
         // but we have to adjust for pre-break./post-break/non-break
-        // and indentation columns. Tabs are need extra care.
+        // and indentation columns.
         if (! DomTerm._forceMeasureBreaks
-            && wmode < DomTerm._WIDTH_MODE_TAB_SEEN
+            && wmode <= DomTerm._WIDTH_MODE_TAB_SEEN
             && lineStart._widthColumns !== undefined) {
             return lineStart._widthColumns > dt.numColumns;
         }
