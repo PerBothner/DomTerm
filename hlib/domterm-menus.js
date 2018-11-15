@@ -68,7 +68,8 @@ DomTerm.createMenus = function(options) {
     const autoPagingItem = menuItem({label: 'Automatic Pager',
                                          type: 'checkbox',
                                          click: function() {
-                                             DomTerm.toggleAutoPaging(); }});
+                                             DomTerm.setAutoPaging("toggle");
+                                         }});
     function inputModeClickHandler(menuItem) {
         DomTerm.setInputMode(menuItem == charModeItem ? 99
                              : menuItem == lineModeItem ? 108
@@ -301,7 +302,7 @@ DomTerm.createMenus = function(options) {
             lineModeItem.checked = mode == 108;
             autoModeItem.checked = mode == 97;
         }
-        if (options.autoPaging)
+        if (options.autoPaging !== undefined)
             autoPagingItem.checked = options.autoPaging;
         let cmenu = options.contextType=="A" ? contextLinkMenu : contextMenu;
         popup(cmenu, options);

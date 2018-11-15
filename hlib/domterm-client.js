@@ -101,8 +101,6 @@ DomTerm.handleSimpleMessage = function(command) {
         dt.reportEvent("destroy-window", "");
     else if (command=="detach")
         DomTerm.detach();
-    else if (command=="toggle-auto-paging")
-        DomTerm.toggleAutoPaging();
     else if (command=="open-link")
         DomTerm.handleLink(DomTerm._contextLink);
     else if (command=="copy-link-address")
@@ -363,6 +361,8 @@ function handleMessage(event) {
         DomTerm.showContextMenu(options);
     } else if (data.command=="domterm-new-pane") { // either direction
         DomTerm.newPane(data.args[0], data.args[1]);
+    } else if (data.command=="auto-paging") {
+            DomTerm.setAutoPaging(data.args[0]);
     } else if (data.command=="domterm-next-pane") {
         if (DomTerm.layoutManager)
             DomTerm.selectNextPane(data.args[0], iframe);

@@ -169,6 +169,9 @@ function DomTerm(name, topNode) {
 
     // User option: automatic paging enabled
     this._autoPaging = false;
+    // true if temporary auto-paging has been requested
+    // an Element if temporary auto-paging is finished,
+    // but we may still be paused.
     this._autoPagingTemporary = false;
     this._pauseLimit = -1;
     // number of (non-urgent) bytes received and processed
@@ -498,9 +501,13 @@ DomTerm.prototype.eofSeen = function() {
     DomTerm.closeFromEof(this);
 };
 
+DomTerm.isFrameParent = function() {
+    return DomTerm.useIFrame && ! DomTerm.isInIFrame()
+        && DomTerm._oldFocusedContent;
+}
+
 DomTerm.detach = function(dt=DomTerm.focusedTerm) {
-    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
-        && DomTerm._oldFocusedContent) {
+    if (DomTerm.isFrameParent()) {
         DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "detach");
         return;
     }
@@ -6578,9 +6585,9 @@ DomTerm.prototype._pauseContinue = function(skip = false) {
         this.parameters[1] = null;
         if (! skip && text)
             this.insertString(text);
-        this._confirmedCount = this._receivedCount;
         text = this.parameters[1];
-        if (text == null || text.length < 500 || skip) {
+        if (! this._autoPaging || text == null || text.length < 500 || skip) {
+            this._confirmedCount = this._receivedCount;
             if (this.verbosity >= 2)
                 this.log("report RECEIVED "+this._confirmedCount);
             this.reportEvent("RECEIVED", this._confirmedCount);
@@ -8324,8 +8331,7 @@ DomTerm._selectionValue = function(asHTML) {
     : { plain: sel.toString(), html: html };
 }
 DomTerm.doCopy = function(asHTML=false) {
-    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
-        && DomTerm._oldFocusedContent) {
+    if (DomTerm.isFrameParent()) {
         DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "copy-selection", asHTML);
         return true;
     }
@@ -8538,8 +8544,7 @@ DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 };
 
 DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
-    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
-        && DomTerm._oldFocusedContent) {
+    if (DomTerm.isFrameParent) {
         DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
                                  "set-input-mode", mode);
         return;
@@ -9641,9 +9646,15 @@ DomTerm.prototype._exitPaging = function() {
     this._updatePagerInfo();
 }
 
-DomTerm.toggleAutoPaging = function(dt = DomTerm.focusedTerm) {
+DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {
+    if (DomTerm.isFrameParent()) {
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+                                 "auto-paging", mode);
+        return;
+    }
     if (dt)
-        dt._autoPaging = ! dt._autoPaging;
+        dt._autoPaging = mode == "toggle" ? ! dt._autoPaging
+        : mode == "on" || mode == "true";
 }
 
 DomTerm.prototype._pageNumericArgumentGet = function(def = 1) {
@@ -9716,12 +9727,15 @@ DomTerm.prototype._pageKeyHandler = function(event, key, press) {
         event.preventDefault();
         break;
     case 65: // 'A'
-        if (event.shiftKey) {
-            DomTerm.toggleAutoPaging(this);
-            this._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
-                                             +(this._autoPaging?"on":"off"));
-            event.preventDefault();
-        }
+        if (this._currentlyPagingOrPaused()) {
+            DomTerm.setAutoPaging("toggle", this);
+            this._pauseContinue();
+            this._exitPaging();
+        } else
+            DomTerm.setAutoPaging("toggle", this);
+        this._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
+                                     +(this._autoPaging?"on":"off"));
+        event.preventDefault();
         break;
     case 67:
         if (event.ctrlKey) { // ctrl-C
