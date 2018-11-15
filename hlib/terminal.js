@@ -1275,8 +1275,6 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
         // At this point we're at the correct line; scan to the desired column.
         mainLoop:
         while (column < goalColumn) {
-            if (parent==null||(current!=null&&parent!=current.parentNode))
-                this.log("BAD PARENT "+parent+" OF "+current);
             var handled = false;
             if (current instanceof Element && current.nodeName == "SPAN") {
                 var tcol = -1;
