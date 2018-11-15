@@ -8544,7 +8544,7 @@ DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 };
 
 DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
-    if (DomTerm.isFrameParent) {
+    if (DomTerm.isFrameParent()) {
         DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
                                  "set-input-mode", mode);
         return;
