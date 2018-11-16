@@ -8842,30 +8842,42 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
 }, {});
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
+/** If keyName is a key-press, return pressed ket; otherwise null. */
+DomTerm.keyNameChar = function(keyName) {
+    if (keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/)
+        return keyName.charAt(1);
+    else
+        return null;
+};
+
+DomTerm.handleKey = function(map, dt, keyName) {
+    let command;
+    if (typeof map == "function")
+        command = map(this, keyName);
+    else {
+        command = map.lookup(keyName);
+        if (! command && DomTerm.keyNameChar(keyName) != null)
+            command = map.lookup("(keypress)");
+    }
+    if (typeof command == "string" || command instanceof String)
+        command = DomTerm.commandMap[command];
+    if (typeof command == "function")
+        return command(dt, keyName);
+    else
+        return command;
+};
+
 DomTerm.prototype.doLineEdit = function(keyName) {
     if (this.verbosity >= 2)
         this.log("doLineEdit "+keyName);
 
     this.editorAddLine();
-    let isKeyPress = keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/;
+    let asKeyPress = DomTerm.keyNameChar(keyName);
     let keymaps = [ DomTerm.lineEditKeymap ];
     for (let map of keymaps) {
-        /*
-        if (typeof map == "function")
-            commandName = map(this, keyName);
-        */
-        let commandName = map.lookup(keyName);
-        if (! commandName && isKeyPress)
-            commandName = map.lookup("(keypress)");
-        if (commandName) {
-            let command = DomTerm.commandMap[commandName];
-            if (command) {
-                let ret = command(this, keyName);
-                if (ret) {
-                    return ret;
-                }
-            }
-        }
+        let ret = DomTerm.handleKey(map, this, keyName);
+        if (ret)
+            return ret;
     }
     return false;
 };
