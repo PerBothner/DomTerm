@@ -1599,10 +1599,11 @@ DomTerm.prototype.useStyledCaret = function() {
 };
 
 DomTerm.prototype.isLineEditing = function() {
-    return this._lineEditingMode + this._clientWantsEditing > 0
-        || (this._clientPtyExtProc + this._clientPtyEcho
-            + this._clientWantsEditing == 3)
-        || this._composing > 0;
+    return (this._lineEditingMode + this._clientWantsEditing > 0
+            || (this._clientPtyExtProc + this._clientPtyEcho
+                + this._clientWantsEditing == 3)
+            || this._composing > 0)
+        && ! this._currentlyPagingOrPaused();
 }
 
 /** Number of Unicode code points in string */
@@ -2432,8 +2433,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.initial = bufNode;
             this.resetCursorCache();
             this.moveToAbs(line+this.homeLine, col, true);
-            if (this._pauseLimit >= 0)
-                this._pauseLimit += bufNode.offsetTop;
+            this._pauseLimit = bufNode.offsetTop + this.availHeight;
         } else {
             var bufNode = this.initial;
             this.initial = DomTerm._currentBufferNode(this, false);
@@ -2457,8 +2457,7 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
             this.sstate.savedCursorMain = undefined;
             this.moveToAbs(this.homeLine, 0, false);
             bufNode.parentNode.removeChild(bufNode);
-            if (this._pauseLimit >= 0)
-                this._pauseLimit = this.initial.offsetTop + this.availHeight;
+            this._adjustPauseLimit(this._vspacer);
         }
         this.usingAlternateScreenBuffer = val;
     }
@@ -9024,15 +9023,17 @@ DomTerm.prototype.keyDownHandler = function(event) {
             break;
         }
     }
-    if (this._currentlyPagingOrPaused()) {
-        this._pageKeyHandler(event, key, false);
+    if (this._currentlyPagingOrPaused()
+        && DomTerm.pageKeyHandler(this, keyName)) {
+        event.preventDefault();
         return;
     }
     if (this._muxMode) {
         this._muxKeyHandler(event, key, false);
         return;
     }
-    this._adjustPauseLimit(this.outputContainer);
+    if (! ((key >= 48 && key <= 57) || key == 45))
+        this._adjustPauseLimit(this.outputContainer);
     if (this.isLineEditing()) {
         if (! this.useStyledCaret())
             this.maybeFocus();
@@ -9121,8 +9122,9 @@ DomTerm.prototype.keyPressHandler = function(event) {
     let keyName = browserKeymap.keyName(event);
     if (this._composing > 0)
         return;
-    if (this._currentlyPagingOrPaused()) {
-        this._pageKeyHandler(event, key, true);
+    if (this._currentlyPagingOrPaused()
+        && DomTerm.pageKeyHandler(this, keyName)) {
+        event.preventDefault();
         return;
     }
     if (this._muxMode) {
@@ -9641,7 +9643,16 @@ DomTerm.prototype._pageTop = function() {
 }
 
 DomTerm.prototype._pageBottom = function() {
-    this.topNode.scrollTop = this._vspacer.offsetTop;
+    let target = this._vspacer.offsetTop - this.availHeight - this.charHeight;
+    if (target < 0)
+        target = 0;
+    if (target - this.topNode.scrollTop <= 1
+        && this._currentlyPagingOrPaused()) {
+        this._pauseLimit = -1;
+        this._pauseContinue();
+        return;
+    }
+    this.topNode.scrollTop = target;
 }
 
 DomTerm.prototype._enterPaging = function(pause) {
@@ -9685,91 +9696,81 @@ DomTerm.prototype._pageNumericArgumentAndClear = function(def = 1) {
     return val;
 }
 
-DomTerm.prototype._pageKeyHandler = function(event, key, press) {
-    var arg = this._numericArgument;
+DomTerm.pageKeyHandler = function(dt, keyName) {
+    var arg = dt._numericArgument;
     // Shift-PageUp and Shift-PageDown should maybe work in all modes?
     // Ctrl-Shift-Up / C-S-Down to scroll by one line, in all modes?
-    if (this.verbosity >= 2)
-        this.log("page-key key:"+key+" event:"+event+" press:"+press);
-    switch (key) {
+    if (dt.verbosity >= 2)
+        dt.log("page-key key:"+keyName);
+    switch (keyName) {
         // C-Home start
         // C-End end
-    case 13: // Enter
-        this._pageLine(this._pageNumericArgumentAndClear(1));
-        event.preventDefault();
-        break;
-    case 33: // Page-up
+    case "Enter":
+        dt._pageLine(dt._pageNumericArgumentAndClear(1));
+        return true;
+    case "PageUp":
         // Also Shift-Space
         // Also backspace? DEL? 'b'?
-        this._pagePage(- this._pageNumericArgumentAndClear(1));
-        event.preventDefault();
-        break;
-    case 32: // Space
-        // ... fall through ...
-    case 34: // Page-down
-        this._pagePage(this._pageNumericArgumentAndClear(1));
-        event.preventDefault();
-        break;
-    case 36: // Home
-        this._pageTop();
-        event.preventDefault();
-        break;
-     case 35: // End
-        this._pageBottom();
-        event.preventDefault();
-        break;
-    case 40 /*Down*/:
-        // ... fall through ...
-    case 38 /*Up*/:
-        this._pageLine(key == 38 ? -1 : 1);
-        event.preventDefault();
-        break;
-    case 77: // 'M'
-        var oldMode = this._pagingMode;
+        dt._pagePage(- dt._pageNumericArgumentAndClear(1));
+        return true;
+    case "Space":
+    case "PageDown":
+        dt._pagePage(dt._pageNumericArgumentAndClear(1));
+        return true;
+    case "Home":
+        dt._pageTop();
+        return true;
+    case "End":
+        dt._pageBottom();
+        return true;
+    case "Down":
+        dt._pageLine(1);
+        return true;
+    case "Up":
+        dt._pageLine(-1);
+        return true;
+    case "'M'":
+        var oldMode = dt._pagingMode;
         if (oldMode==2)
-            this._pauseContinue();
-        this._enterPaging(oldMode==1);
-        event.preventDefault();
-        break;
-    case 112: // 'p'
-    case 37: // '%'
+            dt._pauseContinue();
+        dt._enterPaging(oldMode==1);
+        return true;
+    case "'p'":
+    case "'%'":
         // MAYBE: 'p' relative to current "group"; 'P' relative to absline 0.
         // MAYBE: 'P' toggle pager/pause mode
-        this._pageScrollAbsolute(this._pageNumericArgumentAndClear(50));
-        event.preventDefault();
-        break;
-    case 65: // 'A'
-        if (this._currentlyPagingOrPaused()) {
-            DomTerm.setAutoPaging("toggle", this);
-            this._pauseContinue();
-            this._exitPaging();
+        dt._pageScrollAbsolute(dt._pageNumericArgumentAndClear(50));
+        return true;
+    case "'a'":
+        if (dt._currentlyPagingOrPaused()) {
+            DomTerm.setAutoPaging("toggle", dt);
+            dt._pauseContinue();
+            dt._exitPaging();
         } else
-            DomTerm.setAutoPaging("toggle", this);
-        this._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
-                                     +(this._autoPaging?"on":"off"));
-        event.preventDefault();
-        break;
-    case 67:
-        if (event.ctrlKey) { // ctrl-C
-            this.reportKeyEvent(keyName, this.keyDownToString(event));
-            this._pauseContinue(true);
-            this._adjustPauseLimit(this.outputContainer);
-            event.preventDefault();
-        }
-        break;
+            DomTerm.setAutoPaging("toggle", dt);
+        dt._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
+                                     +(dt._autoPaging?"on":"off"));
+        return true;
+    case "Ctrl-C":
+        dt.reportKeyEvent(keyName, dt.keyDownToString(event));
+        dt._pauseContinue(true);
+        dt._adjustPauseLimit(dt.outputContainer);
+        return true;
     default:
-        if (press) {
-            var arg = this._numericArgument;
-            var next = String.fromCharCode(key);
+        let asKeyPress = DomTerm.keyNameChar(keyName);
+        if (asKeyPress) {
+            var arg = dt._numericArgument;
+            let key = asKeyPress.charCodeAt(0);
             // '0'..'9' || '-' and initial || .'.
             if ((key >= 48 && key <= 57) || (key == 45 && ! arg) || key == 46) {
-                arg = arg ? arg + next : next;
-                this._numericArgument = arg;
-                event.preventDefault();
-                this._updatePagerInfo();
+                arg = arg ? arg + asKeyPress : asKeyPress;
+                dt._numericArgument = arg;
+                dt._updatePagerInfo();
+                return true;
             }
         }
     }
+    return false;
 };
 
 /*
@@ -9792,6 +9793,7 @@ DomTerm.prototype._pauseNeeded = function() {
         this._autoPagingTemporary = false;
     }
     return (this._pagingMode > 0 || this._autoPaging)
+        && this._pauseLimit >= 0
         && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };
 

@@ -11,7 +11,7 @@
 @codequotebacktick on
 
 @macro mux-prefix
-Control-Shift-A
+Ctrl-Shift-A
 @end macro
 
 
@@ -1744,7 +1744,7 @@ and the sending (client process) will suspend too.
 You enter pause mode in two basic ways
 @itemize
 @item
-You manually enter pause mode by typing Control-Shift-P.
+You manually enter pause mode by typing Ctrl-Shift-M.
 @item
 You automatically enter pause mode if automatic pausing is
 enabled, and a ``full screen'' is displayed since last user interaction:
@@ -1753,9 +1753,9 @@ Any further output would cause part of the visible screen to scroll off.
 
 To enable automatic-pause mode on Electron you can
 check the @code{Automatic Pager} option in the right-click (context) menu.
-(You can also type @code{ctrl-shift-P} (to enter pause mode);
+(You can also type @code{ctrl-shift-M} (to enter pause mode);
 then @code{shift-A} (to enable auto-pause);
-and then @code{ctrl-shift-P} (to exit pause mode).
+and then @code{ctrl-shift-M} (to exit pause mode).
 This is obviously too awkward and needs to change.)
 
 To enter pager mode, you first have to enter pause mode,
@@ -1764,30 +1764,32 @@ and then type @code{P}.
 The following key-bindings are in effect in pager or paused mode.
 Some other these may be prefixed by a numeric @var{count}.
 @table @asis
-@item Shift-A
+@item @kbd{Ctrl-Shift-A}
 Toggle automatic-pause mode on and off.
-(This is a klunky way tro do it and is likely to change.)
-@item P
+(This is a klunky way to do it and is likely to change.)
+@item @kbd{p}
 Toggle between pager and pause mode.
-@item Control-Shift-P
+@item @kbd{Ctrl-Shift-P}
 Return to normal mode.
 If paused, allow further output.
-@item Space
+@item @kbd{Space}
 Scroll @var{count} screenfuls down.
 If we go past the bottom of the current output,
 leave pause or pager mode, and allow further output.
 Temporarily set automatic-pause mode, so that we pause again
 if the screen fills up again.
-@item Enter
+@item @kbd{Enter}
 Scroll @var{count} lines down.
 Otherwise similar to Space.
-@item PageUp
-@itemx PageDown
+@item @kbd{PageUp}
+@itemx @kbd{PageDown}
 Scroll @var{count} screenfuls up/down.
-@item Home
+@item @kbd{Home}
 Scroll to the current ``pager home''.  (Details needed ...)
-@item Home
-Scroll to the current ``pager home''.  (Details needed ...)
+@item @kbd{End}
+Scroll the end of the buffer.
+If paused and already at the end, un-pause.
+I.e. continue displaying output until the next action.
 @end table
 
 DomTerm does not yet implement a search command,
@@ -1796,14 +1798,14 @@ commonly bound to Ctrl-F.
 
 In addition the following work as in all other modes:
 @table @asis
-@item Control-Shift-Home
-@itemx Control-Shift-End
+@item @kbd{Ctrl-Shift-Home}
+@itemx @kbd{Ctrl-Shift-End}
 Scroll to top/bottom.
-@item Control-Shift-PageUp
-@itemx Control-Shift-PageDown
+@item @kbd{Ctrl-Shift-PageUp}
+@itemx @kbd{Ctrl-Shift-PageDown}
 Scroll one ``page'' up or down.
-@item Control-Shift-Up
-@itemx Control-Shift-Down
+@item @kbd{Ctrl-Shift-Up}
+@itemx @kbd{Ctrl-Shift-Down}
 Scroll one line up or down.
 @end table
 
@@ -2058,52 +2060,52 @@ div.input-line @{ background-color: inherit @}
 This does not list @ref{Input line editing,shortcuts specific to line-editing mode}.
 
 @table @asis
-@c FUTURE @item Control-Shift-P
+@c FUTURE @item Ctrl-Shift-P
 @c Enter/exit pager mode
 @c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
-@item @kbd{Control-Shift-@key{C}}
+@item @kbd{Ctrl-Shift-@key{C}}
 Copy the selection to the clipboard.
 It is copied as both plain text (@code{text/plain})
 and formatted HTML (@code{text/html}) in case the receiving
 application can paste the latter.
-(@kbd{Control-@key{C}} also works in line-editing mode.)
-@item @kbd{Control-Shift-@key{V}}
+(@kbd{Ctrl-@key{C}} also works in line-editing mode.)
+@item @kbd{Ctrl-Shift-@key{V}}
 Paste text from the clipboard.
-(@kbd{Control-@key{V}} also works in line-editing mode.)
-@item @kbd{Control-Shift-@key{S}}
+(@kbd{Ctrl-@key{V}} also works in line-editing mode.)
+@item @kbd{Ctrl-Shift-@key{S}}
 Save the display to a file.
-@item @kbd{Control-Shift-@key{L}}
+@item @kbd{Ctrl-Shift-@key{L}}
 Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
-@item @kbd{Control-Shift-@key{Home}}
+@item @kbd{Ctrl-Shift-@key{Home}}
 Scroll to top.
-@item @kbd{Control-Shift-@key{End}}
+@item @kbd{Ctrl-Shift-@key{End}}
 Scroll to bottom.
-@item @kbd{Control-Shift-@key{PageUp}}
-@itemx @kbd{Control-Shift-@key{PageDown}}
+@item @kbd{Ctrl-Shift-@key{PageUp}}
+@itemx @kbd{Ctrl-Shift-@key{PageDown}}
 Scroll one ``page'' up or down.
 (Specifically, the viewport height minus a height of one line.)
-@item @kbd{Control-Shift-@key{Up}}
-@itemx @kbd{Control-Shift-@key{Down}}
+@item @kbd{Ctrl-Shift-@key{Up}}
+@itemx @kbd{Ctrl-Shift-@key{Down}}
 Scroll one line up or down.
 @end table
 
 The following are implemented by most browsers, rather than DomTerm,
 so it may not work on all browsers.
 @table @asis
-@item @kbd{Control-Shift-@key{Plus}}
+@item @kbd{Ctrl-Shift-@key{Plus}}
 Zoom in (makes text bigger).
 (Does not work in atom-domterm.)
-@item @kbd{Control-Shift-@key{Minus}}
-@itemx @kbd{Control-@key{Minus}}
+@item @kbd{Ctrl-Shift-@key{Minus}}
+@itemx @kbd{Ctrl-@key{Minus}}
 Zoom out (makes text smaller).
 (Does not work in atom-domterm.)
-@item @kbd{Control-@key{0}}
+@item @kbd{Ctrl-@key{0}}
 ``Un-zoom'' to normal size.
 @item @kbd{@key{F11}}
 Toggle full-screen mode.
-@item @kbd{Control-Shift-@key{I}}
+@item @kbd{Ctrl-Shift-@key{I}}
 Toogle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
 @end table
@@ -2111,14 +2113,14 @@ the state of the Document Object Model.
 @subsubheading Scrolling
 
 @table @asis
-@item @kbd{Control-Shift-@key{PageUp}}
-@item @kbd{Control-Shift-@key{PageDown}}
+@item @kbd{Ctrl-Shift-@key{PageUp}}
+@item @kbd{Ctrl-Shift-@key{PageDown}}
 Scroll a page up or down, respectively.
-@item @kbd{Control-Shift-@key{Up}}
-@item @kbd{Control-Shift-@key{Down}}
+@item @kbd{Ctrl-Shift-@key{Up}}
+@item @kbd{Ctrl-Shift-@key{Down}}
 Scroll a line up or down, respectively.
-@item @kbd{Control-Shift-@key{Home}}
-@item @kbd{Control-Shift-@key{End}}
+@item @kbd{Ctrl-Shift-@key{Home}}
+@item @kbd{Ctrl-Shift-@key{End}}
 Scroll to top or bottom, respectively.
 @end table
 
@@ -2129,19 +2131,19 @@ The prefix key @kbd{@mux-prefix} when followed by some other key
 controls sessions and windows.
 
 @table @asis
-@item @kbd{Control-Shift-@key{T}}
+@item @kbd{Ctrl-Shift-@key{T}}
 Create a new terminal in a new tab.
-@item @kbd{Control-Shift-@key{N}}
+@item @kbd{Ctrl-Shift-@key{N}}
 Create a new terminal in a new pane (sub-window).
 The new pane is create to the right or below the current pane,
 depending on space.
-@item @kbd{@mux-prefix Control-@key{Left}}
+@item @kbd{@mux-prefix Ctrl-@key{Left}}
 Create a new terminal pane to the left of the current one.
-@item @kbd{@mux-prefix Control-@key{Right}}
+@item @kbd{@mux-prefix Ctrl-@key{Right}}
 Create a new terminal pane to the right of the current one.
-@item @kbd{@mux-prefix Control-@key{Up}}
+@item @kbd{@mux-prefix Ctrl-@key{Up}}
 Create a new terminal pane above the current one.
-@item @kbd{@mux-prefix Control-@key{Down}}
+@item @kbd{@mux-prefix Ctrl-@key{Down}}
 Create a new terminal pane below the current one.
 @item @kbd{@mux-prefix @key{Left}}
 Select the previous pane or tab.
@@ -3608,8 +3610,15 @@ Allowed properties include:
 @emph{Internal use: }
 Update user @ref{Settings,settings}.
 
-@item @code{"\e[90;" @var{op} "u\n"}
+@item @code{"\e[90;" @var{op} "u"}
 Create a new sub-window (pane), based on the @var{op}.
+
+@item @code{"\e[92;" @var{op} "u"}
+Temporarily enable auto-paging if @var{op} is 1.
+Disables it if @var{op} is 2 (- only if temporarily enabled).
+A simplified @code{more} program could temporarily enable auto-paging,
+print some amount of output, and then revert the state.
+This used by the @code{domterm help} command.
 
 @item @code{"\e[99;99u"}
 End-of-file on the output stream.
