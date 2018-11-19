@@ -1537,7 +1537,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             }
             if (avail >= eof_len) {
                 char *data_start = NULL;
-                int data_length = 0;
+                int data_length = 0, read_length = 0;
                 FOREACH_WSCLIENT(wsclient_wsi, pclient) {
                     struct tty_client *tclient =
                         (struct tty_client *) lws_wsi_user(wsclient_wsi);
@@ -1567,26 +1567,23 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                                             URGENT_WRAP("\033]71; %s %s%s lflag:%x\007"),
                                             icanon_str, echo_str,
                                             extproc_str, tio.c_lflag);
+                                data_length = n;
                             }
                             else
 #endif
-                                if (n > 0)
-                                    n--;
+                                read_length = n > 0 ? n - 1 : n;
 #endif
                         } else {
                             n = read(pclient->pty, data_start, avail);
+                            read_length = n;
                         }
-                        if (n >= 0) {
-                          tclient->ob.len += n;
-                          tclient->ocount += n;
-                          data_length = n;
-                        }
+                        data_length += read_length;
                     } else {
                         memcpy(tclient->ob.buffer+tclient->ob.len,
                                data_start, data_length);
-                        tclient->ob.len += data_length;
-                        tclient->ocount += data_length;
                     }
+                    tclient->ob.len += data_length;
+                    tclient->ocount += read_length;
                     lws_callback_on_writable(wsclient_wsi);
                 }
                 if (pclient->preserved_output != NULL
