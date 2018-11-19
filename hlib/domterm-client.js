@@ -127,8 +127,10 @@ function setupQWebChannel(channel) {
         }
         DomTerm.valueToClipboard(DomTerm._selectionValue(asHTML));
     }
+
     DomTerm.valueToClipboard = function(values) {
-        backend.setClipboard(values.plain, values.html);
+        backend.setClipboard(values.text, values.html);
+        return true;
     }
     DomTerm.settingsHook = function(key, value) {
         backend.setSetting(key, value);

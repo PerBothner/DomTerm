@@ -8333,11 +8333,14 @@ DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     return document.execCommand("paste", false);
 };
 
+DomTerm._rangeAsHTML = function(range) {
+    return DomTerm._nodeToHtml(range.cloneContents(), null, null);
+}
+
 DomTerm._selectionAsHTML = function(sel = window.getSelection()) {
     var hstring = "";
     for(var i = 0; i < sel.rangeCount; i++) {
-        var fragment = sel.getRangeAt(i).cloneContents();
-        hstring += DomTerm._nodeToHtml(fragment, null, false);
+        hstring += DomTerm._rangeAsHTML(sel.getRangeAt(i));
     }
     return hstring;
 }
@@ -8345,25 +8348,38 @@ DomTerm._selectionAsHTML = function(sel = window.getSelection()) {
 DomTerm._selectionValue = function(asHTML) {
     var sel = window.getSelection();
     var html = DomTerm._selectionAsHTML(sel);
-    return asHTML ? { plain: html, html: "" }
-    : { plain: sel.toString(), html: html };
+    return asHTML ? { text: html, html: "" }
+    : { text: sel.toString(), html: html };
 }
-DomTerm.doCopy = function(asHTML=false) {
-    if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "copy-selection", asHTML);
+
+DomTerm.valueToClipboard = function(values) {
+    if (DomTerm.isElectron()) {
+        if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+            DomTerm.sendParentMessage("selection-value", values);
+        } else {
+            const { clipboard} = nodeRequire('electron');
+            clipboard.write(values);
+        }
         return true;
     }
     function handler (event){
-        let r = DomTerm._selectionValue(asHTML);
-        if (r.plain)
-            event.clipboardData.setData('text/plain', r.plain);
-        if (r.html)
-            event.clipboardData.setData('text/html', r.html);
+        if (values.text)
+            event.clipboardData.setData('text/plain', values.text);
+        if (values.html)
+            event.clipboardData.setData('text/html', values.html);
         event.preventDefault();
         document.removeEventListener('copy', handler, true);
     }
     document.addEventListener('copy', handler, true);
     return document.execCommand("copy", false);
+}
+
+DomTerm.doCopy = function(asHTML=false) {
+    if (DomTerm.isFrameParent()) {
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "copy-selection", asHTML);
+        return true;
+    }
+    return DomTerm.valueToClipboard(DomTerm._selectionValue(asHTML));
 };
 
 DomTerm.doSaveAs = function(dt = DomTerm.focusedTerm) {
