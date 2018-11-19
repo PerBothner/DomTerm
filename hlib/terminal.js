@@ -270,6 +270,7 @@ function DomTerm(name, topNode) {
     this._regionRight = this.numColumns;
 
     this.controlSequenceState = DomTerm.INITIAL_STATE;
+    this._urgentControlState = DomTerm.INITIAL_STATE;
     this.parameters = new Array();
     this._savedControlState = null;
 
@@ -763,6 +764,8 @@ DomTerm.SEEN_ESC_SS2 = 14;
 DomTerm.SEEN_ESC_SS3 = 15;
 DomTerm.SEEN_SURROGATE_HIGH = 16;
 DomTerm.SEEN_CR = 17;
+/** Seen but deferred a request to exit std="error" mode. */
+DomTerm.SEEN_ERROUT_END_STATE = 18;
 
 // Possible values for _widthMode field of elements in lineStarts table.
 // This is related to the _widthColumns field in the same elements,
@@ -4388,7 +4391,7 @@ DomTerm.prototype.pushControlState = function() {
         count_urgent: false,
         _savedControlState: this._savedControlState
     };
-    this.controlSequenceState = DomTerm.INITIAL_STATE;
+    this.controlSequenceState = this._urgentControlState;
     this.parameters = new Array();
     this.decoder = new TextDecoder(); //label = "utf-8");
     this._savedControlState = save;
@@ -4397,6 +4400,7 @@ DomTerm.prototype.pushControlState = function() {
 DomTerm.prototype.popControlState = function() {
     var saved = this._savedControlState;
     if (saved) {
+        this._urgentControlState = this.controlSequenceState;
         this.controlSequenceState = saved.controlSequenceState;
         this.parameters = saved.parameters;
         this.decoder = saved.decoder;
@@ -4812,7 +4816,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 117 /*'u'*/:
         switch (this.getParameter(0, 0)) {
         case 11:
-            this._pushStdMode(null);
+            this.controlSequenceState = DomTerm.SEEN_ERROUT_END_STATE;
             break;
         case 12:
             this._pushStdMode("error");
@@ -6933,6 +6937,7 @@ DomTerm.prototype.insertString = function(str) {
                 this.controlSequenceState = DomTerm.INITIAL_STATE;
             /* falls through */
         case DomTerm.INITIAL_STATE:
+        case DomTerm.SEEN_ERROUT_END_STATE:
             if (DomTerm._doLinkify && DomTerm.isDelimiter(ch)
                 && this.linkify(str, prevEnd, i, columnWidth, ch)) {
                 prevEnd = i;
@@ -7001,9 +7006,23 @@ DomTerm.prototype.insertString = function(str) {
                 break;
             case 27 /* Escape */:
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                var nextState = DomTerm.SEEN_ESC_STATE;
+                if (state == DomTerm.SEEN_ERROUT_END_STATE) {
+                    // cancelled by an immediate start-of-error-output
+                    if (i + 5 <= slen
+                        && str.charCodeAt(i+1) == 91/*'['*/
+                        && str.charCodeAt(i+2) == 49/*'1'*/
+                        && str.charCodeAt(i+3) == 50/*'2'*/
+                        && str.charCodeAt(i+4) == 117/*'u'*/
+                        && this._getStdMode() == "error") {
+                        i += 4;
+                        nextState = DomTerm.INITIAL_STATE;
+                    } else
+                        this._pushStdMode(null);
+                }
                 //this.currentCursorColumn = column;
                 prevEnd = i + 1; columnWidth = 0;
-                this.controlSequenceState = DomTerm.SEEN_ESC_STATE;
+                this.controlSequenceState = nextState;
                 continue;
             case 8 /*'\b'*/:
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
