@@ -8679,6 +8679,10 @@ DomTerm.commandMap = new Object();
 DomTerm.commandMap['paste-text'] = function(dt, key) {
     DomTerm.doPaste(dt);
     return true; }
+DomTerm.commandMap['cut-text'] = function(dt, key) {
+    if (! window.getSelection().isCollapsed)
+        dt.editorBackspace(1, "kill", "line", "buffer");
+    return true; }
 DomTerm.commandMap['backward-char'] = function(dt, key) {
     dt.editorBackspace(dt.numericArgumentGet(), "move", "char");
     return true; }
@@ -8726,6 +8730,10 @@ DomTerm.commandMap['beginning-of-line-extend'] = function(dt, key) {
     return true; }
 DomTerm.commandMap['end-of-line-extend'] = function(dt, key) {
     dt.editorMoveStartOrEndLine(true, "extend"); dt._numericArgument = null;
+    return true; }
+DomTerm.commandMap['kill-line'] = function(dt, key) {
+    let count = dt.numericArgumentGet();
+    dt.editorBackspace(- count, "kill", "line", "buffer");
     return true; }
 DomTerm.commandMap['beginning-of-input'] = function(dt, key) {
     dt.editorMoveHomeOrEnd(false); dt._numericArgument = null;
@@ -8823,6 +8831,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
     "Ctrl-Shift-V": "paste-text",
+    // "Ctrl-Shift-X": "cut-text", // redundant - for now
     "Left": 'backward-char',
     "Mod-Left": 'backward-word',
     "Right": 'forward-char',
@@ -8870,6 +8879,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-D": "forward-delete-char",
     "Ctrl-E": "end-of-line",
     "Ctrl-F": "forward-char",
+    "Ctrl-K": "kill-line",
     "Ctrl-N": "down-line-or-history",
     "Ctrl-P": "up-line-or-history",
     "(keypress)": "insert-char"
@@ -10116,8 +10126,12 @@ DomTerm.prototype.editorInsertString = function(str, inserting=true) {
     }
 }
 
-DomTerm.prototype.editorDeleteRange = function(range, linesCount = -1) {
+DomTerm.prototype.editorDeleteRange = function(range, toClipboard,
+                                               linesCount = -1) {
     let str = range.toString();
+    if (toClipboard)
+        DomTerm.valueToClipboard({text: str,
+                                  html: DomTerm._rangeAsHTML(range)});
     range.deleteContents();
     range.commonAncestorContainer.normalize();
     let lineNum = this.getAbsCursorLine();
@@ -10259,13 +10273,14 @@ DomTerm.prototype.scanInRange = function(range, backwards, state) {
 
 /**
  * unit: "char", "word"
- * action: one of "move", "extend" (extend selection), or "delete"
+ * action: one of "move", "extend" (extend selection),
+ *   "delete", or "kill" (cut to clipboard).
  * stopAt: one of "", "line" (stop before moving to different hard line),
  * or "visible-line" (stop before moving to different screen line).
  */
 DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     this.sstate.goalColumn = undefined;
-    let doDelete = action == "delete";
+    let doDelete = action == "delete" || action == "kill";
     let doWords = unit == "word";
     let doLines = unit == "line";
     let backwards = count > 0;
@@ -10278,6 +10293,7 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     let sel = document.getSelection();
     if (! sel.isCollapsed && action != "extend") {
         if (doDelete) {
+            let text = "",  html = "";
             for (let i = sel.rangeCount; --i >= 0; ) {
                 let r = new Range();
                 r.selectNodeContents(this._inputLine);
@@ -10286,8 +10302,14 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
                     r.setStart(sr.startContainer, sr.startOffset);
                 if (r.comparePoint(sr.endContainer, sr.endOffset) <= 0)
                     r.setEnd(sr.endContainer, sr.endOffset);
-                this.editorDeleteRange(r);
+                if (action == "kill") {
+                    text += r.toString();
+                    html += DomTerm._rangeAsHTML(r);
+                }
+                this.editorDeleteRange(r, false);
             }
+            if (action == "kill")
+                DomTerm.valueToClipboard({text: text, html: html });
         } else {
             let r = sel.getRangeAt(0);
             let node = backwards ? r.startContainer : r.endContainer;
@@ -10310,7 +10332,7 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
         linesCount = scanState.linesCount;
         todo = scanState.todo;
         if (doDelete) {
-            this.editorDeleteRange(range, linesCount);
+            this.editorDeleteRange(range, action == "kill", linesCount);
             if (linesCount > 0)
                 this._updateAutomaticPrompts();
             this._restoreCaret();
