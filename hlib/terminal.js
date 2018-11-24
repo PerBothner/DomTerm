@@ -9585,8 +9585,6 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     this._pushIntoElement(alink);
     if (end-afterLen > start)
         this.insertSimpleOutput(str, start, end-afterLen, columnWidth);
-    this.outputContainer = alink.parentNode;
-    this.outputBefore = alink.nextSibling;
     let old = alink.firstChild;
     for (let n = firstToMove; n && n != alink; ) {
         let next = n.nextSibling;
@@ -9596,6 +9594,19 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
             alink.insertBefore(n, old);
         n = next;
     }
+    var saveCol = this.currentCursorColumn;
+    var saveLine = this.currentAbsLine;
+    this.outputContainer = alink.parentNode;
+    this.outputBefore = alink;
+    this.resetCursorCache();
+    let linkLine = this.getAbsCursorLine();
+    if (this._deferredLinebreaksStart < 0
+        || this._deferredLinebreaksStart > linkLine)
+        this._deferredLinebreaksStart = linkLine;
+    this.outputBefore = alink.nextSibling;
+    this.currentCursorColumn = saveCol;
+    this.currentAbsLine = saveLine;
+
     DomTerm._addMouseEnterHandlers(this, alink.parentNode);
     if (afterLen > 0) {
         if (end == start && alink.lastChild instanceof Text) {
