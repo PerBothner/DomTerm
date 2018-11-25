@@ -5095,6 +5095,10 @@ DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
 }
 
 DomTerm.handleLink = function(element) {
+    if (DomTerm.isFrameParent()) {
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "open-link");
+        return;
+    }
     let dt = DomTerm._getAncestorDomTerm(element);
     if (! dt)
         return;
