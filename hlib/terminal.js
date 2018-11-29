@@ -160,6 +160,8 @@ function DomTerm(name, topNode) {
     // inferior, which calls tcgetattr to decide what to do.  (If CANON, the
     // key is sent back to DomTerm; otherwise, it is sent to the child proess.)
     this.autoLazyCheckInferior = true;
+    this._keyEventCounter = 0;
+    this._keyEventBuffer = new Array();
 
     // 0: not in paging or pause mode
     // 1: in paging mode
@@ -3398,7 +3400,11 @@ DomTerm.prototype.reportEvent = function(name, data) {
 };
 
 DomTerm.prototype.reportKeyEvent = function(keyName, str) {
-    this.reportEvent("KEY", ""+keyName+"\t"+JSON.stringify(str));
+    let seqno = this._keyEventCounter;
+    let data = ""+keyName+"\t"+seqno+"\t"+JSON.stringify(str);
+    this._keyEventBuffer[seqno & 31] = data;
+    this.reportEvent("KEY", data);
+    this._keyEventCounter = (seqno + 1) & 1023;
 };
 
 DomTerm.prototype._initPendingInput = function(str) {
@@ -6031,19 +6037,45 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     case 73:
     case 74:
         this._clientPtyEcho = code != 73;
-        if (this._clientWantsEditing)
-            return;
-        var tb = text.indexOf('\t');
-        var keyName = tb < 0 ? text : text.substring(0, tb);
-        var kstr = tb < 0 ? "?" : JSON.parse(text.substring(tb+1));
-        if (this.verbosity >= 2)
-            this.log("OSC KEY k:"+keyName+" kstr:"+this.toQuoted(kstr));
-        this._clientWantsEditing = 1;
-        this.editorAddLine();
-        if (keyName == "paste")
-            this.editorInsertString(kstr);
-        else
-            this.doLineEdit(keyName);
+        if (! this._clientWantsEditing) {
+            // We sent a KEY event, and got it back, because the pty
+            // is in canon mode.  Enter line-editing mode.
+            let keyName, seqno, kstr;
+            function extractEditKey(text) {
+                let tb1 = text.indexOf('\t');
+                let tb2 = tb1 < 0 ? -1 : text.indexOf('\t', tb1+1);
+                if (tb2 < 0)
+                    tb2 = text.length;
+                keyName = tb1 < 0 ? text : text.substring(0, tb1);
+                seqno = tb1 < 0 ? -1 : JSON.parse(text.substring(tb1+1, tb2));
+                kstr = tb2 < 0 ? "?" : JSON.parse(text.substring(tb2+1));
+            }
+            function processEditKey(dt) {
+                dt._clientWantsEditing = 1;
+                dt.editorAddLine();
+                if (keyName == "paste")
+                    dt.editorInsertString(kstr);
+                else
+                    dt.doLineEdit(keyName);
+            }
+            let firstEditCommand = this._inputLine == null;
+            extractEditKey(text);
+            if (this.verbosity >= 2)
+                this.log("OSC KEY k:"+keyName+" kstr:"+this.toQuoted(kstr)+" seq:"+seqno);
+            if (firstEditCommand) { 
+                processEditKey(this);
+                // If we have have sent other KEY events subsequent to the
+                // one we got back, process them now, to avoid out-of-order
+                // edits with ones that are done subsequently locally.
+                for (let i = seqno;
+                     (i = (i + 1) & 31) != (this._keyEventCounter & 31); ) {
+                    extractEditKey(this._keyEventBuffer[i]);
+                    processEditKey(this);
+                }
+            } else {
+                // We got back a KEY event which was previously handled.
+            }
+        }
         break;
     case 7:
         // text is pwd as URL: "file://HOST/PWD"

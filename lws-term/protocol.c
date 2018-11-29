@@ -762,15 +762,16 @@ reportEvent(const char *name, char *data, size_t dlen,
             pclient->paused = 0;
         }
     } else if (strcmp(name, "KEY") == 0) {
-        char *q = strchr(data, '\t');
-        if (! q)
+        char *q1 = strchr(data, '\t');
+        char *q2;
+        if (q1 == NULL || (q2 = strchr(q1+1, '\t')) == NULL)
             return; // ERROR
         struct termios termios;
         if (tcgetattr(pclient->pty, &termios) < 0)
           ; //return -1;
         bool isCanon = (termios.c_lflag & ICANON) != 0;
         bool isEchoing = (termios.c_lflag & ECHO) != 0;
-        json_object *obj = json_tokener_parse(q+1);
+        json_object *obj = json_tokener_parse(q2+1);
         const char *kstr = json_object_get_string(obj);
         int klen = json_object_get_string_len(obj);
         int kstr0 = klen != 1 ? -1 : kstr[0];
