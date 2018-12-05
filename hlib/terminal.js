@@ -1482,33 +1482,18 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
     this.currentCursorColumn = column;
 };
 
-DomTerm.prototype._followingText = function(cur) {
-    for (;;) {
-        if (cur instanceof Text)
-            return cur;
-        else if (cur instanceof Element) {
-            var line = cur.getAttribute("line");
-            if (line != null)
-                return null;
-            if (cur.getAttribute("line") != null)
-                return cur;
-            if (cur.firstChild)
-                cur = cur.firstChild;
-            else {
-                for (;;) {
-                    if (cur == null)
-                        return null;
-                    if (cur.nextSibling) {
-                        cur = cur.nextSibling;
-                        break;
-                    }
-                    cur = cur.parentNode;
-                }
-            }
-        }
-        else
+DomTerm.prototype._followingText = function(cur, backwards = false) {
+    function check(node) {
+        if (node == cur)
+            return false;
+        if (node.tagName == "SPAN" && node.getAttribute("line"))
             return null;
+        if (node instanceof Text)
+            return node;
+        return true;
     }
+    return this._forEachElementIn(this._getOuterBlock(cur), check,
+                                  true, backwards, cur);
 };
 
 DomTerm.prototype._showPassword = function() {
