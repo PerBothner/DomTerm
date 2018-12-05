@@ -7,6 +7,7 @@ DomTerm.simpleLayout = false;
 // separates 'id' spaces.  However, it adds some overhead.
 // Only relevant when using a layout manager like GoldenLayout.
 DomTerm.useIFrame = ! DomTerm.simpleLayout
+    && ! DomTerm.useXtermJs
     // This is a kludge FIXME
     && ! location.hash.match(/view-saved=([^&]*)/);
 
@@ -299,9 +300,12 @@ function loadHandler(event) {
         return;
     }
     var topNodes = document.getElementsByClassName("domterm");
+    if (topNodes.length == 0)
+        topNodes = document.getElementsByClassName("domterm-wrapper");
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
             let ifr = DomTerm.makeIFrameWrapper(DomTerm.mainLocation+uhash);
+            DomTerm._oldFocusedContent = ifr;
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
                 lcontent.contentWindow.postMessage({"command": command, "args": args}, "*");
             }

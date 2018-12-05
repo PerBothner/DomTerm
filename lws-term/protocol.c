@@ -346,6 +346,7 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
             memcpy(nenv, env, (env_size + 1)*sizeof(const char*));
 
             put_to_env_array(nenv, env_max, "TERM=xterm-256color");
+#if !  WITH_XTERMJS
             put_to_env_array(nenv, env_max, "COLORTERM=truecolor");
             char* dinit = "DOMTERM=";
 #ifdef LWS_LIBRARY_VERSION
@@ -391,6 +392,7 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
             }
             ebuf[mlen] = '\0';
             put_to_env_array(nenv, env_max, ebuf);
+#endif
 #if ENABLE_LD_PRELOAD
             int normal_user = getuid() == geteuid();
             char* domterm_home = get_bin_relative_path("");

@@ -1419,12 +1419,18 @@ static const char * standard_stylesheets[] = {
     "hlib/jsMenus.css",
     "hlib/domterm-layout.css",
     "hlib/domterm-default.css",
+#if WITH_XTERMJS
+    "hlib/xterm.css",
+#endif
     NULL
 };
 static const char * standard_stylesheets_simple[] = {
     "hlib/domterm-core.css",
     "hlib/domterm-standard.css",
     "hlib/domterm-default.css",
+#if WITH_XTERMJS
+    "hlib/xterm.css",
+#endif
     NULL
 };
 static const char * standard_jslibs[] = {
@@ -1436,11 +1442,19 @@ static const char * standard_jslibs[] = {
     "hlib/qwebchannel.js",
     "hlib/jsMenus.js",
     "hlib/domterm-client.js",
+#if WITH_XTERMJS
+    "hlib/xterm.js",
+    "hlib/fit.js",
+#endif
     NULL
 };
 static const char * standard_jslibs_simple[] = {
     "hlib/domterm-layout.js",
     "hlib/domterm-client.js",
+#if WITH_XTERMJS
+    "hlib/xterm.js",
+    "hlib/fit.js",
+#endif
     NULL
 };
 

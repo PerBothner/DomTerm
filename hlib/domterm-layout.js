@@ -193,7 +193,7 @@ DomTerm.showFocusedPaneF = function(lcontent) {
 DomTerm._selectLayoutPane = function(component, originMode) {
     if (DomTerm.useIFrame) {
         DomTerm._focusChild(component.container._contentElement1, originMode);
-    } else {
+    } else if (! DomTerm.useXtermJs) {
         var dt = DomTerm.layoutItemToDomTerm(component);
         DomTerm.setFocus(dt);
         dt.maybeFocus();
@@ -209,7 +209,7 @@ DomTerm._focusChild = function(iframe, originMode) {
                 DomTerm.sendChildMessage(oldContent, "set-focused", 0);
             if (originMode != "F")
                 DomTerm.sendChildMessage(iframe, "set-focused", 2);
-        } else {
+        } else if (! DomTerm.useXtermJs) {
             if (oldContent != null)
                 oldContent.firstChild.terminal.setFocused(0);
             if (originMode != "F" && iframe.firstChild.terminal) //originMode != "A")
@@ -453,7 +453,7 @@ DomTerm.layoutInit = function(term) {
             } else {
                 name = DomTerm.freshName();
                 el = DomTerm.makeElement(name);
-                wrapped = el.parentNode;
+                wrapped = DomTerm.useXtermJs ? el : el.parentNode;
             }
             container._contentElement1 = wrapped;
             if (DomTerm._pendingTerminals) {
@@ -468,7 +468,8 @@ DomTerm.layoutInit = function(term) {
         DomTerm.showFocusedPaneL(container.parent, wrapped);
         wrapped.classList.add("lm_content");
         container.setTitle(name);
-        container.on('resize', DomTerm.layoutResized, el);
+        //if (! DomTerm.useXtermJs)
+        //container.on('resize', DomTerm.layoutResized, wrapped);
         container.on('destroy', DomTerm.domTermLayoutClosed, container);
 
         if (top !== document.body)

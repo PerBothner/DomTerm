@@ -244,6 +244,11 @@ endif
 $(DOMTERM_JAR): classes.stamp hlib/domterm-all.js $(MISC_COPY_TO_JAR)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
+if WITH_XTERMJS
+	cp $(XTERMJS_PATH)/xterm.js \
+	  $(XTERMJS_PATH)/xterm.css $(XTERMJS_PATH)/addons/fit/fit.js \
+	  tmp-for-jar/hlib
+endif
 if WITH_JAVA
 	cd tmp-for-jar && \
 	  jar cmf $(abs_top_srcdir)/domterm-jar-manifest ../$(DOMTERM_JAR) .

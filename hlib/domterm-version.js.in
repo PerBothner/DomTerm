@@ -2,6 +2,7 @@
 DomTerm.versionString = "@DOMTERM_VERSION@";
 DomTerm.copyrightYear = @DOMTERM_YEAR@;
 DomTerm.inAtomFlag = false;
+DomTerm.useXtermJs = @WITH_XTERMJS@;
 
 DomTerm.versions = {};
 DomTerm.versions.domterm = DomTerm.versionString;

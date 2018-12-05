@@ -447,11 +447,7 @@ DomTerm.makeIFrameWrapper = function(location) {
     return ifr;
 }
 
-DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout()) {
-    let topNode = document.createElement("div");
-    topNode.setAttribute("class", "domterm");
-    topNode.setAttribute("id", name);
-    let lcontent;
+DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), lcontent = null) {
     if (wrap) {
         lcontent = document.createElement("div");
         lcontent.setAttribute("class", "domterm-wrapper");
@@ -459,9 +455,13 @@ DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout()) {
         DomTerm.layoutTop.appendChild(lcontent);
         if (DomTerm._oldFocusedContent == null)
             DomTerm._oldFocusedContent = lcontent;
-    } else {
+        return lcontent;
+    } else if (lcontent == null) {
         lcontent = DomTerm.layoutTop;
     }
+    let topNode = document.createElement("div");
+    topNode.setAttribute("class", "domterm");
+    topNode.setAttribute("id", name);
     lcontent.appendChild(topNode);
     return topNode;
 }
@@ -499,8 +499,10 @@ DomTerm._deleteData = function(text, start, count) {
 }
 
 DomTerm.prototype.eofSeen = function() {
-    this.historySave();
-    this.history.length = 0;
+    if (this.history) {
+        this.historySave();
+        this.history.length = 0;
+    }
     DomTerm.closeFromEof(this);
 };
 
@@ -577,9 +579,11 @@ DomTerm.prototype.close = function() {
     }
     if (DomTerm.useIFrame)
         DomTerm.sendParentMessage("layout-close");
-    else if (DomTerm.layoutManager && DomTerm.domTermLayoutClose)
-        DomTerm.domTermLayoutClose(this, DomTerm.domTermToLayoutItem(this));
-    else
+    else if (DomTerm.layoutManager && DomTerm.domTermLayoutClose) {
+        let lcontent = DomTerm.wrapForLayout() ? this.topNode.parentNode
+            : this.topNode;
+        DomTerm.domTermLayoutClose(lcontent, DomTerm.domTermToLayoutItem(this));
+    } else
         DomTerm.windowClose();
 };
 
@@ -1714,7 +1718,7 @@ DomTerm.prototype._restoreInputLine = function(caretToo = true) {
            && this.outputContainer.parentNode != inputLine) {
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
             this.outputBefore = inputLine;
-            if (this._pagingMode == 0)
+            if (this._pagingMode == 0 && ! DomTerm.useXtermJs)
                 this.maybeFocus();
             if (this.isLineEditing()) {
                 let dt = this;
@@ -2656,6 +2660,7 @@ DomTerm.prototype.resizeHandler = function() {
         dt.log("ResizeSensor called "+dt.name); 
     var oldWidth = dt.availWidth;
     dt.measureWindow();
+    if (DomTerm.useXtermJs) return;
     dt._displaySizeInfoWithTimeout();
 
     var home_offset = DomTerm._homeLineOffset(dt);
@@ -2891,6 +2896,10 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
 };
 
 DomTerm.prototype.measureWindow = function()  {
+    if (DomTerm.useXtermJs) {
+        window.fit.fit(this.xterm);
+        return;
+    }
     var availHeight = this.topNode.clientHeight;
     if (this.verbosity >= 2)
         console.log("measureWindow "+this.name+" avH:"+availHeight);
@@ -3418,6 +3427,8 @@ DomTerm.prototype._initPendingInput = function(str) {
 }
 
 DomTerm.prototype._addPendingInput = function(str) {
+    if (DomTerm.useXtermJs)
+        return;
     var pending = this._initPendingInput();
     this._caretNode.parentNode.insertBefore(document.createTextNode(str),
                                             this._caretNode);
@@ -5022,11 +5033,9 @@ DomTerm.prototype.handleControlSequence = function(last) {
                             this);
             break;
         case 91:
-            this.sstate.sessionNumber = this.getParameter(1, 0);
-            this.topNode.setAttribute("session-number", this.sstate.sessionNumber);
-            this.sstate.sessionNameUnique = this.getParameter(2, 0) != 0;
-            this.windowNumber = this.getParameter(3, 0)-1;
-            this.updateWindowTitle();
+            this.setSessionNumber(this.getParameter(1, 0),
+                                  this.getParameter(2, 0) != 0,
+                                  this.getParameter(3, 0)-1);
             break;
         case 92:
             switch (this.getParameter(1, 0)) {
@@ -5124,6 +5133,14 @@ DomTerm.handleLink = function(element) {
 // It can be used in stylesheets as well as the window title.
 DomTerm.prototype.setSessionName = function(title) {
     this.setWindowTitle(title, 30);
+}
+
+DomTerm.prototype.setSessionNumber = function(snumber, unique, wnumber) {
+    this.sstate.sessionNumber = snumber;
+    this.topNode.setAttribute("session-number", snumber);
+    this.sstate.sessionNameUnique = unique;
+    this.windowNumber = wnumber;
+    this.updateWindowTitle();
 }
 
 // FIXME misleading function name - this is not just the session name
@@ -8626,6 +8643,8 @@ DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
         dt.clientDoesEcho = false;
         break;
     }
+    if (DomTerm.useXtermJs)
+        return;
     if (dt.isLineEditing())
         dt.editorAddLine();
     dt._restoreInputLine();
@@ -8950,6 +8969,8 @@ DomTerm.prototype.doLineEdit = function(keyName) {
 DomTerm.saveFileCounter = 0;
 
 DomTerm.prototype._adjustPauseLimit = function(node) {
+    if (node == null)
+        return;
     var limit = node.offsetTop + this.availHeight;
     if (limit > this._pauseLimit)
         this._pauseLimit = limit;
@@ -9168,11 +9189,13 @@ DomTerm.prototype.keyDownHandler = function(event) {
             if (this.scrollOnKeystroke)
                 this._enableScroll();
             event.preventDefault();
+            if (! DomTerm.useXtermJs) {
             if (keyName == "Left" || keyName == "Right") {
                 this._editPendingInput(keyName == "Right", false);
             }
             if (keyName == "Backspace" || keyName == "Delete") {
                 this._editPendingInput(keyName == "Delete", true);
+            }
             }
             this._respondSimpleInput(str, keyName);
         }
@@ -9374,6 +9397,56 @@ DomTerm.wrapForLayout = function() {
     return ! DomTerm.isInIFrame() && ! DomTerm.simpleLayout;
 }
 
+DomTerm.initXtermJs = function(dt, topNode) {
+    let xterm = new Terminal();
+    xterm.open(topNode);
+    this.xterm = xterm;
+    topNode.terminal = dt;
+    DomTerm.setInputMode(99, dt);
+    dt.topNode = xterm.element;
+    dt.insertString = function(str) { xterm.write(str); };
+    xterm.on('resize', function(data) {
+        //dt.setWindowSize(data.rows, data.cols, dt.availHeight, dt.availWidth);
+        dt.setWindowSize(data.rows, data.cols, 0, 0);
+    });
+    xterm.attachCustomKeyEventHandler(function(e) {
+        if (e.type == 'keypress')
+            dt.keyPressHandler(e);
+        else
+            dt.keyDownHandler(e);
+        return false;
+    });
+    dt.attachResizeSensor();
+    dt.xterm = xterm;
+    if (window.fit)
+        window.fit.fit(xterm);
+    let inputHandler = xterm.inputHandler;
+    inputHandler.addCsiHandler("u",
+                               function(params,collect) {
+                                   switch (params[0]) {
+                                   case 90:
+                                       DomTerm.newPane(params[1], params[2], dt);
+                                       return true;
+                                   case 91:
+                                       dt.setSessionNumber(params[1],
+                                                           params[2]!=0,
+                                                           params[3]-1);
+                                       return true;
+                                   case 99:
+                                       if (params[1]==99) {
+                                           dt.eofSeen();
+                                           return true;
+                                       }
+                                       break;
+                                   }
+                                   return false;
+                               });
+    inputHandler.addOscHandler(0, function(data) { dt.setWindowTitle(data, 0); return false; });
+    inputHandler.addOscHandler(1, function(data) { dt.setWindowTitle(data, 1); return false; });
+    inputHandler.addOscHandler(2, function(data) { dt.setWindowTitle(data, 2); return false; });
+    inputHandler.addOscHandler(30, function(data) { dt.setWindowTitle(data, 30); return false; });
+}
+
 /** Connect using WebSockets */
 DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     if (name == null) {
@@ -9422,7 +9495,14 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     }
     wsocket.onopen = function(e) {
         wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
-        wt.initializeTerminal(topNode);
+        if (DomTerm.useXtermJs && window.Terminal != undefined) {
+            DomTerm.initXtermJs(wt, topNode);
+            DomTerm.setFocus(wt, "N");
+        } else {
+            if (topNode.classList.contains("domterm-wrapper"))
+                topNode = wt.makeElement(name, false, topNode);
+            wt.initializeTerminal(topNode);
+        }
     };
 }
 
