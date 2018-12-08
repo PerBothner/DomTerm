@@ -33,7 +33,7 @@ is done with Web Sockets.
 @emph{}
 @uref{images/domterm-panes-1.png,@image{images/domterm-panes-1}}
 
-This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emulator, OpenSource.org article} provides an overview of the functionality.
+This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emulator, OpenSource.com article} provides an overview of the functionality.
 This @uref{https://lwn.net/Articles/670062/,old LWN article} provides
 background, motivation, and a summary of the functionality.
 
