@@ -679,14 +679,7 @@ handle_tlink(char *template, json_object *obj)
             *semi = 0;
         else
             semi = NULL;
-        if (strcmp(start, "browser")==0||strcmp(start, "default")==0) {
-            struct json_object *jhref;
-            if (json_object_object_get_ex(obj, "href", &jhref)) {
-                default_link_command(json_object_get_string(jhref));
-                break;
-            }
-        } else
-          command = check_template(start, obj);
+        command = check_template(start, obj);
         if (command != NULL)
            break;
         if (semi)
@@ -695,7 +688,17 @@ handle_tlink(char *template, json_object *obj)
             break;
     }
     free(t);
-    if (command == NULL || system(command) != 0)
+    if (command == NULL)
+        return false;
+    if (strcmp(command, "browser")==0||strcmp(command, "default")==0) {
+        struct json_object *jhref;
+        free(command);
+        if (json_object_object_get_ex(obj, "href", &jhref)) {
+            default_link_command(json_object_get_string(jhref));
+            return true;
+        }
+    }
+    if (system(command) != 0)
         return false;
     free(command);
     return true;
@@ -717,7 +720,7 @@ handle_link(json_object *obj)
     }
     char *template = main_options->openlink_application;
     if (template == NULL)
-        template = "{!mailto:}chrome;{!mailto:}firefox;default";
+        template = "{!mailto:}browser;{!mailto:}chrome;{!mailto:}firefox";
     handle_tlink(template, obj);
 }
 
