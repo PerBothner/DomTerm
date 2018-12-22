@@ -519,7 +519,7 @@ electron_command(struct options *options)
     }
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *app_fixed = fix_for_windows(app);
-    char *format = "%s %s%s%s --url '%U'";
+    char *format = "%s %s%s%s --url '%%U'";
     const char *g1 = "", *g2 = "";
     char *geometry = geometry_option(options);
     if (geometry) {
