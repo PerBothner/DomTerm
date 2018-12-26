@@ -1529,7 +1529,7 @@ DomTerm.prototype._removeCaret = function(normalize=true) {
         var child = caretNode.firstChild;
         caretNode.removeAttribute("caret");
         if (child instanceof Text) {
-            var text = this._followingText(caretNode.nextSibling);
+            var text = caretNode.nextSibling;
             if (normalize && text instanceof Text) {
                 text.insertData(0, child.data);
                 caretNode.removeChild(child);
