@@ -7434,6 +7434,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     // - a <span> node containing pre-line prefixes; or
     // - an absolute x-position (in pixels)
     var indentation = new Array();
+    let line;
 
     function addIndentation(dt, el, countColumns) {
         var n = indentation.length;
@@ -7554,17 +7555,14 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     skipChildren = true;
                     break;
                 }
-                if (lineAttr == "linear") {
-                    var group = el.outerPprintGroup;
-                    var sectionEnd = group ? group.sectionEnd : null;
-                    if (! sectionEnd)
-                        sectionEnd = dt.lineEnds[line];
-                }
+                if (lineAttr == "required")
+                    pprintGroup.breakSeen = true;
             } else if (el.classList.contains("pprint-indent")) {
                 skipChildren = true;
                 el.pprintGroup = pprintGroup;
             } else if (el.classList.contains("pprint-group")) {
                 pprintGroup = el;
+                pprintGroup.breakSeen = false;
             }
             if (el.firstChild != null && ! skipChildren)
                 el = el.firstChild;
@@ -7573,7 +7571,10 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     if (el == null)
                         break;
                     if (el == pprintGroup) { // pop pprint-group
-                        pprintGroup = pprintGroup.outerPprintGroup;
+                        let outerGroup = pprintGroup.outerPprintGroup;
+                        if (pprintGroup.breakSeen && outerGroup)
+                            outerGroup.breakSeen = true;
+                        pprintGroup = outerGroup;
                     }
                     var next = el.nextSibling;
                     if (countColumns && el instanceof Element)
@@ -7685,15 +7686,15 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 if ((lineAttr == "hard" || lineAttr == "soft")
                     && el.outerPprintGroup == null)
                     break;
+                var group = el.outerPprintGroup;
                 if (lineAttr == "linear") {
-                    var group = el.outerPprintGroup;
                     var sectionEnd = group ? group.sectionEnd : null;
                     if (! sectionEnd)
                         sectionEnd = dt.lineEnds[line];
                     var containingSectionStartLine =
                         el.outerPprintGroup == null ? sectionStartLine
                         : el.outerPprintGroup.saveSectionStartLine;
-                    if (line > containingSectionStartLine
+                    if ((group && group.breakSeen)
                         || (sectionEnd.measureLeft - startOffset) > availWidth)
                         dobreak = true;
                 } else if (lineAttr == "hard" || lineAttr == "required")
@@ -7707,10 +7708,15 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                         dobreak = true;
                 }
                 if (dobreak) {
+                    if (group)
+                        group.breakSeen = true;
                     startOffset = el.measureLeft + el.measureWidth;
                     var indentWidth = addIndentation(dt, el, countColumns);
-                    startOffset -= indentWidth;
                     beforePos = indentWidth;
+                    let postBreak = el.getAttribute("post-break");
+                    if (postBreak)
+                        beforePos += dt.strWidthInContext(postBreak, el) * dt.charWidth;
+                    startOffset -= beforePos;
                     if (lineAttr != "hard") {
                         DomTerm._insertIntoLines(dt, el, line);
                         line++;
@@ -7754,7 +7760,6 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                 }
                 indentation.push(el.measureLeft - startOffset);
                 pprintGroup = el;
-                el.breakSeen = false;
             }
             if (dobreak) {
                 for (var g = pprintGroup; g != null; g = g.outerPprintGroup)
@@ -7813,7 +7818,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
 
     var changed = this._unbreakLines(startLine);
 
-    for (var line = startLine;  line < this.lineStarts.length;  line++) {
+    for (line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
         if (start.classList.contains("domterm-opaque"))
             continue;
@@ -7834,7 +7839,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
             breakLine1(this, first, 0, this.availWidth, countColumns);
         }
     }
-    for (var line = startLine;  line < this.lineStarts.length;  line++) {
+    for (line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
         if (start.breakNeeded) {
             start.breakNeeded = false;
