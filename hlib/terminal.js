@@ -7962,7 +7962,8 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         let prev = this.outputBefore.previousSibling;
         if (prev instanceof Element
             && prev.getAttribute("std")
-            && prev.getAttribute("std") != "prompt") {
+            && prev.getAttribute("std") != "prompt"
+            && prev.getAttribute("std") != "hider") {
             this.outputContainer = this.outputBefore.previousSibling;
             this.outputBefore = null;
         }
