@@ -9028,6 +9028,9 @@ DomTerm.openNewWindow = function(dt, options={}) {
 }
 
 DomTerm.prototype._isOurEvent = function(event) {
+    if(DomTerm.isMac && event.metaKey)
+        // All Command keys should be handled by OSX itself.
+        return false;
     //return this._isAnAncestor(event.target, this.topNode);
     return this.hasFocus();
 }

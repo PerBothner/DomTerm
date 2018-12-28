@@ -120,6 +120,28 @@ subst_run_command(struct options *opts, const char *browser_command,
     if (pid == 0) {
         putenv("ELECTRON_DISABLE_SECURITY_WARNINGS=true");
         daemon(1, 0);
+#ifdef __APPLE__
+        {
+            // We cannot directly use `execv` for a GUI app on MacOSX
+            // in a forked process
+            // (e.g. issues like https://stackoverflow.com/questions/53958926/).
+            // But using `open` will work around this.
+            int argc = 0;
+            for(; args[argc]; ++argc);
+            char** args_ext = xmalloc(sizeof(char*) * (argc + 5));
+            arg0 = "/usr/bin/open";
+            args_ext[0] = arg0;
+            args_ext[1] = "-a";
+            args_ext[2] = args[0];
+            args_ext[3] = "--args";
+            for(int i = 0; ; ++i) {
+                args_ext[i + 4] = args[i + 1];
+                if(!args[i + 1])
+                    break;
+            }
+            args = args_ext;
+        }
+#endif
         execv(arg0, args);
         exit(-1);
     } else if (pid > 0) {// master
@@ -1466,7 +1488,7 @@ make_html_text(struct sbuf *obuf, int port, bool simple)
     sbuf_printf(obuf,
                 "<!DOCTYPE html>\n"
                 "<html><head>\n"
-                "<base href='http://%s'/>\n" // FIXME no longer needed?
+                "<base href='%s'/>\n"
                 "<meta http-equiv='Content-Type' content='text/html;"
                 " charset=UTF-8'>\n"
                 "<title>DomTerm</title>\n",
