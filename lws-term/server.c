@@ -1466,7 +1466,7 @@ make_html_text(struct sbuf *obuf, int port, bool simple)
     sbuf_printf(obuf,
                 "<!DOCTYPE html>\n"
                 "<html><head>\n"
-                "<base href='http://%s'/>\n" // FIXME no longer needed?
+                "<base href='%s'/>\n"
                 "<meta http-equiv='Content-Type' content='text/html;"
                 " charset=UTF-8'>\n"
                 "<title>DomTerm</title>\n",
