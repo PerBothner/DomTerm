@@ -130,7 +130,7 @@ embedded in different modes and applications.
 * Paging:: Paging and Pausing
 * Styling:: 
 * Keyboard shortcuts::
-* Tips:: Tips and solutions
+* Tips and solutions::
 * Java tools::
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
@@ -2159,14 +2159,24 @@ Select the next pane or tab.
 Detach from current session and close the (sub-)window.
 @end table
 
-@node Tips
+@node Tips and solutions
 @chapter Tips and solutions
 
-This page covers various topics, and may evolve to
+This section covers various topics, and may evolve to
 a Frequently-Asked-Questions page.
 
-Notes about ``@emph{Front-end support}'' discuss how
-different front-ends may support some features differently.
+See also @ref{Frontends,the page about frontends}
+for how they may support some features differently.
+
+@menu
+* Tips::  Miscellaneous tips
+* Detecting domterm terminal::
+* Shell prompts::  Shell prompts and tricks
+* Names and titles::
+@end menu
+
+@node Tips
+@section Miscellaneous tips
 
 @subheading Copy and Paste
 
@@ -2495,21 +2505,8 @@ A literal @samp{%}.
 @end table
 @end table
 
-@menu
-* Shell prompts::  Shell prompts and tricks
-* Names and titles::
-@end menu
-
-@node Shell prompts
-@section Shell prompts and tricks
-
-Many interactive REPL-style programs (such as a ``shell") allow
-you to customize the string used to prompt for input.
-Putting certain DomTerm-specific @ref{Wire byte protocol,escape sequences}
-in the prompt enables some nice features.
-The following discussion focuses on the @code{bash} shell.
-
-@subheading Detecting domterm terminal
+@node Detecting domterm terminal
+@section Detecting domterm terminal
 
 The @code{DOMTERM} environment variable is normally set when running
 under DomTerm. However, using @code{DOMTERM} to determine if the
@@ -2521,6 +2518,7 @@ the @code{DOMTERM} variable will be misleadingly set.
 
 So it is better to probe the terminal itself.
 You can use the @code{domterm is-domterm} command:
+
 @example
 if domterm is-domterm
 then
@@ -2529,7 +2527,15 @@ fi
 @end example
 
 If you're not sure whether the @code{domterm} program
-will be in the @code{PATH}, you can use the following shell code:
+will be in the @code{PATH}, you can use the following shell code.
+It works by sending a special request code
+(``Send [Secondary] Device Attributes'') to the terminal; the terminal
+sends a response unique to DomTerm.
+(While modern terminals will respond to this request, some older ones may not.
+Just in case, the script includes a timeout.  Also, it only sends
+the request if @code{TERM} includes the string @code{"xterm"}, which
+most terminal emulators do, or if @code{DOMTERM} is set.)
+
 @example
 probe_domterm() @{
   # probe if TERM unset, or contains "xterm", or DOMTERM is set
@@ -2570,6 +2576,15 @@ then
   execute domterm-specific actions
 fi
 @end example
+
+@node Shell prompts
+@section Shell prompts and tricks
+
+Many interactive REPL-style programs (such as a ``shell") allow
+you to customize the string used to prompt for input.
+Putting certain DomTerm-specific @ref{Wire byte protocol,escape sequences}
+in the prompt enables some nice features.
+The following discussion focuses on the @code{bash} shell.
 
 @anchor{bash-shell-prompt}
 @subheading Setting the Bash shell prompt
