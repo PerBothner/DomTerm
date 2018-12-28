@@ -4021,6 +4021,11 @@ DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         }
         if (pname == "PRE" || pname == "P" || pname == "DIV") {
             var newBlock = this._splitNode(parent, lineEnd.nextSibling);
+            // If a wrapped input line is edited to a single (or fewer) lines,
+            // remove "input-line" styling for following lines.
+            // FIXME This won't handle removing non-wrapped input lines.
+            if (parent.classList.contains("input-line"))
+                newBlock.classList.remove("input-line");
             var oldNextLine = this.lineStarts[absLine+1];
             this.lineStarts[absLine+1] = newBlock;
             newBlock._widthColumns = oldNextLine._widthColumns;
