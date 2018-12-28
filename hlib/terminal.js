@@ -2606,8 +2606,15 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
     this._mainBufferName = this.makeId("main")
     this._altBufferName = this.makeId("alternate")
 
-    var mainNode = this._createBuffer(this._mainBufferName, "main only");
-    topNode.appendChild(mainNode);
+    var isSavedSession = this.isSavedSession();
+    let mainNode;
+    if (isSavedSession) {
+        let buffers = document.getElementsByClassName("interaction");
+        mainNode = buffers[buffers.length-1];
+    } else {
+        mainNode = this._createBuffer(this._mainBufferName, "main only");
+        topNode.appendChild(mainNode);
+    }
     var vspacer = document.createElement("div");
     vspacer.setAttribute("class", "domterm-spacer");
     vspacer.dtHeight = 0;
