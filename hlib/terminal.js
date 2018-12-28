@@ -1642,6 +1642,8 @@ DomTerm._replaceTextContents = function(el, text) {
 };
 
 DomTerm.prototype._restoreCaret = function() {
+    if (this._caretNode == null)
+        return;
     this._restoreCaretNode();
     let cparent = this._caretNode.parentNode;
     if (! this._suppressHidePassword)
