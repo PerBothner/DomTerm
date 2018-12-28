@@ -431,6 +431,9 @@ Menu._keydownListen = function(value) {
 }
 Menu._keydownListen(true);
 
+Menu._isMac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
+			: typeof os != "undefined" ? os.platform() == "darwin" : false
+
 class MenuItem {
 	constructor(settings = {}) {
 
@@ -703,10 +706,9 @@ class MenuItem {
 		}
 		if (this.accelerator && !menuBarTopLevel) {
 			let acc = this.accelerator;
-                    let mac = false; // FIXME
-                    let cmd = mac ? "Cmd" : "Ctrl";
-                    acc = acc.replace("CommandOrControl", cmd);
-                    acc = acc.replace("Mod+", cmd+"+");
+			let cmd = Menu._isMac ? "Cmd" : "Ctrl";
+			acc = acc.replace("CommandOrControl", cmd);
+			acc = acc.replace("Mod+", cmd+"+");
 			text += acc;
 		}
 
@@ -768,9 +770,7 @@ MenuItem.keySymbols = {
 	backspace: '⌫',
 	space: 'Space'
 };
-MenuItem.useModifierSymbols =
-	(typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
-         : typeof os != "undefined" ? os.platform() == "darwin" : false);
+MenuItem.useModifierSymbols = Menu._isMac;
 
 if (typeof module !== "undefined" && module.exports) {
 	module.exports = { Menu: Menu, MenuItem: MenuItem };
