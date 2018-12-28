@@ -707,7 +707,9 @@ class MenuItem {
 		if (this.accelerator && !menuBarTopLevel) {
 			let acc = this.accelerator;
 			let cmd = Menu._isMac ? "Cmd" : "Ctrl";
-			acc = acc.replace("CommandOrControl", cmd);
+			acc = acc.replace("Command", "Cmd");
+			acc = acc.replace("Control", "Ctrl");
+			acc = acc.replace("CmdOrCtrl", cmd);
 			acc = acc.replace("Mod+", cmd+"+");
 			text += acc;
 		}
