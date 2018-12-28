@@ -196,6 +196,7 @@ base_domterm_jar_sources = \
   org/domterm/ProcessBackend.java \
   org/domterm/util/DomTermErrorStream.java \
   org/domterm/util/DomTermErrorWriter.java \
+  org/domterm/util/PrintNested.java \
   org/domterm/util/StringBufferedWriter.java \
   org/domterm/util/StyleSheets.java \
   org/domterm/util/Util.java \
