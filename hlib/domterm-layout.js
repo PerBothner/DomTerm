@@ -212,7 +212,8 @@ DomTerm._focusChild = function(iframe, originMode) {
         } else if (! DomTerm.useXtermJs) {
             if (oldContent != null)
                 oldContent.firstChild.terminal.setFocused(0);
-            if (originMode != "F" && iframe.firstChild.terminal) //originMode != "A")
+            if (originMode != "F"
+                && iframe.firstChild && iframe.firstChild.terminal)
                 iframe.firstChild.terminal.setFocused(2);
         }
     }
@@ -487,10 +488,10 @@ DomTerm.layoutInit = function(term) {
     });
 
     DomTerm.layoutManager.registerComponent( 'browser', function( container, componentConfig ){
-        var el = document.createElement("iframe");
-        el.setAttribute("src", container._config.url);
-        el.setAttribute("style", "width: 100%; height: 100%");
-        container.getElement()[0].appendChild(el);
+        container.on('destroy', DomTerm.domTermLayoutClosed, container);
+        let el = DomTerm.makeIFrameWrapper(container._config.url, false);
+        container._contentElement1 = el;
+        el.classList.add("lm_content");
         container.on('resize', DomTerm.layoutResized, el);
         container.on('destroy', DomTerm.domTermLayoutClosed, container);
     });

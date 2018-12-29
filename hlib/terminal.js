@@ -427,14 +427,16 @@ function DomTerm(name, topNode) {
     this.wcwidth = new WcWidth();
 }
 
-DomTerm.makeIFrameWrapper = function(location) {
+DomTerm.makeIFrameWrapper = function(location, terminal=true) {
     let ifr = document.createElement("iframe");
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
-    if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
-        location = location
-            + (location.indexOf('#') >= 0 ? '&' : '#')
-            + "server-key=" + DomTerm.server_key;
+    if (terminal) {
+        if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
+            location = location
+                + (location.indexOf('#') >= 0 ? '&' : '#')
+                + "server-key=" + DomTerm.server_key;
+        }
     }
     ifr.setAttribute("src", location);
     ifr.setAttribute("class", "domterm-wrapper");
