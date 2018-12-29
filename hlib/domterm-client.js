@@ -2,12 +2,19 @@ var maxAjaxInterval = 2000;
 
 DomTerm.simpleLayout = false;
 
+DomTerm.usingJsMenus = function() {
+    return typeof MenuItem !== "undefined"
+        && ! DomTerm.isElectron() && ! DomTerm.usingQtWebEngine;
+}
+
 // True if we should create each domterm element in a separate <iframe>.
 // That is better for security, makes for cleaner selection handling,
 // separates 'id' spaces.  However, it adds some overhead.
 // Only relevant when using a layout manager like GoldenLayout.
 DomTerm.useIFrame = ! DomTerm.simpleLayout
     && ! DomTerm.useXtermJs
+    // jsMenus doesn't work when using iframe - FIXME
+    && ! DomTerm.usingJsMenus()
     // This is a kludge FIXME
     && ! location.hash.match(/view-saved=([^&]*)/);
 
