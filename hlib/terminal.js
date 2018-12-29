@@ -7005,7 +7005,9 @@ DomTerm.prototype.insertString = function(str) {
                 if (oldContainer instanceof Text)
                     oldContainer = oldContainer.parentNode;
                 // FIXME adjust for _regionLeft
-                if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
+                if (this._currentPprintGroup !== null) {
+                    this.controlSequenceState = DomTerm.SEEN_CR;
+                } else if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && ! this.usingAlternateScreenBuffer
                     && (this._regionBottom == this.numRows
                         || this.getCursorLine() != this._regionBottom-1)) {
@@ -7043,19 +7045,24 @@ DomTerm.prototype.insertString = function(str) {
             case 11: // vertical tab
             case 12: // form feed
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
-                this._breakDeferredLines();
-                if (this._pauseNeeded()) {
-                    this.parameters[1] = str.substring(i);
-                    this._updateDisplay();
-                    this._enterPaging(true);
-                    return;
+                if (this._currentPprintGroup !== null
+                    && this.controlSequenceState == DomTerm.SEEN_CR) {
+                    this.handleOperatingSystemControl(118, "");
+                } else {
+                    this._breakDeferredLines();
+                    if (this._pauseNeeded()) {
+                        this.parameters[1] = str.substring(i);
+                        this._updateDisplay();
+                        this._enterPaging(true);
+                        return;
+                    }
+                    this.cursorNewLine((this.sstate.automaticNewlineMode & 1) != 0);
+                    if (this.isLineEditing())
+                        this.editorAddLine();
                 }
                 if (this.controlSequenceState == DomTerm.SEEN_CR) {
                     this.controlSequenceState =  DomTerm.INITIAL_STATE;
                 }
-                this.cursorNewLine((this.sstate.automaticNewlineMode & 1) != 0);
-                if (this.isLineEditing())
-                    this.editorAddLine();
                 prevEnd = i + 1; columnWidth = 0;
                 break;
             case 27 /* Escape */:
@@ -9314,6 +9321,9 @@ DomTerm.prototype._checkTree = function() {
         error("bad inputLine");
     if (! this._isAnAncestor(this.outputContainer, this.initial))
         error("outputContainer not in initial");
+    if (this._currentPprintGroup != null
+        && ! this._isAnAncestor(this.outputContainer, this._currentPprintGroup))
+        error("not in non-null pprint-group");
     for (let i = nlines; --i >= this.homeLine; )
         if (! this._isAnAncestor(this.lineStarts[i], this.initial))
             error("line "+i+" not in initial");
