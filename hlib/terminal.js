@@ -9523,7 +9523,7 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
             DomTerm.setFocus(wt, "N");
         } else {
             if (topNode.classList.contains("domterm-wrapper"))
-                topNode = wt.makeElement(name, false, topNode);
+                topNode = DomTerm.makeElement(name, false, topNode);
             wt.initializeTerminal(topNode);
         }
     };
