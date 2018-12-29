@@ -154,10 +154,7 @@ public class PrintNested
         }
     }
     public void printSimple(Object obj) {
-        String str = obj == null ? "(null)" : obj.toString();
-        if (isDomTerm)
-            str = str.replace("\n", "\033]118\007");
-        out.print(str);
+        out.print(obj == null ? "(null)" : obj.toString());
     }
     public void newline(int kind) {
         out.print("\033]"+kind+"\007");
