@@ -47,15 +47,15 @@ DomTerm.createMenus = function(options) {
     }
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
-          menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Command+C' : 'Control+Shift+C',
+          menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Cmd+C' : 'Ctrl+Shift+C',
                         click() { DomTerm.doCopy(); }});
     const copyAsHtmlItem =
           menuItem({label: 'Copy as HTML',
                     click() { DomTerm.doCopy(true); }});
     const pasteItem = platform == "electron"
-          ? menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Command+V' : 'Control+Shift+V',
+          ? menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
                       role: 'paste' })
-          : menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Command+V' : 'Control+Shift+V',
+          : menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
                       click() { DomTerm.doPaste(); }});
     var showingMenuBar = true;
     const showMenuBarItem = menuItem({label: 'Show menubar',
@@ -103,12 +103,12 @@ DomTerm.createMenus = function(options) {
     const quitItem =  platform == "electron" ? menuItem({label: 'Quit', role: 'quit'})
           : menuItem({label: 'Quit', click: DomTerm.windowClose });
     const newWindowItem = menuItem({label: 'New terminal window',
-                                    accelerator: DomTerm.isMac ? 'Command+N' : 'Ctrl+Shift+N',
+                                    accelerator: DomTerm.isMac ? 'Cmd+N' : 'Ctrl+Shift+N',
                                     click: function() {
                                         DomTerm.openNewWindow(DomTerm.focusedTerm);
                                     }});
     const newTabItem = menuItem({label: 'New terminal tab',
-                                      accelerator: DomTerm.isMac ? 'Command+T' : 'Ctrl+Shift+T',
+                                      accelerator: DomTerm.isMac ? 'Cmd+T' : 'Ctrl+Shift+T',
                                       click: function() {
                                           DomTerm.layoutAddTab(DomTerm.focusedTerm);
                                       }});
@@ -157,7 +157,7 @@ DomTerm.createMenus = function(options) {
                                        DomTerm.copyLink();
                                    }});
     const copyLinkTextItem =
-          menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Command+C' : 'Control+Shift+C',
+          menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Cmd+C' : 'Ctrl+Shift+C',
                     click() { DomTerm.doContextCopy(); }});
     const copyLinkSep = menuItem({type: 'separator'});
 
