@@ -9558,6 +9558,32 @@ DomTerm._makeWsUrl = function(query=null) {
     return url;
 }
 
+DomTerm.initSavedFile = function(bodyNode) {
+    var topNode = bodyNode.firstChild;
+    var name = "domterm";
+    var dt = new DomTerm(name);
+    dt.initial = document.getElementById(dt.makeId("main"));
+    dt._initializeDomTerm(topNode);
+    dt.sstate.windowName = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
+    dt.topNode.classList.remove("domterm-noscript");
+    dt._restoreLineTables(topNode, 0);
+    dt._breakAllLines();
+    dt.updateWindowTitle();
+    function showHideHandler(e) {
+        var target = e.target;
+        if (target instanceof Element
+            && target.nodeName == "SPAN"
+            && target.getAttribute("std") == "hider") {
+            dt._showHideHandler(e);
+            e.preventDefault();
+        }
+    }
+    topNode.addEventListener("click", showHideHandler, false);
+    dt.setWindowSize = function(numRows, numColumns,
+                                availHeight, availWidth) {
+    };
+}
+
 DomTerm.connectHttp = function(node, query=null) {
     var url = DomTerm._makeWsUrl(query);
     DomTerm.connectWS(null, url, "domterm", node);
