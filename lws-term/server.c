@@ -1496,13 +1496,12 @@ make_html_text(struct sbuf *obuf, int port, bool simple)
     const char **p;
     for (p = simple ? standard_stylesheets_simple : standard_stylesheets; *p; p++) {
         sbuf_printf(obuf,
-                    "<link type='text/css' rel='stylesheet' href='%s%s'>\n",
-                    base, *p);
+                    "<link type='text/css' rel='stylesheet' href='%s'>\n",
+                    *p);
     }
     sbuf_printf(obuf,
-                "<script type='text/javascript' src='%shlib/domterm-all.js'>"
-                " </script>\n",
-                base);
+                "<script type='text/javascript' src='hlib/domterm-all.js'>"
+                " </script>\n");
     if (! simple) {
         sbuf_printf(obuf,
                     "<script type='text/javascript'>\n"
@@ -1519,8 +1518,8 @@ make_html_text(struct sbuf *obuf, int port, bool simple)
     }
     for (p = simple ? standard_jslibs_simple : standard_jslibs; *p; p++) {
         sbuf_printf(obuf,
-                    "<script type='text/javascript' src='%s%s'> </script>\n",
-                    base, *p);
+                    "<script type='text/javascript' src='%s'> </script>\n",
+                    *p);
     }
     sbuf_printf(obuf,
                 "</head>\n"
