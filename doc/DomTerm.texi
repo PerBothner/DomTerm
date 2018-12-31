@@ -2243,7 +2243,7 @@ or other JavaScript modification.
 
 @subsubheading On Gnome or KDE
 
-Copy @code{domterm/qtdomterm.desktop} or
+Copy @code{domterm/domterm.desktop} or
 @code{qtdomterm/qtdomterm.desktop} to either
 @code{usr/share/applications} (if @code{domterm} is installed
 in @code{/usr/bin} and you want it accessible to everyone),
