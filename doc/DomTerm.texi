@@ -132,6 +132,7 @@ embedded in different modes and applications.
 * Keyboard shortcuts::
 * Tips and solutions::
 * Java tools::
+* Uses:: Projects using DomTerm
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
 * Credits:: Credits
@@ -2840,12 +2841,36 @@ It only depends on the @code{HttpServer} that is a standard part of the JDK.
 The @code{jdomterm} script starts up @code{DomHttpServer} along with
 an optional front-end.
 
+@node Uses
+@chapter Projects using DomTerm
+
+When you run the @uref{http://www.gnu.org/software/kawa/,@b{Kawa}} REPL
+under Domterm, some extra niceties are enabled:
+If you print out a @uref{www.gnu.org/software/kawa/tutorial/Pictures.html,picture value} it is shown as an (SVG) image.
+You can also print ``html values''.
+The default prompt adds folding (a hide/show button), and some structure.
+Printing lists and other structures does
+@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,dynamic pretty-printing}.
+Debug printing of expressions includes folding and pretty-printing.
+
+The @uref{http://www.gnuplot.info/,@b{gnuplot}} graphing utility will print
+@uref{https://per.bothner.com/blog/2016/gnuplot-in-domterm/,graphical output}
+directly to the terminal if using DomTerm.
+
+The @uref{https://github.com/PerBothner/atom-domterm,@b{atom-domterm}}
+package for the @uref{https://atom.io/,Atom text editor}
+provides a text editor in an Atom pane, fairly well integrated.
+
+There is an @uref{https://github.com/PerBothner/theia,experimental fork}
+of the @uref{https://github.com/PerBothner/theia,@b{Theia} IDE} to
+use DomTerm for its terminal emulator.
+
 @node To do
 @chapter Ideas and projects for DomTerm
 
 @subheading Terminal emulator functionality
 
-@subsubheading Document any discrepances from xterm and ANSI
+@subsubheading Document any discrepancies from xterm and ANSI
 
 While implementing all of the
 @uref{http://invisible-island.net/xterm/ctlseqs/ctlseqs.html,features of xterm}
