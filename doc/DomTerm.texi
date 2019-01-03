@@ -40,7 +40,7 @@ This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emu
 This @uref{https://lwn.net/Articles/670062/,old LWN article} provides
 background, motivation, and a summary of the functionality.
 
-The name ``DomTerm'' is due tp that it  works by manipulating the
+The name ``DomTerm'' is due to that it  works by manipulating the
 @uref{https://en.wikipedia.org/wiki/Document_Object_Model,Document Object Model (DOM)} of a browser:
 the nested structure of elements, text, and attributes.
 (Also, most other appropriate names were already taken...) 
@@ -121,9 +121,9 @@ embedded in different modes and applications.
 * Features:: Features and screenshots
 * Downloading and building::
 * domterm application:: The domterm command
-* Settings: The settings.ini file
+* Settings:: The settings.ini file
 * Applications:: Other domterm applications
-* Frontsend:: Frontends including browsers
+* Frontends:: Frontends including browsers
 * Remote serving::
 * Sessions and Windows::
 * Input line editing::
@@ -3845,7 +3845,7 @@ write:
 \e]115;"-","",""\a
 @end example
 German used to have a rule where ``ck'' would be hyphenated as ``k-k'',
-as in Zucker (suger):
+as in Zucker (sugar):
 @example
 Zu\e]115;"-k","k","ck"\aer
 @end example
