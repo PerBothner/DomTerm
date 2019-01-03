@@ -7,16 +7,22 @@ DomTerm.usingJsMenus = function() {
         && ! DomTerm.isElectron() && ! DomTerm.usingQtWebEngine;
 }
 
-// True if we should create each domterm element in a separate <iframe>.
-// That is better for security, makes for cleaner selection handling,
-// separates 'id' spaces.  However, it adds some overhead.
+// True if we should create each domterm terminal in a separate <iframe>.
 // Only relevant when using a layout manager like GoldenLayout.
+// Issues with !useIFrame:
+// - Potentially less secure (all terminals in same frame).
+// - Shared 'id' space.
+// - Single selection rather than one per terminal.
+// Issues with useFrame:
+// - Performance (extra overhead).
+// - jsMenus has problems, especially when mouse leaves the menu.
+//   (A click should popdown menus, but doesn't. Keyboard navigation breaks.)
+// - When using jsMenus with most deskop browsers, menu Copy doesn't work;
+//   it does work when !useIFrame. (Menu Paste doesn't work either way.)
+// - Popout-window buttons don't work.
 DomTerm.useIFrame = ! DomTerm.simpleLayout
     && ! DomTerm.useXtermJs
-    // jsMenus doesn't work when using iframe - FIXME
-    && ! DomTerm.usingJsMenus()
-    // This is a kludge FIXME
-    && ! location.hash.match(/view-saved=([^&]*)/);
+    && ! DomTerm.usingJsMenus();
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
@@ -175,8 +181,17 @@ function setupQWebChannel(channel) {
     }
 };
 
-function viewSavedFile(url, bodyNode) {
-    bodyNode.innerHTML = "<h2>waiting for file data ...</h2>";
+function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
+    let url;
+    // Requesting the saved file using a file: URL runs into CORS
+    // (Cross-Origin Resource Sharing) restrictions on desktop browsers.
+    if (urlEncoded.startsWith("file:///")) {
+        url = "http://localhost:"+DomTerm.server_port+"/saved-file/?server-key="+DomTerm.server_key+"&file="+urlEncoded.substring(7);
+        return DomTerm.makeIFrameWrapper(url, false, contextNode);
+    } else
+        url = decodeURIComponent(urlEncoded);
+    let el = DomTerm.makeElement(DomTerm.freshName());
+    el.innerHTML = "<h2>waiting for file data ...</h2>";
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url);
     xhr.setRequestHeader("Content-Type", "text/plain");
@@ -185,14 +200,14 @@ function viewSavedFile(url, bodyNode) {
             return;
         var responseText = xhr.responseText;
         if (! responseText) {
-            bodyNode.innerHTML = "<h2></h2>";
-            bodyNode.firstChild.appendChild(document.createTextNode("error loading "+url));
+            el.innerHTML = "<h2>error loading "+url+"</h2>";
             return;
         }
-        bodyNode.innerHTML = responseText;
-        DomTerm.initSavedFile(bodyNode);
+        el.innerHTML = responseText;
+        DomTerm.initSavedFile(el);
     };
     xhr.send("");
+    return el;
 }
 
 function setupParentMessages1() {
@@ -264,12 +279,6 @@ function loadHandler(event) {
         DomTerm._initSavedLayout(JSON.parse(open_encoded));
         return;
     }
-    m = location.hash.match(/view-saved=([^&]*)/);
-    if (m && (! DomTerm.useIFrame || DomTerm.isInIFrame())) {
-        var bodyNode = document.getElementsByTagName("body")[0];
-        viewSavedFile(decodeURIComponent(m[1]), bodyNode);
-        return;
-    }
     var bodyNode = document.getElementsByTagName("body")[0];
     if (bodyNode.firstElementChild
         && bodyNode.firstElementChild.classList.contains("nwjs-menu")) {
@@ -289,18 +298,29 @@ function loadHandler(event) {
         topNodes = document.getElementsByClassName("domterm-wrapper");
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
-            let ifr = DomTerm.makeIFrameWrapper(DomTerm.mainLocation+uhash);
-            DomTerm._oldFocusedContent = ifr;
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
                 lcontent.contentWindow.postMessage({"command": command, "args": args}, "*");
             }
-            return;
         } else {
             setupParentMessages1();
             setupParentMessages2();
             DomTerm.setTitle = function(title) {
                 DomTerm.sendParentMessage("set-window-title", title); }
         }
+    }
+    m = location.hash.match(/view-saved=([^&]*)/);
+    if (m) {
+        var bodyNode = document.getElementsByTagName("body")[0];
+        viewSavedFile(m[1], bodyNode);
+        return;
+    }
+    if (location.pathname === "/saved-file/") {
+        DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
+        return;
+    }
+    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()) {
+        DomTerm.makeIFrameWrapper(DomTerm.mainLocation+uhash);
+        return;
     }
     if (topNodes.length == 0) {
         let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();

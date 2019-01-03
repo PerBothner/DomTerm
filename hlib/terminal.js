@@ -427,7 +427,8 @@ function DomTerm(name, topNode) {
     this.wcwidth = new WcWidth();
 }
 
-DomTerm.makeIFrameWrapper = function(location, terminal=true) {
+DomTerm.makeIFrameWrapper = function(location, terminal=true,
+                                     parent=DomTerm.layoutTop) {
     let ifr = document.createElement("iframe");
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
@@ -440,31 +441,31 @@ DomTerm.makeIFrameWrapper = function(location, terminal=true) {
     }
     ifr.setAttribute("src", location);
     ifr.setAttribute("class", "domterm-wrapper");
-    for (let ch = DomTerm.layoutTop.firstChild; ; ch = ch.nextSibling) {
+    if (DomTerm._oldFocusedContent == null)
+        DomTerm._oldFocusedContent = ifr;
+    for (let ch = parent.firstChild; ; ch = ch.nextSibling) {
         if (ch == null || ch.tagName != "IFRAME") {
-            DomTerm.layoutTop.insertBefore(ifr, ch);
+            parent.insertBefore(ifr, ch);
             break;
         }
     }
     return ifr;
 }
 
-DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), lcontent = null) {
+DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = DomTerm.layoutTop) {
     if (wrap) {
-        lcontent = document.createElement("div");
+        let lcontent = document.createElement("div");
         lcontent.setAttribute("class", "domterm-wrapper");
         lcontent.setAttribute("name", name)
-        DomTerm.layoutTop.appendChild(lcontent);
+        parent.appendChild(lcontent);
         if (DomTerm._oldFocusedContent == null)
             DomTerm._oldFocusedContent = lcontent;
         return lcontent;
-    } else if (lcontent == null) {
-        lcontent = DomTerm.layoutTop;
     }
     let topNode = document.createElement("div");
     topNode.setAttribute("class", "domterm");
     topNode.setAttribute("id", name);
-    lcontent.appendChild(topNode);
+    parent.appendChild(topNode);
     return topNode;
 }
 
@@ -9558,8 +9559,9 @@ DomTerm._makeWsUrl = function(query=null) {
     return url;
 }
 
-DomTerm.initSavedFile = function(bodyNode) {
-    var topNode = bodyNode.firstChild;
+DomTerm.initSavedFile = function(topNode) {
+    if (topNode.classList.contains("domterm-wrapper"))
+        topNode = topNode.firstChild;
     var name = "domterm";
     var dt = new DomTerm(name);
     dt.initial = document.getElementById(dt.makeId("main"));

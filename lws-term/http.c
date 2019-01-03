@@ -247,22 +247,49 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 goto try_to_reuse;
             }
 
-#if 0
-            // "serving" a saved file may be better than having
-            // the browser get it with XmlHttpRequest.
-            if (!strncmp((const char *) in, "/get-saved-file/", 16)) {
-                size_t blen = strlen(in)+1;
-                char *buf = xmalloc(blen);
-                fprintf(stderr, "get-saved-file1 '%s'\n", in);
-                if (! check_server_key(wsi, buf, blen)) {
-                    free(buf);
-                fprintf(stderr, "get-saved-file failed\n");
-                    return -1;
+            const char saved_prefix[] = "/saved-file/";
+            size_t saved_prefix_len = sizeof(saved_prefix)-1;
+            if (!strncmp((const char *) in, saved_prefix, saved_prefix_len)) {
+                int blen = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_URI_ARGS);
+                char *buf = xmalloc(blen+1);
+                const char *filename = NULL;
+                FILE *sfile = NULL;
+                struct stat stbuf;
+                off_t slen;
+                int fd = -1;
+                int ret = -1;
+                if (check_server_key(wsi, buf, blen)
+                    && (filename = lws_get_urlarg_by_name(wsi, "file=", buf, blen)) != NULL
+                    && (fd = open(filename, O_RDONLY)) >= 0
+                    && fstat(fd, &stbuf) == 0
+                    && (slen = stbuf.st_size) > 0
+                    && (buf = realloc(buf, slen)) != NULL
+                    && (sfile = fdopen(fd, "r")) != NULL
+                    && fread(buf, 1, slen, sfile) == slen) {
+                    struct sbuf sb[1];
+                    sbuf_init(sb);
+                    // FIXME: We should encrypt the response (perhaps just a
+                    // simple encryption using the kerver_key).  It is probably
+                    // not an issue for local requests, and for non-local
+                    // requests (where one should use tls or ssh).
+                    make_html_text(sb, http_port, true, buf, slen);
+                    char *data = sb->buffer;
+                    int dlen = sb->len;
+                    sb->buffer = NULL;
+                    sbuf_free(sb);
+                    ret = write_simple_response(wsi, hclient, "text/html",
+                                                data, dlen,
+                                                true, buffer);
+                    buf = NULL; // buf is now owned by write_simple_response
                 }
-                char *fname = lws_get_urlarg_by_name(wsi, "name=", buf, blen);
-                fprintf(stderr, "http get-saved-file '%s'\n", fname);
+                if (buf != NULL)
+                    free(buf);
+                if (sfile != NULL)
+                    fclose(sfile);
+                else if (fd >= 0)
+                    close(fd);
+                return ret;
             }
-#endif
             const char* fname = in;
             if (fname == NULL || strcmp(fname, "/") == 0) {
                 if (main_options->http_server)
@@ -276,7 +303,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             if (strcmp(fname, "/simple.html") == 0) {
                 struct sbuf sb[1];
                 sbuf_init(sb);
-                make_html_text(sb, http_port, true);
+                make_html_text(sb, http_port, true, NULL, 0);
                 char *data = sb->buffer;
                 int dlen = sb->len;
                 sb->buffer = NULL;

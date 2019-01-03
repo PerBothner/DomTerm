@@ -1481,7 +1481,8 @@ static const char * standard_jslibs_simple[] = {
 };
 
 void
-make_html_text(struct sbuf *obuf, int port, bool simple)
+make_html_text(struct sbuf *obuf, int port, bool simple,
+               const char *body_text, int body_length)
 {
     char base[40];
     sprintf(base, "http://%s:%d/", "127.0.0.1", port);
@@ -1523,8 +1524,8 @@ make_html_text(struct sbuf *obuf, int port, bool simple)
     }
     sbuf_printf(obuf,
                 "</head>\n"
-                "<body></body>\n"
-                "</html>\n");
+                "<body>%.*s</body>\n"
+                "</html>\n", body_length, body_text);
 }
 
 static void
@@ -1543,7 +1544,7 @@ make_html_file(int port)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
     struct sbuf obuf[1];
     sbuf_init(obuf);
-    make_html_text(obuf, port, false);
+    make_html_text(obuf, port, false, "", 0);
 
     int hfile = open(main_html_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
     if (hfile < 0

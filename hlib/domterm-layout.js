@@ -100,7 +100,8 @@ DomTerm.prototype._muxKeyHandler = function(event, key, press) {
 */
 DomTerm.layoutItemToDomTerm = function(item) {
     var element = item.container.getElement()[0].firstChild;
-    return element.classList.contains("domterm") ? element.terminal : null;
+    return element && element.classList.contains("domterm") ? element.terminal
+        : null;
 };
 
 DomTerm._elementToLayoutItem = function(goal, item = DomTerm.layoutManager.root) {
@@ -129,7 +130,7 @@ DomTerm.domTermToLayoutItem = function(dt) {
 
 DomTerm.domTermLayoutClosed = function(event) {
     var el = this.getElement()[0];
-    if (! DomTerm.useIFrame) {
+    if (el.tagName !== "IFRAME") {
         var dt = el.firstChild.terminal;
         if (dt && dt.closeConnection)
             dt.closeConnection();
@@ -196,7 +197,8 @@ DomTerm._selectLayoutPane = function(component, originMode) {
     } else if (! DomTerm.useXtermJs) {
         var dt = DomTerm.layoutItemToDomTerm(component);
         DomTerm.setFocus(dt);
-        dt.maybeFocus();
+        if (dt != null)
+            dt.maybeFocus();
     }
     component.parent.setActiveContentItem(component);
     DomTerm._focusChild(component.container._contentElement1, originMode);
@@ -210,7 +212,8 @@ DomTerm._focusChild = function(iframe, originMode) {
             if (originMode != "F")
                 DomTerm.sendChildMessage(iframe, "set-focused", 2);
         } else if (! DomTerm.useXtermJs) {
-            if (oldContent != null)
+            if (oldContent != null && oldContent.firstChild
+               && oldContent.firstChild.terminal)
                 oldContent.firstChild.terminal.setFocused(0);
             if (originMode != "F"
                 && iframe.firstChild && iframe.firstChild.terminal)
@@ -437,7 +440,7 @@ DomTerm.layoutInit = function(term) {
                 name = wrapped.layoutTitle;
                 wrapped.layoutTitle = undefined;
             } else
-                name = DomTerm.freshName();
+                name = lcontent.getAttribute("name") || DomTerm.freshName();
             lcontent = null;
         } else {
             var config = container._config;
@@ -454,7 +457,7 @@ DomTerm.layoutInit = function(term) {
             } else {
                 name = DomTerm.freshName();
                 el = DomTerm.makeElement(name);
-                wrapped = DomTerm.useXtermJs ? el : el.parentNode;
+                wrapped = el;
             }
             container._contentElement1 = wrapped;
             if (DomTerm._pendingTerminals) {
@@ -479,10 +482,10 @@ DomTerm.layoutInit = function(term) {
     });
 
     DomTerm.layoutManager.registerComponent( 'view-saved', function( container, componentConfig ){
-        var url = container._config.url
-        var el = container.getElement()[0];
-        viewSavedFile(url, el);
-        container.setTitle(name);
+        container.on('destroy', DomTerm.domTermLayoutClosed, container);
+        let el = viewSavedFile(container._config.url);
+        container._contentElement1 = el;
+        el.classList.add("lm_content");
         container.on('resize', DomTerm.layoutResized, el);
         container.on('destroy', DomTerm.domTermLayoutClosed, container);
     });
