@@ -59,3 +59,4 @@ qtdomterm/data/hlib/bililiteRange.js
 qtdomterm/data/hlib/terminal.js
 qtdomterm/data/hlib/domterm-all.js
 qtdomterm/data/hlib/*.css
+.vscode
