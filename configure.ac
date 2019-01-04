@@ -4,7 +4,7 @@ AC_CONFIG_SRCDIR([doc/DomTerm.texi])
 AM_MAINTAINER_MODE([enable])
 
 DOMTERM_VERSION="${PACKAGE_VERSION}"
-DOMTERM_YEAR="2018"
+DOMTERM_YEAR="2019"
 
 AC_CONFIG_AUX_DIR(autotools-aux)
 AM_INIT_AUTOMAKE([foreign subdir-objects no-dependencies])
