@@ -270,7 +270,7 @@ endif
 
 MAKEINFO = makeinfo
 XSLT = xsltproc
-DOCBOOK_XSL_DIR = /home/bothner/Software/docbook-xsl-1.78.1
+DOCBOOK_XSL_DIR = /usr/share/sgml/docbook/xsl-stylesheets-1.79.2
 doc/index.html: doc/DomTerm.texi
 	$(MAKEINFO) -I$(srcdir) --html --no-node-files $< -o doc
 
@@ -317,7 +317,6 @@ web/index.html: doc/DomTerm.xml Makefile
 	  $(srcdir)/doc/style/domterm.xsl doc/DomTerm.xml
 	$(SED) -s 's|<a name=".*"></a>Why|Why|' <web/index.html >web/tmp-index.html
 	mv web/tmp-index.html web/index.html
-	patch --no-backup-if-mismatch -p0 <$(srcdir)/doc/webdoc.patch
 	cd $(srcdir) && cp $(DOC_IMAGES) $(abs_builddir)/web/images
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
