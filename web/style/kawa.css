@@ -22,11 +22,10 @@ h1 {
   padding: 0 0.5em 0.2em 0.5em;
   font-weight: normal }
 a {
-  border-style: none; }
-a:link {
-  color: #238} 
-a:visited {
-  color: #238} 
+  border-style: none;
+  text-decoration-color: #bbf }
+a:link, a:visited {
+  color: inherit; }
 h1, h3, h4 {
   color: #000 }
 h1, h2, h3 {
@@ -71,8 +70,6 @@ dd {
   padding-left: 1.5em;
   margin-bottom: 0.2ex;
   margin-left: 0 }
-a:hover * {			/* Work-around for Konqueror 3.1 */
-  background: inherit }
 div.back {
   clear: both }
 
@@ -137,8 +134,8 @@ html {
 
 span.ignore { display: none }
 
-div.navcol { 
-    background: #f0f0e0;
+div.navcol, a:link, a:visited { 
+    background: #f2f2e0;
 }
 
 /* Local navigation menu, along the left or right side */
@@ -177,7 +174,7 @@ div.navcol a { text-decoration: none; }
 /* The following is redundant, but is needed for IE 6.0. */
 div.navheader ul a { text-decoration: none; }
 
-div.navcol a:hover
+a:hover
 {
 color: #fff;
 background-color: #608090;
