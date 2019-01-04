@@ -22,16 +22,14 @@ Ctrl-Shift-A
 @node Top
 @top DomTerm
 
-The @code{domterm} application is terminal emulator, REPL console,
-and screen multiplexer (like @code{tmux} or GNU @code{screen}).
-
-The @code{domterm} command runs a server that manages
-sessions (usually shell processes).
-The user interface and terminal emulation
-is handled by a JavaScript library
-that can run in a regular web browser or an embedded browser such as Electron.
-Communication between the server and the UI
-is done with Web Sockets.
+DomTerm is an terminal emulator based on web technologies.
+Beyond solid xterm compatibility, it supports
+powerful features for REPL (read-eval-print-loop) consoles:
+Application output can have images, rich text, and links,
+with structure-based line-breaking (pretty-printing), and folding.
+There is also input editing; automatic paging;
+screen multiplexing (panes and tabs); and session management
+(like @code{tmux} or GNU @code{screen}).
 
 @emph{}
 @uref{images/domterm-panes-1.png,@image{images/domterm-panes-1}}
@@ -40,27 +38,28 @@ This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emu
 This @uref{https://lwn.net/Articles/670062/,old LWN article} provides
 background, motivation, and a summary of the functionality.
 
-The name ``DomTerm'' is due to that it  works by manipulating the
+The @code{domterm} command runs a server that manages
+sessions (usually shell processes).
+The user interface and terminal emulation
+is handled by a JavaScript library
+that can run in a regular web browser or an embedded browser such as Electron,
+using Web Sockets to talk to the server.
+
+The name ``DomTerm'' refers to how it  works by manipulating the
 @uref{https://en.wikipedia.org/wiki/Document_Object_Model,Document Object Model (DOM)} of a browser:
 the nested structure of elements, text, and attributes.
-(Also, most other appropriate names were already taken...) 
 
 DomTerm is Free Software (open-source)
 available at @uref{https://github.com/PerBothner/DomTerm,https://github.com/PerBothner/DomTerm}.
-The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
-was based on similar concepts, but was mostly written in Java using
-@uref{https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm, Javafx WebView}.
 
 There is a mailing list at @email{domterm-discuss@@domterm.org}
 with an @uref{http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,information page}
 and @uref{http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archives}.
 
-@subheading Recent advances:
+@subheading Highlights and recent changes
 
+@emph{}@image{images/domterm-1}
 @itemize
-@item
-DomTerm is now tested and supported on both Ubuntu
-and Microsoft Windows Subsystem for Linux (WSL), running Ubuntu.
 @item
 The @code{domterm} command takes multiple sub-commands,
 similar to how @code{tmux} or @code{git}.
@@ -75,7 +74,6 @@ A front-end based on @uref{https://electron.atom.io/,Electron}
 is now the preferred one.
 @item
 We now support draggable tabs and panes.
-This uses @uref{http://golden-layout.com/,GoldenLayout}.
 @item
 An experimental @ref{Paging,pager} with optional
 automatic pause on each page.
@@ -88,9 +86,30 @@ Support for CJK (Chinese, Japanese, and Korean) characters is improved:
 Double-width characters now really are two columns wide.
 @end itemize
 
-@subheading Why another terminal emulator
+@menu
+* Features:: Features and screenshots
+* Downloading and building::
+* domterm application:: The domterm command
+* Settings:: The settings.ini file
+* Applications:: Other domterm applications
+* Frontends:: Frontends including browsers
+* Remote serving::
+* Sessions and Windows::
+* Input line editing::
+* Paging:: Paging and Pausing
+* Styling::
+* Keyboard shortcuts::
+* Tips and solutions::
+* Java tools::
+* Uses:: Projects using DomTerm
+* To do:: Ideas and projects for DomTerm
+* Technical documentation::
+* Credits:: Credits
+@end menu
 
-@emph{}@image{images/domterm-1}
+@node Features
+@chapter Features and screenshots
+
 The goal of this project is to combine two related but
 separate tools: a terminal emulator, and a rich-text console,
 and do it properly.
@@ -116,33 +135,6 @@ an embedded web engine.
 
 The core of the project is a JavaScript package that can be used and
 embedded in different modes and applications.
-
-@menu
-* Features:: Features and screenshots
-* Downloading and building::
-* domterm application:: The domterm command
-* Settings:: The settings.ini file
-* Applications:: Other domterm applications
-* Frontends:: Frontends including browsers
-* Remote serving::
-* Sessions and Windows::
-* Input line editing::
-* Paging:: Paging and Pausing
-* Styling:: 
-* Keyboard shortcuts::
-* Tips and solutions::
-* Java tools::
-* Uses:: Projects using DomTerm
-* To do:: Ideas and projects for DomTerm
-* Technical documentation::
-* Credits:: Credits
-@end menu
-
-@node Features
-@chapter Features and screenshots
-
-DomTerm is designed and implemented by Per Bothner,
-but it makes use of a number of support libraries.
 
 This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emulator, OpenSource.org article} provides an overview of DomTerm's functionality.
 (It should be merged into the following.)
@@ -4359,6 +4351,9 @@ This is no longer supported, but a simplified Java server is still supported.
 It uses @code{XMLHttpRequest} (``ajax'') and the @code{com.sun.net.httpserver.HttpServer}
 bundled with JSK.
 
+The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
+was based on similar ideas as DomTerm, but was mostly written in Java using
+@uref{https://docs.oracle.com/javafx/2/webview/jfxpub-webview.htm, Javafx WebView}.
 Some optional Java code (not used by the default @code{domterm} command),
 including a JavaFX embedding, 
 was written while I worked at Oracle, and is copyright Oracle.
