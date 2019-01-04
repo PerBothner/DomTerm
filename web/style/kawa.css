@@ -13,17 +13,14 @@ body {
   background: #fffff5;
   color: #333;
   font-family: verdana, helvetica, sans-serif;
-  line-height: 1.2; }
+  line-height: 1.2;
+}
+div.chapter, div.sect1 { padding: 1ex 2em}
 h1 {
   line-height: 1;
   text-align: center;
-  font-variant: small-caps;
-  border-bottom: thin solid;
   padding: 0 0.5em 0.2em 0.5em;
   font-weight: normal }
-h1:first-line { 
-  border-bottom: none;		/* bug in Konqueror 3.1 */
-  font-style: italic }
 a {
   border-style: none; }
 a:link {
@@ -35,8 +32,7 @@ h1, h3, h4 {
 h1, h2, h3 {
   color: #114;
   font-weight: bold;
-  border: thin solid;
-  background-color: lightblue;
+  background-color: #e8f8f8;
   padding: 0.2ex 0.5em 0.2ex 0.5em;
 }
 h3 {
@@ -53,7 +49,6 @@ h4 { font-size: medium; }
 h2 {
   text-align: center;
   line-height: 1;
-  text-transform: uppercase;
   clear: both;
   margin-top: 3em }
 div.section {
@@ -143,7 +138,7 @@ html {
 span.ignore { display: none }
 
 div.navcol { 
-    background: #e0Ffd0;
+    background: #f0f0e0;
 }
 
 /* Local navigation menu, along the left or right side */
@@ -185,7 +180,7 @@ div.navheader ul a { text-decoration: none; }
 div.navcol a:hover
 {
 color: #fff;
-background-color: #69C;
+background-color: #608090;
 }
 
 div.navheader table, div.navheader tr, div.navheader th { 
