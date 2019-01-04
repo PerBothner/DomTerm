@@ -2849,6 +2849,13 @@ The @uref{http://www.gnuplot.info/,@b{gnuplot}} graphing utility will print
 @uref{https://per.bothner.com/blog/2016/gnuplot-in-domterm/,graphical output}
 directly to the terminal if using DomTerm.
 
+The Python
+@uref{https://github.com/albertz/py_better_exchook,@b{better_exchook}}
+package prints stack traces with extended information such as relevant
+local variables. When run in DomTerm, it folds all the details of each
+stack frame away by default, and thus provides a much more
+comprehensive overview, while still providing all the details when needed.
+
 The @uref{https://github.com/PerBothner/atom-domterm,@b{atom-domterm}}
 package for the @uref{https://atom.io/,Atom text editor}
 provides a text editor in an Atom pane, fairly well integrated.
