@@ -2320,40 +2320,10 @@ DomTerm.prototype._currentStyleBackground = function() {
 }
 
 DomTerm.prototype._getBackgroundColor = function(element) {
-    var st = element.getAttribute("style");
-    if (st) {
-        var n = "background-color:";
-        var nlen = n.length;
-        var i = st.indexOf(n);
-        if (i >= 0) {
-            var nend = st.indexOf(";", i);
-            if (nend < 0)
-                nend = st.length;
-            return st.substring(i+nlen, nend).trim();
-        }
-    }
-    return null;
+    return element.style.backgroundColor || null;
 }
 DomTerm.prototype._setBackgroundColor = function(element, bgcolor) {
-    var st = element.getAttribute("style");
-    if (st) {
-        if (! bgcolor)
-            element.removeAttribute("style");
-        else {
-            var n = "background-color:";
-            var i = st.indexOf(n);
-            if (i >= 0) {
-                var nend = st.indexOf(";", i);
-                if (nend < 0)
-                    st = st.substring(0, n);
-                else
-                    st = st.substring(0, n) + st.substring(nend+1);
-            }
-            element.setAttribute("style", "background-color: "+bgcolor+";"+st);
-        }
-    } else if (bgcolor) {
-        element.setAttribute("style", "background-color: "+bgcolor);
-    }
+    element.style.backgroundColor = bgcolor || "";
 }
 
 DomTerm.prototype._createPreNode = function() {
