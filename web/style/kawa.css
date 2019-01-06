@@ -174,10 +174,10 @@ div.navcol a { text-decoration: none; }
 /* The following is redundant, but is needed for IE 6.0. */
 div.navheader ul a { text-decoration: none; }
 
-a:hover
+div.navcol > a:hover, a:hover, a.logo:hover, div.logo:hover
 {
 color: #fff;
-background-color: #608090;
+background: #608090;
 }
 
 div.navheader table, div.navheader tr, div.navheader th { 
@@ -202,16 +202,9 @@ div.navcol *.logo {
   font-size: xx-large
 }
 div.logo {
-  background-image: url(../images/domterm1.svg);
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  width: 100%;
-  height: 180px;
-  margin:0px auto;
+    width: 100%; height: 160px;
 }
-div.logo a img { border: none;  height: 90%; width: 90%; background-size: contain }
+div.navcol > a img { float: none; padding: 15px 0.1em; width: 60%; }
 
 code[class="literal"] strong { color: purple }
 p[class="synopsis"] code strong { color: purple }

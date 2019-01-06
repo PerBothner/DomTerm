@@ -10,11 +10,11 @@ body {
 
 div.navbar {
   position: absolute;
-  top: 180px; right: 0.2em; bottom: 0em; left: 0em;
+  top: 160px; right: 0.2em; bottom: 0em; left: 0em;
   height: auto;
 }
 
-div.navcol { 
+div.navcol {
   position: absolute;
   width: 25%;
   top: 0em; right: 0em; bottom: 0em; left: 0em;
