@@ -3593,16 +3593,16 @@ If @var{mode} is 1 or 2 it starts a span, while @var{mode} 0 ends the span.
 The span is initially visible if @var{mode} is 1, and
 is hidden if @var{mode} is 2.
 
-@item @code{"\e]119;"} @var{context-id} @code{"\a"}
+@item @code{"\e]119;"} @var{group-id} @code{"\a"}
 @itemx @code{"\e[19u"}  (deprecated)
 
 Start a @ref{command group}.
 This command implicitly does a "fresh line" and ends any
-existing command group with the same @var{context-id}.
+existing command group with the same @var{group-id}.
 (The @code{"\e[19u"} variant is equivalent to
-an empty @var{context-id} - i.e. @code{"\e]119;\a"}.)
+an empty @var{group-id} - i.e. @code{"\e]119;\a"}.)
 Creates a nested command-group
-if there is no existing command group with the same @var{context-id}.
+if there is no existing command group with the same @var{group-id}.
 
 You can write this string before writing an input prompt string.
 The @var{content-id} is commonly the process-id of the REPL.
