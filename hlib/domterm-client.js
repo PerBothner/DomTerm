@@ -240,6 +240,9 @@ function loadHandler(event) {
         uhash = url.substring(hashPos);
         url = url.substring(0, hashPos);
     }
+    if (! DomTerm.server_port && location.port)
+        DomTerm.server_port = location.port;
+    DomTerm.topLocation = url;
     if (DomTerm.useIFrame)
         DomTerm.mainLocation = "http://127.0.0.1:"+DomTerm.server_port+"/simple.html";
     else
@@ -372,6 +375,8 @@ function handleMessage(event) {
         DomTerm.showContextMenu(options);
     } else if (data.command=="domterm-new-pane") { // either direction
         DomTerm.newPane(data.args[0], data.args[1]);
+    } else if (data.command=="domterm-new-window") { // either direction
+        DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
     } else if (data.command=="domterm-next-pane") {

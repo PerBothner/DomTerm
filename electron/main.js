@@ -29,7 +29,7 @@ function createInitialWindow () {
     }
 
     // Create the browser window.
-    var w = 800, h = 600;
+    var w = -1, h = -1;
     var m = geometry ? geometry.match(/^([0-9]+)x([0-9]+)$/) : null;
     if (m) {
         w = Number(m[1]);
@@ -37,9 +37,23 @@ function createInitialWindow () {
     }
     createNewWindow(url, w, h, openDevTools);
 }
-
+var previousUrl = null;
+var previousWidth = 800;
+var previousHeight = 600;
 
 function createNewWindow (url, w, h, openDevTools=false) {
+    if (w <= 0)
+        w = previousWidth;
+    else
+        previousWidth = w;
+    if (h <= 0)
+        h = previousHeight;
+    else
+        previousHeight = h;
+    if (! url)
+        url = previousUrl;
+    else
+        previousUrl = url;
     let win = new BrowserWindow({width: w, height: h,
                                  useContentSize: true, show: false});
     windowList.push(win);

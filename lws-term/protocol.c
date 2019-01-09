@@ -857,7 +857,6 @@ reportEvent(const char *name, char *data, size_t dlen,
         struct options opts;
         init_options(&opts);
         opts.geometry = geom;
-        fprintf(stderr, "OPEN-WINDOW '%s' geom:%s\n", data, geom);
         do_run_browser(&opts, data, -1);
         if (geom != NULL)
             free(geom);

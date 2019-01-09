@@ -8267,9 +8267,9 @@ DomTerm.prototype.keyDownToString = function(event) {
     default:
         if (event.ctrlKey) {
             var code = -1;
-            if (key >=65 && key <= 90)
+            if ((key >= 65 && key <= 90) && ! event.shiftKey) // 'A'...'Z'
                 code = key-64;
-            if (key >= 219 && key <= 222)
+            if (key >= 219 && key <= 222) // '[', '\\', ']', '\'' 
                 code = key-192;
             if (key == 32 || event.key=="@")
                 code = 0;
@@ -8716,6 +8716,40 @@ DomTerm.prototype._popFromCaret = function(saved) {
 }
 
 DomTerm.commandMap = new Object();
+DomTerm.commandMap['cycle-input-mode'] = function(dt, key) {
+    dt.nextInputMode();
+    return true;
+};
+DomTerm.commandMap['new-window'] = function(dt, key) {
+    DomTerm.openNewWindow(dt);
+    return true;
+};
+DomTerm.commandMap['new-tab'] = function(dt, key) {
+    if (! DomTerm.layoutAddTab)
+        return false;
+    // DomTerm.layoutAddTab doesn't work if useIFrame, so use newPane instead.
+    DomTerm.newPane(2, null, dt);
+    return true;
+};
+DomTerm.commandMap['enter-mux-mode'] = function(dt, key) {
+    if (! dt.enterMuxMode)
+        return false;
+    dt.enterMuxMode();
+    return true;
+}
+DomTerm.commandMap['toggle-paging-mode'] = function(dt, key) {
+    if (dt._currentlyPagingOrPaused()) {
+        dt._pauseContinue();
+        dt._exitPaging();
+    } else
+        dt._enterPaging(true);
+    return true;
+}
+
+DomTerm.commandMap['save-as-html'] = function(dt, key) {
+    DomTerm.doSaveAs(dt);
+    return true;
+};
 DomTerm.commandMap['paste-text'] = function(dt, key) {
     DomTerm.doPaste(dt);
     return true; }
@@ -8866,6 +8900,15 @@ DomTerm.commandMap['insert-char'] = function(dt, keyName) {
     return true;
 };
 
+DomTerm.masterKeymap = new browserKeymap({
+    "Ctrl-Shift-A": "enter-mux-mode",
+    "Ctrl-Shift-L": "cycle-input-mode",
+    "Ctrl-Shift-M": "toggle-paging-mode",
+    "Ctrl-Shift-N": "new-window",
+    "Ctrl-Shift-S": "save-as-html",
+    "Ctrl-Shift-T": "new-tab"
+});
+
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-R": "backward-search-history",
@@ -8982,8 +9025,6 @@ DomTerm.sendSavedHtml = function(dt, html) {
 
 DomTerm.openNewWindow = function(dt, options={}) {
     let url = options.url;
-    if (! url)
-        url = DomTerm.mainLocation;
     let width = options.width || DomTerm.defaultWidth;
     let height = options.height || DomTerm.defaultHeight;
     if (options.geometry) {
@@ -8993,18 +9034,31 @@ DomTerm.openNewWindow = function(dt, options={}) {
             height = geometry[2];
         }
     }
-
+        if (! url)
+            url = DomTerm.topLocation;
     if (DomTerm.isElectron()) {
-        const { ipcRenderer } = nodeRequire('electron');
-        ipcRenderer.send('request-mainprocess-action',
-                         { action: 'new-window', width: width, height: height, url: url });
-    } else if (true) {
-        window.open(url, "_blank", "width="+width+",height="+height);
-    } else
-        dt.reportEvent("OPEN-WINDOW",
-                       url + (url.indexOf('#') < 0 ? '#' : '&') +
-                       ((width && height) ? ("geometry="+width+"x"+height) : "")
-                      );
+        if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+            let popt = Object.assign({}, options);
+            if (width)
+                popt.width = width;
+            if (height)
+                popt.height = height;
+            DomTerm.sendParentMessage("domterm-new-window", popt);
+        } else {
+            const { ipcRenderer } = nodeRequire('electron');
+            ipcRenderer.send('request-mainprocess-action',
+                             { action: 'new-window', width: width, height: height, url: url });
+        }
+    } else {
+        if (dt) {
+            dt.reportEvent("OPEN-WINDOW",
+                           url + (url.indexOf('#') < 0 ? '#' : '&') +
+                           ((width && height) ? ("geometry="+width+"x"+height) : "")
+                          );
+        } else {
+            window.open(url, "_blank", "width="+width+",height="+height);
+        }
+    }
 }
 
 DomTerm.prototype._isOurEvent = function(event) {
@@ -9028,45 +9082,11 @@ DomTerm.prototype.keyDownHandler = function(event) {
         return;
     if (this._composing == 0)
         this._composing = -1;
-
-    if (event.ctrlKey && event.shiftKey) {
-        switch (key) {
-        case 65: // Control-Shift-A
-            if (this.enterMuxMode) {
-                this.enterMuxMode();
-                event.preventDefault();
-            }
-            return;
-        case 73: // Control-shift-I
-            return;
-        case 76: // Control-shift-L
-            this.nextInputMode();
-            event.preventDefault();
-            return;
-        case 77: // Control-Shift-M
-            if (this._currentlyPagingOrPaused()) {
-                this._pauseContinue();
-                this._exitPaging();
-            } else
-                this._enterPaging(true);
-            event.preventDefault();
-            return;
-        case 78: // Control-Shift-N
-            DomTerm.openNewWindow(this);
-            event.preventDefault();
-            return;
-        case 83: // Control-Shift-S
-            DomTerm.doSaveAs(this);
-            event.preventDefault();
-            return;
-        case 84: // Control-Shift-T
-            if (DomTerm.layoutAddTab) {
-                DomTerm.layoutAddTab(this);
-                event.preventDefault();
-                return;
-            }
-        }
+    if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
+        event.preventDefault();
+        return;
     }
+    // FIXME move these to masterKeymap and/or lineEditKeymap
     if (event.ctrlKey && (event.shiftKey || this.isLineEditing())) {
         switch (key) {
         case 33 /*PageUp*/:

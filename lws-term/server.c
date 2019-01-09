@@ -733,8 +733,7 @@ do_run_browser(struct options *options, char *url, int port)
             FOREACH_WSCLIENT(twsi, p) {
                 struct tty_client *t =
                     (struct tty_client *) lws_wsi_user(twsi);
-                if (t->version_info && strstr(t->version_info, ";electron=")) {
-                    fprintf(stderr, "found electron client\n");
+                if (t->version_info && strstr(t->version_info, "\"electron\":\"")) {
                     browser_run_browser(options, url, t);
                     return EXIT_SUCCESS;
                 }
