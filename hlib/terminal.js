@@ -5320,18 +5320,21 @@ DomTerm.prototype.setSettings = function(obj) {
             DomTerm.defaultHeight = -1;
         }
 
-        var lineeditMap = obj["keymap.line-edit"];
-        if (lineeditMap != null) {
-            let map = "{" + lineeditMap.trim().replace(/\n/g, ",") + "}";
-            map = map.replace(/("[^"]+")\s*:\s*([^"',\s]+)/g, '$1: "$2"')
-                .replace(/('[^']+')\s*:\s*([^"',\s]+)/g, '$1: "$2"');
-            try {
-                DomTerm.lineEditKeymap =
-                    DomTerm.lineEditKeymapDefault.update(JSON.parse(map));
-            } catch (e) {
+        function updateKeyMap(mapName, defaultMap) {
+            var mapValue = obj[mapName];
+            if (mapValue != null) {
+                let map = mapValue.trim().replace(/\n/g, ",");
+                map = map.replace(/("[^"]+")\s*:\s*([^"',\s]+)/g, '$1: "$2"')
+                    .replace(/('[^']+')\s*:\s*([^"',\s]+)/g, '$1: "$2"');
+                try {
+                    return defaultMap.update(JSON.parse("{" + map + "}"));
+                } catch (e) {
+                }
             }
-        } else
-            DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
+            return defaultMap;
+        }
+        DomTerm.lineEditKeymap = updateKeyMap("keymap.line-edit", DomTerm.lineEditKeymapDefault);
+        DomTerm.masterKeymap = updateKeyMap("keymap.master", DomTerm.masterKeymapDefault);
     }
 
     if (DomTerm.settingsHook) {
@@ -8900,7 +8903,7 @@ DomTerm.commandMap['insert-char'] = function(dt, keyName) {
     return true;
 };
 
-DomTerm.masterKeymap = new browserKeymap({
+DomTerm.masterKeymapDefault = new browserKeymap({
     "Ctrl-Shift-A": "enter-mux-mode",
     "Ctrl-Shift-L": "cycle-input-mode",
     "Ctrl-Shift-M": "toggle-paging-mode",
@@ -8908,6 +8911,7 @@ DomTerm.masterKeymap = new browserKeymap({
     "Ctrl-Shift-S": "save-as-html",
     "Ctrl-Shift-T": "new-tab"
 });
+DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
 
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({

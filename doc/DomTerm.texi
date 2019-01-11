@@ -1175,6 +1175,8 @@ For details, see @ref{link-handlers}.
 @item @code{@b{keymap.line-edit} =} @var{keymap-overrides}
 Add or replace keybindings for @ref{Input line editing,input line editing}.
 (Changing other keybindings is planned but not yet implemented.)
+@item @code{@b{keymap.master} =} @var{keymap-overrides}
+Add or replace keybindings that are active in all modes. 
 @end table
 
 @node Applications
