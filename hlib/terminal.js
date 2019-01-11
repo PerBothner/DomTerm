@@ -9302,9 +9302,13 @@ DomTerm.prototype._checkTree = function() {
     if (this._caretNode.parentNode != null && this._inputLine == null
         && this._caretNode != this.outputBefore)
         error("bad _caretNode");
-    if ((this.outputBefore
-         && this.outputBefore.parentNode != this.outputContainer)
-        || this.outputContainer == null
+    if (this.outputContainer == null
+        || (this.outputContainer instanceof Text
+            ? (typeof this.outputBefore != "number"
+               || this.outputBefore < 0
+               || this.outputBefore > this.outputContainer.length)
+            : (this.outputBefore
+               && this.outputBefore.parentNode != this.outputContainer))
         || (! isSavedSession && this.outputContainer.parentNode == null))
         error("bad outputContainer");
     if (this.inputFollowsOutput && this._inputLine
