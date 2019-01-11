@@ -907,6 +907,17 @@ reportEvent(const char *name, char *data, size_t dlen,
             pclient->preserved_end = PRESERVE_MIN + new_length;
         }
         pclient->preserved_sent_count = rcount;
+    } else if (strcmp(name, "ECHO-URGENT") == 0) {
+        json_object *obj = json_tokener_parse(data);
+        const char *kstr = json_object_get_string(obj);
+        struct lws *tty_wsi;
+        FOREACH_WSCLIENT(tty_wsi, pclient) {
+            struct tty_client *t =
+                (struct tty_client *) lws_wsi_user(tty_wsi);
+            printf_to_browser(t, URGENT_WRAP("%s"), kstr);
+            lws_callback_on_writable(tty_wsi);
+        }
+        json_object_put(obj);
     } else {
     }
 }

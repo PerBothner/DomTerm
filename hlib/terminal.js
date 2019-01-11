@@ -2194,8 +2194,7 @@ DomTerm.prototype._isAnAncestor = function(node, ancestor) {
     return true;
 };
 
-DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
-    var absLine = this.getAbsCursorLine();
+DomTerm.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getAbsCursorLine()) {
     if (absLine > 0)
         this._clearWrap(absLine-1);
     var start = this.lineStarts[absLine];
@@ -2211,9 +2210,8 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count) {
         this._clearWrap(absLine+count-1);
         end = this.lineStarts[absLine+count];
     }
-    this._fixOutputPosition();
-    var cur = this.outputBefore;
-    var parent = this.outputContainer;
+    var cur = start;
+    var parent = start.parentNode;
     for (;;) {
         if (cur == null) {
             while (parent != null && parent.nextSibling == null)
@@ -3925,6 +3923,25 @@ DomTerm.prototype.eraseDisplay = function(param) {
             this.resetCursorCache();
             saveLine -= removed;
         }
+        break;
+    case 7:
+        let lineBelow = saveLine+1;
+        while (lineBelow < this.lineStarts.length
+               && this.lineStarts[lineBelow].getAttribute("line") != null)
+            lineBelow++;
+        if (lineBelow < this.lineStarts.length)
+            this.deleteLinesIgnoreScroll(-1, lineBelow);
+        let lineFirst = saveLine;
+        while (lineFirst > 0
+               && this.lineStarts[lineFirst].getAttribute("line") != null)
+            lineFirst--;
+        let dstart = this.usingAlternateScreenBuffer ? this.initial.saveLastLine
+            : 0;
+        let dcount = lineFirst - dstart;
+        this.deleteLinesIgnoreScroll(dcount, dstart);
+        this.homeLine = lineFirst >= this.homeLine ? dstart
+            : this.homeLine - dcount;
+        saveLine -= dcount;
         break;
     default:
         var startLine = param == 0 ? saveLine : this.homeLine;
@@ -8723,6 +8740,14 @@ DomTerm.commandMap['cycle-input-mode'] = function(dt, key) {
     dt.nextInputMode();
     return true;
 };
+DomTerm.commandMap['clear-buffer'] = function(dt, key) {
+    if (DomTerm.isFrameParent())
+        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+                                 "do-command", "clear-buffer");
+    else
+        dt.reportEvent("ECHO-URGENT", JSON.stringify("\033[7J"));
+    return true;
+}
 DomTerm.commandMap['new-window'] = function(dt, key) {
     DomTerm.openNewWindow(dt);
     return true;

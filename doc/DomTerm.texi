@@ -3465,6 +3465,9 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 @item @code{"\e[3J"}
 Erase the scrollback buffer (i.e. any lines above the home line).
 (This is an xterm feature.)
+@item @code{"\e[7J"}
+Delete all lines in the buffer (including scrolled lines),
+except the current line.
 
 @item @code{"\e[>0c"}
 Request Secondary Device Attributes.

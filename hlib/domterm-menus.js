@@ -202,7 +202,14 @@ DomTerm.createMenus = function(options) {
     editMenu.append(copyItem);
     editMenu.append(copyAsHtmlItem);
     editMenu.append(pasteItem);
-
+    /* FIXME - needs work when line-editing
+    editMenu.append(menuItem({label: 'Clear Buffer',
+                              click:
+                              function() {
+                                  DomTerm.commandMap['clear-buffer']
+                                  (DomTerm.focusedTerm, null)
+                              }}));
+    */
     let viewMenu = new Menu();
     viewMenu.append(showMenuBarItem);
 

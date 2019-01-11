@@ -377,6 +377,8 @@ function handleMessage(event) {
         DomTerm.newPane(data.args[0], data.args[1]);
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
+    } else if (data.command=="do-command") {
+        DomTerm.commandMap[data.args[0]](DomTerm.focusedTerm, null);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
     } else if (data.command=="domterm-next-pane") {
