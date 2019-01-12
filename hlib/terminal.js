@@ -127,13 +127,6 @@ function DomTerm(name, topNode) {
     this.windowNumber = -1;
     this._settingsCounterInstance = -1;
     
-    // Input lines that have not been processed yet.
-    // In some modes we support enhanced type-ahead: Input lines are queued
-    // up and only released when requested.  This allows output from an
-    // earlier command, as well as prompt text for a later command, to
-    // be inserted before a later input-line.
-    this.pendingInput = null;
-
     this._deferredLinebreaksStart = -1;
 
     this.lineIdCounter = 0; // FIXME temporary debugging
@@ -2765,7 +2758,6 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     caretNode.spellcheck = false;
     this.insertNode(caretNode);
     this.outputBefore = caretNode;
-    this.pendingInput = caretNode;
 
     var dt = this;
     topNode.addEventListener("keydown",
@@ -3708,28 +3700,6 @@ DomTerm.prototype.grabInput = function(input) {
         result = result + this.grabInput(n);
     }
     return result;
-};
-
-DomTerm.prototype.getPendingInput = function() {
-    var text = null;
-    while (this.pendingInput != this._inputLine && text == null) {
-        if (this.isSpanNode(pendingInput)) {
-            text = this.grabInput(pendingInput);
-            if (text.length == 0)
-                text = null;
-        } else if (this.isBreakNode(this.pendingInput)) {
-                text = "\n";
-        } else if (this.pendingInput instanceof Text) {
-            text = pendingInput.data;
-            if (text.length == 0)
-                text = null;
-        } else {
-            //WTDebug.println("UNEXPECTED NODE: "+WTDebug.pnode(pendingInput));
-        }
-        this.pendingInput = this.pendingInput.nextSibling;
-    }
-    this.outputBefore = this.pendingInput;
-    return text;
 };
 
 DomTerm.prototype.historyAdd = function(str, append) {
