@@ -3474,6 +3474,8 @@ DomTerm.prototype.setWindowSize = function(numRows, numColumns,
 * (if allNodes is false).  If the value returned by 'func' is not a boolean,
 * stop interating and return that as the result of forEachElementIn.
 * If the value is true, continue with children; if false, skip children.
+* The function may safely remove or replace the active node,
+* or change its children.
 */
 DomTerm.prototype._forEachElementIn = function(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild) {
     let starting = true;
@@ -3481,7 +3483,9 @@ DomTerm.prototype._forEachElementIn = function(node, func, allNodes=false, backw
         if (cur == null || (cur == node && !starting))
             break;
         starting = false;
-        let doChildren = true
+        let sibling = backwards?cur.previousSibling:cur.nextSibling;
+        let parent = cur.parentNode;
+        let doChildren = true;
         if (allNodes || cur instanceof Element) {
             var r = func(cur);
             if (r === true || r === false)
@@ -3495,14 +3499,16 @@ DomTerm.prototype._forEachElementIn = function(node, func, allNodes=false, backw
             cur = next;
         } else {
             for (;;) {
-                next = backwards?cur.previousSibling:cur.nextSibling;
+                next = sibling;
                 if (next != null) {
                     cur = next;
                     break;
                 }
-                cur = cur.parentNode;
+                cur = parent;
                 if (cur == node)
                     break;
+                sibling = backwards?cur.previousSibling:cur.nextSibling;
+                parent = cur.parentNode;
             }
         }
     }
