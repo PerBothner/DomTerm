@@ -3790,9 +3790,8 @@ DomTerm.prototype.handleEnter = function(text) {
     var oldInputLine = this._inputLine;
     var spanNode;
     var line = this.getAbsCursorLine();
-    let suppressEcho = ((this._clientPtyEcho
-                         && (! this._clientPtyExtProc
-                             || ! this._clientWantsEditing))
+    let suppressEcho = ((this._clientPtyEcho && ! this._clientPtyExtProc)
+                        || ! this._clientWantsEditing
                         || text == null);
     if (oldInputLine != null) {
         let noecho = oldInputLine.classList.contains("noecho");
