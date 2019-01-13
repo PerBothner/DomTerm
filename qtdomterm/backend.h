@@ -44,8 +44,8 @@ signals:
     void finished();
     void layoutAddPane(int paneOp);
     void copyAsHTML();
-    void detachSession();
-    void handleSimpleMessage(const QString& msg);
+    void handleSimpleMessage(const QString& msg); // deprecated?
+    void handleSimpleCommand(const QString& msg);
     void writeInputMode(int mode);
     void writeSetCaretStyle(int style);
     void writeEncoded(int nbytes, const QString &encodedBytes);

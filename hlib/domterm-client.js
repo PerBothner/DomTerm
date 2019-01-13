@@ -163,10 +163,10 @@ function setupQWebChannel(channel) {
     backend.layoutAddPane.connect(function(paneOp) {
         DomTerm.newPane(paneOp);
     });
-    backend.detachSession.connect(function() {
-        DomTerm.detach();
-    });
     backend.handleSimpleMessage.connect(DomTerm.handleSimpleMessage);
+    backend.handleSimpleCommand.connect(function(command) {
+        DomTerm.commandMap[command](DomTerm.focusedTerm, null);
+    });
     backend.copyAsHTML.connect(function() {
         DomTerm.doCopy(true);
     });

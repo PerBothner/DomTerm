@@ -129,9 +129,11 @@ QSize BrowserMainWindow::sizeHint() const
 {
     if (m_width > 0 || m_height > 0)
         return QSize(m_width, m_height);
-    QRect desktopRect = QApplication::desktop()->screenGeometry();
-    QSize size = desktopRect.size() * qreal(0.9);
-    return size;
+#if 0
+    return QApplication::desktop()->screenGeometry() * qreal(0.4);
+#else
+    return QSize(800, 600);
+#endif
 }
 
 void BrowserMainWindow::setupMenu()
@@ -175,6 +177,8 @@ void BrowserMainWindow::setupMenu()
                                   this, &BrowserMainWindow::slotPaste);
     m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
     //m_tabWidget->addWebAction(m_paste, QWebEnginePage::Paste);
+    editMenu->addAction(tr("Clear Buffer"),
+                        this, &BrowserMainWindow::slotClearBuffer);
     editMenu->addSeparator();
 
     QAction *m_find = editMenu->addAction(tr("&Find"));
@@ -340,7 +344,12 @@ void  BrowserMainWindow::slotNewTerminal(int paneOp)
 
 void BrowserMainWindow::slotDetach()
 {
-    emit webView()->backend()->detachSession();
+    emit webView()->backend()->handleSimpleMessage("detach");
+}
+
+void BrowserMainWindow::slotClearBuffer()
+{
+    emit webView()->backend()->handleSimpleCommand("clear-buffer");
 }
 
 void BrowserMainWindow::slotCopy()
