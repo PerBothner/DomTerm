@@ -3393,8 +3393,6 @@ DomTerm.prototype.reportKeyEvent = function(keyName, str) {
     this._keyEventCounter = (seqno + 1) & 1023;
 };
 
-var NEW_PENDING = true;
-
 DomTerm.prototype._createPendingSpan = function(span = this._createSpanNode()) {
     span.classList.add("pending");
     span.nextDeferred = this._deferredForDeletion;
@@ -8754,6 +8752,35 @@ DomTerm.commandMap['new-tab'] = function(dt, key) {
     DomTerm.newPane(2, null, dt);
     return true;
 };
+DomTerm.commandMap['scroll-top'] = function(dt, key) {
+    dt._disableScrollOnOutput = true;
+    dt._pageTop();
+    return true;
+}
+DomTerm.commandMap['scroll-bottom'] = function(dt, key) {
+    dt._pageBottom();
+    return true;
+}
+DomTerm.commandMap['scroll-line-up'] = function(dt, key) {
+    dt._disableScrollOnOutput = true;
+    dt._pageLine(-1);
+    return true;
+}
+DomTerm.commandMap['scroll-line-down'] = function(dt, key) {
+    dt._disableScrollOnOutput = true;
+    dt._pageLine(1);
+    return true;
+}
+DomTerm.commandMap['scroll-page-up'] = function(dt, key) {
+    dt._disableScrollOnOutput = true;
+    dt._pagePage(-1);
+    return true;
+}
+DomTerm.commandMap['scroll-page-down'] = function(dt, key) {
+    dt._disableScrollOnOutput = true;
+    dt._pagePage(1);
+    return true;
+}
 DomTerm.commandMap['enter-mux-mode'] = function(dt, key) {
     if (! dt.enterMuxMode)
         return false;
@@ -8929,7 +8956,13 @@ DomTerm.masterKeymapDefault = new browserKeymap({
     "Ctrl-Shift-M": "toggle-paging-mode",
     "Ctrl-Shift-N": "new-window",
     "Ctrl-Shift-S": "save-as-html",
-    "Ctrl-Shift-T": "new-tab"
+    "Ctrl-Shift-T": "new-tab",
+    "Ctrl-Shift-Home": "scroll-top",
+    "Ctrl-Shift-End": "scroll-bottom",
+    "Ctrl-Shift-Up": "scroll-line-up",
+    "Ctrl-Shift-Down": "scroll-line-down",
+    "Ctrl-Shift-PageUp": "scroll-page-up",
+    "Ctrl-Shift-PageDown": "scroll-page-down"
 });
 DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
 
@@ -8949,16 +8982,20 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Shift-Mod-Right": "forward-word-extend",
     "Shift-End": "end-of-line-extend",
     "Shift-Home": "beginning-of-line-extend",
+    "Ctrl-Down": "scroll-line-down",
+    "Ctrl-Up": "scroll-line-up",
+    "Ctrl-PageUp": "scroll-page-up",
+    "Ctrl-PageDown": "scroll-page-down",
     //"Shift-Mod-Home": "beginning-of-input-extend",
     //"Shift-Mod-End": "end-of-input-extend",
     "Backspace": "backward-delete-char",
     "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
     "Mod-Delete": "forward-delete-word",
-    //"Mod-Home": "beginning-of-input",
-    //"Mod-End": "end-of-input",
-    "Ctrl-Home": "beginning-of-input",
-    "Ctrl-End": "end-of-input",
+    "Ctrl-Home": "scroll-top",
+    "Ctrl-End": "scroll-bottom",
+    "Alt-Home": "beginning-of-input",
+    "Alt-End": "end-of-input",
     "End": "end-of-line",
     "Home": "beginning-of-line",
     "End": "end-of-line",
@@ -9113,27 +9150,6 @@ DomTerm.prototype.keyDownHandler = function(event) {
     // FIXME move these to masterKeymap and/or lineEditKeymap
     if (event.ctrlKey && (event.shiftKey || this.isLineEditing())) {
         switch (key) {
-        case 33 /*PageUp*/:
-        case 34 /*PageDown*/:
-            this._disableScrollOnOutput = true;
-            this._pagePage(key == 33 ? -1 : 1);
-            event.preventDefault();
-            return;
-        case 35 /*End*/:
-            this._pageBottom();
-            event.preventDefault();
-            return;
-        case 36 /*Home*/:
-            this._disableScrollOnOutput = true;
-            this._pageTop();
-            event.preventDefault();
-            return;
-        case 38 /*Up*/:
-        case 40 /*Down*/:
-            this._disableScrollOnOutput = true;
-            this._pageLine(key == 38 ? -1 : 1);
-            event.preventDefault();
-            return;
         case 67: // Control[-Shift]-C
             if (! event.shiftKey && document.getSelection().isCollapsed)
                 break;
@@ -9893,7 +9909,7 @@ DomTerm.prototype._pageTop = function() {
 }
 
 DomTerm.prototype._pageBottom = function() {
-    let target = this._vspacer.offsetTop - this.availHeight - this.charHeight;
+    let target = this._vspacer.offsetTop - this.availHeight;
     if (target < 0)
         target = 0;
     if (target - this.topNode.scrollTop <= 1
