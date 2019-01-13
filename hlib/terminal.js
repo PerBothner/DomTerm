@@ -196,10 +196,11 @@ function DomTerm(name, topNode) {
     this._clientPtyEcho = true;
     // True if EXTPROC tty flag is set. (Linux-only)
     this._clientPtyExtProc = false;
+    this._pendingEcho = "";
 
     // Used to implement clientDoesEcho handling.
     this._deferredForDeletion = null;
-    this.deferredForDeletionTimeout = 2000;
+    this.deferredForDeletionTimeout = 800;
     // this.passwordHideChar = "\u2022"; // Bullet = used by Chrome
     this.passwordHideChar = "\u25CF"; // Black circle - used by Firefox/IE
     this.passwordShowCharTimeout = 800;
@@ -287,7 +288,7 @@ function DomTerm(name, topNode) {
     this._caretNode = null;
     // When line-editing this is the actively edited line,
     // that has not yet been sent to the process.
-    // In this case _caretSpan is required to be within _inputLine.
+    // In this case _caretNode is required to be within _inputLine.
     this._inputLine = null;
 
     this._miniBuffer = null;
@@ -474,24 +475,23 @@ DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
 }
 
-DomTerm._deleteDataTail = function(text, count) {
+DomTerm.prototype._deleteData = function(text, start, count) {
     if (count == 0)
         return;
     let dlen = text.length;
-    if (count == dlen)
+    if (count == dlen) {
+        if (text === this.outputBefore)
+            this.outputBefore = text.nextSibling;
+        else if (text === this.outputContainer) {
+            this.outputContainer = text.parentNode;
+            this.outputBefore = text.nextSibling;
+        }
         text.parentNode.removeChild(text);
-    else
-        text.deleteData(dlen-count, count);
-}
-
-DomTerm._deleteData = function(text, start, count) {
-    if (count == 0)
-        return;
-    let dlen = text.length;
-    if (count == dlen)
-        text.parentNode.removeChild(text);
-    else
+    } else {
+        if (text === this.outputContainer)
+            this.outputBefore -= start;
         text.deleteData(start, count);
+    }
 }
 
 DomTerm.prototype.eofSeen = function() {
@@ -913,7 +913,7 @@ DomTerm.prototype.tabToNextStop = function(isTabChar) {
         var typical = this._tabsAdded == null && (nextStop & 7) == 0;
         span.setAttribute('style', 'tab-size:'+(typical ? 8 : nextStop));
         this.outputContainer.insertBefore(span, this.outputBefore);
-        DomTerm._deleteDataTail(prev, w);
+        this._deleteData(prev, prev.length-w, w);
     }
     return true;
 }
@@ -968,7 +968,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText =
                         cur.parentNode.insertBefore(document.createTextNode(data.substring(0,i)), cur);
                     var line = this._createLineNode("hard", "\n");
                     cur.parentNode.insertBefore(line, cur);
-                    DomTerm._deleteData(cur, 0, i+1);
+                    this._deleteData(cur, 0, i+1);
                     cur = line; // continue with Element case below
                     break;
                 }
@@ -979,7 +979,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText =
                     wcnode.setAttribute("class", "wc-node");
                     wcnode.appendChild(document.createTextNode(String.fromCodePoint(ch)));
                     cur.parentNode.insertBefore(wcnode, cur.nextSibling);
-                    DomTerm._deleteData(cur, i, dlen-i);
+                    this._deleteData(cur, i, dlen-i);
                     cur = wcnode;
                     if (i1 < dlen) {
                         data = data.substring(i1, dlen);
@@ -1526,8 +1526,11 @@ DomTerm.prototype._removeCaret = function(normalize=true) {
         caretNode.removeAttribute("caret");
         if (child instanceof Text) {
             var text = caretNode.nextSibling;
-            if (normalize && text instanceof Text) {
+            if (normalize && text !== this.outputBefore
+                && text instanceof Text) {
                 text.insertData(0, child.data);
+                if (text === this.outputContainer)
+                    this.outputBefore += child.length;
                 caretNode.removeChild(child);
             } else {
                 caretNode.removeChild(child);
@@ -1554,12 +1557,15 @@ DomTerm.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput) {
         this._removeCaret();
         var caretParent = this._caretNode.parentNode;
-        if (caretParent != null) {
+        if (caretParent != null /*&& ! this.isLineEditing()*/) {
             // FIXME Is this needed/desirable? maybe just _removeCaret
             // That would avoid need for _restoreCaretNode.
+            let before = this._caretNode.previousSibling;
             if (this.outputBefore==this._caretNode)
                 this.outputBefore = this.outputBefore.nextSibling;
             caretParent.removeChild(this._caretNode);
+            if (before instanceof Text)
+                this._normalize1(before);
         }
     }
 };
@@ -1659,10 +1665,24 @@ DomTerm.prototype._restoreCaret = function() {
                         && ch1 >= 0xDC00 && ch1 <= 0xDFFF)
                         sz = 2;
                 }
-                var ch = tdata.substring(0, sz);
-                this._caretNode.appendChild(document.createTextNode(ch));
                 let ptext = text.parentNode;
-                DomTerm._deleteData(text, 0, sz);
+                if (DomTerm._isPendingSpan(ptext)
+                    && this._caretNode.parentNode !== ptext) {
+                    if (this.outputBefore === this._caretNode)
+                        this.outputBefore = this._caretNode.nextSibling;
+                    ptext.insertBefore(this._caretNode, text);
+                }
+                var ch = tdata.substring(0, sz);
+                if (text === this.outputBefore
+                    || (text === this.outputContainer
+                        && this.outputBefore < sz)) {
+                    this.outputBefore = this._caretNode;
+                    this.outputContainer = this.outputBefore.parentNode;
+                } else if (text === this.outputContainer) {
+                    this.outputBefore -= sz;
+                }
+                this._caretNode.appendChild(document.createTextNode(ch));
+                this._deleteData(text, 0, sz);
                 this._caretNode.removeAttribute("value");
                 if (this._caretNode.parentNode == this._deferredForDeletion
                     && ptext != this._deferredForDeletion)
@@ -1712,8 +1732,7 @@ DomTerm.prototype._restoreInputLine = function(caretToo = true) {
             inputLine.startLineNumber = lineno;
         }
         this._fixOutputPosition();
-        if (this.outputBefore != inputLine && this.outputContainer != inputLine
-           && this.outputContainer.parentNode != inputLine) {
+        if (inputLine.parentNode === null) {
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
             this.outputBefore = inputLine;
             if (this._pagingMode == 0 && ! DomTerm.useXtermJs)
@@ -1863,6 +1882,7 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
         } else if (tcount > 0) {
             this.outputContainer = prev;
             this.outputBefore = len - tcount;
+            this._normalize1(prev);
         }
         if (tcount > 0 && this.currentCursorColumn > 0)
             this.currentCursorColumn -= tcols;
@@ -3373,87 +3393,118 @@ DomTerm.prototype.reportKeyEvent = function(keyName, str) {
     this._keyEventCounter = (seqno + 1) & 1023;
 };
 
-DomTerm.prototype._initPendingInput = function(str) {
-    if (this._deferredForDeletion &&
-        this._deferredForDeletion != this.outputContainer) {
-        this._doDeferredDeletion();
-    }
-    var pending = this._deferredForDeletion;
-    if (pending == null) {
-        this._removeCaret();
-        var pending = this._createSpanNode();
-        pending.textBefore = "";
-        pending.textAfter = "";
-        pending.pendingEcho = "";
-        pending.classList.add("pending");
+var NEW_PENDING = true;
 
-        this._deferredForDeletion = pending;
-        this._requestDeletePendingEcho();
-        this._restoreCaretNode();
-        this._caretNode.parentNode.insertBefore(pending, this._caretNode);
-        pending.appendChild(this._caretNode);
-        if (this.outputBefore == this._caretNode)
-            this.outputContainer = pending;
+DomTerm.prototype._createPendingSpan = function(span = this._createSpanNode()) {
+    span.classList.add("pending");
+    span.nextDeferred = this._deferredForDeletion;
+    this._deferredForDeletion = span;
+    return span;
+}
+
+DomTerm.prototype._getPendingSpan = function(node, before) {
+    let pending = before ? node.previousSibling : node.nextSibling;
+    if (DomTerm._isPendingSpan(pending))
+        return pending;
+    let span = this._createPendingSpan();
+    node.parentNode.insertBefore(span, before ? node : node.nextSibling);
+    if (pending instanceof Text) {
+        span.setAttribute("old-text", pending.data);
+        span.appendChild(pending);
     }
-    return pending;
+    return span;
 }
 
 DomTerm.prototype._addPendingInput = function(str) {
     if (DomTerm.useXtermJs)
         return;
-    var pending = this._initPendingInput();
-    this._caretNode.parentNode.insertBefore(document.createTextNode(str),
-                                            this._caretNode);
-    pending.pendingEcho += str;
-    pending.normalize();
-    this._restoreCaret();
+    this._restoreCaretNode();
+    let pending = this._getPendingSpan(this._caretNode, true);
+    if (pending.firstChild instanceof Text)
+        pending.firstChild.appendData(str);
+    else
+        pending.appendChild(document.createTextNode(str));
+    this._pendingEcho += str;
 }
 
 DomTerm._PENDING_LEFT = 2;
-DomTerm._PENDING_RIGHT = DomTerm._PENDING_LEFT+1;
+DomTerm._PENDING_FORWARDS = 1;
+DomTerm._PENDING_RIGHT = DomTerm._PENDING_LEFT+DomTerm._PENDING_FORWARDS;
 DomTerm._PENDING_DELETE = 4;
 
+DomTerm._isPendingSpan = function(node) {
+    return node instanceof Element
+        && node.tagName === "SPAN"
+        && node.classList.contains("pending");
+}
+
 DomTerm.prototype._editPendingInput = function(forwards, doDelete) {
-    var pending = this._initPendingInput();
+    this._restoreCaretNode();
     this._removeCaret();
-    let text = forwards ? this._caretNode.nextSibling
-        : this._caretNode.previousSibling;
-    let outerText = null;
-    if (text == null) {
-        outerText = forwards ? pending.nextSibling : pending.previousSibling;
-        text = outerText;
-    }
-    if (text instanceof Text && text.data.length > 0) {
-        let ch = text.data.substring(forwards ? 0 : text.data.length-1,
-                                     forwards ? 1 : text.data.length);
-        let chlen = 1;
-        // FIXME adjust ch/chlen if a surroagte
-        text.deleteData(forwards ? 0 : text.data.length-chlen, chlen);
-        if (outerText != null) {
-            if (forwards)
-                pending.textAfter = pending.textAfter + ch;
+    let block = this._getOuterBlock(this._caretNode);
+    let range = document.createRange();
+    if (! forwards)
+        range.setEndBefore(this._caretNode);
+    else
+        range.setStartAfter(this._caretNode);
+    let dt = this;
+    function wrapText(node, start, end) {
+        let parent = node.parentNode;
+        let dlen = node.data.length;
+        if (! DomTerm._isPendingSpan(parent)) {
+            if (end != dlen)
+                node.splitText(end);
+            if (start > 0)
+                node = node.splitText(start);
+            let pending = dt._createPendingSpan();
+            parent.insertBefore(pending, node);
+            pending.setAttribute("old-text", node.data);
+            if (doDelete)
+                parent.removeChild(node);
             else
-                pending.textBefore = ch + pending.textBefore;
+                pending.appendChild(node);
+        } else if (doDelete) {
+            if (start == 0 && end == dlen)
+                parent.removeChild(node);
+            else
+                node.deleteData(start, end-start);
         }
-        if (! doDelete) {
-            let prevText = forwards ? this._caretNode.previousSibling : this._caretNode.nextSibling;
-            if (prevText == null) {
-                prevText = document.createTextNode(ch);
-                this._caretNode.parentNode.insertBefore(prevText,
-                                                        forwards ? this._caretNode
-                                                        : this._caretNode.nextSibling);
-            } else
-                prevText.insertData(forwards ? prevText.data.length : 0,
-                                    ch);
-        }
-        let code = (forwards ? DomTerm._PENDING_RIGHT : DomTerm._PENDING_LEFT)
-            + (doDelete ? DomTerm._PENDING_DELETE : 0);
-        pending.pendingEcho += String.fromCharCode(code);
-        pending.normalize();
-        if (outerText)
-            outerText.parentNode.normalize();
-        this._restoreCaret();
     }
+    let scanState = { linesCount: 0, todo: 1, unit: "char", stopAt: "", wrapText: wrapText };
+    this.scanInRange(range, ! forwards, scanState);
+    if (! doDelete) {
+        let caret = this._caretNode;
+        if (this.outputBefore == caret)
+            this.outputBefore = caret.nextSibling;
+        if (forwards)
+            range.collapse();
+        let start = range.startContainer;
+        if (start instanceof Text && range.startOffset == 0)
+            start.parentNode.insertBefore(caret, start);
+        else if (start instanceof Text && range.startOffset == start.length)
+            start.parentNode.insertBefore(caret, start.nextSibling);
+        else
+            range.insertNode(caret);
+        let cparent = caret.parentNode;
+        if (DomTerm._isPendingSpan(cparent)) {
+            cparent.normalize(); // paranoia
+            if (caret.nextSibling == null)
+                cparent.parentNode.insertBefore(caret, cparent.nextSibling);
+            else if (caret.previousSibling == null)
+                cparent.parentNode.insertBefore(caret, cparent);
+            else {
+                let following = this._createPendingSpan();
+                cparent.parentNode.insertBefore(following, cparent.nextSibling);
+                following.appendChild(caret.nextSibling);
+                cparent.parentNode.insertBefore(caret, cparent.nextSibling);
+            }
+        }
+    }
+    let code = (forwards ? DomTerm._PENDING_RIGHT : DomTerm._PENDING_LEFT)
+        + (doDelete ? DomTerm._PENDING_DELETE : 0);
+    code = String.fromCharCode(code);
+    this._pendingEcho = this._pendingEcho + code;
+    this._restoreCaret();
 }
 
 DomTerm.prototype._respondSimpleInput = function(str, keyName) {
@@ -3800,8 +3851,8 @@ DomTerm.prototype.handleEnter = function(text) {
         let cont = oldInputLine.getAttribute("continuation");
         if (text != null && ! noecho)
             this.historyAdd(text, cont == "true");
-        this.outputContainer = oldInputLine;
-        this.outputBefore = this._caretNode;
+        this.outputContainer = oldInputLine.parentNode;
+        this.outputBefore = oldInputLine.nextSibling;
         if (this._getStdMode(oldInputLine.parentNode) !== "input") {
             let wrap = this._createSpanNode();
             wrap.setAttribute("std", "input");
@@ -3811,20 +3862,12 @@ DomTerm.prototype.handleEnter = function(text) {
     }
     this._inputLine = null;
     if (suppressEcho) {
-        oldInputLine.classList.add("pending");
-        this._deferredForDeletion = oldInputLine;
-        this._requestDeletePendingEcho();
-        this.currentAbsLine = line+this.homeLine;
-        this.currentCursorColumn = -1;
+        this._createPendingSpan(oldInputLine);
         this.resetCursorCache();
     } else if (! this.sstate.hiddenText) {
         this._removeCaret();
         let inputParent = oldInputLine.parentNode;
-        this.outputContainer = inputParent;
-        this.outputBefore = oldInputLine;
         this._removeInputLine();
-        this.outputContainer = oldInputLine.parentNode;
-        this.outputBefore = oldInputLine.nextSibling;
         this.resetCursorCache();
         this.cursorLineStart(1);
     }
@@ -3844,8 +3887,15 @@ DomTerm.prototype.appendText = function(parent, data) {
 DomTerm.prototype._normalize1 = function(tnode) {
     for (;;) {
         var next = tnode.nextSibling;
-        if (! (next instanceof Text) || next == this.outputBefore)
+        if (! (next instanceof Text))
             return;
+        if (next == this.outputBefore) {
+            this.outputContainer = tnode;
+            this.outputBefore = tnode.length;
+        } else if (next == this.outputContainer) {
+            this.outputContainer = tnode;
+            this.outputBefore += tnode.length;
+        }
         tnode.appendData(next.data);
         tnode.parentNode.removeChild(next)
     }
@@ -6503,42 +6553,35 @@ DomTerm.prototype.getAsHTML = function(saveMode=false) {
 
 DomTerm.prototype._doDeferredDeletion = function() {
     var deferred = this._deferredForDeletion;
-    if (deferred && deferred.parentNode) {
+    if (deferred) {
         this._removeCaret();
-        this.outputContainer = deferred.parentNode;
-        this.outputContainer.insertBefore(this._caretNode, deferred);
-        this.outputBefore = this._caretNode;
-        if (deferred.textBefore) {
-            this.outputContainer.insertBefore(document.createTextNode(deferred.textBefore), this.outputBefore);
-        }
-        if (deferred.textAfter) {
-            this.outputContainer.insertBefore(document.createTextNode(deferred.textAfter), this.outputBefore ? this.outputBefore.nextSibling : null);
-        }
-        deferred.normalize();
-        let toMove = new Array();
-        function movePrompts(node) {
-            if (node.nodeName == "SPAN") {
-                if (node.getAttribute("line")) {
-                    toMove.push(node);
-                    return false;
-                }
-                if (node.getAttribute("std") == "prompt") {
-                    if (node.defaultPattern)
-                        node.setAttribute("value", "");
-                    node.setAttribute("expecting-echo", true);
-                    toMove.push(node);
-                    return false;
-                }
+        let parent;
+        while (deferred && (parent = deferred.parentNode) != null) {
+            let oldText = deferred.getAttribute("old-text");
+            if (this._caretNode.parentNode == deferred)
+                parent.insertBefore(this._caretNode, deferred);
+            if (oldText) {
+                let tnode = document.createTextNode(oldText);
+                parent.insertBefore(tnode, deferred.nextSibling);
             }
-            return true;
+            if (this.outputBefore == deferred
+                || this.outputContainer == deferred
+                || this.outputContainer.parentNode == deferred) {
+                this.outputBefore = deferred.nextSibling;
+                this.outputContainer = deferred.parentNode;
+            }
+            let tprev = deferred.previousSibling;
+            let tnext = deferred.nextSibling;
+            parent.removeChild(deferred);
+            if (tprev instanceof Text)
+                this._normalize1(tprev);
+            else if (tnext instanceof Text)
+                this._normalize1(tnext);
+            deferred = deferred.nextDeferred;
         }
-        this._forEachElementIn(deferred, movePrompts);
-        let toMoveCount = toMove.length;
-        for (let i = 0; i < toMoveCount; i++) {
-            deferred.parentNode.insertBefore(toMove[i], deferred);
-        }
-        deferred.parentNode.removeChild(deferred);
         this._deferredForDeletion = null;
+        this._restoreCaret();
+        this._pendingEcho = "";
     }
 }
 
@@ -6635,21 +6678,6 @@ DomTerm.prototype.requestUpdateDisplay = function() {
         this._updateTimer = setTimeout(this._updateDisplay, 100);
 }
 
-DomTerm.prototype._requestDeletePendingEcho = function() {
-    if (this._deferredForDeletion == null)
-        return;
-    if (this._deletePendingEchoTimer != null)
-        clearTimeout(this._deletePendingEchoTimer);
-    var dt = this;
-    function clear() { dt._deletePendingEchoTimer = null;
-                       dt._doDeferredDeletion(); };
-    let timeout = dt.deferredForDeletionTimeout;
-    if (timeout)
-        this._deletePendingEchoTimer = setTimeout(clear, timeout);
-    else
-        clear();
-}
-
 DomTerm.prototype.insertString = function(str) {
     var slen = str.length;
     if (slen == 0)
@@ -6679,27 +6707,34 @@ DomTerm.prototype.insertString = function(str) {
     };
     */
     var dt = this;
+    let pendingEchoOldBefore, pendingEchoOldAfter, pendingEchoOld,
+        pendingEchoBlock;
+    let pendingEchoString = this._pendingEcho;
+    if (this._deferredForDeletion) {
+        pendingEchoBlock = this._getOuterBlock(this._caretNode);
+        this._doDeferredDeletion();
+        if (pendingEchoString.length > 1
+            && pendingEchoBlock) {
+            this._removeCaret();
+            let r = document.createRange();
+            r.selectNode(pendingEchoBlock);
+            pendingEchoOld = r.toString();
+            if (this.outputBefore == null)
+                r.setEndAfter(this.outputContainer);
+            else if (typeof this.outputBefore == "number")
+                r.setEnd(this.outputContainer, this.outputBefore);
+            else
+                r.setEndBefore(this.outputBefore);
+            pendingEchoOldBefore = r.toString();
+            pendingEchoOldAfter = pendingEchoOld.substring(pendingEchoOldBefore.length);
+        }
+        else
+            pendingEchoString = "";
+    }
     // FIXME this breaks selections overlapping the _inputLine
     if (this.useStyledCaret())
         this._removeInputLine();
     var pendingEchoNode = this._deferredForDeletion;
-    let pendingEchoBlock = null;
-    if (pendingEchoNode) {
-        if (! pendingEchoNode.pendingEcho
-            || pendingEchoNode.pendingEcho.length == 1)
-            pendingEchoNode = null;
-        else {
-            pendingEchoBlock = this._getOuterBlock(pendingEchoNode);
-            let r = document.createRange();
-            r.selectNode(pendingEchoBlock);
-            r.setEndBefore(pendingEchoNode);
-            pendingEchoNode.oldBefore = r.toString();
-            r.selectNode(pendingEchoBlock);
-            r.setStartAfter(pendingEchoNode);
-            pendingEchoNode.oldAfter = r.toString();
-        }
-        this._doDeferredDeletion();
-    }
     var i = 0;
     var prevEnd = 0;
     var columnWidth = 0; // number of columns since prevEnv
@@ -7157,93 +7192,78 @@ DomTerm.prototype.insertString = function(str) {
 
     // Check if output "accounts for" partial prefix of pendingEcho.
     // If so restore deferred pendingEcho for rest of old pendingEcho.
-    if (pendingEchoNode
+    if (pendingEchoBlock && pendingEchoString && ! this.isLineEditing()
         && pendingEchoBlock == this._getOuterBlock(this.outputContainer)) {
-        let oldBefore = pendingEchoNode.oldBefore;
-        let oldAfter = pendingEchoNode.oldAfter;
-        let newLine = pendingEchoBlock.textContent;
-        if (oldBefore.length + oldAfter.length <= newLine.length
-            && this.outputBefore != null
-            && oldBefore == newLine.substring(0, oldBefore.length)
-            && oldAfter == newLine.substring(newLine.length-oldAfter.length)) {
-            let newText = newLine.substring(oldBefore.length,
-                                            newLine.length-oldAfter.length);
-            let oldText = pendingEchoNode.textBefore + pendingEchoNode.textAfter;
-            let oldIndex = pendingEchoNode.textBefore.length;
-            let r = document.createRange();
-            r.selectNode(pendingEchoBlock);
-            this._restoreCaretNode();
-            r.setEndBefore(this._caretNode);
-            let newIndex = r.toString().length - oldBefore.length;
-            let delta = newText.length - oldText.length;
-            let pendingEcho = pendingEchoNode.pendingEcho;
-            let plen = pendingEcho.length;
-            let caret = this._caretNode;
-            let prevNode = caret.previousSibling;
-            let nextNode = caret.nextSibling;
-            let insertOnly = true;
-            for (let i = plen; --i >= 0; ) {
-                if (pendingEcho.charCodeAt(i) < 16) insertOnly = false;
-            }
-            if (insertOnly && delta > 0 && newIndex == oldIndex + delta
-                && (pendingEchoNode.textBefore + pendingEcho.substring(0,delta)
-                    == newText.substring(0, newIndex))
-                && pendingEchoNode.textAfter == newText.substring(newIndex)) {
-                this._addPendingInput(pendingEchoNode.pendingEcho.substring(delta));
-            } else if ((newIndex == 0
-                        || (prevNode instanceof Text
-                            && prevNode.data.length >= newIndex))
-                       && (newIndex == newText.length
-                           || (nextNode instanceof Text
-                               && nextNode.data.length >= newText.length - newIndex))) {
-                // slow checking for more complex pendingEcho
-                let text = oldText;
-                let index = oldIndex;
-                for (let i = 0; i < plen; ) {
-                    let ch = pendingEcho.charCodeAt(i);
-                    if (ch >= 8) {
-                        text = text.substring(0, index) + String.fromCharCode(ch) + text.substring(index);
-                        index++;
-                    } else {
-                        let ldelta = 0;
-                        let rdelta = 0;
-                        switch (ch) {
-                        case DomTerm._PENDING_LEFT:
-                            ldelta = -1; rdelta = -1; break;
-                        case DomTerm._PENDING_RIGHT:
-                            ldelta = 1; rdelta = 1; break;
-                        case DomTerm._PENDING_LEFT+DomTerm._PENDING_DELETE:
-                            ldelta = -1; rdelta = 0; break;
-                        case DomTerm._PENDING_RIGHT+DomTerm._PENDING_DELETE:
-                            ldelta = 0; rdelta = 1; break;
-                        }
-                        text = text.substring(0, index+ldelta) + text.substring(index+rdelta);
-                        index += ldelta;
+        this._restoreCaretNode();
+        let r = document.createRange();
+        r.selectNode(pendingEchoBlock);
+        r.setEndBefore(this._caretNode);
+        let newBefore = r.toString();
+        r.selectNode(pendingEchoBlock);
+        r.setStartAfter(this._caretNode);
+        let newAfter = r.toString();
+        let plen = pendingEchoString.length;
+        let newText = newBefore + newAfter;
+        let newIndex = newBefore.length;
+        let insertOnly = true;
+        for (let i = plen; --i >= 0; ) {
+            if (pendingEchoString.charCodeAt(i) < 16) insertOnly = false;
+        }
+        let oldBeforeLength = pendingEchoOldBefore.length;
+        let beforeDiff = newBefore.length - oldBeforeLength;
+        if (insertOnly && beforeDiff >= 0 && beforeDiff <= oldBeforeLength
+            && newAfter == pendingEchoOldAfter
+            && (newBefore == pendingEchoOldBefore
+                + pendingEchoString.substring(0, beforeDiff))) {
+            this._addPendingInput(pendingEchoString.substring(beforeDiff));
+        } else {
+            // slow checking for more complex pendingEcho
+            let text = pendingEchoOld;
+            let index = pendingEchoOldBefore.length;
+            let pendingTail = null;
+            for (let i = 0; i < plen; i++) {
+                let ch = pendingEchoString.charCodeAt(i);
+                if (ch >= 8) {
+                    text = text.substring(0, index) + String.fromCharCode(ch) + text.substring(index);
+                    index++;
+                } else {
+                    let ldelta = 0;
+                    let rdelta = 0;
+                    switch (ch) {
+                    case DomTerm._PENDING_LEFT:
+                        ldelta = -1; rdelta = -1; break;
+                    case DomTerm._PENDING_RIGHT:
+                        ldelta = 1; rdelta = 1; break;
+                    case DomTerm._PENDING_LEFT+DomTerm._PENDING_DELETE:
+                        ldelta = -1; rdelta = 0; break;
+                    case DomTerm._PENDING_RIGHT+DomTerm._PENDING_DELETE:
+                        ldelta = 0; rdelta = 1; break;
                     }
-                    if (++i == len)
-                        break;
-                    if (text == newText && index == newIndex) {
-                        // found match.  Note we don't stop the loop,
-                        // because a later match is better than a partial match.
-                        if (pendingEchoNode.parentNode == null) {
-                            DomTerm._deleteDataTail(prevNode, newIndex);
-                            DomTerm._deleteData(nextNode,
-                                                0, newText.length-newIndex);
-                            pendingEchoNode = this._initPendingInput();
-                        }
-                        pendingEchoNode.textBefore = text.substring(0, index);
-                        pendingEchoNode.textAfter = text.substring(index);
-                        pendingEchoNode.pendingEcho = pendingEcho.substring(i);
-                    }
+                    text = text.substring(0, index+ldelta) + text.substring(index+rdelta);
+                    index += ldelta;
                 }
-                if (pendingEchoNode.parentNode != null) {
-                    let t1 = text.substring(0, index);
-                    let t2 = text.substring(index);
-                    let parent = caret.parentNode;
-                    if (t1)
-                        parent.insertBefore(document.createTextNode(t1), caret);
-                    if (t2)
-                        parent.appendChild(document.createTextNode(t2));
+                if (text == newText && index == newIndex) {
+                    // found match.  Note we don't stop the loop,
+                    // because a later match is better than a partial match.
+                    pendingTail = pendingEchoString.substring(i+1);
+                }
+            }
+            if (pendingTail) {
+                let plen = pendingTail.length;
+                for (let i = 0; i < plen; ) {
+                    let ch = pendingTail.charCodeAt(i);
+                    if (ch >= 8) {
+                        let j = i+1;
+                        while (j < plen && pendingTail.charCodeAt(j) >= 8)
+                            j++;
+                        this._addPendingInput(pendingTail.substring(i, j));
+                        i = j;
+                    } else {
+                        let doDelete = (ch & DomTerm._PENDING_DELETE) != 0;
+                        let forwards = (ch & DomTerm._PENDING_FORWARDS) != 0;
+                        this._editPendingInput(forwards, doDelete);
+                        i++;
+                    }
                 }
             }
         }
@@ -7989,7 +8009,9 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                 this.moveToAbs(line, col, true);
             }
         }
+        this._adjustStyle();
     } else {
+        this._adjustStyle();
         if (this.outputContainer instanceof Text) {
             let oldStr = this.outputContainer.data.substring(this.outputBefore);
             if (oldStr.startsWith(str)) {
@@ -8017,7 +8039,6 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         // FIXME optimize if end of line
         fits = str == null || this.deleteCharactersRight(widthInColumns);
     }
-    this._adjustStyle();
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
         // maybe adjust line/absLine? FIXME
@@ -8684,7 +8705,6 @@ DomTerm.prototype._sendInputContents = function() {
     if (this._inputLine != null) {
         var text = this.grabInput(this._inputLine);
         this._deferredForDeletion = this._inputLine;
-        this._requestDeletePendingEcho();
         this._addPendingInput(text);
         this.reportText(text);
     }
@@ -9303,9 +9323,6 @@ DomTerm.prototype._checkTree = function() {
            && this.currentAbsLine >= nlines))
         error("bad currentAbsLine");
     var isSavedSession = this.isSavedSession();
-    if (this._caretNode.parentNode != null && this._inputLine == null
-        && this._caretNode != this.outputBefore)
-        error("bad _caretNode");
     if (this.outputContainer == null
         || (this.outputContainer instanceof Text
             ? (typeof this.outputBefore != "number"
@@ -9315,6 +9332,21 @@ DomTerm.prototype._checkTree = function() {
                && this.outputBefore.parentNode != this.outputContainer))
         || (! isSavedSession && this.outputContainer.parentNode == null))
         error("bad outputContainer");
+    else if (this._deferredForDeletion) {
+        for (let deferred = this._deferredForDeletion;
+             deferred != null; deferred = deferred.nextSibling) {
+            /*
+            if (deferred.parentNode == null
+                || ! (deferred.firstChild == null
+                      || (deferred.firstChild instanceof Text
+                          && deferred.firstChild.nextSibling == null)))
+                error("bad deferred-pending1");
+            else if (this.outputContainer == deferred
+                     || this.outputContainer == deferred.firstChild)
+                error("bad deferred-pending2");
+            */
+        }
+    }
     if (this.inputFollowsOutput && this._inputLine
         && this._inputLine.parentNode && this.outputBefore != this._inputLine)
         error("bad inputLine");
@@ -10406,6 +10438,12 @@ DomTerm.prototype.scanInRange = function(range, backwards, state) {
         let index = istart;
         for (;; ) {
             if (state.todo == 0) {
+                if (state.wrapText) {
+                    if (backwards)
+                        state.wrapText(node, index, istart);
+                    else
+                        state.wrapText(node, istart, index);
+                }
                 if (backwards)
                     range.setStart(node, index);
                 else
