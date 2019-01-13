@@ -8801,8 +8801,13 @@ DomTerm.commandMap['save-as-html'] = function(dt, key) {
     return true;
 };
 DomTerm.commandMap['paste-text'] = function(dt, key) {
-    DomTerm.doPaste(dt);
-    return true; }
+    return DomTerm.doPaste(dt);
+};
+DomTerm.commandMap['copy-text'] = function(dt, key) {
+    //if (! event.shiftKey && document.getSelection().isCollapsed)
+    //     break;
+    return DomTerm.doCopy();
+}
 DomTerm.commandMap['cut-text'] = function(dt, key) {
     if (! window.getSelection().isCollapsed)
         dt.editorBackspace(1, "kill", "line", "buffer");
@@ -8952,11 +8957,13 @@ DomTerm.commandMap['insert-char'] = function(dt, keyName) {
 
 DomTerm.masterKeymapDefault = new browserKeymap({
     "Ctrl-Shift-A": "enter-mux-mode",
+    "Ctrl-Shift-C": "copy-text",
     "Ctrl-Shift-L": "cycle-input-mode",
     "Ctrl-Shift-M": "toggle-paging-mode",
     "Ctrl-Shift-N": "new-window",
     "Ctrl-Shift-S": "save-as-html",
     "Ctrl-Shift-T": "new-tab",
+    "Ctrl-Shift-V": "paste-text",
     "Ctrl-Shift-Home": "scroll-top",
     "Ctrl-Shift-End": "scroll-bottom",
     "Ctrl-Shift-Up": "scroll-line-up",
@@ -8970,8 +8977,10 @@ DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
 DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
-    "Ctrl-Shift-V": "paste-text",
-    // "Ctrl-Shift-X": "cut-text", // redundant - for now
+    "Ctrl-V": "paste-text",
+    "Ctrl-C": "copy-text",
+    "Ctrl-X": "cut-text",
+    "Ctrl-Shift-X": "cut-text",
     "Left": 'backward-char',
     "Mod-Left": 'backward-word',
     "Right": 'forward-char',
@@ -9146,32 +9155,6 @@ DomTerm.prototype.keyDownHandler = function(event) {
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
         event.preventDefault();
         return;
-    }
-    // FIXME move these to masterKeymap and/or lineEditKeymap
-    if (event.ctrlKey && (event.shiftKey || this.isLineEditing())) {
-        switch (key) {
-        case 67: // Control[-Shift]-C
-            if (! event.shiftKey && document.getSelection().isCollapsed)
-                break;
-            if (DomTerm.doCopy())
-                event.preventDefault();
-            return;
-        case 86: // Control-Shift-V
-            // Google Chrome doesn't allow execCommand("paste") but Ctrl-Shift-V
-            // works by default.  In Firefox, it's the other way round.
-            if (DomTerm.doPaste(this))
-                event.preventDefault();
-            return;
-        case 88: // Control[-Shift]-X
-            if (this.isLineEditing()) {
-                // FIXME narrow selection to _inputLine
-                if (DomTerm.doCopy())
-                    event.preventDefault();
-                this.editorBackspace(1, "delete", "char");
-                return;
-            }
-            break;
-        }
     }
     if (this._currentlyPagingOrPaused()
         && DomTerm.pageKeyHandler(this, keyName)) {
