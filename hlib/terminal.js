@@ -9485,8 +9485,7 @@ DomTerm.initXtermJs = function(dt, topNode) {
     dt.xterm = xterm;
     if (window.fit)
         window.fit.fit(xterm);
-    let inputHandler = xterm.inputHandler;
-    inputHandler.addCsiHandler("u",
+    xterm.addCsiHandler("u",
                                function(params,collect) {
                                    switch (params[0]) {
                                    case 90:
@@ -9506,10 +9505,10 @@ DomTerm.initXtermJs = function(dt, topNode) {
                                    }
                                    return false;
                                });
-    inputHandler.addOscHandler(0, function(data) { dt.setWindowTitle(data, 0); return false; });
-    inputHandler.addOscHandler(1, function(data) { dt.setWindowTitle(data, 1); return false; });
-    inputHandler.addOscHandler(2, function(data) { dt.setWindowTitle(data, 2); return false; });
-    inputHandler.addOscHandler(30, function(data) { dt.setWindowTitle(data, 30); return false; });
+    xterm.addOscHandler(0, function(data) { dt.setWindowTitle(data, 0); return false; });
+    xterm.addOscHandler(1, function(data) { dt.setWindowTitle(data, 1); return false; });
+    xterm.addOscHandler(2, function(data) { dt.setWindowTitle(data, 2); return false; });
+    xterm.addOscHandler(30, function(data) { dt.setWindowTitle(data, 30); return false; });
 }
 
 /** Connect using WebSockets */
