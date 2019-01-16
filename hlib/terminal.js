@@ -5129,13 +5129,16 @@ DomTerm.handleLink = function(element) {
     let dt = DomTerm._getAncestorDomTerm(element);
     if (! dt)
         return;
-    var href = element.getAttribute("href");
+    DomTerm.handleLinkRef(element.getAttribute("href"),
+                          element.textContent, dt);
+}
+DomTerm.handleLinkRef = function(href, textContent, dt) {
     if (href.startsWith('#'))
         window.location.hash = href;
     else {
         var obj = {
             href: href,
-            text: element.textContent
+            text: textContent
         };
         if (DomTerm.isAtom())
             obj.isAtom = true;
@@ -9485,6 +9488,9 @@ DomTerm.initXtermJs = function(dt, topNode) {
     dt.xterm = xterm;
     if (window.fit)
         window.fit.fit(xterm);
+    xterm.linkHandler = function(e, uri) {
+        DomTerm.handleLinkRef(uri, undefined, dt);
+    };
     xterm.addCsiHandler("u",
                                function(params,collect) {
                                    switch (params[0]) {
