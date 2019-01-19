@@ -7059,8 +7059,6 @@ DomTerm.prototype.insertString = function(str) {
                         return;
                     }
                     this.cursorNewLine((this.sstate.automaticNewlineMode & 1) != 0);
-                    if (this.isLineEditing())
-                        this.editorAddLine();
                 }
                 if (this.controlSequenceState == DomTerm.SEEN_CR) {
                     this.controlSequenceState =  DomTerm.INITIAL_STATE;
