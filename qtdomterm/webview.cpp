@@ -62,6 +62,7 @@
 #include <QtGui/QMouseEvent>
 #include <QWebChannel>
 #include <QWebEngineProfile>
+#include <QWebEngineCertificateError>
 
 //#include <QWebEngineContextMenuData>
 
