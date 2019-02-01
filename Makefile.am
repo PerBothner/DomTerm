@@ -134,9 +134,6 @@ d/domterm: d/domterm.ti
 
 #JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js
 
-HLIB_FIXED_FILES = hlib/domterm.js hlib/domterm-client.js \
-  hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js \
-  hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
 CLIENT_DATA_FILES = repl-client.html $(HLIB_FIXED_FILES)
 HLIB_DATA_FILES = $(HLIB_FIXED_FILES) hlib/domterm-version.js
 
@@ -228,11 +225,10 @@ wsclasses.stamp: $(wsdomterm_jar_sources)
 	$(JAVAC_WITH_PATH) -d . -cp .@CLASSPATH_SEPARATOR@@conf_classpath@ $?
 	touch wsclasses.stamp
 
-MISC_COPY_TO_JAR = repl-client.html jfx-term.html \
-  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/screenfull.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/commands.js hlib/jsMenus.css hlib/jsMenus.js hlib/node-sixel.js hlib/domterm-menus.js hlib/qwebchannel.js
+MISC_COPY_TO_JAR = repl-client.html jfx-term.html $(HLIB_DATA_FILES)
 
 if WITH_JAVA
-PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
+PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) \
   org/domterm/*.class org/domterm/javafx/*.class org/domterm/util/*.class
 if ENABLE_JAVA_PTY
 PLAIN_COPY_TO_JAR += org/domterm/pty/*.class
