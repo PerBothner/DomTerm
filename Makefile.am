@@ -91,7 +91,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: $(CLIENT_DATA_DIR)/hlib/domterm-all.js client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -132,14 +132,15 @@ $(LIBPTY): native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 d/domterm: d/domterm.ti
 	tic -o. $<
 
-JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js
+#JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js
 
-HLIB_FIXED_FILES = hlib/domterm-client.js \
+HLIB_FIXED_FILES = hlib/domterm.js hlib/domterm-client.js \
+  hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css
 CLIENT_DATA_FILES = repl-client.html $(HLIB_FIXED_FILES)
-HLIB_DATA_FILES = $(HLIB_FIXED_FILES) hlib/domterm-all.js
+HLIB_DATA_FILES = $(HLIB_FIXED_FILES) hlib/domterm-version.js
 
-client-data-links.stamp: $(CLIENT_DATA_DIR)/hlib/domterm-all.js
+client-data-links.stamp:
 	if test "$(srcdir)" != "."; then \
 	  cd $(CLIENT_DATA_DIR); \
 	  for file in $(CLIENT_DATA_FILES); do \
@@ -147,20 +148,18 @@ client-data-links.stamp: $(CLIENT_DATA_DIR)/hlib/domterm-all.js
 	fi
 	touch client-data-links.stamp
 
-$(CLIENT_DATA_DIR)/hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
-	$(MKDIR_P) $(CLIENT_DATA_DIR)/hlib
-if WITH_CLOSURE_COMPILER
+#$(CLIENT_DATA_DIR)/hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
+#	$(MKDIR_P) $(CLIENT_DATA_DIR)/hlib
+#if WITH_CLOSURE_COMPILER
 # ADVANCED_OPTIMIZATION doesn't quite work, even with closure-externs.js.
 # There are some problem - and qtdomterm doesn't work at all. FIXME
 #	@CLOSURE_COMPILER@ --js hlib/terminal.js --js hlib/closure-externs.js --compilation_level ADVANCED_OPTIMIZATIONS >tmp-domterm-all.js
 #	@CLOSURE_COMPILER@ --js $(JS_LIBS) >>tmp-domterm-all.js
-	(cd $(srcdir) && @CLOSURE_COMPILER@ --language_in=ES6 --language_out=ES5 --js hlib/terminal.js --js $(JS_LIBS)) >tmp-domterm-all.js
-	cat hlib/domterm-version.js >> tmp-domterm-all.js
-else
-	(cd $(srcdir) && cat $(JS_LIBS) hlib/terminal.js) > tmp-domterm-all.js
-	cat hlib/domterm-version.js >> tmp-domterm-all.js
-endif
-	mv tmp-domterm-all.js $(CLIENT_DATA_DIR)/hlib/domterm-all.js
+#	(cd $(srcdir) && @CLOSURE_COMPILER@ --language_in=ES6 --language_out=ES5 --js hlib/terminal.js --js $(JS_LIBS)) >tmp-domterm-all.js
+#else
+#	(cd $(srcdir) && cat $(JS_LIBS) hlib/terminal.js) > tmp-domterm-all.js
+#endif
+#	mv tmp-domterm-all.js $(CLIENT_DATA_DIR)/hlib/domterm-all.js
 
 EXTRA_CLASSPATH =
 SERVER_ARGS =
@@ -172,7 +171,7 @@ run-shell: $(DOMTERM_JAR)
 
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
-	-rm -rf bin/domterm hlib/domterm-all.js \
+	-rm -rf \
 	  share/domterm/electron/main.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi
@@ -230,7 +229,7 @@ wsclasses.stamp: $(wsdomterm_jar_sources)
 	touch wsclasses.stamp
 
 MISC_COPY_TO_JAR = repl-client.html jfx-term.html \
-  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/screenfull.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/jsMenus.css hlib/jsMenus.js hlib/domterm-menus.js hlib/qwebchannel.js
+  hlib/goldenlayout-base.css hlib/domterm-layout.css hlib/jquery.min.js hlib/screenfull.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/commands.js hlib/jsMenus.css hlib/jsMenus.js hlib/node-sixel.js hlib/domterm-menus.js hlib/qwebchannel.js
 
 if WITH_JAVA
 PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css \
@@ -242,7 +241,7 @@ else
 PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css
 endif
 
-$(DOMTERM_JAR): classes.stamp hlib/domterm-all.js $(MISC_COPY_TO_JAR)
+$(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_XTERMJS

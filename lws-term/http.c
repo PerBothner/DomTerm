@@ -272,7 +272,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     // simple encryption using the kerver_key).  It is probably
                     // not an issue for local requests, and for non-local
                     // requests (where one should use tls or ssh).
-                    make_html_text(sb, http_port, true, buf, slen);
+                    make_html_text(sb, http_port, LIB_WHEN_SIMPLE, buf, slen);
                     char *data = sb->buffer;
                     int dlen = sb->len;
                     sb->buffer = NULL;
@@ -300,10 +300,17 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)
               content_type = "text/html";
-            if (strcmp(fname, "/simple.html") == 0) {
+            bool is_simple = false, is_main = false, is_no_frames = false;
+            if ((is_simple = strcmp(fname, "/simple.html") == 0)
+                || (is_main = strcmp(fname, "/main.html") == 0)
+                || (is_no_frames = strcmp(fname, "/no-frames.html") == 0)) {
                 struct sbuf sb[1];
                 sbuf_init(sb);
-                make_html_text(sb, http_port, true, NULL, 0);
+                make_html_text(sb, http_port,
+                               is_simple ? LIB_WHEN_SIMPLE
+                               : is_main ? LIB_WHEN_OUTER
+                               : LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_NOFRAMES,
+                               NULL, 0);
                 char *data = sb->buffer;
                 int dlen = sb->len;
                 sb->buffer = NULL;

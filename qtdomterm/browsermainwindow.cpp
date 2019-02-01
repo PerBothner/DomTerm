@@ -344,7 +344,7 @@ void  BrowserMainWindow::slotNewTerminal(int paneOp)
 
 void BrowserMainWindow::slotDetach()
 {
-    emit webView()->backend()->handleSimpleMessage("detach");
+    emit webView()->backend()->handleSimpleCommand("detach-session");
 }
 
 void BrowserMainWindow::slotClearBuffer()

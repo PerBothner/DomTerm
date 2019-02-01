@@ -23,7 +23,7 @@ DomTerm.aboutMessage = function() {
 DomTerm.showAboutMessage = function() {
     let msg = DomTerm.aboutMessage();
     if (DomTerm.isElectron()) {
-        const {BrowserWindow} = nodeRequire('electron').remote
+        const {BrowserWindow} = window.nodeRequire('electron').remote
         let win = new BrowserWindow({width: 500, height: 400,
                                      title: 'About DomTerm', show: false});
         win.setMenu(null)
@@ -48,10 +48,10 @@ DomTerm.createMenus = function(options) {
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
           menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Cmd+C' : 'Ctrl+Shift+C',
-                        click() { DomTerm.doCopy(); }});
+                        click() { DomTerm.doNamedCommand("copy-text"); }});
     const copyAsHtmlItem =
           menuItem({label: 'Copy as HTML',
-                    click() { DomTerm.doCopy(true); }});
+                    click() { DomTerm.doNamedCommand("copy-html"); }});
     const pasteItem = platform == "electron"
           ? menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
                       role: 'paste' })
@@ -110,7 +110,7 @@ DomTerm.createMenus = function(options) {
     const newTabItem = menuItem({label: 'New terminal tab',
                                       accelerator: DomTerm.isMac ? 'Cmd+T' : 'Ctrl+Shift+T',
                                       click: function() {
-                                          DomTerm.layoutAddTab(DomTerm.focusedTerm);
+                                          DomTermLayout.addTab(DomTerm.focusedTerm);
                                       }});
     const newPaneItem = menuItem({label: 'New terminal (right/below)',
                                       accelerator: 'Ctrl+Shift+A Enter',
@@ -141,7 +141,8 @@ DomTerm.createMenus = function(options) {
                                           submenu: newTerminalMenu});
     const detachMenuItem =
           menuItem({label: 'Detach session',
-                    click: function() { DomTerm.detach(); }});
+                    click: function() {
+                        DomTerm.doNamedCommand('detach-session'); }});
     let openLink = options.requestOpenLink;
     const homePageItem = ! openLink ? null
           : menuItem({label: 'DomTerm home page',
@@ -205,8 +206,7 @@ DomTerm.createMenus = function(options) {
     editMenu.append(menuItem({label: 'Clear Buffer',
                               click:
                               function() {
-                                  DomTerm.commandMap['clear-buffer']
-                                  (DomTerm.focusedTerm, null)
+                                  DomTerm.doNamedCommand('clear-buffer');
                               }}));
     let viewMenu = new Menu();
     viewMenu.append(showMenuBarItem);

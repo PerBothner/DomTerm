@@ -245,7 +245,11 @@ extern char *url_encode(char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
 extern char *getenv_from_array(char* key, char**envarray);
 extern void copy_html_file(FILE*in, FILE*out);
-extern void make_html_text(struct sbuf *obuf, int port, bool simple,
+#define LIB_WHEN_SIMPLE 1
+#define LIB_WHEN_OUTER 2
+#define LIB_WHEN_NOFRAMES 4
+#define LIB_AS_MODULE 8
+extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);
 extern char** parse_args(const char*);
 extern const char *extract_command_from_list(const char *, const char **,

@@ -1,4 +1,4 @@
-/** @license Copyright (c) 2015, 2016, 2017, 2018 Per Bothner.
+/** @license Copyright (c) 2015, 2016, 2017, 2018, 2019 Per Bothner.
  *
  * Converted to JavaScript from WebTerminal.java, which has the license:
  *
@@ -89,23 +89,14 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
     */
-"use strict";
 
-if (typeof ResizeSensor == "undefined" && typeof require !== "undefined")
-    var ResizeSensor = require("./ResizeSensor.js");
+export { Terminal };
+import { SixelImage } from './node-sixel.js';
+import { commandMap } from './commands.js';
+const WcWidth = window.WcWidth;
 
-if (typeof WcWidth == "undefined" && typeof require !== "undefined")
-    var WcWidth = require("./wcwidth.js");
-
-if (typeof browserKeymap == "undefined" && typeof require !== "undefined")
-    var browserKeymap = require("./browserkeymap.js");
-
-DomTerm.DEFAULT_CARET_STYLE = 1; // blinking-block
-DomTerm.INFO_TIMEOUT = 800;
-
-/** @constructor */
-
-function DomTerm(name, topNode) {
+class Terminal {
+  constructor(name, topNode) {
     // A unique name (the "session-name") for this DomTerm instance.
     // Generated names have the format:  name + "__" + something.
     this.name = name;
@@ -174,7 +165,7 @@ function DomTerm(name, topNode) {
     this._confirmedCount = 0;
     this._replayMode = false;
 
-    this.caretStyle = DomTerm.DEFAULT_CARET_STYLE;
+    this.caretStyle = Terminal.DEFAULT_CARET_STYLE;
     this._usingSelectionCaret = false;
     this.caretStyleFromSettings = -1; // style.caret from settings.ini
     sstate.caretStyleFromCharSeq = -1; // caret from escape sequence
@@ -265,9 +256,10 @@ function DomTerm(name, topNode) {
     this._regionLeft = 0;
     this._regionRight = this.numColumns;
 
-    this.controlSequenceState = DomTerm.INITIAL_STATE;
-    this._urgentControlState = DomTerm.INITIAL_STATE;
+    this.controlSequenceState = Terminal.INITIAL_STATE;
+    this._urgentControlState = Terminal.INITIAL_STATE;
     this.parameters = new Array();
+    this._textParameter = null;
     this._savedControlState = null;
 
     // The output position (cursor) - insert output before this node.
@@ -419,32 +411,18 @@ function DomTerm(name, topNode) {
             }
         };
     this.wcwidth = new WcWidth();
-}
+  }
 
-DomTerm.makeIFrameWrapper = function(location, terminal=true,
-                                     parent=DomTerm.layoutTop) {
-    let ifr = document.createElement("iframe");
-    let name = DomTerm.freshName();
-    ifr.setAttribute("name", name);
-    if (terminal) {
-        if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
-            location = location
-                + (location.indexOf('#') >= 0 ? '&' : '#')
-                + "server-key=" + DomTerm.server_key;
-        }
+    detachSession() {
+        console.log("detachSession "+this.name+" sname:"+this.sessionName());
+        this.reportEvent("DETACH", "");
+        if (this._detachSaveNeeded == 1)
+            this._detachSaveNeeded = 2;
+        this.close();
     }
-    ifr.setAttribute("src", location);
-    ifr.setAttribute("class", "domterm-wrapper");
-    if (DomTerm._oldFocusedContent == null)
-        DomTerm._oldFocusedContent = ifr;
-    for (let ch = parent.firstChild; ; ch = ch.nextSibling) {
-        if (ch == null || ch.tagName != "IFRAME") {
-            parent.insertBefore(ifr, ch);
-            break;
-        }
-    }
-    return ifr;
 }
+Terminal.DEFAULT_CARET_STYLE = 1; // blinking-block
+Terminal.INFO_TIMEOUT = 800;
 
 DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = DomTerm.layoutTop) {
     if (wrap) {
@@ -452,8 +430,9 @@ DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = Do
         lcontent.setAttribute("class", "domterm-wrapper");
         lcontent.setAttribute("name", name)
         parent.appendChild(lcontent);
-        if (DomTerm._oldFocusedContent == null)
-            DomTerm._oldFocusedContent = lcontent;
+        // FIXME in layout-manager context
+        if (DomTermLayout._oldFocusedContent == null)
+            DomTermLayout._oldFocusedContent = lcontent;
         return lcontent;
     }
     let topNode = document.createElement("div");
@@ -463,19 +442,13 @@ DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = Do
     return topNode;
 }
 
-DomTerm._instanceCounter = 0;
-DomTerm.layoutManager = null;
 // These are used to delimit "out-of-bound" urgent messages.
-DomTerm.URGENT_BEGIN1 = 19; // '\023' - device control 3
-DomTerm.URGENT_BEGIN2 = 22; // '\026' - SYN synchronous idle
-DomTerm.URGENT_END = 20; // \024' - device control 4
-DomTerm.URGENT_COUNTED = 21;
+Terminal.URGENT_BEGIN1 = 19; // '\023' - device control 3
+Terminal.URGENT_BEGIN2 = 22; // '\026' - SYN synchronous idle
+Terminal.URGENT_END = 20; // \024' - device control 4
+Terminal.URGENT_COUNTED = 21;
 
-DomTerm.freshName = function() {
-    return "domterm-"+(++DomTerm._instanceCounter);
-}
-
-DomTerm.prototype._deleteData = function(text, start, count) {
+Terminal.prototype._deleteData = function(text, start, count) {
     if (count == 0)
         return;
     let dlen = text.length;
@@ -494,7 +467,7 @@ DomTerm.prototype._deleteData = function(text, start, count) {
     }
 }
 
-DomTerm.prototype.eofSeen = function() {
+Terminal.prototype.eofSeen = function() {
     if (this.history) {
         this.historySave();
         this.history.length = 0;
@@ -504,12 +477,13 @@ DomTerm.prototype.eofSeen = function() {
 
 DomTerm.isFrameParent = function() {
     return DomTerm.useIFrame && ! DomTerm.isInIFrame()
-        && DomTerm._oldFocusedContent;
+        && DomTermLayout._oldFocusedContent;
 }
 
+/*
 DomTerm.detach = function(dt=DomTerm.focusedTerm) {
     if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "detach");
+        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "detach");
         return;
     }
     if (dt) {
@@ -519,6 +493,7 @@ DomTerm.detach = function(dt=DomTerm.focusedTerm) {
         dt.close();
     }
 };
+*/
 
 DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
     if (!dt)
@@ -541,49 +516,21 @@ DomTerm.closeFromEof = function(dt) {
     dt.close();
 }
 
-DomTerm.windowClose = function() {
-    window.close();
-}
-
-/* Should be overridden if used in an iframe. */
-DomTerm.setTitle = function(title) {
-    document.title = title;
-}
-
-/* Can be called in either DomTerm sub-window or layout-manager context. */
-DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
-    if (paneOp == 1 && dt) // convert to --right or --below
-        paneOp = DomTerm._splitVertically(dt) ? 13 : 11;
-    if (paneOp == 1 && DomTerm.useIFrame && ! DomTerm.isInIFrame())
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "domterm-new-pane", paneOp, options);
-    else if (DomTerm.useIFrame && DomTerm.isInIFrame())
-        DomTerm.sendParentMessage("domterm-new-pane", paneOp, options);
-    else if (paneOp == 1 && DomTerm.layoutAddSibling) {
-        DomTerm.layoutAddSibling(dt, options);
-    } else if (paneOp == 2 && DomTerm.layoutAddTab)
-        DomTerm.layoutAddTab(dt, options);
-    else if (DomTerm.layoutAddSibling) {
-        DomTerm.layoutAddSibling(dt, options,
-                                 paneOp==12||paneOp==13, paneOp==11||paneOp==13);
-    }
-    //DomTerm.newSessionPid = 0;
-}
-
-DomTerm.prototype.close = function() {
+Terminal.prototype.close = function() {
     if (this._detachSaveNeeded == 2) {
         DomTerm.saveWindowContents(this);
     }
     if (DomTerm.useIFrame)
         DomTerm.sendParentMessage("layout-close");
-    else if (DomTerm.layoutManager && DomTerm.domTermLayoutClose) {
+    else if (DomTermLayout.manager && DomTermLayout.layoutClose) {
         let lcontent = DomTerm.wrapForLayout() ? this.topNode.parentNode
             : this.topNode;
-        DomTerm.domTermLayoutClose(lcontent, DomTerm.domTermToLayoutItem(this));
+        DomTermLayout.layoutClose(lcontent, DomTerm.domTermToLayoutItem(this));
     } else
         DomTerm.windowClose();
 };
 
-DomTerm.prototype.startCommandGroup = function(parentKey, pushing=0) {
+Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
     var container = this.outputContainer;
     var containerTag = container.tagName;
     if ((containerTag == "PRE" || containerTag == "P"
@@ -665,7 +612,7 @@ DomTerm.prototype.startCommandGroup = function(parentKey, pushing=0) {
 };
 
 // For debugging (may be overridden)
-DomTerm.prototype.log = function(str) {
+Terminal.prototype.log = function(str) {
     // JSON.stringify encodes escape as "\\u001b" which is hard to read.
     str = str.replace(/\\u001b/g, "\\e");
     console.log(str);
@@ -673,7 +620,7 @@ DomTerm.prototype.log = function(str) {
 
 DomTerm.focusedTerm = null; // used if !useIFrame
 
-DomTerm.prototype.setFocused = function(focused) {
+Terminal.prototype.setFocused = function(focused) {
     if (focused > 0) {
         this.reportEvent("FOCUSED", ""); // to server
         this.topNode.classList.add("domterm-active");
@@ -687,6 +634,15 @@ DomTerm.prototype.setFocused = function(focused) {
     if (this.sstate.sendFocus)
         this.processResponseCharacters(focused ? "\x1b[I" : "\x1b[O");
 }
+
+DomTerm.selectNextPane = function(forwards, wrapper=DomTermLayout._oldFocusedContent) {
+    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+        DomTerm.sendParentMessage("domterm-next-pane", forwards);
+    }
+    else {
+        DomTermLayout.selectNextPant(forwards, wrapper);
+    }
+};
 
 // originMode can be one of (should simplify):
 // "F" - focusin event (in inferior frame)
@@ -716,67 +672,69 @@ DomTerm.setFocus = function(term, originMode="") {
 
 // Overridden for atom-domterm
 DomTerm.showFocusedTerm = function(term) {
-    if (DomTerm.layoutManager) {
+    if (DomTermLayout.manager) {
         var item = term ? DomTerm.domTermToLayoutItem(term) : null;
-        DomTerm.showFocusedPane(item, term ? term.topNode.parentNode : null);
+        DomTermLayout.showFocusedPane(item, term ? term.topNode.parentNode : null);
     }
 }
 
 // Convenience function for Theia package
-DomTerm.prototype.doFocus = function() {
+Terminal.prototype.doFocus = function() {
     DomTerm.setFocus(this);
     this.maybeFocus();
 }
 
-DomTerm.prototype.maybeFocus = function() {
+Terminal.prototype.maybeFocus = function() {
     if (this.hasFocus()) {
         this.topNode.focus({preventScroll: true});
     }
 }
 
-DomTerm.prototype.hasFocus = function() {
+Terminal.prototype.hasFocus = function() {
     return this.topNode.classList.contains("domterm-active");
 }
 
 // States of escape sequences handler state machine.
-DomTerm.INITIAL_STATE = 0;
+Terminal.INITIAL_STATE = 0;
 /** We have seen ESC. */
-DomTerm.SEEN_ESC_STATE = 1;
+Terminal.SEEN_ESC_STATE = 1;
 /** We have seen ESC '['. */
-DomTerm.SEEN_ESC_LBRACKET_STATE = 2;
+Terminal.SEEN_ESC_LBRACKET_STATE = 2;
 /** We have seen ESC '[' '?'. */
-DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
+Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
 /** We have seen ESC '[' '!'. */
-DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE = 4;
+Terminal.SEEN_ESC_LBRACKET_EXCLAMATION_STATE = 4;
 /** We have seen ESC '[' '>'. */
-DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE = 5;
+Terminal.SEEN_ESC_LBRACKET_GREATER_STATE = 5;
 /** We have seen ESC '[' ' '. */
-DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE = 6;
+Terminal.SEEN_ESC_LBRACKET_SPACE_STATE = 6;
 /** We have seen ESC ']'. */
-DomTerm.SEEN_ESC_RBRACKET_STATE = 7;
+Terminal.SEEN_ESC_RBRACKET_STATE = 7;
 /** We have seen ESC ']' numeric-parameter ';'. */
-DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE = 8;
+Terminal.SEEN_ESC_RBRACKET_TEXT_STATE = 8;
 /** We have seen ESC '#'. */
-DomTerm.SEEN_ESC_SHARP_STATE = 9;
-DomTerm.SEEN_ESC_CHARSET0 = 10;
-DomTerm.SEEN_ESC_CHARSET1 = 11;
-DomTerm.SEEN_ESC_CHARSET2 = 12;
-DomTerm.SEEN_ESC_CHARSET3 = 13;
-DomTerm.SEEN_ESC_SS2 = 14;
-DomTerm.SEEN_ESC_SS3 = 15;
-DomTerm.SEEN_SURROGATE_HIGH = 16;
-DomTerm.SEEN_CR = 17;
+Terminal.SEEN_ESC_SHARP_STATE = 9;
+Terminal.SEEN_ESC_CHARSET0 = 10;
+Terminal.SEEN_ESC_CHARSET1 = 11;
+Terminal.SEEN_ESC_CHARSET2 = 12;
+Terminal.SEEN_ESC_CHARSET3 = 13;
+Terminal.SEEN_ESC_SS2 = 14;
+Terminal.SEEN_ESC_SS3 = 15;
+Terminal.SEEN_SURROGATE_HIGH = 16;
+Terminal.SEEN_CR = 17;
 /** Seen but deferred a request to exit std="error" mode. */
-DomTerm.SEEN_ERROUT_END_STATE = 18;
+Terminal.SEEN_ERROUT_END_STATE = 18;
+Terminal.SEEN_DCS_STATE = 19;
+Terminal.SEEN_DCS_TEXT_STATE = 20;
 
 // Possible values for _widthMode field of elements in lineStarts table.
 // This is related to the _widthColumns field in the same elements,
 // which (if not undefined) is the number of columns in the current
 // (displayed) line.
-DomTerm._WIDTH_MODE_NORMAL = 0;
-DomTerm._WIDTH_MODE_TAB_SEEN = 1; // tab seen
-DomTerm._WIDTH_MODE_PPRINT_SEEN = 2; // tab *or* pprint-node seen
-DomTerm._WIDTH_MODE_VARIABLE_SEEN = 3; // HTML or variable-width font
+Terminal._WIDTH_MODE_NORMAL = 0;
+Terminal._WIDTH_MODE_TAB_SEEN = 1; // tab seen
+Terminal._WIDTH_MODE_PPRINT_SEEN = 2; // tab *or* pprint-node seen
+Terminal._WIDTH_MODE_VARIABLE_SEEN = 3; // HTML or variable-width font
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -798,17 +756,17 @@ DomTerm.makeSpaces = function(n) {
     return ' '.repeat(n)
 };
 
-DomTerm.prototype._setRegionTB = function(top, bottom) {
+Terminal.prototype._setRegionTB = function(top, bottom) {
     this._regionTop = top;
     this._regionBottom = bottom < 0 ? this.numRows : bottom;
 };
 
-DomTerm.prototype._setRegionLR = function(left, right) {
+Terminal.prototype._setRegionLR = function(left, right) {
     this._regionLeft = left;
     this._regionRight = right < 0 ? this.numColumns : right;
 };
 
-DomTerm.prototype._homeOffset = function() {
+Terminal.prototype._homeOffset = function() {
     var lineStart = this.lineStarts[this.homeLine];
     var offset = lineStart.offsetTop;
     if (lineStart.nodeName == "SPAN")
@@ -816,13 +774,13 @@ DomTerm.prototype._homeOffset = function() {
     return offset;
 };
 
-DomTerm.prototype._checkSpacer = function() {
+Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
         var height = this._vspacer.offsetTop - this._homeOffset();
         this._adjustSpacer(this.availHeight - height);
     }
 };
-DomTerm.prototype._adjustSpacer = function(needed) {
+Terminal.prototype._adjustSpacer = function(needed) {
     var vspacer = this._vspacer;
     if (vspacer.dtHeight != needed) {
         if (needed > 0) {
@@ -836,7 +794,7 @@ DomTerm.prototype._adjustSpacer = function(needed) {
 };
 
 /*
-DomTerm.prototype.atLineEnd = function() {
+Terminal.prototype.atLineEnd = function() {
     var parent = this.outputContainer;
     var next = this.outputBefore;
     while (next == null) {
@@ -847,15 +805,15 @@ DomTerm.prototype.atLineEnd = function() {
 }
 */
 
-DomTerm.prototype.wcwidthInContext = function(ucs, context) {
+Terminal.prototype.wcwidthInContext = function(ucs, context) {
     return this.wcwidth.wcwidthInContext(ucs, context);
 }
 
-DomTerm.prototype.strWidthInContext = function(str, context) {
+Terminal.prototype.strWidthInContext = function(str, context) {
     return this.wcwidth.strWidthInContext(str, context);
 }
 
-DomTerm.prototype.atTabStop = function(col) {
+Terminal.prototype.atTabStop = function(col) {
     if (col >= this._tabDefaultStart)
         if ((col & 7) == 0)
             return true;
@@ -866,7 +824,7 @@ DomTerm.prototype.atTabStop = function(col) {
 // Ths col is the initial column, 0-origin.
 // Return the column number (0-origin) after a tab.
 // Default implementation assumes tabs every 8 columns.
-DomTerm.prototype.nextTabCol = function(col) {
+Terminal.prototype.nextTabCol = function(col) {
     var max = this.numColumns - 1;
     if (this._tabsAdded == null && this._tabDefaultStart == 0) {
         var r = (col & ~7) + 8;
@@ -878,7 +836,7 @@ DomTerm.prototype.nextTabCol = function(col) {
     }
 };
 
-DomTerm.prototype.tabToNextStop = function(isTabChar) {
+Terminal.prototype.tabToNextStop = function(isTabChar) {
     function endsWithSpaces(str, w) {
         var len = str.length;
         if (len < w)
@@ -918,13 +876,13 @@ DomTerm.prototype.tabToNextStop = function(isTabChar) {
     return true;
 }
 
-DomTerm.prototype.tabToPrevStop = function() {
+Terminal.prototype.tabToPrevStop = function() {
     var col = this.getCursorColumn();
     while (--col > 0 && ! this.atTabStop(col)) { }
     this.columnSet(col);
 }
 
-DomTerm.prototype.setTabStop = function(col, set) {
+Terminal.prototype.setTabStop = function(col, set) {
     if (this._tabsAdded == null)
         this._tabsAdded = new Array();
     if (! set && (col & ~7) == 0 && col >= this._tabDefaultStart) {
@@ -936,17 +894,17 @@ DomTerm.prototype.setTabStop = function(col, set) {
     this._tabsAdded[col] = set;
 };
 
-DomTerm.prototype.clearAllTabs = function() {
+Terminal.prototype.clearAllTabs = function() {
     this._tabsAdded = null;
     this._tabDefaultStart = Number.POSITIVE_INFINITY;
 };
 
-DomTerm.prototype.resetTabs = function() {
+Terminal.prototype.resetTabs = function() {
     this._tabsAdded = null;
     this._tabDefaultStart = 0;
 };
 
-DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText = false) {
+Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText = false) {
     this.lineStarts.length = startLine;
     this.lineEnds.length = startLine;
     var start = null;
@@ -1028,13 +986,13 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText =
                 if (hasData) {
                     start = cur;
                     startBlock = cur;
-                    start._widthMode = DomTerm._WIDTH_MODE_NORMAL;
+                    start._widthMode = Terminal._WIDTH_MODE_NORMAL;
                     if (tag != "pre"
                         && (tag != "div"
                             || ! cur.classList.contains("domterm-pre"))) {
                         cur.classList.add("domterm-opaque");
                         descend = false;
-                        start._widthMode = DomTerm._WIDTH_MODE_VARIABLE_SEEN;
+                        start._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
                     }
                     this.lineStarts[startLine] = start;
                     this.lineEnds[startLine] = null;
@@ -1061,14 +1019,14 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText =
                             start = cur;
                         }
                     } else {
-                        start._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
+                        start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
                         cur._needSectionEndNext = this._needSectionEndList;
                         this._needSectionEndList = cur;
                     }
                 } else if (cls == "wc-node") {
                     descend = false;
                 } else if (cls == "pprint-group") {
-                    start._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
+                    start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
                     this._pushPprintGroup(cur);
                 }
             }
@@ -1092,7 +1050,7 @@ DomTerm.prototype._restoreLineTables = function(startNode, startLine, skipText =
     }
 };
 
-DomTerm.prototype.saveCursor = function() {
+Terminal.prototype.saveCursor = function() {
     this.sstate.savedCursor = {
         line: this.getCursorLine(),
         column: this.getCursorColumn(),
@@ -1114,7 +1072,7 @@ DomTerm.prototype.saveCursor = function() {
 };
 
 // Re-calculate alternate buffer's saveLastLine property.
-DomTerm.prototype._restoreSaveLastLine = function() {
+Terminal.prototype._restoreSaveLastLine = function() {
     if (this.usingAlternateScreenBuffer) {
         var line = 0;
         var dt = this;
@@ -1132,7 +1090,7 @@ DomTerm.prototype._restoreSaveLastLine = function() {
     }
 }
  
-DomTerm.prototype.restoreCursor = function() {
+Terminal.prototype.restoreCursor = function() {
     var saved = this.sstate.savedCursor;
     if (saved) {
         this.moveToAbs(saved.line+this.homeLine, saved.column, true);
@@ -1160,14 +1118,14 @@ DomTerm.prototype.restoreCursor = function() {
     }
 }; 
 
-DomTerm.prototype.columnSet = function(column) {
+Terminal.prototype.columnSet = function(column) {
     this.cursorSet(this.getCursorLine(), column, false);
 }
 
 /** Move to give position relative to cursorHome or region.
  * Add spaces as needed.
 */
-DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
+Terminal.prototype.cursorSet = function(line, column, regionRelative) {
     var rowLimit, colLimit;
     if (regionRelative) {
         line += this._regionTop;
@@ -1194,7 +1152,7 @@ DomTerm.prototype.cursorSet = function(line, column, regionRelative) {
  * @param goalColumn number of columns to move right from the start of the goalLine
  * @param addSpaceAsNeeded if we should add blank lines or spaces if needed to move as requested; otherwise stop at the last existing line, or (just past the) last existing contents of the goalLine. In this case homeLine may be adjusted.
  */
-DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded) {
+Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded) {
     //Only if char-edit? FIXME
     this._removeInputLine();
     var absLine = this.currentAbsLine;
@@ -1255,7 +1213,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
             var next = this._createLineNode("hard", "\n");
             preNode.appendChild(next);
             this._setPendingSectionEnds(this.lineEnds[lineCount-1]);
-            preNode._widthMode = DomTerm._WIDTH_MODE_NORMAL;
+            preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
             preNode._widthColumns = 0;
             this.lineStarts[lineCount] = preNode;
             this.lineEnds[lineCount] = next;
@@ -1482,7 +1440,7 @@ DomTerm.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded
     this.currentCursorColumn = column;
 };
 
-DomTerm.prototype._followingText = function(cur, backwards = false) {
+Terminal.prototype._followingText = function(cur, backwards = false) {
     function check(node) {
         if (node == cur)
             return false;
@@ -1496,7 +1454,7 @@ DomTerm.prototype._followingText = function(cur, backwards = false) {
                                   true, backwards, cur);
 };
 
-DomTerm.prototype._showPassword = function() {
+Terminal.prototype._showPassword = function() {
     let input = this._inputLine;
     if (input && input.classList.contains("noecho")
         && this.sstate.hiddenText) {
@@ -1505,7 +1463,7 @@ DomTerm.prototype._showPassword = function() {
     }
 }
 
-DomTerm.prototype._hidePassword = function() {
+Terminal.prototype._hidePassword = function() {
     let input = this._inputLine;
     if (input && input.classList.contains("noecho")) {
         let ctext = this.sstate.hiddenText || input.textContent;
@@ -1518,7 +1476,7 @@ DomTerm.prototype._hidePassword = function() {
 // "Normalize" caret by moving caret text to following node.
 // Doesn't actually remove the _caretNode node, for that use _removeInputLine.
 // FIXME maybe rename to _removeCaretText
-DomTerm.prototype._removeCaret = function(normalize=true) {
+Terminal.prototype._removeCaret = function(normalize=true) {
     var caretNode = this._caretNode;
     this._showPassword();
     if (caretNode && caretNode.getAttribute("caret")) {
@@ -1540,7 +1498,7 @@ DomTerm.prototype._removeCaret = function(normalize=true) {
     }
 }
 
-DomTerm.prototype._removeInputFromLineTable = function() {
+Terminal.prototype._removeInputFromLineTable = function() {
     let startLine = this.getAbsCursorLine();
     let seenAfter = false;
     function removeInputLineBreaks(lineStart, lineno) {
@@ -1553,7 +1511,7 @@ DomTerm.prototype._removeInputFromLineTable = function() {
     this._adjustLines(startLine, removeInputLineBreaks);
 }
 
-DomTerm.prototype._removeInputLine = function() {
+Terminal.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput) {
         this._removeCaret();
         var caretParent = this._caretNode.parentNode;
@@ -1570,8 +1528,8 @@ DomTerm.prototype._removeInputLine = function() {
     }
 };
 
-DomTerm.prototype.setCaretStyle = function(style) {
-    if (style == DomTerm.DEFAULT_CARET_STYLE) {
+Terminal.prototype.setCaretStyle = function(style) {
+    if (style == Terminal.DEFAULT_CARET_STYLE) {
         if (this.caretStyleFromSettings >= 0)
             style = this.caretStyleFromSettings;
         this.sstate.caretStyleFromCharSeq = -1;
@@ -1589,12 +1547,12 @@ DomTerm.prototype.setCaretStyle = function(style) {
     this.caretStyle = style;
 };
 
-DomTerm.prototype.useStyledCaret = function() {
+Terminal.prototype.useStyledCaret = function() {
     return this.caretStyle < 5 && ! this._usingSelectionCaret
         && this.sstate.showCaret;
 };
 
-DomTerm.prototype.isLineEditing = function() {
+Terminal.prototype.isLineEditing = function() {
     return (this._lineEditingMode + this._clientWantsEditing > 0
             || (this._clientPtyExtProc + this._clientPtyEcho
                 + this._clientWantsEditing == 3)
@@ -1643,7 +1601,7 @@ DomTerm._replaceTextContents = function(el, text) {
     DomTerm._forEachTextIn(el, replace);
 };
 
-DomTerm.prototype._restoreCaret = function() {
+Terminal.prototype._restoreCaret = function() {
     if (this._caretNode == null)
         return;
     this._restoreCaretNode();
@@ -1715,7 +1673,7 @@ DomTerm.prototype._restoreCaret = function() {
     }
 }
 
-DomTerm.prototype._restoreCaretNode = function() {
+Terminal.prototype._restoreCaretNode = function() {
     if (this._caretNode.parentNode == null) {
         this._fixOutputPosition();
         this.outputContainer.insertBefore(this._caretNode, this.outputBefore);
@@ -1723,7 +1681,7 @@ DomTerm.prototype._restoreCaretNode = function() {
     }
 }
 
-DomTerm.prototype._restoreInputLine = function(caretToo = true) {
+Terminal.prototype._restoreInputLine = function(caretToo = true) {
     let inputLine = this.isLineEditing() ? this._inputLine : this._caretNode;
     if (this.inputFollowsOutput && inputLine != null) {
         let lineno;
@@ -1745,7 +1703,7 @@ DomTerm.prototype._restoreInputLine = function(caretToo = true) {
                                        function (el) {
                                            if (el.nodeName == "SPAN"
                                                && el.getAttribute("Line")=="hard") {
-                                               DomTerm._insertIntoLines(dt, el, lineno++);
+                                               dt._insertIntoLines(el, lineno++);
                                                return false;
                                            }
                                            return true;
@@ -1760,11 +1718,11 @@ DomTerm.prototype._restoreInputLine = function(caretToo = true) {
 /** Move cursor to beginning of line, relative.
  * @param deltaLines line number to move to, relative to current line.
  */
-DomTerm.prototype.cursorLineStart = function(deltaLines) {
+Terminal.prototype.cursorLineStart = function(deltaLines) {
     this.moveToAbs(this.getAbsCursorLine()+deltaLines, 0, true);
 };
 
-DomTerm.prototype.cursorDown = function(count) {
+Terminal.prototype.cursorDown = function(count) {
     var cur = this.getCursorLine();
     var next = cur+count;
     if (count > 0) {
@@ -1779,7 +1737,7 @@ DomTerm.prototype.cursorDown = function(count) {
     this.moveToAbs(next+this.homeLine, this.getCursorColumn(), true);
 };
 
-DomTerm.prototype.cursorNewLine = function(autoNewline) {
+Terminal.prototype.cursorNewLine = function(autoNewline) {
     if (autoNewline) {
         if (this.sstate.insertMode) {
             this.insertRawOutput("\n"); // FIXME
@@ -1800,12 +1758,12 @@ DomTerm.prototype.cursorNewLine = function(autoNewline) {
         this.moveToAbs(this.getAbsCursorLine()+1, this.getCursorColumn(), true);
 };
 
-DomTerm.prototype.cursorRight = function(count) {
+Terminal.prototype.cursorRight = function(count) {
     // FIXME optimize same way cursorLeft is.
     this.columnSet(this.getCursorColumn()+count);
 };
 
-DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
+Terminal.prototype.cursorLeft = function(count, maybeWrap) {
     if (count == 0)
         return;
     var left = this._regionLeft;
@@ -1899,24 +1857,24 @@ DomTerm.prototype.cursorLeft = function(count, maybeWrap) {
  * @param styleValue style property value string (for example "underline"),
  *     or null to indicate the default value.
  */
-DomTerm.prototype._pushStyle = function(styleName, styleValue) {
+Terminal.prototype._pushStyle = function(styleName, styleValue) {
     if (styleValue)
         this._currentStyleMap.set(styleName, styleValue);
     else
         this._currentStyleMap.delete(styleName);
     this._currentStyleSpan = null;
 };
-DomTerm.prototype.mapColorName = function(name) {
+Terminal.prototype.mapColorName = function(name) {
     return "var(--dt-"+name.replace(/-/, "")+")";
 }
-DomTerm.prototype._pushFgStdColor = function(name) {
+Terminal.prototype._pushFgStdColor = function(name) {
     this._pushStyle("color", this.mapColorName(name));
 }
-DomTerm.prototype._pushBgStdColor = function(name) {
+Terminal.prototype._pushBgStdColor = function(name) {
     this._pushStyle("background-color", this.mapColorName(name));
 }
 
-DomTerm.prototype._getStdElement = function(element=this.outputContainer) {
+Terminal.prototype._getStdElement = function(element=this.outputContainer) {
     for (var stdElement = element;
          stdElement instanceof Element;
          stdElement = stdElement.parentNode) {
@@ -1925,12 +1883,12 @@ DomTerm.prototype._getStdElement = function(element=this.outputContainer) {
     }
     return null;
 };
-DomTerm.prototype._getStdMode = function(element=this.outputContainer) {
+Terminal.prototype._getStdMode = function(element=this.outputContainer) {
     let el = this._getStdElement(element);
     return el == null ? null : el.getAttribute("std");
 }
 
-DomTerm.prototype._pushStdMode = function(styleValue) {
+Terminal.prototype._pushStdMode = function(styleValue) {
     if (styleValue == null
         && this._currentStyleMap.get("std")) {
         this._pushStyle("std", null);
@@ -1962,12 +1920,12 @@ DomTerm.prototype._pushStdMode = function(styleValue) {
     }
 };
 
-DomTerm.prototype._clearStyle = function() {
+Terminal.prototype._clearStyle = function() {
     this._currentStyleMap.clear();
     this._currentStyleSpan = null;
 };
 
-DomTerm.prototype._splitNode = function(node, splitPoint) {
+Terminal.prototype._splitNode = function(node, splitPoint) {
     var newNode = document.createElement(node.nodeName);
     this._copyAttributes(node, newNode);
     this._moveNodes(splitPoint, newNode, null);
@@ -1975,7 +1933,7 @@ DomTerm.prototype._splitNode = function(node, splitPoint) {
     return newNode;
 };
 
-DomTerm.prototype._popStyleSpan = function() {
+Terminal.prototype._popStyleSpan = function() {
     this._fixOutputPosition();
     var parentSpan = this.outputContainer;
     if (this.outputBefore != null) {
@@ -2003,7 +1961,7 @@ DomTerm._styleSpansMatch = function(newSpan, oldSpan) {
  * the non-JavaScript case. */
 DomTerm._savedSessionClassNoScript = "domterm domterm-saved-session domterm-noscript";
 
-DomTerm.prototype.isSavedSession = function() {
+Terminal.prototype.isSavedSession = function() {
     var cl = this.topNode == null ? null : this.topNode.getAttribute("class");
     return cl != null && cl.indexOf("domterm-saved-session") >= 0;
 }
@@ -2016,7 +1974,7 @@ DomTerm.prototype.isSavedSession = function() {
  * then we have to split the {@code span} node so the current
  * position is not inside the span node, but text before and after is.
  */
-DomTerm.prototype._adjustStyle = function() {
+Terminal.prototype._adjustStyle = function() {
     var parentSpan = this.outputContainer;
     if (parentSpan instanceof Text)
         parentSpan = parentSpan.parentNode;
@@ -2127,7 +2085,7 @@ DomTerm.prototype._adjustStyle = function() {
     }
 };
 
-DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
+Terminal.prototype.insertLinesIgnoreScroll = function(count, line) {
     var absLine = this.homeLine+line;
     var oldLength = this.lineStarts.length;
     var column = this.getCursorColumn();
@@ -2156,21 +2114,21 @@ DomTerm.prototype.insertLinesIgnoreScroll = function(count, line) {
     this.moveToAbs(absLine, column, true);
 };
 
-DomTerm.prototype._addBlankLines = function(count, absLine, parent, oldStart) {
+Terminal.prototype._addBlankLines = function(count, absLine, parent, oldStart) {
     for (var i = 0; i < count;  i++) {
         var preNode = this._createPreNode();
         this._setBackgroundColor(preNode, this._currentStyleBackground());
         var newLine = this._createLineNode("hard", "\n");
         preNode.appendChild(newLine);
         parent.insertBefore(preNode, oldStart);
-        preNode._widthMode = DomTerm._WIDTH_MODE_NORMAL;
+        preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
         preNode._widthColumns = 0;
         this.lineStarts[absLine+i] = preNode;
         this.lineEnds[absLine+i] = newLine;
     }
 };
 
-DomTerm.prototype._rootNode = function(node) {
+Terminal.prototype._rootNode = function(node) {
     for (;;) {
         var parent = node.parentNode;
         if (! parent)
@@ -2197,7 +2155,7 @@ DomTerm._isInElement = function(node, name="A") {
     }
 }
 
-DomTerm.prototype._isAnAncestor = function(node, ancestor) {
+Terminal.prototype._isAnAncestor = function(node, ancestor) {
     while (node != ancestor) {
         var parent = node.parentNode;
         if (! parent)
@@ -2207,7 +2165,7 @@ DomTerm.prototype._isAnAncestor = function(node, ancestor) {
     return true;
 };
 
-DomTerm.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getAbsCursorLine()) {
+Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getAbsCursorLine()) {
     if (absLine > 0)
         this._clearWrap(absLine-1);
     var start = this.lineStarts[absLine];
@@ -2276,7 +2234,7 @@ DomTerm.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getAb
     this.lineEnds.length = length;
 };
 
-DomTerm.prototype._insertLinesAt = function(count, line, regionBottom) {
+Terminal.prototype._insertLinesAt = function(count, line, regionBottom) {
     var avail = regionBottom - line;
     if (count > avail)
         count = avail;
@@ -2290,13 +2248,13 @@ DomTerm.prototype._insertLinesAt = function(count, line, regionBottom) {
     this._removeInputLine();
 };
 
-DomTerm.prototype.insertLines = function(count) {
+Terminal.prototype.insertLines = function(count) {
     var line = this.getCursorLine();
     if (line >= this._regionTop)
         this._insertLinesAt(count, line, this._regionBottom);
 };
 
-DomTerm.prototype._deleteLinesAt = function(count, line) {
+Terminal.prototype._deleteLinesAt = function(count, line) {
     this.moveToAbs(line, 0, true);
     var scrollBottom = this._regionBottom;
     var regionHeight = scrollBottom +this.homeLine - line;
@@ -2309,35 +2267,35 @@ DomTerm.prototype._deleteLinesAt = function(count, line) {
     this._removeInputLine();
 };
 
- DomTerm.prototype.deleteLines = function(count) {
+ Terminal.prototype.deleteLines = function(count) {
      this._deleteLinesAt(count, this.getAbsCursorLine());
 };
 
-DomTerm.prototype.scrollForward = function(count) {
+Terminal.prototype.scrollForward = function(count) {
     var line = this.getCursorLine();
     this.moveToAbs(this._regionTop+this.homeLine, 0, true);
     this._deleteLinesAt(count, this._regionTop+this.homeLine);
     this.moveToAbs(line+this.homeLine, 0, true);
 };
 
-DomTerm.prototype.scrollReverse = function(count) {
+Terminal.prototype.scrollReverse = function(count) {
     var line = this.getAbsCursorLine();
     this._insertLinesAt(count, this._regionTop, this._regionBottom);
     this.moveToAbs(line, 0, true);
 };
 
-DomTerm.prototype._currentStyleBackground = function() {
+Terminal.prototype._currentStyleBackground = function() {
     return this._currentStyleMap.get("background-color");
 }
 
-DomTerm.prototype._getBackgroundColor = function(element) {
+Terminal.prototype._getBackgroundColor = function(element) {
     return element.style.backgroundColor || null;
 }
-DomTerm.prototype._setBackgroundColor = function(element, bgcolor) {
+Terminal.prototype._setBackgroundColor = function(element, bgcolor) {
     element.style.backgroundColor = bgcolor || "";
 }
 
-DomTerm.prototype._createPreNode = function() {
+Terminal.prototype._createPreNode = function() {
     //return document.createElement("pre");
     // Prefer <div> over <pre> because Firefox adds extra lines when doing a Copy
     // spanning multiple <pre> nodes.
@@ -2346,7 +2304,7 @@ DomTerm.prototype._createPreNode = function() {
     return n;
 };
 
-DomTerm.prototype._getOuterPre = function(node) {
+Terminal.prototype._getOuterPre = function(node) {
     for (var v = node; v != null && v != this.topNode; v = v.parentNode) {
         if (v.classList.contains("domterm-pre"))
             return v;
@@ -2354,15 +2312,15 @@ DomTerm.prototype._getOuterPre = function(node) {
     return null;
 }
 
-DomTerm.prototype._createSpanNode = function() {
+Terminal.prototype._createSpanNode = function() {
     return document.createElement("span");
 };
 
-DomTerm.prototype.makeId = function(local) {
+Terminal.prototype.makeId = function(local) {
     return this.name + "__" + local;
 };
 
-DomTerm.prototype._createLineNode = function(kind, text="") {
+Terminal.prototype._createLineNode = function(kind, text="") {
     var el = document.createElement("span");
     // the following is for debugging
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
@@ -2388,7 +2346,7 @@ DomTerm._currentBufferNode =
     return bnode;
 }
 
-DomTerm.prototype.setAlternateScreenBuffer = function(val) {
+Terminal.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         this._setRegionTB(0, -1);
         if (val) {
@@ -2453,23 +2411,23 @@ DomTerm.prototype.setAlternateScreenBuffer = function(val) {
  *  For now returns true for {@code img}, {@code a}, and {@code object}.
  *  (We should perhaps treat {@code a} as text.)
  */
-DomTerm.prototype.isObjectElement = function(node) {
+Terminal.prototype.isObjectElement = function(node) {
     var tag = node.tagName;
     return "OBJECT" == tag ||
         "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
 };
 
-DomTerm.prototype.isBlockNode = function(node) {
+Terminal.prototype.isBlockNode = function(node) {
     return node instanceof Element
         && this.isBlockTag(node.tagName.toLowerCase());
 };
 
-DomTerm.prototype.isBlockTag = function(tag) { // lowercase tag
+Terminal.prototype.isBlockTag = function(tag) { // lowercase tag
     var einfo = DomTerm._elementInfo(tag, null);
     return (einfo & DomTerm._ELEMENT_KIND_INLINE) == 0;
 }
 
-DomTerm.prototype._getOuterBlock = function(node) {
+Terminal.prototype._getOuterBlock = function(node) {
     for (var n = node; n; n = n.parentNode) {
         if (this.isBlockNode(n))
             return n;
@@ -2479,19 +2437,19 @@ DomTerm.prototype._getOuterBlock = function(node) {
 
 // Obsolete?  We should never have a <br> node in the DOM.
 // (If we allow it, we should wrap it in a <span line="br">.)
-DomTerm.prototype.isBreakNode = function( node) {
+Terminal.prototype.isBreakNode = function( node) {
     if (! (node instanceof Element)) return false;
     var tag = node.tagName;
     return "BR" == tag;
 };
 
-DomTerm.prototype.isSpanNode = function(node) {
+Terminal.prototype.isSpanNode = function(node) {
     if (! (node instanceof Element)) return false;
     var tag = node.tagName;
     return "SPAN" == tag;
 };
 
-DomTerm.prototype._initializeDomTerm = function(topNode) {
+Terminal.prototype._initializeDomTerm = function(topNode) {
     this.topNode = topNode;
     topNode.contentEditable = true;
     topNode.spellcheck = false;
@@ -2614,7 +2572,7 @@ DomTerm.prototype._initializeDomTerm = function(topNode) {
 };
 
 /*
-DomTerm.prototype._findHomeLine = function(bufNode) {
+Terminal.prototype._findHomeLine = function(bufNode) {
     this._forEachElementIn(bufNode,
                            function(node) {
                                var offset = node.getAttribute('home-line');
@@ -2623,7 +2581,7 @@ DomTerm.prototype._findHomeLine = function(bufNode) {
 }
 */
 
-DomTerm.prototype._computeHomeLine = function(home_node, home_offset,
+Terminal.prototype._computeHomeLine = function(home_node, home_offset,
                                              alternate) {
     var line = -1;
     var home_line = -1;
@@ -2646,7 +2604,7 @@ DomTerm.prototype._computeHomeLine = function(home_node, home_offset,
 
 DomTerm._checkStyleResize = function(dt) { dt.resizeHandler(); }
 
-DomTerm.prototype.resizeHandler = function() {
+Terminal.prototype.resizeHandler = function() {
     var dt = this;
     // FIXME we want the resize-sensor to be a child of helperNode
     if (dt.verbosity > 0)
@@ -2670,22 +2628,22 @@ DomTerm.prototype.resizeHandler = function() {
     dt._scrollIfNeeded();
 }
 
-DomTerm.prototype.attachResizeSensor = function() {
+Terminal.prototype.attachResizeSensor = function() {
     var dt = this;
     dt._resizeSensor = new ResizeSensor(dt.topNode, function() { dt.resizeHandler(); });
 }
 
-DomTerm.prototype.detachResizeSensor = function() {
+Terminal.prototype.detachResizeSensor = function() {
     if (this._resizeSensor)
         this._resizeSensor.detach();
     this._resizeSensor = null;
 };
 
-DomTerm.prototype._displayInputModeWithTimeout = function(text) {
+Terminal.prototype._displayInputModeWithTimeout = function(text) {
     this._displayInfoWithTimeout(text);
 };
 
-DomTerm.prototype._displayInfoWithTimeout = function(text) {
+Terminal.prototype._displayInfoWithTimeout = function(text) {
     var dt = this;
     dt._displayInfoMessage(text);
     dt._displaySizePendingTimeouts++;
@@ -2696,14 +2654,14 @@ DomTerm.prototype._displayInfoWithTimeout = function(text) {
             dt._updatePagerInfo();
         }
     };
-    setTimeout(clear, DomTerm.INFO_TIMEOUT);
+    setTimeout(clear, Terminal.INFO_TIMEOUT);
 };
 
-DomTerm.prototype._clearInfoMessage = function() {
+Terminal.prototype._clearInfoMessage = function() {
     this._displayInfoMessage(null);
 }
 
-DomTerm.prototype._displaySizeInfoWithTimeout = function() {
+Terminal.prototype._displaySizeInfoWithTimeout = function() {
     // Might be nicer to keep displaying the size-info while
     // button-1 is pressed. However, that seems a bit tricky.
     var text = ""+this.numColumns+" x "+this.numRows
@@ -2714,7 +2672,7 @@ DomTerm.prototype._displaySizeInfoWithTimeout = function() {
     this._displayInfoWithTimeout(text);
 };
 
-DomTerm.prototype._displayInfoMessage = function(contents) {
+Terminal.prototype._displayInfoMessage = function(contents) {
     DomTerm.displayInfoMessage(contents, this);
     this._displayInfoShowing = contents != null;
     if (contents == null)
@@ -2744,7 +2702,7 @@ DomTerm.displayInfoInWidget = function(contents, dt) {
 /** Display contents using displayInfoInWidget or something equivalent. */
 DomTerm.displayInfoMessage = DomTerm.displayInfoInWidget;
 
-DomTerm.prototype.showMiniBuffer = function(prefix, postfix) {
+Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
     DomTerm.displayInfoInWidget(prefix, this);
     let miniBuffer = this._createSpanNode();
     miniBuffer.classList.add("editing");
@@ -2758,7 +2716,7 @@ DomTerm.prototype.showMiniBuffer = function(prefix, postfix) {
     div.contentEditable = false;
 }
 
-DomTerm.prototype.initializeTerminal = function(topNode) {
+Terminal.prototype.initializeTerminal = function(topNode) {
     try {
         if (window.localStorage) {
             var v = localStorage[this.historyStorageKey];
@@ -2857,7 +2815,7 @@ DomTerm.prototype.initializeTerminal = function(topNode) {
     }
 };
 
-DomTerm.prototype._createBuffer = function(idName, bufName) {
+Terminal.prototype._createBuffer = function(idName, bufName) {
     var bufNode = document.createElement("div");
     bufNode.setAttribute("id", idName);
     bufNode.setAttribute("buffer", bufName);
@@ -2867,7 +2825,7 @@ DomTerm.prototype._createBuffer = function(idName, bufName) {
 };
 
 /* If browsers allows, should re-size actual window instead. FIXME */
-DomTerm.prototype.forceWidthInColumns = function(numCols) {
+Terminal.prototype.forceWidthInColumns = function(numCols) {
     if (numCols <= 0) {
         this.topNode.style.width = "";
     } else {
@@ -2887,7 +2845,7 @@ DomTerm.prototype.forceWidthInColumns = function(numCols) {
     }
 };
 
-DomTerm.prototype.measureWindow = function()  {
+Terminal.prototype.measureWindow = function()  {
     if (DomTerm.useXtermJs) {
         window.fit.fit(this.xterm);
         return;
@@ -2931,12 +2889,12 @@ DomTerm.prototype.measureWindow = function()  {
     this._updateMiscOptions();
 };
 
-DomTerm.prototype.setMiscOptions = function(map) {
+Terminal.prototype.setMiscOptions = function(map) {
     this._miscOptions = map;
     this._updateMiscOptions();
 };
 
-DomTerm.prototype._updateMiscOptions = function(map) {
+Terminal.prototype._updateMiscOptions = function(map) {
     var map = this._miscOptions;
     var style = "";
 
@@ -2981,7 +2939,7 @@ DomTerm.prototype._updateMiscOptions = function(map) {
 
 DomTerm.showContextMenu = null;
 
-DomTerm.prototype._mouseHandler = function(ev) {
+Terminal.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
         this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button);
 
@@ -3296,7 +3254,7 @@ DomTerm.prototype._mouseHandler = function(ev) {
     this.processResponseCharacters(result);
 };
 
-DomTerm.prototype.showHideMarkers = [
+Terminal.prototype.showHideMarkers = [
     // pairs of 'show'/'hide' markers, with 'show' (currently hidden) first
     // "[show]", "[hide]",
     "\u25B6", "\u25BC", // black right-pointing / down-pointing triangle
@@ -3306,7 +3264,7 @@ DomTerm.prototype.showHideMarkers = [
     "\u229E", "\u229F"  // squared plus / squared minus
 ];
 
-DomTerm.prototype._showHideHandler = function(event) {
+Terminal.prototype._showHideHandler = function(event) {
     var target = event.target;
     var child = target.firstChild;
     if (target.tagName == "SPAN"
@@ -3366,7 +3324,7 @@ DomTerm.prototype._showHideHandler = function(event) {
     this.requestUpdateDisplay();
 };
 
-DomTerm.prototype.freshLine = function() {
+Terminal.prototype.freshLine = function() {
     var lineno = this.getAbsCursorLine();
     var line = this.lineStarts[lineno];
     var end = this.lineEnds[lineno];
@@ -3377,7 +3335,7 @@ DomTerm.prototype.freshLine = function() {
     this.cursorLineStart(1);
 };
 
-DomTerm.prototype.reportEvent = function(name, data) {
+Terminal.prototype.reportEvent = function(name, data) {
     // 0x92 is "Private Use 2".
     // FIXME should encode data
     if (this.verbosity >= 2)
@@ -3385,7 +3343,7 @@ DomTerm.prototype.reportEvent = function(name, data) {
     this.processInputCharacters("\x92"+name+" "+data+"\n");
 };
 
-DomTerm.prototype.reportKeyEvent = function(keyName, str) {
+Terminal.prototype.reportKeyEvent = function(keyName, str) {
     let seqno = this._keyEventCounter;
     let data = ""+keyName+"\t"+seqno+"\t"+JSON.stringify(str);
     this._keyEventBuffer[seqno & 31] = data;
@@ -3393,14 +3351,14 @@ DomTerm.prototype.reportKeyEvent = function(keyName, str) {
     this._keyEventCounter = (seqno + 1) & 1023;
 };
 
-DomTerm.prototype._createPendingSpan = function(span = this._createSpanNode()) {
+Terminal.prototype._createPendingSpan = function(span = this._createSpanNode()) {
     span.classList.add("pending");
     span.nextDeferred = this._deferredForDeletion;
     this._deferredForDeletion = span;
     return span;
 }
 
-DomTerm.prototype._getPendingSpan = function(node, before) {
+Terminal.prototype._getPendingSpan = function(node, before) {
     let pending = before ? node.previousSibling : node.nextSibling;
     if (DomTerm._isPendingSpan(pending))
         return pending;
@@ -3413,7 +3371,7 @@ DomTerm.prototype._getPendingSpan = function(node, before) {
     return span;
 }
 
-DomTerm.prototype._addPendingInput = function(str) {
+Terminal.prototype._addPendingInput = function(str) {
     if (DomTerm.useXtermJs)
         return;
     this._restoreCaretNode();
@@ -3425,10 +3383,10 @@ DomTerm.prototype._addPendingInput = function(str) {
     this._pendingEcho += str;
 }
 
-DomTerm._PENDING_LEFT = 2;
-DomTerm._PENDING_FORWARDS = 1;
-DomTerm._PENDING_RIGHT = DomTerm._PENDING_LEFT+DomTerm._PENDING_FORWARDS;
-DomTerm._PENDING_DELETE = 4;
+Terminal._PENDING_LEFT = 2;
+Terminal._PENDING_FORWARDS = 1;
+Terminal._PENDING_RIGHT = Terminal._PENDING_LEFT+Terminal._PENDING_FORWARDS;
+Terminal._PENDING_DELETE = 4;
 
 DomTerm._isPendingSpan = function(node) {
     return node instanceof Element
@@ -3436,7 +3394,7 @@ DomTerm._isPendingSpan = function(node) {
         && node.classList.contains("pending");
 }
 
-DomTerm.prototype._editPendingInput = function(forwards, doDelete) {
+Terminal.prototype._editPendingInput = function(forwards, doDelete) {
     this._restoreCaretNode();
     this._removeCaret();
     let block = this._getOuterBlock(this._caretNode);
@@ -3498,21 +3456,21 @@ DomTerm.prototype._editPendingInput = function(forwards, doDelete) {
             }
         }
     }
-    let code = (forwards ? DomTerm._PENDING_RIGHT : DomTerm._PENDING_LEFT)
-        + (doDelete ? DomTerm._PENDING_DELETE : 0);
+    let code = (forwards ? Terminal._PENDING_RIGHT : Terminal._PENDING_LEFT)
+        + (doDelete ? Terminal._PENDING_DELETE : 0);
     code = String.fromCharCode(code);
     this._pendingEcho = this._pendingEcho + code;
     this._restoreCaret();
 }
 
-DomTerm.prototype._respondSimpleInput = function(str, keyName) {
+Terminal.prototype._respondSimpleInput = function(str, keyName) {
     if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
         this.reportKeyEvent(keyName, str);
     else
         this.processInputCharacters(str);
 }
 
-DomTerm.prototype.setWindowSize = function(numRows, numColumns,
+Terminal.prototype.setWindowSize = function(numRows, numColumns,
                                            availHeight, availWidth) {
     this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
 };
@@ -3526,7 +3484,7 @@ DomTerm.prototype.setWindowSize = function(numRows, numColumns,
 * The function may safely remove or replace the active node,
 * or change its children.
 */
-DomTerm.prototype._forEachElementIn = function(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild) {
+Terminal.prototype._forEachElementIn = function(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild) {
     let starting = true;
     for (var cur = start; ;) {
         if (cur == null || (cur == node && !starting))
@@ -3590,12 +3548,12 @@ DomTerm._forEachTextIn = function(el, fun) {
     }
 }
 
-DomTerm.prototype.resetCursorCache = function() {
+Terminal.prototype.resetCursorCache = function() {
     this.currentCursorColumn = -1;
     this.currentAbsLine = -1;
 };
 
-DomTerm.prototype.updateCursorCache = function() {
+Terminal.prototype.updateCursorCache = function() {
     var goal = this.outputBefore;
     var goalParent = this.outputContainer;
     if (goal instanceof Number) { // and goalParent instanceof Text
@@ -3710,13 +3668,13 @@ DomTerm.prototype.updateCursorCache = function() {
 
 /** Get line of current cursor position.
  * This is 0-origin (i.e. 0 is the top line), relative to cursorHome. */
-DomTerm.prototype.getCursorLine = function() {
+Terminal.prototype.getCursorLine = function() {
     if (this.currentAbsLine < 0)
         this.updateCursorCache();
     return this.currentAbsLine - this.homeLine
 };
 
-DomTerm.prototype.getAbsCursorLine = function() {
+Terminal.prototype.getAbsCursorLine = function() {
     if (this.currentAbsLine < 0)
         this.updateCursorCache();
     return this.currentAbsLine;
@@ -3724,13 +3682,13 @@ DomTerm.prototype.getAbsCursorLine = function() {
 
 /** Get column of current cursor position.
  * This is 0-origin (i.e. 0 is the left column), relative to cursorHome. */
-DomTerm.prototype.getCursorColumn = function() {
+Terminal.prototype.getCursorColumn = function() {
     if (this.currentCursorColumn < 0)
         this.updateCursorCache();
     return this.currentCursorColumn;
 };
 
-DomTerm.prototype._fixOutputPosition = function() {
+Terminal.prototype._fixOutputPosition = function() {
     if (this.outputContainer instanceof Text) {
         let tnode = this.outputContainer;
         let pos = this.outputBefore;
@@ -3742,7 +3700,7 @@ DomTerm.prototype._fixOutputPosition = function() {
     return this.outputBefore;
 }
 
-DomTerm.prototype.grabInput = function(input) {
+Terminal.prototype.grabInput = function(input) {
     if (input == null)
         return "";
     if (input instanceof Text)
@@ -3757,7 +3715,7 @@ DomTerm.prototype.grabInput = function(input) {
     return result;
 };
 
-DomTerm.prototype.historyAdd = function(str, append) {
+Terminal.prototype.historyAdd = function(str, append) {
     if (this.historyCursor >= 0) // FIX consider append
         this.history[this.history.length-1] = str;
     else if (append && this.history.length >= 0) {
@@ -3768,7 +3726,7 @@ DomTerm.prototype.historyAdd = function(str, append) {
     this.historyCursor = -1;
 };
 
-DomTerm.prototype.historySearch =
+Terminal.prototype.historySearch =
 function(str, forwards = this.historySearchForwards) {
     let step = forwards ? 1 : -1;
     for (let i = this.historySearchStart;
@@ -3794,7 +3752,7 @@ function(str, forwards = this.historySearchForwards) {
     }
 }
 
-DomTerm.prototype.historyMove = function(delta) {
+Terminal.prototype.historyMove = function(delta) {
     var str = this.grabInput(this._inputLine);
     if (this.historyCursor >= 0) {
         this.history[this.historyCursor] = str;
@@ -3821,7 +3779,7 @@ DomTerm.prototype.historyMove = function(delta) {
     this._scrollIfNeeded();
 };
 
-DomTerm.prototype.historySave = function() {
+Terminal.prototype.historySave = function() {
     var h = this.history;
     try {
         if (h.length > 0 && window.localStorage) {
@@ -3833,7 +3791,7 @@ DomTerm.prototype.historySave = function() {
     } catch (e) { }  
 };
 
-DomTerm.prototype.handleEnter = function(text) {
+Terminal.prototype.handleEnter = function(text) {
     this._doDeferredDeletion();
     // For now we only support the normal case when outputBefore == inputLine.
     var oldInputLine = this._inputLine;
@@ -3872,7 +3830,7 @@ DomTerm.prototype.handleEnter = function(text) {
     return text;
 };
 
-DomTerm.prototype.appendText = function(parent, data) {
+Terminal.prototype.appendText = function(parent, data) {
     if (data.length == 0)
         return;
     var last = parent.lastChild;
@@ -3882,7 +3840,7 @@ DomTerm.prototype.appendText = function(parent, data) {
         parent.appendChild(document.createTextNode(data));
 };
 
-DomTerm.prototype._normalize1 = function(tnode) {
+Terminal.prototype._normalize1 = function(tnode) {
     for (;;) {
         var next = tnode.nextSibling;
         if (! (next instanceof Text))
@@ -3900,7 +3858,7 @@ DomTerm.prototype._normalize1 = function(tnode) {
 };
 
 /** Insert a <br> node. */
-DomTerm.prototype.insertBreak = function() {
+Terminal.prototype.insertBreak = function() {
     var breakNode = document.createElement("br");
     this.insertNode(breakNode);
     this.currentCursorColumn = 0;
@@ -3908,7 +3866,7 @@ DomTerm.prototype.insertBreak = function() {
         this.currentAbsLine++;
 };
 
-DomTerm.prototype.eraseDisplay = function(param) {
+Terminal.prototype.eraseDisplay = function(param) {
     var saveLine = this.getAbsCursorLine();
     var saveCol = this.getCursorColumn();
     if (param == 0 && saveLine == this.homeLine && saveCol == 0)
@@ -4001,7 +3959,7 @@ DomTerm.prototype.eraseDisplay = function(param) {
 
 /** set line-wrap indicator from absLine to absLine+1.
  */
-DomTerm.prototype._forceWrap = function(absLine) {
+Terminal.prototype._forceWrap = function(absLine) {
     var end = this.lineEnds[absLine];
     var nextLine = this.lineStarts[absLine+1];
     if (nextLine != end) {
@@ -4021,7 +3979,7 @@ DomTerm.prototype._forceWrap = function(absLine) {
 /** clear line-wrap indicator from absLine to absLine+1.
  *  The default for absLine is getAbsCursorLine().
  */
-DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
+Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
     var lineEnd = this.lineEnds[absLine];
     if (lineEnd != null && lineEnd.getAttribute("line")=="soft") {
         // Try to convert soft line break to hard break, using a <div>
@@ -4066,7 +4024,7 @@ DomTerm.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
     }
 };
 
-DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
+Terminal.prototype._copyAttributes = function(oldElement, newElement) {
     var attrs = oldElement.attributes;
     for (var i = attrs.length; --i >= 0; ) {
         var attr = attrs[i];
@@ -4075,7 +4033,7 @@ DomTerm.prototype._copyAttributes = function(oldElement, newElement) {
     }
 };
 
-DomTerm.prototype._moveNodes = function(firstChild, newParent, newBefore) {
+Terminal.prototype._moveNodes = function(firstChild, newParent, newBefore) {
     var oldParent = firstChild ? firstChild.parentNode : null;
     for (var child = firstChild; child != null; ) {
         var next = child.nextSibling;
@@ -4095,7 +4053,7 @@ DomTerm.prototype._moveNodes = function(firstChild, newParent, newBefore) {
  * The 'count' is the number of characters to erase/delete;
  * a count of -1 means erase to the end of the line.
  */
-DomTerm.prototype.eraseCharactersRight = function(count, doDelete=false) {
+Terminal.prototype.eraseCharactersRight = function(count, doDelete=false) {
     if (count > 0 && ! doDelete) {
         // handle BCH FIXME
         var avail = this.numColumns - this.getCursorColumn();
@@ -4107,7 +4065,7 @@ DomTerm.prototype.eraseCharactersRight = function(count, doDelete=false) {
     }
     this.deleteCharactersRight(count);
 };
-DomTerm.prototype.deleteCharactersRight = function(count) {
+Terminal.prototype.deleteCharactersRight = function(count) {
     var todo = count >= 0 ? count : 999999999;
     // Note that the traversal logic is similar to move.
     this._fixOutputPosition();
@@ -4125,6 +4083,11 @@ DomTerm.prototype.deleteCharactersRight = function(count) {
                 break; // Shouldn't happen
             current = parent.nextSibling;
             parent = parent.parentNode;
+        } else if (this.isObjectElement(current)) {
+            let next = current.nextSibling;
+            parent.removeChild(current);
+            current = next;
+            todo--;
         } else if (current instanceof Element) {
             var valueAttr = current.getAttribute("value");
             if (valueAttr && current.getAttribute("std")=="prompt") {
@@ -4197,14 +4160,14 @@ DomTerm.prototype.deleteCharactersRight = function(count) {
 };
 
 
-DomTerm.prototype.eraseLineRight = function() {
+Terminal.prototype.eraseLineRight = function() {
     this.deleteCharactersRight(-1);
     this._clearWrap();
     this._eraseLineEnd();
 }
 
 // New "whitespace" at the end of the line need to be set to Background Color.
-DomTerm.prototype._eraseLineEnd = function() {
+Terminal.prototype._eraseLineEnd = function() {
     var line = this.lineStarts[this.getAbsCursorLine()];
     var bg = this._currentStyleBackground();
     var oldbg = this._getBackgroundColor(line);
@@ -4240,14 +4203,14 @@ DomTerm.prototype._eraseLineEnd = function() {
     }
 };
 
-DomTerm.prototype.eraseLineLeft = function() {
+Terminal.prototype.eraseLineLeft = function() {
     var column = this.getCursorColumn();
     this.cursorLineStart(0);
     this.eraseCharactersRight(column+1);
     this.cursorRight(column);
 };
 
-DomTerm.prototype.rgb = function(r,g,b) {
+Terminal.prototype.rgb = function(r,g,b) {
     var digits = "0123456789ABCDEF";
     var r1 = r & 15;
     var g1 = g & 15;
@@ -4261,7 +4224,7 @@ DomTerm.prototype.rgb = function(r,g,b) {
                                digits.charCodeAt(b1));
 };
 
-DomTerm.prototype.color256 = function(u) {
+Terminal.prototype.color256 = function(u) {
     // FIXME This is just the default - could be overridden.
     //   0.. 16: system colors
     if (u < 16) {
@@ -4305,12 +4268,12 @@ DomTerm.prototype.color256 = function(u) {
     return this.rgb(gray, gray, gray);
 };
 
-DomTerm.prototype.getParameter = function(index, defaultValue) {
+Terminal.prototype.getParameter = function(index, defaultValue) {
     var arr = this.parameters;
     return arr.length > index && arr[index] != null ? arr[index] : defaultValue;
 }
 
-DomTerm.prototype.get_DEC_private_mode = function(param) {
+Terminal.prototype.get_DEC_private_mode = function(param) {
     switch (param) {
     case 1: return this.sstate.applicationCursorKeysMode;
     case 3: return this.numColumns == 132;
@@ -4337,7 +4300,7 @@ DomTerm.prototype.get_DEC_private_mode = function(param) {
 }
 /** Do DECSET or related option.
  */
-DomTerm.prototype.set_DEC_private_mode = function(param, value) {
+Terminal.prototype.set_DEC_private_mode = function(param, value) {
     switch (param) {
     case 1:
         // Application Cursor Keys (DECCKM).
@@ -4411,7 +4374,7 @@ DomTerm.prototype.set_DEC_private_mode = function(param, value) {
     }
 };
 
-DomTerm.prototype.pushControlState = function() {
+Terminal.prototype.pushControlState = function() {
     var save = {
         controlSequenceState: this.controlSequenceState,
         parameters: this.parameters,
@@ -4426,7 +4389,7 @@ DomTerm.prototype.pushControlState = function() {
     this._savedControlState = save;
 }
 
-DomTerm.prototype.popControlState = function() {
+Terminal.prototype.popControlState = function() {
     var saved = this._savedControlState;
     if (saved) {
         this._urgentControlState = this.controlSequenceState;
@@ -4439,16 +4402,16 @@ DomTerm.prototype.popControlState = function() {
         // should not be replayed when another window is attached.)
         var old = this._receivedCount;
         if (saved.count_urgent)
-            this._receivedCount = (this._receivedCount + 2) & DomTerm._mask28;
+            this._receivedCount = (this._receivedCount + 2) & Terminal._mask28;
         else
             this._receivedCount = saved.receivedCount;
     }
 }
 
-DomTerm.prototype.handleControlSequence = function(last) {
+Terminal.prototype.handleControlSequence = function(last) {
     var param;
     var oldState = this.controlSequenceState;
-    this.controlSequenceState = DomTerm.INITIAL_STATE;
+    this.controlSequenceState = Terminal.INITIAL_STATE;
     if (last != 109 /*'m'*/)
         this._breakDeferredLines();
     switch (last) {
@@ -4524,9 +4487,11 @@ DomTerm.prototype.handleControlSequence = function(last) {
         this._eraseLineEnd();
         break;
     case 83 /*'S'*/:
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
-            // Sixel/ReGIS graphics - not implemented
-            this.processResponseCharacters("\x1B[?0;3;0S");
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            // Sixel/ReGIS graphics
+            // Sixel is implemented, but not this query.
+            let pi = this.getParameter(0, 1);
+            this.processResponseCharacters("\x1B[?"+pi+";3;0S");
             break;
         }
         this.scrollForward(this.getParameter(0, 1));
@@ -4573,7 +4538,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         }
         break;
     case 99 /*'c'*/:
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE) {
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_GREATER_STATE) {
             // Send Device Attributes (Secondary DA).
             // Translate version string X.Y.Z to integer XYYYZZ.
             var version = DomTerm.versionString.split(".");
@@ -4592,7 +4557,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
             }
             // 990 is "DM" in roman numerals.
             this.processResponseCharacters("\x1B[>990;"+vnum+";0c");
-        } else if (oldState == DomTerm.SEEN_ESC_LBRACKET_STATE) {
+        } else if (oldState == Terminal.SEEN_ESC_LBRACKET_STATE) {
             // Send Device Attributes (Primary DA)
             this.processResponseCharacters("\x1B[?62;1;22c");
         }
@@ -4619,7 +4584,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 104 /*'h'*/:
         param = this.getParameter(0, 0);
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Set (DECSET)
             this.set_DEC_private_mode(param, true);
         }
@@ -4636,7 +4601,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         break;
     case 108 /*'l'*/:
         param = this.getParameter(0, 0);
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // DEC Private Mode Reset (DECRST)
             this.set_DEC_private_mode(param, false);
         } else {
@@ -4772,12 +4737,12 @@ DomTerm.prototype.handleControlSequence = function(last) {
             this.processResponseCharacters("\x1B["+(r+1)+";"+(c+1)+"R");
             break;
         case 15: // request printer status
-            if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            if (oldState == Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
                 this.processResponseCharacters("\x1B[?13n"); // No printer
             }
             break;
         case 25: // request UDK status
-            if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            if (oldState == Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
                 this.processResponseCharacters("\x1B[?20n");
             }
             break;
@@ -4787,19 +4752,19 @@ DomTerm.prototype.handleControlSequence = function(last) {
         }
         break;
     case 112 /*'p'*/:
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE) {
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_EXCLAMATION_STATE) {
             // Soft terminal reset (DECSTR)
             this.resetTerminal(false, false);
         }
         break;
     case 113 /*'q'*/:
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE) {
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_SPACE_STATE) {
             // Set cursor style (DECSCUSR, VT520).
             this.setCaretStyle(this.getParameter(0, 1));
         }
         break;
     case 114 /*'r'*/:
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // Restore DEC Private Mode Values.
             if (this.saved_DEC_private_mode_flags == null)
                 break;
@@ -4821,7 +4786,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
         }
         break;
     case 115 /*'s'*/:
-        if (oldState == DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+        if (oldState == Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE) {
             // Save DEC Private Mode Values.
             if (this.saved_DEC_private_mode_flags == null)
                 this.saved_DEC_private_mode_flags = new Array();
@@ -4845,7 +4810,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     case 117 /*'u'*/:
         switch (this.getParameter(0, 0)) {
         case 11:
-            this.controlSequenceState = DomTerm.SEEN_ERROUT_END_STATE;
+            this.controlSequenceState = Terminal.SEEN_ERROUT_END_STATE;
             break;
         case 12:
             this._pushStdMode("error");
@@ -5112,7 +5077,7 @@ DomTerm.prototype.handleControlSequence = function(last) {
     }
 };
 
-DomTerm.prototype.handleBell = function() {
+Terminal.prototype.handleBell = function() {
     // Do nothing, for now.
 };
 
@@ -5123,7 +5088,7 @@ DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
 
 DomTerm.handleLink = function(element) {
     if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "open-link");
+        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "open-link");
         return;
     }
     let dt = DomTerm._getAncestorDomTerm(element);
@@ -5161,11 +5126,11 @@ DomTerm.handleLinkRef = function(href, textContent, dt) {
 
 // Set the "session name" which is the "name" attribute of the toplevel div.
 // It can be used in stylesheets as well as the window title.
-DomTerm.prototype.setSessionName = function(title) {
+Terminal.prototype.setSessionName = function(title) {
     this.setWindowTitle(title, 30);
 }
 
-DomTerm.prototype.setSessionNumber = function(snumber, unique, wnumber) {
+Terminal.prototype.setSessionNumber = function(snumber, unique, wnumber) {
     this.sstate.sessionNumber = snumber;
     this.topNode.setAttribute("session-number", snumber);
     this.sstate.sessionNameUnique = unique;
@@ -5174,7 +5139,7 @@ DomTerm.prototype.setSessionNumber = function(snumber, unique, wnumber) {
 }
 
 // FIXME misleading function name - this is not just the session name
-DomTerm.prototype.sessionName = function() {
+Terminal.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("name");
     if (! sname)
         sname = "DomTerm" + ":" + this.sstate.sessionNumber;
@@ -5197,7 +5162,7 @@ DomTerm.prototype.sessionName = function() {
     return sname;
 };
 
-DomTerm.prototype.setWindowTitle = function(title, option) {
+Terminal.prototype.setWindowTitle = function(title, option) {
     switch (option) {
     case 0:
         this.sstate.windowName = title;
@@ -5219,7 +5184,7 @@ DomTerm.prototype.setWindowTitle = function(title, option) {
     this.updateWindowTitle();
 };
 
-DomTerm.prototype.formatWindowTitle = function() {
+Terminal.prototype.formatWindowTitle = function() {
     var str = this.sstate.windowName ? this.sstate.windowName
         : this.sstate.iconName ? this.sstate.iconName
         : "";
@@ -5234,20 +5199,24 @@ DomTerm.prototype.formatWindowTitle = function() {
     return str;
 }
 
-DomTerm.prototype.updateWindowTitle = function() {
-    if (DomTerm.setLayoutTitle)
-        DomTerm.setLayoutTitle(this, this.sessionName(), this.sstate.windowName);
+Terminal.prototype.updateWindowTitle = function() {
+    let sname = this.sessionName();
+    let wname = this.sstate.windowName;
+    if (DomTerm.useIFrame) {
+        DomTerm.sendParentMessage("set-pane-title", sname, wname);
+    } else if (DomTermLayout.setLayoutTitle)
+        DomTermLayout.setLayoutTitle(this, sname, wname);
     var str = this.formatWindowTitle()
     this.sstate.windowTitle = str;
     if (this.hasFocus())
         DomTerm.setTitle(str);
 }
 
-DomTerm.prototype.resetTerminal = function(full, saved) {
+Terminal.prototype.resetTerminal = function(full, saved) {
     // Corresponds to xterm's ReallyReset function
     if (saved)
         this.eraseDisplay(saved);
-    this.controlSequenceState = DomTerm.INITIAL_STATE;
+    this.controlSequenceState = Terminal.INITIAL_STATE;
     this._setRegionTB(0, -1);
     this._setRegionLR(0, -1);
     this.sstate.originMode = false;
@@ -5272,14 +5241,14 @@ DomTerm.prototype.resetTerminal = function(full, saved) {
     // FIXME a bunch more
 };
 
-DomTerm.prototype.setReverseVideo = function(value) {
+Terminal.prototype.setReverseVideo = function(value) {
     if (value)
         this.topNode.setAttribute("reverse-video", "yes");
     else
         this.topNode.removeAttribute("reverse-video");
 }
 
-DomTerm.prototype._asBoolean = function(value) {
+Terminal.prototype._asBoolean = function(value) {
     return value == "true" || value == "yes" || value == "on";
 }
 
@@ -5288,13 +5257,13 @@ DomTerm.settingsHook = null;
 DomTerm.defaultWidth = -1;
 DomTerm.defaultHeight = -1;
 
-DomTerm.prototype.setSettings = function(obj) {
+Terminal.prototype.setSettings = function(obj) {
     var settingsCounter = obj["##"];
     if (this._settingsCounterInstance == settingsCounter)
         return;
     this._settingsCounterInstance = settingsCounter;
 
-    this.linkAllowedUrlSchemes = DomTerm.prototype.linkAllowedUrlSchemes;
+    this.linkAllowedUrlSchemes = Terminal.prototype.linkAllowedUrlSchemes;
     var link_conditions = "";
     var val = obj["open.file.application"];
     var a = val ? val : "";
@@ -5336,7 +5305,7 @@ DomTerm.prototype.setSettings = function(obj) {
         this.caretStyleFromSettings = cstyle;
     } else {
         this.caretStyleFromSettings = -1;
-        this.setCaretStyle(DomTerm.DEFAULT_CARET_STYLE);
+        this.setCaretStyle(Terminal.DEFAULT_CARET_STYLE);
     }
 
     if (DomTerm._settingsCounter != settingsCounter) {
@@ -5387,7 +5356,7 @@ DomTerm.prototype.setSettings = function(obj) {
     DomTerm._checkStyleResize(this);
 };
 
-DomTerm.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
+Terminal.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
     this._Glevel = g;
     this.charMapper = this._Gcharsets[g];
 };
@@ -5423,7 +5392,7 @@ DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
     }
 }
 
-DomTerm.prototype._unsafeInsertHTML = function(text) {
+Terminal.prototype._unsafeInsertHTML = function(text) {
     if (this.verbosity >= 1)
         this.log("_unsafeInsertHTML "+JSON.stringify(text));
     if (text.length > 0) {
@@ -5469,7 +5438,7 @@ DomTerm._elementInfo = function(tag, parents=null) {
     return v;
 };
 
-DomTerm.prototype.allowAttribute = function(name, value, einfo, parents) {
+Terminal.prototype.allowAttribute = function(name, value, einfo, parents) {
     //Should "style" be allowed?  Or further scrubbed?
     //It is required for SVG. FIXME.
     //if (name=="style")
@@ -5650,7 +5619,7 @@ DomTerm.HTMLinfo = {
     //area (if it is a descendant of a map element) audio bdi bdo br button canvas data datalist del embed iframe input ins kbd keygen label map math meter noscript object output progress q ruby s select svg template textarea time u  video wbr text
 };
 
-DomTerm.prototype._scrubAndInsertHTML = function(str) {
+Terminal.prototype._scrubAndInsertHTML = function(str) {
     function skipWhitespace(pos) {
         for (; pos < len; pos++) {
             let c = str.charCodeAt(pos);
@@ -5668,7 +5637,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
     var startLine = this.getAbsCursorLine();
     // FIXME could be smarter - we should avoid _WIDTH_MODE_VARIABLE_SEEN
     // until we actually see something that needs it.
-    this.lineStarts[startLine]._widthMode = DomTerm._WIDTH_MODE_VARIABLE_SEEN;
+    this.lineStarts[startLine]._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
     var activeTags = new Array();
     loop:
     for (;;) {
@@ -5685,7 +5654,7 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
                 this._unsafeInsertHTML(str.substring(start, i-1));
                 this.cursorLineStart(1);
                 this.lineStarts[this.getAbsCursorLine()]._widthMode =
-                    DomTerm._WIDTH_MODE_VARIABLE_SEEN;
+                    Terminal._WIDTH_MODE_VARIABLE_SEEN;
                 if (ch == 13 && i < len && str.charCodeAt(i) == 10)
                     i++;
                 start = i;
@@ -5941,7 +5910,37 @@ DomTerm.prototype._scrubAndInsertHTML = function(str) {
 };
 
 
-DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
+Terminal.prototype.handleDeviceControlString = function(params, text) {
+    if (text.length > 0 && text.charCodeAt(0) === 113) { // 'q'
+        let six = new SixelImage();
+        six.writeString(text, 1);
+        let w = six.width, h = six.height;
+        const canvas = document.createElement("canvas");
+        canvas.setAttribute("width", w);
+        canvas.setAttribute("height", h);
+        const ctx = canvas.getContext('2d');
+        const idata = ctx.createImageData(w, h);
+        six.toImageData(idata.data, w, h);
+        ctx.putImageData(idata, 0, 0);
+        this.eraseLineRight();
+        if (true) {
+            // This works better with "Save as HTML"
+            let image = new Image(w, h);
+            image.src = canvas.toDataURL();
+            this.insertNode(image);
+        } else {
+            this.insertNode(canvas);
+        }
+        let line = this.lineStarts[this.getAbsCursorLine()];
+        if (line._widthColumns !== undefined)
+            line._widthColumns++;
+        if (this.currentCursorColumn >= 0)
+            this.currentCursorColumn++;
+        line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+    } else
+        console.log("handleDeviceControlString");
+}
+Terminal.prototype.handleOperatingSystemControl = function(code, text) {
     if (this.verbosity >= 2)
         this.log("handleOperatingSystemControl "+code+" '"+text+"'");
     if (! (code >= 110 && code <= 118))
@@ -5955,6 +5954,9 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         break;
     case 31:
         this.topNode.setAttribute("pid", text);
+        if (DomTerm.useIFrame) {
+            DomTerm.sendParentMessage("set-pid", text);
+        }
         break;
     case 8:
         var semi = text.indexOf(';');
@@ -6162,7 +6164,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             this.processResponseCharacters("\x9D" + r + "\n");
         break;
     case 102:
-        DomTerm.sendSavedHtml(this, this.getAsHTML(true));
+        Terminal.sendSavedHtml(this, this.getAsHTML(true));
         break;
     case 103: // restore saved snapshot
         var comma = text.indexOf(",");
@@ -6228,8 +6230,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
         //this._adjustStyle();
         {
             let lineStart = this.lineStarts[this.getAbsCursorLine()];
-            if (lineStart._widthMode < DomTerm._WIDTH_MODE_PPRINT_SEEN)
-	        lineStart._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
+            if (lineStart._widthMode < Terminal._WIDTH_MODE_PPRINT_SEEN)
+	        lineStart._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
         }
         var ppgroup = this._createSpanNode();
         ppgroup.setAttribute("class", "pprint-group");
@@ -6289,8 +6291,8 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
             : code == 116 ? "linear"
             : code == 117 ? "miser" : "required";
         let lineStart = this.lineStarts[this.getAbsCursorLine()];
-        if (lineStart._widthMode < DomTerm._WIDTH_MODE_PPRINT_SEEN)
-            lineStart._widthMode = DomTerm._WIDTH_MODE_PPRINT_SEEN;
+        if (lineStart._widthMode < Terminal._WIDTH_MODE_PPRINT_SEEN)
+            lineStart._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
         var line = this._createLineNode(kind);
         text = text.trim();
         if (text.length > 0) {
@@ -6362,7 +6364,7 @@ DomTerm.prototype.handleOperatingSystemControl = function(code, text) {
     }
 };
 
-DomTerm.prototype._setPendingSectionEnds = function(end) {
+Terminal.prototype._setPendingSectionEnds = function(end) {
     for (var pending = this._needSectionEndList;
          pending != this._needSectionEndFence; ) {
         var next = pending._needSectionEndNext;
@@ -6373,7 +6375,7 @@ DomTerm.prototype._setPendingSectionEnds = function(end) {
     this._needSectionEndList = this._needSectionEndFence;
 };
 
-DomTerm.prototype._pushPprintGroup = function(ppgroup) {
+Terminal.prototype._pushPprintGroup = function(ppgroup) {
     ppgroup.outerPprintGroup = this._currentPprintGroup;
     this._currentPprintGroup = ppgroup;
     ppgroup._needSectionEndNext = this._needSectionEndList;
@@ -6382,7 +6384,7 @@ DomTerm.prototype._pushPprintGroup = function(ppgroup) {
     this._needSectionEndFence = this._needSectionEndList;
 };
 
-DomTerm.prototype._popPprintGroup = function() {
+Terminal.prototype._popPprintGroup = function() {
     var ppgroup = this._currentPprintGroup;
     if (ppgroup) {
         this._currentPprintGroup = ppgroup.outerPprintGroup;
@@ -6390,19 +6392,6 @@ DomTerm.prototype._popPprintGroup = function() {
         ppgroup._saveSectionEndFence = undefined;
     }
 }
-
-var escapeMap = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;'
-};
-
-DomTerm.escapeText = function(text) {
-    // Assume single quote is not used in attributes
-    return text.replace(/[&<>"]/g, function(m) { return escapeMap[m]; });
-};
 
 DomTerm._homeLineOffset = function(dt) {
     var home_offset = 0;
@@ -6415,7 +6404,7 @@ DomTerm._homeLineOffset = function(dt) {
     return home_offset;
 }
 
-DomTerm._nodeToHtml = function(node, dt, saveMode) {
+Terminal._nodeToHtml = function(node, dt, saveMode) {
     var string = "";
     var savedTime = "";
     if (saveMode) {
@@ -6531,7 +6520,7 @@ DomTerm._nodeToHtml = function(node, dt, saveMode) {
             break;
         case 11: // DOCUMENT_FRAGMENT
             for (let ch = node.firstChild; ch != null; ch = ch.nextSibling)
-                string += DomTerm._nodeToHtml(ch);
+                string += Terminal._nodeToHtml(ch);
             break;
         };
     };
@@ -6539,20 +6528,20 @@ DomTerm._nodeToHtml = function(node, dt, saveMode) {
     return string;
 }
 
-DomTerm.prototype.getAsHTML = function(saveMode=false) {
+Terminal.prototype.getAsHTML = function(saveMode=false) {
     if (saveMode)
-        return DomTerm._nodeToHtml(this.topNode, this, saveMode);
+        return Terminal._nodeToHtml(this.topNode, this, saveMode);
     else {
         var string = "";
         var list = this.topNode.childNodes;
         for (let i = 0; i < list.length; i++) {
-            string += DomTerm._nodeToHtml(list[i], this, saveMode);
+            string += Terminal._nodeToHtml(list[i], this, saveMode);
         }
         return string;
     }
 };
 
-DomTerm.prototype._doDeferredDeletion = function() {
+Terminal.prototype._doDeferredDeletion = function() {
     var deferred = this._deferredForDeletion;
     if (deferred) {
         this._removeCaret();
@@ -6587,7 +6576,7 @@ DomTerm.prototype._doDeferredDeletion = function() {
 }
 
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
-DomTerm.prototype.insertBytes = function(bytes) {
+Terminal.prototype.insertBytes = function(bytes) {
     var len = bytes.length;
     if (this.verbosity >= 2)
         this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+len+" received:"+this._receivedCount);
@@ -6598,9 +6587,9 @@ DomTerm.prototype.insertBytes = function(bytes) {
         var urgent_end = -1;
         for (var i = 0; i < len; i++) {
             var ch = bytes[i];
-            if (ch == DomTerm.URGENT_BEGIN1 && urgent_begin < 0)
+            if (ch == Terminal.URGENT_BEGIN1 && urgent_begin < 0)
                 urgent_begin = i;
-            else if (ch == DomTerm.URGENT_END) {
+            else if (ch == Terminal.URGENT_END) {
                 urgent_end = i;
                 break;
             }
@@ -6608,7 +6597,7 @@ DomTerm.prototype.insertBytes = function(bytes) {
         var plen = urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin) ? urgent_begin
             : urgent_end >= 0 ? urgent_end : len;
         if (urgent_end > urgent_begin && urgent_begin >= 0
-            && bytes[urgent_begin+1] == DomTerm.URGENT_BEGIN2) {
+            && bytes[urgent_begin+1] == Terminal.URGENT_BEGIN2) {
             this.pushControlState();
             this.insertString(this.decoder
                               .decode(bytes.slice(urgent_begin+2, urgent_end),
@@ -6623,7 +6612,7 @@ DomTerm.prototype.insertBytes = function(bytes) {
                                   .decode(bytes.slice(0, plen), {stream:true}));
             }
             // update receivedCount before calling push/popControlState
-            this._receivedCount = (this._receivedCount + plen) & DomTerm._mask28;
+            this._receivedCount = (this._receivedCount + plen) & Terminal._mask28;
             if (plen == len) {
                 len = 0;
             } else {
@@ -6639,7 +6628,7 @@ DomTerm.prototype.insertBytes = function(bytes) {
     }
 }
 
-DomTerm.prototype._pauseContinue = function(skip = false) {
+Terminal.prototype._pauseContinue = function(skip = false) {
     var wasMode = this._pagingMode;
     this._pagingMode = 0;
     this.modeLineGenerator = null;
@@ -6648,11 +6637,11 @@ DomTerm.prototype._pauseContinue = function(skip = false) {
     if (this.verbosity >= 2)
         this.log("pauseContinue was mode="+wasMode);
     if (wasMode == 2) {
-        var text = this.parameters[1];
-        this.parameters[1] = null;
+        var text = this._textParameter;
+        this._textParameter = null;
         if (! skip && text)
             this.insertString(text);
-        text = this.parameters[1];
+        text = this._textParameter;
         if (! this._autoPaging || text == null || text.length < 500 || skip) {
             this._confirmedCount = this._receivedCount;
             if (this.verbosity >= 2)
@@ -6662,7 +6651,7 @@ DomTerm.prototype._pauseContinue = function(skip = false) {
     }
 }
 
-DomTerm.prototype.cancelUpdateDisplay = function() {
+Terminal.prototype.cancelUpdateDisplay = function() {
     if (this._updateTimer) {
         if (window.requestAnimationFrame)
             cancelAnimationFrame(this._updateTimer);
@@ -6671,7 +6660,7 @@ DomTerm.prototype.cancelUpdateDisplay = function() {
         this._updateTimer = null;
     }
 }
-DomTerm.prototype.requestUpdateDisplay = function() {
+Terminal.prototype.requestUpdateDisplay = function() {
     this.cancelUpdateDisplay();
     if (window.requestAnimationFrame)
         this._updateTimer = requestAnimationFrame(this._updateDisplay);
@@ -6679,7 +6668,7 @@ DomTerm.prototype.requestUpdateDisplay = function() {
         this._updateTimer = setTimeout(this._updateDisplay, 100);
 }
 
-DomTerm.prototype.insertString = function(str) {
+Terminal.prototype.insertString = function(str) {
     var slen = str.length;
     if (slen == 0)
         return;
@@ -6691,7 +6680,7 @@ DomTerm.prototype.insertString = function(str) {
             this.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
     }
     if (this._pagingMode == 2) {
-        this.parameters[1] = this.parameters[1] + str;
+        this._textParameter = this._textParameter + str;
         return;
     }
     if (this._disableScrollOnOutput && this._scrollNeeded() == this.topNode.scrollTop)
@@ -6744,35 +6733,35 @@ DomTerm.prototype.insertString = function(str) {
         //this.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
         var state = this.controlSequenceState;
         switch (state) {
-        case DomTerm.SEEN_SURROGATE_HIGH:
+        case Terminal.SEEN_SURROGATE_HIGH:
             // must have i==0
             str = this.parameters[0] + str;
-            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            this.controlSequenceState = Terminal.INITIAL_STATE;
             slen++;
             i = -1;
             break;
-        case DomTerm.SEEN_ESC_STATE:
-            this.controlSequenceState = DomTerm.INITIAL_STATE;
+        case Terminal.SEEN_ESC_STATE:
+            this.controlSequenceState = Terminal.INITIAL_STATE;
             if (ch != 91 /*'['*/ && ch != 93 /*']'*/
                 && ! (ch >= 40 && ch <= 47) && ! (ch >= 78 && ch <= 79))
                 this._breakDeferredLines();
             switch (ch) {
             case 35 /*'#'*/:
-                this.controlSequenceState = DomTerm.SEEN_ESC_SHARP_STATE;
+                this.controlSequenceState = Terminal.SEEN_ESC_SHARP_STATE;
                 break;
             case 40 /*'('*/: // Designate G0 Character Set (ISO 2022, VT100)
-                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET0;
+                this.controlSequenceState = Terminal.SEEN_ESC_CHARSET0;
                 break;
             case 41 /*')'*/: // Designate G1 Character Set
             case 45 /*'-'*/:
-                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET1;
+                this.controlSequenceState = Terminal.SEEN_ESC_CHARSET1;
                 break;
             case 42 /*'*'*/: // Designate G2 Character Set
             case 46 /*'.'*/:
-                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET2;
+                this.controlSequenceState = Terminal.SEEN_ESC_CHARSET2;
                 break;
             case 43 /*'+'*/: // Designate G3 Character Set
-                this.controlSequenceState = DomTerm.SEEN_ESC_CHARSET3;
+                this.controlSequenceState = Terminal.SEEN_ESC_CHARSET3;
                 break;
             case 47 /*'/'*/: // Designate G3 Character Set (VT300).
                 // These work for 96-character sets only.
@@ -6801,17 +6790,28 @@ DomTerm.prototype.insertString = function(str) {
                 break;
             case 78 /*'N'*/: // SS2
             case 79 /*'O'*/: // SS3
-                this.controlSequenceState = ch - 78 + DomTerm.SEEN_ESC_SS2;
+                this.controlSequenceState = ch - 78 + Terminal.SEEN_ESC_SS2;
                 break;
-            case 91 /*'['*/:
-                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_STATE;
+            case 80 /*'P'*/: // DCS
+                this.controlSequenceState = Terminal.SEEN_DCS_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
+                this._textParameter = "";
                 break;
-            case 93 /*']'*/:
-                this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_STATE;
+            case 91 /*'['*/: // CSI
+                this.controlSequenceState = Terminal.SEEN_ESC_LBRACKET_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
+                this._textParameter = "";
+                break;
+            case 92 /*'\\'*/: // ST (String Terminator)
+                this.controlSequenceState = Terminal.INITIAL_STATE;
+                break;
+            case 93 /*']'*/: // OSC
+                this.controlSequenceState = Terminal.SEEN_ESC_RBRACKET_STATE;
+                this.parameters.length = 1;
+                this.parameters[0] = null;
+                this._textParameter = "";
                 break;
             case 99 /*'c'*/: // Full Reset (RIS)
                 this.resetTerminal(true, true);
@@ -6832,11 +6832,12 @@ DomTerm.prototype.insertString = function(str) {
             }
             prevEnd = i + 1; columnWidth = 0;
             break;
-        case DomTerm.SEEN_ESC_LBRACKET_STATE:
-        case DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE:
-        case DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE:
-        case DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE:
-        case DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE:
+        case Terminal.SEEN_ESC_LBRACKET_STATE:
+        case Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE:
+        case Terminal.SEEN_ESC_LBRACKET_EXCLAMATION_STATE:
+        case Terminal.SEEN_ESC_LBRACKET_GREATER_STATE:
+        case Terminal.SEEN_ESC_LBRACKET_SPACE_STATE:
+        case Terminal.SEEN_DCS_STATE:
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
                 var cur = this.parameters[plen-1];
@@ -6853,14 +6854,17 @@ DomTerm.prototype.insertString = function(str) {
             else if (ch == 59 /*';'*/) {
                 this.parameters.push(null);
             }
-            else if (ch == 62 /*'>'*/)
-                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_GREATER_STATE;
+            else if (state == Terminal.SEEN_DCS_STATE) {
+                this.controlSequenceState = Terminal.SEEN_DCS_TEXT_STATE;
+                i--;
+            } else if (ch == 62 /*'>'*/)
+                this.controlSequenceState = Terminal.SEEN_ESC_LBRACKET_GREATER_STATE;
             else if (ch == 63 /*'?'*/)
-                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_QUESTION_STATE;
+                this.controlSequenceState = Terminal.SEEN_ESC_LBRACKET_QUESTION_STATE;
             else if (ch == 33 /*'!'*/)
-                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_EXCLAMATION_STATE;
+                this.controlSequenceState = Terminal.SEEN_ESC_LBRACKET_EXCLAMATION_STATE;
             else if (ch == 32/*' '*/)
-                this.controlSequenceState = DomTerm.SEEN_ESC_LBRACKET_SPACE_STATE;
+                this.controlSequenceState = Terminal.SEEN_ESC_LBRACKET_SPACE_STATE;
             else {
                 this.handleControlSequence(ch);
                 this.parameters.length = 1;
@@ -6868,7 +6872,7 @@ DomTerm.prototype.insertString = function(str) {
             }
             continue;
 
-        case DomTerm.SEEN_ESC_RBRACKET_STATE:
+        case Terminal.SEEN_ESC_RBRACKET_STATE:
             // if (ch == 4) // set/read color palette
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
@@ -6877,7 +6881,7 @@ DomTerm.prototype.insertString = function(str) {
                 this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
             }
             else if (ch == 59 /*';'*/ || ch == 7 || ch == 0 || ch == 27) {
-                this.controlSequenceState = DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE;
+                this.controlSequenceState = Terminal.SEEN_ESC_RBRACKET_TEXT_STATE;
                 this.parameters.push("");
                 if (ch != 59)
                     i--; // re-read 7 or 0
@@ -6885,42 +6889,36 @@ DomTerm.prototype.insertString = function(str) {
             } else {
                 this.parameters.length = 1;
                 prevEnd = i + 1; columnWidth = 0;
-                this.controlSequenceState = DomTerm.INITIAL_STATE;
             }
             continue;
-        case DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE:
-            if (ch == 92/*'\\'*/) {
-                // check for ST in the form of ESC '\\'
-                var p1 = this.parameters[1]
-                var len = p1.length;
-                if (i > prevEnd) {
-                    p1 = p1 + str.substring(prevEnd, i);
-                    len += i - prevEnd;
-                    prevEnd = i;
+        case Terminal.SEEN_ESC_RBRACKET_TEXT_STATE:
+        case Terminal.SEEN_DCS_TEXT_STATE:
+            if (ch == 7 || ch == 0 || ch == 0x9c || ch == 27) {
+                this._textParameter =
+                    this._textParameter + str.substring(prevEnd, i);
+                try {
+                    if (state === Terminal.SEEN_DCS_TEXT_STATE) {
+                        this.handleDeviceControlString(this.parameters, this._textParameter);
+                    }
+                    else {
+                        this.handleOperatingSystemControl(this.parameters[0], this._textParameter);
+                   }
+                } catch (e) {
+                    console.log("caught "+e);
                 }
-                if (len > 0 && p1.charCodeAt(len-1) == 27) {
-                    p1 = p1.substring(0,len-1);
-                    ch = 0x9c;
-                }
-                this.parameters[1] = p1;
-            }
-            if (ch == 7 || ch == 0 || ch == 0x9c) {
-                this.parameters[1] =
-                    this.parameters[1] + str.substring(prevEnd, i);
-                this.handleOperatingSystemControl(this.parameters[0], this.parameters[1]);
                 this.parameters.length = 1;
                 prevEnd = i + 1; columnWidth = 0;
                 this.controlSequenceState =
-                    ch == 27 ? DomTerm.SEEN_ESC_STATE
-                    : DomTerm.INITIAL_STATE;
+                    ch == 27 ? Terminal.SEEN_ESC_STATE
+                    : Terminal.INITIAL_STATE;
             } else {
                 // Do nothing, for now.
             }
             continue;
-        case DomTerm.SEEN_ESC_CHARSET0:
-        case DomTerm.SEEN_ESC_CHARSET1:
-        case DomTerm.SEEN_ESC_CHARSET2:
-        case DomTerm.SEEN_ESC_CHARSET3:
+        case Terminal.SEEN_ESC_CHARSET0:
+        case Terminal.SEEN_ESC_CHARSET1:
+        case Terminal.SEEN_ESC_CHARSET2:
+        case Terminal.SEEN_ESC_CHARSET3:
             var cs;
             switch (ch) {
             case 48 /*'0'*/: // DEC Special Character and Line Drawing Set.
@@ -6933,13 +6931,13 @@ DomTerm.prototype.insertString = function(str) {
             default:
                 cs = null;
             };
-            var g = state-DomTerm.SEEN_ESC_CHARSET0;
+            var g = state-Terminal.SEEN_ESC_CHARSET0;
             this._Gcharsets[g] = cs;
             this._selectGcharset(this._Glevel, false);
-            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            this.controlSequenceState = Terminal.INITIAL_STATE;
             prevEnd = i + 1; columnWidth = 0;
             break;
-        case DomTerm.SEEN_ESC_SHARP_STATE: /* SCR */
+        case Terminal.SEEN_ESC_SHARP_STATE: /* SCR */
             switch (ch) {
             case 53 /*'5'*/: // DEC single-width line (DECSWL)
             case 54 /*'6'*/: // DEC double-width line (DECDWL)
@@ -6972,11 +6970,11 @@ DomTerm.prototype.insertString = function(str) {
                 break;
             }
             prevEnd = i + 1; columnWidth = 0;
-            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            this.controlSequenceState = Terminal.INITIAL_STATE;
             break;
-        case DomTerm.SEEN_ESC_SS2: // _Gcharsets[2]
-        case DomTerm.SEEN_ESC_SS3: // _Gcharsets[3]
-            var mapper = this._Gcharsets[state-DomTerm.SEEN_ESC_SS2+2];
+        case Terminal.SEEN_ESC_SS2: // _Gcharsets[2]
+        case Terminal.SEEN_ESC_SS3: // _Gcharsets[3]
+            var mapper = this._Gcharsets[state-Terminal.SEEN_ESC_SS2+2];
             prevEnv = i;
             if (mapper != null) {
                 var chm = mapper(ch);
@@ -6986,15 +6984,15 @@ DomTerm.prototype.insertString = function(str) {
                     prevEnd = i + 1;  columnWidth = 0;
                 }
             }
-            this.controlSequenceState = DomTerm.INITIAL_STATE;
+            this.controlSequenceState = Terminal.INITIAL_STATE;
             break;
-        case DomTerm.SEEN_CR:
+        case Terminal.SEEN_CR:
             if (ch != 10)
-                this.controlSequenceState = DomTerm.INITIAL_STATE;
+                this.controlSequenceState = Terminal.INITIAL_STATE;
             /* falls through */
-        case DomTerm.INITIAL_STATE:
-        case DomTerm.SEEN_ERROUT_END_STATE:
-            if (DomTerm._doLinkify && DomTerm.isDelimiter(ch)
+        case Terminal.INITIAL_STATE:
+        case Terminal.SEEN_ERROUT_END_STATE:
+            if (Terminal._doLinkify && Terminal.isDelimiter(ch)
                 && this.linkify(str, prevEnd, i, columnWidth, ch)) {
                 prevEnd = i;
                 columnWidth = 0;
@@ -7008,13 +7006,13 @@ DomTerm.prototype.insertString = function(str) {
                     oldContainer = oldContainer.parentNode;
                 // FIXME adjust for _regionLeft
                 if (this._currentPprintGroup !== null) {
-                    this.controlSequenceState = DomTerm.SEEN_CR;
+                    this.controlSequenceState = Terminal.SEEN_CR;
                 } else if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
                     && ! this.usingAlternateScreenBuffer
                     && (this._regionBottom == this.numRows
                         || this.getCursorLine() != this._regionBottom-1)) {
                     if (this._pauseNeeded()) {
-                        this.parameters[1] = str.substring(i);
+                        this._textParameter = str.substring(i);
                         this._updateDisplay();
                         this._enterPaging(true);
                         return;
@@ -7030,7 +7028,7 @@ DomTerm.prototype.insertString = function(str) {
                 } else {
                     this._breakDeferredLines();
                     this.cursorLineStart(0);
-                    this.controlSequenceState = DomTerm.SEEN_CR;
+                    this.controlSequenceState = Terminal.SEEN_CR;
                 }
                 if (oldContainer.firstChild == null
                     && oldContainer != this.outputContainer
@@ -7048,27 +7046,27 @@ DomTerm.prototype.insertString = function(str) {
             case 12: // form feed
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 if (this._currentPprintGroup !== null
-                    && this.controlSequenceState == DomTerm.SEEN_CR) {
+                    && this.controlSequenceState == Terminal.SEEN_CR) {
                     this.handleOperatingSystemControl(118, "");
                 } else {
                     this._breakDeferredLines();
                     if (this._pauseNeeded()) {
-                        this.parameters[1] = str.substring(i);
+                        this._textParameter = str.substring(i);
                         this._updateDisplay();
                         this._enterPaging(true);
                         return;
                     }
                     this.cursorNewLine((this.sstate.automaticNewlineMode & 1) != 0);
                 }
-                if (this.controlSequenceState == DomTerm.SEEN_CR) {
-                    this.controlSequenceState =  DomTerm.INITIAL_STATE;
+                if (this.controlSequenceState == Terminal.SEEN_CR) {
+                    this.controlSequenceState =  Terminal.INITIAL_STATE;
                 }
                 prevEnd = i + 1; columnWidth = 0;
                 break;
             case 27 /* Escape */:
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
-                var nextState = DomTerm.SEEN_ESC_STATE;
-                if (state == DomTerm.SEEN_ERROUT_END_STATE) {
+                var nextState = Terminal.SEEN_ESC_STATE;
+                if (state == Terminal.SEEN_ERROUT_END_STATE) {
                     // cancelled by an immediate start-of-error-output
                     if (i + 5 <= slen
                         && str.charCodeAt(i+1) == 91/*'['*/
@@ -7077,7 +7075,7 @@ DomTerm.prototype.insertString = function(str) {
                         && str.charCodeAt(i+4) == 117/*'u'*/
                         && this._getStdMode() == "error") {
                         i += 4;
-                        nextState = DomTerm.INITIAL_STATE;
+                        nextState = Terminal.INITIAL_STATE;
                     } else
                         this._pushStdMode(null);
                 }
@@ -7097,8 +7095,8 @@ DomTerm.prototype.insertString = function(str) {
 		{
                     this.tabToNextStop(true);
 		    let lineStart = this.lineStarts[this.getAbsCursorLine()];
-		    if (lineStart._widthMode < DomTerm._WIDTH_MODE_TAB_SEEN)
-			lineStart._widthMode = DomTerm._WIDTH_MODE_TAB_SEEN;
+		    if (lineStart._widthMode < Terminal._WIDTH_MODE_TAB_SEEN)
+			lineStart._widthMode = Terminal._WIDTH_MODE_TAB_SEEN;
                     let col = this.getCursorColumn();
 		    if (lineStart._widthColumns !== undefined
                         && col > lineStart._widthColumns)
@@ -7113,7 +7111,7 @@ DomTerm.prototype.insertString = function(str) {
                 prevEnd = i + 1; columnWidth = 0;
                 break;
             case 24: case 26:
-                this.controlSequenceState = DomTerm.INITIAL_STATE;
+                this.controlSequenceState = Terminal.INITIAL_STATE;
                 break;
             case 14 /*SO*/: // Switch to Alternate Character Set G1
             case 15 /*SI*/: // Switch to Standard Character Set G0
@@ -7127,11 +7125,31 @@ DomTerm.prototype.insertString = function(str) {
             case 16: case 17: case 18: case 19:
             case 20: case 21: case 22: case 23: case 25:
             case 28: case 29: case 30: case 31:
-                if (ch == DomTerm.URGENT_COUNTED && this._savedControlState)
+                if (ch == Terminal.URGENT_COUNTED && this._savedControlState)
                     this._savedControlState.count_urgent = true;
                 // ignore
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 prevEnd = i + 1; columnWidth = 0;
+                break;
+            case 0x9b: // CSI
+                this.controlSequenceState = Terminal.SEEN_ESC_LBRACKET_STATE;
+                this.parameters.length = 1;
+                this.parameters[0] = null;
+                break;
+            case 0x9c: // ST (String Terminator
+                this.controlSequenceState = Terminal.INITIAL_STATE;
+                break;
+            case 0x9d: // OSC
+                this.controlSequenceState = Terminal.SEEN_ESC_RBRACKET_STATE;
+                this.parameters.length = 1;
+                this.parameters[0] = null;
+                this._textParameter = "";
+                break;
+            case 0x90: // DCS;
+                this.controlSequenceState = Terminal.SEEN_DCS_STATE;
+                this.parameters.length = 1;
+                this.parameters[0] = null;
+                this._textParameter = "";
                 break;
             default:
                 var i0 = i;
@@ -7140,7 +7158,7 @@ DomTerm.prototype.insertString = function(str) {
                     if (i == slen) {
                         this.insertSimpleOutput(str, prevEnd, i0, columnWidth);
                         this.parameters[0] = str.charAt(i0);
-                        this.controlSequenceState = DomTerm.SEEN_SURROGATE_HIGH;
+                        this.controlSequenceState = Terminal.SEEN_SURROGATE_HIGH;
                         break;
                     } else {
                         ch = ((ch - 0xD800) * 0x400)
@@ -7181,12 +7199,13 @@ DomTerm.prototype.insertString = function(str) {
             }
         }
     }
-    if (this.controlSequenceState == DomTerm.INITIAL_STATE) {
+    if (this.controlSequenceState == Terminal.INITIAL_STATE) {
         this.insertSimpleOutput(str, prevEnd, i, columnWidth);
         //this.currentCursorColumn = column;
     }
-    if (this.controlSequenceState == DomTerm.SEEN_ESC_RBRACKET_TEXT_STATE) {
-        this.parameters[1] = this.parameters[1] + str.substring(prevEnd, i);
+    if (this.controlSequenceState === Terminal.SEEN_ESC_RBRACKET_TEXT_STATE
+       || this.controlSequenceState === Terminal.SEEN_DCS_TEXT_STATE) {
+        this._textParameter = this._textParameter + str.substring(prevEnd, i);
     }
 
     // Check if output "accounts for" partial prefix of pendingEcho.
@@ -7229,13 +7248,13 @@ DomTerm.prototype.insertString = function(str) {
                     let ldelta = 0;
                     let rdelta = 0;
                     switch (ch) {
-                    case DomTerm._PENDING_LEFT:
+                    case Terminal._PENDING_LEFT:
                         ldelta = -1; rdelta = -1; break;
-                    case DomTerm._PENDING_RIGHT:
+                    case Terminal._PENDING_RIGHT:
                         ldelta = 1; rdelta = 1; break;
-                    case DomTerm._PENDING_LEFT+DomTerm._PENDING_DELETE:
+                    case Terminal._PENDING_LEFT+Terminal._PENDING_DELETE:
                         ldelta = -1; rdelta = 0; break;
-                    case DomTerm._PENDING_RIGHT+DomTerm._PENDING_DELETE:
+                    case Terminal._PENDING_RIGHT+Terminal._PENDING_DELETE:
                         ldelta = 0; rdelta = 1; break;
                     }
                     text = text.substring(0, index+ldelta) + text.substring(index+rdelta);
@@ -7258,8 +7277,8 @@ DomTerm.prototype.insertString = function(str) {
                         this._addPendingInput(pendingTail.substring(i, j));
                         i = j;
                     } else {
-                        let doDelete = (ch & DomTerm._PENDING_DELETE) != 0;
-                        let forwards = (ch & DomTerm._PENDING_FORWARDS) != 0;
+                        let doDelete = (ch & Terminal._PENDING_DELETE) != 0;
+                        let forwards = (ch & Terminal._PENDING_FORWARDS) != 0;
                         this._editPendingInput(forwards, doDelete);
                         i++;
                     }
@@ -7269,7 +7288,7 @@ DomTerm.prototype.insertString = function(str) {
     }
 
     if (this._pauseNeeded()) {
-        this.parameters[1] = "";
+        this._textParameter = "";
         this.cancelUpdateDisplay();
         this._enterPaging(true);
         this._updateDisplay();
@@ -7279,13 +7298,13 @@ DomTerm.prototype.insertString = function(str) {
     this.requestUpdateDisplay();
 };
 
-DomTerm.prototype._scrollNeeded = function() {
+Terminal.prototype._scrollNeeded = function() {
     var last = this.topNode.lastChild; // ??? always _vspacer
     var lastBottom = last.offsetTop + last.offsetHeight;
     return lastBottom - this.availHeight;
 };
 
-DomTerm.prototype._scrollIfNeeded = function() {
+Terminal.prototype._scrollIfNeeded = function() {
     let needed = this._scrollNeeded();
     if (needed > this.topNode.scrollTop) {
         if (this.verbosity >= 3)
@@ -7298,12 +7317,12 @@ DomTerm.prototype._scrollIfNeeded = function() {
     }
 }
 
-DomTerm.prototype._enableScroll = function() {
+Terminal.prototype._enableScroll = function() {
     this._disableScrollOnOutput = false;
     this._scrollIfNeeded();
 }
 
-DomTerm.prototype._breakDeferredLines = function() {
+Terminal.prototype._breakDeferredLines = function() {
     var start = this._deferredLinebreaksStart;
     if (start >= 0) {
         this._deferredLinebreaksStart = -1;
@@ -7323,10 +7342,10 @@ DomTerm.prototype._breakDeferredLines = function() {
     }
 };
 
-DomTerm._doLinkify = true;
-DomTerm._forceMeasureBreaks = false;
+Terminal._doLinkify = true;
+Terminal._forceMeasureBreaks = false;
 
-DomTerm.prototype._adjustLines = function(startLine, action) {
+Terminal.prototype._adjustLines = function(startLine, action) {
     var delta = 0;
     var prevLine = this.lineStarts[startLine];
     var skipRest = false;
@@ -7354,7 +7373,7 @@ DomTerm.prototype._adjustLines = function(startLine, action) {
 
 // Remove existing soft line breaks.
 // FIXME use _adjustLines
-DomTerm.prototype._unbreakLines = function(startLine, single=false) {
+Terminal.prototype._unbreakLines = function(startLine, single=false) {
     var delta = 0;
     var prevLine = this.lineStarts[startLine];
     var skipRest = false;
@@ -7416,28 +7435,28 @@ DomTerm.prototype._unbreakLines = function(startLine, single=false) {
     return true; // FIXME needlessly conservative
 }
 
-DomTerm._insertIntoLines = function(dt, el, line) {
-    var lineCount = dt.lineStarts.length;
-    var lineEnd = dt.lineEnds[line];
+Terminal.prototype._insertIntoLines = function(el, line) {
+    var lineCount = this.lineStarts.length;
+    var lineEnd = this.lineEnds[line];
 
     for (var i = lineCount; --i > line; ) {
-        dt.lineStarts[i+1] = dt.lineStarts[i];
-        dt.lineEnds[i+1] = dt.lineEnds[i];
+        this.lineStarts[i+1] = this.lineStarts[i];
+        this.lineEnds[i+1] = this.lineEnds[i];
     }
-    dt.lineEnds[line+1] = lineEnd;
-    dt.lineStarts[line+1] = el;
-    dt.lineEnds[line] = el;
+    this.lineEnds[line+1] = lineEnd;
+    this.lineStarts[line+1] = el;
+    this.lineEnds[line] = el;
     // FIXME following lines are duplicated with moveToAbs
     lineCount++;
-    var homeLine = dt.homeLine;
-    if (lineCount > homeLine + dt.numRows) {
-        homeLine = lineCount - dt.numRows;
-        //goalLine -= homeLine - dt.homeLine;
-        dt.homeLine = homeLine;
+    var homeLine = this.homeLine;
+    if (lineCount > homeLine + this.numRows) {
+        homeLine = lineCount - this.numRows;
+        //goalLine -= homeLine - this.homeLine;
+        this.homeLine = homeLine;
     }
 }
 
-DomTerm.prototype._breakAllLines = function(startLine = -1) {
+Terminal.prototype._breakAllLines = function(startLine = -1) {
     // The indentation array is a stack of the following:
     // - a <span> node containing pre-line prefixes; or
     // - an absolute x-position (in pixels)
@@ -7657,14 +7676,14 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                             el.parentNode.removeChild(lineNode);
                             break check_fits;
                         }
-                        DomTerm._insertIntoLines(dt, lineNode, line);
+                        dt._insertIntoLines(lineNode, line);
                         el = lineNode;
                         indentWidth = addIndentation(dt, el, countColumns);
                         rest = document.createTextNode(rest);
                         el.parentNode.insertBefore(rest, el.nextSibling);
                         next = rest;
                     } else { // dt.isObjectElement(el) or wc-node
-                        DomTerm._insertIntoLines(dt, lineNode, line);
+                        dt._insertIntoLines(lineNode, line);
                         el.parentNode.insertBefore(lineNode, el);
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
@@ -7726,7 +7745,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                         beforePos += dt.strWidthInContext(postBreak, el) * dt.charWidth;
                     startOffset -= beforePos;
                     if (lineAttr != "hard") {
-                        DomTerm._insertIntoLines(dt, el, line);
+                        dt._insertIntoLines(el, line);
                         line++;
                     }
                     measureWidth = 0;
@@ -7802,11 +7821,11 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     function breakNeeded(dt, lineNo, lineStart) {
         var wmode = lineStart._widthMode;
         // NOTE: If might be worthwhile using widthColums tracking also
-        // for the wmode == DomTerm._WIDTH_MODE_PPRINT_SEEN case,
+        // for the wmode == Terminal._WIDTH_MODE_PPRINT_SEEN case,
         // but we have to adjust for pre-break./post-break/non-break
         // and indentation columns.
-        if (! DomTerm._forceMeasureBreaks
-            && wmode <= DomTerm._WIDTH_MODE_TAB_SEEN
+        if (! Terminal._forceMeasureBreaks
+            && wmode <= Terminal._WIDTH_MODE_TAB_SEEN
             && lineStart._widthColumns !== undefined) {
             return lineStart._widthColumns > dt.numColumns;
         }
@@ -7842,8 +7861,8 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     start = start.parentNode;
                 first = start.nextSibling;
             }
-            var countColumns = ! DomTerm._forceMeasureBreaks
-                && start._widthMode < DomTerm._WIDTH_MODE_VARIABLE_SEEN;
+            var countColumns = ! Terminal._forceMeasureBreaks
+                && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
             breakLine1(this, first, 0, this.availWidth, countColumns);
         }
     }
@@ -7859,8 +7878,8 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
                     start = start.parentNode;
                 first = start.nextSibling;
             }
-            var countColumns = !DomTerm._forceMeasureBreaks
-                && start._widthMode < DomTerm._WIDTH_MODE_VARIABLE_SEEN;
+            var countColumns = !Terminal._forceMeasureBreaks
+                && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
             breakLine2(this, first, 0, this.availWidth, countColumns);
         }
     }
@@ -7877,7 +7896,7 @@ DomTerm.prototype._breakAllLines = function(startLine = -1) {
     }
 }
 
-DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPos, availWidth, forceSomething, countColumns) {
+Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterPos, availWidth, forceSomething, countColumns) {
     var dt = this;
     var textData = textNode.data;
     var textLength = textData.length;
@@ -7950,7 +7969,7 @@ DomTerm.prototype._breakString = function(textNode, lineNode, beforePos, afterPo
     return goodLength < textLength ? textData.substring(goodLength) : "";
 };
 
-DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
+Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                                                widthInColumns = -1) {
     var sslen = endIndex - beginIndex;
     if (sslen == 0)
@@ -8086,7 +8105,7 @@ DomTerm.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         lineStart._widthColumns = column;
 };
 
-DomTerm.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false) {
+Terminal.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false) {
     // Contending optimizations:
     // If we're on the last line, we may be doing bulk output,
     // so avoid accessing offsetLeft (expensive because it forces layout).
@@ -8102,7 +8121,7 @@ DomTerm.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false
         this.requestUpdateDisplay();
 }
 
-DomTerm.prototype.insertRawOutput = function(str) {
+Terminal.prototype.insertRawOutput = function(str) {
     var node
         = this._fixOutputPosition() != null ? this.outputBefore.previousSibling
         : this.outputContainer.lastChild;
@@ -8126,14 +8145,14 @@ DomTerm.prototype.insertRawOutput = function(str) {
  *  This element should have no parents *or* children.
  *  It becomes the new outputContainer.
  */
-DomTerm.prototype._pushIntoElement = function(element) {
+Terminal.prototype._pushIntoElement = function(element) {
     this.insertNode(element);
     this.outputContainer = element;
     this.outputBefore = null;
 };
 
 /** Move position to follow current container. */
-DomTerm.prototype.popFromElement = function() {
+Terminal.prototype.popFromElement = function() {
     var element = this.outputContainer;
     this.outputContainer = element.parentNode;
     this.outputBefore = element.nextSibling;
@@ -8144,7 +8163,7 @@ DomTerm.prototype.popFromElement = function() {
  * The node to be inserted before current output position.
  *   (Should not have any parents or siblings.)
  */
-DomTerm.prototype.insertNode = function (node) {
+Terminal.prototype.insertNode = function (node) {
     this._fixOutputPosition();
     if (this.outputBefore != null && this.outputBefore.parentNode != this.outputContainer)
         debuffer;
@@ -8154,7 +8173,7 @@ DomTerm.prototype.insertNode = function (node) {
 /** Send a response to the client.
 * By default just calls processInputCharacters.
 */
-DomTerm.prototype.processResponseCharacters = function(str) {
+Terminal.prototype.processResponseCharacters = function(str) {
     if (! this._replayMode) {
         if (this.verbosity >= 3)
             this.log("processResponse: "+JSON.stringify(str));
@@ -8162,7 +8181,7 @@ DomTerm.prototype.processResponseCharacters = function(str) {
     }
 };
 
-DomTerm.prototype.reportText = function(text, suffix) {
+Terminal.prototype.reportText = function(text, suffix) {
     if (this.sstate.bracketedPasteMode)
         text = "\x1B[200~" + text + "\x1B[201~";
     if (suffix)
@@ -8171,12 +8190,12 @@ DomTerm.prototype.reportText = function(text, suffix) {
 };
 
 /** This function should be overidden. */
-DomTerm.prototype.processInputCharacters = function(str) {
+Terminal.prototype.processInputCharacters = function(str) {
     if (this.verbosity >= 2)
         this.log("processInputCharacters called with "+str.length+" characters");
 };
 
-DomTerm.prototype.processEnter = function() {
+Terminal.prototype.processEnter = function() {
     this._restoreInputLine();
     let oldInput = this._inputLine;
     let passwordField = oldInput.classList.contains("noecho")
@@ -8201,7 +8220,7 @@ DomTerm.prototype.processEnter = function() {
     or "O" for ones that use SS3 (F1 to F4);
     or "" for ones that use CSI or SS3 depending on application mode.
 */
-DomTerm.prototype.specialKeySequence = function(param, last, event) {
+Terminal.prototype.specialKeySequence = function(param, last, event) {
     var csi = "\x1B[";
     var mods = 0;
     if (event) {
@@ -8222,14 +8241,14 @@ DomTerm.prototype.specialKeySequence = function(param, last, event) {
         return csi+param+last;
 };
 
-DomTerm.prototype.keyEnterToString  = function() {
+Terminal.prototype.keyEnterToString  = function() {
     if ((this.sstate.automaticNewlineMode & 2) != 0)
         return "\r\n";
     else
         return "\r";
 }
 
-DomTerm.prototype.keyDownToString = function(event) {
+Terminal.prototype.keyDownToString = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     switch (key) {
     case 8: /* Backspace */ return "\x7F";
@@ -8307,7 +8326,7 @@ DomTerm.prototype.keyDownToString = function(event) {
     }
 };
 
-DomTerm.prototype.pasteText = function(str) {
+Terminal.prototype.pasteText = function(str) {
     let editing = this.isLineEditing();
     let nl_asis = true; // leave '\n' as-is (rather than convert to '\r')?
     if (true) { // xterm has an 'allowPasteControls' flag
@@ -8386,21 +8405,21 @@ DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     return document.execCommand("paste", false);
 };
 
-DomTerm._rangeAsHTML = function(range) {
-    return DomTerm._nodeToHtml(range.cloneContents(), null, null);
+Terminal._rangeAsHTML = function(range) {
+    return Terminal._nodeToHtml(range.cloneContents(), null, null);
 }
 
-DomTerm._selectionAsHTML = function(sel = window.getSelection()) {
+Terminal._selectionAsHTML = function(sel = window.getSelection()) {
     var hstring = "";
     for(var i = 0; i < sel.rangeCount; i++) {
-        hstring += DomTerm._rangeAsHTML(sel.getRangeAt(i));
+        hstring += Terminal._rangeAsHTML(sel.getRangeAt(i));
     }
     return hstring;
 }
 
-DomTerm._selectionValue = function(asHTML) {
+Terminal._selectionValue = function(asHTML) {
     var sel = window.getSelection();
-    var html = DomTerm._selectionAsHTML(sel);
+    var html = Terminal._selectionAsHTML(sel);
     return asHTML ? { text: html, html: "" }
     : { text: sel.toString(), html: html };
 }
@@ -8408,10 +8427,7 @@ DomTerm._selectionValue = function(asHTML) {
 DomTerm.valueToClipboard = function(values) {
     if (DomTerm.isElectron()) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-            DomTerm.sendParentMessage("selection-value", values);
-        } else {
-            const { clipboard} = nodeRequire('electron');
-            clipboard.write(values);
+            DomTerm.sendParentMessage("value-to-clipboard", values);
         }
         return true;
     }
@@ -8429,15 +8445,16 @@ DomTerm.valueToClipboard = function(values) {
 
 DomTerm.doCopy = function(asHTML=false) {
     if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent, "copy-selection", asHTML);
+        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "copy-selection", asHTML);
         return true;
     }
-    return DomTerm.valueToClipboard(DomTerm._selectionValue(asHTML));
+    // Terminal
+    return DomTerm.valueToClipboard(Terminal._selectionValue(asHTML));
 };
 
 DomTerm.doSaveAs = function(dt = DomTerm.focusedTerm) {
     if (DomTerm.useIFrame && ! DomTerm.isInIFrame()) {
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                  "request-save-file");
         return;
     }
@@ -8471,11 +8488,11 @@ DomTerm.saveFile = function(data) {
     }
 }
 
-DomTerm.prototype.getSelectedText = function() {
+Terminal.prototype.getSelectedText = function() {
     return window.getSelection().toString();
 };
 
-DomTerm.prototype.listStylesheets = function() {
+Terminal.prototype.listStylesheets = function() {
     var styleSheets = document.styleSheets;
     var result = new Array();
     var numStyleSheets = styleSheets.length;
@@ -8494,12 +8511,12 @@ DomTerm.prototype.listStylesheets = function() {
     return result;
 };
 
-DomTerm.prototype.reportStylesheets = function() {
+Terminal.prototype.reportStylesheets = function() {
     this.processResponseCharacters("\x9D" + this.listStylesheets().join("\t")
                                    + "\n");
 };
 
-DomTerm.prototype.printStyleSheet = function(specifier) {
+Terminal.prototype.printStyleSheet = function(specifier) {
     var styleSheet = this.findStyleSheet(specifier);
     if (typeof styleSheet == "string")
         return styleSheet; // error message
@@ -8516,7 +8533,7 @@ DomTerm.prototype.printStyleSheet = function(specifier) {
     return result+"]";
 };
 
-DomTerm.prototype.createStyleSheet = function() {
+Terminal.prototype.createStyleSheet = function() {
     var head = document.getElementsByTagName("head")[0];
     var style = document.createElement("style");
     head.appendChild(style);
@@ -8525,7 +8542,7 @@ DomTerm.prototype.createStyleSheet = function() {
     //return styleSheets[styleSheets.length-1];
 }
 
-DomTerm.prototype.getTemporaryStyleSheet = function() {
+Terminal.prototype.getTemporaryStyleSheet = function() {
     var styleSheet = this.temporaryStyleSheet;
     if (! styleSheet || ! styleSheet.ownerNode) {
         styleSheet = this.createStyleSheet();
@@ -8535,7 +8552,7 @@ DomTerm.prototype.getTemporaryStyleSheet = function() {
     return styleSheet;
 };
 
-DomTerm.prototype.addStyleRule = function(styleRule) {
+Terminal.prototype.addStyleRule = function(styleRule) {
     var styleSheet = this.getTemporaryStyleSheet();
     try {
 	styleSheet.insertRule(styleRule, styleSheet.cssRules.length);
@@ -8545,7 +8562,7 @@ DomTerm.prototype.addStyleRule = function(styleRule) {
     DomTerm._checkStyleResize(this);
 };
 
-DomTerm.prototype.loadStyleSheet = function(name, value) {
+Terminal.prototype.loadStyleSheet = function(name, value) {
     var styleSheets = document.styleSheets;
     var i = styleSheets.length;
     var ownerNode;
@@ -8582,7 +8599,7 @@ DomTerm.prototype.loadStyleSheet = function(name, value) {
 /** Look for a styleshet named by the specifier.
  * Return a CSSStyleSheet if found or a string (error message) ptherwise.
 */
-DomTerm.prototype.findStyleSheet = function(specifier) {
+Terminal.prototype.findStyleSheet = function(specifier) {
     if (! specifier || typeof specifier != "string")
         return "invalid stylesheet specifier";
     var styleSheets = document.styleSheets;
@@ -8621,7 +8638,7 @@ DomTerm.prototype.findStyleSheet = function(specifier) {
     }
 };
 
-DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
+Terminal.prototype.maybeDisableStyleSheet = function(specifier, disable) {
     var styleSheet = this.findStyleSheet(specifier);
     if (typeof styleSheet == "string")
         return styleSheet;
@@ -8632,7 +8649,7 @@ DomTerm.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 
 DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
     if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                  "set-input-mode", mode);
         return;
     }
@@ -8669,7 +8686,7 @@ DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
     dt.sstate.automaticNewlineMode = dt.clientDoesEcho ? 0 : 3;
 };
 
-DomTerm.prototype.getInputMode = function() {
+Terminal.prototype.getInputMode = function() {
     if (this._lineEditingMode == 0)
         return 97; // auto
     else if (this._lineEditingMode > 0)
@@ -8678,7 +8695,7 @@ DomTerm.prototype.getInputMode = function() {
         return 99; // char
 }
 
-DomTerm.prototype.nextInputMode = function() {
+Terminal.prototype.nextInputMode = function() {
     var mode;
     var displayString;
     if (this._lineEditingMode == 0) {
@@ -8699,7 +8716,7 @@ DomTerm.prototype.nextInputMode = function() {
     this._displayInputModeWithTimeout(displayString);
 }
 
-DomTerm.prototype._sendInputContents = function() {
+Terminal.prototype._sendInputContents = function() {
     this._doDeferredDeletion();
     if (this._inputLine != null) {
         var text = this.grabInput(this._inputLine);
@@ -8713,7 +8730,7 @@ DomTerm.inputModeChanged = function(dt, mode) {
     dt.reportEvent("INPUT-MODE-CHANGED", '"'+String.fromCharCode(mode)+'"');
 }
 
-DomTerm.prototype._pushToCaret = function() {
+Terminal.prototype._pushToCaret = function() {
     this._fixOutputPosition();
     let saved = {
         before: this.outputBefore, container: this.outputContainer };
@@ -8723,240 +8740,13 @@ DomTerm.prototype._pushToCaret = function() {
     return saved;
 }
 
-DomTerm.prototype._popFromCaret = function(saved) {
+Terminal.prototype._popFromCaret = function(saved) {
     this.outputBefore = saved.before;
     this.outputContainer = saved.container;
     this.resetCursorCache();
 }
 
-DomTerm.commandMap = new Object();
-DomTerm.commandMap['cycle-input-mode'] = function(dt, key) {
-    dt.nextInputMode();
-    return true;
-};
-DomTerm.commandMap['clear-buffer'] = function(dt, key) {
-    if (DomTerm.isFrameParent())
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
-                                 "do-command", "clear-buffer");
-    else
-        dt.reportEvent("ECHO-URGENT", JSON.stringify("\033[7J"));
-    return true;
-}
-DomTerm.commandMap['new-window'] = function(dt, key) {
-    DomTerm.openNewWindow(dt);
-    return true;
-};
-DomTerm.commandMap['new-tab'] = function(dt, key) {
-    if (! DomTerm.layoutAddTab)
-        return false;
-    // DomTerm.layoutAddTab doesn't work if useIFrame, so use newPane instead.
-    DomTerm.newPane(2, null, dt);
-    return true;
-};
-DomTerm.commandMap['scroll-top'] = function(dt, key) {
-    dt._disableScrollOnOutput = true;
-    dt._pageTop();
-    return true;
-}
-DomTerm.commandMap['scroll-bottom'] = function(dt, key) {
-    dt._pageBottom();
-    return true;
-}
-DomTerm.commandMap['scroll-line-up'] = function(dt, key) {
-    dt._disableScrollOnOutput = true;
-    dt._pageLine(-1);
-    return true;
-}
-DomTerm.commandMap['scroll-line-down'] = function(dt, key) {
-    dt._disableScrollOnOutput = true;
-    dt._pageLine(1);
-    return true;
-}
-DomTerm.commandMap['scroll-page-up'] = function(dt, key) {
-    dt._disableScrollOnOutput = true;
-    dt._pagePage(-1);
-    return true;
-}
-DomTerm.commandMap['scroll-page-down'] = function(dt, key) {
-    dt._disableScrollOnOutput = true;
-    dt._pagePage(1);
-    return true;
-}
-DomTerm.commandMap['enter-mux-mode'] = function(dt, key) {
-    if (! dt.enterMuxMode)
-        return false;
-    dt.enterMuxMode();
-    return true;
-}
-DomTerm.commandMap['toggle-paging-mode'] = function(dt, key) {
-    if (dt._currentlyPagingOrPaused()) {
-        dt._pauseContinue();
-        dt._exitPaging();
-    } else
-        dt._enterPaging(true);
-    return true;
-}
-
-DomTerm.commandMap['save-as-html'] = function(dt, key) {
-    DomTerm.doSaveAs(dt);
-    return true;
-};
-DomTerm.commandMap['paste-text'] = function(dt, key) {
-    return DomTerm.doPaste(dt);
-};
-DomTerm.commandMap['copy-text'] = function(dt, key) {
-    //if (! event.shiftKey && document.getSelection().isCollapsed)
-    //     break;
-    return DomTerm.doCopy();
-}
-DomTerm.commandMap['cut-text'] = function(dt, key) {
-    if (! window.getSelection().isCollapsed)
-        dt.editorBackspace(1, "kill", "line", "buffer");
-    return true; }
-DomTerm.commandMap['backward-char'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), "move", "char");
-    return true; }
-DomTerm.commandMap['backward-word'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), "move", "word");
-    return true; }
-DomTerm.commandMap['forward-char'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), "move", "char");
-    return true; }
-DomTerm.commandMap['forward-word'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), "move", "word");
-    return true; }
-DomTerm.commandMap['backward-char-extend'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), "extend", "char");
-    return true; }
-DomTerm.commandMap['backward-word-extend'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), "extend", "word");
-    return true; }
-DomTerm.commandMap['forward-char-extend'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), "extend", "char");
-    return true; }
-DomTerm.commandMap['forward-word-extend'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), "extend", "word");
-    return true; }
-DomTerm.commandMap['backward-delete-char'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), "delete", "char");
-    return true; }
-DomTerm.commandMap['backward-delete-word'] = function(dt, key) {
-    dt.editorBackspace(dt.numericArgumentGet(), "delete", "word");
-    return true; }
-DomTerm.commandMap['forward-delete-char'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), "delete", "char");
-    return true; }
-DomTerm.commandMap['forward-delete-word'] = function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), "delete", "word");
-    return true; }
-DomTerm.commandMap['beginning-of-line'] = function(dt, key) {
-    dt.editorMoveStartOrEndLine(false); dt._numericArgument = null;
-    return true; }
-DomTerm.commandMap['end-of-line'] = function(dt, key) {
-    dt.editorMoveStartOrEndLine(true); dt._numericArgument = null;
-    return true; }
-DomTerm.commandMap['beginning-of-line-extend'] = function(dt, key) {
-    dt.editorMoveStartOrEndLine(false, "extend"); dt._numericArgument = null;
-    return true; }
-DomTerm.commandMap['end-of-line-extend'] = function(dt, key) {
-    dt.editorMoveStartOrEndLine(true, "extend"); dt._numericArgument = null;
-    return true; }
-DomTerm.commandMap['kill-line'] = function(dt, key) {
-    let count = dt.numericArgumentGet();
-    dt.editorBackspace(- count, "kill", "line", "buffer");
-    return true; }
-DomTerm.commandMap['beginning-of-input'] = function(dt, key) {
-    dt.editorMoveHomeOrEnd(false); dt._numericArgument = null;
-    return true; }
-DomTerm.commandMap['end-of-input'] = function(dt, key) {
-    dt.editorMoveHomeOrEnd(true); dt._numericArgument = null;
-    return true; }
-DomTerm.commandMap['up-line-or-history'] = function(dt, key) {
-    if (! dt.editorMoveLines(true, dt.numericArgumentGet()))
-        dt.historyMove(-1);
-    return true;
-}
-DomTerm.commandMap['down-line-or-history'] = function(dt, key) {
-    if (! dt.editorMoveLines(false, dt.numericArgumentGet()))
-        dt.historyMove(1)
-    return true;
-}
-DomTerm.commandMap['ignore-action'] = function(dt, key) {
-    return true; }
-DomTerm.commandMap['default-action'] = function(dt, key) {
-    return false; }
-DomTerm.commandMap['numeric-argument'] = function(dt, key) {
-    let klen = key.length;
-    let c = key.charAt(klen-1);
-    dt._numericArgument = dt._numericArgument == null ? c
-        : dt._numericArgument + c;
-    dt._displayInfoMessage("count: "+dt._numericArgument);
-    return true;
-}
-DomTerm.commandMap['accept-line'] = function(dt, key) {
-    dt.processEnter();
-    if (dt._lineEditingMode == 0 && dt.autoLazyCheckInferior)
-        dt._clientWantsEditing = 0;
-    return true; }
-DomTerm.commandMap['insert-newline'] = function(dt, key) {
-    dt.editorInsertString("\n");
-    return true; }
-DomTerm.commandMap['backward-search-history'] = function(dt, key) {
-    dt.showMiniBuffer("backward history search: \u2018", "\u2019");
-    function search(mrecords, observer) {
-        dt.historySearch(dt._miniBuffer.textContent);
-    }
-    let observer = new MutationObserver(search);
-    observer.observe(dt._miniBuffer,
-                     { attributes: false, childList: true, characterData: true, subtree: true });
-    dt._miniBuffer.observer = observer;
-    dt._searchMode = true;
-    dt.historySearchForwards = false;
-    dt.historySearchStart =
-        dt.historyCursor < 0 ? dt.history.length
-        : dt.historyCursor;
-    return true;
-}
-
-DomTerm.commandMap['insert-char'] = function(dt, keyName) {
-    let ch = keyName.length == 3 ? keyName.charCodeAt(1) : -1;
-    if (ch >= 0 && ch < 32)
-        return false;
-    let str = keyName.substring(1, keyName.length-1);
-    let sel = window.getSelection();
-    if (! sel.isCollapsed) {
-        dt.editorBackspace(1, "delete", "char");
-    }
-    let count = dt.numericArgumentGet();
-    if (count >= 0)
-        str = str.repeat(count);
-    dt.editorInsertString(str);
-
-    if (dt._inputLine.classList.contains("noecho")
-        && ! dt.sstate.hiddenText
-        && dt.passwordShowCharTimeout) {
-        // Temporarily display inserted char(s), with dots for other chars.
-        // After timeout all chars shown as dots.
-        let r = new Range();
-        r.selectNodeContents(dt._inputLine);
-        let wlength = DomTerm._countCodePoints(r.toString());
-        r.setEndBefore(dt._caretNode);
-        let wbefore = DomTerm._countCodePoints(r.toString());
-        let ctext = dt._inputLine.textContent;
-        let wstr = DomTerm._countCodePoints(str);
-        let before = dt.passwordHideChar.repeat(wbefore-wstr);
-        let after = dt.passwordHideChar.repeat(wlength-wbefore);
-        DomTerm._replaceTextContents(dt._inputLine, before + str + after);
-        dt.sstate.hiddenText = ctext;
-        setTimeout(function() { dt._suppressHidePassword = false;
-                                dt._hidePassword(); },
-                   dt.passwordShowCharTimeout);
-        dt._suppressHidePassword = true;
-    }
-    return true;
-};
-
-DomTerm.masterKeymapDefault = new browserKeymap({
+DomTerm.masterKeymapDefault = new window.browserKeymap({
     "Ctrl-Shift-A": "enter-mux-mode",
     "Ctrl-Shift-C": "copy-text",
     "Ctrl-Shift-L": "cycle-input-mode",
@@ -9048,6 +8838,11 @@ DomTerm.keyNameChar = function(keyName) {
         return null;
 };
 
+// This is overridden in the layout-manager context if using useIFrame.
+DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
+    commandMap[name](dt, null);
+}
+
 DomTerm.handleKey = function(map, dt, keyName) {
     let command;
     if (typeof map == "function")
@@ -9058,14 +8853,14 @@ DomTerm.handleKey = function(map, dt, keyName) {
             command = map.lookup("(keypress)");
     }
     if (typeof command == "string" || command instanceof String)
-        command = DomTerm.commandMap[command];
+        command = commandMap[command];
     if (typeof command == "function")
         return command(dt, keyName);
     else
         return command;
 };
 
-DomTerm.prototype.doLineEdit = function(keyName) {
+Terminal.prototype.doLineEdit = function(keyName) {
     if (this.verbosity >= 2)
         this.log("doLineEdit "+keyName);
 
@@ -9082,7 +8877,7 @@ DomTerm.prototype.doLineEdit = function(keyName) {
 
 DomTerm.saveFileCounter = 0;
 
-DomTerm.prototype._adjustPauseLimit = function(node) {
+Terminal.prototype._adjustPauseLimit = function(node) {
     if (node == null)
         return;
     var limit = node.offsetTop + this.availHeight;
@@ -9090,49 +8885,11 @@ DomTerm.prototype._adjustPauseLimit = function(node) {
         this._pauseLimit = limit;
 }
 
-DomTerm.sendSavedHtml = function(dt, html) {
+Terminal.sendSavedHtml = function(dt, html) {
     dt.reportEvent("GET-HTML", JSON.stringify(html));
 }
 
-DomTerm.openNewWindow = function(dt, options={}) {
-    let url = options.url;
-    let width = options.width || DomTerm.defaultWidth;
-    let height = options.height || DomTerm.defaultHeight;
-    if (options.geometry) {
-        let m = options.geometry.match(/geometry=([0-9][0-9]*)x([0-9][0-9]*)/);
-        if (m) {
-            width = geometry[1];
-            height = geometry[2];
-        }
-    }
-        if (! url)
-            url = DomTerm.topLocation;
-    if (DomTerm.isElectron()) {
-        if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-            let popt = Object.assign({}, options);
-            if (width)
-                popt.width = width;
-            if (height)
-                popt.height = height;
-            DomTerm.sendParentMessage("domterm-new-window", popt);
-        } else {
-            const { ipcRenderer } = nodeRequire('electron');
-            ipcRenderer.send('request-mainprocess-action',
-                             { action: 'new-window', width: width, height: height, url: url });
-        }
-    } else {
-        if (dt) {
-            dt.reportEvent("OPEN-WINDOW",
-                           url + (url.indexOf('#') < 0 ? '#' : '&') +
-                           ((width && height) ? ("geometry="+width+"x"+height) : "")
-                          );
-        } else {
-            window.open(url, "_blank", "width="+width+",height="+height);
-        }
-    }
-}
-
-DomTerm.prototype._isOurEvent = function(event) {
+Terminal.prototype._isOurEvent = function(event) {
     if(DomTerm.isMac && event.metaKey)
         // All Command keys should be handled by OSX itself.
         return false;
@@ -9140,7 +8897,7 @@ DomTerm.prototype._isOurEvent = function(event) {
     return this.hasFocus();
 }
 
-DomTerm.prototype.keyDownHandler = function(event) {
+Terminal.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+browserKeymap.keyName(event));
@@ -9158,7 +8915,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
         return;
     }
     if (this._currentlyPagingOrPaused()
-        && DomTerm.pageKeyHandler(this, keyName)) {
+        && this.pageKeyHandler(keyName)) {
         event.preventDefault();
         return;
     }
@@ -9249,7 +9006,7 @@ DomTerm.prototype.keyDownHandler = function(event) {
     }
 };
 
-DomTerm.prototype.keyPressHandler = function(event) {
+Terminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
         this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+browserKeymap.keyName(event));
@@ -9259,7 +9016,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
     if (this._composing > 0)
         return;
     if (this._currentlyPagingOrPaused()
-        && DomTerm.pageKeyHandler(this, keyName)) {
+        && this.pageKeyHandler(keyName)) {
         event.preventDefault();
         return;
     }
@@ -9289,7 +9046,7 @@ DomTerm.prototype.keyPressHandler = function(event) {
     }
 };
 
-DomTerm.prototype.inputHandler = function(event) {
+Terminal.prototype.inputHandler = function(event) {
     if (this.verbosity >= 2)
         this.log("input "+event+" which:"+event.which+" data:'"+event.data);
     if (event.target == this._inputLine && ! this.isLineEditing()
@@ -9307,7 +9064,7 @@ DomTerm.prototype.inputHandler = function(event) {
 };
 
 // For debugging: Checks a bunch of invariants
-DomTerm.prototype._checkTree = function() {
+Terminal.prototype._checkTree = function() {
     var node = DomTerm._currentBufferNode(this, false);
     var dt = this;
     function error(str) {
@@ -9407,7 +9164,7 @@ DomTerm.prototype._checkTree = function() {
 };
 
 // For debugging
-DomTerm.prototype.toQuoted = function(str) {
+Terminal.prototype.toQuoted = function(str) {
     var i = 0;
     var len = str.length;
     for (;  i < len;  i++) {
@@ -9435,9 +9192,7 @@ DomTerm.prototype.toQuoted = function(str) {
     return str;
 };
 
-DomTerm._mask28 = 0xfffffff;
-DomTerm.usingAjax = false;
-DomTerm.usingQtWebEngine = !! location.hash.match(/[#&]qtwebengine/);
+Terminal._mask28 = 0xfffffff;
 
 // data can be a DomString or an ArrayBuffer.
 DomTerm._handleOutputData = function(dt, data) {
@@ -9449,22 +9204,18 @@ DomTerm._handleOutputData = function(dt, data) {
     } else {
         dt.insertString(data);
         dlen = data.length;
-        dt._receivedCount = (dt._receivedCount + dlen) & DomTerm._mask28;
+        dt._receivedCount = (dt._receivedCount + dlen) & Terminal._mask28;
     }
     if (dt._pagingMode != 2 && ! this._replayMode
-        && ((dt._receivedCount - dt._confirmedCount) & DomTerm._mask28) > 500) {
+        && ((dt._receivedCount - dt._confirmedCount) & Terminal._mask28) > 500) {
         dt._confirmedCount = dt._receivedCount;
         dt.reportEvent("RECEIVED", dt._confirmedCount);
     }
     return dlen;
 }
 
-DomTerm.wrapForLayout = function() {
-    return ! DomTerm.isInIFrame() && ! DomTerm.simpleLayout;
-}
-
 DomTerm.initXtermJs = function(dt, topNode) {
-    let xterm = new Terminal();
+    let xterm = new window.Terminal();
     xterm.open(topNode);
     this.xterm = xterm;
     topNode.terminal = dt;
@@ -9516,7 +9267,7 @@ DomTerm.initXtermJs = function(dt, topNode) {
 }
 
 /** Connect using WebSockets */
-DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
+Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     if (name == null) {
         name = topNode == null ? null : topNode.getAttribute("id");
         if (name == null)
@@ -9524,7 +9275,7 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     }
     if (topNode == null)
         topNode = document.getElementById(name);
-    var wt = new DomTerm(name);
+    var wt = new Terminal(name);
     if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
         // Have atom-domterm's DomTermView create the WebSocket.  This avoids
         // the WebSocket being closed when the iframe is moved around.
@@ -9574,7 +9325,7 @@ DomTerm.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     };
 }
 
-DomTerm._makeWsUrl = function(query=null) {
+Terminal._makeWsUrl = function(query=null) {
     var ws = location.hash.match(/ws=([^,&]*)/);
     var url;
     if (DomTerm.server_port==undefined || (ws && ws[1]=="same"))
@@ -9595,7 +9346,7 @@ DomTerm.initSavedFile = function(topNode) {
     if (topNode.classList.contains("domterm-wrapper"))
         topNode = topNode.firstChild;
     var name = "domterm";
-    var dt = new DomTerm(name);
+    var dt = new Terminal(name);
     dt.initial = document.getElementById(dt.makeId("main"));
     dt._initializeDomTerm(topNode);
     dt.sstate.windowName = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
@@ -9618,12 +9369,12 @@ DomTerm.initSavedFile = function(topNode) {
     };
 }
 
-DomTerm.connectHttp = function(node, query=null) {
-    var url = DomTerm._makeWsUrl(query);
-    DomTerm.connectWS(null, url, "domterm", node);
+Terminal.connectHttp = function(node, query=null) {
+    var url = Terminal._makeWsUrl(query);
+    Terminal.connectWS(null, url, "domterm", node);
 }
 
-DomTerm.isDelimiter = (function() {
+Terminal.isDelimiter = (function() {
     let delimiterChars = '()<>[]{}`;|\'"';
     let mask1 = 0; // mask for char values 32..63
     let mask2 = 0; // mask for char values 64..95
@@ -9648,13 +9399,13 @@ DomTerm.isDelimiter = (function() {
     }
 })();
 
-DomTerm.prototype.linkAllowedUrlSchemes = ":http:https:file:ftp:mailto:";
+Terminal.prototype.linkAllowedUrlSchemes = ":http:https:file:ftp:mailto:";
 
-DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
+Terminal.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     const dt = this;
     function rindexDelimiter(str, start, end) {
         for (let i = end; --i >= start; )
-            if (DomTerm.isDelimiter(str.charCodeAt(i)))
+            if (Terminal.isDelimiter(str.charCodeAt(i)))
                 return i;
         return -1;
     }
@@ -9820,7 +9571,7 @@ DomTerm.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
     return true;
 }
 
-DomTerm.prototype._currentlyPagingOrPaused = function() {
+Terminal.prototype._currentlyPagingOrPaused = function() {
     return this._pagingMode > 0;
 };
 
@@ -9832,14 +9583,14 @@ function _pagerModeInfo(dt) {
     return prefix+": type SPACE for more; Ctrl-Shift-M to exit paging";
 }
 
-DomTerm.prototype._updatePagerInfo = function() {
+Terminal.prototype._updatePagerInfo = function() {
     if (this.modeLineGenerator != null)
         this._displayInfoMessage(this.modeLineGenerator(this));
     else
         this._clearInfoMessage();
 }
 
-DomTerm.prototype._pageScrollAbsolute = function(percent) {
+Terminal.prototype._pageScrollAbsolute = function(percent) {
     if (percent < 0)
         percent = 0;
     else if (percent >= 100)
@@ -9857,7 +9608,7 @@ DomTerm.prototype._pageScrollAbsolute = function(percent) {
     this.topNode.scrollTop = scrollTop;
 }
 
-DomTerm.prototype._pageScroll = function(delta) {
+Terminal.prototype._pageScroll = function(delta) {
     var scroll = this.topNode.scrollTop;
     var limit = scroll + this.availHeight + delta;
     var vtop = this._vspacer.offsetTop;
@@ -9877,7 +9628,7 @@ DomTerm.prototype._pageScroll = function(delta) {
         this._pauseContinue();
 }
 
-DomTerm.prototype._pagePage = function(count) {
+Terminal.prototype._pagePage = function(count) {
     var amount = count * this.availHeight;
     if (count > 0)
         amount -= this.charHeight;
@@ -9886,15 +9637,15 @@ DomTerm.prototype._pagePage = function(count) {
     this._pageScroll(amount);
 }
 
-DomTerm.prototype._pageLine = function(count) {
+Terminal.prototype._pageLine = function(count) {
     this._pageScroll(count * this.charHeight);
 }
 
-DomTerm.prototype._pageTop = function() {
+Terminal.prototype._pageTop = function() {
     this.topNode.scrollTop = 0;
 }
 
-DomTerm.prototype._pageBottom = function() {
+Terminal.prototype._pageBottom = function() {
     let target = this._vspacer.offsetTop - this.availHeight;
     if (target < 0)
         target = 0;
@@ -9907,7 +9658,7 @@ DomTerm.prototype._pageBottom = function() {
     this.topNode.scrollTop = target;
 }
 
-DomTerm.prototype._enterPaging = function(pause) {
+Terminal.prototype._enterPaging = function(pause) {
     // this._displayInputModeWithTimeout(displayString);
     this._pageNumericArgumentClear();
     this._pagingMode = pause ? 2 : 1;
@@ -9915,7 +9666,7 @@ DomTerm.prototype._enterPaging = function(pause) {
     this._updatePagerInfo();
 }
 
-DomTerm.prototype._exitPaging = function() {
+Terminal.prototype._exitPaging = function() {
     this._pagingMode = 0;
     this.modeLineGenerator = null;
     this._updatePagerInfo();
@@ -9923,7 +9674,7 @@ DomTerm.prototype._exitPaging = function() {
 
 DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {
     if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                  "auto-paging", mode);
         return;
     }
@@ -9932,92 +9683,92 @@ DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {
         : mode == "on" || mode == "true";
 }
 
-DomTerm.prototype._pageNumericArgumentGet = function(def = 1) {
+Terminal.prototype._pageNumericArgumentGet = function(def = 1) {
     var arg = this._numericArgument;
     return arg == null ? def : Number(arg);
 }
-DomTerm.prototype._pageNumericArgumentClear = function() {
+Terminal.prototype._pageNumericArgumentClear = function() {
     var hadValue =  this._numericArgument;
     this._numericArgument = null;
     if (hadValue)
         this._updatePagerInfo();
 }
-DomTerm.prototype._pageNumericArgumentAndClear = function(def = 1) {
+Terminal.prototype._pageNumericArgumentAndClear = function(def = 1) {
     var val = this._pageNumericArgumentGet(def);
     this._pageNumericArgumentClear();
     return val;
 }
 
-DomTerm.pageKeyHandler = function(dt, keyName) {
-    var arg = dt._numericArgument;
+Terminal.prototype.pageKeyHandler = function(keyName) {
+    var arg = this._numericArgument;
     // Shift-PageUp and Shift-PageDown should maybe work in all modes?
     // Ctrl-Shift-Up / C-S-Down to scroll by one line, in all modes?
-    if (dt.verbosity >= 2)
-        dt.log("page-key key:"+keyName);
+    if (this.verbosity >= 2)
+        this.log("page-key key:"+keyName);
     switch (keyName) {
         // C-Home start
         // C-End end
     case "Enter":
-        dt._pageLine(dt._pageNumericArgumentAndClear(1));
+        this._pageLine(this._pageNumericArgumentAndClear(1));
         return true;
     case "PageUp":
         // Also Shift-Space
         // Also backspace? DEL? 'b'?
-        dt._pagePage(- dt._pageNumericArgumentAndClear(1));
+        this._pagePage(- this._pageNumericArgumentAndClear(1));
         return true;
     case "Space":
     case "PageDown":
-        dt._pagePage(dt._pageNumericArgumentAndClear(1));
+        this._pagePage(this._pageNumericArgumentAndClear(1));
         return true;
     case "Home":
-        dt._pageTop();
+        this._pageTop();
         return true;
     case "End":
-        dt._pageBottom();
+        this._pageBottom();
         return true;
     case "Down":
-        dt._pageLine(1);
+        this._pageLine(1);
         return true;
     case "Up":
-        dt._pageLine(-1);
+        this._pageLine(-1);
         return true;
     case "'M'":
-        var oldMode = dt._pagingMode;
+        var oldMode = this._pagingMode;
         if (oldMode==2)
-            dt._pauseContinue();
-        dt._enterPaging(oldMode==1);
+            this._pauseContinue();
+        this._enterPaging(oldMode==1);
         return true;
     case "'p'":
     case "'%'":
         // MAYBE: 'p' relative to current "group"; 'P' relative to absline 0.
         // MAYBE: 'P' toggle pager/pause mode
-        dt._pageScrollAbsolute(dt._pageNumericArgumentAndClear(50));
+        this._pageScrollAbsolute(this._pageNumericArgumentAndClear(50));
         return true;
     case "'a'":
-        if (dt._currentlyPagingOrPaused()) {
-            DomTerm.setAutoPaging("toggle", dt);
-            dt._pauseContinue();
-            dt._exitPaging();
+        if (this._currentlyPagingOrPaused()) {
+            DomTerm.setAutoPaging("toggle", this);
+            this._pauseContinue();
+            this._exitPaging();
         } else
-            DomTerm.setAutoPaging("toggle", dt);
-        dt._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
-                                     +(dt._autoPaging?"on":"off"));
+            DomTerm.setAutoPaging("toggle", this);
+        this._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
+                                     +(this._autoPaging?"on":"off"));
         return true;
     case "Ctrl-C":
-        dt.reportKeyEvent(keyName, dt.keyDownToString(event));
-        dt._pauseContinue(true);
-        dt._adjustPauseLimit(dt.outputContainer);
+        this.reportKeyEvent(keyName, this.keyDownToString(event));
+        this._pauseContinue(true);
+        this._adjustPauseLimit(this.outputContainer);
         return true;
     default:
         let asKeyPress = DomTerm.keyNameChar(keyName);
         if (asKeyPress) {
-            var arg = dt._numericArgument;
+            var arg = this._numericArgument;
             let key = asKeyPress.charCodeAt(0);
             // '0'..'9' || '-' and initial || .'.
             if ((key >= 48 && key <= 57) || (key == 45 && ! arg) || key == 46) {
                 arg = arg ? arg + asKeyPress : asKeyPress;
-                dt._numericArgument = arg;
-                dt._updatePagerInfo();
+                this._numericArgument = arg;
+                this._updatePagerInfo();
                 return true;
             }
         }
@@ -10026,7 +9777,7 @@ DomTerm.pageKeyHandler = function(dt, keyName) {
 };
 
 /*
-DomTerm.prototype._togglePaging = function() {
+Terminal.prototype._togglePaging = function() {
     if (this._inPagingMode) {
         this._exitPaging();
         this._inPagingMode = false;
@@ -10038,7 +9789,7 @@ DomTerm.prototype._togglePaging = function() {
 }
 */
 
-DomTerm.prototype._pauseNeeded = function() {
+Terminal.prototype._pauseNeeded = function() {
     if (this._autoPaging && this._autoPagingTemporary instanceof Element
         && this.topNode.scrollTop+this.availHeight > this._autoPagingTemporary.offsetTop) {
         this._autoPaging = false;
@@ -10049,7 +9800,7 @@ DomTerm.prototype._pauseNeeded = function() {
         && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };
 
-DomTerm.prototype.editorAddLine = function() {
+Terminal.prototype.editorAddLine = function() {
     if (this.scrollOnKeystroke)
         this._enableScroll();
     if (this._inputLine == null) {
@@ -10080,7 +9831,7 @@ DomTerm.prototype.editorAddLine = function() {
 }
 
 // FIXME combine with _pageNumericArgumentGet
-DomTerm.prototype.numericArgumentGet = function() {
+Terminal.prototype.numericArgumentGet = function() {
     let s = this._numericArgument;
     if (s == null)
        return 1;
@@ -10090,7 +9841,7 @@ DomTerm.prototype.numericArgumentGet = function() {
     return Number(s);
 }
 
-DomTerm.prototype.editorMoveLines = function(backwards, count) {
+Terminal.prototype.editorMoveLines = function(backwards, count) {
     if (count == 0)
         return true;
     let delta1 = backwards ? -1 : 1;
@@ -10156,7 +9907,7 @@ DomTerm.prototype.editorMoveLines = function(backwards, count) {
     return count <= 0;
 }
 
-DomTerm.prototype.editorMoveToRangeStart = function(range) {
+Terminal.prototype.editorMoveToRangeStart = function(range) {
     this._removeCaret();
     if (range.startContainer == this._caretNode)
         return;
@@ -10169,13 +9920,13 @@ DomTerm.prototype.editorMoveToRangeStart = function(range) {
     this._restoreCaret();
 }
 
-DomTerm.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
+Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
     this.editorBackspace(toEnd ? -Infinity : Infinity,
                          action, "char", "line");
     this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
-DomTerm.prototype.editorMoveHomeOrEnd = function(toEnd) {
+Terminal.prototype.editorMoveHomeOrEnd = function(toEnd) {
     let r = new Range();
     r.selectNodeContents(this._inputLine);
     if (toEnd)
@@ -10184,7 +9935,7 @@ DomTerm.prototype.editorMoveHomeOrEnd = function(toEnd) {
     this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
-DomTerm.prototype.editorMoveToPosition = function(node, offset) {
+Terminal.prototype.editorMoveToPosition = function(node, offset) {
     let r = new Range();
     r.selectNodeContents(this._inputLine);
     let c = r.comparePoint(node, offset);
@@ -10195,7 +9946,7 @@ DomTerm.prototype.editorMoveToPosition = function(node, offset) {
     this.editorMoveToRangeStart(r);
 }
 
-DomTerm.prototype._updateAutomaticPrompts = function() {
+Terminal.prototype._updateAutomaticPrompts = function() {
     var pattern = this.sstate.continuationPromptPattern;
     var initialPrompt = "";
     var initialPromptNode = null;//this._currentPromptNode;
@@ -10253,7 +10004,7 @@ DomTerm.prototype._updateAutomaticPrompts = function() {
 // True if this is an internal line break in multi-line _inputLine.
 // False if the linebreak immediately before or after the _inputLine.
 // Unspecified for other linebreaks.
-DomTerm.prototype._newlineInInputLine = function(i) {
+Terminal.prototype._newlineInInputLine = function(i) {
     // OR:
     // let start = this.lineStarts[i];
     // return start.nodeName == "SPAN" &&  start != this._inputLine.nextSibling
@@ -10261,7 +10012,7 @@ DomTerm.prototype._newlineInInputLine = function(i) {
         && this.lineStarts[i] == this.lineEnds[i-1];
 }
 
-DomTerm.prototype.editorContinueInput = function() {
+Terminal.prototype.editorContinueInput = function() {
     let outputParent = this.outputContainer.parentNode; // command-output
     let previous = outputParent.previousSibling; // domterm-pre input-line
     let previousInputLineNode = previous.lastChild;
@@ -10291,7 +10042,7 @@ DomTerm.prototype.editorContinueInput = function() {
     this._updateAutomaticPrompts();
 }
 
-DomTerm.prototype.editorInsertString = function(str, inserting=true) {
+Terminal.prototype.editorInsertString = function(str, inserting=true) {
     this._showPassword();
     this._updateLinebreaksStart(this.getAbsCursorLine(), true);
     for (;;) {
@@ -10316,7 +10067,7 @@ DomTerm.prototype.editorInsertString = function(str, inserting=true) {
         let saved = this._pushToCaret();
         let newline = this._createLineNode("hard", "\n");
         let lineno = this.getAbsCursorLine();
-        DomTerm._insertIntoLines(this, newline, lineno);
+        this._insertIntoLines(newline, lineno);
         this.insertNode(newline);
         let prompt = this._createSpanNode();
         prompt.setAttribute("std", "prompt");
@@ -10333,12 +10084,12 @@ DomTerm.prototype.editorInsertString = function(str, inserting=true) {
     }
 }
 
-DomTerm.prototype.editorDeleteRange = function(range, toClipboard,
+Terminal.prototype.editorDeleteRange = function(range, toClipboard,
                                                linesCount = -1) {
     let str = range.toString();
     if (toClipboard)
         DomTerm.valueToClipboard({text: str,
-                                  html: DomTerm._rangeAsHTML(range)});
+                                  html: Terminal._rangeAsHTML(range)});
     range.deleteContents();
     range.commonAncestorContainer.normalize();
     let lineNum = this.getAbsCursorLine();
@@ -10354,7 +10105,7 @@ DomTerm.editorNonWordChar = function(ch) {
     return " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{|}".indexOf(ch) >= 0;
 }
 
-DomTerm.prototype.scanInRange = function(range, backwards, state) {
+Terminal.prototype.scanInRange = function(range, backwards, state) {
     let unit = state.unit;
     let doWords = unit == "word";
     let stopAt = state.stopAt;
@@ -10491,7 +10242,7 @@ DomTerm.prototype.scanInRange = function(range, backwards, state) {
  * stopAt: one of "", "line" (stop before moving to different hard line),
  * or "visible-line" (stop before moving to different screen line).
  */
-DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
+Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     this.sstate.goalColumn = undefined;
     let doDelete = action == "delete" || action == "kill";
     let doWords = unit == "word";
@@ -10517,7 +10268,7 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
                     r.setEnd(sr.endContainer, sr.endOffset);
                 if (action == "kill") {
                     text += r.toString();
-                    html += DomTerm._rangeAsHTML(r);
+                    html += Terminal._rangeAsHTML(r);
                 }
                 this.editorDeleteRange(r, false);
             }
@@ -10561,7 +10312,7 @@ DomTerm.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     return todo;
 }
 
-DomTerm.prototype._lastDigit = function(str) {
+Terminal.prototype._lastDigit = function(str) {
     for (var j = str.length; --j >= 0; ) {
         var d = str.charCodeAt(j);
         if (d >= 48 && d <= 57)
@@ -10570,7 +10321,7 @@ DomTerm.prototype._lastDigit = function(str) {
     return -1;
 }
 
-DomTerm.prototype._getIntegerBefore = function(str, last) {
+Terminal.prototype._getIntegerBefore = function(str, last) {
     if (! last)
         last = this._lastDigit(str);
     for (var j = last; --j >= 0; ) {
@@ -10590,7 +10341,7 @@ DomTerm.prototype._getIntegerBefore = function(str, last) {
  *  '%P<c>' - as before, but use width from initial prompt
  *  '%%' - include literal "%" here
  */
-DomTerm.prototype._continuationPrompt = function(pattern, lineno, width) {
+Terminal.prototype._continuationPrompt = function(pattern, lineno, width) {
     var padding = null;
     var part1 = ""; // build text before the padding
     var part2 = ""; // build text after the padding
@@ -10644,7 +10395,7 @@ DomTerm.prototype._continuationPrompt = function(pattern, lineno, width) {
  * The result is "%P%N" followed by a suffix designed to align
  * with a line number in the initial prompt.
  */
-DomTerm.prototype.promptPatternFromInitial = function(initialPrompt) {
+Terminal.prototype.promptPatternFromInitial = function(initialPrompt) {
     return 4 * initialPrompt.length > this.numColumns ? "> " : "%P.> ";
     /*
     var width = initialPrompt.length;
@@ -10665,7 +10416,7 @@ DomTerm.prototype.promptPatternFromInitial = function(initialPrompt) {
 };
 
 /* DEBUGGING
-DomTerm.prototype._showSelection = function() {
+Terminal.prototype._showSelection = function() {
     let sel = document.getSelection();
     if (sel.anchorNode == null)
         return "sel[no-ranges]";
@@ -10685,5 +10436,116 @@ DomTerm.prototype._showSelection = function() {
 }
 */
 
-if (typeof exports === "object")
-    module.exports = DomTerm;
+/** Runs in DomTerm sub-window. */
+function _muxModeInfo(dt) {
+    return "(MUX mode)";
+}
+
+/** Runs in DomTerm sub-window. */
+Terminal.prototype.enterMuxMode = function() {
+    this.modeLineGenerator = _muxModeInfo;
+    this._muxMode = true;
+    this._updatePagerInfo();
+}
+
+/** Runs in DomTerm sub-window. */
+Terminal.prototype.exitMuxMode = function() {
+    this.modeLineGenerator = null;
+    this._muxMode = false;
+    this._updatePagerInfo();
+}
+
+/** Runs in DomTerm sub-window. */
+Terminal.prototype._muxKeyHandler = function(event, key, press) {
+    if (this.verbosity >= 2)
+        this.log("mux-key key:"+key+" event:"+event+" press:"+press);
+    let paneOp = 0;
+    switch (key) {
+    case 13: // Enter
+        DomTerm.newPane(1, null, this);
+        this.exitMuxMode();
+        event.preventDefault();
+        break;
+    case 16: /*Shift*/
+    case 17: /*Control*/
+    case 18: /*Alt*/
+        return;
+    case 37 /*Left*/:
+        if (paneOp == 0) paneOp = 10;
+        /* fall through */
+    case 38 /*Up*/:
+        if (paneOp == 0) paneOp = 12;
+        /* fall through */
+    case 39 /*Right*/:
+        if (paneOp == 0) paneOp = 11;
+        /* fall through */
+    case 40 /*Down*/:
+        if (paneOp == 0) paneOp = 13;
+        if (event.ctrlKey) {
+            DomTerm.newPane(paneOp);
+            this.exitMuxMode();
+            event.preventDefault();
+        } else {
+            DomTerm.selectNextPane(key==39||key==40);
+            this.exitMuxMode();
+            event.preventDefault();
+        }
+        break;
+    case 68:
+        if (event.ctrlKey && DomTerm.isElectron()) {
+            nodeRequire('electron').remote.getCurrentWindow().toggleDevTools();
+            this.exitMuxMode();
+            event.preventDefault();
+        }
+        break;
+    case 84: // T
+        if (! event.ctrlKey) {
+            DomTerm.newPane(2);
+            this.exitMuxMode();
+            event.preventDefault();
+        }
+        break;
+    case 87: // W
+        if (event.shiftKey) {
+            let wholeStack = event.ctrlKey;
+            if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+                DomTerm.sendParentMessage("popout-window", wholeStack);
+            } else {
+                var pane = DomTerm.domTermToLayoutItem(this);
+                DomTermLayout.popoutWindow(wholeStack ? pane.parent : pane, this);
+            }
+        } else {
+            // FIXME make new window
+        }
+        this.exitMuxMode();
+        event.preventDefault();
+        break;
+    case 100: // 'd'
+        if (! event.ctrlKey) {
+            this.detachSession();
+            this.exitMuxMode();
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+        break;
+    default:
+    case 27: // Escape
+        this.exitMuxMode();
+        event.preventDefault();
+        break;
+    }
+}
+
+// Only if !useIFrame
+DomTerm.domTermToLayoutItem = function(dt) {
+    if (! DomTermLayout.manager)
+        return null;
+    var node = dt.topNode;
+    var goal = node.parentNode;
+    if (goal instanceof Element && goal.classList.contains("lm_content"))
+        return DomTermLayout._elementToLayoutItem(goal);
+    else
+        return null;
+}
+
+window.DTerminal = Terminal;

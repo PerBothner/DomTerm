@@ -13,6 +13,8 @@ DomTerm.usingJsMenus = function() {
 // - Potentially less secure (all terminals in same frame).
 // - Shared 'id' space.
 // - Single selection rather than one per terminal.
+// - CORS-related complications (we use a "file:" html file to verify browser
+//   has read access, but that file can't load modules from "http:")
 // Issues with useFrame:
 // - Performance (extra overhead).
 // - jsMenus has problems, especially when mouse leaves the menu.
@@ -21,13 +23,12 @@ DomTerm.usingJsMenus = function() {
 //   it does work when !useIFrame. (Menu Paste doesn't work either way.)
 // - Popout-window buttons don't work.
 DomTerm.useIFrame = ! DomTerm.simpleLayout
-    && ! DomTerm.useXtermJs
     && ! DomTerm.usingJsMenus();
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
 {
-    var wt = new DomTerm(name);
+    var wt = new Terminal(name);
     if (topNode == null)
         topNode = document.getElementById("domterm");
     var xhr = new XMLHttpRequest();
@@ -113,8 +114,6 @@ DomTerm.handleSimpleMessage = function(command) {
         DomTerm.saveWindowContents();  //or maybe DomTerm.detach();
     else if (command=="destroy-window")
         dt.reportEvent("destroy-window", "");
-    else if (command=="detach")
-        DomTerm.detach();
     else if (command=="open-link")
         DomTerm.handleLink(DomTerm._contextLink);
     else if (command=="copy-link-address")
@@ -134,12 +133,12 @@ function setupQWebChannel(channel) {
 
     DomTerm.doCopy = function(asHTML=false) {
         if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
-            && DomTerm._oldFocusedContent) {
-            DomTerm.sendChildMessage(DomTerm._oldFocusedContent,
+            && DomTermLayout._oldFocusedContent) {
+            DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                      "request-selection", asHTML);
             return true;
         }
-        DomTerm.valueToClipboard(DomTerm._selectionValue(asHTML));
+        DomTerm.valueToClipboard(Terminal._selectionValue(asHTML));
     }
 
     DomTerm.valueToClipboard = function(values) {
@@ -165,7 +164,7 @@ function setupQWebChannel(channel) {
     });
     backend.handleSimpleMessage.connect(DomTerm.handleSimpleMessage);
     backend.handleSimpleCommand.connect(function(command) {
-        DomTerm.commandMap[command](DomTerm.focusedTerm, null);
+        DomTerm.doNamedCommand(command);
     });
     backend.copyAsHTML.connect(function() {
         DomTerm.doCopy(true);
@@ -187,7 +186,7 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
     // (Cross-Origin Resource Sharing) restrictions on desktop browsers.
     if (urlEncoded.startsWith("file:///")) {
         url = "http://localhost:"+DomTerm.server_port+"/saved-file/?server-key="+DomTerm.server_key+"&file="+urlEncoded.substring(7);
-        return DomTerm.makeIFrameWrapper(url, false, contextNode);
+        return DomTermLayout.makeIFrameWrapper(url, false, contextNode);
     } else
         url = decodeURIComponent(urlEncoded);
     let el = DomTerm.makeElement(DomTerm.freshName());
@@ -204,7 +203,7 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
             return;
         }
         el.innerHTML = responseText;
-        DomTerm.initSavedFile(el);
+        DomTermLayout.initSaved(el);
     };
     xhr.send("");
     return el;
@@ -224,14 +223,25 @@ function setupParentMessages2() {
             DomTerm.sendParentMessage("domterm-context-menu", options);
             return ! DomTerm.usingQtWebEngine;
         }
-        DomTerm.setLayoutTitle = function(dt, title, wname) {
-            DomTerm.sendParentMessage("domterm-set-title", title, wname);
-        };
 }
 
 function loadHandler(event) {
-    if (DomTerm.layoutInit === undefined || window.GoldenLayout === undefined)
-        useIFrame = false;
+    //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
+    //DomTerm.useIFrame = false;
+    // console.log("loadHandler "+location);
+    if (! DomTerm.useIFrame && window == top && typeof Terminal == "undefined") {
+        let ifr = document.createElement("iframe");
+        let iloc = "http://127.0.0.1:" + DomTerm.server_port
+            + "/no-frames.html" + location.hash;
+        if (DomTerm.server_key)
+            iloc += (iloc.indexOf('#') >= 0 ? '&' : '#')
+            + "server-key=" + DomTerm.server_key;
+        ifr.setAttribute("src", iloc);
+        ifr.setAttribute("style", "width: 100%; height: 100%; border: 0pt; display: block");
+        ifr.setAttribute("name", DomTerm.CORS_WRAPPER_WINDOW_NAME);
+        document.body.appendChild(ifr);
+        return;
+    }
     DomTerm.layoutTop = document.body;
     let url = location.href;
     let hashPos = url.indexOf('#');
@@ -240,18 +250,16 @@ function loadHandler(event) {
         uhash = url.substring(hashPos);
         url = url.substring(0, hashPos);
     }
-    if (! DomTerm.server_port && location.port)
-        DomTerm.server_port = location.port;
+    DomTerm.server_port = location.port || DomTerm.server_port;
     DomTerm.topLocation = url;
-    if (DomTerm.useIFrame)
+    if (DomTerm.useIFrame) {
         DomTerm.mainLocation = "http://127.0.0.1:"+DomTerm.server_port+"/simple.html";
-    else
+    } else
         DomTerm.mainLocation = url;
-    var m;
+    var m = url.match(/[#&]server-key=([^&]*)/);
     if (! DomTerm.server_key && (m = url.match(/[#&]server-key=([^&]*)/))) {
         DomTerm.server_key = m[1];
     }
-
     if (DomTerm.usingQtWebEngine && ! DomTerm.isInIFrame()) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
@@ -279,7 +287,7 @@ function loadHandler(event) {
     m = location.hash.match(/open=([^&]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
-        DomTerm._initSavedLayout(JSON.parse(open_encoded));
+        DomTermLayout.initSaved(JSON.parse(open_encoded));
         return;
     }
     var bodyNode = document.getElementsByTagName("body")[0];
@@ -292,8 +300,7 @@ function loadHandler(event) {
     }
     var layoutInitAlways = false;
     if (layoutInitAlways && ! DomTerm.isInIFrame()) {
-        var cpid = location.hash.match(/connect-pid=([0-9]*)/);
-        DomTerm.layoutInit(null);
+        DomTermLayout.initialize(null);
         return;
     }
     var topNodes = document.getElementsByClassName("domterm");
@@ -303,6 +310,10 @@ function loadHandler(event) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
                 lcontent.contentWindow.postMessage({"command": command, "args": args}, "*");
+            }
+            DomTerm.doNamedCommand = function(name) {
+                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
+                                         "do-command", name);
             }
         } else {
             setupParentMessages1();
@@ -322,7 +333,7 @@ function loadHandler(event) {
         return;
     }
     if (DomTerm.useIFrame && ! DomTerm.isInIFrame()) {
-        DomTerm.makeIFrameWrapper(DomTerm.mainLocation+uhash);
+        DomTermLayout.makeIFrameWrapper(DomTerm.mainLocation+uhash);
         return;
     }
     if (topNodes.length == 0) {
@@ -335,9 +346,9 @@ function loadHandler(event) {
         for (var i = 0; i < topNodes.length; i++)
             connectAjax("domterm", "", topNodes[i]);
     } else {
-        var wsurl = DomTerm._makeWsUrl(location.hash ? location.hash.substring(1) : null);
+        var wsurl = DTerminal._makeWsUrl(location.hash ? location.hash.substring(1) : null);
         for (var i = 0; i < topNodes.length; i++) {
-            DomTerm.connectWS(null, wsurl, "domterm", topNodes[i]);
+            DTerminal.connectWS(null, wsurl, "domterm", topNodes[i]);
         }
     }
     if (!DomTerm.inAtomFlag)
@@ -378,34 +389,39 @@ function handleMessage(event) {
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="do-command") {
-        DomTerm.commandMap[data.args[0]](DomTerm.focusedTerm, null);
+        DomTerm.doNamedCommand(data.args[0]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
     } else if (data.command=="domterm-next-pane") {
-        if (DomTerm.layoutManager)
-            DomTerm.selectNextPane(data.args[0], iframe);
+        if (DomTermLayout.manager)
+            DomTermLayout.selectNextPane(data.args[0], iframe);
     } else if (data.command=="set-window-title") {
         DomTerm.setTitle(data.args[0]);
     } else if (data.command=="layout-close") {
-        if (DomTerm.layoutManager)
-            DomTerm.domTermLayoutClose(iframe,
-                                       DomTerm._elementToLayoutItem(iframe));
+        if (DomTermLayout.manager)
+            DomTermLayout.layoutClose(iframe,
+                                      DomTermLayout._elementToLayoutItem(iframe));
         else
             DomTerm.windowClose();
     } else if(data.command=="save-file") {
         DomTerm.saveFile(data.args[0]);
     } else if (data.command=="focus-event") {
-        let originMode = data.args[0];
-        if (DomTerm.layoutManager)
-            DomTerm._selectLayoutPane(DomTerm._elementToLayoutItem(iframe), originMode);
-        else {
-            DomTerm._focusChild(iframe, originMode);
-            DomTerm._oldFocusedContent = iframe;
+        if (iframe) {
+            let originMode = data.args[0];
+            if (DomTermLayout.manager)
+                DomTermLayout._selectLayoutPane(DomTermLayout._elementToLayoutItem(iframe), originMode);
+            else {
+                DomTermLayout._focusChild(iframe, originMode);
+                DomTermLayout._oldFocusedContent = iframe;
+            }
         }
-    } else if (data.command=="domterm-set-title") {
+    } else if (data.command=="set-pane-title") {
         if (iframe)
-            DomTerm.setLayoutTitle(iframe,
-                                   data.args[0], data.args[1]);
+            DomTermLayout.setLayoutTitle(iframe,
+                                         data.args[0], data.args[1]);
+    } else if (data.command=="set-pid") {
+        if (iframe)
+            iframe.setAttribute("pid", data.args[0]);
     } else if (data.command=="set-input-mode") { // message to child
         DomTerm.setInputMode(data.args[0]);
     } else if (data.command=="request-save-file") { // message to child
@@ -416,15 +432,27 @@ function handleMessage(event) {
         if (dt) {
             dt.setFocused(op);
         }
+    } else if (data.command=="popout-window") {
+        let wholeStack = data.args[0];
+        if (iframe) {
+            let pane = DomTermLayout._elementToLayoutItem(iframe);
+            DomTermLayout.popoutWindow(wholeStack ? pane.parent : pane, null);
+        }
     } else if (data.command=="domterm-socket-close") { // message to child
         let dt = DomTerm.focusedTerm;
         if (dt)
             dt.closeConnection();
     } else if (data.command=="request-selection") { // parent to child
-        DomTerm.sendParentMessage("selection-value",
-                                   DomTerm._selectionValue(data.args[0]));
-    } else if (data.command=="selection-value") {
-        DomTerm.valueToClipboard(data.args[0]);
+        // FIXME rename to doNamedCommand("copy"/"copy-as-html");
+        DomTerm.sendParentMessage("value-to-clipboard",
+                                   DTerminal._selectionValue(data.args[0]));
+    } else if (data.command=="value-to-clipboard") { // in layout-context
+        let values = data.args[0];
+        if (DomTerm.isElectron()) {
+            const { clipboard} = nodeRequire('electron');
+            clipboard.write(values);
+        } else
+            DomTerm.valueToClipboard(values);
     } else if (data.command=="copy-selection") { // message to child
         DomTerm.doCopy(data.args[0]);
     } else if (data.args.length == 0) {

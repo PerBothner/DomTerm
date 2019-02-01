@@ -22,12 +22,19 @@ endif
 ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) $(OPENSSL_LIBS) $(JSON_C_LIBS) $(LIBCAP_LIBS) -lpthread -lutil -lz $(LIBMAGIC_LIBS)
 #CLIENT_DATA_DIR = @DOMTERM_DIR_RELATIVE@
 CLIENT_DATA_DIR = .
-LWS_RESOURCES = hlib/domterm-all.js hlib/domterm-client.js \
-  hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/domterm-menus.js \
+LWS_RESOURCES = hlib/domterm.js hlib/domterm-version.js hlib/terminal.js hlib/domterm-client.js \
+  hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js\
+  hlib/jquery.min.js hlib/goldenlayout.js hlib/domterm-layout.js hlib/commands.js hlib/domterm-menus.js \
   hlib/domterm-core.css hlib/domterm-standard.css hlib/domterm-default.css \
   hlib/goldenlayout-base.css hlib/domterm-layout.css \
-  hlib/jsMenus.js  hlib/jsMenus.css hlib/screenfull.min.js \
+  hlib/jsMenus.js  hlib/jsMenus.css hlib/node-sixel.js hlib/screenfull.min.js \
   hlib/qwebchannel.js
+XTERMJS_RESOURCES_SOURCE = $(XTERMJS_PATH)/xterm.js \
+  $(XTERMJS_PATH)/xterm.css $(XTERMJS_PATH)/addons/fit/fit.js
+XTERMJS_RESOURCES = hlib/xterm.js hlib/xterm.css hlib/fit.js
+if WITH_XTERMJS
+LWS_RESOURCES += $(XTERMJS_RESOURCES)
+endif
 if ENABLE_COMPILED_IN_RESOURCES
 nodist_ldomterm_SOURCES += resources.c
 ldomterm_CFLAGS += -DCOMPILED_IN_RESOURCES
@@ -35,9 +42,16 @@ else
 ldomterm_CFLAGS += -DRESOURCE_DIR='"../share/domterm"'
 endif
 XXD = xxd
-CLEANFILES = resources.c git-describe.c
+CLEANFILES = resources.c git-describe.c xterm.stamp \
+  ../hlib/xterm.js ../hlib/xterm.css ../hlib/fit.js
 
-resources.c: ../client-data-links.stamp
+xterm.stamp:
+if WITH_XTERMJS
+	cd ../hlib && $(LN_S) $(XTERMJS_RESOURCES_SOURCE) .
+endif
+	touch xterm.stamp
+
+resources.c: ../client-data-links.stamp xterm.stamp
 	echo '#include "server.h"' >tmp-resources.c
 	for file in $(LWS_RESOURCES); do \
 	  (cd $(top_builddir)/$(CLIENT_DATA_DIR)  && $(XXD) -i $$file -) | \

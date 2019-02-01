@@ -1,210 +1,129 @@
 /* A glue layer for a layout mangager, initially GoldenLayout.
  */
 
-DomTerm._pendingTerminals = null;
-
-function _muxModeInfo(dt) {
-    return "(MUX mode)";
-}
-
-DomTerm.prototype.enterMuxMode = function() {
-    this.modeLineGenerator = _muxModeInfo;
-    this._muxMode = true;
-    this._updatePagerInfo();
-}
-
-DomTerm.prototype.exitMuxMode = function() {
-    this.modeLineGenerator = null;
-    this._muxMode = false;
-    this._updatePagerInfo();
-}
-
-/** Runs in DomTerm sub-window. */
-DomTerm.prototype._muxKeyHandler = function(event, key, press) {
-    if (this.verbosity >= 2)
-        this.log("mux-key key:"+key+" event:"+event+" press:"+press);
-    let paneOp = 0;
-    switch (key) {
-    case 13: // Enter
-        DomTerm.newPane(1, null, this);
-        this.exitMuxMode();
-        event.preventDefault();
-        break;
-    case 16: /*Shift*/
-    case 17: /*Control*/
-    case 18: /*Alt*/
-        return;
-    case 37 /*Left*/:
-        if (paneOp == 0) paneOp = 10;
-        /* fall through */
-    case 38 /*Up*/:
-        if (paneOp == 0) paneOp = 12;
-        /* fall through */
-    case 39 /*Right*/:
-        if (paneOp == 0) paneOp = 11;
-        /* fall through */
-    case 40 /*Down*/:
-        if (paneOp == 0) paneOp = 13;
-        if (event.ctrlKey) {
-            DomTerm.newPane(paneOp);
-            this.exitMuxMode();
-            event.preventDefault();
-        } else {
-            DomTerm.selectNextPane(key==39||key==40);
-            this.exitMuxMode();
-            event.preventDefault();
-        }
-        break;
-    case 68:
-        if (event.ctrlKey && DomTerm.isElectron()) {
-            nodeRequire('electron').remote.getCurrentWindow().toggleDevTools();
-            this.exitMuxMode();
-            event.preventDefault();
-        }
-        break;
-    case 84: // T
-        if (! event.ctrlKey) {
-            DomTerm.newPane(2);
-            this.exitMuxMode();
-            event.preventDefault();
-        }
-        break;
-    case 87: // W
-        if (event.shiftKey) {
-            var pane = DomTerm.domTermToLayoutItem(this);
-            var wholeStack = event.ctrlKey;
-            DomTerm.popoutWindow(wholeStack ? pane.parent : pane, this);
-        } else {
-            // FIXME make new window
-        }
-        this.exitMuxMode();
-        event.preventDefault();
-        break;
-    case 100: // 'd'
-        if (! event.ctrlKey) {
-            DomTerm.detach(this);
-            this.exitMuxMode();
-            event.preventDefault();
-            event.stopImmediatePropagation();
-        }
-        break;
-    default:
-    case 27: // Escape
-        this.exitMuxMode();
-        event.preventDefault();
-        break;
-    }
-}
-
-/** Map a layoutItem (GoldenLayout contentItem?) to a DomTerm instance.
-*/
-DomTerm.layoutItemToDomTerm = function(item) {
-    var element = item.container.getElement()[0].firstChild;
-    return element && element.classList.contains("domterm") ? element.terminal
-        : null;
+class DomTermLayout {
 };
 
-DomTerm._elementToLayoutItem = function(goal, item = DomTerm.layoutManager.root) {
-    if (item.element[0] == goal
-        || (item.container && item.container.getElement()[0] == goal))
-        return item;
-    var citems = item.contentItems;
-    for (var i = 0; i < citems.length; i++) {
-        var r = DomTerm._elementToLayoutItem(goal, citems[i]);
-        if (r)
-            return r;
-    }
-    return null;
-}
+DomTermLayout.manager = null;
 
-DomTerm.domTermToLayoutItem = function(dt) {
-    if (! DomTerm.layoutManager)
-        return null;
-    var node = dt.topNode;
-    var goal = node.parentNode;
-    if (goal instanceof Element && goal.classList.contains("lm_content"))
-        return DomTerm._elementToLayoutItem(goal);
-    else
-        return null;
-}
-
-DomTerm.domTermLayoutClosed = function(event) {
-    var el = this.getElement()[0];
-    if (el.tagName !== "IFRAME") {
-        var dt = el.firstChild.terminal;
-        if (dt && dt.closeConnection)
-            dt.closeConnection();
-    }
-    DomTerm.domTermLayoutClose(el, this.parent, true);
-}
-DomTerm.domTermLayoutClose = function(lcontent, r, from_handler=false) {
-    if (r) {
-        var p = r.parent;
-        if (p && p.type == 'stack'
-            && p.contentItems.length == 1
-            && p.parent.type == 'root'
-            && p.parent.contentItems.length == 1) {
-            DomTerm.windowClose();
-        } else {
-            DomTerm.selectNextPane(true, lcontent);
-            if (lcontent && lcontent.parentNode)
-                lcontent.parentNode.removeChild(lcontent);
-            if (! from_handler)
-                r.remove();
-        }
-    }
-}
+DomTermLayout._pendingTerminals = null;
 
 // The current lm_stack
-DomTerm._oldFocusedPane = null;
+DomTermLayout._oldFocusedPane = null;
 
 // The current (or previous) lm.items.Component
-DomTerm._oldFocusedItem = null;
+DomTermLayout._oldFocusedItem = null;
 
 // The current domterm-wrapper Element.
 // Same as DomTerm._oldFocusedItem.container._contentElement1
-DomTerm._oldFocusedContent = null;
+DomTermLayout._oldFocusedContent = null;
 
-DomTerm.showFocusedPane = function(item, lcontent = item.container._contentElement1) {
-    DomTerm.showFocusedPaneL(item, lcontent);
-    DomTerm.showFocusedPaneF(lcontent);
-};
-DomTerm.showFocusedPaneL = function(item, lcontent = item.container._contentElement1) {
-    if (DomTerm._oldFocusedItem != item) {
-        var stackPane = item && item.parent.element ? item.parent.element[0] : null;
-        if (DomTerm._oldFocusedPane != null)
-            DomTerm._oldFocusedPane.classList.remove("domterm-active");
-        if (stackPane != null)
-            stackPane.classList.add("domterm-active");
-        DomTerm._oldFocusedPane = stackPane;
-        DomTerm._oldFocusedItem = item;
+DomTermLayout.selectNextPane = function(forwards, wrapper=DomTermLayout._oldFocusedContent) {
+    let item = DomTermLayout._elementToLayoutItem(wrapper);
+    var r = item;
+    for (;;) {
+        var p = r.parent;
+        var i = DomTermLayout._indexInParent(r);
+        var nexti = forwards ? i + 1 : i - 1;
+        var next;
+        if (nexti >= 0 && nexti < p.contentItems.length)
+            next = p.contentItems[nexti];
+        else if (p.type == 'root')
+            next = p;
+        else
+            next = null;
+        if (next != null) {
+            while (next.contentItems.length > 0) {
+                next = forwards ? next.contentItems[0]
+                    : next.contentItems[next.contentItems.length-1];
+            }
+            if (next != item)
+                DomTermLayout._selectLayoutPane(next, "X");
+            return;
+        } else {
+            r = p;
+        }
+    }
+}
+
+DomTermLayout._indexInParent = function (component) {
+    var i = 0;
+    var parent = component.parent;
+    var ppChildren = parent.contentItems;
+    while (i < ppChildren.length && ppChildren[i] != component) i++;
+    return i;
+}
+
+DomTermLayout.addSibling = function(newItemConfig,
+                                    isColumn, addAfter=true)
+{
+    if (newItemConfig == null)
+        newItemConfig = DomTermLayout.newItemConfig;
+    else if (typeof newItemConfig == "number")
+        newItemConfig = Object.assign({sessionPid: newItemConfig },
+                                      DomTermLayout.newItemConfig);
+    if (! DomTermLayout.manager)
+        DomTermLayout.initialize();
+    var r = DomTermLayout._oldFocusedItem;
+    var type = isColumn ? 'column' : 'row';
+    if (r) {
+        var p = r.parent;
+        if (p && p.type == "stack") {
+            var pp = p.parent;
+            if (pp.type != type) {
+                var rowOrColumn = pp.layoutManager.createContentItem( { type: type }, p );
+                pp.replaceChild(p, rowOrColumn);
+                rowOrColumn.addChild(p, 0, true);
+                pp = rowOrColumn;
+            }
+            var i = DomTermLayout._indexInParent(p);
+            pp.addChild(newItemConfig, addAfter ? i+1: i);
+            return;
+        }
+        r.parent.addChild(newItemConfig); // FIXME index after r
     }
 };
-DomTerm.showFocusedPaneF = function(lcontent) {
-    if (DomTerm._oldFocusedContent != lcontent) {
-        if (DomTerm._oldFocusedContent != null)
-            DomTerm._oldFocusedContent.classList.remove("domterm-active");
+
+DomTermLayout.addTab = function(newItemConfig = null) {
+    if (newItemConfig == null)
+        newItemConfig = DomTermLayout.newItemConfig;
+    else if (typeof newItemConfig == "number")
+        newItemConfig = Object.assign({sessionPid: newItemConfig },
+                                      DomTermLayout.newItemConfig);
+    if (! DomTermLayout.manager)
+        DomTermLayout.initialize();
+    var r = DomTermLayout._oldFocusedItem;
+    if (r)
+        r.parent.addChild(newItemConfig); // FIXME index after r
+};
+
+DomTermLayout.showFocusedPane = function(item, lcontent = item.container._contentElement1) {
+    DomTermLayout.showFocusedPaneL(item, lcontent);
+    DomTermLayout.showFocusedPaneF(lcontent);
+};
+DomTermLayout.showFocusedPaneL = function(item, lcontent = item.container._contentElement1) {
+    if (DomTermLayout._oldFocusedItem != item) {
+        var stackPane = item && item.parent.element ? item.parent.element[0] : null;
+        if (DomTermLayout._oldFocusedPane != null)
+            DomTermLayout._oldFocusedPane.classList.remove("domterm-active");
+        if (stackPane != null)
+            stackPane.classList.add("domterm-active");
+        DomTermLayout._oldFocusedPane = stackPane;
+        DomTermLayout._oldFocusedItem = item;
+    }
+};
+DomTermLayout.showFocusedPaneF = function(lcontent) {
+    if (DomTermLayout._oldFocusedContent != lcontent) {
+        if (DomTermLayout._oldFocusedContent != null)
+            DomTermLayout._oldFocusedContent.classList.remove("domterm-active");
         if (lcontent != null)
             lcontent.classList.add("domterm-active");
 
-        DomTerm._oldFocusedContent = lcontent;
+        DomTermLayout._oldFocusedContent = lcontent;
     }
 };
-/* Must be called in layout-manager context. */
-DomTerm._selectLayoutPane = function(component, originMode) {
-    if (DomTerm.useIFrame) {
-        DomTerm._focusChild(component.container._contentElement1, originMode);
-    } else if (! DomTerm.useXtermJs) {
-        var dt = DomTerm.layoutItemToDomTerm(component);
-        DomTerm.setFocus(dt);
-        if (dt != null)
-            dt.maybeFocus();
-    }
-    component.parent.setActiveContentItem(component);
-    DomTerm._focusChild(component.container._contentElement1, originMode);
-}
-DomTerm._focusChild = function(iframe, originMode) {
-    let oldContent = DomTerm._oldFocusedContent;
+DomTermLayout._focusChild = function(iframe, originMode) {
+    let oldContent = DomTermLayout._oldFocusedContent;
     if (iframe !== oldContent || originMode=="C") {
         if (DomTerm.useIFrame) {
             if (oldContent != null)
@@ -222,102 +141,37 @@ DomTerm._focusChild = function(iframe, originMode) {
     }
 }
 
-/* Can be called in either DomTerm sub-window or layout-manager context. */
-DomTerm.selectNextPane = function(forwards, wrapper=DomTerm._oldFocusedContent) {
-    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-        DomTerm.sendParentMessage("domterm-next-pane", forwards);
-        return;
+DomTermLayout._elementToLayoutItem = function(goal, item = DomTermLayout.manager.root) {
+    if (item.element[0] == goal
+        || (item.container && item.container.getElement()[0] == goal))
+        return item;
+    var citems = item.contentItems;
+    for (var i = 0; i < citems.length; i++) {
+        var r = DomTermLayout._elementToLayoutItem(goal, citems[i]);
+        if (r)
+            return r;
     }
-    let item = DomTerm._elementToLayoutItem(wrapper);
-    var r = item;
-    for (;;) {
-        var p = r.parent;
-        var i = DomTerm._indexInParent(r);
-        var nexti = forwards ? i + 1 : i - 1;
-        var next;
-        if (nexti >= 0 && nexti < p.contentItems.length)
-            next = p.contentItems[nexti];
-        else if (p.type == 'root')
-            next = p;
-        else
-            next = null;
-        if (next != null) {
-            while (next.contentItems.length > 0) {
-                next = forwards ? next.contentItems[0]
-                    : next.contentItems[next.contentItems.length-1];
-            }
-            if (next != item)
-                DomTerm._selectLayoutPane(next, "X");
-            return;
-        } else {
-            r = p;
-        }
-    }
-}
-DomTerm._indexInParent = function (component) {
-    var i = 0;
-    var parent = component.parent;
-    var ppChildren = parent.contentItems;
-    while (i < ppChildren.length && ppChildren[i] != component) i++;
-    return i;
+    return null;
 }
 
-// True if pane should be split into a vertical stack, with new pane --below.
-DomTerm._splitVertically = function(dt) {
-    return dt.numColumns < 3*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
+DomTermLayout._selectLayoutPane = function(component, originMode) {
+    if (DomTerm.useIFrame) {
+        DomTermLayout._focusChild(component.container._contentElement1, originMode);
+    } else if (! DomTerm.useXtermJs) {
+        let element = component.container.getElement()[0].firstChild;
+        let dt = element && element.classList.contains("domterm")
+            ? element.terminal
+            : null;
+        DomTerm.setFocus(dt);
+        if (dt != null)
+            dt.maybeFocus();
+    }
+    component.parent.setActiveContentItem(component);
+    DomTermLayout._focusChild(component.container._contentElement1, originMode);
 }
 
-/* Can only be called in layout-manager context. */
-DomTerm.layoutAddSibling = function(dt, newItemConfig = null,
-                                    isColumn=DomTerm._splitVertically(dt),
-                                    addAfter=true)
-{
-    if (newItemConfig == null)
-        newItemConfig = DomTerm.newItemConfig;
-    else if (typeof newItemConfig == "number")
-        newItemConfig = Object.assign({sessionPid: newItemConfig },
-                                      DomTerm.newItemConfig);
-    if (! DomTerm.layoutManager)
-        DomTerm.layoutInit(dt);
-    var r = dt == null ? DomTerm._oldFocusedItem
-        : DomTerm.domTermToLayoutItem(dt);
-    var type = isColumn ? 'column' : 'row';
-    if (r) {
-        var p = r.parent;
-        if (p && p.type == "stack") {
-            var pp = p.parent;
-            if (pp.type != type) {
-                var rowOrColumn = pp.layoutManager.createContentItem( { type: type }, p );
-                pp.replaceChild(p, rowOrColumn);
-                rowOrColumn.addChild(p, 0, true);
-                pp = rowOrColumn;
-            }
-            var i = DomTerm._indexInParent(p);
-            pp.addChild(newItemConfig, addAfter ? i+1: i);
-            return;
-        }
-        r.parent.addChild(newItemConfig); // FIXME index after r
-    }
-};
-
-DomTerm.layoutAddTab = function(dt, newItemConfig = null) {
-    if (newItemConfig == null)
-        newItemConfig = DomTerm.newItemConfig;
-    else if (typeof newItemConfig == "number")
-        newItemConfig = Object.assign({sessionPid: newItemConfig },
-                                      DomTerm.newItemConfig);
-    if (dt == null)
-        dt = DomTerm.focusedTerm;
-    if (! DomTerm.layoutManager)
-        DomTerm.layoutInit(dt);
-    var r = dt == null ? DomTerm._oldFocusedItem
-        : DomTerm.domTermToLayoutItem(dt);
-    if (r)
-        r.parent.addChild(newItemConfig); // FIXME index after r
-};
-
-// item is an iframe if useIFrame; a DomTerm otherwise.
-DomTerm.setLayoutTitle = function(item, title, wname) {
+// item is a domterm-wrapper (an iframe if useIFrame)
+DomTermLayout.setLayoutTitle = function(item, title, wname) {
     title = DomTerm.escapeText(title);
     if (wname) {
         wname = DomTerm.escapeText(wname);
@@ -326,8 +180,8 @@ DomTerm.setLayoutTitle = function(item, title, wname) {
     let r;
     if (! DomTerm.useIFrame)
         r = DomTerm.domTermToLayoutItem(item);
-    else if (DomTerm.layoutManager)
-        r = DomTerm._elementToLayoutItem(item);
+    else if (DomTermLayout.manager)
+        r = DomTermLayout._elementToLayoutItem(item);
     else {
         item.layoutTitle = title;
         return;
@@ -337,7 +191,7 @@ DomTerm.setLayoutTitle = function(item, title, wname) {
     }
 }
 
-DomTerm.popoutWindow = function(item, dt) {
+DomTermLayout.popoutWindow = function(item, dt = null) {
     var wholeStack = item.type == 'stack';
     var sizeElement = item.element[0];
     if (! wholeStack)
@@ -347,7 +201,10 @@ DomTerm.popoutWindow = function(item, dt) {
     // FIXME adjust for menu bar height
     function encode(item) {
         if (item.componentName == "domterm") {
-            var topNode = item.container._contentElement1.firstChild;
+            // FIXME item.container._contentElement is <iframe>
+            let topNode = item.container._contentElement1;
+            if (topNode.firstChild)
+                topNode = topNode.firstChild;
             return '{"pid":'+topNode.getAttribute("pid")+'}';
         } else if (item.componentName == "browser")
             return '{"url":'+JSON.stringify(item.config.url)+'}';
@@ -355,9 +212,10 @@ DomTerm.popoutWindow = function(item, dt) {
             return "{}";
     }
     function remove(item) {
-        if (item.componentName == "domterm")
-            DomTerm.detach(item.container._contentElement1.firstChild.terminal);
-        else {
+        if (item.componentName == "domterm") {
+            DomTerm.doNamedCommand('detach-session');
+            //DomTerm.detach(item.container._contentElement1.firstChild.terminal);
+        } else {
             let lcontent = item.container._contentElement1;
             if (lcontent && lcontent.parentNode)
                 lcontent.parentNode.removeChild(lcontent);
@@ -379,24 +237,26 @@ DomTerm.popoutWindow = function(item, dt) {
         e = encode(item);
     }
 
-    let newurl = DomTerm.mainLocation+"#open="+encodeURIComponent(e);
+    let newurl = DomTerm.topLocation+"#open="+encodeURIComponent(e);
     DomTerm.openNewWindow(dt, { width: w, height: h, url: newurl });
+    let savedContent = DomTermLayout._oldFocusedContent;
     for (var i = 0; i < toRemove.length; i++) {
-        remove(toRemove[i]);
+        let item = toRemove[i];
+        DomTermLayout._oldFocusedContent = item.container._contentElement1;
+        if (DomTermLayout._oldFocusedContent == savedContent)
+            savedContent = null;
+        remove(item);
     }
+    DomTermLayout._oldFocusedContent = savedContent;
 }
 
-DomTerm.layoutConfig = {
+DomTermLayout.config = {
     settings:  { showMaximiseIcon: false,
                  popoutWholeStack: function(e) { return e.ctrlKey; },
                  onPopoutClick: function(item, event) {
                      var aitem = item.type != 'stack' ? item
                          : item._activeContentItem;
-                     var dt = DomTerm.layoutItemToDomTerm(aitem);
-                     if (! dt)
-                         dt = DomTerm.focusedTerm;
-                     if (dt)
-                         DomTerm.popoutWindow(item, dt);
+                     DomTermLayout.popoutWindow(aitem);
                  }},
     content: [{
         type: 'component',
@@ -407,33 +267,80 @@ DomTerm.layoutConfig = {
 	borderWidth: 1
     }
 };
-DomTerm.newItemConfig = {
+
+DomTermLayout.newItemConfig = {
     type: 'component',
     componentName: 'domterm',
     componentState: 'X'
 };
 
+/* bogus?
 DomTerm.layoutResized = function(event) {
     var dt = this.terminal;
     if (dt && dt._rulerNode)
         dt.resizeHandler();
 }
+*/
 
-DomTerm.layoutInit = function(term) {
+DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
+    console.log("layoutClose");
+    if (r) {
+        var p = r.parent;
+        if (p && p.type == 'stack'
+            && p.contentItems.length == 1
+            && p.parent.type == 'root'
+            && p.parent.contentItems.length == 1) {
+            DomTerm.windowClose();
+        } else {
+            DomTermLayout.selectNextPane(true, lcontent);
+            if (lcontent && lcontent.parentNode)
+                lcontent.parentNode.removeChild(lcontent);
+            if (! from_handler)
+                r.remove();
+        }
+    }
+}
+
+DomTermLayout.layoutClosed = function(event) {
+    var el = this.getElement()[0];
+    if (el.tagName !== "IFRAME") {
+        var dt = el.firstChild.terminal;
+        if (dt && dt.closeConnection)
+            dt.closeConnection();
+    }
+    DomTermLayout.layoutClose(el, this.parent, true);
+}
+
+DomTermLayout._initTerminal = function(sessionPid, container) {
+    let wrapped;
+    if (DomTerm.useIFrame) {
+        let url = DomTerm.mainLocation;
+        if (sessionPid)
+            url += (url.indexOf('#') >= 0 ? '&' : '#')
+            + "connect-pid="+sessionPid;
+        wrapped = DomTermLayout.makeIFrameWrapper(url);
+        if (container && DomTermLayout._oldFocusedItem == null)
+            DomTermLayout._oldFocusedItem = container.parent;
+    } else {
+        let name = DomTerm.freshName();
+        let el = DomTerm.makeElement(name);
+        wrapped = el;
+        wrapped.name = name;
+        var query = sessionPid ? "connect-pid="+sessionPid : null;
+        DTerminal.connectHttp(el, query);
+    }
+    return wrapped;
+}
+
+DomTermLayout.initialize = function() {
     let top = DomTerm.layoutTop || document.body;
-    let lcontent = DomTerm._oldFocusedContent;
-    DomTerm.layoutManager = new GoldenLayout(DomTerm.layoutConfig, top);
-    DomTerm.layoutManager.registerComponent( 'domterm', function( container, componentConfig ){
+    let lcontent = DomTermLayout._oldFocusedContent;
+    DomTermLayout.manager = new GoldenLayout(DomTermLayout.config, top);
+    DomTermLayout.manager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
         var name;
         let wrapped;
-        /*if (term != null) {
-            el = term.topNode;
-            term.detachResizeSensor();
-            name = term.sessionName();
-            term = null;
-            wrapped = el.parentNode;
-        } else*/ if (lcontent != null) {
+        if (lcontent != null) {
             wrapped = lcontent;
             container._contentElement1 = wrapped;
             if (DomTerm.useIFrame) {
@@ -444,86 +351,65 @@ DomTerm.layoutInit = function(term) {
             lcontent = null;
         } else {
             var config = container._config;
-            var sessionPid = config.sessionPid;
-            if (DomTerm.useIFrame) {
-                let url = DomTerm.mainLocation;
-                if (sessionPid)
-                    url += (url.indexOf('#') >= 0 ? '&' : '#')
-                    + "connect-pid="+sessionPid;
-                wrapped = DomTerm.makeIFrameWrapper(url);
-                if (DomTerm._oldFocusedItem == null)
-                    DomTerm._oldFocusedItem = container.parent;
-                name = wrapped.name;
-            } else {
-                name = DomTerm.freshName();
-                el = DomTerm.makeElement(name);
-                wrapped = el;
-            }
+            wrapped = DomTermLayout._initTerminal(config.sessionPid, container);
+            name = wrapped.name;
             container._contentElement1 = wrapped;
-            if (DomTerm._pendingTerminals) {
-                DomTerm._pendingTerminals.push(el);
-                if (config.sessionPid)
-                    el.setAttribute("pid", sessionPid);
-            } else if (! DomTerm.useIFrame) {
-                var query = sessionPid ? "connect-pid="+sessionPid : null;
-                DomTerm.connectHttp(el, query);
-            }
         }
-        DomTerm.showFocusedPaneL(container.parent, wrapped);
+        DomTermLayout.showFocusedPaneL(container.parent, wrapped);
         wrapped.classList.add("lm_content");
         container.setTitle(name);
         //if (! DomTerm.useXtermJs)
         //container.on('resize', DomTerm.layoutResized, wrapped);
-        container.on('destroy', DomTerm.domTermLayoutClosed, container);
+        container.on('destroy', DomTermLayout.layoutClosed, container);
 
         if (top !== document.body)
-            new ResizeSensor(DomTerm.layoutManager.container,
-                             function() { console.log("layout/resize"); DomTerm.layoutManager.updateSize(); });
+            new ResizeSensor(DomTermLayout.manager.container,
+                             function() { DomTermLayout.manager.updateSize(); });
     });
 
-    DomTerm.layoutManager.registerComponent( 'view-saved', function( container, componentConfig ){
-        container.on('destroy', DomTerm.domTermLayoutClosed, container);
+    DomTermLayout.manager.registerComponent( 'view-saved', function( container, componentConfig ){
+        container.on('destroy', DomTermLayout.layoutClosed, container);
         let el = viewSavedFile(container._config.url);
         container._contentElement1 = el;
         el.classList.add("lm_content");
-        container.on('resize', DomTerm.layoutResized, el);
-        container.on('destroy', DomTerm.domTermLayoutClosed, container);
+        //container.on('resize', DomTerm.layoutResized, el);
+        container.on('destroy', DomTermLayout.layoutClosed, container);
     });
 
-    DomTerm.layoutManager.registerComponent( 'browser', function( container, componentConfig ){
-        container.on('destroy', DomTerm.domTermLayoutClosed, container);
-        let el = DomTerm.makeIFrameWrapper(container._config.url, false);
+    DomTermLayout.manager.registerComponent( 'browser', function( container, componentConfig ){
+        container.on('destroy', DomTermLayout.layoutClosed, container);
+        let el = DomTermLayout.makeIFrameWrapper(container._config.url, false);
         container._contentElement1 = el;
         el.classList.add("lm_content");
-        container.on('resize', DomTerm.layoutResized, el);
-        container.on('destroy', DomTerm.domTermLayoutClosed, container);
+        //container.on('resize', DomTerm.layoutResized, el);
+        container.on('destroy', DomTermLayout.layoutClosed, container);
     });
 
     function activeContentItemHandler(item) {
         if (item.config.componentName == "browser")
             DomTerm.setTitle(item.config.url);
-        DomTerm._focusChild(item.container._contentElement1, "A");
-        DomTerm.showFocusedPane(item);
+        DomTermLayout._focusChild(item.container._contentElement1, "A");
+        DomTermLayout.showFocusedPane(item);
     }
 
     function checkClick(event) {
         for (var t = event.target; t instanceof Element; t = t.parentNode) {
             if (t.classList.contains("lm_header")) {
-                var item = DomTerm._elementToLayoutItem(t.parentNode);
-                DomTerm._selectLayoutPane(item._activeContentItem, "C");
+                var item = DomTermLayout._elementToLayoutItem(t.parentNode);
+                DomTermLayout._selectLayoutPane(item._activeContentItem, "C");
                 return;
             }
         }
     }
 
-    DomTerm.layoutManager.init();
-    DomTerm.layoutManager.on('activeContentItemChanged',
+    DomTermLayout.manager.init();
+    DomTermLayout.manager.on('activeContentItemChanged',
                              activeContentItemHandler);
-    DomTerm.layoutManager.root.element[0]
+    DomTermLayout.manager.root.element[0]
         .addEventListener('click', checkClick, false);
-    DomTerm.layoutManager.on('stateChanged',
+    DomTermLayout.manager.on('stateChanged',
                              function() {
-                                 let item = DomTerm._oldFocusedItem;
+                                 let item = DomTermLayout._oldFocusedItem;
                                  if (item && item.parent
                                      && item.parent.type == "stack") {
                                      let st = item.parent;
@@ -538,19 +424,19 @@ DomTerm.layoutInit = function(term) {
                              });
 }
 
-DomTerm._initSavedLayout = function(data) {
-        if (data.pid) {
-            var topNode = DomTerm.makeElement(DomTerm.freshName());
-            DomTerm.connectHttp(topNode, "connect-pid="+data.pid);
+DomTermLayout.initSaved = function(data) {
+    console.log("initSaved "+data);
+    if (data.pid) {
+        DomTermLayout._initTerminal(data.pid, null);
         } else if (data instanceof Array) {
             var n = data.length;
-            DomTerm._pendingTerminals = new Array();
+            DomTermLayout._pendingTerminals = new Array();
             for (var i = 0; i < n; i++) {
                 var w = data[i];
                 var newItemConfig = null;
                 if (w.pid) {
                     newItemConfig = Object.assign({sessionPid: w.pid },
-                                                  DomTerm.newItemConfig);
+                                                  DomTermLayout.newItemConfig);
                 } else if (w.url) {
                     newItemConfig = {type: 'component',
                                      componentName: 'browser',
@@ -558,21 +444,46 @@ DomTerm._initSavedLayout = function(data) {
                 }
                 if (newItemConfig) {
                     if (i == 0) {
-                        DomTerm.layoutConfig.content = [newItemConfig];
-                        DomTerm.layoutInit(null);
+                        DomTermLayout.config.content = [newItemConfig];
+                        DomTermLayout.initialize();
                     } else {
-                        var stack = DomTerm.layoutManager.root.contentItems[0];
+                        var stack = DomTermLayout.manager.root.contentItems[0];
                         stack.addChild(newItemConfig);
                     }
                 }
             }
-            n = DomTerm._pendingTerminals.length;
+            n = DomTermLayout._pendingTerminals.length;
             for (var i = 0; i < n; i++) {
-                let el = DomTerm._pendingTerminals[i];
+                let el = DomTermLayout._pendingTerminals[i];
                 var pid = el.getAttribute("pid");
                 var query = pid ? "connect-pid="+pid : null;
-                DomTerm.connectHttp(el, query);
+                Terminal.connectHttp(el, query);
             }
-            DomTerm._pendingTerminals = null;
+            DomTermLayout._pendingTerminals = null;
         }
+}
+
+DomTermLayout.makeIFrameWrapper = function(location, terminal=true,
+                                     parent=DomTerm.layoutTop) {
+    let ifr = document.createElement("iframe");
+    let name = DomTerm.freshName();
+    ifr.setAttribute("name", name);
+    if (terminal) {
+        if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
+            location = location
+                + (location.indexOf('#') >= 0 ? '&' : '#')
+                + "server-key=" + DomTerm.server_key;
+        }
+    }
+    ifr.setAttribute("src", location);
+    ifr.setAttribute("class", "domterm-wrapper");
+    if (DomTermLayout._oldFocusedContent == null)
+        DomTermLayout._oldFocusedContent = ifr;
+    for (let ch = parent.firstChild; ; ch = ch.nextSibling) {
+        if (ch == null || ch.tagName != "IFRAME") {
+            parent.insertBefore(ifr, ch);
+            break;
+        }
+    }
+    return ifr;
 }

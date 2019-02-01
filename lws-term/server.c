@@ -1454,36 +1454,41 @@ static const char * standard_stylesheets_simple[] = {
 #endif
     NULL
 };
-static const char * standard_jslibs[] = {
-    "hlib/screenfull.min.js",
-    "hlib/jquery.min.js",
-    "hlib/goldenlayout.js",
-    "hlib/domterm-layout.js",
-    "hlib/domterm-menus.js",
-    "hlib/qwebchannel.js",
-    "hlib/jsMenus.js",
-    "hlib/domterm-client.js",
-#if WITH_XTERMJS
-    "hlib/xterm.js",
-    "hlib/fit.js",
-#endif
-    NULL
+struct lib_info {
+    const char *file;
+    int options;
 };
-static const char * standard_jslibs_simple[] = {
-    "hlib/domterm-layout.js",
-    "hlib/domterm-client.js",
+static struct lib_info standard_jslibs[] = {
+    {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/FileSaver.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/ResizeSensor.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/wcwidth.js", LIB_WHEN_SIMPLE},
+    {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE},
+    {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/screenfull.min.js", LIB_WHEN_OUTER},
+    {"hlib/jquery.min.js", LIB_WHEN_OUTER},
+    {"hlib/goldenlayout.js", LIB_WHEN_OUTER},
+    {"hlib/domterm-layout.js", LIB_WHEN_OUTER},
+    {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
+    {"hlib/qwebchannel.js", LIB_WHEN_OUTER},
+    {"hlib/jsMenus.js", LIB_WHEN_OUTER},
+    {"hlib/node-sixel.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
 #if WITH_XTERMJS
-    "hlib/xterm.js",
-    "hlib/fit.js",
+    {"hlib/xterm.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/fit.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #endif
-    NULL
+    {NULL, 0},
 };
 
 void
-make_html_text(struct sbuf *obuf, int port, bool simple,
+make_html_text(struct sbuf *obuf, int port, int hoptions,
                const char *body_text, int body_length)
 {
     char base[40];
+    bool simple = (hoptions & LIB_WHEN_OUTER) == 0;
     sprintf(base, "http://%s:%d/", "127.0.0.1", port);
     sbuf_printf(obuf,
                 "<!DOCTYPE html>\n"
@@ -1499,28 +1504,21 @@ make_html_text(struct sbuf *obuf, int port, bool simple,
                     "<link type='text/css' rel='stylesheet' href='%s'>\n",
                     *p);
     }
-    sbuf_printf(obuf,
-                "<script type='text/javascript' src='hlib/domterm-all.js'>"
-                " </script>\n");
-    if (! simple) {
+    struct lib_info *lib;
+    for (lib = standard_jslibs; lib->file != NULL; lib++) {
+        char *jstype = (lib->options & LIB_AS_MODULE) ? "module" : "text/javascript";
+        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER)) != 0)
+            sbuf_printf(obuf,
+                        "<script type='%s' src='%s'> </script>\n",
+                        jstype, lib->file);
+    }
+    if ((hoptions & (LIB_WHEN_SIMPLE|LIB_WHEN_NOFRAMES)) == 0)
         sbuf_printf(obuf,
                     "<script type='text/javascript'>\n"
                     "DomTerm.server_port = %d;\n"
                     "DomTerm.server_key = '%.*s';\n"
-                    "if (DomTerm.isElectron()) {\n"
-                    "    window.nodeRequire = require;\n"
-                    "    delete window.require;\n"
-                    "    delete window.exports;\n"
-                    "    delete window.module;\n"
-                    "}\n"
                     "</script>\n",
                     port, SERVER_KEY_LENGTH, server_key);
-    }
-    for (p = simple ? standard_jslibs_simple : standard_jslibs; *p; p++) {
-        sbuf_printf(obuf,
-                    "<script type='text/javascript' src='%s'> </script>\n",
-                    *p);
-    }
     sbuf_printf(obuf,
                 "</head>\n"
                 "<body>%.*s</body>\n"
@@ -1543,7 +1541,7 @@ make_html_file(int port)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
     struct sbuf obuf[1];
     sbuf_init(obuf);
-    make_html_text(obuf, port, false, "", 0);
+    make_html_text(obuf, port, LIB_WHEN_OUTER, "", 0);
 
     int hfile = open(main_html_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
     if (hfile < 0
