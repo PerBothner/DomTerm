@@ -708,10 +708,10 @@ Terminal.SEEN_ESC_LBRACKET_EXCLAMATION_STATE = 4;
 Terminal.SEEN_ESC_LBRACKET_GREATER_STATE = 5;
 /** We have seen ESC '[' ' '. */
 Terminal.SEEN_ESC_LBRACKET_SPACE_STATE = 6;
-/** We have seen ESC ']'. */
-Terminal.SEEN_ESC_RBRACKET_STATE = 7;
-/** We have seen ESC ']' numeric-parameter ';'. */
-Terminal.SEEN_ESC_RBRACKET_TEXT_STATE = 8;
+/** We have seen OSC: ESC ']' or 0x9d. */
+Terminal.SEEN_OSC_STATE = 7;
+/** We have seen OSC numeric-parameter ';'. */
+Terminal.SEEN_OSC_TEXT_STATE = 8;
 /** We have seen ESC '#'. */
 Terminal.SEEN_ESC_SHARP_STATE = 9;
 Terminal.SEEN_ESC_CHARSET0 = 10;
@@ -726,6 +726,7 @@ Terminal.SEEN_CR = 17;
 Terminal.SEEN_ERROUT_END_STATE = 18;
 Terminal.SEEN_DCS_STATE = 19;
 Terminal.SEEN_DCS_TEXT_STATE = 20;
+Terminal.SEEN_ACS_STATE = 21;
 
 // Possible values for _widthMode field of elements in lineStarts table.
 // This is related to the _widthColumns field in the same elements,
@@ -1051,6 +1052,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
 };
 
 Terminal.prototype.saveCursor = function() {
+    // https://github.com/PerBothner/DomTerm/issues/61#issuecomment-453873818
     this.sstate.savedCursor = {
         line: this.getCursorLine(),
         column: this.getCursorColumn(),
@@ -4800,7 +4802,19 @@ Terminal.prototype.handleControlSequence = function(last) {
         }
         break;
     case 116 /*'t'*/: // Xterm window manipulation.
+        var w, h;
         switch (this.getParameter(0, 0)) {
+        case 14:
+            if (this.getParameter(1, 0) == 2) {
+                w = window.outerWidth;
+                h = window.outerHeight;
+            } else {
+                w = this.availWidth;
+                h = this.availHeight;
+            }
+            this.processResponseCharacters("\x1B[4;"+Math.trunc(h)
+                                           +";"+Math.trunc(w)+"t");
+            break;
         case 18: // Report the size of the text area in characters.
             this.processResponseCharacters("\x1B[8;"+this.numRows
                                            +";"+this.numColumns+"t");
@@ -5911,7 +5925,22 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
 
 
 Terminal.prototype.handleDeviceControlString = function(params, text) {
-    if (text.length > 0 && text.charCodeAt(0) === 113) { // 'q'
+    if (text.length == 0)
+        return;
+    if (text.length > 2 && text.charCodeAt(0) == 36
+        && text.charCodeAt(1) == 113) { // DCS $ q Request Status String DECRQSS
+        let response = null;
+        /*
+        switch (text.substring(2)) {
+        case xxx: response = "???"; break;
+        }
+        */
+        // DECRPSS—Report Selection or Setting
+        this.processResponseCharacters(response ? "\x900$r"+response+"\x9C"
+                                       : "\x901$r\x9C");
+        return;
+    }
+    if (text.charCodeAt(0) === 113) { // 'q'
         let six = new SixelImage();
         six.writeString(text, 1);
         let w = six.width, h = six.height;
@@ -6808,7 +6837,10 @@ Terminal.prototype.insertString = function(str) {
                 this.controlSequenceState = Terminal.INITIAL_STATE;
                 break;
             case 93 /*']'*/: // OSC
-                this.controlSequenceState = Terminal.SEEN_ESC_RBRACKET_STATE;
+            case 95 /*'\\'*/: // Application Program Comman (APC)
+                this.controlSequenceState =
+                    ch == 93 ? Terminal.SEEN_OSC_STATE
+                    : Terminal.SEEN_APC_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
                 this._textParameter = "";
@@ -6872,7 +6904,7 @@ Terminal.prototype.insertString = function(str) {
             }
             continue;
 
-        case Terminal.SEEN_ESC_RBRACKET_STATE:
+        case Terminal.SEEN_OSC_STATE:
             // if (ch == 4) // set/read color palette
             if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                 var plen = this.parameters.length;
@@ -6881,7 +6913,7 @@ Terminal.prototype.insertString = function(str) {
                 this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
             }
             else if (ch == 59 /*';'*/ || ch == 7 || ch == 0 || ch == 27) {
-                this.controlSequenceState = Terminal.SEEN_ESC_RBRACKET_TEXT_STATE;
+                this.controlSequenceState = Terminal.SEEN_OSC_TEXT_STATE;
                 this.parameters.push("");
                 if (ch != 59)
                     i--; // re-read 7 or 0
@@ -6891,8 +6923,9 @@ Terminal.prototype.insertString = function(str) {
                 prevEnd = i + 1; columnWidth = 0;
             }
             continue;
-        case Terminal.SEEN_ESC_RBRACKET_TEXT_STATE:
+        case Terminal.SEEN_OSC_TEXT_STATE:
         case Terminal.SEEN_DCS_TEXT_STATE:
+        case Terminal.SEEN_APC_STATE:
             if (ch == 7 || ch == 0 || ch == 0x9c || ch == 27) {
                 this._textParameter =
                     this._textParameter + str.substring(prevEnd, i);
@@ -6900,9 +6933,11 @@ Terminal.prototype.insertString = function(str) {
                     if (state === Terminal.SEEN_DCS_TEXT_STATE) {
                         this.handleDeviceControlString(this.parameters, this._textParameter);
                     }
-                    else {
+                    else if (state == Terminal.SEEN_OSC_TEXT_STATE) {
                         this.handleOperatingSystemControl(this.parameters[0], this._textParameter);
-                   }
+                    } else {
+                        // APC ignored
+                    }
                 } catch (e) {
                     console.log("caught "+e);
                 }
@@ -7131,22 +7166,18 @@ Terminal.prototype.insertString = function(str) {
                 this.insertSimpleOutput(str, prevEnd, i, columnWidth);
                 prevEnd = i + 1; columnWidth = 0;
                 break;
-            case 0x9b: // CSI
-                this.controlSequenceState = Terminal.SEEN_ESC_LBRACKET_STATE;
-                this.parameters.length = 1;
-                this.parameters[0] = null;
-                break;
             case 0x9c: // ST (String Terminator
                 this.controlSequenceState = Terminal.INITIAL_STATE;
                 break;
+            case 0x90: // DCS
+            case 0x9b: // CSI
             case 0x9d: // OSC
-                this.controlSequenceState = Terminal.SEEN_ESC_RBRACKET_STATE;
-                this.parameters.length = 1;
-                this.parameters[0] = null;
-                this._textParameter = "";
-                break;
-            case 0x90: // DCS;
-                this.controlSequenceState = Terminal.SEEN_DCS_STATE;
+            case 0x9F: // APC
+                this.controlSequenceState =
+                    ch == 0x9b ? Terminal.SEEN_ESC_LBRACKET_STATE
+                    : ch == 0x9d ? Terminal.SEEN_OSC_STAT
+                    : ch == 0x90 ? Terminal.SEEN_DCS_STATE
+                    : Terminal.SEEN_APC_STATE;
                 this.parameters.length = 1;
                 this.parameters[0] = null;
                 this._textParameter = "";
@@ -7203,7 +7234,7 @@ Terminal.prototype.insertString = function(str) {
         this.insertSimpleOutput(str, prevEnd, i, columnWidth);
         //this.currentCursorColumn = column;
     }
-    if (this.controlSequenceState === Terminal.SEEN_ESC_RBRACKET_TEXT_STATE
+    if (this.controlSequenceState === Terminal.SEEN_OSC_TEXT_STATE
        || this.controlSequenceState === Terminal.SEEN_DCS_TEXT_STATE) {
         this._textParameter = this._textParameter + str.substring(prevEnd, i);
     }
