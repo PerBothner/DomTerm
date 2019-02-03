@@ -3149,9 +3149,9 @@ Terminal.prototype._mouseHandler = function(ev) {
             //var n = goalLine - curLine;
             var moveVert = "";
             if (goalLine > curLine)
-                moveVert = this.specialKeySequence("", "B", null);
+                moveVert = this.keyNameToChars("Down");
             else if (goalLine < curLine)
-                moveVert = this.specialKeySequence("", "A", null);
+                moveVert = this.keyNameToChars("Up");
             output = moveVert.repeat(n);
             // DOWN (or UP if negative) (goalLine-curLine).
         } else {
@@ -3162,11 +3162,11 @@ Terminal.prototype._mouseHandler = function(ev) {
                 nLeft = -delta;
         }
         if (nLeft > 0)  {
-            var moveLeft = this.specialKeySequence("", "D", null);
+            var moveLeft = this.keyNameToChars("Left");
             output = moveLeft.repeat(nLeft) + output;
         }
         if (nRight > 0)  {
-            var moveRight = this.specialKeySequence("", "C", null);
+            var moveRight = this.keyNameToChars("Right");
             output = output + moveRight.repeat(nRight);
         }
         this.processInputCharacters(output);
@@ -6088,7 +6088,7 @@ Terminal.prototype.handleOperatingSystemControl = function(code, text) {
             let afterCount = this.strWidthInContext(afterText, this._inputLine);
             if (afterCount > 0) {
                 this.processInputCharacters
-                    (this.specialKeySequence("", "D", null).repeat(afterCount));
+                    (this.keyNameToChars("Left").repeat(afterCount));
             }
             this._doDeferredDeletion();
         }
@@ -6837,7 +6837,7 @@ Terminal.prototype.insertString = function(str) {
                 this.controlSequenceState = Terminal.INITIAL_STATE;
                 break;
             case 93 /*']'*/: // OSC
-            case 95 /*'\\'*/: // Application Program Comman (APC)
+            case 95 /*'\\'*/: // Application Program Command (APC)
                 this.controlSequenceState =
                     ch == 93 ? Terminal.SEEN_OSC_STATE
                     : Terminal.SEEN_APC_STATE;
@@ -8247,31 +8247,6 @@ Terminal.prototype.processEnter = function() {
     this.reportText(text, this._clientPtyExtProc ? "\n" : this.keyEnterToString());
 };
 
-/** param is either a numerical code, as as string (e.g. "15" for F5);
-    or "O" for ones that use SS3 (F1 to F4);
-    or "" for ones that use CSI or SS3 depending on application mode.
-*/
-Terminal.prototype.specialKeySequence = function(param, last, event) {
-    var csi = "\x1B[";
-    var mods = 0;
-    if (event) {
-        if (event.shiftKey)
-            mods += 1;
-        if (event.altKey)
-            mods += 2;
-        if (event.ctrlKey)
-            mods += 4;
-        if (event.metaKey)
-            mods += 8;
-    }
-    if (mods > 0)
-        return csi+(param==""||param=="O"?"1":param)+";"+(mods+1)+last;
-    else if ((this.sstate.applicationCursorKeysMode && param == "") || param == "O")
-        return "\x1BO"+last;
-    else
-        return csi+param+last;
-};
-
 Terminal.prototype.keyEnterToString  = function() {
     if ((this.sstate.automaticNewlineMode & 2) != 0)
         return "\r\n";
@@ -8279,83 +8254,93 @@ Terminal.prototype.keyEnterToString  = function() {
         return "\r";
 }
 
-Terminal.prototype.keyDownToString = function(event) {
-    var key = event.keyCode ? event.keyCode : event.which;
-    switch (key) {
-    case 8: /* Backspace */ return "\x7F";
-    case 9: /* Tab */   return event.shiftKey ? "\x1B[Z" : "\t";
-    case 13: /* Return/Enter */
-        return event.altKey ? "\x1B\r" : this.keyEnterToString();
-    case 27: /* Esc */   return "\x1B";
-    case 33 /* PageUp*/: return this.specialKeySequence("5", "~", event);
-    case 34 /* PageDown*/:return this.specialKeySequence("6", "~", event);
-    case 35 /*End*/:     return this.specialKeySequence("", "F", event);
-    case 36 /*Home*/:    return this.specialKeySequence("", "H", event);
-    case 37 /*Left*/:  return this.specialKeySequence("", "D", event);
-    case 38 /*Up*/:    return this.specialKeySequence("", "A", event);
-    case 39 /*Right*/: return this.specialKeySequence("", "C", event);
-    case 40 /*Down*/:  return this.specialKeySequence("", "B", event);
-    case 45 /*Insert*/:  return this.specialKeySequence("2", "~", event);
-    case 46 /*Delete*/:  return this.specialKeySequence("3", "~", event);
-    case 112: /* F1 */   return this.specialKeySequence("O", "P", event);
-    case 113: /* F2 */   return this.specialKeySequence("O", "Q", event);
-    case 114: /* F3 */   return this.specialKeySequence("O", "R", event);
-    case 115: /* F4 */   return this.specialKeySequence("O", "S", event);
-    case 116: /* F5 */   return this.specialKeySequence("15", "~", event);
-    case 117: /* F6 */   return this.specialKeySequence("17", "~", event);
-    case 118: /* F7 */   return this.specialKeySequence("18", "~", event);
-    case 119: /* F8 */   return this.specialKeySequence("19", "~", event);
-    case 120: /* F9 */   return this.specialKeySequence("20", "~", event);
-    case 121: /* F10 */  return this.specialKeySequence("21", "~", event);
-    case 122: /* F11 */
-        //return this.specialKeySequence("23", "~", event);
+Terminal.prototype.keyNameToChars = function(keyName) {
+    const isShift = (mods) => mods.indexOf("Shift-") >= 0;
+    const isCtrl = (mods) => mods.indexOf("Ctrl-") >= 0;
+    const isAlt = (mods) => mods.indexOf("Alt-") >= 0;
+    const isCmd =(mods) => mods.indexOf("Cmd-") >= 0;
+    const specialKeySequence = (param, last, modStr) => {
+        // param is either a numerical code, as as string (e.g. "15" for F5);
+        // or "O" for ones that use SS3 (F1 to F4);
+        // or "" for ones that use CSI or SS3 depending on application mode.
+        var csi = "\x1B[";
+        var mods = 0;
+        if (isShift(modStr))
+            mods += 1;
+        if (isAlt(modStr))
+            mods += 2;
+        if (isCtrl(modStr))
+            mods += 4;
+        if (isCmd(modStr))
+            mods += 8;
+        if (mods > 0)
+            return csi+(param==""||param=="O"?"1":param)+";"+(mods+1)+last;
+        else if ((this.sstate.applicationCursorKeysMode && param == "") || param == "O")
+            return "\x1BO"+last;
+        else
+            return csi+param+last;
+    }
+
+    const dash = keyName.lastIndexOf("-");
+    const mods = dash > 0 ? keyName.substring(0, dash+1) : "";
+    const baseName = dash > 0 ? keyName.substring(dash+1) : keyName;
+    switch (baseName) {
+    case "Backspace": return "\x7F";
+    case "Tab":  return isShift(mods) ? "\x1B[Z" :  "\t";
+    case "Enter": return isAlt(mods) ? "\x1B\r" : this.keyEnterToString();
+    case "Esc": return "\x1B";
+    case "PageUp": return specialKeySequence("5", "~", mods);
+    case "PageDown": return specialKeySequence("6", "~", mods);
+    case "End":      return specialKeySequence("", "F", mods);
+    case "Home":     return specialKeySequence("", "H", mods);
+    case "Left":     return specialKeySequence("", "D", mods);
+    case "Up":       return specialKeySequence("", "A", mods);
+    case "Right":    return specialKeySequence("", "C", mods);
+    case "Down":     return specialKeySequence("", "B", mods);
+    case "Insert":   return specialKeySequence("2", "~", mods);
+    case "Delete":   return specialKeySequence("3", "~", mods);
+    case "F1":   return specialKeySequence("O", "P", mods);
+    case "F2":   return specialKeySequence("O", "Q", mods);
+    case "F3":   return specialKeySequence("O", "R", mods);
+    case "F4":   return specialKeySequence("O", "S", mods);
+    case "F5":   return specialKeySequence("15", "~", mods);
+    case "F6":   return specialKeySequence("17", "~", mods);
+    case "F7":   return specialKeySequence("18", "~", mods);
+    case "F8":   return specialKeySequence("19", "~", mods);
+    case "F9":   return specialKeySequence("20", "~", mods);
+    case "F10":  return specialKeySequence("21", "~", mods);
+    case "F11":
+        //return specialKeySequence("23", "~", mods);
         return null; // default handling, which is normally full-screen
-    case 123: /* F12 */  return this.specialKeySequence("24", "~", event);
-    case 124: /* F13 */  return "\x1B[1;2P";
-    case 125: /* F14 */  return "\x1B[1;2Q";
-    case 126: /* F15 */  return "\x1B[1;2R";
-    case 127: /* F16 */  return "\x1B[1;2S";
-    case 128: /* F17 */  return "\x1B[15;2~";
-    case 129: /* F18 */  return "\x1B[17;2~";
-    case 130: /* F19 */  return "\x1B[18;2~";
-    case 131: /* F20 */  return "\x1B[19;2~";
-    case 132: /* F21 */  return "\x1B[20;2~";
-    case 133: /* F22 */  return "\x1B[21;2~";
-    case 134: /* F23 */  return "\x1B[23;2~";
-    case 135: /* F24 */  return "\x1B[24;2~";
-    case 17: /* Ctrl */
-    case 18: /* Alt */
-    case 20: /* CapsLoc */
-    case 91: case 93: case 224:
-        // Command-key on MacOS (Chrome or Firefox)
+    case "F12":  return specialKeySequence("24", "~", mods);
+    case "F13":  return "\x1B[1;2P";
+    case "F14":  return "\x1B[1;2Q";
+    case "F15":  return "\x1B[1;2R";
+    case "F16":  return "\x1B[1;2S";
+    case "F17":  return "\x1B[15;2~";
+    case "F18":  return "\x1B[17;2~";
+    case "F19":  return "\x1B[18;2~";
+    case "F20":  return "\x1B[19;2~";
+    case "F21":  return "\x1B[20;2~";
+    case "F22":  return "\x1B[21;2~";
+    case "F23":  return "\x1B[23;2~";
+    case "F24":  return "\x1B[24;2~";
+    case "Ctrl":
+    case "Alt":
+    case "CapsLock":
+    case "Mod":
         return null;
     default:
-        if (event.ctrlKey) {
-            var code = -1;
-            if ((key >= 65 && key <= 90) && ! event.shiftKey) // 'A'...'Z'
-                code = key-64;
-            if (key >= 219 && key <= 222) // '[', '\\', ']', '\'' 
-                code = key-192;
-            if (key == 32 || event.key=="@")
-                code = 0;
-            if (event.key == "?")
-                code = 127;
-            if (event.key=="^" || event.key=="~" || event.key=="`")
-                code = 30;
-            if (event.key=="_")
-                code = 31;
-            if (code >= 0)
-                return String.fromCharCode(code);
+        if (mods == "Ctrl-") {
+            if (baseName.length == 1) {
+                let ch = baseName.charCodeAt(0);
+                if (ch >= 65 && ch <= 90)
+                    return String.fromCharCode(ch-64);
+            }
         }
-        else if (event.altKey || event.metaKey) {
-            var str = String.fromCharCode(key);
-            if (! event.shiftKey)
-                str = str.toLowerCase();
-            return (event.altKey ? "\x1B" : "\x18@s") + str;
-        }
-        return null;
+        return DomTerm.keyNameChar(keyName);
     }
-};
+}
 
 Terminal.prototype.pasteText = function(str) {
     let editing = this.isLineEditing();
@@ -8861,7 +8846,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
 }, {});
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
-/** If keyName is a key-press, return pressed ket; otherwise null. */
+/** If keyName is a key-press, return pressed key; otherwise null. */
 DomTerm.keyNameChar = function(keyName) {
     if (keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/)
         return keyName.charAt(1);
@@ -9014,12 +8999,11 @@ Terminal.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
                 this._clientWantsEditing = 0;
-            this.reportKeyEvent(keyName,
-                                this.keyDownToString(event));
+            this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
         } else if (this.doLineEdit(keyName))
             event.preventDefault();
     } else {
-        var str = this.keyDownToString(event);
+        var str = this.keyNameToChars(keyName);
         if (str) {
             if (this.scrollOnKeystroke)
                 this._enableScroll();
@@ -9786,7 +9770,7 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
                                      +(this._autoPaging?"on":"off"));
         return true;
     case "Ctrl-C":
-        this.reportKeyEvent(keyName, this.keyDownToString(event));
+        this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
         this._pauseContinue(true);
         this._adjustPauseLimit(this.outputContainer);
         return true;
