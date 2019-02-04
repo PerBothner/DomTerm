@@ -5831,7 +5831,7 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
                     var attrname = str.substring(attrstart,attrend);
                     while (ch <= 32 && i < len)
                         ch = str.charCodeAt(i++);
-                    let valstart, valendl
+                    let valstart, valend;
                     if (ch == 61) { // '='
                         if (i == len)
                             break loop; // invalid
