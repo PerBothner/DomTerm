@@ -4380,6 +4380,7 @@ Terminal.prototype.pushControlState = function() {
     var save = {
         controlSequenceState: this.controlSequenceState,
         parameters: this.parameters,
+        textParameter: this._textParameter,
         decoder: this.decoder,
         receivedCount: this._receivedCount,
         count_urgent: false,
@@ -4387,6 +4388,7 @@ Terminal.prototype.pushControlState = function() {
     };
     this.controlSequenceState = this._urgentControlState;
     this.parameters = new Array();
+    this._textParameter = null;
     this.decoder = new TextDecoder(); //label = "utf-8");
     this._savedControlState = save;
 }
@@ -4397,6 +4399,7 @@ Terminal.prototype.popControlState = function() {
         this._urgentControlState = this.controlSequenceState;
         this.controlSequenceState = saved.controlSequenceState;
         this.parameters = saved.parameters;
+        this._textParameter = saved.textParameter;
         this.decoder = saved.decoder;
         this._savedControlState = saved.controlSequenceState;
         // Control sequences in "urgent messages" don't count to
