@@ -61,6 +61,8 @@ and @uref{http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archiv
 @emph{}@image{images/domterm-1}
 @itemize
 @item
+@uref{https://en.wikipedia.org/wiki/Sixel,@strong{Sixel graphics}} is now supported.
+@item
 The @code{domterm} command takes multiple sub-commands,
 similar to how @code{tmux} or @code{git}.
 The command automatically starts server if not already running.
@@ -168,6 +170,10 @@ inserts its HTML representation in the DomTerm output.)
 
 The image later (with the yellow circle) shows printing
 @uref{https://en.wikipedia.org/wiki/Scalable_Vector_Graphics,SVG}.
+
+You can directly print
+@uref{https://en.wikipedia.org/wiki/Sixel,@strong{Sixel images}},
+which is an encoding that some DEC VT terminals supported..
 
 @emph{}
 @image{images/emacs-in-firefox-1}
@@ -2891,15 +2897,14 @@ the @code{domterm html} command should read the file
 and embed it as a @code{data:} URL.
 (As long as no @code{--base} option is specified.)
 
-@subsubheading Support Sixel graphics
-
-@uref{https://en.wikipedia.org/wiki/Sixel,Sixel} is an old raster
-image format supported by DEC terminals and some programs, including xterm.
-It is interesting because some programs (such as gnuplot) can use Sixel
-to interleave graphics and text, without requiring separate windows.
-
-This @uref{http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/,JavaScript utility} may be useful in converting raster data (post-sixel-decoding) to PNG, which could the be displayed with a @code{data:} URI.
-Alternatively, a @code{<canvas>} element could be used.
+@c @subsubheading Support Sixel graphics
+@c
+@c @uref{https://en.wikipedia.org/wiki/Sixel,Sixel} is an old raster
+@c image format supported by DEC terminals and some programs, including xterm.
+@c It is interesting because some programs (such as gnuplot) can use Sixel
+@c to interleave graphics and text, without requiring separate windows.
+@c
+@c This @uref{http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/,JavaScript utility} may be useful in converting raster data (post-sixel-decoding) to PNG, which could the be displayed with a @code{data:} URI.
 
 @subsubheading Highlighting
 
