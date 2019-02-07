@@ -435,10 +435,18 @@ DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = Do
             DomTermLayout._oldFocusedContent = lcontent;
         return lcontent;
     }
-    let topNode = document.createElement("div");
-    topNode.setAttribute("class", "domterm");
+    let topNode;
+    if (DomTerm.useXtermJs) {
+        let xterm = new window.Terminal();
+        xterm.open(parent);
+        topNode = xterm.element;
+        topNode.xterm = xterm;
+    } else {
+        topNode = document.createElement("div");
+        parent.appendChild(topNode);
+    }
+    topNode.classList.add("domterm");
     topNode.setAttribute("id", name);
-    parent.appendChild(topNode);
     return topNode;
 }
 
@@ -9233,8 +9241,7 @@ DomTerm._handleOutputData = function(dt, data) {
 }
 
 DomTerm.initXtermJs = function(dt, topNode) {
-    let xterm = new window.Terminal();
-    xterm.open(topNode);
+    let xterm = topNode.xterm;
     this.xterm = xterm;
     topNode.terminal = dt;
     DomTerm.setInputMode(99, dt);
@@ -9251,6 +9258,8 @@ DomTerm.initXtermJs = function(dt, topNode) {
             dt.keyDownHandler(e);
         return false;
     });
+    xterm.textarea.addEventListener("focus",
+                                    (e) => DomTerm.setFocus(dt, "F"));
     dt.attachResizeSensor();
     dt.xterm = xterm;
     if (window.fit)
