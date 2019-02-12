@@ -795,7 +795,11 @@ void  init_options(struct options *opts)
     opts->debug_level = 0;
     opts->iface = NULL;
     opts->requesting_session = NULL;
+#if WITH_XTERMJS
+    opts->tty_packet_mode = "no";
+#else
     opts->tty_packet_mode = NULL;
+#endif
 #if HAVE_OPENSSL
     opts->ssl = false;
     opts->cert_path = NULL;
