@@ -4735,10 +4735,10 @@ Terminal.prototype.handleControlSequence = function(last) {
         break;
     case 110 /*'n'*/:
         switch (this.getParameter(0, 0)) {
-        case 5:
+        case 5: // Device Status Report (DSR)
             this.processResponseCharacters("\x1B[0n");
             break;
-        case 6:
+        case 6: // Report Cursor Position (CPR)
             var r = this.getCursorLine();
             var c = this.getCursorColumn();
             if (c == this.numColumns)
@@ -9247,9 +9247,11 @@ DomTerm.initXtermJs = function(dt, topNode) {
     DomTerm.setInputMode(99, dt);
     dt.topNode = xterm.element;
     dt.insertString = function(str) { xterm.write(str); };
+    xterm.on('data', function(data) {
+        dt.processInputCharacters(data);
+    });
     xterm.on('resize', function(data) {
-        //dt.setWindowSize(data.rows, data.cols, dt.availHeight, dt.availWidth);
-        dt.setWindowSize(data.rows, data.cols, 0, 0);
+        dt.setWindowSize(data.rows, data.cols, data.height||0, data.width||0);
     });
     xterm.attachCustomKeyEventHandler(function(e) {
         if (e.type == 'keypress')
