@@ -9,6 +9,7 @@ class DTParser {
         this.parameters = new Array();
         this._textParameter = null;
         this._savedControlState = null;
+        this._flagChars = "";
         /** @type {Array|null} */
         this.saved_DEC_private_mode_flags = null;
     }
@@ -204,6 +205,7 @@ class DTParser {
                     this.parameters.length = 1;
                     this.parameters[0] = null;
                     this._textParameter = "";
+                    this._flagChars = "";
                     break;
                 case 92 /*'\\'*/: // ST (String Terminator)
                     this.controlSequenceState = DTParser.INITIAL_STATE;
@@ -237,10 +239,6 @@ class DTParser {
                 prevEnd = i + 1; columnWidth = 0;
                 break;
             case DTParser.SEEN_ESC_LBRACKET_STATE:
-            case DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE:
-            case DTParser.SEEN_ESC_LBRACKET_EXCLAMATION_STATE:
-            case DTParser.SEEN_ESC_LBRACKET_GREATER_STATE:
-            case DTParser.SEEN_ESC_LBRACKET_SPACE_STATE:
             case DTParser.SEEN_DCS_STATE:
                 if (ch >= 48 /*'0'*/ && ch <= 57 /*'9'*/) {
                     var plen = this.parameters.length;
@@ -261,14 +259,10 @@ class DTParser {
                 else if (state == DTParser.SEEN_DCS_STATE) {
                     this.controlSequenceState = DTParser.SEEN_DCS_TEXT_STATE;
                     i--;
-                } else if (ch == 62 /*'>'*/)
-                    this.controlSequenceState = DTParser.SEEN_ESC_LBRACKET_GREATER_STATE;
-                else if (ch == 63 /*'?'*/)
-                    this.controlSequenceState = DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE;
-                else if (ch == 33 /*'!'*/)
-                    this.controlSequenceState = DTParser.SEEN_ESC_LBRACKET_EXCLAMATION_STATE;
-                else if (ch == 32/*' '*/)
-                    this.controlSequenceState = DTParser.SEEN_ESC_LBRACKET_SPACE_STATE;
+                } else if (ch == 62 /*'>'*/ || ch == 63 /*'?'*/
+                           || ch == 32 /*' '*/ || ch == 33 /*'!'*/
+                           || ch == 39 /*"'"*/)
+                    this._flagChars += str.charAt(i);
                 else {
                     this.handleControlSequence(ch);
                     this.parameters.length = 1;
@@ -781,7 +775,7 @@ class DTParser {
             term._eraseLineEnd();
             break;
         case 83 /*'S'*/:
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            if (this._flagChars.indexOf('?') >= 0) {
                 // Sixel/ReGIS graphics
                 // Sixel is implemented, but not term query.
                 let pi = term.getParameter(0, 1);
@@ -832,7 +826,7 @@ class DTParser {
             }
             break;
         case 99 /*'c'*/:
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_GREATER_STATE) {
+            if (this._flagChars.indexOf('>') >= 0) {
                 // Send Device Attributes (Secondary DA).
                 // Translate version string X.Y.Z to integer XYYYZZ.
                 var version = DomTerm.versionString.split(".");
@@ -878,7 +872,7 @@ class DTParser {
             break;
         case 104 /*'h'*/:
             param = term.getParameter(0, 0);
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            if (this._flagChars.indexOf('?') >= 0) {
                 // DEC Private Mode Set (DECSET)
                 this.set_DEC_private_mode(param, true);
             }
@@ -895,7 +889,7 @@ class DTParser {
             break;
         case 108 /*'l'*/:
             param = term.getParameter(0, 0);
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            if (this._flagChars.indexOf('?') >= 0) {
                 // DEC Private Mode Reset (DECRST)
                 this.set_DEC_private_mode(param, false);
             } else {
@@ -1031,12 +1025,12 @@ class DTParser {
                 term.processResponseCharacters("\x1B["+(r+1)+";"+(c+1)+"R");
                 break;
             case 15: // request printer status
-                if (oldState == DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+                if (this._flagChars.indexOf('?') >= 0) {
                     term.processResponseCharacters("\x1B[?13n"); // No printer
                 }
                 break;
             case 25: // request UDK status
-                if (oldState == DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+                if (this._flagChars.indexOf('?') >= 0) {
                     term.processResponseCharacters("\x1B[?20n");
                 }
                 break;
@@ -1046,19 +1040,19 @@ class DTParser {
             }
             break;
         case 112 /*'p'*/:
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_EXCLAMATION_STATE) {
+            if (this._flagChars.indexOf('!') >= 0) {
                 // Soft terminal reset (DECSTR)
                 term.resetTerminal(false, false);
             }
             break;
         case 113 /*'q'*/:
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_SPACE_STATE) {
+            if (this._flagChars.indexOf(' ') >= 0) {
                 // Set cursor style (DECSCUSR, VT520).
                 term.setCaretStyle(term.getParameter(0, 1));
             }
             break;
         case 114 /*'r'*/:
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            if (this._flagChars.indexOf('?') >= 0) {
                 // Restore DEC Private Mode Values.
                 if (this.saved_DEC_private_mode_flags == null)
                     break;
@@ -1080,7 +1074,7 @@ class DTParser {
             }
             break;
         case 115 /*'s'*/:
-            if (oldState == DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE) {
+            if (this._flagChars.indexOf('?') >= 0) {
                 // Save DEC Private Mode Values.
                 if (this.saved_DEC_private_mode_flags == null)
                     this.saved_DEC_private_mode_flags = new Array();
@@ -1956,14 +1950,6 @@ DTParser.INITIAL_STATE = 0;
 DTParser.SEEN_ESC_STATE = 1;
 /** We have seen ESC '['. */
 DTParser.SEEN_ESC_LBRACKET_STATE = 2;
-/** We have seen ESC '[' '?'. */
-DTParser.SEEN_ESC_LBRACKET_QUESTION_STATE = 3;
-/** We have seen ESC '[' '!'. */
-DTParser.SEEN_ESC_LBRACKET_EXCLAMATION_STATE = 4;
-/** We have seen ESC '[' '>'. */
-DTParser.SEEN_ESC_LBRACKET_GREATER_STATE = 5;
-/** We have seen ESC '[' ' '. */
-DTParser.SEEN_ESC_LBRACKET_SPACE_STATE = 6;
 /** We have seen OSC: ESC ']' or 0x9d. */
 DTParser.SEEN_OSC_STATE = 7;
 /** We have seen OSC numeric-parameter ';'. */
