@@ -224,11 +224,6 @@ AM_CONDITIONAL(WITH_XTERMJS,
     test "$with_xterm_js" != "" -a "$with_xterm_js" != "no")
 XTERMJS_PATH="$with_xterm_js"
 AC_SUBST(XTERMJS_PATH)
-case "$with_xterm_js" in
-  ""|"no") WITH_XTERMJS=0;;
-  *) WITH_XTERMJS=1;;
-esac
-AC_SUBST(WITH_XTERMJS)
 
 HLIB_FIXED_FILES="\
   hlib/browserkeymap.js \
@@ -253,6 +248,13 @@ HLIB_FIXED_FILES="\
   hlib/screenfull.min.js \
   hlib/terminal.js \
   hlib/wcwidth.js"
+case "$with_xterm_js" in
+  ""|"no")
+    HLIB_FIXED_FILES="${HLIB_FIXED_FILES} hlib/domterm-parser.js"
+    WITH_XTERMJS=0;;
+  *) WITH_XTERMJS=1;;
+esac
+AC_SUBST(WITH_XTERMJS)
 AC_SUBST(HLIB_FIXED_FILES)
 
 AC_SUBST(CC)
