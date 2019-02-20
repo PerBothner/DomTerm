@@ -1,5 +1,6 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
+import { SixelImage } from './node-sixel.js';
 
 class DTParser {
     constructor(term) {
@@ -297,7 +298,7 @@ class DTParser {
                         this._textParameter + str.substring(prevEnd, i);
                     try {
                         if (state === DTParser.SEEN_DCS_TEXT_STATE) {
-                            term.handleDeviceControlString(this.parameters, this._textParameter);
+                            this.handleDeviceControlString(this.parameters, this._textParameter);
                         }
                         else if (state == DTParser.SEEN_OSC_TEXT_STATE) {
                             this.handleOperatingSystemControl(this.parameters[0], this._textParameter);
@@ -1376,6 +1377,53 @@ class DTParser {
             }
         }
     };
+
+    handleDeviceControlString(params, text) {
+        const term = this.term;
+        if (text.length == 0)
+            return;
+        if (text.length > 2 && text.charCodeAt(0) == 36
+            && text.charCodeAt(1) == 113) { // DCS $ q Request Status String DECRQSS
+            let response = null;
+            /*
+              switch (text.substring(2)) {
+              case xxx: response = "???"; break;
+              }
+            */
+            // DECRPSS—Report Selection or Setting
+            term.processResponseCharacters(response ? "\x900$r"+response+"\x9C"
+                                           : "\x901$r\x9C");
+            return;
+        }
+        if (text.charCodeAt(0) === 113) { // 'q'
+            let six = new SixelImage();
+            six.writeString(text, 1);
+            let w = six.width, h = six.height;
+            const canvas = document.createElement("canvas");
+            canvas.setAttribute("width", w);
+            canvas.setAttribute("height", h);
+            const ctx = canvas.getContext('2d');
+            const idata = ctx.createImageData(w, h);
+            six.toImageData(idata.data, w, h);
+            ctx.putImageData(idata, 0, 0);
+            term.eraseLineRight();
+            if (true) {
+                // This works better with "Save as HTML"
+                let image = new Image(w, h);
+                image.src = canvas.toDataURL();
+                term.insertNode(image);
+            } else {
+                term.insertNode(canvas);
+            }
+            let line = term.lineStarts[term.getAbsCursorLine()];
+            if (line._widthColumns !== undefined)
+                line._widthColumns++;
+            if (term.currentCursorColumn >= 0)
+                term.currentCursorColumn++;
+            line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+        } else
+            console.log("handleDeviceControlString");
+    }
 
     get_DEC_private_mode(param) {
         const term = this.term;
