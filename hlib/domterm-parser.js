@@ -15,60 +15,6 @@ class DTParser {
         this.saved_DEC_private_mode_flags = null;
     }
 
-    /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
-    insertBytes(bytes) {
-        const term = this.term;
-        var len = bytes.length;
-        if (term.verbosity >= 2)
-            term.log("insertBytes "+term.name+" "+typeof bytes+" count:"+len+" received:"+term._receivedCount);
-        while (len > 0) {
-            if (this.decoder == null)
-                this.decoder = new TextDecoder(); //label = "utf-8");
-            var urgent_begin = -1;
-            var urgent_end = -1;
-            for (var i = 0; i < len; i++) {
-                var ch = bytes[i];
-                if (ch == DTParser.URGENT_BEGIN1 && urgent_begin < 0)
-                    urgent_begin = i;
-                else if (ch == DTParser.URGENT_END) {
-                    urgent_end = i;
-                    break;
-                }
-            }
-            var plen = urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin) ? urgent_begin
-                : urgent_end >= 0 ? urgent_end : len;
-            if (urgent_end > urgent_begin && urgent_begin >= 0
-                && bytes[urgent_begin+1] == DTParser.URGENT_BEGIN2) {
-                this.pushControlState();
-                this.insertString(this.decoder
-                                  .decode(bytes.slice(urgent_begin+2, urgent_end),
-                                          {stream:true}));
-                this.popControlState();
-                bytes.copyWithin(urgent_begin, urgent_end+1);
-                len = len-(urgent_end+1-urgent_begin);
-                bytes = bytes.slice(0, len);
-            } else {
-                if (plen > 0) {
-                    this.insertString(this.decoder
-                                      .decode(bytes.slice(0, plen), {stream:true}));
-                }
-                // update receivedCount before calling push/popControlState
-                term._receivedCount = (term._receivedCount + plen) & Terminal._mask28;
-                if (plen == len) {
-                    len = 0;
-                } else {
-                    var dlen = plen + 1; // amount consumed term.iteration
-                    bytes = bytes.slice(dlen, len);
-                    len -= dlen;
-                    if (plen == urgent_begin)
-                        this.pushControlState();
-                    else //plen == urgent_end
-                        this.popControlState();
-                }
-            }
-        }
-    }
-
     insertString(str) {
         const term = this.term;
         //const Terminal = window.DTerminal; // FIXME
@@ -527,7 +473,7 @@ class DTParser {
                 case 16: case 17: case 18: case 19:
                 case 20: case 21: case 22: case 23: case 25:
                 case 28: case 29: case 30: case 31:
-                    if (ch == DTParser.URGENT_COUNTED && term._savedControlState)
+                    if (ch == window.Terminal.URGENT_COUNTED && term._savedControlState)
                         term._savedControlState.count_urgent = true;
                     // ignore
                     term.insertSimpleOutput(str, prevEnd, i, columnWidth);
@@ -1959,7 +1905,7 @@ class DTParser {
             controlSequenceState: this.controlSequenceState,
             parameters: this.parameters,
             textParameter: this._textParameter,
-            decoder: this.decoder,
+            decoder: this.term.decoder,
             receivedCount: this._receivedCount,
             count_urgent: false,
             _savedControlState: this._savedControlState
@@ -1967,7 +1913,7 @@ class DTParser {
         this.controlSequenceState = this._urgentControlState;
         this.parameters = new Array();
         this._textParameter = null;
-        this.decoder = new TextDecoder(); //label = "utf-8");
+        this.term.decoder = new TextDecoder(); //label = "utf-8");
         this._savedControlState = save;
     }
 
@@ -1978,7 +1924,7 @@ class DTParser {
             this.controlSequenceState = saved.controlSequenceState;
             this.parameters = saved.parameters;
             this._textParameter = saved.textParameter;
-            this.decoder = saved.decoder;
+            this.term.decoder = saved.decoder;
             this._savedControlState = saved.controlSequenceState;
             // Control sequences in "urgent messages" don't count to
             // receivedCount. (They are typically window-specific and
@@ -2017,11 +1963,5 @@ DTParser.SEEN_ERROUT_END_STATE = 18;
 DTParser.SEEN_DCS_STATE = 19;
 DTParser.SEEN_DCS_TEXT_STATE = 20;
 DTParser.SEEN_ACS_STATE = 21;
-
-// These are used to delimit "out-of-bound" urgent messages.
-DTParser.URGENT_BEGIN1 = 19; // '\023' - device control 3
-DTParser.URGENT_BEGIN2 = 22; // '\026' - SYN synchronous idle
-DTParser.URGENT_END = 20; // \024' - device control 4
-DTParser.URGENT_COUNTED = 21;
 
 window.DTParser = DTParser;
