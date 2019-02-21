@@ -42,7 +42,7 @@ extern char server_key[SERVER_KEY_LENGTH];
 extern char *main_html_url;
 extern char *main_html_path;
 extern char *backend_socket_name;
-extern char *settings_fname;
+extern const char *settings_fname;
 extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
@@ -211,7 +211,7 @@ extern int get_executable_directory_length();
 extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
-const char *domterm_settings_dir(void);
+const char *domterm_settings_default(void);
 extern bool is_WindowsSubsystemForLinux(void);
 extern int handle_command(int argc, char**argv, const char*cwd,
                           char **env, struct lws *wsi,

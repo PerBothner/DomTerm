@@ -1344,27 +1344,33 @@ domterm_dir(bool settings, bool check_wsl)
     char *user_prefix = "C:\\Users\\";
     size_t user_prefix_length;
     char *tmp;
-    if (check_wsl && is_WindowsSubsystemForLinux()
+    char *xdg_home = getenv(settings ? "XDG_CONFIG_HOME" : "XDG_RUNTIME_DIR");
+    char *sini = settings ? "/settings.ini" : "";
+    if (xdg_home) {
+	tmp = xmalloc(strlen(xdg_home)+40);
+	sprintf(tmp, "%s/domterm%s", xdg_home, sini);
+    } else if (check_wsl && is_WindowsSubsystemForLinux()
 	&& (user_profile = get_WSL_userprofile()) != NULL
 	&& strlen(user_profile) > (user_prefix_length = strlen(user_prefix))
 	&& memcmp(user_profile, user_prefix, user_prefix_length) == 0) {
-	const char *fmt = "/mnt/c/Users/%s/AppData/%s/DomTerm";
+	const char *fmt = "/mnt/c/Users/%s/AppData/%s/DomTerm%s";
 	char *subdir = settings ? "Roaming" : "Local";
-	tmp = xmalloc(strlen(fmt) - 3 + strlen(subdir) + strlen(user_profile) - user_prefix_length);
-	sprintf(tmp, fmt, user_profile+user_prefix_length, subdir);
+	tmp = xmalloc(strlen(fmt) + strlen(user_profile) + 40);
+	sprintf(tmp, fmt, user_profile+user_prefix_length, subdir, sini);
     } else {
         const char *home = find_home();
-	const char *hdir = "/.domterm";
-	tmp = xmalloc(strlen(home)+strlen(hdir)+1);
-	sprintf(tmp, "%s%s", home, hdir);
+        tmp = xmalloc(strlen(home)+30);
+        sprintf(tmp, "%s/.domterm%s", home, sini);
+        if (settings && access(tmp, R_OK) != 0)
+            sprintf(tmp, "%s/.config/domterm%s", home, sini);
     }
-    if (mkdir(tmp, S_IRWXU) != 0 && errno != EEXIST)
+    if (! settings && mkdir(tmp, S_IRWXU) != 0 && errno != EEXIST)
         fatal("cannot create directory '%s'", tmp);
     return tmp;
 }
 
 const char *
-domterm_settings_dir()
+domterm_settings_default()
 {
     static const char *dir = NULL;
     if (dir == NULL)

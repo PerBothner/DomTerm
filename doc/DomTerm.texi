@@ -871,23 +871,23 @@ Works for the Electron, qtdomterm, and @code{--chrome-app} front-ends,
 @itemx @code{--socket-name=}@var{socket-name}
 DomTerm uses a Unix Domain socket to communicate between
 the command-line and the server.
-By default the socket is the file @code{$HOME/.domain/default.socket},
+By default the socket is the file @code{$XDG_RUNTIME_DIR/domterm/default.socket},
 but this option overrides that.
 Using different socket names mean you get different servers
 that do not know about each other.
 If @var{socket-name} starts with @samp{/} then the filename is absolute;
-otherwise @code{$HOME/.domain/} is prepended.
+otherwise @code{$XDG_RUNTIME_DIR/domterm/} is prepended.
 If there is no file extension, @code{.socket} is appended.
 
 DomTerm also creates a temporary @code{html} that has the
 same name as the socket, but with a @code{.html} extension.
-That is by default it is @code{$HOME/.domain/default.html}.
+That is by default it is @code{$XDG_RUNTIME_DIR/domterm/default.html}.
 
 @item @code{--settings=}@var{filename}
 
 Specify the location of the @ref{Settings} file containing user preferences.
-(The default is @code{.domterm/settings.ini} in the user's home directory,
-except on WSL (Windows Subsystem for Linux).)
+(The default is @code{.config/domterm/settings.ini} in the user's
+home directory, except on WSL (Windows Subsystem for Linux).)
 
 Note this flag won't have much if any effect if you specify it
 when there is already a running domterm server.
@@ -1037,7 +1037,13 @@ $ domterm disable-stylesheet 2
 @chapter The settings.ini file
 
 User preferences for DomTerm are normally in the file
-@code{.domterm/settings.ini} in the user's home directory.
+@code{.config/domterm/settings.ini} in the user's home directory.
+This location can be overridden with the @code{--settings} command-line option;
+otherwise the location is @code{$XDG_CONFIG_HOME/domterm/settings.ini},
+where @code{XDG_CONFIG_HOME} defaults to @code{$HOME/.config}.
+(For compatibility reasons, @code{$HOME/.domterm/settings.ini}
+is also checked if @code{$XDG_CONFIG_HOME} is unset, but that may go away.)
+
 (On WSL (Windows Subsystem for Linux) the file is
 @code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.)
 You can override this default with the @code{-settings} command-line argument.
@@ -1818,7 +1824,7 @@ Scroll one line up or down.
 
 The appearance of a DomTerm window is controlled by CSS stylesheets.
 
-You can place stylesheet rules in the @ref{Settings,@code{~/.domterm/settings.ini}} file.
+You can place stylesheet rules in the @ref{Settings,@code{settings.ini}} file.
 For example:
 @example
 style.user=
