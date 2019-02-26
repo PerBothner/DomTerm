@@ -731,8 +731,8 @@ Terminal.prototype._setRegionLR = function(left, right) {
     this._regionRight = right < 0 ? this.numColumns : right;
 };
 
-Terminal.prototype._homeOffset = function() {
-    var lineStart = this.lineStarts[this.homeLine];
+Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
+    var lineStart = this.lineStarts[homeLine];
     var offset = lineStart.offsetTop;
     if (lineStart.nodeName == "SPAN")
         offset += lineStart.offsetHeight;
@@ -741,7 +741,13 @@ Terminal.prototype._homeOffset = function() {
 
 Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
-        var height = this._vspacer.offsetTop - this._homeOffset();
+        const vTop = this._vspacer.offsetTop;
+        let height;
+        let homeLine = this.homeLine;
+        while ((height = vTop - this._homeOffset(homeLine)) > this.availHeight
+               && this.getAbsCursorLine() > homeLine) {
+           homeLine++;
+        }
         this._adjustSpacer(this.availHeight - height);
     }
 };
@@ -2379,7 +2385,7 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
  */
 Terminal.prototype.isObjectElement = function(node) {
     var tag = node.tagName;
-    return "OBJECT" == tag ||
+    return "OBJECT" == tag || "CANVAS" == tag
         "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
 };
 

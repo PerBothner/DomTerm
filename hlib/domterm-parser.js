@@ -1345,21 +1345,35 @@ class DTParser {
             let six = new SixelImage();
             six.writeString(text, 1);
             let w = six.width, h = six.height;
-            const canvas = document.createElement("canvas");
-            canvas.setAttribute("width", w);
-            canvas.setAttribute("height", h);
+            let next = term.outputBefore;
+            if (next == term._caretNode)
+                next = next.nextSibling;
+            const reuseCanvas = next instanceof Element
+                  && next.tagName == "CANVAS"
+                  && next.width >= w && next.height >= h;
+            const canvas = reuseCanvas ? next
+                  : document.createElement("canvas");
+            if (! reuseCanvas) {
+                canvas.setAttribute("width", w);
+                canvas.setAttribute("height", h);
+            }
             const ctx = canvas.getContext('2d');
             const idata = ctx.createImageData(w, h);
             six.toImageData(idata.data, w, h);
             ctx.putImageData(idata, 0, 0);
-            term.eraseLineRight();
-            if (true) {
-                // This works better with "Save as HTML"
-                let image = new Image(w, h);
-                image.src = canvas.toDataURL();
-                term.insertNode(image);
+            if (reuseCanvas) {
+                this.outputBefore = canvas.nextSibling;
             } else {
-                term.insertNode(canvas);
+                term.eraseLineRight();
+                if (false) {
+                    // This works better with "Save as HTML"
+                    // However, reuseCanvas is more complicated and inefficient.
+                    let image = new Image(w, h);
+                    image.src = canvas.toDataURL();
+                    term.insertNode(image);
+                } else {
+                    term.insertNode(canvas);
+                }
             }
             let line = term.lineStarts[term.getAbsCursorLine()];
             if (line._widthColumns !== undefined)
