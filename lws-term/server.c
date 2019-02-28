@@ -435,6 +435,12 @@ chrome_command(bool app_mode)
     cbin = find_in_path("google-chrome");
     if (cbin != NULL)
         return cbin;
+#if __APPLE__
+    // FIXME - better to open -a "Google Chrome" OR open -b com.google.Chrome
+    char *chromeMac = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+    if (access(chromeMac, X_OK) == 0)
+        return chromeMac;
+#endif
     cbin = ""; // cache as "not found"
     return NULL;
 }
