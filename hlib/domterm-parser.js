@@ -473,7 +473,8 @@ class DTParser {
                 case 16: case 17: case 18: case 19:
                 case 20: case 21: case 22: case 23: case 25:
                 case 28: case 29: case 30: case 31:
-                    if (ch == window.Terminal.URGENT_COUNTED && term._savedControlState)
+                    if (ch == window.DTerminal.URGENT_COUNTED
+                        && term._savedControlState)
                         term._savedControlState.count_urgent = true;
                     // ignore
                     term.insertSimpleOutput(str, prevEnd, i, columnWidth);
