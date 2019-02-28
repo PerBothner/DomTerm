@@ -6756,11 +6756,6 @@ Terminal.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 };
 
 DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
-    if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
-                                 "set-input-mode", mode);
-        return;
-    }
     var wasEditing = dt.isLineEditing();
     switch (mode) {
     case 0: //next

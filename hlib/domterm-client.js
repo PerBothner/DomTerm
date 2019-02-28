@@ -309,11 +309,19 @@ function loadHandler(event) {
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
-                lcontent.contentWindow.postMessage({"command": command, "args": args}, "*");
+                if (lcontent)
+                    lcontent.contentWindow.postMessage({"command": command,
+                                                        "args": args}, "*");
+                else
+                    console.log("sending "+command+" to unknow child - ignored");
             }
             DomTerm.doNamedCommand = function(name) {
                 DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                          "do-command", name);
+            }
+            DomTerm.setInputMode = function(mode, dt=null) {
+                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
+                                         "set-input-mode", mode);
             }
         } else {
             setupParentMessages1();
