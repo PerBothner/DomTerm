@@ -8,7 +8,7 @@ class DTParser {
         this.controlSequenceState = DTParser.INITIAL_STATE;
         this._urgentControlState = DTParser.INITIAL_STATE;
         this.parameters = new Array();
-        this._textParameter = null;
+        this._textParameter = "";
         this._savedControlState = null;
         this._flagChars = "";
         /** @type {Array|null} */
@@ -254,6 +254,7 @@ class DTParser {
                     } catch (e) {
                         console.log("caught "+e);
                     }
+                    this._textParameter = "";
                     this.parameters.length = 1;
                     prevEnd = i + 1; columnWidth = 0;
                     this.controlSequenceState =
