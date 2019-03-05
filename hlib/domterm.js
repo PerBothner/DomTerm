@@ -40,6 +40,11 @@ DomTerm.setTitle = function(title) {
     document.title = title;
 }
 
+// True if pane should be split into a vertical stack, with new pane --below.
+DomTerm._splitVertically = function(dt) {
+    return dt.numColumns < 3*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
+}
+
 /* Can be called in either DomTerm sub-window or layout-manager context. */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
     if (paneOp == 1 && dt) // convert to --right or --below
