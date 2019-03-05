@@ -7782,11 +7782,6 @@ Terminal.prototype._exitPaging = function() {
 }
 
 DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {
-    if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
-                                 "auto-paging", mode);
-        return;
-    }
     if (dt)
         dt._autoPaging = mode == "toggle" ? ! dt._autoPaging
         : mode == "on" || mode == "true";

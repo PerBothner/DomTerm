@@ -319,6 +319,10 @@ function loadHandler(event) {
                 DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                          "do-command", name);
             }
+            DomTerm.setAutoPaging = function(mode, dt = null) {
+                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
+                                         "auto-paging", mode);
+            }
             DomTerm.setInputMode = function(mode, dt=null) {
                 DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                          "set-input-mode", mode);
