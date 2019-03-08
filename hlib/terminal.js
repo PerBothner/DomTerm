@@ -4241,11 +4241,6 @@ Terminal.prototype.color256 = function(u) {
     return this.rgb(gray, gray, gray);
 };
 
-Terminal.prototype.getParameter = function(index, defaultValue) { // FIXME MOVE
-    var arr = this.parser.parameters;
-    return arr.length > index && arr[index] != null ? arr[index] : defaultValue;
-}
-
 Terminal.prototype.handleBell = function() {
     // Do nothing, for now.
 };
