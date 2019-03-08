@@ -655,56 +655,56 @@ class DTParser {
         case 64 /*'@'*/:
             var saveInsertMode = term.sstate.insertMode;
             term.sstate.insertMode = true;
-            param = term.getParameter(0, 1);
+            param = this.getParameter(0, 1);
             term.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param, param);
             term.cursorLeft(param, false);
             term.sstate.insertMode = saveInsertMode;
             break;
         case 65 /*'A'*/: // cursor up
-            term.cursorDown(- term.getParameter(0, 1));
+            term.cursorDown(- this.getParameter(0, 1));
             break;
         case 66 /*'B'*/: // cursor down
-            term.cursorDown(term.getParameter(0, 1));
+            term.cursorDown(this.getParameter(0, 1));
             break;
         case 67 /*'C'*/:
-            term.cursorRight(term.getParameter(0, 1));
+            term.cursorRight(this.getParameter(0, 1));
             break;
         case 68 /*'D'*/:
-            term.cursorLeft(term.getParameter(0, 1),
+            term.cursorLeft(this.getParameter(0, 1),
                             (term.sstate.wraparoundMode & 3) == 3);
             break;
         case 69 /*'E'*/: // Cursor Next Line (CNL)
             term._breakDeferredLines();
-            term.cursorDown(term.getParameter(0, 1));
+            term.cursorDown(this.getParameter(0, 1));
             term.cursorLineStart(0);
             break;
         case 70 /*'F'*/: // Cursor Preceding Line (CPL)
             term._breakDeferredLines();
-            term.cursorDown(- term.getParameter(0, 1));
+            term.cursorDown(- this.getParameter(0, 1));
             term.cursorLineStart(0);
             break;
         case 71 /*'G'*/: // HPA- horizontal position absolute
         case 96 /*'`'*/:
             var line = term.getCursorLine();
             term.cursorSet(term.sstate.originMode ? line - term._regionTop : line,
-                           term.getParameter(0, 1)-1,
+                           this.getParameter(0, 1)-1,
                            term.sstate.originMode);
             break;
         case 102 /*'f'*/:
         case 72 /*'H'*/: // CUP cursor position
-            term.cursorSet(term.getParameter(0, 1)-1, term.getParameter(1, 1)-1,
+            term.cursorSet(this.getParameter(0, 1)-1, this.getParameter(1, 1)-1,
                            term.sstate.originMode);
             break;
         case 73 /*'I'*/: // CHT Cursor Forward Tabulation
-            for (var n = term.getParameter(0, 1);
+            for (var n = this.getParameter(0, 1);
                  --n >= 0 && term.tabToNextStop(false); ) {
             }
             break;
         case 74 /*'J'*/:
-            term.eraseDisplay(term.getParameter(0, 0));
+            term.eraseDisplay(this.getParameter(0, 0));
             break;
         case 75 /*'K'*/:
-            param = term.getParameter(0, 0);
+            param = this.getParameter(0, 0);
             if (param != 1)
                 term.eraseLineRight();
             if (param >= 1)
@@ -712,14 +712,14 @@ class DTParser {
             break;
         case 76 /*'L'*/: // Insert lines
             term.columnSet(term._regionLeft);
-            term.insertLines(term.getParameter(0, 1));
+            term.insertLines(this.getParameter(0, 1));
             break;
         case 77 /*'M'*/: // Delete lines
             term.columnSet(term._regionLeft);
-            term.deleteLines(term.getParameter(0, 1));
+            term.deleteLines(this.getParameter(0, 1));
             break;
         case 80 /*'P'*/: // Delete characters
-            term.deleteCharactersRight(term.getParameter(0, 1));
+            term.deleteCharactersRight(this.getParameter(0, 1));
             term._clearWrap();
             term._eraseLineEnd();
             break;
@@ -727,25 +727,25 @@ class DTParser {
             if (this._flagChars.indexOf('?') >= 0) {
                 // Sixel/ReGIS graphics
                 // Sixel is implemented, but not term query.
-                let pi = term.getParameter(0, 1);
+                let pi = this.getParameter(0, 1);
                 term.processResponseCharacters("\x1B[?"+pi+";3;0S");
                 break;
             }
-            term.scrollForward(term.getParameter(0, 1));
+            term.scrollForward(this.getParameter(0, 1));
             break;
         case 84 /*'T'*/:
-            param = term.getParameter(0, 1);
+            param = this.getParameter(0, 1);
             /* FIXME Initiate mouse tracking.
                if (curNumParameter >= 5) { ... }
             */
             term.scrollReverse(param);
             break;
         case 88 /*'X'*/: // Erase character (ECH)
-            param = term.getParameter(0, 1);
+            param = this.getParameter(0, 1);
             term.eraseCharactersRight(param);
             break;
         case 90 /*'Z'*/: // CBT Cursor Backward Tabulation
-            for (var n = term.getParameter(0, 1); --n >= 0; )
+            for (var n = this.getParameter(0, 1); --n >= 0; )
                 term.tabToPrevStop();
             break;
         case 97 /*'a'*/: // HPR
@@ -753,11 +753,11 @@ class DTParser {
             var column = term.getCursorColumn();
             term.cursorSet(term.sstate.originMode ? line - term._regionTop : line,
                            term.sstate.originMode ? column - term._regionLeft : column
-                           + term.getParameter(0, 1),
+                           + this.getParameter(0, 1),
                            term.sstate.originMode);
             break;
         case 98 /*'b'*/: // Repeat the preceding graphic character (REP)
-            param = term.getParameter(0, 1);
+            param = this.getParameter(0, 1);
             term._fixOutputPosition();
             var prev = term.outputBefore == null ? term.outputContainer.lastChild
                 : term.outputBefore.previousSibling;
@@ -801,7 +801,7 @@ class DTParser {
             break;
         case 100 /*'d'*/: // VPA Line Position Absolute
             var col = term.getCursorColumn();
-            term.cursorSet(term.getParameter(0, 1)-1,
+            term.cursorSet(this.getParameter(0, 1)-1,
                            term.sstate.originMode ? col - term._regionLeft : col,
                            term.sstate.originMode);
             break;
@@ -809,18 +809,18 @@ class DTParser {
             var line = term.getCursorLine();
             var column = term.getCursorColumn();
             term.cursorSet(term.sstate.originMode ? line - term._regionTop : line
-                           + term.getParameter(0, 1),
+                           + this.getParameter(0, 1),
                            term.sstate.originMode ? column - term._regionLeft : column,
                            term.sstate.originMode);
         case 103 /*'g'*/: // TBC Tab Clear
-            param = term.getParameter(0, 0);
+            param = this.getParameter(0, 0);
             if (param <= 0)
                 term.setTabStop(term.getCursorColumn(), false);
             else if (param == 3)
                 term.clearAllTabs();
             break;
         case 104 /*'h'*/:
-            param = term.getParameter(0, 0);
+            param = this.getParameter(0, 0);
             if (this._flagChars.indexOf('?') >= 0) {
                 // DEC Private Mode Set (DECSET)
                 this.set_DEC_private_mode(param, true);
@@ -831,13 +831,13 @@ class DTParser {
                     term.sstate.insertMode = true;
                     break;
                 case 20:
-                    term.sstate.automaticNewlineMode = term.getParameter(1, 3);
+                    term.sstate.automaticNewlineMode = this.getParameter(1, 3);
                     break;
                 }
             }
             break;
         case 108 /*'l'*/:
-            param = term.getParameter(0, 0);
+            param = this.getParameter(0, 0);
             if (this._flagChars.indexOf('?') >= 0) {
                 // DEC Private Mode Reset (DECRST)
                 this.set_DEC_private_mode(param, false);
@@ -857,7 +857,7 @@ class DTParser {
             if (numParameters == 0)
                 term._clearStyle();
             for (var i = 0; i < numParameters; i++) {
-                param = term.getParameter(i, -1);
+                param = this.getParameter(i, -1);
                 if (param <= 0)
                     term._clearStyle();
                 else {
@@ -912,17 +912,17 @@ class DTParser {
                     case 38:
                     case 48:
                         var property = param==38 ? "color" : "background-color";
-                        if (term.getParameter(i+1,-1) == 2
+                        if (this.getParameter(i+1,-1) == 2
                             && numParameters >= i+5) {
                             var color = 
                                 term._pushStyle(property,
-                                                term.rgb(term.getParameter(i+2,0),
-                                                         term.getParameter(i+3,0),
-                                                         term.getParameter(i+4,0)));
+                                                term.rgb(this.getParameter(i+2,0),
+                                                         this.getParameter(i+3,0),
+                                                         this.getParameter(i+4,0)));
                             i += 5;
-                        } else if (term.getParameter(i+1,-1) == 5
+                        } else if (this.getParameter(i+1,-1) == 5
                                    && numParameters >= i+2) {
-                            var c = term.getParameter(i+2,0);
+                            var c = this.getParameter(i+2,0);
                             term._pushStyle(property, term.color256(c));
                             i += 2;
                         }
@@ -958,7 +958,7 @@ class DTParser {
             }
             break;
         case 110 /*'n'*/:
-            switch (term.getParameter(0, 0)) {
+            switch (this.getParameter(0, 0)) {
             case 5: // Device Status Report (DSR)
                 term.processResponseCharacters("\x1B[0n");
                 break;
@@ -997,7 +997,7 @@ class DTParser {
         case 113 /*'q'*/:
             if (this._flagChars.indexOf(' ') >= 0) {
                 // Set cursor style (DECSCUSR, VT520).
-                term.setCaretStyle(term.getParameter(0, 1));
+                term.setCaretStyle(this.getParameter(0, 1));
             }
             break;
         case 114 /*'r'*/:
@@ -1007,14 +1007,14 @@ class DTParser {
                     break;
                 var numParameters = this.parameters.length;
                 for (var i = 0; i < numParameters; i++) {
-                    param = term.getParameter(i, -1);
+                    param = this.getParameter(i, -1);
                     var saved = this.saved_DEC_private_mode_flags[param];
                     this.set_DEC_private_mode(param, saved);
                 }
             }
             // DECSTBM - set scrolling region
-            var top = term.getParameter(0, 1);
-            var bot = term.getParameter(1, -1);
+            var top = this.getParameter(0, 1);
+            var bot = this.getParameter(1, -1);
             if (bot > term.numRows || bot <= 0)
                 bot = term.numRows;
             if (bot > top) {
@@ -1029,7 +1029,7 @@ class DTParser {
                     this.saved_DEC_private_mode_flags = new Array();
                 var numParameters = this.parameters.length;
                 for (var i = 0; i < numParameters; i++) {
-                    param = term.getParameter(i, -1);
+                    param = this.getParameter(i, -1);
                     this.saved_DEC_private_mode_flags[param]
                         = this.get_DEC_private_mode(param);
                 }
@@ -1038,9 +1038,9 @@ class DTParser {
             break;
         case 116 /*'t'*/: // Xterm window manipulation.
             var w, h;
-            switch (term.getParameter(0, 0)) {
+            switch (this.getParameter(0, 0)) {
             case 14:
-                if (term.getParameter(1, 0) == 2) {
+                if (this.getParameter(1, 0) == 2) {
                     w = window.outerWidth;
                     h = window.outerHeight;
                 } else {
@@ -1057,7 +1057,7 @@ class DTParser {
             };
             break;
         case 117 /*'u'*/:
-            switch (term.getParameter(0, 0)) {
+            switch (this.getParameter(0, 0)) {
             case 11:
                 this.controlSequenceState = DTParser.SEEN_ERROUT_END_STATE;
                 break;
@@ -1098,14 +1098,14 @@ class DTParser {
 
                 term._pushStdMode("prompt");
                 if (term._inputLine != null) {
-                    if (term.getParameter(0, 0) == 24)
+                    if (this.getParameter(0, 0) == 24)
                         term._inputLine.setAttribute("continuation", "true");
                     else
                         term._inputLine.removeAttribute("continuation");
                 }
                 break;
             case 15:
-                var submode = term.getParameter(1, 1);
+                var submode = this.getParameter(1, 1);
                 // 0 - client does not do line editing (no arrow key support)
                 // 1 - single-line line editing (a la GNU readline)
                 // 2 - first line of potentially multi-line (a la jline3)
@@ -1237,7 +1237,7 @@ class DTParser {
                 term.freshLine();
                 break;
             case 44:
-                var param = term.getParameter(1, 0);
+                var param = this.getParameter(1, 0);
                 switch (param) {
                 case 0:
                     term.popFromElement();
@@ -1245,17 +1245,17 @@ class DTParser {
                 }
                 break;
             case 80: // set input mode
-                DomTerm.setInputMode(term.getParameter(1, 112), term);
+                DomTerm.setInputMode(this.getParameter(1, 112), term);
                 break;
             case 81: // get-window-contents
                 DomTerm.saveWindowContents(term);
                 term._removeInputLine();
                 break;
             case 82:
-                term._detachSaveNeeded = term.getParameter(1,1);
+                term._detachSaveNeeded = this.getParameter(1,1);
                 break;
             case 83: // push/pop domterm-hidden span
-                param = term.getParameter(1, 0);
+                param = this.getParameter(1, 0);
                 if (param == 0) { // pop
                     if (term.outputBefore == null) {
                         term.outputBefore = term.outputContainer.nextSibling;
@@ -1269,17 +1269,17 @@ class DTParser {
                 }
                 break;
             case 90:
-                DomTerm.newPane(term.getParameter(1, 0),
-                                term.getParameter(2, 0),
+                DomTerm.newPane(this.getParameter(1, 0),
+                                this.getParameter(2, 0),
                                 term);
                 break;
             case 91:
-                term.setSessionNumber(term.getParameter(1, 0),
-                                      term.getParameter(2, 0) != 0,
-                                      term.getParameter(3, 0)-1);
+                term.setSessionNumber(this.getParameter(1, 0),
+                                      this.getParameter(2, 0) != 0,
+                                      this.getParameter(3, 0)-1);
                 break;
             case 92:
-                switch (term.getParameter(1, 0)) {
+                switch (this.getParameter(1, 0)) {
                 case 1:
                     if (! term._autoPaging) {
                         term._autoPaging = true;
@@ -1292,7 +1292,7 @@ class DTParser {
                 }
                 break;
             case 96:
-                term._receivedCount = term.getParameter(1,0);
+                term._receivedCount = this.getParameter(1,0);
                 term._confirmedCount = term._receivedCount;
                 if (term._savedControlState)
                     term._savedControlState.receivedCount = term._receivedCount;
@@ -1304,13 +1304,13 @@ class DTParser {
                 term._replayMode = false;
                 break;
             case 99:
-                if (term.getParameter(1, 0) == 99)
+                if (this.getParameter(1, 0) == 99)
                     term.eofSeen();
                 break;
             }
         break;
         case 120: /*'x'*/ // Request Terminal.Parameters (DECREQTPARM)
-            term.processResponseCharacters("\x1B["+(term.getParameter(0, 0)+2)+";1;1;128;128;1;0x");
+            term.processResponseCharacters("\x1B["+(this.getParameter(0, 0)+2)+";1;1;128;128;1;0x");
             break;
             //case 122 /*'z'*/: Nethack tiledata
             //    http://nethackwiki.com/wiki/Vt_tiledata
@@ -1951,6 +1951,12 @@ class DTParser {
             else
                 this._receivedCount = saved.receivedCount;
         }
+    }
+
+    getParameter(index, defaultValue) {
+        var arr = this.parameters;
+        return arr.length > index && arr[index] != null ? arr[index]
+            : defaultValue;
     }
 }
 
