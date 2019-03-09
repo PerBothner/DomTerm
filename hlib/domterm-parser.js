@@ -1054,6 +1054,33 @@ class DTParser {
                 term.processResponseCharacters("\x1B[8;"+term.numRows
                                                +";"+term.numColumns+"t");
                 break;
+            case 22:  // save the window's title(s) on stack
+                {
+                    const kind = this.getParameter(1, 0);
+                    const old = term.sstate.save_title;
+                    let wName = kind == 1 && old ? old.windowName
+                        : term.sstate.windowName;
+                    let iName = kind == 2 && old ? old.iconName
+                        : term.sstate.iconName;
+                    term.sstate.save_title = {
+                        windowName: term.sstate.windowName,
+                        iconName: term.sstate.iconName,
+                        next: old
+                    };
+                }
+                break;
+            case 23: // restore the window's title(s) from stack
+                let stitle = term.sstate.save_title;
+                if (stitle) {
+                    const kind = this.getParameter(1, 0);
+                    if (kind == 0 || kind == 2)
+                        term.sstate.windowName = stitle.windowName;
+                    if (kind == 0 || kind == 1)
+                        term.sstate.iconName = stitle.iconName;
+                    term.sstate.save_title = stitle.next;
+                    term.updateWindowTitle();
+                }
+                break;
             };
             break;
         case 117 /*'u'*/:
