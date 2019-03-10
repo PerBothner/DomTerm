@@ -2335,6 +2335,7 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
             bufNode.saveLastLine = nextLine;
             this.sstate.savedCursorMain = this.sstate.savedCursor;
             this.sstate.savedCursor = undefined;
+            this.sstate.savedPauseLimit = this._pauseLimit;
             var newLineNode = bufNode.firstChild;
             this.homeLine = nextLine;
             this.outputContainer = newLineNode;
@@ -2343,7 +2344,7 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
             this.initial = bufNode;
             this.resetCursorCache();
             this.moveToAbs(line+this.homeLine, col, true);
-            this._pauseLimit = bufNode.offsetTop + this.availHeight;
+            this._adjustPauseLimit(this.outputContainer);
         } else {
             var bufNode = this.initial;
             this.initial = DomTerm._currentBufferNode(this, false);
@@ -2367,7 +2368,7 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
             this.sstate.savedCursorMain = undefined;
             this.moveToAbs(this.homeLine, 0, false);
             bufNode.parentNode.removeChild(bufNode);
-            this._adjustPauseLimit(this._vspacer);
+            this._pauseLimit = this.sstate.savedPauseLimit;
         }
         this.usingAlternateScreenBuffer = val;
     }
