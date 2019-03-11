@@ -1526,6 +1526,9 @@ Terminal.prototype.useStyledCaret = function() {
 
 Terminal.prototype.isLineEditing = function() {
     return (this._lineEditingMode + this._clientWantsEditing > 0
+            // extproc turns off echo by the tty driver, which means we need
+            // to simulate echo if the applications requests icanon+echo mode.
+            // For simplicity in this case, ignore _lineEditingMode < 0..
             || (this._clientPtyExtProc + this._clientPtyEcho
                 + this._clientWantsEditing == 3)
             || this._composing > 0)
