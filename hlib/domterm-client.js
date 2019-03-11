@@ -210,13 +210,13 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
 }
 
 function setupParentMessages1() {
-            DomTerm.sendParentMessage = function(command, ...args) {
-                window.parent.postMessage({"command": command, "args": args}, "*");
-            }
-            DomTerm.showFocusedTerm = function(dt) {
-                DomTerm.sendParentMessage("domterm-focused"); }
-            DomTerm.windowClose = function() {
-                DomTerm.sendParentMessage("domterm-close"); }
+    DomTerm.sendParentMessage = function(command, ...args) {
+        window.parent.postMessage({"command": command, "args": args}, "*");
+    }
+    DomTerm.showFocusedTerm = function(dt) {
+        DomTerm.sendParentMessage("domterm-focused"); }
+    DomTerm.windowClose = function() {
+        DomTerm.sendParentMessage("domterm-close"); }
 }
 function setupParentMessages2() {
         DomTerm.showContextMenu = function(options) {
