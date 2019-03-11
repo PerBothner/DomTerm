@@ -99,6 +99,12 @@ cmd('copy-html',
     function(dt, key) {
         return DomTerm.valueToClipboard(Terminal._selectionValue(true));
     });
+cmd('copy-text-or-interrupt',
+   function(dt, key) {
+       let cmd = document.getSelection().isCollapsed ? 'client-action'
+           : "copy-text";
+       return (commandMap[cmd])(dt, key);
+   });
 cmd('cut-text',
     function(dt, key) {
         if (! window.getSelection().isCollapsed)
@@ -148,6 +154,13 @@ cmd('forward-delete-char',
     function(dt, key) {
         dt.editorBackspace(- dt.numericArgumentGet(), "delete", "char");
         return true; });
+cmd('forward-delete-char-or-eof',
+   function(dt, key) {
+       let cmd = 'client-action';
+       if (dt.grabInput(dt._inputLine).length > 0)
+           cmd = "forward-delete-char";
+       return (commandMap[cmd])(dt, key);
+   });
 cmd('forward-delete-word',
     function(dt, key) {
     dt.editorBackspace(- dt.numericArgumentGet(), "delete", "word");
@@ -199,7 +212,17 @@ cmd('ignore-action',
 cmd('default-action',
     function(dt, key) {
         return false; });
-
+/** Send keystroke to client */
+cmd('client-action',
+   function(dt, key) {
+       let str = dt.keyNameToChars(key);
+       dt._sendInputContents();
+       let input = dt._inputLine;
+       if (str) {
+           dt.processInputCharacters(str);
+           return true;
+       }
+       return false; });
 cmd('numeric-argument',
     function(dt, key) {
         let klen = key.length;

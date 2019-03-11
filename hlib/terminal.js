@@ -6869,9 +6869,10 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
     "Ctrl-V": "paste-text",
-    "Ctrl-C": "copy-text",
+    "Ctrl-C": "copy-text-or-interrupt",
     "Ctrl-X": "cut-text",
     "Ctrl-Shift-X": "cut-text",
+    "Ctrl-Z": "client-action",
     "Left": 'backward-char',
     "Mod-Left": 'backward-word',
     "Right": 'forward-char',
@@ -6920,7 +6921,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Alt-F": "forward-word",
     "Ctrl-A": "beginning-of-line",
     "Ctrl-B": "backward-char",
-    "Ctrl-D": "forward-delete-char",
+    "Ctrl-D": "forward-delete-char-or-eof",
     "Ctrl-E": "end-of-line",
     "Ctrl-F": "forward-char",
     "Ctrl-K": "kill-line",
@@ -7075,16 +7076,7 @@ Terminal.prototype.keyDownHandler = function(event) {
                 }
             }
         }
-        if (event.ctrlKey
-                 && (key == 67 // ctrl-C
-                     || key == 90 // ctrl-Z
-                     || (key == 68 // ctrl-D
-                         && this.grabInput(this._inputLine).length == 0))) {
-            event.preventDefault();
-            if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
-                this._clientWantsEditing = 0;
-            this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
-        } else if (this.doLineEdit(keyName))
+        if (this.doLineEdit(keyName))
             event.preventDefault();
     } else {
         var str = this.keyNameToChars(keyName);
