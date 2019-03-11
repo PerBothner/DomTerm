@@ -6781,6 +6781,7 @@ DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
     dt._restoreInputLine();
     if (wasEditing && ! dt.isLineEditing()) {
         dt._sendInputContents();
+        dt._inputLine = null;
     }
     dt.sstate.automaticNewlineMode = dt.clientDoesEcho ? 0 : 3;
 };
