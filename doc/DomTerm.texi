@@ -2489,7 +2489,7 @@ For example @code{.html} matches html files.
 Suceeds if @var{condition} fails and vice versa.
 @end table
 @item @var{custom template}
-Using @samp{%}-escapes to create a system shell command.
+Using @samp{%}-escapes to create a system command.
 The following escapes are supported:
 @table @asis
 @item @code{%U}
@@ -2507,6 +2507,9 @@ You should use quotes: @code{command '%F'}.
 @item @code{%%}
 A literal @samp{%}.
 @end table
+After expansion, if there are any unquoted shell special characters
+(any of @code{<>|&$}), then the command is executed by a shell.
+Otherwise, it is executed directly (in the background, as a daemon).
 @end table
 
 @node Detecting domterm terminal

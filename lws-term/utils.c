@@ -107,13 +107,15 @@ base64_encode(const unsigned char *buffer, size_t length) {
 
 /* Parse an argument list (a list of possible-quoted "words").
  * This follows extended shell syntax.
+ * If check_shell_specials is true and
+ * args contains any of "&|<>$" *not* quoted, return NULL.
  * The result is a single buffer containing both the
  * pointers and all the strings.
  * To free the buffer, free the result of this function;
  * do not free any individual arguments.
  */
 char**
-parse_args(const char *args)
+parse_args(const char *args, bool check_shell_specials)
 {
     if (args == NULL)
         return NULL;
@@ -122,6 +124,7 @@ parse_args(const char *args)
     char **argv = NULL;
     char context = -1; // '\'', '"', 0 (in-word), or -1 (between words)
     for (int pass = 0; pass < 2; pass++) {
+        // pass==0: calculate space needed; pass==1: fill in result array.
         const char *p = args;
         char *q = NULL;
         if (pass == 1) {
@@ -160,6 +163,10 @@ parse_args(const char *args)
                   // etc etc for other escapes FIXME
                 default: ;
                 }
+            } else if (check_shell_specials && pass == 0
+                       && (ch == '$' || ch == '&' || ch == '|'
+                           || ch == '<' || ch == '>')) {
+                return NULL;
             }
             if (pass == 0) {
                 lengths++;

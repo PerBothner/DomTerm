@@ -698,10 +698,9 @@ handle_tlink(char *template, json_object *obj)
             return true;
         }
     }
-    if (system(command) != 0)
-        return false;
+    bool r = start_command(main_options, command) == EXIT_SUCCESS;
     free(command);
-    return true;
+    return r;
 }
 
 void

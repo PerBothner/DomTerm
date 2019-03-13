@@ -75,11 +75,13 @@ subst_run_command(struct options *opts, const char *browser_command,
     if (url_tmp != NULL)
         free(url_tmp);
     lwsl_notice("frontend command: %s\n", cmd);
-    char **args;
-    char *dollar = strchr(cmd, '$');
+    return start_command(opts, cmd);
+}
+
+int start_command(struct options *opts, char *cmd) {
+    char **args = parse_args(cmd, true);
     char *arg0;
-    if (dollar == NULL) {
-        args = parse_args(cmd);
+    if (args != NULL) {
         arg0 = find_in_path(args[0]);
         if (arg0 == NULL) {
             FILE *err = fdopen(opts->fd_err, "w");
@@ -102,7 +104,7 @@ subst_run_command(struct options *opts, const char *browser_command,
         char *shell = getenv("SHELL");
         if (shell == NULL)
             shell = DEFAULT_SHELL;
-        char **shell_argv = parse_args(shell);
+        char **shell_argv = parse_args(shell, false);
         int shell_argc = 0;
         while (shell_argv[shell_argc])
             shell_argc++;
@@ -1058,7 +1060,7 @@ main(int argc, char **argv)
     char *shell = getenv("SHELL");
     if (shell == NULL)
         shell = DEFAULT_SHELL;
-    default_argv = parse_args(shell);
+    default_argv = parse_args(shell, false);
 
     init_options(&opts);
     prescan_options(argc, argv, &opts);

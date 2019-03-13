@@ -219,6 +219,7 @@ extern int handle_command(int argc, char**argv, const char*cwd,
 extern int display_session(struct options *, struct pty_client *,
                            const char *, int);
 extern int do_run_browser(struct options *, char *url, int port);
+extern int start_command(struct options *, char *cmd);
 extern char* check_browser_specifier(const char *specifier);
 extern void printf_to_browser(struct tty_client *, const char *, ...);
 extern void fatal(const char *format, ...);
@@ -251,7 +252,7 @@ extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_AS_MODULE 8
 extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);
-extern char** parse_args(const char*);
+extern char** parse_args(const char*, bool);
 extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);
 

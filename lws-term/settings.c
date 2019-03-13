@@ -186,7 +186,7 @@ read_settings_file(struct options *options)
  eof:
     if (options->shell_argv)
         free(options->shell_argv);
-    options->shell_argv = parse_args(options->shell_command);
+    options->shell_argv = parse_args(options->shell_command, false);
 
     munmap(sbuf, slen);
     close(settings_fd);
