@@ -327,6 +327,9 @@ function loadHandler(event) {
                 DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
                                          "set-input-mode", mode);
             }
+            DomTerm.handleLink = function(element) {
+                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "open-link");
+            }
         } else {
             setupParentMessages1();
             setupParentMessages2();
