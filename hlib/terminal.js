@@ -5405,10 +5405,9 @@ Terminal.prototype.popControlState = function() {
                 this._receivedCount = (this._receivedCount + 2) & Terminal._mask28;
             else
                 this._receivedCount = saved.receivedCount;
-            console.log("popContr r:"+this._receivedCount+" urg:"+saved.count_urgent);
         }
     } else
-        this.parser.pushControlState();
+        this.parser.popControlState();
 }
 
 // overridden if useXtermJs
