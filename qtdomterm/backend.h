@@ -32,7 +32,6 @@ public:
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
     QString getSavedHtml() { return _savedHtml; }
-    //void handleSimpleMessage(QString msg);
 
 signals:
     /** Emitted when the terminal process starts. */
