@@ -643,7 +643,7 @@ DomTerm.selectNextPane = function(forwards, wrapper=DomTermLayout._oldFocusedCon
 // "C" - layoutInit
 // "S" - mousedown [only if !useIFrame]
 DomTerm.setFocus = function(term, originMode="") {
-    if (DomTerm.useIFrame) {
+    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
         //DomTerm.focusedTerm = term;
         if (originMode == "F" || originMode == "N")
             term.setFocused(1);

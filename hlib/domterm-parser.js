@@ -1533,7 +1533,7 @@ class DTParser {
             break;
         case 31:
             term.topNode.setAttribute("pid", text);
-            if (DomTerm.useIFrame) {
+            if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
                 DomTerm.sendParentMessage("set-pid", text);
             }
             break;

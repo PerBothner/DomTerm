@@ -7,7 +7,7 @@ DomTerm.usingJsMenus = function() {
         && ! DomTerm.isElectron() && ! DomTerm.usingQtWebEngine;
 }
 
-// True if we should create each domterm terminal in a separate <iframe>.
+// Non-zero if we should create each domterm terminal in a separate <iframe>.
 // Only relevant when using a layout manager like GoldenLayout.
 // Issues with !useIFrame:
 // - Potentially less secure (all terminals in same frame).
@@ -22,8 +22,12 @@ DomTerm.usingJsMenus = function() {
 // - When using jsMenus with most deskop browsers, menu Copy doesn't work;
 //   it does work when !useIFrame. (Menu Paste doesn't work either way.)
 // - Popout-window buttons don't work.
+// The value 1 means don't use an iframe for the initial window, only
+// subsequent ones.  The value 2 means use an iframe for all windows.
+// Only using iframe for subsequent windows gives most of the benefits
+// with less of the cost, plus it makes no-layout modes more consistent.
 DomTerm.useIFrame = ! DomTerm.simpleLayout
-    && ! DomTerm.usingJsMenus();
+    && ! DomTerm.usingJsMenus() ? 1 : 0;
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
@@ -337,7 +341,7 @@ function loadHandler(event) {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
         return;
     }
-    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()) {
+    if (DomTerm.useIFrame == 2 && ! DomTerm.isInIFrame()) {
         DomTermLayout.makeIFrameWrapper(DomTerm.mainLocation+uhash);
         return;
     }
