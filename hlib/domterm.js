@@ -12,9 +12,7 @@ DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
 }
 
-DomTerm.CORS_WRAPPER_WINDOW_NAME = '{domterm-cors-wrapper}';
-
-DomTerm.isInIFrame = function() { return window.parent != window && window.name !== DomTerm.CORS_WRAPPER_WINDOW_NAME; }
+DomTerm.isInIFrame = function() { return window.parent != window; }
 
 DomTerm.wrapForLayout = function() {
     return ! DomTerm.isInIFrame() && ! DomTerm.simpleLayout;
