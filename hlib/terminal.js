@@ -2874,7 +2874,6 @@ Terminal.prototype.setMiscOptions = function(map) {
 
 Terminal.prototype._updateMiscOptions = function(map) {
     var map = this._miscOptions;
-    var style = "";
 
     // handle 'foreground' and 'background'
     const foreground = map.foreground;
@@ -2896,23 +2895,18 @@ Terminal.prototype._updateMiscOptions = function(map) {
         if (background.length == 4)
             bgSum = 17 * bgSum;
         let darkStyle = fgSum > bgSum;
-        if (darkStyle) {
-            style += "--main-light-color:"+foreground
-                +";--main-dark-color:"+background+";";
-        } else {
-            style += "--main-light-color:"+background
-                +";--main-dark-color:"+foreground+";";
-        }
+        this.topNode.style["--main-light-color"] =
+            darkStyle ? foreground : background;
+        this.topNode.style["--main-dark-color"] =
+            darkStyle ? background : foreground;
         this.setReverseVideo(darkStyle);
     } else {
         if (foreground)
-            style += "--foreground-color: "+foreground+";";
+            this.topNode.style["--foreground-color"] = foreground;
         if (background)
-            style += "--background-color: "+background+";";
+            this.topNode.style["--background-color"] = background;
     }
-
-    style += "--wchar-width: "+(this.charWidth * 2)+"px";
-    this.topNode.setAttribute("style", style);
+    this.topNode.style["--wchar-width"] = (this.charWidth * 2)+"px";
 };
 
 DomTerm.showContextMenu = null;
