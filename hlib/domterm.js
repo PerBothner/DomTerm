@@ -14,9 +14,6 @@ DomTerm.freshName = function() {
 
 DomTerm.isInIFrame = function() { return window.parent != window; }
 
-DomTerm.wrapForLayout = function() {
-    return ! DomTerm.isInIFrame() && ! DomTerm.simpleLayout;
-}
 DomTerm.usingAjax = false;
 DomTerm.usingQtWebEngine = !! location.hash.match(/[#&]qtwebengine/);
 

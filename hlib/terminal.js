@@ -414,17 +414,7 @@ class Terminal {
 Terminal.DEFAULT_CARET_STYLE = 1; // blinking-block
 Terminal.INFO_TIMEOUT = 800;
 
-DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = DomTerm.layoutTop) {
-    if (wrap) {
-        let lcontent = document.createElement("div");
-        lcontent.setAttribute("class", "domterm-wrapper");
-        lcontent.setAttribute("name", name)
-        parent.appendChild(lcontent);
-        // FIXME in layout-manager context
-        if (DomTermLayout._oldFocusedContent == null)
-            DomTermLayout._oldFocusedContent = lcontent;
-        return lcontent;
-    }
+DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
     let topNode;
     if (DomTerm.useXtermJs) {
         let xterm = new window.Terminal();
@@ -436,7 +426,10 @@ DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = Do
         parent.appendChild(topNode);
     }
     topNode.classList.add("domterm");
-    topNode.setAttribute("id", name);
+    topNode.setAttribute("name", name);
+    if (typeof DomTermLayout !== "undefined"
+        && DomTermLayout._oldFocusedContent == null)
+        DomTermLayout._oldFocusedContent = topNode;
     return topNode;
 }
 
@@ -522,9 +515,8 @@ Terminal.prototype.close = function() {
     if (DomTerm.useIFrame)
         DomTerm.sendParentMessage("layout-close");
     else if (DomTermLayout.manager && DomTermLayout.layoutClose) {
-        let lcontent = DomTerm.wrapForLayout() ? this.topNode.parentNode
-            : this.topNode;
-        DomTermLayout.layoutClose(lcontent, DomTerm.domTermToLayoutItem(this));
+        DomTermLayout.layoutClose(this.topNode,
+                                  DomTerm.domTermToLayoutItem(this));
     } else
         DomTerm.windowClose();
 };
@@ -673,7 +665,7 @@ DomTerm.setFocus = function(term, originMode="") {
 DomTerm.showFocusedTerm = function(term) {
     if (DomTermLayout.manager) {
         var item = term ? DomTerm.domTermToLayoutItem(term) : null;
-        DomTermLayout.showFocusedPane(item, term ? term.topNode.parentNode : null);
+        DomTermLayout.showFocusedPane(item, term ? term.topNode : null);
     }
 }
 
@@ -7412,7 +7404,7 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
             DomTerm.setFocus(wt, "N");
         } else {
             if (topNode.classList.contains("domterm-wrapper"))
-                topNode = DomTerm.makeElement(name, false, topNode);
+                topNode = DomTerm.makeElement(name, topNode);
             wt.initializeTerminal(topNode);
         }
     };
@@ -7436,8 +7428,6 @@ Terminal._makeWsUrl = function(query=null) {
 }
 
 DomTerm.initSavedFile = function(topNode) {
-    if (topNode.classList.contains("domterm-wrapper"))
-        topNode = topNode.firstChild;
     var name = "domterm";
     var dt = new Terminal(name);
     dt.initial = document.getElementById(dt.makeId("main"));
@@ -8629,9 +8619,8 @@ DomTerm.domTermToLayoutItem = function(dt) {
     if (! DomTermLayout.manager)
         return null;
     var node = dt.topNode;
-    var goal = node.parentNode;
-    if (goal instanceof Element && goal.classList.contains("lm_content"))
-        return DomTermLayout._elementToLayoutItem(goal);
+    if (node instanceof Element && node.classList.contains("lm_content"))
+        return DomTermLayout._elementToLayoutItem(node);
     else
         return null;
 }

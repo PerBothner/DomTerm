@@ -14,8 +14,8 @@ DomTermLayout._oldFocusedPane = null;
 // The current (or previous) lm.items.Component
 DomTermLayout._oldFocusedItem = null;
 
-// The current domterm-wrapper Element.
-// Same as DomTerm._oldFocusedItem.container._contentElement1
+// The current domterm *or* domterm-wrapper iframe Element.
+// Same as DomTermLayout._oldFocusedItem.container._contentElement1
 DomTermLayout._oldFocusedContent = null;
 
 DomTermLayout.selectNextPane = function(forwards, wrapper=DomTermLayout._oldFocusedContent) {
@@ -125,18 +125,19 @@ DomTermLayout.showFocusedPaneF = function(lcontent) {
 DomTermLayout._focusChild = function(iframe, originMode) {
     let oldContent = DomTermLayout._oldFocusedContent;
     if (iframe !== oldContent || originMode=="C") {
-        if (DomTerm.useIFrame) {
-            if (oldContent != null)
+        if (oldContent != null) {
+            let terminal = oldContent.terminal;
+            if (oldContent.tagName == "IFRAME")
                 DomTerm.sendChildMessage(oldContent, "set-focused", 0);
-            if (originMode != "F")
+            else if (terminal)
+                terminal.setFocused(0);
+        }
+        if (originMode != "F") {
+            let terminal = iframe.terminal;
+            if (iframe.tagName == "IFRAME")
                 DomTerm.sendChildMessage(iframe, "set-focused", 2);
-        } else if (! DomTerm.useXtermJs) {
-            if (oldContent != null && oldContent.firstChild
-               && oldContent.firstChild.terminal)
-                oldContent.firstChild.terminal.setFocused(0);
-            if (originMode != "F"
-                && iframe.firstChild && iframe.firstChild.terminal)
-                iframe.firstChild.terminal.setFocused(2);
+            else if (terminal)
+                terminal.setFocused(2);
         }
     }
 }
@@ -343,7 +344,7 @@ DomTermLayout.initialize = function() {
         if (lcontent != null) {
             wrapped = lcontent;
             container._contentElement1 = wrapped;
-            if (DomTerm.useIFrame) {
+            if (lcontent.tagName == "IFRAME") {
                 name = wrapped.layoutTitle;
                 wrapped.layoutTitle = undefined;
             } else
