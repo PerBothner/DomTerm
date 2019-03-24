@@ -2390,7 +2390,7 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
 Terminal.prototype.isObjectElement = function(node) {
     var tag = node.tagName;
     return "OBJECT" == tag || "CANVAS" == tag
-        "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
+        || "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
 };
 
 Terminal.prototype.isBlockNode = function(node) {
