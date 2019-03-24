@@ -7312,7 +7312,7 @@ DomTerm.initXtermJs = function(dt, topNode) {
     dt.insertString = function(str) {
         if (str.length > 0 && str.charCodeAt(0) == Terminal.URGENT_COUNTED
             && this._savedControlState)
-            this._savedControlState,count_urgent = true;
+            this._savedControlState.count_urgent = true;
         xterm.write(str); };
     xterm.on('data', function(data) {
         dt.processInputCharacters(data);
