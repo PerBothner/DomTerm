@@ -441,10 +441,11 @@ DomTerm.makeElement = function(name, wrap = DomTerm.wrapForLayout(), parent = Do
 }
 
 // These are used to delimit "out-of-bound" urgent messages.
-Terminal.URGENT_BEGIN1 = 19; // '\023' - device control 3
-Terminal.URGENT_BEGIN2 = 22; // '\026' - SYN synchronous idle
+// URGENT_BEGIN1 may be followed by URGENT_BEGIN2 *or* URGENT_COUNTED.
+Terminal.URGENT_BEGIN1 = 19; // '\023' (DC1) - out-of-band start
+Terminal.URGENT_BEGIN2 = 22; // '\026' (SYN) - urgent, not counted
 Terminal.URGENT_END = 20; // \024' - device control 4
-Terminal.URGENT_COUNTED = 21;
+Terminal.URGENT_COUNTED = 21; // '\025' (NAK) - urgent, counted
 
 Terminal.prototype._deleteData = function(text, start, count) {
     if (count == 0)
@@ -5345,8 +5346,10 @@ Terminal.prototype.insertBytes = function(bytes) {
         }
         var plen = urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin) ? urgent_begin
             : urgent_end >= 0 ? urgent_end : len;
+        let begin2;
         if (urgent_end > urgent_begin && urgent_begin >= 0
-            && bytes[urgent_begin+1] == Terminal.URGENT_BEGIN2) {
+            && ((begin2 = bytes[urgent_begin+1]) == Terminal.URGENT_BEGIN2
+                || begin2 == Terminal.URGENT_COUNTED)) {
             this.pushControlState();
             this.insertString(this.decoder
                               .decode(bytes.slice(urgent_begin+2, urgent_end),
