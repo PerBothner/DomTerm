@@ -475,8 +475,8 @@ class DTParser {
                 case 20: case 21: case 22: case 23: case 25:
                 case 28: case 29: case 30: case 31:
                     if (ch == window.DTerminal.URGENT_COUNTED
-                        && term._savedControlState)
-                        term._savedControlState.count_urgent = true;
+                        && this._savedControlState)
+                        this._savedControlState.count_urgent = true;
                     // ignore
                     term.insertSimpleOutput(str, prevEnd, i, columnWidth);
                     prevEnd = i + 1; columnWidth = 0;
@@ -1321,8 +1321,8 @@ class DTParser {
             case 96:
                 term._receivedCount = this.getParameter(1,0);
                 term._confirmedCount = term._receivedCount;
-                if (term._savedControlState)
-                    term._savedControlState.receivedCount = term._receivedCount;
+                if (this._savedControlState)
+                    this._savedControlState.receivedCount = term._receivedCount;
                 break;
             case 97:
                 term._replayMode = true;
@@ -1944,39 +1944,41 @@ class DTParser {
     };
 
     pushControlState() {
+        const term = this.term;
         var save = {
             controlSequenceState: this.controlSequenceState,
             parameters: this.parameters,
             textParameter: this._textParameter,
-            decoder: this.term.decoder,
-            receivedCount: this._receivedCount,
+            decoder: term.decoder,
+            receivedCount: term._receivedCount,
             count_urgent: false,
             _savedControlState: this._savedControlState
         };
         this.controlSequenceState = this._urgentControlState;
         this.parameters = new Array();
         this._textParameter = null;
-        this.term.decoder = new TextDecoder(); //label = "utf-8");
+        term.decoder = new TextDecoder(); //label = "utf-8");
         this._savedControlState = save;
     }
 
     popControlState() {
+        const term = this.term;
         var saved = this._savedControlState;
         if (saved) {
             this._urgentControlState = this.controlSequenceState;
             this.controlSequenceState = saved.controlSequenceState;
             this.parameters = saved.parameters;
             this._textParameter = saved.textParameter;
-            this.term.decoder = saved.decoder;
+            term.decoder = saved.decoder;
             this._savedControlState = saved.controlSequenceState;
             // Control sequences in "urgent messages" don't count to
             // receivedCount. (They are typically window-specific and
             // should not be replayed when another window is attached.)
-            var old = this._receivedCount;
+            var old = term._receivedCount;
             if (saved.count_urgent)
-                this._receivedCount = (this._receivedCount + 2) & Terminal._mask28;
+                term._receivedCount = (term._receivedCount + 2) & Terminal._mask28;
             else
-                this._receivedCount = saved.receivedCount;
+                term._receivedCount = saved.receivedCount;
         }
     }
 
