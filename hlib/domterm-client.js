@@ -229,17 +229,13 @@ function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
     // console.log("loadHandler "+location);
-    if (! DomTerm.useIFrame && window == top && typeof Terminal == "undefined") {
-        let ifr = document.createElement("iframe");
+    if (! DomTerm.useIFrame && window == top && typeof DTerminal == "undefined") {
         let iloc = "http://127.0.0.1:" + DomTerm.server_port
             + "/no-frames.html" + location.hash;
         if (DomTerm.server_key)
             iloc += (iloc.indexOf('#') >= 0 ? '&' : '#')
             + "server-key=" + DomTerm.server_key;
-        ifr.setAttribute("src", iloc);
-        ifr.setAttribute("style", "width: 100%; height: 100%; border: 0pt; display: block");
-        ifr.setAttribute("name", DomTerm.CORS_WRAPPER_WINDOW_NAME);
-        document.body.appendChild(ifr);
+        location.replace(iloc);
         return;
     }
     DomTerm.layoutTop = document.body;
