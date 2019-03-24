@@ -1500,6 +1500,32 @@ static struct lib_info standard_jslibs[] = {
     {NULL, 0},
 };
 
+/* The iniial URL passed to the browser is a file: URL to a user-read-only file.
+ * This verifies that the browser is running as the current user.
+ * It is just a stub file that redirects to a http URL with the real resources.
+ * We do this because CORS (Cross-Origin Resource Sharing) restrictions
+ * are incompatible with file URLs, at least when using a desktop browser.
+ */
+
+static void
+make_main_html_text(struct sbuf *obuf, int port)
+{
+    sbuf_printf(obuf,
+                "<!DOCTYPE html>\n"
+                "<html><head>\n"
+                "<meta http-equiv='Content-Type' content='text/html;"
+                " charset=UTF-8'>\n"
+                "<script type='text/javascript'>\n"
+                "var DomTerm_server_key = '%.*s';\n"
+                "var newloc = 'http://127.0.0.1:%d/no-frames.html' + location.hash;\n"
+                "newloc += (newloc.indexOf('#') >= 0 ? '&' : '#')+'server-key=' + DomTerm_server_key;\n"
+                "location.replace(newloc);\n"
+                "</script>\n"
+                "</head>\n"
+                "<body></body></html>\n",
+                SERVER_KEY_LENGTH, server_key, port
+        );
+}
 void
 make_html_text(struct sbuf *obuf, int port, int hoptions,
                const char *body_text, int body_length)
@@ -1529,7 +1555,7 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
                         "<script type='%s' src='%s'> </script>\n",
                         jstype, lib->file);
     }
-    if ((hoptions & (LIB_WHEN_SIMPLE|LIB_WHEN_NOFRAMES)) == 0)
+    if ((hoptions & LIB_WHEN_OUTER) != 0)
         sbuf_printf(obuf,
                     "<script type='text/javascript'>\n"
                     "DomTerm.server_port = %d;\n"
@@ -1558,7 +1584,7 @@ make_html_file(int port)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
     struct sbuf obuf[1];
     sbuf_init(obuf);
-    make_html_text(obuf, port, LIB_WHEN_OUTER, "", 0);
+    make_main_html_text(obuf, port);
 
     int hfile = open(main_html_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
     if (hfile < 0

@@ -229,15 +229,6 @@ function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
     // console.log("loadHandler "+location);
-    if (! DomTerm.useIFrame && window == top && typeof DTerminal == "undefined") {
-        let iloc = "http://127.0.0.1:" + DomTerm.server_port
-            + "/no-frames.html" + location.hash;
-        if (DomTerm.server_key)
-            iloc += (iloc.indexOf('#') >= 0 ? '&' : '#')
-            + "server-key=" + DomTerm.server_key;
-        location.replace(iloc);
-        return;
-    }
     DomTerm.layoutTop = document.body;
     let url = location.href;
     let hashPos = url.indexOf('#');
