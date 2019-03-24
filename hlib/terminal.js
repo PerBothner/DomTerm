@@ -4353,10 +4353,10 @@ Terminal.prototype.formatWindowTitle = function() {
 Terminal.prototype.updateWindowTitle = function() {
     let sname = this.sessionName();
     let wname = this.sstate.windowName;
-    if (DomTerm.useIFrame) {
+    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
         DomTerm.sendParentMessage("set-pane-title", sname, wname);
-    } else if (DomTermLayout.setLayoutTitle)
-        DomTermLayout.setLayoutTitle(this, sname, wname);
+    } else if (DomTerm.setLayoutTitle)
+        DomTerm.setLayoutTitle(this, sname, wname);
     var str = this.formatWindowTitle()
     this.sstate.windowTitle = str;
     if (this.hasFocus())

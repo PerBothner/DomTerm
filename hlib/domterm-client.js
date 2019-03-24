@@ -267,6 +267,9 @@ function loadHandler(event) {
         DomTerm.displayInfoMessage = function(contents, dt) {
             DomTerm.sendParentMessage("domterm-status-message", contents);
         }
+        DomTerm.setLayoutTitle = function(dt, title, wname) {
+            DomTerm.sendParentMessage("domterm-set-title", title, wname);
+        };
     }
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
         if (DomTerm.setContextMenu && ! DomTerm.simpleLayout)
@@ -419,7 +422,7 @@ function handleMessage(event) {
         }
     } else if (data.command=="set-pane-title") {
         if (iframe)
-            DomTermLayout.setLayoutTitle(iframe,
+            DomTerm.setLayoutTitle(iframe,
                                          data.args[0], data.args[1]);
     } else if (data.command=="set-pid") {
         if (iframe)

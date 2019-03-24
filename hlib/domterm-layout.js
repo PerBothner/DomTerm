@@ -172,7 +172,7 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
 }
 
 // item is a domterm-wrapper (an iframe if useIFrame)
-DomTermLayout.setLayoutTitle = function(item, title, wname) {
+DomTerm.setLayoutTitle = function(item, title, wname) {
     title = DomTerm.escapeText(title);
     if (wname) {
         wname = DomTerm.escapeText(wname);
