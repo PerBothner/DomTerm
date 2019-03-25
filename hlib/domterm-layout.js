@@ -280,7 +280,6 @@ DomTerm.layoutResized = function(event) {
 */
 
 DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
-    console.log("layoutClose");
     if (r) {
         var p = r.parent;
         if (p && p.type == 'stack'
@@ -301,7 +300,7 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
 DomTermLayout.layoutClosed = function(event) {
     var el = this.getElement()[0];
     if (el.tagName !== "IFRAME") {
-        var dt = el.firstChild.terminal;
+        var dt = el.terminal;
         if (dt && dt.closeConnection)
             dt.closeConnection();
     }
