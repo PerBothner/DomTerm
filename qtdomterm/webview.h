@@ -108,7 +108,7 @@ public:
 
     QAction *saveAsAction() const { return m_saveAsAction; }
     QAction *changeCaretAction() const { return m_changeCaretAction; }
-    void showContextMenu(const QString& contextType);
+    void showContextMenu(const QString& contextType); // FIXME
     void loadUrl(const QUrl &url);
     QUrl url() const;
 
@@ -121,11 +121,13 @@ public slots:
 signals:
     void finished();
 
- protected:
+protected:
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void contextMenuEvent(QContextMenuEvent *event);
     void wheelEvent(QWheelEvent *event);
+private:
+    void displayContextMenu(const QString& contextType);
 
 private slots:
     void setProgress(int progress);
@@ -142,7 +144,7 @@ private:
     Backend *m_backend;
     bool m_blockCaret;
     QString contextTypeForMenu;
-
+    QPoint contextMenuPosition;
     QAction *m_saveAsAction;
     QAction *m_changeCaretAction;
     QAction *m_openAction;

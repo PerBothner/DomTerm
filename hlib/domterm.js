@@ -15,7 +15,7 @@ DomTerm.freshName = function() {
 DomTerm.isInIFrame = function() { return window.parent != window; }
 
 DomTerm.usingAjax = false;
-DomTerm.usingQtWebEngine = !! location.hash.match(/[#&]qtwebengine/);
+DomTerm.usingQtWebEngine = !!navigator.userAgent.match(/QtWebEngine[/]([^ ]+)/);
 
 DomTerm._escapeMap = {
     '&': '&amp;',

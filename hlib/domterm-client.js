@@ -22,6 +22,8 @@ DomTerm.usingJsMenus = function() {
 // - When using jsMenus with most deskop browsers, menu Copy doesn't work;
 //   it does work when !useIFrame. (Menu Paste doesn't work either way.)
 // - Popout-window buttons don't work.
+// - Minor Qt context-menu glitch: When using iframe, showContextMenu
+//   is called *after* the native event handler (see webview.cpp).
 // The value 1 means don't use an iframe for the initial window, only
 // subsequent ones.  The value 2 means use an iframe for all windows.
 // Only using iframe for subsequent windows gives most of the benefits
@@ -219,10 +221,10 @@ function setupParentMessages1() {
         DomTerm.sendParentMessage("domterm-close"); }
 }
 function setupParentMessages2() {
-        DomTerm.showContextMenu = function(options) {
-            DomTerm.sendParentMessage("domterm-context-menu", options);
-            return ! DomTerm.usingQtWebEngine;
-        }
+    DomTerm.showContextMenu = function(options) {
+        DomTerm.sendParentMessage("domterm-context-menu", options);
+        return ! DomTerm.usingQtWebEngine;
+    }
 }
 
 function loadHandler(event) {

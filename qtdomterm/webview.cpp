@@ -353,9 +353,20 @@ void WebView::requestChangeCaret(bool set)
 void WebView::showContextMenu(const QString& contextType)
 {
     this->contextTypeForMenu = contextType;
+    // Unfortunately, when using an iframe, the call to showContextMenu
+    // arrives *after* the native contextMenuEvent handler.
+    // We could delay calling displayContextMenu to here,
+    // I can't get contextMenuPosition set properly.
+    // displayContextMenu(contextTypeForMenu);
 }
 
 void WebView::contextMenuEvent(QContextMenuEvent *event)
+{
+    contextMenuPosition = event->globalPos();
+    // Ideally, this should be done in showContextMenu.
+    displayContextMenu(contextTypeForMenu);
+}
+void WebView::displayContextMenu(const QString& contextType)
 {
     QMenu *menu;
     // if (page()->contextMenuData().linkUrl().isValid()) {
@@ -369,7 +380,7 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
         m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
         this->addAction(m_paste, QWebEnginePage::Paste);
         */
-	if (contextTypeForMenu.contains("A")) {
+	if (contextType.contains("A")) {
             menu->addAction(m_openAction);
 	    menu->addAction(m_copyLinkAddress);
             menu->addSeparator();
@@ -390,7 +401,7 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
     //if (page()->contextMenuData().selectedText().isEmpty())
     //menu->addAction(page()->action(QWebEnginePage::SavePage));
     connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
-    menu->popup(event->globalPos());
+    menu->popup(contextMenuPosition);
 }
 
 void WebView::slotOpenLink()
@@ -459,6 +470,9 @@ void WebView::mousePressEvent(QMouseEvent *event)
 {
     m_page->m_pressedButtons = event->buttons();
     m_page->m_keyboardModifiers = event->modifiers();
+    // This method doesn't seem to be called,
+    // so we can't use it to set contextMenuPosition.
+    contextMenuPosition = event->globalPos();
     QWebEngineView::mousePressEvent(event);
 }
 

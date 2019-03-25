@@ -2,6 +2,7 @@ TEMPLATE = app
 TARGET = ../bin/qtdomterm
 QT += webenginewidgets network widgets webchannel
 CONFIG += c++11
+# CONFIG += debug
 
 qtHaveModule(uitools):!embedded: QT += uitools
 else: DEFINES += QT_NO_UITOOLS HAVE_POSIX_OPENPT
