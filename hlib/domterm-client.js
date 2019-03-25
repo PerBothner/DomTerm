@@ -269,9 +269,6 @@ function loadHandler(event) {
         DomTerm.displayInfoMessage = function(contents, dt) {
             DomTerm.sendParentMessage("domterm-status-message", contents);
         }
-        DomTerm.setLayoutTitle = function(dt, title, wname) {
-            DomTerm.sendParentMessage("domterm-set-title", title, wname);
-        };
     }
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
         if (DomTerm.setContextMenu && ! DomTerm.simpleLayout)
@@ -322,6 +319,13 @@ function loadHandler(event) {
             DomTerm.setTitle = function(title) {
                 DomTerm.sendParentMessage("set-window-title", title); }
         }
+    }
+    if (top !== window && DomTerm.sendParentMessage) {
+        // handled by handleMessage (for iframe pane)
+        // *or* handled by atom-domterm.
+        DomTerm.setLayoutTitle = function(dt, title, wname) {
+            DomTerm.sendParentMessage("domterm-set-title", title, wname);
+        };
     }
     m = location.hash.match(/view-saved=([^&]*)/);
     if (m) {
@@ -416,7 +420,7 @@ function handleMessage(event) {
                 DomTermLayout._oldFocusedContent = iframe;
             }
         }
-    } else if (data.command=="set-pane-title") {
+    } else if (data.command=="domterm-set-title") {
         if (iframe)
             DomTerm.setLayoutTitle(iframe,
                                          data.args[0], data.args[1]);
