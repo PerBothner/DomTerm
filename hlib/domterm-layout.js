@@ -171,22 +171,18 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
     DomTermLayout._focusChild(component.container._contentElement1, originMode);
 }
 
-// item is a domterm-wrapper (an iframe if useIFrame)
+// item is a domterm element or an iframe domterm-wrapper (if useIFrame)
 DomTerm.setLayoutTitle = function(item, title, wname) {
     title = DomTerm.escapeText(title);
     if (wname) {
         wname = DomTerm.escapeText(wname);
         title = title+'<span class="domterm-windowname"> '+wname+'</span>';
     }
-    let r;
-    if (! DomTerm.useIFrame)
-        r = DomTerm.domTermToLayoutItem(item);
-    else if (DomTermLayout.manager)
-        r = DomTermLayout._elementToLayoutItem(item);
-    else {
+    if (! DomTermLayout.manager) {
         item.layoutTitle = title;
         return;
     }
+    const r = DomTermLayout._elementToLayoutItem(item);
     if (r) {
         r.setTitle(title);
     }
@@ -344,11 +340,10 @@ DomTermLayout.initialize = function() {
         if (lcontent != null) {
             wrapped = lcontent;
             container._contentElement1 = wrapped;
-            if (lcontent.tagName == "IFRAME") {
-                name = wrapped.layoutTitle;
-                wrapped.layoutTitle = undefined;
-            } else
-                name = lcontent.getAttribute("name") || DomTerm.freshName();
+            name = lcontent.layoutTitle
+                || lcontent.getAttribute("name")
+                || DomTerm.freshName();
+            lcontent.layoutTitle = undefined;
             lcontent = null;
         } else {
             var config = container._config;

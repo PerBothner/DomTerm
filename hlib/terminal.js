@@ -512,7 +512,7 @@ Terminal.prototype.close = function() {
     if (this._detachSaveNeeded == 2) {
         DomTerm.saveWindowContents(this);
     }
-    if (DomTerm.useIFrame)
+    if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("layout-close");
     else if (DomTermLayout.manager && DomTermLayout.layoutClose) {
         DomTermLayout.layoutClose(this.topNode,
@@ -4242,6 +4242,8 @@ DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
 }
 
 DomTerm.handleLink = function(element) {
+    if (DomTerm.dispatchTerminalMessage("open-link"))
+        return;
     let dt = DomTerm._getAncestorDomTerm(element);
     if (! dt)
         return;
@@ -4275,7 +4277,7 @@ DomTerm.handleLinkRef = function(href, textContent, dt) {
     }
 };
 
-// Set the "session name" which is the "name" attribute of the toplevel div.
+// Set the "session name" which is the "session-name" attribute of the toplevel div.
 // It can be used in stylesheets as well as the window title.
 Terminal.prototype.setSessionName = function(title) {
     this.setWindowTitle(title, 30);
@@ -4291,7 +4293,7 @@ Terminal.prototype.setSessionNumber = function(snumber, unique, wnumber) {
 
 // FIXME misleading function name - this is not just the session name
 Terminal.prototype.sessionName = function() {
-    var sname = this.topNode.getAttribute("name");
+    var sname = this.topNode.getAttribute("session-name");
     if (! sname)
         sname = "DomTerm" + ":" + this.sstate.sessionNumber;
     else if (! this.sstate.sessionNameUnique)
@@ -4327,7 +4329,7 @@ Terminal.prototype.setWindowTitle = function(title, option) {
         break;
     case 30:
         this.name = title;
-        this.topNode.setAttribute("name", title);
+        this.topNode.setAttribute("session-name", title);
         this.sstate.sessionNameUnique = true;
         this.reportEvent("SESSION-NAME", JSON.stringify(title));
         break;
@@ -4356,7 +4358,7 @@ Terminal.prototype.updateWindowTitle = function() {
     if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
         DomTerm.sendParentMessage("set-pane-title", sname, wname);
     } else if (DomTerm.setLayoutTitle)
-        DomTerm.setLayoutTitle(this, sname, wname);
+        DomTerm.setLayoutTitle(this.topNode, sname, wname);
     var str = this.formatWindowTitle()
     this.sstate.windowTitle = str;
     if (this.hasFocus())
@@ -6516,9 +6518,13 @@ Terminal._selectionValue = function(asHTML) {
 }
 
 DomTerm.valueToClipboard = function(values) {
-    if (DomTerm.isElectron()) {
+    if (DomTerm.isElectron() || DomTerm.usingQtWebEngine) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("value-to-clipboard", values);
+        }
+        else if (DomTerm.isElectron()) {
+            const { clipboard} = nodeRequire('electron');
+            clipboard.write(values);
         }
         return true;
     }
@@ -6535,20 +6541,15 @@ DomTerm.valueToClipboard = function(values) {
 }
 
 DomTerm.doCopy = function(asHTML=false) {
-    if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "copy-selection", asHTML);
+    if (DomTerm.dispatchTerminalMessage("copy-selection", asHTML))
         return true;
-    }
     // Terminal
     return DomTerm.valueToClipboard(Terminal._selectionValue(asHTML));
 };
 
 DomTerm.doSaveAs = function(dt = DomTerm.focusedTerm) {
-    if (DomTerm.useIFrame && ! DomTerm.isInIFrame()) {
-        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
-                                 "request-save-file");
+    if (DomTerm.dispatchTerminalMessage("request-save-file"))
         return;
-    }
     if (! dt)
         return;
     let data = dt.getAsHTML(true);
@@ -6739,6 +6740,8 @@ Terminal.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 };
 
 DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
+    if (DomTerm.dispatchTerminalMessage("set-input-mode", mode))
+        return;
     var wasEditing = dt.isLineEditing();
     switch (mode) {
     case 0: //next
@@ -6926,9 +6929,15 @@ DomTerm.keyNameChar = function(keyName) {
         return null;
 };
 
+/** May be overridden. */
+DomTerm.dispatchTerminalMessage = function(command, ...args) {
+    return false;
+}
+
 // This is overridden in the layout-manager context if using useIFrame.
 DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
-    commandMap[name](dt, null);
+    if (! DomTerm.dispatchTerminalMessage("do-command", name))
+        commandMap[name](dt, null);
 }
 
 DomTerm.handleKey = function(map, dt, keyName) {
@@ -7756,7 +7765,7 @@ Terminal.prototype._exitPaging = function() {
 }
 
 DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {
-    if (dt)
+    if (! DomTerm.dispatchTerminalMessage("auto-paging", mode) && dt)
         dt._autoPaging = mode == "toggle" ? ! dt._autoPaging
         : mode == "on" || mode == "true";
 }

@@ -136,13 +136,9 @@ function setupQWebChannel(channel) {
     }
 
     DomTerm.doCopy = function(asHTML=false) {
-        if (DomTerm.useIFrame && ! DomTerm.isInIFrame()
-            && DomTermLayout._oldFocusedContent) {
-            DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
-                                     "request-selection", asHTML);
-            return true;
-        }
-        DomTerm.valueToClipboard(Terminal._selectionValue(asHTML));
+        if (DomTerm.dispatchTerminalMessage("request-selection", asHTML))
+            return;
+        DomTerm.valueToClipboard(DTerminal._selectionValue(asHTML));
     }
 
     DomTerm.valueToClipboard = function(values) {
@@ -302,27 +298,21 @@ function loadHandler(event) {
         topNodes = document.getElementsByClassName("domterm-wrapper");
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
+            DomTerm.dispatchTerminalMessage = function(command, ...args) {
+                const lcontent = DomTermLayout._oldFocusedContent;
+                if (lcontent && lcontent.contentWindow) {
+                    lcontent.contentWindow.postMessage({"command": command,
+                                                        "args": args}, "*");
+                    return true;
+                }
+                return false;
+            }
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
                 if (lcontent)
                     lcontent.contentWindow.postMessage({"command": command,
                                                         "args": args}, "*");
                 else
                     console.log("sending "+command+" to unknow child - ignored");
-            }
-            DomTerm.doNamedCommand = function(name) {
-                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
-                                         "do-command", name);
-            }
-            DomTerm.setAutoPaging = function(mode, dt = null) {
-                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
-                                         "auto-paging", mode);
-            }
-            DomTerm.setInputMode = function(mode, dt=null) {
-                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent,
-                                         "set-input-mode", mode);
-            }
-            DomTerm.handleLink = function(element) {
-                DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "open-link");
             }
         } else {
             setupParentMessages1();
@@ -456,12 +446,7 @@ function handleMessage(event) {
         DomTerm.sendParentMessage("value-to-clipboard",
                                    DTerminal._selectionValue(data.args[0]));
     } else if (data.command=="value-to-clipboard") { // in layout-context
-        let values = data.args[0];
-        if (DomTerm.isElectron()) {
-            const { clipboard} = nodeRequire('electron');
-            clipboard.write(values);
-        } else
-            DomTerm.valueToClipboard(values);
+        DomTerm.valueToClipboard(data.args[0]);
     } else if (data.command=="copy-selection") { // message to child
         DomTerm.doCopy(data.args[0]);
     } else if (data.args.length == 0) {
