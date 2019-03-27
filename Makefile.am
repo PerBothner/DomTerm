@@ -3,7 +3,7 @@ EXTRA_DIST = \
   hlib/terminal.js $(MISC_COPY_TO_JAR) $(JS_LIBS) $(CLIENT_DATA_FILES) \
   $(domterm_jar_sources) domterm-jar-manifest bin/jdomterm domterm.spec \
   domterm.desktop qtdomterm.desktop domterm.appdata.xml qtdomterm.appdata.xml \
-  electron/main.js \
+  electron/main.js electron/preload.js  \
   doc/DomTerm.texi doc/webdoc.patch \
   doc/style/domterm.xsl doc/style/docbook-to-html.xsl \
   doc/help/domterm.adoc \
@@ -91,7 +91,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -104,8 +104,10 @@ all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PREL
   share/domterm/help/domterm-list.txt
 
 # On WSL (Windows Subsystem for Linux) 'electron' is a Windows executable,
-# so main.js must be copied, bit linked:
+# so main.js must be copied, not linked:
 share/domterm/electron/main.js: electron/main.js
+	cp $< $@
+share/domterm/electron/preload.js: electron/preload.js
 	cp $< $@
 
 bin/domterm$(EXEEXT):
@@ -169,7 +171,7 @@ run-shell: $(DOMTERM_JAR)
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
 	-rm -rf \
-	  share/domterm/electron/main.js share/domterm/help \
+	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm
@@ -322,7 +324,7 @@ upload-web: web/index.html
 bin/qtdomterm:
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
 
-ELECTRON_FILES = electron/package.json electron/main.js
+ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
 install-data-local:
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
@@ -343,7 +345,7 @@ if WITH_QTWEBENGINE
 	$(INSTALL_DATA) $(srcdir)/qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
-	$(INSTALL_DATA) $(srcdir)/electron/package.json $(srcdir)/electron/main.js \
+	$(INSTALL_DATA) $(srcdir)/electron/package.json $(srcdir)/electron/main.js $(srcdir)/electron/preload.js\
 	    $(DESTDIR)$(datadir)/domterm/electron/
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/help
 	$(INSTALL_DATA) share/domterm/help/*.txt share/domterm/help/*.html \

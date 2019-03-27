@@ -55,6 +55,7 @@ function createNewWindow (url, w, h, openDevTools=false) {
     else
         previousUrl = url;
     let win = new BrowserWindow({width: w, height: h,
+                                 webPreferences: {nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
                                  useContentSize: true, show: false});
     windowList.push(win);
     win.loadURL(url);

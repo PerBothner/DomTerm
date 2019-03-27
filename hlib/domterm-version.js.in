@@ -34,10 +34,3 @@ DomTerm.versionInfo = "version="+DomTerm.versionString;
 
 DomTerm.isMac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
     : typeof os != "undefined" ? os.platform() == "darwin" : false;
-
-if (DomTerm.isElectron()) {
-    window.nodeRequire = window.require;
-    delete window.require;
-    delete window.exports;
-    delete window.module;
-}

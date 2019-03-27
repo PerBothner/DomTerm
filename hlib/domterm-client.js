@@ -261,8 +261,7 @@ function loadHandler(event) {
                 DomTerm.sendParentMessage("domterm-close-from-eof"); }
         } else {
             DomTerm.sendParentMessage = function(command, ...args) {
-                const {ipcRenderer} = nodeRequire('electron');
-                ipcRenderer.sendToHost(command, ...args);
+                electronAccess.ipcRenderer.sendToHost(command, ...args);
              }
         }
         setupParentMessages2();

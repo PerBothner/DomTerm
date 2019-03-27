@@ -85,8 +85,7 @@ DomTerm.openNewWindow = function(dt, options={}) {
                 popt.height = height;
             DomTerm.sendParentMessage("domterm-new-window", popt);
         } else {
-            const { ipcRenderer } = nodeRequire('electron');
-            ipcRenderer.send('request-mainprocess-action',
+            electronAccess.ipcRenderer.send('request-mainprocess-action',
                              { action: 'new-window', width: width, height: height, url: url });
         }
     } else {

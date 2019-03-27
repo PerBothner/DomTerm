@@ -2664,7 +2664,6 @@ DomTerm.displayInfoInWidget = function(contents, dt) {
         div = document.createElement("div");
         div.setAttribute("class", "domterm-show-info");
         dt.topNode.insertBefore(div, dt.topNode.firstChild);
-        dt._displayInfoWidget = div;
     }
     div.innerHTML = contents;
 };
@@ -6521,8 +6520,7 @@ DomTerm.valueToClipboard = function(values) {
             DomTerm.sendParentMessage("value-to-clipboard", values);
         }
         else if (DomTerm.isElectron()) {
-            const { clipboard} = nodeRequire('electron');
-            clipboard.write(values);
+            electronAccess.clipboard.write(values);
         }
         return true;
     }
@@ -6560,8 +6558,8 @@ DomTerm.doSaveAs = function(dt = DomTerm.focusedTerm) {
 DomTerm.saveFile = function(data) {
     var fname = "domterm-saved-"+(++DomTerm.saveFileCounter)+".html";
     if (DomTerm.isElectron()) {
-        const {dialog} = nodeRequire('electron').remote;
-        var fs = nodeRequire('fs');
+        const dialog = electronAccess.dialog;
+        const fs = electronAccess.fs;
         function callback(filePath) {
             if (filePath)
                 fs.writeFile(filePath, data, function (err) {
@@ -8578,7 +8576,7 @@ Terminal.prototype._muxKeyHandler = function(event, key, press) {
         break;
     case 68:
         if (event.ctrlKey && DomTerm.isElectron()) {
-            nodeRequire('electron').remote.getCurrentWindow().toggleDevTools();
+            electronAccess.getCurrentWindow().toggleDevTools();
             this.exitMuxMode();
             event.preventDefault();
         }

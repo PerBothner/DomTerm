@@ -23,9 +23,9 @@ DomTerm.aboutMessage = function() {
 DomTerm.showAboutMessage = function() {
     let msg = DomTerm.aboutMessage();
     if (DomTerm.isElectron()) {
-        const {BrowserWindow} = window.nodeRequire('electron').remote
-        let win = new BrowserWindow({width: 500, height: 400,
-                                     title: 'About DomTerm', show: false});
+        let win = new electronAccess.
+            BrowserWindow({width: 500, height: 400,
+                           title: 'About DomTerm', show: false});
         win.setMenu(null)
         win.loadURL('data:text/html,'+encodeURIComponent(msg));
         win.show();
@@ -317,19 +317,18 @@ DomTerm.createMenus = function(options) {
 
 DomTerm.setContextMenu = function() {
     if (DomTerm.isElectron() && ! DomTerm.isAtom()) {
-        const {remote} = nodeRequire('electron')
-        const {Menu, MenuItem} = remote
+        const {Menu, MenuItem} = electronAccess;
         function menuItem(options) {
             return new MenuItem(options);
         }
         function popup(cmenu, options) {
-            cmenu.popup(remote.getCurrentWindow());
+            cmenu.popup(electronAccess.getCurrentWindow());
         }
         DomTerm.createMenus({platform: "electron",
                              popup: popup,
                              menuItem: menuItem,
                              Menu: Menu,
-                             requestOpenLink: remote.shell.openExternal
+                             requestOpenLink: electronAccess.shell.openExternal
                             });
     } else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine) {
         function menuItem(options) {
