@@ -2664,6 +2664,10 @@ DomTerm.displayInfoInWidget = function(contents, dt) {
         div = document.createElement("div");
         div.setAttribute("class", "domterm-show-info");
         dt.topNode.insertBefore(div, dt.topNode.firstChild);
+        let top = dt.topNode;
+        div.style["bottom"] = (top.offsetParent.offsetHeight
+                               - (top.offsetTop + top.offsetHeight)) + "px";
+        dt._displayInfoWidget = div;
     }
     div.innerHTML = contents;
 };
