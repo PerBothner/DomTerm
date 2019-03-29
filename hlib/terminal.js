@@ -4111,10 +4111,11 @@ Terminal.prototype.deleteCharactersRight = function(count) {
             else  {
                 parent.removeChild(current);
                 while (parent.firstChild == null
-                       && parent != this.initial
-                       && parent != this._currentStyleSpan) {
+                       && parent != this.initial) {
                     current = parent;
                     parent = parent.parentNode;
+                    if (current == this._currentStyleSpan)
+                        this._currentStyleSpan = null;
                     if (current == this.outputContainer) {
                         this.outputContainer = parent;
                         previous = current.previousSibling;
