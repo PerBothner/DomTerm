@@ -1170,6 +1170,18 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     this._currentCommandOutput = commandOutput;
                     this._currentCommandGroup.appendChild(commandOutput);
                     parent = commandOutput;
+                    if (parent.previousSibling instanceof Element
+                        && ! this._currentCommandHideable
+                        && parent.previousSibling.classList.contains("input-line")) {
+                        let ln = parent.previousSibling.lastChild;
+                        let button = this._createSpanNode();
+                        button.setAttribute("class", "tail-hider");
+                        ln.parentNode.insertBefore(button, null/*ln*/);
+                        button.addEventListener("click",
+                                                this._showHideEventHandler,
+                                                true);
+                        this._currentCommandHideable = true;
+                    }
                 } else {
                     parent = lastParent.parentNode;
                 }
@@ -3283,7 +3295,7 @@ Terminal.prototype._showHideHandler = function(event) {
                 var hidden = node.getAttribute("domterm-hidden");
                 if (hidden=="true")
                     node.setAttribute("domterm-hidden", "false")
-                else if (hidden=="false")
+                else
                     node.setAttribute("domterm-hidden", "true")
             }
         }
