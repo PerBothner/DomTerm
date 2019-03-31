@@ -1157,22 +1157,7 @@ lighter background and a darker foreground colors.
 
 @item @code{@b{style.caret} =} @var{value}
 Change the style of the caret (text input cursor).
-The @var{value} can be one of these (unquoted) words:
-@code{block}, @code{blinking-block},
-@code{underline}, @code{blinking-underline},
-@code{bar}, or @code{blinking-bar}.
-
-The default is @code{blinking-block}. Note that
-both @code{blinking-block} and @code{blinking-underline}
-only blink 20 times after each change or focus.
-To change the number of blinks set the CSS variable @code{--caret-blink-count}.
-For example to blink indefinitely, add this to @code{settings.ini}:
-@example
-style.user= div.domterm @{ --caret-blink-count: infinite @}
-@end example
-
-Currently, @code{bar} and @code{blinking-bar} are the same and use
-the browser's native text cursor, which may be blinking or not.
+See @ref{caret-styling}.
 
 @item @code{@b{open.file.application} =} @var{application-list}
 @itemx @code{@b{open.link.application} =} @var{application-list}
@@ -2005,6 +1990,41 @@ Note browsers may restrict the use of @code{file:} URLs
 because of the @uref{https://en.wikipedia.org/wiki/Same-origin_policy,same-origin policy}.
 Work-arounds are being considered; please contact the maintainer if this
 is a feature you want.
+
+@anchor{caret-styling}
+@subheading Text caret (input cursor)
+
+You can change the look of the caret (text input cursor)
+using the @code{style.caret} setting in @ref{Settings,@code{settings.ini}}.
+@example
+@code{@b{style.caret} =} @var{value}
+@end example
+
+The @var{value} can be one of these (unquoted) words:
+@code{block}, @code{blinking-block},
+@code{underline}, @code{blinking-underline},
+@code{bar}, or @code{blinking-bar}.
+If can also be @code{native}, which uses the native
+text caret (a vertical bar, typically),
+but that is not recommended as it interacts awkwardly with the selection.
+
+The default is @code{blinking-block}. Note that
+@code{blinking-block}, @code{blinking-underline}, and @code{blinking-bar}
+only blink 20 times after each change or focus.
+To change the number of blinks set the CSS variable @code{--caret-blink-count}.
+For example to blink indefinitely, add this to @code{settings.ini}:
+@example
+style.user= div.domterm @{ --caret-blink-count: infinite @}
+@end example
+
+You can also change the caret style with an
+escape sequence (DECSCUSR).  For example this shell command:
+@example
+echo -en "\e[3 q"
+@end example
+changes the style to @code{blinking-underline}.
+Instead of 3, you can use 0 (default - reset to @code{settings.ini} value, if any), 1 (blinking-block), 2 (steady block),
+3 (blinking-underline), 4 (steady underline), 5 (blinking-bar), 6 (steady bar), or 7 (native),
 
 @subheading Example: A ``solarized'' theme
 

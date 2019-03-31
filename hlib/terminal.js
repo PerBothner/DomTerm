@@ -411,7 +411,11 @@ class Terminal {
         this.close();
     }
 }
+Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
+                        "blinking-underline", "underline",
+                        "blinking-bar", "bar", "native" ];
 Terminal.DEFAULT_CARET_STYLE = 1; // blinking-block
+Terminal.NATIVE_CARET_STYLE = Terminal.caretStyles.indexOf("native");
 Terminal.INFO_TIMEOUT = 800;
 
 DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
@@ -1506,13 +1510,15 @@ Terminal.prototype._removeInputLine = function() {
 };
 
 Terminal.prototype.setCaretStyle = function(style) {
-    if (style == Terminal.DEFAULT_CARET_STYLE) {
-        if (this.caretStyleFromSettings >= 0)
-            style = this.caretStyleFromSettings;
+    if (style == 0) {
+        style = this.caretStyleFromSettings >= 0
+            ? this.caretStyleFromSettings
+            : Terminal.DEFAULT_CARET_STYLE;
         this.sstate.caretStyleFromCharSeq = -1;
     } else
         this.sstate.caretStyleFromCharSeq = style;
-    if (style < 5 && this.caretStyle >= 5) {
+    if (style != Terminal.NATIVE_CARET_STYLE
+        && this.caretStyle == Terminal.NATIVE_CARET_STYLE) {
         let sel = document.getSelection();
         if (sel.focusNode == this._caretNode
             && sel.anchorNode == this._caretNode
@@ -1521,13 +1527,18 @@ Terminal.prototype.setCaretStyle = function(style) {
         }
     }
     this._caretNode.removeAttribute("caret");
+    this._caretNode.removeAttribute("value");
     this.caretStyle = style;
 };
 
 Terminal.prototype.useStyledCaret = function() {
-    return this.caretStyle < 5 && ! this._usingSelectionCaret
+    return this.caretStyle !== Terminal.NATIVE_CARET_STYLE && ! this._usingSelectionCaret
         && this.sstate.showCaret;
 };
+/* True if caret element needs a "value" character. */
+Terminal._caretNeedsValue = function(caretStyle) {
+    return caretStyle <= 4;
+}
 
 Terminal.prototype.isLineEditing = function() {
     return (this._lineEditingMode + this._clientWantsEditing > 0
@@ -1592,57 +1603,52 @@ Terminal.prototype._restoreCaret = function() {
         if (! this._caretNode.getAttribute("caret")
             && (! (this._caretNode.firstChild instanceof Text)
                 || this._caretNode.firstChild.data.length == 0)) {
-            var text = this._followingText(this._caretNode);
-            if (text instanceof Text && text.data.length > 0) {
-                var tdata = text.data;
-                var sz = 1;
-                if (tdata.length >= 2) {
-                    var ch0 = tdata.charCodeAt(0);
-                    var ch1 = tdata.charCodeAt(1);
-                    if (ch0 >= 0xD800 && ch0 <= 0xDBFF
-                        && ch1 >= 0xDC00 && ch1 <= 0xDFFF)
-                        sz = 2;
+            if (Terminal._caretNeedsValue(this.caretStyle)) {
+                let text = this._followingText(this._caretNode);
+                //let text = this._caretNode.nextSibling;
+                if (text instanceof Text && text.data.length > 0) {
+                    var tdata = text.data;
+                    var sz = 1;
+                    if (tdata.length >= 2) {
+                        var ch0 = tdata.charCodeAt(0);
+                        var ch1 = tdata.charCodeAt(1);
+                        if (ch0 >= 0xD800 && ch0 <= 0xDBFF
+                            && ch1 >= 0xDC00 && ch1 <= 0xDFFF)
+                            sz = 2;
+                    }
+                    let ptext = text.parentNode;
+                    if (DomTerm._isPendingSpan(ptext)
+                        && this._caretNode.parentNode !== ptext) {
+                        if (this.outputBefore === this._caretNode)
+                            this.outputBefore = this._caretNode.nextSibling;
+                        ptext.insertBefore(this._caretNode, text);
+                    }
+                    var ch = tdata.substring(0, sz);
+                    if (text === this.outputBefore
+                        || (text === this.outputContainer
+                            && this.outputBefore < sz)) {
+                        this.outputBefore = this._caretNode;
+                        this.outputContainer = this.outputBefore.parentNode;
+                    } else if (text === this.outputContainer) {
+                        this.outputBefore -= sz;
+                    }
+                    this._caretNode.appendChild(document.createTextNode(ch));
+                    this._deleteData(text, 0, sz);
+                    this._caretNode.removeAttribute("value");
+                    if (this._caretNode.parentNode == this._deferredForDeletion
+                        && ptext != this._deferredForDeletion)
+                        this._deferredForDeletion.textAfter += ch;
                 }
-                let ptext = text.parentNode;
-                if (DomTerm._isPendingSpan(ptext)
-                    && this._caretNode.parentNode !== ptext) {
-                    if (this.outputBefore === this._caretNode)
-                        this.outputBefore = this._caretNode.nextSibling;
-                    ptext.insertBefore(this._caretNode, text);
-                }
-                var ch = tdata.substring(0, sz);
-                if (text === this.outputBefore
-                    || (text === this.outputContainer
-                        && this.outputBefore < sz)) {
-                    this.outputBefore = this._caretNode;
-                    this.outputContainer = this.outputBefore.parentNode;
-                } else if (text === this.outputContainer) {
-                    this.outputBefore -= sz;
-                }
-                this._caretNode.appendChild(document.createTextNode(ch));
-                this._deleteData(text, 0, sz);
-                this._caretNode.removeAttribute("value");
-                if (this._caretNode.parentNode == this._deferredForDeletion
-                    && ptext != this._deferredForDeletion)
-                    this._deferredForDeletion.textAfter += ch;
+                else
+                    this._caretNode.setAttribute("value", " ");
             }
-            else
-                this._caretNode.setAttribute("value", " ");
         }
-        var cstyle;
-        switch (this.caretStyle) {
-        default:
-            cstyle = "blinking-block"; break;
-        case 2:
-            cstyle = "block"; break;
-        case 3:
-            cstyle = "blinking-underline"; break;
-        case 4:
-            cstyle = "underline"; break;
-        }
-        this._caretNode.setAttribute("caret", cstyle);
+        const cstyle = Terminal.caretStyles[this.caretStyle];
+        if (cstyle)
+            this._caretNode.setAttribute("caret", cstyle);
     }
     else {
+        console.log("restoreCaret collapse");
         let sel = document.getSelection();
         if (sel.isCollapsed) {
             if (this.sstate.showCaret)
@@ -4452,20 +4458,18 @@ Terminal.prototype.setSettings = function(obj) {
         this.setReverseVideo(false);
         this._style_dark_set = false;
     }
-    var cstyle = obj["style.caret"];
+    let cstyle = obj["style.caret"];
     if (cstyle) {
         cstyle = String(cstyle).trim();
-        switch (cstyle) {
-        case "blinking-block": cstyle = 0; break;
-        case "block": cstyle = 2; break;
-        case "blinking-underline": cstyle = 3; break;
-        case "underline": cstyle = 4; break;
-        case "blinking-bar": cstyle = 5; break;
-        case "bar": cstyle = 6; break;
-        default: cstyle = Number(cstyle); break;
+        let nstyle = Terminal.caretStyles.indexOf(cstyle);
+        if (nstyle < 0) {
+            nstyle = Number(cstyle);
+            if (! nstyle)
+                nstyle = Terminal.DEFAULT_CARET_STYLE;
         }
+        cstyle = nstyle;
     }
-    if (cstyle >= 0 && cstyle <= 6) {
+    if (cstyle >= 0 && cstyle < Terminal.caretStyles.length) {
         if (this.sstate.caretStyleFromCharSeq < 0)
             this.setCaretStyle(cstyle);
         this.caretStyleFromSettings = cstyle;

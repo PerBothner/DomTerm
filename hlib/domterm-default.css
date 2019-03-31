@@ -70,7 +70,11 @@ div.domterm {
 div.domterm span[caret="underline"][std="caret"], div.domterm span[caret="blinking-underline"][std="caret"] {
     text-decoration: underline
 }
+div.domterm span[caret="bar"][std="caret"], div.domterm span[caret="blinking-bar"][std="caret"] {
+    border-right: 2px solid green; margin-right: -2px
+}
 div.domterm-active span[caret="blinking-block"][std="caret"],
+div.domterm-active span[caret="blinking-bar"][std="caret"],
 div.domterm-active span[caret="blinking-underline"][std="caret"] {
     animation: blinking-caret 1.5s steps(1) 0s var(--caret-blink-count);
 }
@@ -79,7 +83,8 @@ span[caret][std="caret"][value]:after {
 }
 @keyframes blinking-caret {
     0% { }
-    30% {background-color: inherit; color: inherit; text-decoration: inherit }
+    30% { border-right: inherit; margin-right: inherit;
+          background-color: inherit; color: inherit; text-decoration: inherit }
     100% {}
 }
 div.domterm a.subtle:not(:hover) { text-decoration: inherit; }
