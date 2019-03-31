@@ -1514,9 +1514,7 @@ Terminal.prototype.setCaretStyle = function(style) {
         style = this.caretStyleFromSettings >= 0
             ? this.caretStyleFromSettings
             : Terminal.DEFAULT_CARET_STYLE;
-        this.sstate.caretStyleFromCharSeq = -1;
-    } else
-        this.sstate.caretStyleFromCharSeq = style;
+    }
     if (style != Terminal.NATIVE_CARET_STYLE
         && this.caretStyle == Terminal.NATIVE_CARET_STYLE) {
         let sel = document.getSelection();

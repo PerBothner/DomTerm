@@ -997,7 +997,9 @@ class DTParser {
         case 113 /*'q'*/:
             if (this._flagChars.indexOf(' ') >= 0) {
                 // Set cursor style (DECSCUSR, VT520).
-                term.setCaretStyle(this.getParameter(0, 1));
+                let style = this.getParameter(0, 1);
+                term.setCaretStyle(style);
+                term.sstate.caretStyleFromCharSeq = style || -1;
             }
             break;
         case 114 /*'r'*/:
