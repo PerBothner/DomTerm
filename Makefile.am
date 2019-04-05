@@ -71,12 +71,12 @@ if WITH_LIBWEBSOCKETS
 SUBDIRS += lws-term
 endif
 
+if WITH_ASCIIDOCTOR
 man1_MANS = share/man/man1/domterm.1
 if WITH_QTWEBENGINE
 man1_MANS += share/man/man1/qtdomterm.1
 endif
 
-if WITH_ASCIIDOCTOR
 ADOC_GENERATED = \
   share/domterm/help/domterm.html \
   share/domterm/help/qtdomterm.html \
