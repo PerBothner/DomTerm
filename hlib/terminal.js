@@ -1873,12 +1873,6 @@ Terminal.prototype._getStdMode = function(element=this.outputContainer) {
 }
 
 Terminal.prototype._pushStdMode = function(styleValue) {
-    if (styleValue == null
-        && this._currentStyleMap.get("std")) {
-        this._pushStyle("std", null);
-        this._adjustStyle();
-        return;
-    }
     var stdElement = this._getStdElement();
     if (stdElement == null ? styleValue == null
         : stdElement.getAttribute("std") == styleValue)
