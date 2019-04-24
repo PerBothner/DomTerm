@@ -1411,7 +1411,9 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             }
         }
     }
-    if (parent == this.topNode && this.isBlockNode(current)) {
+    if ((parent == this.topNode && this.isBlockNode(current))
+        || (current instanceof Element
+            && current.getAttribute("std") === "input")) {
         parent = current;
         current = parent.firstChild;
     }
