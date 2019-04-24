@@ -1112,111 +1112,13 @@ class DTParser {
                 term._adjustStyle();
                 break;
             case 14:
+                term.startPrompt(false);
+                break;
             case 24:
-                var curOutput = term._currentCommandOutput;
-                if (curOutput
-                    && curOutput.firstChild == term.outputContainer
-                    && curOutput.firstChild == curOutput.lastChild) {
-                    // Term is a continuation prompt, for multiline input.
-                    // Remove the _currentCommandOutput.
-                    curOutput.parentNode.insertBefore(term.outputContainer, curOutput);
-                    curOutput.parentNode.removeChild(curOutput);
-                    if (term._currentCommandHideable)
-                        term.outputContainer.setAttribute("domterm-hidden", "false");
-                }
-
-                term._pushStdMode("prompt");
-                if (term._inputLine != null) {
-                    if (this.getParameter(0, 0) == 24)
-                        term._inputLine.setAttribute("continuation", "true");
-                    else
-                        term._inputLine.removeAttribute("continuation");
-                }
+                term.startPrompt(true);
                 break;
             case 15:
-                var submode = this.getParameter(1, 1);
-                // 0 - client does not do line editing (no arrow key support)
-                // 1 - single-line line editing (a la GNU readline)
-                // 2 - first line of potentially multi-line (a la jline3)
-                term._pushStdMode("input");
-                var newParent = term.outputContainer;
-                let prev = newParent.previousSibling;
-
-                // If there is existing content on the current line,
-                // move it into new input <span>.
-                var firstChild = newParent.nextSibling;
-                for (var child = firstChild;
-                     child != null
-                     && (child.tagName!="SPAN"
-                         ||child.getAttribute("line")=="soft"); ) {
-                    var next = child.nextSibling;
-                    child.parentNode.removeChild(child);
-                    newParent.appendChild(child);
-                    child = next;
-                }
-                term._fixOutputPosition();
-                term.outputBefore = newParent.firstChild;
-                var ln = newParent.parentNode;
-                var cl = ln.classList;
-                if (submode != 0 && cl.contains("domterm-pre")
-                    && ! ln.parentNode.classList.contains("input-line")) {
-                    cl.add("input-line");
-                    if (submode==2)
-                        cl.add("multi-line-edit");
-                }
-
-                // Move old/tentative input to after previous output:
-                // If the line number of the new prompt matches that of a
-                // previous continuation line, move the latter to here.
-                if (prev && prev.getAttribute("std")=="prompt") {
-                    let lnum = prev.getAttribute("value");
-                    lnum = term._getIntegerBefore(lnum || prev.textContent);
-                    let gr = term._currentCommandGroup;
-                    let plin;
-                    let dt = term;
-                    for (; lnum && gr; gr = gr ? gr.previousSibling : null) {
-                        for (let plin = gr.lastChild; plin != null && gr != null;
-                             plin = plin.previousSibling) {
-                            if (! (plin instanceof Element
-                                   && plin.classList.contains("input-line")))
-                                continue;
-                            function fun(node) {
-                                if (node.tagName == "SPAN"
-                                    && node.getAttribute("std") == "prompt"
-                                    && node.previousSibling instanceof Element
-                                    && node.previousSibling.getAttribute("line")) {
-                                    let val = node.lineno;
-                                    if (val && val <= lnum) {
-                                        gr = null;
-                                        return val == lnum ? node : null;
-                                    }
-                                    return false;
-                                }
-                                return true;
-                            }
-                            let pr = term._forEachElementIn(plin, fun, false, true);
-                            if (pr) {
-                                // FIXME broken if pr is nested
-                                term.outputContainer = plin;
-                                term.outputBefore = plin.firstChild;
-                                term.resetCursorCache();
-                                let startLine = term.getAbsCursorLine();
-                                term._moveNodes(pr.nextSibling, newParent, null);
-                                pr.parentNode.removeChild(pr.previousSibling);
-                                pr.parentNode.removeChild(pr);
-                                term.outputContainer = prev.nextSibling;
-                                term.outputBefore = null;
-                                // FIXME rather non-optimal
-                                term._restoreLineTables(plin, startLine, true)
-                                term._updateLinebreaksStart(startLine);
-                                term.resetCursorCache();
-                                term.cursorLineStart(1);
-                            }
-                        }
-                    }
-                }
-
-                term._adjustStyle();
+                term.startInput(this.getParameter(1, 1));
                 break;
             case 16:
                 var hider = term._createSpanNode();

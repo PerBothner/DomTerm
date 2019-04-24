@@ -410,6 +410,116 @@ class Terminal {
             this._detachSaveNeeded = 2;
         this.close();
     }
+
+    startPrompt(isContinuationLine) {
+        var curOutput = this._currentCommandOutput;
+        if (curOutput
+            && curOutput.firstChild == this.outputContainer
+            && curOutput.firstChild == curOutput.lastChild) {
+            // This is a continuation prompt, for multiline input.
+            // Remove the _currentCommandOutput.
+            curOutput.parentNode.insertBefore(this.outputContainer, curOutput);
+            curOutput.parentNode.removeChild(curOutput);
+            if (this._currentCommandHideable)
+                this.outputContainer.setAttribute("domterm-hidden", "false");
+        }
+
+        this._pushStdMode("prompt");
+        if (this._inputLine != null) {
+            if (isContinuationLine)
+                this._inputLine.setAttribute("continuation", "true");
+            else
+                this._inputLine.removeAttribute("continuation");
+        }
+    }
+
+    /** Start of user input, following any prompt.
+     * The submode can be one of:
+     * 0 - client does not do line editing (no arrow key support)
+     * 1 - single-line line editing (a la GNU readline)
+     * 2 - first line of potentially multi-line (a la jline3)
+     */
+    startInput(submode) {
+        this._pushStdMode("input");
+        var newParent = this.outputContainer;
+        let prev = newParent.previousSibling;
+
+        // If there is existing content on the current line,
+        // move it into new input <span>.
+        var firstChild = newParent.nextSibling;
+        for (var child = firstChild;
+             child != null
+             && (child.tagName!="SPAN"
+                 ||child.getAttribute("line")=="soft"); ) {
+            var next = child.nextSibling;
+            child.parentNode.removeChild(child);
+            newParent.appendChild(child);
+            child = next;
+        }
+        this._fixOutputPosition();
+        this.outputBefore = newParent.firstChild;
+        var ln = newParent.parentNode;
+        var cl = ln.classList;
+        if (submode != 0 && cl.contains("domterm-pre")
+            && ! ln.parentNode.classList.contains("input-line")) {
+            cl.add("input-line");
+            if (submode==2)
+                cl.add("multi-line-edit");
+        }
+
+        // Move old/tentative input to after previous output:
+        // If the line number of the new prompt matches that of a
+        // previous continuation line, move the latter to here.
+        if (prev && prev.getAttribute("std")=="prompt") {
+            let lnum = prev.getAttribute("value");
+            lnum = this._getIntegerBefore(lnum || prev.textContent);
+            let gr = this._currentCommandGroup;
+            let plin;
+            let dt = this;
+            for (; lnum && gr; gr = gr ? gr.previousSibling : null) {
+                for (let plin = gr.lastChild; plin != null && gr != null;
+                     plin = plin.previousSibling) {
+                    if (! (plin instanceof Element
+                           && plin.classList.contains("input-line")))
+                        continue;
+                    function fun(node) {
+                        if (node.tagName == "SPAN"
+                            && node.getAttribute("std") == "prompt"
+                            && node.previousSibling instanceof Element
+                            && node.previousSibling.getAttribute("line")) {
+                            let val = node.lineno;
+                            if (val && val <= lnum) {
+                                gr = null;
+                                return val == lnum ? node : null;
+                            }
+                            return false;
+                        }
+                        return true;
+                    }
+                    let pr = this._forEachElementIn(plin, fun, false, true);
+                    if (pr) {
+                        // FIXME broken if pr is nested
+                        this.outputContainer = plin;
+                        this.outputBefore = plin.firstChild;
+                        this.resetCursorCache();
+                        let startLine = this.getAbsCursorLine();
+                        this._moveNodes(pr.nextSibling, newParent, null);
+                        pr.parentNode.removeChild(pr.previousSibling);
+                        pr.parentNode.removeChild(pr);
+                        this.outputContainer = prev.nextSibling;
+                        this.outputBefore = null;
+                        // FIXME rather non-optimal
+                        this._restoreLineTables(plin, startLine, true)
+                        this._updateLinebreaksStart(startLine);
+                        this.resetCursorCache();
+                        this.cursorLineStart(1);
+                    }
+                }
+            }
+        }
+
+        this._adjustStyle();
+    }
 }
 Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
                         "blinking-underline", "underline",
