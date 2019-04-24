@@ -8332,7 +8332,7 @@ Terminal.prototype.scanInRange = function(range, backwards, state) {
     let lastNonSkip = lastNode instanceof CharacterData ? 1
         : backwards ? lastNode.childNodes.length - range.startOffset
         : range.endOffset;
-    let caretNode = this.caretNode;
+    let caretNode = this._caretNode;
     function fun(node) {
         if (skipFirst > 0) {
             skipFirst--;
