@@ -1859,6 +1859,8 @@ Terminal.prototype._pushBgStdColor = function(name) {
 }
 
 Terminal.prototype._getStdElement = function(element=this.outputContainer) {
+    if (element instanceof Text)
+        element = element.parentNode;
     for (var stdElement = element;
          stdElement instanceof Element;
          stdElement = stdElement.parentNode) {
