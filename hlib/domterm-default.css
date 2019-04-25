@@ -47,7 +47,7 @@ div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family),mo
 div.domterm[reverse-video] span[std="input"] { background-color: #404000 } /* a dark yellow */
 div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
 div.domterm-show-info span.editing { font-family: var(--monospace-family) }
-div.input-line { background-color: #F0F0A0 } /* a very pale yellow */
+div.input-line { background-color: #E8E8C0 } /* a very pale yellow */
 span[std="input"] { background-color: #FFFFB8 } /* a pale yellow */
 span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
