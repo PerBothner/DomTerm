@@ -1646,7 +1646,7 @@ Terminal.prototype.useStyledCaret = function() {
         && this.sstate.showCaret;
 };
 /* True if caret element needs a "value" character. */
-Terminal._caretNeedsValue = function(caretStyle) {
+Terminal.prototype._caretNeedsValue = function(caretStyle = this.caretStyle) {
     return caretStyle <= 4;
 }
 
@@ -1713,7 +1713,7 @@ Terminal.prototype._restoreCaret = function() {
         if (! this._caretNode.getAttribute("caret")
             && (! (this._caretNode.firstChild instanceof Text)
                 || this._caretNode.firstChild.data.length == 0)) {
-            if (Terminal._caretNeedsValue(this.caretStyle)) {
+            if (this._caretNeedsValue()) {
                 let text = this._followingText(this._caretNode);
                 //let text = this._caretNode.nextSibling;
                 if (text instanceof Text && text.data.length > 0) {
@@ -1787,6 +1787,15 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
         }
         this._fixOutputPosition();
         if (inputLine.parentNode === null) {
+            if (this.outputBefore == null && inputLine == this._caretNode
+                && this._caretNeedsValue()
+                && this.outputContainer.tagName == "SPAN"
+                && this.outputContainer.getAttribute("std") == "input") {
+                // Move _caretNode outside of "input" span
+                // so text in _caretNode is styled correctly
+                this.outputBefore = this.outputContainer.nextSibling;
+                this.outputContainer = this.outputContainer.parentNode;
+            }
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
             this.outputBefore = inputLine;
             if (this._pagingMode == 0 && ! DomTerm.useXtermJs)
