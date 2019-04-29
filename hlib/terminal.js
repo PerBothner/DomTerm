@@ -4165,7 +4165,7 @@ Terminal.prototype.eraseCharactersRight = function(count, doDelete=false) {
     }
     this.deleteCharactersRight(count);
 };
-Terminal.prototype.deleteCharactersRight = function(count) {
+Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true) {
     var todo = count >= 0 ? count : 999999999;
     // Note that the traversal logic is similar to move.
     this._fixOutputPosition();
@@ -4232,6 +4232,8 @@ Terminal.prototype.deleteCharactersRight = function(count) {
             else  {
                 parent.removeChild(current);
                 while (parent.firstChild == null
+                       && (removeEmptySpan
+                           || parent != this._currentStyleSpan)
                        && parent != this.initial) {
                     current = parent;
                     parent = parent.parentNode;
@@ -6296,7 +6298,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             }
         }
         // FIXME optimize if end of line
-        fits = str == null || this.deleteCharactersRight(widthInColumns);
+        fits = str == null || this.deleteCharactersRight(widthInColumns, false);
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
@@ -6326,7 +6328,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             }
             absLine++;
             widthInColumns = this.strWidthInContext(str, this.outputContainer);
-            this.deleteCharactersRight(widthInColumns);
+            this.deleteCharactersRight(widthInColumns, false);
         }
     }
     else {
