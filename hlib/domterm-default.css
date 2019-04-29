@@ -19,6 +19,8 @@ div.domterm {
     background-color: var(--background-color);
     color: var(--foreground-color);
     --spacer-color:  #F0F0F8;
+    --input-line-color: #E8E8C0;
+    --input-span-color: #FFFFB8 /* a pale yellow */;
 }
 div.domterm[reverse-video] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
@@ -27,6 +29,8 @@ div.domterm[reverse-video] {
     background-color: var(--background-color);
     color: var(--foreground-color);
     --spacer-color:  #101040;
+    --input-line-color: #505030;
+    --input-span-color: #404020;
 }
 div.domterm-spacer {
   background-image: repeating-linear-gradient(
@@ -44,15 +48,13 @@ div.domterm-spacer {
    Check with tests/256-colors.sh. */
 div.domterm { --monospace-family: "DejaVu Sans Mono","Everson Mono",FreeMono,Menlo,Terminal; }
 div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family),monospace }
-div.domterm[reverse-video] span[std="input"] { background-color: #404000 } /* a dark yellow */
 div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
 div.domterm-show-info span.editing { font-family: var(--monospace-family) }
-div.input-line { background-color: #E8E8C0 } /* a very pale yellow */
-span[std="input"] { background-color: #FFFFB8 } /* a pale yellow */
+div.input-line { background-color: var(--input-line-color) } /* a very pale yellow */
+span[std="input"] { background-color: var(--input-span-color) } /* a pale yellow */
 span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
-div.domterm[reverse-video] div.input-line { background-color: #181800 }
 div.domterm-show-info {
     /*bottom: 0px;*/
     right: 2px;
@@ -78,6 +80,11 @@ div.domterm-active span[caret="blinking-bar"][std="caret"],
 div.domterm-active span[caret="blinking-underline"][std="caret"] {
     animation: blinking-caret 1.5s steps(1) 0s var(--caret-blink-count);
 }
+div.domterm-active span[caret="blinking-block"][std="caret"][value],
+div.domterm-active span[caret="blinking-bar"][std="caret"][value],
+div.domterm-active span[caret="blinking-underline"][std="caret"][value] {
+    animation: blinking-caret-lineend 1.5s steps(1) 0s var(--caret-blink-count);
+}
 span[caret][std="caret"][value]:after {
     content: attr(value);
 }
@@ -85,6 +92,12 @@ span[caret][std="caret"][value]:after {
     0% { }
     30% { border-right: inherit; margin-right: inherit;
           background-color: inherit; color: inherit; text-decoration: inherit }
+    100% {}
+}
+@keyframes blinking-caret-lineend {
+    0% { }
+    30% { border-right: inherit; margin-right: inherit;
+          background-color: var(--input-line-color); color: inherit; text-decoration: inherit }
     100% {}
 }
 div.domterm a.subtle:not(:hover) { text-decoration: inherit; }
