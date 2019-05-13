@@ -548,11 +548,11 @@ DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
 }
 
 // These are used to delimit "out-of-bound" urgent messages.
-// URGENT_BEGIN1 may be followed by URGENT_BEGIN2 *or* URGENT_COUNTED.
-Terminal.URGENT_BEGIN1 = 19; // '\023' (DC1) - out-of-band start
-Terminal.URGENT_BEGIN2 = 22; // '\026' (SYN) - urgent, not counted
+Terminal.URGENT_BEGIN1 = 19; // '\023' (DC1) - out-of-band/urgent start
+Terminal.URGENT_STATELESS_COUNTED = 21; // '\x15'
+Terminal.URGENT_FIRST_COUNTED = 23; // '\x17'
+Terminal.URGENT_FIRST_NONCOUNTED = 22; // '\x16'
 Terminal.URGENT_END = 20; // \024' - device control 4
-Terminal.URGENT_COUNTED = 21; // '\025' (NAK) - urgent, counted
 
 Terminal.prototype._deleteData = function(text, start, count) {
     if (count == 0)
@@ -5471,20 +5471,34 @@ Terminal.prototype.insertBytes = function(bytes) {
             : urgent_end >= 0 ? urgent_end : len;
         let begin2;
         if (urgent_end > urgent_begin && urgent_begin >= 0
-            && ((begin2 = bytes[urgent_begin+1]) == Terminal.URGENT_BEGIN2
-                || begin2 == Terminal.URGENT_COUNTED)) {
+            && ((begin2 = bytes[urgent_begin+1]) == Terminal.URGENT_FIRST_COUNTED
+                || begin2 == Terminal.URGENT_FIRST_NONCOUNTED)) {
             this.pushControlState();
             this.insertString(this.decoder
                               .decode(bytes.slice(urgent_begin+2, urgent_end),
                                       {stream:true}));
             this.popControlState();
-            bytes.copyWithin(urgent_begin, urgent_end+1);
-            len = len-(urgent_end+1-urgent_begin);
-            bytes = bytes.slice(0, len);
+            plen = urgent_end + 1 - urgent_begin;
+            if (begin2 == Terminal.URGENT_FIRST_COUNTED)
+                this._receivedCount = (this._receivedCount + plen) & Terminal._mask28;
+            bytes.copyWithin(0, urgent_end+1);
+            len -= plen;
         } else {
-            if (plen > 0) {
+            let start = 0;
+            if (plen > 0 && this._savedControlState
+                && this._savedControlState.count_urgent < 0) {
+                let ch = bytes[0];
+                if (ch == window.DTerminal.URGENT_STATELESS_COUNTED
+                    || ch == window.DTerminal.URGENT_FIRST_COUNTED) {
+                    start = 1;
+                    this._savedControlState.count_urgent = 1;
+                }
+                else
+                    this._savedControlState.count_urgent = 0;
+            }
+            if (plen > start) {
                 this.insertString(this.decoder
-                                  .decode(bytes.slice(0, plen), {stream:true}));
+                                  .decode(bytes.slice(start, plen), {stream:true}));
             }
             // update receivedCount before calling push/popControlState
             this._receivedCount = (this._receivedCount + plen) & Terminal._mask28;
@@ -5503,37 +5517,36 @@ Terminal.prototype.insertBytes = function(bytes) {
     }
 }
 Terminal.prototype.pushControlState = function() {
-    if (DomTerm.useXtermJs) {
-        var save = {
-            decoder: this.decoder,
-            receivedCount: this._receivedCount,
-            count_urgent: false,
-            _savedControlState: this._savedControlState
-        };
-        this.controlSequenceState = this._urgentControlState;
-        this.decoder = new TextDecoder(); //label = "utf-8");
-        this._savedControlState = save;
-    } else
-        this.parser.pushControlState();
+    var saved = {
+        decoder: this.decoder,
+        receivedCount: this._receivedCount,
+        count_urgent: -1,
+        _savedControlState: this._savedControlState
+    };
+    this.decoder = new TextDecoder(); //label = "utf-8");
+    this._savedControlState = saved;
+    if (! DomTerm.useXtermJs)
+        this.parser.pushControlState(saved);
 }
 Terminal.prototype.popControlState = function() {
-    if (DomTerm.useXtermJs) {
-        var saved = this._savedControlState;
-        if (saved) {
-            this._urgentControlState = this.controlSequenceState;
-            this.decoder = saved.decoder;
-            this._savedControlState = saved.controlSequenceState;
-            // Control sequences in "urgent messages" don't count to
-            // receivedCount. (They are typically window-specific and
-            // should not be replayed when another window is attached.)
-            var old = this._receivedCount;
-            if (saved.count_urgent)
-                this._receivedCount = (this._receivedCount + 2) & Terminal._mask28;
-            else
-                this._receivedCount = saved.receivedCount;
+    var saved = this._savedControlState;
+    if (saved) {
+        this._urgentControlState = this.controlSequenceState; // ??
+        this.decoder = saved.decoder;
+        this._savedControlState = saved.controlSequenceState;
+        if (! DomTerm.useXtermJs) {
+            this.parser.popControlState(saved);
         }
-    } else
-        this.parser.popControlState();
+        this._savedControlState = saved.controlSequenceState;
+        // Control sequences in "urgent messages" don't count to
+        // receivedCount. (They are typically window-specific and
+        // should not be replayed when another window is attached.)
+        var old = this._receivedCount;
+        if (saved.count_urgent > 0)
+            this._receivedCount = (this._receivedCount + 2) & Terminal._mask28;
+        else
+            this._receivedCount = saved.receivedCount;
+    }
 }
 
 // overridden if useXtermJs
@@ -7442,9 +7455,6 @@ DomTerm.initXtermJs = function(dt, topNode) {
     DomTerm.setInputMode(99, dt);
     dt.topNode = xterm.element;
     dt.insertString = function(str) {
-        if (str.length > 0 && str.charCodeAt(0) == Terminal.URGENT_COUNTED
-            && this._savedControlState)
-            this._savedControlState.count_urgent = true;
         xterm.write(str); };
     xterm.on('data', function(data) {
         dt.processInputCharacters(data);

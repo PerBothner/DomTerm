@@ -3730,16 +3730,20 @@ a fresh empty line added.
 
 @table @asis
 @item @code{"\x13"} @code{"\x15"} @var{sequence} @code{"\x14"}
-This is an ``urgent'' command sequence, which is the
-same as @var{sequence}, but at higher priority.
-If the terminal is in the middle of some other escape sequence
+This is an ``out-of-band'' command sequence, which is the
+same as @var{sequence}.
+However, if the terminal is in the middle of some other escape sequence
 (or a multi-byte UTF-8 sequence), save the state,
 evaluate @var{sequence}, and restore the state.
+@item @code{"\x13"} @code{"\x17"} @var{sequence} @code{"\x14"}
+Same as the above, but ''urgent'' (at higher priority):
+When DomTerm receives a sequence of bytes that contains
+this sequence, it will execute that before handling preceding bytes.
 
 @item @code{"\x13"} @var{sequence} @code{"\x14"}
 @itemx @code{"\x13"} @code{"\x16"} @var{sequence} @code{"\x14"}
 @emph{These variants are reserved for the domterm backend (server).}
-These are similar to the previous variant,
+These are similar to the previous variants,
 but the @var{sequence} is not counted in the running count
 (used for flow control), nor is it included if an output log
 is saved (in case it is needed detach+attach).
