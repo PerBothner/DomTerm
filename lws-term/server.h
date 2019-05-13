@@ -117,7 +117,7 @@ struct tty_client {
     size_t len; // length of data in buffer
     struct lws *next_client_wsi;
     struct sbuf ob; // output from child process
-    size_t ocount; // amount to increment sent_count (ocount <= olen)
+    size_t ocount; // amount to increment sent_count (ocount <= ob.len)
     int connection_number;
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;

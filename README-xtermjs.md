@@ -19,7 +19,7 @@ To try it, grab and build my fork of xterm.js:
     yarn
     XTERM_DIR=`pwd`
 
-The build DomTerm with the extra `--with-xterm.js` flag to configure:
+Build DomTerm with the extra `--with-xterm.js` flag to configure:
 
     cd /path/to/this-directory
     autoreconf -i
