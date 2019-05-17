@@ -58,6 +58,7 @@ public slots:
     void setSetting(const QString& key, const QString& value);
     void setClipboard(const QString& plain, const QString& html);
     void inputModeChanged(int mode);
+    void autoPagerChanged(bool mode);
     void log(const QString& message);
 
     void close();

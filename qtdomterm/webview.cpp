@@ -393,6 +393,7 @@ void WebView::displayContextMenu(const QString& contextType)
 
         menu->addAction(mainWindow()->m_viewMenubar);
         menu->addMenu(mainWindow()->inputModeMenu);
+        menu->addAction(mainWindow()->togglePagingAction);
         menu->addMenu(mainWindow()->newTerminalMenu);
         menu->addAction(mainWindow()->detachAction);
     } else {

@@ -81,6 +81,16 @@ cmd('toggle-paging-mode',
             dt._enterPaging(true);
         return true;
     });
+cmd('toggle-auto-pager',
+    function(dt, key) {
+        if (dt._currentlyPagingOrPaused()) {
+            DomTerm.setAutoPaging("toggle", dt);
+            dt._pauseContinue();
+            dt._exitPaging();
+        } else
+            DomTerm.setAutoPaging("toggle", dt);
+        DomTerm.autoPagerChanged(dt, dt._autoPaging);
+    });
 
 cmd('save-as-html',
     function(dt, key) {

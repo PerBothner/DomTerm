@@ -66,6 +66,7 @@ DomTerm.createMenus = function(options) {
                                       },
                                       checked: true});
     const autoPagingItem = menuItem({label: 'Automatic Pager',
+                                     accelerator: "Ctrl+Shift+M A",
                                          type: 'checkbox',
                                          click: function() {
                                              DomTerm.setAutoPaging("toggle");
@@ -319,6 +320,9 @@ DomTerm.setContextMenu = function() {
     if (DomTerm.isElectron() && ! DomTerm.isAtom()) {
         const {Menu, MenuItem} = electronAccess;
         function menuItem(options) {
+            if (options && options.accelerator
+                && options.accelerator.indexOf(' ') >= 0)
+                options.accelerator = undefined;
             return new MenuItem(options);
         }
         function popup(cmenu, options) {

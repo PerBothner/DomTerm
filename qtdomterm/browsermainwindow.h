@@ -88,6 +88,7 @@ public slots:
     void loadPage(const QString &url);
     void changeInputMode(QAction*);
     void inputModeChanged(char mode);
+    void autoPagerChanged(bool mode);
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -104,6 +105,7 @@ private slots:
     void slotNewTerminalRight() { slotNewTerminal(11); }
     void muxPrefixAction()  { slotNewTerminal(3); }
     void slotDetach();
+    void slotAutoPager();
     void slotClearBuffer();
     void slotOpenHomePage();
     void slotCopy();
@@ -157,6 +159,7 @@ private:
     QAction *newTerminalRight;
     QMenu *newTerminalMenu;
     QAction *detachAction;
+    QAction *togglePagingAction;
 
     QIcon m_reloadIcon;
 

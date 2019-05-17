@@ -197,6 +197,11 @@ void Backend::inputModeChanged(int mode)
     webView()->mainWindow()->inputModeChanged((char) mode);
 }
 
+void Backend::autoPagerChanged(bool mode)
+{
+    webView()->mainWindow()->autoPagerChanged(mode);
+}
+
 void Backend::log(const QString& message)
 {
     if (false) {

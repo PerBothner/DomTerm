@@ -257,6 +257,9 @@ void BrowserMainWindow::setupMenu()
 
     QMenu *terminalMenu = menuBar()->addMenu(tr("&Terminal"));
     terminalMenu->addMenu(inputModeMenu);
+    togglePagingAction = terminalMenu->addAction("Automatic &Pager", this,
+                                           &BrowserMainWindow::slotAutoPager);
+    togglePagingAction->setCheckable(true);
     //terminalMenu->addAction(webView()->changeCaretAction());
     terminalMenu->addMenu(newTerminalMenu);
     detachAction = terminalMenu->addAction("&Detach", this,
@@ -297,6 +300,10 @@ void BrowserMainWindow::inputModeChanged(char mode)
         action->setChecked(true);
         selectedInputMode = action;
     }
+}
+void BrowserMainWindow::autoPagerChanged(bool mode)
+{
+    autoInputMode->setChecked(mode);
 }
 
 void BrowserMainWindow::slotViewMenubar()
@@ -345,6 +352,11 @@ void  BrowserMainWindow::slotNewTerminal(int paneOp)
 void BrowserMainWindow::slotDetach()
 {
     emit webView()->backend()->handleSimpleCommand("detach-session");
+}
+
+void BrowserMainWindow::slotAutoPager()
+{
+    emit webView()->backend()->handleSimpleCommand("toggle-auto-pager");
 }
 
 void BrowserMainWindow::slotClearBuffer()

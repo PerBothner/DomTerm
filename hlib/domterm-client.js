@@ -153,6 +153,11 @@ function setupQWebChannel(channel) {
     DomTerm.inputModeChanged = function(term, mode) {
         backend.inputModeChanged(mode);
     }
+    const oldAutoPagerChanged = DomTerm.autoPagerChanged;
+    DomTerm.autoPagerChanged = function(term, mode) {
+        backend.autoPagerChanged(mode);
+        oldAutoPagerChanged(term, mode);
+    }
     backend.writeOperatingSystemControl.connect(function(code, text) {
         var dt = DomTerm.focusedTerm;
         if (dt)

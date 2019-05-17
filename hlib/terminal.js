@@ -6971,6 +6971,10 @@ Terminal.prototype._sendInputContents = function() {
 DomTerm.inputModeChanged = function(dt, mode) {
     dt.reportEvent("INPUT-MODE-CHANGED", '"'+String.fromCharCode(mode)+'"');
 }
+DomTerm.autoPagerChanged = function(dt, mode) {
+    dt._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
+                               +(mode?"on":"off"));
+}
 
 Terminal.prototype._pushToCaret = function() {
     this._fixOutputPosition();
@@ -7981,14 +7985,7 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
         this._pageScrollAbsolute(this._pageNumericArgumentAndClear(50));
         return true;
     case "'a'":
-        if (this._currentlyPagingOrPaused()) {
-            DomTerm.setAutoPaging("toggle", this);
-            this._pauseContinue();
-            this._exitPaging();
-        } else
-            DomTerm.setAutoPaging("toggle", this);
-        this._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
-                                     +(this._autoPaging?"on":"off"));
+        DomTerm.doNamedCommand("toggle-auto-pager");
         return true;
     case "Ctrl-C":
         this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
