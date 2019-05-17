@@ -1709,9 +1709,6 @@ and echoing is turned off by the program reading the input.
 @node Paging
 @chapter Paging and Pausing
 
-@emph{This feature is experimental.
-Key-bindings and other aspects are likely to change.}
-
 DomTerm includes a builtin ``pager'' that gives you
 functionality similar to programs like @code{less}.
 You can set ``auto-pause'' which enters the pager each time
@@ -1746,12 +1743,10 @@ enabled, and a ``full screen'' is displayed since last user interaction:
 Any further output would cause part of the visible screen to scroll off.
 @end itemize
 
-To enable automatic-pause mode on Electron you can
+To enable automatic-pause mode you can
 check the @code{Automatic Pager} option in the right-click (context) menu.
 (You can also type @code{ctrl-shift-M} (to enter pause mode);
-then @code{shift-A} (to enable auto-pause);
-and then @code{ctrl-shift-M} (to exit pause mode).
-This is obviously too awkward and needs to change.)
+then @code{a} (to enable auto-pause and also exit pause mode).
 
 To enter pager mode, you first have to enter pause mode,
 and then type @code{P}.
@@ -1759,12 +1754,19 @@ and then type @code{P}.
 The following key-bindings are in effect in pager or paused mode.
 Some other these may be prefixed by a numeric @var{count}.
 @table @asis
-@item @kbd{Ctrl-Shift-A}
-Toggle automatic-pause mode on and off.
-(This is a klunky way to do it and is likely to change.)
+@item @kbd{A}
+Toggle automatic-pause mode on and off,
+and then exit pager mode.
 @item @kbd{p}
-Toggle between pager and pause mode.
-@item @kbd{Ctrl-Shift-P}
+@item @kbd{%}
+Move to @var{count} percent of the way between start
+and end positions.
+@item @kbd{Ctrl-@key{C}}
+Interrupt output by sending @kbd{Ctrl-@key{C}} to the application,
+and then exit paging mode after scrolling to the end.
+@item @kbd{@key{m}}
+Toggle between pager and paused modes.
+@item @kbd{Ctrl-Shift-@key{M}}
 Return to normal mode.
 If paused, allow further output.
 @item @kbd{Space}
@@ -2138,6 +2140,8 @@ Toggle full-screen mode.
 @item @kbd{Ctrl-Shift-@key{I}}
 Toogle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
+@item @kbd{Ctrl-Shift-@key{M}}
+Enter @ref{Paging,Paging mode}.
 @end table
 
 @subsubheading Scrolling

@@ -7972,6 +7972,7 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
     case "Up":
         this._pageLine(-1);
         return true;
+    case "'m'":
     case "'M'":
         var oldMode = this._pagingMode;
         if (oldMode==2)
