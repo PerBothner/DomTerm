@@ -2035,15 +2035,20 @@ Terminal.prototype._splitNode = function(node, splitPoint) {
 };
 
 Terminal.prototype._popStyleSpan = function() {
+    this._currentStyleSpan = null;
     this._fixOutputPosition();
     var parentSpan = this.outputContainer;
     if (this.outputBefore != null) {
+        if (this.outputBefore == this.outputContainer.firstChild) {
+            this.outputContainer = parentSpan.parentNode;
+            this.outputBefore = parentSpan;
+            return;
+        }
         // split into new child
         this._splitNode(parentSpan, this.outputBefore);
     }
     this.outputContainer = parentSpan.parentNode;
     this.outputBefore = parentSpan.nextSibling;
-    this._currentStyleSpan = null;
 };
 
 DomTerm._styleAttributes = ["style", "color", "background-color",
