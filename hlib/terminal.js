@@ -3925,6 +3925,7 @@ Terminal.prototype.handleEnter = function(text) {
     this._inputLine = null;
     if (suppressEcho) {
         this._createPendingSpan(oldInputLine);
+        this._removeInputFromLineTable();
         this.resetCursorCache();
     } else if (! this.sstate.hiddenText) {
         this._removeCaret();
