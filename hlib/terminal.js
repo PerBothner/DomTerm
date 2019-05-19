@@ -190,7 +190,7 @@ class Terminal {
 
     // Used to implement clientDoesEcho handling.
     this._deferredForDeletion = null;
-    this.deferredForDeletionTimeout = 800;
+    this.deferredForDeletionTimeout = 400;
     // this.passwordHideChar = "\u2022"; // Bullet = used by Chrome
     this.passwordHideChar = "\u25CF"; // Black circle - used by Firefox/IE
     this.passwordShowCharTimeout = 800;
@@ -3460,6 +3460,7 @@ Terminal.prototype._createPendingSpan = function(span = this._createSpanNode()) 
     span.classList.add("pending");
     span.nextDeferred = this._deferredForDeletion;
     this._deferredForDeletion = span;
+    this._requestDeletePendingEcho();
     return span;
 }
 
@@ -5453,6 +5454,24 @@ Terminal.prototype.requestUpdateDisplay = function() {
         this._updateTimer = setTimeout(this._updateDisplay, 100);
 }
 
+Terminal.prototype._requestDeletePendingEcho = function() {
+    if (this._deferredForDeletion == null)
+        return;
+    if (this._deletePendingEchoTimer != null)
+        clearTimeout(this._deletePendingEchoTimer);
+    var dt = this;
+    function clear() { dt._deletePendingEchoTimer = null;
+                       dt._doDeferredDeletion();
+                       dt._removeInputLine();
+                       dt._restoreInputLine();
+                     };
+    let timeout = dt.deferredForDeletionTimeout;
+    if (timeout)
+        this._deletePendingEchoTimer = setTimeout(clear, timeout);
+    else
+        clear();
+}
+
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
 Terminal.prototype.insertBytes = function(bytes) {
     var len = bytes.length;
@@ -5613,7 +5632,7 @@ Terminal.prototype._adjustLines = function(startLine, action) {
     for (var line = startLine+1;  line < this.lineStarts.length;  line++) {
         var lineStart = this.lineStarts[line];
         if (delta > 0) {
-            this.lineStarts[line-delta] = this.lineStarts[line];
+            this.lineStarts[line-delta] = lineStart;
             this.lineEnds[line-delta-1] = this.lineEnds[line-1];
         }
         let lineAttr = lineStart.getAttribute("line");
@@ -6963,6 +6982,7 @@ Terminal.prototype._sendInputContents = function() {
     if (this._inputLine != null) {
         var text = this.grabInput(this._inputLine);
         this._deferredForDeletion = this._inputLine;
+        this._requestDeletePendingEcho();
         this._addPendingInput(text);
         this.reportText(text);
     }
