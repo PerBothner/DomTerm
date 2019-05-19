@@ -7570,11 +7570,10 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
         if (delay === undefined)
             DomTerm._extraDelayForTesting = delay = 600;
         */
-        if (delay) {
+        if (delay)
             setTimeout(function() { wsocket.send(str); }, delay);
-            return;
-        }
-        wsocket.send(str);
+        else
+            wsocket.send(str);
     };
     wsocket.onmessage = function(evt) {
         DomTerm._handleOutputData(wt, evt.data);
