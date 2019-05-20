@@ -5463,8 +5463,10 @@ Terminal.prototype._requestDeletePendingEcho = function() {
     var dt = this;
     function clear() { dt._deletePendingEchoTimer = null;
                        dt._doDeferredDeletion();
-                       dt._removeInputLine();
-                       dt._restoreInputLine();
+                       if (! this.isLineEditing()) {
+                           dt._removeInputLine();
+                           dt._restoreInputLine();
+                       }
                      };
     let timeout = dt.deferredForDeletionTimeout;
     if (timeout)
