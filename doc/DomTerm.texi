@@ -288,7 +288,7 @@ MacOS, *BSD, and native (non-WSL) Windows.
 
 On Fedora, you need to first:
 @example
-sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel libcap-devel asciidoctor
+sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel libcap-devel asciidoctor zlib-devel
 @end example
 If configuring @code{--with-qtwebengine} (recommended), also do:
 @example
