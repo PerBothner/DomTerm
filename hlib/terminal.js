@@ -135,6 +135,9 @@ class Terminal {
     this._clientWantsEditing = 0;
     this._numericArgument = null;
 
+    // 0: disabled; 1: transient; 2: stable (set by ctrl-@)
+    this._markMode = 0;
+
     // We have two variations of autoEditing:
     // - If autoCheckInferior is false, then the inferior actively sends OSC 71
     // " handle tcsetattr", and we switch based on that. This is experimental.
@@ -143,6 +146,7 @@ class Terminal {
     // inferior, which calls tcgetattr to decide what to do.  (If CANON, the
     // key is sent back to DomTerm; otherwise, it is sent to the child proess.)
     this.autoLazyCheckInferior = true;
+    // Number of "KEY" events reported, modulo 1024.
     this._keyEventCounter = 0;
     this._keyEventBuffer = new Array();
 
@@ -271,6 +275,7 @@ class Terminal {
     // When line-editing this is the *input* caret;
     // output is inserted at (outputContainer,outputBefore)
     this._caretNode = null;
+    this._markNode = null;
     // When line-editing this is the actively edited line,
     // that has not yet been sent to the process.
     // In this case _caretNode is required to be within _inputLine.
@@ -374,7 +379,7 @@ class Terminal {
         this.initializeTerminal(topNode);
     var dt = this;
     this._showHideEventHandler =
-        function(evt) { dt._showHideHandler(evt); };
+          function(evt) { dt._showHideHandler(evt); dt._clearSelection(); evt.preventDefault();};
     this._updateDisplay = function() {
         dt._updateTimer = null;
         dt._breakDeferredLines();
@@ -382,6 +387,13 @@ class Terminal {
         // FIXME only if "scrollWanted"
         if (dt._pagingMode == 0)
             dt._scrollIfNeeded();
+        if (dt._markMode > 0) {
+            // update selection so focus follows caret
+            dt._restoreCaretNode();
+            dt._removeCaret();
+            let sel = document.getSelection();
+            sel.extend(dt._caretNode, 0);
+        }
         dt._restoreInputLine();
     };
     this._unforceWidthInColumns =
@@ -411,14 +423,27 @@ class Terminal {
         this.close();
     }
 
+    //maybeExtendInput() { }
+
     startPrompt(isContinuationLine) {
         var curOutput = this._currentCommandOutput;
+        // MOVE to: maybeExtendInput
         if (curOutput
             && curOutput.firstChild == this.outputContainer
             && curOutput.firstChild == curOutput.lastChild) {
             // This is a continuation prompt, for multiline input.
             // Remove the _currentCommandOutput.
-            curOutput.parentNode.insertBefore(this.outputContainer, curOutput);
+            let previousInput = curOutput.previousSibling;
+            if (this.outputContainer.classList.contains("domterm-pre")
+                && previousInput.classList.contains("input-line")) {
+                const line = this.getAbsCursorLine();
+                if (this.lineStarts[line] == this.outputContainer)
+                    this.lineStarts[line] = this.lineEnds[line-1];
+                this._moveNodes(this.outputContainer.firstChild, previousInput, null);
+                // outputContainer is updated by _moveNodes
+            }
+            else
+                curOutput.parentNode.insertBefore(this.outputContainer, curOutput);
             curOutput.parentNode.removeChild(curOutput);
             if (this._currentCommandHideable)
                 this.outputContainer.setAttribute("domterm-hidden", "false");
@@ -439,7 +464,8 @@ class Terminal {
      * 1 - single-line line editing (a la GNU readline)
      * 2 - first line of potentially multi-line (a la jline3)
      */
-    startInput(submode) {
+    startInput(stayInInputMode, submode) {
+        this.sstate.stayInInputMode = stayInInputMode;
         this._pushStdMode("input");
         var newParent = this.outputContainer;
         let prev = newParent.previousSibling;
@@ -520,6 +546,30 @@ class Terminal {
 
         this._adjustStyle();
     }
+    startOutput() {
+        var commandOutput = document.createElement("div");
+        commandOutput.setAttribute("class", "command-output");
+        if (this._currentCommandHideable)
+            commandOutput.setAttribute("domterm-hidden", "false");
+        this._currentCommandOutput = commandOutput;
+        this._currentCommandGroup.appendChild(commandOutput);
+
+        const lineNo = this.getAbsCursorLine();
+        const preNode = this._createPreNode();
+        this._moveNodes(this.outputBefore, preNode, null);
+        commandOutput.appendChild(preNode);
+        this.outputContainer = preNode;
+        this.outputBefore = preNode.firstChild;
+        // FIXME not robust
+        this.lineStarts[lineNo] = preNode;
+        // FIXME maybe add tail-hider
+    }
+
+    _maybeBracketed(text) {
+        if (this.sstate.bracketedPasteMode)
+            text = "\x1B[200~" + text + "\x1B[201~";
+        return text;
+    }
 }
 Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
                         "blinking-underline", "underline",
@@ -527,6 +577,14 @@ Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
 Terminal.DEFAULT_CARET_STYLE = 1; // blinking-block
 Terminal.NATIVE_CARET_STYLE = Terminal.caretStyles.indexOf("native");
 Terminal.INFO_TIMEOUT = 800;
+
+// Handle selection
+DomTerm.EDITING_SELECTION = 1;
+// Handle keypress, optionally-shifted left/right-arrow, home/end locally.
+//DomTerm.EDITING_LOCAL_BASIC = 2;
+// Handle Emacs key sequences locally.
+// Handle history locally
+// Handle shift of motion keys to extend selection
 
 DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
     let topNode;
@@ -1233,7 +1291,7 @@ Terminal.prototype.cursorSet = function(line, column, regionRelative) {
  */
 Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeeded) {
     //Only if char-edit? FIXME
-    this._removeInputLine();
+    //this._removeInputLine();
     var absLine = this.currentAbsLine;
     var column = this.currentCursorColumn;
     if (this.verbosity >= 3)
@@ -1258,10 +1316,6 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         while (goalAbsLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
-            var preNode = this._createPreNode();
-            this._setBackgroundColor(preNode,
-                                     this._getBackgroundColor(this._vspacer));
-            // preNode.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
             if (lineCount == this.homeLine)
                 parent = this.initial;
             else {
@@ -1277,20 +1331,28 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     lastParent = p;
                 }
                 if (lastParent.parentNode == this._currentCommandGroup) {
-                    var commandOutput = document.createElement("div");
-                    commandOutput.setAttribute("class", "command-output");
-                    if (this._currentCommandHideable)
-                        commandOutput.setAttribute("domterm-hidden", "false");
-                    this._currentCommandOutput = commandOutput;
-                    this._currentCommandGroup.appendChild(commandOutput);
-                    parent = commandOutput;
-                    if (parent.previousSibling instanceof Element
+                    if (lastParent.classList.contains("input-line")
+                        && this.sstate.stayInInputMode) {
+                        parent = lastParent;
+                    } else {
+                        // FIXME use startOutput
+                        var commandOutput = document.createElement("div");
+                        commandOutput.setAttribute("class", "command-output");
+                        if (this._currentCommandHideable)
+                            commandOutput.setAttribute("domterm-hidden", "false");
+                        this._currentCommandOutput = commandOutput;
+                        this._currentCommandGroup.appendChild(commandOutput);
+
+                        parent = commandOutput;
+                    }
+                    if (lastParent instanceof Element
                         && ! this._currentCommandHideable
-                        && parent.previousSibling.classList.contains("input-line")) {
-                        let ln = parent.previousSibling.lastChild;
+                        && lastParent.classList.contains("input-line")) {
+                        let ln = lastParent.lastChild;
                         let button = this._createSpanNode();
                         button.setAttribute("class", "tail-hider");
-                        ln.parentNode.insertBefore(button, null/*ln*/);
+                        //ln.parentNode.insertBefore(button, ln);
+                        ln.insertBefore(button, ln.firstChild);
                         button.addEventListener("click",
                                                 this._showHideEventHandler,
                                                 true);
@@ -1300,13 +1362,25 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     parent = lastParent.parentNode;
                 }
             }
-            parent.appendChild(preNode);
+            let newPre = ! this.sstate.stayInInputMode; // ???
             var next = this._createLineNode("hard", "\n");
-            preNode.appendChild(next);
-            this._setPendingSectionEnds(this.lineEnds[lineCount-1]);
-            preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
-            preNode._widthColumns = 0;
-            this.lineStarts[lineCount] = preNode;
+            let prevLineEnd = this.lineEnds[lineCount-1];
+            let lineStart;
+            if (newPre) {
+                var preNode = this._createPreNode();
+                this._setBackgroundColor(preNode,
+                                         this._getBackgroundColor(this._vspacer));
+                parent.appendChild(preNode);
+                preNode.appendChild(next);
+                lineStart = preNode;
+            } else {
+                lastParent.appendChild(next);
+                lineStart = prevLineEnd;
+            }
+            this._setPendingSectionEnds(prevLineEnd);
+            lineStart._widthMode = Terminal._WIDTH_MODE_NORMAL;
+            lineStart._widthColumns = 0;
+            this.lineStarts[lineCount] = lineStart;
             this.lineEnds[lineCount] = next;
             var nextLine = lineCount;
             lineCount++;
@@ -1392,15 +1466,6 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     parent = tnode.parentNode;
                 }
                 var before;
-                while ((before = tnode.previousSibling) instanceof Text) {
-                    // merge nodes
-                    // (adjacent text nodes may happen after removing inputLine)
-                    var beforeData = before.data;
-                    tstart += beforeData.length;
-                    // FIXME maybe use _normalize1
-                    tnode.insertData(0, beforeData);
-                    parent.removeChild(before);
-                }
                 var text = tnode.textContent;
                 var tlen = text.length;
                 var i = tstart;
@@ -1521,11 +1586,30 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             }
         }
     }
-    if ((parent == this.topNode && this.isBlockNode(current))
-        || (current instanceof Element
-            && current.getAttribute("std") === "input")) {
+    while ((parent == this.topNode && this.isBlockNode(current))
+           || (current instanceof Element
+               && current.nodeName === "SPAN"
+               && ! current.getAttribute("line")
+               //&& ! current.classList.contains("tail-hider")
+               && current.getAttribute("std") !== "prompt")) {
+        // not: std=="prompt"
+        // yes: class="term-style", std=="input"
+        if (! (parent == this.topNode)
+            && ! current.classList.contains("term-style")
+            && current.getAttribute("std") !== "input")
+            console.log("unexpected child "+current.nodeName);
         parent = current;
         current = parent.firstChild;
+    }
+    if (parent == this._caretNode) {
+        console.log("moveAbs FIX1");
+        current = current == parent.firstChild ? parent : parent.nextSibling;
+        parent = parent.parentNode;
+    }
+    if (parent == this._caretNode.firstChild) {
+        console.log("moveAbs FIX2");
+        current = current == 0 ? this._caretNode : this._caretNode.nextSibling;
+        parent =  this._caretNode.parentNode;
     }
     this.outputContainer = parent;
     this.outputBefore = current;
@@ -1577,8 +1661,22 @@ Terminal.prototype._removeCaret = function(normalize=true) {
         caretNode.removeAttribute("caret");
         if (child instanceof Text) {
             var text = caretNode.nextSibling;
+            let sel = document.getSelection();
+            let rc = sel.rangeCount;
+            let focusNode = sel.focusNode;
+            let anchorNode = sel.anchorNode;
+            let focusOffset = sel.focusOffset;
+            let anchorOffset = sel.anchorOffset;
             if (normalize && text !== this.outputBefore
                 && text instanceof Text) {
+                if (focusNode == caretNode || focusNode == child)
+                    focusNode = focusOffset == 1 ? text : caretNode;
+                if (anchorNode == caretNode || anchorNode == child)
+                    anchorNode = anchorOffset == 1 ? text : caretNode;
+                if (focusNode == text)
+                    focusOffset++;
+                if (anchorNode == text)
+                    anchorOffset++;
                 text.insertData(0, child.data);
                 if (text === this.outputContainer)
                     this.outputBefore += child.length;
@@ -1587,6 +1685,8 @@ Terminal.prototype._removeCaret = function(normalize=true) {
                 caretNode.removeChild(child);
                 caretNode.parentNode.insertBefore(child, caretNode.nextSibling);
             }
+            sel.setBaseAndExtent(anchorNode, anchorOffset,
+                                 focusNode, focusOffset);
         }
     }
 }
@@ -1608,15 +1708,14 @@ Terminal.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput) {
         this._removeCaret();
         var caretParent = this._caretNode.parentNode;
+        const sel = document.getSelection();
         if (caretParent != null /*&& ! this.isLineEditing()*/) {
-            // FIXME Is this needed/desirable? maybe just _removeCaret
-            // That would avoid need for _restoreCaretNode.
+            const r = this._positionToRange();
             let before = this._caretNode.previousSibling;
-            if (this.outputBefore==this._caretNode)
-                this.outputBefore = this.outputBefore.nextSibling;
             caretParent.removeChild(this._caretNode);
-            if (before instanceof Text)
-                this._normalize1(before);
+            if (before instanceof Text && before.nextSibling instanceof Text)
+                before.parentNode.normalize();
+            this._positionFromRange(r);
         }
     }
 };
@@ -1745,9 +1844,11 @@ Terminal.prototype._restoreCaret = function() {
                     this._caretNode.appendChild(document.createTextNode(ch));
                     this._deleteData(text, 0, sz);
                     this._caretNode.removeAttribute("value");
+                    /*
                     if (this._caretNode.parentNode == this._deferredForDeletion
                         && ptext != this._deferredForDeletion)
                         this._deferredForDeletion.textAfter += ch;
+                    */
                 }
                 else
                     this._caretNode.setAttribute("value", " ");
@@ -1773,6 +1874,7 @@ Terminal.prototype._restoreCaretNode = function() {
     if (this._caretNode.parentNode == null) {
         this._fixOutputPosition();
         this.outputContainer.insertBefore(this._caretNode, this.outputBefore);
+        this.outputContainer.normalize();
         this.outputBefore = this._caretNode;
     }
 }
@@ -1787,16 +1889,8 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
         }
         this._fixOutputPosition();
         if (inputLine.parentNode === null) {
-            if (this.outputBefore == null && inputLine == this._caretNode
-                && this._caretNeedsValue()
-                && this.outputContainer.tagName == "SPAN"
-                && this.outputContainer.getAttribute("std") == "input") {
-                // Move _caretNode outside of "input" span
-                // so text in _caretNode is styled correctly
-                this.outputBefore = this.outputContainer.nextSibling;
-                this.outputContainer = this.outputContainer.parentNode;
-            }
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
+            //this.outputContainer.normalize();
             this.outputBefore = inputLine;
             if (this._pagingMode == 0 && ! DomTerm.useXtermJs)
                 this.maybeFocus();
@@ -2412,7 +2506,14 @@ Terminal.prototype._createPreNode = function() {
 
 Terminal.prototype._getOuterPre = function(node) {
     for (var v = node; v != null && v != this.topNode; v = v.parentNode) {
-        if (v.classList.contains("domterm-pre"))
+        if (v instanceof Element && v.classList.contains("domterm-pre"))
+            return v;
+    }
+    return null;
+}
+Terminal.prototype._getOuterInputArea = function(node) {
+    for (var v = node; v != null && v != this.topNode; v = v.parentNode) {
+        if (v instanceof Element && v.getAttribute("std") == "input")
             return v;
     }
     return null;
@@ -2585,11 +2686,20 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     // Should be zero - support for topNode.offsetLeft!=0 is broken
     this._topLeft = dt.topNode.offsetLeft;
 
+    this._pendingSelected = 0; // 0: normal; 1: defer; 2: deferred
     topNode.addEventListener('wheel',
                              function(e) { dt._disableScrollOnOutput = true; },
                              {passive: true});
-    this.topNode.addEventListener("mousedown", this._mouseEventHandler, false);
-    this.topNode.addEventListener("mouseup", this._mouseEventHandler, false);
+    topNode.addEventListener("mousedown", this._mouseEventHandler, false);
+    topNode.addEventListener("mouseup", this._mouseEventHandler, false);
+    topNode.addEventListener("mouseleave",
+                             function(e) {
+                                 console.log("mouseLeave");
+                                 dt._altPresssed = false;
+                                 if (dt._pendingSelected == 2)
+                                     dt._updateSelected();
+                                 dt._pendingSelected = 0;
+                             }, false);
     function handleContextMenu(e) {
         if (dt.sstate.mouseMode != 0
             || (DomTerm.showContextMenu
@@ -2604,40 +2714,18 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     }
     this.topNode.addEventListener("contextmenu", handleContextMenu, false);
 
-    document.addEventListener("selectionchange", function() {
+    document.addEventListener("selectionchange", function(e) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
-        if (dt.isLineEditing() && dt._inputLine != null
-            && sel.focusNode != null
-            && (sel.focusNode != dt._caretNode || sel.focusOffset != 0)) {
-            dt._restoreInputLine(false);
-            let r = new Range();
-            r.selectNodeContents(dt._inputLine);
-            if (r.comparePoint(sel.focusNode, sel.focusOffset) == 0) {
-                if (dt._caretNode.firstChild == sel.focusNode) {
-                    console.log("handle _caretNode.firstChild == sel.focusNode");
-                }
-                // The focusNode may the text child of dt._caretNode.
-                // In that case save it before calling _removeCaret.
-                let focusNode = sel.focusNode;
-                let focusOffset = sel.focusOffset;
-                dt._removeCaret(false);
-                if (focusNode == dt._caretNode)
-                    r.setStartAfter(focusNode);
-                else
-                    r.setStart(focusNode, focusOffset);
-                r.insertNode(dt._caretNode);
-                dt._inputLine.normalize();
-                // same position, but "normalized"
-                // Chrome likes this better, after Shift-Left when no selection
-                if (point)
-                    sel.collapse(dt._caretNode, 0);
-                else
-                    sel.extend(dt._caretNode, 0);
-            } else
-                dt._usingSelectionCaret = false;
-        }
+        console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+"'"+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
+        let focusPre = dt._getOuterPre(sel.focusNode);
+        let moveCaret = false;
+        if (dt._pendingSelected == 0)
+            dt._updateSelected();
+        else
+            dt._pendingSelected = 2;
+
         if (point) {
             dt._restoreCaret();
         }
@@ -2756,11 +2844,13 @@ Terminal.prototype._displayInfoWithTimeout = function(text) {
     dt._displayInfoMessage(text);
     dt._displaySizePendingTimeouts++;
     function clear() {
+        dt._checkTree();
         if (! dt._displayInfoShowing) {
             dt._displaySizePendingTimeouts = 0;
         } else if (--dt._displaySizePendingTimeouts == 0) {
             dt._updatePagerInfo();
         }
+        dt._checkTree();
     };
     setTimeout(clear, Terminal.INFO_TIMEOUT);
 };
@@ -2847,6 +2937,9 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     caretNode.spellcheck = false;
     this.insertNode(caretNode);
     this.outputBefore = caretNode;
+    var markNode = this._createSpanNode();
+    this._markNode = markNode;
+    markNode.setAttribute("class", "marker");
 
     var dt = this;
     topNode.addEventListener("keydown",
@@ -2894,6 +2987,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                             function(event) { dt.historySave(); });
     topNode.addEventListener("click",
                              function(e) {
+                                 console.log("click but:"+e.button+" alt:"+e.altKey);
                                  var target = e.target;
                                  for (let n = target; n instanceof Element;
                                       n = n.parentNode) {
@@ -3044,17 +3138,165 @@ Terminal.prototype._updateMiscOptions = function(map) {
 
 DomTerm.showContextMenu = null;
 
+Terminal.prototype._clearSelection = function() {
+    let sel = document.getSelection();
+    sel.removeAllRanges();
+}
+
+/** Do after selection has changed, but "stabilized".
+ * If xxx?
+ * If focusNode is in same "outer pre" (_getOuterPre) as the caretNode
+ * AND "readline-mode" [FIXME] send array keys to move caret to focus position.
+ */
+Terminal.prototype._updateSelected = function() {
+    let dt = this;
+
+    /* insert markMode at position (node,offset) */
+    function insertMark(node, offset, markNode) {
+        if (node == null)
+            return;
+       // removeSelectionMarker(markNode);
+        while (node instanceof Text) {
+            let tlen = node.data.length;
+            if (offset <= tlen)
+                break;
+            node = dt._followingText(node);
+            offset -= tlen;
+        }
+        let caret = dt._caretNode;
+        if (caret && caret.parentNode
+            && (node == caret || node == caret.firstChild)) {
+            let t;
+            if (offset == 0 || (t = dt._removeCaret(false)) == null)
+                caret.parentNode.insertBefore(markNode, caret);
+            else // focusOffset must be 1
+                t.parentNode.insertBefore(markNode, t.nextSibling);
+        } else if (node != markNode) {
+            let r = new Range();
+            r.setStart(node, offset);
+            r.insertNode(markNode);
+        }
+        let onode = dt.outputContainer;
+        if (onode instanceof Text) {
+            let ooffset = dt.outputBefore;
+            while (onode instanceof Text) {
+                let tlen = onode.data.length;
+                if (ooffset <= tlen)
+                    break;
+                onode = dt._followingText(onode);
+                ooffset -= tlen;
+            }
+            dt.outputContainer = onode;
+            dt.outputBefore = ooffset;
+        }
+    }
+    function removeSelectionMarker(marker) {
+        if (marker.parentNode !== null) {
+            const prev = marker.previousSibling;
+            marker.parentNode.removeChild(marker);
+            if (prev instanceof Text)
+                dt._normalize1(prev);
+        }
+    }
+
+    //this._pendingSelected = false;
+    let sel = document.getSelection();
+    // FIXME using toString is probably wasteful. isCollapsed can be wrong.
+    let point = sel.toString().length == 0;
+
+    let moveCaret = false;
+    let currentInputNode = null;     // current std="input" element
+    let currentPreNode = null;       // current class="domterm-pre" element
+    let targetInputNode = null;      // target std="input" element
+    let targetPreNode = null;        // target class="domterm-pre" element
+    if (! this.isLineEditing()) {
+        targetPreNode = dt._getOuterPre(sel.focusNode);
+        currentPreNode = this._getOuterPre(this.outputContainer);
+        if (targetPreNode != null && currentPreNode != null) {
+            let readlineForced = dt._altPressed;
+            let firstSibling = targetPreNode.parentNode.firstChild;
+            moveCaret = readlineForced
+                || (targetPreNode.classList.contains("input-line")
+                    && currentPreNode.classList.contains("input-line")
+                    && (point || dt._getStdMode(sel.focusNode) !== "prompt")
+                    && (targetPreNode == currentPreNode
+                        || (targetPreNode.parentNode == currentPreNode.parentNode
+                            && firstSibling instanceof Element
+                            && firstSibling.classList.contains("multi-line-edit"))));
+        }
+    }
+    let inPrompt = false;
+    if (moveCaret && targetPreNode
+        && dt._caretNode
+        /*&& targetPreNode == dt._getOuterPre(dt._caretNode)*/) {
+        let r = document.createRange();
+        r.selectNode(targetPreNode);
+        const targetFirst = targetPreNode.firstChild;
+        // Alternatively: use input span, which does not include initial prompt
+        inPrompt = targetFirst instanceof Element
+            && targetFirst.getAttribute("std")==="prompt";
+        if (inPrompt)
+            r.setStartAfter(targetFirst);
+        r.setEndBefore(dt._caretNode);
+        let textBeforeCaret = r.toString();
+        r.setEnd(sel.focusNode, sel.focusOffset);
+        let textBeforeFocus = r.toString();
+        let lenBeforeCaret = DomTerm._countCodePoints(textBeforeCaret);
+        let lenBeforeFocus = DomTerm._countCodePoints(textBeforeFocus);
+        console.log("updateSelected2 - textBefF:'"+textBeforeFocus+"' len:"+lenBeforeFocus+" befC:'"+textBeforeCaret+"' len:"+lenBeforeCaret+" mov:"+(lenBeforeFocus-lenBeforeCaret));
+        let output = "";
+        if (lenBeforeCaret < lenBeforeFocus) {
+            var moveRight = dt.keyNameToChars("Right");
+            output = moveRight.repeat(lenBeforeFocus - lenBeforeCaret);
+        } else if (lenBeforeCaret > lenBeforeFocus) {
+            var moveLeft = dt.keyNameToChars("Left");
+            output = moveLeft.repeat(lenBeforeCaret - lenBeforeFocus);
+        }
+        // dt._editPendingInput(keyName == "Right", false);
+        if (output) {
+            // FIXME mark pending
+            moveCaret = true;
+            dt.processInputCharacters(output);
+        }
+    }
+    let focusNode = sel.focusNode;
+    let anchorNode = sel.anchorNode;
+    let focusOffset = sel.focusOffset;
+    let anchorOffset = sel.anchorOffset;
+    if (moveCaret
+        && (sel.focusNode != dt._caretNode || sel.focusOffset != 0)) {
+        dt._removeCaret();
+        if (! dt.isLineEditing())
+            dt._removeInputLine();
+        let r = new Range();
+        r.setStart(sel.focusNode, sel.focusOffset);
+        r.insertNode(dt._caretNode);
+        if (sel.focusNode == this.outputContainer
+            && this.outputContainer instanceof Text) {
+            let outlen = this.outputContainer.length;
+            if (this.outputBefore > outlen) {
+                this.outputBefore -= outlen;
+                this.outputContainer = dt._caretNode.nextSibling;
+            }
+        }
+        sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset, dt._caretNode, 0);
+    }
+}
 Terminal.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
-        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button);
+        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button+" pendsel:"+this._pendingSelected+" alt:"+ev.altKey);
 
+    this._altPressed = ev.altKey;
+    if (this._pendingSelected == 2)
+        this._updateSelected();
+    this._pendingSelected = ev.type == "mouseup" ? 0 : 1;
     if (ev.type == "mouseup") {
         this._usingScrollBar = false;
         if (this.sstate.mouseMode == 0 && ev.button == 0) {
             let sel = document.getSelection();
             if (sel.isCollapsed) {
                 // we don't want a visible caret FIXME handle caretStyle >= 5
-                sel.removeAllRanges();
+                //sel.removeAllRanges();
             }
             this.maybeFocus();
         }
@@ -3065,6 +3307,7 @@ Terminal.prototype._mouseHandler = function(ev) {
             ev.preventDefault();
         if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
             this._usingScrollBar = true;
+        this._markMode = 0;
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
     }
@@ -3077,40 +3320,8 @@ Terminal.prototype._mouseHandler = function(ev) {
         && this.topNode.scrollTop+this.availHeight >= this._vspacer.offsetTop)
             this._pauseContinue();
 
-    if (ev.shiftKey || ev.target == this.topNode)
+    if (ev.shiftKey || ev.target == this.topNode || this.sstate.mouseMode == 0)
         return;
-
-    var current_input_node = null;     // current std="input" element
-    var current_pre_node = null;       // current class="domterm-pre" element
-    var target_input_node = null;      // target std="input" element
-    var target_pre_node = null;        // target class="domterm-pre" element
-    // readlineMode is used to translate a click to arrow-key movements.
-    // It is enabled on certain conditions when mouseMode is unset:
-    // either altKey is set or both target and current position are
-    // in the same multi-line-edit group.
-    var readlineMode = false;
-    var readlineForced = false; // basically if ev.altKey
-    if (ev.type == "mouseup"
-        && this.sstate.mouseMode == 0 && ! this.isLineEditing()
-        && (window.getSelection().isCollapsed || ev.button == 1)) {
-        target_pre_node = this._getOuterPre(ev.target);
-        current_pre_node = this._getOuterPre(this.outputContainer);
-        if (target_pre_node != null && current_pre_node != null) {
-            readlineForced = ev.altKey;
-            let firstSibling = target_pre_node.parentNode.firstChild;
-            readlineMode = readlineForced
-                || (target_pre_node.classList.contains("input-line")
-                    && current_pre_node.classList.contains("input-line")
-                    && (target_pre_node == current_pre_node
-                        || (target_pre_node.parentNode == current_pre_node.parentNode
-                            && firstSibling instanceof Element
-                            && firstSibling.classList.contains("multi-line-edit"))));
-        }
-    }
-    if (this.sstate.mouseMode == 0
-        && (! readlineMode || (ev.button != 0 && ev.button != 1))){
-        return;
-    }
 
     // Get mouse coordinates relative to topNode.
     var xdelta = ev.pageX;
@@ -3120,8 +3331,8 @@ Terminal.prototype._mouseHandler = function(ev) {
         ydelta -= top.offsetTop;
     }
 
-    // Temporarily set position to ev.target (with some adjustments if
-    // in readlineMode).  That way we can use updateCursorCache to get
+    // Temporarily set position to ev.target.
+    // That way we can use updateCursorCache to get
     // an initial approximation of the corresponding row/col.
     // This gives us better results for variable-height lines
     // (and to a less reliable extent: variable-width characters).
@@ -3132,66 +3343,6 @@ Terminal.prototype._mouseHandler = function(ev) {
     var target = ev.target;
     this.outputContainer = ev.target;
     this.outputBefore = this.outputContainer.firstChild;
-    var adjustInTarget = true;
-
-    // Some readlineMode adjustments before we calculate row/col.
-    if (readlineMode) {
-        let child0 = target_pre_node.firstChild;
-        let child = child0;
-        // Get first target_pre_node child neither hider or prompt
-        while (child instanceof Element
-               && child.nodeName=="SPAN") {
-            let ltype = child.getAttribute("std");
-            if (ltype != "hider" && ltype != "prompt")
-                break;
-            child = child.nextSibling;
-        }
-        // If click is in prompt or hider element, go to following element
-        if (child instanceof Element
-            && xdelta <= child.offsetLeft
-            && ydelta < child0.offsetTop + child0.offsetHeight) {
-            target = child;
-            this.outputContainer = target_pre_node;
-            this.outputBefore = child;
-            adjustInTarget= false;
-            if (child instanceof Element
-                && child.getAttribute("std") == "input")
-                target_input_node = child;
-        }
-
-        // If both current and target lines starts with a prompt,
-        // we want to subtract prompt widths (in case they are different).
-        if (! readlineForced && target_pre_node != current_pre_node
-           && target_input_node) {
-            child = current_pre_node.firstChild;
-            while (child instanceof Element
-                   && child.nodeName=="SPAN") {
-                let ltype = child.getAttribute("std");
-                if (ltype != "hider" && ltype != "prompt")
-                    break;
-                child = child.nextSibling;
-            }
-            if (child instanceof Element
-                && child.getAttribute("std") == "input")
-                current_input_node = child;
-        }
-
-        // if the click is past the last character in the line, adjust.
-        let targetLineChild = target_pre_node.lastChild;
-        if (ev.target == target_pre_node
-            && targetLineChild && targetLineChild.getAttribute("line")
-            && ydelta >= targetLineChild.offsetTop
-            && xdelta >= targetLineChild.offsetLeft) {
-            var previousSibling = targetLineChild.previousSibling;
-            if (previousSibling instanceof Element
-                && previousSibling.getAttribute("std") == "input")
-                target_input_node = previousSibling;
-            this.outputContainer = targetLineChild.parentNode;
-            this.outputBefore = targetLineChild;
-            target = targetLineChild;
-            adjustInTarget= false;
-       }
-    }
     this.resetCursorCache();
     var row = this.getCursorLine();
     var col = this.getCursorColumn();
@@ -3199,83 +3350,13 @@ Terminal.prototype._mouseHandler = function(ev) {
     this.currentAbsLine = saveLine;
     this.outputBefore = saveBefore;
     this.outputContainer = saveContainer;
+    xdelta -= target.offsetLeft;
+    ydelta -= target.offsetTop;
+    // (xdelta,ydelta) are relative to ev.target
+    col += Math.floor(xdelta / this.charWidth);
+    row += Math.floor(ydelta / this.charHeight);
 
-    if (adjustInTarget) {
-        xdelta -= target.offsetLeft;
-        ydelta -= target.offsetTop;
-        // (xdelta,ydelta) are relative to ev.target
-        col += Math.floor(xdelta / this.charWidth);
-        row += Math.floor(ydelta / this.charHeight);
-    }
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
-
-    if (readlineMode) {
-        var curVLine = this.getAbsCursorLine();
-        var goalVLine = row+this.homeLine;
-        var curLine = curVLine;
-        var goalLine = goalVLine;
-        while (this.isSpanNode(this.lineStarts[goalLine]))
-            goalLine--;
-        while (this.isSpanNode(this.lineStarts[curLine]))
-            curLine--;
-        var nLeft = 0, nRight = 0;
-        var output = "";
-        var goalCol = col + (goalVLine - goalLine) * this.numColumns;
-        var curCol = this.getCursorColumn()
-            + (curVLine - curLine) * this.numColumns;
-        if (curLine != goalLine) {
-            nLeft = curCol;
-            nRight = goalCol;
-            if (current_input_node && target_input_node) {
-                nLeft -= Math.floor(current_input_node.offsetLeft / this.charWidth);
-                nRight -= Math.floor(target_input_node.offsetLeft / this.charWidth);
-            } else {
-                if (nLeft > nRight) {
-                    nLeft -= nRight;
-                    nRight = 0;
-                } else {
-                    nRight -= nLeft;
-                    nLeft = 0;
-                }
-            }
-            let aboveLine = goalLine > curLine ? curLine : goalLine;
-            let belowLine = goalLine > curLine ? goalLine : curLine;
-            var n = 0;
-            // abs(goalLine-curLine) is number of screen lines.
-            // We need number of logical lines.
-            for (var i = aboveLine; i < belowLine; i++) {
-                if (! this.isSpanNode(this.lineStarts[i]))
-                    n++;
-            }
-            // count characters before currentBefore in current_input_node
-            // LEFT that number
-            //var n = goalLine - curLine;
-            var moveVert = "";
-            if (goalLine > curLine)
-                moveVert = this.keyNameToChars("Down");
-            else if (goalLine < curLine)
-                moveVert = this.keyNameToChars("Up");
-            output = moveVert.repeat(n);
-            // DOWN (or UP if negative) (goalLine-curLine).
-        } else {
-            var delta = goalCol - curCol;
-            if (delta >= 0)
-                nRight = delta;
-            else
-                nLeft = -delta;
-        }
-        if (nLeft > 0)  {
-            var moveLeft = this.keyNameToChars("Left");
-            output = moveLeft.repeat(nLeft) + output;
-        }
-        if (nRight > 0)  {
-            var moveRight = this.keyNameToChars("Right");
-            output = output + moveRight.repeat(nRight);
-        }
-        this.processInputCharacters(output);
-        return;
-    }
-
     var final = "M";
     var button = Math.min(ev.which - 1, 2) | mod;
     switch (ev.type) {
@@ -3372,6 +3453,8 @@ Terminal.prototype.showHideMarkers = [
 Terminal.prototype._showHideHandler = function(event) {
     var target = event.target;
     var child = target.firstChild;
+    if (target.tagName == "SPAN" && target.classList.contains("tail-hider"))
+        target = target.parentNode;
     if (target.tagName == "SPAN"
         && (child instanceof Text || child == null)) {
         let oldText = child == null ? "" : child.data;
@@ -3500,7 +3583,7 @@ DomTerm._isPendingSpan = function(node) {
         && node.classList.contains("pending");
 }
 
-Terminal.prototype._editPendingInput = function(forwards, doDelete) {
+Terminal.prototype._editPendingInput = function(forwards, doDelete, count = 1) {
     this._restoreCaretNode();
     this._removeCaret();
     let block = this._getOuterBlock(this._caretNode);
@@ -3532,7 +3615,7 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete) {
                 node.deleteData(start, end-start);
         }
     }
-    let scanState = { linesCount: 0, todo: 1, unit: "char", stopAt: "", wrapText: wrapText };
+    let scanState = { linesCount: 0, todo: count, unit: "char", stopAt: "", wrapText: wrapText };
     this.scanInRange(range, ! forwards, scanState);
     if (! doDelete) {
         let caret = this._caretNode;
@@ -3564,7 +3647,7 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete) {
     }
     let code = (forwards ? Terminal._PENDING_RIGHT : Terminal._PENDING_LEFT)
         + (doDelete ? Terminal._PENDING_DELETE : 0);
-    code = String.fromCharCode(code);
+    code = String.fromCharCode(code).repeat(count - scanState.todo);
     this._pendingEcho = this._pendingEcho + code;
     this._restoreCaret();
 }
@@ -3585,7 +3668,7 @@ Terminal.prototype.setWindowSize = function(numRows, numColumns,
 * Iterate for sub-node of 'node', starting with 'start'.
 * Call 'func' for each node (if allNodes is true) or each Element
 * (if allNodes is false).  If the value returned by 'func' is not a boolean,
-* stop interating and return that as the result of forEachElementIn.
+* stop iterating and return that as the result of forEachElementIn.
 * If the value is true, continue with children; if false, skip children.
 * The function may safely remove or replace the active node,
 * or change its children.
@@ -3947,20 +4030,42 @@ Terminal.prototype.appendText = function(parent, data) {
         parent.appendChild(document.createTextNode(data));
 };
 
-Terminal.prototype._normalize1 = function(tnode) {
-    for (;;) {
-        var next = tnode.nextSibling;
-        if (! (next instanceof Text))
-            return;
-        if (next == this.outputBefore) {
-            this.outputContainer = tnode;
-            this.outputBefore = tnode.length;
-        } else if (next == this.outputContainer) {
-            this.outputContainer = tnode;
-            this.outputBefore += tnode.length;
+Terminal.prototype._positionToRange = function(range = null) {
+    if (! range)
+        range = new Range();
+    let container = this.outputContainer;
+    let before = this.outputBefore;
+    if (container instanceof Text) {
+        range.setStart(container, before);
+    } else {
+        if (before)
+            range.setStartBefore(before);
+        else {
+            range.selectNodeContents(container);
+            range.collapse(false);
         }
-        tnode.appendData(next.data);
-        tnode.parentNode.removeChild(next)
+    }
+    return range;
+}
+Terminal.prototype._positionFromRange = function(range) {
+    const container = range.startContainer;
+    let offset = range.startOffset;
+    this.outputContainer = container;
+    if (container instanceof Text) {
+        this.outputBefore = offset;
+    } else {
+        let child = container.firstChild;
+        while (--offset >= 0)
+            child = child.nextSibling;
+        this.outputBefore = child;
+    }
+}
+
+Terminal.prototype._normalize1 = function(tnode) {
+    if (tnode.nextSibling instanceof Text) {
+        const r = this._positionToRange();
+        tnode.parentNode.normalize();
+        this._positionFromRange(r);
     }
 };
 
@@ -4274,6 +4379,20 @@ Terminal.prototype.eraseLineRight = function() {
     this.deleteCharactersRight(-1);
     this._clearWrap();
     this._eraseLineEnd();
+
+    /*
+    // delete (rather just erase) final empty lines
+    let lastLine = this.getAbsCursorLine();
+    while (lastLine == this.lineStarts.length-1) {
+        const start = this.lineStarts[lastLine];
+        const end = this.lineEnds[lastLine];
+        if (start.firstChild !== end && start.nextSibling !== end)
+            break;
+        this.deleteLinesIgnoreScroll(1, lastLine);
+        lastLine--;
+    }
+    this._checkTree();
+    */
 }
 
 // New "whitespace" at the end of the line need to be set to Background Color.
@@ -5008,6 +5127,10 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
                 }
                 break;
             }
+            if (editmode)
+                ln.setAttribute("editing", editmode);
+            else
+                ln.removeAttribute("editing");
 
             var end = ch == 47; // '/';
             if (end)
@@ -5388,6 +5511,11 @@ Terminal.prototype._doDeferredDeletion = function() {
         let parent;
         while (deferred && (parent = deferred.parentNode) != null) {
             let oldText = deferred.getAttribute("old-text");
+            /*
+            if (deferred.continueEditing) {
+                FIXME
+            }
+            */
             if (this._caretNode.parentNode == deferred)
                 parent.insertBefore(this._caretNode, deferred);
             if (oldText) {
@@ -5461,12 +5589,17 @@ Terminal.prototype._requestDeletePendingEcho = function() {
     if (this._deletePendingEchoTimer != null)
         clearTimeout(this._deletePendingEchoTimer);
     var dt = this;
-    function clear() { dt._deletePendingEchoTimer = null;
+    function clear() {
+        dt._checkTree();
+        dt._deletePendingEchoTimer = null;
                        dt._doDeferredDeletion();
+        dt._checkTree();
                        if (! dt.isLineEditing()) {
                            dt._removeInputLine();
+        dt._checkTree();
                            dt._restoreInputLine();
                        }
+        dt._checkTree();
                      };
     let timeout = dt.deferredForDeletionTimeout;
     if (timeout)
@@ -6465,8 +6598,7 @@ Terminal.prototype.processResponseCharacters = function(str) {
 };
 
 Terminal.prototype.reportText = function(text, suffix) {
-    if (this.sstate.bracketedPasteMode)
-        text = "\x1B[200~" + text + "\x1B[201~";
+    text = this._maybeBracketed(text);
     if (suffix)
         text = text + suffix;
     this.processInputCharacters(text);
@@ -6480,12 +6612,20 @@ Terminal.prototype.processInputCharacters = function(str) {
 
 Terminal.prototype.processEnter = function() {
     this._restoreInputLine();
+    this.editorUpdateRemote();
     let oldInput = this._inputLine;
     let passwordField = oldInput.classList.contains("noecho")
         && this.sstate.hiddenText;
     var text = passwordField ? this.sstate.hiddenText
         : this.grabInput(this._inputLine);
+    this.editorMoveHomeOrEnd(true);
+    if (! passwordField)
+        this._updateRemote(oldInput, this.keyEnterToString());
+    if (this.verbosity >= 2)
+        this.log("processEnter \""+this.toQuoted(text)+"\"");
     this.handleEnter(text);
+    if (! passwordField)
+        text = "";
     if (passwordField) {
         this.sstate.hiddenText = undefined;
         while (oldInput.firstChild)
@@ -6496,8 +6636,53 @@ Terminal.prototype.processEnter = function() {
     this._restoreCaret();
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
-    this.reportText(text, this._clientPtyExtProc ? "\n" : this.keyEnterToString());
+    /*
+    this.reportText(text, this._clientPtyExtProc ? "\n"
+                    : this.keyEnterToString());
+    */
 };
+/** Update remote input line to match local edited input line. */
+Terminal.prototype._updateRemote = function(input, extraText="") {
+    let remoteBefore = input.textBefore || "";
+    let remoteAfter = input.textAfter || "";
+    //input.textBefore = undefined;
+    //input.textAfter = undefined;
+    // FIXME compare editorUpdateRemote()
+    let r = new Range();
+    r.selectNodeContents(input);
+    let localText = r.toString();
+    r.setStartBefore(this._caretNode);
+    let localAfter = r.toString();
+    let localBefore = localText.substring(0, localText.length-localAfter.length);
+    let sharedBefore = 0;
+    for (let i = 0;
+         i < remoteBefore.length && i < localBefore.length
+         && remoteBefore.charCodeAt(i) == localBefore.charCodeAt(i);
+         i++) {
+        sharedBefore++;
+    }
+    let sharedAfter = 0;
+    let ir = remoteAfter.length; let il = localAfter.length;
+    while (--il >= 0 && --ir >= 0
+           && remoteAfter.charCodeAt(ir) == localAfter.charCodeAt(il)) {
+        sharedAfter++;
+    }
+    let countCp = DomTerm._countCodePoints;
+    let deleteBefore = countCp(remoteBefore.substring(sharedBefore));
+    let deleteAfter = countCp(remoteAfter.substring(0, remoteAfter.length-sharedAfter));
+    let afterCount = countCp(localAfter.substring(0, localAfter.length-sharedAfter));
+    let report =
+        (deleteBefore + deleteAfter == 0 ? ""
+         : "\b".repeat(deleteBefore) + "\x7F".repeat(deleteAfter))
+    ;
+    report += this._maybeBracketed(localText.substring(sharedBefore, localText.length-sharedAfter));
+    if (afterCount > 0) {
+        report += this.keyNameToChars("Left").repeat(afterCount);
+    }
+    this.processInputCharacters(report+extraText);
+    input.textBefore = localBefore;
+    input.textAfter = localAfter;
+}
 
 Terminal.prototype.keyEnterToString  = function() {
     if ((this.sstate.automaticNewlineMode & 2) != 0)
@@ -6596,7 +6781,7 @@ Terminal.prototype.keyNameToChars = function(keyName) {
 
 Terminal.prototype.pasteText = function(str) {
     let editing = this.isLineEditing();
-    let nl_asis = true; // leave '\n' as-is (rather than convert to '\r')?
+    let nl_asis = editing; // leave '\n' as-is (rather than convert to '\r')?
     if (true) { // xterm has an 'allowPasteControls' flag
         let raw = str;
         let len = raw.length;
@@ -6622,6 +6807,7 @@ Terminal.prototype.pasteText = function(str) {
         this.editorAddLine();
         this.editorInsertString(str);
     } else {
+        this._clearSelection();
         this._addPendingInput(str);
         if (this.sstate.bracketedPasteMode || this._lineEditingMode != 0)
             this.reportText(str, null);
@@ -7024,6 +7210,7 @@ DomTerm.masterKeymapDefault = new window.browserKeymap({
     "Ctrl-Shift-S": "save-as-html",
     "Ctrl-Shift-T": "new-tab",
     "Ctrl-Shift-V": "paste-text",
+    "Ctrl-Shift-X": "cut-text",
     "Ctrl-Shift-Home": "scroll-top",
     "Ctrl-Shift-End": "scroll-bottom",
     "Ctrl-Shift-Up": "scroll-line-up",
@@ -7035,6 +7222,8 @@ DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
 
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
+    //"Tab": 'client-action',
+    //"Ctrl-T": 'client-action',
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
     "Ctrl-V": "paste-text",
@@ -7175,9 +7364,14 @@ Terminal.prototype._isOurEvent = function(event) {
 
 Terminal.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    if (this.verbosity >= 2)
-        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+browserKeymap.keyName(event));
     let keyName = browserKeymap.keyName(event);
+    if (this.verbosity >= 2)
+        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+keyName+" old:"+(this._inputLine != null)+" col:"+document.getSelection().isCollapsed);
+    if (event.ctrlKey && event.shiftKey && key==88) {
+        console.log("C-S "+keyName);
+        //return;
+    }
+
     if (! keyName && event.key)
         keyName = event.key;
     if (! this._isOurEvent(event))
@@ -7186,6 +7380,20 @@ Terminal.prototype.keyDownHandler = function(event) {
         return;
     if (this._composing == 0)
         this._composing = -1;
+    if (event.shiftKey || this._markMode == 2) {
+        switch (key) {
+        case 37: // Left
+        case 39: // Right
+            this.extendSelection((key==37?1:-1)*this.numericArgumentGet(),
+                                 event.ctrlKey ? "word" : "char");
+            //this.editorBackspace((key==37?1:-1)*this.numericArgumentGet(),
+            //                     "extend", "char");
+            event.preventDefault();
+            return;
+        }
+    } else if (key >= 35 && key <= 40) {
+        this._clearSelection();
+    }
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
         event.preventDefault();
         return;
@@ -7256,15 +7464,35 @@ Terminal.prototype.keyDownHandler = function(event) {
     } else {
         var str = this.keyNameToChars(keyName);
         if (str) {
+            if (event.shiftKey /*&& emacs-style*/) {
+                // FIXME maybe set
+                this._markMode = 1;
+                keyName = keyName.replace("Shift-", "");
+                str = this.keyNameToChars(keyName);
+            } else
+                this._markMode = 0; // FIXME do elsewhere
             if (this.scrollOnKeystroke)
                 this._enableScroll();
             event.preventDefault();
             if (! DomTerm.useXtermJs) {
+            /*
+            if (keyName == "Delete") {
+                let sel = window.getSelection();
+                if (! sel.isCollapsed) {
+                    && focus in input
+                }
+            }
+            */
             if (keyName == "Left" || keyName == "Right") {
                 this._editPendingInput(keyName == "Right", false);
             }
             if (keyName == "Backspace" || keyName == "Delete") {
-                this._editPendingInput(keyName == "Delete", true);
+                if (window.getSelection().isCollapsed)
+                    this._editPendingInput(keyName == "Delete", true);
+                else {
+                    this.deleteSelected(false);
+                    return;
+                }
             }
             }
             this._respondSimpleInput(str, keyName);
@@ -7275,7 +7503,7 @@ Terminal.prototype.keyDownHandler = function(event) {
 Terminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     if (this.verbosity >= 2)
-        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+browserKeymap.keyName(event));
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+browserKeymap.keyName(event)+" in-l:"+this._inputLine);
     if (! this._isOurEvent(event))
         return;
     let keyName = browserKeymap.keyName(event);
@@ -7305,6 +7533,7 @@ Terminal.prototype.keyPressHandler = function(event) {
             && key != 8
             && ! event.ctrlKey) {
             var str = String.fromCharCode(key);
+            this._clearSelection();
             this._addPendingInput(str);
             this._respondSimpleInput (str, keyName);
             event.preventDefault();
@@ -7625,7 +7854,7 @@ DomTerm.initSavedFile = function(topNode) {
         var target = e.target;
         if (target instanceof Element
             && target.nodeName == "SPAN"
-            && target.getAttribute("std") == "hider") {
+            && target.getAttribute("std") == "hider") { // FIXME
             dt._showHideHandler(e);
             e.preventDefault();
         }
@@ -8056,6 +8285,19 @@ Terminal.prototype._pauseNeeded = function() {
         && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };
 
+Terminal.prototype.editorUpdateRemote = function() {
+    let input = this._inputLine;
+    if (input.textBefore === undefined) {
+        let r = new Range();
+        r.selectNodeContents(input);
+        let localText = r.toString();
+        r.setStartBefore(this._caretNode);
+        let localAfter = r.toString();
+        input.textBefore = localText.substring(0, localText.length-localAfter.length);
+        input.textAfter = localAfter;
+    }
+};
+
 Terminal.prototype.editorAddLine = function() {
     if (this.scrollOnKeystroke)
         this._enableScroll();
@@ -8081,6 +8323,7 @@ Terminal.prototype.editorAddLine = function() {
     } else if (this._inputLine.parentNode == null) {
         this._restoreInputLine();
     }
+    this.editorUpdateRemote();
     if (! this._clientPtyEcho
         && (this._clientWantsEditing != 0 || this._clientPtyExtProc == 0))
         this._inputLine.classList.add("noecho");
@@ -8094,6 +8337,7 @@ Terminal.prototype.numericArgumentGet = function() {
     if (s == "-")
         s = "-1";
     this._numericArgument = null;
+    this._displayInfoMessage(null);
     return Number(s);
 }
 
@@ -8157,6 +8401,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count) {
         }
     }
     parent.insertBefore(this._caretNode, next);
+    parent.normalize();
     this.editorBackspace(- column, "move", "char", "line");
     this.sstate.goalColumn = column;
     this._restoreCaret();
@@ -8177,8 +8422,11 @@ Terminal.prototype.editorMoveToRangeStart = function(range) {
 }
 
 Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
-    this.editorBackspace(toEnd ? -Infinity : Infinity,
-                         action, "char", "line");
+    let count = toEnd ? -Infinity : Infinity;
+    if (action == "extend")
+        this.extendSelection(count, "char", "line");
+    else
+        this.editorBackspace(count, action, "char", "line");
     this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
@@ -8361,6 +8609,13 @@ DomTerm.editorNonWordChar = function(ch) {
     return " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{|}".indexOf(ch) >= 0;
 }
 
+/** Scan through a Range.
+ * If backwards is false: scan forwards, starting from range start;
+ * stop at or before range end; update range end if stopped earlier.
+ * If backwards is true: scan backwards, starting from range end;
+ * stop at or before range start; update range start if stopped earlier.
+ * (I.e. Change end/start position of range if backwards is false/true.)
+ */
 Terminal.prototype.scanInRange = function(range, backwards, state) {
     let unit = state.unit;
     let doWords = unit == "word";
@@ -8446,13 +8701,13 @@ Terminal.prototype.scanInRange = function(range, backwards, state) {
             : (backwards ? range.startOffset : dlen = range.endOffset);
         let index = istart;
         for (;; ) {
+            if (state.wrapText && (state.todo == 0 || index == dend)) {
+                if (backwards)
+                    state.wrapText(node, index, istart);
+                else
+                    state.wrapText(node, istart, index);
+            }
             if (state.todo == 0) {
-                if (state.wrapText) {
-                    if (backwards)
-                        state.wrapText(node, index, istart);
-                    else
-                        state.wrapText(node, istart, index);
-                }
                 if (backwards)
                     range.setStart(node, index);
                 else
@@ -8491,6 +8746,45 @@ Terminal.prototype.scanInRange = function(range, backwards, state) {
                            firstNode);
 }
 
+Terminal.prototype.deleteSelected = function(toClipboard) {
+    let input = this.isLineEditing() ? this._inputLine
+        : this._getOuterInputArea(this._caretNode);
+    if (input == null)
+        return;
+    if (! this.isLineEditing()) {
+        //this._editPendingInput(forwards, true, count);
+        //if (toClipboard) ...;
+        //return;
+    }
+    let sel = document.getSelection();
+    let text = "",  html = "";
+    for (let i = sel.rangeCount; --i >= 0; ) {
+        let r = new Range();
+        r.selectNodeContents(input);
+        let sr = sel.getRangeAt(i);
+        if (r.comparePoint(sr.startContainer, sr.startOffset) >= 0)
+            r.setStart(sr.startContainer, sr.startOffset);
+        if (r.comparePoint(sr.endContainer, sr.endOffset) <= 0)
+            r.setEnd(sr.endContainer, sr.endOffset);
+        let rstring = r.toString();
+        if (toClipboard) {
+            text += rstring;
+            html += Terminal._rangeAsHTML(r);
+        }
+        if (this.isLineEditing())
+            this.editorDeleteRange(r, false);
+        else {
+            let forwards = sr.endContainer === sel.anchorNode;
+            let count = rstring.length;
+            this._editPendingInput(forwards, true, count);
+            this.processInputCharacters((forwards ? "\x7F" : "\b").repeat(count));
+        }
+    }
+    if (toClipboard)
+        DomTerm.valueToClipboard({text: text, html: html });
+    sel.removeAllRanges();
+}
+
 /**
  * unit: "char", "word"
  * action: one of "move", "extend" (extend selection),
@@ -8513,23 +8807,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     let sel = document.getSelection();
     if (! sel.isCollapsed && action != "extend") {
         if (doDelete) {
-            let text = "",  html = "";
-            for (let i = sel.rangeCount; --i >= 0; ) {
-                let r = new Range();
-                r.selectNodeContents(this._inputLine);
-                let sr = sel.getRangeAt(i);
-                if (r.comparePoint(sr.startContainer, sr.startOffset) >= 0)
-                    r.setStart(sr.startContainer, sr.startOffset);
-                if (r.comparePoint(sr.endContainer, sr.endOffset) <= 0)
-                    r.setEnd(sr.endContainer, sr.endOffset);
-                if (action == "kill") {
-                    text += r.toString();
-                    html += Terminal._rangeAsHTML(r);
-                }
-                this.editorDeleteRange(r, false);
-            }
-            if (action == "kill")
-                DomTerm.valueToClipboard({text: text, html: html });
+            this.deleteSelected(action=="kill");
         } else {
             let r = sel.getRangeAt(0);
             let node = backwards ? r.startContainer : r.endContainer;
@@ -8565,6 +8843,48 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
             dt.editorMoveToRangeStart(range);
         }
     }
+    return todo;
+}
+
+Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {
+    //return this.editorBackspace(count, "extend", unit, stopAt);
+    this.sstate.goalColumn = undefined;
+    let doWords = unit == "word";
+    let doLines = unit == "line";
+    let backwards = count > 0;
+    let todo = backwards ? count : -count;
+    let dt = this;
+    let wordCharSeen = false; //
+    let range;
+    let linesCount = 0;
+
+    let sel = document.getSelection();
+
+    this._removeCaret();
+    range = document.createRange();
+    range.selectNodeContents(this.initial);
+    if (sel.isCollapsed)
+        sel.collapse(dt._caretNode, 0);
+    //let rangeForwards = sel.rangeCount != 1
+    //    || sel.anchorNode === sel.getRangeAt(0).startContainer;
+    if (backwards) // focus is selection end
+        range.setEnd(sel.focusNode, sel.focusOffset);
+    else // focus is selection end
+        range.setStart(sel.focusNode, sel.focusOffset);
+    let scanState = { linesCount: 0, todo: todo, unit: unit, stopAt: stopAt };
+    this.scanInRange(range, backwards, scanState);
+    linesCount = scanState.linesCount;
+    todo = scanState.todo;
+    let anchorNode = sel.anchorNode
+    let anchorOffset = sel.anchorOffset;
+    sel.removeAllRanges(); // work-around for bug???
+    if (backwards)
+        sel.setBaseAndExtent(anchorNode, anchorOffset,
+                             range.startContainer, range.startOffset);
+    else
+        sel.setBaseAndExtent(anchorNode, anchorOffset,
+                             range.endContainer, range.endOffset);
+    this._restoreCaret();
     return todo;
 }
 
@@ -8688,7 +9008,7 @@ Terminal.prototype._showSelection = function() {
         : "element["+sel.anchorNode.tagName+"."+sel.anchorNode.getAttribute("class")+"]";
     let ff=sel.focusNode instanceof Text ? "text["+sel.focusNode.data+"]"
         : "element["+sel.focusNode.tagName+"."+sel.focusNode.getAttribute("class")+"]";
-    return "secl[anchor:"+aa+",to-anchor:"+r1+",focus:"+ff+",to-focus:"+r.toString()+",col:"+sel.isCollapsed+"]";
+    return "secl[anchor:"+aa+",to-anchor:"+r1+",focus:"+ff+",to-focus:"+r.toString()+" col:"+sel.isCollapsed+"]";
 }
 */
 

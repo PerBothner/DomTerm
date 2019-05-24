@@ -117,8 +117,10 @@ cmd('copy-text-or-interrupt',
    });
 cmd('cut-text',
     function(dt, key) {
-        if (! window.getSelection().isCollapsed)
-            dt.editorBackspace(1, "kill", "line", "buffer");
+        if (! window.getSelection().isCollapsed) {
+            //dt.editorBackspace(1, "kill", "line", "buffer");
+            dt.deleteSelected(true);
+        }
         return true; });
 cmd('backward-char',
     function(dt, key) {
@@ -138,19 +140,19 @@ cmd('forward-word',
         return true; });
 cmd('backward-char-extend',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "extend", "char");
+        dt.extendSelection(dt.numericArgumentGet(), "char");
         return true; });
 cmd('backward-word-extend',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "extend", "word");
+        dt.extendSelection(dt.numericArgumentGet(), "word");
         return true; });
 cmd('forward-char-extend',
     function(dt, key) {
-        dt.editorBackspace(- dt.numericArgumentGet(), "extend", "char");
+        dt.extendSelection(- dt.numericArgumentGet(), "char");
         return true; });
 cmd('forward-word-extend',
     function(dt, key) {
-        dt.editorBackspace(- dt.numericArgumentGet(), "extend", "word");
+        dt.extendSelection(- dt.numericArgumentGet(), "word");
         return true; });
 cmd('backward-delete-char',
     function(dt, key) {
@@ -222,17 +224,29 @@ cmd('ignore-action',
 cmd('default-action',
     function(dt, key) {
         return false; });
-/** Send keystroke to client */
 cmd('client-action',
+    function(dt, key) {
+    let str = dt.keyNameToChars(key);
+    let input = dt._inputLine;
+    if (str) {
+        dt._updateRemote(input);
+        dt.processInputCharacters(str);
+        input.classList.add("pending");
+        dt._deferredForDeletion = input;
+        input.continueEditing = true;
+        dt.outputBefore = dt._caretNode;
+        dt.outputContainer = dt._caretNode.parentNode;
+        return true;
+    }
+        return false; });
+cmd('control-action',
    function(dt, key) {
-       let str = dt.keyNameToChars(key);
-       dt._sendInputContents();
-       let input = dt._inputLine;
-       if (str) {
-           dt.processInputCharacters(str);
-           return true;
-       }
-       return false; });
+    let cmd = 'client-action';
+    if (key == "Ctrl-D"
+        && dt.grabInput(dt._inputLine).length > 0)
+        cmd = "forward-delete-char";
+    return (DomTerm.commandMap[cmd])(dt, key);
+   });
 cmd('numeric-argument',
     function(dt, key) {
         let klen = key.length;

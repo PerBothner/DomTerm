@@ -70,8 +70,7 @@ class DTParser {
             else
                 pendingEchoString = "";
         }
-        // FIXME term breaks selections overlapping the _inputLine
-        if (term.useStyledCaret())
+        //if (term.isLineEditing())
             term._removeInputLine();
         var pendingEchoNode = term._deferredForDeletion;
         var i = 0;
@@ -378,15 +377,6 @@ class DTParser {
                         term._breakDeferredLines();
                         term.cursorLineStart(0);
                         this.controlSequenceState = DTParser.SEEN_CR;
-                    }
-                    if (oldContainer.firstChild == null
-                        && oldContainer != term.outputContainer
-                        && (oldContainer.getAttribute("std")
-                            || oldContainer == term._currentStyleSpan)) {
-                        if (term.outputBefore == oldContainer)
-                            term.outputBefore = oldContainer.nextSibling;
-                        let parent = oldContainer.parentNode;
-                        parent.removeChild(oldContainer);
                     }
                     prevEnd = i + 1; columnWidth = 0;
                     break;
@@ -1115,7 +1105,10 @@ class DTParser {
                 term.startPrompt(true);
                 break;
             case 15:
-                term.startInput(this.getParameter(1, 1));
+                // FIXME combine new line with previous line(s)
+                // into a single input-line element.
+                var editmode = this.getParameter(2, 0); // use ...
+                term.startInput(false, this.getParameter(1, 1));
                 break;
             case 16:
                 var hider = term._createSpanNode();
@@ -1515,10 +1508,12 @@ class DTParser {
             span.setAttribute("class", "diagnostic");
             if (text)
                 span.setAttribute("info", text);
+            /* FUTURE:
             var options;
             try {
                 options = JSON.parse("{"+text+"}");
             } catch (e) { options = {}; }
+            */
             term._pushIntoElement(span);
             break;
         case 71:
@@ -1527,20 +1522,10 @@ class DTParser {
             var echo = text.indexOf(" echo ") >= 0;
             var extproc = text.indexOf(" extproc ") >= 0;
             if (canon == 0 && term.isLineEditing() && term._inputLine) {
-                let text = term.grabInput(term._inputLine);
+                let input = this._inputLine;
                 term._restoreInputLine();
-
-                let r = new Range();
-                r.selectNodeContents(term._inputLine);
-                r.setStartBefore(term._caretNode);
-                let afterText = r.toString();
+                term._updateRemote(input);
                 term.handleEnter(null);
-                term.reportText(text);
-                let afterCount = term.strWidthInContext(afterText, term._inputLine);
-                if (afterCount > 0) {
-                    term.processInputCharacters
-                    (term.keyNameToChars("Left").repeat(afterCount));
-                }
                 term._doDeferredDeletion();
             }
             term._clientWantsEditing = canon ? 1 : 0;
@@ -1838,6 +1823,70 @@ class DTParser {
                 term._clientWantsEditing = 1;
             if (term.isLineEditing())
                 term.editorContinueInput();
+            break;
+        case 133: // iTerm2/FinalTerm shell-integration
+            let ch0 = text.charCodeAt(0);
+            function splitOptions(text) { // FIXME move elsewhere
+                let options = new Array();
+                let start = 0;
+                let tlen = text.length;
+                for (let i = 0; ; i++) {
+                    if (i == tlen || text.charCodeAt(i) == 59) {
+                        if (i > start)
+                            options.push(text.substring(start, i));
+                        if (i == tlen)
+                            break;
+                        start = i+1;
+                    }
+                }
+                return options;
+            }
+            function namedOption(options, name, defValue=null) {
+                const n = options.length;
+                let namex = name + "=";
+                for (let i = 0; i < n; i++) {
+                    const t = options[i];
+                    if (t.startsWith(namex))
+                        return t.substring(namex.length);
+                }
+                return defValue;
+            }
+            let options = splitOptions(text.substring(1));
+            switch (ch0) {
+            case 65: // 'A' - FTCS_PROMPT
+            case 78: // 'N'
+                term.freshLine();
+                term.startCommandGroup(null);
+                term.startPrompt(false);
+                break;
+            case 66: // 'B' FTCS_COMMAND_START like CSI 15u
+            case 73: // 'I'
+                term.startInput(ch0==66, 1);
+                break;
+            case 67: // 'C'
+                term.startOutput();
+                term.sstate.stayInInputMode = undefined;
+                break;
+            case 80: // 'P'
+                term.startPrompt(true);
+                break;
+            case 68: // 'D'
+            case 90: // 'Z'
+                let exitCode = ch0 == 68 ? options.length > 0 &&options[0]
+                    : namedOption(options, "exitcode");
+                //term.endCommand();
+                let aid = ch0 == 68 ? null : namedOption(options, "aid", "");
+                term.startCommandGroup(aid, -1);
+                break;
+            case 76: // 'L'
+                term.freshLine();
+                break;
+            }
+            break;
+        case 1337: // various iTerms extensions:
+            // RemoteHost=USER@HOST
+            // CurrentDir=DIRECTORY
+            // more...
             break;
         default:
             // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
