@@ -519,6 +519,14 @@ sbuf_blank(struct sbuf *buf, int space)
 }
 
 void
+sbuf_append(struct sbuf *buf, const char *bytes, size_t length)
+{
+    sbuf_extend(buf, length);
+    memcpy(buf->buffer + buf->len, bytes, length);
+    buf->len += length;
+}
+
+void
 sbuf_vprintf(struct sbuf *buf, const char *format, va_list ap)
 {
     sbuf_extend(buf, 80);

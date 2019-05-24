@@ -952,7 +952,6 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         client->confirmed_count = 0;
         sbuf_init(&client->ob);
         sbuf_extend(&client->ob, 2048);
-        sbuf_blank(&client->ob, LWS_PRE);
         client->ocount = 0;
         client->detach_on_close = false;
         client->connection_number = ++server->connection_count;
@@ -987,7 +986,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         break;
 
     case LWS_CALLBACK_SERVER_WRITEABLE:
-         //fprintf(stderr, "callback_tty CALLBACK_SERVER_WRITEABLE init:%d connect:%d\n", (int) client->initialized, client->connection_number);
+        //fprintf(stderr, "callback_tty CALLBACK_SERVER_WRITEABLE init:%d connect:%d\n", (int) client->initialized, client->connection_number);
         ;
         struct sbuf buf;
         sbuf_init(&buf);
@@ -1018,11 +1017,10 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (pclient->preserved_output != NULL) {
                     size_t start = pclient->preserved_start;
                     size_t end = pclient->preserved_end;
-                    sbuf_printf(&buf, "%s%.*s%s",
-                                start_replay_mode,
-                                (int) (end-start),
-                                pclient->preserved_output+start,
-                                end_replay_mode);
+                    sbuf_printf(&buf, "%s", start_replay_mode);
+                    sbuf_append(&buf, pclient->preserved_output+start,
+                                (int) (end-start));
+                    sbuf_printf(&buf, "%ss", end_replay_mode);
                     rcount += end - start;
                 }
                 rcount = rcount & MASK28;
@@ -1058,16 +1056,15 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             sbuf_printf(&buf, URGENT_WRAP("\033[82;%du"), code);
             client->detachSaveSend = false;
         }
-        if (client->ob.len > LWS_PRE) {
+        if (client->ob.len > 0) {
             client->sent_count = (client->sent_count + client->ocount) & MASK28;
-            sbuf_printf(&buf, "%.*s", (int) client->ob.len-LWS_PRE,
-                        client->ob.buffer+LWS_PRE);
+            sbuf_append(&buf, client->ob.buffer, client->ob.len);
             client->ocount = 0;
             if (client->ob.size > 4000) {
                 sbuf_free(&client->ob);
                 sbuf_extend(&client->ob, 2048);
             }
-            client->ob.len = LWS_PRE;
+            client->ob.len = 0;
         }
         if (client->requesting_contents == 1) {
             sbuf_printf(&buf, "%s", request_contents_message);
