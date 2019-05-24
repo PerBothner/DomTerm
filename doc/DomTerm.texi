@@ -3574,6 +3574,68 @@ This displays the @var{url} webpage in an @code{<iframe>}.
 Create a new sub-window (pane), based on the @var{op}.
 This is displays the @var{saved-url}, a previously saved terminal session.
 
+@item @code{"\e[20u"}
+Starts a "fresh line": If at the beginning of line, does nothing.
+Otherwise moves to the start of a new line.
+
+@item @code{"\e[80;97u"}
+@itemx @code{"\e[80;99u"}
+@itemx @code{"\e[80;108u"}
+@itemx @code{"\e[80;112u"}
+Set input editing mode.
+The value 99 (@code{'c'}) sets character mode;
+the value 108 (@code{'l'}) sets line-editing mode.
+The value 97 (@code{'a'}) set automatic mode,
+which switches between character mode and line-editing mode
+based on the mode of the inferior process (when using a PTY).
+The value 112 (@code{'p'} for "pipe") is like line-editing mode,
+but the inferiors doesn't echo the input, so we have to do it.
+This mode is useful when the input is a pipe or some other non-tty stream.
+
+@item @code{"\e[81u\n"}
+Requent to send the state of the window as a @code{WINDOW-CONTENTS} response.
+
+@item @code{"\e[88;"} @var{object} @code{"\a"}
+Change various properties of the internal DomTerm object,
+based on properties of @var{object}.
+For example to change the character used hide characters
+in @ref{password-fields,password fields} to ``bullet'' you can do:
+@example
+echo -en '\e[88;@{"passwordHideChar": "\\u2022"@}\a'
+@end example
+Allowed properties include:
+@code{passwordHideChar}, @code{passwordShowCharTimeout},
+@code{deferredForDeletionTimeout},
+@code{historyStorageKey}, @code{historyStorageMax}.
+
+@item @code{"\e[89;"} @var{settings} @code{"\a"}
+
+@emph{Internal use: }
+Update user @ref{Settings,settings}.
+
+@item @code{"\e[90;" @var{op} "u"}
+Create a new sub-window (pane), based on the @var{op}.
+
+@item @code{"\e[92;" @var{op} "u"}
+Temporarily enable auto-paging if @var{op} is 1.
+Disables it if @var{op} is 2 (- only if temporarily enabled).
+A simplified @code{more} program could temporarily enable auto-paging,
+print some amount of output, and then revert the state.
+This used by the @code{domterm help} command.
+
+@item @code{"\e[99;99u"}
+End-of-file on the output stream.
+Calls the @code{eofSeen} method of @code{DomTerm},
+which may close the current window or other appropriate action.
+
+@item @code{"\e]103;"} @var{state} @code{"\a"}
+Send saved state to new window.
+
+@end table
+
+@subsubsection Command parts (shell integration)
+
+@table @asis
 @item @code{"\e[12u"}
 Start of error output.
 DomTerm places the following text inside a @code{<span>} element
@@ -3655,63 +3717,6 @@ The @var{content-id} is commonly the process-id of the REPL.
 
 @item @code{"\e]121;"} @var{group-id} @code{"\a"}
 (Experimental) Exit the command-group with the given @var{group-id}.
-
-@item @code{"\e[20u"}
-Starts a "fresh line": If at the beginning of line, does nothing.
-Otherwise moves to the start of a new line.
-
-@item @code{"\e[80;97u"}
-@itemx @code{"\e[80;99u"}
-@itemx @code{"\e[80;108u"}
-@itemx @code{"\e[80;112u"}
-Set input editing mode.
-The value 99 (@code{'c'}) sets character mode;
-the value 108 (@code{'l'}) sets line-editing mode.
-The value 97 (@code{'a'}) set automatic mode,
-which switches between character mode and line-editing mode
-based on the mode of the inferior process (when using a PTY).
-The value 112 (@code{'p'} for "pipe") is like line-editing mode,
-but the inferiors doesn't echo the input, so we have to do it.
-This mode is useful when the input is a pipe or some other non-tty stream.
-
-@item @code{"\e[81u\n"}
-Requent to send the state of the window as a @code{WINDOW-CONTENTS} response.
-
-@item @code{"\e[88;"} @var{object} @code{"\a"}
-Change various properties of the internal DomTerm object,
-based on properties of @var{object}.
-For example to change the character used hide characters
-in @ref{password-fields,password fields} to ``bullet'' you can do:
-@example
-echo -en '\e[88;@{"passwordHideChar": "\\u2022"@}\a'
-@end example
-Allowed properties include:
-@code{passwordHideChar}, @code{passwordShowCharTimeout},
-@code{deferredForDeletionTimeout},
-@code{historyStorageKey}, @code{historyStorageMax}.
-
-@item @code{"\e[89;"} @var{settings} @code{"\a"}
-
-@emph{Internal use: }
-Update user @ref{Settings,settings}.
-
-@item @code{"\e[90;" @var{op} "u"}
-Create a new sub-window (pane), based on the @var{op}.
-
-@item @code{"\e[92;" @var{op} "u"}
-Temporarily enable auto-paging if @var{op} is 1.
-Disables it if @var{op} is 2 (- only if temporarily enabled).
-A simplified @code{more} program could temporarily enable auto-paging,
-print some amount of output, and then revert the state.
-This used by the @code{domterm help} command.
-
-@item @code{"\e[99;99u"}
-End-of-file on the output stream.
-Calls the @code{eofSeen} method of @code{DomTerm},
-which may close the current window or other appropriate action.
-
-@item @code{"\e]103;"} @var{state} @code{"\a"}
-Send saved state to new window.
 
 @item @code{"\e]122;"} @var{pattern} @code{"\a"}
 
