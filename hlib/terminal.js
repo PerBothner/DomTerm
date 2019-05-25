@@ -695,24 +695,15 @@ Terminal.prototype.close = function() {
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
     var container = this.outputContainer;
-    var containerTag = container.tagName;
-    if ((containerTag == "PRE" || containerTag == "P"
-         || (containerTag == "DIV"
-             && container.classList.contains("domterm-pre")))
+    if (DomTerm.isLineBlock(container)
         && container.firstChild == this.outputBefore
         && (this._currentCommandGroup == null
             || this._currentCommandGroup.firstChild != container)) {
         var commandGroup = null;
         var oldGroup = this._currentCommandGroup;
-        if (pushing >= 0) {
-            commandGroup = document.createElement("div");
-            commandGroup.setAttribute("class", "command-group");
-            if (parentKey)
-                commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
-        }
         var oldOutput = this._currentCommandOutput;
-        let prevGroup = oldGroup;
         if (pushing <= 0) {
+            let prevGroup = oldGroup;
             for (let p = oldGroup; ;  p = p.parentNode) {
                 if (! (p instanceof Element)) {
                     oldGroup = null;
@@ -754,11 +745,24 @@ Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
                     cur = parent.nextSibling;
                     parent = parent.parentNode;
                 }
+
+                // Remove tail-hider button if oldGroup only has one line
+                let tailHider = oldGroup.tailHider;
+                if (tailHider) {
+                    let nLines = 0;
+                    function checkLine(n) {
+                        if (n.nodeName == "SPAN" && n.getAttribute("Line"))
+                            return ++nLines >= 2 ? n : false;
+                        else
+                            return true;
+                    }
+                    this._forEachElementIn(oldGroup, checkLine);
+                    if (nLines <= 1) {
+                        tailHider.parentNode.removeChild(tailHider);
+                        oldGroup.tailHider = undefined;
+                    }
+                }
             }
-        }
-        if (pushing >= 0) {
-            container.parentNode.insertBefore(commandGroup, container);
-            commandGroup.appendChild(container);
         }
         // this._moveNodes(firstChild, newParent, null)
         // Remove old empty domterm-output container.
@@ -766,6 +770,14 @@ Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
             && oldOutput.parentNode != null
             && oldOutput != this.outputContainer) { // paranoia
             oldOutput.parentNode.removeChild(oldOutput);
+        }
+        if (pushing >= 0) {
+            commandGroup = document.createElement("div");
+            commandGroup.setAttribute("class", "command-group");
+            if (parentKey)
+                commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
+            container.parentNode.insertBefore(commandGroup, container);
+            commandGroup.appendChild(container);
         }
         this._currentCommandGroup = commandGroup;
         this._currentCommandOutput = null;
@@ -1123,9 +1135,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     start = cur;
                     startBlock = cur;
                     start._widthMode = Terminal._WIDTH_MODE_NORMAL;
-                    if (tag != "pre"
-                        && (tag != "div"
-                            || ! cur.classList.contains("domterm-pre"))) {
+                    if (! DomTerm.isLineBlock(cur)) {
                         cur.classList.add("domterm-opaque");
                         descend = false;
                         start._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
@@ -1357,6 +1367,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                                                 this._showHideEventHandler,
                                                 true);
                         this._currentCommandHideable = true;
+                        this._currentCommandGroup.tailHider = button;
                     }
                 } else {
                     parent = lastParent.parentNode;

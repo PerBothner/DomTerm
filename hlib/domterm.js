@@ -31,6 +31,12 @@ DomTerm.escapeText = function(text) {
                         function(m) { return DomTerm._escapeMap[m]; });
 };
 
+DomTerm.isLineBlock = function(node) {
+    let tag = node.tagName;
+    return tag == "PRE" || tag == "P"
+        || (tag == "DIV" && node.classList.contains("domterm-pre"));
+}
+
 DomTerm.setTitle = function(title) {
     document.title = title;
 }
