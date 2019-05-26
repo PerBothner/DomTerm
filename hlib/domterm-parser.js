@@ -1152,6 +1152,7 @@ class DTParser {
                 break;
             case 19:
                 term.freshLine();
+                term.endCommandGroup(null, true);
                 term.startCommandGroup(null);
                 break;
             case 20:
@@ -1805,6 +1806,7 @@ class DTParser {
             break;
         case 119:
             term.freshLine();
+            term.endCommandGroup(text, true);
             term.startCommandGroup(text, 0); // new sibling group
             break;
         case 120:
@@ -1813,7 +1815,7 @@ class DTParser {
             break;
         case 121:
             term.freshLine();
-            term.startCommandGroup(text, -1); // exit group
+            term.endCommandGroup(text, false);
             break;
         case 122:
             term.sstate.continuationPromptPattern = text;
@@ -1852,11 +1854,15 @@ class DTParser {
                 return defValue;
             }
             let options = splitOptions(text.substring(1));
+            let aid;
             switch (ch0) {
             case 65: // 'A' - FTCS_PROMPT
             case 78: // 'N'
                 term.freshLine();
-                term.startCommandGroup(null);
+                aid = namedOption(options, "aid", "");
+                if (ch0 == 78)
+                    term.endCommandGroup(aid, true);
+                term.startCommandGroup(aid, 1);
                 term.startPrompt(false);
                 break;
             case 66: // 'B' FTCS_COMMAND_START like CSI 15u
@@ -1872,11 +1878,21 @@ class DTParser {
                 break;
             case 68: // 'D'
             case 90: // 'Z'
-                let exitCode = ch0 == 68 ? options.length > 0 &&options[0]
-                    : namedOption(options, "exitcode");
-                //term.endCommand();
-                let aid = ch0 == 68 ? null : namedOption(options, "aid", "");
-                term.startCommandGroup(aid, -1);
+                let exitCode = parseInt(ch0 == 68
+                                        ? options.length > 0 &&options[0]
+                                        : namedOption(options, "exitcode"),
+                                        10);
+                let oldGroup = term._currentCommandGroup;
+                aid = ch0 == 68 ? null : namedOption(options, "aid", "");
+                term.endCommandGroup(aid, false);
+                term.sstate.stayInInputMode = undefined;
+                if (exitCode && oldGroup) { //not NaN and not 0
+                    let button = term._createSpanNode();
+                    button.setAttribute("exit-code", exitCode);
+                    button.setAttribute("title", "exit-code: "+exitCode);
+                    button.setAttribute("class", "error-exit-mark");
+                    oldGroup.appendChild(button);
+                }
                 break;
             case 76: // 'L'
                 term.freshLine();

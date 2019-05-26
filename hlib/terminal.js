@@ -694,97 +694,98 @@ Terminal.prototype.close = function() {
 };
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
-    var container = this.outputContainer;
-    if (DomTerm.isLineBlock(container)
-        && container.firstChild == this.outputBefore
-        && (this._currentCommandGroup == null
-            || this._currentCommandGroup.firstChild != container)) {
-        var commandGroup = null;
-        var oldGroup = this._currentCommandGroup;
-        var oldOutput = this._currentCommandOutput;
-        if (pushing <= 0) {
-            let prevGroup = oldGroup;
-            for (let p = oldGroup; ;  p = p.parentNode) {
-                if (! (p instanceof Element)) {
-                    oldGroup = null;
+    const container = this.outputContainer;
+    const commandGroup = document.createElement("div");
+    commandGroup.setAttribute("class", "command-group");
+    if (parentKey)
+        commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
+    container.parentNode.insertBefore(commandGroup, container);
+    commandGroup.appendChild(container);
+    this._currentCommandGroup = commandGroup;
+    this._currentCommandOutput = null;
+    this._currentCommandHideable = false;
+    this.sstate.continuationPromptPattern = undefined;
+};
+
+Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
+    var oldGroup = this._currentCommandGroup;
+    var oldOutput = this._currentCommandOutput;
+    let prevGroup = oldGroup;
+    for (let p = oldGroup; ;  p = p.parentNode) {
+        if (! (p instanceof Element)) {
+            oldGroup = null;
+            break;
+        }
+        if (p.classList.contains("command-group")) {
+            let gpid = p.getAttribute("group-parent-id");
+            let gid = p.getAttribute("group-id");
+            if (maybePush) {
+                if ((gpid || ! gid) && gpid == parentKey) {
+                    oldGroup = p;
                     break;
                 }
-                if (p.classList.contains("command-group")) {
-                    let gpid = p.getAttribute("group-parent-id");
-                    let gid = p.getAttribute("group-id");
-                    if (pushing == 0) {
-                        if ((gpid || ! gid) && gpid == parentKey) {
-                            oldGroup = p;
-                            break;
-                        }
-                        if ((gid || ! gpid) && gid == parentKey) {
-                            oldGroup = prevGroup;
-                            break;
-                        }
-                    } else {
-                        if (gid == parentKey) {
-                            oldGroup = p;
-                            break;
-                        }
-                    }
-                    prevGroup = p;
+                if ((gid || ! gpid) && gid == parentKey) {
+                    oldGroup = prevGroup;
+                    break;
+                }
+            } else {
+                if (gid == parentKey) {
+                    oldGroup = p;
+                    break;
                 }
             }
-            if (oldGroup && ! this._isAnAncestor(container, oldGroup)) {
-                oldGroup = null;
-                oldOutput = null;
-            }
-            if (oldGroup) {
-                var cur = container;
-                var parent = container.parentNode;
-                var oldBefore = oldGroup.nextSibling;
-                for (;;) {
-                    this._moveNodes(cur, oldGroup.parentNode, oldBefore);
-                    if (parent == oldGroup)
-                        break;
-                    cur = parent.nextSibling;
-                    parent = parent.parentNode;
-                }
-
-                // Remove tail-hider button if oldGroup only has one line
-                let tailHider = oldGroup.tailHider;
-                if (tailHider) {
-                    let nLines = 0;
-                    function checkLine(n) {
-                        if (n.nodeName == "SPAN" && n.getAttribute("Line"))
-                            return ++nLines >= 2 ? n : false;
-                        else
-                            return true;
-                    }
-                    this._forEachElementIn(oldGroup, checkLine);
-                    if (nLines <= 1) {
-                        tailHider.parentNode.removeChild(tailHider);
-                        oldGroup.tailHider = undefined;
-                    }
-                }
-            }
+            prevGroup = p;
         }
-        // this._moveNodes(firstChild, newParent, null)
+    }
+    if (oldGroup && ! this._isAnAncestor(this.outputContainer, oldGroup)) {
+        oldGroup = null;
+        oldOutput = null;
+    }
+    if (oldGroup) {
+        var cur = this.outputBefore;
+        var parent = this.outputContainer;
+        var oldBefore = oldGroup.nextSibling;
+        const preNode = this._createPreNode();
+        const lineno = this.getAbsCursorLine();
+        this.lineStarts[lineno] = preNode;
+        oldGroup.parentNode.appendChild(preNode);
+        for (;;) {
+            this._moveNodes(cur, preNode, null);
+            if (parent == oldGroup)
+                break;
+            cur = parent.nextSibling;
+            parent = parent.parentNode;
+        }
+        if (this.outputContainer.firstChild == null) {
+            this.outputContainer.parentNode.removeChild(this.outputContainer);
+        }
+        this.outputContainer = preNode;
+
         // Remove old empty domterm-output container.
         if (oldOutput && oldOutput.firstChild == null
             && oldOutput.parentNode != null
             && oldOutput != this.outputContainer) { // paranoia
             oldOutput.parentNode.removeChild(oldOutput);
         }
-        if (pushing >= 0) {
-            commandGroup = document.createElement("div");
-            commandGroup.setAttribute("class", "command-group");
-            if (parentKey)
-                commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
-            container.parentNode.insertBefore(commandGroup, container);
-            commandGroup.appendChild(container);
+
+        // Remove tail-hider button if oldGroup only has one line
+        let tailHider = oldGroup.tailHider;
+        if (tailHider) {
+            let nLines = 0;
+            function checkLine(n) {
+                if (n.nodeName == "SPAN" && n.getAttribute("Line"))
+                    return ++nLines >= 2 ? n : false;
+                else
+                    return true;
+            }
+            this._forEachElementIn(oldGroup, checkLine);
+            if (nLines <= 1) {
+                tailHider.parentNode.removeChild(tailHider);
+                oldGroup.tailHider = undefined;
+            }
         }
-        this._currentCommandGroup = commandGroup;
-        this._currentCommandOutput = null;
-        this._currentCommandHideable = false;
-        this.sstate.continuationPromptPattern = undefined;
     }
-};
+}
 
 // For debugging (may be overridden)
 Terminal.prototype.log = function(str) {
@@ -1586,6 +1587,8 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     column = goalColumn;
                     break mainLoop;
                 }
+                if (parent == null)
+                    console.log("NULL parent!");
                 var sib = parent.nextSibling;
                 ch = parent; // ??
                 parent = parent.parentNode;
@@ -2705,7 +2708,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     topNode.addEventListener("mouseup", this._mouseEventHandler, false);
     topNode.addEventListener("mouseleave",
                              function(e) {
-                                 console.log("mouseLeave");
                                  dt._altPresssed = false;
                                  if (dt._pendingSelected == 2)
                                      dt._updateSelected();
@@ -2729,7 +2731,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
-        console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+"'"+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
+        //console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+"'"+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
         let focusPre = dt._getOuterPre(sel.focusNode);
         let moveCaret = false;
         if (dt._pendingSelected == 0)
@@ -2855,13 +2857,11 @@ Terminal.prototype._displayInfoWithTimeout = function(text) {
     dt._displayInfoMessage(text);
     dt._displaySizePendingTimeouts++;
     function clear() {
-        dt._checkTree();
         if (! dt._displayInfoShowing) {
             dt._displaySizePendingTimeouts = 0;
         } else if (--dt._displaySizePendingTimeouts == 0) {
             dt._updatePagerInfo();
         }
-        dt._checkTree();
     };
     setTimeout(clear, Terminal.INFO_TIMEOUT);
 };
@@ -2998,7 +2998,6 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                             function(event) { dt.historySave(); });
     topNode.addEventListener("click",
                              function(e) {
-                                 console.log("click but:"+e.button+" alt:"+e.altKey);
                                  var target = e.target;
                                  for (let n = target; n instanceof Element;
                                       n = n.parentNode) {
@@ -3464,8 +3463,6 @@ Terminal.prototype.showHideMarkers = [
 Terminal.prototype._showHideHandler = function(event) {
     var target = event.target;
     var child = target.firstChild;
-    if (target.tagName == "SPAN" && target.classList.contains("tail-hider"))
-        target = target.parentNode;
     if (target.tagName == "SPAN"
         && (child instanceof Text || child == null)) {
         let oldText = child == null ? "" : child.data;
@@ -3498,6 +3495,8 @@ Terminal.prototype._showHideHandler = function(event) {
         // The start node is either the "hider" node itself,
         // or if the "hider" is nested in a "prompt", the latter.
         var start = target;
+        if (start.tagName == "SPAN" && start.classList.contains("tail-hider"))
+            start = start.parentNode;
         if (start.parentNode.getAttribute("std") == "prompt")
             start = start.parentNode;
         var node = start;
@@ -4402,7 +4401,6 @@ Terminal.prototype.eraseLineRight = function() {
         this.deleteLinesIgnoreScroll(1, lastLine);
         lastLine--;
     }
-    this._checkTree();
     */
 }
 
@@ -5518,7 +5516,9 @@ Terminal.prototype.getAsHTML = function(saveMode=false) {
 Terminal.prototype._doDeferredDeletion = function() {
     var deferred = this._deferredForDeletion;
     if (deferred) {
+        this._checkTree();
         this._removeCaret();
+        this._checkTree();
         let parent;
         while (deferred && (parent = deferred.parentNode) != null) {
             let oldText = deferred.getAttribute("old-text");
@@ -5548,9 +5548,11 @@ Terminal.prototype._doDeferredDeletion = function() {
                 this._normalize1(tnext);
             deferred = deferred.nextDeferred;
         }
+        this._checkTree();
         this._deferredForDeletion = null;
         this._restoreCaret();
         this._pendingEcho = "";
+        this._checkTree();
     }
 }
 
@@ -5604,10 +5606,8 @@ Terminal.prototype._requestDeletePendingEcho = function() {
         dt._checkTree();
         dt._deletePendingEchoTimer = null;
                        dt._doDeferredDeletion();
-        dt._checkTree();
                        if (! dt.isLineEditing()) {
                            dt._removeInputLine();
-        dt._checkTree();
                            dt._restoreInputLine();
                        }
         dt._checkTree();
@@ -7576,6 +7576,15 @@ Terminal.prototype._checkTree = function() {
     function error(str) {
         dt.log("ERROR: "+str);
     };
+    /*
+    for (let n = this.outputContainer;
+         n instanceof Node; n = n.parentNode) {
+        if (n instanceof Element && n.classList.contains("pending")) {
+            error("outputContainer in pending!");
+            return;
+        }
+    }
+    */
     var parent = node.parentNode;
     var cur = node;
     var istart = 0;
