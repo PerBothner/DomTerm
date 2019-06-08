@@ -114,6 +114,9 @@ div.domterm h1 {
 div.domterm div.interaction[buffer="main"] {
     border-bottom:  thick double green }
 div.interaction[buffer~="main"] div.command-group {
-    border-top: thin dashed gray }
+    border-top: 1px solid #00C00080; margin-top: -1px;
+    background-clip: padding-box
+}
+
 span.pending { background-color: lightgrey }
 span.pending span[std="prompt"] { color: green, background-color: lightgrey }
