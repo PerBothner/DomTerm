@@ -3526,6 +3526,11 @@ Terminal.prototype.freshLine = function() {
     var lineno = this.getAbsCursorLine();
     var line = this.lineStarts[lineno];
     var end = this.lineEnds[lineno];
+    if (this.outputBefore instanceof Node) {
+        const prev = this.outputBefore.previousSibling;
+        if (prev instanceof Element && prev.getAttribute("line") == "hard")
+            return;
+    }
     for (let n = line; n != null; n = n.firstChild) {
         if (n == this.outputContainer && n.firstChild == this.outputBefore)
             return;
