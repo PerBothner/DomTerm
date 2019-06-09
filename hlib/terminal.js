@@ -8555,6 +8555,8 @@ Terminal.prototype.editorContinueInput = function() {
     outputParent.removeChild(this.outputContainer);
     outputParent.parentNode.removeChild(outputParent)
     this._inputLine = editSpan;
+    editSpan.textBefore = "";
+    editSpan.textAfter = "";
     let lastLineNo = this.lineStarts.length-1;
     this.lineStarts[lastLineNo] = this.lineEnds[lastLineNo-1]
     let prompt = this._createSpanNode();
