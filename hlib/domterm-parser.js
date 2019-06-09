@@ -1117,7 +1117,6 @@ class DTParser {
                 hider.outerStyleSpan = term._currentStyleSpan;
                 term._currentStyle = hider;
                 hider.parentNode.hasHider = true;
-                term._currentCommandHideable = true;
                 break;
             case 17:
                 term.outputContainer.addEventListener("click",
@@ -1882,7 +1881,7 @@ class DTParser {
                                         ? options.length > 0 &&options[0]
                                         : namedOption(options, "exitcode"),
                                         10);
-                let oldGroup = term._currentCommandGroup;
+                let oldGroup = term.currentCommandGroup();
                 aid = ch0 == 68 ? null : namedOption(options, "aid", "");
                 term.endCommandGroup(aid, false);
                 term.sstate.stayInInputMode = undefined;

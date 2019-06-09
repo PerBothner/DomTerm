@@ -356,13 +356,6 @@ class Terminal {
     this._Gcharsets = [null, null, null, null];
     this._Glevel = 0;
 
-    /** @type {Element|null} */
-    this._currentCommandGroup = null;
-    /** @type {Element|null} */
-    this._currentCommandOutput = null;
-    /** @type{boolean} */
-    this._currentCommandHideable = false;
-
     this._currentPprintGroup = null;
     // a chain of "line" and "pprint-group" elements that need
     // sectionEnd to be set (to a later "line" at same or higher level).
@@ -426,13 +419,13 @@ class Terminal {
     //maybeExtendInput() { }
 
     startPrompt(isContinuationLine) {
-        var curOutput = this._currentCommandOutput;
+        var curOutput = this.currentCommandOutput();
         // MOVE to: maybeExtendInput
         if (curOutput
             && curOutput.firstChild == this.outputContainer
             && curOutput.firstChild == curOutput.lastChild) {
             // This is a continuation prompt, for multiline input.
-            // Remove the _currentCommandOutput.
+            // Remove the current command-output.
             let previousInput = curOutput.previousSibling;
             if (this.outputContainer.classList.contains("domterm-pre")
                 && previousInput.classList.contains("input-line")) {
@@ -445,8 +438,6 @@ class Terminal {
             else
                 curOutput.parentNode.insertBefore(this.outputContainer, curOutput);
             curOutput.parentNode.removeChild(curOutput);
-            if (this._currentCommandHideable)
-                this.outputContainer.setAttribute("domterm-hidden", "false");
         }
 
         this._pushStdMode("prompt");
@@ -499,7 +490,7 @@ class Terminal {
         if (prev && prev.getAttribute("std")=="prompt") {
             let lnum = prev.getAttribute("value");
             lnum = this._getIntegerBefore(lnum || prev.textContent);
-            let gr = this._currentCommandGroup;
+            let gr = this.currentCommandGroup();
             let plin;
             let dt = this;
             for (; lnum && gr; gr = gr ? gr.previousSibling : null) {
@@ -549,10 +540,6 @@ class Terminal {
     startOutput() {
         var commandOutput = document.createElement("div");
         commandOutput.setAttribute("class", "command-output");
-        if (this._currentCommandHideable)
-            commandOutput.setAttribute("domterm-hidden", "false");
-        this._currentCommandOutput = commandOutput;
-        this._currentCommandGroup.appendChild(commandOutput);
 
         const lineNo = this.getAbsCursorLine();
         const preNode = this._createPreNode();
@@ -569,6 +556,27 @@ class Terminal {
         if (this.sstate.bracketedPasteMode)
             text = "\x1B[200~" + text + "\x1B[201~";
         return text;
+    }
+
+    currentCommandGroup(current = this.outputContainer) {
+        for (let n = current; n; n = n.parentNode) {
+            if (n instanceof Element && n.classList.contains("command-group"))
+                return n;
+        }
+        return null;
+    }
+
+    currentCommandOutput(current = this.outputContainer) {
+        for (let n = current; n; n = n.parentNode) {
+            if (n instanceof Element) {
+                let cl = n.classList;
+                if (cl.contains("command-output"))
+                    return n;
+                if (cl.contains("command-group"))
+                    break;
+            }
+        }
+        return null;
     }
 }
 Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
@@ -701,15 +709,12 @@ Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
         commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
     container.parentNode.insertBefore(commandGroup, container);
     commandGroup.appendChild(container);
-    this._currentCommandGroup = commandGroup;
-    this._currentCommandOutput = null;
-    this._currentCommandHideable = false;
     this.sstate.continuationPromptPattern = undefined;
 };
 
 Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
-    var oldGroup = this._currentCommandGroup;
-    var oldOutput = this._currentCommandOutput;
+    var oldGroup = this.currentCommandGroup();
+    var oldOutput = this.currentCommandOutput();
     let prevGroup = oldGroup;
     for (let p = oldGroup; ;  p = p.parentNode) {
         if (! (p instanceof Element)) {
@@ -1322,8 +1327,9 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
     } else {
         var homeLine = this.homeLine;
         var lineCount = this.lineStarts.length;
-        // FIXME this doesn't handle _currentCommandGroup != null
+        // FIXME this doesn't handle currentCommandGroup() != null
         // and goalAbsLine < lineCount
+        const currentGroup = this.currentCommandGroup();
         while (goalAbsLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
@@ -1341,7 +1347,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                         break;
                     lastParent = p;
                 }
-                if (lastParent.parentNode == this._currentCommandGroup) {
+                if (lastParent.parentNode == currentGroup) {
                     if (lastParent.classList.contains("input-line")
                         && this.sstate.stayInInputMode) {
                         parent = lastParent;
@@ -1349,15 +1355,10 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                         // FIXME use startOutput
                         var commandOutput = document.createElement("div");
                         commandOutput.setAttribute("class", "command-output");
-                        if (this._currentCommandHideable)
-                            commandOutput.setAttribute("domterm-hidden", "false");
-                        this._currentCommandOutput = commandOutput;
-                        this._currentCommandGroup.appendChild(commandOutput);
-
+                        currentGroup.appendChild(commandOutput);
                         parent = commandOutput;
                     }
                     if (lastParent instanceof Element
-                        && ! this._currentCommandHideable
                         && lastParent.classList.contains("input-line")) {
                         let ln = lastParent.lastChild;
                         let button = this._createSpanNode();
@@ -1367,8 +1368,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                         button.addEventListener("click",
                                                 this._showHideEventHandler,
                                                 true);
-                        this._currentCommandHideable = true;
-                        this._currentCommandGroup.tailHider = button;
+                        currentGroup.tailHider = button;
                     }
                 } else {
                     parent = lastParent.parentNode;
@@ -4660,9 +4660,6 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     this._Gcharsets[1] = null;
     this._Gcharsets[2] = null;
     this._Gcharsets[3] = null;
-    this._currentCommandGroup = null;
-    this._currentCommandOutput = null;
-    this._currentCommandHideable = false;
     this._currentPprintGroup = null;
     this._needSectionEndFence = null;
     this.resetTabs();
