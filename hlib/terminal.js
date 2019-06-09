@@ -419,6 +419,7 @@ class Terminal {
     //maybeExtendInput() { }
 
     startPrompt(isContinuationLine) {
+        this.sstate.inInputMode = false;
         var curOutput = this.currentCommandOutput();
         // MOVE to: maybeExtendInput
         if (curOutput
@@ -457,25 +458,10 @@ class Terminal {
      */
     startInput(stayInInputMode, submode) {
         this.sstate.stayInInputMode = stayInInputMode;
-        this._pushStdMode("input");
-        var newParent = this.outputContainer;
-        let prev = newParent.previousSibling;
-
-        // If there is existing content on the current line,
-        // move it into new input <span>.
-        var firstChild = newParent.nextSibling;
-        for (var child = firstChild;
-             child != null
-             && (child.tagName!="SPAN"
-                 ||child.getAttribute("line")=="soft"); ) {
-            var next = child.nextSibling;
-            child.parentNode.removeChild(child);
-            newParent.appendChild(child);
-            child = next;
-        }
+        this._pushStdMode(null);
+        this.sstate.inInputMode = true;
         this._fixOutputPosition();
-        this.outputBefore = newParent.firstChild;
-        var ln = newParent.parentNode;
+        let ln = this.outputContainer;
         var cl = ln.classList;
         if (submode != 0 && cl.contains("domterm-pre")
             && ! ln.parentNode.classList.contains("input-line")) {
@@ -484,10 +470,13 @@ class Terminal {
                 cl.add("multi-line-edit");
         }
 
+        let prev = this.outputBefore ? this.outputBefore.previousSibling
+            : this.outputContainer.lastChild;
         // Move old/tentative input to after previous output:
         // If the line number of the new prompt matches that of a
         // previous continuation line, move the latter to here.
-        if (prev && prev.getAttribute("std")=="prompt") {
+        if (prev instanceof Element
+            && prev.getAttribute("std")=="prompt") {
             let lnum = prev.getAttribute("value");
             lnum = this._getIntegerBefore(lnum || prev.textContent);
             let gr = this.currentCommandGroup();
@@ -514,7 +503,7 @@ class Terminal {
                         return true;
                     }
                     let pr = this._forEachElementIn(plin, fun, false, true);
-                    if (pr) {
+                    if (false && pr) {
                         // FIXME broken if pr is nested
                         this.outputContainer = plin;
                         this.outputBefore = plin.firstChild;
@@ -534,22 +523,40 @@ class Terminal {
                 }
             }
         }
-
-        this._adjustStyle();
     }
-    startOutput() {
-        var commandOutput = document.createElement("div");
-        commandOutput.setAttribute("class", "command-output");
 
-        const lineNo = this.getAbsCursorLine();
-        const preNode = this._createPreNode();
-        this._moveNodes(this.outputBefore, preNode, null);
-        commandOutput.appendChild(preNode);
-        this.outputContainer = preNode;
-        this.outputBefore = preNode.firstChild;
-        // FIXME not robust
-        this.lineStarts[lineNo] = preNode;
-        // FIXME maybe add tail-hider
+    startOutput() {
+        this.sstate.inInputMode = false;
+        const group = this.currentCommandGroup();
+        if (group && group.firstChild instanceof Element
+            && group.firstChild.classList.contains("input-line")
+            && this._isAnAncestor(this.outputContainer, group.firstChild)) {
+            let cur = this.outputBefore;
+            let parent = this.outputContainer;
+            for (;;) {
+                if (parent == group.firstChild)
+                    break;
+                if (cur == null) {
+                    cur = parent.nextSibling;
+                } else if (cur.previousSibling == null) {
+                    cur = parent;
+                } else {
+                    cur = this._splitNode(parent, cur);
+                }
+                parent = parent.parentNode;
+            }
+            var commandOutput = document.createElement("div");
+            commandOutput.setAttribute("class", "command-output");
+            group.insertBefore(commandOutput, group.firstChild.nextSibling);
+
+            const lineNo = this.getAbsCursorLine();
+            const preNode = this._createPreNode();
+            this._moveNodes(cur, preNode, null);
+            commandOutput.appendChild(preNode);
+            this.outputContainer = preNode;
+            this.outputBefore = preNode.firstChild;
+            this.lineStarts[lineNo] = preNode;
+        }
     }
 
     _maybeBracketed(text) {
@@ -702,6 +709,7 @@ Terminal.prototype.close = function() {
 };
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
+    this.sstate.inInputMode = false;
     const container = this.outputContainer;
     const commandGroup = document.createElement("div");
     commandGroup.setAttribute("class", "command-group");
@@ -713,6 +721,7 @@ Terminal.prototype.startCommandGroup = function(parentKey, pushing=0) {
 };
 
 Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
+    this.sstate.inInputMode = false;
     var oldGroup = this.currentCommandGroup();
     var oldOutput = this.currentCommandOutput();
     let prevGroup = oldGroup;
@@ -756,10 +765,14 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
         oldGroup.parentNode.appendChild(preNode);
         for (;;) {
             this._moveNodes(cur, preNode, null);
+            const pnext = parent.nextSibling;
+            const pparent = parent.parentNode;
+            if (parent.firstChild == null)
+                pparent.removeChild(parent);
             if (parent == oldGroup)
                 break;
-            cur = parent.nextSibling;
-            parent = parent.parentNode;
+            cur = pnext;
+            parent = pparent;
         }
         if (this.outputContainer.firstChild == null) {
             this.outputContainer.parentNode.removeChild(this.outputContainer);
@@ -1333,10 +1346,12 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         while (goalAbsLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
-            if (lineCount == this.homeLine)
+            let lastParent;
+            if (lineCount == this.homeLine) {
                 parent = this.initial;
-            else {
-                var lastParent = this.lineEnds[lineCount-1];
+                lastParent = null;
+            } else {
+                lastParent = this.lineEnds[lineCount-1];
                 if (lastParent == null)
                     lastParent = this.lineStarts[lineCount-1];
                 for (;;) {
@@ -1374,7 +1389,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     parent = lastParent.parentNode;
                 }
             }
-            let newPre = ! this.sstate.stayInInputMode; // ???
+            let newPre = ! lastParent || ! this.sstate.stayInInputMode;
             var next = this._createLineNode("hard", "\n");
             let prevLineEnd = this.lineEnds[lineCount-1];
             let lineStart;
@@ -1450,7 +1465,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     // Motivation: handle '\t' while inside <span std="error">.
                     // (Java stacktraces by default prints with tabs.)
                     if (prev && prev.nodeName == "SPAN"
-                        && prev.getAttribute("std")
+                        && prev.getAttribute("std") == "error"
                         && this._isAnAncestor(this.outputContainer,
                                               current.previousSibling)) {
                         parent = current.previousSibling;
@@ -2190,6 +2205,32 @@ Terminal.prototype.isSavedSession = function() {
  */
 Terminal.prototype._adjustStyle = function() {
     var parentSpan = this.outputContainer;
+    if (this.sstate.inInputMode) {
+        this._fixOutputPosition();
+        parentSpan = this.outputContainer;
+        let n = parentSpan;
+        let p = this.outputBefore;
+        while (n instanceof Node
+               && ! (n.nodeName == "DIV" && n.classList.contains("input-line"))) {
+            if (n.nodeName == "SPAN" && n.getAttribute("std")) {
+                n = null;
+                break;
+            }
+            p = n;
+            n = n.parentNode;
+        }
+        if (n instanceof Element) {
+            const stdElement = this._createSpanNode();
+            stdElement.setAttribute("std", "input");
+            n.insertBefore(stdElement, p);
+            if (n == parentSpan) {
+                this.outputContainer = stdElement;
+                this.outputBefore = null;
+            } else {
+                stdElement.appendChild(p);
+            }
+        }
+    }
     if (parentSpan instanceof Text)
         parentSpan = parentSpan.parentNode;
     if (this._currentStyleSpan === parentSpan)
@@ -4029,6 +4070,10 @@ Terminal.prototype.handleEnter = function(text) {
         this._removeCaret();
         let inputParent = oldInputLine.parentNode;
         this._removeInputLine();
+        if (inputParent.getAttribute("std") == "input") {
+            this._moveNodes(oldInputLine.firstChild, inputParent, oldInputLine);
+            inputParent.removeChild(oldInputLine);
+        }
         this.resetCursorCache();
         this.cursorLineStart(1);
     }
@@ -5138,10 +5183,6 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
                 }
                 break;
             }
-            if (editmode)
-                ln.setAttribute("editing", editmode);
-            else
-                ln.removeAttribute("editing");
 
             var end = ch == 47; // '/';
             if (end)
