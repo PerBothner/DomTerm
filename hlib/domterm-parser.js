@@ -1861,6 +1861,8 @@ class DTParser {
                 aid = namedOption(options, "aid", "");
                 if (ch0 == 78)
                     term.endCommandGroup(aid, true);
+                // In case of fish "omitted newline" hack
+                term._clearWrap(term.getAbsCursorLine()-1);
                 term.startCommandGroup(aid, 1);
                 term.startPrompt(false);
                 break;
