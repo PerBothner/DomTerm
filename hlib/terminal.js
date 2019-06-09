@@ -5518,10 +5518,9 @@ Terminal.prototype.getAsHTML = function(saveMode=false) {
 Terminal.prototype._doDeferredDeletion = function() {
     var deferred = this._deferredForDeletion;
     if (deferred) {
-        this._checkTree();
         this._removeCaret();
-        this._checkTree();
         let parent;
+
         while (deferred && (parent = deferred.parentNode) != null) {
             let oldText = deferred.getAttribute("old-text");
             /*
@@ -5550,11 +5549,9 @@ Terminal.prototype._doDeferredDeletion = function() {
                 this._normalize1(tnext);
             deferred = deferred.nextDeferred;
         }
-        this._checkTree();
         this._deferredForDeletion = null;
         this._restoreCaret();
         this._pendingEcho = "";
-        this._checkTree();
     }
 }
 
@@ -5605,14 +5602,12 @@ Terminal.prototype._requestDeletePendingEcho = function() {
         clearTimeout(this._deletePendingEchoTimer);
     var dt = this;
     function clear() {
-        dt._checkTree();
         dt._deletePendingEchoTimer = null;
                        dt._doDeferredDeletion();
                        if (! dt.isLineEditing()) {
                            dt._removeInputLine();
                            dt._restoreInputLine();
                        }
-        dt._checkTree();
                      };
     let timeout = dt.deferredForDeletionTimeout;
     if (timeout)
@@ -7578,7 +7573,6 @@ Terminal.prototype._checkTree = function() {
     function error(str) {
         dt.log("ERROR: "+str);
     };
-    /*
     for (let n = this.outputContainer;
          n instanceof Node; n = n.parentNode) {
         if (n instanceof Element && n.classList.contains("pending")) {
@@ -7586,7 +7580,9 @@ Terminal.prototype._checkTree = function() {
             return;
         }
     }
-    */
+    if (this.outputContainer instanceof Text
+        && this.outputBefore > this.outputContainer.length)
+        error("bad outputContainer");
     var parent = node.parentNode;
     var cur = node;
     var istart = 0;
