@@ -6494,7 +6494,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         }
         this._adjustStyle();
     } else {
-        this._adjustStyle();
+        if (this.outputContainer instanceof Text)
+            this._adjustStyle();
         if (this.outputContainer instanceof Text) {
             let oldStr = this.outputContainer.data.substring(this.outputBefore);
             if (oldStr.startsWith(str)) {
@@ -6519,8 +6520,13 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                 }
             }
         }
-        // FIXME optimize if end of line
-        fits = str == null || this.deleteCharactersRight(widthInColumns, false);
+        if (str == null)
+            fits = true;
+        else {
+            // FIXME optimize if end of line
+            fits = this.deleteCharactersRight(widthInColumns, false);
+            this._adjustStyle();
+        }
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
