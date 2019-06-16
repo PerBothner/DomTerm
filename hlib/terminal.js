@@ -1515,7 +1515,18 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                         parent = current.previousSibling;
                         current = null;
                     }
-                    if (current && current.previousSibling instanceof Text)
+                    if (
+                        false && this.sstate.inInputMode
+                        && this.outputContainer.nodeName == "DIV"
+                        && this.outputContainer.classList.contains("input-line")) {
+                            // FIX optimize if already in/next-to with-content-value
+                            let span = this._createSpanNode();
+                            span.classList.add("with-content-value");
+                        span.setAttribute("value", str);
+                        parent.insertBefore(span, current);
+                    }
+                    // Motivation: handle '\t' while inside <span std="error">.
+                    else if (current && current.previousSibling instanceof Text)
                         current.previousSibling.appendData(str);
                     else
                         parent.insertBefore(document.createTextNode(str), current);
@@ -1596,17 +1607,20 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     if (this.isObjectElement(current))
                         column += 1;
                     else if (valueAttr
-                             && current.getAttribute("std")=="prompt") {
-                        var w = this.strWidthInContext(valueAttr, current);
-                        column += w;
-                        if (column > goalColumn) {
-                            column -= w;
-                            var t = document.createTextNode(valueAttr);
-                            current.insertBefore(t, current.firstChild);
-                            current.removeAttribute("value");
-                            parent = current;
-                            current = t;
-                            continue;
+                             && current.classList.contains("with-content-value")) {
+                        let w = this.strColumnToIndex(valueAttr, goalColumn-column, current);
+                        if (w < 0) {
+                            column = goalColumn + w;
+                        } else {
+                            if (w < valueAttr.length) {
+                                parent = current;
+                                current = w;
+                            } else {
+                                current = current.nextSibling;
+                            }
+                            column = goalColumn;
+                            break mainLoop;
+
                         }
                     } else {
                         ch = current.firstChild;
@@ -1664,6 +1678,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                && current.nodeName === "SPAN"
                && ! current.getAttribute("line")
                //&& ! current.classList.contains("tail-hider")
+               && ! current.classList.contains("with-content-value")
                && current.getAttribute("std") !== "prompt")) {
         // not: std=="prompt"
         // yes: class="term-style", std=="input"
@@ -1690,7 +1705,9 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
     this.currentCursorColumn = column;
 };
 
-Terminal.prototype._followingText = function(cur, backwards = false) {
+Terminal.prototype._followingText = function(cur,
+                                             allowContentValue = false,
+                                             backwards = false) {
     function check(node) {
         if (node == cur)
             return false;
@@ -1698,6 +1715,10 @@ Terminal.prototype._followingText = function(cur, backwards = false) {
             return null;
         if (node instanceof Text)
             return node;
+        if (allowContentValue && node.tagName == "SPAN"
+            && node.classList.contains("with-content-value")) {
+            return node;
+        }
         return true;
     }
     return this._forEachElementIn(this._getOuterBlock(cur), check,
@@ -1732,10 +1753,9 @@ Terminal.prototype._removeCaret = function(normalize=true) {
     if (caretNode && caretNode.getAttribute("caret")) {
         var child = caretNode.firstChild;
         caretNode.removeAttribute("caret");
+        var text = caretNode.nextSibling;
         if (child instanceof Text) {
-            var text = caretNode.nextSibling;
             let sel = document.getSelection();
-            let rc = sel.rangeCount;
             let focusNode = sel.focusNode;
             let anchorNode = sel.anchorNode;
             let focusOffset = sel.focusOffset;
@@ -1760,6 +1780,13 @@ Terminal.prototype._removeCaret = function(normalize=true) {
             }
             sel.setBaseAndExtent(anchorNode, anchorOffset,
                                  focusNode, focusOffset);
+        }  else if (caretNode.getAttribute("value")
+                    && text instanceof Element
+                    && text.classList.contains("with-content-value")) {
+            text.setAttribute("value",
+                              caretNode.getAttribute("value")
+                              + text.getAttribute("value"));
+            caretNode.removeAttribute("value");
         }
     }
 }
@@ -1886,10 +1913,12 @@ Terminal.prototype._restoreCaret = function() {
             && (! (this._caretNode.firstChild instanceof Text)
                 || this._caretNode.firstChild.data.length == 0)) {
             if (this._caretNeedsValue()) {
-                let text = this._followingText(this._caretNode);
+                let text = this._followingText(this._caretNode, true);
                 //let text = this._caretNode.nextSibling;
-                if (text instanceof Text && text.data.length > 0) {
-                    var tdata = text.data;
+                let tdata = text instanceof Text ? text.data
+                    : text instanceof Element ? text.getAttribute("value")
+                    : null;
+                if (tdata) {
                     var sz = 1;
                     if (tdata.length >= 2) {
                         var ch0 = tdata.charCodeAt(0);
@@ -1914,9 +1943,14 @@ Terminal.prototype._restoreCaret = function() {
                     } else if (text === this.outputContainer) {
                         this.outputBefore -= sz;
                     }
-                    this._caretNode.appendChild(document.createTextNode(ch));
-                    this._deleteData(text, 0, sz);
-                    this._caretNode.removeAttribute("value");
+                    if (text instanceof Text) {
+                        this._caretNode.appendChild(document.createTextNode(ch));
+                        this._deleteData(text, 0, sz);
+                        this._caretNode.removeAttribute("value");
+                    } else {// a "with-content-value" element
+                        text.setAttribute("value", tdata.substring(sz));
+                        this._caretNode.setAttribute("value", tdata.substring(0, sz));
+                    }
                     /*
                     if (this._caretNode.parentNode == this._deferredForDeletion
                         && ptext != this._deferredForDeletion)
@@ -3978,12 +4012,22 @@ Terminal.prototype.getCursorColumn = function() {
 };
 
 Terminal.prototype._fixOutputPosition = function() {
-    if (this.outputContainer instanceof Text) {
+    if (typeof this.outputBefore === "number") {
         let tnode = this.outputContainer;
         let pos = this.outputBefore;
-        this.outputBefore = pos == 0 ? tnode
-            : pos == tnode.data.length ? tnode.nextSibling
-            : tnode.splitText(pos);
+        if (this.outputContainer instanceof Element) {
+            let newNode = document.createElement(tnode.nodeName);
+            this._copyAttributes(tnode, newNode);
+            let value = tnode.getAttribute("value");
+            tnode.parentNode.insertBefore(newNode, tnode.nextSibling);
+            tode.setAttribute("value", value.substring(0, pos));
+            newNode.setAttribute("value", value.substring(pos));
+            this.outputBefore = newNode;
+        } else { // if (this.outputContainer instanceof Text)
+            this.outputBefore = pos == 0 ? tnode
+                : pos == tnode.data.length ? tnode.nextSibling
+                : tnode.splitText(pos);
+        }
         this.outputContainer = tnode.parentNode;
     }
     return this.outputBefore;
@@ -4406,13 +4450,30 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
             todo--;
         } else if (current instanceof Element) {
             var valueAttr = current.getAttribute("value");
-            if (valueAttr && current.getAttribute("std")=="prompt") {
-                current.insertBefore(document.createTextNode(valueAttr),
-                                     current.firstChild);
-                current.removeAttribute("value");
+            if (valueAttr && current.classList.contains("with-content-value")) {
+                let i = this.strColumnToIndex(valueAttr, todo, current);
+                if (i >= 0 && i < valueAttr.length) {
+                    current.setAttribute("value", valueAttr.substring(i));
+                    todo = 0;
+                    break;
+                } else {
+                    if (i == valueAttr.length)
+                        i = 0;
+                    let next = current.nextSibling;
+                    parent.removeChild(current);
+                    current = next;
+                    todo = -i;
+                    /*
+                    current.insertBefore(document.createTextNode(valueAttr),
+                                         current.firstChild);
+                    current.removeAttribute("value");
+                    current.classList.remove("with-content-value");
+                    */
+                }
+            } else {
+                parent = current;
+                current = current.firstChild;
             }
-            parent = current;
-            current = current.firstChild;
         } else if (current instanceof Text) {
             var tnode = current;
             var text = tnode.textContent;
@@ -6134,8 +6195,11 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             var skipChildren = false;
             var measureWidth = el instanceof Element ? el.measureWidth : 0;
             const isText = el instanceof Text;
+            const isContentValue = el instanceof Element
+                  && el.classList.contains("with-content-value")
+                  && el.getAttribute("value");
             check_fits:
-            if (isText || dt.isObjectElement(el)
+            if (isText || isContentValue || dt.isObjectElement(el)
                 || el.classList.contains("wc-node")) {
                 skipChildren = true;
                 if (isText)
@@ -6152,15 +6216,28 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 measureWidth = afterMeasure - beforeMeasure;
                 var right = afterMeasure - startOffset;
                 if (right > availWidth
-                    && (beforePos > 0 || isText)) {
+                    && (beforePos > 0 || isText || isContentValue)) {
                     var lineNode = dt._createLineNode("soft");
                     var indentWidth;
                     var oldel = el;
-                    if (isText) {
+                    if (isText || isContentValue) {
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
-                        var rest = dt._breakString(el, lineNode, beforePos,
+                        let textNode;
+                        if (isText)
+                            textNode = el;
+                        else {
+                            textNode = document.createTextNode(isContentValue);
+                            el.appendChild(textNode);
+                        }
+                        var rest = dt._breakString(textNode, lineNode, beforePos,
                                                    right, availWidth, didbreak,
                                                    countColumns);
+                        if (isContentValue) {
+                            if (textNode.nextSibling)
+                                el.insertBefore(textNode.nextSibling. el.nextSibling);
+                            el.setAttribute("value", textNode.data);
+                            el.removeChild(textNode);
+                        }
                         if (rest == "") {
                             // It all "fits", after all.  Can happen in
                             // pathological cases when there isn't room for

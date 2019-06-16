@@ -58,6 +58,10 @@ class DTParser {
                 let r = document.createRange();
                 r.selectNode(pendingEchoBlock);
                 pendingEchoOld = r.toString();
+                if (typeof term.outputBefore == "number"
+                    && term.outputContainer instanceof Element
+                    && term.classList.contains("with-content-value"))
+                    term._fixOutputPosition();
                 if (term.outputBefore == null)
                     r.setEndAfter(term.outputContainer);
                 else if (typeof term.outputBefore == "number")
@@ -1089,7 +1093,8 @@ class DTParser {
                         while (container.firstChild) {
                             container.removeChild(container.firstChild);
                         }
-                        term.outputContainer.setAttribute("value", content);
+                        container.setAttribute("value", content);
+                        container.classList.add("with-content-value");
                     }
                 }
                 // ... fall through ...

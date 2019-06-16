@@ -54,6 +54,7 @@ span { padding: 0px; margin: 0px;}
 span[line="soft"] { padding: 0px; margin: 0px;}
 span[std="prompt"] { margin: 0px; padding: 0px; border: 0px }
 span[std="prompt"][value]:before { content: attr(value) }
+span.with-content-value[value]:before { content: attr(value) }
 *[domterm-hidden="true"] { display: none }
 
 span[line][breaking="yes"]:before {content: "\A"; }
