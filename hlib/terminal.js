@@ -554,7 +554,12 @@ class Terminal {
             this._moveNodes(cur, preNode, null);
             commandOutput.appendChild(preNode);
             this.outputContainer = preNode;
-            this.outputBefore = preNode.firstChild;
+            this.outputBefore = cur;
+            if (cur instanceof Element &&
+                cur.getAttribute("line")) {
+                preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
+                preNode._widthColumns = 0;
+            }
             this.lineStarts[lineNo] = preNode;
         }
     }
@@ -761,6 +766,8 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
         var oldBefore = oldGroup.nextSibling;
         const preNode = this._createPreNode();
         const lineno = this.getAbsCursorLine();
+        if (lineno > 0)
+            this._clearWrap(lineno-1);
         this.lineStarts[lineno] = preNode;
         oldGroup.parentNode.appendChild(preNode);
         for (;;) {
@@ -776,6 +783,11 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
         }
         if (this.outputContainer.firstChild == null) {
             this.outputContainer.parentNode.removeChild(this.outputContainer);
+        }
+        if (preNode.firstChild instanceof Element
+            && preNode.firstChild.getAttribute("line")) {
+            preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
+            preNode._widthColumns = 0;
         }
         this.outputContainer = preNode;
 
