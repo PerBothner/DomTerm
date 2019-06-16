@@ -980,6 +980,38 @@ Terminal.prototype.strWidthInContext = function(str, context) {
     return this.wcwidth.strWidthInContext(str, context);
 }
 
+// Return char index in str corresponding to specified columns.
+// If not enough characters in str, return (actual_column - columns),
+// i.e. the negative of the shortfall.
+// I.e. same as (but more efficient than):
+// let n = strWidthInContext(str, context);
+// return n >= columns ? columnToIndexInContext(str, 0, colums, context)
+//     : n - columns;
+Terminal.prototype.strColumnToIndex = function(str, columns, context=null) {
+    let i = 0;
+    let length = str.length;
+    let todo = columns;
+    for (; todo > 0; i++) {
+        if (i >= length)
+            return -todo;
+        var ch = str.codePointAt(i);
+        if (ch > 0xffff) i++;
+        // Optimization - don't need to calculate getCurrentColumn.
+        if (ch >= 32/*' '*/ && ch < 127) {
+            todo--;
+        }
+        else if (ch == 13/*'\r'*/ || ch == 10/*'\n'*/ || ch == 12/*'\f'*/) {
+            // shouldn't normally happen - we get to lineEnd first
+            todo = 0;
+            return i;
+        }
+        else {
+            todo -= this.wcwidthInContext(ch, context);
+        }
+    }
+    return i;
+}
+
 Terminal.prototype.atTabStop = function(col) {
     if (col >= this._tabDefaultStart)
         if ((col & 7) == 0)
@@ -4378,24 +4410,9 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
             if (count < 0) {
                 i = length;
             } else {
-                for (; i < length; i++) {
-                    if (todo <= 0)
-                        break;
-                    var ch = text.codePointAt(i);
-                    if (ch > 0xffff) i++;
-                    // Optimization - don't need to calculate getCurrentColumn.
-                    if (ch >= 32/*' '*/ && ch < 127) {
-                        todo--;
-                    }
-                    else if (ch == 13/*'\r'*/ || ch == 10/*'\n'*/ || ch == 12/*'\f'*/) {
-                        // shouldn't normally happen - we get to lineEnd first
-                        todo = 0;
-                        break;
-                    }
-                    else {
-                        todo -= this.wcwidthInContext(ch, current.parentNode);
-                    }
-                }
+                i = this.strColumnToIndex(text, todo, current.parentNode);
+                todo = i < 0 ? -i : 0;
+                i = i < 0 ? length : i;
             }
 
             var next = current.nextSibling;
