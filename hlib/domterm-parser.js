@@ -1656,7 +1656,7 @@ class DTParser {
                     return true;
                 };
                 term.initial = DomTerm._currentBufferNode(term);
-                term._forEachElementIn(parent, findInputLine);
+                Terminal._forEachElementIn(parent, findInputLine);
                 term.outputBefore =
                     term._inputLine != null ? term._inputLine : term._caretNode;
                 term.outputContainer = term.outputBefore.parentNode;

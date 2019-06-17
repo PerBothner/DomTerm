@@ -502,7 +502,7 @@ class Terminal {
                         }
                         return true;
                     }
-                    let pr = this._forEachElementIn(plin, fun, false, true);
+                    let pr = Terminal._forEachElementIn(plin, fun, false, true);
                     if (false && pr) {
                         // FIXME broken if pr is nested
                         this.outputContainer = plin;
@@ -808,7 +808,7 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
                 else
                     return true;
             }
-            this._forEachElementIn(oldGroup, checkLine);
+            Terminal._forEachElementIn(oldGroup, checkLine);
             if (nLines <= 1) {
                 tailHider.parentNode.removeChild(tailHider);
                 oldGroup.tailHider = undefined;
@@ -1172,7 +1172,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     || classList.contains("resize-sensor")
                     || classList.contains("domterm-show-info")))
                 descend = false;
-            else if (this.isBlockTag(tag)) {
+            else if (Terminal.isBlockTag(tag)) {
                 var hasData = false;
                 var prevWasBlock = false;
                 // Check to see if cur has any non-block children:
@@ -1187,7 +1187,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                         }
                         hasData = true;
                     } else if (ch instanceof Element) {
-                        isBlockNode = this.isBlockNode(ch);
+                        isBlockNode = Terminal.isBlockNode(ch);
                         if (! isBlockNode)
                             hasData = true;
                     }
@@ -1296,7 +1296,7 @@ Terminal.prototype._restoreSaveLastLine = function() {
                 line++;
             return true;
         }
-        this._forEachElementIn(this.topNode, findAltBuffer);
+        Terminal._forEachElementIn(this.topNode, findAltBuffer);
     }
 }
  
@@ -1399,7 +1399,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                 if (lastParent == null)
                     lastParent = this.lineStarts[lineCount-1];
                 for (;;) {
-                    if (this.isBlockNode(lastParent))
+                    if (Terminal.isBlockNode(lastParent))
                         break;
                     var p = lastParent.parentNode;
                     if (p == this.initial)
@@ -1628,7 +1628,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     continue;
                 }
                 // Otherwise go to the parent's sibling - but this gets complicated.
-                if (this.isBlockNode(current))
+                if (Terminal.isBlockNode(current))
                     absLine++;
             }
 
@@ -1659,7 +1659,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             }
         }
     }
-    while ((parent == this.topNode && this.isBlockNode(current))
+    while ((parent == this.topNode && Terminal.isBlockNode(current))
            || (current instanceof Element
                && current.nodeName === "SPAN"
                && ! current.getAttribute("line")
@@ -1700,8 +1700,8 @@ Terminal.prototype._followingText = function(cur, backwards = false) {
             return node;
         return true;
     }
-    return this._forEachElementIn(this._getOuterBlock(cur), check,
-                                  true, backwards, cur);
+    return Terminal._forEachElementIn(this._getOuterBlock(cur), check,
+                                      true, backwards, cur);
 };
 
 Terminal.prototype._showPassword = function() {
@@ -1972,7 +1972,7 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
                 let dt = this;
                 // Takes time proportional to the number of lines in _inputLine
                 // times lines below the input.  Both are likely to be small.
-                this._forEachElementIn(inputLine,
+                Terminal._forEachElementIn(inputLine,
                                        function (el) {
                                            if (el.nodeName == "SPAN"
                                                && el.getAttribute("Line")=="hard") {
@@ -2688,7 +2688,7 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
             this.lineEnds.length = bufNode.saveLastLine;
             var homeNode = null;
             var homeOffset = -1;
-            this._forEachElementIn(this.initial,
+            Terminal._forEachElementIn(this.initial,
                                    function(node) {
                                        var offset = node.getAttribute('home-line');
                                        if (offset) {
@@ -2725,19 +2725,19 @@ Terminal.prototype.isObjectElement = function(node) {
         || "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
 };
 
-Terminal.prototype.isBlockNode = function(node) {
+Terminal.isBlockNode = function(node) {
     return node instanceof Element
-        && this.isBlockTag(node.tagName.toLowerCase());
+        && Terminal.isBlockTag(node.tagName.toLowerCase());
 };
 
-Terminal.prototype.isBlockTag = function(tag) { // lowercase tag
+Terminal.isBlockTag = function(tag) { // lowercase tag
     var einfo = DomTerm._elementInfo(tag, null);
     return (einfo & DomTerm._ELEMENT_KIND_INLINE) == 0;
 }
 
 Terminal.prototype._getOuterBlock = function(node) {
     for (var n = node; n; n = n.parentNode) {
-        if (this.isBlockNode(n))
+        if (Terminal.isBlockNode(n))
             return n;
     }
     return null;
@@ -2868,7 +2868,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
 
 /*
 Terminal.prototype._findHomeLine = function(bufNode) {
-    this._forEachElementIn(bufNode,
+    Terminal._forEachElementIn(bufNode,
                            function(node) {
                                var offset = node.getAttribute('home-line');
                                return offset != null ? node : null;
@@ -3339,7 +3339,6 @@ Terminal.prototype._updateSelected = function() {
         let textBeforeFocus = r.toString();
         let lenBeforeCaret = DomTerm._countCodePoints(textBeforeCaret);
         let lenBeforeFocus = DomTerm._countCodePoints(textBeforeFocus);
-        console.log("updateSelected2 - textBefF:'"+textBeforeFocus+"' len:"+lenBeforeFocus+" befC:'"+textBeforeCaret+"' len:"+lenBeforeCaret+" mov:"+(lenBeforeFocus-lenBeforeCaret));
         let output = "";
         if (lenBeforeCaret < lenBeforeFocus) {
             var moveRight = dt.keyNameToChars("Right");
@@ -3590,7 +3589,7 @@ Terminal.prototype._showHideHandler = function(event) {
             var next = node.nextSibling;
             if (next == null) {
                 var parent = node.parentNode;
-                if (parent == start.parentNode && this.isBlockNode(parent))
+                if (parent == start.parentNode && Terminal.isBlockNode(parent))
                     next = parent.nextSibling;
             }
             node = next;
@@ -3717,7 +3716,7 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete, count = 1) {
         }
     }
     let scanState = { linesCount: 0, todo: count, unit: "char", stopAt: "", wrapText: wrapText };
-    this.scanInRange(range, ! forwards, scanState);
+    Terminal.scanInRange(range, ! forwards, scanState);
     if (! doDelete) {
         let caret = this._caretNode;
         if (this.outputBefore == caret)
@@ -3774,7 +3773,7 @@ Terminal.prototype.setWindowSize = function(numRows, numColumns,
 * The function may safely remove or replace the active node,
 * or change its children.
 */
-Terminal.prototype._forEachElementIn = function(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild) {
+Terminal._forEachElementIn = function(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild, elementExit=null) {
     let starting = true;
     for (var cur = start; ;) {
         if (cur == null || (cur == node && !starting))
@@ -3796,6 +3795,8 @@ Terminal.prototype._forEachElementIn = function(node, func, allNodes=false, back
             cur = next;
         } else {
             for (;;) {
+                if (elementExit && cur instanceof Element)
+                    elementExit(cur);
                 next = sibling;
                 if (next != null) {
                     cur = next;
@@ -6349,7 +6350,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             changed = true; // FIXME needlessly conservative
             start.breakNeeded = true;
             var first;
-            if (this.isBlockNode(start))
+            if (Terminal.isBlockNode(start))
                 first = start.firstChild;
             else {
                 while (start.nextSibling == null)
@@ -6366,7 +6367,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         if (start.breakNeeded) {
             start.breakNeeded = false;
             var first;
-            if (this.isBlockNode(start))
+            if (Terminal.isBlockNode(start))
                 first = start.firstChild;
             else {
                 while (start.nextSibling == null)
@@ -6554,7 +6555,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             fits = true;
         else {
             // FIXME optimize if end of line
-            fits = this.deleteCharactersRight(widthInColumns, false);
+            fits = this.deleteCharactersRight(widthInColumns, true);
             this._adjustStyle();
         }
     }
@@ -6956,11 +6957,42 @@ Terminal._selectionAsHTML = function(sel = window.getSelection()) {
     return hstring;
 }
 
+Terminal._rangeAsText = function(range) {
+    let t = "";
+    function wrapText(tnode, start, end) {
+        let parent = tnode.parentNode;
+        if (parent instanceof Element
+            && parent.classList.contains("input-line"))
+            return;
+        t += tnode.data.substring(start, end);
+    }
+    function elementExit(node) {
+        if (node.getAttribute("line"))
+            t += node.textContent;
+        if (Terminal.isBlockNode(node)
+            && t.length > 0 && t.charCodeAt(t.length-1) != 10)
+            t += '\n';
+    }
+    let scanState = { linesCount: 0, todo: Infinity, unit: "char", stopAt: "",
+                      wrapText: wrapText, elementExit, elementExit };
+    Terminal.scanInRange(range, false, scanState);
+    return t;
+}
+
+Terminal._selectionAsText = function(sel = window.getSelection()) {
+    var hstring = "";
+    for(var i = 0; i < sel.rangeCount; i++) {
+        hstring += Terminal._rangeAsText(sel.getRangeAt(i));
+    }
+    return hstring;
+    //return sel.toString();
+}
+
 Terminal._selectionValue = function(asHTML) {
     var sel = window.getSelection();
     var html = Terminal._selectionAsHTML(sel);
     return asHTML ? { text: html, html: "" }
-    : { text: sel.toString(), html: html };
+    : { text: Terminal._selectionAsText(sel), html: html };
 }
 
 DomTerm.valueToClipboard = function(values) {
@@ -8068,7 +8100,7 @@ Terminal.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
             // Check if we're at start of line
             // Roughly equivalue to: this.outputContainer.offsetLeft
             // - but that causes expensive re-flow
-            for (let p = this.outputContainer; ! this.isBlockNode(p); ) {
+            for (let p = this.outputContainer; ! Terminal.isBlockNode(p); ) {
                 let pp = p.parentNode;
                 if (pp.firstChild != p)
                     return false;
@@ -8617,6 +8649,7 @@ Terminal.prototype._updateAutomaticPrompts = function() {
                 start._widthColumns += w;
             next.lineno = lineno; // MAYBE use attribute (better save/restore)
             next.defaultPattern = defaultPattern;
+            next.classList.add("with-content-value");
             next.setAttribute("value", newPrompt);
         }
     }
@@ -8734,8 +8767,16 @@ DomTerm.editorNonWordChar = function(ch) {
  * If backwards is true: scan backwards, starting from range end;
  * stop at or before range start; update range start if stopped earlier.
  * (I.e. Change end/start position of range if backwards is false/true.)
+ *
+ * state: various options and counters:
+ * state.todo: Infinity, or maximum number of units
+ * state.unit: "char", "word", "line"
+ * state.stopAt: one of "", "line" (stop before moving to different hard line),
+ *   or "visible-line" (stop before moving to different screen line).
+ * state.linesCount: increment for each newline
+ * state.wrapText: function called on each text node
  */
-Terminal.prototype.scanInRange = function(range, backwards, state) {
+Terminal.scanInRange = function(range, backwards, state) {
     let unit = state.unit;
     let doWords = unit == "word";
     let stopAt = state.stopAt;
@@ -8752,7 +8793,6 @@ Terminal.prototype.scanInRange = function(range, backwards, state) {
     let lastNonSkip = lastNode instanceof CharacterData ? 1
         : backwards ? lastNode.childNodes.length - range.startOffset
         : range.endOffset;
-    let caretNode = this._caretNode;
     function fun(node) {
         if (skipFirst > 0) {
             skipFirst--;
@@ -8763,9 +8803,9 @@ Terminal.prototype.scanInRange = function(range, backwards, state) {
                 return null;
             lastNonSkip--;
         }
-        if (node == caretNode)
-            return false;
         if (! (node instanceof Text)) {
+            if (node.nodeName == "SPAN" && node.getAttribute("std") == "caret")
+                return false;
             if (node.nodeName == "SPAN"
                 && node.getAttribute("line") != null) {
                 let stopped = false;
@@ -8836,33 +8876,37 @@ Terminal.prototype.scanInRange = function(range, backwards, state) {
             if (index == dend)
                 return node == lastNode ? null : false;
             let i0 = index;
-            let c = data.charCodeAt(backwards ? --index : index++);
-            let clen = 1;
-            if (backwards ? (index > 0 && c >= 0xdc00 && c <= 0xdfff)
-                : (index < dlen && c >= 0xd800 && c <= 0xdbff)) {
-                let c2 = data.charCodeAt(backwards ? index-1 : index);
-                if (backwards ? (c2 >= 0xd800 && c2 <= 0xdbff)
-                    : (c2 >= 0xdc00 && c2 <= 0xdfff)) {
-                    clen = 2;
-                    if (backwards) index--; else index++;
-                    // c = FIXME
+            let i1 = backwards ? --index : index++;
+            // Optimization: skip character processing if Infinity
+            if (state.todo < Infinity) {
+                let c = data.charCodeAt(i1);
+                let clen = 1;
+                if (backwards ? (index > 0 && c >= 0xdc00 && c <= 0xdfff)
+                    : (index < dlen && c >= 0xd800 && c <= 0xdbff)) {
+                    let c2 = data.charCodeAt(backwards ? index-1 : index);
+                    if (backwards ? (c2 >= 0xd800 && c2 <= 0xdbff)
+                        : (c2 >= 0xdc00 && c2 <= 0xdfff)) {
+                        clen = 2;
+                        if (backwards) index--; else index++;
+                        // c = FIXME
+                    }
                 }
-            }
-            if (doWords) {
-                let sep = DomTerm.editorNonWordChar(String.fromCharCode(c));
-                if (sep && wordCharSeen) {
-                    index = i0;
-                } else {
-                    state.todo++;
+                if (doWords) {
+                    let sep = DomTerm.editorNonWordChar(String.fromCharCode(c));
+                    if (sep && wordCharSeen) {
+                        index = i0;
+                    } else {
+                        state.todo++;
+                    }
+                    wordCharSeen = ! sep;
                 }
-                wordCharSeen = ! sep;
+                state.todo--;
             }
-            state.todo--;
         }
         return false;
     }
-    this._forEachElementIn(range.commonAncestorContainer, fun, true, backwards,
-                           firstNode);
+    Terminal._forEachElementIn(range.commonAncestorContainer, fun,
+                               true, backwards, firstNode, state.elementExit);
 }
 
 Terminal.prototype.deleteSelected = function(toClipboard) {
@@ -8945,7 +8989,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
         if (action == "extend" && sel.isCollapsed)
             sel.collapse(dt._caretNode, 0);
         let scanState = { linesCount: 0, todo: todo, unit: unit, stopAt: stopAt };
-        this.scanInRange(range, backwards, scanState);
+        Terminal.scanInRange(range, backwards, scanState);
         linesCount = scanState.linesCount;
         todo = scanState.todo;
         if (doDelete) {
@@ -8991,7 +9035,7 @@ Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {
     else // focus is selection end
         range.setStart(sel.focusNode, sel.focusOffset);
     let scanState = { linesCount: 0, todo: todo, unit: unit, stopAt: stopAt };
-    this.scanInRange(range, backwards, scanState);
+    Terminal.scanInRange(range, backwards, scanState);
     linesCount = scanState.linesCount;
     todo = scanState.todo;
     let anchorNode = sel.anchorNode
