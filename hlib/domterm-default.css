@@ -28,8 +28,8 @@ div.domterm {
     background-color: var(--background-color);
     color: var(--foreground-color);
     --spacer-color:  #F0F0F8;
-    --input-line-color: #E8E8C0;
-    --input-span-color: #FFFFB8 /* a pale yellow */;
+    --input-line-color: #ECECC8;
+    --input-span-color: #FFFFD0 /* a pale yellow */;
 }
 div.domterm[reverse-video] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
@@ -61,7 +61,7 @@ div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a
 div.domterm-show-info span.editing { font-family: var(--monospace-family) }
 div.input-line { background-color: var(--input-line-color) } /* a very pale yellow */
 span[std="input"] { background-color: var(--input-span-color) } /* a pale yellow */
-span[std="prompt"] { background-color: #E0FFE0 } /* a pale green */
+span[std="prompt"] { background-color: #E8FFE8 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
 div.domterm-show-info {
