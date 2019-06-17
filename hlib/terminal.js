@@ -1735,7 +1735,6 @@ Terminal.prototype._removeCaret = function(normalize=true) {
         if (child instanceof Text) {
             var text = caretNode.nextSibling;
             let sel = document.getSelection();
-            let rc = sel.rangeCount;
             let focusNode = sel.focusNode;
             let anchorNode = sel.anchorNode;
             let focusOffset = sel.focusOffset;
@@ -1758,8 +1757,10 @@ Terminal.prototype._removeCaret = function(normalize=true) {
                 caretNode.removeChild(child);
                 caretNode.parentNode.insertBefore(child, caretNode.nextSibling);
             }
-            sel.setBaseAndExtent(anchorNode, anchorOffset,
-                                 focusNode, focusOffset);
+            if (sel.rangeCount) {
+                sel.setBaseAndExtent(anchorNode, anchorOffset,
+                                     focusNode, focusOffset);
+            }
         }
     }
 }
