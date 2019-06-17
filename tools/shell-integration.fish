@@ -1,5 +1,5 @@
 if status --is-interactive
-  set _fishprompt_aid "fish"%self
+  set _fishprompt_aid "fish"$fish_pid
   set _fishprompt_started 0
   set _fishprompt_executing 0
 
@@ -8,7 +8,7 @@ if status --is-interactive
   function _fishprompt_start --on-event fish_prompt
     echo  _fishprompt_start >>/tmp/flog
   end
- 
+
   function fish_prompt
     set -l last_status $status
     # don't use post-exec, because it is called *before* omitted-newline output
@@ -44,7 +44,7 @@ if status --is-interactive
   if functions -q fish_right_prompt
     functions -c fish_right_prompt _fishprompt_saved_right_prompt
     function fish_right_prompt
-       printf "\033]133;P\007%b\033]133;B\007" (string join "\n" (_fishprompt_saved_right_prompt))
+       printf "\033]133;P;kind=right\007%b\033]133;B\007" (string join "\n" (_fishprompt_saved_right_prompt))
     end
   end
  end
