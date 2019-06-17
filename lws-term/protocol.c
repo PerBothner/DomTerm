@@ -758,7 +758,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         sscanf(data, "%ld", &count);
         client->confirmed_count = count;
         if (((client->sent_count - client->confirmed_count) & MASK28) < 1000
-            && pclient->paused) {
+            && pclient != NULL && pclient->paused) {
 #if USE_RXFLOW
             lws_rx_flow_control(pclient->pty_wsi,
                                 1|LWS_RXFLOW_REASON_FLAG_PROCESS_NOW);
