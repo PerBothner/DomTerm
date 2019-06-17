@@ -7705,6 +7705,7 @@ Terminal.prototype._checkTree = function() {
     for (let i = nlines; --i >= this.homeLine; )
         if (! this._isAnAncestor(this.lineStarts[i], this.initial))
             error("line "+i+" not in initial");
+    let currentLineStart = null;
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
             if (this.currentAbsLine >= 0)
@@ -7720,11 +7721,32 @@ Terminal.prototype._checkTree = function() {
             if (istart < nlines && this.lineStarts[istart] == cur) {
                 if (iend == istart && this.lineEnds[iend] == null)
                     iend++;
+                if (Terminal.isBlockNode(cur)) {
+                    currentLineStart = cur;
+                } else {
+                    if (! this._isAnAncestor(cur, currentLineStart))
+                        error("line start node not in line start block");
+                }
                 istart++;
             } else if (istart + 1 < nlines && this.lineStarts[istart+1] == cur)
                 error("line table out of order - missing line "+istart);
-            if (iend < nlines && this.lineEnds[iend] == cur)
+            if (iend < nlines && this.lineEnds[iend] == cur) {
+                let softFollowingNeeded = cur.getAttribute("line") == "soft";
+                for (let n = cur; ; n = n.parentNode) {
+                    if (! (n instanceof Element)) {
+                        error("line end node not in line start block");
+                        break;
+                    }
+                    if (n == currentLineStart) {
+                        if (softFollowingNeeded)
+                            error("soft line end node at end of block "+cur.getAttribute("id"));
+                        break;
+                    }
+                    softFollowingNeeded = softFollowingNeeded
+                        && n.nextSibling == null;
+                }
                 iend++;
+            }
             if (iend > istart || istart > iend+1)
                 error("line table out of order");
             parent = cur;
