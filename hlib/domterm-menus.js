@@ -111,7 +111,7 @@ DomTerm.createMenus = function(options) {
     const newTabItem = menuItem({label: 'New terminal tab',
                                       accelerator: DomTerm.isMac ? 'Cmd+T' : 'Ctrl+Shift+T',
                                       click: function() {
-                                          DomTermLayout.addTab(DomTerm.focusedTerm);
+                                          DomTerm.newPane(2);
                                       }});
     const newPaneItem = menuItem({label: 'New terminal (right/below)',
                                       accelerator: 'Ctrl+Shift+A Enter',
