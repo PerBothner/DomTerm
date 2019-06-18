@@ -57,7 +57,7 @@ span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
 div.domterm-show-info {
     /*bottom: 0px;*/
-    right: 2px;
+    /*right: 2px;*/
     padding: 1px 4px;
     border: 2px solid blue;
 }

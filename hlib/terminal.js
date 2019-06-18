@@ -2801,10 +2801,19 @@ DomTerm.displayInfoInWidget = function(contents, dt) {
     if (div == null) {
         div = document.createElement("div");
         div.setAttribute("class", "domterm-show-info");
-        dt.topNode.insertBefore(div, dt.topNode.firstChild);
         let top = dt.topNode;
-        div.style["bottom"] = (top.offsetParent.offsetHeight
-                               - (top.offsetTop + top.offsetHeight)) + "px";
+        top.insertBefore(div, top.firstChild);
+        let bottom, right;
+        if (top.offsetParent) {
+            bottom = top.offsetParent.offsetHeight
+                - (top.offsetTop + top.offsetHeight);
+            right = top.offsetParent.offsetWidth
+                - (top.offsetLeft + top.clientWidth);
+        } else {
+            bottom = right = 0;
+        }
+        div.style["bottom"] = bottom + "px";
+        div.style["right"] = right + "px";
         dt._displayInfoWidget = div;
     }
     div.innerHTML = contents;
