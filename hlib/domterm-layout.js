@@ -60,7 +60,7 @@ DomTermLayout.addSibling = function(newItemConfig,
     if (newItemConfig == null)
         newItemConfig = DomTermLayout.newItemConfig;
     else if (typeof newItemConfig == "number")
-        newItemConfig = Object.assign({sessionPid: newItemConfig },
+        newItemConfig = Object.assign({sessionNumber: newItemConfig },
                                       DomTermLayout.newItemConfig);
     if (! DomTermLayout.manager)
         DomTermLayout.initialize();
@@ -88,7 +88,7 @@ DomTermLayout.addTab = function(newItemConfig = null) {
     if (newItemConfig == null)
         newItemConfig = DomTermLayout.newItemConfig;
     else if (typeof newItemConfig == "number")
-        newItemConfig = Object.assign({sessionPid: newItemConfig },
+        newItemConfig = Object.assign({sessionNumber: newItemConfig },
                                       DomTermLayout.newItemConfig);
     if (! DomTermLayout.manager)
         DomTermLayout.initialize();
@@ -200,9 +200,7 @@ DomTermLayout.popoutWindow = function(item, dt = null) {
         if (item.componentName == "domterm") {
             // FIXME item.container._contentElement is <iframe>
             let topNode = item.container._contentElement1;
-            if (topNode.firstChild)
-                topNode = topNode.firstChild;
-            return '{"pid":'+topNode.getAttribute("pid")+'}';
+            return '{"sessionNumber":'+topNode.getAttribute("session-number")+'}';
         } else if (item.componentName == "browser")
             return '{"url":'+JSON.stringify(item.config.url)+'}';
         else
@@ -307,13 +305,13 @@ DomTermLayout.layoutClosed = function(event) {
     DomTermLayout.layoutClose(el, this.parent, true);
 }
 
-DomTermLayout._initTerminal = function(sessionPid, container) {
+DomTermLayout._initTerminal = function(sessionNumber, container) {
     let wrapped;
     if (DomTerm.useIFrame) {
         let url = DomTerm.mainLocation;
-        if (sessionPid)
+        if (sessionNumber)
             url += (url.indexOf('#') >= 0 ? '&' : '#')
-            + "connect-pid="+sessionPid;
+            + "session-number="+sessionNumber;
         wrapped = DomTermLayout.makeIFrameWrapper(url);
         if (container && DomTermLayout._oldFocusedItem == null)
             DomTermLayout._oldFocusedItem = container.parent;
@@ -322,7 +320,7 @@ DomTermLayout._initTerminal = function(sessionPid, container) {
         let el = DomTerm.makeElement(name);
         wrapped = el;
         wrapped.name = name;
-        var query = sessionPid ? "connect-pid="+sessionPid : null;
+        var query = sessionNumber ? "session-number="+sessionNumber : null;
         DTerminal.connectHttp(el, query);
     }
     return wrapped;
@@ -346,7 +344,7 @@ DomTermLayout.initialize = function() {
             lcontent = null;
         } else {
             var config = container._config;
-            wrapped = DomTermLayout._initTerminal(config.sessionPid, container);
+            wrapped = DomTermLayout._initTerminal(config.sessionNumber, container);
             name = wrapped.name;
             container._contentElement1 = wrapped;
         }
@@ -421,16 +419,16 @@ DomTermLayout.initialize = function() {
 
 DomTermLayout.initSaved = function(data) {
     console.log("initSaved "+data);
-    if (data.pid) {
-        DomTermLayout._initTerminal(data.pid, null);
+    if (data.sessionNumber) {
+        DomTermLayout._initTerminal(data.sessionNumber, null);
         } else if (data instanceof Array) {
             var n = data.length;
             DomTermLayout._pendingTerminals = new Array();
             for (var i = 0; i < n; i++) {
                 var w = data[i];
                 var newItemConfig = null;
-                if (w.pid) {
-                    newItemConfig = Object.assign({sessionPid: w.pid },
+                if (w.sessionNumber) {
+                    newItemConfig = Object.assign({sessionNumber: w.sessionNumber }, // FIXME
                                                   DomTermLayout.newItemConfig);
                 } else if (w.url) {
                     newItemConfig = {type: 'component',
@@ -450,8 +448,8 @@ DomTermLayout.initSaved = function(data) {
             n = DomTermLayout._pendingTerminals.length;
             for (var i = 0; i < n; i++) {
                 let el = DomTermLayout._pendingTerminals[i];
-                var pid = el.getAttribute("pid");
-                var query = pid ? "connect-pid="+pid : null;
+                var sessionNumber = el.getAttribute("session-number");
+                var query = pid ? "session-number="+sessionNumber : null;
                 Terminal.connectHttp(el, query);
             }
             DomTermLayout._pendingTerminals = null;

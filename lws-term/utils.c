@@ -220,6 +220,30 @@ url_encode(char *in, int mode)
     return out;
 }
 
+char*const*
+copy_strings(char*const* strs)
+{
+    size_t ndata = 0;
+    size_t nstrs = 0;
+    char*const* s = strs;
+    for (; *s; s++) {
+        nstrs++;
+        ndata += strlen(*s) + 1;
+    }
+    size_t hsize = sizeof(char*) * (nstrs+1);
+    char** r = xmalloc(hsize + ndata);
+    s = strs;
+    char *d = (char*)r  + hsize;
+    char** t = r;
+    for (;*s; s++) {
+        strcpy(d, *s);
+        *t++ = d;
+        d += strlen(d) + 1;
+    }
+    *t = NULL;
+    return (char*const*) r;
+}
+
 static char *executable_path = NULL;
 static int dirname_length;
 

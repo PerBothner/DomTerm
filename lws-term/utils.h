@@ -29,6 +29,8 @@ get_sig(const char *sig_name);
 char *
 base64_encode(const unsigned char *buffer, size_t length);
 
+char*const* copy_strings(char*const* strs);
+
 struct sbuf {
     char *buffer;
     size_t len;

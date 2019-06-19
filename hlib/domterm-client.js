@@ -431,6 +431,9 @@ function handleMessage(event) {
     } else if (data.command=="set-pid") {
         if (iframe)
             iframe.setAttribute("pid", data.args[0]);
+    } else if (data.command=="set-session-number") {
+        if (iframe)
+            iframe.setAttribute("session-number", data.args[0]);
     } else if (data.command=="set-input-mode") { // message to child
         DomTerm.setInputMode(data.args[0]);
     } else if (data.command=="request-save-file") { // message to child
