@@ -62,7 +62,8 @@ extern char git_describe[];
 struct pty_client {
     struct pty_client *next_pty_client;
     int pid;
-    int pty;
+    int pty; // pty master
+    int pty_slave;
     int session_number;
     char *session_name;
     int nrows, ncols;
@@ -89,6 +90,11 @@ struct pty_client {
     size_t preserved_end; // end of valid data in preserved_output
     size_t preserved_size; // allocated size of preserved_output
     long preserved_sent_count;  // sent_count corresponding to preserved_output
+
+    const char *cmd;
+    char*const*argv;
+    const char*cwd;
+    char *const*env;
 };
 
 /** Data specific to a (browser) client connection. */

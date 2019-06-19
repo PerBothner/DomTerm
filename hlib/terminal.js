@@ -4439,8 +4439,12 @@ Terminal.prototype.setSessionName = function(title) {
 }
 
 Terminal.prototype.setSessionNumber = function(snumber, unique, wnumber) {
+    console.log("setSessionNumber "+snumber);
     this.sstate.sessionNumber = snumber;
     this.topNode.setAttribute("session-number", snumber);
+    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+        DomTerm.sendParentMessage("set-session-number", snumber);
+    }
     this.sstate.sessionNameUnique = unique;
     this.windowNumber = wnumber;
     this.updateWindowTitle();
@@ -7591,7 +7595,6 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
         DomTerm._handleOutputData(wt, evt.data);
     }
     wsocket.onopen = function(e) {
-        wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
         if (DomTerm.useXtermJs && window.Terminal != undefined) {
             DomTerm.initXtermJs(wt, topNode);
             DomTerm.setFocus(wt, "N");
@@ -7600,6 +7603,7 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
                 topNode = DomTerm.makeElement(name, topNode);
             wt.initializeTerminal(topNode);
         }
+        wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
     };
 }
 
