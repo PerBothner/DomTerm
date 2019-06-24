@@ -1107,8 +1107,18 @@ class DTParser {
             case 15:
                 // FIXME combine new line with previous line(s)
                 // into a single input-line element.
-                var editmode = this.getParameter(2, 0); // use ...
-                term.startInput(false, this.getParameter(1, 1));
+                term.startInput(false, []);
+                if (term.outputContainer.classList.contains("input-line")) {
+                    var editmode = this.getParameter(1, -1);
+                    if (editmode < 0 &&
+                        ! term.outputContainer.getAttribute("click-move"))
+                        editmode = 1;
+                    if (editmode > 0) {
+                        term.outputContainer.setAttribute("click-move",
+                                                          editmode > 1 ? "multi"
+                                                          : "line");
+                    }
+                }
                 break;
             case 16:
                 var hider = term._createSpanNode();
@@ -1826,7 +1836,6 @@ class DTParser {
                 term.editorContinueInput();
             break;
         case 133: // iTerm2/FinalTerm shell-integration
-            let ch0 = text.charCodeAt(0);
             function splitOptions(text) { // FIXME move elsewhere
                 let options = new Array();
                 let start = 0;
@@ -1842,49 +1851,42 @@ class DTParser {
                 }
                 return options;
             }
-            function namedOption(options, name, defValue=null) {
-                const n = options.length;
-                let namex = name + "=";
-                for (let i = 0; i < n; i++) {
-                    const t = options[i];
-                    if (t.startsWith(namex))
-                        return t.substring(namex.length);
-                }
-                return defValue;
-            }
+
+            let ch0 = text.charCodeAt(0);
             let options = splitOptions(text.substring(1));
             let aid;
             switch (ch0) {
             case 65: // 'A' - FTCS_PROMPT
             case 78: // 'N'
                 term.freshLine();
-                aid = namedOption(options, "aid", "");
+                aid = Terminal.namedOptionFromArray(options, "aid=", "");
                 if (ch0 == 78)
                     term.endCommandGroup(aid, true);
                 // In case of fish "omitted newline" hack
                 term._clearWrap(term.getAbsCursorLine()-1);
-                term.startCommandGroup(aid, 1);
-                term.startPrompt(false);
+                term.startCommandGroup(aid, 1, options);
+                term.startPrompt(false, options);
                 break;
             case 66: // 'B' FTCS_COMMAND_START like CSI 15u
             case 73: // 'I'
-                term.startInput(ch0==66, 1);
+                term.startInput(ch0==66, options);
                 break;
             case 67: // 'C'
                 term.startOutput();
                 term.sstate.stayInInputMode = undefined;
                 break;
             case 80: // 'P'
-                term.startPrompt(true);
+                term.startPrompt(true, options);
                 break;
             case 68: // 'D'
             case 90: // 'Z'
                 let exitCode = parseInt(ch0 == 68
                                         ? options.length > 0 &&options[0]
-                                        : namedOption(options, "exitcode"),
+                                        : Terminal.namedOptionFromArray(options, "exitcode="),
                                         10);
                 let oldGroup = term.currentCommandGroup();
-                aid = ch0 == 68 ? null : namedOption(options, "aid", "");
+                aid = ch0 == 68 ? null
+                    : Terminal.namedOptionFromArray(options, "aid=", "");
                 term.endCommandGroup(aid, false);
                 term.sstate.stayInInputMode = undefined;
                 if (exitCode && oldGroup) { //not NaN and not 0

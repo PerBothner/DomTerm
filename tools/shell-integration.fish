@@ -19,7 +19,7 @@ if status --is-interactive
       printf "\033]133;Z;aid=%s\007" $_fishprompt_aid
     end
     set _fishprompt_executing 0
-    printf "\033]133;A;aid=%s;click-move=line\007" $_fishprompt_aid
+    printf "\033]133;A;aid=%s;click-move=multi\007" $_fishprompt_aid
     printf "%b\033]133;B\007" (string join "\n" (_fishprompt_saved_prompt))
     set _fishprompt_started 1
   end
