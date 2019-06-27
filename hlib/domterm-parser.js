@@ -23,8 +23,9 @@ class DTParser {
             return;
         if (term.verbosity >= 2) {
             //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
-            if (str.length > 200)
-                term.log("insertString "+JSON.stringify(str.substring(0,200))+"... state:"+this.controlSequenceState/*+" ms:"+ms*/);
+            let maxLog = 200;
+            if (str.length > maxLog)
+                term.log("insertString "+JSON.stringify(str.substring(0,maxLog))+"... state:"+this.controlSequenceState/*+" ms:"+ms*/);
             else
                 term.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
         }
