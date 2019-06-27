@@ -639,25 +639,25 @@ class DTParser {
         if (last != 109 /*'m'*/)
             term._breakDeferredLines();
         switch (last) {
-        case 64 /*'@'*/:
+        case 64 /*'@'*/: // ICH - insert character
             var saveInsertMode = term.sstate.insertMode;
             term.sstate.insertMode = true;
-            param = this.getParameter(0, 1);
+            param = this.getParameterOneIfDefault(0);
             term.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param, param);
             term.cursorLeft(param, false);
             term.sstate.insertMode = saveInsertMode;
             break;
-        case 65 /*'A'*/: // cursor up
-            term.cursorDown(- this.getParameter(0, 1));
+        case 65 /*'A'*/: // CUU - cursor up
+            term.cursorDown(- this.getParameterOneIfDefault(0));
             break;
-        case 66 /*'B'*/: // cursor down
-            term.cursorDown(this.getParameter(0, 1));
+        case 66 /*'B'*/: // CUD - cursor down
+            term.cursorDown(this.getParameterOneIfDefault(0));
             break;
-        case 67 /*'C'*/:
-            term.cursorRight(this.getParameter(0, 1));
+        case 67 /*'C'*/: // CUF
+            term.cursorRight(this.getParameterOneIfDefault(0));
             break;
-        case 68 /*'D'*/:
-            term.cursorLeft(this.getParameter(0, 1),
+        case 68 /*'D'*/: // CUB
+            term.cursorLeft(this.getParameterOneIfDefault(0),
                             (term.sstate.wraparoundMode & 3) == 3);
             break;
         case 69 /*'E'*/: // Cursor Next Line (CNL)
@@ -674,16 +674,17 @@ class DTParser {
         case 96 /*'`'*/:
             var line = term.getCursorLine();
             term.cursorSet(term.sstate.originMode ? line - term._regionTop : line,
-                           this.getParameter(0, 1)-1,
+                           this.getParameterOneIfDefault(0)-1,
                            term.sstate.originMode);
             break;
         case 102 /*'f'*/:
         case 72 /*'H'*/: // CUP cursor position
-            term.cursorSet(this.getParameter(0, 1)-1, this.getParameter(1, 1)-1,
+            term.cursorSet(this.getParameterOneIfDefault(0)-1,
+                           this.getParameterOneIfDefault(1)-1,
                            term.sstate.originMode);
             break;
         case 73 /*'I'*/: // CHT Cursor Forward Tabulation
-            for (var n = this.getParameter(0, 1);
+            for (var n = this.getParameterOneIfDefault(0);
                  --n >= 0 && term.tabToNextStop(false); ) {
             }
             break;
@@ -697,16 +698,16 @@ class DTParser {
             if (param >= 1)
                 term.eraseLineLeft();
             break;
-        case 76 /*'L'*/: // Insert lines
+        case 76 /*'L'*/: // IL - Insert lines
             term.columnSet(term._regionLeft);
-            term.insertLines(this.getParameter(0, 1));
+            term.insertLines(this.getParameterOneIfDefault(0));
             break;
-        case 77 /*'M'*/: // Delete lines
+        case 77 /*'M'*/: // DL - Delete lines
             term.columnSet(term._regionLeft);
-            term.deleteLines(this.getParameter(0, 1));
+            term.deleteLines(this.getParameterOneIfDefault(0));
             break;
-        case 80 /*'P'*/: // Delete characters
-            term.deleteCharactersRight(this.getParameter(0, 1));
+        case 80 /*'P'*/: // DCH - Delete characters
+            term.deleteCharactersRight(this.getParameterOneIfDefault(0));
             term._clearWrap();
             term._eraseLineEnd();
             break;
@@ -721,18 +722,18 @@ class DTParser {
             term.scrollForward(this.getParameter(0, 1));
             break;
         case 84 /*'T'*/:
-            param = this.getParameter(0, 1);
             /* FIXME Initiate mouse tracking.
                if (curNumParameter >= 5) { ... }
             */
+            param = this.getParameterOneIfDefault(0);
             term.scrollReverse(param);
             break;
         case 88 /*'X'*/: // Erase character (ECH)
-            param = this.getParameter(0, 1);
+            param = this.getParameterOneIfDefault(0);
             term.eraseCharactersRight(param);
             break;
         case 90 /*'Z'*/: // CBT Cursor Backward Tabulation
-            for (var n = this.getParameter(0, 1); --n >= 0; )
+            for (var n = this.getParameterOneIfDefault(0); --n >= 0; )
                 term.tabToPrevStop();
             break;
         case 97 /*'a'*/: // HPR
@@ -740,7 +741,7 @@ class DTParser {
             var column = term.getCursorColumn();
             term.cursorSet(term.sstate.originMode ? line - term._regionTop : line,
                            term.sstate.originMode ? column - term._regionLeft : column
-                           + this.getParameter(0, 1),
+                           + this.getParameterOneIfDefault(0),
                            term.sstate.originMode);
             break;
         case 98 /*'b'*/: // Repeat the preceding graphic character (REP)
@@ -788,7 +789,7 @@ class DTParser {
             break;
         case 100 /*'d'*/: // VPA Line Position Absolute
             var col = term.getCursorColumn();
-            term.cursorSet(this.getParameter(0, 1)-1,
+            term.cursorSet(this.getParameterOneIfDefault(0)-1,
                            term.sstate.originMode ? col - term._regionLeft : col,
                            term.sstate.originMode);
             break;
@@ -796,7 +797,7 @@ class DTParser {
             var line = term.getCursorLine();
             var column = term.getCursorColumn();
             term.cursorSet(term.sstate.originMode ? line - term._regionTop : line
-                           + this.getParameter(0, 1),
+                           + this.getParameterOneIfDefault(0),
                            term.sstate.originMode ? column - term._regionLeft : column,
                            term.sstate.originMode);
         case 103 /*'g'*/: // TBC Tab Clear
@@ -1931,6 +1932,11 @@ class DTParser {
         var arr = this.parameters;
         return arr.length > index && arr[index] != null ? arr[index]
             : defaultValue;
+    }
+
+    /* Like getParameter(index,1) but missing *or* 0 returns 1. */
+    getParameterOneIfDefault(index) {
+        return this.parameters[index] || 1;
     }
 }
 
