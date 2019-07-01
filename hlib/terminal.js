@@ -1344,7 +1344,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     tcol = Number(st.substring(9));
                 }
                 if (! isNaN(tcol) && tcol > 0) {
-                    tcol = (column / tcol) * tcol + tcol;
+                    tcol = Math.trunc(column / tcol) * tcol + tcol;
                     if (goalColumn >= tcol) {
                         column = tcol;
                         handled = true;
@@ -1455,7 +1455,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             // If there is a child, go the the first child next.
             var ch;
             if (current instanceof Node) {
-                if (current instanceof Element) {
+                if (current instanceof Element && !handled) {
                     var valueAttr = current.getAttribute("value");
                     if (this.isObjectElement(current))
                         column += 1;
@@ -3757,7 +3757,7 @@ Terminal.prototype.updateCursorCache = function() {
                             }
                         }
                         if (tcol)
-                            col = (col / tcol) * tcol + tcol;
+                            col = Math.trunc(col / tcol) * tcol + tcol;
                         else
                             col = this.nextTabCol(col);
                     } else if (ch == 10 || ch == 13 || ch == 12) {
