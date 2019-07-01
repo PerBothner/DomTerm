@@ -4054,12 +4054,8 @@ Terminal.prototype.eraseDisplay = function(param) {
         var count = this.lineStarts.length-startLine;
         if (param == 0) {
             this.eraseLineRight();
-            count--;
-            while (--count >= 0) {
-                startLine++;
-                this.moveToAbs(startLine, 0, false);
-                this.eraseLineRight();
-            }
+            if (--count > 0)
+                this.deleteLinesIgnoreScroll(count, startLine+1);
         }
         else if (count > 0) {
             this.moveToAbs(startLine, 0, false);
