@@ -713,12 +713,22 @@ Terminal.prototype.close = function() {
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]) {
     this.sstate.inInputMode = false;
     const container = this.outputContainer;
-    const commandGroup = document.createElement("div");
-    commandGroup.setAttribute("class", "command-group");
-    if (parentKey)
-        commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
-    container.parentNode.insertBefore(commandGroup, container);
-    commandGroup.appendChild(container);
+    let commandGroup;
+    let repaint = Terminal.namedOptionFromArray(options, "repaint", null) == "";
+    if (repaint && (commandGroup = this.currentCommandGroup())) {
+        let oldLines = this.lineEnds.length;
+        this.outputContainer = commandGroup.firstChild;
+        this.outputBefore = this.outputContainer.firstChild;
+        this.resetCursorCache();
+        this.eraseDisplay(0);
+    } else {
+        commandGroup = document.createElement("div");
+        commandGroup.setAttribute("class", "command-group");
+        if (parentKey)
+            commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
+        container.parentNode.insertBefore(commandGroup, container);
+        commandGroup.appendChild(container);
+    }
     let clickMove = Terminal.namedOptionFromArray(options, "click-move=");
     if (clickMove)
         container.setAttribute("click-move", clickMove);
@@ -1664,6 +1674,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
            || (current instanceof Element
                && current.nodeName === "SPAN"
                && ! current.getAttribute("line")
+               //&& ! tab
                //&& ! current.classList.contains("tail-hider")
                && current.getAttribute("std") !== "prompt")) {
         // not: std=="prompt"

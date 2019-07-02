@@ -11,15 +11,18 @@ if status --is-interactive
 
   function fish_prompt
     set -l last_status $status
+    set -l xargs ""
     # don't use post-exec, because it is called *before* omitted-newline output
     if [ "$_fishprompt_executing" = "1" ]
       printf "\033]133;Z;exitcode=%s;aid=%s\007" $last_status $_fishprompt_aid
+    #FIXME How to distinguish ctrl-C or other input cancelling from repaint?
+    #else if [ "$_fishprompt_canceled" = "1" ]
+    #  printf "\033]133;Z;aid=%s\007" $_fishprompt_aid
     else if [ "$_fishprompt_started" = "1" ]
-      # ctrl-C or other input cancelling
-      printf "\033]133;Z;aid=%s\007" $_fishprompt_aid
+      set xargs "repaint;"
     end
     set _fishprompt_executing 0
-    printf "\033]133;A;aid=%s;click-move=multi\007" $_fishprompt_aid
+    printf "\033]133;A;%said=%s;click-move=multi\007" $xargs $_fishprompt_aid
     printf "%b\033]133;B\007" (string join "\n" (_fishprompt_saved_prompt))
     set _fishprompt_started 1
   end
