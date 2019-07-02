@@ -2287,8 +2287,10 @@ Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getA
         this._clearWrap(absLine+count-1);
         end = this.lineStarts[absLine+count];
     }
-    var cur = start;
     var parent = start.parentNode;
+    let cur = absLine > 0 && start == this.lineEnds[absLine-1]
+        ? start.nextSibling
+        : start;
     for (;;) {
         if (cur == null) {
             while (parent != null && parent.nextSibling == null)
