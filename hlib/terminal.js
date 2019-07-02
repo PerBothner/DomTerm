@@ -2733,7 +2733,7 @@ Terminal.prototype.resizeHandler = function() {
         dt.resetCursorCache();
     }
     dt.homeLine = dt._computeHomeLine(home_node, home_offset,
-                                     dt.usingAlternateScreenBuffer);
+                                      dt.usingAlternateScreenBuffer);
     dt._checkSpacer();
     dt._scrollIfNeeded();
 }
@@ -6459,8 +6459,6 @@ Terminal.prototype.popFromElement = function() {
  */
 Terminal.prototype.insertNode = function (node) {
     this._fixOutputPosition();
-    if (this.outputBefore != null && this.outputBefore.parentNode != this.outputContainer)
-        debuffer;
     this.outputContainer.insertBefore(node, this.outputBefore);
 };
 
