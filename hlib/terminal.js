@@ -2618,9 +2618,9 @@ Terminal.prototype._createPreNode = function() {
     return n;
 };
 
-Terminal.prototype._getOuterPre = function(node) {
+Terminal.prototype._getOuterPre = function(node, className = "domterm-pre") {
     for (var v = node; v != null && v != this.topNode; v = v.parentNode) {
-        if (v instanceof Element && v.classList.contains("domterm-pre"))
+        if (v instanceof Element && v.classList.contains(className))
             return v;
     }
     return null;
