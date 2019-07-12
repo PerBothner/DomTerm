@@ -791,7 +791,8 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
             cur = pnext;
             parent = pparent;
         }
-        if (this.outputContainer.firstChild == null) {
+        if (this.outputContainer.parentNode !== null
+            && this.outputContainer.firstChild == null) {
             this.outputContainer.parentNode.removeChild(this.outputContainer);
         }
         if (preNode.firstChild instanceof Element
