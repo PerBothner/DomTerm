@@ -831,7 +831,7 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
 // For debugging (may be overridden)
 Terminal.prototype.log = function(str) {
     // JSON.stringify encodes escape as "\\u001b" which is hard to read.
-    str = str.replace(/\\u001b/g, "\\e");
+    str = str.replace(/\\u001b/g, "\\e").replace(/[\u007f]/g, "\\x7f");
     console.log(str);
 };
 
