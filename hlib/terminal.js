@@ -6855,9 +6855,10 @@ Terminal.prototype._updateRemote = function(input, extraText="") {
     let deleteAfter = countCp(remoteAfter.substring(0, remoteAfter.length-sharedAfter));
     let afterCount = countCp(localAfter.substring(0, localAfter.length-sharedAfter));
     let report =
-        (deleteBefore + deleteAfter == 0 ? ""
-         : "\b".repeat(deleteBefore) + "\x7F".repeat(deleteAfter))
-    ;
+        (deleteBefore == 0 ? "" :
+         this.keyNameToChars("Backspace").repeat(deleteBefore)) +
+        (deleteAfter == 0 ? "" :
+         this.keyNameToChars("Delete").repeat(deleteAfter));
     report += this._maybeBracketed(localText.substring(sharedBefore, localText.length-sharedAfter));
     if (afterCount > 0) {
         report += this.keyNameToChars("Left").repeat(afterCount);
@@ -9059,7 +9060,7 @@ Terminal.prototype.deleteSelected = function(toClipboard) {
             let forwards = sr.endContainer === sel.anchorNode;
             let count = rstring.length;
             this._editPendingInput(forwards, true, count);
-            this.processInputCharacters((forwards ? "\x7F" : "\b").repeat(count));
+            this.processInputCharacters(this.keyNameToChars(forwards ? "Delete" : "Backspace").repeat(count));
         }
     }
     if (toClipboard)
