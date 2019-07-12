@@ -2926,7 +2926,7 @@ Terminal.prototype.resizeHandler = function() {
     var home_node = dt.lineStarts[dt.homeLine - home_offset];
     if (dt.availWidth != oldWidth && dt.availWidth > 0) {
         dt._removeCaret();
-        dt._breakAllLines();
+        dt._breakAllLines(-2);
         dt._restoreSaveLastLine();
         dt.resetCursorCache();
     }
@@ -5969,18 +5969,20 @@ Terminal.prototype._adjustLines = function(startLine, action) {
 
 // Remove existing soft line breaks.
 // FIXME use _adjustLines
-Terminal.prototype._unbreakLines = function(startLine, single=false) {
+Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
     var delta = 0;
     var prevLine = this.lineStarts[startLine];
     var skipRest = false;
     for (var line = startLine+1;  line < this.lineStarts.length;  line++) {
         var lineStart = this.lineStarts[line];
+        if (lineStart === stopLine)
+            skipRest = true;
         if (delta > 0) {
             this.lineStarts[line-delta] = this.lineStarts[line];
             this.lineEnds[line-delta-1] = this.lineEnds[line-1];
         }
         let lineAttr = lineStart.getAttribute("line");
-        if (! this.isSpanNode(lineStart) || ! lineAttr || skipRest) {
+        if (skipRest || ! this.isSpanNode(lineStart) || ! lineAttr) {
             if (single && line > startLine+1) {
                 if (delta == 0)
                     break;
@@ -6052,7 +6054,14 @@ Terminal.prototype._insertIntoLines = function(el, line) {
     }
 }
 
+/** Break lines starting with startLine.
+ * startLine == -1 means break all lines.
+ * startLine == -2 means break all lines until current input line.
+ */
 Terminal.prototype._breakAllLines = function(startLine = -1) {
+    if (this.verbosity >= 3)
+        this.log("_breakAllLines startLine:"+startLine
+                 +" cols:"+this.numColumns);
     // The indentation array is a stack of the following:
     // - a <span> node containing pre-line prefixes; or
     // - an absolute x-position (in pixels)
@@ -6429,7 +6438,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         return end != null && end.offsetLeft > dt.availWidth;
     }
 
+    let firstInputLine = null;
     if (startLine < 0) {
+        if (startLine == -2)
+            firstInputLine = this._getOuterPre(this.outputContainer, "input-line");
         startLine = 0;
         if (this.usingAlternateScreenBuffer) {
             if (this.initial && this.initial.saveLastLine >= 0) // paranoia
@@ -6439,10 +6451,12 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         }
     }
 
-    var changed = this._unbreakLines(startLine);
+    var changed = this._unbreakLines(startLine, false, firstInputLine);
 
     for (line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
+        if (start == firstInputLine)
+            break;
         if (start.classList.contains("domterm-opaque"))
             continue;
         var end = this.lineEnds[line];
@@ -8852,7 +8866,7 @@ Terminal.prototype.editorDeleteRange = function(range, toClipboard,
     range.deleteContents();
     range.commonAncestorContainer.normalize();
     let lineNum = this.getAbsCursorLine();
-    this._unbreakLines(lineNum, true);
+    this._unbreakLines(lineNum, true, null);
     let line = this.lineStarts[lineNum];
     line._widthColumns -= this.strWidthInContext(str, line);
     if (linesCount != 0)
