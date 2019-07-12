@@ -8899,7 +8899,7 @@ Terminal.scanInRange = function(range, backwards, state) {
     let lastOffset = backwards ?  range.startOffset : range.endOffset;
     let stopNode = null;
     if (! (lastNode instanceof CharacterData)) {
-        let lastChildren = lastNode.children;
+        let lastChildren = lastNode.childNodes;
         // possibly undefined if at start/beginning of container
         stopNode = lastChildren[backwards ? lastOffset-1 : lastOffset];
     }
