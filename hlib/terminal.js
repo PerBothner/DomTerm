@@ -8943,7 +8943,7 @@ Terminal.scanInRange = function(range, backwards, state) {
         */
         if (! (node instanceof Text)) {
             if (node.nodeName == "SPAN" && node.getAttribute("std") == "caret")
-                return false;
+                return true;
             if (node.nodeName == "SPAN"
                 && node.getAttribute("line") != null) {
                 let stopped = false;
