@@ -2,6 +2,7 @@ if status --is-interactive
   set _fishprompt_aid "fish"$fish_pid
   set _fishprompt_started 0
   set _fishprompt_executing 0
+  set _fishprompt_postexec 0
 
   functions -c fish_prompt _fishprompt_saved_prompt
  
@@ -13,11 +14,8 @@ if status --is-interactive
     set -l last_status $status
     set -l xargs ""
     # don't use post-exec, because it is called *before* omitted-newline output
-    if [ "$_fishprompt_executing" = "1" ]
+    if [ "$_fishprompt_postexec" = "1" ]
       printf "\033]133;Z;exitcode=%s;aid=%s\007" $last_status $_fishprompt_aid
-    #FIXME How to distinguish ctrl-C or other input cancelling from repaint?
-    #else if [ "$_fishprompt_canceled" = "1" ]
-    #  printf "\033]133;Z;aid=%s\007" $_fishprompt_aid
     else if [ "$_fishprompt_started" = "1" ]
       set xargs "repaint;"
     end
@@ -25,6 +23,7 @@ if status --is-interactive
     printf "\033]133;A;%said=%s;click-move=multi\007" $xargs $_fishprompt_aid
     printf "%b\033]133;B\007" (string join "\n" (_fishprompt_saved_prompt))
     set _fishprompt_started 1
+    set _fishprompt_postexec 0
   end
 
   #function _fishprompt_not_found --on-event fish_command_not_found
@@ -36,6 +35,18 @@ if status --is-interactive
     end
     set _fishprompt_started 0
     set _fishprompt_executing 1
+  end
+
+  function _fishprompt_postexec --on-event fish_postexec
+     set _fishprompt_postexec 1
+  end
+
+  functions -c __fish_cancel_commandline _fishprompt_saved_cancel
+  function __fish_cancel_commandline
+    _fishprompt_saved_cancel $argv
+    printf "\033]133;Z;cancel;aid=%s\007" $_fishprompt_aid
+    set _fishprompt_started 0
+    set _fishprompt_postexec 0
   end
 
   function _fishprompt_exit --on-process %self

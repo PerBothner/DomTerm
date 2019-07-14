@@ -715,13 +715,14 @@ Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]
     const container = this.outputContainer;
     let commandGroup;
     let repaint = Terminal.namedOptionFromArray(options, "repaint", null) == "";
-    if (repaint && (commandGroup = this.currentCommandGroup())) {
-        let oldLines = this.lineEnds.length;
+    if (repaint
+        && (commandGroup = this.currentCommandGroup(this.lineStarts[this.lineEnds.length-1]))) {
         this.outputContainer = commandGroup.firstChild;
         this.outputBefore = this.outputContainer.firstChild;
         this.resetCursorCache();
         this.eraseDisplay(0);
-    } else {
+    }
+    if (! commandGroup) {
         commandGroup = document.createElement("div");
         commandGroup.setAttribute("class", "command-group");
         if (parentKey)
@@ -738,7 +739,6 @@ Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]
 Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
     this.sstate.inInputMode = false;
     var oldGroup = this.currentCommandGroup();
-    var oldOutput = this.currentCommandOutput();
     let prevGroup = oldGroup;
     for (let p = oldGroup; ;  p = p.parentNode) {
         if (! (p instanceof Element)) {
@@ -766,10 +766,16 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
             prevGroup = p;
         }
     }
+    this.popCommandGroup(oldGroup);
+}
+
+Terminal.prototype.popCommandGroup = function(oldGroup) {
+    let oldOutput;
     if (oldGroup && ! this._isAnAncestor(this.outputContainer, oldGroup)) {
         oldGroup = null;
         oldOutput = null;
-    }
+    } else
+        oldOutput = this.currentCommandOutput();
     if (oldGroup) {
         var cur = this.outputBefore;
         var parent = this.outputContainer;
