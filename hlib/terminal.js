@@ -3774,17 +3774,22 @@ DomTerm._isPendingSpan = function(node) {
         && node.classList.contains("pending");
 }
 
-Terminal.prototype._editPendingInput = function(forwards, doDelete, count = 1) {
+Terminal.prototype._editPendingInput = function(forwards, doDelete,
+                                                count = 1, range = null) {
     this._restoreCaretNode();
     this._removeCaret();
     let block = this._getOuterBlock(this._caretNode);
-    let range = document.createRange();
-    if (! forwards)
-        range.setEndBefore(this._caretNode);
-    else
-        range.setStartAfter(this._caretNode);
+    if (range === null) {
+        range = document.createRange();
+        if (! forwards)
+            range.setEndBefore(this._caretNode);
+        else
+            range.setStartAfter(this._caretNode);
+    }
     let dt = this;
     function wrapText(node, start, end) {
+        if (start === end)
+            return;
         let parent = node.parentNode;
         let dlen = node.data.length;
         if (! DomTerm._isPendingSpan(parent)) {
@@ -9077,7 +9082,7 @@ Terminal.prototype.deleteSelected = function(toClipboard) {
         else {
             let forwards = sr.endContainer === sel.anchorNode;
             let count = rstring.length;
-            this._editPendingInput(forwards, true, count);
+            this._editPendingInput(forwards, true, Infinity, r);
             this.processInputCharacters(this.keyNameToChars(forwards ? "Delete" : "Backspace").repeat(count));
         }
     }
