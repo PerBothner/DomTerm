@@ -2831,7 +2831,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
-        //console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+"'"+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
+        //console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
         let focusPre = dt._getOuterPre(sel.focusNode);
         if (dt._pendingSelected == 0)
             dt._updateSelected();
@@ -3447,7 +3447,10 @@ Terminal.prototype._updateSelected = function() {
                     this.outputContainer = dt._caretNode.nextSibling;
                 }
             }
-            sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset, dt._caretNode, 0);
+            if (point)
+                sel.removeAllRanges();
+            else
+                sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset, dt._caretNode, 0);
         }
     }
 }
