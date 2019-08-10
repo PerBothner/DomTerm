@@ -497,7 +497,7 @@ int status_action(int argc, char** argv, const char*cwd,
             fprintf(out, "session#: %d, ", pclient->session_number);
             fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
             if (pclient->session_name != NULL)
-              fprintf(out, ", name: %s\n", pclient->session_name); // FIXME-quote?
+              fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
             if (pclient->paused)
                 fprintf(out, ", paused");
             fprintf(out, "\n");
