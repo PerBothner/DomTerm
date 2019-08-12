@@ -306,6 +306,8 @@ create_pclient(const char *cmd, char*const*argv,
         lwsl_err("openpty\n");
         return NULL;
     }
+    fcntl(master, F_SETFD, FD_CLOEXEC);
+    fcntl(slave, F_SETFD, FD_CLOEXEC);
 #if USE_PTY_PACKET_MODE
     if (! (opts->tty_packet_mode
            && strcmp(opts->tty_packet_mode, "no") == 0)) {
@@ -396,7 +398,6 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
             pty_destroy(pclient); // ???
             break;
     case 0: /* child */
-            close(master);
             if (login_tty(slave))
                 _exit(1);
             if (cwd == NULL || chdir(cwd) != 0) {
