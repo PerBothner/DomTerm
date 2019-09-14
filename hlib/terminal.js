@@ -3457,11 +3457,11 @@ Terminal.prototype._updateSelected = function() {
                     this.outputContainer = dt._caretNode.nextSibling;
                 }
             }
-            if (point)
-                sel.removeAllRanges();
-            else
+            if (! point)
                 sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset, dt._caretNode, 0);
         }
+        if (point)
+            sel.removeAllRanges();
     }
 }
 Terminal.prototype._mouseHandler = function(ev) {
