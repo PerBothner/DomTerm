@@ -526,6 +526,10 @@ Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
                         "blinking-bar", "bar", "native" ];
 Terminal.DEFAULT_CARET_STYLE = 1; // blinking-block
 Terminal.NATIVE_CARET_STYLE = Terminal.caretStyles.indexOf("native");
+Terminal.BELL_TIMEOUT = 400;
+/** On receiving BEL (ctrl-G) display this text in info widget. */
+Terminal.BELL_TEXT = "BELL!";
+/** Length of time to display BELL_TEXT. */
 Terminal.INFO_TIMEOUT = 800;
 
 DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
@@ -4386,7 +4390,8 @@ Terminal.prototype.color256 = function(u) {
 };
 
 Terminal.prototype.handleBell = function() {
-    // Do nothing, for now.
+    if (Terminal.BELL_TEXT && Terminal.BELL_TIMEOUT)
+        this._displayInfoWithTimeout(Terminal.BELL_TEXT, Terminal.BELL_TIMEOUT);
 };
 
 DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
