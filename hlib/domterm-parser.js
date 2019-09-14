@@ -582,13 +582,13 @@ class DTParser {
                         let ldelta = 0;
                         let rdelta = 0;
                         switch (ch) {
-                        case DTParser._PENDING_LEFT:
+                        case Terminal._PENDING_LEFT:
                             ldelta = -1; rdelta = -1; break;
-                        case DTParser._PENDING_RIGHT:
+                        case Terminal._PENDING_RIGHT:
                             ldelta = 1; rdelta = 1; break;
-                        case DTParser._PENDING_LEFT+DTParser._PENDING_DELETE:
+                        case Terminal._PENDING_LEFT+Terminal._PENDING_DELETE:
                             ldelta = -1; rdelta = 0; break;
-                        case DTParser._PENDING_RIGHT+DTParser._PENDING_DELETE:
+                        case Terminal._PENDING_RIGHT+Terminal._PENDING_DELETE:
                             ldelta = 0; rdelta = 1; break;
                         }
                         text = text.substring(0, index+ldelta) + text.substring(index+rdelta);
@@ -611,8 +611,8 @@ class DTParser {
                             term._addPendingInput(pendingTail.substring(i, j));
                             i = j;
                         } else {
-                            let doDelete = (ch & DTParser._PENDING_DELETE) != 0;
-                            let forwards = (ch & DTParser._PENDING_FORWARDS) != 0;
+                            let doDelete = (ch & Terminal._PENDING_DELETE) != 0;
+                            let forwards = (ch & Terminal._PENDING_FORWARDS) != 0;
                             term._editPendingInput(forwards, doDelete);
                             i++;
                         }
