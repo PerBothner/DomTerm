@@ -3595,13 +3595,13 @@ This mode is useful when the input is a pipe or some other non-tty stream.
 @item @code{"\e[81u\n"}
 Requent to send the state of the window as a @code{WINDOW-CONTENTS} response.
 
-@item @code{"\e[88;"} @var{object} @code{"\a"}
+@item @code{"\e]88;"} @var{object} @code{"\a"}
 Change various properties of the internal DomTerm object,
 based on properties of @var{object}.
 For example to change the character used hide characters
 in @ref{password-fields,password fields} to ``bullet'' you can do:
 @example
-echo -en '\e[88;@{"passwordHideChar": "\\u2022"@}\a'
+echo -en '\e]88;@{"passwordHideChar": "\\u2022"@}\a'
 @end example
 Allowed properties include:
 @code{passwordHideChar}, @code{passwordShowCharTimeout},
