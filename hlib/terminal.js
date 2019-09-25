@@ -6836,7 +6836,10 @@ Terminal.prototype.processEnter = function() {
     var text = passwordField ? this.sstate.hiddenText
         : this.grabInput(this._inputLine);
     this.editorMoveHomeOrEnd(true);
-    if (! passwordField)
+    if (passwordField)
+        this.reportText(text, this._clientPtyExtProc ? "\n"
+                        : this.keyEnterToString());
+    else
         this._updateRemote(oldInput, this.keyEnterToString());
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
@@ -6853,10 +6856,6 @@ Terminal.prototype.processEnter = function() {
     this._restoreCaret();
     if (this.verbosity >= 2)
         this.log("processEnter \""+this.toQuoted(text)+"\"");
-    /*
-    this.reportText(text, this._clientPtyExtProc ? "\n"
-                    : this.keyEnterToString());
-    */
 };
 /** Update remote input line to match local edited input line. */
 Terminal.prototype._updateRemote = function(input, extraText="") {
