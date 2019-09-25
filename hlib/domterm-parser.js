@@ -1602,17 +1602,13 @@ class DTParser {
             break;
         case 88:
             var obj = JSON.parse(text);
-            if (typeof obj.passwordHideChar == "string"
-                && obj.passwordHideChar.length == 1)
-                term.passwordHideChar = obj.passwordHideChar;
-            if (typeof obj.passwordShowCharTimeout == "number")
-                term.passwordShowCharTimeout = obj.passwordShowCharTimeout;
-            if (typeof obj.deferredForDeletionTimeout == "number")
-                term.deferredForDeletionTimeout = obj.deferredForDeletionTimeout;
-            if (typeof obj.historyStorageKey == "string")
-                term.historyStorageKey = obj.historyStorageKey;
-            if (typeof obj.historyStorageMax == "number")
-                term.historyStorageMax = obj.historyStorageMax;
+            for (let i = Terminal._settableProperties.length; --i >= 0; ) {
+                const d = Terminal._settableProperties[i];
+                const name = d[0];
+                const val = obj[name];
+                if (val && typeof val == d[1])
+                    term[name] = val;
+            }
             break;
         case 89:
             term.setSettings(JSON.parse(text));

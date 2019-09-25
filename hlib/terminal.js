@@ -194,10 +194,11 @@ class Terminal {
 
     // Used to implement clientDoesEcho handling.
     this._deferredForDeletion = null;
-    this.deferredForDeletionTimeout = 400;
-    // this.passwordHideChar = "\u2022"; // Bullet = used by Chrome
-    this.passwordHideChar = "\u25CF"; // Black circle - used by Firefox/IE
-    this.passwordShowCharTimeout = 800;
+
+    for (let i = Terminal._settableProperties.length; --i >= 0; ) {
+        let d = Terminal._settableProperties[i];
+        this[d[0]] = d[2];
+    }
 
     this.topNode = null;
 
@@ -347,8 +348,6 @@ class Terminal {
     this.historySearchStart = -1;
     this.historySearchForwards = false;
     this.historySearchSaved = "";
-    this.historyStorageKey = "DomTerm.history";
-    this.historyStorageMax = 200;
 
     // If non-null: A function that maps charCodes to replacement strings.
     // (If the function returns null, uses the input unmodified.)
@@ -598,6 +597,18 @@ Terminal.BELL_TIMEOUT = 400;
 Terminal.BELL_TEXT = "BELL!";
 /** Length of time to display BELL_TEXT. */
 Terminal.INFO_TIMEOUT = 800;
+
+/** Various named properties that can be set using escape sequences.
+ * Each entry is the name, the type value, and initial/default value.
+ */
+Terminal._settableProperties = [
+    ["deferredForDeletionTimeout", "number", 400],
+    ["historyStorageKey", "string", "DomTerm.history"],
+    ["historyStorageMax", "number", 200],
+    // "\u25CF" Black circle (used by Firefox/IE); "\u2022" Bullet (Chrome)
+    ["passwordHideChar", "string", "\u25CF"],
+    ["passwordShowCharTimeout", "number", 800]
+];
 
 // Handle selection
 DomTerm.EDITING_SELECTION = 1;
