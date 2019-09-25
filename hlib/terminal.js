@@ -602,6 +602,7 @@ Terminal.INFO_TIMEOUT = 800;
  * Each entry is the name, the type value, and initial/default value.
  */
 Terminal._settableProperties = [
+    ["columnsMinimum", "number", 5],
     ["deferredForDeletionTimeout", "number", 400],
     ["historyStorageKey", "string", "DomTerm.history"],
     ["historyStorageMax", "number", 200],
@@ -2941,6 +2942,8 @@ Terminal.prototype.resizeHandler = function() {
     var oldWidth = dt.availWidth;
     dt.measureWindow();
     if (DomTerm.useXtermJs) return;
+    if (this.numColumns < this.columnsMinimum)
+        this.forceWidthInColumns(this.columnsMinimum);
     dt._displaySizeInfoWithTimeout();
 
     var home_offset = DomTerm._homeLineOffset(dt);
