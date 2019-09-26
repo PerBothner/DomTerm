@@ -2975,7 +2975,7 @@ Terminal.prototype._displayInputModeWithTimeout = function(text) {
     this._displayInfoWithTimeout(text);
 };
 
-Terminal.prototype._displayInfoWithTimeout = function(text) {
+Terminal.prototype._displayInfoWithTimeout = function(text, timeout = Terminal.INFO_TIMEOUT) {
     var dt = this;
     dt._displayInfoMessage(text);
     dt._displaySizePendingTimeouts++;
@@ -2986,7 +2986,7 @@ Terminal.prototype._displayInfoWithTimeout = function(text) {
             dt._updatePagerInfo();
         }
     };
-    setTimeout(clear, Terminal.INFO_TIMEOUT);
+    setTimeout(clear, timeout);
 };
 
 Terminal.prototype._clearInfoMessage = function() {
