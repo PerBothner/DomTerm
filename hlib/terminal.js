@@ -2592,6 +2592,8 @@ Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getA
     length -= all ? count - 1 : count;
     this.lineStarts.length = length;
     this.lineEnds.length = length;
+    if (this.homeLine > length)
+        this.homeLine = length;
 };
 
 Terminal.prototype._insertLinesAt = function(count, line, regionBottom) {
