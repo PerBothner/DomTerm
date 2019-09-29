@@ -1102,10 +1102,10 @@ class DTParser {
                 term._adjustStyle();
                 break;
             case 14:
-                term.startPrompt(false);
+                term.startPrompt();
                 break;
             case 24:
-                term.startPrompt(true);
+                term.startPrompt(["k=c"]);
                 break;
             case 15:
                 // FIXME combine new line with previous line(s)
@@ -1118,7 +1118,7 @@ class DTParser {
                         editmode = 1;
                     if (editmode > 0) {
                         term.outputContainer.setAttribute("click-move",
-                                                          editmode > 1 ? "multi"
+                                                          editmode > 1 ? "m"
                                                           : "line");
                     }
                 }
@@ -1864,7 +1864,7 @@ class DTParser {
                 // In case of fish "omitted newline" hack
                 term._clearWrap(term.getAbsCursorLine()-1);
                 term.startCommandGroup(aid, 1, options);
-                term.startPrompt(false, options);
+                term.startPrompt(options);
                 break;
             case 66: // 'B' FTCS_COMMAND_START like CSI 15u
             case 73: // 'I'
@@ -1875,20 +1875,20 @@ class DTParser {
                 term.sstate.stayInInputMode = undefined;
                 break;
             case 80: // 'P'
-                term.startPrompt(true, options);
+                term.startPrompt(options);
                 break;
             case 68: // 'D'
             case 90: // 'Z'
-                let exitCode = parseInt(ch0 == 68
-                                        ? options.length > 0 &&options[0]
-                                        : Terminal.namedOptionFromArray(options, "exitcode="),
-                                        10);
+                let exitCode = ch0 == 68
+                    ? options.length > 0 && options[0]
+                    : Terminal.namedOptionFromArray(options, "err=");
                 let oldGroup = term.currentCommandGroup();
                 aid = ch0 == 68 ? null
                     : Terminal.namedOptionFromArray(options, "aid=", "");
                 term.endCommandGroup(aid, false);
                 term.sstate.stayInInputMode = undefined;
-                if (exitCode && oldGroup) { //not NaN and not 0
+                if (exitCode && oldGroup
+                    && (ch0 !== 68 || exitCode !== "0")) {
                     let button = term._createSpanNode();
                     button.setAttribute("exit-code", exitCode);
                     button.setAttribute("title", "exit-code: "+exitCode);
