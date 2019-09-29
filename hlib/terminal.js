@@ -7142,7 +7142,7 @@ Terminal._rangeAsText = function(range) {
             && parent.classList.contains("input-line"))
             return;
         let stdElement = Terminal._getStdElement(tnode);
-        if (stdElement && stdElement.getAttribute("prompt-kind") == "right")
+        if (stdElement && stdElement.getAttribute("prompt-kind") == "r")
             return;
         t += tnode.data.substring(start, end);
     }
