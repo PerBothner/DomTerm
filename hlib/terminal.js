@@ -834,7 +834,7 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
 
         // Remove tail-hider button if oldGroup only has one line
         let tailHider = oldGroup.tailHider;
-        if (tailHider) {
+        if (tailHider && tailHider.parentNode !== null) {
             let nLines = 0;
             function checkLine(n) {
                 if (n.nodeName == "SPAN" && n.getAttribute("Line"))
