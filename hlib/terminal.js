@@ -4462,24 +4462,12 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         // this case.
         var parent = lineEnd.parentNode;
         var pname = parent.nodeName;
-        // If lineEnd is inside a SPAN, move it outside.
-        while (pname == "SPAN") {
-            if (lineEnd.nextSibling) {
-                this._splitNode(parent, lineEnd.nextSibling);
-            }
-            parent.parentNode.insertBefore(lineEnd, parent.nextSibling);
-            if (lineEnd == this.outputBefore)
-                this.outputContainer = parent.parentNode;
-            parent = parent.parentNode;
-            pname = parent.nodeName;
-        }
-        if (pname == "PRE" || pname == "P" || pname == "DIV") {
+        if ((pname == "PRE" || pname == "P" || pname == "DIV")
+            && ! parent.classList.contains("input-line")) {
             var newBlock = this._splitNode(parent, lineEnd.nextSibling);
             // If a wrapped input line is edited to a single (or fewer) lines,
             // remove "input-line" styling for following lines.
             // FIXME This won't handle removing non-wrapped input lines.
-            if (parent.classList.contains("input-line"))
-                newBlock.classList.remove("input-line");
             var oldNextLine = this.lineStarts[absLine+1];
             this.lineStarts[absLine+1] = newBlock;
             newBlock._widthColumns = oldNextLine._widthColumns;
