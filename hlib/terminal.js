@@ -3493,7 +3493,8 @@ Terminal.prototype._updateSelected = function() {
         let anchorNode = sel.anchorNode;
         let focusOffset = sel.focusOffset;
         let anchorOffset = sel.anchorOffset;
-        if (sel.focusNode != dt._caretNode || sel.focusOffset != 0) {
+        if (moveCaret
+            && (sel.focusNode != dt._caretNode || sel.focusOffset != 0)) {
             dt._removeCaret();
             if (! dt.isLineEditing())
                 dt._removeInputLine();
