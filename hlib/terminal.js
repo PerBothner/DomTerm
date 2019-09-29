@@ -1923,8 +1923,12 @@ Terminal.prototype._restoreCaret = function() {
                 || this._caretNode.firstChild.data.length == 0)) {
             if (this._caretNeedsValue()) {
                 let text = this._followingText(this._caretNode);
-                //let text = this._caretNode.nextSibling;
                 if (text instanceof Text && text.data.length > 0) {
+                    if (text.previousSibling !== this._caretNode) {
+                        text.parentNode.insertBefore(this._caretNode, text);
+                        if (this.outputBefore === this._caretNode)
+                            this.outputContainer = text.parentNode;
+                    }
                     var tdata = text.data;
                     var sz = 1;
                     if (tdata.length >= 2) {
@@ -2647,7 +2651,12 @@ Terminal.prototype._getOuterPre = function(node, className = "domterm-pre") {
     }
     return null;
 }
-Terminal.prototype._getOuterInputArea = function(node) {
+Terminal.prototype._getOuterInputArea = function(node = this._caretNode) {
+    if (node === this._caretNode) {
+        let v = node.previousSibling;
+        if (v instanceof Element && v.getAttribute("std") == "input")
+            return v;
+    }
     for (var v = node; v != null && v != this.topNode; v = v.parentNode) {
         if (v instanceof Element && v.getAttribute("std") == "input")
             return v;
@@ -3762,24 +3771,16 @@ Terminal.prototype._createPendingSpan = function(span = this._createSpanNode()) 
     return span;
 }
 
-Terminal.prototype._getPendingSpan = function(node, before) {
-    let pending = before ? node.previousSibling : node.nextSibling;
-    if (DomTerm._isPendingSpan(pending))
-        return pending;
-    let span = this._createPendingSpan();
-    node.parentNode.insertBefore(span, before ? node : node.nextSibling);
-    if (pending instanceof Text) {
-        span.setAttribute("old-text", pending.data);
-        span.appendChild(pending);
-    }
-    return span;
-}
-
 Terminal.prototype._addPendingInput = function(str) {
     if (DomTerm.useXtermJs)
         return;
     this._restoreCaretNode();
-    let pending = this._getPendingSpan(this._caretNode, true);
+    const caret = this._caretNode;
+    let pending = caret.previousSibling;
+    if (! DomTerm._isPendingSpan(pending)) {
+        pending = this._createPendingSpan();
+        caret.parentNode.insertBefore(pending, caret);
+    }
     if (pending.firstChild instanceof Text)
         pending.firstChild.appendData(str);
     else
@@ -3802,9 +3803,12 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
                                                 count = 1, range = null) {
     this._restoreCaretNode();
     this._removeCaret();
-    let block = this._getOuterBlock(this._caretNode);
+    let block = this._getOuterInputArea();
+    if (block === null)
+        return;
     if (range === null) {
         range = document.createRange();
+        range.selectNodeContents(block);
         if (! forwards)
             range.setEndBefore(this._caretNode);
         else
@@ -3816,24 +3820,18 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
             return;
         let parent = node.parentNode;
         let dlen = node.data.length;
-        if (! DomTerm._isPendingSpan(parent)) {
-            if (end != dlen)
-                node.splitText(end);
-            if (start > 0)
-                node = node.splitText(start);
-            let pending = dt._createPendingSpan();
-            parent.insertBefore(pending, node);
-            pending.setAttribute("old-text", node.data);
-            if (doDelete)
-                parent.removeChild(node);
-            else
-                pending.appendChild(node);
-        } else if (doDelete) {
-            if (start == 0 && end == dlen)
-                parent.removeChild(node);
-            else
-                node.deleteData(start, end-start);
-        }
+        if (end != dlen)
+            node.splitText(end);
+        if (start > 0)
+            node = node.splitText(start);
+        const pending = dt._createPendingSpan();
+        parent.insertBefore(pending, node);
+        pending.setAttribute("old-text", node.data);
+        if (doDelete)
+            parent.removeChild(node);
+        else
+            pending.appendChild(node);
+        pending.setAttribute("direction", forwards ? "Right" : "Left");
     }
     let scanState = { linesCount: 0, todo: count, unit: "char", stopAt: "", wrapText: wrapText };
     Terminal.scanInRange(range, ! forwards, scanState);
@@ -3867,8 +3865,8 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
     }
     let code = (forwards ? Terminal._PENDING_RIGHT : Terminal._PENDING_LEFT)
         + (doDelete ? Terminal._PENDING_DELETE : 0);
-    code = String.fromCharCode(code).repeat(count - scanState.todo);
-    this._pendingEcho = this._pendingEcho + code;
+    this._pendingEcho = this._pendingEcho
+        + String.fromCharCode(code).repeat(count - scanState.todo);
     this._restoreCaret();
 }
 
@@ -5737,7 +5735,12 @@ Terminal.prototype._doDeferredDeletion = function() {
                 parent.insertBefore(this._caretNode, deferred);
             if (oldText) {
                 let tnode = document.createTextNode(oldText);
-                parent.insertBefore(tnode, deferred.nextSibling);
+                let next = deferred.nextSibling;
+                if (next === this._caretNode
+                    && deferred.getAttribute("direction") === "Right") {
+                    next = next.nextSibling;
+                }
+                parent.insertBefore(tnode, next);
             }
             if (this.outputBefore == deferred
                 || this.outputContainer == deferred
@@ -5756,8 +5759,8 @@ Terminal.prototype._doDeferredDeletion = function() {
         }
         this._deferredForDeletion = null;
         this._restoreCaret();
-        this._pendingEcho = "";
     }
+    this._pendingEcho = "";
 }
 
 Terminal.prototype._pauseContinue = function(skip = false) {

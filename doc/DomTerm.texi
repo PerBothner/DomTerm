@@ -3147,7 +3147,7 @@ so we should avoid gratuitous conceptual incompatibility.
 
 @subheading Detachable sessions
 
-Detachable sessions (similatr to GNU Screen and tmux) means that a front-end
+Detachable sessions (similar to GNU Screen and tmux) means that a front-end
 can disconnect from a session, while the session (child process) persists.
 The same or a different front-end can later re-attach to the session.
 
@@ -3480,6 +3480,63 @@ or a @code{pprint-post-break} element.
 To specify contents to be used when there is no break,
 use a @code{pprint-non-break} element.
 @end table
+
+@subsubheading The caret node
+@table @asis
+@item @code{<span std="caret">}@var{caret-text}@code{</span}
+@itemx @code{<span std="caret" value="}@var{caret-text}@code{"></span}
+
+This is used to display the caret position.  If the caret is a block
+or underline, then the @var{caret-text} is the character at the caret
+that is styled with inverse video or an underline.
+If the caret is at the end of the line, then the @var{caret-text}
+is a single space, and we use a @code{value} attribute, because the
+space is not actually part of the line.
+If the caret is followed by other text (on the same line),
+then the @code{caret-text} is a text node consisting of the
+first character of the following text (which is removed from
+the following text).
+
+If the caret is a vertical-bar then there may still be a @code{caret} element,
+but the @var{caret-text} is empty.
+@end table
+
+@subsubheading Predictive update
+
+If you type a printing character (while in char-mode), DomTerm
+sends the character to the process, which will then echo (display) it.
+If there is a slow network connection the delay between when you type
+the character and the echo can be disconcerting and slow down your typing.
+To avoid this, DomTerm will @emph{tentatively display} it right after
+you type it, without waiting for the echo.
+The tentative text is displayed in a @code{pending} element, as
+a @var{new-text} text child:
+@table @asis
+@item @code{<span class="pending" old-text="@var{old-text}">}@var{new-text}@code{</span>}
+@end table
+Text (specifically the @var{new-text}) is by default
+displayed with a light gray background to show that it is tentative.
+
+Typing the Left or Right arrow keys may create a @code{Pending}
+element where both the @var{old-text} and the @var{new-text}
+are the same string - the text that was moved over.
+Typing Delete or Backspace has just an @var{old-text} attribute
+for the text that has been (tentatively) deleted.
+Either Left or Backspace adds a @code{direction="Left"} attribute;
+either Right or Delete adds a @code{direction="Right"} attribute.
+
+There is usually at most a single @code{pending} element, but in principle
+there can be many.  A @code{pending} node may contain children that are nested
+@code{pending} or @code{std="caret"} elements.
+
+Before output is processed (or after a timeout) all existing pending nodes
+are ``undone'' (in reverse order) so the DOM state matches that
+expected by the application:
+All @var{new-text} elements are reverted back to the @var{old-text} values,
+and the caret may also be adjusted.
+Typically the received output wil be ``echo'' that has the effect of
+updating the state to match the pending operations - but now
+as definite updates from the application, rather than pending.
 
 @node Wire byte protocol
 @section Wire byte protocol

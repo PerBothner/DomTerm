@@ -50,6 +50,7 @@ class DTParser {
         let pendingEchoOldBefore, pendingEchoOldAfter, pendingEchoOld,
             pendingEchoBlock;
         let pendingEchoString = term._pendingEcho;
+        term._pendingEcho = "";
         if (term._deferredForDeletion) {
             pendingEchoBlock = term._getOuterBlock(term._caretNode);
             term._doDeferredDeletion();
