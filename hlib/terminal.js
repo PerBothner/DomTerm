@@ -6561,9 +6561,12 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
 
     if (changed)
         this.resetCursorCache();
-    if (this.lineStarts.length - this.homeLine > this.numRows) {
+    let numLines = this.lineStarts.length;
+    if (this.homeLine >= numLines)
+        this.homeLine = numLines - 1;
+    if (numLines - this.homeLine > this.numRows) {
         var absLine = this.getAbsCursorLine();
-        this.homeLine = this.lineStarts.length - this.numRows;
+        this.homeLine = numLines - this.numRows;
         if (absLine < this.homeLine) {
             this.resetCursorCache();
             this.moveToAbs(this.homeLine, 0, false);
