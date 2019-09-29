@@ -4590,10 +4590,9 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
                 tnode.deleteData(0, i);
             else  {
                 parent.removeChild(current);
-                while (parent.firstChild == null
-                       && (removeEmptySpan
-                           || parent != this._currentStyleSpan)
-                       && parent != this.initial) {
+                while (parent.firstChild == null && parent != this.initial) {
+                    if (parent != this._currentStyleSpan)
+                        this._currentStyleSpan = null;
                     current = parent;
                     parent = parent.parentNode;
                     if (current == this._currentStyleSpan)
