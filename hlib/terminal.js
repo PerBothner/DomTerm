@@ -329,6 +329,7 @@ class Terminal {
     sstate.mouseCoordEncoding = 0;
 
     sstate.sendFocus = false;
+    this._focusinLastEvent = false;
 
     // See https://www.stum.de/2016/06/24/handling-ime-events-in-javascript/
     // 1: IME Composing going on;
@@ -2882,7 +2883,14 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
         //console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
-        let focusPre = dt._getOuterPre(sel.focusNode);
+        let wasFocus = dt._focusinLastEvent;
+        dt._focusinLastEvent = false;
+        if (point && wasFocus && sel.focusOffset === 0
+            && dt.lineStarts[0] === dt._getOuterPre(sel.focusNode)) {
+            // Chrome emits a selectionchange event if focusing back
+            // to this window.  It selects the very first text location.
+            return; //  Ignore it.
+        }
         if (dt._pendingSelected == 0)
             dt._updateSelected();
         else
@@ -3121,6 +3129,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
       function(e) { dt.inputHandler(e); }, true);
     if (! DomTerm.isAtom()) { // kludge for Atom
         topNode.addEventListener("focusin", function(e) {
+            dt._focusinLastEvent = true;
             DomTerm.setFocus(dt, "F");
         }, false);
     }
@@ -3510,6 +3519,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
         this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button+" pendsel:"+this._pendingSelected+" alt:"+ev.altKey);
 
+    this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
     if (this._pendingSelected == 2)
         this._updateSelected();
