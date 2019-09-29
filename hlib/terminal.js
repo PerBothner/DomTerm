@@ -6735,18 +6735,24 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         else {
             // FIXME optimize if end of line
             fits = this.deleteCharactersRight(widthInColumns, true);
-            this._adjustStyle();
         }
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
         // maybe adjust line/absLine? FIXME
         for (;;) {
+            this._adjustStyle();
             var textNode = this.insertRawOutput(str);
             if (this.getCursorColumn() + widthInColumns <= this.numColumns)
-                break;
-            var right = this.availWidth;
-            str = this._breakString(textNode, this.lineEnds[absLine], 0, right, this.availWidth, false, false/*FIXME-countColumns*/);
+                break
+            const tparent = textNode.parentNode;
+            const tprev = textNode.previousSibling;
+            const tnext = textNode.nextSibling;
+            const right = tnext !== null ? tnext.offsetLeft
+                  : tparent.offsetLeft + tparent.offsetWidth;
+            const left = tprev === null ? tparent.offsetLeft
+                  : tprev.offsetLeft + tprev.offsetWidth;
+            str = this._breakString(textNode, this.lineEnds[absLine], left, right, this.availWidth, false, false/*FIXME-countColumns*/);
             //current is after inserted textNode;
             var oldContainer = this.outputContainer;
             var oldLine = this.lineEnds[absLine];
@@ -6770,8 +6776,10 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         }
     }
     else {
-        if (str != null)
+        if (str != null) {
+            this._adjustStyle();
             this.insertRawOutput(str);
+        }
         this._updateLinebreaksStart(absLine);
     }
     this.currentAbsLine = absLine;
@@ -6810,6 +6818,8 @@ Terminal.prototype.insertRawOutput = function(str) {
         node.appendData(str);
     else {
         node = document.createTextNode(str);
+        if (this.outputBefore instanceof Text)
+            this._restoreCaretNode();
         this.insertNode(node);
     }
     /*
