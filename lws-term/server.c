@@ -606,6 +606,7 @@ default_link_command(const char *url)
 #endif
 }
 
+/** Request browser client to open new browser window. */
 void
 browser_run_browser(struct options *options, char *url,
                     struct tty_client *tclient)
@@ -632,7 +633,7 @@ do_run_browser(struct options *options, char *url, int port)
     } else {
         browser_specifier = opts.browser_command;
     }
-    bool do_electron = false;
+    bool do_electron = false, do_Qt = false;
 #if 0
     if (options != NULL && options->browser_command == NULL
         && options->requesting_session && options->requesting_session->recent_tclient) {
@@ -669,8 +670,11 @@ do_run_browser(struct options *options, char *url, int port)
                            || strcmp(cmd, "qtdomterm") == 0
                            || strcmp(cmd, "qtwebengine") == 0) {
                     browser_specifier = qtwebengine_command(options);
-                    if (browser_specifier != NULL)
+                    if (browser_specifier != NULL) {
+                        free (cmd);
+                        do_Qt = true;
                         break;
+                    }
                 } else if (strcmp(cmd, "firefox") == 0) {
                     browser_specifier = firefox_browser_command();
                     if (browser_specifier != NULL)
@@ -707,6 +711,7 @@ do_run_browser(struct options *options, char *url, int port)
             write(options->fd_err, msg, sizeof(msg)-1);
             return EXIT_FAILURE;
         }
+        do_Qt = true;
     }
     if (strcmp(browser_specifier, "--electron") == 0) {
         browser_specifier = electron_command(options);
@@ -731,18 +736,22 @@ do_run_browser(struct options *options, char *url, int port)
             }
     }
 
-    if (do_electron) {
-        // If there is an existing Electron instance, we want to re-use it.
-        // Otherwise, we get a multi-second delay on startup.
-        // Other browsers seem to "combine" user commands better.
+    char *do_pattern = do_electron ? "\"electron\":\""
+        : do_Qt ? "\"qtwebengine\":\""
+        : NULL;
+    // If there is an existing Electron or Qt instance, we want to re-use it.
+    // Otherwise, we get a multi-second delay on startup.
+    // Other browsers seem to "combine" user commands better.
+    if (do_pattern) {
         for (struct pty_client *p = pty_client_list;
              p != NULL; p = p->next_pty_client) {
             struct lws *twsi;
             FOREACH_WSCLIENT(twsi, p) {
                 struct tty_client *t =
                     (struct tty_client *) lws_wsi_user(twsi);
-                if (t->version_info && strstr(t->version_info, "\"electron\":\"")) {
+                if (t->version_info && strstr(t->version_info, do_pattern)) {
                     browser_run_browser(options, url, t);
+                    lws_callback_on_writable(twsi);
                     return EXIT_SUCCESS;
                 }
             }
@@ -939,6 +948,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 /* ... fall through ... */
             case DETACHED_OPTION:
             case ELECTRON_OPTION:
+            case FIREFOX_OPTION:
                 opts->browser_command = argv[optind-1];
                 break;
             case GEOMETRY_OPTION:
@@ -954,9 +964,6 @@ int process_options(int argc, char **argv, struct options *opts)
                 opts->browser_command = cbin;
                 break;
             }
-            case FIREFOX_OPTION:
-                opts->browser_command = firefox_command();
-                break;
             case QTDOMTERM_OPTION:
                 opts->browser_command = "--qtwebengine";
                 break;

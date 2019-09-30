@@ -1,7 +1,7 @@
 /* Styling that is required for DomTerm to work sanely.
  * "True" optional styling should go in domterm-default.css.
  */
-span.tail-hider { position: absolute; right: 0px; top: 0px }
+span.tail-hider { position: absolute; right: 0px; bottom: 0px }
 span.tail-hider[domterm-hiding="true"]:before {content: "\25B6" }
 span.tail-hider:before {content: "\25BC" }
 span.error-exit-mark { position: absolute; right: 0px; bottom: 0px }
