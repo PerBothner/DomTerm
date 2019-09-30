@@ -80,8 +80,8 @@ DomTerm.openNewWindow = function(dt, options={}) {
             height = geometry[2];
         }
     }
-        if (! url)
-            url = DomTerm.topLocation;
+    if (! url)
+        url = DomTerm.topLocation;
     if (DomTerm.isElectron()) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             let popt = Object.assign({}, options);
