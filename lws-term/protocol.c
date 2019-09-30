@@ -383,6 +383,7 @@ create_link_pclient(struct lws *wsi, struct tty_client *tclient)
     return pclient;
 }
 
+// FIXME use pclient->cmd instead of cmd etc
 static struct pty_client *
 run_command(const char *cmd, char*const*argv, const char*cwd,
             char *const*env, struct pty_client *pclient)

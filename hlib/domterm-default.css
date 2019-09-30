@@ -1,5 +1,14 @@
 /* Optional - user-overridable styling */
 
+div.domterm::selection {
+    background: rgba(0,0,100,0.9)
+    color: #FFFFFF
+}
+div.domterm[reverse-video]::selection {
+    background: green;
+    color: #000
+}
+
 /* "\2936" is "arrow pointing downwards then curving leftward".
 It is used to indicate a wrapped line, rather like a hyphen. */
 span[breaking="yes"][line="soft"]:before {content: "\2936" "\A"; }
@@ -73,7 +82,7 @@ div.domterm span[caret="underline"][std="caret"], div.domterm span[caret="blinki
     text-decoration: underline
 }
 div.domterm span[caret="bar"][std="caret"], div.domterm span[caret="blinking-bar"][std="caret"] {
-    border-right: 2px solid green; margin-right: -2px
+    border-right: 2px solid red; margin-right: -2px
 }
 div.domterm-active span[caret="blinking-block"][std="caret"],
 div.domterm-active span[caret="blinking-bar"][std="caret"],

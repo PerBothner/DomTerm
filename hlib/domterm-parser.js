@@ -50,6 +50,7 @@ class DTParser {
         let pendingEchoOldBefore, pendingEchoOldAfter, pendingEchoOld,
             pendingEchoBlock;
         let pendingEchoString = term._pendingEcho;
+        term._pendingEcho = "";
         if (term._deferredForDeletion) {
             pendingEchoBlock = term._getOuterBlock(term._caretNode);
             term._doDeferredDeletion();
@@ -71,8 +72,7 @@ class DTParser {
             else
                 pendingEchoString = "";
         }
-        // FIXME term breaks selections overlapping the _inputLine
-        if (term.useStyledCaret())
+        //if (term.isLineEditing())
             term._removeInputLine();
         var pendingEchoNode = term._deferredForDeletion;
         var i = 0;
@@ -380,15 +380,6 @@ class DTParser {
                         term.cursorLineStart(0);
                         this.controlSequenceState = DTParser.SEEN_CR;
                     }
-                    if (oldContainer.firstChild == null
-                        && oldContainer != term.outputContainer
-                        && (oldContainer.getAttribute("std")
-                            || oldContainer == term._currentStyleSpan)) {
-                        if (term.outputBefore == oldContainer)
-                            term.outputBefore = oldContainer.nextSibling;
-                        let parent = oldContainer.parentNode;
-                        parent.removeChild(oldContainer);
-                    }
                     prevEnd = i + 1; columnWidth = 0;
                     break;
                 case 10: // '\n' newline
@@ -592,13 +583,13 @@ class DTParser {
                         let ldelta = 0;
                         let rdelta = 0;
                         switch (ch) {
-                        case DTParser._PENDING_LEFT:
+                        case Terminal._PENDING_LEFT:
                             ldelta = -1; rdelta = -1; break;
-                        case DTParser._PENDING_RIGHT:
+                        case Terminal._PENDING_RIGHT:
                             ldelta = 1; rdelta = 1; break;
-                        case DTParser._PENDING_LEFT+DTParser._PENDING_DELETE:
+                        case Terminal._PENDING_LEFT+Terminal._PENDING_DELETE:
                             ldelta = -1; rdelta = 0; break;
-                        case DTParser._PENDING_RIGHT+DTParser._PENDING_DELETE:
+                        case Terminal._PENDING_RIGHT+Terminal._PENDING_DELETE:
                             ldelta = 0; rdelta = 1; break;
                         }
                         text = text.substring(0, index+ldelta) + text.substring(index+rdelta);
@@ -621,8 +612,8 @@ class DTParser {
                             term._addPendingInput(pendingTail.substring(i, j));
                             i = j;
                         } else {
-                            let doDelete = (ch & DTParser._PENDING_DELETE) != 0;
-                            let forwards = (ch & DTParser._PENDING_FORWARDS) != 0;
+                            let doDelete = (ch & Terminal._PENDING_DELETE) != 0;
+                            let forwards = (ch & Terminal._PENDING_FORWARDS) != 0;
                             term._editPendingInput(forwards, doDelete);
                             i++;
                         }
@@ -1111,13 +1102,26 @@ class DTParser {
                 term._adjustStyle();
                 break;
             case 14:
-                term.startPrompt(false);
+                term.startPrompt();
                 break;
             case 24:
-                term.startPrompt(true);
+                term.startPrompt(["k=c"]);
                 break;
             case 15:
-                term.startInput(this.getParameter(1, 1));
+                // FIXME combine new line with previous line(s)
+                // into a single input-line element.
+                term.startInput(false, []);
+                if (term.outputContainer.classList.contains("input-line")) {
+                    var editmode = this.getParameter(1, -1);
+                    if (editmode < 0 &&
+                        ! term.outputContainer.getAttribute("click-move"))
+                        editmode = 1;
+                    if (editmode > 0) {
+                        term.outputContainer.setAttribute("click-move",
+                                                          editmode > 1 ? "m"
+                                                          : "line");
+                    }
+                }
                 break;
             case 16:
                 var hider = term._createSpanNode();
@@ -1126,7 +1130,6 @@ class DTParser {
                 hider.outerStyleSpan = term._currentStyleSpan;
                 term._currentStyle = hider;
                 hider.parentNode.hasHider = true;
-                term._currentCommandHideable = true;
                 break;
             case 17:
                 term.outputContainer.addEventListener("click",
@@ -1161,6 +1164,7 @@ class DTParser {
                 break;
             case 19:
                 term.freshLine();
+                term.endCommandGroup(null, true);
                 term.startCommandGroup(null);
                 break;
             case 20:
@@ -1517,10 +1521,12 @@ class DTParser {
             span.setAttribute("class", "diagnostic");
             if (text)
                 span.setAttribute("info", text);
+            /* FUTURE:
             var options;
             try {
                 options = JSON.parse("{"+text+"}");
             } catch (e) { options = {}; }
+            */
             term._pushIntoElement(span);
             break;
         case 71:
@@ -1529,20 +1535,10 @@ class DTParser {
             var echo = text.indexOf(" echo ") >= 0;
             var extproc = text.indexOf(" extproc ") >= 0;
             if (canon == 0 && term.isLineEditing() && term._inputLine) {
-                let text = term.grabInput(term._inputLine);
+                let input = this._inputLine;
                 term._restoreInputLine();
-
-                let r = new Range();
-                r.selectNodeContents(term._inputLine);
-                r.setStartBefore(term._caretNode);
-                let afterText = r.toString();
+                term._updateRemote(input);
                 term.handleEnter(null);
-                term.reportText(text);
-                let afterCount = term.strWidthInContext(afterText, term._inputLine);
-                if (afterCount > 0) {
-                    term.processInputCharacters
-                    (term.keyNameToChars("Left").repeat(afterCount));
-                }
                 term._doDeferredDeletion();
             }
             term._clientWantsEditing = canon ? 1 : 0;
@@ -1607,17 +1603,13 @@ class DTParser {
             break;
         case 88:
             var obj = JSON.parse(text);
-            if (typeof obj.passwordHideChar == "string"
-                && obj.passwordHideChar.length == 1)
-                term.passwordHideChar = obj.passwordHideChar;
-            if (typeof obj.passwordShowCharTimeout == "number")
-                term.passwordShowCharTimeout = obj.passwordShowCharTimeout;
-            if (typeof obj.deferredForDeletionTimeout == "number")
-                term.deferredForDeletionTimeout = obj.deferredForDeletionTimeout;
-            if (typeof obj.historyStorageKey == "string")
-                term.historyStorageKey = obj.historyStorageKey;
-            if (typeof obj.historyStorageMax == "number")
-                term.historyStorageMax = obj.historyStorageMax;
+            for (let i = Terminal._settableProperties.length; --i >= 0; ) {
+                const d = Terminal._settableProperties[i];
+                const name = d[0];
+                const val = obj[name];
+                if (val && typeof val == d[1])
+                    term[name] = val;
+            }
             break;
         case 89:
             term.setSettings(JSON.parse(text));
@@ -1673,7 +1665,7 @@ class DTParser {
                     return true;
                 };
                 term.initial = DomTerm._currentBufferNode(term);
-                term._forEachElementIn(parent, findInputLine);
+                Terminal._forEachElementIn(parent, findInputLine);
                 term.outputBefore =
                     term._inputLine != null ? term._inputLine : term._caretNode;
                 term.outputContainer = term.outputBefore.parentNode;
@@ -1822,6 +1814,7 @@ class DTParser {
             break;
         case 119:
             term.freshLine();
+            term.endCommandGroup(text, true);
             term.startCommandGroup(text, 0); // new sibling group
             break;
         case 120:
@@ -1830,7 +1823,7 @@ class DTParser {
             break;
         case 121:
             term.freshLine();
-            term.startCommandGroup(text, -1); // exit group
+            term.endCommandGroup(text, false);
             break;
         case 122:
             term.sstate.continuationPromptPattern = text;
@@ -1840,6 +1833,78 @@ class DTParser {
                 term._clientWantsEditing = 1;
             if (term.isLineEditing())
                 term.editorContinueInput();
+            break;
+        case 133: // iTerm2/FinalTerm shell-integration
+            function splitOptions(text) { // FIXME move elsewhere
+                let options = new Array();
+                let start = 0;
+                let tlen = text.length;
+                for (let i = 0; ; i++) {
+                    if (i == tlen || text.charCodeAt(i) == 59) {
+                        if (i > start)
+                            options.push(text.substring(start, i));
+                        if (i == tlen)
+                            break;
+                        start = i+1;
+                    }
+                }
+                return options;
+            }
+
+            let ch0 = text.charCodeAt(0);
+            let options = splitOptions(text.substring(1));
+            let aid;
+            switch (ch0) {
+            case 65: // 'A' - FTCS_PROMPT
+            case 78: // 'N'
+                term.freshLine();
+                aid = Terminal.namedOptionFromArray(options, "aid=", "");
+                if (ch0 == 78)
+                    term.endCommandGroup(aid, true);
+                // In case of fish "omitted newline" hack
+                term._clearWrap(term.getAbsCursorLine()-1);
+                term.startCommandGroup(aid, 1, options);
+                term.startPrompt(options);
+                break;
+            case 66: // 'B' FTCS_COMMAND_START like CSI 15u
+            case 73: // 'I'
+                term.startInput(ch0==66, options);
+                break;
+            case 67: // 'C'
+                term.startOutput();
+                term.sstate.stayInInputMode = undefined;
+                break;
+            case 80: // 'P'
+                term.startPrompt(options);
+                break;
+            case 68: // 'D'
+            case 90: // 'Z'
+                let exitCode = ch0 == 68
+                    ? options.length > 0 && options[0]
+                    : Terminal.namedOptionFromArray(options, "err=");
+                let oldGroup = term.currentCommandGroup();
+                aid = ch0 == 68 ? null
+                    : Terminal.namedOptionFromArray(options, "aid=", "");
+                term.endCommandGroup(aid, false);
+                term.sstate.stayInInputMode = undefined;
+                if (exitCode && oldGroup
+                    && (ch0 !== 68 || exitCode !== "0")) {
+                    let button = term._createSpanNode();
+                    button.setAttribute("exit-code", exitCode);
+                    button.setAttribute("title", "exit-code: "+exitCode);
+                    button.setAttribute("class", "error-exit-mark");
+                    oldGroup.appendChild(button);
+                }
+                break;
+            case 76: // 'L'
+                term.freshLine();
+                break;
+            }
+            break;
+        case 1337: // various iTerms extensions:
+            // RemoteHost=USER@HOST
+            // CurrentDir=DIRECTORY
+            // more...
             break;
         default:
             // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
