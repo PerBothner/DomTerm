@@ -482,7 +482,9 @@ class Terminal {
         // Move old/tentative input to after previous output:
         // If the line number of the new prompt matches that of a
         // previous continuation line, move the latter to here.
-        if (prev instanceof Element
+        if (false // FIXME - needs some work/testing
+            // Also unclear how useful this is - probably only for line mode?
+            && prev instanceof Element
             && prev.getAttribute("std")=="prompt") {
             let lnum = prev.getAttribute("value");
             lnum = this._getIntegerBefore(lnum || prev.textContent);
@@ -510,7 +512,7 @@ class Terminal {
                         return true;
                     }
                     let pr = Terminal._forEachElementIn(plin, fun, false, true);
-                    if (false && pr) {
+                    if (pr) {
                         // FIXME broken if pr is nested
                         this.outputContainer = plin;
                         this.outputBefore = plin.firstChild;
