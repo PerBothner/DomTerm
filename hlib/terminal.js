@@ -834,21 +834,62 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
             oldOutput.parentNode.removeChild(oldOutput);
         }
 
-        // Remove tail-hider button if oldGroup only has one line
-        let tailHider = oldGroup.tailHider;
-        if (tailHider && tailHider.parentNode !== null) {
-            let nLines = 0;
-            function checkLine(n) {
-                if (n.nodeName == "SPAN" && n.getAttribute("Line"))
-                    return ++nLines >= 2 ? n : false;
-                else
-                    return true;
+        let nLines = 0;
+        let firstLine = null;
+        function checkLine(n) {
+            const ln = n.getAttribute("line")
+            if (ln && ln !== "soft" && n.nodeName == "SPAN") {
+                if (firstLine == null) {
+                    firstLine = n;
+                }
+                return ++nLines >= 2 ? n : false;
+            } else
+                return true;
+        }
+        Terminal._forEachElementIn(oldGroup, checkLine);
+
+        // If multiple input lines, split into separate input-line elements.
+        // The main reason is that the tail-hider elements gets displayed
+        // at the correct location, but it may also help make some things
+        // (such as re-flow) more efficient.
+        let firstInput = firstLine.parentNode;
+        if (nLines > 1 && oldGroup.firstChild == firstInput
+            && firstInput.classList.contains("input-line")) {
+            let lineEnd = null;
+            let ln = this.lineStarts.length;
+            while (--ln >= 0 && this.lineStarts[ln] !== firstInput) {
+                lineEnd = this.lineEnds[ln];
+                if (lineEnd == firstInput.lastChild)
+                    break;
             }
-            Terminal._forEachElementIn(oldGroup, checkLine);
-            if (nLines <= 1) {
-                tailHider.parentNode.removeChild(tailHider);
-                oldGroup.tailHider = undefined;
+            for (; ln >= 0; --ln) {
+                let lineStart = this.lineStarts[ln];
+                if (lineStart == firstInput)
+                    break;
+                if (lineStart.parentNode == firstInput
+                    && lineStart.getAttribute("line") == "hard") {
+                    let newLine = document.createElement(firstInput.nodeName);
+                    this._copyAttributes(firstInput, newLine);
+                    firstInput.parentNode.insertBefore(newLine, firstInput.nextSibling);
+                    for (let n = lineStart.nextSibling; ; ) {
+                        let next = n.nextSibling;
+                        newLine.appendChild(n);
+                        if (n == lineEnd)
+                            break;
+                        n = next;
+                    }
+                    this.lineStarts[ln] = newLine;
+                    lineEnd = lineStart;
+                }
             }
+        }
+        if (nLines > 1) {
+            let button = this._createSpanNode();
+            button.setAttribute("class", "tail-hider");
+            firstLine.insertBefore(button, firstLine.firstChild);
+            button.addEventListener("click",
+                                    this._showHideEventHandler,
+                                    true);
         }
     }
 }
@@ -1452,19 +1493,6 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                         commandOutput.setAttribute("class", "command-output");
                         currentGroup.appendChild(commandOutput);
                         parent = commandOutput;
-                    }
-                    if (! currentGroup.tailHider
-                        && lastParent instanceof Element
-                        && lastParent.classList.contains("input-line")) {
-                        let ln = lastParent.lastChild;
-                        let button = this._createSpanNode();
-                        button.setAttribute("class", "tail-hider");
-                        //ln.parentNode.insertBefore(button, ln);
-                        ln.insertBefore(button, ln.firstChild);
-                        button.addEventListener("click",
-                                                this._showHideEventHandler,
-                                                true);
-                        currentGroup.tailHider = button;
                     }
                 } else {
                     parent = lastParent.parentNode;
@@ -4788,7 +4816,6 @@ Terminal.prototype.setSessionName = function(title) {
 }
 
 Terminal.prototype.setSessionNumber = function(snumber, unique, wnumber) {
-    console.log("setSessionNumber "+snumber);
     this.sstate.sessionNumber = snumber;
     this.topNode.setAttribute("session-number", snumber);
     if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
