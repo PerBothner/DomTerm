@@ -1736,6 +1736,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
            || (current instanceof Element
                && current.nodeName === "SPAN"
                && ! current.getAttribute("line")
+               && current !== this._caretNode
                //&& ! tab
                //&& ! current.classList.contains("tail-hider")
                && current.getAttribute("std") !== "prompt")) {
