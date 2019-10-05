@@ -8,18 +8,19 @@ esac
 while test -L "$thisfile"; do thisfile=$(readlink -f "$thisfile"); done
 source `dirname "$thisfile"`/bash-preexec.sh
 
-#PS1='\[\e]133;P\a\]'$PS1'\[\e]133;B\a\e]122;> \a\]'
-#PS1='\[\e]133]A;repaint;aid='"$BASHPID"'\a\e]133;P\a\]'$PS1'\[\e]133;B\a\e]122;> \a\]'
+_prompt_executing=""
 function __prompt_precmd() {
     local ret="$?"
-    local err=`if test "$ret" != "0"; then echo ";err=$ret"; fi`
-    _PROMPT_SAVE_PS1="$PS1"
-    _PROMPT_SAVE_PS2="$PS2"
-    PS1='\[\e]133;P;k=i\a\]'$PS1'\[\e]133;B\a\e]122;> \a\]'
-    PS2='\[\e]133;P;k=c\a\]'$PS2'\[\e]133;B\a\]'
-    if test "$_prompt_executing" = "1"
+    if test "$_prompt_executing" != "0"
     then
-       printf "\033]133;Z%s;aid=%s\007" "$err" "$BASHPID"
+      _PROMPT_SAVE_PS1="$PS1"
+      _PROMPT_SAVE_PS2="$PS2"
+      PS1='\[\e]133;P;k=i\a\]'$PS1'\[\e]133;B\a\e]122;> \a\]'
+      PS2='\[\e]133;P;k=c\a\]'$PS2'\[\e]133;B\a\]'
+    fi
+    if test "$_prompt_executing" != ""
+    then
+      printf "\033]133;D;%s;aid=%s\007" "$ret" "$BASHPID"
     fi
     printf "\033]133;A;cl=m;aid=%s\007" "$BASHPID"
     _prompt_executing=0

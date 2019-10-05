@@ -1878,17 +1878,15 @@ class DTParser {
                 term.startPrompt(options);
                 break;
             case 68: // 'D'
-            case 90: // 'Z'
-                let exitCode = ch0 == 68
-                    ? options.length > 0 && options[0]
-                    : Terminal.namedOptionFromArray(options, "err=");
+                let exitCode = Terminal.namedOptionFromArray(options, "err=");
+                if (exitCode == null && options.length > 0
+                    && options[0] && options[0] !== "0")
+                    exitCode = options[0];
                 let oldGroup = term.currentCommandGroup();
-                aid = ch0 == 68 ? null
-                    : Terminal.namedOptionFromArray(options, "aid=", "");
+                aid = Terminal.namedOptionFromArray(options, "aid=", "");
                 term.endCommandGroup(aid, false);
                 term.sstate.stayInInputMode = undefined;
-                if (exitCode && oldGroup
-                    && (ch0 !== 68 || exitCode !== "0")) {
+                if (exitCode && oldGroup) {
                     let button = term._createSpanNode();
                     button.setAttribute("exit-code", exitCode);
                     button.setAttribute("title", "exit-code: "+exitCode);

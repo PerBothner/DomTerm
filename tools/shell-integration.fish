@@ -11,8 +11,7 @@ if status --is-interactive
     set _fishprompt_prompt_count (math $_fishprompt_prompt_count + 1)
     # don't use post-exec, because it is called *before* omitted-newline output
     if [ -n "$_fishprompt_postexec" ]
-      set ret (if test "$_fishprompt_postexec" != "0"; echo ";err=$_fishprompt_postexec"; end)
-      printf "\033]133;Z%s;aid=%s\007" "$ret" $_fishprompt_aid
+      printf "\033]133;D;%s;aid=%s\007" "$_fishprompt_postexec" $_fishprompt_aid
     end
     printf "\033]133;A;aid=%s;cl=m\007" $_fishprompt_aid
   end
