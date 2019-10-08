@@ -16,7 +16,7 @@ EXTRA_DIST = \
   doc/help/domterm-new.adoc \
   doc/help/domterm-window-specifier.adoc \
   doc/help/qtdomterm.adoc \
-  $(DOC_IMAGES) \
+  $(DOC_IMAGES) $(DOC_TOOLS) \
   qtdomterm/LICENSE qtdomterm/qtdomterm.pro qtdomterm/processoptions.h \
   qtdomterm/backend.cpp qtdomterm/backend.h \
   qtdomterm/browserapplication.cpp qtdomterm/browserapplication.h \
@@ -279,6 +279,11 @@ DOC_IMAGES = \
   doc/images/domterm-sh-svg.png \
   doc/images/domterm-polygon-1.png \
   doc/images/emacs-in-firefox-1.png
+DOC_TOOLS = \
+  tools/bash-preexec.sh \
+  tools/shell-integration.bash \
+  tools/shell-integration.fish \
+  tools/shell-integration.zsh
 
 doc/DomTerm.xml: doc/DomTerm.texi
 	$(MKDIR_P) doc
@@ -292,7 +297,7 @@ doc/DomTerm.xml: doc/DomTerm.texi
 	> doc/DomTerm.xml
 
 web/index.html: doc/DomTerm.xml Makefile
-	$(MKDIR_P) web/images
+	$(MKDIR_P) web/images web/tools
 	$(XSLT) --path $(DOCBOOK_XSL_DIR)/html \
 	  --output web/  \
 	  --stringparam root.filename toc \
@@ -315,6 +320,7 @@ web/index.html: doc/DomTerm.xml Makefile
 	$(SED) -s 's|<a name=".*"></a>Why|Why|' <web/index.html >web/tmp-index.html
 	mv web/tmp-index.html web/index.html
 	cd $(srcdir) && cp $(DOC_IMAGES) $(abs_builddir)/web/images
+	cd $(srcdir) && cp $(DOC_TOOLS) $(abs_builddir)/web/tools
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
 upload-web: web/index.html
