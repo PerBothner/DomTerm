@@ -2105,6 +2105,24 @@ application can paste the latter.
 @item @kbd{Ctrl-Shift-@key{V}}
 Paste text from the clipboard.
 (@kbd{Ctrl-@key{V}} also works in line-editing mode.)
+@item @kbd{Ctrl-Shift-@key{X}}
+``Cut'': Restricts the selection to the current input area,
+copies that restricted selection to the clipboard,
+and then deletes the restricted selection.
+(In character mode, the deletion is implemented by sending
+the appropriate number of Delete/Backspace characters to the application.)
+@item @kbd{Shift-Left}
+@itemx @kbd{Shift-Right}
+@itemx @kbd{Ctrl-Shift-Left}
+@itemx @kbd{Ctrl-Shift-Right}
+Moves the end-point of the current selection left or right
+one character or word (if @kbd{Ctrl} is pressed).
+If there is no selection, the caret position is treated as
+a zero-size selection.
+
+If the new end-point is within a current input-editing section,
+the cursor is moved to the new end-point.
+(Emulated using the appropriate number of Left/Right key-presses.) 
 @item @kbd{Ctrl-Shift-@key{S}}
 Save the display to a file.
 @item @kbd{Ctrl-Shift-@key{L}}
