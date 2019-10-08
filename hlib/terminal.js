@@ -9183,7 +9183,8 @@ Terminal.prototype.deleteSelected = function(toClipboard) {
         if (this.isLineEditing())
             this.editorDeleteRange(r, false);
         else {
-            let forwards = sr.endContainer === sel.anchorNode;
+            let forwards = sr.endContainer === sel.anchorNode
+                && sr.endOffset === sel.anchorOffset;
             let count = rstring.length;
             this._editPendingInput(forwards, true, Infinity, r);
             this.processInputCharacters(this.keyNameToChars(forwards ? "Delete" : "Backspace").repeat(count));
