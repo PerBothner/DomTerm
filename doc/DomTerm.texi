@@ -2320,14 +2320,9 @@ The Electron front-end may yield:
 version=0.80;electron=1.3.13;libwebsockets=2.1.1;tty=/dev/pts/1
 @end example
 
-Checking the @code{DOMTERM} variable is the normal way to
+Checking the @code{DOMTERM} variable is a simple way to
 check if we're running in a DomTerm terminal.  It is not
-foolproof, since you could (for example) spawn off an @code{xterm},
-which would not reset the @code{DOMTERM} variable.
-To make it more robust, you can compare the output of the
-@code{tty} command or the @code{ttyname} function with the
-value specified after @code{tty=}.
-However, @code{tty=} might not be specified unless runnng under a pty.
+foolproof, as explained @ref{Detecting domterm terminal, here}.
 
 @code{WINDOWID} is not set - in fact @code{qtdomterm} unsets it.
 There seem to be some problems setting it with Qt.
@@ -2563,12 +2558,29 @@ Otherwise, it is executed directly (in the background, as a daemon).
 The @code{DOMTERM} environment variable is normally set when running
 under DomTerm. However, using @code{DOMTERM} to determine if the
 current terminal is DomTerm is not reliable:
-If you @code{ssh}, @code{DOMTERM} will not be automatically set.
+If you @code{ssh}, @code{DOMTERM} will not be automatically set
+(a false negative).
 On the other hand, if you start some other terminal emulator
-like @code{xterm} from within DomTerm, the @code{xterm} will inherit
-the @code{DOMTERM} variable will be misleadingly set.
+like @code{xterm} from within DomTerm, the @code{xterm} will
+misleadingly inherit the @code{DOMTERM} variable (a false positive).
 
-So it is better to probe the terminal itself.
+The following snippet will unset @code{DOMTERM}
+if it does not match the output from the @code{tty} command:
+@example
+# Check if the DOMTERM variable includes the string "tty=@var{ttyname}"
+# where @var{ttyname} is the output from the tty command
+case ";$DOMTERM;" in
+  *";tty=`tty`;"*) ;;
+  *";tty="*) unset DOMTERM;;
+esac
+@end example
+(In a C/C++ program you can use the @code{ttyname} function.)
+This takes care of false positives (like running an @code{xterm}
+started within DomTerm), assuming DomTerm is started in the normal
+way (the @code{domterm} command creating a pty).
+However, it does not handle false negatives, such as using @code{ssh}.
+
+More robust is to probe the terminal itself.
 You can use the @code{domterm is-domterm} command:
 
 @example
@@ -2637,7 +2649,10 @@ you to customize the string used to prompt for input.
 Putting certain DomTerm-specific @ref{Wire byte protocol,escape sequences}
 in the prompt enables some
 @uref{http://per.bothner.com/blog/2019/shell-integration-proposal/,nice features}.
-The following discussion focuses on the @code{bash} shell.
+
+The following discussion tests @code{$DOMTERM} to decide
+whether to do domterm-specific actions.
+See @ref{Detecting domterm terminal,how to more reliably test for DomTerm}.
 
 @anchor{bash-shell-prompt}
 @subheading Setting the Bash shell prompt
@@ -2646,21 +2661,11 @@ Download @uref{tools/shell-integration.bash,shell-integration.bash}
 and @uref{tools/bash-preexec.sh,bash-preexec.sh}.
 Then in your @code{~/.bashrc} put something like:
 
-You can place the following in your @code{~/.bashrc}
-to take advantage of DomTerm features:
-
 @example
 if [ "$PS1" != "" ]
 then
   # Optionally override the system default - for all terminals
   PS1='$ ' # or whatever
-
-  # Check if the DOMTERM variable includes the string "tty=@var{ttyname}"
-  # where @var{ttyname} is the output from the tty command
-  case ";$DOMTERM;" in
-    *";tty=`tty`;"*) ;;
-    *";tty="*) unset DOMTERM;;
-  esac
 
   if [ -n "$DOMTERM" ]
   then
@@ -2675,18 +2680,10 @@ This causes the prompt to have the @code{prompt} style
 while the remainder of the current line gets the @code{input} style
 (specifically, in a @code{<span std="input">} element).
 The appearance of these styles can be customized with CSS stylesheets.
-
 Furthermore, this prompt enables text folding:
 a @ref{Hide/show buttons,hide/show button}
 (click on the @code{▼} character), which hides/shows the output
 from the command.
-
-See the @ref{Wire byte protocol} section for the details.
-
-(The @code{"\["} and @code{"\]"} are bash syntax,
-and are equivalent to readline's @code{"\001"} and @code{"\002"}.
-They are used to indicate escape sequences that don't move the cursor,
-which is needed for readline to calculate the column position.)
 
 @anchor{zsh-shell-prompt}
 @subheading Setting the Zsh shell prompt
