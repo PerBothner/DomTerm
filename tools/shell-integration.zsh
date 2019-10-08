@@ -1,6 +1,3 @@
-#PS1='\[\e]133;P\a\]'$PS1'\[\e]133;B\a\e]122;> \a\]'
-#PS1='\[\e]133]A;repaint;aid='"$BASHPID"'\a\e]133;P\a\]'$PS1'\[\e]133;B\a\e]122;> \a\]'
-
 _prompt_executing=""
 function __prompt_precmd() {
     local ret="$?"

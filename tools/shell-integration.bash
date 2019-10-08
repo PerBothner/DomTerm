@@ -1,13 +1,3 @@
-#source /home/bothner/DomTerm/tools/bash-preexec.sh
-thisfile="$BASH_SOURCE"
-case "$thisfile" in
-  "") echo "installation error - can't find path to $0"; exit -1 ;;
-  /*) ;;
-  *) thisfile="$PWD/$thisfile"  ;;
-esac
-while test -L "$thisfile"; do thisfile=$(readlink -f "$thisfile"); done
-source `dirname "$thisfile"`/bash-preexec.sh
-
 _prompt_executing=""
 function __prompt_precmd() {
     local ret="$?"

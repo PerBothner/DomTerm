@@ -1379,6 +1379,9 @@ Middle-button paste seems to work on most frontends (on Linux)..
 The Electron and Qt front-ends use their respective
 menu interfaces, which works well.
 
+On Electron disabling the menubar by clicking ``Show menubar''
+is currently not working.
+
 Most other frontends use a menu package written in JavaScript
 that works fairly well, but has some minor issues.
 One is that all menus are constrained to the main window.
@@ -1545,7 +1548,7 @@ This enables editing of input lines similar to GNU readliune.
 
 The keystroke @kbd{ctrl-shift-@key{L}} cycles between char mode (most
 characters sent immeditably to the application),
-line mode (most characaters modify local editring area), and
+line mode (most characaters modify local editing area), and
 auto mode (automatically switches between char mode and line mode
 depending on whether the application requests ``raw'' (char) input
 or ``canonical'' (line) input).
@@ -2632,11 +2635,16 @@ fi
 Many interactive REPL-style programs (such as a ``shell") allow
 you to customize the string used to prompt for input.
 Putting certain DomTerm-specific @ref{Wire byte protocol,escape sequences}
-in the prompt enables some nice features.
+in the prompt enables some
+@uref{http://per.bothner.com/blog/2019/shell-integration-proposal/,nice features}.
 The following discussion focuses on the @code{bash} shell.
 
 @anchor{bash-shell-prompt}
 @subheading Setting the Bash shell prompt
+
+Download @uref{tools/shell-integration.bash,shell-integration.bash}
+and @uref{tools/bash-preexec.sh,bash-preexec.sh}.
+Then in your @code{~/.bashrc} put something like:
 
 You can place the following in your @code{~/.bashrc}
 to take advantage of DomTerm features:
@@ -2656,9 +2664,8 @@ then
 
   if [ -n "$DOMTERM" ]
   then
-    # Add some DomTerm-specific escape sequences
-    PS1='\[\e]119;'$BASHPID'\a\e[14u\e[16u\]▼\[\e[17u\]'$PS1'\[\e[15u\]'
-    PS2='\[\e[14u\]'$PS2'\[\e[18u\]'
+    source /path/to/bash-preexec.sh
+    source /path/to/shell-integration.bash
   fi
 fi
 @end example
@@ -2684,17 +2691,17 @@ which is needed for readline to calculate the column position.)
 @anchor{zsh-shell-prompt}
 @subheading Setting the Zsh shell prompt
 
-For zsh, the syntax is slightly different from bash,
-but it's the same basic idea.
-Putting the following into you @code{~/.zshrc} works:
+Zsh is similar to bash.
+Download @uref{tools/shell-integration.zsh,shell-integration.zsh}.
+Then in your @code{~/.zshrc} put something like:
 
 @example
 if [ "$PS1" != "" ]
+  # Maybe change PS1 from the default
 then
   if [ -n "$DOMTERM" ]
   then
-     ZSHPID=$$
-     PS1=$'%@{\e]119;zsh'$ZSHPID$'\a\e[14u\e[16u%@}▼%@{\e[17u%@}'$PS1$'%@{\e[15u\e]75;> \a%@}'
+     source /path/to/shell-integration.zsh
   fi
 fi
 @end example
@@ -2702,19 +2709,15 @@ fi
 @anchor{fish-shell-prompt}
 @subheading Setting the Fish Shell (fish) prompt
 
-For @code{fish} (the Fish Shell) put the following
-in your @code{~/.config/fish/functions/fish_prompt.fish}:
+For @code{fish} (the Fish Shell),
+copy @uref{tools/shell-integration.fish,shell-integration.fish}
+into the Fish configuration directory @code{$__fish_config_dir}
+(which defaults to @code{.config/fish}).
+Then place the following in the main fish configuration file
+@code{$__fish_config_dir/config.fish}:
 @example
-set FISHPID %self
-function fish_prompt --description 'Write out the prompt'
-  # generic prompt used for non-DomTerm terminals and as base for DomTerm
-  set -l suffix '$ '
-  set -l prompt (prompt_pwd)"$suffix"
-
-  if test -n "$DOMTERM"
-    set prompt '\e]119;fish'$FISHPID'\a\e[14u\e[16u▼\e[17u'$prompt'\e[15u\e]75;> \a'
-  end
-  echo -nes "$prompt"
+if test -n "$DOMTERM"
+  source $__fish_config_dir/shell-integration.fish
 end
 @end example
 
@@ -3710,6 +3713,9 @@ Send saved state to new window.
 @end table
 
 @subsubsection Command parts (shell integration)
+
+The escape sequences will be deprecated
+in favor @uref{https://gitlab.com/PerBothner/terminal-specifications/blob/master/proposals/semantic-prompts.md,these sequences} (not yet finalized).
 
 @table @asis
 @item @code{"\e[12u"}
