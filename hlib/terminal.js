@@ -3545,9 +3545,9 @@ Terminal.prototype._updateSelected = function() {
             if (! point)
                 sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset, dt._caretNode, 0);
         }
-        if (point)
-            sel.removeAllRanges();
     }
+    if (point)
+        sel.removeAllRanges();
 }
 Terminal.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
