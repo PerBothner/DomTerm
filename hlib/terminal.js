@@ -451,7 +451,18 @@ class Terminal {
                 curOutput.parentNode.insertBefore(this.outputContainer, curOutput);
             curOutput.parentNode.removeChild(curOutput);
         }
-
+        if (promptKind === "s") {
+            let lineno = this.getAbsCursorLine();
+            let firstInput = this.outputContainer;
+            if (firstInput.classList.contains("input-line")) {
+                let newLine = document.createElement(firstInput.nodeName);
+                this._copyAttributes(firstInput, newLine);
+                firstInput.parentNode.insertBefore(newLine, firstInput.nextSibling);
+                this._moveNodes(this.lineStarts[lineno].nextSibling, newLine, null);
+                this.lineStarts[lineno] = newLine;
+                this.outputContainer = newLine;
+            }
+        }
         this._pushStdMode("prompt");
         if (promptKind)
             this.outputContainer.setAttribute("prompt-kind", promptKind);
@@ -551,13 +562,13 @@ class Terminal {
     startOutput() {
         this.sstate.inInputMode = false;
         const group = this.currentCommandGroup();
-        if (group && group.firstChild instanceof Element
-            && group.firstChild.classList.contains("input-line")
-            && this._isAnAncestor(this.outputContainer, group.firstChild)) {
-            let cur = this._splitParents(group.firstChild);
+        if (group && group.lastChild instanceof Element
+            && group.lastChild.classList.contains("input-line")
+            && this._isAnAncestor(this.outputContainer, group.lastChild)) {
+            let cur = this._splitParents(group.lastChild);
             let commandOutput = document.createElement("div");
             commandOutput.setAttribute("class", "command-output");
-            group.insertBefore(commandOutput, group.firstChild.nextSibling);
+            group.insertBefore(commandOutput, group.lastChild.nextSibling);
 
             const lineNo = this.getAbsCursorLine();
             const preNode = this._createPreNode();
