@@ -3890,6 +3890,8 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
         const pending = dt._createPendingSpan();
         parent.insertBefore(pending, node);
         pending.setAttribute("old-text", node.data);
+        if (node == dt.outputBefore)
+            dt.outputBefore = pending;
         if (doDelete)
             parent.removeChild(node);
         else
