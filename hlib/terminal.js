@@ -2788,7 +2788,7 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
             this.initial = bufNode;
             this.resetCursorCache();
             this.moveToAbs(line+this.homeLine, col, true);
-            this._adjustPauseLimit(this.outputContainer);
+            this._adjustPauseLimit();
         } else {
             var bufNode = this.initial;
             this.initial = DomTerm._currentBufferNode(this, false);
@@ -7687,10 +7687,17 @@ Terminal.prototype.doLineEdit = function(keyName) {
 
 DomTerm.saveFileCounter = 0;
 
-Terminal.prototype._adjustPauseLimit = function(node) {
+Terminal.prototype._adjustPauseLimit = function() {
+    let node = this._caretNode;
+    if (node == null || node.parentNode == null)
+        node = this.outputContainer;
     if (node == null)
         return;
-    var limit = node.offsetTop + this.availHeight;
+    let offsetTop = 0;
+    for (; node !== null; node = node.offsetParent) {
+        offsetTop += node.offsetTop;
+    }
+    var limit = offsetTop + this.availHeight;
     if (limit > this._pauseLimit)
         this._pauseLimit = limit;
 }
@@ -7755,7 +7762,7 @@ Terminal.prototype.keyDownHandler = function(event) {
         return;
     }
     if (! ((key >= 48 && key <= 57) || key == 45))
-        this._adjustPauseLimit(this.outputContainer);
+        this._adjustPauseLimit();
     if (this.isLineEditing()) {
         if (! this.useStyledCaret())
             this.maybeFocus();
@@ -7867,7 +7874,7 @@ Terminal.prototype.keyPressHandler = function(event) {
     }
     if (this.scrollOnKeystroke)
         this._enableScroll();
-    this._adjustPauseLimit(this.outputContainer);
+    this._adjustPauseLimit();
     if (this.isLineEditing()) {
         if (this._searchMode) {
             this._miniBuffer.focus();
@@ -8483,7 +8490,7 @@ Terminal.prototype._pageScrollAbsolute = function(percent) {
         percent = 0;
     else if (percent >= 100)
         percent = 100;
-    var scrollTop = percent * this._vspacer.offsetTop * 0.01;
+    var scrollTop = this._vspacer.offsetTop * percent * 0.01;
     var limit = scrollTop + this.availHeight;
     if (limit > this._pauseLimit)
         this._pauseLimit = limit;
@@ -8634,7 +8641,7 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
     case "Ctrl-C":
         this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
         this._pauseContinue(true);
-        this._adjustPauseLimit(this.outputContainer);
+        this._adjustPauseLimit();
         return true;
     default:
         let asKeyPress = DomTerm.keyNameChar(keyName);
