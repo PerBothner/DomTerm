@@ -7690,8 +7690,11 @@ DomTerm.saveFileCounter = 0;
 
 Terminal.prototype._adjustPauseLimit = function() {
     let node = this._caretNode;
-    if (node == null || node.parentNode == null)
+    if (node == null || node.parentNode == null) {
         node = this.outputContainer;
+        if (node instanceof Text)
+            node = node.parentNode;
+    }
     if (node == null)
         return;
     let offsetTop = 0;
