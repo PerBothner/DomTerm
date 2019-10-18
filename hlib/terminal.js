@@ -4081,8 +4081,8 @@ Terminal.prototype.updateCursorCache = function() {
         if (line < 0)
             line = home;
     }
-    var parent = this.lineStarts[line];
-    var cur = parent.firstChild;
+    let cur = this.lineStarts[line];
+    let parent = cur.parentNode;
     if (line > 0 && parent == this.lineEnds[line-1]) {
         cur = parent.nextSibling;
         parent = parent.parentNode;
