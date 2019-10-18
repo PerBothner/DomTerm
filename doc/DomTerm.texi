@@ -3634,6 +3634,15 @@ can be changed by overwriting the @code{elementInfo}
 and @code{allowAttribute} functions in @code{terminal.js}.
 The default policy is a work-in-progress.
 
+@item @code{"\e]721;" @var{key} @code{";"} @var{html-text} "\a"}
+
+Replace previously-inserted HTML.
+Looks for the latest element (in document order)
+whose @code{class} includes @code{can-replace-children}
+and that has a @code{replace-key="@var{key}"} attribute.
+Essentially sets the @code{innerHTML} to @var{html-text}
+(after safety-scrubbing).
+
 @item @code{"\e]73;" @var{keyName} "\a"}
 @itemx @code{"\e]74;" keyName "\a"}
 @itemx @code{"\e]73;" @var{keyName} "\t" @var{kstr} "\a"}

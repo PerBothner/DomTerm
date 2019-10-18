@@ -1431,6 +1431,7 @@ class DTParser {
             term.log("handleOperatingSystemControl "+code+" '"+text+"'");
         if (! (code >= 110 && code <= 118))
             term._breakDeferredLines();
+        let semi;
         switch (code) {
         case 0:
         case 1:
@@ -1445,7 +1446,7 @@ class DTParser {
             }
             break;
         case 8:
-            var semi = text.indexOf(';');
+            semi = text.indexOf(';');
             if (semi >= 0) {
                 let options = text.substring(0, semi);
                 let url = text.substring(semi+1);
@@ -1548,6 +1549,31 @@ class DTParser {
             break;
         case 72:
             term._scrubAndInsertHTML(text);
+            break;
+        case 721:
+            semi = text.indexOf(';');
+            if (semi > 0) {
+                let key = text.substring(0, semi);
+                text = text.substring(semi+1);
+                let elements =
+                    term.initial.getElementsByClassName("can-replace-children");
+                for (let n = elements.length; --n > 0; ) {
+                    let element = elements[n];
+                    if (element.getAttribute("replace-key")===key) {
+                        let saveBefore = term.outputBefore;
+                        let saveContainer = term.outputContainer;
+                        term.outputContainer = element;
+                        term.outputBefore = null;
+                        while (element.firstChild)
+                            element.removeChild(element.firstChild);
+                        term._scrubAndInsertHTML(text);
+                        term.outputContainer = saveContainer;
+                        term.outputBefore = saveBefore;
+                        term.resetCursorCache();
+                        break;
+                    }
+                }
+            }
             break;
         case 73:
         case 74:
