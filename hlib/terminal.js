@@ -7980,7 +7980,6 @@ Terminal.prototype._checkTree = function() {
     for (let i = nlines; --i >= this.homeLine; )
         if (! this._isAnAncestor(this.lineStarts[i], this.initial))
             error("line "+i+" not in initial");
-return; // FIXME
     let currentLineStart = null;
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
