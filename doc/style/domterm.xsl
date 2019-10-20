@@ -18,9 +18,9 @@
   </xsl:variable>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <link rel="stylesheet" title="DomTerm (navbar: fixed, left)"
-  href="{$href}style/domterm-l.css"  media="(min-width: 600px)"/>
+  href="{$href}style/domterm-l.css"/>
 <link rel="alternate stylesheet" title="DomTerm (navbar: fixed, right)"
-  href="{$href}style/domterm-r.css" media="(min-width: 600px)"/>
+  href="{$href}style/domterm-r.css"/>
 <link rel="alternate stylesheet" title="Single column, top navigation" href="{$href}style/domterm-1col.css"/>
 </xsl:template>
 

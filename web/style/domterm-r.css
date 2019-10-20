@@ -1,5 +1,6 @@
 @import "kawa.css";
 
+@media (min-width: 60em) {
 body {
   position: relative;		/* Make containing block for the menus */
   padding: 2em 17em 5em 2em;	/* Room for banner at the top */
@@ -27,3 +28,4 @@ div.navcol {
 body>div.navcol { 
   position: fixed ;
 }
+} /* end @media */

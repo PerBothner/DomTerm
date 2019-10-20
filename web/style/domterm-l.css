@@ -1,5 +1,6 @@
 @import "kawa.css";
 
+@media (min-width: 60em) {
 body { 
   position: relative;
   padding-left: 25%;
@@ -26,3 +27,4 @@ div.navcol {
 body>div.navcol { 
   position: fixed ;
 }
+} /* end @media */

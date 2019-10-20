@@ -204,7 +204,7 @@ div.navcol *.logo {
 div.logo {
     width: 100%; height: 160px;
 }
-div.navcol > a img { float: none; padding: 15px 0.1em; width: 60%; }
+div.navcol > a img { float: none; padding: 15px 0.1em; height: 80%; width: auto; }
 
 code[class="literal"] strong { color: purple }
 p[class="synopsis"] code strong { color: purple }
