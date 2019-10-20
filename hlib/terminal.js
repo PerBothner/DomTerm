@@ -5516,20 +5516,26 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
                         for (ch = 32; ch <= 32 && i < len; )
                             ch = str.charCodeAt(i++);
                         var quote = i == len ? -1 : ch;
-                        if (quote != 34 && quote != 39) // '"' or '\''
-                            break loop; // invalid
-                        valstart = i;
-                        for (;;) {
-                            if (i+1 >= len) //i+1 to allow for '/' or '>'
-                                break loop; // invalid
-                            ch = str.charCodeAt(i++);
-                            if (ch == quote)
-                                break;
+                        if (quote == 34 || quote == 39) { // '"' or '\''
+                            valstart = i;
+                            for (;;) {
+                                if (i+1 >= len) //i+1 to allow for '/' or '>'
+                                    break loop; // invalid
+                                ch = str.charCodeAt(i++);
+                                if (ch == quote)
+                                    break;
+                            }
+                            valend = i-1;
+                        } else {
+                            // Unquoted attribute value
+                            valstart = i-1;
+                            while (ch > 32 && ch != 34 && ch != 39
+                                   && (ch < 60 || ch > 62) && ch != 96)
+                                ch = str.charCodeAt(i++);
+                            valend = --i;
                         }
-                        valend = i-1;
                     } else {
-                        if (ch == '/' || ch == '>' || ch == '<')
-                            i--;
+                        i--;
                         valstart = i;
                         valend = i;
                     }
