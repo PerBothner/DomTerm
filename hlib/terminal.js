@@ -854,6 +854,8 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
                     firstLine = n;
                 }
                 return ++nLines >= 2 ? n : false;
+            } else if (n.classList.contains("domterm-opaque")) {
+                return ++nLines >= 2 ? n : false;
             } else
                 return true;
         }
