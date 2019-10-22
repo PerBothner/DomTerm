@@ -174,6 +174,7 @@ struct options {
     int sig_code;                             // close signal
     char *sig_name;                           // human readable signal string
     char *qt_remote_debugging;
+    int fd_in;
     int fd_out;
     int fd_err;
     char *session_name;

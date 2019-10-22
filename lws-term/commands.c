@@ -33,7 +33,8 @@ static void print_base_element(const char *base_url, FILE *tout)
     else {
         struct stat stbuf;
         size_t baselen = strlen(base_url);
-        fputs("<base href='file://", tout);
+        fprintf(tout, "<base href='http://localhost:%d/RESOURCE/%.*s/",
+                http_port, SERVER_KEY_LENGTH, server_key);
         for (const char *p = base_url; *p; ) {
             char ch = *p++;
             if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
@@ -55,7 +56,6 @@ int html_action(int argc, char** argv, const char*cwd,
                       struct options *opts)
 {
     bool is_hcat = argc > 0 && strcmp(argv[0], "hcat") == 0;
-    check_domterm(opts);
     int i = 1;
     char *base_url = NULL;
     for (i = 1; i < argc; i++) {
@@ -76,12 +76,19 @@ int html_action(int argc, char** argv, const char*cwd,
         } else
             break;
     }
-    FILE *tout = fdopen(get_tty_out(), "w");
+    FILE *tout = fdopen(opts->fd_out, "w");
     fprintf(tout, "\033]72;");
     if (is_hcat && i < argc) {
         while (i < argc)  {
             char *fname = argv[i++];
-            FILE *fin = fopen(fname, "r");
+            char *fname_abs = fname;
+            if (fname[0] != '/' && cwd != NULL) {
+                fname_abs = xmalloc(strlen(cwd) + strlen(fname) +2);
+                sprintf(fname_abs, "%s/%s", cwd, fname);
+            }
+            FILE *fin = fopen(fname_abs, "r");
+            if (fname_abs != fname)
+                free(fname_abs);
             if (fin == NULL) {
                 FILE *err = fdopen(opts->fd_err, "w");
                 fprintf(err, "missing html file '%s'\n", fname);
@@ -106,7 +113,9 @@ int html_action(int argc, char** argv, const char*cwd,
             print_base_element(base_url, tout);
         }
         if (i == argc) {
-            copy_file(stdin, tout);
+            FILE *in = fdopen(opts->fd_in, "r");
+            copy_file(in, tout);
+            fclose(in);
         } else {
             while (i < argc)  {
                 fputs(argv[i++], tout);
@@ -632,10 +641,10 @@ struct command commands[] = {
     .options = COMMAND_IN_CLIENT,
     .action = is_domterm_action },
   { .name ="html",
-    .options = COMMAND_IN_CLIENT,
+    .options = COMMAND_IN_SERVER,
     .action = html_action },
   { .name ="hcat",
-    .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
+    .options = COMMAND_IN_SERVER|COMMAND_ALIAS },
   { .name ="imgcat",
     .options = COMMAND_IN_CLIENT,
     .action = imgcat_action },

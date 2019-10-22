@@ -1467,7 +1467,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 }
                 struct msghdr msg;
                 struct iovec iov;
-                int myfds[2];
+                int myfds[3];
                 union u { // for alignment
                     char buf[CMSG_SPACE(sizeof myfds)];
                     struct cmsghdr align;
@@ -1475,7 +1475,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 msg.msg_control = u.buf;
                 msg.msg_controllen = sizeof u.buf;
                 struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-                cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
+                cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 3);
                 iov.iov_base = jbuf+jpos;
                 iov.iov_len = jblen-jpos;
                 msg.msg_name = NULL;
@@ -1485,9 +1485,10 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 msg.msg_flags = 0;
                 ssize_t n = recvmsg(sockfd, &msg, 0);
                 if (msg.msg_controllen > 0) {
-                    memcpy(myfds, CMSG_DATA(cmsg), 2*sizeof(int));
-                    opts.fd_out = myfds[0];
-                    opts.fd_err = myfds[1];
+                    memcpy(myfds, CMSG_DATA(cmsg), 3*sizeof(int));
+                    opts.fd_in = myfds[0];
+                    opts.fd_out = myfds[1];
+                    opts.fd_err = myfds[2];
                 }
                 if (n <= 0) {
                   break;

@@ -825,6 +825,7 @@ void  init_options(struct options *opts)
     opts->sig_code = SIGHUP;
     opts->sig_name = NULL; // FIXME
     opts->qt_remote_debugging = NULL;
+    opts->fd_in = STDIN_FILENO;
     opts->fd_out = STDOUT_FILENO;
     opts->fd_err = STDERR_FILENO;
     opts->session_name = NULL;
@@ -1101,9 +1102,10 @@ main(int argc, char **argv)
         size_t jlen = strlen(state_as_json);
 
         struct msghdr msg;
-        int myfds[2];
-        myfds[0] = STDOUT_FILENO;
-        myfds[1] = STDERR_FILENO;
+        int myfds[3];
+        myfds[0] = STDIN_FILENO;
+        myfds[1] = STDOUT_FILENO;
+        myfds[2] = STDERR_FILENO;
         union u { // for alignment
           char buf[CMSG_SPACE(sizeof myfds)];
           struct cmsghdr align;
@@ -1111,8 +1113,8 @@ main(int argc, char **argv)
         msg.msg_control = u.buf;
         msg.msg_controllen = sizeof u.buf;
         struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
-        memcpy(CMSG_DATA(cmsg), myfds, sizeof(int) * 2);
+        cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 3);
+        memcpy(CMSG_DATA(cmsg), myfds, sizeof(int) * 3);
         msg.msg_controllen = cmsg->cmsg_len;
         cmsg->cmsg_level = SOL_SOCKET;
         cmsg->cmsg_type = SCM_RIGHTS;
@@ -1128,6 +1130,7 @@ main(int argc, char **argv)
         msg.msg_flags = 0;
         errno = 0;
         ssize_t n1 = sendmsg(socket, &msg, 0);
+        close(STDIN_FILENO);
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
         json_object_put(jobj);
