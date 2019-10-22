@@ -300,6 +300,18 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)
               content_type = "text/html";
+
+            const char resource_prefix[] = "/RESOURCE/";
+            size_t resource_prefix_len = sizeof(resource_prefix)-1;
+            const char* url_rest;
+            if (!strncmp((const char *) in, resource_prefix, resource_prefix_len)
+                && memcmp(url_rest = (const char *) in + resource_prefix_len, server_key, SERVER_KEY_LENGTH) == 0
+                && (url_rest += SERVER_KEY_LENGTH)[0] == '/') {
+                int n = lws_serve_http_file(wsi, url_rest, content_type, NULL, 0);
+                if (n < 0 || ((n > 0) && lws_http_transaction_completed(wsi)))
+                    return -1; /* error or can't reuse connection: close the socket */
+                break;
+            }
             bool is_simple = false, is_main = false, is_no_frames = false;
             if ((is_simple = strcmp(fname, "/simple.html") == 0)
                 || (is_main = strcmp(fname, "/main.html") == 0)
