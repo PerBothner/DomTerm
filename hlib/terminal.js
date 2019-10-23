@@ -931,12 +931,12 @@ Terminal.prototype.setFocused = function(focused) {
         this.processResponseCharacters(focused ? "\x1b[I" : "\x1b[O");
 }
 
-DomTerm.selectNextPane = function(forwards, wrapper=DomTermLayout._oldFocusedContent) {
+DomTerm.selectNextPane = function(forwards) {
     if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
         DomTerm.sendParentMessage("domterm-next-pane", forwards);
     }
     else {
-        DomTermLayout.selectNextPant(forwards, wrapper);
+        DomTermLayout.selectNextPane(forwards);
     }
 };
 
