@@ -219,21 +219,15 @@ void BrowserMainWindow::setupMenu()
     newTerminalMenu->addAction(newTerminalWindow);
     newTerminalMenu->addAction(newTerminalTab);
     newTerminalPane = newTerminalMenu->addAction("New terminal (right/below)",
-                                                 this, &BrowserMainWindow::slotNewTerminalPane, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::Key_Enter));
+                                                 this, &BrowserMainWindow::slotNewTerminalPane);
     newTerminalAbove = newTerminalMenu->addAction("New terminal above",
-                                                  this, &BrowserMainWindow::slotNewTerminalAbove,
-                                                  QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Up));
+                                                  this, &BrowserMainWindow::slotNewTerminalAbove);
     newTerminalBelow = newTerminalMenu->addAction("New terminal below",
-                                                  this, &BrowserMainWindow::slotNewTerminalBelow,
-                                                  QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Down));
-    QShortcut *key_a = new QShortcut(Qt::CTRL | Qt::SHIFT | Qt::Key_A, this);
-    connect(key_a, SIGNAL(activated()), this, SLOT(muxPrefixAction()));
+                                                  this, &BrowserMainWindow::slotNewTerminalBelow);
     newTerminalLeft = newTerminalMenu->addAction("New terminal left",
-                                                 this, &BrowserMainWindow::slotNewTerminalLeft,
-                                                 QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Left));
+                                                 this, &BrowserMainWindow::slotNewTerminalLeft);
     newTerminalRight = newTerminalMenu->addAction("New terminal right",
-                                                  this, &BrowserMainWindow::slotNewTerminalRight,
-                                                  QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A, Qt::CTRL|Qt::Key_Right));
+                                                  this, &BrowserMainWindow::slotNewTerminalRight);
 
     inputModeGroup = new QActionGroup(this);
     inputModeGroup->setExclusive(true);

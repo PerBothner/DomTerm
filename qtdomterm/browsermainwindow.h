@@ -103,7 +103,6 @@ private slots:
     void slotNewTerminalBelow() { slotNewTerminal(13); }
     void slotNewTerminalLeft() { slotNewTerminal(10); }
     void slotNewTerminalRight() { slotNewTerminal(11); }
-    void muxPrefixAction()  { slotNewTerminal(3); }
     void slotDetach();
     void slotAutoPager();
     void slotClearBuffer();
