@@ -113,11 +113,16 @@ class Menu {
 
 		let width = menuNode.clientWidth;
 		let height = menuNode.clientHeight;
+		let wwidth = window.innerWidth;
 
-		if((x + width) > window.innerWidth) {
+		if((x + width) > wwidth) {
 			setRight = true;
-			if(submenu) {
-				x = window.innerWidth - itemNode.parentNode.offsetLeft + 2;
+			if(submenu && ! menubarSubmenu) {
+				x = wwidth - itemNode.parentNode.offsetLeft + 2;
+				if (width + x > wwidth) {
+					x = 0;
+					setRight = false;
+				}
 			} else {
 				x = 0;
 			}
