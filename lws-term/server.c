@@ -1644,7 +1644,7 @@ create_command_socket(const char *socket_path)
     if ((fd = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0)) == -1)
         return (-1);
 
-    mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
+    mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
     if (bind(fd, (struct sockaddr *) &sa, sizeof(sa)) == -1)
         return (-1);
     umask(mask);
