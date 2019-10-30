@@ -124,6 +124,11 @@ void Backend::onReceiveBlock( const char * buf, int len )
     emit writeEncoded(len, encodeAsAscii(buf, len));
 }
 
+void Backend::paste()
+{
+    emit pasteText(QApplication::clipboard()->text());
+}
+
 void Backend::setInputMode(char mode)
 {
     emit writeInputMode((int) mode);

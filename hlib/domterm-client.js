@@ -166,6 +166,11 @@ function setupQWebChannel(channel) {
     backend.writeInputMode.connect(function(mode) {
         DomTerm.setInputMode(mode);
     });
+    backend.pasteText.connect(function(text) {
+        var dt = DomTerm.focusedTerm;
+        if (dt)
+            dt.pasteText(text);
+    });
     backend.layoutAddPane.connect(function(paneOp) {
         DomTerm.newPane(paneOp);
     });

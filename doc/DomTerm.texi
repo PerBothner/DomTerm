@@ -1364,6 +1364,8 @@ CSS property, so on that browser tab characters are always converted to spaces.
 
 Copy and Paste menu items are only known to work with the
 Electron and Qt front-ends.
+The Paste menu-item on Qt is unreliable if the previous Copy
+was from a different application.
 The others may run into security restrictions.
 A future workaround may be to have the backend
 handle clipboard access, using programs such as

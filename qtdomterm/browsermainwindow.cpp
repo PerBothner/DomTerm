@@ -365,7 +365,7 @@ void BrowserMainWindow::slotCopy()
 
 void BrowserMainWindow::slotPaste()
 {
-    webView()->webPage()->triggerAction(QWebEnginePage::Paste);
+    webView()->backend()->paste();
 }
 
 void BrowserMainWindow::slotCopyAsHTML()
