@@ -24,30 +24,30 @@ copy_html_file(FILE *in, FILE *out)
     fflush(out);
 }
 
-static void print_base_element(const char *base_url, FILE *tout)
+static void print_base_element(const char *base_url, struct sbuf *sbuf)
 {
     char *colon = strchr(base_url, ':');
     char *sl = colon ? strchr(base_url, '/') : NULL;
     if (colon && (! sl || colon < sl))
-        fprintf(tout, "<base href='%s'/>", base_url);
+        sbuf_printf(sbuf, "<base href='%s'/>", base_url);
     else {
         struct stat stbuf;
         size_t baselen = strlen(base_url);
-        fprintf(tout, "<base href='http://localhost:%d/RESOURCE/%.*s/",
-                http_port, SERVER_KEY_LENGTH, server_key);
+        sbuf_printf(sbuf, "<base href='http://localhost:%d/RESOURCE/%.*s/",
+                    http_port, SERVER_KEY_LENGTH, server_key);
         for (const char *p = base_url; *p; ) {
             char ch = *p++;
             if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
                 || (ch >= '0' && ch <= '9') || ch == '/'
                 || ch == '-' || ch == '_' || ch == '.' || ch == '~')
-                fputc(ch, tout);
+                sbuf_append(sbuf, p-1, 1);
             else
-                fprintf(tout, "%%%02x", ch & 0xFF);
+                sbuf_printf(sbuf, "%%%02x", ch & 0xFF);
         }
         if (baselen > 0 && base_url[baselen-1] != '/'
             && stat(base_url, &stbuf) == 0 && S_ISDIR(stbuf.st_mode))
-            fputc('/', tout);
-        fputs("'/>", tout);
+            sbuf_printf(sbuf, "/");
+        sbuf_printf(sbuf, "'/>");
     }
 }
 
@@ -56,6 +56,8 @@ int html_action(int argc, char** argv, const char*cwd,
                       struct options *opts)
 {
     bool is_hcat = argc > 0 && strcmp(argv[0], "hcat") == 0;
+    if (opts == main_options) // client mode
+        check_domterm(opts);
     int i = 1;
     char *base_url = NULL;
     for (i = 1; i < argc; i++) {
@@ -76,8 +78,11 @@ int html_action(int argc, char** argv, const char*cwd,
         } else
             break;
     }
-    FILE *tout = fdopen(opts->fd_out, "w");
-    fprintf(tout, "\033]72;");
+
+    struct sbuf sb;
+    sbuf_init(&sb);
+    sbuf_printf(&sb, "\033]72;");
+
     if (is_hcat && i < argc) {
         while (i < argc)  {
             char *fname = argv[i++];
@@ -93,42 +98,68 @@ int html_action(int argc, char** argv, const char*cwd,
                 FILE *err = fdopen(opts->fd_err, "w");
                 fprintf(err, "missing html file '%s'\n", fname);
                 fclose(err);
-                fprintf(tout, "\007");
                 return EXIT_FAILURE;
             }
             if (base_url != NULL)
-                print_base_element(base_url, tout);
+                print_base_element(base_url, &sb);
             else {
                 char *rpath = realpath(fname, NULL);
-                print_base_element(rpath, tout);
+                print_base_element(rpath, &sb);
                 free(rpath);
             }
-            copy_file(fin, tout);
+            sbuf_copy_file(&sb, fin);
             fclose(fin);
         }
     } else {
         if (base_url == NULL)
             base_url = cwd != NULL ? strdup(cwd) : getcwd(NULL, 0);
         if (base_url != NULL) {
-            print_base_element(base_url, tout);
+            print_base_element(base_url, &sb);
         }
         if (i == argc) {
             FILE *in = fdopen(opts->fd_in, "r");
-            copy_file(in, tout);
+            sbuf_copy_file(&sb, in);
             fclose(in);
         } else {
             while (i < argc)  {
-                fputs(argv[i++], tout);
+                sbuf_append(&sb, argv[i++], -1);
             }
         }
     }
-    fprintf(tout, "\007");
-    fflush(tout);
-    if (ferror(tout) != 0) {
-        lwsl_err("write failed\n");
-        return EXIT_FAILURE;
+    sbuf_append(&sb, "\007", 1);
+
+    char **ee = env;
+    while (*ee && strncmp(*ee, "DOMTERM=", 8) != 0)
+        ee++;
+    char *t1;
+    if (*ee && (t1 = strstr(*ee, ";tty="))) {
+        t1 += 5;
+        char *t2 = strchr(t1, ';');
+        size_t tlen = t2 == NULL ? strlen(t1) : t2 - t1;
+        char *tname = xmalloc(tlen+1);
+        strncpy(tname, t1, tlen);
+        tname[tlen] = 0;
+        struct pty_client *pclient = pty_client_list;
+        while (pclient && strcmp(pclient->ttyname, tname) != 0)
+            pclient = pclient->next_pty_client;
+        if (pclient) {
+            struct lws *twsi;
+            FOREACH_WSCLIENT(twsi, pclient) {
+                struct tty_client *tclient =
+                    (struct tty_client *) lws_wsi_user(twsi);
+                sbuf_extend(&tclient->ob, sb.len);
+                memcpy(tclient->ob.buffer+tclient->ob.len,
+                       sb.buffer, sb.len);
+                tclient->ob.len += sb.len;
+                tclient->ocount += sb.len;
+                lws_callback_on_writable(twsi);
+            }
+            sbuf_free(&sb);
+            return EXIT_SUCCESS;
+        }
     }
-    return EXIT_SUCCESS;
+    sbuf_free(&sb);
+    return EXIT_FAILURE;
 }
 
 int imgcat_action(int argc, char** argv, const char*cwd,
@@ -641,10 +672,10 @@ struct command commands[] = {
     .options = COMMAND_IN_CLIENT,
     .action = is_domterm_action },
   { .name ="html",
-    .options = COMMAND_IN_SERVER,
+    .options = COMMAND_IN_SERVER|COMMAND_CHECK_DOMTERM,
     .action = html_action },
   { .name ="hcat",
-    .options = COMMAND_IN_SERVER|COMMAND_ALIAS },
+    .options = COMMAND_IN_SERVER|COMMAND_ALIAS|COMMAND_CHECK_DOMTERM },
   { .name ="imgcat",
     .options = COMMAND_IN_CLIENT,
     .action = imgcat_action },

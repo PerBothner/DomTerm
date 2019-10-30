@@ -285,6 +285,7 @@ extern struct resource resources[];
 #define COMMAND_IN_CLIENT 2
 #define COMMAND_IN_CLIENT_IF_NO_SERVER 4
 #define COMMAND_IN_SERVER 8
+#define COMMAND_CHECK_DOMTERM 16
 
 /* The procedure that executes a command.
  * The return value should be one of EXIT_SUCCESS, EXIT_FAILURE,

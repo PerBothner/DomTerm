@@ -1084,6 +1084,10 @@ main(int argc, char **argv)
         fprintf(stderr, "domterm: unknown command '%s'\n", cmd);
         exit(EXIT_FAILURE);
     }
+    if (command && (command->options & COMMAND_IN_SERVER) != 0
+        && (command->options & COMMAND_CHECK_DOMTERM) != 0) {
+        check_domterm(&opts);
+    }
     int socket = -1;
     if ((command == NULL ||
          (command->options &

@@ -545,6 +545,8 @@ sbuf_blank(struct sbuf *buf, int space)
 void
 sbuf_append(struct sbuf *buf, const char *bytes, size_t length)
 {
+    if (length < 0)
+        length = strlen(bytes);
     sbuf_extend(buf, length);
     memcpy(buf->buffer + buf->len, bytes, length);
     buf->len += length;
@@ -576,4 +578,17 @@ sbuf_printf(struct sbuf *buf, const char *format, ...)
     va_start(ap, format);
     sbuf_vprintf(buf, format, ap);
     va_end(ap);
+}
+
+void
+sbuf_copy_file(struct sbuf *buf, FILE*in)
+{
+    for (;;) {
+        sbuf_extend(buf, 2048);
+        int avail = buf->size - buf->len;
+        int r = fread(buf->buffer + buf->len, 1,  buf->size - buf->len, in);
+        if (r <= 0)
+            break;
+        sbuf_blank(buf, r);
+    }
 }
