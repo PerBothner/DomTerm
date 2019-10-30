@@ -1031,9 +1031,12 @@ Terminal.prototype._setRegionLR = function(left, right) {
 
 Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
     var lineStart = this.lineStarts[homeLine];
-    var offset = lineStart.offsetTop;
-    if (lineStart.nodeName == "SPAN")
-        offset += lineStart.offsetHeight;
+    let stop = this.topNode;
+    var offset = lineStart.nodeName == "SPAN" ? lineStart.offsetHeight : 0;
+    while (lineStart !== stop) {
+        offset += lineStart.offsetTop;
+        lineStart = lineStart.offsetParent;
+    }
     return offset;
 };
 
@@ -7706,7 +7709,7 @@ Terminal.prototype._adjustPauseLimit = function() {
     if (node == null)
         return;
     let offsetTop = 0;
-    for (; node !== null; node = node.offsetParent) {
+    for (; node !== this.topNode; node = node.offsetParent) {
         offsetTop += node.offsetTop;
     }
     var limit = offsetTop + this.availHeight;
