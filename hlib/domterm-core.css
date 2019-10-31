@@ -6,7 +6,7 @@ span.tail-hider[domterm-hiding="true"]:before {content: "\25B6" }
 span.tail-hider:before {content: "\25BC" }
 span.error-exit-mark { position: absolute; right: 0px; bottom: 0px }
 span.error-exit-mark:before { content: "\25CF"; color: red }
-div.input-line, div.command-group { position: relative }
+div.input-line, div.command-group, div.domterm { position: relative }
 
 html, body { width: 100%; height: 100%; margin: 0px; overflow: hidden }
 div.domterm { -webkit-user-select: text }

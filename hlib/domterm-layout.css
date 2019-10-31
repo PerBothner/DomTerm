@@ -2,7 +2,6 @@
  * Various tweaks for DomTerm.
  */
 .lm_content, .domterm.lm_content, .domterm-wrapper.lm_content { border:2px solid #cccccc; position: absolute; z-index: 1}
-.domterm { position: relative }
 .domterm-wrapper { width: 100%; height: 100% }
 .menubar { position: relative }
 body { --focused-pane-color: magenta}
