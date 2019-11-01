@@ -8826,6 +8826,8 @@ Terminal.prototype.editorMoveToRangeStart = function(range) {
     if (range.startContainer == this._caretNode)
         return;
     try {
+        let p = this._caretNode.parentNode;
+        if (p) p.removeChild(this._caretNode);
         range.insertNode(this._caretNode);
     } catch(e) {
         console.log("caught "+e);
