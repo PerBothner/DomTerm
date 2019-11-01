@@ -3339,6 +3339,7 @@ Terminal.prototype._updateMiscOptions = function(map) {
           : foreground && foreground.match(hex3re) ? 1 : 0;
     const bgCols = background && background.match(hex6re) ? 2
           : background && background.match(hex3re) ? 1 : 0;
+    const topStyle = this.topNode.style;
     if (fgCols && bgCols) {
         let fgSum = 0, bgSum = 0;
         for (let i = 0; i < 3; i++) {
@@ -3350,18 +3351,18 @@ Terminal.prototype._updateMiscOptions = function(map) {
         if (background.length == 4)
             bgSum = 17 * bgSum;
         let darkStyle = fgSum > bgSum;
-        this.topNode.style["--main-light-color"] =
-            darkStyle ? foreground : background;
-        this.topNode.style["--main-dark-color"] =
-            darkStyle ? background : foreground;
+        topStyle.setProperty("--main-light-color",
+                             darkStyle ? foreground : background)
+        topStyle.setProperty("--main-dark-color",
+                             darkStyle ? background : foreground);
         this.setReverseVideo(darkStyle);
     } else {
         if (foreground)
-            this.topNode.style["--foreground-color"] = foreground;
+            topStyle.setProperty("--foreground-color", foreground);
         if (background)
-            this.topNode.style["--background-color"] = background;
+            topStyle.setProperty("--background-color", background);
     }
-    this.topNode.style["--wchar-width"] = (this.charWidth * 2)+"px";
+    topStyle.setProperty("--wchar-width", (this.charWidth * 2)+"px");
 };
 
 DomTerm.showContextMenu = null;
