@@ -1,7 +1,7 @@
 /* Optional - user-overridable styling */
 
 div.domterm::selection {
-    background: rgba(0,0,100,0.9)
+    background: rgba(0,0,100,0.9);
     color: #FFFFFF
 }
 div.domterm[reverse-video]::selection {
