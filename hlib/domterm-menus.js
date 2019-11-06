@@ -189,10 +189,6 @@ DomTerm.createMenus = function(options) {
                           if (focusedWindow)
                               focusedWindow.toggleDevTools();
                       }});
-    if (showInspectorItem != null) {
-        contextMenu.append(showInspectorItem);
-        contextLinkMenu.append(showInspectorItem);
-    }
 
     let fileMenu = new Menu();
     fileMenu.append(newWindowItem);
