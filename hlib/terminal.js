@@ -865,8 +865,9 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
         // The main reason is that the tail-hider elements gets displayed
         // at the correct location, but it may also help make some things
         // (such as re-flow) more efficient.
-        let firstInput = firstLine.parentNode;
-        if (nLines > 1 && oldGroup.firstChild == firstInput
+        let firstInput;
+        if (nLines > 1
+            && oldGroup.firstChild == (firstInput = firstLine.parentNode)
             && firstInput.classList.contains("input-line")) {
             let lineEnd = null;
             let ln = this.lineStarts.length;
