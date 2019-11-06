@@ -342,7 +342,7 @@ class DTParser {
                 /* falls through */
             case DTParser.INITIAL_STATE:
             case DTParser.SEEN_ERROUT_END_STATE:
-                if (DTParser._doLinkify && DTParser.isDelimiter(ch)
+                if (Terminal._doLinkify && Terminal.isDelimiter(ch)
                     && term.linkify(str, prevEnd, i, columnWidth, ch)) {
                     prevEnd = i;
                     columnWidth = 0;
