@@ -241,6 +241,9 @@ class DTParser {
             case DTParser.SEEN_DCS_TEXT_STATE:
             case DTParser.SEEN_APC_STATE:
                 if (ch == 7 || ch == 0 || ch == 0x9c || ch == 27) {
+                    this.controlSequenceState =
+                        ch == 27 ? DTParser.SEEN_ESC_STATE
+                        : DTParser.INITIAL_STATE;
                     this._textParameter =
                         this._textParameter + str.substring(prevEnd, i);
                     try {
@@ -257,10 +260,7 @@ class DTParser {
                     }
                     this._textParameter = "";
                     this.parameters.length = 1;
-                    prevEnd = i + 1; columnWidth = 0;
-                    this.controlSequenceState =
-                        ch == 27 ? DTParser.SEEN_ESC_STATE
-                        : DTParser.INITIAL_STATE;
+                    prevEnd = i + 1;  columnWidth = 0;
                 } else {
                     // Do nothing, for now.
                 }
@@ -362,10 +362,9 @@ class DTParser {
                                && (term._regionBottom == term.numRows
                                    || term.getCursorLine() != term._regionBottom-1)) {
                         if (term._pauseNeeded()) {
-                            this._textParameter = str.substring(i);
-                            term._updateDisplay();
-                            term._enterPaging(true);
-                            return;
+                            i--;
+                            this.controlSequenceState = DTParser.PAUSE_REQUESTED;
+                            continue;
                         }
                         term.cursorLineStart(1);
                         if (term.outputBefore instanceof Element
@@ -392,10 +391,8 @@ class DTParser {
                     } else {
                         term._breakDeferredLines();
                         if (term._pauseNeeded()) {
-                            this._textParameter = str.substring(i);
-                            term._updateDisplay();
-                            term._enterPaging(true);
-                            return;
+                            this.controlSequenceState = DTParser.PAUSE_REQUESTED;
+                            continue;
                         }
                         term.cursorNewLine((term.sstate.automaticNewlineMode & 1) != 0);
                     }
@@ -532,6 +529,14 @@ class DTParser {
                     }
                     columnWidth += cwidth;
                 }
+                break;
+            case DTParser.PAUSE_REQUESTED:
+                this.controlSequenceState = DTParser.INITIAL_STATE;
+                this._textParameter = str.substring(i);
+                term._enterPaging(true);
+                term.topNode.scrollTop = term._pauseLimit - term.availHeight;
+                term._updateDisplay();
+                return;
             }
         }
         if (this.controlSequenceState == DTParser.INITIAL_STATE) {
@@ -624,10 +629,9 @@ class DTParser {
 
         if (term._pauseNeeded()) {
             this._textParameter = "";
-            term.cancelUpdateDisplay();
             term._enterPaging(true);
-            term._updateDisplay();
             term.topNode.scrollTop = term._pauseLimit - term.availHeight;
+            term._updateDisplay();
             return;
         }
         term.requestUpdateDisplay();
@@ -1216,12 +1220,16 @@ class DTParser {
                 switch (this.getParameter(1, 0)) {
                 case 1:
                     if (! term._autoPaging) {
-                        term._autoPaging = true;
                         term._autoPagingTemporary = true;
+                        term._adjustPauseLimit();
                     }
                     break;
                 case 2:
-                    term._autoPagingTemporary = term.outputContainer;
+                    if (this.controlSequenceState === DTParser.INITIAL_STATE
+                        && term._pauseNeeded()) {
+                        this.controlSequenceState = DTParser.PAUSE_REQUESTED;
+                    }
+                    term._autoPagingTemporary = false;
                     break;
                 }
                 break;
@@ -1987,5 +1995,6 @@ DTParser.SEEN_ERROUT_END_STATE = 18;
 DTParser.SEEN_DCS_STATE = 19;
 DTParser.SEEN_DCS_TEXT_STATE = 20;
 DTParser.SEEN_ACS_STATE = 21;
+DTParser.PAUSE_REQUESTED = 23;
 
 window.DTParser = DTParser;

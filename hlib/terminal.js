@@ -374,6 +374,7 @@ class Terminal {
     this._showHideEventHandler =
           function(evt) { dt._showHideHandler(evt); dt._clearSelection(); evt.preventDefault();};
     this._updateDisplay = function() {
+        dt.cancelUpdateDisplay();
         dt._updateTimer = null;
         dt._breakDeferredLines();
         dt._checkSpacer();
@@ -1043,14 +1044,9 @@ Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
 
 Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
-        const vTop = this._vspacer.offsetTop;
-        let height;
-        let homeLine = this.homeLine;
-        while ((height = vTop - this._homeOffset(homeLine)) > this.availHeight
-               && this.getAbsCursorLine() > homeLine) {
-           homeLine++;
-        }
-        this._adjustSpacer(this.availHeight - height);
+        let needed = this.availHeight - this._vspacer.offsetTop
+            + this._homeOffset(this.homeLine);
+        this._adjustSpacer(needed > 0 ? needed : 0);
     }
 };
 Terminal.prototype._adjustSpacer = function(needed) {
@@ -8690,12 +8686,7 @@ Terminal.prototype._togglePaging = function() {
 */
 
 Terminal.prototype._pauseNeeded = function() {
-    if (this._autoPaging && this._autoPagingTemporary instanceof Element
-        && this.topNode.scrollTop+this.availHeight > this._autoPagingTemporary.offsetTop) {
-        this._autoPaging = false;
-        this._autoPagingTemporary = false;
-    }
-    return (this._pagingMode > 0 || this._autoPaging)
+    return (this._pagingMode > 0 || this._autoPaging || this._autoPagingTemporary)
         && this._pauseLimit >= 0
         && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };
