@@ -344,7 +344,6 @@ class DTParser {
                 if (Terminal._doLinkify && Terminal.isDelimiter(ch)
                     && term.linkify(str, prevEnd, i, ch)) {
                     prevEnd = i;
-                    columnWidth = 0;
                 }
                 switch (ch) {
                 case 13: // '\r' carriage return
