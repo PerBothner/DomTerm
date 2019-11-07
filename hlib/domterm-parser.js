@@ -77,7 +77,6 @@ class DTParser {
         var pendingEchoNode = term._deferredForDeletion;
         var i = 0;
         var prevEnd = 0;
-        var columnWidth = 0; // number of columns since prevEnv
         for (; i < slen; i++) {
             var ch = str.charCodeAt(i);
             //term.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
@@ -184,7 +183,7 @@ class DTParser {
                     //case 62 /*'>'*/: // VT52 mode: Enter alternate keypad mode
                 default: ;
                 }
-                prevEnd = i + 1; columnWidth = 0;
+                prevEnd = i + 1;
                 break;
             case DTParser.SEEN_ESC_LBRACKET_STATE:
             case DTParser.SEEN_DCS_STATE:
@@ -214,7 +213,7 @@ class DTParser {
                 else {
                     this.handleControlSequence(ch);
                     this.parameters.length = 1;
-                    prevEnd = i + 1; columnWidth = 0;
+                    prevEnd = i + 1;
                 }
                 continue;
 
@@ -231,10 +230,10 @@ class DTParser {
                     this.parameters.push("");
                     if (ch != 59)
                         i--; // re-read 7 or 0
-                    prevEnd = i + 1; columnWidth = 0;
+                    prevEnd = i + 1;
                 } else {
                     this.parameters.length = 1;
-                    prevEnd = i + 1; columnWidth = 0;
+                    prevEnd = i + 1;
                 }
                 continue;
             case DTParser.SEEN_OSC_TEXT_STATE:
@@ -260,7 +259,7 @@ class DTParser {
                     }
                     this._textParameter = "";
                     this.parameters.length = 1;
-                    prevEnd = i + 1;  columnWidth = 0;
+                    prevEnd = i + 1;
                 } else {
                     // Do nothing, for now.
                 }
@@ -285,7 +284,7 @@ class DTParser {
                 term._Gcharsets[g] = cs;
                 term._selectGcharset(term._Glevel, false);
                 this.controlSequenceState = DTParser.INITIAL_STATE;
-                prevEnd = i + 1; columnWidth = 0;
+                prevEnd = i + 1;
                 break;
             case DTParser.SEEN_ESC_SHARP_STATE: /* SCR */
                 switch (ch) {
@@ -310,7 +309,7 @@ class DTParser {
                     var savedStyleMap = term._currentStyleMap;
                     term._currentStyleMap = new Map();
                     for (var r = 0; ; ) {
-                        term.insertSimpleOutput(Es, 0, term.numColumns, term.numColumns);
+                        term.insertSimpleOutput(Es, 0, term.numColumns);
                         if (++r >= term.numRows)
                             break;
                         term.cursorLineStart(1);
@@ -319,7 +318,7 @@ class DTParser {
                     term.moveToAbs(term.homeLine, 0, true);
                     break;
                 }
-                prevEnd = i + 1; columnWidth = 0;
+                prevEnd = i + 1;
                 this.controlSequenceState = DTParser.INITIAL_STATE;
                 break;
             case DTParser.SEEN_ESC_SS2: // _Gcharsets[2]
@@ -329,9 +328,9 @@ class DTParser {
                 if (mapper != null) {
                     var chm = mapper(ch);
                     if (chm != null) {
-                        term.insertSimpleOutput(str, prevEnd, i, columnWidth);
-                        term.insertSimpleOutput(chm, 0, chm.length, -1);
-                        prevEnd = i + 1;  columnWidth = 0;
+                        term.insertSimpleOutput(str, prevEnd, i);
+                        term.insertSimpleOutput(chm, 0, chm.length);
+                        prevEnd = i + 1;
                     }
                 }
                 this.controlSequenceState = DTParser.INITIAL_STATE;
@@ -343,13 +342,13 @@ class DTParser {
             case DTParser.INITIAL_STATE:
             case DTParser.SEEN_ERROUT_END_STATE:
                 if (Terminal._doLinkify && Terminal.isDelimiter(ch)
-                    && term.linkify(str, prevEnd, i, columnWidth, ch)) {
+                    && term.linkify(str, prevEnd, i, ch)) {
                     prevEnd = i;
                     columnWidth = 0;
                 }
                 switch (ch) {
                 case 13: // '\r' carriage return
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                    term.insertSimpleOutput(str, prevEnd, i);
                     //term.currentCursorColumn = column;
                     var oldContainer = term.outputContainer;
                     if (oldContainer instanceof Text)
@@ -379,12 +378,12 @@ class DTParser {
                         term.cursorLineStart(0);
                         this.controlSequenceState = DTParser.SEEN_CR;
                     }
-                    prevEnd = i + 1; columnWidth = 0;
+                    prevEnd = i + 1;
                     break;
                 case 10: // '\n' newline
                 case 11: // vertical tab
                 case 12: // form feed
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                    term.insertSimpleOutput(str, prevEnd, i);
                     if (term._currentPprintGroup !== null
                         && this.controlSequenceState == DTParser.SEEN_CR) {
                         this.handleOperatingSystemControl(118, "");
@@ -399,10 +398,10 @@ class DTParser {
                     if (this.controlSequenceState == DTParser.SEEN_CR) {
                         this.controlSequenceState =  DTParser.INITIAL_STATE;
                     }
-                    prevEnd = i + 1; columnWidth = 0;
+                    prevEnd = i + 1;
                     break;
                 case 27 /* Escape */:
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                    term.insertSimpleOutput(str, prevEnd, i);
                     var nextState = DTParser.SEEN_ESC_STATE;
                     if (state == DTParser.SEEN_ERROUT_END_STATE) {
                         // cancelled by an immediate start-of-error-output
@@ -418,17 +417,17 @@ class DTParser {
                             term._pushStdMode(null);
                     }
                     //term.currentCursorColumn = column;
-                    prevEnd = i + 1; columnWidth = 0;
+                    prevEnd = i + 1;
                     this.controlSequenceState = nextState;
                     continue;
                 case 8 /*'\b'*/:
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                    term.insertSimpleOutput(str, prevEnd, i);
                     term._breakDeferredLines();
                     term.cursorLeft(1, false);
-                    prevEnd = i + 1;  columnWidth = 0;
+                    prevEnd = i + 1;
                     break;
                 case 9 /*'\t'*/:
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth);
+                    term.insertSimpleOutput(str, prevEnd, i);
                     term._breakDeferredLines();
 		    {
                         term.tabToNextStop(true);
@@ -440,21 +439,21 @@ class DTParser {
                             && col > lineStart._widthColumns)
                             lineStart._widthColumns = col;
 		    }
-                    prevEnd = i + 1;  columnWidth = 0;
+                    prevEnd = i + 1;
                     break;
                 case 7 /*'\a'*/:
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth); 
+                    term.insertSimpleOutput(str, prevEnd, i);
                     //term.currentCursorColumn = column;
                     term.handleBell();
-                    prevEnd = i + 1; columnWidth = 0;
+                    prevEnd = i + 1;
                     break;
                 case 24: case 26:
                     this.controlSequenceState = DTParser.INITIAL_STATE;
                     break;
                 case 14 /*SO*/: // Switch to Alternate Character Set G1
                 case 15 /*SI*/: // Switch to Standard Character Set G0
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth);
-                    prevEnd = i + 1; columnWidth = 0;
+                    term.insertSimpleOutput(str, prevEnd, i);
+                    prevEnd = i + 1;
                     term._selectGcharset(15-ch, false);
                     break;
                 case 5 /*ENQ*/: // FIXME
@@ -464,8 +463,8 @@ class DTParser {
                 case 20: case 21: case 22: case 23: case 25:
                 case 28: case 29: case 30: case 31:
                     // ignore
-                    term.insertSimpleOutput(str, prevEnd, i, columnWidth);
-                    prevEnd = i + 1; columnWidth = 0;
+                    term.insertSimpleOutput(str, prevEnd, i);
+                    prevEnd = i + 1;
                     break;
                 case 0x9c: // ST (String Terminator
                     this.controlSequenceState = DTParser.INITIAL_STATE;
@@ -488,7 +487,7 @@ class DTParser {
                     if (ch >= 0xD800 && ch <= 0xDBFF) {
                         i++;
                         if (i == slen) {
-                            term.insertSimpleOutput(str, prevEnd, i0, columnWidth);
+                            term.insertSimpleOutput(str, prevEnd, i0);
                             this.parameters[0] = str.charAt(i0);
                             this.controlSequenceState = DTParser.SEEN_SURROGATE_HIGH;
                             break;
@@ -509,25 +508,11 @@ class DTParser {
                         }
                     }
                     if (multipleChars) {
-                        term.insertSimpleOutput(str, prevEnd, i0, columnWidth);
+                        term.insertSimpleOutput(str, prevEnd, i0);
                         term.insertSimpleOutput(chm, 0, chm.length);
-                        prevEnd = i + 1; columnWidth = 0;
+                        prevEnd = i + 1;
                         break;
                     }
-                    var cwidth = term.wcwidthInContext(ch, term.outputContainer);
-                    if (cwidth == 2) {
-                        term.insertSimpleOutput(str, prevEnd, i0, columnWidth);
-                        prevEnd = i + 1; columnWidth = 0;
-                        if (chm == null)
-                            chm = str.substring(i0, prevEnd);
-                        var wcnode = term._createSpanNode();
-                        wcnode.setAttribute("class", "wc-node");
-                        term._pushIntoElement(wcnode);
-                        term.insertSimpleOutput(chm, 0, chm.length, 2);
-                        term.popFromElement();
-                        break;
-                    }
-                    columnWidth += cwidth;
                 }
                 break;
             case DTParser.PAUSE_REQUESTED:
@@ -540,7 +525,7 @@ class DTParser {
             }
         }
         if (this.controlSequenceState == DTParser.INITIAL_STATE) {
-            term.insertSimpleOutput(str, prevEnd, i, columnWidth);
+            term.insertSimpleOutput(str, prevEnd, i);
             //term.currentCursorColumn = column;
         }
         if (this.controlSequenceState === DTParser.SEEN_OSC_TEXT_STATE
@@ -649,7 +634,7 @@ class DTParser {
             var saveInsertMode = term.sstate.insertMode;
             term.sstate.insertMode = true;
             param = this.getParameterOneIfDefault(0);
-            term.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param, param);
+            term.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param);
             term.cursorLeft(param, false);
             term.sstate.insertMode = saveInsertMode;
             break;
@@ -764,7 +749,7 @@ class DTParser {
                         ? d.charCodeAt(dl-2) : -1;
                     var w = c0 >= 0xD800 && c0 <= 0xDBFF ? 2 : 1;
                     var str = d.substring(dl-w).repeat(param);
-                    term.insertSimpleOutput(str, 0, str.length, -1);
+                    term.insertSimpleOutput(str, 0, str.length);
                 }
             }
             break;

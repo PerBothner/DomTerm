@@ -27,6 +27,7 @@ div.domterm-pre span.wc-node {
     display: inline-block;
     text-align: center;
     width: var(--wchar-width);
+    height: var(--char-height);
 }
 /* FUTURE POPUP
 div.domterm-main-popup {

@@ -266,6 +266,9 @@ class Terminal {
     /** @type {Node|Number|null} */
     this.outputBefore = null;
 
+    /** True if in the middle of a wide character. */
+    this.outputInWide = false;
+
     // The parent node of the output position.
     // New output is by default inserted into this Node,
     // at the position indicated by outputBefore.
@@ -431,6 +434,7 @@ class Terminal {
             }
         }
         this.sstate.inInputMode = false;
+        this.sstate.inPromptMode = true;
         var curOutput = this.currentCommandOutput();
         // MOVE to: maybeExtendInput
         if (curOutput
@@ -481,6 +485,7 @@ class Terminal {
         this.sstate.stayInInputMode = stayInInputMode;
         this._pushStdMode(null);
         this.sstate.inInputMode = true;
+        this.sstate.inPromptMode = false;
         this._fixOutputPosition();
         let ln = this.outputContainer;
         var cl = ln.classList;
@@ -562,6 +567,7 @@ class Terminal {
 
     startOutput() {
         this.sstate.inInputMode = false;
+        this.sstate.inPromptMode = false;
         const group = this.currentCommandGroup();
         if (group && group.lastChild instanceof Element
             && group.lastChild.classList.contains("input-line")
@@ -754,6 +760,7 @@ Terminal.prototype.close = function() {
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]) {
     this.sstate.inInputMode = false;
+    this.sstate.inPromptMode = false;
     const container = this.outputContainer;
     let commandGroup = document.createElement("div");
     commandGroup.setAttribute("class", "command-group");
@@ -1471,6 +1478,14 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
     if (goalAbsLine == absLine && column >= 0 && goalColumn >= column) {
         current = this.outputBefore;
         parent = this.outputContainer;
+        if (this.outputInWide) {
+            column--;
+            if (current instanceof Element && current.tagName == "SPAN"
+                && current.getAttribute("class") == "wc-node") {
+                current = parent;
+                parent = current.parentNode;
+            }
+        }
     } else {
         var homeLine = this.homeLine;
         var lineCount = this.lineStarts.length;
@@ -1554,6 +1569,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         absLine = goalAbsLine;
         column = 0;
     }
+    this.outputInWide = false;
     if (column != goalColumn) {
         var lineEnd = this.lineEnds[absLine];
         // At this point we're at the correct line; scan to the desired column.
@@ -1561,21 +1577,31 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         while (column < goalColumn) {
             var handled = false;
             if (current instanceof Element && current.nodeName == "SPAN") {
-                var tcol = -1;
-                var st = current.getAttribute("style");
-                if (st && st.startsWith("tab-size:")) {
-                    tcol = Number(st.substring(9));
-                }
-                if (! isNaN(tcol) && tcol > 0) {
-                    tcol = Math.trunc(column / tcol) * tcol + tcol;
-                    if (goalColumn >= tcol) {
-                        column = tcol;
-                        handled = true;
-                    } else {
-                        var text = document.createTextNode(DomTerm.makeSpaces(tcol-column));
-                        parent.insertBefore(text, current);
-                        parent.removeChild(current);
-                        current = text;
+                if (current.getAttribute("class") == "wc-node") {
+                    if (column + 2 <= goalColumn) {
+                        column += 2;
+                    } else { //if (column + 1 == goalColumn) {
+                        column += 1;
+                        this.outputInWide = true;
+                    }
+                    handled = true;
+                } else {
+                    var tcol = -1;
+                    var st = current.getAttribute("style");
+                    if (st && st.startsWith("tab-size:")) {
+                        tcol = Number(st.substring(9));
+                    }
+                    if (! isNaN(tcol) && tcol > 0) {
+                        tcol = Math.trunc(column / tcol) * tcol + tcol;
+                        if (goalColumn >= tcol) {
+                            column = tcol;
+                            handled = true;
+                        } else {
+                            var text = document.createTextNode(DomTerm.makeSpaces(tcol-column));
+                            parent.insertBefore(text, current);
+                            parent.removeChild(current);
+                            current = text;
+                        }
                     }
                 }
             }
@@ -1757,7 +1783,8 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         // yes: class="term-style", std=="input"
         if (! (parent == this.topNode)
             && ! current.classList.contains("term-style")
-            && current.getAttribute("std") !== "input")
+            && current.getAttribute("std") !== "input"
+            && current.getAttribute("class") !== "wc-node")
             console.log("unexpected child "+current.nodeName);
         parent = current;
         current = parent.firstChild;
@@ -3360,6 +3387,7 @@ Terminal.prototype._updateMiscOptions = function(map) {
             topStyle.setProperty("--background-color", background);
     }
     topStyle.setProperty("--wchar-width", (this.charWidth * 2)+"px");
+    topStyle.setProperty("--char-height", this.charHeight+"px");
 };
 
 DomTerm.showContextMenu = null;
@@ -4163,7 +4191,7 @@ Terminal.prototype.updateCursorCache = function() {
         }
     }
     this.currentAbsLine = line;
-    this.currentCursorColumn = col;
+    this.currentCursorColumn = col + (this.outputInWide ? 1 : 0);
     return;
 };
 
@@ -4571,7 +4599,7 @@ Terminal.prototype.eraseCharactersRight = function(count, doDelete=false) {
         var avail = this.numColumns - this.getCursorColumn();
         if (count > avail)
             count = avail;
-        this.insertSimpleOutput(DomTerm.makeSpaces(count), 0, count, count);
+        this.insertSimpleOutput(DomTerm.makeSpaces(count), 0, count);
         this.cursorLeft(count == avail ? count - 1 : count, false);
         return;
     }
@@ -4633,6 +4661,12 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
                         this._currentStyleSpan = null;
                     current = parent;
                     parent = parent.parentNode;
+                    // Alternatively, let the "prompt" span be deleted, but
+                    // re-create it in _adjustStyle - as done for inInputMode.
+                    if (this.sstate.inPromptMode
+                        && current.tagName == "SPAN"
+                        && current.getAttribute("std") == "prompt")
+                        break;
                     if (current == this._currentStyleSpan)
                         this._currentStyleSpan = null;
                     if (current == this.outputContainer) {
@@ -6691,17 +6725,51 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
     return goodLength < textLength ? textData.substring(goodLength) : "";
 };
 
-Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
-                                               widthInColumns = -1) {
+Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     var sslen = endIndex - beginIndex;
     if (sslen == 0)
         return;
 
-    var slen = str.length;
-    if (beginIndex > 0 || endIndex != slen) {
-        str = str.substring(beginIndex, endIndex);
-        slen = endIndex - beginIndex;
+    let widthInColumns = 0;
+    let segments = [];
+    let widths = [];
+    let numCols = 0;
+    const preferWide = false; //this.ambiguousCharsAreWide(context);
+    for (let i = beginIndex; ; ) {
+        let width;
+        let next_i;
+        if (i >= endIndex) {
+            width = -1;
+        } else {
+            var codePoint = str.codePointAt(i);
+            next_i = i + ((codePoint <= 0xffff) ? 1 : 2);
+            width = preferWide ? this.wcwidth.charWidthRegardAmbiguous(codePoint)
+                : this.wcwidth.charWidthDisregardAmbiguous(codePoint);
+        }
+        if (i > beginIndex && width != 1) {
+            segments.push(str.substring(beginIndex, i));
+            widths.push(numCols);
+        }
+        if (width < 0)
+            break;
+        if (width == 2) {
+            const wcnode = this._createSpanNode();
+            wcnode.setAttribute("class", "wc-node");
+            wcnode.appendChild(document.createTextNode(str.substring(i, next_i)));
+            segments.push(wcnode);
+            widths.push(2);
+            beginIndex = next_i;
+            numCols = 0;
+        } else
+            numCols++;
+        widthInColumns += width;
+        i = next_i;
     }
+
+    let nsegments = segments.length;
+    if (nsegments == 0)
+        return;
+    let isegment = 0;
     if (this.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str)+"'");
     var absLine = this.getAbsCursorLine();
@@ -6717,8 +6785,12 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             this.outputBefore = null;
         }
     }
-    if (widthInColumns < 0)
-        widthInColumns = this.strWidthInContext(str, this.outputContainer);
+    if (this.outputContainer.tagName == "SPAN"
+        && this.outputContainer.getAttribute("class") == "wc-node"
+        && this.outputBefore == this.outputContainer.firstChild) {
+        this.outputBefore = this.outputContainer;
+        this.outputContainer = this.outputBefore.parentNode;
+    }
     if (this.outputBefore instanceof Text) {
         this.outputContainer = this.outputBefore;
         this.outputBefore = 0;
@@ -6753,6 +6825,28 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     } else {
         if (this.outputContainer instanceof Text)
             this._adjustStyle();
+        /*
+        for (;;) {
+            if (isegment == nsegments)
+                return;
+            let seg = segments[isegment];
+            let oldChild;
+            if (seg instanceof Element
+                && this.outBefore.tagName == "SPAN"
+                && this.outputBefore.getAttribute("class") == "wc-node"
+                && (oldChild = this.outputBefore.firstChild) instanceof Text) {
+                if (oldChild.data !== seg.firstChild.data) {
+                    oldChild.data = seg.firstChild.data;
+                }
+                this.outputBefore = this.outputBefore.nextSibling;
+                isegment++;
+            } else if (typeof seg === "string" && this.outputBefore instanceof Text) {
+                ... check if seg is prefix of this.outputBefore ...
+            } else
+                break;
+        }
+        */
+        // FIXME - merge the following optimizations into the above loop
         if (this.outputContainer instanceof Text) {
             let oldStr = this.outputContainer.data.substring(this.outputBefore);
             if (oldStr.startsWith(str)) {
@@ -6761,19 +6855,21 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                 // desirble (for one it avoids messing with the selection).
                 this.outputBefore += str.length;
                 str = null;
+                segments = [];
             }
-            else {
+            else if (false) { // FIXME
                 let oldColWidth = this.strWidthInContext(oldStr, this.outputContainer);
                 // optimize if new string is less wide than old text
                 if (widthInColumns <= oldColWidth
                     // For simplicty: no double-width chars
-                    && widthInColumns == str.length
+                    && widthInColumns == str.length // FIXME
                     && oldColWidth == oldStr.length) {
                     let strCharLen = DomTerm._countCodePoints(str);
                     let oldLength = DomTerm._indexCodePoint(oldStr, strCharLen);
                     this.outputContainer.replaceData(this.outputBefore, oldLength, str);
                     this.outputBefore += str.length;
                     str = null;
+                    segments = [];
                 }
             }
         }
@@ -6788,10 +6884,20 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         this._breakDeferredLines();
         // maybe adjust line/absLine? FIXME
         for (;;) {
+            if (isegment >= nsegments)
+                break;
+            let seg = segments[isegment];
+            let cols = widths[isegment];
             this._adjustStyle();
-            var textNode = this.insertRawOutput(str);
+            let textNode;
+            if (seg instanceof Element) {
+                this.insertNode(seg);
+                textNode = seg.firstChild;
+            } else {
+                textNode = this.insertRawOutput(seg);
+            }
             if (this.getCursorColumn() + widthInColumns <= this.numColumns)
-                break
+                break;
             const tparent = textNode.parentNode;
             const tprev = textNode.previousSibling;
             const tnext = textNode.nextSibling;
@@ -6799,7 +6905,19 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                   : tparent.offsetLeft + tparent.offsetWidth;
             const left = tprev === null ? tparent.offsetLeft
                   : tprev.offsetLeft + tprev.offsetWidth;
-            str = this._breakString(textNode, this.lineEnds[absLine], left, right, this.availWidth, false, false/*FIXME-countColumns*/);
+            if (seg instanceof Element)
+                ;
+            else {
+                seg = this._breakString(textNode, this.lineEnds[absLine], left, right, this.availWidth, false, false/*FIXME-countColumns*/);
+                if (seg) {
+                    segments[isegment] = seg;
+                    let r = this.strWidthInContext(seg, this.outputContainer);
+                    cols -= r;
+                    widths[isegment] = r;
+                    isegment--;
+                }
+            }
+            isegment++;
             //current is after inserted textNode;
             var oldContainer = this.outputContainer;
             var oldLine = this.lineEnds[absLine];
@@ -6818,14 +6936,20 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                 this.outputBefore = null;
             }
             absLine++;
-            widthInColumns = this.strWidthInContext(str, this.outputContainer);
+            widthInColumns -= cols;
             this.deleteCharactersRight(widthInColumns, false);
         }
     }
     else {
         if (str != null) {
-            this._adjustStyle();
-            this.insertRawOutput(str);
+            this._adjustStyle(); // FIXME
+            for (; isegment < nsegments; isegment++) {
+                let seg = segments[isegment];
+                if (seg instanceof Element)
+                    this.insertNode(seg);
+                else
+                    this.insertRawOutput(seg);
+            }
         }
         this._updateLinebreaksStart(absLine);
     }
@@ -8012,6 +8136,16 @@ Terminal.prototype._checkTree = function() {
                     error("duplicate input element");
             }
             */
+            if (cur.getAttribute("class") == "wc-node") {
+                let ch = cur.firstChild;
+                if (ch instanceof Element) {
+                    if (ch !== this._caretNode)
+                        error("bad element child in wc-node");
+                    ch = ch.nextSibling;
+                }
+                if (cur.firstChild == null || ! (ch instanceof Text))
+                    error("missing text in wc-node");
+            }
             if (istart < nlines && this.lineStarts[istart] == cur) {
                 if (iend == istart && this.lineEnds[iend] == null)
                     iend++;
@@ -8308,7 +8442,7 @@ Terminal.isDelimiter = (function() {
 
 Terminal.prototype.linkAllowedUrlSchemes = ":http:https:file:ftp:mailto:";
 
-Terminal.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
+Terminal.prototype.linkify = function(str, start, end, delimiter) {
     const dt = this;
     function rindexDelimiter(str, start, end) {
         for (let i = end; --i >= start; )
@@ -8427,18 +8561,16 @@ Terminal.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
         } else
             return false;
     }
-    columnWidth -= afterLen;
     if (fstart > start && firstToMove == null) {
-        this.insertSimpleOutput(str, start, fstart, -1);
+        this.insertSimpleOutput(str, start, fstart);
         start = fstart;
-        columnWidth = -1;
     }
     let alink = document.createElement("a");
     alink.setAttribute("class", "matched plain");
     alink.setAttribute("href", href);
     this._pushIntoElement(alink);
     if (end-afterLen > start)
-        this.insertSimpleOutput(str, start, end-afterLen, columnWidth);
+        this.insertSimpleOutput(str, start, end-afterLen);
     let old = alink.firstChild;
     for (let n = firstToMove; n && n != alink; ) {
         let next = n.nextSibling;
@@ -8472,7 +8604,7 @@ Terminal.prototype.linkify = function(str, start, end, columnWidth, delimiter) {
                 afterLen = 0;
         }
         if (afterLen > 0)
-            this.insertSimpleOutput(afterStr, 0, afterLen, afterLen);
+            this.insertSimpleOutput(afterStr, 0, afterLen);
     }
     alink.normalize();
     return true;
@@ -8972,7 +9104,7 @@ Terminal.prototype.editorInsertString = function(str, inserting=true) {
             } else {
                 let saveInserting = this.sstate.insertMode;
                 this.sstate.insertMode = inserting;
-                this.insertSimpleOutput(str1, 0, str.length, -1);
+                this.insertSimpleOutput(str1, 0, str.length);
                 this.sstate.insertMode = saveInserting;
             }
             this._popFromCaret(saved);
