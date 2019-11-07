@@ -40,6 +40,7 @@ JAVAC_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVAC)
 JAVA_WITH_PATH = PATH=$(JAVA_HOME)/bin:$(PATH) $(JAVA)
 CLIENT_DATA_DIR = .
 #CLIENT_DATA_DIR = @datadir_relative@/domterm
+HTML_DIR = web
 
 if WITH_JAVA
 if ENABLE_JAVA_PTY
@@ -170,7 +171,7 @@ run-shell: $(DOMTERM_JAR)
 
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
-	-rm -rf \
+	-rm -rf web/tools web/images \
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi
@@ -278,12 +279,19 @@ DOC_IMAGES = \
   doc/images/domterm-panes-1.png \
   doc/images/domterm-sh-svg.png \
   doc/images/domterm-polygon-1.png \
-  doc/images/emacs-in-firefox-1.png
+  doc/images/dt-atom1.png \
+  doc/images/dt-help1.png \
+  doc/images/dt-gnuplot1.png \
+  doc/images/emacs-in-firefox-1.png \
+  doc/images/python-error.png \
+  doc/images/python-repl.png \
+  doc/images/python-pandas.png
 DOC_TOOLS = \
   tools/bash-preexec.sh \
   tools/shell-integration.bash \
   tools/shell-integration.fish \
-  tools/shell-integration.zsh
+  tools/shell-integration.zsh \
+  tools/python/domterm/utils.py
 
 doc/DomTerm.xml: doc/DomTerm.texi
 	$(MKDIR_P) doc
@@ -296,10 +304,10 @@ doc/DomTerm.xml: doc/DomTerm.texi
 	-e '/Suspends additional output/s|><listitem>| continuation="continues"><listitem>|' \
 	> doc/DomTerm.xml
 
-web/index.html: doc/DomTerm.xml Makefile
-	$(MKDIR_P) web/images web/tools
+$(HTML_DIR)/index.html: doc/DomTerm.xml Makefile
+	$(MKDIR_P) $(HTML_DIR)/images $(HTML_DIR)/tools
 	$(XSLT) --path $(DOCBOOK_XSL_DIR)/html \
-	  --output web/  \
+	  --output $(HTML_DIR)/  \
 	  --stringparam root.filename toc \
 	  --stringparam generate.section.toc.level 0 \
 	  --stringparam chunker.output.encoding UTF-8 \
@@ -317,10 +325,10 @@ web/index.html: doc/DomTerm.xml Makefile
 	  --stringparam chunk.separate.lots 1 \
 	  --stringparam chunk.tocs.and.lots 1 \
 	  $(srcdir)/doc/style/domterm.xsl doc/DomTerm.xml
-	$(SED) -s 's|<a name=".*"></a>Why|Why|' <web/index.html >web/tmp-index.html
-	mv web/tmp-index.html web/index.html
+	$(SED) -s 's|<a name=".*"></a>Why|Why|' <$(HTML_DIR)/index.html >$(HTML_DIR)/tmp-index.html
+	mv $(HTML_DIR)/tmp-index.html $(HTML_DIR)/index.html
 	cd $(srcdir) && cp $(DOC_IMAGES) $(abs_builddir)/web/images
-	cd $(srcdir) && cp $(DOC_TOOLS) $(abs_builddir)/web/tools
+	(cd $(srcdir) && tar cf - $(DOC_TOOLS))|(cd web && tar xf -)
 
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
 upload-web: web/index.html

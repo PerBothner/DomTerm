@@ -4,6 +4,8 @@
 @documentencoding UTF-8
 @settitle DomTerm - a terminal emulator and console using DOM and JavaScript
 
+@contents
+
 @syncodeindex fn cp
 @syncodeindex vr cp
 @syncodeindex pg cp
@@ -112,50 +114,85 @@ Double-width characters now really are two columns wide.
 @node Features
 @chapter Features and screenshots
 
-The goal of this project is to combine two related but
-separate tools: a terminal emulator, and a rich-text console,
-and do it properly.
+The goal of DomTerm is to be both a great terminal emulator
+as well as great environment for @uref{https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop,REPLs}.
 
-There are many terminal emulators, including quite a few written in JavaScript.
-However, they generally work with a rectangular grid of characters,
-and don't integrate rich text (images, math, variable-width text,
-variable-length lines, interaction) well.
+@c The goal of this project is to combine two related but
+@c separate tools: a terminal emulator, and a rich-text console,
+@c and do it properly.
 
-There are also various tools designed for REPL-style interaction,
-chat clients, etc. Examples include @uref{http://ipython.org/,IPython}
-or the the JavaScript console of a web browser.
-However, they don't work as terminal emulators, or at best have
-limited functonality or require switching modes.
+@c There are many terminal emulators, including quite a few written in JavaScript.
+@c However, they generally work with a rectangular grid of characters,
+@c and don't integrate rich text (images, math, variable-width text,
+@c variable-length lines, interaction) well.
 
-For rich text applications it seems obvious to use web technologies:
-DOM and JavaScript.
+@c There are also various tools designed for REPL-style interaction,
+@c chat clients, etc. Examples include @uref{http://ipython.org/,IPython}
+@c or the the JavaScript console of a web browser.
+@c However, they don't work as terminal emulators, or at best have
+@c limited functonality or require switching modes.
 
-One goal of this project is a stand-alone terminal emulator application
-that techies can use as a day-to-day terminal emulator, and that also
-seamlessly provides support for rich text and interaction. That means
-an embedded web engine.
+@c For rich text applications it seems obvious to use web technologies:
+@c DOM and JavaScript.
 
-The core of the project is a JavaScript package that can be used and
-embedded in different modes and applications.
+@c One goal of this project is a stand-alone terminal emulator application
+@c that techies can use as a day-to-day terminal emulator, and that also
+@c seamlessly provides support for rich text and interaction. That means
+@c an embedded web engine.
+
+@c The core of the project is a JavaScript package that can be used and
+@c embedded in different modes and applications.
 
 This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emulator, OpenSource.org article} provides an overview of DomTerm's functionality.
 (It should be merged into the following.)
 
-@c The @emph is a dummy to force the @image inside a paragraph
-@emph{}
-@image{images/domterm-2}
-A @strong{full-featured terminal emulator}, like @code{xterm}.
-It is mostly compatible with setting @code{TERM=xterm-256color},
-as many terminal emulators do, and does very well on
-the @uref{http://invisible-island.net/vttest/,@code{vttest}} terminal test program.
+@c @c The @emph is a dummy to force the @image inside a paragraph
+@c @emph{}
+
+@subheading Full-featured terminal emulator
+
+@float
+@image{images/domterm-2,,,DomTerm window running mc (Midnight Commander)}
+@caption{@b{Figure 1:} Running Midnight Commander}
+@end float
+
+DomTerm includes the functionality what you'd expect from modern
+terminal-emulator.
+@itemize @bullet
+@item
+It uses an extended @uref{https://invisible-island.net/xterm/,xterm}
+protocol, and sets the @code{TERM=xterm-256color} environment variable,
+like other modern terminal emulators.
+DomTerm does very well on
+the @uref{http://invisible-island.net/vttest/,@code{vttest}} terminal test program,
+including handling Background Color Erase.
+@item
+Standard mouse event handling.
+@item
+Supports 24-bit color (truecolor).
+@item
+Unicode characters, including
+double-width (CJK and Emoiji) characters.
+@item
+Remembers tab characters so copying selected output
+will contain the tab character.
+@item
+Support for using Input Methods.
+@item
+Resizing the window re-flow long output lines.
+@item
+Makes URls and file names into clickable links.
+Also supports an explicit hyperlink escape sequence.
+@end itemize
+
 Here you see the @code{mc} (Midnight Commander) file browser
 running in the stand-alone DomTerm application.
-@ifdocbook
-(Click on image to see the full-size screenshot.)
-@end ifdocbook
 Emacs (shown later) and GNU readline also work well.
 
-@emph{}@image{images/domterm-polygon-1}
+@subheading Rich output and images
+
+@image{images/domterm-polygon-1}
+
 A back-end @strong{can ``print'' images, graphics, and rich text}.
 Here you can see evaluating and ``printing''
 @code{Paintable} objects, which are graphical objects such as
@@ -175,35 +212,58 @@ You can directly print
 @uref{https://en.wikipedia.org/wiki/Sixel,@strong{Sixel images}},
 which is an encoding that some DEC VT terminals supported..
 
-@emph{}
-@image{images/emacs-in-firefox-1}
-The guts of the implementation is portable JavaScript (@code{terminal.js}),
-which can be @strong{embedded} in multiple front-ends.
-The source includes a stand-alone terminal emulator,
-using the embedded JavaFX WebEngine browser.
-You can also use the included WebSockets server,
-and along with your HTML5 browser of choice.
-Here is @strong{Emacs displaying in a FireFox browser window}.
+(Add examples: Python, Kawa, shells)
 
-Applications of DomTerm include:
-@itemize
+@subsubheading Help and other documentation
+
+@image{images/dt-help1}
+
+The @code{domterm help @var{topic}} command is essentially the same as
+@code{domterm hcat $DT_HELP/domterm-@var{topic}.html}.
+
+You can display display inline HTML from @ref{pandoc-output,pandoc}
+and @ref{man-page-output,@code{man} pages}.
+
+@subsubheading Gnuplot
+
+@image{images/dt-gnuplot1}
+
+The @uref{http://www.gnuplot.info/,GnuPlot graphing utility} (version 5.1+)
+supports @uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,DomTerm as an output device}.
+
+@subheading Choose your front-end
+
+Most of DomTerm is written in JavaScript and runs in a browser engine.
+This can be a desktop web browser, such as Chrome or Firefox, or it can be an embedded browser.
+Using a general web browser works fine, but the user experience
+isn't quite as nice, and the security model gets in the way,
+so using an embedded browser is recommended.
+
+The following are currently supported:
+@itemize @bullet
 @item
-A chat/talk window.
+qtdomterm, which uses the @uref{ttps://www.qt.io,Qt toolkit} and QtWebEngine.
 @item
-A read-eval-print-loop for an interactive scripting language.
+An @uref{https://electronjs.org/,Electron} embedding.
 @item
-A command console.
+@code{atom-domterm} runs DomTerm as a package in the
+@uref{https://atom.io/,Atom text editor} (which is also based on Electron)
+and integrates with the Atom pane system.
 @item
-A terminal emulator.
+A wrapper for JavaFX's WebEngine, which is useful for code written in Java
+@item
+Previously, the preferred frontend used Firefox-XUL, but Mozilla has since dropped XUL
 @end itemize
 
-User @strong{preferences are controlled a CSS stylesheet},
-which can be changed by an application.
+@image{images/emacs-in-firefox-1}
 
-@strong{Uses a byte-protocol} to communicate with the back-end,
-so can run in a browser (using web sockets);
-be embedded in an application;
-or run as a standard terminal emulator application.
+Here is @strong{Emacs displaying in a FireFox browser window}.
+
+@image{images/dt-atom1}
+
+@subheading Panes and tabs
+
+@subheading Shell/REPL integration
 
 Optional @strong{input editing}.  In @dfn{character mode},
 each character is sent to the application, like a traditional terminal.
@@ -214,7 +274,18 @@ with the Up/Down arrow keys.
 @dfn{Automatic mode} switches between character mode and line mode
 depending on whether the back-end is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
 
-@emph{}@image{images/domterm-sh-svg}
+@subheading Miscelleanous
+
+User @strong{preferences are controlled a CSS stylesheet},
+which can be changed by an application.
+
+@strong{Uses a byte-protocol} to communicate with the back-end,
+so can run in a browser (using web sockets);
+be embedded in an application;
+or run as a standard terminal emulator application.
+
+@image{images/domterm-sh-svg}
+
 @strong{Smart line-wrapping}:
 Remembers which lines were too wide (and thus
 were wrapped).
@@ -2223,6 +2294,7 @@ for how they may support some features differently.
 * Tips::  Miscellaneous tips
 * Detecting domterm terminal::
 * Shell prompts::  Shell prompts and tricks
+* Python tips::
 * Names and titles::
 @end menu
 
@@ -2346,6 +2418,14 @@ case "$TERM" in
 esac
 @end example
 
+@subsubheading gnuplot
+
+The @uref{http://www.gnuplot.info/,gnuplot} graphing application
+has builtin support for
+@uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,``printing'' graphical output}
+to the DomTerm console
+
+@anchor{pandoc-output}
 @subsubheading pandoc Printing markdown and other document types
 
 The @uref{https://pandoc.org/,pandoc} program can convert
@@ -2354,20 +2434,14 @@ To view a Markdown document @code{doc.md} you can do:
 @example
 pandoc -t html doc.md | domterm hcat
 @end example
-You might optionally use the @code{--standalone} flag to force
+You might optionally use the @code{--self-contained} flag to force
 images to be ``inlined'' in the terminal output:
 @example
-pandoc -t html -standalone --metadata pagetitle=dummy doc.md | domterm hcat
+pandoc -t html --self-contained --metadata pagetitle=dummy doc.md | domterm hcat
 @end example
 (The @code{--metadata pagetitle=dummy} is to silence an annoying warning.)
 
-@subsubheading gnuplot
-
-The @uref{http://www.gnuplot.info/,gnuplot} graphing application
-has builtin support for
-@uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,``printing'' graphical output}
-to the DomTerm console
-
+@anchor{man-page-output}
 @subsubheading Showing man pages as html
 
 To view the @code{bash} man page inline you can do the following.
@@ -2783,6 +2857,103 @@ fi
 @end example
 This uses the @code{is_domterm} and @code{print_path_url}
 functions defined above.
+
+@node Python tips
+@section Python tips
+
+Here are some ideas for using the Python (Python3)
+language with DomTerm.
+I am not a Python expert, so recommendations for better
+ways to do these things welcome.
+
+@subheading Setup and prompts
+
+In your shell startup file (e.g @code{.bashrc}),
+define @code{PYTHONSTARTUP} and @code{PYTHONPATH},
+for example:
+@example
+export PYTHONSTARTUP=$HOME/.config/python/python-startup.py
+export PYTHONPATH=$HOME/.config/python
+@end example
+
+Copy the following to @code{$PYTHONSTARTUP}:
+
+@example
+import os
+import sys
+is_domterm = os.getenv("DOMTERM", "")!=""
+session_key = 'Py%d' % os.getpid()
+sys.ps1 = '>>> '
+sys.ps2 = '... '
+
+if is_domterm :
+    sys.ps1 = '\001\033]133;N;aid=' + session_key + ';cl=m\007\002'+ sys.ps1 + '\001\033]133;I\007\002'
+    sys.ps2 = '\001\033]133;P;k=c\007\002' + sys.ps2 + '\001\033]133;I\007\002'
+    import domterm.utils as dtutils
+    dtutils.set_notebook_mode()
+@end example
+
+@uref{images/python-repl.png,@image{images/python-repl}}
+
+Setting @code{sys.ps1} and @code{sys.ps2} wraps the prompts
+with DomTerm-specific escape sequences that provide some benefits:
+
+@itemize @bullet
+@item
+Logical and visual separation between commands,
+with different colors for prompt, input, and output.
+@item
+A ``fold'' (hide/show) mini-button (in the right column):
+Clicking on the downward triangle hides all but the first line of the command.
+You can see that for the command starting @code{"""Another}:
+Input lines beyond the first plus all the output is hidden,
+and the button changed to a right arrow.
+@item
+Clicking with the mouse within the current input line causes the
+editing position in the line to be changed.
+@end itemize
+
+Installing @uref{tools/python/domterm/utils.py,domterm/utils.py}
+defines the following two useful functions.
+
+@deffn Function dtutils.print_html (@var{html_string})
+Send the @var{html_string} to the terminal, and display it
+as would be done in a browser.
+@end deffn
+
+@deffn Function dtutils.set_notebook_mode(@var{enable=True})
+Controls how auto-display (the ``print'' part of the Python REPL)
+handles objects that have a @code{_repr_html_} attribute:
+If @var{enable} is True, then @code{_repr_html_} is called,
+and the result is printed as if by @code{dtutils.print_html}.
+Otherwise, the default display is done.
+The @code{python-startup.py} above starts out with @var{enable}@code{=True}.
+@end deffn
+
+@subheading Clickable errors
+
+@uref{images/python-error.png,@image{images/python-error}}
+
+The @code{domterm.utils} module overrides Python's @code{sys.excepthook},
+as show in the screenshot.  The error message is changed to the
+@code{err} style, which is by default red.
+
+Lines of the form @code{File "@var{filename}", line @var{line}}
+are converted to clickable links (visible when you hover over it).
+(Note the effective URL in the blue box.)
+Right-clicking on the link brings up an @code{Open Link} menu entry,
+which normally brings up a text editor at the specified line;
+you can @ref{link-handlers,customize this action}.
+
+@subheading Using Pandas
+
+@uref{images/python-pandas.png,@image{images/python-pandas}}
+
+Here is an example using Pandas,
+the @uref{https://pandas.pydata.org/,Pandas Data Analysis Library}.
+
+Note how a @code{DataFrame} by default is displayed as an HTML table
+(assuming @code{dtutils.set_notebook_mode(True)} has been called).
 
 @node Names and titles
 @section Names and titles
@@ -4226,8 +4397,8 @@ and forward the requested action to the server.
 
 Communication between a @code{domterm} client and a server
 uses Unix domain sockets.  By default, this socket will
-be bound to the file @code{.domterm/default.socket} in the user's
-home directory.  We make use of Unix file permission to
+be bound to the file @code{$XDG_RUNTIME_DIR/domterm/default.socket}.
+We make use of Unix file permission to
 ensure that the client and the server run on behalf of the same user.
 (This could be generalized to allow groups to co-operate, by setting
 permissions appropriately, but this has not been explored.)
@@ -4261,6 +4432,7 @@ the browser, but that would typically require the key to be
 part of the browser's command-line, which is not secure.
 (It can can viewed with tools like @code{ps}.)
 
+FIXME - OBSOSLTE:
 Instead, the server creates a new file @code{.domterm/default.html}
 in the user's home directory, and uses that as the URL:
 @example

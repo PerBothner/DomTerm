@@ -23,11 +23,13 @@ h1 {
   font-weight: normal }
 a {
   border-style: none;
-  text-decoration-color: #bbf }
+  text-decoration-color: #aaf }
 a:link, a:visited {
   color: inherit; }
-h1, h3, h4 {
-  color: #000 }
+h1, h2, h3, h4 {
+    color: #000;
+    clear: right
+}
 h1, h2, h3 {
   color: #114;
   font-weight: bold;
@@ -36,7 +38,7 @@ h1, h2, h3 {
 }
 h3 {
   font-size: large;
-  margin: 1.5em 1em 1em 0;
+  margin: 1.5em 1em 1em 0
  }
 h3.subtitle {
   font-weight: normal;
@@ -232,4 +234,7 @@ div[class="navcol"] div > ul > li { font-size: larger }
 
 /* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
 
-img { float: right; width: 50%; padding: 3px }
+img { padding: 3px; width: 100% }
+@media (min-width: 50em) {
+    img { float: right; width: 50% }
+}
