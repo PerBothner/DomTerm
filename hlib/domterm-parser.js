@@ -1549,7 +1549,7 @@ class DTParser {
                 text = text.substring(semi+1);
                 let elements =
                     term.initial.getElementsByClassName("can-replace-children");
-                for (let n = elements.length; --n > 0; ) {
+                for (let n = elements.length; --n >= 0; ) {
                     let element = elements[n];
                     if (element.getAttribute("replace-key")===key) {
                         let saveBefore = term.outputBefore;
