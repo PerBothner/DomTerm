@@ -4,12 +4,12 @@ from io import BytesIO
 def print_html(html, out=sys.stdout):
     out.write("\x1b]72;" + html + "\x07")
 
-def display_html(html, overwrite=False, id='python_image', inline=False, out=sys.stdout):
+def display_html(html, overwrite=False, name='python_image', inline=False, out=sys.stdout):
     top = 'span' if inline else 'div'
     if overwrite:
-        out.write("\x1b]721;"+id+";"+html+"\x07")
+        out.write("\x1b]721;"+name+";"+html+"\x07")
     else:
-        out.write("\x1b]72;<"+top+" class='can-replace-children' replace-key='"+id+"' style='overflow-x: auto'>"+html+"</"+top+">\x07")
+        out.write("\x1b]72;<"+top+" class='can-replace-children' replace-key='"+name+"' style='overflow-x: auto'>"+html+"</"+top+">\x07")
 
 dt_display_hook = None
 def set_notebook_mode(enable=True):

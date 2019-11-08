@@ -2921,6 +2921,20 @@ Send the @var{html_string} to the terminal, and display it
 as would be done in a browser.
 @end deffn
 
+@deffn Function dtutils.display_html (@var{html}, overwrite=False, name='python_image', inline=False)
+Similar to @code{print_html}, but supports replace-in-place of
+existing output:
+If @code{overwrite} is @code{False}, it wraps the @var{html} in another
+element (a @code{<span>} if @code{inline} or a @code{<div>} otherwise), and
+attaches a key @code{name} to that wrapper element.
+(This key does not use the @code{id} attribute, and need not be unique.)
+
+If @code{overwrite} is @code{True}, DomTerm searches for the most
+recent element that has a key matching @code{name}.
+If found, it replaces the contents (child nodes) of that
+wrapper element with @var{html}.
+@end deffn
+
 @deffn Function dtutils.set_notebook_mode(@var{enable=True})
 Controls how auto-display (the ``print'' part of the Python REPL)
 handles objects that have a @code{_repr_html_} attribute:
