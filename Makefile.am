@@ -240,6 +240,13 @@ else
 PLAIN_COPY_TO_JAR = $(MISC_COPY_TO_JAR) hlib/domterm-*.js hlib/*.css
 endif
 
+SIXEL_SRC_PATH = $$HOME/Software/node-sixel/src
+recompile-sixel:
+	tsc -t es2017 -m es6 --removeComments --outDir hlib/sixel $(SIXEL_SRC_PATH)/SixelDecoder.ts  $(SIXEL_SRC_PATH)/Colors.ts
+	sed "/import .* from/s|'[.]/Colors'|'./Colors.js'|" <hlib/sixel/SixelDecoder.js >hlib/sixel/SD-tmp
+	mv hlib/sixel/SD-tmp hlib/sixel/SixelDecoder.js
+	rm hlib/sixel/Types.js
+
 $(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)

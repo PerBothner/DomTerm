@@ -1,6 +1,6 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
-import { SixelImage } from './node-sixel.js';
+import { SixelDecoder } from './sixel/SixelDecoder.js';
 
 class DTParser {
     constructor(term) {
@@ -1271,8 +1271,8 @@ class DTParser {
             return;
         }
         if (text.charCodeAt(0) === 113) { // 'q'
-            let six = new SixelImage();
-            six.writeString(text, 1);
+            let six = new SixelDecoder();
+            six.decodeString(text, 1);
             let w = six.width, h = six.height;
             let next = term.outputBefore;
             if (next == term._caretNode)
@@ -1288,7 +1288,7 @@ class DTParser {
             }
             const ctx = canvas.getContext('2d');
             const idata = ctx.createImageData(w, h);
-            six.toImageData(idata.data, w, h);
+            six.toPixelData(idata.data, w, h);
             ctx.putImageData(idata, 0, 0);
             if (reuseCanvas) {
                 this.outputBefore = canvas.nextSibling;

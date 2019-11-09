@@ -1505,7 +1505,8 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
     {"hlib/qwebchannel.js", LIB_WHEN_OUTER},
     {"hlib/jsMenus.js", LIB_WHEN_OUTER},
-    {"hlib/node-sixel.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/sixel/Colors.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/sixel/SixelDecoder.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
 #if WITH_XTERMJS
     {"hlib/xterm.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},

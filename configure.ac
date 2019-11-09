@@ -242,7 +242,8 @@ HLIB_FIXED_FILES="\
   hlib/jquery.min.js \
   hlib/jsMenus.css \
   hlib/jsMenus.js \
-  hlib/node-sixel.js \
+  hlib/sixel/SixelDecoder.js \
+  hlib/sixel/Colors.js \
   hlib/qwebchannel.js \
   hlib/ResizeSensor.js \
   hlib/screenfull.min.js \
