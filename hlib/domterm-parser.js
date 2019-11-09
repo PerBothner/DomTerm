@@ -205,6 +205,7 @@ class DTParser {
                 }
                 else if (state == DTParser.SEEN_DCS_STATE) {
                     this.controlSequenceState = DTParser.SEEN_DCS_TEXT_STATE;
+                    prevEnd = i;
                     i--;
                 } else if (ch == 62 /*'>'*/ || ch == 63 /*'?'*/
                            || ch == 32 /*' '*/ || ch == 33 /*'!'*/
