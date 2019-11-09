@@ -543,7 +543,7 @@ sbuf_blank(struct sbuf *buf, int space)
 }
 
 void
-sbuf_append(struct sbuf *buf, const char *bytes, size_t length)
+sbuf_append(struct sbuf *buf, const char *bytes, ssize_t length)
 {
     if (length < 0)
         length = strlen(bytes);
