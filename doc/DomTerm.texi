@@ -108,7 +108,7 @@ Double-width characters now really are two columns wide.
 * Uses:: Projects using DomTerm
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
-* Credits:: Credits
+* Credits:: Credits and thanks
 @end menu
 
 @node Features
@@ -4700,7 +4700,7 @@ Chrome (version 52) seems to have from problems with @code{break-all}.
 Hence we need to do the job ourselves.
 
 @node Credits
-@chapter Credits
+@chapter Credits and thanks
 
 DomTerm is implemented by Per Bothner, but
 makes use of multiple libraries and tools.
@@ -4749,3 +4749,11 @@ for the ``Save as HTML'' feature.
 The wcwidth library (used to determine which characers are ``double-width'')
 has a convoluted history - see the source code.  It has been re-factored
 somewhat for DomTerm.
+
+Reading Sixel images uses the @uref{https://github.com/jerch/node-sixel,@code{node-sixel}} library
+written by Jörg ``Jerch'' Breitbart.
+
+The Python tools were largely inspired or based on similar tools
+in @uref{https://github.com/mitotic/graphterm,GraphTerm},
+written by R. Saravanan (who also wrote the older XMLTerm,
+which was a big inspiration).
