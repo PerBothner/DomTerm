@@ -4708,7 +4708,7 @@ makes use of multiple libraries and tools.
 The back-end uses Andy Green's @uref{https://libwebsockets.org/,libwebsockets}
 for its http and websockets server and event polling library.
 
-The C back-end was hased on Shuanglei Tao's @uref{https://github.com/tsl0922/ttyd,ttyd}.
+The C back-end was based on Shuanglei Tao's @uref{https://github.com/tsl0922/ttyd,ttyd}.
 
 An older version of the back-end was Java-based.
 It made use of @uref{https://github.com/TooTallNate/Java-WebSocket/,Java WebSockets}.
