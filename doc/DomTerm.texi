@@ -171,8 +171,9 @@ Standard mouse event handling.
 @item
 Supports 24-bit color (truecolor).
 @item
-Unicode characters, including
-double-width (CJK and Emoiji) characters.
+Handles Unicode.
+Good CJK (Chinese, Japanese, Korean) support:
+double-width characters (including Emoiji) really are two columns wide.
 @item
 Remembers tab characters so copying selected output
 will contain the tab character.
@@ -208,11 +209,13 @@ inserts its HTML representation in the DomTerm output.)
 The image later (with the yellow circle) shows printing
 @uref{https://en.wikipedia.org/wiki/Scalable_Vector_Graphics,SVG}.
 
+@subsubheading Sixel graphics
+
+@image{images/dt-sixel}
+
 You can directly print
 @uref{https://en.wikipedia.org/wiki/Sixel,@strong{Sixel images}},
 which is an encoding that some DEC VT terminals supported..
-
-(Add examples: Python, Kawa, shells)
 
 @subsubheading Help and other documentation
 
@@ -221,8 +224,15 @@ which is an encoding that some DEC VT terminals supported..
 The @code{domterm help @var{topic}} command is essentially the same as
 @code{domterm hcat $DT_HELP/domterm-@var{topic}.html}.
 
-You can display display inline HTML from @ref{pandoc-output,pandoc}
+You can display inline HTML from @ref{pandoc-output,pandoc}
 and @ref{man-page-output,@code{man} pages}.
+
+@subsubheading Python language
+
+@image{images/pyplot}
+
+If you use the Python language,
+check out these @ref{Python tips} with more screenshots.
 
 @subsubheading Gnuplot
 
@@ -233,6 +243,10 @@ supports @uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,DomTerm as a
 
 @subheading Choose your front-end
 
+@image{images/emacs-in-firefox-1}
+
+@image{images/dt-atom1}
+
 Most of DomTerm is written in JavaScript and runs in a browser engine.
 This can be a desktop web browser, such as Chrome or Firefox, or it can be an embedded browser.
 Using a general web browser works fine, but the user experience
@@ -242,6 +256,9 @@ so using an embedded browser is recommended.
 The following are currently supported:
 @itemize @bullet
 @item
+A generic modern (HTML5) browser - both Firefox and Chrome are regularly tested.
+(Shown is Emacs running a Firefox broser window.)
+@item
 qtdomterm, which uses the @uref{ttps://www.qt.io,Qt toolkit} and QtWebEngine.
 @item
 An @uref{https://electronjs.org/,Electron} embedding.
@@ -249,17 +266,12 @@ An @uref{https://electronjs.org/,Electron} embedding.
 @code{atom-domterm} runs DomTerm as a package in the
 @uref{https://atom.io/,Atom text editor} (which is also based on Electron)
 and integrates with the Atom pane system.
+(See image.)
 @item
 A wrapper for JavaFX's WebEngine, which is useful for code written in Java
 @item
 Previously, the preferred frontend used Firefox-XUL, but Mozilla has since dropped XUL
 @end itemize
-
-@image{images/emacs-in-firefox-1}
-
-Here is @strong{Emacs displaying in a FireFox browser window}.
-
-@image{images/dt-atom1}
 
 @subheading Panes and tabs
 
@@ -303,15 +315,8 @@ with automatic re-flow on window re-size.
 using certain escape sequences enables @strong{text folding}.
 The nearby screenshot shows the output of @code{ls -l} being hidden.
 
-Handles Unicode.
-Good CJK (Chinese, Japanese, Korean) support:
-double-width characters really are two columns wide.
-Experimental IME (Input Method Editor) support.
-
 Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
 Text selections generally give you what you expect.
-
-TAB characters are preserved.
 
 @strong{Move cursor using mouse},
 @ref{move-cursor-with-mouse,even for mouse-unaware programs}.
@@ -2864,7 +2869,7 @@ functions defined above.
 Here are some ideas for using the Python (Python3)
 language with DomTerm.
 I am not a Python expert, so recommendations for better
-ways to do these things welcome.
+ways to do these things are welcome.
 
 @subheading Setup and prompts
 
@@ -2914,7 +2919,7 @@ editing position in the line to be changed.
 @end itemize
 
 Installing @uref{tools/python/domterm/utils.py,domterm/utils.py}
-defines the following two useful functions.
+defines the following useful functions.
 
 @deffn Function dtutils.print_html (@var{html_string})
 Send the @var{html_string} to the terminal, and display it
@@ -2949,8 +2954,8 @@ The @code{python-startup.py} above starts out with @var{enable}@code{=True}.
 @uref{images/python-error.png,@image{images/python-error}}
 
 The @code{domterm.utils} module overrides Python's @code{sys.excepthook},
-as show in the screenshot.  The error message is changed to the
-@code{err} style, which is by default red.
+as show in the screenshot.  The error message is wrapped in
+@code{<span std="err">} elements, which is by default styled with red.
 
 Lines of the form @code{File "@var{filename}", line @var{line}}
 are converted to clickable links (visible when you hover over it).
@@ -2968,6 +2973,31 @@ the @uref{https://pandas.pydata.org/,Pandas Data Analysis Library}.
 
 Note how a @code{DataFrame} by default is displayed as an HTML table
 (assuming @code{dtutils.set_notebook_mode(True)} has been called).
+
+@subheading Using matplotlib
+
+@image{images/pyplot}
+
+@uref{https://matplotlib.org/,Matplotlib} is popular
+plotting library.
+If you do:
+@example
+import domterm.matplot
+@end example
+it will ``patch'' matplotlib so graphical output is
+displayed inline in a DomTerm terminal.
+(Note that domterm.matplot is very experimental, so the API may change.)
+
+@deffn Function plt.show (overwrite=do_overwrite, format=@code{"svg"})
+Display the current image inline.
+By default, the image is presented using SVG (Structured Vector Graphics),
+but you can also specify the @code{format} as @code{"png"} or @code{"jpg"}.
+
+The @code{overwrite} argument specifies whether to create a new display
+area (@code{overwrite=False}) or re-use the most recent previous one
+(if (@code{overwrite=True}); the default is @code{False} for the first
+call to @code{show} and @code{True} for subsequent calls.
+@end deffn
 
 @node Names and titles
 @section Names and titles

@@ -289,7 +289,9 @@ DOC_IMAGES = \
   doc/images/dt-atom1.png \
   doc/images/dt-help1.png \
   doc/images/dt-gnuplot1.png \
+  doc/images/dt-sixel.png \
   doc/images/emacs-in-firefox-1.png \
+  doc/images/pyplot.png \
   doc/images/python-error.png \
   doc/images/python-repl.png \
   doc/images/python-pandas.png
