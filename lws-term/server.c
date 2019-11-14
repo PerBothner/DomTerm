@@ -584,11 +584,11 @@ default_browser_command()
     if (is_WindowsSubsystemForLinux())
         path =strdup( "/mnt/c/Windows/System32/cmd.exe /c start");
     else {
-        path = find_in_path("gnome-open");
+        path = find_in_path("xdg-open");
         if (path == NULL)
             path = find_in_path("kde-open");
         if (path == NULL)
-            path = strdup("xdg-open");
+            path = strdup("firefox");
     }
     return path;
 #endif
