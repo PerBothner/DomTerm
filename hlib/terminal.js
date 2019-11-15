@@ -3463,7 +3463,8 @@ Terminal.prototype._updateSelected = function() {
     let targetPreNode = null;        // target class="domterm-pre" element
     let readlineForced = dt._altPressed;
     let moveOption = readlineForced ? "w" : null;
-    if (! this.isLineEditing()) {
+    if (! this.isLineEditing()
+        && dt._caretNode && dt._caretNode.parentNode !== null) {
         if (readlineForced) {
             targetPreNode = dt._getOuterBlock(sel.focusNode);
             moveCaret = targetPreNode != null;
@@ -3479,7 +3480,7 @@ Terminal.prototype._updateSelected = function() {
             }
         }
     }
-    if (moveCaret && dt._caretNode && dt._caretNode.parentNode !== null
+    if (moveCaret
         && (readlineForced
             || targetPreNode == dt._getOuterPre(dt._caretNode))) {
         let targetNode = sel.focusNode;
@@ -3540,7 +3541,7 @@ Terminal.prototype._updateSelected = function() {
                     prefixText = prefixText.substring(prefixNl+1);
                 let firstColumn = DomTerm._countCodePoints(prefixText);
                 let lastColumn = DomTerm._countCodePoints(textBetween.substring(lastNewline+1));
-                let leftCount =forwards ? firstColumn : lastColumn;
+                let leftCount = forwards ? firstColumn : lastColumn;
                 let rightCount = forwards ? lastColumn : firstColumn;
                 if (moveOption == "w") {
                     if (leftCount > rightCount) {
