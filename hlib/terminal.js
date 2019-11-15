@@ -7320,6 +7320,10 @@ Terminal._rangeAsText = function(range) {
     let t = "";
     function wrapText(tnode, start, end) {
         let parent = tnode.parentNode;
+        // Skip text that is input-line but not actual input (std="input")
+        // (for example "spacer" text before a right-prompt).
+        if (parent instanceof Element && parent.getAttribute("std") === "caret")
+            parent = parent.parentNode;
         if (parent instanceof Element
             && parent.classList.contains("input-line"))
             return;
