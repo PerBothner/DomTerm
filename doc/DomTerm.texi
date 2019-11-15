@@ -275,7 +275,40 @@ Previously, the preferred frontend used Firefox-XUL, but Mozilla has since dropp
 
 @subheading Panes and tabs
 
+A DomTerm window can be sub-divided into panes, each of which
+can have multiple tabs.  You can create new panes with a domterm sub-command
+(like @code{domterm --below new}), a menu button, or a
+keyboard shortcut (like @kbd{@mux-prefix Ctrl-@key{Down}}).
+
+If using @code{atom-domterm} the above commands create a new
+Atom pane instead.
+
 @subheading Shell/REPL integration
+
+If you use a shell or other interactive REPL program with a
+settable prompt string, inserting special
+@uref{https://gitlab.freedesktop.org/Per_Bothner/specifications/blob/master/proposals/semantic-prompts.md,escape sequences} in the prompt enable
+some useful features:
+
+@itemize @bullet
+@item
+Visual separation between commands.
+The default styling that you can see in most of the screenshots
+has a thin light green line between commands,
+and a light beige for the input lines.
+The is meant to be clear though unobstrusive while not wasting screen space.
+@item
+Distinct styling for prompt (light green) and user input (light yellow),
+including support for secondary (continuation) and right-margin prompts.
+@item
+Hide/show buttons.
+@item
+Clicking the mouse in the input line moves the input cursor.
+@item
+Show error indication.
+@item
+Integration with selection and clipboard.
+@end itemize
 
 Optional @strong{input editing}.  In @dfn{character mode},
 each character is sent to the application, like a traditional terminal.
