@@ -4520,6 +4520,8 @@ Terminal.prototype._forceWrap = function(absLine) {
         this._moveNodes(nextLine.firstChild, end.parentNode, end.nextSibling);
         nextLine.parentNode.removeChild(nextLine);
         this.lineStarts[absLine+1] = end;
+        end._widthMode = nextLine._widthMode;
+        end._widthColumns = nextLine._widthColumns;
     }
     if (end.getAttribute("line") != "soft") {
         end.setAttribute("line", "soft");
@@ -6155,9 +6157,12 @@ Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
                 if (prev instanceof Text)
                     this._normalize1(prev);
                 if (prevLine) {
-                    if (prevLine._widthColumns !== undefined
-                        && lineStart._widthColumns !== undefined)
-                        prevLine._widthColumns += lineStart._widthColumns;
+                    if (prevLine._widthColumns !== undefined) {
+                        let curWidth = lineStart._widthColumns;
+                        prevLine._widthColumns = curWidth !== undefined
+                            ? prevLine._widthColumns + curWidth
+                            : undefined;
+                    }
                     if (lineStart._widthMode > prevLine._widthMode)
                         prevLine._widthMode = lineStart._widthMode;
                 }
@@ -6883,32 +6888,35 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
-        // maybe adjust line/absLine? FIXME
-        for (;;) {
-            if (isegment >= nsegments)
-                break;
-            let seg = segments[isegment];
-            let cols = widths[isegment];
-            this._adjustStyle();
-            let textNode;
+    }
+    for (;;) {
+        if (isegment >= nsegments)
+            break;
+        let seg = segments[isegment];
+        let cols = widths[isegment];
+        this._adjustStyle();
+        let textNode;
+        if (seg instanceof Element) {
+            this.insertNode(seg);
+            textNode = seg.firstChild;
+        } else {
+            textNode = this.insertRawOutput(seg);
+        }
+        let prevLine = absLine;
+        let column = this.getCursorColumn();
+        if (column + cols > this.numColumns) {
             if (seg instanceof Element) {
-                this.insertNode(seg);
-                textNode = seg.firstChild;
+                if (this.getCursorColumn() <= this.numColumns) {
+                    isegment--;
+                }
             } else {
-                textNode = this.insertRawOutput(seg);
-            }
-            if (this.getCursorColumn() + widthInColumns <= this.numColumns)
-                break;
-            const tparent = textNode.parentNode;
-            const tprev = textNode.previousSibling;
-            const tnext = textNode.nextSibling;
-            const right = tnext !== null ? tnext.offsetLeft
-                  : tparent.offsetLeft + tparent.offsetWidth;
-            const left = tprev === null ? tparent.offsetLeft
-                  : tprev.offsetLeft + tprev.offsetWidth;
-            if (seg instanceof Element)
-                ;
-            else {
+                const tparent = textNode.parentNode;
+                const tprev = textNode.previousSibling;
+                const tnext = textNode.nextSibling;
+                const right = tnext !== null ? tnext.offsetLeft
+                      : tparent.offsetLeft + tparent.offsetWidth;
+                const left = tprev === null ? tparent.offsetLeft
+                      : tprev.offsetLeft + tprev.offsetWidth;
                 seg = this._breakString(textNode, this.lineEnds[absLine], left, right, this.availWidth, false, false/*FIXME-countColumns*/);
                 if (seg) {
                     segments[isegment] = seg;
@@ -6918,7 +6926,6 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                     isegment--;
                 }
             }
-            isegment++;
             //current is after inserted textNode;
             var oldContainer = this.outputContainer;
             var oldLine = this.lineEnds[absLine];
@@ -6937,33 +6944,20 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 this.outputBefore = null;
             }
             absLine++;
-            widthInColumns -= cols;
-            this.deleteCharactersRight(widthInColumns, false);
+            this.deleteCharactersRight(widthInColumns - cols, false);
+            this._updateLinebreaksStart(absLine);
+            column += cols;
+       } else {
+           this.currentCursorColumn = (column += cols);
         }
+        let lineStart = this.lineStarts[prevLine];
+        if (lineStart._widthColumns !== undefined
+            && lineStart._widthColumns < column)
+            lineStart._widthColumns = column;
+        widthInColumns -= cols;
+        isegment++;
+        this.currentAbsLine = absLine;
     }
-    else {
-        if (str != null) {
-            this._adjustStyle(); // FIXME
-            for (; isegment < nsegments; isegment++) {
-                let seg = segments[isegment];
-                if (seg instanceof Element)
-                    this.insertNode(seg);
-                else
-                    this.insertRawOutput(seg);
-            }
-        }
-        this._updateLinebreaksStart(absLine);
-    }
-    this.currentAbsLine = absLine;
-    let column = this.currentCursorColumn;
-    if (column >= 0)
-        this.currentCursorColumn = (column += widthInColumns);
-    else
-        column = this.getCursorColumn();
-    let lineStart = this.lineStarts[absLine];
-    if (lineStart._widthColumns !== undefined
-        && lineStart._widthColumns < column)
-        lineStart._widthColumns = column;
 };
 
 Terminal.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false) {
