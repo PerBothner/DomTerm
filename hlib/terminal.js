@@ -6778,7 +6778,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     let isegment = 0;
     if (this.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str)+"'");
-    var absLine = this.getAbsCursorLine();
+    let absLine = this.getAbsCursorLine();
     var fits = true;
     if (this.outputBefore instanceof Element
         && this.outputBefore.getAttribute("line")) {
@@ -6886,8 +6886,10 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             fits = this.deleteCharactersRight(widthInColumns, true);
         }
     }
-    if (! fits && absLine < this.lineStarts.length - 1) {
+    const atEnd = absLine >= this.lineStarts.length - 1;
+    if (! fits && ! atEnd) {
         this._breakDeferredLines();
+        absLine = this.getAbsCursorLine();
     }
     for (;;) {
         if (isegment >= nsegments)
@@ -6904,7 +6906,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         }
         let prevLine = absLine;
         let column = this.getCursorColumn();
-        if (column + cols > this.numColumns) {
+        if (column + cols > this.numColumns && !atEnd ) {
             if (seg instanceof Element) {
                 if (this.getCursorColumn() <= this.numColumns) {
                     isegment--;
@@ -6958,6 +6960,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         isegment++;
         this.currentAbsLine = absLine;
     }
+    if (! fits)
+        this._updateLinebreaksStart(absLine);
 };
 
 Terminal.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false) {
