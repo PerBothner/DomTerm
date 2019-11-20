@@ -1492,6 +1492,8 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #if ! WITH_XTERMJS
     {"hlib/domterm-parser.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/sixel/Colors.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/sixel/SixelDecoder.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #endif
     {"hlib/FileSaver.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/ResizeSensor.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
@@ -1505,8 +1507,6 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
     {"hlib/qwebchannel.js", LIB_WHEN_OUTER},
     {"hlib/jsMenus.js", LIB_WHEN_OUTER},
-    {"hlib/sixel/Colors.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-    {"hlib/sixel/SixelDecoder.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
 #if WITH_XTERMJS
     {"hlib/xterm.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
@@ -1532,7 +1532,7 @@ make_main_html_text(struct sbuf *obuf, int port)
                 " charset=UTF-8'>\n"
                 "<script type='text/javascript'>\n"
                 "var DomTerm_server_key = '%.*s';\n"
-                "var newloc = 'http://127.0.0.1:%d/no-frames.html' + location.hash;\n"
+                "var newloc = 'http://localhost:%d/no-frames.html' + location.hash;\n"
                 "newloc += (newloc.indexOf('#') >= 0 ? '&' : '#')+'server-key=' + DomTerm_server_key;\n"
                 "location.replace(newloc);\n"
                 "</script>\n"
@@ -1547,7 +1547,7 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
 {
     char base[40];
     bool simple = (hoptions & LIB_WHEN_OUTER) == 0;
-    sprintf(base, "http://%s:%d/", "127.0.0.1", port);
+    sprintf(base, "http://%s:%d/", "localhost", port);
     sbuf_printf(obuf,
                 "<!DOCTYPE html>\n"
                 "<html><head>\n"
