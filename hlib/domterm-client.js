@@ -338,8 +338,7 @@ function loadHandler(event) {
     }
     m = location.hash.match(/view-saved=([^&]*)/);
     if (m) {
-        var bodyNode = document.getElementsByTagName("body")[0];
-        viewSavedFile(m[1], bodyNode);
+        viewSavedFile(m[1]);
         return;
     }
     if (location.pathname === "/saved-file/") {
