@@ -254,6 +254,8 @@ You can @ref{link-handlers,customize how links are handled}.
 
 @subsubheading Pretty-printing
 
+@image{images/dt-pretty1}
+
 @strong{Smart line-wrapping}:
 Remembers which lines were too wide (and thus
 were wrapped).
