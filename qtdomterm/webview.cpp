@@ -316,7 +316,7 @@ void WebView::setSetting(const QString& key, const QString& value)
     }
 }
 
-QString WebView::generateSaveFileName()
+QString WebView::generateSaveFileName() // FIXME
 {
     //return backend->sessionName() + ".html";
     char buf[100];
@@ -326,22 +326,7 @@ QString WebView::generateSaveFileName()
 
 void WebView::requestSaveAs()
 {
-    //QWebEngineDownloadItem::SavePageFormat format = QWebEngineDownloadItem::SingleHtmlSaveFormat;
-    Backend* backend = this->backend();
-    backend->requestHtmlData();
-    QString filePath = generateSaveFileName();
-    SavePageDialog dlg(this, /*format,*/ filePath);
-    if (dlg.exec() != SavePageDialog::Accepted)
-        return;
-    filePath = dlg.filePath();
-    QString html = this->backend()->getSavedHtml();
-    QFile file(filePath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-      file.write(html.toUtf8());
-      file.close();
-    } else {
-      // REPORT ERROR FIXME!
-    }
+    emit backend()->handleSimpleCommand("save-as-html");
 }
 
 void WebView::requestChangeCaret(bool set)

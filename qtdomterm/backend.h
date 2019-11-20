@@ -52,6 +52,7 @@ signals:
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
 public slots:
+    void saveFile(const QString& html);
     void setWindowTitle(const QString& title);
     void setSavedHtml(const QString &info) { _savedHtml = info; }
     void closeMainWindow();

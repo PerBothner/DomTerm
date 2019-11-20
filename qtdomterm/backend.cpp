@@ -39,6 +39,7 @@
 #include "backend.h"
 #include "browsermainwindow.h"
 #include "browserapplication.h"
+#include "savepagedialog.h"
 #include "webview.h"
 
 Backend::Backend(QSharedDataPointer<ProcessOptions> processOptions,
@@ -157,6 +158,22 @@ void Backend::loadSessionName()
 void Backend::close()
 {
     _wantedClose = true;
+}
+
+void Backend::saveFile(const QString& html)
+{
+    QString filePath = webView()->generateSaveFileName();
+    SavePageDialog dlg(webView(), /*format,*/ filePath);
+    if (dlg.exec() != SavePageDialog::Accepted)
+        return;
+    filePath = dlg.filePath();
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+      file.write(html.toUtf8());
+      file.close();
+    } else {
+      // REPORT ERROR FIXME!
+    }
 }
 
 void Backend::setWindowTitle(const QString& title)

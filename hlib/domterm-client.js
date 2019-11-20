@@ -181,6 +181,7 @@ function setupQWebChannel(channel) {
     backend.copyAsHTML.connect(function() {
         DomTerm.doCopy(true);
     });
+    DomTerm.saveFile = function(data) { backend.saveFile(data); }
     DomTerm.windowClose = function() { backend.closeMainWindow(); };
     DomTerm.setTitle = function(title) {
         backend.setWindowTitle(title == null ? "" : title); };
