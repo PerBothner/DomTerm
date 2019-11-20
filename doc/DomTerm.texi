@@ -167,20 +167,20 @@ DomTerm does very well on
 the @uref{http://invisible-island.net/vttest/,@code{vttest}} terminal test program,
 including handling Background Color Erase.
 @item
-Standard mouse event handling.
+Standard @strong{mouse event handling}.
 @item
-Supports 24-bit color (truecolor).
+Supports @strong{24-bit color} (truecolor).
 @item
-Handles Unicode.
-Good CJK (Chinese, Japanese, Korean) support:
-double-width characters (including Emoiji) really are two columns wide.
+Handles @strong{Unicode}.
+Good @strong{CJK} (Chinese, Japanese, Korean) support:
+@strong{double-width characters (including Emoiji)} really are two columns wide.
 @item
-Remembers tab characters so copying selected output
+Remembers @strong{tab characters} so copying selected output
 will contain the tab character.
 @item
-Support for using Input Methods.
+Support for using @strong{Input Methods}.
 @item
-Resizing the window re-flow long output lines.
+Resizing the window re-flows long output lines.
 @item
 Makes URls and file names into clickable links.
 Also supports an explicit hyperlink escape sequence.
@@ -241,6 +241,43 @@ check out these @ref{Python tips} with more screenshots.
 The @uref{http://www.gnuplot.info/,GnuPlot graphing utility} (version 5.1+)
 supports @uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,DomTerm as an output device}.
 
+@subheading Rich interaction
+
+@subsubheading Smart links
+
+@ref{linkification,Turn URLs and mail adresses in output into links}.
+Filename with line number (as in errors messages) are turned into
+links for text editors.
+(You have to hover over them to see them.)
+
+You can @ref{link-handlers,customize how links are handled}.
+
+@subsubheading Pretty-printing
+
+@strong{Smart line-wrapping}:
+Remembers which lines were too wide (and thus
+were wrapped).
+The default style add markers to show when wrapping occurred,
+as seen in the nearby screenshot.
+Window size re-size will automatically re-do line-breaking.
+Copying the selection as text will only include hard newlines.
+Reports window resize to application.
+@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,@strong{Dynamic pretty-printing}} (Common Lisp style) uses special commands to group
+logical blocks, and attempts to keep the text of a block on a single line
+with automatic re-flow on window re-size.
+
+@subsubheading Show/Hide buttons
+
+``Print'' @ref{Hide/show buttons,hide/show buttons},
+using certain escape sequences enables @strong{text folding}.
+The nearby screenshot shows the output of @code{ls -l} being hidden.
+
+@subsubheading Update previous output
+
+An application can print some HTML in an area of the output, and
+attach a key string to it.  Later, that area can be updated (replaced),
+just by specifing the key, without cursor navigation.
+
 @subheading Choose your front-end
 
 @image{images/emacs-in-firefox-1}
@@ -273,6 +310,9 @@ A wrapper for JavaFX's WebEngine, which is useful for code written in Java
 Previously, the preferred frontend used Firefox-XUL, but Mozilla has since dropped XUL
 @end itemize
 
+Currently, both the Electron and Qt frontends are quite nice
+and recommended.
+
 @subheading Panes and tabs
 
 A DomTerm window can be sub-divided into panes, each of which
@@ -285,10 +325,12 @@ Atom pane instead.
 
 @subheading Shell/REPL integration
 
+@uref{images/dt-fish1.png,@image{images/dt-fish1}}
+
 If you use a shell or other interactive REPL program with a
 settable prompt string, inserting special
-@uref{https://gitlab.freedesktop.org/Per_Bothner/specifications/blob/master/proposals/semantic-prompts.md,escape sequences} in the prompt enable
-some useful features:
+@uref{https://gitlab.freedesktop.org/Per_Bothner/specifications/blob/master/proposals/semantic-prompts.md,escape sequences}
+in the prompt enables some useful features.
 
 @itemize @bullet
 @item
@@ -298,17 +340,24 @@ has a thin light green line between commands,
 and a light beige for the input lines.
 The is meant to be clear though unobstrusive while not wasting screen space.
 @item
-Distinct styling for prompt (light green) and user input (light yellow),
+Distinct (user-settable) styling for prompt (light green) and user input (light yellow),
 including support for secondary (continuation) and right-margin prompts.
 @item
-Hide/show buttons.
+Show error indication (a red disk in the right gutter) if a command returns an error code:
+If you hover the mouse over the red disk you will see the specific exit code.
+@item
+Hide/show buttons: If you click on the downward-pointing rectangle
+in the right gutter, the following input and output of the command are hidden.
+(See the @code{ls -l Makefile*} command in teh screenshot.)
 @item
 Clicking the mouse in the input line moves the input cursor.
+(Implemented by DomTerm sending the appropriate number of arrow keys.)
 @item
-Show error indication.
-@item
-Integration with selection and clipboard.
+Integration with selection and clipboard: If you press shift while using the
+arrow keys, the moved-over text becomes the current selection.
 @end itemize
+
+See @uref{http://per.bothner.com/blog/2019/shell-integration-proposal/,this article} for more discussion and screenshots.
 
 Optional @strong{input editing}.  In @dfn{character mode},
 each character is sent to the application, like a traditional terminal.
@@ -329,24 +378,7 @@ so can run in a browser (using web sockets);
 be embedded in an application;
 or run as a standard terminal emulator application.
 
-@image{images/domterm-sh-svg}
-
-@strong{Smart line-wrapping}:
-Remembers which lines were too wide (and thus
-were wrapped).
-The default style add markers to show when wrapping occurred,
-as seen in the nearby screenshot.
-Window size re-size will automatically re-do line-breaking.
-Copying the selection as text will only include hard newlines.
-Reports window resize to application.
-@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,@strong{Dynamic pretty-printing}} (Common Lisp style) uses special commands to group
-logical blocks, and attempts to keep the text of a block on a single line
-with automatic re-flow on window re-size.
-
-
-``Print'' @ref{Hide/show buttons,hide/show buttons},
-using certain escape sequences enables @strong{text folding}.
-The nearby screenshot shows the output of @code{ls -l} being hidden.
+@uref{images/domterm-sh-svg.png,@image{images/domterm-sh-svg}}
 
 Maintains @strong{a clean DOM structure}, and thus @strong{clean HTML export}.
 Text selections generally give you what you expect.
@@ -354,13 +386,6 @@ Text selections generally give you what you expect.
 @strong{Move cursor using mouse},
 @ref{move-cursor-with-mouse,even for mouse-unaware programs}.
 Mouse clicks are translated to arrow-key characters.
-
-@ref{linkification,Turn URLs and mail adresses in output into links}.
-Filename with line number (as in errors messages) are turned into
-links for text editors.
-(You have to hover over them to see them.)
-
-You can @ref{link-handlers,customize how links are handled}.
 
 Optional @strong{automatic pagination}.
 
@@ -1461,10 +1486,6 @@ Saving the console display to a file in a browser may
 save to the browser's ``Downloads'' area.
 You may be able to save the file elsewhere, depending
 on the browser and its settings.
-
-The @code{view-saved} command require permission to read from
-the file-system, so may not work in a desktop browsers.
-It works on Electron and Qt.
 
 Microsoft Edge does at time of writing not handle the @code{tab-size}
 CSS property, so on that browser tab characters are always converted to spaces.
