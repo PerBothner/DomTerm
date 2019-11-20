@@ -253,7 +253,7 @@ function loadHandler(event) {
     DomTerm.server_port = location.port || DomTerm.server_port;
     DomTerm.topLocation = url;
     if (DomTerm.useIFrame) {
-        DomTerm.mainLocation = "http://127.0.0.1:"+DomTerm.server_port+"/simple.html";
+        DomTerm.mainLocation = "http://localhost:"+DomTerm.server_port+"/simple.html";
     } else
         DomTerm.mainLocation = url;
     var m = url.match(/[#&]server-key=([^&]*)/);
