@@ -1041,6 +1041,9 @@ Terminal.prototype._setRegionLR = function(left, right) {
 Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
     var lineStart = this.lineStarts[homeLine];
     let stop = this.topNode;
+    // In case homeLine is hidden
+    while (lineStart !== stop && lineStart.offsetParent == null)
+        lineStart = lineStart.parentNode;
     var offset = lineStart.nodeName == "SPAN" ? lineStart.offsetHeight : 0;
     while (lineStart !== stop) {
         offset += lineStart.offsetTop;
