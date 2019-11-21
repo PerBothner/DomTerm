@@ -1,15 +1,21 @@
-const _electronAccess = require('electron');
-process.once('loaded', () => {
-    let remote = _electronAccess.remote;
-    global.electronAccess = {
+{
+    const _electron = require('electron');
+    const _fs = require('fs');
+    const _require = require;
+    const remote = _electron.remote;
+    const _electronAccess = {
         BrowserWindow: remote.BrowserWindow,
-        clipboard: _electronAccess.clipboard,
+        clipboard: _electron.clipboard,
         dialog: remote.dialog,
-        fs: remote.fs,
+        fs: _fs,
         getCurrentWindow: remote.getCurrentWindow,
-        ipcRenderer: _electronAccess.ipcRenderer,
+        ipcRenderer: _electron.ipcRenderer,
         Menu: remote.Menu,
         MenuItem: remote.MenuItem,
+        require: _require,
         shell: remote.shell
-    };
-})
+    }
+    process.once('loaded', () => {
+        global.electronAccess = _electronAccess;
+    })
+}

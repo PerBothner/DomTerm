@@ -7409,14 +7409,15 @@ DomTerm.saveFile = function(data) {
     if (DomTerm.isElectron()) {
         const dialog = electronAccess.dialog;
         const fs = electronAccess.fs;
-        function callback(filePath) {
+        function callback(value) {
+            let filePath = value.filePath;
             if (filePath)
                 fs.writeFile(filePath, data, function (err) {
                     if (err)
                         alert("An error ocurred creating the file "+ err.message);
                 });
         }
-        dialog.showSaveDialog({defaultPath: fname}, callback);
+        dialog.showSaveDialog({defaultPath: fname}).then(callback);
     } else {
         let filePath = prompt("save contents as: ", fname);
         if (filePath)
