@@ -2899,7 +2899,6 @@ Terminal.prototype.isSpanNode = function(node) {
 };
 
 Terminal.prototype._initializeDomTerm = function(topNode) {
-    this.parser = new window.DTParser(this);
     this.topNode = topNode;
     topNode.contentEditable = true;
     topNode.spellcheck = false;
@@ -3183,6 +3182,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     if (! this.history)
         this.history = new Array();
 
+    this.parser = new window.DTParser(this);
     this._initializeDomTerm(topNode);
 
     var caretNode = this._createSpanNode();
