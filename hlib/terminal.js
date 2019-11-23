@@ -852,7 +852,11 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
             && oldOutput != this.outputContainer) { // paranoia
             oldOutput.parentNode.removeChild(oldOutput);
         }
+        this._maybeAddTailHider(oldGroup);
+    }
+}
 
+Terminal.prototype._maybeAddTailHider = function(oldGroup) {
         let nLines = 0;
         let firstLine = null;
         function checkLine(n) {
@@ -913,7 +917,6 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
                                     this._showHideEventHandler,
                                     true);
         }
-    }
 }
 
 // For debugging (may be overridden)
@@ -8412,6 +8415,9 @@ DomTerm.initSavedFile = function(topNode) {
         }
     }
     topNode.addEventListener("click", showHideHandler, false);
+    for (let group of topNode.getElementsByClassName("command-group")) {
+        dt._maybeAddTailHider(group);
+    }
     dt.setWindowSize = function(numRows, numColumns,
                                 availHeight, availWidth) {
     };
