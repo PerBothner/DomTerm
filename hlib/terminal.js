@@ -3186,6 +3186,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         this.history = new Array();
 
     this.parser = new window.DTParser(this);
+    this._encoder = new TextEncoder()
     this._initializeDomTerm(topNode);
 
     var caretNode = this._createSpanNode();
@@ -3860,11 +3861,22 @@ Terminal.prototype.freshLine = function() {
 };
 
 Terminal.prototype.reportEvent = function(name, data) {
-    // 0x92 is "Private Use 2".
-    // FIXME should encode data
+    // Send 0xFD + name + ' ' + data + '\n'
+    // where 0xFD is sent as a raw unencoded byte.
+    // 0xFD cannot appear in a UTF-8 sequence
+    let str = name + ' ' + data;
+    let slen = str.length;
     if (this.verbosity >= 2)
-        this.log("reportEvent "+this.name+": "+name+" "+data);
-    this.processInputCharacters("\x92"+name+" "+data+"\n");
+        this.log("reportEvent "+this.name+": "+str);
+    // Max 3 bytes per UTF-16 character
+    let buffer = new ArrayBuffer(2 + 3 * slen);
+    let buf1 = new Uint8Array(buffer, 1);
+    let res = this._encoder.encodeInto(str, buf1);
+    if (res.read < slen) { return; } // shouldn't happen
+    let buf0 = new Uint8Array(buffer, 0, res.written+2);
+    buf0.fill(0xFD, 0, 1);
+    buf0.fill(10, res.written+1, res.written+2); // append '\n'
+    this.processInputBytes(buf0);
 };
 
 Terminal.prototype.reportKeyEvent = function(keyName, str) {
@@ -7055,8 +7067,13 @@ Terminal.prototype.reportText = function(text, suffix) {
 
 /** This function should be overidden. */
 Terminal.prototype.processInputCharacters = function(str) {
-    if (this.verbosity >= 2)
-        this.log("processInputCharacters called with "+str.length+" characters");
+    if (this.verbosity >= 1) {
+        let jstr = str.length > 200
+            ? JSON.stringify(str.substring(0,200))+"..."
+            : JSON.stringify(str);
+        this.log("processInputCharacters "+str.length+": "+jstr);
+    }
+    this.processInputBytes(this._encoder.encode(str));
 };
 
 Terminal.prototype.processEnter = function() {
@@ -8345,22 +8362,16 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
     var wsocket = new WebSocket(wspath, wsprotocol);
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
-    wt.processInputCharacters = function(str) {
-        if (this.verbosity >= 1) {
-            let jstr = str.length > 200
-                ? JSON.stringify(str.substring(0,200))+"..."
-                : JSON.stringify(str);
-            this.log("processInputCharacters "+str.length+": "+jstr);
-        }
+    wt.processInputBytes = function(bytes) {
         let delay = DomTerm._extraDelayForTesting;
         /* TEST LATENCY
         if (delay === undefined)
             DomTerm._extraDelayForTesting = delay = 600;
         */
         if (delay)
-            setTimeout(function() { wsocket.send(str); }, delay);
+            setTimeout(function() { wsocket.send(bytes); }, delay);
         else
-            wsocket.send(str);
+            wsocket.send(bytes);
     };
     wsocket.onmessage = function(evt) {
         DomTerm._handleOutputData(wt, evt.data);

@@ -1162,9 +1162,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          for (int i = 0; ; i++) {
               if (i+1 == clen && msg[i] >= 128)
                    break;
-              // 0x92 (utf-8 0xc2,0x92) "Private Use 2".
-              if (i == clen || msg[i] == 0x92
-                  || (msg[i] == 0xc2 && msg[i+1] == 0x92)) {
+              if (i == clen || msg[i] == REPORT_EVENT_PREFIX) {
                    int w = i - start;
                    if (w > 0 && write(pclient->pty, msg+start, w) < w) {
                         lwsl_err("write INPUT to pty\n");

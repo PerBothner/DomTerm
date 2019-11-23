@@ -527,7 +527,7 @@ mkdir build
 cd build
 cmake -DLWS_WITH_SSL=0 -DLWS_WITH_ZIP_FOPS=1 ..
 @end example
-The @code{-D} optional are suggested but not required:
+The @code{-D} options are suggested but not required:
 @code{-DLWS_WITH_SSL=0} avoids a dependency on OpenSSL;
 while @code{-DLWS_WITH_ZIP_FOPS=1} is required if configuring
 with @code{--disable-compiled-in-resources} (the default).
@@ -4290,17 +4290,21 @@ Zu\e]115;"-k","k","ck"\aer
 
 @subsection Special sequences sent by DomTerm to back-end
 
+The prefix byte 0xFD is used to report an event or other information
+from the browser to the server.  The value 0xFD is ``out-of-band''
+because it cannot appear when encoding a string to UTF-8.
+
 @table @asis
-@item @code{"\x92" @var{name} " " @var{data} "\n"}
+@item @code{0xFD @var{name} " " @var{data} "\n"}
 General format for reporting events,
 where @var{name} is the name of the event (an identifier).
 The @var{data} can be any text not including a @code{"\n"}
 (or other control character); JSON format is used in some cases.
 
-@item @code{"\x92" "WS " @var{rows} " " @var{cols} " " @var{height} " " @var{width} "\n"}
+@item @code{0xFD "WS " @var{rows} " " @var{cols} " " @var{height} " " @var{width} "\n"}
 Report window size from DomTerm to the back-end.
 
-@item @code{"\x92" "KEY " @var{keyname} "\t" @var{seqno} "\t" @var{kchars} "\n"}
+@item @code{0xFD "KEY " @var{keyname} "\t" @var{seqno} "\t" @var{kchars} "\n"}
 Used by auto-line mode to report a key event to back-end.
 The @var{keyName} is an encoding of the key event in the
 style of @uref{https://github.com/marijnh/browserkeymap,browserkeymap};
@@ -4311,7 +4315,7 @@ In auto-line mode, if the pty is in canonical mode, then @var{keyName}
 is returned to DomTerm (using @code{"\e]74;" @var{keyName} "\t" @var{seqno} "\t" @var{kchars} "\a"});
 otherwise @var{kchars} are sent to the pty.
 
-@item @code{"\x92" "LINK " @var{ref-info} "\n"}
+@item @code{0xFD "LINK " @var{ref-info} "\n"}
 Sent by the DomTerm browser when the user clicks on an @code{<a>} link.
 The @var{ref-info} is a JSON-encoded object with information
 about the link. The object must have at least an @code{href} property.
@@ -4319,31 +4323,31 @@ Typically,  backend should open @var{href}
 in the default browser of the user's desktop,
 though this is contomizable.
 
-@item @code{"\x92" "RECEIVED " @var{count} "\n"}
+@item @code{0xFD "RECEIVED " @var{count} "\n"}
 This is used for flow-control.
 The @var{count} is the number of bytes received and processed
 by the front-end.
 
-@item @code{"\x92" "SESSION-NAME " @var{session-name} "\n"}
+@item @code{0xFD "SESSION-NAME " @var{session-name} "\n"}
 Set @var{session-name} (a JSON-quoted string)
 as the name for this session.
 
-@item @code{"\x92" "DETACH\n"}
+@item @code{0xFD "DETACH\n"}
 Don't destroy the session when the last window is closed;
 instead detach it.
 (Don't necessary detach now, if there are other windows on the session.)
 
-@item @code{"\x92" "FOCUSED\n"}
+@item @code{0xFD "FOCUSED\n"}
 The current (sub-)window has focus.
 
-@item @code{"\x92" "WINDOW-CONTENTS " @var{rcount} "," @var{state} "\n"}
+@item @code{0xFD "WINDOW-CONTENTS " @var{rcount} "," @var{state} "\n"}
 Report enough of the browser part of the session state so that
 it can be reproduced when a window is sttached to the session.
 The @var{state} is a JSON-encoded structure.
 The @var{rcount} is similar to the value reported @code{RECEIVED},
 but as of the start of the most recent urgent message.
 
-@item @code{"\x92" "VERSION " @var{version-info} "\n"}
+@item @code{0xFD "VERSION " @var{version-info} "\n"}
 Sends @var{version-info} to the back-end.  Used during initialization.
 @end table
 
@@ -4396,7 +4400,7 @@ This is called by the DomTerm code in @code{terminal.js}.
 @defun reportEvent (name, data)
 Called by DomTerm to notify the client that some (non-character) event happened.
 The default action calls @code{processInputCharacter}
-with a special sequence starting with @code{"\x92"} followed
+with a special sequence starting with @code{0xFD} followed
 by the @var{name}, space, the @var{data} and a newline.
 @end defun
 

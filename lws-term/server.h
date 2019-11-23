@@ -287,6 +287,9 @@ extern struct resource resources[];
 #define COMMAND_IN_SERVER 8
 #define COMMAND_CHECK_DOMTERM 16
 
+// 0xFD cannot appear in a UTF-8 sequence
+#define REPORT_EVENT_PREFIX 0xFD
+
 /* The procedure that executes a command.
  * The return value should be one of EXIT_SUCCESS, EXIT_FAILURE,
  * or EXIT_IN_SERVER (if executed by command).
