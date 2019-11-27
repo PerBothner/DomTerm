@@ -3,8 +3,11 @@ var maxAjaxInterval = 2000;
 DomTerm.simpleLayout = false;
 
 DomTerm.usingJsMenus = function() {
+    // It might make sense to use jsMenus even for Electron.
+    // One reason is support multi-key keybindings
     return ! DomTerm.simpleLayout && typeof MenuItem !== "undefined"
-        && ! DomTerm.isElectron() && ! DomTerm.usingQtWebEngine;
+        && ! DomTerm.isElectron()
+        && ! DomTerm.usingQtWebEngine;
 }
 
 // Non-zero if we should create each domterm terminal in a separate <iframe>.

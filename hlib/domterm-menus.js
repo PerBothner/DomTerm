@@ -41,9 +41,14 @@ DomTerm.createMenus = function(options) {
     let menuItem = options.menuItem;
     let popup = options.popup;
     let Menu = options.Menu;
+    let isElectron = DomTerm.isElectron();
+    let electronMenus = platform == "electron";
 
     function showMenubar(show) {
-        Menu.setApplicationMenu(show ? DomTerm.savedMenuBar : null);
+        if (electronMenus)
+            electronAccess.getCurrentWindow().setMenuBarVisibility(show);
+        else
+            Menu.setApplicationMenu(show ? DomTerm.savedMenuBar : null);
     }
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
@@ -52,7 +57,7 @@ DomTerm.createMenus = function(options) {
     const copyAsHtmlItem =
           menuItem({label: 'Copy as HTML',
                     click() { DomTerm.doNamedCommand("copy-html"); }});
-    const pasteItem = platform == "electron"
+    const pasteItem = electronMenus
           ? menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
                       role: 'paste' })
           : menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
@@ -101,7 +106,7 @@ DomTerm.createMenus = function(options) {
                                      DomTerm.doSaveAs();
                                  }});
 
-    const quitItem =  platform == "electron" ? menuItem({label: 'Quit', role: 'quit'})
+    const quitItem =  electronMenus ? menuItem({label: 'Quit', role: 'quit'})
           : menuItem({label: 'Quit', click: DomTerm.windowClose });
     const newWindowItem = menuItem({label: 'New terminal window',
                                     accelerator: DomTerm.isMac ? 'Cmd+N' : 'Ctrl+Shift+N',
@@ -182,7 +187,7 @@ DomTerm.createMenus = function(options) {
     contextLinkMenu.append(autoPagingItem);
     contextLinkMenu.append(newTerminalMenuItem);
     contextLinkMenu.append(detachMenuItem);
-    const showInspectorItem = platform != "electron" ? null
+    const showInspectorItem = ! isElectron ? null
           : menuItem({label: 'Toggle Developer Tools',
                       accelerator: 'Ctrl+Shift+I',
                       click: function(item, focusedWindow) {
@@ -208,7 +213,7 @@ DomTerm.createMenus = function(options) {
     let viewMenu = new Menu();
     viewMenu.append(showMenuBarItem);
 
-    if (platform=="electron") {
+    if (electronMenus) {
         viewMenu.append(menuItem({role: 'togglefullscreen'}));
     } else if (typeof screenfull !== "undefined") {
         let fullscreenExitItem;
@@ -267,7 +272,7 @@ DomTerm.createMenus = function(options) {
         contextMenu.append(fullscreenExitItem);
     }
 
-    if (platform=="electron") {
+    if (isElectron) {
         viewMenu.append(menuItem({type: 'separator'}));
         viewMenu.append(menuItem({role: 'resetzoom'}));
         viewMenu.append(menuItem({role: 'zoomin'}));
@@ -291,11 +296,12 @@ DomTerm.createMenus = function(options) {
     menuBar.append(menuItem({label: 'View', submenu: viewMenu}));
     menuBar.append(menuItem({label: 'Terminal', submenu: terminalMenu}));
     menuBar.append(menuItem({label: 'Help', submenu: helpMenu}));
-    if (platform=="electron") {
+    if (electronMenus)
         menuBar = Menu.buildFromTemplate(menuBar.items);
-    }
+    else if (isElectron)
+        electronAccess.getCurrentWindow().setMenuBarVisibility(false);
+    Menu.setApplicationMenu(menuBar);
     DomTerm.savedMenuBar = menuBar;
-    showMenubar(showMenuBarItem);
 
     DomTerm.showContextMenu = function(options) {
         const mode = options.inputMode;
@@ -313,7 +319,7 @@ DomTerm.createMenus = function(options) {
 }
 
 DomTerm.setContextMenu = function() {
-    if (DomTerm.isElectron() && ! DomTerm.isAtom()) {
+    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
         const {Menu, MenuItem} = electronAccess;
         function menuItem(options) {
             if (options && options.accelerator
