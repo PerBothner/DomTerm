@@ -641,6 +641,12 @@ The @code{@var{library-name}} does not need to be specified if using Java SE 8.
 It may be needed for OpenJDK or Java SE 7,
 in which case it is either a path to @code{jfxrt.jar},
 or (for convenience if using Java SE 7) the @code{JAVA_HOME}.
+
+If using Java 11 or later (which is ``modularized''),
+you might set:
+@example
+export JDK_JAVA_OPTIONS='--module-path /path/to/javafx-sdk-13.0.1/lib --add-modules javafx.controls,javafx.web'
+@end example
 @item --without-java
 Disable building anything that depends on Java.
 @item --with-qtwebengine
@@ -3411,6 +3417,7 @@ representation of a session.
 IPython/Jupyter has a
 @uref{https://ipython.org/ipython-doc/3/notebook/nbformat.html,JSON encoding for "notebooks"}.
 This is flexible and extensible, but requires special tools.
+See also @uref{https://medium.com/netflix-techblog/open-sourcing-polynote-an-ide-inspired-polyglot-notebook-7f929d3f447,Polynote}.
 
 The DomTerm notebook format should just be a simple html page.
 Essentially a serialization of the DOM.  The page may include
