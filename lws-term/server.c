@@ -463,41 +463,9 @@ firefox_browser_command()
     return NULL;
 }
 
-#if 0
-/** Try to find the "application.ini" file for the DomTerm XUL application. */
-char *
-firefox_xul_application()
-{
-    return get_bin_relative_path(DOMTERM_DIR_RELATIVE "/application.ini");
-}
-
-char *
-firefox_xul_command(char* app_path)
-{
-    char *fcommand = firefox_browser_command();
-    int allocated_app_path = app_path == NULL;
-    if (allocated_app_path)
-        app_path = firefox_xul_application();
-    char *format = "%s -app %s -wsprotocol domterm -wspath ws://localhost:%%W &";
-    char *buf = xmalloc(strlen(fcommand) + strlen(app_path) + strlen(format));
-    sprintf(buf, format, fcommand, app_path);
-    if (allocated_app_path)
-        free(app_path);
-    return buf;
-}
-#endif
-
 char *
 firefox_command()
 {
-#if 0
-    char *xulapp = firefox_xul_application();
-    if (xulapp != NULL && access(xulapp, R_OK) == 0)
-        return firefox_xul_command(xulapp);
-    fprintf(stderr, "Firefox XUL application.ini not found.\n");
-    fprintf(stderr,
-            "Treating as --browser=firefox (which uses a regular Firefox browser window).\n");
-#endif
     char *firefox = firefox_browser_command();
     return firefox ? firefox : "firefox";
 }
