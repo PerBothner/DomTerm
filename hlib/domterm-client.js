@@ -37,12 +37,12 @@ DomTerm.useIFrame = ! DomTerm.simpleLayout
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
 {
-    var wt = new Terminal(name);
+    var wt = new DTerminal(name);
     if (topNode == null)
         topNode = document.getElementById("domterm");
     var xhr = new XMLHttpRequest();
     var sessionKey = 0;
-    var pendingInput = "";
+    var pendingInput = null;
     var ajaxInterval = 200;
     var awaitingAjax = false;
     var timer = null;
@@ -66,7 +66,7 @@ function connectAjax(name, prefix="", topNode=null)
 	    var dlen = DomTerm._handleOutputData(wt, xhr.response);
             awaitingAjax = false;
 
-            if (pendingInput.length > 0) {
+            if (pendingInput != null) {
                 ajaxInterval = 0;
                 requestIO();
             } else {
@@ -86,15 +86,16 @@ function connectAjax(name, prefix="", topNode=null)
         }
         xhr.open("POST", prefix+"io-"+sessionKey);
         xhr.onreadystatechange = handleAjaxIO;
-        xhr.responseType = "text";
-        var text = pendingInput;
-        if (text.length > 0)
+        xhr.responseType = "blob";
+        var bytes = pendingInput;
+        if (bytes !== null)
             ajaxInterval = 0;
-        pendingInput = "";
+        pendingInput = null;
         xhr.onerror= function(e) {
             wt.close();
         }
-        xhr.send(text);
+        let blob = new Blob(bytes == null ? [] : [bytes]);
+        xhr.send(blob);
         awaitingAjax = true;
     }
 
@@ -105,13 +106,21 @@ function connectAjax(name, prefix="", topNode=null)
     }
     window.addEventListener("beforeunload", onUnload, false);
 
-    function processInput(str) {
-        pendingInput = pendingInput + str;
+    function processInput(bytes) {
+        if (pendingInput == null)
+            pendingInput = bytes;
+        else {
+            let buf = new ArrayBuffer(pendingInput.byteLength+bytes.byteLength);
+            let narr = new Uint8Array(buf);
+            narr.set(pendingInput, 0);
+            narr.set(bytes, pendingInput.byteLength);
+            pendingInput = narr;
+        }
         if (! awaitingAjax) {
             requestIO();
         }
     }
-    wt.processInputCharacters = processInput;
+    wt.processInputBytes = processInput;
 
     xhr.open("POST", prefix+"open.txt");
     xhr.onreadystatechange = handleAjaxOpen;

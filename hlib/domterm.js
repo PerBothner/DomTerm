@@ -1,7 +1,12 @@
 /** @license Copyright (c) 2015, 2016, 2017, 2018, 2019 Per Bothner.
  */
 
-const DomTerm = new Object(); //Terminal; // FIXME
+const DomTerm = new Object(); //maybe use Terminal - FIXME
+
+class DomTermLayout {
+};
+
+DomTermLayout.manager = null;
 
 DomTerm._instanceCounter = 0;
 

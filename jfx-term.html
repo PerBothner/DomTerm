@@ -1,14 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
+<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
 <title>DomTerm</title>
-<!-- This file is used by the JavaFX DomTerm application. -->
-<link rel="stylesheet" href="hlib/domterm-core.css">
-<link rel="stylesheet" href="hlib/domterm-standard.css">
-<link rel="stylesheet" title="Default DomTerm styling" href="hlib/domterm-default.css">
-<script type="text/javascript" src="hlib/domterm-all.js"> </script>
-<script type="text/javascript">
+<link type='text/css' rel='stylesheet' href='hlib/domterm-core.css'>
+<link type='text/css' rel='stylesheet' href='hlib/domterm-standard.css'>
+<link type='text/css' rel='stylesheet' href='hlib/domterm-default.css'>
+<script type='text/javascript' src='hlib/domterm.js'> </script>
+<script type='text/javascript' src='hlib/domterm-version.js'> </script>
+<script type='module' src='hlib/terminal.js'> </script>
+<script type='module' src='hlib/domterm-parser.js'> </script>
+<script type='module' src='hlib/sixel/Colors.js'> </script>
+<script type='module' src='hlib/sixel/SixelDecoder.js'> </script>
+<script type='text/javascript' src='hlib/FileSaver.js'> </script>
+<script type='text/javascript' src='hlib/ResizeSensor.js'> </script>
+<script type='text/javascript' src='hlib/wcwidth.js'> </script>
+<script type='text/javascript' src='hlib/browserkeymap.js'> </script>
+<script type='module' src='hlib/commands.js'> </script>
+<script type='text/javascript' src='hlib/domterm-client.js'> </script>
+<script type='text/javascript'>
 var termElement;
 var termInstance;
 function makeDomTerm() {         

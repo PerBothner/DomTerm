@@ -1,11 +1,6 @@
 /* A glue layer for a layout mangager, initially GoldenLayout.
  */
 
-class DomTermLayout {
-};
-
-DomTermLayout.manager = null;
-
 DomTermLayout._pendingTerminals = null;
 
 // The current lm_stack

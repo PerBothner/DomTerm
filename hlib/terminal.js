@@ -92,7 +92,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 export { Terminal };
 import { commandMap } from './commands.js';
-const WcWidth = window.WcWidth;
+var WcWidth = window.WcWidth;
 
 class Terminal {
   constructor(name, topNode) {
@@ -966,7 +966,8 @@ DomTerm.setFocus = function(term, originMode="") {
             term.setFocused(1);
         DomTerm.sendParentMessage("focus-event", originMode);
     } else {
-        DomTerm.showFocusedTerm(term);
+        if (DomTerm.useIFrame)
+            DomTerm.showFocusedTerm(term);
         var current = DomTerm.focusedTerm;
         if (current == term)
             return;
@@ -4345,9 +4346,10 @@ Terminal.prototype.handleEnter = function(text) {
     var oldInputLine = this._inputLine;
     var spanNode;
     var line = this.getAbsCursorLine();
-    let suppressEcho = ((this._clientPtyEcho && ! this._clientPtyExtProc)
-                        || ! this._clientWantsEditing
-                        || text == null);
+    let suppressEcho = this.clientDoesEcho
+        && ((this._clientPtyEcho && ! this._clientPtyExtProc)
+            || ! this._clientWantsEditing
+            || text == null);
     if (oldInputLine != null) {
         let noecho = oldInputLine.classList.contains("noecho");
         if (noecho)
@@ -8263,6 +8265,11 @@ Terminal._mask28 = 0xfffffff;
 
 // data can be a DomString or an ArrayBuffer.
 DomTerm._handleOutputData = function(dt, data) {
+    if (data instanceof Blob) {
+        data.arrayBuffer()
+            .then(buffer => DomTerm._handleOutputData(dt, buffer));
+        return data.size;
+    }
     var dlen;
     if (data instanceof ArrayBuffer) {
         dt.insertBytes(new Uint8Array(data));

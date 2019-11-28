@@ -41,7 +41,7 @@ public class DomHttpServer implements HttpHandler {
         Backend backend;
         static int counter;
         ReplWriter termWriter;
-        String pending = null;
+        String pendingEvent = null;
         DomHttpServer server;
         // SSLSession // FIXME
 
@@ -78,9 +78,10 @@ public class DomHttpServer implements HttpHandler {
     }
 
     static class ReplWriter extends StringBufferedWriter {
+        private static byte[] noBytes = new byte[0];
         Session session;
-        List<String> strings = new ArrayList<String>();
-        int numChars = 0;
+        byte[] bytes = noBytes;
+        int numBytes = 0;
         boolean closed;
 	int limit = 2000;
 	public static final int MASK28 = 0xfffffff;
@@ -91,10 +92,24 @@ public class DomHttpServer implements HttpHandler {
  
         @Override
         protected synchronized void writeRaw(String str) throws IOException {
-            strings.add(str);
-	    int slen = str.length();
-            numChars += slen;
-	    countWritten = (countWritten + slen) & MASK28;
+            byte[] strBytes = str.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            int strBLength = strBytes.length;
+            int minSize = numBytes + strBLength;
+            if (bytes == noBytes) {
+                bytes = strBytes;
+            } else {
+                if (minSize >  bytes.length) {
+                    int newSize = (3 * numBytes) >> 1;
+                    if (minSize > newSize)
+                        newSize = minSize;
+                    byte[] newBytes = new byte[newSize];
+                    System.arraycopy(bytes, 0, newBytes, 0, numBytes);
+                    bytes = newBytes;
+                }
+                System.arraycopy(strBytes, 0, bytes, numBytes, strBLength);
+            }
+            numBytes = minSize;
+	    countWritten = (countWritten + strBLength) & MASK28;
 	    while (((countWritten - countConfirmed) & MASK28) > 3000) {
 		try {
 		    wait();
@@ -114,15 +129,6 @@ public class DomHttpServer implements HttpHandler {
 	    */
 	}
 
-        public synchronized CharSequence removeStrings() {
-            StringBuilder sbuf = new StringBuilder(numChars);
-            int nstrings = strings.size();
-            for (int i = 0; i < nstrings; i++)
-                sbuf.append(strings.get(i));
-            numChars = 0;
-            strings.clear();
-            return sbuf;
-        }
         public void close() throws IOException {
             closed = true;
             if (session != null) {
@@ -146,7 +152,11 @@ public class DomHttpServer implements HttpHandler {
         runBrowser = exitOnClose ? 0 : -1;
     }
 
-    private static String readAll(InputStream in) throws IOException {
+    private byte[] inputBuffer;
+    private int inputLength;
+
+    private void readAll(HttpExchange exchange) throws IOException {
+        InputStream in = exchange.getRequestBody();
         byte[] buf = new byte[1024];
         int n = 0;
         for (;;) {
@@ -162,15 +172,12 @@ public class DomHttpServer implements HttpHandler {
                 break;
             n += r;
         }
-        return new String(buf, 0, n, java.nio.charset.StandardCharsets.UTF_8);
-    }
-    private static String readAll(HttpExchange exchange) throws IOException {
-        InputStream in = exchange.getRequestBody();
-        String rtext = readAll(in);
+        this.inputBuffer = buf;
+        this.inputLength = n;
         in.close();
-        return rtext;
 
     }
+
     public void handle(HttpExchange exchange) throws IOException {
         URI uri = exchange.getRequestURI();
         String uris = uri.toString();
@@ -186,7 +193,9 @@ public class DomHttpServer implements HttpHandler {
             if (uris.equals("/"))
                 uris = "/repl-client.html";
             if ("/open.txt".equals(uris)) {
-                String rtext = readAll(exchange);
+                readAll(exchange);
+                String rtext = new String(this.inputBuffer, 0, this.inputLength,
+                                   java.nio.charset.StandardCharsets.UTF_8);
                 Session session = new Session(this, exchange);
                 Backend backend = session.backend;
                 if (rtext.startsWith("VERSION="))
@@ -201,6 +210,8 @@ public class DomHttpServer implements HttpHandler {
                 }
                 String msg = "key="+session.key;
                 byte[] bmsg = msg.getBytes();
+                exchange.getResponseHeaders()
+                    .set("Content-Type", "text/plain");
                 exchange.sendResponseHeaders(200, bmsg.length);
                 OutputStream out = exchange.getResponseBody();
                 out.write(bmsg);
@@ -210,14 +221,21 @@ public class DomHttpServer implements HttpHandler {
             else if (uris.startsWith("/io-")) {
                 String key = uris.substring(4);
                 Session session = sessionMap.get(key);
-                String rtext = readAll(exchange);
+                readAll(exchange);
                 Backend backend = session.backend;
-                processInput(session, rtext);
-                CharSequence output = session.termWriter.removeStrings();
-                byte[] bytes = output.toString().getBytes();
-                exchange.sendResponseHeaders(200, bytes.length);
+                processInput(session);
+                byte[] bytes;
+                int numBytes;
+                ReplWriter termWriter = session.termWriter;
+                synchronized (termWriter) {
+                    bytes = termWriter.bytes;
+                    numBytes = termWriter.numBytes;
+                    termWriter.bytes = ReplWriter.noBytes;
+                    termWriter.numBytes = 0;
+                }
+                exchange.sendResponseHeaders(200, numBytes);
                 OutputStream out = exchange.getResponseBody();
-                out.write(bytes);
+                out.write(bytes, 0, numBytes);
                 out.close();
                 if (session.termWriter.closed)
                     session.close();
@@ -350,42 +368,48 @@ public class DomHttpServer implements HttpHandler {
         return backend;
     }
 
-    public void processInput(Session session, String msg) {
+    private void processInput(Session session) {
         Backend backend = session.backend;
-        if (verbose > 0)
-            WTDebug.println("received msg ["+WTDebug.toQuoted(msg)+"]");
-      if (session.pending != null) {
-          msg = session.pending + msg;
-          session.pending = null;
-      }
-      int len = msg.length();
+      int start = 0;
+      int len =  this.inputLength;
       int nl = -1;
-      for (int i = 0; i < len; i++) {
-          // Octal 222 is 0x92 "Private Use 2".
-          if (msg.charAt(i) == '\222') {
-              backend.processInputCharacters(msg.substring(0, i));
-              int eol = msg.indexOf('\n', i+1);
-              if (eol >= 0) {
-                  int space = i+1;
-                  while (space < eol && msg.charAt(space) != ' ')
-                      space++;
-                  String cname = msg.substring(i+1, space);
-                  while (space < eol && msg.charAt(space) == ' ')
-                      space++;
-                  session.reportEvent(cname,
-                                     msg.substring(space, eol));
-                  msg = msg.substring(eol+1);
-                  i = -1;
-                  len = msg.length();
-              } else {
-                  session.pending = msg.substring(i);
-                  msg = "";
-                  i = -1;
-                  len = 0;
+      byte[] buf = this.inputBuffer;
+
+      for (int i = 0; ; i++) {
+          if (i == len || (buf[i] & 0xFF) == 0xFD || session.pendingEvent != null) {
+              if (i > start) {
+                  String msg = new String(buf, start, i-start,
+                                          java.nio.charset.StandardCharsets.UTF_8);
+                  if (verbose > 0)
+                      WTDebug.println("received msg ["+WTDebug.toQuoted(msg)+"]");
+                  backend.processInputCharacters(msg);
               }
+              start = i;
+              if (i == len)
+                  break;
+              // Otherwise: buf[i] == 0xFD
+              if (session.pendingEvent == null)
+                  i++;
+              int j = i;
+              while (j < len && buf[j] != (byte) '\n')
+                  j++;
+              String msg = new String(buf, i, j-i,
+                                      java.nio.charset.StandardCharsets.UTF_8);
+              if (session.pendingEvent != null)
+                  msg = session.pendingEvent + msg;
+              if (j == len) {
+                  session.pendingEvent = msg;
+                  break;
+              }
+              session.pendingEvent = null;
+              int space = msg.indexOf(' ');
+              String cname = space < 0 ? msg : msg.substring(0, space);
+              String data = space < 0 ? "" : msg.substring(space+1);
+              session.reportEvent(cname, data);
+              i = j;
+              start = j + 1;
           }
       }
-      backend.processInputCharacters(msg);
     }
 
     static String domtermPath;

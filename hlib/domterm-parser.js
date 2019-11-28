@@ -1536,7 +1536,7 @@ class DTParser {
                 term._doDeferredDeletion();
             }
             term._clientWantsEditing = canon ? 1 : 0;
-            term._clientPtyEcho = echo ? 1 : 0;
+            term._clientPtyEcho = echo;
             term._clientPtyExtProc = extproc ? 1 : 0;
             term.autoLazyCheckInferior = extproc ? 0 : 1;
             break;
