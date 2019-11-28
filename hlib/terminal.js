@@ -3871,12 +3871,21 @@ Terminal.prototype.reportEvent = function(name, data) {
         this.log("reportEvent "+this.name+": "+str);
     // Max 3 bytes per UTF-16 character
     let buffer = new ArrayBuffer(2 + 3 * slen);
+    let encoder = this._encoder;
+    let nbytes;
     let buf1 = new Uint8Array(buffer, 1);
-    let res = this._encoder.encodeInto(str, buf1);
-    if (res.read < slen) { return; } // shouldn't happen
-    let buf0 = new Uint8Array(buffer, 0, res.written+2);
+    if (encoder.encodeInto) {
+        let res = this._encoder.encodeInto(str, buf1);
+        if (res.read < slen) { return; } // shouldn't happen
+        nbytes = res.written;
+    } else {
+        let ebytes = encoder.encode(str);
+        nbytes = ebytes.byteLength;
+        buf1.set(ebytes);
+    }
+    let buf0 = new Uint8Array(buffer, 0, nbytes+2);
     buf0.fill(0xFD, 0, 1);
-    buf0.fill(10, res.written+1, res.written+2); // append '\n'
+    buf0.fill(10, nbytes+1, nbytes+2); // append '\n'
     this.processInputBytes(buf0);
 };
 
