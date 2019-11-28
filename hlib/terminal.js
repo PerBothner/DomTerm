@@ -8280,7 +8280,7 @@ DomTerm._handleOutputData = function(dt, data) {
         dlen = data.length;
         dt._receivedCount = (dt._receivedCount + dlen) & Terminal._mask28;
     }
-    if (dt._pagingMode != 2 && ! this._replayMode
+    if (dt._pagingMode != 2 && ! dt._replayMode
         && ((dt._receivedCount - dt._confirmedCount) & Terminal._mask28) > 500) {
         dt._confirmedCount = dt._receivedCount;
         dt.reportEvent("RECEIVED", dt._confirmedCount);
