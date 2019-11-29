@@ -200,7 +200,7 @@ void BrowserMainWindow::setupMenu()
     connect(m_viewMenubar, SIGNAL(triggered()), this, SLOT(slotViewMenubar()));
     viewMenu->addAction(m_viewMenubar);
 
-    viewMenu->addAction(tr("Zoom &In"), this, SLOT(slotViewZoomIn()), QKeySequence(Qt::CTRL | Qt::Key_Plus));
+    viewMenu->addAction(tr("Zoom &In"), this, SLOT(slotViewZoomIn()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Plus));
     viewMenu->addAction(tr("Zoom &Out"), this, SLOT(slotViewZoomOut()), QKeySequence(Qt::CTRL | Qt::Key_Minus));
     viewMenu->addAction(tr("Reset &Zoom"), this, SLOT(slotViewResetZoom()), QKeySequence(Qt::CTRL | Qt::Key_0));
 
@@ -435,11 +435,9 @@ void BrowserMainWindow::slotEditFindPrevious()
 
 void BrowserMainWindow::slotViewZoomIn()
 {
-#if 0
     if (!currentTab())
         return;
     currentTab()->setZoomFactor(currentTab()->zoomFactor() + 0.1);
-#endif
 }
 
 void BrowserMainWindow::slotViewZoomOut()
