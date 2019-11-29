@@ -930,10 +930,12 @@ DomTerm.focusedTerm = null; // used if !useIFrame
 
 Terminal.prototype.setFocused = function(focused) {
     if (focused > 0) {
-        this.reportEvent("FOCUSED", ""); // to server
         this.topNode.classList.add("domterm-active");
         DomTerm.setTitle(this.sstate.windowTitle);
-        DomTerm.inputModeChanged(this, this.getInputMode());
+        if (! this.isSavedSession()) {
+            this.reportEvent("FOCUSED", ""); // to server
+            DomTerm.inputModeChanged(this, this.getInputMode());
+        }
         if (focused == 2)
             this.maybeFocus();
     } else {
@@ -3339,8 +3341,9 @@ Terminal.prototype.measureWindow = function()  {
     // In that case we should line-break based on character counts rather
     // than measured offsets.
     availWidth = (numColumns + 0.5) * this.charWidth;
-    if (numRows != this.numRows || numColumns != this.numColumns
-        || availHeight != this.availHeight || availWidth != this.availWidth) {
+    if ((numRows != this.numRows || numColumns != this.numColumns
+         || availHeight != this.availHeight || availWidth != this.availWidth)
+        && ! this.isSavedSession()) {
         this.setWindowSize(numRows, numColumns, availHeight, availWidth);
     }
     this.numRows = numRows;
