@@ -341,6 +341,16 @@ $(HTML_DIR)/index.html: doc/DomTerm.xml Makefile
 	cd $(srcdir) && cp $(DOC_IMAGES) $(abs_builddir)/web/images
 	(cd $(srcdir) && tar cf - $(DOC_TOOLS))|(cd web && tar xf -)
 
+web/saved/hlib:
+	$(MKDIR_P) web/saved/hlib
+	cd web/saved/hlib && \
+	  for f in `sed -n -e "/<script /s|.*\(hlib/.*js\)'.*|\1|p" -e "/<link /s|.*\(hlib/.*css\)'.*|\1|p" <../../../tools/wrap-saved`; \
+            do ln ../../../$$f .; \
+	    done
+
+web/saved/dt-prettynested.html:
+	tools/wrap-saved doc/misc/dt-prettynested-saved.html $@
+
 WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
 upload-web: web/index.html
 	cd web && \

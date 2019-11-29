@@ -221,11 +221,14 @@ which is an encoding that some DEC VT terminals supported..
 
 @image{images/dt-help1}
 
-The @code{domterm help @var{topic}} command is essentially the same as
-@code{domterm hcat $DT_HELP/domterm-@var{topic}.html}.
-
-You can display inline HTML from @ref{pandoc-output,pandoc}
+Displaying inline HTML is very useful for ``help'' output
+and other documentation,
+such as @ref{pandoc-output,output from pandoc}
 and @ref{man-page-output,@code{man} pages}.
+
+The @code{domterm hcat} command
+is useful for @strong{printing formatted html}.
+The @code{domterm help @var{topic}} command essentially does that.
 
 @subsubheading Python language
 
@@ -243,18 +246,15 @@ supports @uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,DomTerm as a
 
 @subheading Rich interaction
 
-@subsubheading Smart links
-
-@ref{linkification,Turn URLs and mail adresses in output into links}.
-Filename with line number (as in errors messages) are turned into
-links for text editors.
-(You have to hover over them to see them.)
-
-You can @ref{link-handlers,customize how links are handled}.
-
 @subsubheading Pretty-printing
 
-@image{images/dt-pretty1}
+@uref{https://domterm.org/saved/dt-prettynested.html,@image{images/dt-pretty1}}
+If you click on the image to right,
+you get a @strong{dynamic saved page}:
+If you resize the screen, the line-breaks in the output
+are adjusted to pretty-print the data structures to fit the
+available width.  You can also show or hide output by clicking
+on the triangles.
 
 @strong{Smart line-wrapping}:
 Remembers which lines were too wide (and thus
@@ -273,6 +273,15 @@ with automatic re-flow on window re-size.
 ``Print'' @ref{Hide/show buttons,hide/show buttons},
 using certain escape sequences enables @strong{text folding}.
 The nearby screenshot shows the output of @code{ls -l} being hidden.
+
+@subsubheading Smart links
+
+@ref{linkification,Turn URLs and mail adresses in output into links}.
+Filename with line number (as in errors messages) are turned into
+links for text editors.
+(You have to hover over them to see them.)
+
+You can @ref{link-handlers,customize how links are handled}.
 
 @subsubheading Update previous output
 

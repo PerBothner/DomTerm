@@ -1,0 +1,79 @@
+# Usage: wrap-saved SAVED_FILE [OUTFILE]
+# where SAVED_FILE is "Save as HTML" of an HTML sessions
+# (and suitable for: domterm view-saved SAVED_FILE)
+# and OUTFILE (by default stdout) is standalone static web page
+# (though it needs some of hlib/*.js and htlib/*.css)
+
+SAVED_FILE="$1"
+OUTFILE="$2"
+TMP1=/tmp/no-frame-raw.html
+TMP2=/tmp/no-frame2.html
+# This here-document is the no-frames.html that 'domterm view-saved'
+# uses to wrap sa saved DomTerm session.
+# Below we filter out unneeded .js/.css, append the SAVED_FILE,
+# and make a few final changes.
+cat >$TMP1 <<EOF
+<!DOCTYPE html>
+<html><head>
+<base href='http://localhost:NNN/'/>
+<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+<title>DomTerm</title>
+<link type='text/css' rel='stylesheet' href='hlib/domterm-core.css'>
+<link type='text/css' rel='stylesheet' href='hlib/domterm-standard.css'>
+<link type='text/css' rel='stylesheet' href='hlib/goldenlayout-base.css'>
+<link type='text/css' rel='stylesheet' href='hlib/jsMenus.css'>
+<link type='text/css' rel='stylesheet' href='hlib/domterm-layout.css'>
+<link type='text/css' rel='stylesheet' href='hlib/domterm-default.css'>
+<script type='text/javascript' src='hlib/domterm.js'> </script>
+<script type='text/javascript' src='hlib/domterm-version.js'> </script>
+<script type='module' src='hlib/terminal.js'> </script>
+<script type='module' src='hlib/domterm-parser.js'> </script>
+<script type='module' src='hlib/sixel/Colors.js'> </script>
+<script type='module' src='hlib/sixel/SixelDecoder.js'> </script>
+<script type='text/javascript' src='hlib/FileSaver.js'> </script>
+<script type='text/javascript' src='hlib/ResizeSensor.js'> </script>
+<script type='text/javascript' src='hlib/wcwidth.js'> </script>
+<script type='text/javascript' src='hlib/browserkeymap.js'> </script>
+<script type='module' src='hlib/commands.js'> </script>
+<script type='text/javascript' src='hlib/screenfull.min.js'> </script>
+<script type='text/javascript' src='hlib/jquery.min.js'> </script>
+<script type='text/javascript' src='hlib/goldenlayout.js'> </script>
+<script type='text/javascript' src='hlib/domterm-layout.js'> </script>
+<script type='text/javascript' src='hlib/domterm-menus.js'> </script>
+<script type='text/javascript' src='hlib/qwebchannel.js'> </script>
+<script type='text/javascript' src='hlib/jsMenus.js'> </script>
+<script type='text/javascript' src='hlib/domterm-client.js'> </script>
+<script type='text/javascript'>
+DomTerm.server_port = NNN;
+DomTerm.server_key = 'XXX';
+</script>
+</head>
+<body></body>
+</html>
+EOF
+sed <$TMP1 \
+  -e '/base href/d' -e '/goldenlayout/d' -e '/jquery/d'   -e '/qwebchannel/d' \
+  -e '/domterm-parser/d' -e '/sixel/d' -e '/FileSaver/d' \
+  -e '/server_port/,$d' \
+  >$TMP2
+rm $TMP1
+cat >>$TMP2 <<EOF
+window.removeEventListener("load", loadHandler, false);
+function loadHandler2(event) {
+  DomTerm.layoutTop = document.body;
+  DomTerm.initSavedFile(document.body.firstChild);
+}
+window.addEventListener("load", loadHandler2, false);
+</script>
+</head>
+EOF
+echo -n '<body>' >>$TMP2
+cat $SAVED_FILE >>$TMP2
+echo '</body></html>' >>$TMP2
+if test -n "$OUTFILE"
+then
+  mv $TMP2 $OUTFILE
+else
+  cat $TMP2
+  rm $TMP2
+fi
