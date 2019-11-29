@@ -1217,10 +1217,13 @@ main(int argc, char **argv)
         opts.http_server = true;
         ret = 0;
     } else {
+        char *pwd = getcwd(NULL, 0);
         ret = handle_command(argc-optind, argv+optind,
-                             ".", environ, NULL, &opts);
-    if (ret != 0)
-        exit(ret);
+                             pwd, environ, NULL, &opts);
+        if (pwd)
+            free(pwd);
+        if (ret != 0)
+            exit(ret);
     }
 
     if (opts.do_daemonize && ret == 0) {
