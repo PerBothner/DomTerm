@@ -423,6 +423,11 @@ class Terminal {
     //maybeExtendInput() { }
 
     startPrompt(options = []) {
+        this.sstate.stayInInputMode = true;
+        let ln = this.outputContainer;
+        if (Terminal.isNormalBlock(ln))
+            ln.classList.add("input-line");
+
         let promptKind = Terminal.namedOptionFromArray(options, "k=");
         let isContinuationLine = promptKind === "c";
         if (promptKind == "i") {
@@ -488,11 +493,8 @@ class Terminal {
         this.sstate.inPromptMode = false;
         this._fixOutputPosition();
         let ln = this.outputContainer;
-        var cl = ln.classList;
-        if (cl.contains("domterm-pre")
-            && ! ln.parentNode.classList.contains("input-line")) {
-            cl.add("input-line");
-        }
+        if (Terminal.isNormalBlock(ln))
+            ln.classList.add("input-line");
 
         let prev = this.outputBefore ? this.outputBefore.previousSibling
             : this.outputContainer.lastChild;
@@ -1505,6 +1507,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             if (! addSpaceAsNeeded)
                 return;
             let lastParent;
+            let newPre = true;
             if (lineCount == this.homeLine) {
                 parent = this.initial;
                 lastParent = null;
@@ -1524,6 +1527,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     if (lastParent.classList.contains("input-line")
                         && this.sstate.stayInInputMode) {
                         parent = lastParent;
+                        newPre = false;
                     } else {
                         // FIXME use startOutput
                         var commandOutput = document.createElement("div");
@@ -1535,7 +1539,6 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     parent = lastParent.parentNode;
                 }
             }
-            let newPre = ! lastParent || ! this.sstate.stayInInputMode;
             var next = this._createLineNode("hard", "\n");
             let prevLineEnd = this.lineEnds[lineCount-1];
             let lineStart;
@@ -1549,6 +1552,11 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             } else {
                 lastParent.appendChild(next);
                 lineStart = prevLineEnd;
+                let beforeLine = prevLineEnd.previousSibling;
+                if (beforeLine instanceof Element
+                    && beforeLine.getAttribute("std")) {
+                    beforeLine.appendChild(prevLineEnd)
+                }
             }
             this._setPendingSectionEnds(prevLineEnd);
             lineStart._widthMode = Terminal._WIDTH_MODE_NORMAL;
@@ -2653,8 +2661,7 @@ Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getA
         if (! this._isAnAncestor(start, this.topNode)) {
             start = end;
             for (;;) {
-                if (start.tagName == "PRE"|| start.tagName == "P"
-                    || start.tagName == "DIV")
+                if (Terminal.isNormalBlock(start))
                     break;
                 start = start.parentNode;
             }
@@ -2871,6 +2878,11 @@ Terminal.prototype.isObjectElement = function(node) {
     return "OBJECT" == tag || "CANVAS" == tag
         || "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
 };
+
+Terminal.isNormalBlock = function(node) {
+    let tag = node.nodeName;
+    return tag == "PRE" || tag == "P" || tag == "DIV";
+}
 
 Terminal.isBlockNode = function(node) {
     return node instanceof Element
@@ -4575,7 +4587,7 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         // this case.
         var parent = lineEnd.parentNode;
         var pname = parent.nodeName;
-        if ((pname == "PRE" || pname == "P" || pname == "DIV")
+        if (Terminal.isNormalBlock(parent)
             && ! parent.classList.contains("input-line")) {
             var newBlock = this._splitNode(parent, lineEnd.nextSibling);
             // If a wrapped input line is edited to a single (or fewer) lines,
