@@ -561,8 +561,8 @@ Grab a suitable package from
 @uref{https://github.com/electron/electron/releases/latest,here}.
 Get the @code{zip} file with the plainest name (no @code{-symbols}
 or @code{-pdb}).
-For example, at the time of writing the current release is 1.8.2, so
-for Windows you want @code{electron-v1.8.2-win32-x64.zip}.
+For example, at the time of writing the current release is 7.1.2, so
+for Windows you want @code{electron-v7.1.2-win32-x64.zip}.
 Unzip into a freshly-created directory.
 
 On Windows Subsystem for Linux (WSL), you need to unzip into a
