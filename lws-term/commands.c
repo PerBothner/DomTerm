@@ -549,8 +549,6 @@ int status_action(int argc, char** argv, const char*cwd,
                 int number = tclient->pty_window_number;
                 if (number >= 0)
                     fprintf(out, "  window %d:", number);
-                else
-                    fprintf(out, "  window:", number);
                 struct json_object *vobj =
                     json_tokener_parse(tclient->version_info);
                 char *prefix = " ";
