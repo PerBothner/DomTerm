@@ -550,7 +550,7 @@ default_browser_command()
     char *path;
     bool free_needed = false;
     if (is_WindowsSubsystemForLinux())
-        path =strdup( "/mnt/c/Windows/System32/cmd.exe /c start");
+        path = strdup("/mnt/c/Windows/System32/cmd.exe /c start");
     else {
         path = find_in_path("xdg-open");
         if (path == NULL)
@@ -1299,7 +1299,7 @@ static char *userprofile_cache;
 char *get_WSL_userprofile()
 {
     if (userprofile_cache == NULL) {
-        FILE *f = popen("/mnt/c/Windows/System32/cmd.exe /C \"echo %USERPROFILE%\"", "r");
+        FILE *f = popen("/mnt/c/Windows/System32/cmd.exe /c \"<nul set /p=%UserProfile%\" 2>/dev/null", "r");
         if (f == NULL)
             return NULL;
         char buf[512];
