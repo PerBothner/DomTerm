@@ -1877,7 +1877,7 @@ class DTParser {
             case 65: // 'A' - FTCS_PROMPT
             case 78: // 'N'
                 term.freshLine();
-                aid = Terminal.namedOptionFromArray(options, "aid=", "");
+                aid = Terminal.namedOptionFromArray(options, "aid=");
                 if (ch0 == 78)
                     term.endCommandGroup(aid, true);
                 // In case of fish "omitted newline" hack
@@ -1902,7 +1902,7 @@ class DTParser {
                     && options[0] && options[0] !== "0")
                     exitCode = options[0];
                 let oldGroup = term.currentCommandGroup();
-                aid = Terminal.namedOptionFromArray(options, "aid=", "");
+                aid = Terminal.namedOptionFromArray(options, "aid=");
                 term.endCommandGroup(aid, false);
                 term.sstate.stayInInputMode = undefined;
                 if (exitCode && oldGroup) {
