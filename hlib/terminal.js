@@ -847,6 +847,7 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
             preNode._widthColumns = 0;
         }
         this.outputContainer = preNode;
+        this.outputBefore = preNode.firstChild;
 
         // Remove old empty domterm-output container.
         if (oldOutput && oldOutput.firstChild == null
