@@ -6912,7 +6912,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 // desirble (for one it avoids messing with the selection).
                 this.outputBefore += str.length;
                 str = null;
-                segments = [];
+                nsegments = 0;
             }
             else if (false) { // FIXME
                 let oldColWidth = this.strWidthInContext(oldStr, this.outputContainer);
@@ -6926,7 +6926,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                     this.outputContainer.replaceData(this.outputBefore, oldLength, str);
                     this.outputBefore += str.length;
                     str = null;
-                    segments = [];
+                    nsegments = 0;
                 }
             }
         }
