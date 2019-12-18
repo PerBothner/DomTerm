@@ -6476,9 +6476,15 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                             break check_fits;
                         }
                         dt._insertIntoLines(lineNode, line);
-                        el = lineNode;
-                        indentWidth = addIndentation(dt, el, countColumns);
+                        indentWidth =
+                            addIndentation(dt, lineNode, countColumns);
                         rest = document.createTextNode(rest);
+                        if (el == dt.outputContainer
+                           && dt.outputBefore > el.length) {
+                            dt.outputContainer = rest;
+                            dt.outputBefore -= el.length;
+                        }
+                        el = lineNode;
                         el.parentNode.insertBefore(rest, el.nextSibling);
                         next = rest;
                     } else { // dt.isObjectElement(el) or wc-node
