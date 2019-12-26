@@ -8430,13 +8430,14 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
 Terminal._makeWsUrl = function(query=null) {
     var ws = location.hash.match(/ws=([^,&]*)/);
     var url;
+    let protocol = location.protocol == "https:" ? "wss:" : "ws:";
     if (DomTerm.server_port==undefined || (ws && ws[1]=="same"))
-        url = (location.protocol == "https:" ? "wss:" : "ws:")
+        url = protocol
             + "//"+location.hostname+":" + location.port + "/replsrc";
     else if (ws)
-        url = "ws:"+ws[1];
+        url = protocol+ws[1];
     else
-        url = "ws://localhost:"+DomTerm.server_port+"/replsrc";
+        url = protocol+"//localhost:"+DomTerm.server_port+"/replsrc";
     if (query)
         url = url + '?' + query;
     if (DomTerm.server_key)
