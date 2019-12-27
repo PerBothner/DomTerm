@@ -360,10 +360,6 @@ class Terminal {
     this._Glevel = 0;
 
     this._currentPprintGroup = null;
-    // a chain of "line" and "pprint-group" elements that need
-    // sectionEnd to be set (to a later "line" at same or higher level).
-    this._needSectionEndList = null;
-    this._needSectionEndFence = null;
 
     // As reported from backend;
     // 0: Not the only window
@@ -1324,7 +1320,6 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     cur.outerPprintGroup = this._currentPprintGroup;
                     //this.currentCursorLine = startLine;
                     //this.currentCursorColumn = -1;
-                    this._setPendingSectionEnds(cur);
                     if (line == "hard" || line == "br") {
                         if (startBlock != null && cur.parentNode == startBlock
                             && cur.nextSibling == null) { // normal case
@@ -1338,8 +1333,6 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                         }
                     } else {
                         start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
-                        cur._needSectionEndNext = this._needSectionEndList;
-                        this._needSectionEndList = cur;
                     }
                 } else if (cls == "wc-node") {
                     descend = false;
@@ -1559,7 +1552,6 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     beforeLine.appendChild(prevLineEnd)
                 }
             }
-            this._setPendingSectionEnds(prevLineEnd);
             lineStart._widthMode = Terminal._WIDTH_MODE_NORMAL;
             lineStart._widthColumns = 0;
             this.lineStarts[lineCount] = lineStart;
@@ -5016,7 +5008,6 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     this._Gcharsets[2] = null;
     this._Gcharsets[3] = null;
     this._currentPprintGroup = null;
-    this._needSectionEndFence = null;
     this.resetTabs();
 
     // FIXME a bunch more
@@ -5696,32 +5687,15 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
 };
 
 
-Terminal.prototype._setPendingSectionEnds = function(end) {
-    for (var pending = this._needSectionEndList;
-         pending != this._needSectionEndFence; ) {
-        var next = pending._needSectionEndNext;
-        pending._needSectionEndNext = undefined;
-        pending.sectionEnd = end;
-        pending = next;
-    }
-    this._needSectionEndList = this._needSectionEndFence;
-};
-
 Terminal.prototype._pushPprintGroup = function(ppgroup) {
     ppgroup.outerPprintGroup = this._currentPprintGroup;
     this._currentPprintGroup = ppgroup;
-    ppgroup._needSectionEndNext = this._needSectionEndList;
-    this._needSectionEndList = ppgroup;
-    ppgroup._saveSectionEndFence = this._needSectionEndFence;
-    this._needSectionEndFence = this._needSectionEndList;
 };
 
 Terminal.prototype._popPprintGroup = function() {
     var ppgroup = this._currentPprintGroup;
     if (ppgroup) {
         this._currentPprintGroup = ppgroup.outerPprintGroup;
-        this._needSectionEndFence = ppgroup._saveSectionEndFence;
-        ppgroup._saveSectionEndFence = undefined;
     }
 }
 
@@ -6331,8 +6305,11 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     //
     // First pass - measure (call offsetLeft) but do not change DOM
     function breakLine1 (dt, start, beforePos, availWidth, countColumns) {
-        var pprintGroup = null; // FIXME if starting inside a group
-
+        let pprintGroup = null; // FIXME if starting inside a group
+        // A chain of "line" and "pprint-group" elements that need
+        // sectionEnd to be set (to a later "line" at same or higher level).
+        let needSectionEndList = null;
+        let needSectionEndFence = null;
         if (! countColumns) {
             for (var el = start.parentNode;
                  el != null && el.nodeName == "SPAN"; el = el.parentNode) {
@@ -6376,10 +6353,22 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 skipChildren = true;
             } else if (el.nodeName == "SPAN"
                        && (lineAttr = el.getAttribute("line")) != null) {
-                if ((lineAttr == "hard" || lineAttr == "soft")
-                    && el.outerPprintGroup == null) {
-                    skipChildren = true;
-                    break;
+                for (let pending = needSectionEndList;
+                     pending != needSectionEndFence; ) {
+                    var next = pending._needSectionEndNext;
+                    pending._needSectionEndNext = undefined;
+                    pending.sectionEnd = el;
+                    pending = next;
+                }
+                needSectionEndList = needSectionEndFence;
+                if (lineAttr == "hard" || lineAttr == "soft") {
+                    if (el.outerPprintGroup == null) {
+                        skipChildren = true;
+                        break;
+                    }
+                } else {
+                    el._needSectionEndNext = needSectionEndList;
+                    needSectionEndList = el;
                 }
                 if (lineAttr == "required")
                     pprintGroup.breakSeen = true;
@@ -6389,6 +6378,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             } else if (el.classList.contains("pprint-group")) {
                 pprintGroup = el;
                 pprintGroup.breakSeen = false;
+                el._needSectionEndNext = needSectionEndList;
+                needSectionEndList = el;
+                el._saveSectionEndFence = needSectionEndFence;
+                needSectionEndFence = needSectionEndList;
             }
             if (el.firstChild != null && ! skipChildren)
                 el = el.firstChild;
@@ -6401,6 +6394,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         if (pprintGroup.breakSeen && outerGroup)
                             outerGroup.breakSeen = true;
                         pprintGroup = outerGroup;
+                        needSectionEndFence = el._saveSectionEndFence;
+                        el._saveSectionEndFence = undefined;
                     }
                     var next = el.nextSibling;
                     if (countColumns && el instanceof Element)

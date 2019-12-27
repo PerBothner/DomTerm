@@ -1817,7 +1817,7 @@ class DTParser {
             term.insertNode(line);
             if (line.parentNode.hasHider)
                 line.setAttribute("domterm-hidden", "false");
-            if (term._needSectionEndList) {
+            if (term._currentPprintGroup) {
                 var absLine = term.getAbsCursorLine();
                 while (term.lineStarts[absLine].nodeName=="SPAN")
                     absLine--;
@@ -1825,11 +1825,8 @@ class DTParser {
                     || term._deferredLinebreaksStart > absLine)
                     term._deferredLinebreaksStart = absLine;
             }
-            term._setPendingSectionEnds(line);
             if (kind=="required")
                 term.lineStarts[term.getAbsCursorLine()].alwaysMeasureForBreak = true;
-            line._needSectionEndNext = term._needSectionEndList;
-            term._needSectionEndList = line;
             break;
         case 119:
             term.freshLine();
