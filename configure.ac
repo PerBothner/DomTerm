@@ -45,7 +45,7 @@ AC_ARG_ENABLE(ld-preload,
   AS_HELP_STRING(--enable-ld-preload,Make use of LD_PRELOAD to modify standard functions))
 
 AC_ARG_WITH(javafx,
-  AS_HELP_STRING(--with-javafx@<:@=jfxrt.jar@:>@,Enable support for JavaFX))
+  AS_HELP_STRING(--with-javafx@<:@=jfxhome@:>@,Enable support for JavaFX))
 
 AC_ARG_WITH(closure_compiler,
   AC_HELP_STRING("--with-closure-compiler[=@<:@=compiler.jar@:>],compress JavaScript with Closure))
@@ -120,6 +120,9 @@ case ${with_javafx} in
     then with_javafx="${with_javafx}/lib/jfxrt.jar"
     elif test -f "${with_javafx}/jre/lib/jfxrt.jar"
     then with_javafx="${with_javafx}/jre/lib/jfxrt.jar"
+    elif test -f "${with_javafx}/lib/javafx.web.jar"
+    then
+        JAVAFX_MODULE_FLAGS="--module-path ${with_javafx}/lib --add-modules javafx.web"
     fi
     conf_classpath=${with_javafx}${CLASSPATH_SEPARATOR}$conf_classpath ;;
 esac
@@ -266,6 +269,7 @@ AC_SUBST(CLASSPATH_SEPARATOR)
 AC_SUBST(conf_classpath)
 AC_SUBST(JAVA_HOME)
 AC_SUBST(JAVA_INCLUDE_SUBDIR)
+AC_SUBST(JAVAFX_MODULE_FLAGS)
 AC_SUBST(LIBWEBSOCKETS_LIBS)
 AC_SUBST(LIBWEBSOCKETS_CFLAGS)
 AC_SUBST(OPENSSL_LIBS)
