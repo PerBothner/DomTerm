@@ -22,6 +22,12 @@ if (typeof navigator !== 'undefined' && navigator.userAgent) {
         DomTerm.versions.firefox = m[1];
     if ((m = navigator.userAgent.match(/Atom[/]([^ ]+)/)))
         DomTerm.versions.atom = m[1];
+    if ((m = navigator.userAgent.match(/JavaFX[/]([^ ]+)/)))
+        DomTerm.versions.javaFX = m[1];
+    if ((m = navigator.userAgent.match(/AppleWebKit[/]([^ ]+)/))
+       && ! DomTerm.versions.chrome)
+        DomTerm.versions.appleWebKit = m[1];
+    DomTerm.versions.userAgent = navigator.userAgent;
 }
 
 DomTerm.isElectron = function() {

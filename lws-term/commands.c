@@ -558,7 +558,11 @@ int status_action(int argc, char** argv, const char*cwd,
                     prefix = ", ";
                 if (json_print_property(out, vobj, "electron", prefix, NULL))
                     prefix = ", ";
+                if (json_print_property(out, vobj, "javaFX", prefix, NULL))
+                    prefix = ", ";
                 if (json_print_property(out, vobj, "chrome", prefix, NULL))
+                    prefix = ", ";
+                if (json_print_property(out, vobj, "appleWebKit", prefix, NULL))
                     prefix = ", ";
                 if (json_print_property(out, vobj, "firefox", prefix, NULL))
                     prefix = ", ";
