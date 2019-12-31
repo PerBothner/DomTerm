@@ -17,13 +17,16 @@
 <script type='text/javascript' src='hlib/wcwidth.js'> </script>
 <script type='text/javascript' src='hlib/browserkeymap.js'> </script>
 <script type='module' src='hlib/commands.js'> </script>
-<script type='text/javascript' src='hlib/domterm-client.js'> </script>
 <script type='text/javascript'>
 var termElement;
 var termInstance;
-function makeDomTerm() {         
-    termElement = document.getElementById("term1");
-    var term = new DomTerm("term1");
+
+function makeDomTerm() {
+    let name = "kterm1";
+    let term;
+    termElement = DomTerm.makeElement(name, document.body);
+    termInstance = new window.DTerminal(name);
+    term = termInstance;
     term.processInputCharacters =
         function(str) { term.java.processInputCharacters(str); };
     term.reportEvent =
@@ -38,7 +41,6 @@ function makeDomTerm() {
     term.log =
         function(str) {
             if (term && term.java) term.java.log(str); }
-    termInstance = term;
     return term;
 }
 function initDomTerm() {
@@ -47,5 +49,5 @@ function initDomTerm() {
 }
 </script>
 </head>
-<body><div class="domterm" id="term1"></div></body>
+<body></body>
 </html>

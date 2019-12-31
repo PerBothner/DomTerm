@@ -41,6 +41,8 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import org.w3c.dom.events.EventTarget;
 import netscape.javascript.JSObject;
+import java.io.IOException;
+import java.net.UnknownHostException;
 import javafx.application.Platform;
 import javafx.scene.control.Control;
 import javafx.scene.input.Clipboard;
@@ -64,6 +66,8 @@ public class WebTerminal extends VBox // FIXME should extend Control
 {
     public Backend backend;
     public void log(String str) { WTDebug.println(str); }
+
+    static DomHttpServer httpServer;
     
     WebView webView;
     protected WebView getWebView() { return webView; } 
@@ -172,6 +176,13 @@ public class WebTerminal extends VBox // FIXME should extend Control
     }
 
     public WebTerminal(final Backend backend) {
+        if (httpServer == null) {
+            try {
+                startServer(0);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
         setBackend(backend);
         webView = new WebView();
         webEngine = webView.getEngine();
@@ -213,10 +224,7 @@ public class WebTerminal extends VBox // FIXME should extend Control
      */
     protected String pageUrl() {
         String rname = "jfx-term.html";
-        java.net.URL rurl = Backend.class.getClassLoader().getResource(rname);
-        if (rurl == null)
-            throw new RuntimeException("no initial web page "+rname);
-        return rurl.toString();
+        return "http://localhost:"+httpServer.getPort()+"/domterm/"+rname;
     }
 
     /** Load the start page.  Do not call directly.
@@ -265,5 +273,12 @@ public class WebTerminal extends VBox // FIXME should extend Control
             });
 
 
+    }
+
+    public static void startServer(int port)
+        throws IOException, UnknownHostException {
+        DomHttpServer s = new DomHttpServer(port, new String[0]);
+        s.start();
+        httpServer = s;
     }
 }
