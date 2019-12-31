@@ -27,7 +27,6 @@ import com.sun.net.httpserver.HttpServer;
 public class DomHttpServer implements HttpHandler {
     static int verbose = 0;
     Map<String,Session> sessionMap = new HashMap<String,Session>();
-    Set<Backend> pendingBackends = new HashSet();
 
     public static int serverBacklog = 0;
     HttpServer httpServer;
