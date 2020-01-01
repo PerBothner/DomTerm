@@ -3479,8 +3479,7 @@ Terminal.prototype._updateSelected = function() {
     let targetPreNode = null;        // target class="domterm-pre" element
     let readlineForced = dt._altPressed;
     let moveOption = readlineForced ? "w" : null;
-    if (! this.isLineEditing()
-        && dt._caretNode && dt._caretNode.parentNode !== null) {
+    if (dt._caretNode && dt._caretNode.parentNode !== null) {
         if (readlineForced) {
             targetPreNode = dt._getOuterBlock(sel.focusNode);
             moveCaret = targetPreNode != null;
@@ -3491,14 +3490,16 @@ Terminal.prototype._updateSelected = function() {
                 let firstSibling = targetPreNode.parentNode.firstChild;
                 moveCaret = targetPreNode.classList.contains("input-line")
                     && targetPreNode == currentPreNode
-                    && (moveOption = currentPreNode.getAttribute("click-move"))
+                    && (moveOption = this.isLineEditing() ? "v"
+                        : currentPreNode.getAttribute("click-move"))
                     && (point || dt._getStdMode(sel.focusNode) !== "prompt");
             }
         }
     }
-    if (moveCaret
-        && (readlineForced
-            || targetPreNode == dt._getOuterPre(dt._caretNode))) {
+    if (moveCaret && ! readlineForced
+        && targetPreNode !== dt._getOuterPre(dt._caretNode))
+        moveCaret = false;
+    if (moveCaret && ! this.isLineEditing()) {
         let targetNode = sel.focusNode;
         let targetOffset = sel.focusOffset;
         if (! readlineForced) {
@@ -3580,7 +3581,9 @@ Terminal.prototype._updateSelected = function() {
             }
             dt.processInputCharacters(output);
         }
+    }
 
+    if (moveCaret) {
         let focusNode = sel.focusNode;
         let anchorNode = sel.anchorNode;
         let focusOffset = sel.focusOffset;
@@ -3590,7 +3593,7 @@ Terminal.prototype._updateSelected = function() {
             dt._removeCaret();
             if (! dt.isLineEditing())
                 dt._removeInputLine();
-            r = new Range();
+            let r = new Range();
             r.setStart(sel.focusNode, sel.focusOffset);
             r.insertNode(dt._caretNode);
             if (sel.focusNode == this.outputContainer
