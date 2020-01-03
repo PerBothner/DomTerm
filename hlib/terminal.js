@@ -3194,7 +3194,6 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         this.history = new Array();
 
     this.parser = new window.DTParser(this);
-    this._encoder = new TextEncoder()
     this._initializeDomTerm(topNode);
 
     var caretNode = this._createSpanNode();
@@ -3883,6 +3882,8 @@ Terminal.prototype.reportEvent = function(name, data) {
     // Max 3 bytes per UTF-16 character
     let buffer = new ArrayBuffer(2 + 3 * slen);
     let encoder = this._encoder;
+    if (! encoder)
+        this._encoder = encoder = new TextEncoder();
     let nbytes;
     let buf1 = new Uint8Array(buffer, 1);
     if (encoder.encodeInto) {
