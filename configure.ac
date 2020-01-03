@@ -242,6 +242,7 @@ HLIB_FIXED_FILES1="\
   hlib/terminal.js \
   hlib/commands.js \
   hlib/FileSaver.js \
+  hlib/ResizeSensor.js \
   hlib/wcwidth.js"
 HLIB_FIXED_FILES2="\
   hlib/domterm.js \
@@ -258,7 +259,6 @@ HLIB_FIXED_FILES2="\
   hlib/jsMenus.css \
   hlib/jsMenus.js \
   hlib/qwebchannel.js \
-  hlib/ResizeSensor.js \
   hlib/screenfull.min.js"
 case "$with_xterm_js" in
   ""|"no")
