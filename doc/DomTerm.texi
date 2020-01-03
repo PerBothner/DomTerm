@@ -449,6 +449,11 @@ sudo dnf install java-1.8.0-openjdk-devel
 @end example
 (You can also use Oracle JDK, version 8 or 9.)
 
+If configuring with @code{--with-closure-compiler} do:
+@example
+sudo dnf install closure-compiler
+@end example
+
 @subsubheading Ubuntu/Debian
 
 (Tested on Ubuntu 17.10.1)
