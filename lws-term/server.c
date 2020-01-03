@@ -1457,20 +1457,25 @@ struct lib_info {
     const char *file;
     int options;
 };
+
 static struct lib_info standard_jslibs[] = {
     {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+#if COMBINE_RESOURCES
+    {"hlib/dt-combined.js", LIB_WHEN_SIMPLE},
+#else
     {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #if ! WITH_XTERMJS
     {"hlib/domterm-parser.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/sixel/Colors.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/sixel/SixelDecoder.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #endif
-    {"hlib/FileSaver.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
-    {"hlib/ResizeSensor.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
-    {"hlib/wcwidth.js", LIB_WHEN_SIMPLE},
     {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE},
     {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/wcwidth.js", LIB_WHEN_SIMPLE},
+#endif
+    {"hlib/FileSaver.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/ResizeSensor.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/screenfull.min.js", LIB_WHEN_OUTER},
     {"hlib/jquery.min.js", LIB_WHEN_OUTER},
     {"hlib/goldenlayout.js", LIB_WHEN_OUTER},

@@ -22,7 +22,11 @@ endif
 ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) $(OPENSSL_LIBS) $(JSON_C_LIBS) $(LIBCAP_LIBS) -lpthread -lutil -lz $(LIBMAGIC_LIBS)
 #CLIENT_DATA_DIR = @DOMTERM_DIR_RELATIVE@
 CLIENT_DATA_DIR = .
-LWS_RESOURCES = $(HLIB_FIXED_FILES) hlib/domterm-version.js
+if COMBINE_RESOURCES
+LWS_RESOURCES = hlib/dt-combined.js $(HLIB_FIXED_FILES2) hlib/domterm-version.js
+else
+LWS_RESOURCES = $(HLIB_FIXED_FILES1) $(HLIB_FIXED_FILES2) hlib/domterm-version.js
+endif
 XTERMJS_RESOURCES_SOURCE = $(XTERMJS_PATH)/xterm.js \
   $(XTERMJS_PATH)/xterm.css $(XTERMJS_PATH)/addons/fit/fit.js
 XTERMJS_RESOURCES = hlib/xterm.js hlib/xterm.css hlib/fit.js

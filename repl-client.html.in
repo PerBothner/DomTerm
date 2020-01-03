@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html>
-<head>
+<html><head>
 <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
 <title>DomTerm</title>
 <link type='text/css' rel='stylesheet' href='hlib/domterm-core.css'>
@@ -8,15 +7,26 @@
 <link type='text/css' rel='stylesheet' href='hlib/domterm-default.css'>
 <script type='text/javascript' src='hlib/domterm.js'> </script>
 <script type='text/javascript' src='hlib/domterm-version.js'> </script>
+#ifnot COMBINE_RESOURCES
 <script type='module' src='hlib/terminal.js'> </script>
 <script type='module' src='hlib/domterm-parser.js'> </script>
 <script type='module' src='hlib/sixel/Colors.js'> </script>
 <script type='module' src='hlib/sixel/SixelDecoder.js'> </script>
-<script type='text/javascript' src='hlib/FileSaver.js'> </script>
+#endif
+#if COMBINE_RESOURCES
+<script type='text/javascript' src='hlib/dt-combined.js'> </script>
+#endif
 <script type='text/javascript' src='hlib/ResizeSensor.js'> </script>
+#ifnot COMBINE_RESOURCES
+<script type='text/javascript' src='hlib/FileSaver.js'> </script>
 <script type='text/javascript' src='hlib/wcwidth.js'> </script>
 <script type='text/javascript' src='hlib/browserkeymap.js'> </script>
 <script type='module' src='hlib/commands.js'> </script>
+#endif
+#ifnot FOR_JAVAFX
+<script type='text/javascript' src='hlib/domterm-client.js'> </script>
+#endif
+#if FOR_JAVAFX
 <script type='text/javascript'>
 var termElement;
 var termInstance;
@@ -44,10 +54,11 @@ function makeDomTerm() {
     return term;
 }
 function initDomTerm() {
-    termInstance.reportEvent("VERSION", DomTerm.versionInfo);
     termInstance.initializeTerminal(termElement);
+    termInstance.reportEvent("VERSION", DomTerm.versionInfo);
 }
 </script>
+#endif
 </head>
 <body></body>
 </html>

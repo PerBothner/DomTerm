@@ -138,7 +138,37 @@ d/domterm: d/domterm.ti
 #JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js
 
 CLIENT_DATA_FILES = repl-client.html $(HLIB_FIXED_FILES)
-HLIB_DATA_FILES = $(HLIB_FIXED_FILES) hlib/domterm-version.js
+if COMBINE_RESOURCES
+HLIB_DATA_FILES =  hlib/dt-combined.js $(HLIB_FIXED_FILES2) hlib/domterm-version.js
+else
+HLIB_DATA_FILES = $(HLIB_FIXED_FILES1) $(HLIB_FIXED_FILES2) hlib/domterm-version.js
+endif
+
+jfx-term.html: repl-client.html.in
+if COMBINE_RESOURCES
+	sed <$< \
+	  -e '/#ifnot COMBINE_RESOURCES/,/#endif/d' \
+	  -e '/#ifnot FOR_JAVAFX/,/#endif/d' -e '/#if FOR_JAVAFX/d' \
+	  -e '/#if COMBINE_RESOURCES/d' -e '/#endif/d' >$@
+else
+	sed <$< \
+	  -e '/#if COMBINE_RESOURCES/,/#endif/d' \
+	  -e '/#ifnot FOR_JAVAFX/,/#endif/d' -e '/#if FOR_JAVAFX/d' \
+	  -e '/#ifnot COMBINE_RESOURCES/d' -e '/#endif/d' >$@
+endif
+
+repl-client.html: repl-client.html.in
+if COMBINE_RESOURCES
+	sed <$< \
+	  -e '/#ifnot COMBINE_RESOURCES/,/#endif/d' \
+	  -e '/#if FOR_JAVAFX/,/#endif/d' -e '/#ifnot FOR_JAVAFX/d' \
+	  -e '/#if COMBINE_RESOURCES/d' -e '/#endif/d' >$@
+else
+	sed <$< \
+	  -e '/#if COMBINE_RESOURCES/,/#endif/d' \
+	  -e '/#if FOR_JAVAFX/,/#endif/d' -e '/#ifnot FOR_JAVAFX/d' \
+	  -e '/#ifnot COMBINE_RESOURCES/d' -e '/#endif/d' >$@
+endif
 
 client-data-links.stamp:
 	if test "$(srcdir)" != "."; then \
@@ -147,6 +177,21 @@ client-data-links.stamp:
 	      $(LN_S) $(abs_srcdir)/$$file $$file; done; \
 	fi
 	touch client-data-links.stamp
+
+COMBINED_JSFILES = $(HLIB_FIXED_FILES1)
+COMBINED_PATCH_FILE = hlib/dt-combined.patch
+tmp-dt-combined.js: $(COMBINED_JSFILESS) Makefile.am
+	cat $(COMBINED_JSFILES) | \
+	  sed -e 's|^export  *\([a-zA-Z]\)|/*export*/ \1|' \
+	    -e 's|^export {|//\0|' -e 's|^import {|//\0|' \
+	  >tmp-dt-combined.js
+hlib/dt-combined.js: tmp-dt-combined.js $(COMBINED_PATCH_FILE)
+	patch tmp-dt-combined.js $(COMBINED_PATCH_FILE) -o tmp-dt-patched.js
+if WITH_CLOSURE_COMPILER
+	@CLOSURE_COMPILER@ --language_in=ES6 --language_out=ES5 --js tmp-dt-patched.js >hlib/dt-combined.js
+else
+	mv tmp-dt-patched.js hlib/dt-combined.js
+endif
 
 #$(CLIENT_DATA_DIR)/hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
 #	$(MKDIR_P) $(CLIENT_DATA_DIR)/hlib
@@ -171,7 +216,8 @@ run-shell: $(DOMTERM_JAR)
 
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
-	-rm -rf web/tools web/images \
+	-rm -rf hlib/dt-combined.js repl-client.html jfx-term.html \
+	  web/tools web/images \
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi

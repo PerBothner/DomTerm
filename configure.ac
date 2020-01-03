@@ -220,6 +220,13 @@ esac
 AM_CONDITIONAL(WITH_CLOSURE_COMPILER, test "$CLOSURE_COMPILER" != "NONE")
 AC_SUBST(CLOSURE_COMPILER)
 
+if test "$CLOSURE_COMPILER" != "NONE"
+then COMBINE_RESOURCES=1
+else COMBINE_RESOURCES=0
+fi
+AC_SUBST(COMBINE_RESOURCES)
+AM_CONDITIONAL(COMBINE_RESOURCES, test "$COMBINE_RESOURCES" != "0")
+
 AM_CONDITIONAL(ENABLE_COMPILED_IN_RESOURCES,
     test "$enable_compiled_in_resources" = "yes")
 
@@ -228,9 +235,15 @@ AM_CONDITIONAL(WITH_XTERMJS,
 XTERMJS_PATH="$with_xterm_js"
 AC_SUBST(XTERMJS_PATH)
 
-HLIB_FIXED_FILES="\
+HLIB_FIXED_FILES1="\
   hlib/browserkeymap.js \
+  hlib/sixel/SixelDecoder.js \
+  hlib/sixel/Colors.js \
+  hlib/terminal.js \
   hlib/commands.js \
+  hlib/FileSaver.js \
+  hlib/wcwidth.js"
+HLIB_FIXED_FILES2="\
   hlib/domterm.js \
   hlib/domterm-client.js \
   hlib/domterm-core.css \
@@ -239,27 +252,23 @@ HLIB_FIXED_FILES="\
   hlib/domterm-layout.js \
   hlib/domterm-menus.js \
   hlib/domterm-standard.css \
-  hlib/FileSaver.js \
   hlib/goldenlayout.js \
   hlib/goldenlayout-base.css \
   hlib/jquery.min.js \
   hlib/jsMenus.css \
   hlib/jsMenus.js \
-  hlib/sixel/SixelDecoder.js \
-  hlib/sixel/Colors.js \
   hlib/qwebchannel.js \
   hlib/ResizeSensor.js \
-  hlib/screenfull.min.js \
-  hlib/terminal.js \
-  hlib/wcwidth.js"
+  hlib/screenfull.min.js"
 case "$with_xterm_js" in
   ""|"no")
-    HLIB_FIXED_FILES="${HLIB_FIXED_FILES} hlib/domterm-parser.js"
+    HLIB_FIXED_FILES1="${HLIB_FIXED_FILES1} hlib/domterm-parser.js"
     WITH_XTERMJS=0;;
   *) WITH_XTERMJS=1;;
 esac
 AC_SUBST(WITH_XTERMJS)
-AC_SUBST(HLIB_FIXED_FILES)
+AC_SUBST(HLIB_FIXED_FILES1)
+AC_SUBST(HLIB_FIXED_FILES2)
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)

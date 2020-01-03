@@ -1,0 +1,18 @@
+--- hlib/dt-combined.tmp	2020-01-02 11:16:06.329929691 -0800
++++ hlib/dt-combined.js	2020-01-02 11:17:03.064850479 -0800
+@@ -20,6 +20,7 @@
+ THE SOFTWARE.
+ */
+ (function(mod) {
++  /*
+   if (typeof exports == "object" && typeof module == "object") { // CommonJS
+     module.exports = mod()
+     module.exports.default = module.exports // ES6 modules compatibility
+@@ -27,6 +28,7 @@
+   else if (typeof define == "function" && define.amd) // AMD
+     return define([], mod)
+   else // Plain browser env
++  */
+     (this || window).browserKeymap = mod()
+ })(function() {
+   "use strict"

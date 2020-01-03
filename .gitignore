@@ -7,14 +7,16 @@ build
 configure
 Makefile.in
 Makefile
+repl-client.html
+jfx-term.html
 aclocal.m4
 config.log
 config.status
 autotools-aux
 xulapp/domterm-chrome.jar
 native/pty/org_domterm_pty_PTY.h
-hlib/domterm-all.js
 hlib/domterm-version.js
+hlib/dt-combined.js
 classes.stamp
 client-data-links.stamp
 wsclasses.stamp
