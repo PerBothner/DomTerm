@@ -1476,13 +1476,17 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/FileSaver.js", LIB_WHEN_SIMPLE},
     {"hlib/ResizeSensor.js", LIB_WHEN_SIMPLE},
 #endif
-    {"hlib/screenfull.js", LIB_WHEN_OUTER},
+#if COMBINE_RESOURCES
+    {"hlib/dt-outer.js", LIB_WHEN_OUTER},
+#else
     {"hlib/jquery.min.js", LIB_WHEN_OUTER},
     {"hlib/goldenlayout.js", LIB_WHEN_OUTER},
     {"hlib/domterm-layout.js", LIB_WHEN_OUTER},
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
     {"hlib/qwebchannel.js", LIB_WHEN_OUTER},
     {"hlib/jsMenus.js", LIB_WHEN_OUTER},
+    {"hlib/screenfull.js", LIB_WHEN_OUTER},
+#endif
     {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
 #if WITH_XTERMJS
     {"hlib/xterm.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},

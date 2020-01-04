@@ -235,7 +235,8 @@ AM_CONDITIONAL(WITH_XTERMJS,
 XTERMJS_PATH="$with_xterm_js"
 AC_SUBST(XTERMJS_PATH)
 
-HLIB_FIXED_FILES1="\
+dnl Files for "inner" JavaScript context
+HLIB_FIXED_FILES_INNER="\
   hlib/browserkeymap.js \
   hlib/sixel/SixelDecoder.js \
   hlib/sixel/Colors.js \
@@ -244,31 +245,33 @@ HLIB_FIXED_FILES1="\
   hlib/FileSaver.js \
   hlib/ResizeSensor.js \
   hlib/wcwidth.js"
-HLIB_FIXED_FILES2="\
+HLIB_FIXED_FILES_OUTER="\
+  hlib/jquery.min.js \
+  hlib/goldenlayout.js \
+  hlib/domterm-layout.js \
+  hlib/domterm-menus.js \
+  hlib/qwebchannel.js \
+  hlib/jsMenus.js \
+  hlib/screenfull.js"
+HLIB_FIXED_FILES_MISC="\
   hlib/domterm.js \
   hlib/domterm-client.js \
   hlib/domterm-core.css \
   hlib/domterm-default.css \
   hlib/domterm-layout.css \
-  hlib/domterm-layout.js \
-  hlib/domterm-menus.js \
   hlib/domterm-standard.css \
-  hlib/goldenlayout.js \
   hlib/goldenlayout-base.css \
-  hlib/jquery.min.js \
-  hlib/jsMenus.css \
-  hlib/jsMenus.js \
-  hlib/qwebchannel.js \
-  hlib/screenfull.js"
+  hlib/jsMenus.css"
 case "$with_xterm_js" in
   ""|"no")
-    HLIB_FIXED_FILES1="${HLIB_FIXED_FILES1} hlib/domterm-parser.js"
+    HLIB_FIXED_FILES_INNER="${HLIB_FIXED_FILES_INNER} hlib/domterm-parser.js"
     WITH_XTERMJS=0;;
   *) WITH_XTERMJS=1;;
 esac
 AC_SUBST(WITH_XTERMJS)
-AC_SUBST(HLIB_FIXED_FILES1)
-AC_SUBST(HLIB_FIXED_FILES2)
+AC_SUBST(HLIB_FIXED_FILES_INNER)
+AC_SUBST(HLIB_FIXED_FILES_OUTER)
+AC_SUBST(HLIB_FIXED_FILES_MISC)
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)

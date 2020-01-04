@@ -139,9 +139,9 @@ d/domterm: d/domterm.ti
 
 CLIENT_DATA_FILES = repl-client.html $(HLIB_FIXED_FILES)
 if COMBINE_RESOURCES
-HLIB_DATA_FILES =  hlib/dt-combined.js $(HLIB_FIXED_FILES2) hlib/domterm-version.js
+HLIB_DATA_FILES =  hlib/dt-combined.js hlib/dt-outer.js $(HLIB_FIXED_FILES_MISC) hlib/domterm-version.js
 else
-HLIB_DATA_FILES = $(HLIB_FIXED_FILES1) $(HLIB_FIXED_FILES2) hlib/domterm-version.js
+HLIB_DATA_FILES = $(HLIB_FIXED_FILES_INNER) $(HLIB_FIXED_FILES_OUTER) $(HLIB_FIXED_FILES_MISC) hlib/domterm-version.js
 endif
 
 jfx-term.html: repl-client.html.in
@@ -178,9 +178,9 @@ client-data-links.stamp:
 	fi
 	touch client-data-links.stamp
 
-COMBINED_JSFILES = $(HLIB_FIXED_FILES1)
+COMBINED_JSFILES = $(HLIB_FIXED_FILES_INNER)
 COMBINED_PATCH_FILE = hlib/dt-combined.patch
-tmp-dt-combined.js: $(COMBINED_JSFILESS) Makefile.am
+tmp-dt-combined.js: $(COMBINED_JSFILES) Makefile.am
 	cat $(COMBINED_JSFILES) | \
 	  sed -e 's|^export  *\([a-zA-Z]\)|/*export*/ \1|' \
 	    -e 's|^export {|//\0|' -e 's|^import {|//\0|' \
@@ -191,6 +191,22 @@ if WITH_CLOSURE_COMPILER
 	@CLOSURE_COMPILER@ --language_in=ES6 --language_out=ES5 --js tmp-dt-patched.js >hlib/dt-combined.js
 else
 	mv tmp-dt-patched.js hlib/dt-combined.js
+endif
+
+OUTER_JSFILES = $(HLIB_FIXED_FILES_OUTER)
+#OUTER_PATCH_FILE = hlib/dt-outer.patch
+tmp-dt-outer.js: $(OUTER_JSFILES) Makefile.am
+	cat $(OUTER_JSFILES) | \
+	  sed -e 's|^export  *\([a-zA-Z]\)|/*export*/ \1|' \
+	    -e 's|^export {|//\0|' -e 's|^import {|//\0|' \
+	  >tmp-dt-outer.js
+hlib/dt-outer.js: tmp-dt-outer.js $(OUTER_PATCH_FILE)
+#	patch tmp-dt-outer.js $(OUTER_PATCH_FILE) -o tmp-outer-patched.js
+	cp tmp-dt-outer.js tmp-outer-patched.js
+if WITH_CLOSURE_COMPILER
+	@CLOSURE_COMPILER@ --language_in=ES6 --language_out=ES5 --js tmp-outer-patched.js >hlib/dt-outer.js
+else
+	mv tmp-dt-patched.js hlib/dt-outer.js
 endif
 
 #$(CLIENT_DATA_DIR)/hlib/domterm-all.js: hlib/terminal.js $(JS_LIBS)
@@ -216,7 +232,7 @@ run-shell: $(DOMTERM_JAR)
 
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
-	-rm -rf hlib/dt-combined.js repl-client.html jfx-term.html \
+	-rm -rf hlib/dt-combined.js hlib/dt-outer.js repl-client.html jfx-term.html \
 	  web/tools web/images \
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
