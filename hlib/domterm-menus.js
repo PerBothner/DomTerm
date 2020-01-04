@@ -219,7 +219,6 @@ DomTerm.createMenus = function(options) {
         let fullscreenExitItem;
         let fullscreenAllItem = menuItem({label: "Full screen (all)", type: 'checkbox',
                                           click: function() {
-                                              console.log("fullscreen "+screenfull.isFullscreen+" en:"+screenfull.enabled);
                                               fullscreenExitItem.visible = true;
                                               if (screenfull.isFullscreen)
                                                   screenfull.exit();
@@ -228,7 +227,6 @@ DomTerm.createMenus = function(options) {
                                           }})
         let fullscreenCurrentItem = menuItem({label: "Full screen (current)", type: 'checkbox',
                                               click: function() {
-                                                  console.log("fullscreen "+screenfull.isFullscreen+" en:"+screenfull.enabled);
                                                   let dt = DomTerm.focusedTerm;
                                                   let requesting = ! screenfull.isFullscreen;
                                                   if (! requesting) {
@@ -251,7 +249,7 @@ DomTerm.createMenus = function(options) {
                                                screenfull.exit();
                                            fullscreenExitItem.visible = false;
                                        }});
-        if (screenfull.enabled) {
+        if (screenfull.isEnabled) {
 	    screenfull.on('change', () => {
                 fullscreenAllItem.checked = false;
                 fullscreenCurrentItem.checked = false;

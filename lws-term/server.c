@@ -1476,7 +1476,7 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/FileSaver.js", LIB_WHEN_SIMPLE},
     {"hlib/ResizeSensor.js", LIB_WHEN_SIMPLE},
 #endif
-    {"hlib/screenfull.min.js", LIB_WHEN_OUTER},
+    {"hlib/screenfull.js", LIB_WHEN_OUTER},
     {"hlib/jquery.min.js", LIB_WHEN_OUTER},
     {"hlib/goldenlayout.js", LIB_WHEN_OUTER},
     {"hlib/domterm-layout.js", LIB_WHEN_OUTER},

@@ -259,7 +259,7 @@ HLIB_FIXED_FILES2="\
   hlib/jsMenus.css \
   hlib/jsMenus.js \
   hlib/qwebchannel.js \
-  hlib/screenfull.min.js"
+  hlib/screenfull.js"
 case "$with_xterm_js" in
   ""|"no")
     HLIB_FIXED_FILES1="${HLIB_FIXED_FILES1} hlib/domterm-parser.js"
