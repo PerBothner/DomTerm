@@ -1,10 +1,10 @@
 dnl Autoconf script for DomTerm
-AC_INIT([DomTerm],[2.0.0],,domterm) dnl Also update package.json and domterm.spec
+AC_INIT([DomTerm],[2.1.0],,domterm) dnl Also update package.json and domterm.spec
 AC_CONFIG_SRCDIR([doc/DomTerm.texi])
 AM_MAINTAINER_MODE([enable])
 
 DOMTERM_VERSION="${PACKAGE_VERSION}"
-DOMTERM_YEAR="2019"
+DOMTERM_YEAR="2020"
 
 AC_CONFIG_AUX_DIR(autotools-aux)
 AM_INIT_AUTOMAKE([foreign subdir-objects no-dependencies])
