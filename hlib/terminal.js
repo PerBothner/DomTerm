@@ -7740,6 +7740,8 @@ Terminal.prototype._popFromCaret = function(saved) {
 }
 
 DomTerm.masterKeymapDefault = new window.browserKeymap({
+    "F11": "toggle-fullscreen",
+    "Shift-F11": "toggle-fullscreen-current-window",
     "Ctrl-Shift-A": "enter-mux-mode",
     "Ctrl-Shift-C": "copy-text",
     "Ctrl-Shift-L": "cycle-input-mode",

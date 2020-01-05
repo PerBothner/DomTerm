@@ -72,6 +72,30 @@ cmd('enter-mux-mode',
         dt.enterMuxMode();
         return true;
     });
+cmd('toggle-fullscreen',
+    function(dt, key) {
+        if (screenfull.isFullscreen)
+            screenfull.exit();
+        else
+            screenfull.request();
+        return true;
+    });
+cmd('toggle-fullscreen-current-window',
+    function(dt, key) {
+        let requesting = ! screenfull.isFullscreen;
+        if (! requesting) {
+            requesting =
+                screenfull.element.nodeName != "DIV";
+            screenfull.exit();
+        }
+        if (requesting) {
+            let dt = DomTerm.focusedTerm;
+            if (dt)
+                screenfull.request(dt.topNode);
+            else
+                screenfull.request();
+        }
+    });
 cmd('toggle-paging-mode',
     function(dt, key) {
         if (dt._currentlyPagingOrPaused()) {

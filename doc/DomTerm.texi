@@ -2262,16 +2262,16 @@ application can paste the latter.
 @item @kbd{Ctrl-Shift-@key{V}}
 Paste text from the clipboard.
 (@kbd{Ctrl-@key{V}} also works in line-editing mode.)
-@item @kbd{Ctrl-Shift-@key{X}}
+@item @kbd{Ctrl-Shift-@key{X}} (@code{cut-text})
 ``Cut'': Restricts the selection to the current input area,
 copies that restricted selection to the clipboard,
 and then deletes the restricted selection.
 (In character mode, the deletion is implemented by sending
 the appropriate number of Delete/Backspace characters to the application.)
-@item @kbd{Shift-Left}
-@itemx @kbd{Shift-Right}
-@itemx @kbd{Ctrl-Shift-Left}
-@itemx @kbd{Ctrl-Shift-Right}
+@item @kbd{Shift-Left} (@code{backward-char-extend})
+@itemx @kbd{Shift-Right} (@code{forward-char-extend})
+@itemx @kbd{Ctrl-Shift-Left} (@code{backward-word-extend})
+@itemx @kbd{Ctrl-Shift-Right} (@code{forward-word-extend})
 Moves the end-point of the current selection left or right
 one character or word (if @kbd{Ctrl} is pressed).
 If there is no selection, the caret position is treated as
@@ -2280,22 +2280,11 @@ a zero-size selection.
 If the new end-point is within a current input-editing section,
 the cursor is moved to the new end-point.
 (Emulated using the appropriate number of Left/Right key-presses.) 
-@item @kbd{Ctrl-Shift-@key{S}}
+@item @kbd{Ctrl-Shift-@key{S}} (@code{save-as-html})
 Save the display to a file.
-@item @kbd{Ctrl-Shift-@key{L}}
+@item @kbd{Ctrl-Shift-@key{L}} (@code{cycle-input-mode})
 Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
-@item @kbd{Ctrl-Shift-@key{Home}}
-Scroll to top.
-@item @kbd{Ctrl-Shift-@key{End}}
-Scroll to bottom.
-@item @kbd{Ctrl-Shift-@key{PageUp}}
-@itemx @kbd{Ctrl-Shift-@key{PageDown}}
-Scroll one ``page'' up or down.
-(Specifically, the viewport height minus a height of one line.)
-@item @kbd{Ctrl-Shift-@key{Up}}
-@itemx @kbd{Ctrl-Shift-@key{Down}}
-Scroll one line up or down.
 @end table
 
 The following are implemented by most browsers, rather than DomTerm,
@@ -2310,8 +2299,11 @@ Zoom out (makes text smaller).
 (Does not work in atom-domterm.)
 @item @kbd{Ctrl-@key{0}}
 ``Un-zoom'' to normal size.
-@item @kbd{@key{F11}}
+@item @kbd{@key{F11}} (@code{toggle-fullscreen})
 Toggle full-screen mode.
+@item @kbd{Shift-@key{F11}} (@code{toggle-fullscreen-current-window})
+(Not for Electron or Qt.)
+Toggle full-screen mode for the current sub-window.
 @item @kbd{Ctrl-Shift-@key{I}}
 Toogle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
@@ -2322,15 +2314,17 @@ Enter @ref{Paging,Paging mode}.
 @subsubheading Scrolling
 
 @table @asis
-@item @kbd{Ctrl-Shift-@key{PageUp}}
-@item @kbd{Ctrl-Shift-@key{PageDown}}
-Scroll a page up or down, respectively.
-@item @kbd{Ctrl-Shift-@key{Up}}
-@item @kbd{Ctrl-Shift-@key{Down}}
-Scroll a line up or down, respectively.
-@item @kbd{Ctrl-Shift-@key{Home}}
-@item @kbd{Ctrl-Shift-@key{End}}
-Scroll to top or bottom, respectively.
+@item @kbd{Ctrl-Shift-@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Ctrl-Shift-@key{PageDown}} (@code{scroll-page-down})
+Scroll one ``page'' up or down, respectively.
+(Specifically, the viewport height minus a height of one line.)
+@item @kbd{Ctrl-Shift-@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Ctrl-Shift-@key{Down}} (@code{scroll-line-down})
+Scroll one line up or down, respectively.
+@item @kbd{Ctrl-Shift-@key{Home}} (@code{scroll-top})
+Scroll to top.
+@item @kbd{Ctrl-Shift-@key{End}} (@code{scroll-bottom})
+Scroll to bottom.
 @end table
 
 See also the bindings for @ref{Paging} mode.

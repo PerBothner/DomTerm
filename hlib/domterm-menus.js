@@ -217,31 +217,18 @@ DomTerm.createMenus = function(options) {
         viewMenu.append(menuItem({role: 'togglefullscreen'}));
     } else if (typeof screenfull !== "undefined") {
         let fullscreenExitItem;
-        let fullscreenAllItem = menuItem({label: "Full screen (all)", type: 'checkbox',
-                                          click: function() {
-                                              fullscreenExitItem.visible = true;
-                                              if (screenfull.isFullscreen)
-                                                  screenfull.exit();
-                                              else
-                                                  screenfull.request();
-                                          }})
-        let fullscreenCurrentItem = menuItem({label: "Full screen (current)", type: 'checkbox',
-                                              click: function() {
-                                                  let dt = DomTerm.focusedTerm;
-                                                  let requesting = ! screenfull.isFullscreen;
-                                                  if (! requesting) {
-                                                      requesting =
-                                                          screenfull.element.nodeName != "DIV";
-                                                      screenfull.exit();
-                                                  }
-                                                  if (requesting) {
-                                                      fullscreenExitItem.visible = true;
-                                                      if (dt)
-                                                          screenfull.request(dt.topNode);
-                                                      else
-                                                          screenfull.request();
-                                                  }
-                                              }})
+        let fullscreenAllItem =
+            menuItem({label: "Full screen (all)", type: 'checkbox',
+                      accelerator: 'F11',
+                      click: function() {
+                          DomTerm.doNamedCommand('toggle-fullscreen');
+                      }})
+        let fullscreenCurrentItem =
+            menuItem({label: "Full screen (current)", type: 'checkbox',
+                      accelerator: 'Shift-F11',
+                      click: function() {
+                          DomTerm.doNamedCommand('toggle-fullscreen-current-window');
+                      }})
         fullscreenExitItem = menuItem({label: "Exit full screen",
                                        visible: false, // hidden unless fullscreen
                                        click: function() {
@@ -250,16 +237,18 @@ DomTerm.createMenus = function(options) {
                                            fullscreenExitItem.visible = false;
                                        }});
         if (screenfull.isEnabled) {
-	    screenfull.on('change', () => {
+            screenfull.on('change', () => {
                 fullscreenAllItem.checked = false;
                 fullscreenCurrentItem.checked = false;
                 if (screenfull.isFullscreen) {
+                    fullscreenExitItem.visible = true;
                     Menu.contextMenuParent = screenfull.element;
                     if (screenfull.element && screenfull.element.nodeName == "DIV")
                         fullscreenCurrentItem.checked = true;
                     else
                         fullscreenAllItem.checked = true;
                 } else {
+                    fullscreenExitItem.visible = false;
                     Menu.contextMenuParent = null;
                 }
                 showMenuBarItem.enabled = ! fullscreenCurrentItem.checked;
