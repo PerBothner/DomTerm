@@ -7,11 +7,11 @@ DomTerm.aboutMessage = function() {
     var s = '<h2>Welcome to DomTerm.</h2>\n';
     s += '<p>DomTerm is terminal emulator based on web technologies. ';
     s += 'Features include embedded graphics and html; tabs and sub-windows; detachable session.</p>\n';
-    s += '<p>Home page: <a href="https://domterm.org/" target="_blank"><code>http://domterm.org</code></a>.</p>\n';
+    s += '<p>Home page: <a href="https://domterm.org/" target="_blank"><code>https://domterm.org</code></a>.</p>\n';
     s += '<p>DomTerm version '+DomTerm.versionString+'.';
     if (DomTerm.isElectron()) {
         s += ' This variant of DomTerm uses Electron '
-            + process.versions.electron
+            + DomTerm.versions.electron
             + ' for the "front-end" and libwebsockets for the "back-end".';
     }
     s += '</p>\n';
