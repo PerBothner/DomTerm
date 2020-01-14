@@ -79,10 +79,10 @@ DomTerm.openNewWindow = function(dt, options={}) {
     let width = options.width || DomTerm.defaultWidth;
     let height = options.height || DomTerm.defaultHeight;
     if (options.geometry) {
-        let m = options.geometry.match(/geometry=([0-9][0-9]*)x([0-9][0-9]*)/);
+        let m = options.geometry.match(/^([0-9][0-9]*)x([0-9][0-9]*)$/);
         if (m) {
-            width = geometry[1];
-            height = geometry[2];
+            width = Number(m[1]);
+            height = Number(m[2]);
         }
     }
     if (! url)
