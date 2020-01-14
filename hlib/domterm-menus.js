@@ -57,11 +57,9 @@ DomTerm.createMenus = function(options) {
     const copyAsHtmlItem =
           menuItem({label: 'Copy as HTML',
                     click() { DomTerm.doNamedCommand("copy-html"); }});
-    const pasteItem = electronMenus
-          ? menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
-                      role: 'paste' })
-          : menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
-                      click() { DomTerm.doPaste(); }});
+    const pasteItem =
+          menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
+                    click() { DomTerm.doPaste(); }});
     var showingMenuBar = true;
     const showMenuBarItem = menuItem({label: 'Show menubar',
                                       type: 'checkbox',
