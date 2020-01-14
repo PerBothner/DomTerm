@@ -708,7 +708,8 @@ do_run_browser(struct options *options, char *url, int port)
         : do_Qt ? "\"qtwebengine\":\""
         : NULL;
     // If there is an existing Electron or Qt instance, we want to re-use it.
-    // Otherwise, we get a multi-second delay on startup.
+    // Otherwise, on Qt we get a multi-second delay on startup.
+    // This is no longer needed on Electron, but is a slight optimization.
     // Other browsers seem to "combine" user commands better.
     if (do_pattern) {
         for (struct pty_client *p = pty_client_list;

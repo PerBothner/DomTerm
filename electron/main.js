@@ -8,10 +8,9 @@ let windowList = new Array();
 // be closed automatically when the JavaScript object is garbage collected.
 let win
 
-function createInitialWindow () {
+function createInitialWindow (argv) {
     // options = yargs(process.argv[1..]).wrap(100)
     // and load the index.html of the app.
-    let argv = process.argv;
     let argc = argv.length;
     let openDevTools = false;
     var url = "http://localhost:7033/#ws=same";
@@ -77,7 +76,17 @@ ipcMain.on('request-mainprocess-action', (event, arg) => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createInitialWindow)
+app.on('ready', (launchInfo) => {
+    if (app.requestSingleInstanceLock()) {
+        let argv = process.argv;
+        createInitialWindow(argv);
+        app.on('second-instance', (event, commandLine, workingDirectory) => {
+            createInitialWindow(commandLine);
+        });
+    } else
+        app.quit();
+});
+
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -92,7 +101,7 @@ app.on('activate', () => {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (win === null) {
-    createInitialWindow()
+      createInitialWindow(process.argv);
   }
 })
 
