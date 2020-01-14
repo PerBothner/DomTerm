@@ -1853,7 +1853,6 @@ Terminal.prototype._hidePassword = function() {
 // FIXME maybe rename to _removeCaretText
 Terminal.prototype._removeCaret = function(normalize=true) {
     var caretNode = this._caretNode;
-    this._showPassword();
     if (caretNode && caretNode.getAttribute("caret")) {
         var child = caretNode.firstChild;
         caretNode.removeAttribute("caret");
@@ -1909,7 +1908,8 @@ Terminal.prototype._removeInputLine = function() {
         var caretParent = this._caretNode.parentNode;
         const sel = document.getSelection();
         if (caretParent != null /*&& ! this.isLineEditing()*/) {
-            const r = this._positionToRange();
+            const r = new Range();
+            r.selectNode(this._caretNode);
             let before = this._caretNode.previousSibling;
             caretParent.removeChild(this._caretNode);
             if (before instanceof Text && before.nextSibling instanceof Text)
@@ -3238,7 +3238,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         if (before instanceof Text)
             dt._normalize(before);
         if (!dt.isLineEditing()) {
-            dt._sendInputContents();
+            dt._sendInputContents(false);
             dt._inputLine = null;
         }
         dt._restoreCaret();
@@ -4359,51 +4359,6 @@ Terminal.prototype.historySave = function() {
             localStorage[this.historyStorageKey] = JSON.stringify(h);
         }
     } catch (e) { }  
-};
-
-Terminal.prototype.handleEnter = function(text) {
-    this._doDeferredDeletion();
-    // For now we only support the normal case when outputBefore == inputLine.
-    var oldInputLine = this._inputLine;
-    var spanNode;
-    var line = this.getAbsCursorLine();
-    let suppressEcho = this.clientDoesEcho
-        && ((this._clientPtyEcho && ! this._clientPtyExtProc)
-            || ! this._clientWantsEditing
-            || text == null);
-    if (oldInputLine != null) {
-        let noecho = oldInputLine.classList.contains("noecho");
-        if (noecho)
-            oldInputLine.classList.remove("noecho");
-        let cont = oldInputLine.getAttribute("continuation");
-        if (text != null && ! noecho)
-            this.historyAdd(text, cont == "true");
-        this.outputContainer = oldInputLine.parentNode;
-        this.outputBefore = oldInputLine.nextSibling;
-        if (this._getStdMode(oldInputLine.parentNode) !== "input") {
-            let wrap = this._createSpanNode();
-            wrap.setAttribute("std", "input");
-            oldInputLine.parentNode.insertBefore(wrap, oldInputLine);
-            wrap.appendChild(oldInputLine);
-        }
-    }
-    this._inputLine = null;
-    if (suppressEcho) {
-        this._createPendingSpan(oldInputLine);
-        this._removeInputFromLineTable();
-        this.resetCursorCache();
-    } else if (! this.sstate.hiddenText) {
-        this._removeCaret();
-        let inputParent = oldInputLine.parentNode;
-        this._removeInputLine();
-        if (inputParent.getAttribute("std") == "input") {
-            this._moveNodes(oldInputLine.firstChild, inputParent, oldInputLine);
-            inputParent.removeChild(oldInputLine);
-        }
-        this.resetCursorCache();
-        this.cursorLineStart(1);
-    }
-    return text;
 };
 
 Terminal.prototype.appendText = function(parent, data) {
@@ -7111,32 +7066,8 @@ Terminal.prototype.processInputCharacters = function(str) {
 Terminal.prototype.processEnter = function() {
     this._restoreInputLine();
     this.editorUpdateRemote();
-    let oldInput = this._inputLine;
-    let passwordField = oldInput.classList.contains("noecho")
-        && this.sstate.hiddenText;
-    var text = passwordField ? this.sstate.hiddenText
-        : this.grabInput(this._inputLine);
-    this.editorMoveHomeOrEnd(true);
-    if (passwordField)
-        this.reportText(text, this._clientPtyExtProc ? "\n"
-                        : this.keyEnterToString());
-    else
-        this._updateRemote(oldInput, this.keyEnterToString());
-    if (this.verbosity >= 2)
-        this.log("processEnter \""+this.toQuoted(text)+"\"");
-    this.handleEnter(text);
-    if (! passwordField)
-        text = "";
-    if (passwordField) {
-        this.sstate.hiddenText = undefined;
-        while (oldInput.firstChild)
-            oldInput.removeChild(oldInput.firstChild);
-        if (this.outputContainer == oldInput)
-            this.outputBefore = null;
-    }
+    this._sendInputContents(true);
     this._restoreCaret();
-    if (this.verbosity >= 2)
-        this.log("processEnter \""+this.toQuoted(text)+"\"");
 };
 /** Update remote input line to match local edited input line. */
 Terminal.prototype._updateRemote = function(input, extraText="") {
@@ -7668,7 +7599,7 @@ DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
         dt.editorAddLine();
     dt._restoreInputLine();
     if (wasEditing && ! dt.isLineEditing()) {
-        dt._sendInputContents();
+        dt._sendInputContents(false);
         dt._inputLine = null;
     }
     dt.sstate.automaticNewlineMode = dt.clientDoesEcho ? 0 : 3;
@@ -7704,14 +7635,67 @@ Terminal.prototype.nextInputMode = function() {
     this._displayInputModeWithTimeout(displayString);
 }
 
-Terminal.prototype._sendInputContents = function() {
+Terminal.prototype._sendInputContents = function(sendEnter) {
+    let oldInput = this._inputLine;
+    let passwordField = oldInput.classList.contains("noecho")
+        && this.sstate.hiddenText;
+    if (sendEnter)
+        this.editorMoveHomeOrEnd(true);
+    let enterToSend = ! sendEnter ? ""
+        : passwordField && this._clientPtyExtProc ? "\n"
+        : this.keyEnterToString();
+    if (passwordField)
+        this.reportText(passwordField, enterToSend);
+    else
+        this._updateRemote(oldInput, enterToSend);
     this._doDeferredDeletion();
-    if (this._inputLine != null) {
-        var text = this.grabInput(this._inputLine);
-        this._deferredForDeletion = this._inputLine;
-        this._requestDeletePendingEcho();
-        this._addPendingInput(text);
-        this.reportText(text);
+    // For now we only support the normal case when outputBefore == inputLine.
+    var oldInputLine = this._inputLine;
+    if (this.verbosity >= 2 && oldInputLine)
+        this.log("sendInputContents "+this.toQuoted(this.grabInput(this._inputLine))+" sendEnter:"+sendEnter);
+    var spanNode;
+    var line = this.getAbsCursorLine();
+    let suppressEcho = this.clientDoesEcho
+        && ((this._clientPtyEcho && ! this._clientPtyExtProc)
+            || ! this._clientWantsEditing
+            || ! sendEnter);
+    if (oldInputLine != null) {
+        let noecho = oldInputLine.classList.contains("noecho");
+        if (noecho)
+            oldInputLine.classList.remove("noecho");
+        let cont = oldInputLine.getAttribute("continuation");
+        if (sendEnter && ! noecho)
+            this.historyAdd(this.grabInput(this._inputLine), cont == "true");
+        this.outputContainer = oldInputLine.parentNode;
+        this.outputBefore = oldInputLine.nextSibling;
+        if (this._getStdMode(oldInputLine.parentNode) !== "input") {
+            let wrap = this._createSpanNode();
+            wrap.setAttribute("std", "input");
+            oldInputLine.parentNode.insertBefore(wrap, oldInputLine);
+            wrap.appendChild(oldInputLine);
+        }
+    }
+    this._inputLine = null;
+    if (suppressEcho) {
+        this._createPendingSpan(oldInputLine);
+        this._removeInputFromLineTable();
+        this.resetCursorCache();
+    } else if (passwordField) {
+        this.sstate.hiddenText = undefined;
+        while (oldInput.firstChild)
+            oldInput.removeChild(oldInput.firstChild);
+        if (this.outputContainer == oldInput)
+            this.outputBefore = null;
+    } else {
+        this._removeCaret();
+        let inputParent = oldInputLine.parentNode;
+        this._removeInputLine();
+        if (inputParent.getAttribute("std") == "input") {
+            this._moveNodes(oldInputLine.firstChild, inputParent, oldInputLine);
+            inputParent.removeChild(oldInputLine);
+        }
+        this.resetCursorCache();
+        this.cursorLineStart(1);
     }
 }
 

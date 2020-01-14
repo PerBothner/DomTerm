@@ -1529,11 +1529,7 @@ class DTParser {
             var echo = text.indexOf(" echo ") >= 0;
             var extproc = text.indexOf(" extproc ") >= 0;
             if (canon == 0 && term.isLineEditing() && term._inputLine) {
-                let input = this._inputLine;
-                term._restoreInputLine();
-                term._updateRemote(input);
-                term.handleEnter(null);
-                term._doDeferredDeletion();
+                term._sendInputContents(false);
             }
             term._clientWantsEditing = canon ? 1 : 0;
             term._clientPtyEcho = echo;
