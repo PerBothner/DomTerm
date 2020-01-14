@@ -4789,7 +4789,7 @@ An older version of the back-end was Java-based.
 It made use of @uref{https://github.com/TooTallNate/Java-WebSocket/,Java WebSockets}.
 This is no longer supported, but a simplified Java server is still supported.
 It uses @code{XMLHttpRequest} (``ajax'') and the @code{com.sun.net.httpserver.HttpServer}
-bundled with JSK.
+bundled with JDK.
 
 The older @uref{https://github.com/PerBothner/JWebTerminal,JWebTerminal} project
 was based on similar ideas as DomTerm, but was mostly written in Java using
