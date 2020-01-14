@@ -199,9 +199,8 @@ function setupQWebChannel(channel) {
         backend.setWindowTitle(title == null ? "" : title); };
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
     DomTerm.openNewWindow = function(dt, options={}) {
-        let width = options.width || DomTerm.defaultWidth;
-        let height = options.height || DomTerm.defaultHeight;
-        backend.openNewWindow(width, height, options.url);
+        let opts = DomTerm._extractGeometryOptions(options);
+        backend.openNewWindow(opts.width, opts.height, opts.url);
     }
 };
 

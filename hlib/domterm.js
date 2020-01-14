@@ -74,8 +74,9 @@ DomTerm.windowClose = function() {
     window.close();
 }
 
-DomTerm.openNewWindow = function(dt, options={}) {
-    let url = options.url;
+DomTerm._extractGeometryOptions = function(options={}) {
+    if (options.width && options.height)
+        return options;
     let width = options.width || DomTerm.defaultWidth;
     let height = options.height || DomTerm.defaultHeight;
     if (options.geometry) {
@@ -85,21 +86,25 @@ DomTerm.openNewWindow = function(dt, options={}) {
             height = Number(m[2]);
         }
     }
+    return Object.assign({ width: width, height: height }, options);
+}
+
+DomTerm.openNewWindow = function(dt, options={}) {
+    options = DomTerm._extractGeometryOptions(options);
+    let url = options.url;
     if (! url)
         url = DomTerm.topLocation;
     if (DomTerm.isElectron()) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-            let popt = Object.assign({}, options);
-            if (width)
-                popt.width = width;
-            if (height)
-                popt.height = height;
-            DomTerm.sendParentMessage("domterm-new-window", popt);
+            DomTerm.sendParentMessage("domterm-new-window", options);
         } else {
             electronAccess.ipcRenderer.send('request-mainprocess-action',
-                             { action: 'new-window', width: width, height: height, url: url });
+                                            Object.assign({ action: 'new-window'},
+                                                          options));
         }
     } else {
+        let width = options.width;
+        let height = options.height;
         if (dt) {
             dt.reportEvent("OPEN-WINDOW",
                            url + (url.indexOf('#') < 0 ? '#' : '&') +
