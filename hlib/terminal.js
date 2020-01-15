@@ -1907,9 +1907,13 @@ Terminal.prototype._removeInputLine = function() {
         this._removeCaret();
         var caretParent = this._caretNode.parentNode;
         const sel = document.getSelection();
-        if (caretParent != null /*&& ! this.isLineEditing()*/) {
-            const r = new Range();
-            r.selectNode(this._caretNode);
+        if (caretParent != null) {
+            let r;
+            if (this.isLineEditing()) {
+                r = new Range();
+                r.selectNode(this._caretNode);
+            } else
+                r = this._positionToRange();
             let before = this._caretNode.previousSibling;
             caretParent.removeChild(this._caretNode);
             if (before instanceof Text && before.nextSibling instanceof Text)

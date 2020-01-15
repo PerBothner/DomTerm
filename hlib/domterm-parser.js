@@ -80,6 +80,7 @@ class DTParser {
         for (; i < slen; i++) {
             var ch = str.charCodeAt(i);
             //term.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
+            dt._checkTree();
             var state = this.controlSequenceState;
             switch (state) {
             case DTParser.SEEN_SURROGATE_HIGH:
@@ -620,6 +621,7 @@ class DTParser {
             return;
         }
         term.requestUpdateDisplay();
+        term._checkTree();
     };
 
     handleControlSequence(last) {
