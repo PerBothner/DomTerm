@@ -99,7 +99,7 @@ DomTerm.openNewWindow = function(dt, options={}) {
             DomTerm.sendParentMessage("domterm-new-window", options);
         } else {
             electronAccess.ipcRenderer.send('request-mainprocess-action',
-                                            Object.assign({ action: 'new-window'},
+                                            Object.assign({ action: 'new-window', url: url },
                                                           options));
         }
     } else {
