@@ -1660,7 +1660,8 @@ Creating a new session is done by invoke the @code{domterm} command with the
 @code{new} sub-command, or with no arguments.
 See @ref{session-creating,Creating a new session} for details.
 
-The sub-command @code{list} lists active sessions.
+The sub-command @code{list} lists active sessions,
+as does @code{status} with more detail.
 
 The sub-command @code{attach} connects to an existing session,
 often a detached session.  You specify the session
@@ -4109,6 +4110,44 @@ line that is syntactically incomplete, but valid ``so far``.
 The previous input is ``re-opened'' for editing, and
 a fresh empty line added.
 
+@end table
+
+@subsubsection Window operations
+
+@table @asis
+@item @code{"\e[1t"}
+@emph{(Electron only.)} Un-minimize (de-iconify) current window.
+This undoes buth minimize and hide operations.
+[In xterm.]
+@item @code{"\e[2t"}
+@emph{(Electron only.)} Minimize (iconify) current window.
+The minimized window may be still visible in the task bar,
+as an icon on the desktop, or during an ``windows expose'' operation.
+[In xterm.]
+@item @code{"\e[2;72t"}
+@emph{(Electron only.)} Hide current window.
+The minimized window is @emph{not} visible in the task bar,
+as an icon on the desktop, or during an ``windows expose'' operation
+@item @code{"\e[2;73t"}
+@emph{(Electron only.)}
+Toggle between normal and minimized state:
+If hidden or minimized, show it.
+If visible, minimize it.
+@item @code{"\e[2;74t"}
+@emph{(Electron only.)}
+Toggle between normal and hidden state:
+If hidden or minimized, show it.
+If visible, hide it.
+@item @code{"\e[14t"}
+Report the text area size in pixels.  [In xterm.]
+@item @code{"\e[14;2t"}
+Report window size in pixels.  [In xterm.]
+@item @code{"\e[18t"}
+Report size of text area in characters. [In xterm.]
+@item @code{"\e[22t"}
+Save window and icon title to stack. [In xterm.]
+@item @code{"\e[23t"}
+Restore window and icon title from stack. [In xterm.]
 @end table
 
 @subsubsection Urgent messages

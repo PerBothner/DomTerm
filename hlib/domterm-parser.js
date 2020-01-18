@@ -342,7 +342,7 @@ class DTParser {
                 /* falls through */
             case DTParser.INITIAL_STATE:
             case DTParser.SEEN_ERROUT_END_STATE:
-                if (Terminal._doLinkify && Terminal.isDelimiter(ch)
+                if (term.sstate.doLinkify && Terminal.isDelimiter(ch)
                     && term.linkify(str, prevEnd, i, ch)) {
                     prevEnd = i;
                 }
@@ -1020,6 +1020,34 @@ class DTParser {
         case 116 /*'t'*/: // Xterm window manipulation.
             var w, h;
             switch (this.getParameter(0, 0)) {
+            case 1:
+                if (DomTerm.isElectron()) {
+                    electronAccess.getCurrentWindow().show();
+                }
+                break;
+            case 2:
+                if (DomTerm.isElectron()) {
+                    let win = electronAccess.getCurrentWindow()
+                    const sub = this.getParameter(1, 0);
+                    switch (sub) {
+                    case 72:
+                        win.hide();
+                        break;
+                    case 73:
+                    case 74:
+                        if (document.hidden)
+                            win.show();
+                        else if (sub == 73)
+                            win.minimize();
+                        else
+                            win.hide();
+                        break;
+                    default:
+                        win.minimize();
+                        break;
+                    }
+                }
+                break;
             case 14:
                 if (this.getParameter(1, 0) == 2) {
                     w = window.outerWidth;

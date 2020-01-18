@@ -669,6 +669,57 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
+int window_action(int argc, char** argv, const char*cwd,
+                         char **env, struct lws *wsi,
+                         struct options *opts)
+{
+    struct tty_client *wclient;
+    char *subcommand = argc >= 2 ? argv[1] : NULL;
+    bool seen = false;
+    char *seq = NULL;
+    if (subcommand == NULL) { }
+    else if (strcmp(subcommand, "show") == 0)
+        seq = OUT_OF_BAND_START_STRING "\033[1t" URGENT_END_STRING;
+    else if (strcmp(subcommand, "minimize") == 0)
+        seq = OUT_OF_BAND_START_STRING "\033[2t" URGENT_END_STRING;
+    else if (strcmp(subcommand, "hide") == 0)
+        seq = OUT_OF_BAND_START_STRING "\033[2;72t" URGENT_END_STRING;
+    else if (strcmp(subcommand, "toggle-minimize") == 0)
+        seq = OUT_OF_BAND_START_STRING "\033[2;73t" URGENT_END_STRING;
+    else if (strcmp(subcommand, "toggle-hide") == 0)
+        seq = OUT_OF_BAND_START_STRING "\033[2;74t" URGENT_END_STRING;
+    if (seq == NULL) {
+        FILE *err = fdopen(opts->fd_err, "w");
+        fprintf(err,
+                subcommand ? "domterm window: missing sub-command\n"
+                : "domterm window: unknown sub-command '%s'\n",
+                subcommand);
+        fclose(err);
+        return EXIT_FAILURE;
+    }
+    FORALL_WSCLIENT(wclient) {
+        if (wclient->window_main) {
+            printf_to_browser(wclient, seq);
+            lws_callback_on_writable(wclient->wsi);
+        }
+        seen = true;
+    }
+    if (seen)
+        return EXIT_SUCCESS;
+    else if (subcommand == 0
+             || strcmp(subcommand, "toggle-hide") == 0
+             || strcmp(subcommand, "toggle-minimize") == 0) {
+        static char** no_args = { NULL };
+        return new_action(0, no_args, cwd, env, wsi, opts);
+    } else {
+        FILE *err = fdopen(opts->fd_err, "w");
+        fprintf(err,
+                "domterm window: no window to '%s'\n", subcommand);
+        fclose(err);
+        return EXIT_FAILURE;
+    }
+}
+
 struct command commands[] = {
   { .name = "is-domterm",
     .options = COMMAND_IN_CLIENT,
@@ -724,6 +775,8 @@ struct command commands[] = {
     .action = help_action },
   { .name = "new", .options = COMMAND_IN_SERVER,
     .action = new_action},
+  { .name = "window", .options = COMMAND_IN_SERVER,
+    .action = window_action},
   { .name = 0 }
   };
 

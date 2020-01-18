@@ -291,11 +291,13 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
 }
 
 DomTermLayout.layoutClosed = function(event) {
-    var el = this.getElement()[0];
-    if (el.tagName !== "IFRAME") {
-        var dt = el.terminal;
-        if (dt && dt.closeConnection)
-            dt.closeConnection();
+    const el = this.getElement()[0];
+    const dt = el.terminal;
+    if (el.tagName !== "IFRAME" && dt) {
+        // We don't call closeConnection() because we might need the WebSocket
+        // connection for window-level operations, such as show/minimize.
+        dt.reportEvent("CLOSE-SESSION");
+        dt.clearVisibleState();
     }
     DomTermLayout.layoutClose(el, this.parent, true);
 }

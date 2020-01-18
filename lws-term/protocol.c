@@ -27,6 +27,7 @@ static char end_replay_mode[] = "\033[98u";
 
 struct pty_client *pty_client_list;
 struct pty_client *pty_client_last;
+struct tty_client *ws_client_list;
 
 int
 send_initial_message(struct lws *wsi) {
@@ -163,21 +164,10 @@ printf_to_browser(struct tty_client *tclient, const char *format, ...)
     va_end(ap);
 }
 
-void
-tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
-    sbuf_free(&tclient->ob);
-
-    // remove from clients list
-    server->client_count--;
-    maybe_exit();
-
-    struct pty_client *pclient = tclient->pclient;
-    if (pclient == NULL)
-        return;
-
-    //if (pclient->exit || pclient->pid <= 0)
-    //    return;
-    // Unlink wsi from pclient's list of client_wsi-s.
+// Unlink wsi from pclient's list of client_wsi-s.static void
+static void
+unlink_tty_from_pty(struct pty_client *pclient,
+                    struct lws *wsi, struct tty_client *tclient) {
     for (struct lws **pwsi = &pclient->first_client_wsi; *pwsi != NULL; ) {
       struct lws **nwsi = &((struct tty_client *) lws_wsi_user(*pwsi))->next_client_wsi;
       if (wsi == *pwsi) {
@@ -204,6 +194,33 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
             first_tclient->detachSaveSend = true;
         }
     }
+}
+
+void
+tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
+    sbuf_free(&tclient->ob);
+
+    // remove from clients list
+    server->client_count--;
+    maybe_exit();
+
+    struct pty_client *pclient = tclient->pclient;
+
+    struct tty_client *t;
+    for (struct tty_client **pt = &ws_client_list; (t = *pt) != NULL; ) {
+        struct tty_client **next = &t->next_ws_client;
+        if (*pt == tclient) {
+            *pt = *next;
+        }
+        pt = next;
+    }
+    if (pclient == NULL)
+        return;
+
+    //if (pclient->exit || pclient->pid <= 0)
+    //    return;
+    unlink_tty_from_pty(pclient, wsi, tclient);
+
 }
 
 static void
@@ -764,7 +781,13 @@ reportEvent(const char *name, char *data, size_t dlen,
             struct lws *wsi, struct tty_client *client)
 {
     struct pty_client *pclient = client->pclient;
-    // FIXME call reportEvent(cname, data)
+#if 0
+    if (pclient)
+        fprintf(stderr, "reportEvent :%d %s '%s'\n",
+                pclient->session_number, name, data);
+    else
+        fprintf(stderr, "reportEvent %s '%s'\n", name, data);
+#endif
     if (strcmp(name, "WS") == 0) {
         if (pclient != NULL
             && sscanf(data, "%d %d %g %g", &pclient->nrows, &pclient->ncols,
@@ -905,6 +928,11 @@ reportEvent(const char *name, char *data, size_t dlen,
                 && client->requesting_contents == 0)
                 client->requesting_contents = 1;
         }
+    } else if (strcmp(name, "CLOSE-SESSION") == 0) {
+        if (pclient != NULL) {
+            unlink_tty_from_pty(pclient, wsi, client);
+            client->pclient = NULL;
+        }
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
     } else if (strcmp(name, "LINK") == 0) {
@@ -977,6 +1005,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 
     case LWS_CALLBACK_ESTABLISHED:
         client->initialized = false;
+        client->next_ws_client = ws_client_list;
+        ws_client_list = client;
         client->detachSaveSend = false;
         client->uploadSettingsNeeded = true;
         client->authenticated = false;
@@ -998,6 +1028,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
              char arg[100]; // FIXME
              if (! check_server_key(wsi, arg, sizeof(arg) - 1))
                   return -1;
+             const char*window_main = lws_get_urlarg_by_name(wsi, "window-main=", arg, sizeof(arg) - 1);
+             client->window_main
+                 = window_main && strcmp(window_main, "true") == 0;
              const char*session_number = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1);
              int snumber;
              if (session_number != NULL
@@ -1389,14 +1422,10 @@ int browse_action(int argc, char** argv, const char*cwd,
 void
 request_upload_settings()
 {
-    for (struct pty_client *pclient = pty_client_list;
-         pclient != NULL; pclient = pclient->next_pty_client) {
-        struct lws *twsi;
-        FOREACH_WSCLIENT(twsi, pclient) {
-            struct tty_client *tclient = (struct tty_client *) lws_wsi_user(twsi);
-            tclient->uploadSettingsNeeded = true;
-            lws_callback_on_writable(twsi);
-        }
+    struct tty_client *tclient;
+    FORALL_WSCLIENT(tclient) {
+        tclient->uploadSettingsNeeded = true;
+        lws_callback_on_writable(tclient->wsi);
     }
 }
 

@@ -114,6 +114,7 @@ class Terminal {
     sstate.lastWorkingPath = null;
     sstate.sessionNumber = -1;
     sstate.sessionNameUnique = false;
+    sstate.doLinkify = true;
     this.windowNumber = -1;
     this._settingsCounterInstance = -1;
     
@@ -192,20 +193,12 @@ class Terminal {
     this._clientPtyExtProc = false;
     this._pendingEcho = "";
 
-    // Used to implement clientDoesEcho handling.
-    this._deferredForDeletion = null;
-
     for (let i = Terminal._settableProperties.length; --i >= 0; ) {
         let d = Terminal._settableProperties[i];
         this[d[0]] = d[2];
     }
 
-    this.topNode = null;
-
-    // ??? FIXME do we want to get rid of this? at least rename it
-    // The <div class='interaction'> that is either the main or the
-    // alternate screen buffer.  Same as _currentBufferNode()
-    this.initial = null;
+    this.clearVisibleState();
 
     this._displayInfoWidget = null;
     this._displayInfoShowing = false;
@@ -214,9 +207,6 @@ class Terminal {
 
     this._miscOptions = {};
 
-    // Used if needed to add extra space at the bottom, for proper scrolling.
-    // See note in eraseDisplay.
-    this._vspacer = null;
     this.scrollOnKeystroke = true;
     this._usingScrollBar = false;
     this._disableScrollOnOutput = false;
@@ -260,26 +250,13 @@ class Terminal {
     this._regionLeft = 0;
     this._regionRight = this.numColumns;
 
-    // The output position (cursor) - insert output before this node.
-    // If null, append output to the end of the output container's children.
-    // If an integer, the outputContainer is a Text.
-    /** @type {Node|Number|null} */
-    this.outputBefore = null;
-
     /** True if in the middle of a wide character. */
     this.outputInWide = false;
-
-    // The parent node of the output position.
-    // New output is by default inserted into this Node,
-    // at the position indicated by outputBefore.
-    /** @type {Node|null} */
-    this.outputContainer = null;
 
     // this is a small (0 or 1 characters) span for the text caret.
     // When line-editing this is the *input* caret;
     // output is inserted at (outputContainer,outputBefore)
     this._caretNode = null;
-    this._markNode = null;
     // When line-editing this is the actively edited line,
     // that has not yet been sent to the process.
     // In this case _caretNode is required to be within _inputLine.
@@ -310,11 +287,6 @@ class Terminal {
     // (normally a pre).
     // "Erase screen" only erases starting at this line.
     this.homeLine = 0;
-
-    // A stack of currently active "style" strings.
-    this._currentStyleMap = new Map();
-    // A span whose style is "correct" for _currentStyleMap.
-    this._currentStyleSpan = null;
 
     sstate.applicationCursorKeysMode = false;
     sstate.originMode = false;
@@ -407,6 +379,49 @@ class Terminal {
         };
     this.wcwidth = new WcWidth();
   }
+
+    // This is called both when constructing a new Terminal, and
+    // when closing the session (while preserving the WebSocket).
+    clearVisibleState() {
+        this.topNode = null;
+
+        // The parent node of the output position.
+        // New output is by default inserted into this Node,
+        // at the position indicated by outputBefore.
+        /** @type {Node|null} */
+        this.outputContainer = null;
+
+        // The output position (cursor) - insert output before this node.
+        // If null, append output to the end of the output container's children.
+        // If an integer, the outputContainer is a Text.
+        /** @type {Node|Number|null} */
+        this.outputBefore = null;
+
+        // ??? FIXME do we want to get rid of this? at least rename it
+        // The <div class='interaction'> that is either the main or the
+        // alternate screen buffer.  Same as _currentBufferNode()
+        this.initial = null;
+
+        //this._caretNode = null;
+        if (this._caretNode && this._caretNode.parentNode)
+            this._caretNode.parentNode.removeChild(this._caretNode);
+        this.sstate.doLinkify = false;
+        this._inputLine = null;
+
+        // Used if needed to add extra space at the bottom, for
+        // proper scrolling.  See note in eraseDisplay.
+        this._vspacer = null;
+
+        this._lineStarts = null;
+        this._lineEnds = null;
+        // A stack of currently active "style" strings.
+        this._currentStyleMap = new Map();
+        // A span whose style is "correct" for _currentStyleMap.
+        this._currentStyleSpan = null;
+        this.detachResizeSensor();
+        // Used to implement clientDoesEcho handling.
+        this._deferredForDeletion = null;
+    }
 
     detachSession() {
         console.log("detachSession "+this.name+" sname:"+this.sessionName());
@@ -3207,9 +3222,6 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     caretNode.spellcheck = false;
     this.insertNode(caretNode);
     this.outputBefore = caretNode;
-    var markNode = this._createSpanNode();
-    this._markNode = markNode;
-    markNode.setAttribute("class", "marker");
 
     var dt = this;
     topNode.addEventListener("keydown",
@@ -6066,7 +6078,6 @@ Terminal.prototype._breakDeferredLines = function() {
     }
 };
 
-Terminal._doLinkify = true;
 Terminal._forceMeasureBreaks = false;
 
 Terminal.prototype._adjustLines = function(startLine, action) {
@@ -8427,10 +8438,16 @@ Terminal._makeWsUrl = function(query=null) {
         url = protocol+ws[1];
     else
         url = protocol+"//localhost:"+DomTerm.server_port+"/replsrc";
+    if (DomTerm.server_key) {
+        query = (query ? (query + '&') : '')
+            + 'server-key=' + DomTerm.server_key;
+    }
+    if (! DomTerm.isInIFrame()) {
+        query = (query ? (query + '&') : '')
+            + 'window-main=true';
+    }
     if (query)
         url = url + '?' + query;
-    if (DomTerm.server_key)
-        url = url + (query ? '&' : '?') + 'server-key=' + DomTerm.server_key;
     return url;
 }
 

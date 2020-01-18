@@ -48,6 +48,7 @@ extern struct lws_context *context;
 extern struct tty_server *server;
 extern struct lws_vhost *vhost;
 extern struct pty_client *pty_client_list;
+extern struct tty_client *ws_client_list;
 extern int http_port;
 //extern struct tty_client *focused_client;
 extern struct lws_context_creation_info info; // FIXME rename
@@ -98,7 +99,8 @@ struct pty_client {
 };
 
 /** Data specific to a (browser) client connection. */
-struct tty_client {
+struct tty_client { // should be renamed to ws_client ?
+    struct tty_client *next_ws_client;
     struct pty_client *pclient;
     bool initialized;
     //bool pty_started; = pclient!=NULL
@@ -106,6 +108,7 @@ struct tty_client {
     bool detach_on_close;
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
+    bool window_main; // main or only connection for window (not a pane)
 
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser
@@ -275,6 +278,9 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
        VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)
+#define FORALL_WSCLIENT(VAR)      \
+  for (VAR = ws_client_list; VAR != NULL;   \
+       VAR = (VAR)->next_ws_client)
 
 // These are used to delimit "out-of-band" urgent messages.
 #define URGENT_START_STRING "\023\026"
