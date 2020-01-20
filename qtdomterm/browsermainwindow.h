@@ -54,6 +54,7 @@
 #include <QtWidgets/QMainWindow>
 #include <QtGui/QIcon>
 #include <QtCore/QUrl>
+#include <QRegularExpression>
 
 QT_BEGIN_NAMESPACE
 class QActionGroup;

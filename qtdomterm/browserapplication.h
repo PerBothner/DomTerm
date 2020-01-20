@@ -103,6 +103,7 @@ public:
 
 public slots:
   BrowserMainWindow *newMainWindow(const QString& url, int width, int height,
+                                   const QString& position,
                                    QSharedDataPointer<ProcessOptions> processOption);
     BrowserMainWindow *newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOption);
     void quitBrowser();

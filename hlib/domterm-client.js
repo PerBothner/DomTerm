@@ -200,7 +200,9 @@ function setupQWebChannel(channel) {
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
     DomTerm.openNewWindow = function(dt, options={}) {
         let opts = DomTerm._extractGeometryOptions(options);
-        backend.openNewWindow(opts.width, opts.height, opts.url);
+        backend.openNewWindow(opts.width, opts.height,
+                              opts.position || "",
+                              opts.url);
     }
 };
 

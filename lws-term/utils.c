@@ -43,6 +43,17 @@ xrealloc(void *p, size_t size) {
 }
 
 char *
+xstrdup(const char *s)
+{
+    if (s == NULL)
+        return NULL;
+    size_t len = strlen(s);
+    char *r = xmalloc(len+1);
+    strcpy(r, s);
+    return r;
+}
+
+char *
 uppercase(char *str) {
     int i = 0;
     do {

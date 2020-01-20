@@ -109,9 +109,8 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
                 print_version_and_exit();
                 break;
             case GEOMETRY_OPTION:
-                sscanf(optarg, "%dx%d",
-                       &processOptions->defaultWidth,
-                       &processOptions->defaultHeight);
+                // syntax of geometry option has been checked by domterm
+                processOptions->geometry = QString(optarg);
                 break;
             case QT_OPTION:
                 break;

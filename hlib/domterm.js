@@ -77,13 +77,36 @@ DomTerm.windowClose = function() {
 DomTerm._extractGeometryOptions = function(options={}) {
     if (options.width && options.height)
         return options;
-    let width = options.width || DomTerm.defaultWidth;
-    let height = options.height || DomTerm.defaultHeight;
+    let width = options.width;
+    let height = options.height;
     if (options.geometry) {
-        let m = options.geometry.match(/^([0-9][0-9]*)x([0-9][0-9]*)$/);
+        let hasSize = -1, hasPos = -1;
+        let m = options.geometry.match(/^([0-9]+)x([0-9]+)$/);
         if (m) {
+            hasSize = 0;
+        } else if ((m = options.geometry.match(/^([-+][0-9]+[-+][0-9]+)$/))) {
+            hasPos = 0;
+        } else if ((m = options.geometry.match(/^([0-9]+)x([0-9]+)([-+][0-9]+[-+][0-9]+)$/))) {
+            hasSize = 0;
+            hasPos = 2;
+        }
+        if (hasSize >= 0) {
             width = Number(m[1]);
             height = Number(m[2]);
+        }
+        if (hasPos >= 0 && options.position === undefined
+            && options.x === undefined && options.y === undefined) {
+            options = Object.assign({ position: m[hasPos+1] }, options);
+        }
+    }
+    if (! width || ! height) {
+        if (DomTerm.isElectron()) {
+            let sz = electronAccess.getCurrentWindow().getContentSize();
+            width = sz[0];
+            height = sz[1];
+        } else {
+            width = DomTerm.defaultWidth;
+            height = DomTerm.defaultHeight;
         }
     }
     return Object.assign({ width: width, height: height }, options);
@@ -98,9 +121,7 @@ DomTerm.openNewWindow = function(dt, options={}) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("domterm-new-window", options);
         } else {
-            electronAccess.ipcRenderer.send('request-mainprocess-action',
-                                            Object.assign({ action: 'new-window', url: url },
-                                                          options));
+            electronAccess.ipcRenderer.send('new-window', url, options);
         }
     } else {
         let width = options.width;

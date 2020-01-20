@@ -2,6 +2,7 @@
 
 #include <sys/file.h>
 #include <sys/un.h>
+#include <regex.h>
 extern char **environ;
 
 #ifndef DEFAULT_SHELL
@@ -10,6 +11,7 @@ extern char **environ;
 
 static struct options opts;
 struct options *main_options = &opts;
+static char *default_size = NULL;
 char *backend_socket_name;
 
 static void make_html_file(int);
@@ -17,13 +19,12 @@ static char *make_socket_name(bool);
 static int create_command_socket(const char *);
 static int client_connect (char *socket_path, int start_server);
 
+////** Returns a fresh copy of the (non-empty) geometry string, or NULL. */
 static char *
 geometry_option(struct options *options)
 {
     char *geometry = options->geometry;
-    if (geometry == NULL || !options->geometry[0])
-        geometry = main_options->geometry;
-    return geometry != NULL && ! geometry[0] ? NULL : geometry;
+    return geometry && geometry[0] ? geometry : default_size;
 }
 
 int
@@ -712,17 +713,12 @@ do_run_browser(struct options *options, char *url, int port)
     // This is no longer needed on Electron, but is a slight optimization.
     // Other browsers seem to "combine" user commands better.
     if (do_pattern) {
-        for (struct pty_client *p = pty_client_list;
-             p != NULL; p = p->next_pty_client) {
-            struct lws *twsi;
-            FOREACH_WSCLIENT(twsi, p) {
-                struct tty_client *t =
-                    (struct tty_client *) lws_wsi_user(twsi);
-                if (t->version_info && strstr(t->version_info, do_pattern)) {
-                    browser_run_browser(options, url, t);
-                    lws_callback_on_writable(twsi);
-                    return EXIT_SUCCESS;
-                }
+        struct tty_client *t;
+        FORALL_WSCLIENT(t) {
+            if (t->version_info && strstr(t->version_info, do_pattern)) {
+                browser_run_browser(options, url, t);
+                lws_callback_on_writable(t->wsi);
+                return EXIT_SUCCESS;
             }
         }
     }
@@ -921,8 +917,35 @@ int process_options(int argc, char **argv, struct options *opts)
             case FIREFOX_OPTION:
                 opts->browser_command = argv[optind-1];
                 break;
-            case GEOMETRY_OPTION:
+            case GEOMETRY_OPTION: {
+                regex_t rx;
+#define SZ_REGEX "[0-9]+x[0-9]+"
+#define POS_REGEX "[-+][0-9]+[-+][0-9]+"
+#define GEOM_REGEX "^" SZ_REGEX "$|^" POS_REGEX "$|^" SZ_REGEX POS_REGEX "$"
+                regcomp(&rx, GEOM_REGEX, REG_EXTENDED|REG_NOSUB);
+                if (regexec(&rx, optarg, 0, NULL, 0)) {
+                    fprintf(stderr, "bad geometry specifier '%s'\n", optarg);
+                    fprintf(stderr, "must have the form: [{WIDTH}x{HEIGHT}][{+-}{XOFF}{+-}{YOFF}]\n");
+                    exit(-1);
+                }
+                regfree(&rx);
                 opts->geometry = optarg;
+
+                free(default_size);
+                char *p = optarg;
+                char ch;
+                while ((ch = *p) != 0 && ch != '-' && ch != '+')
+                    p++;
+                ptrdiff_t len = p - optarg;
+                if (len == 0)
+                    default_size = NULL;
+                else {
+                    char *r = xmalloc(len + 1);
+                    memcpy(r, optarg, len);
+                    r[len] = 0;
+                    default_size = r;
+                }
+            }
                 break;
             case CHROME_OPTION:
             case CHROME_APP_OPTION: {

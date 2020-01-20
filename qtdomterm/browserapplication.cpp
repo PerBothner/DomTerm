@@ -288,12 +288,30 @@ void BrowserApplication::openUrl(const QUrl &url)
     mainWindow()->loadPage(url.toString());
 }
 
-BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, QSharedDataPointer<ProcessOptions> processOptions)
+BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, QSharedDataPointer<ProcessOptions> processOptions)
 {
     BrowserMainWindow *browser =
         new BrowserMainWindow(this, url, processOptions);
-    if (width > 0 || height > 0)
-        browser->setSize(width, height);
+    int x = -1, y = -1;
+    if (! position.isEmpty()) {
+        QRegularExpression re("^([-+])([0-9]+)([-+])([0-9]+)$");
+        QRegularExpressionMatch match = re.match(position);
+        if (match.hasMatch()) {
+            x = match.captured(2).toInt();
+            y = match.captured(4).toInt();
+            bool xneg = match.captured(1) == "-";
+            bool yneg = match.captured(3) == "-";
+            if (xneg || yneg) {
+                // FIXME
+            }
+        }
+    }
+    if (width > 0 || height > 0) {
+        if (x >= 0 && y >= 0)
+            browser->setGeometry(x, y, width, height);
+        else
+            browser->setSize(width, height);
+    }
     m_mainWindows.prepend(browser);
     browser->show();
     return browser;
@@ -301,9 +319,29 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
 
 BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions)
 {
+    QString w, h, pos;
+    QString location = "";
+    QString geometry = processOptions->geometry;
+    if (! geometry.isEmpty()) {
+        QRegularExpression re;
+        QRegularExpressionMatch match;
+        re.setPattern("^([0-9]+)x([0-9]+)([-+][0-9]+[-+][0-9]+)?$");
+        match = re.match(geometry);
+        if (match.hasMatch()) {
+            w = match.captured(1);
+            h = match.captured(2);
+            pos = match.captured(3);
+        } else {
+            re.setPattern("^([-+][0-9]+[-+][0-9]+)$");
+            match = re.match(geometry);
+            if (match.hasMatch())
+                pos = match.captured(1);
+        }
+    }
     return newMainWindow(url,
-                         processOptions->defaultWidth,
-                         processOptions->defaultHeight,
+                         w.isEmpty() ? -1 : w.toInt(),
+                         h.isEmpty() ? -1 : h.toInt(),
+                         pos,
                          processOptions);
 }
 
@@ -349,16 +387,14 @@ QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state)
 {
     stream << state.url;
     stream << state.wsconnect;
-    stream << state.defaultWidth;
-    stream << state.defaultHeight;
+    stream << state.geometry;
     return stream;
 }
 QDataStream& operator>>(QDataStream& stream, ProcessOptions& state)
 {
     stream >> state.url;
     stream >> state.wsconnect;
-    stream >> state.defaultWidth;
-    stream >> state.defaultHeight;
+    stream >> state.geometry;
     return stream;
 }
 

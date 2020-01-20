@@ -9,6 +9,9 @@ xmalloc(size_t size);
 void *
 xrealloc(void *p, size_t size);
 
+// strdup with NULL check
+extern char * xstrdup(const char *s);
+
 // Convert a string to upper case
 char *
 uppercase(char *str);

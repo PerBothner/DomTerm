@@ -1,4 +1,4 @@
-const {app, ipcMain, BrowserWindow} = require('electron')
+const {app, ipcMain, BrowserWindow, screen} = require('electron')
 const path = require('path')
 const url = require('url')
 
@@ -28,19 +28,35 @@ function createInitialWindow (argv) {
     }
 
     // Create the browser window.
-    var w = -1, h = -1;
-    var m = geometry ? geometry.match(/^([0-9]+)x([0-9]+)$/) : null;
-    if (m) {
-        w = Number(m[1]);
-        h = Number(m[2]);
+    let options = { openDevTools: openDevTools};
+    if (geometry) {
+        let hasSize = -1, hasPos = -1;
+        let m = geometry.match(/^([0-9]+)x([0-9]+)$/);
+        if (m) {
+            hasSize = 0;
+        } else if ((m = geometry.match(/^([-+][0-9]+[-+][0-9]+)$/))) {
+            hasPos = 0;
+        } else if ((m = geometry.match(/^([0-9]+)x([0-9]+)([-+][0-9]+[-+][0-9]+)$/))) {
+            hasSize = 0;
+            hasPos = 2;
+        }
+        if (hasSize >= 0) {
+            options.width = Number(m[1]);
+            options.height = Number(m[2]);
+        }
+        if (hasPos >= 0) {
+            options.position = m[hasPos+1];
+        }
     }
-    createNewWindow(url, w, h, openDevTools);
+    createNewWindow(url, options);
 }
 var previousUrl = null;
 var previousWidth = 800;
 var previousHeight = 600;
 
-function createNewWindow (url, w, h, openDevTools=false) {
+function createNewWindow (url, options) {
+    let w = options.width;
+    let h = options.height;
     if (w <= 0)
         w = previousWidth;
     else
@@ -53,12 +69,42 @@ function createNewWindow (url, w, h, openDevTools=false) {
         url = previousUrl;
     else
         previousUrl = url;
-    let win = new BrowserWindow({width: w, height: h,
-                                 webPreferences: {nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
-                                 useContentSize: true, show: false});
+    let bwoptions = {
+        width: w, height: h,
+        webPreferences: {nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
+        useContentSize: true, show: false};
+    if (options.x !== undefined && options.y !== undefined) {
+        bwoptions.x = options.x;
+        bwoptions.y = options.y;
+    } else if (options.position) {
+        let negx = false, negy = false;
+        let m = options.position.match(/^([-+])([0-9][0-9]*)([-+])([0-9][0-9]*)$/);
+        if (m) {
+            x = Number(m[2]);
+            y = Number(m[4]);
+            negx = m[1] === '-';
+            negy = m[3] === '-';
+            if (negx || negy) {
+                let cursor = screen.getCursorScreenPoint();
+                let display =
+                    (cursor && screen.getDisplayNearestPoint(cursor))
+                    || screen.getPrimaryDisplay();
+                let area = display.workArea;
+                if (negx)
+                    x = area.x + area.width - x - w;
+                if (negy)
+                    y = area.y = area.height - y - h;
+            }
+            if (x >= 0 && y >= 0) {
+                bwoptions.x = x;
+                bwoptions.y = y;
+            }
+        }
+    }
+    let win = new BrowserWindow(bwoptions);
     windowList.push(win);
     win.loadURL(url);
-    if (openDevTools)
+    if (options.openDevTools)
         win.webContents.openDevTools()
     win.once('ready-to-show', function () { win.show(); });
     win.on('closed', () => {
@@ -68,9 +114,8 @@ function createNewWindow (url, w, h, openDevTools=false) {
     });
 }
 
-ipcMain.on('request-mainprocess-action', (event, arg) => {
-    if (arg.action == 'new-window')
-        createNewWindow(arg.url, arg.width, arg.height, arg.openDevTools);
+ipcMain.on('new-window', (event, url, options) => {
+    createNewWindow(url, options);
 });
 
 // This method will be called when Electron has finished
