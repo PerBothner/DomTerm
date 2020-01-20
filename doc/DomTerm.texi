@@ -381,6 +381,8 @@ depending on whether the back-end is in ``@uref{http://www.gnu.org/software/libc
 
 @subheading Miscelleanous
 
+Easily configured as a @ref{drop-down,``@strong{drop-down}'' (``Quake-style'')} terminal.
+
 User @strong{preferences are controlled a CSS stylesheet},
 which can be changed by an application.
 
@@ -1028,26 +1030,42 @@ The hidden windows are @emph{not} visible in the task bar,
 as icons on the desktop, or during an ``windows expose'' operation
 @item @code{window show}
 Show all minimized or hidden windows.
+If there are no windows, create one.
 @item @code{window toggle-minimize}
 Toggle between normal and minimized state:
 If a window is hidden or minimized, show it.
 If visible, minimize it.
+If there are no windows, create one.
 @item @code{window toggle-hide}
 Toggle between normal and hidden state:
 If a window is hidden or minimized, show it.
 If visible, hide it.
+If there are no windows, create one.
 @end table
 
 @subheading Miscellaneous options
 
 @table @asis
-@item @code{--geometry} @var{width}@code{x}@var{height}
-Specify initial size of new top-level windows.
-The default if not specified is currently @code{800x600}.
+@item @code{--geometry} @var{size} | @var{position} | @var{size}@var{position}
+A @var{size} is @var{width}@code{x}@var{height},
+specifies an initial size of a new top-level windows.
+The default if not specified is that of the previous window,
+or the @code{window.geometry} option in the @ref{Settings} file,
+or otherwise currently @code{800x600}.
 The @var{width} and @var{height} are in pixel units
 and must be positive integers.
 
-Works for the Electron, qtdomterm, and @code{--chrome-app} front-ends,
+A @var{position} requests an initial position of the window,
+in the form @code{[-+]@var{xpos}[-+]@var{ypos}}.
+A @var{xpos} specifies how far (in pixels) the left edge of the
+window is from the left edge of the screen, or (if preceded by @code{-})
+how far the right edge of the window is from the right edge of the screen.
+A @var{ypos} specifies how far the top edge of the
+window is from the top of the screen, or (if preceded by @code{-})
+how far the right edge of the window is from the right of the screen.
+
+A @var{size} works for the Electron, qtdomterm, and @code{--chrome-app}
+front-ends.  A @var{position} currently only works for Electron.
 
 @item @code{-L} @var{socket-name}
 @itemx @code{--socket-name=}@var{socket-name}
@@ -2959,6 +2977,55 @@ fi
 @end example
 This uses the @code{is_domterm} and @code{print_path_url}
 functions defined above.
+
+@node drop-down
+@section Use as a drop-down terminal
+
+A @dfn{drop-down terminal} (sometimes called
+@uref{https://en.wikipedia.org/wiki/Console_(video_game_CLI),@dfn{Quake-style}})
+is one that can be quickly invoked and hidden with a keystroke.
+
+This can be easily done by setting up a system keybinding
+for either @code{domterm window toggle-minimize}
+or @code{domterm window toggle-hide}.
+These currently only work for the @ref{Frontends,Electron front-end}.
+
+These commands will create a window if it doesn't exist,
+make it visible if it is minimized/hidden,
+and minimize/hide it if it is visible.
+The difference between @code{toggle-minimize} and @code{toggle-hide}
+is that an minimized window may be still visible in the task bar,
+as an icon on the desktop, or during an ``windows expose'' operation;
+a hidden window is not.  (This depends on the desktop environment.)
+
+@subheading Configuring for Gnome desktop manager
+
+@image{images/dropdown-gnome}
+
+If you're using the Gnome desktop (common on GNU/Linux systems),
+enter the system (desktop) @code{Settings} application,
+and select @code{Devices} and @code{Keyboard shortcurs}.
+Click the @code{+} at the bottom to add a new custom shortcut.
+You can then bind your preferred keybinding (@code{F5} in the screenshot)
+to the @code{domterm window toogle-minimizew} (or @code{toggle-hide}) command.
+(The screenshot uses a fully-qualifed path for @code{domterm},
+just in case.)
+
+@subheading Specifying initial position
+
+By default the terminal will have a default size and position,
+though if you resize and move the window, it should remember the
+size and position if you then hide and unhide it.
+You can use a geometry specifier to give an explicit position
+when it is created,
+either in the @ref{Settings} file, or with a @code{--geometry} option:
+@example
+domterm --geometry 775x600+20+10 window toggle-minimize
+@end example
+This specifies that the window is initially 775 pixels wide,
+600 pixels high, and positioned (if possible)
+20 pixels right and 10 pixels below the top left corner of the screen.
+(The geometry option is only used if a new window needs to be created.)
 
 @node Python tips
 @section Python tips

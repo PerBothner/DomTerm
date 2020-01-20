@@ -355,6 +355,7 @@ DOC_IMAGES = \
   doc/images/dt-pretty1.png \
   doc/images/dt-sixel.png \
   doc/images/emacs-in-firefox-1.png \
+  doc/images/dropdown-gnome.png \
   doc/images/pyplot.png \
   doc/images/python-error.png \
   doc/images/python-repl.png \
