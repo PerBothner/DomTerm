@@ -691,8 +691,8 @@ int window_action(int argc, char** argv, const char*cwd,
     if (seq == NULL) {
         FILE *err = fdopen(opts->fd_err, "w");
         fprintf(err,
-                subcommand ? "domterm window: missing sub-command\n"
-                : "domterm window: unknown sub-command '%s'\n",
+                subcommand ? "domterm window: unknown sub-command '%s'\n"
+                : "domterm window: missing sub-command\n",
                 subcommand);
         fclose(err);
         return EXIT_FAILURE;
