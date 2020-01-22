@@ -180,6 +180,21 @@ static const struct lws_protocols protocols[] = {
         /* Unix domain socket for client to send to commands to server */
         {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
 
+#if REMOTE_SSH
+        /*
+          "proxy" protocol is an alternative to "domterm" in that
+          it proxies between a pty_client and a file (or socket?) handle(s):
+          The handles are stdout/stdin of an ssh (server) session.
+          Output read from the pty_client is written to the file handle (stdout)
+          (instead of being written to websocket client).
+          Use struct tty_client for "proxy" protocol; that way
+          callback_pty can be (mostly?) unchanged.
+          Input read from file handle (stdin) is written to the pty.
+        */
+        { "proxy-in", callback_proxy_in, sizeof(struct tty_client),  0},
+        { "proxy-out", callback_proxy_out, sizeof(struct tty_client),  0},
+#endif
+
 #if HAVE_INOTIFY
         /* calling back for "inotify" to watch settings.ini */
         {"inotify",    callback_inotify,  0,  0},
@@ -242,6 +257,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define ABOVE_OPTION (PANE_OPTIONS_START+12)
 #define BELOW_OPTION (PANE_OPTIONS_START+13)
 #define PRINT_URL_OPTION (PANE_OPTIONS_START+14)
+#define BROWSER_PIPE_OPTION (PANE_OPTIONS_START+15)
 
 // command line options
 static const struct option options[] = {
@@ -1073,6 +1089,20 @@ main(int argc, char **argv)
     const char *cmd = argv[optind];
     struct command *command = cmd == NULL ? NULL : find_command(cmd);
     if (command == NULL && cmd != NULL && index(cmd, '/') == NULL) {
+        char *at = index(cmd, '@');
+        if (at != NULL) {
+#if REMOTE_SSH
+            // Running 'domterm --BROWSER user@bothner COMMAND' translates
+            // to 'ssh USER@HOSTNAME domterm --browser-pipe COMMAND`
+            // The --browser-pipe is a pseudo "browser specification":
+            // create a pty running COMMAND such that output from the COMMAND
+            // is printed to the stdout, and input read from stdin,
+            // with perhaps some extra complication for events.
+            // Locally, we create a tclient in --BROWSER, but instead
+            // of the pclient/pty we use ?
+            ///argv = { "ssh", cmd, "domterm", "--browser-pipe", rest-args... }
+#endif
+        }
         fprintf(stderr, "domterm: unknown command '%s'\n", cmd);
         exit(EXIT_FAILURE);
     }

@@ -54,6 +54,20 @@ send_initial_message(struct lws *wsi) {
 }
 
 #if 0
+void logerr(char*prefix, char* str, int n) {
+    fprintf(stderr, "write%s %d bytes: \"", prefix, n);
+    for (int i = 0; i < n; i++) {
+        int ch = str[i] & 0xFF;
+        if (ch >= ' ' && ch < 127)
+            fputc(ch, stderr);
+        else
+            fprintf(stderr, "\\%03o", ch);
+    }
+    fprintf(stderr, "\"\n", n);
+}
+#endif
+
+#if 0
 bool
 check_host_origin(struct lws *wsi) {
     int origin_length = lws_hdr_total_length(wsi, WSI_TOKEN_ORIGIN);
@@ -776,9 +790,9 @@ handle_link(json_object *obj)
     handle_tlink(template, obj);
 }
 
-void
+bool
 reportEvent(const char *name, char *data, size_t dlen,
-            struct lws *wsi, struct tty_client *client)
+            struct lws *wsi, struct tty_client *client, bool is_proxy)
 {
     struct pty_client *pclient = client->pclient;
 #if 0
@@ -803,7 +817,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (pclient == NULL)
             pclient = create_link_pclient(wsi, client);
         if (pclient == NULL)
-            return;
+            return true;
         if (pclient->cmd) {
             run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);
             free((void*)pclient->cmd); pclient->cmd = NULL;
@@ -829,7 +843,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         char *q1 = strchr(data, '\t');
         char *q2;
         if (q1 == NULL || (q2 = strchr(q1+1, '\t')) == NULL)
-            return; // ERROR
+            return true; // ERROR
         struct termios termios;
         if (tcgetattr(pclient->pty, &termios) < 0)
           ; //return -1;
@@ -946,7 +960,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         int updated = (rcount - pclient->preserved_sent_count) & MASK28;
         // Roughly: if (rcount < pclient->preserved_sent_count)
         if ((updated & ((MASK28+1)>>1)) != 0) {
-            return;
+            return true;
         }
         if (pclient->saved_window_contents != NULL)
             free(pclient->saved_window_contents);
@@ -984,7 +998,119 @@ reportEvent(const char *name, char *data, size_t dlen,
         json_object_put(obj);
     } else {
     }
+    return true;
 }
+
+
+int
+handle_input(struct lws *wsi, struct tty_client *client,
+             void *in, size_t len, bool is_proxy)
+{
+    //struct pty_client *pclient = client == NULL ? NULL : client->pclient;
+    if (client->buffer == NULL) {
+        client->buffer = xmalloc(len + 1);
+        client->len = len;
+        memcpy(client->buffer, in, len);
+    } else {
+        client->buffer = xrealloc(client->buffer, client->len + len + 1);
+        memcpy(client->buffer + client->len, in, len);
+        client->len += len;
+    }
+    client->buffer[client->len] = '\0';
+
+    // check if there are more fragmented messages
+    if (lws_remaining_packet_payload(wsi) > 0 || !lws_is_final_fragment(wsi)) {
+        return 0;
+    }
+
+    if (server->options.readonly)
+        return 0;
+    size_t clen = client->len;
+    unsigned char *msg = (unsigned char*) client->buffer;
+    struct pty_client *pclient = client->pclient;
+    if (pclient)
+        pclient->recent_tclient = client;
+    // FIXME handle PENDING
+    int start = 0;
+    for (int i = 0; ; i++) {
+        if (i+1 == clen && msg[i] >= 128)
+            break;
+        if (i == clen || msg[i] == REPORT_EVENT_PREFIX) {
+            int w = i - start;
+            if (w > 0 && write(pclient->pty, msg+start, w) < w) {
+                lwsl_err("write INPUT to pty\n");
+                return -1;
+            }
+            if (i == clen) {
+                start = clen;
+                break;
+            }
+            // look for reported event
+            if (msg[i] == 0xc2)
+                i++;
+            unsigned char* eol = memchr(msg+i, '\n', clen-i);
+            if (eol) {
+                unsigned char *p = msg+i;
+                char* cname = (char*) ++p;
+                while (p < eol && *p != ' ')
+                    p++;
+                *p = '\0';
+                if (p < eol)
+                    p++;
+                while (p < eol && *p == ' ')
+                    p++;
+                // data is from p to eol
+                char *data = (char*) p;
+                *eol = '\0';
+                size_t dlen = eol - p;
+                if (! reportEvent(cname, data, dlen, wsi, client,
+                                  is_proxy)) {
+#if REMOTE_SSH
+                    write message to remote;
+#endif
+                }
+                i = eol - msg;
+            } else {
+                break;
+            }
+            start = i+1;
+        }
+    }
+    if (start < clen) {
+        memmove(client->buffer, client->buffer+start, clen-start);
+        client->len = clen - start;
+    }
+    else if (client->buffer != NULL) {
+        free(client->buffer);
+        client->buffer = NULL;
+    }
+    return 0;
+}
+
+#if REMOTE_SSH
+int
+callback_proxy_in(struct lws *wsi, enum lws_callback_reasons reason,
+             void *user, void *in, size_t len)
+{
+    struct tty_client *client = (struct tty_client *) user;
+    struct pty_client *pclient = client == NULL ? NULL : client->pclient;
+    switch (reason) {
+        case LWS_CALLBACK_RAW_RX_FILE:
+            // read data, send to
+            ssize_t n = read(fd_in, buffer, bsize);
+            return handle_input(wsi, client, buffer, n, true);
+    }
+}
+int
+callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
+             void *user, void *in, size_t len)
+{
+    switch (reason) {
+    case LWS_CALLBACK_RAW_WRITEABLE_FILE:
+        ... share logic with callback_tty LWS_CALLBACK_SERVER_WRITEABLE ...
+    }
+}
+#endif
 
 int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
@@ -1167,79 +1293,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_RECEIVE:
          // receive data from websockets client (browser)
          //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
-         if (client->buffer == NULL) {
-              client->buffer = xmalloc(len + 1);
-              client->len = len;
-              memcpy(client->buffer, in, len);
-         } else {
-              client->buffer = xrealloc(client->buffer, client->len + len + 1);
-              memcpy(client->buffer + client->len, in, len);
-              client->len += len;
-         }
-         client->buffer[client->len] = '\0';
-
-         // check if there are more fragmented messages
-         if (lws_remaining_packet_payload(wsi) > 0 || !lws_is_final_fragment(wsi)) {
-              return 0;
-         }
-
-         if (server->options.readonly)
-              return 0;
-         size_t clen = client->len;
-         unsigned char *msg = (unsigned char*) client->buffer;
-         struct pty_client *pclient = client->pclient;
-         if (pclient)
-             pclient->recent_tclient = client;
-         // FIXME handle PENDING
-         int start = 0;
-         for (int i = 0; ; i++) {
-              if (i+1 == clen && msg[i] >= 128)
-                   break;
-              if (i == clen || msg[i] == REPORT_EVENT_PREFIX) {
-                   int w = i - start;
-                   if (w > 0 && write(pclient->pty, msg+start, w) < w) {
-                        lwsl_err("write INPUT to pty\n");
-                        return -1;
-                   }
-                   if (i == clen) {
-                        start = clen;
-                        break;
-                   }
-                   // look for reported event
-                   if (msg[i] == 0xc2)
-                        i++;
-                   unsigned char* eol = memchr(msg+i, '\n', clen-i);
-                   if (eol) {
-                        unsigned char *p = msg+i;
-                        char* cname = (char*) ++p;
-                        while (p < eol && *p != ' ')
-                             p++;
-                        *p = '\0';
-                        if (p < eol)
-                             p++;
-                        while (p < eol && *p == ' ')
-                             p++;
-                        // data is from p to eol
-                        char *data = (char*) p;
-                        *eol = '\0';
-                        size_t dlen = eol - p;
-                        reportEvent(cname, data, dlen, wsi, client);
-                        i = eol - msg;
-                   } else {
-                        break;
-                   }
-                   start = i+1;
-              }
-         }
-         if (start < clen) {
-              memmove(client->buffer, client->buffer+start, clen-start);
-              client->len = clen - start;
-         }
-         else if (client->buffer != NULL) {
-              free(client->buffer);
-              client->buffer = NULL;
-         }
-         break;
+        handle_input(wsi, client, in, len, false);
+        break;
 
     case LWS_CALLBACK_CLOSED:
          if (focused_wsi == wsi)
@@ -1277,13 +1332,23 @@ display_session(struct options *options, struct pty_client *pclient,
     int session_number = pclient == NULL ? -1 : pclient->session_number;
     const char *browser_specifier = options == NULL ? NULL
       : options->browser_command;
+#if REMOTE_SSH
+    if (browser_specifier != NULL
+        && strcmp(browser_specifier, "--browser-pipe") == 0) {
+        struct lws *pin_lws = lws_adopt_descriptor_vhost(vhost, opts->fd_in,
+                                                         "proxy-in", NULL);
+        struct lws *pout_lws = lws_adopt_descriptor_vhost(vhost, opts->fd_out,
+                                                          "proxy-out", NULL);
+        return EXIT_SUCCESS;
+    }
+#endif
     int paneOp = 0;
     if (browser_specifier != NULL && browser_specifier[0] == '-') {
       if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
           pclient->detached = 1;
           return EXIT_SUCCESS;
       }
-       if (strcmp(browser_specifier, "--pane") == 0)
+      if (strcmp(browser_specifier, "--pane") == 0)
           paneOp = 1;
       else if (strcmp(browser_specifier, "--tab") == 0)
           paneOp = 2;
@@ -1307,7 +1372,7 @@ display_session(struct options *options, struct pty_client *pclient,
              printf_to_browser(tclient, URGENT_WRAP("\033[90;%d;%du"),
                                paneOp, session_number);
         else
-             printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
+            printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
                                -port, paneOp, url);
     } else {
         char *buf = xmalloc(strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
