@@ -101,6 +101,8 @@ function createNewWindow (url, options) {
             }
         }
     }
+    if (process.platform == "win32")
+	bwoptions.icon = __dirname.replace("\\electron", "\\domterm2.ico");
     let win = new BrowserWindow(bwoptions);
     windowList.push(win);
     win.loadURL(url);

@@ -438,6 +438,7 @@ else
 	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
 endif
 endif
+	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm2.ico
 	$(MKDIR_P) $(DESTDIR)$(datadir)/applications \
 	    $(DESTDIR)$(datadir)/appdata
 	$(INSTALL_DATA) $(srcdir)/domterm.desktop $(DESTDIR)$(datadir)/applications/
