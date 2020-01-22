@@ -6,6 +6,7 @@ EXTRA_DIST = \
   electron/main.js electron/preload.js  \
   doc/DomTerm.texi doc/webdoc.patch \
   doc/style/domterm.xsl doc/style/docbook-to-html.xsl \
+  doc/domterm2.ico \
   doc/help/domterm.adoc \
   doc/help/domterm-attach.adoc \
   doc/help/domterm-browse.adoc \
@@ -92,7 +93,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -103,6 +104,9 @@ all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PREL
   share/domterm/help/domterm-imgcat.txt \
   share/domterm/help/domterm-is-domterm.txt \
   share/domterm/help/domterm-list.txt
+
+share/domterm/domterm2.ico: doc/domterm2.ico
+	cp $< $@
 
 # On WSL (Windows Subsystem for Linux) 'electron' is a Windows executable,
 # so main.js must be copied, not linked:
@@ -512,3 +516,7 @@ wcwidth-list.txt: $(EAST_ASIAN_WIDTH_TXT)
 	  -e 's/^\([0-9A-F][0-9A-F]*\);[FW].*$$/    0x\1, 0x\1,/p' \
 	  -e 's/^\([0-9A-F][0-9A-F]*\)..\([0-9A-F][0-9A-F]*\);[FW].*$$/    0x\1, 0x\2,/p' \
 	   $(EAST_ASIAN_WIDTH_TXT) | tr A-Z a-z > wcwidth-list.txt
+
+IMAGEMAGICK_CONVERT = convert
+doc/domterm2.ico: # doc/domterm2.svg
+	$(IMAGEMAGICK_CONVERT) -background none -density 384 doc/domterm2.svg -define icon:auto-resize=64,32,16 doc/domterm2.ico

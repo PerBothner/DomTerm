@@ -301,6 +301,15 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             if (content_type == NULL)
               content_type = "text/html";
 
+            if (strcmp(fname, "/favicon.ico") == 0) {
+                char *icon = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm2.ico");
+                int n = lws_serve_http_file(wsi, icon, content_type, NULL, 0);
+                free(icon);
+                if (n < 0 || ((n > 0) && lws_http_transaction_completed(wsi)))
+                    return -1; /* error or can't reuse connection: close the socket */
+                break;
+            }
+
             const char resource_prefix[] = "/RESOURCE/";
             size_t resource_prefix_len = sizeof(resource_prefix)-1;
             const char* url_rest;
