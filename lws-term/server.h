@@ -218,7 +218,6 @@ callback_inotify(struct lws *wsi, enum lws_callback_reasons reason, void *user, 
 extern char *get_resource_path();
 #endif
 extern int get_executable_directory_length();
-extern char *get_bin_relative_path(const char* app_path);
 extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 const char *domterm_settings_default(void);
