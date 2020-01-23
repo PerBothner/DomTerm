@@ -3029,6 +3029,19 @@ to the @code{domterm window toogle-minimizew} (or @code{toggle-hide}) command.
 (The screenshot uses a fully-qualifed path for @code{domterm},
 just in case.)
 
+@subheading Configuring for Windows/WSL (work-in-progress)
+
+I haven't quite gotten this working - @uref{https://superuser.com/questions/418533/run-a-cmd-comand-from-a-key-stroke/418534,this link} may be helpful.
+
+The principle is to (somehow) bind a shortcut key to a command like:
+@example
+wsl /mnt/c/path-to-domterm/bin/domterm --geometry=775x600+20+10 window toggle-minimize
+@end example
+where the @code{--geometry} option is an optional @ref{geometry-specifier},
+and @code{/mnt/c/path-to-domterm} is the location of your DomTerm installation.
+Note this needs to be a Unix-style path (since it is executed by @code{wsl})
+to a Windows directory (so Electron can find the needed files).
+
 @subheading Specifying initial position
 
 By default the terminal will have a default size and position,
