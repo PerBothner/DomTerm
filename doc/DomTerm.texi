@@ -1046,26 +1046,10 @@ If there are no windows, create one.
 @subheading Miscellaneous options
 
 @table @asis
-@item @code{--geometry} @var{size} | @var{position} | @var{size}@var{position}
-A @var{size} is @var{width}@code{x}@var{height},
-specifies an initial size of a new top-level windows.
-The default if not specified is that of the previous window,
-or the @code{window.geometry} option in the @ref{Settings} file,
-or otherwise currently @code{800x600}.
-The @var{width} and @var{height} are in pixel units
-and must be positive integers.
-
-A @var{position} requests an initial position of the window,
-in the form @code{[-+]@var{xpos}[-+]@var{ypos}}.
-A @var{xpos} specifies how far (in pixels) the left edge of the
-window is from the left edge of the screen, or (if preceded by @code{-})
-how far the right edge of the window is from the right edge of the screen.
-A @var{ypos} specifies how far the top edge of the
-window is from the top of the screen, or (if preceded by @code{-})
-how far the right edge of the window is from the right of the screen.
-
-A @var{size} works for the Electron, qtdomterm, and @code{--chrome-app}
-front-ends.  A @var{position} currently only works for Electron.
+@item @code{--geometry} @var{size-and-position}
+Specify the initial @var{size} and/or @var{position}
+of a new top-level window.
+See @ref{geometry-specifier}.
 
 @item @code{-L} @var{socket-name}
 @itemx @code{--socket-name=}@var{socket-name}
@@ -1322,13 +1306,8 @@ The default for these is to search in the @code{PATH},
 possibly with some platform-depending knowledge of default locations.
 
 @item @code{@b{window.geometry} =} @var{geometry}
-Control the size of new top-level windows.
-(Currently works for either Electron or qtdomterm windows,
-as well as ones started with @code{--chrome-app}.)
-The @var{geometry} has the same syntax as the @code{--geometry}
-command-line opton, @code{@var{W}x@var{H}},
-where @code{@var{W}} and @code{@var{H}}
-are the width and height of the window, in pixels.
+Control the size and/or of new top-level windows
+using the syntax of a @ref{geometry-specifier}.
 
 The default is @code{800x600}.
 
@@ -1539,6 +1518,45 @@ the Electron and Qt frontends.
 
 Multiple different frontends can talk to the same backend
 at the same time.
+
+@anchor{geometry-specifier}
+@subheading Window size and position (geometry specifier)
+
+You can request the initial size and position
+of a top-level window using an X11-style
+@dfn{geometry specifier}, using either a @code{--geometry}
+@ref{domterm application,command-line option} or
+a @code{window.geometry} setting in @ref{Settings,@code{settings.ini}}.
+A specifier is either a @var{size} or a @var{position}
+or a @var{size} followed by a @var{position} (with no spaces).
+For example @code{--geometry=775x600+20+10}
+specifies that the window is initially 775 pixels wide,
+600 pixels high, and positioned (if possible)
+20 pixels right and 10 pixels below the top left corner of the screen.
+
+A @var{size} has the form @var{W}@code{x}@var{H},
+where @var{W} and @var{H} are the width and height in pixels,
+both positive integers.
+The default if not specified on the command-line is that of the previous window,
+or the @code{window.geometry} option in the @ref{Settings} file,
+or otherwise currently @code{800x600}.
+(When creating a new window using a menu entry or keyboard shortcut,
+the default size is that of the current window.)
+
+A @var{position} requests an initial position of the window,
+in the form @code{[-+]@var{X}[-+]@var{Y}}.
+The @var{X} specifies how far (in pixels) the left edge of the
+window is from the left edge of the screen, or (if preceded by @code{-})
+how far the right edge of the window is from the right edge of the screen.
+@var{Y} specifies how far the top edge of the
+window is from the top of the screen, or (if preceded by @code{-})
+how far the right edge of the window is from the right of the screen.
+
+A @var{position} in @ref{Settings,@code{settings.ini}} is only used
+for the initial window.
+
+A @var{size} works for the Electron, qtdomterm, and @code{--chrome-app}
+front-ends.  A @var{position} currently only works for Electron.
 
 @subheading Browser quirks and limitions
 
@@ -3016,16 +3034,12 @@ just in case.)
 By default the terminal will have a default size and position,
 though if you resize and move the window, it should remember the
 size and position if you then hide and unhide it.
-You can use a geometry specifier to give an explicit position
-when it is created,
+You can use a @ref{geometry-specifier,geometry specifier} to give an
+explicit position when it is created,
 either in the @ref{Settings} file, or with a @code{--geometry} option:
 @example
 domterm --geometry 775x600+20+10 window toggle-minimize
 @end example
-This specifies that the window is initially 775 pixels wide,
-600 pixels high, and positioned (if possible)
-20 pixels right and 10 pixels below the top left corner of the screen.
-(The geometry option is only used if a new window needs to be created.)
 
 @node Python tips
 @section Python tips
