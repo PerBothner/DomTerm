@@ -76,6 +76,8 @@ subst_run_command(struct options *opts, const char *browser_command,
     if (url_tmp != NULL)
         free(url_tmp);
     lwsl_notice("frontend command: %s\n", cmd);
+    if (opts->verbosity > 0)
+        fprintf(stdout, "starting frontend command: %s\n", cmd);
     return start_command(opts, cmd);
 }
 
@@ -243,6 +245,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define QTDOMTERM_OPTION 1002
 #define ELECTRON_OPTION 1003
 #define CHROME_APP_OPTION 1004
+#define VERBOSE_OPTION 1200
 #define FORCE_OPTION 2001
 #define DAEMONIZE_OPTION 2002
 #define NO_DAEMONIZE_OPTION 2003
@@ -316,6 +319,7 @@ static const struct option options[] = {
         {"remote-debugging-port", required_argument, NULL, QT_REMOTE_DEBUGGING_OPTION},
 
         {"version",      no_argument,       NULL, 'v'},
+        {"verbose",      no_argument,       NULL, VERBOSE_OPTION },
         {"help",         no_argument,       NULL, 'h'},
         {NULL, 0, 0,                              0}
 };
@@ -790,6 +794,7 @@ void  init_options(struct options *opts)
     opts->default_frontend = NULL;
     opts->http_server = false;
     opts->something_done = false;
+    opts->verbosity = 0;
     opts->paneOp = -1;
     opts->force_option = 0;
     opts->socket_name = NULL;
@@ -840,6 +845,9 @@ void prescan_options(int argc, char **argv, struct options *opts)
         switch (c) {
             case SETTINGS_FILE_OPTION:
                 opts->settings_file = optarg;
+                break;
+            case VERBOSE_OPTION:
+                opts->verbosity++;
                 break;
         }
     }
@@ -921,6 +929,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 }
                 opts->tty_packet_mode = optarg == NULL ? "yes" : optarg;
                 break;
+            case VERBOSE_OPTION:
             case SETTINGS_FILE_OPTION:
                 break; // handled in prescan_options
             case PANE_OPTION:
@@ -1084,7 +1093,7 @@ main(int argc, char **argv)
 
     init_options(&opts);
     prescan_options(argc, argv, &opts);
-    read_settings_file(&opts);
+    read_settings_file(&opts, false);
     if (process_options(argc, argv, &opts) != 0)
         return -1;
     if (opts.something_done && argv[optind] == NULL)
@@ -1122,9 +1131,13 @@ main(int argc, char **argv)
     if (command != NULL
         && ((command->options & COMMAND_IN_CLIENT) != 0
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
-                && socket < 0)))
-          exit((*command->action)(argc-optind, argv+optind,
-                                  NULL, NULL, NULL, &opts));
+                && socket < 0))) {
+        if (main_options->verbosity > 0) {
+            fprintf(stderr, "handling command '%s' locally\n", command->name);
+        }
+        exit((*command->action)(argc-optind, argv+optind,
+                                NULL, NULL, NULL, &opts));
+    }
     if (socket >= 0) {
         json_object *jobj = state_to_json(argc, argv, environ);
         const char *state_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
@@ -1159,6 +1172,9 @@ main(int argc, char **argv)
         msg.msg_iovlen = 2;
         msg.msg_flags = 0;
         errno = 0;
+        if (main_options->verbosity > 0) {
+            fprintf(stderr, "sending command '%s' to server\n", command->name);
+        }
         ssize_t n1 = sendmsg(socket, &msg, 0);
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
@@ -1285,6 +1301,10 @@ main(int argc, char **argv)
     }
 
     if (opts.do_daemonize && ret == 0) {
+        if (opts.verbosity > 0) {
+            fprintf(stderr, "about to switch to background 'daemon' mode - no more messages.\n"
+                    "(To see more messages use --no-daemonize option.)\n");
+        }
 #if 1
         if (daemon(1, 0) != 0)
             lwsl_err("daemonizing failed\n");

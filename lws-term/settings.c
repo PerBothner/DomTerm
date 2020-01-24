@@ -24,9 +24,10 @@ callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
     char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
     switch (reason) {
     case LWS_CALLBACK_RAW_RX_FILE: {
-         if (read(inotify_fd, buf, sizeof buf) > 0)
-              read_settings_file(main_options);
-         break;
+        if (read(inotify_fd, buf, sizeof buf) > 0) {
+            read_settings_file(main_options, true);
+        }
+        break;
     }
     default:
       //fprintf(stderr, "callback_inotify default reason:%d\n", (int) reason);
@@ -38,7 +39,7 @@ callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
 #endif
 
 void
-read_settings_file(struct options *options)
+read_settings_file(struct options *options, bool re_reading)
 {
     if (settings_json_object != NULL)
         json_object_put(settings_json_object);
@@ -53,10 +54,19 @@ read_settings_file(struct options *options)
     }
     int settings_fd = open(settings_fname, O_RDONLY);
     struct stat stbuf;
+    bool bad = false;
+    char *vmsg =
+        re_reading ? "Re-reading seetings file" : "Reading settings file";
     if (settings_fd == -1
         || fstat(settings_fd, &stbuf) != 0 || !S_ISREG(stbuf.st_mode)) {
-        return;
+        vmsg = settings_fd == -1 ? "Missing settings file"
+            : "Non-readable settings file";
+        bad = true;
     }
+    if (options->verbosity > 0)
+        fprintf(stderr, "%s: %s\n", vmsg, settings_fname);
+    if (bad)
+        return;
     json_object_object_add(jobj, "##",
                            json_object_new_int(++settings_counter));
 

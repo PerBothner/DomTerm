@@ -119,6 +119,10 @@ maybe_exit()
 void
 pty_destroy(struct pty_client *pclient)
 {
+    if (main_options->verbosity > 0) {
+        fprintf(stderr, "exited application for session %d\n",
+                pclient->session_number);
+    }
     struct pty_client **p = &pty_client_list;
     struct pty_client *prev = NULL;
     for (;*p != NULL; p = &(*p)->next_pty_client) {
@@ -297,6 +301,10 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
         pclient->detach_count--;
     if (pclient->paused) {
 #if USE_RXFLOW
+        if (main_options->verbosity > 0) {
+            fprintf(stderr, "session %d unpaused (flow control)\n",
+                    pclient->session_number);
+        }
         lws_rx_flow_control(pclient->pty_wsi,
                             1|LWS_RXFLOW_REASON_FLAG_PROCESS_NOW);
 #endif
@@ -765,6 +773,8 @@ handle_tlink(char *template, json_object *obj)
             return true;
         }
     }
+    if (main_options->verbosity > 0)
+        fprintf(stderr, "open linked application %s\n", command);
     bool r = start_command(main_options, command) == EXIT_SUCCESS;
     free(command);
     return r;
@@ -801,13 +811,13 @@ reportEvent(const char *name, char *data, size_t dlen,
             enum proxy_mode proxyMode)
 {
     struct pty_client *pclient = client->pclient;
-#if 0
-    if (pclient)
-        fprintf(stderr, "reportEvent :%d %s '%s'\n",
-                pclient->session_number, name, data);
-    else
-        fprintf(stderr, "reportEvent %s '%s'\n", name, data);
-#endif
+    if (main_options->verbosity > 1) {
+        if (pclient)
+            fprintf(stderr, "reportEvent :%d %s '%s'\n",
+                    pclient->session_number, name, data);
+        else
+            fprintf(stderr, "reportEvent %s '%s'\n", name, data);
+    }
     if (strcmp(name, "WS") == 0) {
         if (proxyMode == proxy_local)
             return false;
@@ -828,6 +838,9 @@ reportEvent(const char *name, char *data, size_t dlen,
             return true;
         if (pclient->cmd) {
             run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);
+            if (main_options->verbosity > 0)
+                fprintf(stderr, "starting application: %s session:%d pid:%d\n",
+                        pclient->cmd, pclient->session_number, pclient->pid);
             free((void*)pclient->cmd); pclient->cmd = NULL;
             free((void*)pclient->argv); pclient->argv = NULL;
             free((void*)pclient->cwd); pclient->cwd = NULL;
@@ -842,6 +855,11 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (((client->sent_count - client->confirmed_count) & MASK28) < 1000
             && pclient != NULL && pclient->paused) {
 #if USE_RXFLOW
+            if (main_options->verbosity > 0) {
+                fprintf(stderr, "session %d unpaused (flow control) (sent:%d confirmed:%d)\n",
+                        pclient->session_number,
+                        client->sent_count, client->confirmed_count);
+            }
             lws_rx_flow_control(pclient->pty_wsi,
                                 1|LWS_RXFLOW_REASON_FLAG_PROCESS_NOW);
 #endif
@@ -1166,6 +1184,10 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         client->connection_number = ++server->connection_count;
         client->pty_window_number = -1;
         client->pty_window_update_needed = false;
+        if (main_options->verbosity > 0)
+            fprintf(stderr, "new websocket connection #:%d\n",
+                    client->connection_number);
+
         {
              char arg[100]; // FIXME
              if (! check_server_key(wsi, arg, sizeof(arg) - 1))
@@ -1317,6 +1339,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
               focused_wsi = NULL;
          tty_client_destroy(wsi, client);
          lwsl_notice("client disconnected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
+         if (main_options > 0)
+             fprintf(stderr, "client disconnected #:%d\n",
+                     client->connection_number);
          if (client->version_info != NULL) {
               free(client->version_info);
               client->version_info = NULL;
@@ -1541,6 +1566,8 @@ handle_command(int argc, char** argv, const char*cwd,
         }
     }
     if (command != NULL) {
+        if (main_options->verbosity > 0)
+            fprintf(stderr, "handle command '%s'\n", command->name);
         return (*command->action)(argc, argv, cwd, env, wsi, opts);
     }
     if (argc == 0 || index(argv[0], '/') != NULL) {
@@ -1679,10 +1706,15 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             struct lws *wsclient_wsi;
             long min_unconfirmed = LONG_MAX;
             int avail = INT_MAX;
+            int tclients_seen = 0;
+            long last_sent_count = -1, last_confirmed_count = -1;
             FOREACH_WSCLIENT(wsclient_wsi, pclient) {
                 struct tty_client *tclient = (struct tty_client *) lws_wsi_user(wsclient_wsi);
+                tclients_seen++;
+                last_sent_count = tclient->sent_count;
+                last_confirmed_count = tclient->confirmed_count;
                 long unconfirmed =
-                  ((tclient->sent_count - tclient->confirmed_count) & MASK28)
+                  ((last_sent_count - last_confirmed_count) & MASK28)
                   + tclient->ocount;
                 if (unconfirmed < min_unconfirmed)
                   min_unconfirmed = unconfirmed;
@@ -1697,6 +1729,14 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             if (min_unconfirmed >= UNCONFIRMED_LIMIT || avail == 0 || pclient->paused) {
                 if (! pclient->paused) {
 #if USE_RXFLOW
+                    if (main_options->verbosity > 0) {
+                        fprintf(stderr, tclients_seen == 1
+                                ? "session %d paused (flow control) %d bytes ahead sent:%d confirmed:%d\n"
+                                : "session %d paused (flow control) %d bytes ahead\n",
+                                pclient->session_number, min_unconfirmed,
+                                last_sent_count,
+                                last_confirmed_count);
+                    }
                     lws_rx_flow_control(wsi, 0|LWS_RXFLOW_REASON_FLAG_PROCESS_NOW);
 #endif
                     pclient->paused = 1;

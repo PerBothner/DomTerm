@@ -201,6 +201,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), name, sizeof(name), rip, sizeof(rip));
                 lwsl_notice("HTTP connect from %s (%s), path: %s\n",
                             name, rip, (char *) in);
+                if (main_options->verbosity > 1)
+                    fprintf(stderr, "http request: %s\n", in);
             }
 
             if (len < 1) {

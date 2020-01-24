@@ -161,6 +161,7 @@ struct options {
     bool force_option;
     bool something_done;
     int do_daemonize;
+    int verbosity;
     int debug_level;
     char *browser_command;
     char *geometry;
@@ -250,7 +251,7 @@ extern void default_link_command(const char *url);
 extern int process_options(int argc, char **argv, struct options *options);
 extern char** default_command(struct options *opts);
 extern void request_upload_settings();
-extern void read_settings_file(struct options*);
+extern void read_settings_file(struct options*, bool);
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);
 extern void check_domterm(struct options *);
