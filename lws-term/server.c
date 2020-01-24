@@ -1259,8 +1259,6 @@ main(int argc, char **argv)
     http_port = info.port;
 #endif
 
-    watch_settings_file();
-
     char *cname = make_socket_name(false);
     backend_socket_name = cname;
     lws_sock_file_fd_type csocket;
@@ -1314,6 +1312,8 @@ main(int argc, char **argv)
         fprintf(stderr, "lws_daemonize returned %d\n", r);
 #endif
     }
+
+    watch_settings_file();
 
     // libwebsockets main loop
     while (!force_exit) {
