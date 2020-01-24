@@ -1173,7 +1173,8 @@ main(int argc, char **argv)
         msg.msg_flags = 0;
         errno = 0;
         if (main_options->verbosity > 0) {
-            fprintf(stderr, "sending command '%s' to server\n", command->name);
+            fprintf(stderr, "sending command '%s' to server\n",
+                    cmd ? cmd : "(implicit-new)");
         }
         ssize_t n1 = sendmsg(socket, &msg, 0);
         close(STDIN_FILENO);
