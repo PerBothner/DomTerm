@@ -790,9 +790,15 @@ handle_link(json_object *obj)
     handle_tlink(template, obj);
 }
 
+/** Handle an "event" encoded in the stream from the browser.
+ * Return true if handled.  Return false if proxyMode==proxy_local
+ * and the event should be sent to the remote end.
+ */
+
 bool
 reportEvent(const char *name, char *data, size_t dlen,
-            struct lws *wsi, struct tty_client *client, bool is_proxy)
+            struct lws *wsi, struct tty_client *client,
+            enum proxy_mode proxyMode)
 {
     struct pty_client *pclient = client->pclient;
 #if 0
@@ -803,6 +809,8 @@ reportEvent(const char *name, char *data, size_t dlen,
         fprintf(stderr, "reportEvent %s '%s'\n", name, data);
 #endif
     if (strcmp(name, "WS") == 0) {
+        if (proxyMode == proxy_local)
+            return false;
         if (pclient != NULL
             && sscanf(data, "%d %d %g %g", &pclient->nrows, &pclient->ncols,
                       &pclient->pixh, &pclient->pixw) == 4) {
@@ -840,6 +848,8 @@ reportEvent(const char *name, char *data, size_t dlen,
             pclient->paused = 0;
         }
     } else if (strcmp(name, "KEY") == 0) {
+        if (proxyMode == proxy_local)
+            return false;
         char *q1 = strchr(data, '\t');
         char *q2;
         if (q1 == NULL || (q2 = strchr(q1+1, '\t')) == NULL)
@@ -1001,10 +1011,13 @@ reportEvent(const char *name, char *data, size_t dlen,
     return true;
 }
 
+/** Copy input (keyboard and events) from browser to pty/application.
+ * The 'is_proxy' is true if the input proxied through ssh.
+ */
 
 int
 handle_input(struct lws *wsi, struct tty_client *client,
-             void *in, size_t len, bool is_proxy)
+             void *in, size_t len, enum proxy_mode proxyMode)
 {
     //struct pty_client *pclient = client == NULL ? NULL : client->pclient;
     if (client->buffer == NULL) {
@@ -1045,9 +1058,6 @@ handle_input(struct lws *wsi, struct tty_client *client,
                 start = clen;
                 break;
             }
-            // look for reported event
-            if (msg[i] == 0xc2)
-                i++;
             unsigned char* eol = memchr(msg+i, '\n', clen-i);
             if (eol) {
                 unsigned char *p = msg+i;
@@ -1063,13 +1073,13 @@ handle_input(struct lws *wsi, struct tty_client *client,
                 char *data = (char*) p;
                 *eol = '\0';
                 size_t dlen = eol - p;
-                if (! reportEvent(cname, data, dlen, wsi, client,
-                                  is_proxy)) {
-#if REMOTE_SSH
-                    write message to remote;
-#endif
-                }
                 i = eol - msg;
+                if (! reportEvent(cname, data, dlen, wsi, client,
+                                  proxyMode)
+                    && proxyMode == proxy_local) {
+                    // don't change start index, so event can be copied
+                    continue;
+                }
             } else {
                 break;
             }
@@ -1088,6 +1098,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
 }
 
 #if REMOTE_SSH
+/** Handle input (keyboard/events) from browser via ssh connection to pty. */
 int
 callback_proxy_in(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len)
@@ -1095,19 +1106,23 @@ callback_proxy_in(struct lws *wsi, enum lws_callback_reasons reason,
     struct tty_client *client = (struct tty_client *) user;
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
     switch (reason) {
-        case LWS_CALLBACK_RAW_RX_FILE:
-            // read data, send to
-            ssize_t n = read(fd_in, buffer, bsize);
-            return handle_input(wsi, client, buffer, n, true);
+    case LWS_CALLBACK_RAW_RX_FILE: ;
+        // read data, send to
+        ssize_t n = read(fd_in, buffer, bsize);
+        return handle_input(wsi, client, buffer, n, proxy_remote);
     }
 }
+
 int
 callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len)
 {
+    struct tty_client *tclient = (struct pty_client *) user;
     switch (reason) {
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
-        ... share logic with callback_tty LWS_CALLBACK_SERVER_WRITEABLE ...
+        // ?? share logic with callback_tty LWS_CALLBACK_SERVER_WRITEABLE ...
+        // data in tclient->ob.
+        write(fd_out, buffer, bsize);
     }
 }
 #endif
@@ -1147,6 +1162,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         sbuf_extend(&client->ob, 2048);
         client->ocount = 0;
         client->detach_on_close = false;
+        client->proxyMode = no_proxy; // FIXME
         client->connection_number = ++server->connection_count;
         client->pty_window_number = -1;
         client->pty_window_update_needed = false;
@@ -1293,7 +1309,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_RECEIVE:
          // receive data from websockets client (browser)
          //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
-        handle_input(wsi, client, in, len, false);
+        handle_input(wsi, client, in, len, client->proxyMode);
         break;
 
     case LWS_CALLBACK_CLOSED:
@@ -1335,9 +1351,17 @@ display_session(struct options *options, struct pty_client *pclient,
 #if REMOTE_SSH
     if (browser_specifier != NULL
         && strcmp(browser_specifier, "--browser-pipe") == 0) {
-        struct lws *pin_lws = lws_adopt_descriptor_vhost(vhost, opts->fd_in,
+        lws_sock_file_fd_type fd;
+        fd.filefd = options->fd_in;
+        struct lws *pin_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
                                                          "proxy-in", NULL);
-        struct lws *pout_lws = lws_adopt_descriptor_vhost(vhost, opts->fd_out,
+        struct tty_client *tclient =
+            ((struct tty_client *) lws_wsi_user(pin_lws));
+        // FIXME initialize tclient fields, like in callback_tty
+        tclient->proxyMode = proxy_remote;
+        fd.filefd = options->fd_out;
+        // maybe set last 'parent' arguemnt ???
+        struct lws *pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
                                                           "proxy-out", NULL);
         return EXIT_SUCCESS;
     }

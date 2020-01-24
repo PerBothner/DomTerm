@@ -184,7 +184,11 @@ static const struct lws_protocols protocols[] = {
         /*
           "proxy" protocol is an alternative to "domterm" in that
           it proxies between a pty_client and a file (or socket?) handle(s):
+          (The pty/application runs the "Remote" computer;
+          the browser/UI runs the the "Local" computer.)
           The handles are stdout/stdin of an ssh (server) session.
+          The proxy-in potocal runs on the Remote end and copies input
+          (keystokes and other events) received via ssh to the pty/application.
           Output read from the pty_client is written to the file handle (stdout)
           (instead of being written to websocket client).
           Use struct tty_client for "proxy" protocol; that way

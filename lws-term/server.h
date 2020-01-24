@@ -24,6 +24,9 @@
 #include <sys/wait.h>
 #include <assert.h>
 
+// True when enabling future proxy support
+#define REMOTE_SSH 0
+
 #ifdef __APPLE__
 #include <util.h>
 #elif defined(__FreeBSD__)
@@ -58,6 +61,13 @@ extern int last_session_number;
 extern struct options *main_options;
 extern const char *settings_as_json;
 extern char git_describe[];
+
+// work-in-progress
+enum proxy_mode {
+    no_proxy = 0,
+    proxy_local = 1, // proxuing, we're the local (UI) end
+    proxy_remote = 2 // proxying, the the remote (pty) end
+};
 
 /** Data specific to a pty process. */
 struct pty_client {
@@ -109,7 +119,7 @@ struct tty_client { // should be renamed to ws_client ?
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
     bool window_main; // main or only connection for window (not a pane)
-
+    enum proxy_mode proxyMode; // no_proxy or proxy_local
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser
     char requesting_contents;
