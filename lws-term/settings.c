@@ -63,8 +63,7 @@ read_settings_file(struct options *options, bool re_reading)
             : "Non-readable settings file";
         bad = true;
     }
-    if (options->verbosity > 0)
-        fprintf(stderr, "%s: %s\n", vmsg, settings_fname);
+    lwsl_notice("%s: %s\n", vmsg, settings_fname);
     if (bad)
         return;
     json_object_object_add(jobj, "##",

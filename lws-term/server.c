@@ -75,9 +75,7 @@ subst_run_command(struct options *opts, const char *browser_command,
         sprintf(cmd, "%s '%s'", browser_command, url_fixed);
     if (url_tmp != NULL)
         free(url_tmp);
-    lwsl_notice("frontend command: %s\n", cmd);
-    if (opts->verbosity > 0)
-        fprintf(stdout, "starting frontend command: %s\n", cmd);
+    lwsl_notice("starting frontend command: %s\n", cmd);
     return start_command(opts, cmd);
 }
 
@@ -849,6 +847,9 @@ void prescan_options(int argc, char **argv, struct options *opts)
             case VERBOSE_OPTION:
                 opts->verbosity++;
                 break;
+            case 'd':
+                opts->debug_level = atoi(optarg);
+                break;
         }
     }
 }
@@ -882,9 +883,6 @@ int process_options(int argc, char **argv, struct options *opts)
             case 'v':
                 print_version(stdout);
                 opts->something_done = true;
-                break;
-            case 'd':
-                opts->debug_level = atoi(optarg);
                 break;
             case 'R':
                 opts->readonly = true;
@@ -931,6 +929,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
             case VERBOSE_OPTION:
             case SETTINGS_FILE_OPTION:
+            case 'd':
                 break; // handled in prescan_options
             case PANE_OPTION:
             case TAB_OPTION:
@@ -1093,6 +1092,19 @@ main(int argc, char **argv)
 
     init_options(&opts);
     prescan_options(argc, argv, &opts);
+    if (opts.debug_level == 0 && opts.verbosity > 0)
+        lws_set_log_level(LLL_ERR|LLL_WARN|LLL_NOTICE
+                          |(opts.verbosity > 1 ? LLL_INFO : 0),
+                          lwsl_emit_stderr_notimestamp);
+    else
+        lws_set_log_level(opts.debug_level, NULL);
+    lwsl_notice("domterm terminal server %s (git describe: %s)\n",
+                LDOMTERM_VERSION, git_describe);
+    lwsl_notice("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
+#ifdef LWS_LIBRARY_VERSION
+    lwsl_notice("Using Libwebsockets " LWS_LIBRARY_VERSION "\n");
+#endif
+
     read_settings_file(&opts, false);
     if (process_options(argc, argv, &opts) != 0)
         return -1;
@@ -1132,9 +1144,7 @@ main(int argc, char **argv)
         && ((command->options & COMMAND_IN_CLIENT) != 0
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
                 && socket < 0))) {
-        if (main_options->verbosity > 0) {
-            fprintf(stderr, "handling command '%s' locally\n", command->name);
-        }
+        lwsl_notice("handling command '%s' locally\n", command->name);
         exit((*command->action)(argc-optind, argv+optind,
                                 NULL, NULL, NULL, &opts));
     }
@@ -1172,14 +1182,12 @@ main(int argc, char **argv)
         msg.msg_iovlen = 2;
         msg.msg_flags = 0;
         errno = 0;
-        if (main_options->verbosity > 0) {
-            fprintf(stderr, "sending command '%s' to server\n",
+        lwsl_notice("sending command '%s' to server\n",
                     cmd ? cmd : "(implicit-new)");
-        }
         ssize_t n1 = sendmsg(socket, &msg, 0);
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
-        close(STDERR_FILENO);
+        //don't close STDERR_FILENO, for the sake of lwsl_notice below
         json_object_put(jobj);
         char ret = -1;
         ssize_t n2 = read(socket, &ret, 1);
@@ -1188,6 +1196,7 @@ main(int argc, char **argv)
         //if (close(socket) != 0)
         //  fatal("bad close of socket");
         close(socket);
+        lwsl_notice("received exit code %d from server; exiting", ret);
         exit(ret);
     }
 
@@ -1196,8 +1205,6 @@ main(int argc, char **argv)
 
     if (port_specified < 0)
         server->client_can_close = true;
-
-    lws_set_log_level(opts.debug_level, NULL);
 
 #if LWS_LIBRARY_VERSION_MAJOR >= 2
     char server_hdr[128] = "";
@@ -1262,8 +1269,7 @@ main(int argc, char **argv)
 
     char *cname = make_socket_name(false);
     backend_socket_name = cname;
-    if (opts.verbosity > 0)
-        fprintf(stderr, "creating server socket: '%s'\n", cname);
+    lwsl_notice("creating server socket: '%s'\n", cname);
     lws_sock_file_fd_type csocket;
     csocket.filefd = create_command_socket(cname);
     struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
@@ -1271,20 +1277,20 @@ main(int argc, char **argv)
     cclient->socket = csocket.filefd;
     make_html_file(http_port);
 
-    lwsl_notice("TTY configuration:\n");
+    lwsl_info("TTY configuration:\n");
     if (opts.credential != NULL)
-        lwsl_notice("  credential: %s\n", opts.credential);
-    lwsl_notice("  reconnect timeout: %ds\n", opts.reconnect);
-    lwsl_notice("  close signal: %s (%d)\n",
+        lwsl_info("  credential: %s\n", opts.credential);
+    lwsl_info("  reconnect timeout: %ds\n", opts.reconnect);
+    lwsl_info("  close signal: %s (%d)\n",
                 opts.sig_name != NULL ? opts.sig_name :
                 opts.sig_code == SIGHUP ? "SIGHUP" : "???",
                 opts.sig_code);
     if (opts.check_origin)
-        lwsl_notice("  check origin: true\n");
+        lwsl_info("  check origin: true\n");
     if (opts.readonly)
-        lwsl_notice("  readonly: true\n");
+        lwsl_info("  readonly: true\n");
     if (opts.once)
-        lwsl_notice("  once: true\n");
+        lwsl_info("  once: true\n");
     int ret;
     if (port_specified >= 0 && server->options.browser_command == NULL) {
         fprintf(stderr, "Server start on port %d. You can browse %s://localhost:%d/\n",
@@ -1302,10 +1308,8 @@ main(int argc, char **argv)
     }
 
     if (opts.do_daemonize && ret == 0) {
-        if (opts.verbosity > 0) {
-            fprintf(stderr, "about to switch to background 'daemon' mode - no more messages.\n"
-                    "(To see more messages use --no-daemonize option.)\n");
-        }
+        lwsl_notice("about to switch to background 'daemon' mode - no more messages.");
+        lwsl_notice("(To see more messages use --no-daemonize option.)");
 #if 1
         if (daemon(1, 0) != 0)
             lwsl_err("daemonizing failed\n");
@@ -1601,8 +1605,7 @@ make_main_html_text(struct sbuf *obuf, int port)
                 "<body></body></html>\n",
                 SERVER_KEY_LENGTH, server_key, port
         );
-    if (main_options->verbosity > 0)
-        fprintf(stderr, "initial html redirects to: 'http://localhost:%d/no-frames.html'\n", port);
+    lwsl_notice("initial html redirects to: 'http://localhost:%d/no-frames.html'\n", port);
 }
 void
 make_html_text(struct sbuf *obuf, int port, int hoptions,
@@ -1660,8 +1663,7 @@ make_html_file(int port)
     main_html_path = buf+strlen(prefix);
     if (server_key[0] == 0)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
-    if (main_options->verbosity > 0)
-        fprintf(stderr, "initial html file: '%s'\n", main_html_path);
+    lwsl_notice("initial html file: '%s'\n", main_html_path);
     struct sbuf obuf[1];
     sbuf_init(obuf);
     make_main_html_text(obuf, port);
@@ -1797,9 +1799,7 @@ client_connect (char *socket_path, int start_server)
         fatal("cannot create client socket '%s' -> %s",
               socket_path, strerror(errno));
     int c = connect(fd, (struct sockaddr *)&sa, sizeof sa);
-    if (main_options->verbosity > 0)
-        fprintf(stderr,
-                "connecting to server socket '%s': %s\n",
+    lwsl_notice("connecting to server socket '%s': %s\n",
                 socket_path,
                 c == 0 ? "ok" : strerror(errno));
     if (c == 0)

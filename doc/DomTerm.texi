@@ -915,7 +915,7 @@ otherwise it does not try to the request code.)
 
 Prints various bits of information about the backend,
 sessions, windows, and version numbers.
-The infomration displayed and the format are likely to change.
+The information displayed and the format are likely to change.
 
 @item @b{@code{browse}} @var{url}
 Create a new browser window or sub-window that displays @var{url}.
@@ -1058,6 +1058,16 @@ Print version information and copyright, and then exit.
 Print information about interesting events.
 This works best with @code{--no-daemonize}.
 A second @code{--verbose} prints more information.
+
+A single (respectively double) @code{--verbose} prints
+the same as @code{-d 7} (respectively @code{-d 15}),
+but the latter prints a timestamp on each line.
+
+@item @code{-d} @var{debug-level}
+Finer-grained control over debugging level than using @code{--verbose},
+plus prints time-stamps before each message.
+Sets the @var{debug-level}
+as defined by the @uref{https://libwebsockets.org/lws-api-doc-master/html/group__log.html,LWS logging API}.
 
 @item @code{-L} @var{socket-name}
 @itemx @code{--socket-name=}@var{socket-name}
