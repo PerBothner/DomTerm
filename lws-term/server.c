@@ -1262,6 +1262,8 @@ main(int argc, char **argv)
 
     char *cname = make_socket_name(false);
     backend_socket_name = cname;
+    if (opts.verbosity > 0)
+        fprintf(stderr, "creating server socket: '%s'\n", cname);
     lws_sock_file_fd_type csocket;
     csocket.filefd = create_command_socket(cname);
     struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
@@ -1776,8 +1778,6 @@ static int
 client_connect (char *socket_path, int start_server)
 {
     struct sockaddr_un      sa;
-    int lockfd = -1, locked = 0;
-    char                   *lockfile = NULL;
     int fd;
 
     memset(&sa, 0, sizeof sa);
@@ -1790,27 +1790,16 @@ client_connect (char *socket_path, int start_server)
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0)
-      fatal("cannot create client socket");
-    if (connect(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
-        //lwsl_notice("connect failed: %s\n", strerror(errno));
-        if (errno != ECONNREFUSED && errno != ENOENT)
-            goto failed;
-        if (!start_server)
-            goto failed;
-        close(fd);
-    }
-    if (locked && lockfd >= 0) {
-        free(lockfile);
-        close(lockfd);
-    }
-    //setblocking(fd, 0);
-    return (fd);
-
- failed:
-    if (locked) {
-        free(lockfile);
-        close(lockfd);
-    }
+        fatal("cannot create client socket '%s' -> %s",
+              socket_path, strerror(errno));
+    int c = connect(fd, (struct sockaddr *)&sa, sizeof sa);
+    if (main_options->verbosity > 0)
+        fprintf(stderr,
+                "connecting to server socket '%s': %s\n",
+                socket_path,
+                c == 0 ? "ok" : strerror(errno));
+    if (c == 0)
+        return fd;
     close(fd);
-    return (-1);
+    return -1;
 }
