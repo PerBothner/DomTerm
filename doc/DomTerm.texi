@@ -1051,6 +1051,14 @@ Specify the initial @var{size} and/or @var{position}
 of a new top-level window.
 See @ref{geometry-specifier}.
 
+@item @code{--version}
+Print version information and copyright, and then exit.
+
+@item @code{--verbose}
+Print information about interesting events.
+This works best with @code{--no-daemonize}.
+A second @code{--verbose} prints more information.
+
 @item @code{-L} @var{socket-name}
 @itemx @code{--socket-name=}@var{socket-name}
 DomTerm uses a Unix Domain socket to communicate between
