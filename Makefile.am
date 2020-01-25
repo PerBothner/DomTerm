@@ -64,6 +64,12 @@ else
 DOMTERM_JAR = $(domterm_jar_dir)/domterm.jar
 endif
 endif
+RESOURCE_DEPS = $(DOMTERM_JAR)
+if ENABLE_COMPILED_IN_RESOURCES
+if COMBINE_RESOURCES
+RESOURCE_DEPS += hlib/dt-combined.js hlib/dt-outer.js
+endif
+endif
 DT_CFLAGS =
 if ENABLE_LD_PRELOAD
 PRELOADS_SO = lib/domterm-preloads$(LIBEXT)
@@ -93,7 +99,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: client-data-links.stamp $(DOMTERM_JAR) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(RESOURCE_DEPS) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
