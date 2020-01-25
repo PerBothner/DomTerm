@@ -1601,6 +1601,8 @@ make_main_html_text(struct sbuf *obuf, int port)
                 "<body></body></html>\n",
                 SERVER_KEY_LENGTH, server_key, port
         );
+    if (main_options->verbosity > 0)
+        fprintf(stderr, "initial html redirects to: 'http://localhost:%d/no-frames.html'\n", port);
 }
 void
 make_html_text(struct sbuf *obuf, int port, int hoptions,
@@ -1658,6 +1660,8 @@ make_html_file(int port)
     main_html_path = buf+strlen(prefix);
     if (server_key[0] == 0)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
+    if (main_options->verbosity > 0)
+        fprintf(stderr, "initial html file: '%s'\n", main_html_path);
     struct sbuf obuf[1];
     sbuf_init(obuf);
     make_main_html_text(obuf, port);
