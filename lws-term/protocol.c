@@ -518,7 +518,7 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
             break;
         default: /* parent */
             lwsl_notice("starting application: %s session:%d pid:%d\n",
-                        pclient->cmd, pclient->session_number, pclient->pid);
+                        pclient->cmd, pclient->session_number, pid);
             close(slave);
 
             pclient->pid = pid;
@@ -1664,6 +1664,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             process_options(argc, argv, &opts);
             int ret = handle_command(argc-optind, argv+optind,
                                      cwd, env, wsi, &opts);
+            close(opts.fd_in);
             close(opts.fd_out);
             close(opts.fd_err);
             char r = (char) ret;
