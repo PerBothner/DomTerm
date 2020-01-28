@@ -3049,16 +3049,68 @@ just in case.)
 
 @subheading Configuring for Windows/WSL (work-in-progress)
 
-I haven't quite gotten this working - @uref{https://superuser.com/questions/418533/run-a-cmd-comand-from-a-key-stroke/418534,this link} may be helpful.
-
-The principle is to (somehow) bind a shortcut key to a command like:
+We need to bind a shortcut key (hotkey) to a command like:
 @example
-wsl /mnt/c/path-to-domterm/bin/domterm --geometry=775x600+20+10 window toggle-minimize
+wsl -e /mnt/c/path-to-domterm/bin/domterm --geometry=775x600+20+10 window toggle-minimize
 @end example
 where the @code{--geometry} option is an optional @ref{geometry-specifier},
 and @code{/mnt/c/path-to-domterm} is the location of your DomTerm installation.
 Note this needs to be a Unix-style path (since it is executed by @code{wsl})
 to a Windows directory (so Electron can find the needed files).
+
+(The @code{-e} flag is an optimization so WSL doesn't create a shell
+to parse the command arguments; remove that flag if shell expansion is needed.)
+
+We will look at some possible ways to bind the ``hot-key''.
+
+@subsubheading Using AutoHotkey
+
+@uref{https://www.autohotkey.com/,AutoHotkey} is a popular,
+flexible and somewhat complex tool.
+After @uref{https://www.autohotkey.com/docs/Tutorial.htm#s11,downloading and installing it},
+you need to @uref{https://www.autohotkey.com/docs/Tutorial.htm#s12,create a script} (in a file with extension @code{.ahk}).
+
+The following @code{.ahk} script file will toggle domterm
+when you type @kbd{Ctrl-Alt-@key{t}}, specified by the @code{^!t} pattern:
+
+@example
+^!t::
+run, wsl -e "/mnt/c/path-to-domterm/bin/domterm" --geometry=775x600+20+10 window toggle-minimize,,hide
+return
+@end example
+
+The @code{hide} option prevents briefly flashing a temporary console window.
+
+@subsubheading Using myhotkey
+
+A simpler application is @uref{https://github.com/rustyx/myhotkey,myhotkey}.
+A minor disadvantage (compared to AutoHotkeys) is that you can't
+hide the flash of the temporary console window.
+
+@subsubheading Using standard desktop shortcuts
+
+Using standard Windows desktop shortcuts is simple and doesn't require
+installing new tools.  Unfortunately, they are are suspectible to multi-second
+delays, because of because of @uref{https://devblogs.microsoft.com/oldnewthing/?p=7723,this issue}.
+
+One way is to do define a desktop shortcut.
+(This @uref{https://winaero.com/blog/pin-a-batch-file-to-the-start-menu-or-taskbar-in-windows-10/,article with screenshots} as well
+on @uref{https://superuser.com/questions/418533/run-a-cmd-comand-from-a-key-stroke/418534,this article} may be helpful.)
+Start by right clicking on the desktop and select @code{New}->@code{Shortcut}.
+At @code{Type the location of the item:}
+type the above @code{wsl ...} command,
+and the Next screen I suggest a name like @code{toggle-domterm}.
+This add a new entry on the desktop.
+Right-click it, select @code{Properties}->@code{Shortcut}.
+In the @code{Shortcut key} field, type @code{T}
+which is converted to @code{Ctrl + Alt + T}
+(or use some other key you prefer).
+In the @code{Run} field, select @code{Minimized} (to
+avoid the flicker of a temporary command window).
+
+Unfortunately, you are likely to experience
+a multi-second delay,
+because of @uref{https://devblogs.microsoft.com/oldnewthing/?p=7723,this issue}.
 
 @subheading Specifying initial position
 
