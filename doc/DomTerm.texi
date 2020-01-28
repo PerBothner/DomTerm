@@ -3047,7 +3047,7 @@ to the @code{domterm window toogle-minimizew} (or @code{toggle-hide}) command.
 (The screenshot uses a fully-qualifed path for @code{domterm},
 just in case.)
 
-@subheading Configuring for Windows/WSL (work-in-progress)
+@subheading Configuring for Windows/WSL
 
 We need to bind a shortcut key (hotkey) to a command like:
 @example
