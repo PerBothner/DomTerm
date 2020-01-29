@@ -207,7 +207,7 @@ class DTParser {
                     this.controlSequenceState = DTParser.SEEN_DCS_TEXT_STATE;
                     prevEnd = i;
                     i--;
-                } else if (ch == 62 /*'>'*/ || ch == 63 /*'?'*/
+                } else if ((ch >= 60 && ch <= 63) /* in "<=>?" */
                            || ch == 32 /*' '*/ || ch == 33 /*'!'*/
                            || ch == 39 /*"'"*/)
                     this._flagChars += str.charAt(i);
@@ -773,9 +773,13 @@ class DTParser {
                 }
                 // 990 is "DM" in roman numerals.
                 term.processResponseCharacters("\x1B[>990;"+vnum+";0c");
+            } else if (this._flagChars.indexOf('=') >= 0) {
+                // Send Device Attributes (Tertiary DA).
+                term.processResponseCharacters("\x1BP!|00000000\x1B\\");
             } else if (oldState == DTParser.SEEN_ESC_LBRACKET_STATE) {
                 // Send Device Attributes (Primary DA)
-                term.processResponseCharacters("\x1B[?62;1;22c");
+                // VT220; 132 columns; Sixel; color
+                term.processResponseCharacters("\x1B[?62;1;4;22;100c");
             }
             break;
         case 100 /*'d'*/: // VPA Line Position Absolute
