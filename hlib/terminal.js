@@ -7075,7 +7075,10 @@ Terminal.prototype.processInputCharacters = function(str) {
             : JSON.stringify(str);
         this.log("processInputCharacters "+str.length+": "+jstr);
     }
-    this.processInputBytes(this._encoder.encode(str));
+    let encoder = this._encoder;
+    if (! encoder)
+        this._encoder = encoder = new TextEncoder();
+    this.processInputBytes(encoder.encode(str));
 };
 
 Terminal.prototype.processEnter = function() {

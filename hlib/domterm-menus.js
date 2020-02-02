@@ -3,17 +3,22 @@
 
 DomTerm.savedMenuBar = null;
 
+DomTerm.aboutMessageVariant = function() {
+    if (DomTerm.isElectron()) {
+        return ' This variant of DomTerm uses Electron '
+            + DomTerm.versions.electron
+            + ' for the "front-end" and libwebsockets for the "back-end".';
+    }
+    return "";
+}
+
 DomTerm.aboutMessage = function() {
     var s = '<h2>Welcome to DomTerm.</h2>\n';
     s += '<p>DomTerm is terminal emulator based on web technologies. ';
     s += 'Features include embedded graphics and html; tabs and sub-windows; detachable session.</p>\n';
     s += '<p>Home page: <a href="https://domterm.org/" target="_blank"><code>https://domterm.org</code></a>.</p>\n';
     s += '<p>DomTerm version '+DomTerm.versionString+'.';
-    if (DomTerm.isElectron()) {
-        s += ' This variant of DomTerm uses Electron '
-            + DomTerm.versions.electron
-            + ' for the "front-end" and libwebsockets for the "back-end".';
-    }
+    s += DomTerm.aboutMessageVariant();
     s += '</p>\n';
     s += '<p>Copyright '+DomTerm.copyrightYear+' Per Bothner and others.</p>';
     s += '<script>function handler(event) { if (event.keyCode==27) window.close();} window.addEventListener("keydown", handler);</script>\n';

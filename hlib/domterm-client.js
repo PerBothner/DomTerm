@@ -315,9 +315,6 @@ function loadHandler(event) {
         DomTermLayout.initialize(null);
         return;
     }
-    var topNodes = document.getElementsByClassName("domterm");
-    if (topNodes.length == 0)
-        topNodes = document.getElementsByClassName("domterm-wrapper");
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
@@ -363,6 +360,14 @@ function loadHandler(event) {
         DomTermLayout.makeIFrameWrapper(DomTerm.mainLocation+uhash);
         return;
     }
+    if (DomTerm.loadDomTerm) {
+        DomTerm.loadDomTerm();
+        return;
+    }
+
+    var topNodes = document.getElementsByClassName("domterm");
+    if (topNodes.length == 0)
+        topNodes = document.getElementsByClassName("domterm-wrapper");
     if (topNodes.length == 0) {
         let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
         topNodes = [ DomTerm.makeElement(name) ];
@@ -382,6 +387,10 @@ function loadHandler(event) {
         location.hash = "";
 }
 
+DomTerm.handleCommand = function(iframe, command, args) {
+    return false;
+}
+
 /* Used by atom-domterm or if useIFrame. */
 function handleMessage(event) {
     var data = event.data;
@@ -395,6 +404,9 @@ function handleMessage(event) {
     }
     if (typeof data == "string" || data instanceof String)
         DomTerm.handleSimpleMessage(data);
+    else if (data.command && data.args
+             && DomTerm.handleCommand(iframe, command, args))
+        return;
     else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);
     else if (data.command=="socket-open") {
