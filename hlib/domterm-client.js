@@ -405,7 +405,7 @@ function handleMessage(event) {
     if (typeof data == "string" || data instanceof String)
         DomTerm.handleSimpleMessage(data);
     else if (data.command && data.args
-             && DomTerm.handleCommand(iframe, command, args))
+             && DomTerm.handleCommand(iframe, data.command, data.args))
         return;
     else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);

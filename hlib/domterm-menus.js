@@ -300,6 +300,7 @@ DomTerm.createMenus = function(options) {
             lineModeItem.checked = mode == 108;
             autoModeItem.checked = mode == 97;
         }
+        autoModeItem.visible = DomTerm.supportsAutoInputMode;
         if (options.autoPaging !== undefined)
             autoPagingItem.checked = options.autoPaging;
         let cmenu = options.contextType=="A" ? contextLinkMenu : contextMenu;

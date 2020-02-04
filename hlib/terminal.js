@@ -114,6 +114,7 @@ class Terminal {
     sstate.lastWorkingPath = null;
     sstate.sessionNumber = -1;
     sstate.sessionNameUnique = false;
+    sstate.paneNumber = -1;
     sstate.doLinkify = true;
     this.windowNumber = -1;
     this._settingsCounterInstance = -1;
@@ -7589,6 +7590,8 @@ Terminal.prototype.maybeDisableStyleSheet = function(specifier, disable) {
 DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
     if (DomTerm.dispatchTerminalMessage("set-input-mode", mode))
         return;
+    if (! DomTerm.supportsAutoInputMode && mode == 97)
+        mode = 99;
     var wasEditing = dt.isLineEditing();
     switch (mode) {
     case 0: //next
@@ -7635,14 +7638,15 @@ Terminal.prototype.getInputMode = function() {
 Terminal.prototype.nextInputMode = function() {
     var mode;
     var displayString;
-    if (this._lineEditingMode == 0) {
-        // was 'auto', change to 'char'
-        mode = 99; // 'c'
-        displayString = "Input mode: character";
-    } else if (this._lineEditingMode < 0) {
+    if (this._lineEditingMode < 0) {
         // was 'char' change to 'line'
         mode = 108; // 'l'
         displayString = "Input mode: line";
+    } else if (this._lineEditingMode == 0
+               || ! DomTerm.supportsAutoInputMode) {
+        // was 'auto' (or auto not supported), change to 'char'
+        mode = 99; // 'c'
+        displayString = "Input mode: character";
     } else {
         // was 'line' change to 'auto'
         mode = 97; // 'a'

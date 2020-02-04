@@ -302,13 +302,23 @@ DomTermLayout.layoutClosed = function(event) {
     DomTermLayout.layoutClose(el, this.parent, true);
 }
 
+DomTerm._lastPaneNumber = 0;
+
+DomTerm._newPaneNumber = function() {
+    return ++DomTerm._lastPaneNumber;
+}
+
+DomTerm.newPaneHook = null;
+
 DomTermLayout._initTerminal = function(sessionNumber, container) {
     let wrapped;
+    let paneNumber = DomTerm._newPaneNumber();
     if (DomTerm.useIFrame) {
         let url = DomTerm.mainLocation;
+        url += (url.indexOf('#') >= 0 ? '&' : '#')
+            + "pane-number="+paneNumber;
         if (sessionNumber)
-            url += (url.indexOf('#') >= 0 ? '&' : '#')
-            + "session-number="+sessionNumber;
+            url += "&session-number="+sessionNumber;
         wrapped = DomTermLayout.makeIFrameWrapper(url);
         if (container && DomTermLayout._oldFocusedItem == null)
             DomTermLayout._oldFocusedItem = container.parent;
@@ -320,6 +330,9 @@ DomTermLayout._initTerminal = function(sessionNumber, container) {
         var query = sessionNumber ? "session-number="+sessionNumber : null;
         DTerminal.connectHttp(el, query);
     }
+    wrapped.paneNumber = paneNumber;
+    if (DomTerm.newPaneHook)
+        DomTerm.newPaneHook(paneNumber, sessionNumber, wrapped);
     return wrapped;
 }
 
@@ -415,7 +428,6 @@ DomTermLayout.initialize = function() {
 }
 
 DomTermLayout.initSaved = function(data) {
-    console.log("initSaved "+data);
     if (data.sessionNumber) {
         DomTermLayout._initTerminal(data.sessionNumber, null);
         } else if (data instanceof Array) {

@@ -13,6 +13,8 @@ DomTerm._instanceCounter = 0;
 /** The <body>, or a node below the menubar if using jsMenus. */
 DomTerm.layoutTop = null; // document.body is null until loaded
 
+DomTerm.supportsAutoInputMode = true;
+
 DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
 }
