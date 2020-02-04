@@ -87,7 +87,7 @@ const char * get_mimetype(const char *file)
 
         if (!strcmp(&file[n - 5], ".jpeg")
             ||!strcmp(&file[n - 4], ".jpg"))
-                return "text/jpeg";
+            return "image/jpeg";
 
         if (!strcmp(&file[n - 5], ".html"))
                 return "text/html";
