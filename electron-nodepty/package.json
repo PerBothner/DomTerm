@@ -1,0 +1,10 @@
+{
+  "name": "domterm-electron-nodepty",
+  "version": "2.1.0",
+  "description": "DomTerm using Electron with node-pty",
+  "main": "main.js",
+  "author": "Per Bothner",
+  "dependencies": {
+    "node-pty": "^0.9.0"
+  }
+}
