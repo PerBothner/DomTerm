@@ -5082,11 +5082,13 @@ Terminal.prototype.setSettings = function(obj) {
             var mapValue = obj[mapName];
             if (mapValue != null) {
                 let map = mapValue.trim().replace(/\n/g, ",");
+                // FIXME this is not as robust/general as it should be
                 map = map.replace(/("[^"]+")\s*:\s*([^"',\s]+)/g, '$1: "$2"')
-                    .replace(/('[^']+')\s*:\s*([^"',\s]+)/g, '$1: "$2"');
+                    .replace(/'([^']+)'\s*:\s*([^"',\s]+)/g, '"$1": "$2"');
                 try {
                     return defaultMap.update(JSON.parse("{" + map + "}"));
                 } catch (e) {
+                    console.log("syntax error in "+mapName+" in settings file ("+e+")");
                 }
             }
             return defaultMap;
