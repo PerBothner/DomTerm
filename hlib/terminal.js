@@ -943,6 +943,11 @@ Terminal.prototype.log = function(str) {
 
 DomTerm.focusedTerm = null; // used if !useIFrame
 
+// Handle changes relating to this terminal gaining or losing focus.
+// This runs in the current frame (inner context).
+// focused: 0 - lose focus; 1 or 2 - gain focus.
+// (if 2 - also request low-level focus)
+// Runs in terminal's frame
 Terminal.prototype.setFocused = function(focused) {
     if (focused > 0) {
         this.topNode.classList.add("domterm-active");
@@ -986,10 +991,12 @@ DomTerm.setFocus = function(term, originMode="") {
         if (DomTerm.useIFrame)
             DomTerm.showFocusedTerm(term);
         var current = DomTerm.focusedTerm;
-        if (current == term)
-            return;
-        if (current !== null)
-            current.setFocused(0);
+        if (! DomTerm.useIFrame) {
+            if (current == term)
+                return;
+            if (current !== null)
+                current.setFocused(0);
+        }
         if (term != null)
             term.setFocused(1);
     }
@@ -3648,9 +3655,6 @@ Terminal.prototype._mouseHandler = function(ev) {
         }
     }
     if (ev.type == "mousedown") {
-        // Kludge for qtdomterm - otherwise these buttons clear the selection.
-        if (ev.button == 1 || ev.button == 2)
-            ev.preventDefault();
         if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
             this._usingScrollBar = true;
         this._markMode = 0;
@@ -3782,7 +3786,6 @@ Terminal.prototype._mouseHandler = function(ev) {
     result += encodeCoordinate(col, true, this);
     result += encodeCoordinate(row, true, this);
     result += final;
-    ev.preventDefault();
     this.processResponseCharacters(result);
 };
 
