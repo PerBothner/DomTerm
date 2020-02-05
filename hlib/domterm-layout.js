@@ -151,9 +151,7 @@ DomTermLayout._elementToLayoutItem = function(goal, item = DomTermLayout.manager
 }
 
 DomTermLayout._selectLayoutPane = function(component, originMode) {
-    if (DomTerm.useIFrame) {
-        DomTermLayout._focusChild(component.container._contentElement1, originMode);
-    } else if (! DomTerm.useXtermJs) {
+    if (! DomTerm.useIFram && ! DomTerm.useXtermJs) {
         let element = component.container.getElement()[0].firstChild;
         let dt = element && element.classList.contains("domterm")
             ? element.terminal

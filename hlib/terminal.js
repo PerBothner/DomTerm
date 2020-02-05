@@ -384,6 +384,8 @@ class Terminal {
     // This is called both when constructing a new Terminal, and
     // when closing the session (while preserving the WebSocket).
     clearVisibleState() {
+        if (this.topNode && this.topNode.parentNode)
+            this.topNode.parentNode.removeChild(this.topNode);
         this.topNode = null;
 
         // The parent node of the output position.
@@ -413,8 +415,8 @@ class Terminal {
         // proper scrolling.  See note in eraseDisplay.
         this._vspacer = null;
 
-        this._lineStarts = null;
-        this._lineEnds = null;
+        this.lineStarts = null;
+        this.lineEnds = null;
         // A stack of currently active "style" strings.
         this._currentStyleMap = new Map();
         // A span whose style is "correct" for _currentStyleMap.
@@ -422,6 +424,10 @@ class Terminal {
         this.detachResizeSensor();
         // Used to implement clientDoesEcho handling.
         this._deferredForDeletion = null;
+
+        document.removeEventListener("selectionchange",
+                                     this._selectionchangeListener);
+        this._selectionchangeListener = null;
     }
 
     detachSession() {
@@ -949,6 +955,8 @@ DomTerm.focusedTerm = null; // used if !useIFrame
 // (if 2 - also request low-level focus)
 // Runs in terminal's frame
 Terminal.prototype.setFocused = function(focused) {
+    if (! this.topNode)
+        return;
     if (focused > 0) {
         this.topNode.classList.add("domterm-active");
         DomTerm.setTitle(this.sstate.windowTitle);
@@ -2991,7 +2999,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     }
     this.topNode.addEventListener("contextmenu", handleContextMenu, false);
 
-    document.addEventListener("selectionchange", function(e) {
+    this._selectionchangeListener = function(e) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
@@ -3012,7 +3020,8 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         if (point) {
             dt._restoreCaret();
         }
-    });
+    }
+    document.addEventListener("selectionchange", dt._selectionchangeListener);
 
     /*
     function docMouseDown(event) {

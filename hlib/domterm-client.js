@@ -352,6 +352,12 @@ function loadHandler(event) {
         viewSavedFile(m[1]);
         return;
     }
+    m = location.hash.match(/browse=([^&]*)/);
+    if (m) {
+        DomTermLayout.makeIFrameWrapper(decodeURIComponent(m[1]),
+                                        false, DomTerm.layoutTop);
+        return;
+    }
     if (location.pathname === "/saved-file/") {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
         return;

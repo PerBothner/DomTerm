@@ -1409,13 +1409,20 @@ display_session(struct options *options, struct pty_client *pclient,
             printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
                                -port, paneOp, url);
     } else {
-        char *buf = xmalloc(strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
+        char *encoded = port == -104 || port == -105
+            ? url_encode(url, 0)
+            : url;
+        char *buf = xmalloc(strlen(main_html_url) + (encoded == NULL ? 60 : strlen(encoded) + 60));
         if (pclient != NULL)
             sprintf(buf, "%s#session-number=%d", main_html_url, pclient->session_number);
         else if (port == -105) // view saved file
-            sprintf(buf, "%s#view-saved=%s",  main_html_url, url);
+            sprintf(buf, "%s#view-saved=%s",  main_html_url, encoded);
+        else if (port == -104) // browse url
+            sprintf(buf, "%s#browse=%s",  main_html_url, encoded);
         else
             sprintf(buf, "%s", url);
+        if (encoded != url)
+            free(encoded);
         if (browser_specifier
             && strcmp(browser_specifier, "--print-url") == 0) {
             int ulen = strlen(buf);

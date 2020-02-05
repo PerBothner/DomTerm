@@ -102,7 +102,7 @@ DomTerm._extractGeometryOptions = function(options={}) {
         }
     }
     if (! width || ! height) {
-        if (DomTerm.isElectron()) {
+        if (DomTerm.isElectron() && ! DomTerm.isInIFrame()) {
             let sz = electronAccess.getCurrentWindow().getContentSize();
             width = sz[0];
             height = sz[1];
