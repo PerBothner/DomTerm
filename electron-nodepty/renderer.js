@@ -31,13 +31,9 @@ function connectSession(term, termElement, paneId=0) {
             + DomTerm.versions.electron
             + ' for the "front-end" and node.js ' + electronAccess.process.versions.node +' with node-pty for the "back-end".';
     };
-
-    term.initializeTerminal(termElement);
-    term.reportEvent("VERSION", DomTerm.versionInfo);
 }
 
 DomTerm.loadDomTerm = function() {
-    console.log("loadDomTerm called in iframe:"+DomTerm.isInIFrame());
     DomTerm.mainLocation = location.href;
     let name = "kterm1";
     let termElement = DomTerm.makeElement(name, document.body);
@@ -82,6 +78,7 @@ DomTerm.loadDomTerm = function() {
                                       numRows, numColumns,
                                       availHeight, availWidth);
         };
-        term.initializeTerminal(termElement);
     }
+    term.initializeTerminal(termElement);
+    term.reportEvent("VERSION", DomTerm.versionInfo);
 }

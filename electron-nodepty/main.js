@@ -211,10 +211,20 @@ ipcMain.on('process-input-bytes', (event, paneId, data) => {
     if (session)
         session.ptyProcess.write(data);
 });
+function urgentWrap(text) {
+    return `\x13\x16${text}\x14`;
+}
 ipcMain.on('report-event', (event, paneId, name, data) => {
     let session = eventToSession(event, paneId);
     if (session) {
         // handle reportEvent
+        logNotice("reportEvent "+name+" '"+data+"'");
+        if (name === 'VERSION') {
+            let win = eventToWindow(event);
+            let text = urgentWrap(`\x1B[91;${session.sessionNumber};${0};${0}u`);
+            // FIXME also send contents of settings.ini
+            win.webContents.send('output-data',  paneId,  text);
+        }
     }
 });
 ipcMain.on('set-window-size',
