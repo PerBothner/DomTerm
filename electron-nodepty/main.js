@@ -3,6 +3,8 @@ const path = require('path')
 const url = require('url')
 const fs = require('fs')
 const { Readable, PassThrough } = require('stream');
+const { initSettings, settingsData } = require('./settings');
+const { initLog, logNotice, logInfo } = require('./logging');
 
 const packageVersion = require('./package.json').version;
 
@@ -13,6 +15,8 @@ let windowList = new Array();
 let sessionList = new Array();
 
 let lastSessionNumber = 0;
+
+preprocessArgs(process.argv);
 
 function createSession() {
     var os = require('os');
@@ -76,6 +80,32 @@ function sessionFromNumber(sessionNumber) {
     return session;
 }
 
+function preprocessArgs(argv) {
+    let argc = argv.length;
+    let settings = null;
+    let verbosity = 0;
+    for (let i = 2; i < argc; i++) {
+        let arg = argv[i];
+        if (arg == "--verbose")
+            verbosity++;
+        else if (arg == "--settings" && i+1 < argc)
+            settings = argv[++i];
+        else if (arg.startsWith("--settings="))
+            settings = arg.substring(11);
+    }
+    initLog(verbosity);
+    initSettings(settings, (data) => {
+        let jsettings = JSON.stringify(data);
+        for (let i = sessionList.length; --i >= 0; ) {
+            const connections = sessionList[i].connections;
+            for (let j = connections.length; --j >= 0; ) {
+                const connection = connections[j];
+                sendSettings(connection.window, connection.paneId, jsettings);
+            }
+        }
+    });
+}
+
 function createInitialWindow (argv) {
     // options = yargs(process.argv[1..]).wrap(100)
     // and load the index.html of the app.
@@ -85,7 +115,9 @@ function createInitialWindow (argv) {
     var geometry = null;
     for (let i = 2; i < argc; i++) {
         let arg = argv[i];
-        if (arg == "--devtools")
+        if (arg == "--verbose") {
+            // handled in preprocessArgs
+        } else if (arg == "--devtools")
             openDevTools = true;
         else if (arg == "--url" && i+1 < argc)
             rurl = argv[++i];
@@ -185,6 +217,18 @@ function createNewWindow (url, options) {
         let index = windowList.indexOf(win);
         if (index >= 0)
             windowList.splice(index, 1);
+        let sessions = win.paneIdToSession;
+        for (let i = sessions.length; --i >= 0; ) {
+            let consession = session[i];
+            if (session) {
+                let connections = session.connections;
+                for (let i = connections.length; --i >= 0; ) {
+                    const connection = connections[i];
+                    if (connection.window == win)
+                        connections.splice(i, 1);
+                }
+            }
+        }
     });
     
 }
@@ -214,16 +258,26 @@ ipcMain.on('process-input-bytes', (event, paneId, data) => {
 function urgentWrap(text) {
     return `\x13\x16${text}\x14`;
 }
+
+function sendSettings(win, paneId, jsettings) {
+    win.webContents.send('output-data',  paneId,
+                         urgentWrap('\x1B]89;'+jsettings+'\x07'));
+}
+
 ipcMain.on('report-event', (event, paneId, name, data) => {
     let session = eventToSession(event, paneId);
     if (session) {
         // handle reportEvent
-        logNotice("reportEvent "+name+" '"+data+"'");
+        logInfo("reportEvent "+name+" '"+data+"'");
         if (name === 'VERSION') {
             let win = eventToWindow(event);
             let text = urgentWrap(`\x1B[91;${session.sessionNumber};${0};${0}u`);
             // FIXME also send contents of settings.ini
-            win.webContents.send('output-data',  paneId,  text);
+            win.webContents.send('output-data', paneId,  text);
+
+            let settings = settingsData();
+            if (settings)
+                sendSettings(win, paneId, JSON.stringify(settings));
         }
     }
 });
@@ -237,12 +291,6 @@ ipcMain.on('set-window-size',
 ipcMain.on('new-window', (event, url, options) => {
     createNewWindow(url, options);
 });
-var logVerbose = 1;
-
-function logNotice(text) {
-    if (logVerbose > 0)
-        process.stderr.write(text+"\n");
-}
 
 function mainHtml() {
     return `<!DOCTYPE html>
@@ -283,8 +331,8 @@ function handleResource(request, callback) {
     let url = new URL(request.url);
     let st;
     let upath = url.pathname;
-    logNotice("callback '"+upath+"'");
     if (upath === "/index.html") {
+        logInfo("handle resource "+upath);
         let hstring = mainHtml();
         function createStream (text) {
             const rv = new PassThrough() // PassThrough is also a Readable stream
@@ -293,15 +341,13 @@ function handleResource(request, callback) {
             return rv
         }
         st = createStream(hstring);
-        //logNotice("readable from string: "+JSON.stringify(st));
     } else {
         let path = upath == "/renderer.js"
             /*|| upath == "/index.html"*/ ? __dirname+upath
             : __dirname+"/.."+upath;
-        logNotice("handle "+upath+" -> "+path+"'");
+        logInfo("handle resource "+upath+" -> "+path+"'");
         st = fs.createReadStream(path);
     }
-    logNotice("mime("+upath+")='"+mimetypeFromPath(upath)+"'");
     callback({statusCode: 200,
               headers: {
                   'Access-Control-Allow-Origin': '*',
