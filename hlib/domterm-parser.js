@@ -1659,7 +1659,11 @@ class DTParser {
             }
             break;
         case 89:
-            term.setSettings(JSON.parse(text));
+            try {
+                term.setSettings(JSON.parse(text));
+            } catch(e) {
+                console.log("error parsing settings file: "+e);
+            }
             break;
         case 90:
             term.reportStylesheets();
