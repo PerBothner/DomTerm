@@ -3707,6 +3707,7 @@ Consider using @uref{https://github.com/critiqjo/key-mon,key-mon}
 @menu
 * DOM structure::
 * Wire byte protocol::
+* electron-nodepty: Using node for background server
 * The DomTerm JavaScript class::
 * Processes and security::
 * Architecture notes::
@@ -4594,6 +4595,48 @@ but as of the start of the most recent urgent message.
 @item @code{0xFD "VERSION " @var{version-info} "\n"}
 Sends @var{version-info} to the back-end.  Used during initialization.
 @end table
+
+@node electron-nodepty: Using node for background server
+@section electron-nodepty: Using node for background server
+
+The @code{electron-nodepty} directory contains an experimental version
+of DomTerm as a combined frontend and backend using Electron and node.js.
+This re-uses the JavaScript front-end code,
+but replaces the @code{lws-term} server part with Electron code.
+
+@subheading Advantages
+
+Using @code{node.js} may make building and install domterm easier,
+as there are fewer dependencies, and they can mostly be handled by @code{npm}.
+
+The code is more compact and easier to understand than the C code.
+
+Potentially works on plain Windows (without WSL),
+optionally using the new Windows pty support.
+
+Uses Electron ipc instead of WebSockets.
+
+Can use hidden windows for detached process.
+Probably easier to implement remote proxy server,
+using a local hidden window to save state in case connection goes down.
+
+@subheading Issues
+
+The Electron instance is not daemonized.  Could use @code{nohub}
+or @uref{https://www.npmjs.com/package/daemon,daemon node module}.
+
+The @code{domterm} command (using lws-term) has lots of
+options and sub-commands.  Re-implementing this would be some work.
+Probably use node @uref{https://nodejs.org/api/net.html,@code{net}} module;
+see @uref{https://blog.xathrya.id/2015/12/09/nodejs-unix-sockets/,this blog}.
+
+No support for auto-input-mode due to missing tcgetattr hook.
+No way to put process pid and ttyname in @code{DOMTERM} environment variable.
+(Maybe fix by hacking @code{node-pty}.)
+
+No support for using other non-Electron front-ends,
+including using a web-browser.  (Could be implemented, of course,
+by adding server for http and WebSockets.)
 
 @node The DomTerm JavaScript class
 @section The DomTerm JavaScript class
