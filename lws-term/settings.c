@@ -56,7 +56,7 @@ read_settings_file(struct options *options, bool re_reading)
     struct stat stbuf;
     bool bad = false;
     char *vmsg =
-        re_reading ? "Re-reading seetings file" : "Reading settings file";
+        re_reading ? "Re-reading settings file" : "Reading settings file";
     if (settings_fd == -1
         || fstat(settings_fd, &stbuf) != 0 || !S_ISREG(stbuf.st_mode)) {
         vmsg = settings_fd == -1 ? "Missing settings file"
