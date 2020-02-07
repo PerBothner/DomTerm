@@ -8414,7 +8414,7 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
         DomTerm.sendParentMessage("domterm-new-websocket", wspath, wsprotocol);
         wt.closeConnection = function() {
              DomTerm.sendParentMessage("domterm-socket-close"); }
-        wt.processInputCharacters = function(str) {
+        wt.processInputBytes = function(str) {
             DomTerm.sendParentMessage("domterm-socket-send", str); }
         return;
     }
