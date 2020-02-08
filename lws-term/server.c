@@ -42,10 +42,11 @@ subst_run_command(struct options *opts, const char *browser_command,
         char *geometry = geometry_option(opts);
         skip = 4;
         if (geometry) {
-            url_tmp = xmalloc(ulen+strlen(geometry)+20);
+            char *tbuf = xmalloc(ulen+strlen(geometry)+20);
             char *g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
-            url_fixed = url_tmp;
-            sprintf(url_tmp, "%s%s%s", url, g1, geometry);
+            sprintf(tbuf, "%s%s%s", url_fixed, g1, geometry);
+	    free(url_tmp);
+	    url_fixed = url_tmp = tbuf;
             ulen = strlen(url_fixed);
         }
     }
@@ -55,9 +56,10 @@ subst_run_command(struct options *opts, const char *browser_command,
         char *wsl_prefix = "file:///mnt/c/";
 	int wsl_prefix_length = strlen(wsl_prefix);
         if (memcmp(url, wsl_prefix, wsl_prefix_length) == 0) {
-            url_tmp = xmalloc(ulen);
-            url_fixed = url_tmp;
-            sprintf(url_tmp, "file:///c:/%s", url+wsl_prefix_length);
+	    char *tbuf = xmalloc(ulen);
+            sprintf(tbuf, "file:///c:/%s", url+wsl_prefix_length);
+	    free(url_tmp);
+            url_fixed = url_tmp = tbuf;
 	}
 
         char *cp = strstr(browser_command, "cmd.exe");
@@ -69,15 +71,14 @@ subst_run_command(struct options *opts, const char *browser_command,
             char *metas = "()%!^\"<>&| \t";
             for (;;) {
                 char ch = *p0++;
-                if (strchr(metas, ch)) {
+                if (ch != 0 && strchr(metas, ch)) {
                     *p1++ = '^';
                 }
                 *p1++ = ch;
                 if (ch == 0)
                     break;
             }
-            if (url_tmp != NULL)
-                free(url_tmp);
+	    free(url_tmp);
             url_fixed = url_tmp = tbuf;
         }
     }
@@ -95,8 +96,7 @@ subst_run_command(struct options *opts, const char *browser_command,
                 (int) (clen - beforeW - 2), wpos+2);
     } else
         sprintf(cmd, "%s '%s'", browser_command, url_fixed);
-    if (url_tmp != NULL)
-        free(url_tmp);
+    free(url_tmp);
     lwsl_notice("starting frontend command: %s\n", cmd);
     return start_command(opts, cmd);
 }
@@ -593,10 +593,10 @@ default_browser_run(const char *url, int port, struct options *options)
     // under Gnome defaults to using 'gio open', which does drops the "hash"
     // part of a "file:" URL, and may also use a non-preferred browser.
     char *path;
-    free_needed = true;
     if (is_WindowsSubsystemForLinux()) {
-        pattern = "/mnt/c/Windows/System32/cmd.exe /c start %U";
+        pattern = "/mnt/c/Windows/System32/cmd.exe /c start '%U'";
     } else {
+        free_needed = true;
         pattern = find_in_path("xdg-open");
         if (path == NULL)
             pattern = find_in_path("kde-open");
