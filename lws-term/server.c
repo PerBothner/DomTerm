@@ -32,38 +32,60 @@ subst_run_command(struct options *opts, const char *browser_command,
                   const char *url, int port)
 {
     size_t clen = strlen(browser_command);
-    char *cmd = xmalloc(clen + strlen(url) + 40);
     char *upos = strstr(browser_command, "%U");
     char *gpos = strstr(browser_command, "%g");
-    char *wpos;
-    const char *url_fixed = url;
+    int skip = 2;
     char *url_tmp = NULL;
+    const char *url_fixed = url;
+    size_t ulen = strlen(url);
+    if (upos && gpos && gpos == upos+2) {
+        char *geometry = geometry_option(opts);
+        skip = 4;
+        if (geometry) {
+            url_tmp = xmalloc(ulen+strlen(geometry)+20);
+            char *g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
+            url_fixed = url_tmp;
+            sprintf(url_tmp, "%s%s%s", url, g1, geometry);
+            ulen = strlen(url_fixed);
+        }
+    }
+    char *cmd = xmalloc(clen + ulen + 40);
+    char *wpos;
     if (is_WindowsSubsystemForLinux() && strstr(browser_command, ".exe") != NULL) {
         char *wsl_prefix = "file:///mnt/c/";
 	int wsl_prefix_length = strlen(wsl_prefix);
         if (memcmp(url, wsl_prefix, wsl_prefix_length) == 0) {
-            url_tmp = xmalloc(strlen(url));
-	    url_fixed = url_tmp;
+            url_tmp = xmalloc(ulen);
+            url_fixed = url_tmp;
             sprintf(url_tmp, "file:///c:/%s", url+wsl_prefix_length);
 	}
+
+        char *cp = strstr(browser_command, "cmd.exe");
+        char *sp;
+        if (cp && ((sp = strchr(browser_command, ' ')) == NULL || sp > cp)) {
+            char *tbuf = xmalloc(2 * ulen);
+            const char *p0 = url_fixed;
+            char *p1 = tbuf;
+            char *metas = "()%!^\"<>&| \t";
+            for (;;) {
+                char ch = *p0++;
+                if (strchr(metas, ch)) {
+                    *p1++ = '^';
+                }
+                *p1++ = ch;
+                if (ch == 0)
+                    break;
+            }
+            if (url_tmp != NULL)
+                free(url_tmp);
+            url_fixed = url_tmp = tbuf;
+        }
     }
     if (upos) {
       size_t beforeU = upos - browser_command;
-      char *g1 = "";
-      char *g2 = "";
-      int skip = 2;
-      if (gpos == upos+2) {
-          char *geometry = geometry_option(opts);
-          skip = 4;
-          if (geometry) {
-              g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
-              g2 = geometry;
-          }
-      }
-      sprintf(cmd, "%.*s%s%s%s%.*s",
+      sprintf(cmd, "%.*s%s%.*s",
               (int) beforeU, browser_command,
               url_fixed,
-              g1, g2,
               (int) (clen - beforeU - skip), upos+skip);
     } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
         size_t beforeW = wpos - browser_command;
@@ -557,32 +579,37 @@ electron_command(struct options *options)
     return buf;
 }
 
-/** A freshly allocated command for 'open a URL'. */
-
-static char *
-default_browser_command()
+int
+default_browser_run(const char *url, int port, struct options *options)
 {
+    char *pattern;
+    bool free_needed = false;
 #ifdef DEFAULT_BROWSER_COMMAND
-    return strdup(DEFAULT_BROWSER_COMMAND);
+    pattern = DEFAULT_BROWSER_COMMAND;
 #elif __APPLE__
-    return strdup("open");
+    pattern = "open";
 #else
     // Prefer gnome-open or kde-open over xdg-open because xdg-open
     // under Gnome defaults to using 'gio open', which does drops the "hash"
     // part of a "file:" URL, and may also use a non-preferred browser.
     char *path;
-    bool free_needed = false;
-    if (is_WindowsSubsystemForLinux())
-        path = strdup("/mnt/c/Windows/System32/cmd.exe /c start");
-    else {
-        path = find_in_path("xdg-open");
+    free_needed = true;
+    if (is_WindowsSubsystemForLinux()) {
+        pattern = "/mnt/c/Windows/System32/cmd.exe /c start %U";
+    } else {
+        pattern = find_in_path("xdg-open");
         if (path == NULL)
-            path = find_in_path("kde-open");
-        if (path == NULL)
-            path = strdup("firefox");
+            pattern = find_in_path("kde-open");
+        if (pattern == NULL) {
+            pattern = "firefox";
+            free_needed = false;
+        }
     }
-    return path;
 #endif
+    int r = subst_run_command(options, pattern, url, 0);
+    if (free_needed)
+        free(pattern);
+    return r;
 }
 
 void
@@ -591,9 +618,7 @@ default_link_command(const char *url)
 #if !defined(DEFAULT_BROWSER_COMMAND) && (defined(_WIN32)||defined(__CYGWIN__))
     ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
 #else
-    char *pattern = default_browser_command();
-    subst_run_command(main_options, pattern, url, 0);
-    free(pattern);
+    default_browser_run(url, 0, main_options);
 #endif
 }
 
@@ -746,8 +771,9 @@ do_run_browser(struct options *options, char *url, int port)
     }
 
     if (browser_specifier[0] == '\0')
-        browser_specifier = default_browser_command();
-    return subst_run_command(options, browser_specifier, url, port);
+        return default_browser_run(url, port, options);
+    else
+        return subst_run_command(options, browser_specifier, url, port);
 }
 
 char *
