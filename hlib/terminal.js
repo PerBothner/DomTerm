@@ -104,7 +104,10 @@ class Terminal {
     // Restricted to properties that are JSON-serializable.
     // WORK IN PROGRESS
     var sstate = {};
+
     this.sstate = sstate;
+
+    this.clearVisibleState();
 
     this._updateTimer = null;
 
@@ -198,8 +201,6 @@ class Terminal {
         let d = Terminal._settableProperties[i];
         this[d[0]] = d[2];
     }
-
-    this.clearVisibleState();
 
     this._displayInfoWidget = null;
     this._displayInfoShowing = false;
