@@ -3004,7 +3004,10 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
-        //console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
+        if (dt.verbosity >= 2)
+            console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
+        if (dt._composing > 0)
+            return;
         let wasFocus = dt._focusinLastEvent;
         dt._focusinLastEvent = false;
         if (point && wasFocus && sel.focusOffset === 0
@@ -3255,27 +3258,25 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         }, false);
     }
     function compositionStart(ev) {
+        if (dt.verbosity >= 1)
+            dt.log("compositionStart "+JSON.stringify(ev.data)+" was-c:"+dt._composing);
         dt._composing = 1;
-        dt.editorAddLine();
-        dt._inputLine.parentNode.contentEditable = false;
-        dt._removeCaret();
+        dt._caretNode.classList.add("pending");
         document.getSelection().collapse(dt._caretNode, 0);
-        if (dt.verbosity >= 1) dt.log("compositionStart");
     }
     function compositionEnd(ev) {
-        if (dt.verbosity >= 1) dt.log("compositionEnd");
-        dt._inputLine.parentNode.contentEditable = 'inherit';
+        if (dt.verbosity >= 1)
+            dt.log("compositionEnd "+JSON.stringify(ev.data));
         dt._composing = 0;
-        let before = dt._caretNode.prevousSibling;
-        dt._moveNodes(dt._caretNode.firstChild, dt._caretNode.parentNode,
-                      dt._caretNode);
-        if (before instanceof Text)
-            dt._normalize(before);
-        if (!dt.isLineEditing()) {
-            dt._sendInputContents(false);
-            dt._inputLine = null;
+        dt._caretNode.classList.remove("pending");
+        dt.reportText(ev.data);
+        const caret = dt._caretNode;
+        const ch = caret.firstChild;
+        if (ch) {
+            let pending = dt._createPendingSpan();
+            caret.parentNode.insertBefore(pending, caret);
+            dt._moveNodes(ch, pending, null);
         }
-        dt._restoreCaret();
     }
     topNode.addEventListener("compositionstart", compositionStart, true);
     topNode.addEventListener("compositionend", compositionEnd, true);
@@ -3325,6 +3326,10 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
     bufNode.setAttribute("id", idName);
     bufNode.setAttribute("buffer", bufName);
     bufNode.setAttribute("class", "interaction");
+    // Needed when composing (IME) on Chromium.
+    // Otherwise the composition buffer may be displayed inside the
+    // prompt string rather than the input area (specifically in _caretNode).
+    bufNode.contentEditable = false;
     this._addBlankLines(1, this.lineEnds.length, bufNode, null);
     return bufNode;
 };
@@ -3641,8 +3646,11 @@ Terminal.prototype._updateSelected = function() {
                 sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset, dt._caretNode, 0);
         }
     }
-    if (point)
+    if (point
+        && this._composing <= 0
+        && this.caretStyle !== Terminal.NATIVE_CARET_STYLE) {
         sel.removeAllRanges();
+    }
 }
 Terminal.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
@@ -5702,6 +5710,8 @@ DomTerm._homeLineOffset = function(dt) {
 }
 
 Terminal._nodeToHtml = function(node, dt, saveMode) {
+    if (! node)
+        return '<!--'+node+'-->';
     var string = "";
     var savedTime = "";
     if (saveMode) {
@@ -8116,7 +8126,7 @@ Terminal.prototype.keyPressHandler = function(event) {
 
 Terminal.prototype.inputHandler = function(event) {
     if (this.verbosity >= 2)
-        this.log("input "+event+" which:"+event.which+" data:'"+event.data);
+        this.log("input "+event+" which:"+event.which+" data:"+JSON.stringify(event.data));
     if (event.target == this._inputLine && ! this.isLineEditing()
         && this._inputLine != this._deferredForDeletion) {
         var text = this.grabInput(this._inputLine);
