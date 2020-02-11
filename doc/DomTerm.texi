@@ -2524,7 +2524,7 @@ or other JavaScript modification.
 
 Copy @code{domterm/domterm.desktop} or
 @code{qtdomterm/qtdomterm.desktop} to either
-@code{usr/share/applications} (if @code{domterm} is installed
+@code{/usr/share/applications} (if @code{domterm} is installed
 in @code{/usr/bin} and you want it accessible to everyone),
 or in @code{~/.local/share/applications} (if you only wish to make
 accessible to a single user).
@@ -3707,7 +3707,7 @@ Consider using @uref{https://github.com/critiqjo/key-mon,key-mon}
 @menu
 * DOM structure::
 * Wire byte protocol::
-* electron-nodepty: Using node for background server
+* electron-nodepty:: Using node for background server
 * The DomTerm JavaScript class::
 * Processes and security::
 * Architecture notes::
@@ -4596,7 +4596,7 @@ but as of the start of the most recent urgent message.
 Sends @var{version-info} to the back-end.  Used during initialization.
 @end table
 
-@node electron-nodepty: Using node for background server
+@node electron-nodepty
 @section electron-nodepty: Using node for background server
 
 The @code{electron-nodepty} directory contains an experimental version
