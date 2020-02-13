@@ -27,6 +27,18 @@ geometry_option(struct options *options)
     return geometry && geometry[0] ? geometry : default_size;
 }
 
+static void
+daemonize()
+{
+#if 1
+    if (daemon(1, 0) != 0)
+        lwsl_err("daemonizing failed\n");
+#else
+    if (lws_daemonize(NULL))
+        lwsl_err("daemonizing failed\n");
+#endif
+}
+
 int
 subst_run_command(struct options *opts, const char *browser_command,
                   const char *url, int port)
@@ -144,7 +156,7 @@ int start_command(struct options *opts, char *cmd) {
     pid_t pid = fork();
     if (pid == 0) {
         putenv("ELECTRON_DISABLE_SECURITY_WARNINGS=true");
-        daemon(1, 0);
+        daemonize();
 #ifdef __APPLE__
         {
             // We cannot directly use `execv` for a GUI app on MacOSX
@@ -1334,14 +1346,7 @@ main(int argc, char **argv)
     if (opts.do_daemonize && ret == 0) {
         lwsl_notice("about to switch to background 'daemon' mode - no more messages.");
         lwsl_notice("(To see more messages use --no-daemonize option.)");
-#if 1
-        if (daemon(1, 0) != 0)
-            lwsl_err("daemonizing failed\n");
-#else
-        char *lock_path = NULL;
-        int r = lws_daemonize(lock_path);
-        fprintf(stderr, "lws_daemonize returned %d\n", r);
-#endif
+        daemonize();
     }
 
     watch_settings_file();
