@@ -1317,10 +1317,6 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         sbuf_free(&buf);
         client->initialized = true;
         break;
-    buffer_too_small:
-        lwsl_err("bad buffer size\n");
-        fprintf(stderr, "bad buffer size\n");
-        exit(-1);
 
     case LWS_CALLBACK_RECEIVE:
          // receive data from websockets client (browser)

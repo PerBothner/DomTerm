@@ -191,7 +191,7 @@ write_simple_response(struct lws *wsi, struct http_client *hclient,
 int
 callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
     struct http_client *hclient = (struct http_client *) user;
-    unsigned char buffer[LBUFSIZE + LWS_PRE], *start = &buffer[LWS_PRE], *p, *end;
+    unsigned char buffer[LBUFSIZE + LWS_PRE], *p, *end;
     char buf[256];
 
     switch (reason) {

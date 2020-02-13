@@ -504,7 +504,6 @@ const char *
 json_get_property(struct json_object *jobj, char *fname)
 {
     struct json_object *jval = NULL;
-    const char *result = NULL;
     if (json_object_object_get_ex(jobj, fname, &jval)) {
         return json_object_get_string(jval);
     }

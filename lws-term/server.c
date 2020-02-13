@@ -592,13 +592,12 @@ default_browser_run(const char *url, int port, struct options *options)
     // Prefer gnome-open or kde-open over xdg-open because xdg-open
     // under Gnome defaults to using 'gio open', which does drops the "hash"
     // part of a "file:" URL, and may also use a non-preferred browser.
-    char *path;
     if (is_WindowsSubsystemForLinux()) {
         pattern = "/mnt/c/Windows/System32/cmd.exe /c start '%U'";
     } else {
         free_needed = true;
         pattern = find_in_path("xdg-open");
-        if (path == NULL)
+        if (pattern == NULL)
             pattern = find_in_path("kde-open");
         if (pattern == NULL) {
             pattern = "firefox";
@@ -788,7 +787,6 @@ state_to_json(int argc, char *const*argv, char *const *env)
     struct json_object *jobj = json_object_new_object();
     struct json_object *jargv = json_object_new_array();
     struct json_object *jenv = json_object_new_array();
-    const char *result;
     char *cwd = getcwd(NULL, 0); /* FIXME used GNU extension */
     int i;
     for (i = 0; i < argc; i++)

@@ -596,7 +596,6 @@ sbuf_copy_file(struct sbuf *buf, FILE*in)
 {
     for (;;) {
         sbuf_extend(buf, 2048);
-        int avail = buf->size - buf->len;
         int r = fread(buf->buffer + buf->len, 1,  buf->size - buf->len, in);
         if (r <= 0)
             break;
