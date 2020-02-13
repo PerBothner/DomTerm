@@ -190,16 +190,16 @@ parse_args(const char *args, bool check_shell_specials)
     return argv;
 }
 
-/* Returns either 'in' or a freshly malloc'd urlencoding of 'in'. */
+/* Returns either NULL or a freshly malloc'd urlencoding of 'in'. */
 char *
-url_encode(char *in, int mode)
+url_encode(const char *in, int mode)
 {
     static unsigned char b16[] = "0123456789ABCDEF";
     int bad_count = 0;
     char *out = NULL;
     for (int pass = 0; pass < 2; pass++) {
-        unsigned char *p = (unsigned char*)in;
-        unsigned char *q = (unsigned char*)out;
+        const char *p = in;
+        char *q = out;
         while (*p) {
             int ch = *p++;
             bool ok = (ch >= '0' && ch <= '9')
@@ -222,11 +222,11 @@ url_encode(char *in, int mode)
         }
         if (pass == 0) {
             if (bad_count == 0)
-                return in;
+                return NULL;
             size_t in_size = (char*) p - in;
             out = xmalloc(in_size + 2 * bad_count + 1);
         } else
-            *p = 0;
+            *q = 0;
     }
     return out;
 }

@@ -262,7 +262,7 @@ extern int get_tty_in();
 extern int get_tty_out();
 extern bool write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
-extern char *url_encode(char *in, int mode);
+extern char *url_encode(const char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
 extern char *getenv_from_array(char* key, char**envarray);
 extern void copy_html_file(FILE*in, FILE*out);

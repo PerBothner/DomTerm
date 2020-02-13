@@ -1411,17 +1411,19 @@ display_session(struct options *options, struct pty_client *pclient,
     } else {
         char *encoded = port == -104 || port == -105
             ? url_encode(url, 0)
-            : url;
-        char *buf = xmalloc(strlen(main_html_url) + (encoded == NULL ? 60 : strlen(encoded) + 60));
+            : NULL;
+        if (encoded)
+            url = encoded;
+        char *buf = xmalloc(strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
         if (pclient != NULL)
             sprintf(buf, "%s#session-number=%d", main_html_url, pclient->session_number);
         else if (port == -105) // view saved file
-            sprintf(buf, "%s#view-saved=%s",  main_html_url, encoded);
+            sprintf(buf, "%s#view-saved=%s",  main_html_url, url);
         else if (port == -104) // browse url
-            sprintf(buf, "%s#browse=%s",  main_html_url, encoded);
+            sprintf(buf, "%s#browse=%s",  main_html_url, url);
         else
             sprintf(buf, "%s", url);
-        if (encoded != url)
+        if (encoded)
             free(encoded);
         if (browser_specifier
             && strcmp(browser_specifier, "--print-url") == 0) {

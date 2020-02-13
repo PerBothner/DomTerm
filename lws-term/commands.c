@@ -592,8 +592,8 @@ int view_saved_action(int argc, char** argv, const char*cwd,
         fclose(err);
         return EXIT_FAILURE;
     }
-    char *file = argv[optind];
-    char *p = file;
+    const char *file = argv[optind];
+    const char *p = file;
     bool saw_scheme = false;
     for (; *p && *p != '/'; p++) {
       if (*p == ':') {
@@ -602,11 +602,12 @@ int view_saved_action(int argc, char** argv, const char*cwd,
       }
     }
     char *fscheme = saw_scheme ? "" : "file://";
-    char *fencoded = file;
+    char *fencoded = NULL;
     if (! saw_scheme) {
         if (file[0] != '/') {
           fencoded = xmalloc(strlen(cwd)+strlen(file)+2);
           sprintf(fencoded, "%s/%s", cwd, file);
+          file = fencoded;
         }
         if (access(fencoded, R_OK) != 0) {
             fprintf(err, "domterm view-saved: No such file: %s\n", fencoded);
@@ -614,10 +615,12 @@ int view_saved_action(int argc, char** argv, const char*cwd,
             return EXIT_FAILURE;
         }
     }
-    fencoded = url_encode(fencoded, 0);
-    char *url = xmalloc(strlen(main_html_url) + strlen(fencoded) + 40);
-    sprintf(url, "%s%s", fscheme, fencoded);
-    if (file != fencoded)
+    char *uencoded = url_encode(file, 0);
+    if (uencoded)
+        file = uencoded;
+    char *url = xmalloc(strlen(main_html_url) + strlen(file) + 40);
+    sprintf(url, "%s%s", fscheme, file);
+    if (fencoded)
         free(fencoded);
     display_session(opts, NULL, url, -105);
     free(url);
