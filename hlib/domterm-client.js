@@ -207,14 +207,13 @@ function setupQWebChannel(channel) {
 };
 
 function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
-    let url;
+    let url = decodeURIComponent(urlEncoded);
     // Requesting the saved file using a file: URL runs into CORS
     // (Cross-Origin Resource Sharing) restrictions on desktop browsers.
-    if (urlEncoded.startsWith("file:///")) {
+    if (url.startsWith("file:///")) {
         url = "http://localhost:"+DomTerm.server_port+"/saved-file/?server-key="+DomTerm.server_key+"&file="+urlEncoded.substring(7);
         return DomTermLayout.makeIFrameWrapper(url, false, contextNode);
-    } else
-        url = decodeURIComponent(urlEncoded);
+    }
     let el = DomTerm.makeElement(DomTerm.freshName());
     el.innerHTML = "<h2>waiting for file data ...</h2>";
     var xhr = new XMLHttpRequest();
