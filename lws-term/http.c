@@ -161,10 +161,10 @@ bool check_server_key(struct lws *wsi, char *arg, size_t alen)
 }
 
 #define LBUFSIZE 4096
-int
+static int
 write_simple_response(struct lws *wsi, struct http_client *hclient,
                       const char *content_type,
-                      unsigned char *content_data, unsigned int content_length,
+                      char *content_data, unsigned int content_length,
                       bool owns_data, unsigned char *buffer)
 {
     uint8_t *start = buffer+LWS_PRE, *p = start,

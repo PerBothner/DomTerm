@@ -544,7 +544,7 @@ sbuf_extend(struct sbuf *buf, int needed)
         buf->buffer = realloc(buf->buffer, min_size);
     }
 }
-char *
+void *
 sbuf_blank(struct sbuf *buf, int space)
 {
     sbuf_extend(buf, space);
@@ -554,7 +554,7 @@ sbuf_blank(struct sbuf *buf, int space)
 }
 
 void
-sbuf_append(struct sbuf *buf, const char *bytes, ssize_t length)
+sbuf_append(struct sbuf *buf, const void *bytes, ssize_t length)
 {
     if (length < 0)
         length = strlen(bytes);
