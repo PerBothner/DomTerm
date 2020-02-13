@@ -1173,26 +1173,35 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         client->connection_number = ++server->connection_count;
         client->pty_window_number = -1;
         client->pty_window_update_needed = false;
-        {
-             char arg[100]; // FIXME
-             if (! check_server_key(wsi, arg, sizeof(arg) - 1))
-                  return -1;
-             const char*window_main = lws_get_urlarg_by_name(wsi, "window-main=", arg, sizeof(arg) - 1);
-             client->window_main
-                 = window_main && strcmp(window_main, "true") == 0;
-             const char*session_number = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1);
-             int snumber;
-             if (session_number != NULL
-                 && (snumber = strtol(session_number, NULL, 10)) != 0) {
-                  struct pty_client *pclient = pty_client_list;
-                  for (; pclient != NULL; pclient = pclient->next_pty_client) {
-                       if (pclient->session_number == snumber) {
-                            link_command(wsi, client, pclient);
-                            break;
-                       }
-                  }
-             } else if (client->pclient == NULL)
-                 create_link_pclient(wsi, client);
+        char arg[100]; // FIXME
+        if (! check_server_key(wsi, arg, sizeof(arg) - 1))
+            return -1;
+        const char*window_main = lws_get_urlarg_by_name(wsi, "window-main=", arg, sizeof(arg) - 1);
+        client->window_main
+            = window_main && strcmp(window_main, "true") == 0;
+        const char*argval = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
+        if (argval != NULL) {
+            lwsl_info("dummy connection (no session) established\n");
+        } else {
+            int snumber;
+            if ((argval = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1)) != NULL
+                && (snumber = strtol(argval, NULL, 10)) != 0) {
+                struct pty_client *pclient = pty_client_list;
+                for (; ; pclient = pclient->next_pty_client) {
+                    if (pclient == NULL) {
+                        lwsl_notice("connection to non-existing session %d - error\n", snumber);
+                        break;
+                    }
+                    if (pclient->session_number == snumber) {
+                        link_command(wsi, client, pclient);
+                        lwsl_info("connection to existing session %d established\n", snumber);
+                        break;
+                    }
+                }
+            } else {
+                struct pty_client *pclient = create_link_pclient(wsi, client);
+                lwsl_info("connection to new session %d established\n", pclient->session_number);
+            }
         }
         lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
                                client->hostname, sizeof(client->hostname),

@@ -8414,8 +8414,6 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
         if (name == null)
             name = "domterm";
     }
-    if (topNode == null)
-        topNode = document.getElementById(name);
     var wt = new Terminal(name);
     if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
         // Have atom-domterm's DomTermView create the WebSocket.  This avoids
@@ -8430,6 +8428,8 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
         return;
     }
     var wsocket = new WebSocket(wspath, wsprotocol);
+    if (wt.verbosity > 0)
+        console.log("created WebSocket on  "+wspath);
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
     wt.processInputBytes = function(bytes) {
@@ -8447,6 +8447,8 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
         DomTerm._handleOutputData(wt, evt.data);
     }
     wsocket.onopen = function(e) {
+        if (topNode == null)
+            return;
         if (DomTerm.useXtermJs && window.Terminal != undefined) {
             DomTerm.initXtermJs(wt, topNode);
             DomTerm.setFocus(wt, "N");

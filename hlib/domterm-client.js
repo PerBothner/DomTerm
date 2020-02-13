@@ -346,16 +346,15 @@ function loadHandler(event) {
             DomTerm.sendParentMessage("domterm-set-title", title, wname);
         };
     }
-    m = location.hash.match(/view-saved=([^&]*)/);
-    if (m) {
+    // non-null if we need to create a websocket but we have no Terminal
+    let no_session = null;
+    if ((m = location.hash.match(/view-saved=([^&]*)/))) {
         viewSavedFile(m[1]);
-        return;
-    }
-    m = location.hash.match(/browse=([^&]*)/);
-    if (m) {
+        no_session = "no-session=view-saved";
+    } else if ((m = location.hash.match(/browse=([^&]*)/))) {
         DomTermLayout.makeIFrameWrapper(decodeURIComponent(m[1]),
                                         false, DomTerm.layoutTop);
-        return;
+        no_session = "no-session=browse";
     }
     if (location.pathname === "/saved-file/") {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
@@ -377,15 +376,19 @@ function loadHandler(event) {
         let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
         topNodes = [ DomTerm.makeElement(name) ];
     }
+    let query = location.hash ? location.hash.substring(1) : null;
     if (location.search.search(/wait/) >= 0) {
     } else if (location.hash == "#ajax" || ! window.WebSocket) {
         DomTerm.usingAjax = true;
         for (var i = 0; i < topNodes.length; i++)
             connectAjax("domterm", "", topNodes[i]);
     } else {
-        var wsurl = DTerminal._makeWsUrl(location.hash ? location.hash.substring(1) : null);
+        if (no_session)
+            query = (query ? query + "&" : "") + no_session;
+        var wsurl = DTerminal._makeWsUrl(query);
         for (var i = 0; i < topNodes.length; i++) {
-            DTerminal.connectWS(null, wsurl, "domterm", topNodes[i]);
+            DTerminal.connectWS(null, wsurl, "domterm",
+                                no_session ? null : topNodes[i]);
         }
     }
     if (!DomTerm.inAtomFlag)
