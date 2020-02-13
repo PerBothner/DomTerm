@@ -846,7 +846,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (((client->sent_count - client->confirmed_count) & MASK28) < 1000
             && pclient != NULL && pclient->paused) {
 #if USE_RXFLOW
-            lwsl_info("session %d unpaused (flow control) (sent:%d confirmed:%d)\n",
+            lwsl_info("session %d unpaused (flow control) (sent:%ld confirmed:%ld)\n",
                       pclient->session_number,
                       client->sent_count, client->confirmed_count);
             lws_rx_flow_control(pclient->pty_wsi,
@@ -1733,8 +1733,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (! pclient->paused) {
 #if USE_RXFLOW
                     lwsl_info(tclients_seen == 1
-                              ? "session %d paused (flow control) %d bytes ahead sent:%d confirmed:%d\n"
-                              : "session %d paused (flow control) %d bytes ahead\n",
+                              ? "session %d paused (flow control) %ld bytes ahead sent:%ld confirmed:%ld\n"
+                              : "session %d paused (flow control) %ld bytes ahead\n",
                               pclient->session_number, min_unconfirmed,
                               last_sent_count,
                               last_confirmed_count);
