@@ -512,10 +512,19 @@ ln -s /mnt/c/@var{wuser}/DomTerm/bin/domterm domterm
 @subsubheading  MacOS (using Homebrew)
 
 @example
-brew install automake
-brew install json-c
-brew install libwebsockets
-brew install asciidoctor
+brew install automake json-c libwebsockets asciidoctor pkg-config
+@end example
+
+If you want to use the Electron front-end:
+@example
+brew install npm
+npm install electron -g
+@end example
+
+If you will be using Qt:
+@example
+brew install qt5
+brew link qt5 --force
 @end example
 
 There are some issues about openssl that I'm not clear about.
