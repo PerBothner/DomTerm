@@ -145,6 +145,7 @@ then
   fi
 fi
 
+AM_CONDITIONAL(MACOS, echo $host_os|grep -q darwin)
 AM_CONDITIONAL(ENABLE_LD_PRELOAD, test "$enable_ld_preload" = "yes")
 
 dnl FIXME We might want to figure out datadir_relative by

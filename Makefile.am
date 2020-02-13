@@ -431,6 +431,10 @@ upload-web: web/index.html
 
 bin/qtdomterm:
 	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
+if MACOS
+
+	cd bin && ln -s ../qtdomterm/QtDomTerm.app/Contents/MacOS/QtDomTerm qtdomterm
+endif
 
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
