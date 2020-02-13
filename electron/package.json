@@ -1,5 +1,6 @@
 {
   "name"    : "DomTerm",
+  "productName": "DomTerm",
   "version" : "@DOMTERM_VERSION@",
   "main"    : "main.js"
 }
