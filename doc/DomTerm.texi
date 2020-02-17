@@ -217,6 +217,7 @@ You can directly print
 @uref{https://en.wikipedia.org/wiki/Sixel,@strong{Sixel images}},
 which is an encoding that some DEC VT terminals supported..
 
+@anchor{help-and-documentation}
 @subsubheading Help and other documentation
 
 @image{images/dt-help1}
@@ -1615,7 +1616,7 @@ handle clipboard access, using programs such as
 The keyboard shortcuts Ctrl-Shift-C and Ctrl-Shift-V
 work on all tested platforms.
 
-Middle-button paste seems to work on most frontends (on Linux)..
+Middle-button paste seems to work on most frontends (on Linux).
 
 @subsubheading Note on menus
 
