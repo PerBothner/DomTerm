@@ -116,19 +116,16 @@ int start_command(struct options *opts, char *cmd) {
     if (args != NULL) {
         arg0 = find_in_path(args[0]);
         if (arg0 == NULL) {
-            FILE *err = fdopen(opts->fd_err, "w");
-            fprintf(err, "no executable front-end (browser) '%s'\n",
-                    args[0]);
-            fclose(err);
+            printf_error(opts, "no executable front-end (browser) '%s'",
+                         args[0]);
             return EXIT_FAILURE;
         }
     } else {
 #if 1
         int r = system(cmd);
         if (! WIFEXITED(r) || (WEXITSTATUS(r) != 0 && ! is_WindowsSubsystemForLinux())) {
-            FILE *err = fdopen(opts->fd_err, "w");
-            fprintf(err, "system could not execute %s (return code: %x)\n", cmd, r);
-            fclose(err);
+            printf_error(opts, "system could not execute %s (return code: %x)",
+                         cmd, r);
             return EXIT_FAILURE;
         }
         return EXIT_SUCCESS;
@@ -181,8 +178,7 @@ int start_command(struct options *opts, char *cmd) {
     } else if (pid > 0) {// master
         free(args);
     } else {
-        char *msg = "could not fork front-end command\n";
-        write(opts->fd_err, msg, strlen(msg)+1);
+        printf_error(opts, "could not fork front-end command");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -731,8 +727,7 @@ do_run_browser(struct options *options, char *url, int port)
     if (strcmp(browser_specifier, "--qtwebengine") == 0) {
         browser_specifier = qtwebengine_command(options);
         if (browser_specifier == NULL) {
-            static char msg[] = "'qtdomterm' missing\n";
-            write(options->fd_err, msg, sizeof(msg)-1);
+            printf_error(options, "'qtdomterm' missing");
             return EXIT_FAILURE;
         }
         do_Qt = true;
@@ -741,8 +736,7 @@ do_run_browser(struct options *options, char *url, int port)
         browser_specifier = electron_command(options);
         do_electron = true;
         if (browser_specifier == NULL) {
-            static char msg[] = "'electron' not found in PATH\n";
-            write(options->fd_err, msg, sizeof(msg)-1);
+            printf_error(options, "'electron' not found in PATH");
             return EXIT_FAILURE;
         }
     }
@@ -754,8 +748,8 @@ do_run_browser(struct options *options, char *url, int port)
              || ! strcmp(browser_specifier, "--google-chrome")) {
         browser_specifier = chrome_command(app_mode);
             if (browser_specifier == NULL) {
-                static char msg[] = "neither chrome or google-chrome command found\n";
-                write(options->fd_err, msg, sizeof(msg)-1);
+                printf_error(options,
+                             "neither chrome or google-chrome command found");
                 return EXIT_FAILURE;
             }
     }

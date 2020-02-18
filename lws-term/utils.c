@@ -602,3 +602,17 @@ sbuf_copy_file(struct sbuf *buf, FILE*in)
         sbuf_blank(buf, r);
     }
 }
+
+void
+printf_error(struct options *opts, const char *format, ...)
+{
+    struct sbuf buf[1];
+    sbuf_init(buf);
+    va_list ap;
+    va_start(ap, format);
+    sbuf_vprintf(buf, format, ap);
+    va_end(ap);
+    sbuf_append(buf, "\n", -1);
+    write(opts->fd_err, buf->buffer, buf->len);
+    sbuf_free(buf);
+}

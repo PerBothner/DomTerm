@@ -1,4 +1,5 @@
 #include "server.h"
+#include "command-connect.h"
 #include <limits.h>
 #include <sys/stat.h>
 #include <termios.h>
@@ -1460,10 +1461,8 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
     struct stat sbuf;
     if (cmd == NULL || access(cmd, X_OK) != 0
         || stat(cmd, &sbuf) != 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
-          FILE *out = fdopen(opts->fd_err, "w");
-          fprintf(out, "cannot execute '%s'\n", argv0);
-          fclose(out);
-          return EXIT_FAILURE;
+        printf_error(opts, "cannot execute '%s'", argv0);
+        return EXIT_FAILURE;
     }
     struct pty_client *pclient = create_pclient(cmd, copy_strings(args),
                                                 strdup(cwd), copy_strings(env),
@@ -1482,17 +1481,13 @@ int attach_action(int argc, char** argv, const char*cwd,
     optind = 1;
     process_options(argc, argv, opts);
     if (optind >= argc) {
-        char *msg = "domterm attach: missing session specifier\n";
-        if (write(opts->fd_err, msg, strlen(msg)) <= 0)
-            lwsl_err("write failed\n");
+        printf_error(opts, "domterm attach: missing session specifier");
         return EXIT_FAILURE;
     }
     char *session_specifier = argv[optind];
     struct pty_client *pclient = find_session(session_specifier);
     if (pclient == NULL) {
-        FILE *err = fdopen(opts->fd_out, "w");
-        fprintf(err, "no session '%s' found \n", session_specifier);
-        fclose(err);
+        printf_error(opts, "no session '%s' found", session_specifier);
         return EXIT_FAILURE;
     }
 
@@ -1572,9 +1567,7 @@ handle_command(int argc, char** argv, const char*cwd,
         return new_action(argc, argv, cwd, env, wsi, opts);
     } else {
         // normally caught earlier
-        FILE *out = fdopen(opts->fd_err, "w");
-        fprintf(out, "domterm: unknown command '%s'\n", argv[0]);
-        fclose(out);
+        printf_error(opts, "domterm: unknown command '%s'", argv[0]);
         return -1;
     }
     return 0;

@@ -70,9 +70,8 @@ int html_action(int argc, char** argv, const char*cwd,
                     || memcmp(arg+2, "base=", neq) == 0)) {
                 base_url = eq+1;
             } else {
-                FILE *err = fdopen(opts->fd_err, "w");
-                fprintf(err, "%s: Invalid argument '%s'\n", argv[0], arg);
-                fclose(err);
+                printf_error(opts, "%s: Invalid argument '%s'",
+                             argv[0], arg);
                 return EXIT_FAILURE;
             }
         } else
@@ -95,9 +94,7 @@ int html_action(int argc, char** argv, const char*cwd,
             if (fname_abs != fname)
                 free(fname_abs);
             if (fin == NULL) {
-                FILE *err = fdopen(opts->fd_err, "w");
-                fprintf(err, "missing html file '%s'\n", fname);
-                fclose(err);
+                printf_error(opts, "missing html file '%s'", fname);
                 return EXIT_FAILURE;
             }
             if (base_url != NULL)
@@ -167,7 +164,6 @@ int imgcat_action(int argc, char** argv, const char*cwd,
                   struct options *opts)
 {
     check_domterm(opts);
-    FILE *err = fdopen(opts->fd_err, "w");
     int asize = 0;
     for (int i = 1; i < argc; i++) {
         asize += strlen(argv[i]) + 4;
@@ -199,17 +195,15 @@ int imgcat_action(int argc, char** argv, const char*cwd,
             } else if (arg[1] == 'n' && arg[2] == 0)
               n_arg = true;
             else {
-                fprintf(err, "%s: Invalid argument '%s'\n", argv[0], arg);
-                free(abuf);
-                fclose(err);
+                printf_error(opts, "%s: Invalid argument '%s'",
+                             argv[0], arg);
                 return EXIT_FAILURE;
             }
         } else {
             *aptr = '\0';
             if (access(arg, R_OK) != 0) {
-                 fprintf(err, "imgcat: No such file: %s\n", arg);
-                 fclose(err);
-                 return EXIT_FAILURE;
+                printf_error(opts, "imgcat: No such file: %s", arg);
+                return EXIT_FAILURE;
             }
             int fimg = open(arg, O_RDONLY);
             struct stat stbuf;
@@ -236,9 +230,8 @@ int imgcat_action(int argc, char** argv, const char*cwd,
             mime = get_mimetype(arg);
 #endif
             if (mime == NULL) {
-                 fprintf(err, "imgcat: unknown file type: %s\n", arg);
-                 fclose(err);
-                 return EXIT_FAILURE;
+                printf_error(opts, "imgcat: unknown file type: %s", arg);
+                return EXIT_FAILURE;
             }
             if (n_arg)
                 overflow = "";
@@ -268,7 +261,7 @@ int imgcat_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-char *read_response(FILE *err)
+static char *read_response(struct options *opts)
 {
     int fin = get_tty_in();
     size_t bsize = 2048;
@@ -289,7 +282,7 @@ char *read_response(FILE *err)
         for (;;) {
             ssize_t n = read(fin, buf+old, bsize-old);
             if (n <= 0) {
-                msg = "(malformed response received)\n";
+                msg = "(malformed response received)";
                 break;
             }
             char *end = memchr(buf+old, '\n', n);
@@ -303,7 +296,7 @@ char *read_response(FILE *err)
         }
     }
     if (msg) {
-        fputs(msg, err);
+        printf_error(opts, msg);
         free(buf);
         buf = NULL;
     }
@@ -318,17 +311,16 @@ int print_stylesheet_action(int argc, char** argv, const char*cwd,
     check_domterm(opts);
     close(0);
     if (argc != 2) {
-        char *msg = argc < 2 ? "(too few arguments to print-stylesheets)\n"
-          : "(too many arguments to print-stylesheets)\n";
-        if (write(opts->fd_err, msg, strlen(msg)+1) <= 0)
-            lwsl_err("writed failed\n");
-        close(opts->fd_err);
+        printf_error(opts, argc < 2
+                     ? "(too few arguments to print-stylesheets)"
+                     : "(too many arguments to print-stylesheets)");
         return EXIT_FAILURE;
     }
-    FILE *out = fdopen(opts->fd_out, "w");
     FILE *tout = fdopen(get_tty_out(), "w");
     fprintf(tout, "\033]93;%s\007", argv[1]); fflush(tout);
-    char *response = read_response(out);
+    char *response = read_response(opts);
+    if (! response)
+        return EXIT_FAILURE;
     json_object *jobj = json_tokener_parse(response);
     int nlines = json_object_array_length(jobj);
     for (int i = 0; i < nlines; i++)
@@ -347,8 +339,9 @@ int list_stylesheets_action(int argc, char** argv, const char*cwd,
     close(0);
     if (! write_to_tty("\033]90;\007", -1))
          return EXIT_FAILURE;
-    FILE *err = fdopen(opts->fd_err, "w");
-    char *response = read_response(err);
+    char *response = read_response(opts);
+    if (! response)
+        return EXIT_FAILURE;
     FILE *out = fdopen(opts->fd_out, "w");
     char *p = response;
     int i = 0;
@@ -368,23 +361,19 @@ int load_stylesheet_action(int argc, char** argv, const char*cwd,
                            char **env, struct lws *wsi,
                            struct options *opts)
 {
-    int replyfd = opts->fd_err;
     check_domterm(opts);
     if (argc != 3) {
-        char *msg = argc < 3 ? "too few arguments to load-stylesheet\n"
-          : "too many arguments to load-stylesheet\n";
-        if (write(replyfd, msg, strlen(msg)+1) <= 0)
-            lwsl_err("write failed\n");
-        close(replyfd);
+        printf_error(opts, argc < 3
+                     ? "too few arguments to load-stylesheet"
+                     : "too many arguments to load-stylesheet");
         return EXIT_FAILURE;
     }
     char *name = argv[1];
     char *fname = argv[2];
     int in = strcmp(fname, "-") == 0 ? 0 : open(fname, O_RDONLY);
-    FILE *err = fdopen(replyfd, "w");
-    if (in< 0) {
-      fprintf(err, "cannot read '%s'\n", fname);
-      return EXIT_FAILURE;
+    if (in < 0) {
+        printf_error(opts, "cannot read '%s'", fname);
+        return EXIT_FAILURE;
     }
     size_t bsize = 2048;
     int off = 0;
@@ -412,9 +401,9 @@ int load_stylesheet_action(int argc, char** argv, const char*cwd,
     json_object_put(jvalue);
 
     fflush(tout);
-    char *str = read_response(err);
+    char *str = read_response(opts);
     if (str != NULL && str[0]) {
-        fprintf(err, "%s\n", str);
+        printf_error(opts, "%s", str);
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -425,22 +414,19 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
 {
     check_domterm(opts);
     if (argc != 2) {
-        char *msg = argc < 2 ? "(too few arguments to disable/enable-stylesheet)\n"
-          : "(too many arguments to disable/enable-stylesheet)\n";
-        int replyfd = opts->fd_err;
-        if (write(replyfd, msg, strlen(msg)+1) <= 0)
-            lwsl_err("write failed\n");
-        close(replyfd);
+        char *msg = argc < 2
+            ? "(too few arguments to disable/enable-stylesheet)"
+            : "(too many arguments to disable/enable-stylesheet)";
+        printf_error(opts, msg);
         return EXIT_FAILURE;
     }
     char *specifier = argv[1];
     FILE *tout = fdopen(get_tty_out(), "w");
     fprintf(tout, "\033]%d;%s\007", disable?91:92, specifier);
     fflush(tout);
-    FILE *out = fdopen(opts->fd_out, "w");
-    char *str = read_response(out);
+    char *str = read_response(opts);
     if (str != NULL && str[0]) {
-        fprintf(out, "%s\n", str);
+        printf_error(opts, "%s", str);
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -584,11 +570,11 @@ int view_saved_action(int argc, char** argv, const char*cwd,
 {
     optind = 1;
     process_options(argc, argv, opts);
-    FILE *err = fdopen(opts->fd_err, "w");
     if (optind != argc-1) {
-        fprintf(err, optind >= argc ? "domterm view-saved: missing file name\n"
-                : "domterm view-saved: more than one file name\n");
-        fclose(err);
+        printf_error(opts,
+                     optind >= argc
+                     ? "domterm view-saved: missing file name"
+                     : "domterm view-saved: more than one file name");
         return EXIT_FAILURE;
     }
     const char *file = argv[optind];
@@ -609,8 +595,8 @@ int view_saved_action(int argc, char** argv, const char*cwd,
           file = fencoded;
         }
         if (access(fencoded, R_OK) != 0) {
-            fprintf(err, "domterm view-saved: No such file: %s\n", fencoded);
-            fclose(err);
+            printf_error(opts,
+                         "domterm view-saved: No such file: %s", fencoded);
             return EXIT_FAILURE;
         }
     }
@@ -643,11 +629,7 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
 {
     check_domterm(opts);
     if (argc > 2) {
-        char *msg ="too many arguments to reverse-video\n";
-        int err = opts->fd_err;
-        if (write(err, msg, strlen(msg)+1) <= 0)
-            lwsl_err("write failed\n");
-        close(err);
+        printf_error(opts, "too many arguments to reverse-video");
         return EXIT_FAILURE;
     }
     char *opt = argc < 2 ? "on" : argv[1];
@@ -659,10 +641,8 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
              || strcasecmp(opt, "false") == 0)
       on = false;
     else {
-        char *msg ="arguments to reverse-video is not on/off/yes/no/true/false\n";
-        if (write(opts->fd_err, msg, strlen(msg)+1) <= 0)
-            lwsl_err("write failed\n");
-        close(opts->fd_err);
+        printf_error(opts,
+                     "arguments to reverse-video is not on/off/yes/no/true/false");
         return EXIT_FAILURE;
     }
     char *cmd = on ? "\033[?5h" : "\033[?5l";
@@ -691,12 +671,11 @@ int window_action(int argc, char** argv, const char*cwd,
     else if (strcmp(subcommand, "toggle-hide") == 0)
         seq = OUT_OF_BAND_START_STRING "\033[2;74t" URGENT_END_STRING;
     if (seq == NULL) {
-        FILE *err = fdopen(opts->fd_err, "w");
-        fprintf(err,
-                subcommand ? "domterm window: unknown sub-command '%s'\n"
-                : "domterm window: missing sub-command\n",
+        printf_error(opts,
+                     subcommand
+                     ? "domterm window: unknown sub-command '%s'"
+                     : "domterm window: missing sub-command",
                 subcommand);
-        fclose(err);
         return EXIT_FAILURE;
     }
     FORALL_WSCLIENT(wclient) {
@@ -714,10 +693,7 @@ int window_action(int argc, char** argv, const char*cwd,
         static char** no_args = { NULL };
         return new_action(0, no_args, cwd, env, wsi, opts);
     } else {
-        FILE *err = fdopen(opts->fd_err, "w");
-        fprintf(err,
-                "domterm window: no window to '%s'\n", subcommand);
-        fclose(err);
+        printf_error(opts, "domterm window: no window to '%s'", subcommand);
         return EXIT_FAILURE;
     }
 }

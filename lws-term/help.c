@@ -79,9 +79,7 @@ int help_action(int argc, char** argv, const char*cwd,
         else if (strcmp(topic, "--no-pager") == 0)
             pager_option = NULL;
         else if (topic[0] == '-' && topic[1] == '-') {
-            FILE *err = fdopen(opts->fd_err, "w");
-            fprintf(err, "unknown help option '%s'\n", topic);
-            fclose(err);
+            printf_error(opts, "unknown help option '%s'", topic);
             return EXIT_FAILURE;
         }
         else
