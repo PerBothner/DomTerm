@@ -13,7 +13,7 @@ LN_H = ln
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.c utils.c protocol.c http.c whereami.c \
-  commands.c help.c junzip.c settings.c
+  commands.c command-connect.c help.c junzip.c settings.c
 nodist_ldomterm_SOURCES = git-describe.c
 ldomterm_CFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) @ldomterm_misc_includes@ -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@
 if ENABLE_LD_PRELOAD
@@ -72,4 +72,4 @@ git-describe.c:
 
 install-exec-am: ../bin/domterm$(EXEEXT)
 	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) ../bin/domterm$(EXEEXT) "$(DESTDIR)$(bindir)"
-EXTRA_DIST = junzip.h server.h whereami.h utils.h
+EXTRA_DIST = junzip.h server.h whereami.h utils.h command-connect.h

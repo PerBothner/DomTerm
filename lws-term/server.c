@@ -1,7 +1,7 @@
 #include "server.h"
+#include "command-connect.h"
 
 #include <sys/file.h>
-#include <sys/un.h>
 #include <regex.h>
 extern char **environ;
 
@@ -12,12 +12,9 @@ extern char **environ;
 static struct options opts;
 struct options *main_options = &opts;
 static char *default_size = NULL;
-char *backend_socket_name;
 
 static void make_html_file(int);
 static char *make_socket_name(bool);
-static int create_command_socket(const char *);
-static int client_connect (char *socket_path, int start_server);
 
 ////** Returns a fresh copy of the (non-empty) geometry string, or NULL. */
 static char *
@@ -793,29 +790,6 @@ get_domterm_jar_path()
     return get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm.jar");
 }
 
-static struct json_object *
-state_to_json(int argc, char *const*argv, char *const *env)
-{
-    struct json_object *jobj = json_object_new_object();
-    struct json_object *jargv = json_object_new_array();
-    struct json_object *jenv = json_object_new_array();
-    char *cwd = getcwd(NULL, 0); /* FIXME used GNU extension */
-    int i;
-    for (i = 0; i < argc; i++)
-        json_object_array_add(jargv, json_object_new_string(argv[i]));
-    for (i = 0; ; i++) {
-        const char *e = env[i];
-        if (e == NULL)
-            break;
-        json_object_array_add(jenv, json_object_new_string(e));
-    }
-    json_object_object_add(jobj, "cwd", json_object_new_string(cwd));
-    free(cwd);
-    json_object_object_add(jobj, "argv", jargv);
-    json_object_object_add(jobj, "env", jenv);
-    return jobj;
-}
-
 void  init_options(struct options *opts)
 {
     opts->browser_command = NULL;
@@ -1185,55 +1159,7 @@ main(int argc, char **argv)
                                 NULL, NULL, NULL, &opts));
     }
     if (socket >= 0) {
-        json_object *jobj = state_to_json(argc, argv, environ);
-        const char *state_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
-
-        size_t jlen = strlen(state_as_json);
-
-        struct msghdr msg;
-        int myfds[3];
-        myfds[0] = STDIN_FILENO;
-        myfds[1] = STDOUT_FILENO;
-        myfds[2] = STDERR_FILENO;
-        union u { // for alignment
-          char buf[CMSG_SPACE(sizeof myfds)];
-          struct cmsghdr align;
-        } u;
-        msg.msg_control = u.buf;
-        msg.msg_controllen = sizeof u.buf;
-        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 3);
-        memcpy(CMSG_DATA(cmsg), myfds, sizeof(int) * 3);
-        msg.msg_controllen = cmsg->cmsg_len;
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
-        struct iovec iov[2];
-        iov[0].iov_base = (char*) state_as_json;
-        iov[0].iov_len = jlen;
-        iov[1].iov_base = "\f";
-        iov[1].iov_len = 1;
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_iov = iov;
-        msg.msg_iovlen = 2;
-        msg.msg_flags = 0;
-        errno = 0;
-        lwsl_notice("sending command '%s' to server\n",
-                    cmd ? cmd : "(implicit-new)");
-        ssize_t n1 = sendmsg(socket, &msg, 0);
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-        //don't close STDERR_FILENO, for the sake of lwsl_notice below
-        json_object_put(jobj);
-        char ret = -1;
-        ssize_t n2 = read(socket, &ret, 1);
-        if (n1 < 0 || n2 != 1)
-             ret = -1;
-        //if (close(socket) != 0)
-        //  fatal("bad close of socket");
-        close(socket);
-        lwsl_notice("received exit code %d from server; exiting", ret);
-        exit(ret);
+        exit(client_send_command(socket, argc, argv, environ));
     }
 
     server = tty_server_new(argc-optind, argv+optind);
@@ -1363,21 +1289,6 @@ main(int argc, char **argv)
 
     return ret;
 }
-
-void
-setblocking(int fd, int state)
-{
-        int mode;
-
-        if ((mode = fcntl(fd, F_GETFL)) != -1) {
-                if (!state)
-                        mode |= O_NONBLOCK;
-                else
-                        mode &= ~O_NONBLOCK;
-                fcntl(fd, F_SETFL, mode);
-        }
-}
-
 bool
 is_WindowsSubsystemForLinux()
 {
@@ -1705,56 +1616,6 @@ make_html_file(int port)
     sbuf_free(obuf);
 }
 
-static const char *server_socket_path = NULL;
-static void server_atexit_handler(void) {
-    if (server_socket_path != NULL) {
-        unlink(server_socket_path);
-        server_socket_path = NULL;
-    }
-    if (main_html_url != NULL) {
-        unlink(main_html_path);
-        main_html_path = NULL;
-        main_html_url = NULL;
-    }
-}
-
-/* Create command server socket. */
-static int
-create_command_socket(const char *socket_path)
-{
-    struct sockaddr_un      sa;
-    mode_t                  mask;
-    int                     fd;
-
-    memset(&sa, 0, sizeof sa);
-    sa.sun_family = AF_UNIX;
-    if (strlen(socket_path) >= sizeof sa.sun_path) {
-        errno = ENAMETOOLONG;
-        return (-1);
-    }
-    strcpy(sa.sun_path, socket_path);
-    unlink(sa.sun_path);
-
-#ifndef SOCK_CLOEXEC
-#define SOCK_CLOEXEC 0
-#endif
-    if ((fd = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0)) == -1)
-        return (-1);
-
-    mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
-    if (bind(fd, (struct sockaddr *) &sa, sizeof(sa)) == -1)
-        return (-1);
-    umask(mask);
-    server_socket_path = socket_path;
-    atexit(server_atexit_handler);
-
-    if (listen(fd, 128) == -1)
-        return (-1);
-    setblocking(fd, 0);
-
-    return (fd);
-}
-
 void
 error(const char *format, ...)
 {
@@ -1808,31 +1669,3 @@ client_get_lock(char *lockfile)
         return (lockfd);
 }
 #endif
-
-static int
-client_connect (char *socket_path, int start_server)
-{
-    struct sockaddr_un      sa;
-    int fd;
-
-    memset(&sa, 0, sizeof sa);
-    sa.sun_family = AF_UNIX;
-    if (strlen(socket_path) >= sizeof sa.sun_path) {
-        errno = ENAMETOOLONG;
-        fatal("socket name '%s' too long", socket_path);
-    }
-    strcpy(sa.sun_path, socket_path);
-
-    fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0)
-        fatal("cannot create client socket '%s' -> %s",
-              socket_path, strerror(errno));
-    int c = connect(fd, (struct sockaddr *)&sa, sizeof sa);
-    lwsl_notice("connecting to server socket '%s': %s\n",
-                socket_path,
-                c == 0 ? "ok" : strerror(errno));
-    if (c == 0)
-        return fd;
-    close(fd);
-    return -1;
-}
