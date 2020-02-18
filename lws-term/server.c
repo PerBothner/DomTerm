@@ -1149,7 +1149,7 @@ main(int argc, char **argv)
     if ((command == NULL ||
          (command->options &
           (COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER)) != 0))
-      socket = client_connect(make_socket_name(false), 0);
+      socket = client_connect(make_socket_name(false));
     if (command != NULL
         && ((command->options & COMMAND_IN_CLIENT) != 0
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0

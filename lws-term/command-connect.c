@@ -20,7 +20,6 @@ static void server_atexit_handler(void) {
     }
 }
 
-
 void
 setblocking(int fd, int state)
 {
@@ -98,7 +97,7 @@ state_to_json(int argc, char *const*argv, char *const *env)
  * Return socket or -1 if server not found.
  */
 int
-client_connect (char *socket_path, int start_server)
+client_connect (char *socket_path)
 {
     struct sockaddr_un      sa;
     int fd;
