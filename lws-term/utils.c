@@ -607,11 +607,16 @@ void
 printf_error(struct options *opts, const char *format, ...)
 {
     struct sbuf buf[1];
+    bool in_domterm = false;  // TODO - needs some work to get right
     sbuf_init(buf);
+    if (in_domterm)
+        sbuf_append(buf, "\033[12u", -1);
     va_list ap;
     va_start(ap, format);
     sbuf_vprintf(buf, format, ap);
     va_end(ap);
+    if (in_domterm)
+        sbuf_append(buf, "\033[11u", -1);
     sbuf_append(buf, "\n", -1);
     write(opts->fd_err, buf->buffer, buf->len);
     sbuf_free(buf);
