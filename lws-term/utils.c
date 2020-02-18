@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
 #include "server.h"
+#include "command-connect.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -609,6 +610,12 @@ printf_error(struct options *opts, const char *format, ...)
     struct sbuf buf[1];
     bool in_domterm = false;  // TODO - needs some work to get right
     sbuf_init(buf);
+#if ! PASS_STDFILES_UNIX_SOCKET
+    bool from_client = opts != main_options;
+    char out_code = PASS_STDFILES_SWITCH_TO_STDERR;
+    if (from_client)
+        sbuf_append(buf, &out_code, 1);
+#endif
     if (in_domterm)
         sbuf_append(buf, "\033[12u", -1);
     va_list ap;
@@ -618,6 +625,11 @@ printf_error(struct options *opts, const char *format, ...)
     if (in_domterm)
         sbuf_append(buf, "\033[11u", -1);
     sbuf_append(buf, "\n", -1);
+ #if ! PASS_STDFILES_UNIX_SOCKET
+    out_code = PASS_STDFILES_SWITCH_TO_STDOUT;
+    if (from_client)
+        sbuf_append(buf, &out_code, 1);
+#endif
     write(opts->fd_err, buf->buffer, buf->len);
     sbuf_free(buf);
 }

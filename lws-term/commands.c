@@ -1,4 +1,5 @@
 #include "server.h"
+#include "command-connect.h"
 #include <stdlib.h>
 #if HAVE_LIBMAGIC
 #include <magic.h>

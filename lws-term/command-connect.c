@@ -4,6 +4,7 @@
 #include "command-connect.h"
 
 #include <sys/un.h>
+#include <sys/uio.h>
 
 char *backend_socket_name;
 static const char *server_socket_path = NULL;
@@ -50,10 +51,12 @@ create_command_socket(const char *socket_path)
     strcpy(sa.sun_path, socket_path);
     unlink(sa.sun_path);
 
-#ifndef SOCK_CLOEXEC
-#define SOCK_CLOEXEC 0
+#ifdef SOCK_CLOEXEC
+#define SOCK_OPTIONS (SOCK_STREAM|SOCK_CLOEXEC)
+#else
+#define SOCK_OPTIONS (SOCK_STREAM)
 #endif
-    if ((fd = socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC, 0)) == -1)
+    if ((fd = socket(AF_UNIX, SOCK_OPTIONS, 0)) == -1)
         return (-1);
 
     mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
@@ -128,11 +131,18 @@ client_connect (char *socket_path)
 int
 client_send_command(int socket, int argc, char *const*argv, char *const *env)
 {
-    json_object *jobj = state_to_json(argc, argv, environ);
+    json_object *jobj = state_to_json(argc, argv, env);
     const char *state_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
 
     size_t jlen = strlen(state_as_json);
 
+    struct iovec iov[2];
+    iov[0].iov_base = (char*) state_as_json;
+    iov[0].iov_len = jlen;
+    iov[1].iov_base = "\f";
+    iov[1].iov_len = 1;
+
+#if PASS_STDFILES_UNIX_SOCKET
     struct msghdr msg;
     int myfds[3];
     myfds[0] = STDIN_FILENO;
@@ -150,11 +160,6 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     msg.msg_controllen = cmsg->cmsg_len;
     cmsg->cmsg_level = SOL_SOCKET;
     cmsg->cmsg_type = SCM_RIGHTS;
-    struct iovec iov[2];
-    iov[0].iov_base = (char*) state_as_json;
-    iov[0].iov_len = jlen;
-    iov[1].iov_base = "\f";
-    iov[1].iov_len = 1;
     msg.msg_name = NULL;
     msg.msg_namelen = 0;
     msg.msg_iov = iov;
@@ -167,11 +172,46 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     //don't close STDERR_FILENO, for the sake of lwsl_notice below
+#else
+    writev(socket, iov, 2);
+#endif
     json_object_put(jobj);
-    char ret = -1;
+    char ret = 0;
+#if PASS_STDFILES_UNIX_SOCKET
     ssize_t n2 = read(socket, &ret, 1);
     if (n1 < 0 || n2 != 1)
         ret = -1;
+#else
+    size_t rsize = 512;
+    unsigned char *rbuf = xmalloc(rsize);
+    int cur_out = STDOUT_FILENO;
+    for (;;) {
+        int nr = read(socket, rbuf, rsize);
+        if (nr <= 0)
+	    break;
+        int start = 0;
+        for (int i = 0; ; i++) {
+	    int ch = i >= nr ? -1 : rbuf[i];
+            if (ch <= '\003') {
+                if (i > start) {
+                    if (cur_out < 0)
+                        ret = rbuf[nr-1];
+                    else
+                        write(cur_out, rbuf+start, i-start);
+                }
+                if (ch < 0)
+                    break;
+                start = i+1;
+                if (ch == PASS_STDFILES_SWITCH_TO_STDERR)
+                    cur_out = STDERR_FILENO;
+                else if (ch == PASS_STDFILES_SWITCH_TO_STDOUT)
+                    cur_out = STDOUT_FILENO;
+                else if (ch == PASS_STDFILES_EXIT_CODE)
+                    cur_out = -1;
+            }
+        }
+    }
+#endif
     //if (close(socket) != 0)
     //  fatal("bad close of socket");
     close(socket);
@@ -205,6 +245,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                     jblen = (3 * jblen) >> 1;
                     jbuf = xrealloc(jbuf, jblen);
                 }
+#if PASS_STDFILES_UNIX_SOCKET
                 struct msghdr msg;
                 struct iovec iov;
                 int myfds[3];
@@ -230,6 +271,15 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                     opts.fd_out = myfds[1];
                     opts.fd_err = myfds[2];
                 }
+#else
+#if 1
+		struct pollfd pfd = { sockfd, POLLIN, 0 };
+		poll(&pfd, 1, 3000); // FIXME needed?
+#endif
+		ssize_t n = read(sockfd, jbuf+jpos, jblen-jpos);
+		opts.fd_out = sockfd;
+		opts.fd_err = sockfd;
+#endif
                 if (n <= 0) {
                   break;
                 } else if (jbuf[jpos+n-1] == '\f') {

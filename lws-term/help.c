@@ -1,4 +1,5 @@
 #include "server.h"
+#include "command-connect.h"
 
 struct help_info {
   const char *command;
