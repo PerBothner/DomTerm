@@ -297,7 +297,7 @@ static char *read_response(struct options *opts)
         }
     }
     if (msg) {
-        printf_error(opts, msg);
+        printf_error(opts, "%s", msg);
         free(buf);
         buf = NULL;
     }
@@ -415,10 +415,9 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
 {
     check_domterm(opts);
     if (argc != 2) {
-        char *msg = argc < 2
-            ? "(too few arguments to disable/enable-stylesheet)"
-            : "(too many arguments to disable/enable-stylesheet)";
-        printf_error(opts, msg);
+        printf_error(opts, argc < 2
+                     ? "(too few arguments to disable/enable-stylesheet)"
+                     : "(too many arguments to disable/enable-stylesheet)");
         return EXIT_FAILURE;
     }
     char *specifier = argv[1];
