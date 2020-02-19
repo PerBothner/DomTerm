@@ -5187,12 +5187,15 @@ DomTerm._ELEMENT_KIND_SVG = 8; // Allow in SVG
 DomTerm._ELEMENT_KIND_EMPTY = 16; // Void (empty) HTML element, like <hr>
 DomTerm._ELEMENT_KIND_TABLE = 32; // allowed in table
 DomTerm._ELEMENT_KIND_SKIP_TAG = 64; // ignore (skip) element (tag)
-DomTerm._ELEMENT_KIND_CONVERT_TO_DIV = 128; // used for <body>
+DomTerm._ELEMENT_KIND_CONVERT_TO_DIV = 128; // used for <body> and <html>
 DomTerm._ELEMENT_KIND_SKIP_FULLY = 256; // skip element (tag and contents)
 DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY = DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_SKIP_FULLY;
 
 DomTerm._elementInfo = function(tag, parents=null) {
-    var v = DomTerm.HTMLinfo.hasOwnProperty(tag) ? DomTerm.HTMLinfo[tag] : 0;
+    var v = DomTerm.HTMLinfo.hasOwnProperty(tag)
+        ||  DomTerm.HTMLinfo.hasOwnProperty(tag = tag.toLowerCase())
+        ? DomTerm.HTMLinfo[tag]
+        : 0;
 
     if ((v & DomTerm._ELEMENT_KIND_SVG) != 0 && parents) {
         // If allow in SVG, check parents for svg
@@ -5235,6 +5238,8 @@ Terminal.prototype.allowAttribute = function(name, value, einfo, parents) {
 DomTerm.HTMLinfo = {
     "a": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_CHECK_JS_TAG+DomTerm._ELEMENT_KIND_ALLOW,
     "abbr": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "acronym": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
+    "address": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "altGlyph": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "altGlyphDef": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "altGlyphItem": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
@@ -5633,6 +5638,7 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
                             }
                             str = str.substring(0, valstart) + attrvalue
                                 + str.substring(valend);
+                            len = str.length;
                         }
                     }
                     ch = str.charCodeAt(i++); // safe because of prior i+1
@@ -7562,7 +7568,7 @@ Terminal.prototype.loadStyleSheet = function(name, value) {
 };
 
 /** Look for a styleshet named by the specifier.
- * Return a CSSStyleSheet if found or a string (error message) ptherwise.
+ * Return a CSSStyleSheet if found or a string (error message) otherwise.
 */
 Terminal.prototype.findStyleSheet = function(specifier) {
     if (! specifier || typeof specifier != "string")
