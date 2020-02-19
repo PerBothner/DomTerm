@@ -7,6 +7,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#define DO_HTML_ACTION_IN_SERVER PASS_STDFILES_UNIX_SOCKET
+
 struct lws;
 
 int is_domterm_action(int argc, char** argv, const char*cwd,
@@ -124,8 +126,9 @@ int html_action(int argc, char** argv, const char*cwd,
             }
         }
     }
+    int ret = EXIT_SUCCESS;
     sbuf_append(&sb, "\007", 1);
-
+#if DO_HTML_ACTION_IN_SERVER
     char **ee = env;
     while (*ee && strncmp(*ee, "DOMTERM=", 8) != 0)
         ee++;
@@ -156,8 +159,14 @@ int html_action(int argc, char** argv, const char*cwd,
             return EXIT_SUCCESS;
         }
     }
+#else
+    if (write(get_tty_out(), sb.buffer, sb.len) != sb.len) {
+        lwsl_err("write failed\n");
+        ret = EXIT_FAILURE;
+    }
+#endif
     sbuf_free(&sb);
-    return EXIT_FAILURE;
+    return ret;
 }
 
 int imgcat_action(int argc, char** argv, const char*cwd,
@@ -703,10 +712,18 @@ struct command commands[] = {
     .options = COMMAND_IN_CLIENT,
     .action = is_domterm_action },
   { .name ="html",
+#if DO_HTML_ACTION_IN_SERVER
     .options = COMMAND_IN_SERVER|COMMAND_CHECK_DOMTERM,
+#else
+    .options = COMMAND_IN_CLIENT|COMMAND_CHECK_DOMTERM,
+#endif
     .action = html_action },
   { .name ="hcat",
+#if DO_HTML_ACTION_IN_SERVER
     .options = COMMAND_IN_SERVER|COMMAND_ALIAS|COMMAND_CHECK_DOMTERM },
+#else
+    .options = COMMAND_IN_CLIENT|COMMAND_ALIAS|COMMAND_CHECK_DOMTERM },
+#endif
   { .name ="imgcat",
     .options = COMMAND_IN_CLIENT,
     .action = imgcat_action },
