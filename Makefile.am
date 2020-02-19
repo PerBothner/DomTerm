@@ -495,11 +495,13 @@ ASCIIDOCTOR = asciidoctor
 #  --link-stylesheet --stylesheet=docutils.css
 ADOC2HTML_OPTS = -s
 ADOC2MAN_OPTS = -b manpage
+#MAN_PIPE = man -l --nj --nh -
+MAN_PIPE = nroff -man
 
 if WITH_ASCIIDOCTOR
 share/domterm/help/%.txt: doc/help/%.adoc
 	$(ASCIIDOCTOR) $(ADOC2MAN_OPTS) $< -o - \
-	  | man -l --nj --nh - \
+	  | $(MAN_PIPE) \
 	  | $(SED) -e '1,3d' -e '4s/^ *//' -e '$$d' > $@
 else
 share/domterm/help/%.txt: doc/help/%.adoc share/domterm/help
