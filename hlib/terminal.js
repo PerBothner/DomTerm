@@ -2340,7 +2340,7 @@ Terminal.prototype._pushStdMode = function(styleValue) {
         let nxt = this.outputBefore;
         if (nxt instanceof Element && nxt.getAttribute("std") === styleValue) {
             // This can happen after implicit startPrompt (OSC 133 A)
-            // followed by explicut startPrompt (PSC 133 P).
+            // followed by explicit startPrompt (PSC 133 P).
             this.outputContainer = nxt;
             this.outputBefore = nxt.firstChild;
         } else {
@@ -3329,7 +3329,6 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
     // Needed when composing (IME) on Chromium.
     // Otherwise the composition buffer may be displayed inside the
     // prompt string rather than the input area (specifically in _caretNode).
-    bufNode.contentEditable = false;
     this._addBlankLines(1, this.lineEnds.length, bufNode, null);
     return bufNode;
 };
