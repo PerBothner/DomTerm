@@ -9079,6 +9079,7 @@ Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
 }
 
 Terminal.prototype.editorMoveHomeOrEnd = function(toEnd) {
+    this._removeCaret();
     let r = new Range();
     r.selectNodeContents(this._inputLine);
     if (toEnd)
