@@ -1815,6 +1815,11 @@ Move caret @var{N} words left or right.
 @item @kbd{@key{Home}} (@code{beginning-of-line})
 @itemx @kbd{@key{End}} (@code{end-of-line})
 Move caret to start/end of line.
+@item @kbd{Alt-@key{Home}} (@code{beginning-of-input})
+@itemx @kbd{Alt-@key{End}} (@code{end-of-input})
+Move caret to start/end of the input area.
+(Different from start/end of line if there are multiple lines in
+the input area.)
 @item @kbd{Shift-Left} (@code{backward-char-extend})
 @itemx @kbd{Shift-Right} (@code{forward-char-extend})
 Extends the current selection by one character.
