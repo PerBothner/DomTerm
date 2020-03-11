@@ -1615,7 +1615,7 @@ class DTParser {
                 function processEditKey(dt) {
                     dt._clientWantsEditing = 1;
                     dt.editorAddLine();
-                    if (keyName == "paste")
+                    if (keyName === "paste" || keyName === "ime")
                         dt.editorInsertString(kstr);
                     else
                         dt.doLineEdit(keyName);

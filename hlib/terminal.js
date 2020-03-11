@@ -1027,8 +1027,9 @@ Terminal.prototype.doFocus = function() {
 }
 
 Terminal.prototype.maybeFocus = function() {
-    if (this.hasFocus()) {
-        this.topNode.focus({preventScroll: true});
+    let goal = this.topNode;
+    if (this.hasFocus() && document.activeElement !== goal) {
+        goal.focus({preventScroll: true});
     }
 }
 
@@ -1938,7 +1939,6 @@ Terminal.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput) {
         this._removeCaret();
         var caretParent = this._caretNode.parentNode;
-        const sel = document.getSelection();
         if (caretParent != null) {
             let r;
             if (this.isLineEditing()) {
@@ -2947,7 +2947,6 @@ Terminal.prototype.isSpanNode = function(node) {
 
 Terminal.prototype._initializeDomTerm = function(topNode) {
     this.topNode = topNode;
-    topNode.contentEditable = true;
     topNode.spellcheck = false;
     topNode.terminal = this;
 
@@ -2961,6 +2960,55 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
                           .createTextNode("abcdefghijklmnopqrstuvwxyz"));
     this._rulerNode = rulerNode;
     helperNode.appendChild(rulerNode);
+
+    // The 'focusArea' is used as the default focus/input field:
+    // when we logically clear the selection, we instead select the focusArea.
+    // It is normally hidden (negative z-index) and empty.
+    // However, when an Input Method Editor (IME) is active,
+    // the input goes to the focusArea, and the position of the focusArea
+    // is moved to overlap the caret position.
+    // Unfortunately, the area must be focused and selected *before* typing
+    // starts - otherwise the IME doesn't get activated properly.
+    // That is why the focusArea element is a top-level (just under the
+    // topNode) permanent (but normally invisible) helper span.
+    // When composing starts, we don't have to do DOM tree changes (which
+    // could break selection and IME), instead we just bring the focusArea
+    // to the foreground and adjust the position to the caret position.
+    let focusArea = document.createElement("span");
+    this.focusArea = focusArea;
+    focusArea.setAttribute("class", "focus-area");
+    focusArea.setAttribute("type", "text");
+    focusArea.setAttribute('autocorrect', 'off');
+    focusArea.setAttribute('autocapitalize', 'off');
+    focusArea.setAttribute('spellcheck', 'false');
+    focusArea.style.position = 'absolute';
+    focusArea.style.left = '0px';
+    focusArea.style.width = "auto";
+    focusArea.style.top = '0px';
+    focusArea.style.bottom = '0px';
+    focusArea.style['z-index'] = -1;
+    topNode.appendChild(focusArea);
+    focusArea.contentEditable = true;
+
+    // The 'focusBackground' is only in the DOM when composing (IME) is active.
+    // It is provides an "underlay" (background) for the focusArea,
+    // and as partial input arrives it is re-positioned and re-sized
+    // to match the focusArea.  It's main purpose is when composing when
+    // there is following input (text right of the cursor, assuming ltr):
+    // Since the focusBackground (unlike the focusArea) is in the "logical"
+    // place in the DOM tree (just before the caretNode), it serves to
+    // push the following text right while composing is active.
+    // The focusBackground also helps in styling the focusArea.
+    let focusBackground = document.createElement("span");
+    focusBackground.setAttribute("class", "composition-background");
+    focusBackground.setAttribute("std", "input");
+    focusBackground.style.display = "inline-block";
+    this.focusBackground = focusBackground;
+
+    // Note that Firefox has a bug (?) that throws NS_ERROR_FAILURE in some
+    // cases if selection is moved across contentEditable boundaries.
+    // So for simplicity ...
+    topNode.contentEditable = true;
 
     var wrapDummy = this._createLineNode("soft");
     wrapDummy.setAttribute("breaking", "yes");
@@ -3239,14 +3287,14 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     var caretNode = this._createSpanNode();
     this._caretNode = caretNode;
     caretNode.setAttribute("std", "caret");
-    caretNode.contentEditable = true;
-    caretNode.spellcheck = false;
     this.insertNode(caretNode);
     this.outputBefore = caretNode;
 
     var dt = this;
     topNode.addEventListener("keydown",
-                             function(e) { dt.keyDownHandler(e) }, false);
+                             function(e) {
+                                 dt.keyDownHandler(e);
+                             }, false);
     topNode.addEventListener("keypress",
                              function(e) { dt.keyPressHandler(e) }, false);
     topNode.addEventListener("input",
@@ -3261,24 +3309,59 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         if (dt.verbosity >= 1)
             dt.log("compositionStart "+JSON.stringify(ev.data)+" was-c:"+dt._composing);
         dt._composing = 1;
-        dt._caretNode.classList.add("pending");
-        document.getSelection().collapse(dt._caretNode, 0);
+        dt.focusArea.style['z-index'] = 8;
+        let left = 0;
+        let top = 0;
+        for (let n = dt._caretNode; n && n != dt.topNode; n = n.offsetParent) {
+            left += n.offsetLeft;
+            top += n.offsetTop;
+        }
+        dt.focusArea.style.left = `${left}px`;
+        dt.focusArea.style.top = `${top}px`;
+        dt.focusArea.style.bottom = '';
+        dt.focusArea.style.height = `${dt.charHeight}px`;
+        dt.focusBackground.style.left = `${left}px`;
+        dt.focusBackground.style.width = `0px`; // FIXME
+        dt.focusBackground.style.top = `${top}px`;
+        let pre = dt._getOuterPre(dt._caretNode);
+        if (pre)
+            pre.classList.add("input-line");
+        dt._caretNode.parentNode.insertBefore(dt.focusBackground, dt._caretNode);
+        let caretStyle = window.getComputedStyle(dt._caretNode.parentNode);
+        dt.focusArea.style['font-family'] = caretStyle['font-family'];
+        dt._removeCaret();
     }
     function compositionEnd(ev) {
         if (dt.verbosity >= 1)
             dt.log("compositionEnd "+JSON.stringify(ev.data));
         dt._composing = 0;
-        dt._caretNode.classList.remove("pending");
-        dt.reportText(ev.data);
+        let data = ev.data;
         const caret = dt._caretNode;
-        const ch = caret.firstChild;
-        if (ch) {
-            let pending = dt._createPendingSpan();
-            caret.parentNode.insertBefore(pending, caret);
-            dt._moveNodes(ch, pending, null);
+        dt.focusArea.style.left = '0px';
+
+        dt.focusArea.style.bottom = '0px';
+        dt.focusArea.style['z-index'] = -1;
+        if (data) {
+            if (dt.isLineEditing()) {
+                dt.editorAddLine();
+                dt._moveNodes(dt.focusArea.firstChild, caret.parentNode, caret);
+            } else {
+                if (dt.sstate.bracketedPasteMode || dt._lineEditingMode != 0)
+                    dt.reportText(data, null);
+                else
+                    dt.reportKeyEvent("ime", data);
+                let pending = dt._createPendingSpan();
+                caret.parentNode.insertBefore(pending, caret);
+                dt._moveNodes(dt.focusArea.firstChild, pending, null);
+            }
         }
+        if (dt.focusBackground.parentNode)
+            dt.focusBackground.parentNode.removeChild(dt.focusBackground);
+        dt._checkTree();
     }
     topNode.addEventListener("compositionstart", compositionStart, true);
+    topNode.addEventListener("compositionupdate",
+                             (e) => {console.log("compositionupdate d:"+e.data);}, true);
     topNode.addEventListener("compositionend", compositionEnd, true);
     topNode.addEventListener("paste",
                              function(e) {
@@ -3446,8 +3529,7 @@ Terminal.prototype._updateMiscOptions = function(map) {
 DomTerm.showContextMenu = null;
 
 Terminal.prototype._clearSelection = function() {
-    let sel = document.getSelection();
-    sel.removeAllRanges();
+    document.getSelection().collapse(this.focusArea, 0);
 }
 
 /** Do after selection has changed, but "stabilized".
@@ -3648,7 +3730,7 @@ Terminal.prototype._updateSelected = function() {
     if (point
         && this._composing <= 0
         && this.caretStyle !== Terminal.NATIVE_CARET_STYLE) {
-        sel.removeAllRanges();
+        this._clearSelection();
     }
 }
 Terminal.prototype._mouseHandler = function(ev) {
@@ -3668,7 +3750,6 @@ Terminal.prototype._mouseHandler = function(ev) {
                 // we don't want a visible caret FIXME handle caretStyle >= 5
                 //sel.removeAllRanges();
             }
-            this.maybeFocus();
         }
     }
     if (ev.type == "mousedown") {
@@ -3677,6 +3758,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         this._markMode = 0;
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
+        this.maybeFocus();
     }
     if (this.sstate.mouseMode == 0 && ev.button == 2) {
         DomTerm._contextTarget = ev.target;
@@ -7331,9 +7413,8 @@ DomTerm.doContextCopy = function() {
 DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     let sel = document.getSelection();
     if (sel.rangeCount == 0)
-        sel.collapse(dt._caretNode, 0);
-    if (dt != null)
-        dt.maybeFocus();
+        sel.collapse(dt.focusArea, 0);
+    dt.maybeFocus();
     return document.execCommand("paste", false);
 };
 
@@ -7689,7 +7770,7 @@ Terminal.prototype.nextInputMode = function() {
 
 Terminal.prototype._sendInputContents = function(sendEnter) {
     let oldInput = this._inputLine;
-    let passwordField = oldInput.classList.contains("noecho")
+    let passwordField = oldInput && oldInput.classList.contains("noecho")
         && this.sstate.hiddenText;
     if (sendEnter)
         this.editorMoveHomeOrEnd(true);
@@ -8130,6 +8211,8 @@ Terminal.prototype.keyPressHandler = function(event) {
 };
 
 Terminal.prototype.inputHandler = function(event) {
+    if (this._composing > 0)
+        this.focusBackground.style.width = `${this.focusArea.offsetWidth}px`;
     if (this.verbosity >= 2)
         this.log("input "+event+" which:"+event.which+" data:"+JSON.stringify(event.data));
     if (event.target == this._inputLine && ! this.isLineEditing()
