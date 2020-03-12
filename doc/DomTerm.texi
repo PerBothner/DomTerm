@@ -1843,12 +1843,14 @@ Also, if line is non-empty, add it to the history list.
 @item @kbd{Alt-@key{Enter}} (@code{insert-newline})
 Insert a literal newline.  Splits the current line at the current position,
 creating two new lines, with the caret after the new break.
-@item @kbd{Ctrl-@key{C}}
+@item @kbd{Ctrl-@key{C}} (@code{copy-text})
 @itemx @kbd{Ctrl-Shift-@key{C}}
+@itemx @kbd{Ctrl-@key{Insert}}
 Copy selection to clipboard.
 (Selection can be partly or fully outside input area.)
-@item @kbd{Ctrl-@key{V}}
+@item @kbd{Ctrl-@key{V}} (@code{paste-text})
 @itemx @kbd{Ctrl-Shift-@key{V}}
+@itemx @kbd{Shift-@key{Insert}}  @emph{(Electron and Qt only)}
 Paste selection from clipboard.
 @item @kbd{Ctrl-@key{X}}
 @itemx @kbd{Ctrl-Shift-@key{X}}
@@ -2349,13 +2351,15 @@ This does not list @ref{Input line editing,shortcuts specific to line-editing mo
 @c Enter/exit pager mode
 @c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
-@item @kbd{Ctrl-Shift-@key{C}}
+@item @kbd{Ctrl-Shift-@key{C}} (@code{copy-text})
+@itemx @kbd{Ctrl-@key{Insert}}
 Copy the selection to the clipboard.
 It is copied as both plain text (@code{text/plain})
 and formatted HTML (@code{text/html}) in case the receiving
 application can paste the latter.
 (@kbd{Ctrl-@key{C}} also works in line-editing mode.)
-@item @kbd{Ctrl-Shift-@key{V}}
+@item @kbd{Ctrl-Shift-@key{V}} (@code{paste-text})
+@itemx @kbd{Shift-@key{Insert}}  @emph{(Electron and Qt only)}
 Paste text from the clipboard.
 (@kbd{Ctrl-@key{V}} also works in line-editing mode.)
 @item @kbd{Ctrl-Shift-@key{X}} (@code{cut-text})
