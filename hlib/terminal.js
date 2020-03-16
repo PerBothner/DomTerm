@@ -3357,7 +3357,6 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         }
         if (dt.focusBackground.parentNode)
             dt.focusBackground.parentNode.removeChild(dt.focusBackground);
-        dt._checkTree();
     }
     topNode.addEventListener("compositionstart", compositionStart, true);
     topNode.addEventListener("compositionupdate",
@@ -6560,7 +6559,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         dt._insertIntoLines(lineNode, line);
                         indentWidth =
                             addIndentation(dt, lineNode, countColumns);
-                        rest = document.createTextNode(rest);
+                        rest = el.parentNode === null && el.data === rest ? el
+                            : document.createTextNode(rest);
                         if (el == dt.outputContainer
                            && dt.outputBefore > el.length) {
                             dt.outputContainer = rest;
