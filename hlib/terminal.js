@@ -932,8 +932,7 @@ Terminal.prototype._maybeAddTailHider = function(oldGroup) {
             }
         }
         if (nLines > 1) {
-            let button = this._createSpanNode();
-            button.setAttribute("class", "tail-hider");
+            const button = this._createSpanNode("tail-hider");
             firstLine.insertBefore(button, firstLine.firstChild);
             button.addEventListener("click",
                                     this._showHideEventHandler,
@@ -1282,9 +1281,9 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                 var cwidth = this.wcwidthInContext(ch, cur.parentNode);
                 if (cwidth == 2) {
                     var i1 = ch > 0xffff ? i + 2 : i + 1;
-                    var wcnode = this._createSpanNode();
-                    wcnode.setAttribute("class", "wc-node");
-                    wcnode.appendChild(document.createTextNode(String.fromCodePoint(ch)));
+                    const wcnode =
+                        this._createSpanNode("wc-node",
+                                             String.fromCodePoint(ch));
                     cur.parentNode.insertBefore(wcnode, cur.nextSibling);
                     this._deleteData(cur, i, dlen-i);
                     cur = wcnode;
@@ -2472,8 +2471,7 @@ Terminal.prototype._adjustStyle = function() {
         this._popStyleSpan();
     }
     if (this._currentStyleMap.size != 0 || needBackground) {
-        var styleSpan = this._createSpanNode();
-        styleSpan.setAttribute("class", "term-style");
+        let styleSpan = this._createSpanNode("term-style");
         var styleAttr = null;
         var decoration = null;
         var stdKind = null;
@@ -2802,8 +2800,13 @@ Terminal.prototype._getOuterInputArea = function(node = this._caretNode) {
     return null;
 }
 
-Terminal.prototype._createSpanNode = function() {
-    return document.createElement("span");
+Terminal.prototype._createSpanNode = function(cls=null, txt=null) {
+    let el = document.createElement("span");
+    if (cls)
+        el.setAttribute("class", cls);
+    if (txt)
+        el.appendChild(document.createTextNode(txt));
+    return el;
 };
 
 Terminal.prototype.makeId = function(local) {
@@ -3258,8 +3261,7 @@ DomTerm.displayInfoMessage = DomTerm.displayInfoInWidget;
 
 Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
     DomTerm.displayInfoInWidget(prefix, this);
-    let miniBuffer = this._createSpanNode();
-    miniBuffer.classList.add("editing");
+    let miniBuffer = this._createSpanNode("editing");
     miniBuffer.setAttribute("std", "input");
     this._miniBuffer = miniBuffer;
     var div = this._displayInfoWidget;
@@ -3948,8 +3950,7 @@ Terminal.prototype._showHideHandler = function(event) {
             if (node == null)
                 break;
             if (! (node instanceof Element)) {
-                var span = this._createSpanNode();
-                span.setAttribute("class", "wrap-for-hiding");
+                var span = this._createSpanNode("wrap-for-hiding");
                 node.parentNode.insertBefore(span, node);
                 span.appendChild(node);
                 node = span;
@@ -6892,9 +6893,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         if (width < 0)
             break;
         if (width == 2) {
-            const wcnode = this._createSpanNode();
-            wcnode.setAttribute("class", "wc-node");
-            wcnode.appendChild(document.createTextNode(str.substring(i, next_i)));
+            const wcnode = this._createSpanNode("wc-node",
+                                                str.substring(i, next_i));
             segments.push(wcnode);
             widths.push(2);
             beginIndex = next_i;
@@ -9034,8 +9034,7 @@ Terminal.prototype.editorAddLine = function() {
         this._enableScroll();
     if (this._inputLine == null) {
         this._removeInputLine();
-        var inputNode = this._createSpanNode();
-        inputNode.classList.add("editing");
+        var inputNode = this._createSpanNode("editing");
         inputNode.setAttribute("std", "input");
         this._removeCaret();
         if (this.outputBefore==this._caretNode)
@@ -9256,8 +9255,7 @@ Terminal.prototype.editorContinueInput = function() {
     let previous = outputParent.previousSibling; // domterm-pre input-line
     let previousInputLineNode = previous.lastChild;
     let previousInputStd = previousInputLineNode.previousSibling;
-    let editSpan =  this._createSpanNode();
-    editSpan.classList.add("editing");
+    let editSpan =  this._createSpanNode("editing");
     editSpan.setAttribute("std", "input");
     this._removeCaret();
     previousInputStd.insertBefore(editSpan, previousInputStd.firstChild);

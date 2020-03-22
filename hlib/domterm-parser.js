@@ -1543,8 +1543,7 @@ class DTParser {
             }
             break;
         case 44:
-            var span = term._createSpanNode();
-            span.setAttribute("class", "diagnostic");
+            var span = term._createSpanNode("diagnostic");
             if (text)
                 span.setAttribute("info", text);
             /* FUTURE:
@@ -1758,13 +1757,11 @@ class DTParser {
                 if (lineStart._widthMode < Terminal._WIDTH_MODE_PPRINT_SEEN)
 	            lineStart._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
             }
-            var ppgroup = term._createSpanNode();
-            ppgroup.setAttribute("class", "pprint-group");
+            var ppgroup = term._createSpanNode("pprint-group");
             text = text.trim();
             if (text) {
                 var prefix = String(JSON.parse(text));
-                var span = term._createSpanNode();
-                span.setAttribute("class", "pprint-prefix");
+                var span = term._createSpanNode("pprint-prefix");
                 var tnode = document.createTextNode(prefix);
                 span.appendChild(tnode);
                 term.insertNode(span);
@@ -1793,8 +1790,7 @@ class DTParser {
         case 113: // adjust indentation relative to block start
         case 114: // add indentation string
             try {
-                var span = term._createSpanNode();
-                span.setAttribute("class", "pprint-indent");
+                var span = term._createSpanNode("pprint-indent");
                 if (code == 114)
                     span.setAttribute("indentation", JSON.parse(text));
                 else {
@@ -1935,10 +1931,9 @@ class DTParser {
                 term.endCommandGroup(aid, false);
                 term.sstate.stayInInputMode = undefined;
                 if (exitCode && oldGroup) {
-                    let button = term._createSpanNode();
+                    const button = term._createSpanNode("error-exit-mark");
                     button.setAttribute("exit-code", exitCode);
                     button.setAttribute("title", "exit-code: "+exitCode);
-                    button.setAttribute("class", "error-exit-mark");
                     oldGroup.appendChild(button);
                 }
                 break;
