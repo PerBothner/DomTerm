@@ -5839,7 +5839,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
             } else if (tagName == "span") {
-                if (cls == "pprint-indentation")
+                if (cls == "pprint-indent")
                     break;
                 if (cls == "wc-node") {
                     string += node.textContent;
@@ -6248,7 +6248,8 @@ Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
             for (var child = lineStart.firstChild;
                  child != null; ) {
                 var next = child.nextSibling;
-                if (child.classList.contains("pprint-indentation"))
+                if (child instanceof Text /* added '\n' */
+                    || child.classList.contains("pprint-indent"))
                     lineStart.removeChild(child);
                 child = next;
             }
@@ -6332,38 +6333,40 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             || insertPosition.nodeName != "SPAN"
             || ! insertPosition.classList.contains("pprint-post-break"))
             insertPosition = null;
-        let previousIdentElement = null;
+        if (el.getAttribute("line") !== "soft") {
+            el.insertBefore(document.createTextNode("\n"), insertPosition);
+        }
         let previousStartPosition = 0;
         for (var i = 0; ;  ) {
             var indent = i == n ? null : indentation[i++];
             if ((indent == null || indent instanceof Element)
                 && goalPosition > curPosition) {
-                var span = dt._createSpanNode();
-                span.setAttribute("class", "pprint-indentation");
+                var span = dt._createSpanNode("pprint-indent");
                 var left = goalPosition-curPosition;
-                span.setAttribute("style",
-                                  "padding-left: "+left+"px");
+                let numChars = Math.floor((left + 1) / dt.charWidth);
+                if (numChars > 0) {
+                    span.appendChild(document.createTextNode(DomTerm.makeSpaces(numChars)));
+                    let delta = numChars * dt.charWidth;
+                    curPosition += delta;
+                    left -= delta;
+                }
+                if (left > 1) {
+                    curPosition += left;
+                    span.setAttribute("style",
+                                      "padding-left: "+left+"px");
+                }
                 el.insertBefore(span, insertPosition);
-                curPosition = goalPosition;
             }
             if (indent == null)
                 break;
             if (indent instanceof Element) {
                 let t = indent.getAttribute("value");
                 let tprev;
-                if (previousIdentElement && t
-                    && (tprev = previousIdentElement.getAttribute("value"))) {
-                    t = tprev + t;
-                    previousIdentElement.setAttribute("value", t);
-                    indent = previousIdentElement;
-                } else {
-                    previousStartPosition = curPosition;
-                    indent = indent.cloneNode(false);
-                    previousIdentElement = indent;
-                    el.insertBefore(indent, insertPosition);
-                    if (! t && countColumns)
-                        t = el.textContent;
-                }
+                previousStartPosition = curPosition;
+                indent = indent.cloneNode(true);
+                el.insertBefore(indent, insertPosition);
+                if (! t && countColumns)
+                    t = el.textContent;
                 let w = countColumns
                     ? dt.strWidthInContext(t, el) * dt.charWidth
                     : indent.offsetWidth;
@@ -6371,27 +6374,30 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 goalPosition = curPosition;
             }
             else {
-                if (indent >= curPosition + 0.5)
-                    previousIdentElement = null;
                 goalPosition = indent;
             }
         }
-        if (el.getAttribute("line") != "soft"
-            && el.getAttribute("pre-break") == null
-            && (el.firstChild == null
-                || el.firstChild.nodeName != "SPAN"
-                || ! el.firstChild.classList.contains("pprint-pre-break")))
-            el.setAttribute("pre-break", ""); // Needed for CSS
         el.setAttribute("breaking", "yes");
         return curPosition;
     };
 
     // Using two passes is an optimization, because mixing offsetLeft
     // calls with DOM mutation is very expensive.
-    // (This is not an issue when countColums us true.)
+    // (This is not an issue when countColums is true.)
     //
-    // First pass - measure (call offsetLeft) but do not change DOM
-    function breakLine1 (dt, start, beforePos, availWidth, countColumns) {
+    // First pass: measure offset and width but do not change DOM.
+    // For each Element, set the measureLeft/measureWidth properties to
+    // (roughly) offsetLeft/offsetWidth.  Pretty-printing elements
+    // pprint-indent (with child text), pre-break, and post-break elements
+    // are measured (measureWidth is set) but do not count for the width
+    // of containing elements. (This happens automatically if !countColumnts.)
+    // If countColumns, use characters counts to calculate widths instead
+    // of accessing offsetLeft/offsetWidth properties; this is faster,
+    // though less general.
+    // Assumes soft line breaks have been removed.
+    // Does not depend on current available width.
+
+    function breakLine1 (dt, start, countColumns) {
         let pprintGroup = null; // FIXME if starting inside a group
         // A chain of "line" and "pprint-group" elements that need
         // sectionEnd to be set (to a later "line" at same or higher level).
@@ -6460,7 +6466,6 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 if (lineAttr == "required")
                     pprintGroup.breakSeen = true;
             } else if (el.classList.contains("pprint-indent")) {
-                skipChildren = true;
                 el.pprintGroup = pprintGroup;
             } else if (el.classList.contains("pprint-group")) {
                 pprintGroup = el;
@@ -6485,9 +6490,19 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         el._saveSectionEndFence = undefined;
                     }
                     var next = el.nextSibling;
-                    if (countColumns && el instanceof Element)
+                    if (countColumns && el instanceof Element) {
                         el.measureWidth =
                             beforeCol * dt.charWidth - el.measureLeft;
+                        let cls = el.classList;
+                        if (cls.contains("pprint-indent")
+                            || cls.contains("pre-break")
+                            || cls.contains("post-break")) {
+                            // These are not visible (when not breaking),
+                            // so we want to measure their width, but they are
+                            // "out-of-band" - not part of the cumulative width.
+                            beforeCol = el.measureLeft / dt.charWidth;
+                        }
+                    }
                     if (next != null) {
                         el = next;
                         break;
@@ -6627,10 +6642,12 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         group.breakSeen = true;
                     startOffset = el.measureLeft + el.measureWidth;
                     var indentWidth = addIndentation(dt, el, countColumns);
+                    let lastChild = el.lastChild;
+                    if (lastChild instanceof Element
+                         && lastChild.classList.contains("post-break")) {
+                        indentWidth += lastChild.measureWidth;
+                    }
                     beforePos = indentWidth;
-                    let postBreak = el.getAttribute("post-break");
-                    if (postBreak)
-                        beforePos += dt.strWidthInContext(postBreak, el) * dt.charWidth;
                     startOffset -= beforePos;
                     if (lineAttr != "hard") {
                         dt._insertIntoLines(el, line);
@@ -6641,7 +6658,6 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 sectionStartLine = line;
             } else if (el.classList.contains("pprint-indent")) {
                 skipChildren = true;
-                var extra = el.getAttribute("indentation");
                 var delta = el.getAttribute("delta");
                 var blockDelta = el.getAttribute("block-delta");
                 if (delta) {
@@ -6652,12 +6668,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         : (pprintGroup.measureLeft - startOffset);
                     indentation.push(startBlockPosition
                                      + (dt.charWidth * Number(blockDelta)));
-                }
-                if (extra) {
-                    var span = dt._createSpanNode();
-                    span.setAttribute("class", "pprint-indentation");
-                    span.setAttribute("value", extra);
-                    indentation.push(span);
+                } else {
+                    indentation.push(el);
                 }
             } else if (el.classList.contains("pprint-group")) {
                 var previous = el.previousSibling;
@@ -6756,7 +6768,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             }
             var countColumns = ! Terminal._forceMeasureBreaks
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
-            breakLine1(this, first, 0, this.availWidth, countColumns);
+            breakLine1(this, first, countColumns);
         }
     }
     for (line = startLine;  line < this.lineStarts.length;  line++) {
@@ -7436,10 +7448,15 @@ Terminal._rangeAsText = function(range) {
         let parent = tnode.parentNode;
         // Skip text that is input-line but not actual input (std="input")
         // (for example "spacer" text before a right-prompt).
-        if (parent instanceof Element && parent.getAttribute("std") === "caret")
-            parent = parent.parentNode;
-        if (parent instanceof Element
-            && parent.classList.contains("input-line"))
+        if (parent instanceof Element) {
+            if (parent.getAttribute("std") === "caret")
+                parent = parent.parentNode;
+            if (parent.classList.contains("input-line"))
+                return;
+        }
+        let style = window.getComputedStyle(parent);
+        if (style["visibility"] === "hidden"
+            || style["display"] === "none")
             return;
         let stdElement = Terminal._getStdElement(tnode);
         if (stdElement && stdElement.getAttribute("prompt-kind") == "r")
@@ -7447,15 +7464,14 @@ Terminal._rangeAsText = function(range) {
         t += tnode.data.substring(start, end);
     }
     function elementExit(node) {
-        if (node.getAttribute("line"))
-            t += node.textContent;
         if (Terminal.isBlockNode(node)
             && t.length > 0 && t.charCodeAt(t.length-1) != 10)
             t += '\n';
         return false;
     }
+    function lineHandler(node) { return true; }
     let scanState = { linesCount: 0, todo: Infinity, unit: "char", stopAt: "",
-                      wrapText: wrapText, elementExit, elementExit };
+                      wrapText: wrapText, elementExit, elementExit, lineHandler };
     Terminal.scanInRange(range, false, scanState);
     return t;
 }
@@ -9358,6 +9374,7 @@ DomTerm.editorNonWordChar = function(ch) {
  *   or "visible-line" (stop before moving to different screen line).
  * state.linesCount: increment for each newline
  * state.wrapText: function called on each text node
+ * state.lineHandler: handler for non-stopping lines.
  */
 Terminal.scanInRange = function(range, backwards, state) {
     let unit = state.unit;
@@ -9445,7 +9462,7 @@ Terminal.scanInRange = function(range, backwards, state) {
                     }
                     return null;
                 }
-                return false;
+                return state.lineHandler ? state.lineHandler(node) : false;
             }
             return true;
         }

@@ -1792,7 +1792,7 @@ class DTParser {
             try {
                 var span = term._createSpanNode("pprint-indent");
                 if (code == 114)
-                    span.setAttribute("indentation", JSON.parse(text));
+                    span.appendChild(document.createTextNode(JSON.parse(text)));
                 else {
                     span.setAttribute(code == 112 ? "delta" : "block-delta", text);
                     var num = Number(text); // check formatting
@@ -1821,10 +1821,9 @@ class DTParser {
                     var strings = JSON.parse("["+text+"]");
                     let nobreakStr = strings[2];
                     if (strings[0]) {
-                        line.setAttribute("pre-break", strings[0]);
-                    }
-                    if (strings[1]) {
-                        line.setAttribute("post-break", strings[1]);
+                        line.appendChild(term
+                                         ._createSpanNode("pprint-pre-break",
+                                                          strings[0]));
                     }
                     if (nobreakStr) {
                         var nonbreak = term._createSpanNode();
@@ -1837,6 +1836,13 @@ class DTParser {
                             lineStart._widthColumns += w;
                         if (term.currentCursorColumn >= 0)
                             term.currentCursorColumn += w;
+                    }
+
+
+                    if (strings[1]) {
+                        line.appendChild(term
+                                         ._createSpanNode("pprint-post-break",
+                                                          strings[1]));
                     }
                 } catch (e) {
                     term.log("bad line-break specifier '"+text+"' - caught "+e);

@@ -57,19 +57,13 @@ span[std="prompt"] { margin: 0px; padding: 0px; border: 0px }
 span[std="prompt"][value]:before { content: attr(value) }
 *[domterm-hidden="true"] { display: none }
 
-span[line][breaking="yes"]:before {content: "\A"; }
 span.indentation[value]:after { content: attr(value); }
-span[line][breaking="always"][pre-break]:before {content: attr(pre-break); }
-span[line][breaking="yes"][pre-break]:before {content: attr(pre-break) "\A"; }
-span[line][breaking="yes"][post-break]:after {content: attr(post-break) }
-
-/* If breaking="yes" then either: there must be a pre-break attribute;
-   or there must be a <span class="pprint-pre-break"> child;
-   or line="soft". */
-span[line][breaking="yes"] > span.pprint-non-break { display: none }
-span[line][breaking="yes"] > span.pprint-pre-break { display: inline }
-span[line][breaking="yes"] > span.pprint-pre-break :after { content: "\A" }
-span[line] > span.pprint-pre-break { display: none }
-span[line][breaking="yes"] > span.pprint-post-break { display: inline }
-span[line] > span.pprint-post-break { display: none }
-span.pprint-indentation[value]:before { content: attr(value); }
+span[line][breaking="yes"] > span.pprint-pre-break,
+span[line][breaking="yes"] > span.pprint-post-break,
+span[line][breaking="yes"] > span.pprint-indent {
+    visibility: visible; position: static }
+span[line][breaking="yes"] > span.pprint-non-break,
+span[line] > span.pprint-pre-break,
+span[line] > span.pprint-post-break,
+span.pprint-indent {
+    visibility: hidden; position: absolute }

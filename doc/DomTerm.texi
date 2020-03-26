@@ -3960,14 +3960,15 @@ for each continuation line, at the same indentation.
 
 @item @code{<span class="pprint-indent" delta="@var{num-chars}" />}
 @itemx @code{<span class="pprint-indent" block-delta="@var{num-chars}" />}
-@itemx @code{<span class="pprint-indent" indentation="@var{text}" />}
+@itemx @code{<span class="pprint-indent">@var{text}"</span>}
 
-Add extra indentation to following continuation lines.
+Specify extra indentation to add to following continuation lines
+(in current group).  (These @code{pprint-indent} elements are non-visible.)
 A @code{delta="@var{num-chars}"} changes the indentation
 to @var{num-chars} characters relative to the current horizontal position.
 A @code{block-delta="@var{num-chars}"} changes the indentation to
 @var{num-chars} characters relative to the start of the current logical block.
-Specifying@code{ indentation="@var{text}"} specifies @var{text}
+Specifying @var{text} children specifies @var{text}
 as an extra per-line prefix.
 The extra indentation is reset at the end of the logical block.
 
@@ -3977,25 +3978,35 @@ which can be @code{fill}, @code{linear},
 @code{miser} (currently the same as @code{fill}),
 or @code{required}.
 
-@item @var{indentation} ::= @code{<span class="pprint-indentation">..</span>}
-These represent actual calculated indentatation.
-They are only inserted when and if a line-break is inserted,
-and removed if the line-break is removed.
 
-@item @code{<span line="@var{kind}" @var{line-attribute}... > [@var{pre-break-child}] [@var{non-break-child}] [@var{indentation}] [@var{post-break-child}] </span>}
-@itemx @code{@var{line-attribute} ::= breaking="yes|no" | pre-break="@var{pre-break-text}" | post-break="@var{post-break-text}"}
+@item @code{<span line="@var{kind}" [breaking="yes"]> [@var{pre-break-child}] [@var{non-break-child}] [@var{newline}] @var{indentation}* [@var{post-break-child}] </span>}
 @itemx @code{@var{pre-break-child} ::= <span class="pprint-pre-break">@var{contents}</span>}
 @itemx @code{@var{post-break-child} ::= <span class="pprint-post-break">@var{contents}</span>}
 @itemx @code{@var{non-break-child} ::= <span class="pprint-non-break">@var{contents}</span>}
-A generalized optional line-break.  You can specify contents to
-insert @emph{before} the break (when there is a break) either with
-a @code{pre-break} attribute or with a @code{pprint-pre-break} element.
+@itemx @var{indentation} ::= @code{<span class="pprint-indent">..</span>} | @var{text}
+A generalized optional line-break, where @code{kind}
+is one of @code{"linear"}, @code{"fill"}, @code{"miser"}
+(currently same as @code{"fill"}), or @code{"required"}.
+The @code{breaking} attribute is set when a line-break should be shown;
+the attribute is removed when the break is no longer wanted.
+
+You can specify contents to
+insert @emph{before} the break (when there is a break)
+with a @code{pprint-pre-break} element.
 Similarly, content after the break
-can be specified using either a @code{post-break} attribute
-or a @code{pprint-post-break} element.
-(The @var{indentation}, if any is automatically inserted before the post-break-content.)
+can be specified using a @code{pprint-post-break} element.
 To specify contents to be used when there is no break,
 use a @code{pprint-non-break} element.
+
+A @var{newline} is inserted when the line is actually breaking
+(though not for @code{soft} line-breaks).
+The @var{indentation}, if any, is a mix of cloned outer @code{pprint-indent}
+elements and text that represent actual calculated indentatation.
+They automatically inserted before the post-break-content
+when the line is actually breaking,
+and removed if the line-break is removed.
+A @code{pprint-indent} element is a (visible) clone
+of a (non-visible) outer @code{pprint-indent} element.
 @end table
 
 @subsubheading The caret node
@@ -4548,7 +4559,7 @@ write:
 German used to have a rule where ``ck'' would be hyphenated as ``k-k'',
 as in Zucker (sugar):
 @example
-Zu\e]115;"-k","k","ck"\aer
+Zu\e]115;"k-","k","ck"\aer
 @end example
 @end table
 
