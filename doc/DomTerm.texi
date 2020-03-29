@@ -3244,6 +3244,23 @@ Right-clicking on the link brings up an @code{Open Link} menu entry,
 which normally brings up a text editor at the specified line;
 you can @ref{link-handlers,customize this action}.
 
+@subheading Dynamic pretty-printing
+
+@uref{images/python-pretty1.png,@image{images/python-pretty1}}
+
+The @code{domterm.utils} module overrides the @code{sys.displayhook}
+uses for printing expression results.
+It replaces the default @code{repr} with one that checks if an
+object has a @code{_repr_html_} attribute;
+if so it uses that instead of the @code{_repr} method.
+
+Lists, tuples, and dictionaries are pretty-printed.
+The width used for line-breaking is the current terminal line-width;
+if the terminal width is changed, previously printed lines
+are automatically re-formatted.
+The screenshot shows the same terminal session in
+two panes with different widths.
+
 @subheading Using Pandas
 
 @uref{images/python-pandas.png,@image{images/python-pandas}}

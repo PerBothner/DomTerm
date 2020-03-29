@@ -369,7 +369,8 @@ DOC_IMAGES = \
   doc/images/pyplot.png \
   doc/images/python-error.png \
   doc/images/python-repl.png \
-  doc/images/python-pandas.png
+  doc/images/python-pandas.png \
+  doc/images/python-pretty1.png
 DOC_TOOLS = \
   tools/bash-preexec.sh \
   tools/shell-integration.bash \
