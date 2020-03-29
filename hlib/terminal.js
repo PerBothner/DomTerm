@@ -1323,9 +1323,10 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                             continue;
                         }
                         hasData = true;
-                    } else if (ch instanceof Element) {
+                    } else if (ch instanceof Element && ! hasData) {
                         isBlockNode = Terminal.isBlockNode(ch);
-                        if (! isBlockNode)
+                        if (! isBlockNode
+                            && !ch.classList.contains("focus-area"))
                             hasData = true;
                     }
                     ch = next;
@@ -1366,7 +1367,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     } else {
                         start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
                     }
-                } else if (cls == "wc-node") {
+                } else if (cls == "wc-node" || cls == "focus-area") {
                     descend = false;
                 } else if (cls == "pprint-group") {
                     start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
@@ -5817,9 +5818,17 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
     var home_offset = dt == null ? 0 : DomTerm._homeLineOffset(dt);
     var home_node = dt == null ? null : dt.lineStarts[dt.homeLine - home_offset];
 
-    function formatList(list) {
+    function formatList(list, isBreakingLine) {
         for (let i = 0; i < list.length; i++) {
-            formatDOM(list[i]); // , namespaces
+            let el = list[i];
+            if (isBreakingLine) {
+                let cl = el.classList;
+                if (! (cl.contains("pre-break")
+                       || cl.contains("post-break")
+                       || cl.contains("non-break")))
+                    continute;
+            }
+            formatDOM(el); // , namespaces
         }
     }
 
@@ -5839,7 +5848,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
             } else if (tagName == "span") {
-                if (cls == "pprint-indent")
+                if (cls == "focus-area")
                     break;
                 if (cls == "wc-node") {
                     string += node.textContent;
@@ -5853,6 +5862,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
             if (node == home_node)
                 s += ' ' + 'home-line="'+home_offset+ '"';
 
+            let isBreakingLine = false;
             if (tagAttributes.length) {
                 for (i = 0; i < tagAttributes.length; i++) {
                     var aname = tagAttributes[i].name;
@@ -5874,8 +5884,10 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                         }
                     }
                     else if (aname=="breaking" && tagName=="span"
-                               && node.getAttribute("line"))
+                             && node.getAttribute("line")) {
+                        isBreakingLine = true;
                         continue;
+                    }
                     s += ' ' + aname+ // .toLowerCase() +
                         '="' + DomTerm.escapeText(avalue) + '"';
                 }
@@ -5890,7 +5902,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     string += '/>';
             } else {
                 string += '>';
-                formatList(node.childNodes);
+                formatList(node.childNodes, isBreakingLine);
                 string += '<\/' + tagName + '>';
             }
             if (tagName == 'div' || tagName == 'p' || tagName == 'body'
@@ -6716,6 +6728,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 }
             }
         }
+        indentation.length = 0;
     };
 
     function breakNeeded(dt, lineNo, lineStart) {
