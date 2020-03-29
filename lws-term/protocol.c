@@ -1246,10 +1246,10 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (pclient->preserved_output != NULL) {
                     size_t start = pclient->preserved_start;
                     size_t end = pclient->preserved_end;
-                    sbuf_printf(&buf, "%s", start_replay_mode);
+                    sbuf_append(&buf, start_replay_mode, -1);
                     sbuf_append(&buf, pclient->preserved_output+start,
                                 (int) (end-start));
-                    sbuf_printf(&buf, "%ss", end_replay_mode);
+                    sbuf_append(&buf, end_replay_mode, -1);
                     rcount += end - start;
                 }
                 rcount = rcount & MASK28;
