@@ -349,6 +349,8 @@ class Terminal {
     this._updateDisplay = function() {
         dt.cancelUpdateDisplay();
         dt._updateTimer = null;
+        if (! dt.topNode)
+            return;
         dt._breakDeferredLines();
         dt._checkSpacer();
         // FIXME only if "scrollWanted"
