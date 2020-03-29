@@ -31,12 +31,12 @@ class DtRepr(reprlib.Repr):
         return super().repr1(x, level)
     def _repr_iterable(self, x, level, left, right, maxiter, trail=''):
         n = len(x)
+        indent = self.indent_per_level
         if level <= 0 and n:
             s = '...'
         else:
             newlevel = level - 1
             repr1 = self.repr1
-            indent = self.indent_per_level
             pieces = [repr1(elem, newlevel) for elem in islice(x, maxiter)]
             if n > maxiter:  pieces.append('...')
             s = ',\x1b]115;"",""," "\x07'.join(pieces)
@@ -58,14 +58,16 @@ class DtRepr(reprlib.Repr):
         s = ',\x1b]115;"",""," "\x07'.join(pieces)
         return '\x1b]110\x07\x1b]112;%d\x07{%s}\x1b]111\x07' % (indent, s)
 
-dt_repr = DtRepr()
+repr = DtRepr()
 
 dt_display_hook = None
 def set_notebook_mode(enable=True):
     def auto_display(value):
         if dt_display_hook:
-            expr = dt_display_hook(value)
-        sys.stdout.write(dt_repr.repr(value))
+            value = dt_display_hook(value)
+        if value is None:
+            return
+        sys.stdout.write(repr.repr(value))
     if enable:
         sys.displayhook = auto_display
     else:
