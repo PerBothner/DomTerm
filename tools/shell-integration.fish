@@ -17,7 +17,7 @@ if status --is-interactive
   end
 
   function fish_prompt
-  set _fishprompt_disp_count (math $_fishprompt_disp_count + 1)
+    set _fishprompt_disp_count (math $_fishprompt_disp_count + 1)
     printf "\033]133;P;k=i\007%b\033]133;B\007" (string join "\n" (_fishprompt_saved_prompt))
     set _fishprompt_started 1
     set _fishprompt_postexec ""
@@ -32,6 +32,7 @@ if status --is-interactive
 
   function _fishprompt_postexec --on-event fish_postexec
      set _fishprompt_postexec $status
+    _fishprompt_start
   end
 
   function __fishprompt_cancel --on-event fish_cancel
