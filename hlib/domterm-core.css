@@ -54,10 +54,9 @@ span[class="wrap"] {padding: 0px; margin: 0px; white-space: nowrap }
 span { padding: 0px; margin: 0px;}
 span[line="soft"] { padding: 0px; margin: 0px;}
 span[std="prompt"] { margin: 0px; padding: 0px; border: 0px }
-span[std="prompt"][value]:before { content: attr(value) }
+span[content-value]:before { content: attr(content-value) }
 *[domterm-hidden="true"] { display: none }
 
-span.indentation[value]:after { content: attr(value); }
 span[line][breaking="yes"] > span.pprint-pre-break,
 span[line][breaking="yes"] > span.pprint-post-break,
 span[line][breaking="yes"] > span.pprint-indent {

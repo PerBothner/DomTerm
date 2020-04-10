@@ -1113,7 +1113,8 @@ class DTParser {
                         while (container.firstChild) {
                             container.removeChild(container.firstChild);
                         }
-                        term.outputContainer.setAttribute("value", content);
+                        term.outputContainer.setAttribute("content-value",
+                                                          content);
                     }
                 }
                 // ... fall through ...
