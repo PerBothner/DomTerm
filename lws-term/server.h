@@ -36,7 +36,7 @@
 #endif
 
 #include <libwebsockets.h>
-#include <json.h>
+#include <json-c/json.h>
 
 #include "utils.h"
 
