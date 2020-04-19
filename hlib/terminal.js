@@ -4353,7 +4353,7 @@ Terminal.prototype.updateCursorCache = function() {
 Terminal.prototype.getCursorLine = function() {
     if (this.currentAbsLine < 0)
         this.updateCursorCache();
-    return this.currentAbsLine - this.homeLine
+    return this.currentAbsLine - this.homeLine;
 };
 
 Terminal.prototype.getAbsCursorLine = function() {
@@ -4524,6 +4524,8 @@ Terminal.prototype._positionToRange = function(range = null) {
     }
     return range;
 }
+
+// set (outputContainer,outputBefore) from start of given range
 Terminal.prototype._positionFromRange = function(range) {
     const container = range.startContainer;
     let offset = range.startOffset;
