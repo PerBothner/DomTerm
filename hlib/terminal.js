@@ -7187,8 +7187,6 @@ Terminal.prototype.insertRawOutput = function(str) {
         node.appendData(str);
     else {
         node = document.createTextNode(str);
-        if (this.outputBefore instanceof Text)
-            this._restoreCaretNode();
         this.insertNode(node);
     }
     /*
