@@ -2271,9 +2271,10 @@ Terminal.prototype.cursorLeft = function(count, maybeWrap) {
         tcount = 0;
     }
     if (prev instanceof Text) {
-        var tstr = prev.textContent;
-        var len = tstr.length;
-        var tcols = 0;
+        let tstr = prev.data;
+        let len = tstr.length;
+        // tcount is index in tstr, counting from end
+        let tcols = 0;
         for (;;) {
             if (tcols == count)
                 break;
@@ -2299,6 +2300,7 @@ Terminal.prototype.cursorLeft = function(count, maybeWrap) {
             }
             tcols += chcols;
         }
+        count -= tcols;
         if (tcount == 0) {
             this.outputContainer=prev.parentNode;
             this.outputBefore=prev.nextSibling;
