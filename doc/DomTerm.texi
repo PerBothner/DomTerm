@@ -306,7 +306,7 @@ The following are currently supported:
 @itemize @bullet
 @item
 A generic modern (HTML5) browser - both Firefox and Chrome are regularly tested.
-(Shown is Emacs running a Firefox broser window.)
+(Shown is Emacs running a Firefox browser window.)
 @item
 qtdomterm, which uses the @uref{ttps://www.qt.io,Qt toolkit} and QtWebEngine.
 @item
@@ -317,9 +317,9 @@ An @uref{https://electronjs.org/,Electron} embedding.
 and integrates with the Atom pane system.
 (See image.)
 @item
-A wrapper for JavaFX's WebEngine, which is useful for code written in Java
+A wrapper for JavaFX's WebEngine, which is useful for code written in Java.
 @item
-Previously, the preferred frontend used Firefox-XUL, but Mozilla has since dropped XUL
+Previously, the preferred frontend used Firefox-XUL, but Mozilla has since dropped XUL.
 @end itemize
 
 Currently, both the Electron and Qt frontends are quite nice
@@ -401,10 +401,11 @@ Text selections generally give you what you expect.
 @ref{move-cursor-with-mouse,even for mouse-unaware programs}.
 Mouse clicks are translated to arrow-key characters.
 
-Optional @strong{automatic pagination}.
+Optional @ref{Paging,@strong{automatic pagination}}.
 
 @strong{Predictive echo} (similar to @code{mosh}), which is
 useful for slow connections.
+
 Nicer @ref{password-fields, @strong{password fields}}.
 
 @node Downloading and building
