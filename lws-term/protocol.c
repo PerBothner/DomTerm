@@ -1116,7 +1116,7 @@ callback_proxy_in(struct lws *wsi, enum lws_callback_reasons reason,
     switch (reason) {
     case LWS_CALLBACK_RAW_RX_FILE: ;
         // read data, send to
-        ssize_t n = read(fd_in, buffer, bsize);
+        ssize_t n = read(client->proxy_fd, buffer, len);
         return handle_input(wsi, client, buffer, n, proxy_remote);
     }
 }
@@ -1125,12 +1125,12 @@ int
 callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len)
 {
-    struct tty_client *tclient = (struct pty_client *) user;
+    struct tty_client *tclient = (struct tty_client *) user;
     switch (reason) {
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
         // ?? share logic with callback_tty LWS_CALLBACK_SERVER_WRITEABLE ...
         // data in tclient->ob.
-        write(fd_out, buffer, bsize);
+        write(tclient->proxy_fd, buffer, bsize);
     }
 }
 #endif
@@ -1374,11 +1374,14 @@ display_session(struct options *options, struct pty_client *pclient,
         struct tty_client *tclient =
             ((struct tty_client *) lws_wsi_user(pin_lws));
         // FIXME initialize tclient fields, like in callback_tty
+        tclient->proxy_fd = options->fd_in;
         tclient->proxyMode = proxy_remote;
-        fd.filefd = options->fd_out;
+        fd.filefd = options->fd_in;
         // maybe set last 'parent' arguemnt ???
         struct lws *pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
                                                           "proxy-out", NULL);
+        tclient = ((struct tty_client *) lws_wsi_user(pout_lws));
+        fd.filefd = options->fd_out;
         return EXIT_SUCCESS;
     }
 #endif
@@ -1563,8 +1566,43 @@ handle_command(int argc, char** argv, const char*cwd,
         lwsl_notice("handle command '%s'\n", command->name);
         return (*command->action)(argc, argv, cwd, env, wsi, opts);
     }
+    char *at;
     if (argc == 0 || index(argv[0], '/') != NULL) {
         return new_action(argc, argv, cwd, env, wsi, opts);
+#if REMOTE_SSH
+    } else if ((at = index(argv[0], '@')) != NULL) {
+        // Running 'domterm --BROWSER user@host COMMAND' translates
+        // to 'ssh USER@HOSTNAME domterm --browser-pipe COMMAND`
+        // The --browser-pipe is a pseudo "browser specification":
+        // create a pty running COMMAND such that output from the COMMAND
+        // is printed to the stdout, and input read from stdin,
+        // with perhaps some extra complication for events.
+        // Locally, we create a tclient in --BROWSER, but instead
+        // of the pclient/pty we do the following.
+        char** rargv = xmalloc(sizeof(char*)*(argc+10));
+        int rargc = 0;
+        rargv[rargc++] = "ssh";
+        char *user = NULL;
+        if (user) {
+            size_t ulen = at  -argv[0];
+            user = xmalloc(ulen+1);
+            memcpy(user, argv[0], ulen);
+            user[ulen] = '\0';
+            rargv[rargc++] = "-l";
+            rargv[rargc++] = user;
+        }
+        rargv[rargc++] = at+1;
+        rargv[rargc++] = "domterm";
+        rargv[rargc++] = "--browser-pipe";
+        rargv[rargc++] = "new";
+        for (int i = 1; i < argc; i++)
+            rargv[rargc++] = argv[i];
+        rargv[rargc] = NULL;
+        int r = new_action(rargc, rargv, cwd, env, wsi, opts);
+        free(rargv);
+        free(user);
+        return r;
+#endif
     } else {
         // normally caught earlier
         printf_error(opts, "domterm: unknown command '%s'", argv[0]);

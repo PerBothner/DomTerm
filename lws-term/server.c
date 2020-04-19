@@ -211,13 +211,15 @@ static const struct lws_protocols protocols[] = {
         /*
           "proxy" protocol is an alternative to "domterm" in that
           it proxies between a pty_client and a file (or socket?) handle(s):
-          (The pty/application runs the "Remote" computer;
-          the browser/UI runs the the "Local" computer.)
+          (The pty/application runs on the "Remote" computer;
+          the browser/UI runs on the "Local" computer.)
           The handles are stdout/stdin of an ssh (server) session.
-          The proxy-in potocal runs on the Remote end and copies input
+          The proxy-in protocol runs on the Remote end and copies input
           (keystokes and other events) received via ssh to the pty/application.
           Output read from the pty_client is written to the file handle (stdout)
           (instead of being written to websocket client).
+          The proxy-out protocol also runs on the Remote end and copies
+          output from the pty/application and writes it to the ssh.
           Use struct tty_client for "proxy" protocol; that way
           callback_pty can be (mostly?) unchanged.
           Input read from file handle (stdin) is written to the pty.
@@ -350,8 +352,8 @@ static const struct option options[] = {
 };
 static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
-struct tty_server *
-tty_server_new(int argc, char **argv) {
+static struct tty_server *
+tty_server_new() {
     struct tty_server *ts = xmalloc(sizeof(struct tty_server));
 
     memset(ts, 0, sizeof(struct tty_server));
@@ -1117,21 +1119,11 @@ main(int argc, char **argv)
 
     const char *cmd = argv[optind];
     struct command *command = cmd == NULL ? NULL : find_command(cmd);
-    if (command == NULL && cmd != NULL && index(cmd, '/') == NULL) {
-        char *at = index(cmd, '@');
-        if (at != NULL) {
+    if (command == NULL && cmd != NULL && index(cmd, '/') == NULL
 #if REMOTE_SSH
-            // Running 'domterm --BROWSER user@bothner COMMAND' translates
-            // to 'ssh USER@HOSTNAME domterm --browser-pipe COMMAND`
-            // The --browser-pipe is a pseudo "browser specification":
-            // create a pty running COMMAND such that output from the COMMAND
-            // is printed to the stdout, and input read from stdin,
-            // with perhaps some extra complication for events.
-            // Locally, we create a tclient in --BROWSER, but instead
-            // of the pclient/pty we use ?
-            ///argv = { "ssh", cmd, "domterm", "--browser-pipe", rest-args... }
+        && index(cmd, '@') == NULL
 #endif
-        }
+        ) {
         fprintf(stderr, "domterm: unknown command '%s'\n", cmd);
         exit(EXIT_FAILURE);
     }
@@ -1156,7 +1148,7 @@ main(int argc, char **argv)
         exit(client_send_command(socket, argc, argv, environ));
     }
 
-    server = tty_server_new(argc-optind, argv+optind);
+    server = tty_server_new();
     server->options = opts;
 
     if (port_specified < 0)

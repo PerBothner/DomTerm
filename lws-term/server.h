@@ -61,11 +61,19 @@ extern int last_session_number;
 extern struct options *main_options;
 extern const char *settings_as_json;
 extern char git_describe[];
+#if REMOTE_SSH
+extern int
+callback_proxy_in(struct lws *wsi, enum lws_callback_reasons reason,
+                  void *user, void *in, size_t len);
+extern int
+callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
+                   void *user, void *in, size_t len);
+#endif
 
 // work-in-progress
 enum proxy_mode {
     no_proxy = 0,
-    proxy_local = 1, // proxuing, we're the local (UI) end
+    proxy_local = 1, // proxying, we're the local (UI) end
     proxy_remote = 2 // proxying, the the remote (pty) end
 };
 
@@ -140,6 +148,9 @@ struct tty_client { // should be renamed to ws_client ?
     int connection_number;
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
+#if REMOTE_SSH
+    int proxy_fd;
+#endif
 };
 
 struct http_client {
