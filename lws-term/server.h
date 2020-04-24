@@ -74,7 +74,7 @@ callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
 enum proxy_mode {
     no_proxy = 0,
     proxy_local = 1, // proxying, we're the local (UI) end
-    proxy_remote = 2 // proxying, the the remote (pty) end
+    proxy_remote = 2 // proxying, we're the remote (pty) end
 };
 
 /** Data specific to a pty process. */
@@ -138,12 +138,10 @@ struct tty_client { // should be renamed to ws_client ?
     long sent_count; // # bytes sent to (any) tty_client
     long confirmed_count; // # bytes confirmed received from (some) tty_client
     struct lws *wsi;
-    // data received from client and not yet processed.
-    // (Normally, this is only if an incomplete reportEvent message.)
-    char *buffer;
-    size_t len; // length of data in buffer
     struct lws *next_client_wsi;
-    struct sbuf ob; // output from child process
+    struct sbuf inb;  // input buffer (data/events from client)
+    struct sbuf ob; // data to be sent to UI (or proxy)
+    // (a mix of output from pty and from server)
     size_t ocount; // amount to increment sent_count (ocount <= ob.len)
     int connection_number;
     int pty_window_number; // Numbered within each pty_client; -1 if only one

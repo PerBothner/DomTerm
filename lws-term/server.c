@@ -218,7 +218,7 @@ static const struct lws_protocols protocols[] = {
           (keystokes and other events) received via ssh to the pty/application.
           Output read from the pty_client is written to the file handle (stdout)
           (instead of being written to websocket client).
-          The proxy-out protocol also runs on the Remote end and copies
+          The proxy-out protocol also runs on the Remote end. It copies
           output from the pty/application and writes it to the ssh.
           Use struct tty_client for "proxy" protocol; that way
           callback_pty can be (mostly?) unchanged.
