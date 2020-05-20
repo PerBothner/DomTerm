@@ -1,10 +1,9 @@
-
 // Set PASS_STDFILES_UNIX_SOCKET if passing file descriptors
 // over socket from client command to server, using sendmsg/recvmsg.
 // I can't get this to work on MacOS.
 // Alternatively, multiplex stdout, stderr, and exit code on connection socket.
 #define USING_NAMED_PIPES_FOR_CLIENT 0 /*for now*/
-#if defined(__APPLE__) || defined(USING_NAMED_PIPES_FOR_CLIENT)
+#if defined(__APPLE__) || USING_NAMED_PIPES_FOR_CLIENT
 #define PASS_STDFILES_UNIX_SOCKET 0
 // Multiplex stdout, stderr, and exit code on connection socket.
 // Next byte is exit code.
