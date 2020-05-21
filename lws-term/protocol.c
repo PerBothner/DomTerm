@@ -10,6 +10,11 @@
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
 #define UNCONFIRMED_LIMIT 8000
 
+#if REMOTE_SSH && ! PASS_STDFILES_UNIX_SOCKET
+#error ssh-remoting requires passing stdin via command socket
+(Alternative - run ssh in client, not server.)
+#endif
+
 #if defined(TIOCPKT)
 // See https://stackoverflow.com/questions/21641754/when-pty-pseudo-terminal-slave-fd-settings-are-changed-by-tcsetattr-how-ca
 #define USE_PTY_PACKET_MODE 1
@@ -162,6 +167,14 @@ pty_destroy(struct pty_client *pclient)
         lwsl_notice("process exited with code %d, pid: %d\n", status, pclient->pid);
     }
     close(pclient->pty);
+#if REMOTE_SSH
+    if (pclient->proxy_in >= 0)
+        close(pclient->proxy_in);
+    if (pclient->proxy_out >= 0)
+        close(pclient->proxy_out);
+    if (pclient->proxy_err >= 0)
+        close(pclient->proxy_err);
+#endif
 #ifndef LWS_TO_KILL_SYNC
 #define LWS_TO_KILL_SYNC (-1)
 #endif
@@ -181,7 +194,7 @@ printf_to_browser(struct tty_client *tclient, const char *format, ...)
     va_end(ap);
 }
 
-// Unlink wsi from pclient's list of client_wsi-s.static void
+// Unlink wsi from pclient's list of client_wsi-s.
 static void
 unlink_tty_from_pty(struct pty_client *pclient,
                     struct lws *wsi, struct tty_client *tclient) {
@@ -258,6 +271,8 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     tclient->pclient = pclient;
     struct lws *first_twsi = pclient->first_client_wsi;
     tclient->next_client_wsi = NULL;
+    if (pclient->ssh_to_remote)
+        tclient->proxyMode = proxy_display_local;
 
     if (first_twsi != NULL) {
         struct tty_client *first_tclient = lws_wsi_user(first_twsi);
@@ -401,6 +416,13 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->argv = argv;
     pclient->cwd = cwd;
     pclient->env = env;
+#if REMOTE_SSH
+    pclient->ssh_to_remote = false;
+    pclient->proxy_in = -1;
+    pclient->proxy_out = -1;
+    pclient->proxy_err = -1;
+    pclient->proxy_socket = -1;
+#endif
     return pclient;
 }
 
@@ -427,6 +449,7 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
     int master = pclient->pty;
     int slave = pclient->pty_slave;
     pid_t pid = fork();
+    lwsl_notice("run_command %s after fork child:%d\n", cmd, pid);
     switch (pid) {
     case -1: /* error */
             lwsl_err("forkpty\n");
@@ -518,8 +541,8 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
             }
             break;
         default: /* parent */
-            lwsl_notice("starting application: %s session:%d pid:%d\n",
-                        pclient->cmd, pclient->session_number, pid);
+            lwsl_notice("starting application: %s session:%d pid:%d pty:%d\n",
+                        pclient->cmd, pclient->session_number, pid, master);
             close(slave);
 
             pclient->pid = pid;
@@ -809,12 +832,12 @@ reportEvent(const char *name, char *data, size_t dlen,
 {
     struct pty_client *pclient = client->pclient;
     if (pclient)
-        lwsl_info("reportEvent :%d %s '%s'\n",
-                  pclient->session_number, name, data);
+        lwsl_info("reportEvent :%d %s '%s' mode:%d\n",
+                  pclient->session_number, name, data, proxyMode);
     else
-        lwsl_info("reportEvent %s '%s'\n", name, data);
+        lwsl_info("reportEvent %s '%s' mode:%d\n", name, data, proxyMode);
     if (strcmp(name, "WS") == 0) {
-        if (proxyMode == proxy_local)
+        if (proxyMode == proxy_display_local)
             return false;
         if (pclient != NULL
             && sscanf(data, "%d %d %g %g", &pclient->nrows, &pclient->ncols,
@@ -823,6 +846,8 @@ reportEvent(const char *name, char *data, size_t dlen,
             setWindowSize(pclient);
         }
     } else if (strcmp(name, "VERSION") == 0) {
+        if (proxyMode == proxy_display_local)
+            return false;
         char *version_info = xmalloc(dlen+1);
         strcpy(version_info, data);
         client->initialized = false;
@@ -841,6 +866,8 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (pclient->saved_window_contents != NULL)
             lws_callback_on_writable(wsi);
     } else if (strcmp(name, "RECEIVED") == 0) {
+        if (proxyMode == proxy_display_local)
+            return false;
         long count;
         sscanf(data, "%ld", &count);
         client->confirmed_count = count;
@@ -856,14 +883,19 @@ reportEvent(const char *name, char *data, size_t dlen,
             pclient->paused = 0;
         }
     } else if (strcmp(name, "KEY") == 0) {
-        if (proxyMode == proxy_local)
+        if (proxyMode == proxy_display_local)
             return false;
         char *q1 = strchr(data, '\t');
         char *q2;
         if (q1 == NULL || (q2 = strchr(q1+1, '\t')) == NULL)
             return true; // ERROR
         struct termios termios;
-        if (tcgetattr(pclient->pty, &termios) < 0)
+        int pty = pclient->pty;
+        if (proxyMode == proxy_command_local) {
+            lwsl_notice("wrong pty\n");
+            // pty = ssh pty; FIXME
+        }
+        if (tcgetattr(pty, &termios) < 0)
           ; //return -1;
         bool isCanon = (termios.c_lflag & ICANON) != 0;
         bool isEchoing = (termios.c_lflag & ECHO) != 0;
@@ -886,6 +918,8 @@ reportEvent(const char *name, char *data, size_t dlen,
                 && ioctl (pclient->pty, FIONREAD, &to_drain) != 0)
               to_drain = 0;
           }
+        lwsl_notice("report KEY pty:%d canon:%d echo:%d klen:%d\n",
+                    pclient->pty, isCanon, isEchoing, klen);
           if (write(pclient->pty, kstr, klen) < klen)
              lwsl_err("write INPUT to pty\n");
           while (to_drain > 0) {
@@ -972,6 +1006,8 @@ reportEvent(const char *name, char *data, size_t dlen,
         handle_link(obj);
         json_object_put(obj);
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
+        if (proxyMode == proxy_display_local)
+            return false;
         char *q = strchr(data, ',');
         long rcount;
         sscanf(data, "%ld", &rcount);
@@ -1042,6 +1078,9 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi)
     client->connection_number = ++server->connection_count;
     client->pty_window_number = -1;
     client->pty_window_update_needed = false;
+#if REMOTE_SSH
+    client->pending_browser_command = NULL;
+#endif
 }
 
 /** Copy input (keyboard and events) from browser to pty/application.
@@ -1052,11 +1091,6 @@ static int
 handle_input(struct lws *wsi, struct tty_client *client,
              enum proxy_mode proxyMode)
 {
-    // check if there are more fragmented messages
-    if (lws_remaining_packet_payload(wsi) > 0 || !lws_is_final_fragment(wsi)) {
-        return 0;
-    }
-
     if (server->options.readonly)
         return 0;
     size_t clen = client->inb.len;
@@ -1066,11 +1100,14 @@ handle_input(struct lws *wsi, struct tty_client *client,
         pclient->recent_tclient = client;
     // FIXME handle PENDING
     int start = 0;
+    lwsl_notice("handle_input len:%d conn#%d pmode:%d pty:%d\n", clen, client->connection_number, proxyMode, pclient->pty);
     for (int i = 0; ; i++) {
         if (i+1 == clen && msg[i] >= 128)
             break;
         if (i == clen || msg[i] == REPORT_EVENT_PREFIX) {
             int w = i - start;
+            if (w > 0)
+                lwsl_notice(" -handle_input write start:%d w:%d\n", start, w);
             if (w > 0 && write(pclient->pty, msg+start, w) < w) {
                 lwsl_err("write INPUT to pty\n");
                 return -1;
@@ -1085,6 +1122,8 @@ handle_input(struct lws *wsi, struct tty_client *client,
                 char* cname = (char*) ++p;
                 while (p < eol && *p != ' ')
                     p++;
+                unsigned char *name_end = p;
+                unsigned char save_name_end = *p;
                 *p = '\0';
                 if (p < eol)
                     p++;
@@ -1092,13 +1131,16 @@ handle_input(struct lws *wsi, struct tty_client *client,
                     p++;
                 // data is from p to eol
                 char *data = (char*) p;
+                unsigned char save_data_end = *eol;
                 *eol = '\0';
                 size_t dlen = eol - p;
                 i = eol - msg;
                 if (! reportEvent(cname, data, dlen, wsi, client,
                                   proxyMode)
-                    && proxyMode == proxy_local) {
+                    && proxyMode == proxy_display_local) {
                     // don't change start index, so event can be copied
+                    *name_end = save_name_end;
+                    *eol = save_data_end;
                     continue;
                 }
             } else {
@@ -1122,8 +1164,9 @@ static void
 handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode proxyMode)
 {
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
-
-    if (! client->initialized // proxyMode != proxy_local
+    lwsl_notice("handle_output conn#%d initialized:%d pmode:%d len0:%d->%d\n", client->connection_number, client->initialized, proxyMode, client->ob.len, bufp->len);
+    bool nonProxy = proxyMode != proxy_command_local && proxyMode != proxy_display_local;
+    if (! client->initialized && nonProxy
         && (pclient->preserved_output == NULL
             || pclient->saved_window_contents != NULL)) {
 #define FORMAT_PID_SNUMBER "\033]31;%d\007"
@@ -1162,7 +1205,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                         rcount);
         }
     }
-    if (client->pty_window_update_needed) { // proxyMode != proxy_local
+    if (client->pty_window_update_needed && nonProxy) {
         client->pty_window_update_needed = false;
         sbuf_printf(bufp, URGENT_WRAP("\033[91;%d;%d;%du"),
                     pclient->session_number,
@@ -1213,43 +1256,109 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         sbuf_printf(bufp, "%s", eof_message);
         sbuf_free(&client->ob);
     }
+    client->initialized = true;
 }
 
 #if REMOTE_SSH
-/** Handle input (keyboard/events) from browser via ssh connection to pty. */
-int
-callback_proxy_in(struct lws *wsi, enum lws_callback_reasons reason,
-             void *user, void *in, size_t len)
+void
+close_local_proxy(struct pty_client *pclient)
 {
-    struct tty_client *client = (struct tty_client *) user;
-    struct pty_client *pclient = client == NULL ? NULL : client->pclient;
-    switch (reason) {
-    case LWS_CALLBACK_RAW_RX_FILE: ;
-        // read data, send to
-        sbuf_extend(&client->inb, 1024);
-        ssize_t n = read(client->proxy_fd,
-                         client->inb.buffer + client->inb.len,
-                         client->inb.size - client->inb.len);
-        if (n > 0)
-            client->inb.len += n;
-        return handle_input(wsi, client, proxy_remote);
+    lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number, pclient->proxy_socket);
+    if (pclient->proxy_in >= 0) {
+        close(pclient->proxy_in);
+        pclient->proxy_in = -1;
+    }
+    if (pclient->proxy_out >= 0) {
+        close(pclient->proxy_out);
+        pclient->proxy_out = -1;
+    }
+    if (pclient->proxy_err >= 0) {
+        close(pclient->proxy_err);
+        pclient->proxy_err = -1;
+    }
+    if (pclient->proxy_socket >= 0) {
+        char r = 0;
+        if (write(pclient->proxy_socket, &r, 1) != 1)
+            lwsl_err("write %d failed - callback_cmd %s\n", pclient->proxy_socket, strerror(errno));
+        close(pclient->proxy_socket);
+        pclient->proxy_socket = -1;
     }
 }
 
 int
-callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
-             void *user, void *in, size_t len)
+callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
+               void *user, void *in, size_t len)
 {
     struct tty_client *tclient = (struct tty_client *) user;
+    struct pty_client *pclient = tclient == NULL ? NULL : tclient->pclient;
     struct sbuf buf;
+    ssize_t n;
+    if (tclient==NULL)
+        lwsl_notice("callback_proxy wsi:%p reason:%d - no client\n", wsi, reason);
+    else
+        lwsl_notice("callback_proxy wsi:%p reason:%d fd:%d conn#%d\n", wsi, reason, tclient==NULL? -99 : tclient->proxy_fd, tclient->connection_number);
     switch (reason) {
+    case LWS_CALLBACK_RAW_RX_FILE: ;
+        if (tclient->proxy_fd < 0) {
+            // cleanup? FIXME
+            return 0;
+        }
+        // read data, send to
+        sbuf_extend(&tclient->inb, 1024);
+        n = read(tclient->proxy_fd,
+                         tclient->inb.buffer + tclient->inb.len,
+                         tclient->inb.size - tclient->inb.len);
+        lwsl_notice("proxy RAW_RX_FILE n:%d avail:%d-%d\n", n, tclient->inb.size, tclient->inb.len);
+        if (n > 0)
+            tclient->inb.len += n;
+        return handle_input(wsi, tclient, tclient->proxyMode);
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
-        // ?? share logic with callback_tty LWS_CALLBACK_SERVER_WRITEABLE ...
+        if (tclient->proxy_fd < 0) {
+            // cleanup? FIXMEc
+            if (tclient->pclient)
+                close_local_proxy(tclient->pclient);
+            return 0;
+        }
+        if (tclient->proxyMode == proxy_command_local) {
+            unsigned char *fd = memchr(tclient->ob.buffer, 0xFD, tclient->ob.len);
+            lwsl_notice("check for FD: %p browser:%s text:%.*s\n", fd, tclient->pending_browser_command, tclient->ob.len, tclient->ob.buffer);
+            if (fd && tclient->pclient) {
+                tclient->ob.len = 0; // FIXME - ismplified
+                struct options opts;
+                struct termios termios;
+                if (pclient && tcgetattr(pclient->pty, &termios) == 0) {
+                    termios.c_lflag &= ~(ICANON|ECHO);
+                    tcsetattr(pclient->pty, TCSANOW, &termios);
+                }
+                init_options(&opts);
+                opts.browser_command = tclient->pending_browser_command;
+                display_session(&opts, tclient->pclient, NULL, http_port);
+                free(tclient->pending_browser_command);
+                tclient->pending_browser_command = NULL;
+                //unlink_tty_from_pty(tclient->pclient, wsi, tclient);
+                //close(tclient->pclient->proxy_in);
+                tclient->proxy_fd = -1;
+                lwsl_notice(" - dont close proxy_out:%d\n", tclient->pclient->proxy_out);
+                //close(tclient->pclient->proxy_out); tclient->pclient->proxy_out = NULL;
+                //close(tclient->pclient->proxy_err);
+                //tty_client_destroy(wsi, tclient);
+                //tty_client_destroy(pin_lws, lws_wsi_user(pout_lws)); //FIXME
+                // daemonize - FIXME
+                return 0;
+            }
+        }
         sbuf_init(&buf);
-        handle_output(tclient, &buf, proxy_remote);
+        handle_output(tclient, &buf, tclient->proxyMode);
+        if (tclient->pclient == NULL) {
+            lwsl_notice("proxy WRITABLE/close blen:%d\n", buf.len);
+        }
         // data in tclient->ob.
-        write(tclient->proxy_fd, buf.buffer, buf.len);
+        lwsl_notice("proxy RAW_WRITEABLE len:%d\n", buf.len);
+        n = write(tclient->proxy_fd, buf.buffer, buf.len);
+        sbuf_free(&buf);
+        return 0; // FIXME
     }
+    return 0;
 }
 #endif
 
@@ -1259,7 +1368,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 {
     struct tty_client *client = (struct tty_client *) user;
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
-    //fprintf(stderr, "callback_tty reason:%d\n", (int) reason);
+    lwsl_notice("callback_tty %p reason:%d conn#%d\n", wsi, (int) reason,
+                client == NULL ? -1 : client->connection_number);
 
     switch (reason) {
     case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
@@ -1272,6 +1382,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 
     case LWS_CALLBACK_ESTABLISHED:
         init_tclient_struct(client, wsi);
+        lwsl_notice("tty/CALLBACK_ESTABLISHED conn#%d\n", client->connection_number);
         char arg[100]; // FIXME
         if (! check_server_key(wsi, arg, sizeof(arg) - 1))
             return -1;
@@ -1322,11 +1433,11 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         handle_output(client, &buf, client->proxyMode);
         // end handle_output
         int written = buf.len - LWS_PRE;
+        lwsl_notice("tty SERVER_WRITEABLE conn#%d written:%d to %p\n", client->connection_number, written, wsi);
         if (written > 0
             && lws_write(wsi, buf.buffer+LWS_PRE, written, LWS_WRITE_BINARY) != written)
             lwsl_err("lws_write\n");
         sbuf_free(&buf);
-        client->initialized = true;
         break;
 
     case LWS_CALLBACK_RECEIVE:
@@ -1335,7 +1446,11 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         sbuf_extend(&client->inb, len < 1024 ? 1024 : len + 1);
         sbuf_append(&client->inb, in, len);
         //((unsigned char*)client->inb.buffer)[client->inb.len] = '\0'; // ??
-        handle_input(wsi, client, client->proxyMode);
+        // check if there are more fragmented messages
+        if (lws_remaining_packet_payload(wsi) <= 0
+            && lws_is_final_fragment(wsi)) {
+            handle_input(wsi, client, client->proxyMode);
+        }
         break;
 
     case LWS_CALLBACK_CLOSED:
@@ -1367,36 +1482,79 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     return 0;
 }
 
+#if REMOTE_SSH
+void
+make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode proxyMode)
+{
+    lws_sock_file_fd_type fd;
+    fd.filefd = options->fd_in;
+    struct lws *pin_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
+                                                     "proxy", NULL);
+    struct tty_client *tclient =
+        ((struct tty_client *) lws_wsi_user(pin_lws));
+    init_tclient_struct(tclient, pin_lws);
+    tclient->proxy_fd = options->fd_in;
+    lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws);
+    tclient->proxyMode = proxyMode;
+    // if (pclient)
+//        link_command(pin_lws, tclient, pclient);
+    tclient->pclient = pclient;
+
+    struct lws *pout_lws;
+    struct tty_client *out_client;
+    if (options->fd_out == options->fd_in) {
+        pout_lws = pin_lws;
+        out_client = tclient;
+    } else {
+        fd.filefd = options->fd_out;
+        // maybe set last 'parent' argument ???
+        pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd, "proxy", NULL);
+        tclient = ((struct tty_client *) lws_wsi_user(pout_lws));
+        init_tclient_struct(tclient, pout_lws);
+        lwsl_notice("- make_proxy out-conn#%d wsi:%p\n", tclient->connection_number, pout_lws);
+        tclient->proxy_fd = options->fd_out;
+        out_client = tclient;
+    }
+    if (pclient)
+        link_command(pout_lws, out_client, pclient);
+    out_client->proxyMode = proxyMode; // do after link_command
+    if (proxyMode == proxy_command_local) {
+        lwsl_notice("proxy-local browser:%s\n", options->browser_command);
+        out_client->pending_browser_command
+            = options->browser_command ? strdup(options->browser_command)
+            : NULL;
+    }
+    if (proxyMode == proxy_remote) {
+        lwsl_notice("send remote-window request conn#%d fd:%d\n", out_client->connection_number, out_client->proxy_fd);
+        //printf_to_browser(out_client, "\xFDREMOTE-WINDOW \n");
+        //lws_callback_on_writable(pout_lws);
+        char *s =  "\xFDREMOTE-WINDOW \n";
+        //char *s =  "[REMOTE-WINDOW]\n";
+        int sl = strlen(s);
+        int nn;
+        if ((nn =write(out_client->proxy_fd, s, sl)) != sl)
+            lwsl_notice("bad write n:%d err:%s\n", (int)nn, strerror(errno));
+    }
+}
+#endif
+
 int
 display_session(struct options *options, struct pty_client *pclient,
                 const char *url, int port)
 {
     int session_number = pclient == NULL ? -1 : pclient->session_number;
+    lwsl_notice("display_sesson %d\n", session_number);
     const char *browser_specifier = options == NULL ? NULL
       : options->browser_command;
 #if REMOTE_SSH
     if (browser_specifier != NULL
         && strcmp(browser_specifier, "--browser-pipe") == 0) {
-        lws_sock_file_fd_type fd;
-
-        fd.filefd = options->fd_in;
-        struct lws *pin_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
-                                                         "proxy-in", NULL);
-        struct tty_client *tclient =
-            ((struct tty_client *) lws_wsi_user(pin_lws));
-        init_tclient_struct(tclient, pin_lws);
-        tclient->proxy_fd = options->fd_in;
-        tclient->proxyMode = proxy_remote;
-
-        fd.filefd = options->fd_out;
-        // maybe set last 'parent' argument ???
-        struct lws *pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
-                                                          "proxy-out", NULL);
-        tclient = ((struct tty_client *) lws_wsi_user(pout_lws));
-        init_tclient_struct(tclient, pout_lws);
-        tclient->proxyMode = proxy_remote;
-        tclient->proxy_fd = options->fd_out;
-        return EXIT_SUCCESS;
+        make_proxy(options, pclient, proxy_remote);
+        lwsl_notice("should write open-window message\n");
+        //printf_to_browser(client, URGENT_WRAP("open-wrindow"));
+        //lws_callback_on_writable(wsi);
+        //daemonize client
+        return EXIT_WAIT;
     }
 #endif
     int paneOp = 0;
@@ -1453,7 +1611,7 @@ display_session(struct options *options, struct pty_client *pclient,
             int ulen = strlen(buf);
             buf[ulen] = '\n';
             if (write(options->fd_out, buf, ulen+1) <= 0)
-                lwsl_err("write failed\n");
+                lwsl_err("write failed - display_session\n");
         } else
             r = do_run_browser(options, buf, port);
         free(buf);
@@ -1483,7 +1641,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
     }
     struct pty_client *pclient = create_pclient(cmd, copy_strings(args),
                                                 strdup(cwd), copy_strings(env),
-                                                opts);;
+                                                opts);
     int r = display_session(opts, pclient, NULL, http_port);
     if (opts->session_name) {
         pclient->session_name = strdup(opts->session_name);
@@ -1523,8 +1681,7 @@ int attach_action(int argc, char** argv, const char*cwd,
         lws_callback_on_writable(tty_wsi);
     }
 
-    display_session(opts, pclient, NULL, http_port);
-    return EXIT_SUCCESS;
+    return display_session(opts, pclient, NULL, http_port);
 }
 
 int browse_action(int argc, char** argv, const char*cwd,
@@ -1554,10 +1711,64 @@ request_upload_settings()
     }
 }
 
+#if REMOTE_SSH
+int
+handle_remote(int argc, char** argv, char* at,
+              const char*cwd, char **env,
+              struct options *opts)
+{
+        // Running 'domterm --BROWSER user@host COMMAND' translates
+        // to 'ssh USER@HOSTNAME domterm --browser-pipe COMMAND`
+        // The --browser-pipe is a pseudo "browser specification":
+        // create a pty running COMMAND such that output from the COMMAND
+        // is printed to the stdout, and input read from stdin,
+        // with perhaps some extra complication for events.
+        // Locally, we create a tclient in --BROWSER, but instead
+        // of the pclient/pty we do the following.
+        char *ssh = find_in_path("ssh");
+        if (ssh == NULL) {
+            printf_error(opts, "domterm: ssh comand not found - required for remote");
+            return -1;
+        }
+        int max_rargc = argc+12;
+        char** rargv = xmalloc(sizeof(char*)*(max_rargc+1));
+        int rargc = 0;
+        rargv[rargc++] = ssh;
+        // argv[0] is @host or user@host. Pass host or user@host to ssh
+        rargv[rargc++] = at==argv[0] ? at+1 : at;
+        rargv[rargc++] = "/home/bothner/bin/domterm";
+        rargv[rargc++] = "--browser-pipe";
+        rargv[rargc++] = "-d";
+        rargv[rargc++] = "15";
+        for (int i = 1; i < argc; i++)
+            rargv[rargc++] = argv[i];
+        if (rargc > max_rargc)
+            fatal("too many arguments");
+        rargv[rargc] = NULL;
+        struct pty_client *pclient = create_pclient(ssh, copy_strings(rargv),
+                                                    strdup(cwd), copy_strings(env),
+                                                    opts);
+        pclient->ssh_to_remote = true;
+        lwsl_notice("handle_remote pcl:%p\n", pclient);
+        make_proxy(opts, pclient, proxy_command_local);
+        run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);
+        // FIXME free fields - see reportEvent
+        int r = EXIT_WAIT; // FIXME
+#if 1
+        pclient->proxy_in = opts->fd_in;
+        pclient->proxy_out = opts->fd_out;
+        pclient->proxy_err = opts->fd_err;
+#endif
+        free(rargv);
+        //free(user);
+}
+#endif
+
 int
 handle_command(int argc, char** argv, const char*cwd,
                char **env, struct lws *wsi, struct options *opts)
 {
+    lwsl_notice("handle_command argv0:%s\n", argv[0]);
     struct command *command = argc == 0 ? NULL : find_command(argv[0]);
     char *domterm_env_value = getenv_from_array("DOMTERM", env);
     if (domterm_env_value) {
@@ -1585,41 +1796,8 @@ handle_command(int argc, char** argv, const char*cwd,
         return new_action(argc, argv, cwd, env, wsi, opts);
 #if REMOTE_SSH
     } else if ((at = index(argv[0], '@')) != NULL) {
-        // Running 'domterm --BROWSER user@host COMMAND' translates
-        // to 'ssh USER@HOSTNAME domterm --browser-pipe COMMAND`
-        // The --browser-pipe is a pseudo "browser specification":
-        // create a pty running COMMAND such that output from the COMMAND
-        // is printed to the stdout, and input read from stdin,
-        // with perhaps some extra complication for events.
-        // Locally, we create a tclient in --BROWSER, but instead
-        // of the pclient/pty we do the following.
-        int max_rargc = argc+10;
-        char** rargv = xmalloc(sizeof(char*)*(max_rargc+1));
-        int rargc = 0;
-        rargv[rargc++] = "new";
-        rargv[rargc++] = "ssh";
-        char *user = NULL;
-        if (user) {
-            size_t ulen = at  -argv[0];
-            user = xmalloc(ulen+1);
-            memcpy(user, argv[0], ulen);
-            user[ulen] = '\0';
-            rargv[rargc++] = "-l";
-            rargv[rargc++] = user;
-        }
-        rargv[rargc++] = at+1;
-        rargv[rargc++] = "domterm";
-        rargv[rargc++] = "--browser-pipe";
-        rargv[rargc++] = "new";
-        for (int i = 1; i < argc; i++)
-            rargv[rargc++] = argv[i];
-        if (rargc > max_rargc)
-            fatal("too many arguments");
-        rargv[rargc] = NULL;
-        int r = new_action(rargc, rargv, cwd, env, wsi, opts);
-        free(rargv);
-        free(user);
-        return r;
+        handle_remote(argc, argv, at, cwd, env, opts);
+        return EXIT_WAIT;
 #endif
     } else {
         // normally caught earlier
@@ -1635,7 +1813,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
     struct pty_client *pclient = (struct pty_client *) user;
     switch (reason) {
         case LWS_CALLBACK_RAW_RX_FILE: {
-            //fprintf(stderr, "callback+pty LWS_CALLBACK_RAW_RX_FILE\n");
+            lwsl_notice("callback_pty LWS_CALLBACK_RAW_RX_FILE wsi:%p len:%d\n", wsi, len);
             struct lws *wsclient_wsi;
             long min_unconfirmed = LONG_MAX;
             int avail = INT_MAX;
@@ -1689,6 +1867,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                             // it's safe to access data_start[-1].
                             char save_byte = data_start[-1];
                             n = read(pclient->pty, data_start-1, avail+1);
+                            lwsl_notice("RAW_RX pty %d session %d read %d tclient#%d a\n",
+                                        pclient->pty, pclient->session_number, n, tclient->connection_number);
                             char pcmd = data_start[-1];
                             data_start[-1] = save_byte;
 #if TIOCPKT_IOCTL
@@ -1715,6 +1895,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
 #endif
                         } else {
                             n = read(pclient->pty, data_start, avail);
+                            lwsl_notice("RAW_RX pty %d session %d read %d tclient#%d b\n",
+                                        pclient->pty, pclient->session_number, n, tclient->connection_number);
                             read_length = n;
                         }
                         data_length += read_length;
@@ -1745,7 +1927,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         break;
         case LWS_CALLBACK_RAW_CLOSE_FILE: {
-            //fprintf(stderr, "callback_pty LWS_CALLBACK_RAW_CLOSE_FILE\n", reason);
+            lwsl_notice("callback_pty LWS_CALLBACK_RAW_CLOSE_FILE\n", reason);
             pclient->eof_seen = 1;
             struct lws *wsclient_wsi;
             FOREACH_WSCLIENT(wsclient_wsi, pclient) {
@@ -1758,7 +1940,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         break;
     default:
-            //fprintf(stderr, "callback_pty default reason:%d\n", (int) reason);
+        lwsl_notice("callback_pty default reason:%d\n", (int) reason);
             break;
     }
 

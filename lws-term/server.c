@@ -224,8 +224,9 @@ static const struct lws_protocols protocols[] = {
           callback_pty can be (mostly?) unchanged.
           Input read from file handle (stdin) is written to the pty.
         */
-        { "proxy-in", callback_proxy_in, sizeof(struct tty_client),  0},
-        { "proxy-out", callback_proxy_out, sizeof(struct tty_client),  0},
+        //{ "proxy-in", callback_proxy_in, sizeof(struct tty_client),  0},
+        //{ "proxy-out", callback_proxy_out, sizeof(struct tty_client),  0},
+        { "proxy", callback_proxy, sizeof(struct tty_client),  0},
 #endif
 
 #if HAVE_INOTIFY
@@ -326,6 +327,9 @@ static const struct option options[] = {
         {"above",        no_argument,       NULL, ABOVE_OPTION},
         {"below",        no_argument,       NULL, BELOW_OPTION},
         {"print-url",    no_argument,       NULL, PRINT_URL_OPTION},
+#if REMOTE_SSH
+        {"browser-pipe", no_argument,       NULL, BROWSER_PIPE_OPTION},
+#endif
         {"socket-name",  required_argument, NULL, 'L'},
         {"interface",    required_argument, NULL, 'i'},
         {"credential",   required_argument, NULL, 'c'},
@@ -944,6 +948,9 @@ int process_options(int argc, char **argv, struct options *opts)
             case BELOW_OPTION:
             case ABOVE_OPTION:
             case PRINT_URL_OPTION:
+#if REMOTE_SSH
+            case BROWSER_PIPE_OPTION:
+#endif
                 opts->paneOp = c - PANE_OPTIONS_START;
                 /* ... fall through ... */
             case DETACHED_OPTION:
@@ -1065,6 +1072,17 @@ int process_options(int argc, char **argv, struct options *opts)
     return 0;
 }
 
+#define LOG_TO_FILE 0
+#if LOG_TO_FILE
+static FILE *_logfile = NULL;
+void lwsl_emit_stderr_with_flush(int level, const char *  	line) {
+    char buf[50];
+    lwsl_timestamp(level, buf, sizeof(buf));
+    fprintf(_logfile, "%s%s", buf, line);
+    fflush(_logfile);
+}
+#endif
+
 int
 main(int argc, char **argv)
 {
@@ -1102,8 +1120,18 @@ main(int argc, char **argv)
         lws_set_log_level(LLL_ERR|LLL_WARN|LLL_NOTICE
                           |(opts.verbosity > 1 ? LLL_INFO : 0),
                           lwsl_emit_stderr_notimestamp);
-    else
+    else {
+#if LOG_TO_FILE
+        char logname[50];
+        if (opts.debug_level) {
+            sprintf(logname, "/tmp/lws-%d.log", getpid());
+            _logfile = fopen(logname, "a");
+        }
+        lws_set_log_level(opts.debug_level, lwsl_emit_stderr_with_flush);
+#else
         lws_set_log_level(opts.debug_level, NULL);
+#endif
+    }
     lwsl_notice("domterm terminal server %s (git describe: %s)\n",
                 LDOMTERM_VERSION, git_describe);
     lwsl_notice("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
@@ -1251,13 +1279,13 @@ main(int argc, char **argv)
                              pwd, environ, NULL, &opts);
         if (pwd)
             free(pwd);
-        if (ret != 0)
+        if (ret == EXIT_FAILURE)
             exit(ret);
     }
 
     if (opts.do_daemonize && ret == 0) {
         lwsl_notice("about to switch to background 'daemon' mode - no more messages.");
-        lwsl_notice("(To see more messages use --no-daemonize option.)");
+        lwsl_notice("(To see more messages use --no-daemonize option.)\n");
         daemonize();
     }
 

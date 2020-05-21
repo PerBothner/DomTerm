@@ -267,6 +267,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 ssize_t n = recvmsg(sockfd, &msg, 0);
                 if (msg.msg_controllen > 0) {
                     memcpy(myfds, CMSG_DATA(cmsg), 3*sizeof(int));
+                    lwsl_notice("callback_cmd fds:%d/%d/%d\n",  myfds[0], myfds[1], myfds[2]);
                     opts.fd_in = myfds[0];
                     opts.fd_out = myfds[1];
                     opts.fd_err = myfds[2];
@@ -277,6 +278,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
 		poll(&pfd, 1, 3000); // FIXME needed?
 #endif
 		ssize_t n = read(sockfd, jbuf+jpos, jblen-jpos);
+		opts.fd_in = sockfd;
 		opts.fd_out = sockfd;
 		opts.fd_err = sockfd;
 #endif
@@ -327,6 +329,8 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             process_options(argc, argv, &opts);
             int ret = handle_command(argc-optind, argv+optind,
                                      cwd, env, wsi, &opts);
+            if (ret == EXIT_WAIT)
+                break;
             close(opts.fd_in);
             close(opts.fd_out);
             close(opts.fd_err);

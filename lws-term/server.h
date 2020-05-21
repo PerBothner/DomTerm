@@ -26,6 +26,7 @@
 
 // True when enabling future proxy support
 #define REMOTE_SSH 0
+#define EXIT_WAIT (-2)
 
 #ifdef __APPLE__
 #include <util.h>
@@ -63,6 +64,9 @@ extern const char *settings_as_json;
 extern char git_describe[];
 #if REMOTE_SSH
 extern int
+callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
+                  void *user, void *in, size_t len);
+extern int
 callback_proxy_in(struct lws *wsi, enum lws_callback_reasons reason,
                   void *user, void *in, size_t len);
 extern int
@@ -70,11 +74,11 @@ callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
                    void *user, void *in, size_t len);
 #endif
 
-// work-in-progress
 enum proxy_mode {
     no_proxy = 0,
-    proxy_local = 1, // proxying, we're the local (UI) end
-    proxy_remote = 2 // proxying, we're the remote (pty) end
+    proxy_command_local = 1, // proxying, between local shell and ssh
+    proxy_display_local = 2, // proxying, between local display and ssh
+    proxy_remote = 3 // proxying, we're the remote (pty) end
 };
 
 /** Data specific to a pty process. */
@@ -93,6 +97,7 @@ struct pty_client {
     bool detachOnClose; // OLD
     bool session_name_unique;
     bool packet_mode;
+    bool ssh_to_remote;
     int detach_count;
     int paused;
     struct lws *first_client_wsi;
@@ -114,6 +119,10 @@ struct pty_client {
     char*const*argv;
     const char*cwd;
     char *const*env;
+#if REMOTE_SSH
+    // The following are used for closing on end
+    int proxy_in, proxy_out, proxy_err, proxy_socket;
+#endif
 };
 
 /** Data specific to a (browser) client connection. */
@@ -148,6 +157,7 @@ struct tty_client { // should be renamed to ws_client ?
     bool pty_window_update_needed;
 #if REMOTE_SSH
     int proxy_fd;
+    char *pending_browser_command;
 #endif
 };
 
