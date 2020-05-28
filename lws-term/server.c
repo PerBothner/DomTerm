@@ -204,7 +204,8 @@ static const struct lws_protocols protocols[] = {
         /* callbacks for pty I/O, one pty for each session (process) */
         {"pty",       callback_pty,  sizeof(struct pty_client),  0},
 
-        /* Unix domain socket for client to send to commands to server */
+        /* Unix domain socket for client to send to commands to server.
+           This is the listener socket on the server. */
         {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
 
 #if REMOTE_SSH
@@ -1072,7 +1073,7 @@ int process_options(int argc, char **argv, struct options *opts)
     return 0;
 }
 
-#define LOG_TO_FILE 0
+#define LOG_TO_FILE 1
 #if LOG_TO_FILE
 static FILE *_logfile = NULL;
 void lwsl_emit_stderr_with_flush(int level, const char *  	line) {
@@ -1149,7 +1150,7 @@ main(int argc, char **argv)
     struct command *command = cmd == NULL ? NULL : find_command(cmd);
     if (command == NULL && cmd != NULL && index(cmd, '/') == NULL
 #if REMOTE_SSH
-        && index(cmd, '@') == NULL
+        && strchr(cmd, '@') == NULL
 #endif
         ) {
         fprintf(stderr, "domterm: unknown command '%s'\n", cmd);

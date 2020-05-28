@@ -1,5 +1,4 @@
 #include "server.h"
-#include "command-connect.h"
 #include <limits.h>
 #include <sys/stat.h>
 #include <termios.h>
@@ -9,11 +8,6 @@
 
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
 #define UNCONFIRMED_LIMIT 8000
-
-#if REMOTE_SSH && ! PASS_STDFILES_UNIX_SOCKET
-#error ssh-remoting requires passing stdin via command socket
-(Alternative - run ssh in client, not server.)
-#endif
 
 #if defined(TIOCPKT)
 // See https://stackoverflow.com/questions/21641754/when-pty-pseudo-terminal-slave-fd-settings-are-changed-by-tcsetattr-how-ca
@@ -167,7 +161,7 @@ pty_destroy(struct pty_client *pclient)
         lwsl_notice("process exited with code %d, pid: %d\n", status, pclient->pid);
     }
     close(pclient->pty);
-#if REMOTE_SSH
+#if REMOTE_SSHd && PASS_STDFILES_UNIX_SOCKET
     if (pclient->proxy_in >= 0)
         close(pclient->proxy_in);
     if (pclient->proxy_out >= 0)
@@ -418,9 +412,11 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->env = env;
 #if REMOTE_SSH
     pclient->ssh_to_remote = false;
+#if PASS_STDFILES_UNIX_SOCKET
     pclient->proxy_in = -1;
     pclient->proxy_out = -1;
     pclient->proxy_err = -1;
+#endif
     pclient->proxy_socket = -1;
 #endif
     return pclient;
@@ -1264,6 +1260,7 @@ void
 close_local_proxy(struct pty_client *pclient)
 {
     lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number, pclient->proxy_socket);
+#if PASS_STDFILES_UNIX_SOCKET
     if (pclient->proxy_in >= 0) {
         close(pclient->proxy_in);
         pclient->proxy_in = -1;
@@ -1276,6 +1273,7 @@ close_local_proxy(struct pty_client *pclient)
         close(pclient->proxy_err);
         pclient->proxy_err = -1;
     }
+#endif
     if (pclient->proxy_socket >= 0) {
         char r = 0;
         if (write(pclient->proxy_socket, &r, 1) != 1)
@@ -1321,7 +1319,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         }
         if (tclient->proxyMode == proxy_command_local) {
             unsigned char *fd = memchr(tclient->ob.buffer, 0xFD, tclient->ob.len);
-            lwsl_notice("check for FD: %p browser:%s text:%.*s\n", fd, tclient->pending_browser_command, tclient->ob.len, tclient->ob.buffer);
+            lwsl_notice("check for FD: %p browser:%s text:%d{%.*s}\n", fd, tclient->pending_browser_command, tclient->ob.len, tclient->ob.len, tclient->ob.buffer);
             if (fd && tclient->pclient) {
                 tclient->ob.len = 0; // FIXME - ismplified
                 struct options opts;
@@ -1338,7 +1336,6 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                 //unlink_tty_from_pty(tclient->pclient, wsi, tclient);
                 //close(tclient->pclient->proxy_in);
                 tclient->proxy_fd = -1;
-                lwsl_notice(" - dont close proxy_out:%d\n", tclient->pclient->proxy_out);
                 //close(tclient->pclient->proxy_out); tclient->pclient->proxy_out = NULL;
                 //close(tclient->pclient->proxy_err);
                 //tty_client_destroy(wsi, tclient);
@@ -1754,7 +1751,7 @@ handle_remote(int argc, char** argv, char* at,
         run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);
         // FIXME free fields - see reportEvent
         int r = EXIT_WAIT; // FIXME
-#if 1
+#if PASS_STDFILES_UNIX_SOCKET
         pclient->proxy_in = opts->fd_in;
         pclient->proxy_out = opts->fd_out;
         pclient->proxy_err = opts->fd_err;

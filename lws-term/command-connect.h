@@ -1,3 +1,6 @@
+#ifndef COMMAND_SOCKET_H
+#define COMMAND_SOCKET_H
+
 // Set PASS_STDFILES_UNIX_SOCKET if passing file descriptors
 // over socket from client command to server, using sendmsg/recvmsg.
 // I can't get this to work on MacOS.
@@ -13,6 +16,12 @@
 // Send following bytes to stderr.
 #define PASS_STDFILES_SWITCH_TO_STDERR '\003'
 //#define PASS_STDFILES_SWITCH_TO_STDERR_STRING "\003"
+struct cmd_socket_client {
+    int socket;
+    int exit_code;
+    size_t rsize;
+    unsigned char *rbuffer;
+};
 #else
 #define PASS_STDFILES_UNIX_SOCKET 1
 #endif
@@ -21,3 +30,4 @@ extern int client_connect (char *socket_path);
 extern int client_send_command(int socket, int argc, char *const*argv,
                                char *const *env);
 extern int create_command_socket(const char *);
+#endif

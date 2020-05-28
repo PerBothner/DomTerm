@@ -39,6 +39,8 @@
 #include <libwebsockets.h>
 #include <json.h>
 
+#include "command-connect.h"
+
 #include "utils.h"
 
 #define SERVER_KEY_LENGTH 20
@@ -121,7 +123,10 @@ struct pty_client {
     char *const*env;
 #if REMOTE_SSH
     // The following are used for closing on end
-    int proxy_in, proxy_out, proxy_err, proxy_socket;
+#if PASS_STDFILES_UNIX_SOCKET
+    int proxy_in, proxy_out, proxy_err;
+#endif
+    int proxy_socket;
 #endif
 };
 

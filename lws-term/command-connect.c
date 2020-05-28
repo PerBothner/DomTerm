@@ -127,6 +127,79 @@ client_connect (char *socket_path)
     return -1;
 }
 
+#if REMOTE_SSH && !PASS_STDFILES_UNIX_SOCKET
+int
+callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
+                    void *user, void *in, size_t len)
+{
+    struct cmd_socket_client *client = (struct cmd_socket_client *) user;
+    lwsl_notice("callback_cmd_socket reason %d\n", reason);
+    switch (reason) {
+    case LWS_CALLBACK_RAW_RX_FILE: ;
+        unsigned char *rbuf = client->rbuffer;
+        int cur_out = STDOUT_FILENO;
+        int nr = read(client->socket, rbuf, client->rsize);
+        lwsl_notice("- RAW_RX n:%d\n", nr);
+        if (nr <= 0) {
+            exit(client->exit_code);
+            /*
+            close(client->socket);
+            free(rbuf);
+            client->rbuffer = NULL;
+	    return -1;
+            */
+        }
+        int start = 0;
+        for (int i = 0; ; i++) {
+	    int ch = i >= nr ? -1 : rbuf[i];
+            if (ch <= '\003') {
+                if (i > start) {
+                    if (cur_out < 0)
+                        client->exit_code = rbuf[nr-1];
+                    else
+                        write(cur_out, rbuf+start, i-start);
+                }
+                if (ch < 0)
+                    break;
+                start = i+1;
+                if (ch == PASS_STDFILES_SWITCH_TO_STDERR)
+                    cur_out = STDERR_FILENO;
+                else if (ch == PASS_STDFILES_SWITCH_TO_STDOUT)
+                    cur_out = STDOUT_FILENO;
+                else if (ch == PASS_STDFILES_EXIT_CODE)
+                    cur_out = -1;
+            }
+        }
+        return 0;
+    }
+
+}
+int
+callback_cmd_stdin(struct lws *wsi, enum lws_callback_reasons reason,
+                    void *user, void *in, size_t len)
+{
+    struct cmd_socket_client *client = (struct cmd_socket_client *) user;
+    lwsl_notice("callback_cmd_stdin reason %d\n", reason);
+    switch (reason) {
+    case LWS_CALLBACK_RAW_RX_FILE: ;
+        unsigned char *rbuf = client->rbuffer;
+        int cur_out = STDOUT_FILENO;
+        int nr = read(STDIN_FILENO, rbuf, client->rsize);
+        if (nr > 0)
+            write(client->socket, rbuf, nr);
+        return 0;
+    }
+}
+
+static const struct lws_protocols cmd_protocols[] = {
+        /* Unix domain socket for client to send to commands to server.
+           This is socket on the client. */
+        { "cmd-socket", callback_cmd_socket, sizeof(struct cmd_socket_client),  0},
+        { "cmd-stdin", callback_cmd_stdin, sizeof(struct cmd_socket_client),  0},
+        {NULL,        NULL,          0,                          0}
+};
+#endif
+
 /** Send command from client to server, using socket. */
 int
 client_send_command(int socket, int argc, char *const*argv, char *const *env)
@@ -173,7 +246,25 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     close(STDOUT_FILENO);
     //don't close STDERR_FILENO, for the sake of lwsl_notice below
 #else
-    writev(socket, iov, 2);
+    info.protocols = cmd_protocols;
+    context = lws_create_context(&info);
+    vhost = lws_create_vhost(context, &info);
+    lws_sock_file_fd_type fd;
+    fd.filefd = socket;
+    struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-socket", NULL);
+    fd.filefd = STDIN_FILENO;
+    struct cmd_socket_client *cclient = (struct cmd_socket_client *) lws_wsi_user(cmdwsi);
+    cclient->socket = socket;
+    cclient->exit_code = 0;
+    cclient->rsize = 512;
+    cclient->rbuffer = xmalloc(cclient->rsize);
+    struct lws *inwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-stdin", NULL);
+    struct cmd_socket_client *iclient = (struct cmd_socket_client *) lws_wsi_user(inwsi);
+    iclient->socket = socket;
+    iclient->rsize = cclient->rsize;
+    iclient->rbuffer = cclient->rbuffer;
+    int r  = writev(socket, iov, 2);
+    lwsl_notice("client cmd write %d\n", r);
 #endif
     json_object_put(jobj);
     char ret = 0;
@@ -181,42 +272,20 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     ssize_t n2 = read(socket, &ret, 1);
     if (n1 < 0 || n2 != 1)
         ret = -1;
-#else
-    size_t rsize = 512;
-    unsigned char *rbuf = xmalloc(rsize);
-    int cur_out = STDOUT_FILENO;
-    for (;;) {
-        int nr = read(socket, rbuf, rsize);
-        if (nr <= 0)
-	    break;
-        int start = 0;
-        for (int i = 0; ; i++) {
-	    int ch = i >= nr ? -1 : rbuf[i];
-            if (ch <= '\003') {
-                if (i > start) {
-                    if (cur_out < 0)
-                        ret = rbuf[nr-1];
-                    else
-                        write(cur_out, rbuf+start, i-start);
-                }
-                if (ch < 0)
-                    break;
-                start = i+1;
-                if (ch == PASS_STDFILES_SWITCH_TO_STDERR)
-                    cur_out = STDERR_FILENO;
-                else if (ch == PASS_STDFILES_SWITCH_TO_STDOUT)
-                    cur_out = STDOUT_FILENO;
-                else if (ch == PASS_STDFILES_EXIT_CODE)
-                    cur_out = -1;
-            }
-        }
-    }
-#endif
     //if (close(socket) != 0)
     //  fatal("bad close of socket");
     close(socket);
+#else
+    while (!force_exit) {
+        lws_service(context, 100);
+    }
+
+    lws_context_destroy(context);
+#endif
     lwsl_notice("received exit code %d from server; exiting", ret);
     return ret;
+    //return ret;
+    //return EXIT_WAIT;
 }
 
 int
