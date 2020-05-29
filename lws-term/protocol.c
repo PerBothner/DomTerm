@@ -161,7 +161,7 @@ pty_destroy(struct pty_client *pclient)
         lwsl_notice("process exited with code %d, pid: %d\n", status, pclient->pid);
     }
     close(pclient->pty);
-#if REMOTE_SSHd && PASS_STDFILES_UNIX_SOCKET
+#if REMOTE_SSH && PASS_STDFILES_UNIX_SOCKET
     if (pclient->proxy_in >= 0)
         close(pclient->proxy_in);
     if (pclient->proxy_out >= 0)
