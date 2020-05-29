@@ -462,8 +462,12 @@ endif
 	$(INSTALL_DATA) $(srcdir)/electron/package.json $(srcdir)/electron/main.js $(srcdir)/electron/preload.js\
 	    $(DESTDIR)$(datadir)/domterm/electron/
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/help
-	$(INSTALL_DATA) share/domterm/help/*.txt share/domterm/help/*.html \
+	$(INSTALL_DATA) share/domterm/help/*.txt \
 	  $(DESTDIR)$(datadir)/domterm/help/
+if WITH_ASCIIDOCTOR
+	$(INSTALL_DATA) share/domterm/help/*.html \
+	  $(DESTDIR)$(datadir)/domterm/help/
+endif
 
 uninstall-local:
 	rm -f $(DESTDIR)$(datadir)/applications/domterm.desktop \
