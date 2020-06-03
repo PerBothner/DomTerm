@@ -117,7 +117,7 @@ int html_action(int argc, char** argv, const char*cwd,
             print_base_element(base_url, &sb);
         }
         if (i == argc) {
-            FILE *in = fdopen(opts->fd_in, "r");
+            FILE *in = fdopen(dup(opts->fd_in), "r");
             sbuf_copy_file(&sb, in);
             fclose(in);
         } else {
@@ -327,7 +327,8 @@ int print_stylesheet_action(int argc, char** argv, const char*cwd,
         return EXIT_FAILURE;
     }
     FILE *tout = fdopen(get_tty_out(), "w");
-    fprintf(tout, "\033]93;%s\007", argv[1]); fflush(tout);
+    fprintf(tout, "\033]93;%s\007", argv[1]);
+    fflush(tout);
     char *response = read_response(opts);
     if (! response)
         return EXIT_FAILURE;
@@ -460,7 +461,7 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
                             struct options *opts)
 {
     check_domterm(opts);
-    FILE *out = fdopen(get_tty_out(), "w");
+    FILE *out = fdopen(dup(get_tty_out()), "w");
     for (int i = 1; i < argc; i++) {
         struct json_object *jobj = json_object_new_string(argv[i]);
         fprintf(out, "\033]94;%s\007",
@@ -475,7 +476,7 @@ int list_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi, struct options *opts)
 {
     struct pty_client *pclient = pty_client_list;
-    FILE *out = fdopen(opts->fd_out, "w");
+    FILE *out = fdopen(dup(opts->fd_out), "w");
     if (pclient == NULL)
        fprintf(out, "(no domterm sessions or server)\n");
     else {
@@ -518,7 +519,7 @@ int status_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi, struct options *opts)
 {
     struct pty_client *pclient = pty_client_list;
-    FILE *out = fdopen(opts->fd_out, "w");
+    FILE *out = fdopen(dup(opts->fd_out), "w");
     print_version(out);
     if (settings_fname)
         fprintf(out, "Reading settings from: %s\n", settings_fname);
