@@ -827,6 +827,7 @@ void  init_options(struct options *opts)
     opts->fd_in = STDIN_FILENO;
     opts->fd_out = STDOUT_FILENO;
     opts->fd_err = STDERR_FILENO;
+    opts->fd_cmd_socket = -1;
     opts->session_name = NULL;
     opts->settings_file = NULL;
     opts->shell_command = NULL;

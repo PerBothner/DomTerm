@@ -25,7 +25,7 @@
 #include <assert.h>
 
 // True when enabling future proxy support
-#define REMOTE_SSH 0
+#define REMOTE_SSH 1
 #define EXIT_WAIT (-2)
 
 #ifdef __APPLE__
@@ -215,6 +215,7 @@ struct options {
     int fd_in;
     int fd_out;
     int fd_err;
+    int fd_cmd_socket;
     char *session_name;
     char *settings_file;
     char *shell_command;

@@ -284,8 +284,6 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
 #endif
     lwsl_notice("received exit code %d from server; exiting", ret);
     return ret;
-    //return ret;
-    //return EXIT_WAIT;
 }
 
 int
@@ -351,6 +349,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
 		opts.fd_out = sockfd;
 		opts.fd_err = sockfd;
 #endif
+                opts.fd_cmd_socket = sockfd;
                 if (n <= 0) {
                   break;
                 } else if (jbuf[jpos+n-1] == '\f') {
@@ -400,12 +399,14 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                                      cwd, env, wsi, &opts);
             if (ret == EXIT_WAIT)
                 break;
+#if PASS_STDFILES_UNIX_SOCKET
             close(opts.fd_in);
             close(opts.fd_out);
             close(opts.fd_err);
+#endif
             char r = (char) ret;
             if (write(sockfd, &r, 1) != 1)
-                lwsl_err("write failed\n");
+                lwsl_err("write failed sockfd:%d\n", sockfd);
             close(sockfd);
             // FIXME: free argv, cwd, env
             break;
