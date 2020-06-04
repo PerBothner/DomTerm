@@ -395,7 +395,9 @@ sig_handler(int sig) {
     get_sig_name(sig, sig_name);
     lwsl_notice("received signal: %s (%d), exiting...\n", sig_name, sig);
     force_exit = true;
-    lws_cancel_service(context);
+    tty_restore(-1);
+    if (context)
+        lws_cancel_service(context);
     lwsl_notice("send ^C to force exit.\n");
 }
 
@@ -1147,6 +1149,9 @@ main(int argc, char **argv)
     if (opts.something_done && argv[optind] == NULL)
         exit(0);
 
+    signal(SIGINT, sig_handler);  // ^C
+    signal(SIGTERM, sig_handler); // kill
+
     const char *cmd = argv[optind];
     struct command *command = cmd == NULL ? NULL : find_command(cmd);
     if (command == NULL && cmd != NULL && index(cmd, '/') == NULL
@@ -1229,9 +1234,6 @@ main(int argc, char **argv)
 #endif
     }
 #endif
-
-    signal(SIGINT, sig_handler);  // ^C
-    signal(SIGTERM, sig_handler); // kill
 
     context = lws_create_context(&info);
     if (context == NULL) {

@@ -283,6 +283,13 @@ static int tty_in = -1;
 static int tty_out = -1;
 
 static struct termios save_term;
+static int tty_raw_fd = -1;
+static bool atexit_restore_registered = false;
+
+static void atexit_restore(void)
+{
+    tty_restore(-1);
+}
 
 void
 tty_save_set_raw(int tty_in)
@@ -293,11 +300,20 @@ tty_save_set_raw(int tty_in)
     tmp_term.c_lflag &= ~(ICANON | ISIG | ECHO | ECHOCTL | ECHOE |      \
                           ECHOK | ECHOKE | ECHONL | ECHOPRT );
     tcsetattr(tty_in, TCSANOW, &tmp_term);
+    tty_raw_fd = tty_in;
+    if (! atexit_restore_registered) {
+        atexit(atexit_restore);
+        atexit_restore_registered = true;
+    }
 }
 
 void tty_restore(int tty_in)
 {
-    tcsetattr(tty_in, TCSANOW, &save_term);
+    if (tty_in < 0)
+        tty_in = tty_raw_fd;
+    if (tty_in >= 0)
+        tcsetattr(tty_in, TCSANOW, &save_term);
+    tty_raw_fd = -1;
 }
 
 int

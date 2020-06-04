@@ -204,6 +204,10 @@ static const struct lws_protocols cmd_protocols[] = {
 int
 client_send_command(int socket, int argc, char *const*argv, char *const *env)
 {
+    int tin = STDIN_FILENO;
+    if (isatty(tin)) {
+        tty_save_set_raw(tin);
+    }
     json_object *jobj = state_to_json(argc, argv, env);
     const char *state_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
 
