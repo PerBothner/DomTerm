@@ -308,7 +308,9 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     tclient->pty_window_update_needed = true;
     *pclient->last_client_wsi_ptr = wsi;
     pclient->last_client_wsi_ptr = &tclient->next_client_wsi;
-    focused_wsi = wsi;
+    if (tclient->proxyMode != proxy_command_local
+        && tclient->proxyMode != proxy_display_local)
+        focused_wsi = wsi;
     if (pclient->detached)
         pclient->detachOnClose = 0; // OLD
     pclient->detached = 0;
@@ -1139,8 +1141,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
                 size_t dlen = eol - p;
                 i = eol - msg;
                 if (! reportEvent(cname, data, dlen, wsi, client,
-                                  proxyMode)
-                    && proxyMode == proxy_display_local) {
+                                  proxyMode)) {
                     // don't change start index, so event can be copied
                     *name_end = save_name_end;
                     *eol = save_data_end;
