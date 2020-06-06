@@ -6,7 +6,6 @@ class DTParser {
     constructor(term) {
         this.term = term;
         this.controlSequenceState = DTParser.INITIAL_STATE;
-        this._urgentControlState = DTParser.INITIAL_STATE;
         this.parameters = new Array();
         this._textParameter = "";
         this._savedControlState = null;
@@ -1729,9 +1728,13 @@ class DTParser {
                 var home_offset = -1;
                 dt.homeLine = dt._computeHomeLine(home_node, home_offset,
                                                   dt.usingAlternateScreenBuffer);
-                dt._receivedCount = 0;
-                dt._confirmedCount = 0;
                 term.updateWindowTitle();
+                let saved = term._savedControlState;
+                if (saved && saved.count_urgent <= 0)
+                    saved.receivedCount = rcount;
+                else
+                    term._receivedCount = rcount;
+                term._confirmedCount = rcount;
             }
             break;
         case 104:

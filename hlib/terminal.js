@@ -6157,13 +6157,11 @@ Terminal.prototype.pushControlState = function() {
 Terminal.prototype.popControlState = function() {
     var saved = this._savedControlState;
     if (saved) {
-        this._urgentControlState = this.controlSequenceState; // ??
         this.decoder = saved.decoder;
-        this._savedControlState = saved.controlSequenceState;
+        this._savedControlState = saved._savedControlState;
         if (! DomTerm.useXtermJs) {
             this.parser.popControlState(saved);
         }
-        this._savedControlState = saved.controlSequenceState;
         // Control sequences in "urgent messages" don't count to
         // receivedCount. (They are typically window-specific and
         // should not be replayed when another window is attached.)
@@ -8508,6 +8506,8 @@ DomTerm._handleOutputData = function(dt, data) {
         dt._receivedCount = (dt._receivedCount + dlen) & Terminal._mask28;
     }
     if (dt._pagingMode != 2 && ! dt._replayMode
+        && (! dt._savedControlState
+            || dt._savedControlState.count_urgent > 0)
         && ((dt._receivedCount - dt._confirmedCount) & Terminal._mask28) > 500) {
         dt._confirmedCount = dt._receivedCount;
         dt.reportEvent("RECEIVED", dt._confirmedCount);
