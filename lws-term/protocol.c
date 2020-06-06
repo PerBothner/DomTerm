@@ -22,8 +22,8 @@ static char request_contents_message[] =
     OUT_OF_BAND_START_STRING "\033[81u" URGENT_END_STRING;
 #define URGENT_WRAP(STR)  URGENT_START_STRING STR URGENT_END_STRING
 
-static char start_replay_mode[] = "\033[97u";
-static char end_replay_mode[] = "\033[98u";
+static char start_replay_mode[] = URGENT_WRAP("\033[97u");
+static char end_replay_mode[] = URGENT_WRAP("\033[98u");
 
 struct pty_client *pty_client_list;
 struct pty_client *pty_client_last;
@@ -1367,8 +1367,8 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
             lwsl_notice("proxy WRITABLE/close blen:%d\n", buf.len);
         }
         // data in tclient->ob.
-        lwsl_notice("proxy RAW_WRITEABLE len:%d\n", buf.len);
         n = write(tclient->proxy_fd, buf.buffer, buf.len);
+        lwsl_notice("proxy RAW_WRITEABLE len:%d written:%d\n", buf.len, n );
         sbuf_free(&buf);
         return tclient->pclient == NULL ? -1 : 0; // FIXME
     }
@@ -1850,7 +1850,9 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (tavail < avail)
                     avail = tavail;
             }
-            if (min_unconfirmed >= UNCONFIRMED_LIMIT || avail == 0 || pclient->paused) {
+            if ((min_unconfirmed >= UNCONFIRMED_LIMIT || avail == 0
+                 || pclient->paused)
+                && ! pclient->ssh_to_remote) {
                 if (! pclient->paused) {
 #if USE_RXFLOW
                     lwsl_info(tclients_seen == 1
