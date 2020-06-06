@@ -1342,6 +1342,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                 struct termios termios;
                 if (pclient && tcgetattr(pclient->pty, &termios) == 0) {
                     termios.c_lflag &= ~(ICANON|ECHO);
+                    termios.c_oflag &= ~ONLCR;
                     tcsetattr(pclient->pty, TCSANOW, &termios);
                 }
                 init_options(&opts);
