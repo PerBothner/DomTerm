@@ -3054,7 +3054,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     DomTerm.setFocus(this, "N");
     var dt = this;
     this.attachResizeSensor();
-    this.measureWindow();
     // Should be zero - support for topNode.offsetLeft!=0 is broken
     this._topLeft = dt.topNode.offsetLeft;
 
