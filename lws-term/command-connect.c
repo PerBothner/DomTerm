@@ -260,7 +260,7 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     struct cmd_socket_client *cclient = (struct cmd_socket_client *) lws_wsi_user(cmdwsi);
     cclient->socket = socket;
     cclient->exit_code = 0;
-    cclient->rsize = 512;
+    cclient->rsize = 5000;
     cclient->rbuffer = xmalloc(cclient->rsize);
     struct lws *inwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-stdin", NULL);
     struct cmd_socket_client *iclient = (struct cmd_socket_client *) lws_wsi_user(inwsi);
