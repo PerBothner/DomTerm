@@ -297,8 +297,8 @@ tty_save_set_raw(int tty_in)
     struct termios tmp_term;
     tcgetattr(tty_in, &save_term);
     tmp_term = save_term;
-    tmp_term.c_lflag &= ~(ICANON | ISIG | ECHO | ECHOCTL | ECHOE |      \
-                          ECHOK | ECHOKE | ECHONL | ECHOPRT );
+    tmp_term.c_lflag &= ~(ICANON | ISIG | ECHO | ECHOCTL | ECHOE |
+                          ECHOK | ECHOKE | ECHONL | ECHOPRT);
     tcsetattr(tty_in, TCSANOW, &tmp_term);
     tty_raw_fd = tty_in;
     if (! atexit_restore_registered) {
