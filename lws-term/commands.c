@@ -530,7 +530,10 @@ int status_action(int argc, char** argv, const char*cwd,
     else {
         for (; pclient != NULL; pclient = pclient->next_pty_client) {
             fprintf(out, "session#: %d, ", pclient->session_number);
-            fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
+            if (pclient->ssh_to_remote)
+                fprintf(out, "ssh to remote %s", pclient->ssh_to_remote);
+            else
+                fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
             if (pclient->session_name != NULL)
               fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
             if (pclient->paused)
@@ -544,26 +547,28 @@ int status_action(int argc, char** argv, const char*cwd,
                 int number = tclient->pty_window_number;
                 if (number >= 0)
                     fprintf(out, "  window %d:", number);
-                struct json_object *vobj =
-                    json_tokener_parse(tclient->version_info);
-                char *prefix = " ";
-                if (json_print_property(out, vobj, "qtwebengine", prefix, NULL))
-                    prefix = ", ";
-                if (json_print_property(out, vobj, "atom", prefix, NULL))
-                    prefix = ", ";
-                if (json_print_property(out, vobj, "electron", prefix, NULL))
-                    prefix = ", ";
-                if (json_print_property(out, vobj, "javaFX", prefix, NULL))
-                    prefix = ", ";
-                if (json_print_property(out, vobj, "chrome", prefix, NULL))
-                    prefix = ", ";
-                if (json_print_property(out, vobj, "appleWebKit", prefix, NULL))
-                    prefix = ", ";
-                if (json_print_property(out, vobj, "firefox", prefix, NULL))
-                    prefix = ", ";
-                //fprintf(out, " %s\n", tclient->version_info);
+                if (tclient->version_info) {
+                    struct json_object *vobj =
+                        json_tokener_parse(tclient->version_info);
+                    char *prefix = " ";
+                    if (json_print_property(out, vobj, "qtwebengine", prefix, NULL))
+                        prefix = ", ";
+                    if (json_print_property(out, vobj, "atom", prefix, NULL))
+                        prefix = ", ";
+                    if (json_print_property(out, vobj, "electron", prefix, NULL))
+                        prefix = ", ";
+                    if (json_print_property(out, vobj, "javaFX", prefix, NULL))
+                        prefix = ", ";
+                    if (json_print_property(out, vobj, "chrome", prefix, NULL))
+                        prefix = ", ";
+                    if (json_print_property(out, vobj, "appleWebKit", prefix, NULL))
+                        prefix = ", ";
+                    if (json_print_property(out, vobj, "firefox", prefix, NULL))
+                        prefix = ", ";
+                    //fprintf(out, " %s\n", tclient->version_info);
+                    json_object_put(vobj);
+                }
                 fprintf(out, "\n");
-                json_object_put(vobj);
                 nwindows++;
             }
             if (nwindows == 0)

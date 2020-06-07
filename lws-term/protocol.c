@@ -147,6 +147,10 @@ pty_destroy(struct pty_client *pclient)
         free(pclient->preserved_output);
         pclient->preserved_output = NULL;
     }
+    if (pclient->ssh_to_remote) {
+        free(pclient->ssh_to_remote);
+        pclient->ssh_to_remote = NULL;
+    }
 
     if (pclient->pid > 0) {
         // kill process and free resource
@@ -420,7 +424,7 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->cwd = cwd;
     pclient->env = env;
 #if REMOTE_SSH
-    pclient->ssh_to_remote = false;
+    pclient->ssh_to_remote = NULL;
 #if PASS_STDFILES_UNIX_SOCKET
     pclient->proxy_in = -1;
     pclient->proxy_out = -1;
@@ -851,12 +855,12 @@ reportEvent(const char *name, char *data, size_t dlen,
             setWindowSize(pclient);
         }
     } else if (strcmp(name, "VERSION") == 0) {
-        if (proxyMode == proxy_display_local)
-            return false;
         char *version_info = xmalloc(dlen+1);
         strcpy(version_info, data);
-        client->initialized = false;
         client->version_info = version_info;
+        if (proxyMode == proxy_display_local)
+            return false;
+        client->initialized = false;
         if (pclient == NULL)
             pclient = create_link_pclient(wsi, client);
         if (pclient == NULL)
@@ -1747,11 +1751,12 @@ handle_remote(int argc, char** argv, char* at,
         int rargc = 0;
         rargv[rargc++] = ssh;
         // argv[0] is @host or user@host. Pass host or user@host to ssh
-        rargv[rargc++] = at==argv[0] ? at+1 : at;
-        rargv[rargc++] = "/home/bothner/bin/domterm";
+        char *host_arg = argv[0];
+        rargv[rargc++] = at==host_arg ? at+1 : at;
+        rargv[rargc++] = "/home/bothner/bin/domterm"; // FIXME
         rargv[rargc++] = "--browser-pipe";
-        rargv[rargc++] = "-d";
-        rargv[rargc++] = "15";
+        //rargv[rargc++] = "-d";
+        //rargv[rargc++] = "15";
         for (int i = 1; i < argc; i++)
             rargv[rargc++] = argv[i];
         if (rargc > max_rargc)
@@ -1760,7 +1765,7 @@ handle_remote(int argc, char** argv, char* at,
         struct pty_client *pclient = create_pclient(ssh, copy_strings(rargv),
                                                     strdup(cwd), copy_strings(env),
                                                     opts);
-        pclient->ssh_to_remote = true;
+        pclient->ssh_to_remote = strdup(host_arg);
         lwsl_notice("handle_remote pcl:%p\n", pclient);
         make_proxy(opts, pclient, proxy_command_local);
         run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);

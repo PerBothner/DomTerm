@@ -99,7 +99,7 @@ struct pty_client {
     bool detachOnClose; // OLD
     bool session_name_unique;
     bool packet_mode;
-    bool ssh_to_remote;
+    char *ssh_to_remote; // if ssh: USER@HOST or HOST; else NULL
     int detach_count;
     int paused;
     struct lws *first_client_wsi;
