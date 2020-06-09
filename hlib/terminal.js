@@ -7895,6 +7895,8 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
         if (inputParent.getAttribute("std") == "input") {
             this._moveNodes(oldInputLine.firstChild, inputParent, oldInputLine);
             inputParent.removeChild(oldInputLine);
+            if (this.outputContainer == oldInputLine)
+                this.outputContainer = inputParent;
         }
         this.resetCursorCache();
         this.cursorLineStart(1);
