@@ -2134,7 +2134,7 @@ Terminal.prototype._restoreCaret = function() {
             if (this.sstate.showCaret)
                 sel.collapse(this._caretNode, 0);
             else
-                sel.removeAllRanges();
+                this._clearSelection();
         }
     }
 }
