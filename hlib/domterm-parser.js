@@ -1411,13 +1411,7 @@ class DTParser {
                 term.sstate.wraparoundMode &= ~1;
             break;
         case 9: case 1000: case 1001: case 1002: case 1003:
-            var handler = term._mouseEventHandler;
-            if (value) {
-                term.topNode.addEventListener("wheel", handler);
-            } else {
-                term.topNode.removeEventListener("wheel", handler);
-            }
-            term.sstate.mouseMode = value ? param : 0;
+            term.setMouseMode(value ? param : 0);
             break;
         case 1004: // Send FocusIn/FocusOut events.
             term.sstate.sendFocus = true;

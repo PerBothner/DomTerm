@@ -659,6 +659,20 @@ class Terminal {
         }
         return null;
     }
+
+    setMouseMode(value) {
+        var handler = this._mouseEventHandler;
+        if (value) {
+            this.topNode.addEventListener("wheel", handler);
+        } else {
+            this.topNode.removeEventListener("wheel", handler);
+        }
+        if (value !== 1003)
+            this.topNode.removeEventListener("mousemove", handler);
+        else if (this.sstate.mouseMode !== 1003 && value === 1003)
+            this.topNode.addEventListener("mousemove", handler);
+        this.sstate.mouseMode = value;
+    }
 }
 Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
                         "blinking-underline", "underline",
@@ -3805,12 +3819,12 @@ Terminal.prototype._mouseHandler = function(ev) {
     var button = Math.min(ev.which - 1, 2) | mod;
     switch (ev.type) {
     case 'mousedown':
-        if (this.sstate.mouseMode >= 1002)
+        if (this.sstate.mouseMode === 1002)
             this.topNode.addEventListener("mousemove",
                                           this._mouseEventHandler);
         break;
     case 'mouseup':
-        if (this.sstate.mouseMode >= 1002)
+        if (this.sstate.mouseMode === 1002)
             this.topNode.removeEventListener("mousemove",
                                              this._mouseEventHandler);
         switch (this.sstate.mouseCoordEncoding) {
