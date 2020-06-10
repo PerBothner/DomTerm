@@ -807,12 +807,15 @@ class DTParser {
                 term.clearAllTabs();
             break;
         case 104 /*'h'*/:
-            param = this.getParameter(0, 0);
             if (this._flagChars.indexOf('?') >= 0) {
                 // DEC Private Mode Set (DECSET)
-                this.set_DEC_private_mode(param, true);
+                let numParameters = this.parameters.length;
+                for (let i = 0; i < numParameters; i++) {
+                    this.set_DEC_private_mode(this.getParameter(i, 0), true);
+                }
             }
             else {
+                param = this.getParameter(0, 0);
                 switch (param) {
                 case 4:
                     term.sstate.insertMode = true;
@@ -824,11 +827,14 @@ class DTParser {
             }
             break;
         case 108 /*'l'*/:
-            param = this.getParameter(0, 0);
             if (this._flagChars.indexOf('?') >= 0) {
                 // DEC Private Mode Reset (DECRST)
-                this.set_DEC_private_mode(param, false);
+                let numParameters = this.parameters.length;
+                for (let i = 0; i < numParameters; i++) {
+                    this.set_DEC_private_mode(this.getParameter(i, 0), false);
+                }
             } else {
+                param = this.getParameter(0, 0);
                 switch (param) {
                 case 4:
                     term.sstate.insertMode = false;
