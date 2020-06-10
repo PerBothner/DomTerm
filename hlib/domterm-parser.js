@@ -157,9 +157,11 @@ class DTParser {
                     this.controlSequenceState = DTParser.INITIAL_STATE;
                     break;
                 case 93 /*']'*/: // OSC
+                case 94 /*'^'*/: // PM
                 case 95 /*'\\'*/: // Application Program Command (APC)
                     this.controlSequenceState =
                         ch == 93 ? DTParser.SEEN_OSC_STATE
+                        : ch == 94 ? DTParser.SEEN_PM_STATE
                         : DTParser.SEEN_APC_STATE;
                     this.parameters.length = 1;
                     this.parameters[0] = null;
@@ -238,6 +240,7 @@ class DTParser {
                 continue;
             case DTParser.SEEN_OSC_TEXT_STATE:
             case DTParser.SEEN_DCS_TEXT_STATE:
+            case DTParser.SEEN_PM_STATE:
             case DTParser.SEEN_APC_STATE:
                 if (ch == 7 || ch == 0 || ch == 0x9c || ch == 27) {
                     this.controlSequenceState =
@@ -252,7 +255,7 @@ class DTParser {
                         else if (state == DTParser.SEEN_OSC_TEXT_STATE) {
                             this.handleOperatingSystemControl(this.parameters[0], this._textParameter);
                         } else {
-                            // APC ignored
+                            // APC and PM ignored
                         }
                     } catch (e) {
                         console.log("caught "+e);
@@ -471,11 +474,13 @@ class DTParser {
                 case 0x90: // DCS
                 case 0x9b: // CSI
                 case 0x9d: // OSC
+                case 0x9e: // PM
                 case 0x9F: // APC
                     this.controlSequenceState =
                         ch == 0x9b ? DTParser.SEEN_ESC_LBRACKET_STATE
-                        : ch == 0x9d ? DTParser.SEEN_OSC_STAT
+                        : ch == 0x9d ? DTParser.SEEN_OSC_STATE
                         : ch == 0x90 ? DTParser.SEEN_DCS_STATE
+                        : ch == 0x9e ? DTParser.SEEN_PM_STATE
                         : DTParser.SEEN_APC_STATE;
                     this.parameters.length = 1;
                     this.parameters[0] = null;
@@ -2007,7 +2012,8 @@ DTParser.SEEN_CR = 17;
 DTParser.SEEN_ERROUT_END_STATE = 18;
 DTParser.SEEN_DCS_STATE = 19;
 DTParser.SEEN_DCS_TEXT_STATE = 20;
-DTParser.SEEN_ACS_STATE = 21;
+DTParser.SEEN_PM_STATE = 21;
+DTParser.SEEN_APC_STATE = 22;
 DTParser.PAUSE_REQUESTED = 23;
 
 window.DTParser = DTParser;
