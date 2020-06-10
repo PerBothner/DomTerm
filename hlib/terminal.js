@@ -7334,7 +7334,7 @@ Terminal.prototype.keyNameToChars = function(keyName) {
     const isShift = (mods) => mods.indexOf("Shift-") >= 0;
     const isCtrl = (mods) => mods.indexOf("Ctrl-") >= 0;
     const isAlt = (mods) => mods.indexOf("Alt-") >= 0;
-    const isCmd =(mods) => mods.indexOf("Cmd-") >= 0;
+    const isCmd = (mods) => mods.indexOf("Cmd-") >= 0;
     const specialKeySequence = (param, last, modStr) => {
         // param is either a numerical code, as as string (e.g. "15" for F5);
         // or "O" for ones that use SS3 (F1 to F4);
@@ -7414,6 +7414,8 @@ Terminal.prototype.keyNameToChars = function(keyName) {
                     return String.fromCharCode(ch-64);
             }
         }
+        if (mods == "Alt-" && baseName.length == 1)
+            return "\x1B" + baseName;
         return DomTerm.keyNameChar(keyName);
     }
 }
