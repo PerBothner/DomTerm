@@ -5372,6 +5372,7 @@ DomTerm.HTMLinfo = {
     "blockquote": DomTerm._ELEMENT_KIND_ALLOW,
     "br": 0x15,
     "body": DomTerm._ELEMENT_KIND_CONVERT_TO_DIV+DomTerm._ELEMENT_KIND_ALLOW,
+    "canvas": DomTerm._ELEMENT_KIND_INLINE,
     "center": DomTerm._ELEMENT_KIND_ALLOW,
     "circle": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "cite": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
@@ -5443,7 +5444,7 @@ DomTerm.HTMLinfo = {
     "i": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "iframe": DomTerm._ELEMENT_KIND_ALLOW,
     "image": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE, // FIXME
-    "img": 0x17, // need to check "src" for "javascript:"
+    "img": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_CHECK_JS_TAG+DomTerm._ELEMENT_KIND_ALLOW,
     "input": 0x15,
     //"isindex": 0x10, //metadata
     "kbd": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
@@ -5482,7 +5483,7 @@ DomTerm.HTMLinfo = {
     "style": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_SKIP_FULLY+DomTerm._ELEMENT_KIND_ALLOW,
     "sub": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "sup": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "svg": 13,
+    "svg": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "switch": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "symbol": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
     "table": DomTerm._ELEMENT_KIND_ALLOW,
