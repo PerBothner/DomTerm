@@ -496,6 +496,7 @@ class Terminal {
                 this.outputContainer = newLine;
             }
         }
+        this._fixOutputPosition();
         this._pushStdMode("prompt");
         if (promptKind)
             this.outputContainer.setAttribute("prompt-kind", promptKind);
