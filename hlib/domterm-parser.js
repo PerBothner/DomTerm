@@ -1,6 +1,7 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
 import { SixelDecoder } from './sixel/SixelDecoder.js';
+import { PALETTE_ANSI_256, DEFAULT_BACKGROUND } from './sixel/Colors.js';
 
 class DTParser {
     constructor(term) {
@@ -1314,7 +1315,10 @@ class DTParser {
             return;
         }
         if (text.charCodeAt(0) === 113) { // 'q'
-            let six = new SixelDecoder();
+            let palette = this._sixelPalette;
+            if (! palette)
+                this._sixelPalette = palette = Object.assign([], PALETTE_ANSI_256);
+            let six = new SixelDecoder(DEFAULT_BACKGROUND, palette);
             six.decodeString(text, 1);
             let w = six.width, h = six.height;
             let next = term.outputBefore;
