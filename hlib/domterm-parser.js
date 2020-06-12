@@ -1337,6 +1337,10 @@ class DTParser {
             const idata = ctx.createImageData(w, h);
             six.toPixelData(idata.data, w, h);
             ctx.putImageData(idata, 0, 0);
+            let wcols = Math.floor(w / term.charWidth + 0.9);
+            let hlines = Math.floor(h / term.charHeight + 0.9);
+            let oldLine = term.getAbsCursorLine();
+            let oldColumn = term.getCursorColumn();
             if (reuseCanvas) {
                 this.outputBefore = canvas.nextSibling;
             } else {
@@ -1348,15 +1352,21 @@ class DTParser {
                     image.src = canvas.toDataURL();
                     term.insertNode(image);
                 } else {
-                    term.insertNode(canvas);
+                    let span = term._createSpanNode();
+                    span.setAttribute("content-value", DomTerm.makeSpaces(wcols));
+                    span.appendChild(canvas);
+                    term.insertNode(span);
+                    if (Math.floor(term.charHeight+0.2) == h)
+                        canvas.style['height'] = term.charHeight + "px";
                 }
             }
-            let line = term.lineStarts[term.getAbsCursorLine()];
+            let line = term.lineStarts[oldLine];
             if (line._widthColumns !== undefined)
-                line._widthColumns++;
+                line._widthColumns += wcols;
             if (term.currentCursorColumn >= 0)
-                term.currentCursorColumn++;
+                term.currentCursorColumn += wcols;
             line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+            term.moveToAbs(oldLine+hlines-1, oldColumn+wcols, true);
         } else
             console.log("handleDeviceControlString");
     }

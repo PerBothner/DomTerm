@@ -55,6 +55,7 @@ span { padding: 0px; margin: 0px;}
 span[line="soft"] { padding: 0px; margin: 0px;}
 span[std="prompt"] { margin: 0px; padding: 0px; border: 0px }
 span[content-value]:before { content: attr(content-value) }
+span[content-value] canvas { position: absolute; left: 0px }
 *[domterm-hidden="true"] { display: none }
 
 span[line][breaking="yes"] > span.pprint-pre-break,
