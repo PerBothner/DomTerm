@@ -140,7 +140,7 @@ class Terminal {
     this._clientWantsEditing = 0;
     this._numericArgument = null;
 
-    // 0: disabled; 1: transient; 2: stable (set by ctrl-@)
+    // Emacs-style mark: 0: disabled; 1: transient; 2: stable (set by ctrl-@)
     this._markMode = 0;
 
     // We have two variations of autoEditing:
@@ -7332,6 +7332,30 @@ Terminal.prototype.keyEnterToString  = function() {
         return "\r";
 }
 
+Terminal.prototype.eventToKeyName = function(event) {
+    if (! event.key)
+        return browserKeymap.keyName(event);
+    if (event.type == "keypress")
+        return "'" + event.key + "'"
+    let base = event.key;
+    // Normalize keynames to match (older) browserKeymap names
+    switch (base) {
+        case "ArrowLeft": base = "Left"; break;
+        case "ArrowRight": base = "Right"; break;
+        case "ArrowUp": base = "Up"; break;
+        case "ArrowDown": base = "Down"; break;
+    }
+    if (base.length == 1 && base >= 'a' && base <= 'z')
+        base = base.toUpperCase();
+    let name = base
+    if (name == null || event.altGraphKey) return null
+    if (event.altKey && base != "Alt") name = "Alt-" + name
+    if (event.ctrlKey && base != "Ctrl") name = "Ctrl-" + name
+    if (event.metaKey && base != "Cmd") name = "Cmd-" + name
+    if (event.shiftKey && base != "Shift") name = "Shift-" + name
+    return name;
+}
+
 Terminal.prototype.keyNameToChars = function(keyName) {
     const isShift = (mods) => mods.indexOf("Shift-") >= 0;
     const isCtrl = (mods) => mods.indexOf("Ctrl-") >= 0;
@@ -7361,7 +7385,7 @@ Terminal.prototype.keyNameToChars = function(keyName) {
 
     const dash = keyName.lastIndexOf("-");
     const mods = dash > 0 ? keyName.substring(0, dash+1) : "";
-    const baseName = dash > 0 ? keyName.substring(dash+1) : keyName;
+    let baseName = dash > 0 ? keyName.substring(dash+1) : keyName;
     switch (baseName) {
     case "Backspace": return "\x7F";
     case "Tab":  return isShift(mods) ? "\x1B[Z" :  "\t";
@@ -7409,15 +7433,19 @@ Terminal.prototype.keyNameToChars = function(keyName) {
     case "Mod":
         return null;
     default:
-        if (mods == "Ctrl-") {
-            if (baseName.length == 1) {
-                let ch = baseName.charCodeAt(0);
-                if (ch >= 65 && ch <= 90)
-                    return String.fromCharCode(ch-64);
-            }
+        if ((mods == "Ctrl-" || mods == "Shift-Ctrl-")
+            && baseName.length == 1) {
+            let ch = baseName.charCodeAt(0);
+            if ((ch >= 65 && ch <= 90 && mods == "Ctrl-")
+                || ch == 32 || ch == 64 || (ch >= 91 && ch <= 95))
+                return String.fromCharCode(ch & 31);
         }
-        if (mods == "Alt-" && baseName.length == 1)
+        if (baseName.length == 1
+            && (mods == "Alt-" || mods == "Shift-Alt-")) {
+            if (baseName >= "A" && baseName <= "Z" && mods == "Alt-")
+                baseName = baseName.toLowerCase();
             return "\x1B" + baseName;
+        }
         return DomTerm.keyNameChar(keyName);
     }
 }
@@ -7959,6 +7987,12 @@ DomTerm.masterKeymapDefault = new window.browserKeymap({
     "Ctrl-Shift-T": "new-tab",
     "Ctrl-Shift-V": "paste-text",
     "Ctrl-Shift-X": "cut-text",
+    "Shift-Left": "backward-char-extend",
+    "Shift-Mod-Left": "backward-word-extend",
+    "Shift-Right": "forward-char-extend",
+    "Shift-Mod-Right": "forward-word-extend",
+    "Shift-End": "end-of-line-extend",
+    "Shift-Home": "beginning-of-line-extend",
     "Ctrl-Shift-Home": "scroll-top",
     "Ctrl-Shift-End": "scroll-bottom",
     "Ctrl-Shift-Up": "scroll-line-up",
@@ -8122,7 +8156,7 @@ Terminal.prototype._isOurEvent = function(event) {
 
 Terminal.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    let keyName = browserKeymap.keyName(event);
+    let keyName = this.eventToKeyName(event);
     if (this.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+keyName+" old:"+(this._inputLine != null)+" col:"+document.getSelection().isCollapsed);
     if (event.ctrlKey && event.shiftKey && key==88) { // Ctrl-Shift-X
@@ -8224,13 +8258,6 @@ Terminal.prototype.keyDownHandler = function(event) {
     } else {
         var str = this.keyNameToChars(keyName);
         if (str) {
-            if (event.shiftKey /*&& emacs-style*/) {
-                // FIXME maybe set
-                this._markMode = 1;
-                keyName = keyName.replace("Shift-", "");
-                str = this.keyNameToChars(keyName);
-            } else
-                this._markMode = 0; // FIXME do elsewhere
             if (this.scrollOnKeystroke)
                 this._enableScroll();
             event.preventDefault();
@@ -8262,11 +8289,11 @@ Terminal.prototype.keyDownHandler = function(event) {
 
 Terminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
+    let keyName = this.eventToKeyName(event);
     if (this.verbosity >= 2)
-        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+browserKeymap.keyName(event)+" in-l:"+this._inputLine);
+        this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+keyName+" in-l:"+this._inputLine);
     if (! this._isOurEvent(event))
         return;
-    let keyName = browserKeymap.keyName(event);
     if (this._composing > 0)
         return;
     if (this._currentlyPagingOrPaused()
