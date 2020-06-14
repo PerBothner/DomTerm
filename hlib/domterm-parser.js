@@ -1355,6 +1355,7 @@ class DTParser {
                     let span = term._createSpanNode();
                     span.setAttribute("content-value", DomTerm.makeSpaces(wcols));
                     span.appendChild(canvas);
+                    span.style['position'] = "relative";
                     term.insertNode(span);
                     if (Math.floor(term.charHeight+0.2) == h)
                         canvas.style['height'] = term.charHeight + "px";
