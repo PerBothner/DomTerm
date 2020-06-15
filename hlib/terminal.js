@@ -7344,6 +7344,7 @@ Terminal.prototype.eventToKeyName = function(event) {
         case "ArrowRight": base = "Right"; break;
         case "ArrowUp": base = "Up"; break;
         case "ArrowDown": base = "Down"; break;
+        case "Escape": base = "Esc"; break;
     }
     if (base.length == 1 && base >= 'a' && base <= 'z')
         base = base.toUpperCase();
