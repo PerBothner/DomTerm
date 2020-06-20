@@ -424,7 +424,7 @@ function handleMessage(event) {
     } else if (data.command=="domterm-context-menu") {
         let options = data.args[0];
         let x = options.clientX;
-        let y = options.clienty;
+        let y = options.clientY;
         if (iframe && x !== undefined && y !== undefined) {
             x = x + iframe.offsetLeft + iframe.clientLeft;
             y = y + iframe.offsetTop + iframe.clientTop;
