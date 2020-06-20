@@ -93,6 +93,9 @@ state_to_json(int argc, char *const*argv, char *const *env)
     free(cwd);
     json_object_object_add(jobj, "argv", jargv);
     json_object_object_add(jobj, "env", jenv);
+    if (main_options->cmd_settings)
+        json_object_object_add(jobj, "options",
+                               json_object_get(main_options->cmd_settings));
     return jobj;
 }
 
@@ -371,6 +374,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             struct json_object *jcwd = NULL;
             struct json_object *jargv = NULL;
             struct json_object *jenv = NULL;
+            struct json_object *joptions = NULL;
             const char *cwd = NULL;
             // if (!json_object_object_get_ex(jobj, "cwd", &jcwd))
             //   fatal("jswon no cwd");
@@ -396,8 +400,16 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 }
                 env[nenv] = NULL;
             }
+            if (json_object_object_get_ex(jobj, "options", &joptions)) {
+                if (opts.cmd_settings)
+                    json_object_put(opts.cmd_settings);
+                opts.cmd_settings = json_object_get(joptions);
+            }
             json_object_put(jobj);
             optind = 1;
+            struct json_object *msettings = merged_settings(opts.cmd_settings);
+            set_settings(&opts, msettings);
+            json_object_put(msettings);
             process_options(argc, argv, &opts);
             int ret = handle_command(argc-optind, argv+optind,
                                      cwd, env, wsi, &opts);

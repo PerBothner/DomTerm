@@ -1676,6 +1676,13 @@ class DTParser {
                 if (val && typeof val == d[1])
                     term[name] = val;
             }
+            for (const prop in obj) {
+                if (obj[prop] == "")
+                    delete term.sstate.termOptions[prop];
+                else
+                    term.sstate.termOptions[prop] = obj[prop];
+            }
+            term.updateSettings();
             break;
         case 89:
             try {

@@ -109,6 +109,7 @@ should_backup_output(struct pty_client *pclient)
 void
 maybe_exit()
 {
+    lwsl_notice("maybe_exit sess:%d cl:%d\n", server->session_count, server->client_count);
     if (server->session_count + server->client_count == 0) {
         force_exit = true;
         lws_cancel_service(context);
@@ -150,6 +151,10 @@ pty_destroy(struct pty_client *pclient)
     if (pclient->ssh_to_remote) {
         free(pclient->ssh_to_remote);
         pclient->ssh_to_remote = NULL;
+    }
+    if (pclient->cmd_settings) {
+        json_object_put(pclient->cmd_settings);
+        pclient->cmd_settings = NULL;
     }
 
     if (pclient->pid > 0) {
@@ -421,6 +426,10 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->pty_wsi = outwsi;
     pclient->cmd = cmd;
     pclient->argv = argv;
+    if (opts->cmd_settings)
+        pclient->cmd_settings = json_object_get(opts->cmd_settings);
+    else
+        pclient->cmd_settings = NULL;
     pclient->cwd = cwd;
     pclient->env = env;
 #if REMOTE_SSH
@@ -1117,7 +1126,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
             int w = i - start;
             if (w > 0)
                 lwsl_notice(" -handle_input write start:%d w:%d\n", start, w);
-            if (w > 0 && write(pclient->pty, msg+start, w) < w) {
+            if (w > 0 && pclient && write(pclient->pty, msg+start, w) < w) {
                 lwsl_err("write INPUT to pty\n");
                 return -1;
             }
@@ -1211,6 +1220,12 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                         OUT_OF_BAND_START_STRING "\033[96;%du"
                         URGENT_END_STRING,
                         rcount);
+        }
+        if (pclient->cmd_settings) {
+            json_object_put(pclient->cmd_settings);
+            sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
+                        json_object_to_json_string_ext(pclient->cmd_settings, JSON_C_TO_STRING_PLAIN));
+            pclient->cmd_settings = NULL;
         }
     }
     if (client->pty_window_update_needed && nonProxy) {

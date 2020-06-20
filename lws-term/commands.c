@@ -638,6 +638,33 @@ int freshline_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
+int settings_action(int argc, char** argv, const char*cwd,
+                         char **env, struct lws *wsi,
+                         struct options *opts)
+{
+    check_domterm(opts);
+    struct json_object *settings = opts->cmd_settings;
+    if (settings) {
+        json_object_put(settings);
+        opts->cmd_settings = NULL;
+    }
+    for (int i = 1; i < argc; i++) {
+        if (! check_option_arg(argv[i], opts))
+            printf_error(opts, "non-option argument '%s' to settings command",
+                         argv[i]);
+    }
+    settings = opts->cmd_settings;
+    if (settings == NULL) {
+        printf_error(opts, "no options specified");
+        return EXIT_FAILURE;
+    }
+    FILE *tout = fdopen(dup(get_tty_out()), "w");
+    fprintf(tout, URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
+            json_object_to_json_string_ext(settings, JSON_C_TO_STRING_PLAIN));
+    fclose(tout);
+    return EXIT_SUCCESS;
+}
+
 int reverse_video_action(int argc, char** argv, const char*cwd,
                          char **env, struct lws *wsi,
                          struct options *opts)
@@ -778,6 +805,8 @@ struct command commands[] = {
     .action = new_action},
   { .name = "window", .options = COMMAND_IN_SERVER,
     .action = window_action},
+  { .name = "settings", .options = COMMAND_IN_CLIENT,
+    .action = settings_action },
   { .name = 0 }
   };
 

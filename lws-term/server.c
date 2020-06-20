@@ -16,7 +16,7 @@ static char *default_size = NULL;
 static void make_html_file(int);
 static char *make_socket_name(bool);
 
-////** Returns a fresh copy of the (non-empty) geometry string, or NULL. */
+/** Returns a fresh copy of the (non-empty) geometry string, or NULL. */
 static char *
 geometry_option(struct options *options)
 {
@@ -795,6 +795,7 @@ get_domterm_jar_path()
 
 void  init_options(struct options *opts)
 {
+    opts->cmd_settings = NULL;
     opts->browser_command = NULL;
     opts->geometry = NULL;
     opts->openfile_application = NULL;
@@ -842,8 +843,6 @@ char** default_command(struct options *opts)
 {
     if (opts != NULL && opts->shell_argv != NULL)
         return opts->shell_argv;
-    else if (main_options->shell_argv != NULL)
-        return main_options->shell_argv;
     else
         return default_argv;
 }
@@ -851,9 +850,17 @@ char** default_command(struct options *opts)
 void prescan_options(int argc, char **argv, struct options *opts)
 {
     // parse command line options
-    int c;
     optind = 1;
-    while ((c = getopt_long(argc, argv, opt_string, options, NULL)) != -1) {
+    for (;;) {
+        int c = getopt_long(argc, argv, opt_string, options, NULL);
+        if (c == -1) {
+            if (optind < argc && check_option_arg(argv[optind], opts)) {
+                optind++;
+                continue;
+            }
+            //fprintf(stderr, "after args optind:%d argc:%d next:%s\n", optind, argc, argv[optind]);
+            break;
+        }
         switch (c) {
             case SETTINGS_FILE_OPTION:
                 opts->settings_file = optarg;
@@ -888,7 +895,16 @@ int process_options(int argc, char **argv, struct options *opts)
     // parse command line options
     optind = 1;
     int c;
-    while ((c = getopt_long(argc, argv, opt_string, options, NULL)) != -1) {
+    for (;;) {
+        int c = getopt_long(argc, argv, opt_string, options, NULL);
+        if (c == -1) {
+            char *eq = optind >= argc ? NULL : strchr(argv[optind], '=');
+            if (eq) {
+                optind++;
+                continue;
+            }
+            break;
+        }
         switch (c) {
             case 'h':
                 print_help(stderr);
@@ -1144,6 +1160,10 @@ main(int argc, char **argv)
 #endif
 
     read_settings_file(&opts, false);
+    struct json_object *msettings = merged_settings(opts.cmd_settings);
+    set_settings(&opts, msettings);
+    json_object_put(msettings);
+
     if (process_options(argc, argv, &opts) != 0)
         return -1;
     if (opts.something_done && argv[optind] == NULL)

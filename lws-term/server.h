@@ -49,6 +49,7 @@ extern char *main_html_url;
 extern char *main_html_path;
 extern char *backend_socket_name;
 extern const char *settings_fname;
+extern struct json_object *settings_json_object;
 extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
@@ -62,7 +63,7 @@ extern struct lws *focused_wsi;
 extern struct cmd_client *cclient;
 extern int last_session_number;
 extern struct options *main_options;
-extern const char *settings_as_json;
+extern const char *settings_as_json; // FIXME
 extern char git_describe[];
 #if REMOTE_SSH
 extern int
@@ -81,6 +82,15 @@ enum proxy_mode {
     proxy_command_local = 1, // proxying, between local shell and ssh
     proxy_display_local = 2, // proxying, between local display and ssh
     proxy_remote = 3 // proxying, we're the remote (pty) end
+};
+
+enum option_name {
+#define OPTION_S(NAME, STR) NAME##_opt,
+#define OPTION_F(NAME, STR) NAME##_opt,
+#include "option-names.h"
+    NO_opt
+#undef OPTION_S
+#undef OPTION_F
 };
 
 /** Data specific to a pty process. */
@@ -117,6 +127,7 @@ struct pty_client {
     size_t preserved_size; // allocated size of preserved_output
     long preserved_sent_count;  // sent_count corresponding to preserved_output
 
+    struct json_object *cmd_settings;
     const char *cmd;
     char*const*argv;
     const char*cwd;
@@ -187,6 +198,7 @@ struct options {
     int do_daemonize;
     int verbosity;
     int debug_level;
+    struct json_object *cmd_settings;
     char *browser_command;
     char *geometry;
     char *openfile_application;
@@ -277,6 +289,11 @@ extern int process_options(int argc, char **argv, struct options *options);
 extern char** default_command(struct options *opts);
 extern void request_upload_settings();
 extern void read_settings_file(struct options*, bool);
+extern struct json_object *merged_settings(struct json_object *cmd_settings);
+extern void set_settings(struct options *options, struct json_object *msettings);
+extern enum option_name lookup_option(const char *name);
+extern bool check_option_arg(char *arg, struct options *opts);
+
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);
 extern void check_domterm(struct options *);

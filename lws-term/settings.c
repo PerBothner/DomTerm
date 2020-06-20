@@ -11,9 +11,54 @@
 #endif
 
 const char* settings_fname = NULL;
-static struct json_object *settings_json_object = NULL;
-const char *settings_as_json;
+struct json_object *settings_json_object = NULL;
+const char *settings_as_json; // JSON of settings_json_object
 int64_t settings_counter = 0;
+
+struct optinfo { enum option_name name; const char *str; };
+
+static struct optinfo options[] = {
+#undef OPTION_S
+#undef OPTION_F
+#define OPTION_S(NAME, STR) { NAME##_opt, STR },
+#define OPTION_F(NAME, STR) { NAME##_opt, STR },
+#include "option-names.h"
+#undef OPTION_S
+#undef OPTION_F
+    { NO_opt, NULL },
+};
+
+enum option_name
+lookup_option(const char *name)
+{
+    struct optinfo *p = options;
+    for (; p->str; p++) {
+        if (strcmp(name, p->str) == 0)
+            return p->name;
+    }
+    return NO_opt;
+}
+
+bool
+check_option_arg(char *arg, struct options *opts)
+{
+    char *eq = strchr(arg, '=');
+    if (eq == NULL)
+        return false;
+    if (opts->cmd_settings == NULL)
+        opts->cmd_settings = json_object_new_object();
+    size_t klen = eq-arg;
+    char *key = xmalloc(klen+1);
+    memcpy(key, arg, klen);
+    key[klen] = '\0';
+    enum option_name opt = lookup_option(key);
+    if (opt == NO_opt)
+        printf_error(opts, "unknown option '%s'", key);
+    json_object_object_add(opts->cmd_settings, key,
+                           json_object_new_string(eq+1));
+    free(key);
+    return true;
+}
 
 #if HAVE_INOTIFY
 static int inotify_fd;
@@ -75,19 +120,6 @@ read_settings_file(struct options *options, bool re_reading)
     char *send = sbuf + slen;
     char *sptr = sbuf;
 
-#define CLEAR_FIELD(FIELD)       \
-    if (options->FIELD) {        \
-        free(options->FIELD);    \
-        options->FIELD = NULL;   \
-    }
-    CLEAR_FIELD(geometry);
-    CLEAR_FIELD(openfile_application);
-    CLEAR_FIELD(openlink_application);
-    CLEAR_FIELD(shell_command);
-    CLEAR_FIELD(command_firefox);
-    CLEAR_FIELD(command_chrome);
-    CLEAR_FIELD(command_electron);
-    CLEAR_FIELD(default_frontend);
 
     char *emsg = "";
     for (;;) {
@@ -136,6 +168,11 @@ read_settings_file(struct options *options, bool re_reading)
               goto err;
             ch = *sptr;
         }
+        *key_end = '\0';
+        if (lookup_option(key_start) == NO_opt) {
+        fprintf(stderr, "error in %s at byte offset %ld - unknown option '%s'\n",
+            settings_fname, (long) (key_start - sbuf), key_start);
+        }
         sptr++; // skip '='
         while (sptr < send && (*sptr == ' ' || *sptr == '\t'))
           sptr++;
@@ -166,25 +203,7 @@ read_settings_file(struct options *options, bool re_reading)
           }
           value_end = pdst;
         }
-        *key_end = '\0';
         size_t value_length = value_end-value_start;
-
-#define HANDLE_SETTING(NAME, FIELD)                           \
-        if (strcmp(key_start, NAME) == 0) {                   \
-            options->FIELD = xmalloc(value_length+1);         \
-            memcpy(options->FIELD, value_start, value_length);\
-            options->FIELD[value_length] = '\0';              \
-        }
-
-        HANDLE_SETTING("window.geometry", geometry);
-        HANDLE_SETTING("open.file.application", openfile_application);
-        HANDLE_SETTING("open.link.application", openlink_application);
-
-        HANDLE_SETTING("shell.default", shell_command);
-        HANDLE_SETTING("command.firefox", command_firefox);
-        HANDLE_SETTING("command.chrome", command_chrome);
-        HANDLE_SETTING("command.electron", command_electron);
-        HANDLE_SETTING("frontend.default", default_frontend);
 
         json_object_object_add(jobj, key_start,
                 json_object_new_string_len(value_start, value_length));
@@ -193,14 +212,60 @@ read_settings_file(struct options *options, bool re_reading)
     fprintf(stderr, "error in %s at byte offset %ld%s\n",
             settings_fname, (long) (sptr - sbuf), emsg);
  eof:
-    if (options->shell_argv)
-        free(options->shell_argv);
-    options->shell_argv = parse_args(options->shell_command, false);
 
     munmap(sbuf, slen);
     close(settings_fd);
     settings_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
     request_upload_settings();
+}
+
+struct json_object *
+merged_settings(struct json_object *cmd_settings)
+{
+    struct json_object *jsettings = settings_json_object;
+    if (cmd_settings) {
+        if (jsettings == NULL)
+            return json_object_get(cmd_settings);
+        jsettings = NULL;
+        json_object_deep_copy(settings_json_object, &jsettings, NULL);
+        json_object_object_foreach(cmd_settings, key, val) {
+            json_object_object_add(jsettings, key, json_object_get(val));
+        }
+        return jsettings;
+    } else if (jsettings == NULL)
+        return json_object_new_object();
+    else
+        return json_object_get(jsettings);
+}
+
+void
+set_settings(struct options *options, struct json_object *msettings)
+{
+#undef OPTION_S
+#undef OPTION_F
+#define OPTION_S(FIELD, STR) \
+    if (options->FIELD) {        \
+        free(options->FIELD);    \
+        options->FIELD = NULL;   \
+    }
+#define OPTION_F(NAME, STR) /* nothing */
+#include "option-names.h"
+
+    json_object_object_foreach(msettings, key, val) {
+#undef OPTION_S
+#define OPTION_S(FIELD,NAME)                                  \
+        if (strcmp(key, NAME) == 0) {                   \
+            const char *vstr = json_object_get_string(val); \
+            int vlen = json_object_get_string_len(val); \
+            options->FIELD = xmalloc(vlen+1);         \
+            memcpy(options->FIELD, vstr, vlen);\
+            options->FIELD[vlen] = '\0';              \
+        }
+#include "option-names.h"
+    }
+    if (options->shell_argv)
+        free(options->shell_argv);
+    options->shell_argv = parse_args(options->shell_command, false);
 }
 
 void

@@ -207,7 +207,12 @@ class Terminal {
     this._displaySizePendingTimeouts = 0;
     this.modeLineGenerator = null;
 
-    this._miscOptions = {};
+    // Table of named options local to this terminal.
+    // Maybe set from command-line or UI
+    this.sstate.termOptions = {};
+    // Table of named options global to domterm server.
+    // Normally read from settings.ini
+    this._globalOptions = {};
 
     this.scrollOnKeystroke = true;
     this._usingScrollBar = false;
@@ -383,6 +388,14 @@ class Terminal {
         };
     this.wcwidth = new WcWidth();
   }
+
+    getOption(name, dflt = undefined) {
+        let opt = this.sstate.termOptions[name];
+        if (opt !== undefined)
+            return opt;
+        opt = this._globalOptions[name];
+        return opt === undefined ? dflt : opt;
+    }
 
     // This is called both when constructing a new Terminal, and
     // when closing the session (while preserving the WebSocket).
@@ -3531,15 +3544,8 @@ Terminal.prototype.measureWindow = function()  {
     this._updateMiscOptions();
 };
 
-Terminal.prototype.setMiscOptions = function(map) {
-    this._miscOptions = map;
-    this._updateMiscOptions();
-};
-
-Terminal.prototype._updateMiscOptions = function(map) {
-    var map = this._miscOptions;
-
-    // handle 'foreground' and 'background'
+Terminal.prototype._updateMiscOptions = function() {
+    /* FUTURE: handle 'foreground' and 'background' options
     const foreground = map.foreground;
     const background = map.background;
     let hex3re = /^#[0-9a-fA-F]{3}$/;
@@ -3571,6 +3577,7 @@ Terminal.prototype._updateMiscOptions = function(map) {
         if (background)
             topStyle.setProperty("--background-color", background);
     }
+    */
     topStyle.setProperty("--wchar-width", (this.charWidth * 2)+"px");
     topStyle.setProperty("--char-height", this.charHeight+"px");
 };
@@ -5148,13 +5155,18 @@ Terminal.prototype.setSettings = function(obj) {
     var settingsCounter = obj["##"];
     if (this._settingsCounterInstance == settingsCounter)
         return;
+    this._globalOptions = obj;
     this._settingsCounterInstance = settingsCounter;
+    this.updateSettings();
+}
 
+Terminal.prototype.updateSettings = function() {
+    let getOption = (name) => this.getOption(name);
     this.linkAllowedUrlSchemes = Terminal.prototype.linkAllowedUrlSchemes;
     var link_conditions = "";
-    var val = obj["open.file.application"];
+    var val = getOption("open.file.application");
     var a = val ? val : "";
-    val = obj["open.link.application"];
+    val = getOption("open.link.application");
     if (val)
         a += val;
     for (;;) {
@@ -5165,7 +5177,7 @@ Terminal.prototype.setSettings = function(obj) {
         a = m[1]+m[3];
     }
 
-    var style_dark = obj["style.dark"];
+    var style_dark = getOption("style.dark");
     if (style_dark) {
         this.setReverseVideo(this._asBoolean(style_dark));
         this._style_dark_set = true;
@@ -5173,7 +5185,7 @@ Terminal.prototype.setSettings = function(obj) {
         this.setReverseVideo(false);
         this._style_dark_set = false;
     }
-    let cstyle = obj["style.caret"];
+    let cstyle = getOption("style.caret");
     if (cstyle) {
         cstyle = String(cstyle).trim();
         let nstyle = Terminal.caretStyles.indexOf(cstyle);
@@ -5195,7 +5207,7 @@ Terminal.prototype.setSettings = function(obj) {
 
     if (DomTerm._settingsCounter != settingsCounter) {
         DomTerm._settingsCounter = settingsCounter;
-        var style_user = obj["style.user"];
+        var style_user = getOption("style.user");
         if (style_user) {
             this.loadStyleSheet("user", style_user);
             DomTerm._userStyleSet = true;
@@ -5203,7 +5215,7 @@ Terminal.prototype.setSettings = function(obj) {
             this.loadStyleSheet("user", "");
             DomTerm._userStyleSet = false;
         }
-        var geom = obj["window.geometry"];
+        var geom = getOption("window.geometry");
         if (geom) {
             try {
                 var m = geom.match(/^([0-9]+)x([0-9]+)$/);
@@ -5218,7 +5230,7 @@ Terminal.prototype.setSettings = function(obj) {
         }
 
         function updateKeyMap(mapName, defaultMap) {
-            var mapValue = obj[mapName];
+            var mapValue = getOption(mapName);
             if (mapValue != null) {
                 let map = mapValue.trim().replace(/\n/g, ",");
                 // FIXME this is not as robust/general as it should be
@@ -5237,7 +5249,7 @@ Terminal.prototype.setSettings = function(obj) {
     }
 
     if (DomTerm.settingsHook) {
-        var style_qt = obj["style.qt"];
+        var style_qt = getOption("style.qt");
         DomTerm.settingsHook("style.qt", style_qt ? style_qt : "");
     }
     DomTerm._checkStyleResize(this);
