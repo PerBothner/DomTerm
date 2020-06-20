@@ -1,7 +1,3 @@
-#ifdef HAVE_LWS_CONFIG_H
-#include "lws_config.h"
-#endif
-
 #include "version.h"
 
 #define _GNU_SOURCE
@@ -23,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <assert.h>
+#include <json.h>
 
 // True when enabling future proxy support
 #define REMOTE_SSH 1
@@ -37,7 +34,10 @@
 #endif
 
 #include <libwebsockets.h>
-#include <json.h>
+#if HAVE_OPENSSL && !defined(LWS_OPENSSL_SUPPORT)
+#undef HAVE_OPENSSL
+#define HAVE_OPENSSL 0
+#endif
 
 #include "command-connect.h"
 
