@@ -3545,6 +3545,7 @@ Terminal.prototype.measureWindow = function()  {
 };
 
 Terminal.prototype._updateMiscOptions = function() {
+    const topStyle = this.topNode.style;
     /* FUTURE: handle 'foreground' and 'background' options
     const foreground = map.foreground;
     const background = map.background;
@@ -3554,7 +3555,6 @@ Terminal.prototype._updateMiscOptions = function() {
           : foreground && foreground.match(hex3re) ? 1 : 0;
     const bgCols = background && background.match(hex6re) ? 2
           : background && background.match(hex3re) ? 1 : 0;
-    const topStyle = this.topNode.style;
     if (fgCols && bgCols) {
         let fgSum = 0, bgSum = 0;
         for (let i = 0; i < 3; i++) {
@@ -5205,8 +5205,8 @@ Terminal.prototype.updateSettings = function() {
         this.setCaretStyle(Terminal.DEFAULT_CARET_STYLE);
     }
 
-    if (DomTerm._settingsCounter != settingsCounter) {
-        DomTerm._settingsCounter = settingsCounter;
+   // if (DomTerm._settingsCounter != settingsCounter) {
+   //     DomTerm._settingsCounter = settingsCounter;
         var style_user = getOption("style.user");
         if (style_user) {
             this.loadStyleSheet("user", style_user);
@@ -5246,7 +5246,7 @@ Terminal.prototype.updateSettings = function() {
         }
         DomTerm.lineEditKeymap = updateKeyMap("keymap.line-edit", DomTerm.lineEditKeymapDefault);
         DomTerm.masterKeymap = updateKeyMap("keymap.master", DomTerm.masterKeymapDefault);
-    }
+    //}
 
     if (DomTerm.settingsHook) {
         var style_qt = getOption("style.qt");
