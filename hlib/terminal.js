@@ -3746,6 +3746,7 @@ Terminal.prototype._updateSelected = function() {
     }
     if (point
         && this._composing <= 0
+        && DomTerm.focusedTerm==this
         && this.caretStyle !== Terminal.NATIVE_CARET_STYLE) {
         this._clearSelection();
     }
