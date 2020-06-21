@@ -191,6 +191,64 @@ parse_args(const char *args, bool check_shell_specials)
     return argv;
 }
 
+/** If 'in' has "special" characters, return 'in' surrounded by single-quotes.
+ * If so, the result is freshly allocated and the original 'in' is free'd.
+ * A single quote in the input is surrounded by double-quotes.
+ * If no special characters, return 'in' unchanged.
+ */
+char *
+maybe_quote_arg(char *in)
+{
+    char *out = NULL;
+    char *q = NULL;
+    for (int pass = 0; pass < 2; pass++) {
+        const char *p = in;
+        int apos_count = 0;
+        int bad_count = 0;
+        for (;;) {
+            int ch = *p++ & 0xFF;
+            if (ch == 0)
+                break;
+            if (ch == '\'') {
+                if (pass == 0)
+                    apos_count++;
+                else {
+                    *q++ = '\'';
+                    *q++ = '\"';
+                    *q++ = '\'';
+                    *q++ = '\"';
+                    *q++ = '\'';
+                }
+            } else if ((ch >= 'a' && ch <= 'z')
+                       || (ch >= 'A' && ch <= 'Z')
+                       || (ch >= '0' && ch <= '9')
+                       || ch == '/' || ch == '_' || ch == '-' || ch == '.'
+                       || ch >= 128) {
+                if (pass > 0)
+                    *q++ = ch;
+            } else {
+                if (pass == 0)
+                    bad_count++;
+                else
+                    *q++ = ch;
+            }
+            if (apos_count + bad_count == 0)
+                return in;
+            if (pass == 1) {
+                size_t in_size = (char*) p - in;
+                out = xmalloc(in_size + 5 * apos_count + 3);
+                q = out;
+                *q++ = '\'';
+            } else {
+                *q++ = '\'';
+                *q = 0;
+                free(in);
+                return out;
+            }
+        }
+    }
+}
+
 /* Returns either NULL or a freshly malloc'd urlencoding of 'in'. */
 char *
 url_encode(const char *in, int mode)

@@ -486,23 +486,22 @@ chrome_command(bool app_mode)
       return cbin[0] ? cbin : NULL;
     cbin = getenv("CHROME_BIN");
     if (cbin != NULL && access(cbin, X_OK) == 0)
-        return cbin;
+        return maybe_quote_arg(cbin);
     if (is_WindowsSubsystemForLinux()) {
 #define CHROME_EXE "/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"
 	if (access(CHROME_EXE, X_OK) == 0)
-            return "'" CHROME_EXE "'";
+            return (cbin = "'" CHROME_EXE "'");
     }
     cbin = find_in_path("chrome");
+    if (cbin == NULL)
+        cbin = find_in_path("google-chrome");
     if (cbin != NULL)
-        return cbin;
-    cbin = find_in_path("google-chrome");
-    if (cbin != NULL)
-        return cbin;
+        return maybe_quote_arg(cbin);
 #if __APPLE__
     // FIXME - better to open -a "Google Chrome" OR open -b com.google.Chrome
-    char *chromeMac = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-    if (access(chromeMac, X_OK) == 0)
-        return chromeMac;
+#define CHROME_MAC "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    if (access(CHROME_MAC, X_OK) == 0)
+        return (cbin = "'" CHROME_MAC "'");
 #endif
     cbin = ""; // cache as "not found"
     return NULL;

@@ -315,6 +315,7 @@ extern void copy_html_file(FILE*in, FILE*out);
 extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);
 extern char** parse_args(const char*, bool);
+extern char * maybe_quote_arg(char *in);
 extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);
 
