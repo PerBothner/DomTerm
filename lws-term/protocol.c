@@ -1748,30 +1748,56 @@ handle_remote(int argc, char** argv, char* at,
               const char*cwd, char **env,
               struct options *opts)
 {
-        // Running 'domterm --BROWSER user@host COMMAND' translates
-        // to 'ssh USER@HOSTNAME domterm --browser-pipe COMMAND`
-        // The --browser-pipe is a pseudo "browser specification":
-        // create a pty running COMMAND such that output from the COMMAND
-        // is printed to the stdout, and input read from stdin,
-        // with perhaps some extra complication for events.
-        // Locally, we create a tclient in --BROWSER, but instead
-        // of the pclient/pty we do the following.
-        char *ssh = find_in_path("ssh");
-        if (ssh == NULL) {
-            printf_error(opts, "domterm: ssh comand not found - required for remote");
-            return -1;
-        }
-        int max_rargc = argc+12;
+    // Running 'domterm --BROWSER user@host COMMAND' translates
+    // to 'ssh USER@HOSTNAME domterm --browser-pipe COMMAND`
+    // The --browser-pipe is a pseudo "browser specification":
+    // create a pty running COMMAND such that output from the COMMAND
+    // is printed to the stdout, and input read from stdin,
+    // with perhaps some extra complication for events.
+    // Locally, we create a tclient in --BROWSER, but instead
+    // of the pclient/pty we do the following.
+
+    char** ssh_args;
+    char* _ssh_args[2];
+    int ssh_argc;
+    if (opts->command_ssh) {
+        ssh_args = parse_args(opts->command_ssh, false);
+        ssh_argc = count_args(ssh_args);
+    } else {
+        ssh_args = _ssh_args;
+        ssh_args[0] = "ssh";
+        ssh_args[1] = NULL;
+        ssh_argc = 1;
+    }
+    char *ssh = ssh_args == 0 ? NULL : find_in_path(ssh_args[0]);
+    if (ssh == NULL) {
+        printf_error(opts, "domterm: ssh comand not found - required for remote");
+        return -1;
+    }
+    char** domterm_args;
+    char* _domterm_args[2];
+    int domterm_argc;
+    if (opts->command_remote_domterm) {
+        domterm_args = parse_args(opts->command_remote_domterm, false);
+        domterm_argc = count_args(domterm_args);
+    } else {
+        domterm_args = _domterm_args;
+        domterm_args[0] = "domterm";
+        domterm_args[1] = NULL;
+        domterm_argc = 1;
+    }
+
+    int max_rargc = argc+ssh_argc+domterm_argc+8;
         char** rargv = xmalloc(sizeof(char*)*(max_rargc+1));
         int rargc = 0;
-        rargv[rargc++] = ssh;
+        for (int i = 0; i < ssh_argc; i++)
+            rargv[rargc++] = ssh_args[i];
         // argv[0] is @host or user@host. Pass host or user@host to ssh
         char *host_arg = argv[0];
         rargv[rargc++] = at==host_arg ? at+1 : at;
-        rargv[rargc++] = "/home/bothner/bin/domterm"; // FIXME
+        for (int i = 0; i < domterm_argc; i++)
+            rargv[rargc++] = domterm_args[i];
         rargv[rargc++] = "--browser-pipe";
-        //rargv[rargc++] = "-d";
-        //rargv[rargc++] = "15";
         for (int i = 1; i < argc; i++)
             rargv[rargc++] = argv[i];
         if (rargc > max_rargc)

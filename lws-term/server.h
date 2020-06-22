@@ -199,14 +199,20 @@ struct options {
     int verbosity;
     int debug_level;
     struct json_object *cmd_settings;
-    char *browser_command;
-    char *geometry;
-    char *openfile_application;
-    char *openlink_application;
+#if 0
+    FIXME use OPTION_S - handle shell_command special?
+#else
+    char *default_frontend;
     char *command_firefox;
     char *command_chrome;
     char *command_electron;
-    char *default_frontend;
+    char *command_ssh;
+    char *command_remote_domterm;
+    char *geometry;
+    char *openfile_application;
+    char *openlink_application;
+#endif
+    char *browser_command;
     char *tty_packet_mode;
     struct pty_client *requesting_session;
     int paneOp;
@@ -314,6 +320,7 @@ extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_AS_MODULE 8
 extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);
+extern int count_args(char**);
 extern char** parse_args(const char*, bool);
 extern char * maybe_quote_arg(char *in);
 extern const char *extract_command_from_list(const char *, const char **,

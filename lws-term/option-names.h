@@ -1,8 +1,10 @@
 OPTION_S(default_frontend, "frontend.default")
 OPTION_S(shell_command, "shell.default")
-OPTION_S(command_firefox, "commmand.firefox")
-OPTION_S(command_chrome, "commmand.chrome")
-OPTION_S(command_electron, "commmand.electron")
+OPTION_S(command_firefox, "command.firefox")
+OPTION_S(command_chrome, "command.chrome")
+OPTION_S(command_electron, "command.electron")
+OPTION_S(command_ssh, "command.ssh")
+OPTION_S(command_remote_domterm, "command.remote-domterm")
 /*OPTION_S(window_geometry, "geometry")*/
 OPTION_S(geometry, "geometry")
 OPTION_S(openfile_application, "open.file.application")

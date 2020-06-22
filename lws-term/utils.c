@@ -117,6 +117,14 @@ base64_encode(const unsigned char *buffer, size_t length) {
     return ret;
 }
 
+int count_args(char **argv)
+{
+    int i = 0;
+    while (argv[i])
+        i++;
+    return i;
+}
+
 /* Parse an argument list (a list of possible-quoted "words").
  * This follows extended shell syntax.
  * If check_shell_specials is true and

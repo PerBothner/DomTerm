@@ -134,9 +134,7 @@ int start_command(struct options *opts, char *cmd) {
         if (shell == NULL)
             shell = DEFAULT_SHELL;
         char **shell_argv = parse_args(shell, false);
-        int shell_argc = 0;
-        while (shell_argv[shell_argc])
-            shell_argc++;
+        int shell_argc = count_args(shell_argv);
         args = xmalloc((shell_argc+3) * sizeof(char*));
         int i;
         for (i = 0; i < shell_argc; i++)
@@ -798,12 +796,15 @@ void  init_options(struct options *opts)
 {
     opts->cmd_settings = NULL;
     opts->browser_command = NULL;
+    // FIXME ue OPTION_S macro
     opts->geometry = NULL;
     opts->openfile_application = NULL;
     opts->openlink_application = NULL;
     opts->command_firefox = NULL;
     opts->command_chrome = NULL;
     opts->command_electron = NULL;
+    opts->command_ssh = NULL;
+    opts->command_remote_domterm = NULL;
     opts->default_frontend = NULL;
     opts->http_server = false;
     opts->something_done = false;
