@@ -149,28 +149,6 @@ int start_command(struct options *opts, char *cmd) {
     if (pid == 0) {
         putenv("ELECTRON_DISABLE_SECURITY_WARNINGS=true");
         daemonize();
-#ifdef __APPLE__
-        {
-            // We cannot directly use `execv` for a GUI app on MacOSX
-            // in a forked process
-            // (e.g. issues like https://stackoverflow.com/questions/53958926/).
-            // But using `open` will work around this.
-            int argc = 0;
-            for(; args[argc]; ++argc);
-            char** args_ext = xmalloc(sizeof(char*) * (argc + 5));
-            arg0 = "/usr/bin/open";
-            args_ext[0] = arg0;
-            args_ext[1] = "-a";
-            args_ext[2] = args[0];
-            args_ext[3] = "--args";
-            for(int i = 0; ; ++i) {
-                args_ext[i + 4] = args[i + 1];
-                if(!args[i + 1])
-                    break;
-            }
-            args = args_ext;
-        }
-#endif
         execv(arg0, args);
         exit(-1);
     } else if (pid > 0) {// master
@@ -499,7 +477,7 @@ chrome_command(bool app_mode)
     // FIXME - better to open -a "Google Chrome" OR open -b com.google.Chrome
 #define CHROME_MAC "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
     if (access(CHROME_MAC, X_OK) == 0)
-        return (cbin = "'" CHROME_MAC "'");
+        return (cbin = "/usr/bin/open -a '" CHROME_MAC "'");
 #endif
     cbin = ""; // cache as "not found"
     return NULL;
@@ -515,9 +493,9 @@ firefox_browser_command()
     char *firefoxCommand = find_in_path("firefox");
     if (firefoxCommand != NULL)
         return firefoxCommand;
-    char *firefoxMac ="/Applications/Firefox.app/Contents/MacOS/firefox";
+#define firefoxMac "/Applications/Firefox.app/Contents/MacOS/firefox"
     if (access(firefoxMac, X_OK) == 0)
-        return firefoxMac;
+      return "/usr/bin/open -a " firefoxMac;
     return NULL;
 }
 
@@ -575,7 +553,11 @@ electron_command(struct options *options)
     }
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *app_fixed = fix_for_windows(app);
+#ifdef __APPLE__
+    char *format = "/usr/bin/open -a %s --args %s%s%s --url '%%U'";
+#else
     char *format = "%s %s%s%s --url '%%U'";
+#endif
     const char *g1 = "", *g2 = "";
     char *geometry = geometry_option(options);
     if (geometry) {
