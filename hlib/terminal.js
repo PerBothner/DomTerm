@@ -3101,7 +3101,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     function handleContextMenu(e) {
         if (dt.sstate.mouseMode != 0
             || (DomTerm.showContextMenu
-                && ! e.ctrlKey && ! e.shiftKey
+                && ! e.shiftKey
                 && DomTerm.showContextMenu({"contextType":
                                             DomTerm._contextLink?"A":"",
                                             "inputMode": dt.getInputMode(),
