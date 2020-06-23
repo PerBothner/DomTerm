@@ -751,7 +751,7 @@ both Firefox and Google Chrome work pretty well.
 The default location (for Firefox 
 @code{c:\Program Files (x86)\Mozilla Firefox\firefox.exe})
 should work out-of-the-box.  Otherwise specify
-@code{command.firefox} or @code{commmand.chrome} in
+@code{command.firefox} or @code{command.chrome} in
 @ref{Settings,@code{settings.ini}}.
 
 Note that the Microsft Edge browser does not work
@@ -928,6 +928,12 @@ Prints various bits of information about the backend,
 sessions, windows, and version numbers.
 The information displayed and the format are likely to change.
 
+@item @b{@code{settings}} @var{name}@code{=}@var{value} ...
+Change the specified @ref{Settings,local settings} for the current session.
+
+If the @var{value} is empty, the local setting with the given @var{name} is
+removed, so the global setting (if set) becomes active.
+
 @item @b{@code{browse}} @var{url}
 Create a new browser window or sub-window that displays @var{url}.
 This is implemented using an @code{iframe}.
@@ -1055,6 +1061,11 @@ If there are no windows, create one.
 @end table
 
 @subheading Miscellaneous options
+
+An argument that contains equal-sign (@code{=}),
+does not start with a hyphen (@code{-}), and
+precedes a @var{command} (if any) is
+a @ref{Settings,@dfn{settings option}}.
 
 @table @asis
 @item @code{--geometry} @var{size-and-position}
@@ -1247,7 +1258,21 @@ $ domterm disable-stylesheet 2
 @end table
 
 @node Settings
-@chapter The settings.ini file
+@chapter Settings
+
+A @dfn{setting} is named value that controls how
+DomTerm works, depending on user preference or environment.
+
+Settings can be global settings, or local settings.
+@dfn{Global settings} are specified in a @code{setings.ini} configuration file,
+and apply to all sessions and windows managed by a server.
+@dfn{Local settings} are specified on the command line
+(or in the future a GUI) and apply to the current command, session or window.
+
+The settings that are active is the merge of the
+global and local settings, with the latter taking precedence.
+
+@subheading Global settings from settings.ini file
 
 User preferences for DomTerm are normally in the file
 @code{.config/domterm/settings.ini} in the user's home directory.
@@ -1289,13 +1314,46 @@ style.user =
 In this cases the resulting @var{value} has two lines,
 with the two-character prefixes @samp{ |} removed.
 
+Comment lines start with @code{#} in the first column.
+Comment lines and all-blank lines are ignored.
+
+@subheading Local settings from command line
+
+On the @code{domterm} command line, you can specify a local setting
+with an argument that contains an equal sign (@code{=}) and
+that does not start with a hyphen (@code{-}).
+A settings argument is specified with other options @emph{before}
+the @var{command}, if any.
+For example:
+@example
+domterm style.dark=yes new bash
+@end example
+
+Command-line settings are used for the current command,
+including creating a new session or window.
+
+To change local settings for a current window, you can use the
+@code{domterm settings} command.  This modifies the local settings
+of the current window.
+@example
+domterm settings style.dark=yes
+@end example
+
+@subheading Settings values
+
 For a boolean @var{value} any
 one of @code{true}, @code{yes}, or @code{on}
 enable the preference;
 one of @code{false}, @code{no}, or @code{off}  disable the preference.
 
-Comment lines start with @code{#} in the first column.
-Comment lines and all-blank lines are ignored.
+Some settings specify a list of values.
+In that case the values are seperated by newlines or (unquoted) semi-colons.
+
+A @var{command} is one or more arguments separate by spaces.
+Special characters (including spaces) can be protected in single quotes
+(apostropes) or double quotes, as in typical shells.
+
+@subheading Available settings
 
 @table @asis
 @item @code{@b{shell.default} =} @var{command}
@@ -1311,14 +1369,14 @@ if that is not set the default is @code{/bin/bash}.
 The browser-like program used to create new top-level windows,
 unless overridden by a specific window-specifier command.
 
-The @var{application-list} is a list of commmand front-end,
+The @var{application-list} is a list of command front-end,
 separated by newlines or semi-colons.  The commands are tried
 left-to-right, until one is found that exists and is executable.
 The default is currently:
 @example
 frontend.default = electron;qt;chrome;firefox;browser
 @end example
-The commmands @code{electron}, @code{qt}, @code{chrome},
+The commands @code{electron}, @code{qt}, @code{chrome},
 @code{firefox}, or @code{browser} are equivalent to the
 corresponding windows-specifier @code{--electron} and so on.
 Otherwise a command may be include command-line arguments
@@ -1339,7 +1397,10 @@ Control the size and/or of new top-level windows
 using the syntax of a @ref{geometry-specifier}.
 
 The default is @code{800x600}.
+@end table
 
+@subsubheading Display styling
+@table @asis
 @item @code{@b{style.user} =} @var{css-style-rules}
 Set the @code{user} stylesheet to the rules in @var{css-style-rules}.
 The latter is typically a multi-line value.
@@ -1366,7 +1427,11 @@ lighter background and a darker foreground colors.
 @item @code{@b{style.caret} =} @var{value}
 Change the style of the caret (text input cursor).
 See @ref{caret-styling}.
+@end table
 
+@subsubheading Key and mouse handling
+
+@table @asis
 @item @code{@b{open.file.application} =} @var{application-list}
 @itemx @code{@b{open.link.application} =} @var{application-list}
 List of applications to try when clicking on a link.
@@ -1382,6 +1447,22 @@ Add or replace keybindings for @ref{Input line editing,input line editing}.
 (Changing other keybindings is planned but not yet implemented.)
 @item @code{@b{keymap.master} =} @var{keymap-overrides}
 Add or replace keybindings that are active in all modes. 
+@end table
+
+@subsubheading Remote connnections
+
+@table @asis
+@item @code{@b{command.remote-domterm} =} @var{domterm-command}
+When connecting to a remote server over ssh,
+use @var{command} to run @code{domterm} on the server.
+The default is @code{domterm}, but you may need to use this
+option if @code{domterm} is not in the remote @code{PATH} or
+you want to pass extra options (perhaps for debugging or logging)
+to @code{domterm}.
+
+@item @code{@b{command.ssh} =} @var{ssh-command}
+The command to use instead of @code{ssh} to connect to a remote
+server.
 @end table
 
 @node Applications
@@ -1679,6 +1760,34 @@ See @uref{https://github.com/PerBothner/theia,this fork}.
 @node Remote serving
 @chapter Remote serving
 
+To run a shell or command on a remote computer you
+can of course run the@code{ssh} command in DomTerm window.
+This works, but has some limitation, most notably there is no
+persistent session on the remote server if the connection fails.
+Various tools can be used to provide persistence, but
+DomTerm provides integrated functionality.
+
+One option is to use a web browser to connect to DomTerm
+as a web server running on the remote host.  This works best
+if you want to set up a public-acessible service.
+Alternatively, DomTerm can run as a layer on top of ssh;
+that is usually easier to use and set up.
+
+@subheading Remoting over ssh (experimental)
+
+The command syntax:
+@example
+@code{domterm} [@var{browser-specifier}] [@var{user}]@code{@@}@var{host} [@var{command}]
+@end example
+runs @code{domterm} [@var{command}] as @var{user} on the remote server @var{host},
+using @code{ssh} to connect.  However, if the @var{command} creates a
+new session (or attaches to an existing session on @var{host}),
+then the session will be displayed in a local window,
+as specified by the optional @var{browser-specifier}.  For example.
+if the latter is @code{--tab}, a new tab will be created in the current window.
+
+@subheading DomTerm as a web server
+
 To start DomTerm as a web server, run the @code{domterm} command
 with the @code{--port} option.
 It is highly recommended that you use https,
@@ -1690,7 +1799,7 @@ the remote server if the connection fails.
 There are plans to be able to connect over ssh to a remote domterm server,
 but that is not yet implemented.
 
-@subheading Using https
+@subsubheading Using https
 
 To use https you need a certificate.
 
@@ -3742,6 +3851,7 @@ Consider using @uref{https://github.com/critiqjo/key-mon,key-mon}
 @chapter Technical documentation
 
 @menu
+* Terminology::
 * DOM structure::
 * Wire byte protocol::
 * electron-nodepty:: Using node for background server
@@ -3749,6 +3859,46 @@ Consider using @uref{https://github.com/critiqjo/key-mon,key-mon}
 * Processes and security::
 * Architecture notes::
 @end menu
+
+@node Terminology
+@section Terminology
+
+A @dfn{server process} runs in the background and run
+sessions, commands, and manages connections.
+There is normally one server process for a given user and host (computer),
+though you can override that if you use the @code{--socket-name} option.
+The server listens for requests on the @dfn{command socket}.
+
+A @dfn{session} is that actuall application that the user care about.
+Typically, it is a shell process running under a pty.
+
+A @dfn{window} is a @dfn{top-level window} or a @dfn{sub-window} (tile or tab)
+managed by DomTerm.
+A @dfn{session window} is one that interacts with a session.
+A @dfn{non-session window} is created by a @code{domterm} commands
+that do not create or connect to seesions, such as @code{domterm browse}
+or @code{domterm view-saved}.
+
+A @dfn{browser engine} is the core part of a web browser that loads
+and displays web pages, and process JavaScript.
+A full web browser adds menus, location bar, history, and bookmarks.
+Numerous frameworks exist that can use to write an application
+and use the browser engine for the user interface:
+Electron, Qt, JavaFX, and others.
+DomTerm can make use of multiple browser engine frameworks,
+as well as full web browsers.
+
+A @dfn{connection} communicates between a window
+and the server process, and thence usualy to a specific session.
+Most commonly a connection uses the WebSockets protocol.
+
+A @dfn{setting} is a pair of a @dfn{setting name}
+and @dfn{setting value} that controls how DomTerm behaves.
+The @dfn{global settings} are defined in a configuration
+file normally named @code{settings.ini}.
+The @dfn{local settings} can be specified on the @code{domterm} command
+line, and apply to the current command, current session, or current window.
+The local settings take priority over the global setings.
 
 @node DOM structure
 @section DOM structure
