@@ -1,11 +1,25 @@
 #include "webview.h"
+
+webview::webview w(true, nullptr);
+
+void set_w_t(const char *seq, const char *req, void *arg)
+{
+    size_t rlen = strlen(req);
+    // The req is a JSON list of a single string.
+    // The +1 and -2 are to strip off the list delimiters '[' and ']'
+    int jlen = webview::json_unescape(req+1, rlen-2, nullptr);
+    char *tmp = new char[jlen+1];
+    webview::json_unescape(req+1, rlen-2, tmp);
+    w.set_title(tmp);
+    delete tmp;
+}
+
 #ifdef WIN32
 int WINAPI WinMain(HINSTANCE hInt, HINSTANCE hPrevInst, LPSTR lpCmdLine,
                    int nCmdShow) {
 #else
 int main(int argc, char **argv) {
 #endif
-    //const char *url = "https://en.m.wikipedia.org/wiki/Main_Page";
     char *geometry = NULL;
     char *url = NULL;
     for (int i = 1; i < argc; i++) {
@@ -24,10 +38,9 @@ int main(int argc, char **argv) {
             height = h;
         }
     }
-    // printf("g:%s w:%d h:%d u:%s\n", geometry, width, height, url);
-    // exit(0);
-    webview::webview w(true, nullptr);
     w.set_title("DomTerm");
+    webview_bind(&w, "setWindowTitle",
+                 set_w_t, NULL);
     w.set_size(width, height, WEBVIEW_HINT_NONE);
     w.navigate(url);
     w.run();

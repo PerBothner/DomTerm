@@ -45,7 +45,10 @@ DomTerm.isLineBlock = function(node) {
 }
 
 DomTerm.setTitle = function(title) {
-    document.title = title;
+    if (window.setWindowTitle)
+        window.setWindowTitle(title); // hook used by --webview
+    else
+       document.title = title;
 }
 
 // True if pane should be split into a vertical stack, with new pane --below.
