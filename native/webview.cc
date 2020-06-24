@@ -1,5 +1,3 @@
-// Fedora: dnf install gtk3-devel webkit2gtk3-devel
-
 #include "webview.h"
 #ifdef WIN32
 int WINAPI WinMain(HINSTANCE hInt, HINSTANCE hPrevInst, LPSTR lpCmdLine,

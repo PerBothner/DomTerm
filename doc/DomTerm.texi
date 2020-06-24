@@ -458,6 +458,11 @@ If configuring with @code{--with-closure-compiler} do:
 sudo dnf install closure-compiler
 @end example
 
+If configuring with @code{--with-webview} (experimental) do:
+@example
+sudo dnf install gtk3-devel webkit2gtk3-devel
+@end example
+
 @subsubheading Ubuntu/Debian
 
 (Tested on Ubuntu 17.10.1)
@@ -692,6 +697,14 @@ Use Google @uref{https://developers.google.com/closure/compiler/,Closure Compile
 (Current only the ``simple optimizations'' are done.
 Using the ``advanced optimizations'' would reduce the JavaScript file
 size further, but causes some not-yet-resolved problems.)
+
+@item --with-webview
+Build @emph{experimental} support for the @uref{https://github.com/webview/webview,Webview cross-platform framework}.  This creates a binary @code{bin/dt-webview},
+which is used if you open a domterm window with the @code{--webview} option.
+
+This has only been tested on Fedora and MacOS.
+
+This has some rough edges, most critically that Paste doesn't seem to work.
 
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm
