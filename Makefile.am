@@ -442,7 +442,11 @@ if MACOS
 endif
 
 bin/dt-webview: native/webview.cc
+if MACOS
+	c++ native/webview.cc -std=c++11 -framework WebKit -o bin/dt-webview
+else
 	$(CXX) $(CXXFLAGS) native/webview.cc `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0` -o bin/dt-webview
+endif
 
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
