@@ -109,6 +109,9 @@ DomTerm._extractGeometryOptions = function(options={}) {
             let sz = electronAccess.getCurrentWindow().getContentSize();
             width = sz[0];
             height = sz[1];
+        } else if (! DomTerm.isInIFrame()) {
+            width = window.outerWidth;
+            height = window.outerHeight;
         } else {
             width = DomTerm.defaultWidth;
             height = DomTerm.defaultHeight;
