@@ -38,6 +38,9 @@ AC_ARG_WITH(asciidoctor,
 AC_ARG_WITH(qtwebengine,
   AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
+AC_ARG_WITH(webview,
+  AS_HELP_STRING(--with-webview,Build WebView front-end))
+
 AC_ARG_ENABLE(java-pty,
   AS_HELP_STRING(--enable-java-pty,Enable support for PTYs from Java))
 
@@ -87,6 +90,7 @@ AS_IF([test -z "$with_asciidoctor"],
 AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
+AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
 
 AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
 

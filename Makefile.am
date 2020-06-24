@@ -48,8 +48,12 @@ if ENABLE_JAVA_PTY
 LIBPTY = lib/libdomterm-pty@LIBEXT@
 endif
 endif
+MISCBINS =
 if WITH_QTWEBENGINE
-QTDOMTERM = bin/qtdomterm
+MISCBINS += bin/qtdomterm
+endif
+if WITH_WEBVIEW
+MISCBINS += bin/dt-webview
 endif
 domterm_jar_dir = share/domterm
 
@@ -99,7 +103,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: client-data-links.stamp $(RESOURCE_DEPS) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(QTDOMTERM) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(RESOURCE_DEPS) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -247,7 +251,7 @@ clean-am:
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi
-	rm -rf bin/qtdomterm
+	rm -rf bin/qtdomterm bin/dt-webview
 
 websocket_sources = org/domterm/websocket/DomServer.java
 pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
@@ -436,6 +440,9 @@ if MACOS
 
 	cd bin && ln -s ../qtdomterm/QtDomTerm.app/Contents/MacOS/QtDomTerm qtdomterm
 endif
+
+bin/dt-webview: native/webview.cc
+	$(CXX) $(CXXFLAGS) native/webview.cc `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0` -o bin/dt-webview
 
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 

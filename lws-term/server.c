@@ -252,6 +252,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define QTDOMTERM_OPTION 1002
 #define ELECTRON_OPTION 1003
 #define CHROME_APP_OPTION 1004
+#define WEBVIEW_OPTION 1005
 #define VERBOSE_OPTION 1200
 #define FORCE_OPTION 2001
 #define DAEMONIZE_OPTION 2002
@@ -290,6 +291,7 @@ static const struct option options[] = {
         {"qtdomterm",    no_argument,       NULL, QTDOMTERM_OPTION},
         {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
         {"electron",     no_argument,       NULL, ELECTRON_OPTION},
+        {"webview",      no_argument,       NULL, WEBVIEW_OPTION},
         {"force",        no_argument,       NULL, FORCE_OPTION},
         {"daemonize",    no_argument,       NULL, DAEMONIZE_OPTION},
         {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
@@ -537,6 +539,30 @@ qtwebengine_command(struct options *options)
 }
 
 static char *
+webview_command(struct options *options)
+{
+    char *cmd = get_bin_relative_path("/bin/dt-webview");
+    if (cmd == NULL || access(cmd, X_OK) != 0) {
+        if (cmd == NULL)
+            free(cmd);
+        return NULL;
+    }
+    int bsize = strlen(cmd)+100;
+    char *geometry = geometry_option(options);
+    if (geometry)
+        bsize += strlen(geometry);
+    char *buf = xmalloc(bsize);
+    strcpy(buf, cmd);
+    free(cmd);
+    if (geometry) {
+        strcat(buf, " --geometry ");
+        strcat(buf, geometry);
+    }
+    strcat(buf, " '%U'");
+    return buf;
+}
+
+static char *
 electron_command(struct options *options)
 {
     bool epath_free_needed = false;
@@ -676,6 +702,11 @@ do_run_browser(struct options *options, char *url, int port)
                          do_electron = true;
                          break;
                      }
+                } else if (strcmp(cmd, "webview") == 0) {
+                    browser_specifier = webview_command(options);
+                    if (browser_specifier != NULL) {
+                        break;
+                    }
                 } else if (strcmp(cmd, "qt") == 0
                            || strcmp(cmd, "qtdomterm") == 0
                            || strcmp(cmd, "qtwebengine") == 0) {
@@ -733,6 +764,8 @@ do_run_browser(struct options *options, char *url, int port)
     bool app_mode;
     if (strcmp(browser_specifier, "--firefox") == 0)
         browser_specifier = firefox_command();
+    else if (strcmp(browser_specifier, "--webview") == 0)
+        browser_specifier = webview_command(options);
     else if ((app_mode = ! strcmp(browser_specifier, "--chrome-app"))
              || ! strcmp(browser_specifier, "--chrome")
              || ! strcmp(browser_specifier, "--google-chrome")) {
@@ -1004,6 +1037,9 @@ int process_options(int argc, char **argv, struct options *opts)
             }
             case QTDOMTERM_OPTION:
                 opts->browser_command = "--qtwebengine";
+                break;
+            case WEBVIEW_OPTION:
+                opts->browser_command = "--webview";
                 break;
             case QT_REMOTE_DEBUGGING_OPTION:
                 opts->qt_remote_debugging = strdup(optarg);

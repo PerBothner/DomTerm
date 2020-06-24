@@ -42,6 +42,7 @@ autom4te.cache/*
 bin/domterm
 bin/ldomterm
 bin/qtdomterm
+bin/dt-webview
 share/domterm
 share/man
 lws-term/ldomterm
