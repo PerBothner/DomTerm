@@ -7995,13 +7995,11 @@ DomTerm.masterKeymapDefault = new window.browserKeymap({
     "Ctrl-Insert": "copy-text",
     "Shift-Insert": "paste-text",
     "Ctrl-Shift-A": "enter-mux-mode",
-    "Ctrl-Shift-C": "copy-text",
     "Ctrl-Shift-L": "cycle-input-mode",
     "Ctrl-Shift-M": "toggle-paging-mode",
     "Ctrl-Shift-N": "new-window",
     "Ctrl-Shift-S": "save-as-html",
     "Ctrl-Shift-T": "new-tab",
-    "Ctrl-Shift-V": "paste-text",
     "Ctrl-Shift-X": "cut-text",
     "Shift-Left": "backward-char-extend",
     "Shift-Mod-Left": "backward-word-extend",
@@ -8016,16 +8014,12 @@ DomTerm.masterKeymapDefault = new window.browserKeymap({
     "Ctrl-Shift-PageUp": "scroll-page-up",
     "Ctrl-Shift-PageDown": "scroll-page-down"
 });
-DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
-
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
     //"Tab": 'client-action',
     //"Ctrl-T": 'client-action',
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
-    "Ctrl-V": "paste-text",
-    "Ctrl-C": "copy-text-or-interrupt",
     "Ctrl-X": "cut-text",
     "Ctrl-Shift-X": "cut-text",
     "Ctrl-Z": "client-action",
@@ -8085,6 +8079,16 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-P": "up-line-or-history",
     "(keypress)": "insert-char"
 }, {});
+if (DomTerm.isMac) {
+    DomTerm.masterKeymapDefault["Mod-V"] = "paste-text";
+    DomTerm.masterKeymapDefault["Mod-C"] = "copy-text";
+    DomTerm.lineEditKeymapDefault["Ctrl-C"] = "client-action";
+} else {
+    DomTerm.masterKeymapDefault["Ctrl-Shift-V"] = "paste-text";
+    DomTerm.masterKeymapDefault["Ctrl-Shift-C"] = "copy-text";
+    DomTerm.lineEditKeymapDefault["Ctrl-C"] = "copy-text-or-interrupt";
+}
+DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
 /** If keyName is a key-press, return pressed key; otherwise null. */
