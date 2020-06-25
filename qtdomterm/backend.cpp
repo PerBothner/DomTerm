@@ -127,7 +127,15 @@ void Backend::onReceiveBlock( const char * buf, int len )
 
 void Backend::paste()
 {
-    emit pasteText(QApplication::clipboard()->text());
+    QString text = QApplication::clipboard()->text();
+    // There is some problem accessing the clipboard it has been
+    // set by another process.
+    // (Weirdly C-S-V works, but Edit->Paste doesn't.)
+    // This defers to libclipboard when direct access doesn't work.
+    if (text.isEmpty())
+        emit reportEventToServer("REQUEST-CLIPBOARD-TEXT", "");
+    else
+        emit pasteText(text);
 }
 
 void Backend::setInputMode(char mode)

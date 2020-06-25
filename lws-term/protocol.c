@@ -4,6 +4,11 @@
 #include <termios.h>
 #include <utmp.h>
 
+#if HAVE_LIBCLIPBOARD
+#include <libclipboard.h>
+clipboard_c* clipboard_manager = NULL;
+#endif
+
 #define BUF_SIZE 1024
 
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
@@ -1023,6 +1028,22 @@ reportEvent(const char *name, char *data, size_t dlen,
         json_object *obj = json_tokener_parse(data);
         handle_link(obj);
         json_object_put(obj);
+    } else if (strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0) {
+#if HAVE_LIBCLIPBOARD
+        if (clipboard_manager == NULL) {
+            clipboard_manager = clipboard_new(NULL);
+        }
+        char *clipText;
+        if (clipboard_manager
+            && (clipText = clipboard_text(clipboard_manager)) != NULL) {
+            struct json_object *jobj = json_object_new_string(clipText);
+            printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
+                              json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN));
+            free(clipText);
+            json_object_put(jobj);
+            lws_callback_on_writable(wsi);
+        }
+#endif
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
         if (proxyMode == proxy_display_local)
             return false;

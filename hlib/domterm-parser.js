@@ -1979,6 +1979,13 @@ class DTParser {
                 break;
             }
             break;
+        case 231: // paste
+            try {
+                term.pasteText(JSON.parse(text));
+            } catch (e) {
+                term.log("caught " + e + " in OSC 213 (paste)");
+            }
+            break;
         case 1337: // various iTerms extensions:
             // RemoteHost=USER@HOST
             // CurrentDir=DIRECTORY

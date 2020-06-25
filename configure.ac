@@ -32,6 +32,9 @@ AC_ARG_WITH(java_websocket,
 AC_ARG_WITH(libwebsockets,
   AS_HELP_STRING(--with-libwebsockets,Build server using libwebsockets))
 
+AC_ARG_WITH(libclipboard,
+  AS_HELP_STRING(--with-libclipboard=/path/to/libclipboard/build))
+
 AC_ARG_WITH(asciidoctor,
   AS_HELP_STRING(--with-asciidoctor,Use AsciiDoctor to build help and man pages))
 
@@ -93,6 +96,7 @@ AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
 
 AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
+AM_CONDITIONAL(WITH_LIBCLIPBOARD, test "$with_libclipboard" != "no" -a "$with_libclipboard" != "")
 
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" == "yes")
 
@@ -188,6 +192,13 @@ if test "$with_libwebsockets" != "no"; then
       LIBWEBSOCKETS_LIBS="${with_libwebsockets}/lib/libwebsockets.a"
       LIBWEBSOCKETS_CFLAGS="-I${with_libwebsockets}/include"
       ;;
+  esac
+ echo with clip "${with_libclipboard}"
+  case "${with_libclipboard}" in
+  "yes" | "" | "no") ;;
+  *)
+    LIBWEBSOCKETS_LIBS="${LIBWEBSOCKETS_LIBS} ${with_libclipboard}/lib/libclipboard.a -lxcb"
+    LIBWEBSOCKETS_CFLAGS="${LIBWEBSOCKETS_CFLAGS} -DHAVE_LIBCLIPBOARD=1 -I${with_libclipboard}/include" ;;
   esac
   if test -z "$enable_compiled_in_resources"; then
     AC_LANG(C)

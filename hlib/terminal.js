@@ -7540,7 +7540,9 @@ DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     if (sel.rangeCount == 0)
         sel.collapse(dt.focusArea, 0);
     dt.maybeFocus();
-    return document.execCommand("paste", false);
+    document.execCommand("paste", false) ||
+        dt.reportEvent("REQUEST-CLIPBOARD-TEXT", "");
+    return true;
 };
 
 Terminal._rangeAsHTML = function(range) {

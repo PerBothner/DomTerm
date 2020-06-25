@@ -178,6 +178,11 @@ function setupQWebChannel(channel) {
     backend.writeInputMode.connect(function(mode) {
         DomTerm.setInputMode(mode);
     });
+    backend.reportEventToServer.connect(function(name, data) {
+        let dt = DomTerm.focusedTerm;
+        if (dt)
+            dt.reportEvent(name, data);
+    })
     backend.pasteText.connect(function(text) {
         var dt = DomTerm.focusedTerm;
         if (dt)

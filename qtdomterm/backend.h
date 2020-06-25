@@ -51,6 +51,7 @@ signals:
     void writeSetCaretStyle(int style);
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
+    void reportEventToServer(const QString& name, const QString& data);
 public slots:
     void saveFile(const QString& html);
     void setWindowTitle(const QString& title);

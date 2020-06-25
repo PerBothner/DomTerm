@@ -616,6 +616,20 @@ cd ~/bin
 ln -s /mnt/c/User/@var{wuser}/electron-@var{version}/electron.exe electron
 @end example
 
+@anchor{installing-libclipboard}
+@subsubheading Optional: libclipboard
+
+Using @uref{https://github.com/jtanx/libclipboard,libclipboard}
+is recommended when not using Electron, as it makes Paste work better.
+@example
+git clone https://github.com/jtanx/libclipboard.git
+cd libclipboard
+LIBCLIPBOARD_DIR=`pwd`
+make build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=$LIBCLIPBOARD_DIR/dist ..
+make install
+@end example
+
 @subheading Building from source
 
 If building from the @code{git} respository, first do:
@@ -705,6 +719,15 @@ which is used if you open a domterm window with the @code{--webview} option.
 This has only been tested on Fedora and MacOS.
 
 This has some rough edges, most critically that Paste doesn't seem to work.
+
+@item --with-libclipboard=@var{libclipboard_dir}
+Using the @uref{https://github.com/jtanx/libclipboard,libclipboard library}
+is recommended if if you a non-Electron front-end, as it makes Paste
+menu items work better.
+
+If you followed the
+@ref{installing-libclipboard,installation instructiona above}
+then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR/dist}.
 
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm
@@ -1699,17 +1722,19 @@ CSS property, so on that browser tab characters are always converted to spaces.
 
 @subsubheading Copy and paste
 
-Copy and Paste menu items are only known to work with the
-Electron and Qt front-ends.
-The Paste menu-item on Qt is unreliable if the previous Copy
+Paste should work on all front-ends
+if domterm makes use of @ref{installing-libclipboard,libclipboard}.
+Otherwise, only Electron works as it should,
+though the keyboard shortcut Ctrl-Shift-V works on all tested platforms
+except Webview.
+(On Qt the Paste menu-item is unreliable if the previous Copy
 was from a different application.
-The others may run into security restrictions.
-A future workaround may be to have the backend
-handle clipboard access, using programs such as
-@code{xclip}, @code{xsel} (older), or @code{pbcopy}/@code{pbpaste} (Mac OS).
+On a desktop browsers like Firefox, custom menus can't do Paste though system manus can, because of security concerns.)
 
-The keyboard shortcuts Ctrl-Shift-C and Ctrl-Shift-V
-work on all tested platforms.
+The Copy menu-items work on Electron on Qt,
+but with some inconsistencies on desktop browsers.
+The keyboard shortcuts Ctrl-Shift-C works on all tested platforms
+except Webview.
 
 Middle-button paste seems to work on most frontends (on Linux).
 
@@ -4407,6 +4432,8 @@ which may close the current window or other appropriate action.
 @item @code{"\e]103;"} @var{state} @code{"\a"}
 Send saved state to new window.
 
+@item @code{"\e]231;"} @var{jtext} @code{"\a"}
+Paste the contents of the JSON-encoded string @var{jtext}.
 @end table
 
 @subsubsection Command parts (shell integration)
@@ -4511,7 +4538,6 @@ Extend previous input line for editing.  Typically used after reading an input
 line that is syntactically incomplete, but valid ``so far``.
 The previous input is ``re-opened'' for editing, and
 a fresh empty line added.
-
 @end table
 
 @subsubsection Window operations
@@ -4805,6 +4831,12 @@ but as of the start of the most recent urgent message.
 
 @item @code{0xFD "VERSION " @var{version-info} "\n"}
 Sends @var{version-info} to the back-end.  Used during initialization.
+
+@item @code{0xFD "REQUEST-CLIPBOARD-TEXT" "\n"}
+Sent by the front-end on a Paste request when the browser doesn't
+have access to clipboard.
+Requests the server to access the clipboard on its behalf,
+and send the contents using an OSC 231 sequence.
 @end table
 
 @node electron-nodepty
