@@ -197,7 +197,7 @@ if test "$with_libwebsockets" != "no"; then
   case "${with_libclipboard}" in
   "yes" | "" | "no") ;;
   *)
-    LIBWEBSOCKETS_LIBS="${LIBWEBSOCKETS_LIBS} ${with_libclipboard}/lib/libclipboard.a -lxcb"
+    LIBWEBSOCKETS_LIBS="${LIBWEBSOCKETS_LIBS} ${with_libclipboard}/lib/libclipboard.a "'$(FRAMEWORK_ARG)'
     LIBWEBSOCKETS_CFLAGS="${LIBWEBSOCKETS_CFLAGS} -DHAVE_LIBCLIPBOARD=1 -I${with_libclipboard}/include" ;;
   esac
   if test -z "$enable_compiled_in_resources"; then

@@ -9,7 +9,11 @@ LN_H = ln
 	$(MKDIR_P) ../bin
 	@rm -f ../bin/domterm$(EXEEXT)
 	cd ../bin && $(LN_H) ../lws-term/ldomterm$(EXEEXT) domterm$(EXEEXT)
-
+if MACOS
+FRAMEWORK_ARG = -framework Cocoa
+else
+FRAMEWORK_ARG = -lxcb
+endif
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.c utils.c protocol.c http.c whereami.c \
