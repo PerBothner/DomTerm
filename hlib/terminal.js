@@ -7989,35 +7989,46 @@ Terminal.prototype._popFromCaret = function(saved) {
     this.resetCursorCache();
 }
 
-DomTerm.masterKeymapDefault = new window.browserKeymap({
-    "F11": "toggle-fullscreen",
-    "Shift-F11": "toggle-fullscreen-current-window",
-    "Ctrl-Insert": "copy-text",
-    "Shift-Insert": "paste-text",
-    "Ctrl-Shift-A": "enter-mux-mode",
-    "Ctrl-Shift-L": "cycle-input-mode",
-    "Ctrl-Shift-M": "toggle-paging-mode",
-    "Ctrl-Shift-N": "new-window",
-    "Ctrl-Shift-S": "save-as-html",
-    "Ctrl-Shift-T": "new-tab",
-    "Ctrl-Shift-X": "cut-text",
-    "Shift-Left": "backward-char-extend",
-    "Shift-Mod-Left": "backward-word-extend",
-    "Shift-Right": "forward-char-extend",
-    "Shift-Mod-Right": "forward-word-extend",
-    "Shift-End": "end-of-line-extend",
-    "Shift-Home": "beginning-of-line-extend",
-    "Ctrl-Shift-Home": "scroll-top",
-    "Ctrl-Shift-End": "scroll-bottom",
-    "Ctrl-Shift-Up": "scroll-line-up",
-    "Ctrl-Shift-Down": "scroll-line-down",
-    "Ctrl-Shift-PageUp": "scroll-page-up",
-    "Ctrl-Shift-PageDown": "scroll-page-down"
-});
+DomTerm.masterKeymapDefault =
+    new window.browserKeymap(
+        Object.assign({
+            "F11": "toggle-fullscreen",
+            "Shift-F11": "toggle-fullscreen-current-window",
+            "Ctrl-Insert": "copy-text",
+            "Shift-Insert": "paste-text",
+            "Ctrl-Shift-A": "enter-mux-mode",
+            "Ctrl-Shift-L": "cycle-input-mode",
+            "Ctrl-Shift-M": "toggle-paging-mode",
+            "Ctrl-Shift-N": "new-window",
+            "Ctrl-Shift-S": "save-as-html",
+            "Ctrl-Shift-T": "new-tab",
+            "Ctrl-Shift-X": "cut-text",
+            "Shift-Left": "backward-char-extend",
+            "Shift-Mod-Left": "backward-word-extend",
+            "Shift-Right": "forward-char-extend",
+            "Shift-Mod-Right": "forward-word-extend",
+            "Shift-End": "end-of-line-extend",
+            "Shift-Home": "beginning-of-line-extend",
+            "Ctrl-Shift-Home": "scroll-top",
+            "Ctrl-Shift-End": "scroll-bottom",
+            "Ctrl-Shift-Up": "scroll-line-up",
+            "Ctrl-Shift-Down": "scroll-line-down",
+            "Ctrl-Shift-PageUp": "scroll-page-up",
+            "Ctrl-Shift-PageDown": "scroll-page-down"
+        }, DomTerm.isMac ? {
+            "Mod-V": "paste-text",
+            "Mod-C": "copy-text"
+        } : {
+            "Ctrl-Shift-V": "paste-text",
+            "Ctrl-Shift-C": "copy-text"
+        }));
+DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
+
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
 DomTerm.lineEditKeymapDefault = new browserKeymap({
     //"Tab": 'client-action',
     //"Ctrl-T": 'client-action',
+    "Ctrl-C": DomTerm.isMac ? "client-action" : "copy-text-or-interrupt",
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
     "Ctrl-X": "cut-text",
@@ -8078,17 +8089,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-N": "down-line-or-history",
     "Ctrl-P": "up-line-or-history",
     "(keypress)": "insert-char"
-}, {});
-if (DomTerm.isMac) {
-    DomTerm.masterKeymapDefault["Mod-V"] = "paste-text";
-    DomTerm.masterKeymapDefault["Mod-C"] = "copy-text";
-    DomTerm.lineEditKeymapDefault["Ctrl-C"] = "client-action";
-} else {
-    DomTerm.masterKeymapDefault["Ctrl-Shift-V"] = "paste-text";
-    DomTerm.masterKeymapDefault["Ctrl-Shift-C"] = "copy-text";
-    DomTerm.lineEditKeymapDefault["Ctrl-C"] = "copy-text-or-interrupt";
-}
-DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
+});
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
 /** If keyName is a key-press, return pressed key; otherwise null. */
