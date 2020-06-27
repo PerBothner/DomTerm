@@ -193,7 +193,6 @@ if test "$with_libwebsockets" != "no"; then
       LIBWEBSOCKETS_CFLAGS="-I${with_libwebsockets}/include"
       ;;
   esac
- echo with clip "${with_libclipboard}"
   case "${with_libclipboard}" in
   "yes" | "" | "no") ;;
   *)
