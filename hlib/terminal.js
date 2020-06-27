@@ -3755,6 +3755,11 @@ Terminal.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
         this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button+" pendsel:"+this._pendingSelected+" alt:"+ev.altKey);
 
+    if (ev.type == "mousedown" && ev.button == 2 && DomTerm.usingJsMenus) {
+        // Avoids clearing selection.  Helps on Chrome, at least.
+        ev.preventDefault();
+        return;
+    }
     this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
     if (this._pendingSelected == 2)
