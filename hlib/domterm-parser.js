@@ -1344,7 +1344,7 @@ class DTParser {
             if (reuseCanvas) {
                 this.outputBefore = canvas.nextSibling;
             } else {
-                term.eraseLineRight();
+                term.eraseCharactersRight(wcols, true);
                 if (false) {
                     // This works better with "Save as HTML"
                     // However, reuseCanvas is more complicated and inefficient.
