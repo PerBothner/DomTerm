@@ -156,8 +156,6 @@ struct tty_client { // should be renamed to ws_client ?
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser
     char requesting_contents;
-    char hostname[100];
-    char address[50];
     char *version_info; // received from client
     // both sent_count and confirmed_count are modulo MASK28.
     long sent_count; // # bytes sent to (any) tty_client

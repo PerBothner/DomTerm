@@ -1467,15 +1467,18 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 lwsl_info("connection to new session %d established\n", pclient->session_number);
             }
         }
-        lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
-                               client->hostname, sizeof(client->hostname),
-                               client->address, sizeof(client->address));
-        // Defer start_pty so we can set up DOMTERM variable with version_info.
-        // start_pty(client);
-
         server->client_count++;
+        // Defer start_pty so we can set up DOMTERM variable with version_info.
 
-        lwsl_notice("client connected from %s (%s), #: %d total: %d\n", client->hostname, client->address, client->connection_number, server->client_count);
+        if (main_options->verbosity > 0 || main_options->debug_level > 0) {
+            char hostname[100];
+            char address[50];
+            lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
+                                   hostname, sizeof(hostname),
+                                   address, sizeof(address));
+
+            lwsl_notice("client connected from %s (%s), #: %d total: %d\n", hostname, address, client->connection_number, server->client_count);
+        }
         break;
 
     case LWS_CALLBACK_SERVER_WRITEABLE:
@@ -1511,10 +1514,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          if (focused_wsi == wsi)
               focused_wsi = NULL;
          tty_client_destroy(wsi, client);
-         lwsl_notice("client disconnected from %s (%s), total: %d\n", client->hostname, client->address, server->client_count);
-         if (main_options > 0)
-             fprintf(stderr, "client disconnected #:%d\n",
-                     client->connection_number);
+         lwsl_notice("client #:%d disconnected, total: %d\n", client->connection_number, server->client_count);
          if (client->version_info != NULL) {
               free(client->version_info);
               client->version_info = NULL;
