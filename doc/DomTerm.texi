@@ -3899,36 +3899,72 @@ Consider using @uref{https://github.com/critiqjo/key-mon,key-mon}
 @end menu
 
 @node Terminology
-@section Terminology
+@section Terminology and Concepts
 
-A @dfn{server process} runs in the background and run
-sessions, commands, and manages connections.
-There is normally one server process for a given user and host (computer),
-though you can override that if you use the @code{--socket-name} option.
-The server listens for requests on the @dfn{command socket}.
+The DomTerm architecture is split into
+@uref{https://en.wikipedia.org/wiki/Front_end_and_back_end,front-end and back-end},
+each of which could have different implementations.
 
-A @dfn{session} is that actuall application that the user care about.
-Typically, it is a shell process running under a pty.
+@example
+            ┌─────────────────────────────────────┐
+ Front-end  │  Window, input devices (keyboard)   │
+            ├─────────────────────────────────────┤
+            │  Browser engine (runs terminal.js)  │
+            ├─────────────────────────────────────┤
+            │  Communication stub                 │
+            └-────────────────────────────────────┘
+                  🠉
+               connection (optional network)
+                  🠋
+            ┌─────────────────────────────────────┐
+  Back-end  │  Communication stub                 │
+            ├─────────────────────────────────────┤
+            │  Application (session)              │
+            └─────────────────────────────────────┘
+@end example
+
+The @dfn{front-end} runs the actual terminal emulator.
+It manages the display and user interaction.
+It runs in a @dfn{browser engine},
+which is the core part of a web browser that loads
+and displays web pages, and processes JavaScript.
+For DomTerm you can use a window or tab in a general-purpose browser
+(such as Firefox or Chrome), or you can use a framework for writing
+applications that provide a browser engine for the user interface
+(such as Electron, Qt, or JavaFX).
+
+The @dfn{back-end} runs the actual applications that the user cares about.
+An application can be a shell process running under a PTY,
+or a custom application,
+such as a programming language run-time or a chat server.
+
+A @dfn{session} is a specific application instance (a process).
 
 A @dfn{window} is a @dfn{top-level window} or a @dfn{sub-window} (tile or tab)
-managed by DomTerm.
+in a DomTerm front-end.
 A @dfn{session window} is one that interacts with a session.
 A @dfn{non-session window} is created by a @code{domterm} commands
-that do not create or connect to seesions, such as @code{domterm browse}
+that do not create or connect to sessions, such as @code{domterm browse}
 or @code{domterm view-saved}.
 
-A @dfn{browser engine} is the core part of a web browser that loads
-and displays web pages, and process JavaScript.
-A full web browser adds menus, location bar, history, and bookmarks.
-Numerous frameworks exist that can use to write an application
-and use the browser engine for the user interface:
-Electron, Qt, JavaFX, and others.
-DomTerm can make use of multiple browser engine frameworks,
-as well as full web browsers.
+A @dfn{connection} communicates between a window (front-end)
+and the back-end, and thence usually to a specific session.
+The connection usea a @ref{Wire byte protocol,byte-stream protocol}
+that is based on the xterm protocol: text and escape sequences
+from the application to the front-end; keystrokes and encoded events
+sent the other way.
+These data streams can be layered on top of other protocols,
+such as @uref{https://en.wikipedia.org/wiki/WebSocket,WebSocket}, pipes, or ssh.
+Using WebSocket is convenient because it is portable
+and is built in to modern browser engines.
 
-A @dfn{connection} communicates between a window
-and the server process, and thence usualy to a specific session.
-Most commonly a connection uses the WebSockets protocol.
+A @dfn{(domterm) server process} is a kind of back-end
+that can manage multiple sessions, commands, and connections.
+It can also open windows in browser engines.
+It normally runs in the background,
+as one process for a given user and host (computer),
+though you can override that if you use the @code{--socket-name} option.
+The server listens for requests on the @dfn{command socket}.
 
 A @dfn{setting} is a pair of a @dfn{setting name}
 and @dfn{setting value} that controls how DomTerm behaves.
@@ -5096,69 +5132,6 @@ Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
 
 @node Architecture notes
 @section Architecture notes
-
-@strong{Some of this is needs to be updated}
-
-@example
-            --------------------
- Front-end  |  Display and keyboard
-            |---------------
-            |  Browser engine (runs terminal.js)
-            |---------------
-            |  Communication stub
-            ---------------
-              ^
-              | Optional network
-              V
-            --------------------
-  Back-end  |  Communication stub
-            |---------------
-            |  Application
-            ---------------
-@end example
-
-The DomTerm architecture allows for multiple front-end
-implementations and multiple back-end implementations.
-The front-end runs the actual terminal emulator (written in JavaScript)
-and manages the display. The front-end can be a window or tab in a
-general-purpose browser like Firefox or Chrome, or it can be a
-special-purpose browser optimized for DomTerm. The latter would drop
-the URL bar, add a menu bar and other controls as more suitable
-to a terminal emulator, and tweak a few minor security restrictions.
-
-The back-end runs the actual application.
-The application can be a general-purpose shell, or a custom application,
-such as a programming language run-time or a chat server.
-The back-end can run the application under a PTY.
-Alternatively, the application can communicate using pipes,
-if you prefer to avoid PTYs or they are unavailable (as on Windows).
-
-The front-end and back-end can be combined in the same process,
-using an embeddable browser.
-he current @ref{Applications,sample applications}
-include a single-process terminal emulator that uses the JavaFX WebEngine,
-a JavaFX pop-up menu, and a PTY class.
-In this case the ``communication stub'' is WebEngine's
-bridge between JavaScript and Java, plus communicating with the PTY.
-A C/C++ application could similarly use QtWebEngine
-and its C++/JavaScript bridge.
-
-If the front-end and back-end are separate processes, they can
-communicate using a byte-stream protocol.
-Currently we stick to well-formed UTF8, because JavaScript's
-support for byte arrays is still weak.
-The protocol is based on the xterm protocol: text and escape sequences
-from the application to the front-end; keystrokes and encoded events
-sent the other way.  More complex data can be encoded using JSON.
-Most of protocol is handled by @code{terminal.js}.
-The communications stubs may generate or intercept some messages:
-For example a PTY stub will want to handle window size change events.
-
-These data streams can be layered on top of other protocols,
-such as telnet, ssh, or WebSocket.
-Using WebSocket is convenient because it is built in to modern browsers,
-so the entire front-end (except @code{terminal.js})
-is readily available.
 
 @subsection Line vs character input modes
 
