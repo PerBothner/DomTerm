@@ -609,19 +609,16 @@ int view_saved_action(int argc, char** argv, const char*cwd,
           sprintf(fencoded, "%s/%s", cwd, file);
           file = fencoded;
         }
-        if (access(fencoded, R_OK) != 0) {
+        if (access(file, R_OK) != 0) {
             printf_error(opts,
-                         "domterm view-saved: No such file: %s", fencoded);
+                         "domterm view-saved: No such file: %s", file);
+            free(fencoded);
             return EXIT_FAILURE;
         }
     }
-    char *uencoded = url_encode(file, 0);
-    if (uencoded)
-        file = uencoded;
     char *url = xmalloc(strlen(main_html_url) + strlen(file) + 40);
     sprintf(url, "%s%s", fscheme, file);
-    if (fencoded)
-        free(fencoded);
+    free(fencoded);
     display_session(opts, NULL, url, -105);
     free(url);
     return EXIT_SUCCESS;
