@@ -1641,6 +1641,7 @@ display_session(struct options *options, struct pty_client *pclient,
         else
             printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
                                -port, paneOp, url);
+        lws_callback_on_writable(focused_wsi);
     } else {
         char *encoded = port == -104 || port == -105
             ? url_encode(url, 0)
