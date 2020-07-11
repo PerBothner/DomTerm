@@ -138,6 +138,9 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
     struct cmd_socket_client *client = (struct cmd_socket_client *) user;
     lwsl_notice("callback_cmd_socket reason %d\n", reason);
     switch (reason) {
+    case LWS_CALLBACK_RAW_CLOSE_FILE:
+        exit(client->exit_code);
+        break;
     case LWS_CALLBACK_RAW_RX_FILE: ;
         unsigned char *rbuf = client->rbuffer;
         int cur_out = STDOUT_FILENO;
@@ -419,9 +422,14 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             close(opts.fd_in);
             close(opts.fd_out);
             close(opts.fd_err);
+            char r[1];
+            r[0] = (char) ret;
+#else
+            char r[2];
+            r[0] = PASS_STDFILES_EXIT_CODE;
+            r[1] = (char) ret;
 #endif
-            char r = (char) ret;
-            if (write(sockfd, &r, 1) != 1)
+            if (write(sockfd, r, sizeof(r)) != sizeof(r))
                 lwsl_err("write failed sockfd:%d\n", sockfd);
             close(sockfd);
             // FIXME: free argv, cwd, env
