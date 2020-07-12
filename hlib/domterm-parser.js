@@ -1722,7 +1722,7 @@ class DTParser {
             var comma = text.indexOf(",");
             var rcount = Number(text.substring(0,comma));
             var data = JSON.parse(text.substring(comma+1));
-            var main = term._vspacer.previousSibling;
+            let main = term.initial;
             if (main instanceof Element &&
                 main.getAttribute('class') == 'interaction') {
                 term._vspacer.insertAdjacentHTML('beforebegin', data.html);
