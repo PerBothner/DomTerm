@@ -1683,6 +1683,7 @@ class DTParser {
                     term.sstate.termOptions[prop] = obj[prop];
             }
             term.updateSettings();
+            term._initializeDomTerm(term.topNode);
             break;
         case 89:
             try {

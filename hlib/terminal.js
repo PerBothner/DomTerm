@@ -1,4 +1,4 @@
-/** @license Copyright (c) 2015, 2016, 2017, 2018, 2019 Per Bothner.
+/** @license Copyright (c) 2015, 2016, 2017, 2018, 2019, 2020 Per Bothner.
  *
  * Converted to JavaScript from WebTerminal.java, which has the license:
  *
@@ -95,7 +95,7 @@ import { commandMap } from './commands.js';
 var WcWidth = window.WcWidth;
 
 class Terminal {
-  constructor(name, topNode) {
+  constructor(name, topNode=null, no_session=null) {
     // A unique name (the "session-name") for this DomTerm instance.
     // Generated names have the format:  name + "__" + something.
     this.name = name;
@@ -346,8 +346,21 @@ class Terminal {
     // 2: this is the only window of the session, detach set
     this._detachSaveNeeded = 1;
 
-    if (topNode)
-        this.initializeTerminal(topNode);
+    this._mainBufferName = this.makeId("main")
+    this._altBufferName = this.makeId("alternate")
+    if (topNode) {
+        this.topNode = topNode;
+        topNode.spellcheck = false;
+        topNode.terminal = this;
+        if (no_session=='view-saved') {
+            let buffers = document.getElementsByClassName("interaction");
+            this.initial = buffers[buffers.length-1];
+        } else {
+            this.initial = this._createBuffer(this._mainBufferName, "main only");
+            topNode.appendChild(this.initial);
+        }
+    }
+
     var dt = this;
     this._showHideEventHandler =
           function(evt) { dt._showHideHandler(evt); dt._clearSelection(); evt.preventDefault();};
@@ -3010,11 +3023,10 @@ Terminal.prototype.isSpanNode = function(node) {
     return "SPAN" == tag;
 };
 
+// Set up event handlers and resize-handling for active and saved sessions.
+// Should be called after settings loaded (specifically after
+// stylesheets set/loaded) but before processing output text.
 Terminal.prototype._initializeDomTerm = function(topNode) {
-    this.topNode = topNode;
-    topNode.spellcheck = false;
-    topNode.terminal = this;
-
     var helperNode = this._createPreNode();
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
     helperNode.classList.add("domterm-ruler");
@@ -3081,7 +3093,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     this._wrapDummy = wrapDummy;
     DomTerm.setFocus(this, "N");
     var dt = this;
-    this.attachResizeSensor();
     // Should be zero - support for topNode.offsetLeft!=0 is broken
     this._topLeft = dt.topNode.offsetLeft;
 
@@ -3151,28 +3162,15 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     if (! DomTerm._userStyleSet)
         this.loadStyleSheet("user", "");
 
-    this._mainBufferName = this.makeId("main")
-    this._altBufferName = this.makeId("alternate")
 
-    var isSavedSession = this.isSavedSession();
-    let mainNode;
-    if (isSavedSession) {
-        let buffers = document.getElementsByClassName("interaction");
-        mainNode = buffers[buffers.length-1];
-    } else {
-        mainNode = this._createBuffer(this._mainBufferName, "main only");
-        topNode.appendChild(mainNode);
-    }
+    this.measureWindow();
+    this.attachResizeSensor();
+
     var vspacer = document.createElement("div");
     vspacer.setAttribute("class", "domterm-spacer");
     vspacer.dtHeight = 0;
     topNode.appendChild(vspacer);
     this._vspacer = vspacer;
-
-    this.initial = mainNode;
-    var preNode = mainNode.firstChild;
-    this.outputContainer = preNode;
-    this.outputBefore = preNode.firstChild;
 };
 
 /*
@@ -3333,6 +3331,8 @@ Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
     div.contentEditable = false;
 }
 
+// Set up event handlers and more for an actual session.
+// Not called in view-saved mode or dummy Terminal created for 'browse'
 Terminal.prototype.initializeTerminal = function(topNode) {
     try {
         if (window.localStorage) {
@@ -3345,7 +3345,13 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         this.history = new Array();
 
     this.parser = new window.DTParser(this);
-    this._initializeDomTerm(topNode);
+    this.topNode = topNode;
+    topNode.spellcheck = false;
+    topNode.terminal = this;
+
+    var preNode = this.initial.firstChild;
+    this.outputContainer = preNode;
+    this.outputBefore = preNode.firstChild;
 
     var caretNode = this._createSpanNode();
     this._caretNode = caretNode;
@@ -3504,6 +3510,9 @@ Terminal.prototype.measureWindow = function()  {
         window.fit.fit(this.xterm);
         return;
     }
+    let ruler = this._rulerNode;
+    if (! ruler)
+        return;
     var availHeight = this.topNode.clientHeight;
     if (this.verbosity >= 2)
         console.log("measureWindow "+this.name+" avH:"+availHeight);
@@ -3511,7 +3520,6 @@ Terminal.prototype.measureWindow = function()  {
     if (availHeight == 0 || clientWidth == 0) {
         return;
     }
-    var ruler = this._rulerNode;
     var rbox = ruler.getBoundingClientRect();
     this.charWidth = rbox.width/26.0;
     this.charHeight = rbox.height;
@@ -6213,7 +6221,9 @@ Terminal.prototype.insertString = function(str) {
 }
 
 Terminal.prototype._scrollNeeded = function() {
-    var last = this.topNode.lastChild; // ??? always _vspacer
+    var last = this._vspacer;
+    if (! last)
+        return 0;
     var lastBottom = last.offsetTop + last.offsetHeight;
     return lastBottom - this.availHeight;
 };
@@ -8645,17 +8655,16 @@ DomTerm.initXtermJs = function(dt, topNode) {
 }
 
 /** Connect using WebSockets */
-Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null) {
+Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session=null) {
     if (name == null) {
         name = topNode == null ? null : topNode.getAttribute("id");
         if (name == null)
             name = "domterm";
     }
-    var wt = new Terminal(name);
+    var wt = new Terminal(name, topNode, no_session);
     if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
         // Have atom-domterm's DomTermView create the WebSocket.  This avoids
         // the WebSocket being closed when the iframe is moved around.
-        wt.topNode = topNode;
         DomTerm.focusedTerm = wt;
         DomTerm.sendParentMessage("domterm-new-websocket", wspath, wsprotocol);
         wt.closeConnection = function() {

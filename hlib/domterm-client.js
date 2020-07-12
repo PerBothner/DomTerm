@@ -355,11 +355,11 @@ function loadHandler(event) {
     let no_session = null;
     if ((m = location.hash.match(/view-saved=([^&]*)/))) {
         viewSavedFile(m[1]);
-        no_session = "no-session=view-saved";
+        no_session = "view-saved";
     } else if ((m = location.hash.match(/browse=([^&]*)/))) {
         DomTermLayout.makeIFrameWrapper(decodeURIComponent(m[1]),
                                         false, DomTerm.layoutTop);
-        no_session = "no-session=browse";
+        no_session = "browse";
     }
     if (location.pathname === "/saved-file/") {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
@@ -389,11 +389,12 @@ function loadHandler(event) {
             connectAjax("domterm", "", topNodes[i]);
     } else {
         if (no_session)
-            query = (query ? query + "&" : "") + no_session;
+            query = (query ? query + "&" : "") + "no-session=" + no_session;
         var wsurl = DTerminal._makeWsUrl(query);
         for (var i = 0; i < topNodes.length; i++) {
             DTerminal.connectWS(null, wsurl, "domterm",
-                                no_session ? null : topNodes[i]);
+                                no_session ? null : topNodes[i],
+                                no_session);
         }
     }
     if (!DomTerm.inAtomFlag)
@@ -422,7 +423,7 @@ function handleMessage(event) {
         return;
     else if (data.command=="handle-output")
         DomTerm._handleOutputData(dt, data.output);
-    else if (data.command=="socket-open") {
+    else if (data.command=="socket-open") { // used by atom-domterm
         dt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
         dt.reportEvent("DETACH", "");
         dt.initializeTerminal(dt.topNode);

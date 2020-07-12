@@ -1204,11 +1204,26 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
     lwsl_notice("handle_output conn#%d initialized:%d pmode:%d len0:%d->%d\n", client->connection_number, client->initialized, proxyMode, client->ob.len, bufp->len);
     bool nonProxy = proxyMode != proxy_command_local && proxyMode != proxy_display_local;
+    if (client->uploadSettingsNeeded) { // proxyMode != proxy_local ???
+        client->uploadSettingsNeeded = false;
+        if (settings_as_json != NULL) {
+            sbuf_printf(bufp, URGENT_WRAP("\033]89;%s\007"),
+                        settings_as_json);
+        }
+    }
     if (! client->initialized && nonProxy
         && (pclient->preserved_output == NULL
             || pclient->saved_window_contents != NULL)) {
 #define FORMAT_PID_SNUMBER "\033]31;%d\007"
 #define FORMAT_SNAME "\033]30;%s\007"
+        if (pclient->cmd_settings) {
+            json_object_put(pclient->cmd_settings);
+            sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
+                        json_object_to_json_string_ext(pclient->cmd_settings, JSON_C_TO_STRING_PLAIN));
+            pclient->cmd_settings = NULL;
+        } else {
+            sbuf_printf(bufp, URGENT_WRAP("\033]88;{}\007"));
+        }
         sbuf_printf(bufp,
                     pclient->session_name
                     ? URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME)
@@ -1242,12 +1257,6 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                         URGENT_END_STRING,
                         rcount);
         }
-        if (pclient->cmd_settings) {
-            json_object_put(pclient->cmd_settings);
-            sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
-                        json_object_to_json_string_ext(pclient->cmd_settings, JSON_C_TO_STRING_PLAIN));
-            pclient->cmd_settings = NULL;
-        }
     }
     if (client->pty_window_update_needed && nonProxy) {
         client->pty_window_update_needed = false;
@@ -1255,13 +1264,6 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                     pclient->session_number,
                     pclient->session_name_unique,
                     client->pty_window_number+1);
-    }
-    if (client->uploadSettingsNeeded) { // proxyMode != proxy_local ???
-        client->uploadSettingsNeeded = false;
-        if (settings_as_json != NULL) {
-            sbuf_printf(bufp, URGENT_WRAP("\033]89;%s\007"),
-                        settings_as_json);
-        }
     }
     if (client->detachSaveSend) { // proxyMode != proxy_local ???
         int tcount = 0;
