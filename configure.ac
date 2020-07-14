@@ -32,6 +32,9 @@ AC_ARG_WITH(java_websocket,
 AC_ARG_WITH(libwebsockets,
   AS_HELP_STRING(--with-libwebsockets,Build server using libwebsockets))
 
+AC_ARG_WITH(json-c,
+  AS_HELP_STRING(--with-json-c,Build server using json-c library))
+
 AC_ARG_WITH(libclipboard,
   AS_HELP_STRING(--with-libclipboard=/path/to/libclipboard/build))
 
@@ -170,7 +173,14 @@ bindir_parent=`echo "$bindir" | sed -e 's|[^/]*/bin||'`
 HAVE_OPENSSL=0
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
-  PKG_CHECK_MODULES(JSON_C, json-c)
+  case "${with_json_c}" in
+    "yes" | "")
+      PKG_CHECK_MODULES(JSON_C, json-c)
+      ;;
+    *)
+      JSON_C_LIBS="${with_json_c}/lib/libjson-c.a"
+      JSON_C_CFLAGS="-I${with_json_c}/include/json-c"
+  esac
   dnl kludge around broken OpenSSL config in MacOS:
   OPENSSL_CONFIG=/usr/local/opt/openssl/lib/pkgconfig
   test -d "$OPENSSL_CONFIG" && \

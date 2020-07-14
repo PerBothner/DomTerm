@@ -572,6 +572,22 @@ make
 When running @code{./configure} in the @code{DomTerm} sources,
 specify @code{--with-libwebsockets=$WORKDIR/libwebsockets/build}.
 
+@subsubheading Building json-c library (if not installed)
+
+The json-c library is needed by the @code{domterm} C application.
+If it is not installed in the system location or you
+want to link it as a static library, do the following:
+
+@example
+git clone https://github.com/json-c/json-c.git
+cd json-c
+JSON_C_DIR=`pwd`
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=$JSON_C_DIR/dist ..
+make install
+@end example
+Then add @code{--with-json-c=$JSON_C_DIR/dist} to the @code{configure} command.
+
 @anchor{installing-electron}
 @subsubheading Optional: Electron
 
@@ -625,7 +641,7 @@ is recommended when not using Electron, as it makes Paste work better.
 git clone https://github.com/jtanx/libclipboard.git
 cd libclipboard
 LIBCLIPBOARD_DIR=`pwd`
-make build && cd build
+mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=$LIBCLIPBOARD_DIR/dist ..
 make install
 @end example
@@ -670,6 +686,12 @@ Libwebsockets version 2.2 or newer is required,
 as older versions do not support flow control or paging.
 
 This is the recommended ``backend'' and the default.
+
+@item --with-json-c[=$JSON_C_DIR/dist]
+If the json-c library (needed by the C ldomterm application)
+is not in the default system location, or you
+want to link it as a static library.
+
 @item --with-java_websocket
 @itemx --with-java_websocket=/path/to/java_websocket.jar
 Build a WebSocket server, using
