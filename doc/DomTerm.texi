@@ -3679,7 +3679,8 @@ If DomTerm is integrated in an application with its
 own window manager, such as Atom or Visual Studio Code,
 it would make sense to instead integrate with the latter manager.
 
-Theia and Jupyter use @uref{https://phosphorjs.github.io/,PhosphorJS}.
+Theia and Jupyter use @uref{https://phosphorjs.github.io/,PhosphorJS}, now archived.
+A newer version is part of @uref{https://jupyterlab.readthedocs.io/en/stable/,JupyterLab}.
 
 Similarly, when running under a
 @uref{https://en.wikipedia.org/wiki/Tiling_window_manager,tiling window manager}
@@ -3845,7 +3846,7 @@ old output.)
 
 See also @uref{https://mosh.org/,Mosh} (also @uref{https://lwn.net/Articles/722923/,LWN article}), and @uref{https://mistertea.github.io/EternalTCP/,EternalTerminal}.
 
-@subheading Remote sessions
+@subheading Remote sessions [mostly implemented]
 
 A DomTerm front-end can used used to display
 sessions running on remote backends.
@@ -5237,6 +5238,51 @@ In that case we try to create (after handling output) a new
 @code{_deferredForDeletion} span, whose @code{pendingEcho} string
 is a tail of the previous value.
 (We only do this if there are no changes to any other (logical) line.)
+
+@subsection Connection closing and detaching
+
+A session can have one or more open windows,
+or it can be in a @dfn{detached} state, in which case the
+process (and pty) still exist, along with @dfn{preserved state}
+that can be used to attach a new window to the session.
+Onc can also attach a new window to a session that has
+open windows, in which case the open windows can provide
+the state needed to create the new window.
+
+Preserved state is currently represented in two parts:
+a snapshot (the DOM slightly sanitized and serialized, plus
+terminal state properties), and a replay log: the session output sent
+to the terminal since the last snapshot.
+
+For each session, the sever maintains a @dfn{detach-count},
+which is rougly the number of windows that have been explictly closed.
+This is also the number of attaches ``pending`` before a session is closed.
+When a new non-detached session is created, the detach-count is zero;
+when a window is detached, the detach-count is incremented;
+it a window is connected to an existing session, the detach-count is decremented.
+(If a new session is created in detached state,
+should the initial connect-count be zero or one?)
+
+A connection (between session and window) can be closed in 4 ways:
+@itemize
+@item
+Session process exits, perhaps because the user typed @code{exit}.
+The server sends all windows a request to close themselves.
+@item
+User explicitly closed window (menu item or close button).
+If the detach-count is zero, the session is terminated.
+((Possible actions: Exit process and close window;
+detach process and close window; ask user.
+Latter may depend on whether ``process is running'' (as
+checked by Gnome Terminal, Konsole).))
+@item
+User explicitly requests the session be detached.
+The detach-count is incremented
+@item
+Connection closes for unknown reason, such as network failure, or laptop sleep.
+Treat as a detach.
+The detach-count is incremented.
+@end itemize
 
 @subsection Line-breaking / pretty-printing
 

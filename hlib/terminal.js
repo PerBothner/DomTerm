@@ -725,6 +725,13 @@ Terminal._settableProperties = [
     ["passwordShowCharTimeout", "number", 800]
 ];
 
+window.addEventListener("unload",
+                        function(event) {
+                            DomTerm.forEachTerminal(dt => {
+                                dt.historySave();
+                                dt.reportEvent("CLOSE-SESSION");
+                            }) });
+
 // Handle selection
 DomTerm.EDITING_SELECTION = 1;
 // Handle keypress, optionally-shifted left/right-arrow, home/end locally.
@@ -3436,8 +3443,6 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                                  dt.pasteText(e.clipboardData.getData("text"));
                                  e.preventDefault(); },
                               false);
-    window.addEventListener("unload",
-                            function(event) { dt.historySave(); });
     topNode.addEventListener("click",
                              function(e) {
                                  var target = e.target;
@@ -4020,7 +4025,7 @@ Terminal.prototype.freshLine = function() {
     this.cursorLineStart(1);
 };
 
-Terminal.prototype.reportEvent = function(name, data) {
+Terminal.prototype.reportEvent = function(name, data = "") {
     // Send 0xFD + name + ' ' + data + '\n'
     // where 0xFD is sent as a raw unencoded byte.
     // 0xFD cannot appear in a UTF-8 sequence
@@ -8673,6 +8678,23 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
             DomTerm.sendParentMessage("domterm-socket-send", str); }
         return;
     }
+    let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
+    wsocket.onopen = function(e) {
+        if (topNode == null)
+            return;
+        if (DomTerm.useXtermJs && window.Terminal != undefined) {
+            DomTerm.initXtermJs(wt, topNode);
+            DomTerm.setFocus(wt, "N");
+        } else {
+            if (topNode.classList.contains("domterm-wrapper"))
+                topNode = DomTerm.makeElement(name, topNode);
+            wt.initializeTerminal(topNode);
+        }
+        wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
+    };
+}
+
+Terminal.newWS = function(wspath, wsprotocol, wt) {
     var wsocket = new WebSocket(wspath, wsprotocol);
     if (wt.verbosity > 0)
         console.log("created WebSocket on  "+wspath);
@@ -8692,19 +8714,24 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
     wsocket.onmessage = function(evt) {
         DomTerm._handleOutputData(wt, evt.data);
     }
-    wsocket.onopen = function(e) {
-        if (topNode == null)
-            return;
-        if (DomTerm.useXtermJs && window.Terminal != undefined) {
-            DomTerm.initXtermJs(wt, topNode);
-            DomTerm.setFocus(wt, "N");
-        } else {
-            if (topNode.classList.contains("domterm-wrapper"))
-                topNode = DomTerm.makeElement(name, topNode);
-            wt.initializeTerminal(topNode);
+    wsocket.onclose = function(e) {
+        if (wt.verbosity > 0)
+            console.log("unexpected WebSocket close code:"+e.code);
+        if (true) {
+            let reconnect = "&reconnect=" + wt._receivedCount;
+            let m = wspath.match(/^(.*)&reconnect=([0-9]+)(.*)$/);
+            if (m)
+                wspath = m[1] + reconnect + m[3];
+            else
+                wspath = wspath + reconnect;
+            let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
+            wsocket.onopen = function(e) {
+                wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
+                wt._confirmedCount = wt._receivedCount;
+            };
         }
-        wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
-    };
+    }
+    return wsocket;
 }
 
 Terminal._makeWsUrl = function(query=null) {

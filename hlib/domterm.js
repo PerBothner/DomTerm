@@ -51,6 +51,18 @@ DomTerm.setTitle = function(title) {
        document.title = title;
 }
 
+DomTerm.forEachTerminal = function(func) {
+    if (DomTerm.useIFrame && DomTerm.focusedTerm) // optimization
+        return (func)(DomTerm.focusedTerm);
+    let elements = document.getElementsByClassName("domterm");
+    let n = elements.length;
+    for (let i = 0; i < n; i++) {
+        let t = elements[i].terminal;
+        if (t)
+            (func)(t);
+    }
+}
+
 // True if pane should be split into a vertical stack, with new pane --below.
 DomTerm._splitVertically = function(dt) {
     return dt.numColumns < 3*dt.numRows && (dt.numRows>40 || dt.numColumns<90);

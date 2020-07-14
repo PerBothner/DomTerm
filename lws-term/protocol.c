@@ -97,18 +97,52 @@ check_host_origin(struct lws *wsi) {
 }
 #endif
 
+// Maybe remove unneeded preserved output
+void trim_preserved(struct pty_client *pclient)
+{
+    if (pclient->preserve_mode == 2 && pclient->saved_window_contents == NULL)
+        return;
+
+    long read_count = pclient->preserved_sent_count - (pclient->preserved_end - pclient->preserved_start);
+    long max_unconfirmed = 0;
+    struct lws *tclient_wsi;
+     FOREACH_WSCLIENT(tclient_wsi, pclient) {
+         struct tty_client *tclient = (struct tty_client *) lws_wsi_user(tclient_wsi);
+         long unconfirmed = (read_count - tclient->confirmed_count) & MASK28;
+         if (unconfirmed > max_unconfirmed)
+             max_unconfirmed = unconfirmed;
+     };
+     if (pclient->saved_window_contents) {
+         long unconfirmed =
+             (read_count - pclient->saved_window_sent_count) & MASK28;
+         if (unconfirmed > max_unconfirmed)
+             max_unconfirmed = unconfirmed;
+     }
+
+     long old_length = pclient->preserved_end - pclient->preserved_start;
+     if (max_unconfirmed >= old_length)
+         return;
+     // Do nothing if max_unconfirmed/old_length < 2/3.
+     if (3 * max_unconfirmed < 2 * old_length)
+         return;
+     // compress
+     long unneeded = old_length - max_unconfirmed;
+     memmove(pclient->preserved_output,
+             pclient->preserved_output+unneeded,
+             max_unconfirmed);
+     pclient->preserved_start = 0;
+     pclient->preserved_end = max_unconfirmed;
+     pclient->preserved_sent_count = (pclient->preserved_sent_count + unneeded) & MASK28;
+     if (pclient->preserved_size >= 2 * max_unconfirmed) {
+         pclient->preserved_size = max_unconfirmed + 512;
+         pclient->preserved_output = xrealloc(pclient->preserved_output, pclient->preserved_size);
+     }
+}
+
 bool
 should_backup_output(struct pty_client *pclient)
 {
-    struct lws *twsi;
-    FOREACH_WSCLIENT(twsi, pclient) {
-      struct tty_client *tclient = (struct tty_client *) lws_wsi_user(twsi);
-      if (tclient->requesting_contents == 2)
-          return true;
-      if (! tclient->detach_on_close)
-          return false;
-    }
-    return true;
+    return pclient->preserve_mode > 0;
 }
 
 void
@@ -223,9 +257,7 @@ unlink_tty_from_pty(struct pty_client *pclient,
     unlink_tty_from_pty_only(pclient, wsi, tclient);
     // FIXME reclaim memory cleanup for tclient
     struct lws *first_twsi = pclient->first_client_wsi;
-    if (tclient->detach_on_close) {
-        pclient->detach_count++;
-    } else if (first_twsi == NULL && pclient->detach_count == 0) {
+    if (first_twsi == NULL && pclient->detach_count == 0) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
     // If only one client left, do detachSaveSend
@@ -262,7 +294,7 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
 
     //if (pclient->exit || pclient->pid <= 0)
     //    return;
-    unlink_tty_from_pty(pclient, wsi, tclient);
+    unlink_tty_from_pty_only(pclient, wsi, tclient);
 
 }
 
@@ -315,8 +347,7 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
             first_tclient->detachSaveSend = true;
             lws_callback_on_writable(first_twsi);
         }
-    } else if (pclient->detachOnClose) // FIXME
-        tclient->detachSaveSend = true;
+    }
     lwsl_notice("link_command wsi:%p tclient:%p pclient:%p\n",
                 wsi, tclient, pclient);
     tclient->pty_window_update_needed = true;
@@ -325,9 +356,6 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     if (tclient->proxyMode != proxy_command_local
         && tclient->proxyMode != proxy_display_local)
         focused_wsi = wsi;
-    if (pclient->detached)
-        pclient->detachOnClose = 0; // OLD
-    pclient->detached = 0;
     if (pclient->detach_count > 0)
         pclient->detach_count--;
     if (pclient->paused) {
@@ -417,12 +445,11 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->pixh = -1;
     pclient->pixw = -1;
     pclient->eof_seen = 0;
-    pclient->detachOnClose = 0;
     pclient->detach_count = 0;
-    pclient->detached = 0;
     pclient->paused = 0;
     pclient->saved_window_contents = NULL;
     pclient->preserved_output = NULL;
+    pclient->preserve_mode = 1;
     pclient->first_client_wsi = NULL;
     pclient->last_client_wsi_ptr = &pclient->first_client_wsi;
     pclient->recent_tclient = NULL;
@@ -874,7 +901,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->version_info = version_info;
         if (proxyMode == proxy_display_local)
             return false;
-        client->initialized = false;
+        client->initialized = 0;
         if (pclient == NULL)
             pclient = create_link_pclient(wsi, client);
         if (pclient == NULL)
@@ -905,6 +932,7 @@ reportEvent(const char *name, char *data, size_t dlen,
 #endif
             pclient->paused = 0;
         }
+        trim_preserved(pclient);
     } else if (strcmp(name, "KEY") == 0) {
         if (proxyMode == proxy_display_local)
             return false;
@@ -1011,8 +1039,8 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "DETACH") == 0) {
         bool val = strcmp(data,"0")!=0;
         if (pclient != NULL) {
-            pclient->detachOnClose = val; // OLD
-            client->detach_on_close = (bool)val;
+            if (pclient->detach_count >= 0)
+                pclient->detach_count++;
             if (pclient->preserved_output == NULL
                 && client->requesting_contents == 0)
                 client->requesting_contents = 1;
@@ -1050,8 +1078,8 @@ reportEvent(const char *name, char *data, size_t dlen,
         char *q = strchr(data, ',');
         long rcount;
         sscanf(data, "%ld", &rcount);
-        int updated = (rcount - pclient->preserved_sent_count) & MASK28;
-        // Roughly: if (rcount < pclient->preserved_sent_count)
+        int updated = (rcount - pclient->saved_window_sent_count) & MASK28;
+        // Roughly: if (rcount < pclient->saved_window_sent_count)
         if ((updated & ((MASK28+1)>>1)) != 0) {
             return true;
         }
@@ -1059,25 +1087,8 @@ reportEvent(const char *name, char *data, size_t dlen,
             free(pclient->saved_window_contents);
         pclient->saved_window_contents = strdup(q+1);
         client->requesting_contents = 0;
-
-        int old_length = pclient->preserved_end - pclient->preserved_start; 
-        if (pclient->preserved_output == NULL)
-          ; // do nothing
-        else if (updated >= old_length) {
-            pclient->preserved_start = PRESERVE_MIN;
-            pclient->preserved_end = pclient->preserved_start;
-        }
-        else if (pclient->preserved_start + updated < 200)
-           pclient->preserved_start += updated;
-        else {
-            int new_length = old_length - updated;
-            memmove(pclient->preserved_output + PRESERVE_MIN,
-                    pclient->preserved_output+pclient->preserved_start+updated,
-                    new_length);
-            pclient->preserved_start = PRESERVE_MIN;
-            pclient->preserved_end = PRESERVE_MIN + new_length;
-        }
-        pclient->preserved_sent_count = rcount;
+        pclient->saved_window_sent_count = rcount;
+        trim_preserved(pclient);
     } else if (strcmp(name, "ECHO-URGENT") == 0) {
         json_object *obj = json_tokener_parse(data);
         const char *kstr = json_object_get_string(obj);
@@ -1096,7 +1107,7 @@ reportEvent(const char *name, char *data, size_t dlen,
 
 void init_tclient_struct(struct tty_client *client, struct lws *wsi)
 {
-    client->initialized = false;
+    client->initialized = 0;
     client->next_ws_client = ws_client_list;
     ws_client_list = client;
     client->detachSaveSend = false;
@@ -1112,7 +1123,6 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi)
     sbuf_init(&client->inb);
     sbuf_extend(&client->ob, 2048);
     client->ocount = 0;
-    client->detach_on_close = false;
     client->proxyMode = no_proxy; // FIXME
     client->connection_number = ++server->connection_count;
     client->pty_window_number = -1;
@@ -1211,11 +1221,25 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                         settings_as_json);
         }
     }
-    if (! client->initialized && nonProxy
-        && (pclient->preserved_output == NULL
-            || pclient->saved_window_contents != NULL)) {
-#define FORMAT_PID_SNUMBER "\033]31;%d\007"
-#define FORMAT_SNAME "\033]30;%s\007"
+    if (client->initialized == 1) {
+        // re-connect after lost connection
+        client->sent_count = client->confirmed_count;
+        size_t pstart = pclient->preserved_start;
+        size_t pend = pclient->preserved_end;
+        long read_count = pclient->preserved_sent_count - (pend - pstart);
+        long unconfirmed = (read_count - client->confirmed_count) & MASK28;
+        // re-send data that have not been seen by client
+        if (unconfirmed > 0 && pend - pstart >= unconfirmed) {
+            pstart = pend - unconfirmed;
+            sbuf_append(bufp, start_replay_mode, -1);
+            sbuf_append(bufp, pclient->preserved_output+pstart,
+                        (int) unconfirmed);
+            sbuf_append(bufp, end_replay_mode, -1);
+            client->sent_count += unconfirmed;
+        }
+        client->initialized = 2;
+    }
+    if (client->initialized == 0 && nonProxy) {
         if (pclient->cmd_settings) {
             json_object_put(pclient->cmd_settings);
             sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
@@ -1224,6 +1248,8 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         } else {
             sbuf_printf(bufp, URGENT_WRAP("\033]88;{}\007"));
         }
+#define FORMAT_PID_SNUMBER "\033]31;%d\007"
+#define FORMAT_SNAME "\033]30;%s\007"
         sbuf_printf(bufp,
                     pclient->session_name
                     ? URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME)
@@ -1231,7 +1257,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                     pclient->pid,
                     pclient->session_name);
         if (pclient->saved_window_contents != NULL) {
-            int rcount = pclient->preserved_sent_count;
+            int rcount = pclient->saved_window_sent_count;
             sbuf_printf(bufp,
                         URGENT_WRAP("\033]103;%ld,%s\007"),
                         (long) pclient->preserved_sent_count,
@@ -1271,7 +1297,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         FOREACH_WSCLIENT(tty_wsi, pclient) {
             if (++tcount >= 2) break;
         }
-        int code = tcount >= 2 ? 0 : pclient->detachOnClose ? 2 : 1;
+        int code = tcount >= 2 ? 0 : pclient->detach_count != 0 ? 2 : 1;
         sbuf_printf(bufp, URGENT_WRAP("\033[82;%du"), code);
         client->detachSaveSend = false;
     }
@@ -1303,7 +1329,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         sbuf_printf(bufp, "%s", eof_message);
         sbuf_free(&client->ob);
     }
-    client->initialized = true;
+    client->initialized = 2;
 }
 
 #if REMOTE_SSH
@@ -1429,12 +1455,12 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 
     switch (reason) {
     case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
-         //fprintf(stderr, "callback_tty FILTER_PROTOCOL_CONNECTION\n");
-         if (server->options.once && server->client_count > 0) {
-              lwsl_notice("refuse to serve new client due to the --once option.\n");
-              return -1;
-         }
-         break;
+        lwsl_notice("callback_tty FILTER_PROTOCOL_CONNECTION\n");
+        if (server->options.once && server->client_count > 0) {
+            lwsl_notice("refuse to serve new client due to the --once option.\n");
+            return -1;
+        }
+        break;
 
     case LWS_CALLBACK_ESTABLISHED:
         init_tclient_struct(client, wsi);
@@ -1449,7 +1475,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         if (argval != NULL) {
             lwsl_info("dummy connection (no session) established\n");
         } else {
-            int snumber;
+            long snumber;
             if ((argval = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1)) != NULL
                 && (snumber = strtol(argval, NULL, 10)) != 0) {
                 struct pty_client *pclient = pty_client_list;
@@ -1463,6 +1489,14 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                         lwsl_info("connection to existing session %d established\n", snumber);
                         break;
                     }
+                }
+                argval = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
+                if (argval != NULL) {
+                    snumber = strtol(argval, NULL, 10);
+                    client->confirmed_count = snumber;
+                    client->sent_count = snumber; // FIXME
+                    client->initialized = 1;
+                    lws_callback_on_writable(wsi);
                 }
             } else {
                 struct pty_client *pclient = create_link_pclient(wsi, client);
@@ -1614,7 +1648,7 @@ display_session(struct options *options, struct pty_client *pclient,
     int paneOp = 0;
     if (browser_specifier != NULL && browser_specifier[0] == '-') {
       if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
-          pclient->detached = 1;
+          pclient->detach_count = 1;
           return EXIT_SUCCESS;
       }
       if (strcmp(browser_specifier, "--pane") == 0)
@@ -1993,11 +2027,17 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                     tclient->ocount += read_length;
                     lws_callback_on_writable(wsclient_wsi);
                 }
-                if (pclient->preserved_output != NULL
-                    && should_backup_output(pclient)) {
-                     size_t needed = pclient->preserved_end + data_length;
-                     if (needed > pclient->preserved_size) {
+                if (should_backup_output(pclient)) {
+                    if (pclient->preserved_output == NULL) {
+                        pclient->preserved_start = PRESERVE_MIN;
+                        pclient->preserved_end = 0;
+                        pclient->preserved_size = 0;
+                    }
+                    size_t needed = pclient->preserved_end + data_length;
+                    if (needed > pclient->preserved_size) {
                           size_t nsize = (3 * pclient->preserved_size) >> 1;
+                          if (nsize < 1024)
+                              nsize = 1024;
                           if (needed > nsize)
                                nsize = needed;
                           char * nbuffer = xrealloc(pclient->preserved_output, nsize);

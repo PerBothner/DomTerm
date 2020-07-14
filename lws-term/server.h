@@ -105,11 +105,10 @@ struct pty_client {
     float pixh, pixw;
     int eof_seen;  // 1 means seen; 2 reported to client
     bool exit;
-    bool detached; // OLD
-    bool detachOnClose; // OLD
     bool session_name_unique;
     bool packet_mode;
     char *ssh_to_remote; // if ssh: USER@HOST or HOST; else NULL
+    // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
     int paused;
     struct lws *first_client_wsi;
@@ -117,6 +116,7 @@ struct pty_client {
     struct lws *pty_wsi;
     struct tty_client *recent_tclient;
     char *saved_window_contents;
+    long saved_window_sent_count; // corresponding to saved_window_contents
     char *ttyname;
 
     // The following are used to attach to already-visible session.
@@ -125,7 +125,13 @@ struct pty_client {
 #define PRESERVE_MIN 0
     size_t preserved_end; // end of valid data in preserved_output
     size_t preserved_size; // allocated size of preserved_output
-    long preserved_sent_count;  // sent_count corresponding to preserved_output
+
+    // 1: preserve output since last confirmed (default); 2: preserve all
+    int preserve_mode : 3;
+
+    long preserved_sent_count;  // sent_count at preserved_output start
+    // (Should be minumum of saved_window_sent_count (if saved_window_contents)
+    // and miniumum of confirmed_count for each tclient.)
 
     struct json_object *cmd_settings;
     const char *cmd;
@@ -145,10 +151,14 @@ struct pty_client {
 struct tty_client { // should be renamed to ws_client ?
     struct tty_client *next_ws_client;
     struct pty_client *pclient;
-    bool initialized;
+
+    // 0: Not initialized; 2: initialized
+    // 1: reconnecting - client has state, but connection was dropped
+    int initialized : 3;
+
     //bool pty_started; = pclient!=NULL
     bool authenticated;
-    bool detach_on_close;
+
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
     bool window_main; // main or only connection for window (not a pane)
@@ -165,7 +175,11 @@ struct tty_client { // should be renamed to ws_client ?
     struct sbuf inb;  // input buffer (data/events from client)
     struct sbuf ob; // data to be sent to UI (or proxy)
     // (a mix of output from pty and from server)
+
     size_t ocount; // amount to increment sent_count (ocount <= ob.len)
+    // (This is bytes read from pty output, and does not include
+    // uncounted messages from the server.)
+
     int connection_number;
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
