@@ -1846,6 +1846,30 @@ then the session will be displayed in a local window,
 as specified by the optional @var{browser-specifier}.  For example.
 if the latter is @code{--tab}, a new tab will be created in the current window.
 
+@subsubheading Build domterm for a server
+
+If the @code{domterm} command is not installed on your remote server,
+build DomTerm as shown (on a compatible platform).
+(The @code{--with-libwebsockets} and @code{--with-json-c} options
+cause those libraries to be linked statically, which is recommended
+if they are not installed on the remote server.)
+@example
+./configure --prefix=/tmp/DT --without-java --with-libwebsockets=@var{lws_dir} --with-json-c=@var{json_c_dir}
+make install
+cd /tmp
+zip -r DT.zip DT
+scp DT.zip @var{remote_host}:/tmp
+@end example
+On the @var{remote_host}, where @var{remote_dir} is some directory you have write access to (could be the home directory):
+@example
+cd @var{remote_dir}
+unzip /tmp/DT.zip
+@end example
+After that you should be able to connect from your local machine using the @code{command.remote-domterm} setting:
+@example
+domterm command.remote-domterm=@var{remote_dir}/DT/bin/domterm @var{remote_user}@@@var{remote_host} [@var{command}]
+@end example
+
 @subheading DomTerm as a web server
 
 To start DomTerm as a web server, run the @code{domterm} command
