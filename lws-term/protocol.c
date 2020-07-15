@@ -1852,7 +1852,7 @@ handle_remote(int argc, char** argv, char* at,
             rargv[rargc++] = ssh_args[i];
         // argv[0] is @host or user@host. Pass host or user@host to ssh
         char *host_arg = argv[0];
-        rargv[rargc++] = at==host_arg ? at+1 : at;
+        rargv[rargc++] = at==host_arg ? at+1 : host_arg;
         for (int i = 0; i < domterm_argc; i++)
             rargv[rargc++] = domterm_args[i];
         rargv[rargc++] = "--browser-pipe";
