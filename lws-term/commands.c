@@ -530,8 +530,9 @@ int status_action(int argc, char** argv, const char*cwd,
     else {
         for (; pclient != NULL; pclient = pclient->next_pty_client) {
             fprintf(out, "session#: %d, ", pclient->session_number);
-            if (pclient->ssh_to_remote)
-                fprintf(out, "ssh to remote %s", pclient->ssh_to_remote);
+            const char* remote = GET_REMOTE_HOSTUSER(pclient);
+            if (remote)
+                fprintf(out, "ssh to remote %s", remote);
             else
                 fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
             if (pclient->session_name != NULL)

@@ -39,14 +39,32 @@ lookup_option(const char *name)
     return NO_opt;
 }
 
+void
+set_setting(struct json_object **settings, const char *key, const char *value)
+{
+    if (*settings == NULL)
+        *settings = json_object_new_object();
+    json_object_object_add(*settings, key,
+                           json_object_new_string(value));
+}
+
+const char *
+get_setting(struct json_object *settings, const char *key)
+{
+    struct json_object *value;
+    if (settings != NULL
+        && json_object_object_get_ex(settings, key, &value))
+        return json_object_get_string(value);
+    else
+        return NULL;
+}
+
 bool
 check_option_arg(char *arg, struct options *opts)
 {
     char *eq = strchr(arg, '=');
     if (eq == NULL)
         return false;
-    if (opts->cmd_settings == NULL)
-        opts->cmd_settings = json_object_new_object();
     size_t klen = eq-arg;
     char *key = xmalloc(klen+1);
     memcpy(key, arg, klen);
@@ -54,8 +72,7 @@ check_option_arg(char *arg, struct options *opts)
     enum option_name opt = lookup_option(key);
     if (opt == NO_opt)
         printf_error(opts, "unknown option '%s'", key);
-    json_object_object_add(opts->cmd_settings, key,
-                           json_object_new_string(eq+1));
+    set_setting(&opts->cmd_settings, key, eq+1);
     free(key);
     return true;
 }

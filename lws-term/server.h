@@ -107,7 +107,6 @@ struct pty_client {
     bool exit;
     bool session_name_unique;
     bool packet_mode;
-    char *ssh_to_remote; // if ssh: USER@HOST or HOST; else NULL
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
     int paused;
@@ -310,7 +309,15 @@ extern void read_settings_file(struct options*, bool);
 extern struct json_object *merged_settings(struct json_object *cmd_settings);
 extern void set_settings(struct options *options, struct json_object *msettings);
 extern enum option_name lookup_option(const char *name);
+extern const char *get_setting(json_object *opts, const char *key);
+extern void set_setting(struct json_object **, const char *key, const char *val);
 extern bool check_option_arg(char *arg, struct options *opts);
+
+// A "setting" that starts with "`" is an internal setting.
+#define LOCAL_SESSIONNUMBER_KEY "`local-session-number"
+#define REMOTE_HOSTUSER_KEY "`remote-host-user"
+// if using ssh: "USER@HOST" or "HOST"; otherwise NULL
+#define GET_REMOTE_HOSTUSER(PCLIENT) get_setting((PCLIENT)->cmd_settings, REMOTE_HOSTUSER_KEY)
 
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);

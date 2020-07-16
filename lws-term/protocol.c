@@ -187,10 +187,6 @@ pty_destroy(struct pty_client *pclient)
         free(pclient->preserved_output);
         pclient->preserved_output = NULL;
     }
-    if (pclient->ssh_to_remote) {
-        free(pclient->ssh_to_remote);
-        pclient->ssh_to_remote = NULL;
-    }
     if (pclient->cmd_settings) {
         json_object_put(pclient->cmd_settings);
         pclient->cmd_settings = NULL;
@@ -316,7 +312,7 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     tclient->pclient = pclient;
     struct lws *first_twsi = pclient->first_client_wsi;
     tclient->next_client_wsi = NULL;
-    if (pclient->ssh_to_remote)
+    if (GET_REMOTE_HOSTUSER(pclient))
         tclient->proxyMode = proxy_display_local;
 
     if (first_twsi != NULL) {
@@ -465,7 +461,6 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->cwd = cwd;
     pclient->env = env;
 #if REMOTE_SSH
-    pclient->ssh_to_remote = NULL;
 #if PASS_STDFILES_UNIX_SOCKET
     pclient->proxy_in = -1;
     pclient->proxy_out = -1;
@@ -641,16 +636,9 @@ static char localhost_localdomain[] = "localhost.localdomain";
 char *
 check_template(const char *template, json_object *obj)
 {
-    struct json_object *jfilename = NULL, *jposition = NULL, *jhref = NULL;
-    const char *filename =
-        json_object_object_get_ex(obj, "filename", &jfilename)
-        ? json_object_get_string(jfilename) : NULL;
-    const char *position =
-        json_object_object_get_ex(obj, "position", &jposition)
-        ? json_object_get_string(jposition) : NULL;
-    const char *href =
-        json_object_object_get_ex(obj, "href", &jhref)
-        ? json_object_get_string(jhref) : NULL;
+    const char *filename = get_setting(obj, "filename");
+    const char *position = get_setting(obj, "position");
+    const char *href = get_setting(obj, "href");
     if (filename != NULL && filename[0] == '/' && filename[1] == '/') {
         if (filename[2] == '/')
             filename = filename + 2;
@@ -1239,7 +1227,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         }
         client->initialized = 2;
     }
-    if (client->initialized == 0 && nonProxy) {
+    if (client->initialized == 0 && proxyMode != proxy_command_local) {
         if (pclient->cmd_settings) {
             json_object_put(pclient->cmd_settings);
             sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
@@ -1864,7 +1852,10 @@ handle_remote(int argc, char** argv, char* at,
         struct pty_client *pclient = create_pclient(ssh, copy_strings(rargv),
                                                     strdup(cwd), copy_strings(env),
                                                     opts);
-        pclient->ssh_to_remote = strdup(host_arg);
+        char tbuf[20];
+        sprintf(tbuf, "%d", pclient->session_number);
+        set_setting(&pclient->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
+        set_setting(&pclient->cmd_settings, REMOTE_HOSTUSER_KEY, host_arg);
         lwsl_notice("handle_remote pcl:%p\n", pclient);
         make_proxy(opts, pclient, proxy_command_local);
         run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);
@@ -1956,7 +1947,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             }
             if ((min_unconfirmed >= UNCONFIRMED_LIMIT || avail == 0
                  || pclient->paused)
-                && ! pclient->ssh_to_remote) {
+                && ! GET_REMOTE_HOSTUSER(pclient)) {
                 if (! pclient->paused) {
 #if USE_RXFLOW
                     lwsl_info(tclients_seen == 1

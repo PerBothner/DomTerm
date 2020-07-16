@@ -5061,8 +5061,19 @@ Terminal.prototype.setSessionNumber = function(snumber, unique, wnumber) {
 // FIXME misleading function name - this is not just the session name
 Terminal.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("session-name");
-    if (! sname)
-        sname = "DomTerm" + ":" + this.sstate.sessionNumber;
+    if (! sname) {
+        let lsession = this.sstate.termOptions["`local-session-number"];
+        let rhost = this.sstate.termOptions["`remote-host-user"];
+        if (lsession && rhost) {
+            let at = rhost.indexOf('@');
+            if (at >= 0)
+                rhost = rhost.substring(at+1);
+            if (! rhost)
+                host = "";
+            sname = "DomTerm" + ":" + lsession + "=" +rhost+":" + this.sstate.sessionNumber;
+        } else
+            sname = "DomTerm" + ":" + this.sstate.sessionNumber;
+    }
     else if (! this.sstate.sessionNameUnique)
         sname = sname + ":" + this.sstate.sessionNumber;
     if (this.windowNumber >= 0) {
