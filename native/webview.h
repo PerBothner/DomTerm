@@ -469,9 +469,10 @@ public:
     gtk_container_add(GTK_CONTAINER(m_window), GTK_WIDGET(m_webview));
     gtk_widget_grab_focus(GTK_WIDGET(m_webview));
 
+    WebKitSettings *settings =
+        webkit_web_view_get_settings(WEBKIT_WEB_VIEW(m_webview));
+    webkit_settings_set_javascript_can_access_clipboard(settings, true);
     if (debug) {
-      WebKitSettings *settings =
-          webkit_web_view_get_settings(WEBKIT_WEB_VIEW(m_webview));
       webkit_settings_set_enable_write_console_messages_to_stdout(settings,
                                                                   true);
       webkit_settings_set_enable_developer_extras(settings, true);
@@ -585,7 +586,8 @@ public:
                  NSApplicationActivationPolicyRegular);
 
     // Delegate
-    auto cls = objc_allocateClassPair((Class) "NSResponder"_cls, "AppDelegate", 0);
+    auto cls =
+        objc_allocateClassPair((Class) "NSResponder"_cls, "AppDelegate", 0);
     class_addProtocol(cls, objc_getProtocol("NSTouchBarProvider"));
     class_addMethod(cls, "applicationShouldTerminateAfterLastWindowClosed:"_sel,
                     (IMP)(+[](id, SEL, id) -> BOOL { return 1; }), "c@:@");
@@ -626,6 +628,14 @@ public:
                    objc_msgSend("NSNumber"_cls, "numberWithBool:"_sel, 1),
                    "developerExtrasEnabled"_str);
     }
+    objc_msgSend(objc_msgSend(config, "preferences"_sel),
+                 "setValue:forKey:"_sel,
+                 objc_msgSend("NSNumber"_cls, "numberWithBool:"_sel, 1),
+                 "javaScriptCanAccessClipboard"_str);
+    objc_msgSend(objc_msgSend(config, "preferences"_sel),
+                 "setValue:forKey:"_sel,
+                 objc_msgSend("NSNumber"_cls, "numberWithBool:"_sel, 1),
+                 "DOMPasteAllowed"_str);
     objc_msgSend(m_webview, "initWithFrame:configuration:"_sel,
                  CGRectMake(0, 0, 0, 0), config);
     objc_msgSend(m_manager, "addScriptMessageHandler:name:"_sel, delegate,
@@ -731,16 +741,17 @@ using browser_engine = cocoa_wkwebview_engine;
 //
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <stdlib.h>
 #include <Shlwapi.h>
 #include <codecvt>
+#include <stdlib.h>
+#include <windows.h>
 
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "Shlwapi.lib")
 
 // EdgeHTML headers and libs
 #include <objbase.h>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Web.UI.Interop.h>
 #pragma comment(lib, "windowsapp")
@@ -850,20 +861,22 @@ public:
 
     char currentExePath[MAX_PATH];
     GetModuleFileNameA(NULL, currentExePath, MAX_PATH);
-    char* currentExeName = PathFindFileNameA(currentExePath);
+    char *currentExeName = PathFindFileNameA(currentExePath);
 
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> wideCharConverter;
-    std::wstring userDataFolder = wideCharConverter.from_bytes(std::getenv("APPDATA"));
+    std::wstring userDataFolder =
+        wideCharConverter.from_bytes(std::getenv("APPDATA"));
     std::wstring currentExeNameW = wideCharConverter.from_bytes(currentExeName);
 
     HRESULT res = CreateCoreWebView2EnvironmentWithOptions(
         nullptr, (userDataFolder + L"/" + currentExeNameW).c_str(), nullptr,
-        new webview2_com_handler(wnd, cb, [&](ICoreWebView2Controller *controller) {
-          m_controller = controller;
-          m_controller->get_CoreWebView2(&m_webview);
-          m_webview->AddRef();
-          flag.clear();
-        }));
+        new webview2_com_handler(wnd, cb,
+                                 [&](ICoreWebView2Controller *controller) {
+                                   m_controller = controller;
+                                   m_controller->get_CoreWebView2(&m_webview);
+                                   m_webview->AddRef();
+                                   flag.clear();
+                                 }));
     if (res != S_OK) {
       CoUninitialize();
       return false;
@@ -917,42 +930,59 @@ private:
 
   class webview2_com_handler
       : public ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler,
-        public ICoreWebView2CreateCoreWebView2ControllerCompletedHandler,        
-        public ICoreWebView2WebMessageReceivedEventHandler {
-    using webview2_com_handler_cb_t = std::function<void(ICoreWebView2Controller *)>;
+        public ICoreWebView2CreateCoreWebView2ControllerCompletedHandler,
+        public ICoreWebView2WebMessageReceivedEventHandler,
+        public ICoreWebView2PermissionRequestedEventHandler {
+    using webview2_com_handler_cb_t =
+        std::function<void(ICoreWebView2Controller *)>;
 
   public:
-    webview2_com_handler(HWND hwnd, msg_cb_t msgCb, webview2_com_handler_cb_t cb)
+    webview2_com_handler(HWND hwnd, msg_cb_t msgCb,
+                         webview2_com_handler_cb_t cb)
         : m_window(hwnd), m_msgCb(msgCb), m_cb(cb) {}
     ULONG STDMETHODCALLTYPE AddRef() { return 1; }
     ULONG STDMETHODCALLTYPE Release() { return 1; }
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID *ppv) {
       return S_OK;
     }
-    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res, ICoreWebView2Environment *env) {
+    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res,
+                                     ICoreWebView2Environment *env) {
       env->CreateCoreWebView2Controller(m_window, this);
       return S_OK;
     }
-    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res, ICoreWebView2Controller *controller) {
+    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res,
+                                     ICoreWebView2Controller *controller) {
       controller->AddRef();
 
       ICoreWebView2 *webview;
-      EventRegistrationToken token;
+      ::EventRegistrationToken token;
       controller->get_CoreWebView2(&webview);
       webview->add_WebMessageReceived(this, &token);
+      webview->add_PermissionRequested(this, &token);
 
       m_cb(controller);
       return S_OK;
     }
-    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2* sender, ICoreWebView2WebMessageReceivedEventArgs* args) {
+    HRESULT STDMETHODCALLTYPE Invoke(
+        ICoreWebView2 *sender, ICoreWebView2WebMessageReceivedEventArgs *args) {
       LPWSTR message;
       args->TryGetWebMessageAsString(&message);
 
       std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> wideCharConverter;
       m_msgCb(wideCharConverter.to_bytes(message));
       sender->PostWebMessageAsString(message);
-      
+
       CoTaskMemFree(message);
+      return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE
+    Invoke(ICoreWebView2 *sender,
+           ICoreWebView2PermissionRequestedEventArgs *args) {
+      COREWEBVIEW2_PERMISSION_KIND kind;
+      args->get_PermissionKind(&kind);
+      if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
+        args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+      }
       return S_OK;
     }
 
@@ -968,11 +998,9 @@ public:
   win32_edge_engine(bool debug, void *window) {
     if (window == nullptr) {
       HINSTANCE hInstance = GetModuleHandle(nullptr);
-      HICON icon = (HICON) LoadImage(
-        hInstance, IDI_APPLICATION, IMAGE_ICON,
-        GetSystemMetrics(SM_CXSMICON), 
-        GetSystemMetrics(SM_CYSMICON), 
-        LR_DEFAULTCOLOR);
+      HICON icon = (HICON)LoadImage(
+          hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+          GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
 
       WNDCLASSEX wc;
       ZeroMemory(&wc, sizeof(WNDCLASSEX));
@@ -1100,8 +1128,8 @@ private:
   virtual void on_message(const std::string msg) = 0;
 
   HWND m_window;
-  POINT m_minsz = POINT { 0, 0 };
-  POINT m_maxsz = POINT { 0, 0 };
+  POINT m_minsz = POINT{0, 0};
+  POINT m_maxsz = POINT{0, 0};
   DWORD m_main_thread = GetCurrentThreadId();
   std::unique_ptr<webview::browser> m_browser =
       std::make_unique<webview::edge_chromium>();
@@ -1140,12 +1168,13 @@ public:
   using sync_binding_ctx_t = std::pair<webview *, sync_binding_t>;
 
   void bind(const std::string name, sync_binding_t fn) {
-    bind(name,
-         [](std::string seq, std::string req, void *arg) {
-           auto pair = static_cast<sync_binding_ctx_t *>(arg);
-           pair->first->resolve(seq, 0, pair->second(req));
-         },
-         new sync_binding_ctx_t(this, fn));
+    bind(
+        name,
+        [](std::string seq, std::string req, void *arg) {
+          auto pair = static_cast<sync_binding_ctx_t *>(arg);
+          pair->first->resolve(seq, 0, pair->second(req));
+        },
+        new sync_binding_ctx_t(this, fn));
   }
 
   void bind(const std::string name, binding_t f, void *arg) {
