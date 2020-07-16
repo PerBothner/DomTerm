@@ -1209,24 +1209,6 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                         settings_as_json);
         }
     }
-    if (client->initialized == 1) {
-        // re-connect after lost connection
-        client->sent_count = client->confirmed_count;
-        size_t pstart = pclient->preserved_start;
-        size_t pend = pclient->preserved_end;
-        long read_count = pclient->preserved_sent_count - (pend - pstart);
-        long unconfirmed = (read_count - client->confirmed_count) & MASK28;
-        // re-send data that have not been seen by client
-        if (unconfirmed > 0 && pend - pstart >= unconfirmed) {
-            pstart = pend - unconfirmed;
-            sbuf_append(bufp, start_replay_mode, -1);
-            sbuf_append(bufp, pclient->preserved_output+pstart,
-                        (int) unconfirmed);
-            sbuf_append(bufp, end_replay_mode, -1);
-            client->sent_count += unconfirmed;
-        }
-        client->initialized = 2;
-    }
     if (client->initialized == 0 && proxyMode != proxy_command_local) {
         if (pclient->cmd_settings) {
             json_object_put(pclient->cmd_settings);
@@ -1248,29 +1230,37 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
             int rcount = pclient->saved_window_sent_count;
             sbuf_printf(bufp,
                         URGENT_WRAP("\033]103;%ld,%s\007"),
-                        (long) pclient->preserved_sent_count,
+                        (long) rcount,
                         (char *) pclient->saved_window_contents);
-            if (! should_backup_output(pclient)) {
+            client->sent_count = rcount;
+            if (pclient->preserve_mode < 2) {
                 free(pclient->saved_window_contents);
                 pclient->saved_window_contents = NULL;
             }
-            if (pclient->preserved_output != NULL) {
-                size_t start = pclient->preserved_start;
-                size_t end = pclient->preserved_end;
-                sbuf_append(bufp, start_replay_mode, -1);
-                sbuf_append(bufp, pclient->preserved_output+start,
-                            (int) (end-start));
-                sbuf_append(bufp, end_replay_mode, -1);
-                rcount += end - start;
-            }
-            rcount = rcount & MASK28;
-            client->sent_count = rcount;
-            client->confirmed_count = rcount;
-            sbuf_printf(bufp,
-                        OUT_OF_BAND_START_STRING "\033[96;%du"
-                        URGENT_END_STRING,
-                        rcount);
         }
+    }
+    if (client->initialized < 2 && proxyMode != proxy_command_local
+        && pclient->preserved_output != NULL) {
+        size_t pstart = pclient->preserved_start;
+        size_t pend = pclient->preserved_end;
+        long read_count = pclient->preserved_sent_count - (pend - pstart);
+        long rcount = client->sent_count;
+        long unconfirmed = (read_count - rcount) & MASK28;
+        if (unconfirmed > 0 && pend - pstart >= unconfirmed) {
+            pstart = pend - unconfirmed;
+            sbuf_append(bufp, start_replay_mode, -1);
+            sbuf_append(bufp, pclient->preserved_output+pstart,
+                        (int) unconfirmed);
+            sbuf_append(bufp, end_replay_mode, -1);
+            rcount += unconfirmed;
+        }
+        rcount = rcount & MASK28;
+        client->sent_count = rcount;
+        client->confirmed_count = rcount;
+        sbuf_printf(bufp,
+                    OUT_OF_BAND_START_STRING "\033[96;%du"
+                    URGENT_END_STRING,
+                    rcount);
     }
     if (client->pty_window_update_needed && nonProxy) {
         client->pty_window_update_needed = false;
