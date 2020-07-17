@@ -3034,6 +3034,8 @@ Terminal.prototype.isSpanNode = function(node) {
 // Should be called after settings loaded (specifically after
 // stylesheets set/loaded) but before processing output text.
 Terminal.prototype._initializeDomTerm = function(topNode) {
+    if (this._rulerNode)
+        return;
     var helperNode = this._createPreNode();
     helperNode.setAttribute("style", "position: absolute; visibility: hidden");
     helperNode.classList.add("domterm-ruler");
