@@ -5,8 +5,12 @@
 // over socket from client command to server, using sendmsg/recvmsg.
 // I can't get this to work on MacOS.
 // Alternatively, multiplex stdout, stderr, and exit code on connection socket.
+// (PASS_STDFILES_UNIX_SOCKET seems in principle preferable, but isn't
+// available on all platforms, and until there is a clear advantage, it seems
+// seems better to disable for platform consistency and simpler testing.)
+#define PREFER_PASS_STDFILES_UNIX_SOCKET 0
 #define USING_NAMED_PIPES_FOR_CLIENT 0 /*for now*/
-#if defined(__APPLE__) || USING_NAMED_PIPES_FOR_CLIENT || 1
+#if defined(__APPLE__) || USING_NAMED_PIPES_FOR_CLIENT || !PREFER_PASS_STDFILES_UNIX_SOCKET
 #define PASS_STDFILES_UNIX_SOCKET 0
 // Multiplex stdout, stderr, and exit code on connection socket.
 // Next byte is exit code.
