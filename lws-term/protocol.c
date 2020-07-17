@@ -1214,7 +1214,6 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
             json_object_put(pclient->cmd_settings);
             sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
                         json_object_to_json_string_ext(pclient->cmd_settings, JSON_C_TO_STRING_PLAIN));
-            pclient->cmd_settings = NULL;
         } else {
             sbuf_printf(bufp, URGENT_WRAP("\033]88;{}\007"));
         }
