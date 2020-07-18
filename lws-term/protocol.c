@@ -1550,7 +1550,10 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 }
 
 #if REMOTE_SSH
-/* Adopt 1 or 2 file descriptors used to copy to/from an ssh process.
+/** Adopt 1 or 2 file descriptors used to copy to/from an ssh process.
+ * This is logically a single bi-directional byte stream,
+ * but may be a single socket (WebSockets or Unix domain),
+ * or a pair of file descriptors (corresponding to stdin/stdout).
  */
 void
 make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode proxyMode)

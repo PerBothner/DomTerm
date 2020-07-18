@@ -77,11 +77,13 @@ callback_proxy_out(struct lws *wsi, enum lws_callback_reasons reason,
                    void *user, void *in, size_t len);
 #endif
 
+/** The kind of connection (of a struct tty_client). */
 enum proxy_mode {
-    no_proxy = 0,
-    proxy_command_local = 1, // proxying, between local shell and ssh
-    proxy_display_local = 2, // proxying, between local display and ssh
-    proxy_remote = 3 // proxying, we're the remote (pty) end
+    no_proxy = 0, //< No proxying - this is a WebSockets connection.
+    proxy_command_local = 1, ///< proxying, between local shell and ssh
+    proxy_display_local = 2, ///< proxying, between local display and ssh
+    proxy_remote = 3 ///< Proxying, we're the remote end.
+                     ///< Copy to/from ssh client and application (pty). */
 };
 
 enum option_name {
@@ -93,7 +95,10 @@ enum option_name {
 #undef OPTION_F
 };
 
-/** Data specific to a pty process. */
+/**
+ * Data specific to a pty process.
+ * This is the user structure for the libwebsockets "pty" protocol.
+ */
 struct pty_client {
     struct pty_client *next_pty_client;
     int pid;
@@ -146,8 +151,12 @@ struct pty_client {
 #endif
 };
 
-/** Data specific to a (browser) client connection. */
-struct tty_client { // should be renamed to ws_client ?
+/**
+ * Data specific to a WebSocket (browser) client connection or a proxy stream.
+ * The user structure for the libwebsockets "domterm" and "proxy" protocols.
+ * The backback handler moves data to/from a paired pty_client pclient.
+ */
+struct tty_client {
     struct tty_client *next_ws_client;
     struct pty_client *pclient;
 
@@ -161,10 +170,12 @@ struct tty_client { // should be renamed to ws_client ?
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
     bool window_main; // main or only connection for window (not a pane)
-    enum proxy_mode proxyMode; // no_proxy or proxy_local
+    enum proxy_mode proxyMode;
+
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser
     char requesting_contents;
+
     char *version_info; // received from client
     // both sent_count and confirmed_count are modulo MASK28.
     long sent_count; // # bytes sent to (any) tty_client
