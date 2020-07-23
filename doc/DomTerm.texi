@@ -1521,6 +1521,57 @@ to @code{domterm}.
 @item @code{@b{command.ssh} =} @var{ssh-command}
 The command to use instead of @code{ssh} to connect to a remote
 server.
+
+@item @code{@b{predicted-input-timeout} =} @var{timeout}
+When the user types a ``simple'' keyboard action (a printable character,
+left/right arrow key, backspace, or delete) the keystroke will be sent
+from DomTerm to the user application which will then update the
+display (``echo'') in the ``standard'' way.  However, there is a delay
+caused by the round trip from browser to application and back which may
+be noticable, especially if browser and application are separated by a network.
+To hide this delay, DomTerm will guess that the keystroke will
+have the ``standard'' effect, and tentatively update the display
+before it gets the confirming echo.
+DomTerm will undo the predicted update unless it received a confirming
+echo within @var{timeout} seconds.  The default timeout is 0.4 seconds.
+@end table
+
+@subsubheading Debugging and logging
+@table @asis
+@item @code{@b{debug.input.extra-delay} = } @var{delay}
+Delay an extra @var{delay} seconds before sending keyboard
+and other events from client (browser) to server (application).
+Especially useful for testing @code{predicted-input-timeout},
+which should be higher than @code{debug.input.extra-delay}.
+@end table
+
+@subsubheading Miscellaneous settings
+
+@table @asis
+@item @code{@b{history.storage-key} =} @var{string}
+A string (default @code{"DomTerm.history"} used as an identifier
+for the JavaScripr storage mechanism to preserve line-editing history.
+
+@item @code{@b{history.storage-max} =} @var{number}
+Maximum number of entries (default 200)
+of line-editing history to preserve,
+
+@item @code{@b{password-hide-char} =} @var{string}
+Character used to hide characters
+in @ref{password-fields,password fields}.
+The default is @code{"\u25CF"} ``black circle''.
+To change it to ``bullet'' you can do:
+@example
+domterm settings password-hide-char="\u2022"
+@end example
+@item @code{@b{password-show-char-timeout} =} @var{number}
+Number of seconds (default 0.8) to show the actual password character
+before it is replaced by the @code{password-hide-char}.
+
+@item @code{@b{terminal.minimum-width} =} @var{width}
+Mininum logical width (default 5, in columns/characters) of a terminal:
+If the available width is less, use this width for line-wrapping etc.
+(This avoids certain pathological behavior.)
 @end table
 
 @node Applications
@@ -4479,18 +4530,11 @@ This mode is useful when the input is a pipe or some other non-tty stream.
 Requent to send the state of the window as a @code{WINDOW-CONTENTS} response.
 
 @item @code{"\e]88;"} @var{object} @code{"\a"}
-Change various properties of the internal DomTerm object,
-based on properties of @var{object}.
-For example to change the character used hide characters
-in @ref{password-fields,password fields} to ``bullet'' you can do:
-@example
-echo -en '\e]88;@{"passwordHideChar": "\\u2022"@}\a'
-@end example
-Allowed properties include:
-@code{columnsMinimum},
-@code{passwordHideChar}, @code{passwordShowCharTimeout},
-@code{deferredForDeletionTimeout},
-@code{historyStorageKey}, @code{historyStorageMax}.
+Set or update local settings to @var{object},
+which is a map from keys to values, in JSON object format.
+Existing local settings not in @var{object} are not changed.
+If a value is @code{null}, the corresponding setting is removed
+from the local settings, so the global settings (or default) will apply.
 
 @item @code{"\e[89;"} @var{settings} @code{"\a"}
 

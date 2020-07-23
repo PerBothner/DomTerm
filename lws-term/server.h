@@ -87,8 +87,8 @@ enum proxy_mode {
 };
 
 enum option_name {
-#define OPTION_S(NAME, STR) NAME##_opt,
-#define OPTION_F(NAME, STR) NAME##_opt,
+#define OPTION_S(NAME, STR, TYPE) NAME##_opt,
+#define OPTION_F(NAME, STR, TYPE) NAME##_opt,
 #include "option-names.h"
     NO_opt
 #undef OPTION_S
@@ -352,6 +352,7 @@ extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);
 extern int count_args(char**);
 extern char** parse_args(const char*, bool);
+extern char* parse_string(const char*, bool);
 extern char * maybe_quote_arg(char *in);
 extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);

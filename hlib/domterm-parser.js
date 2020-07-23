@@ -1669,15 +1669,8 @@ class DTParser {
             break;
         case 88:
             var obj = JSON.parse(text);
-            for (let i = Terminal._settableProperties.length; --i >= 0; ) {
-                const d = Terminal._settableProperties[i];
-                const name = d[0];
-                const val = obj[name];
-                if (val && typeof val == d[1])
-                    term[name] = val;
-            }
             for (const prop in obj) {
-                if (obj[prop] == "")
+                if (obj[prop] == null)
                     delete term.sstate.termOptions[prop];
                 else
                     term.sstate.termOptions[prop] = obj[prop];

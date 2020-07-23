@@ -322,9 +322,11 @@ cmd('insert-char',
         if (count >= 0)
             str = str.repeat(count);
         dt.editorInsertString(str);
+        let pwtimeout;
         if (dt._inputLine.classList.contains("noecho")
             && ! dt.sstate.hiddenText
-            && dt.passwordShowCharTimeout) {
+            && (pwtimeout
+                = dt.getOption("password-show-char-timeout", 0.8))) {
             // Temporarily display inserted char(s), with dots for other chars.
             // After timeout all chars shown as dots.
             let r = new Range();
@@ -334,13 +336,14 @@ cmd('insert-char',
             let wbefore = DomTerm._countCodePoints(r.toString());
             let ctext = dt._inputLine.textContent;
             let wstr = DomTerm._countCodePoints(str);
-            let before = dt.passwordHideChar.repeat(wbefore-wstr);
-            let after = dt.passwordHideChar.repeat(wlength-wbefore);
+            let pwchar = dt.passwordHideChar();
+            let before = pwchar.repeat(wbefore-wstr);
+            let after = pwchar.repeat(wlength-wbefore);
             DomTerm._replaceTextContents(dt._inputLine, before + str + after);
             dt.sstate.hiddenText = ctext;
             setTimeout(function() { dt._suppressHidePassword = false;
                                     dt._hidePassword(); },
-                       dt.passwordShowCharTimeout);
+                       pwtimeout * 1000);
             dt._suppressHidePassword = true;
         }
         return true;

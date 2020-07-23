@@ -15,28 +15,62 @@ struct json_object *settings_json_object = NULL;
 const char *settings_as_json; // JSON of settings_json_object
 int64_t settings_counter = 0;
 
-struct optinfo { enum option_name name; const char *str; };
+struct optinfo { enum option_name name; const char *str; int flags; };
 
+#define OPTION_MISC_TYPE 0
+#define OPTION_NUMBER_TYPE 1
+#define OPTION_STRING_TYPE 2
 static struct optinfo options[] = {
 #undef OPTION_S
 #undef OPTION_F
-#define OPTION_S(NAME, STR) { NAME##_opt, STR },
-#define OPTION_F(NAME, STR) { NAME##_opt, STR },
+#define OPTION_S(NAME, STR, TYPE) { NAME##_opt, STR, TYPE },
+#define OPTION_F(NAME, STR, TYPE) { NAME##_opt, STR, TYPE },
 #include "option-names.h"
 #undef OPTION_S
 #undef OPTION_F
-    { NO_opt, NULL },
+{ NO_opt, NULL, -1 },
 };
 
-enum option_name
-lookup_option(const char *name)
+struct optinfo*
+lookup_optinfo(const char *name)
 {
     struct optinfo *p = options;
     for (; p->str; p++) {
         if (strcmp(name, p->str) == 0)
-            return p->name;
+            return p;
     }
-    return NO_opt;
+    return NULL;
+}
+
+enum option_name
+lookup_option(const char *name)
+{
+    struct optinfo *p = lookup_optinfo(name);
+    return p ? p->name : NO_opt;
+}
+
+void
+set_setting_ex(struct json_object **settings,
+               const char *key, const char *value,
+               struct optinfo *opt, struct options *options)
+{
+    if (*settings == NULL)
+        *settings = json_object_new_object();
+    struct json_object *jval = NULL;
+    if (opt && (opt->flags & OPTION_NUMBER_TYPE) != 0) {
+        double d; int len;
+        sscanf(value, " %lg %n", &d, &len);
+        if (len != strlen(value))
+            printf_error(options, "value for option '%s' is not a number", key);
+        else
+            jval = json_object_new_double(d);
+    } else if (opt && (opt->flags & OPTION_STRING_TYPE) != 0) {
+        char *str = parse_string(value, false);
+        jval = json_object_new_string(str);
+    } else
+        jval = json_object_new_string(value);
+    if (jval)
+        json_object_object_add(*settings, key, jval);
 }
 
 void
@@ -69,10 +103,17 @@ check_option_arg(char *arg, struct options *opts)
     char *key = xmalloc(klen+1);
     memcpy(key, arg, klen);
     key[klen] = '\0';
-    enum option_name opt = lookup_option(key);
-    if (opt == NO_opt)
+    struct optinfo *opt = lookup_optinfo(key);
+    if (opt == NULL)
         printf_error(opts, "unknown option '%s'", key);
-    set_setting(&opts->cmd_settings, key, eq+1);
+    else if ((opt->flags & OPTION_NUMBER_TYPE) != 0) {
+        char *val = eq+1;
+        double d; int len;
+        sscanf(val, " %lg %n", &d, &len);
+        if (len != strlen(val))
+            printf_error(opts, "value for option '%s' is not a number", key);
+    }
+    set_setting_ex(&opts->cmd_settings, key, eq+1, opt, opts);
     free(key);
     return true;
 }
@@ -132,7 +173,8 @@ read_settings_file(struct options *options, bool re_reading)
                            json_object_new_int(++settings_counter));
 
     off_t slen = stbuf.st_size;
-    char *sbuf = mmap(NULL, slen, PROT_READ|PROT_WRITE, MAP_PRIVATE,
+    // +1 in case we need to write '\0' at end-of-file
+    char *sbuf = mmap(NULL, slen+1, PROT_READ|PROT_WRITE, MAP_PRIVATE,
                       settings_fd, 0);
     char *send = sbuf + slen;
     char *sptr = sbuf;
@@ -186,7 +228,8 @@ read_settings_file(struct options *options, bool re_reading)
             ch = *sptr;
         }
         *key_end = '\0';
-        if (lookup_option(key_start) == NO_opt) {
+        struct optinfo* opt = lookup_optinfo(key_start);
+        if (opt == NULL) {
         fprintf(stderr, "error in %s at byte offset %ld - unknown option '%s'\n",
             settings_fname, (long) (key_start - sbuf), key_start);
         }
@@ -220,10 +263,9 @@ read_settings_file(struct options *options, bool re_reading)
           }
           value_end = pdst;
         }
-        size_t value_length = value_end-value_start;
+        *value_end = '\0';
 
-        json_object_object_add(jobj, key_start,
-                json_object_new_string_len(value_start, value_length));
+        set_setting_ex(&jobj, key_start, value_start, opt, options);
     }
  err:
     fprintf(stderr, "error in %s at byte offset %ld%s\n",
@@ -260,17 +302,17 @@ set_settings(struct options *options, struct json_object *msettings)
 {
 #undef OPTION_S
 #undef OPTION_F
-#define OPTION_S(FIELD, STR) \
+#define OPTION_S(FIELD, STR, TYPE)    \
     if (options->FIELD) {        \
         free(options->FIELD);    \
         options->FIELD = NULL;   \
     }
-#define OPTION_F(NAME, STR) /* nothing */
+#define OPTION_F(NAME, STR, TYPE) /* nothing */
 #include "option-names.h"
 
     json_object_object_foreach(msettings, key, val) {
 #undef OPTION_S
-#define OPTION_S(FIELD,NAME)                                  \
+#define OPTION_S(FIELD,NAME, TYPE)                           \
         if (strcmp(key, NAME) == 0) {                   \
             const char *vstr = json_object_get_string(val); \
             int vlen = json_object_get_string_len(val); \

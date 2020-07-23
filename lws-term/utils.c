@@ -125,22 +125,40 @@ int count_args(char **argv)
     return i;
 }
 
-/* Parse an argument list (a list of possible-quoted "words").
- * This follows extended shell syntax.
- * If check_shell_specials is true and
- * args contains any of "&|<>$" *not* quoted, return NULL.
- * The result is a single buffer containing both the
- * pointers and all the strings.
- * To free the buffer, free the result of this function;
- * do not free any individual arguments.
- */
-char**
-parse_args(const char *args, bool check_shell_specials)
+static int hex_digit(int ch)
+{
+  if (ch >= '0' && ch <= '9')
+    return ch - '0';
+  if (ch >= 'a' && ch <= 'z')
+    return ch - 'a' + 10;
+  if (ch >= 'A' && ch <= 'Z')
+    return ch - 'A' + 10;
+  return -1;
+}
+
+static int count_hex_digits(const char *p, int max, int *valp)
+{
+  int i = 0;
+  int val = 0;
+  for (; i < max; i++) {
+    int d = hex_digit(p[i]);
+    if (d < 0)
+      break;
+    val = 16 * val + d;
+  }
+  if (valp)
+    *valp = val;
+  return i;
+}
+
+void*
+parse_arg_string(const char *args, bool check_shell_specials, int dim)
 {
     if (args == NULL)
         return NULL;
     int lengths = 0; // used for sum of strlen for all arguments
     int argc = 0;
+    char *str = NULL;
     char **argv = NULL;
     char context = -1; // '\'', '"', 0 (in-word), or -1 (between words)
     for (int pass = 0; pass < 2; pass++) {
@@ -148,17 +166,22 @@ parse_args(const char *args, bool check_shell_specials)
         const char *p = args;
         char *q = NULL;
         if (pass == 1) {
-            argv = xmalloc((argc+1) * sizeof(char*) + lengths + argc);
-            q = (char*) &argv[argc+1];
+            if (dim == 0) { // create single string result
+                str = xmalloc(lengths + argc); // ???
+                q = (char*) str;
+            } else { // create array of strings
+                argv = xmalloc((argc+1) * sizeof(char*) + lengths + argc);
+                q = (char*) &argv[argc+1];
+            }
             context = -1;
             argc = 0;
         }
         for (;;) {
-            char ch = *p++;
+            int ch = *p++;
             if (ch == 0
                 || (context <= 0 && (ch == ' ' || ch == '\t'))) {
-              if (pass != 0)
-                  *q++ = '\0';
+                if (pass != 0) // FIXME skip if previous was space
+                  *q++ = dim == 0 && ch != 0 ? ' ' : '\0';
               context = -1;
               if (ch == 0)
                 break;
@@ -166,7 +189,7 @@ parse_args(const char *args, bool check_shell_specials)
             }
             if (context < 0) {
                 context = 0;
-                if (pass == 1)
+                if (pass == 1 && dim != 0)
                   argv[argc] = q;
                 argc++;
             }
@@ -179,24 +202,90 @@ parse_args(const char *args, bool check_shell_specials)
             } else if (ch == '\\' && *p) {
                 ch = *p++;
                 switch (ch) {
+                case 'a': ch = '\007';  break;
+                case 'b': ch = '\b';  break;
+                case 'e': ch = '\033';  break;
+                case 'f': ch = '\f';  break;
                 case 'n': ch = '\n';  break;
-                  // etc etc for other escapes FIXME
-                default: ;
+                case 'r': ch = '\r';  break;
+                case 't': ch = '\t';  break;
+                case 'v': ch = '\v';  break;
+                case '"':
+                case '\\':
+                case '/': // JSON
+                    // ch = ch;
+                    break;
+		case 'u':
+                    if (*p == '{') {
+                        int hval = 0;
+                        int nhex = count_hex_digits(p+1, 6, &hval);
+                        if (nhex == 0 || p[nhex+1] != '}')
+                            ; // ERROR
+                        ch = hval;
+                        p += nhex + 2;
+                    } else {
+                        int hval = 0;
+                        int nhex = count_hex_digits(p, 4, &hval);
+                        if (nhex != 4)
+                            ; // ERROR
+                        ch = hval;
+                        p += nhex;
+                    }
+                    break;
+                    // MAYBE \0 OCT OCT OCT
+                    // MAYBE \x HEX HEX
+                    // MAYBE \U HEX HEX HEX HEX HEX HEX HEX HEX
+                    // MAYBE \ SP* NEWLINE - ignore
+                default:
+                    ;
                 }
             } else if (check_shell_specials && pass == 0
                        && (ch == '$' || ch == '&' || ch == '|'
                            || ch == '<' || ch == '>')) {
                 return NULL;
             }
+            int nbytes = ch <= 0x7F ? 1 : ch <= 0x7FF ? 2
+                : ch <= 0xFFFF ? 3 : 4;
             if (pass == 0) {
-                lengths++;
+                lengths += nbytes;
             } else {
-                *q++ = ch;
+                if (nbytes <= 1)
+                    *q++ = ch;
+                else {
+                    *q++ = (0xF0 << (4 - nbytes)) | (ch >> 6*(nbytes-1));
+                    for (int i = 2; i <= nbytes; i++)
+                        *q++ = 0x80 | ((ch >> 6*(nbytes-i)) & 0x3F);
+                }
             }
         }
     }
-    argv[argc] = NULL;
-    return argv;
+    if (dim == 0)
+        return str;
+    else {
+        argv[argc] = NULL;
+        return argv;
+    }
+}
+
+/* Parse an argument list (a list of possible-quoted "words").
+ * This follows extended shell syntax.
+ * If check_shell_specials is true and
+ * args contains any of "&|<>$" *not* quoted, return NULL.
+ * The result is a single buffer containing both the
+ * pointers and all the strings.
+ * To free the buffer, free the result of this function;
+ * do not free any individual arguments.
+ */
+char**
+parse_args(const char *args, bool check_shell_specials)
+{
+    return (char**) parse_arg_string(args, check_shell_specials, 1);
+}
+
+char*
+parse_string(const char *args, bool check_shell_specials)
+{
+    return (char*) parse_arg_string(args, check_shell_specials, 0);
 }
 
 /** If 'in' has "special" characters, return 'in' surrounded by single-quotes.

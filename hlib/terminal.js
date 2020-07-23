@@ -197,11 +197,6 @@ class Terminal {
     this._clientPtyExtProc = false;
     this._pendingEcho = "";
 
-    for (let i = Terminal._settableProperties.length; --i >= 0; ) {
-        let d = Terminal._settableProperties[i];
-        this[d[0]] = d[2];
-    }
-
     this._displayInfoWidget = null;
     this._displayInfoShowing = false;
     this._displaySizePendingTimeouts = 0;
@@ -711,19 +706,6 @@ Terminal.BELL_TIMEOUT = 400;
 Terminal.BELL_TEXT = "BELL!";
 /** Length of time to display BELL_TEXT. */
 Terminal.INFO_TIMEOUT = 800;
-
-/** Various named properties that can be set using escape sequences.
- * Each entry is the name, the type value, and initial/default value.
- */
-Terminal._settableProperties = [
-    ["columnsMinimum", "number", 5],
-    ["deferredForDeletionTimeout", "number", 400],
-    ["historyStorageKey", "string", "DomTerm.history"],
-    ["historyStorageMax", "number", 200],
-    // "\u25CF" Black circle (used by Firefox/IE); "\u2022" Bullet (Chrome)
-    ["passwordHideChar", "string", "\u25CF"],
-    ["passwordShowCharTimeout", "number", 800]
-];
 
 window.addEventListener("unload",
                         function(event) {
@@ -1938,12 +1920,17 @@ Terminal.prototype._showPassword = function() {
     }
 }
 
+Terminal.prototype.passwordHideChar = function() {
+    // "\u25CF" Black circle (used by Firefox/IE); "\u2022" Bullet (Chrome)
+    return this.getOption("password-hide-char", "\u25CF");
+}
+
 Terminal.prototype._hidePassword = function() {
     let input = this._inputLine;
     if (input && input.classList.contains("noecho")) {
         let ctext = this.sstate.hiddenText || input.textContent;
         let clen =  DomTerm._countCodePoints(ctext);
-        DomTerm._replaceTextContents(input, this.passwordHideChar.repeat(clen));
+        DomTerm._replaceTextContents(input, this.passwordHideChar().repeat(clen));
         this.sstate.hiddenText = ctext;
     }
 }
@@ -3223,8 +3210,9 @@ Terminal.prototype.resizeHandler = function() {
     var oldWidth = dt.availWidth;
     dt.measureWindow();
     if (DomTerm.useXtermJs) return;
-    if (this.numColumns < this.columnsMinimum)
-        this.forceWidthInColumns(this.columnsMinimum);
+    let minColumns = dt.getOption("terminal.minimum-width", 5);
+    if (this.numColumns < minColumns)
+        this.forceWidthInColumns(minColumns);
     dt._displaySizeInfoWithTimeout();
 
     var home_offset = DomTerm._homeLineOffset(dt);
@@ -3345,7 +3333,7 @@ Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
 Terminal.prototype.initializeTerminal = function(topNode) {
     try {
         if (window.localStorage) {
-            var v = localStorage[this.historyStorageKey];
+            var v = localStorage[this.historyStorageKey()];
             if (v)
                 this.history = JSON.parse(v);
         }
@@ -4529,14 +4517,21 @@ Terminal.prototype.historyMove = function(delta) {
     this._scrollIfNeeded();
 };
 
+Terminal.prototype.historyStorageKey = function() {
+    return this.getOption("history.storage-key", "DomTerm.history");
+}
+
 Terminal.prototype.historySave = function() {
     var h = this.history;
     try {
         if (h.length > 0 && window.localStorage) {
-            var first = h.length - this.historyStorageMax;
-            if (first > 0)
-                h = h.slice(first);
-            localStorage[this.historyStorageKey] = JSON.stringify(h);
+            let hmax = this.getOption("history.storage-max", 200);
+            if (typeof hmax == "number") {
+                let first = h.length = hmax;
+                if (first > 0)
+                    h = h.slice(first);
+            }
+            localStorage[this.historyStorageKey()] = JSON.stringify(h);
         }
     } catch (e) { }  
 };
@@ -6127,9 +6122,9 @@ Terminal.prototype._requestDeletePendingEcho = function() {
                            dt._restoreInputLine();
                        }
                      };
-    let timeout = dt.deferredForDeletionTimeout;
+    let timeout = dt.getOption("predicted-input-timeout", 0.4);
     if (timeout)
-        this._deletePendingEchoTimer = setTimeout(clear, timeout);
+        this._deletePendingEchoTimer = setTimeout(clear, timeout*1000);
     else
         clear();
 }
@@ -8714,13 +8709,9 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
     wt.processInputBytes = function(bytes) {
-        let delay = DomTerm._extraDelayForTesting;
-        /* TEST LATENCY
-        if (delay === undefined)
-            DomTerm._extraDelayForTesting = delay = 600;
-        */
+        let delay = wt.getOption("debug.input.extra-delay", 0);
         if (delay)
-            setTimeout(function() { wsocket.send(bytes); }, delay);
+            setTimeout(function() { wsocket.send(bytes); }, delay*1000);
         else
             wsocket.send(bytes);
     };
