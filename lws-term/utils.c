@@ -167,7 +167,7 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
         char *q = NULL;
         if (pass == 1) {
             if (dim == 0) { // create single string result
-                str = xmalloc(lengths + argc); // ???
+                str = xmalloc(lengths + (argc == 0 ? 1 :argc));
                 q = (char*) str;
             } else { // create array of strings
                 argv = xmalloc((argc+1) * sizeof(char*) + lengths + argc);
@@ -178,19 +178,25 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
         }
         for (;;) {
             int ch = *p++;
-            if (ch == 0
-                || (context <= 0 && (ch == ' ' || ch == '\t'))) {
-                if (pass != 0) // FIXME skip if previous was space
-                  *q++ = dim == 0 && ch != 0 ? ' ' : '\0';
-              context = -1;
-              if (ch == 0)
+            if (ch == 0) {
+                if (pass == 1 && (argc > 0 || dim == 0))
+                    *q = '\0';
                 break;
-              continue;
+            }
+            if (context <= 0 && (ch == ' ' || ch == '\t')) {
+                context = -1;
+                continue;
             }
             if (context < 0) {
                 context = 0;
-                if (pass == 1 && dim != 0)
-                  argv[argc] = q;
+                if (pass == 1) {
+                    if (dim != 0) {
+                        if (argc > 0)
+                            *q++ = '\0';
+                        argv[argc] = q;
+                    } else if (argc > 0)
+                        *q++ = ' ';
+                }
                 argc++;
             }
             if ((ch == '\'' || ch == '"') && context <= 0) {
@@ -331,7 +337,7 @@ maybe_quote_arg(char *in)
             }
             if (apos_count + bad_count == 0)
                 return in;
-            if (pass == 1) {
+            if (pass == 0) {
                 size_t in_size = (char*) p - in;
                 out = xmalloc(in_size + 5 * apos_count + 3);
                 q = out;
@@ -339,11 +345,12 @@ maybe_quote_arg(char *in)
             } else {
                 *q++ = '\'';
                 *q = 0;
-                free(in);
-                return out;
+                break;
             }
         }
     }
+    free(in);
+    return out;
 }
 
 /* Returns either NULL or a freshly malloc'd urlencoding of 'in'. */
