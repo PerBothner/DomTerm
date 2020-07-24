@@ -30,7 +30,7 @@ h1, h2, h3, h4 {
     color: #000;
     clear: right
 }
-h1, h2, h3 {
+h1, h2, h3, h4.subheading {
   color: #114;
   font-weight: bold;
   background-color: #e8f8f8;

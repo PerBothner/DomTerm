@@ -395,6 +395,7 @@ doc/DomTerm.xml: doc/DomTerm.texi
 
 $(HTML_DIR)/index.html: doc/DomTerm.xml Makefile
 	$(MKDIR_P) $(HTML_DIR)/images $(HTML_DIR)/tools
+if WITH_DOCBOOK
 	$(XSLT) --path $(DOCBOOK_XSL_DIR)/html \
 	  --output $(HTML_DIR)/  \
 	  --stringparam root.filename toc \
@@ -416,6 +417,10 @@ $(HTML_DIR)/index.html: doc/DomTerm.xml Makefile
 	  $(srcdir)/doc/style/domterm.xsl doc/DomTerm.xml
 	$(SED) -s 's|<a name=".*"></a>Why|Why|' <$(HTML_DIR)/index.html >$(HTML_DIR)/tmp-index.html
 	mv $(HTML_DIR)/tmp-index.html $(HTML_DIR)/index.html
+else
+	$(MKDIR_P) $(HTML_DIR)/images $(HTML_DIR)/tools
+	$(MAKEINFO) -I=doc --html --split=section --no-number-sections --css-ref="style/domterm-1col.css" doc/DomTerm.texi -o web/
+endif
 	cd $(srcdir) && cp $(DOC_IMAGES) $(abs_builddir)/web/images
 	(cd $(srcdir) && tar cf - $(DOC_TOOLS))|(cd web && tar xf -)
 
