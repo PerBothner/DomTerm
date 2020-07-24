@@ -2714,6 +2714,7 @@ for how they may support some features differently.
 * Tips::  Miscellaneous tips
 * Detecting domterm terminal::
 * Shell prompts::  Shell prompts and tricks
+* drop-down:: Use as a drop-down terminal
 * Python tips::
 * Names and titles::
 @end menu
@@ -3763,8 +3764,6 @@ It appears to work, and to be slightly zippier.
 
 In @code{qtdomterm} consider using @code{QDockWidget} so panes
 can be moved between windows.
-
-Implement ``drop-down'' mode.
 
 @subsubheading Using alternate window managers
 
