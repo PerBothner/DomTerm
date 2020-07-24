@@ -11,7 +11,7 @@ void set_w_t(const char *seq, const char *req, void *arg)
     char *tmp = new char[jlen+1];
     webview::json_unescape(req+1, rlen-2, tmp);
     w.set_title(tmp);
-    delete tmp;
+    delete[] tmp;
 }
 
 #ifdef WIN32

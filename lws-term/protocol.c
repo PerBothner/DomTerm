@@ -1137,7 +1137,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
         pclient->recent_tclient = client;
     // FIXME handle PENDING
     int start = 0;
-    lwsl_notice("handle_input len:%d conn#%d pmode:%d pty:%d\n", clen, client->connection_number, proxyMode, pclient==NULL? -99 : pclient->pty);
+    lwsl_notice("handle_input len:%zu conn#%d pmode:%d pty:%d\n", clen, client->connection_number, proxyMode, pclient==NULL? -99 : pclient->pty);
     for (int i = 0; ; i++) {
         if (i+1 == clen && msg[i] >= 128)
             break;
@@ -1200,7 +1200,7 @@ static void
 handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode proxyMode)
 {
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
-    lwsl_notice("handle_output conn#%d initialized:%d pmode:%d len0:%d->%d\n", client->connection_number, client->initialized, proxyMode, client->ob.len, bufp->len);
+    lwsl_notice("handle_output conn#%d initialized:%d pmode:%d len0:%zu->%zu\n", client->connection_number, client->initialized, proxyMode, client->ob.len, bufp->len);
     bool nonProxy = proxyMode != proxy_command_local && proxyMode != proxy_display_local;
     if (client->uploadSettingsNeeded) { // proxyMode != proxy_local ???
         client->uploadSettingsNeeded = false;
@@ -1257,7 +1257,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         client->sent_count = rcount;
         client->confirmed_count = rcount;
         sbuf_printf(bufp,
-                    OUT_OF_BAND_START_STRING "\033[96;%du"
+                    OUT_OF_BAND_START_STRING "\033[96;%ld"
                     URGENT_END_STRING,
                     rcount);
     }
@@ -1366,7 +1366,8 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         n = read(tclient->proxy_fd,
                          tclient->inb.buffer + tclient->inb.len,
                          tclient->inb.size - tclient->inb.len);
-        lwsl_notice("proxy RAW_RX_FILE n:%d avail:%d-%d\n", n, tclient->inb.size, tclient->inb.len);
+        lwsl_notice("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
+                    (long) n, tclient->inb.size, tclient->inb.len);
         if (n > 0)
             tclient->inb.len += n;
         return handle_input(wsi, tclient, tclient->proxyMode);
@@ -1380,7 +1381,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         }
         if (tclient->proxyMode == proxy_command_local) {
             unsigned char *fd = memchr(tclient->ob.buffer, 0xFD, tclient->ob.len);
-            lwsl_notice("check for FD: %p browser:%s text:%.*s\n", fd, tclient->pending_browser_command, tclient->ob.len, tclient->ob.buffer);
+            lwsl_notice("check for FD: %p browser:%s text:%.*s\n", fd, tclient->pending_browser_command, (int) tclient->ob.len, tclient->ob.buffer);
             if (fd && tclient->pclient) {
                 tclient->ob.len = 0; // FIXME - simplified
                 struct options opts;
@@ -1409,15 +1410,16 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         sbuf_init(&buf);
         handle_output(tclient, &buf, tclient->proxyMode);
         if (tclient->pclient == NULL) {
-            lwsl_notice("proxy WRITABLE/close blen:%d\n", buf.len);
+            lwsl_notice("proxy WRITABLE/close blen:%zu\n", buf.len);
         }
         // data in tclient->ob.
         n = write(tclient->proxy_fd, buf.buffer, buf.len);
-        lwsl_notice("proxy RAW_WRITEABLE len:%d written:%d\n", buf.len, n );
+        lwsl_notice("proxy RAW_WRITEABLE len:%zu written:%zu\n", buf.len, n );
         sbuf_free(&buf);
         return tclient->pclient == NULL ? -1 : 0; // FIXME
+    default:
+        return 0;
     }
-    return 0;
 }
 #endif
 
@@ -1458,12 +1460,12 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 struct pty_client *pclient = pty_client_list;
                 for (; ; pclient = pclient->next_pty_client) {
                     if (pclient == NULL) {
-                        lwsl_notice("connection to non-existing session %d - error\n", snumber);
+                        lwsl_notice("connection to non-existing session %ld - error\n", snumber);
                         break;
                     }
                     if (pclient->session_number == snumber) {
                         link_command(wsi, client, pclient);
-                        lwsl_info("connection to existing session %d established\n", snumber);
+                        lwsl_info("connection to existing session %ld established\n", snumber);
                         break;
                     }
                 }
@@ -1781,7 +1783,7 @@ request_upload_settings()
 }
 
 #if REMOTE_SSH
-int
+void
 handle_remote(int argc, char** argv, char* at,
               const char*cwd, char **env,
               struct options *opts)
@@ -1809,8 +1811,8 @@ handle_remote(int argc, char** argv, char* at,
     }
     char *ssh = ssh_args == 0 ? NULL : find_in_path(ssh_args[0]);
     if (ssh == NULL) {
-        printf_error(opts, "domterm: ssh comand not found - required for remote");
-        return -1;
+        printf_error(opts, "domterm: ssh command not found - required for remote");
+        return;
     }
     char** domterm_args;
     char* _domterm_args[2];
@@ -1913,7 +1915,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
     struct pty_client *pclient = (struct pty_client *) user;
     switch (reason) {
         case LWS_CALLBACK_RAW_RX_FILE: {
-            lwsl_notice("callback_pty LWS_CALLBACK_RAW_RX_FILE wsi:%p len:%d\n", wsi, len);
+            lwsl_notice("callback_pty LWS_CALLBACK_RAW_RX_FILE wsi:%p len:%zu\n",
+                        wsi, len);
             struct lws *wsclient_wsi;
             long min_unconfirmed = LONG_MAX;
             int avail = INT_MAX;
@@ -1969,8 +1972,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                             // it's safe to access data_start[-1].
                             char save_byte = data_start[-1];
                             n = read(pclient->pty, data_start-1, avail+1);
-                            lwsl_notice("RAW_RX pty %d session %d read %d tclient#%d a\n",
-                                        pclient->pty, pclient->session_number, n, tclient->connection_number);
+                            lwsl_notice("RAW_RX pty %d session %d read %ld tclient#%d a\n",
+                                        pclient->pty, pclient->session_number, (long) n, tclient->connection_number);
                             char pcmd = data_start[-1];
                             data_start[-1] = save_byte;
 #if TIOCPKT_IOCTL
@@ -1997,8 +2000,9 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
 #endif
                         } else {
                             n = read(pclient->pty, data_start, avail);
-                            lwsl_notice("RAW_RX pty %d session %d read %d tclient#%d b\n",
-                                        pclient->pty, pclient->session_number, n, tclient->connection_number);
+                            lwsl_notice("RAW_RX pty %d session %d read %ld tclient#%d b\n",
+                                        pclient->pty, pclient->session_number,
+                                        (long) n, tclient->connection_number);
                             read_length = n;
                         }
                         data_length += read_length;
@@ -2035,7 +2039,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         break;
         case LWS_CALLBACK_RAW_CLOSE_FILE: {
-            lwsl_notice("callback_pty LWS_CALLBACK_RAW_CLOSE_FILE\n", reason);
+            lwsl_notice("callback_pty LWS_CALLBACK_RAW_CLOSE_FILE\n");
             pclient->eof_seen = 1;
             struct lws *wsclient_wsi;
             FOREACH_WSCLIENT(wsclient_wsi, pclient) {
