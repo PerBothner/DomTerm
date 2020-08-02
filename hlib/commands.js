@@ -134,10 +134,12 @@ cmd('copy-html',
         return DomTerm.valueToClipboard(Terminal._selectionValue(true));
     });
 cmd('copy-text-or-interrupt',
-   function(dt, key) {
-       let cmd = document.getSelection().isCollapsed ? 'client-action'
-           : "copy-text";
-       return (commandMap[cmd])(dt, key);
+    function(dt, key) {
+        if (document.getSelection().isCollapsed)
+            return (commandMap['client-action'])(dt, key);
+        let value = Terminal._selectionValue(false);
+        dt._clearSelection();
+        return DomTerm.valueToClipboard(value);
    });
 cmd('cut-text',
     function(dt, key) {
@@ -250,18 +252,20 @@ cmd('default-action',
         return false; });
 cmd('client-action',
     function(dt, key) {
-    let str = dt.keyNameToChars(key);
-    let input = dt._inputLine;
-    if (str) {
-        dt._updateRemote(input);
-        dt.processInputCharacters(str);
-        input.classList.add("pending");
-        dt._deferredForDeletion = input;
-        input.continueEditing = true;
-        dt.outputBefore = dt._caretNode;
-        dt.outputContainer = dt._caretNode.parentNode;
-        return true;
-    }
+        if (! dt.isLineEditing())
+            return false;
+        let str = dt.keyNameToChars(key);
+        let input = dt._inputLine;
+        if (str) {
+            dt._updateRemote(input);
+            dt.processInputCharacters(str);
+            input.classList.add("pending");
+            dt._deferredForDeletion = input;
+            input.continueEditing = true;
+            dt.outputBefore = dt._caretNode;
+            dt.outputContainer = dt._caretNode.parentNode;
+            return true;
+        }
         return false; });
 cmd('control-action',
    function(dt, key) {
