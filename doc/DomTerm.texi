@@ -99,10 +99,10 @@ Double-width characters now really are two columns wide.
 * Frontends:: Frontends including browsers
 * Remote serving::
 * Sessions and Windows::
+* Keyboard shortcuts::
 * Input line editing::
 * Paging:: Paging and Pausing
 * Styling::
-* Keyboard shortcuts::
 * Tips and solutions::
 * Java tools::
 * Uses:: Projects using DomTerm
@@ -1566,11 +1566,12 @@ For a non-@code{file:} URL, only the @code{open.link.application} list is tried.
 
 For details, see @ref{link-handlers}.
 
+@item @code{@b{keymap.master} =} @var{keymap-overrides}
+Add or replace keybindings that are active in all modes.
+See @ref{Keyboard shortcuts} for defaults and an example.
+
 @item @code{@b{keymap.line-edit} =} @var{keymap-overrides}
 Add or replace keybindings for @ref{Input line editing,input line editing}.
-(Changing other keybindings is planned but not yet implemented.)
-@item @code{@b{keymap.master} =} @var{keymap-overrides}
-Add or replace keybindings that are active in all modes. 
 @end table
 
 @subsubheading Remote connnections
@@ -2094,6 +2095,137 @@ and displaying in the tab-bar and title-bar of windows disdplay the session.
 The default @var{session -name} is @samp{DomTerm:@var{session-number}}.
 @end table
 
+@node Keyboard shortcuts
+@chapter Keyboard shortcuts
+
+This does not list @ref{Input line editing,shortcuts specific to line-editing mode}.
+
+@table @asis
+@c FUTURE @item Ctrl-Shift-P
+@c Enter/exit pager mode
+@c FUTURE @item @mux-prefix
+@c Prefix for Screen or TMux
+@item @kbd{Ctrl-Shift-@key{C}} (@code{copy-text})
+@itemx @kbd{Ctrl-@key{Insert}}
+Copy the selection to the clipboard.
+It is copied as both plain text (@code{text/plain})
+and formatted HTML (@code{text/html}) in case the receiving
+application can paste the latter.
+(@kbd{Ctrl-@key{C}} also works in line-editing mode.)
+@item @kbd{Ctrl-Shift-@key{V}} (@code{paste-text})
+@itemx @kbd{Shift-@key{Insert}}  @emph{(Electron and Qt only)}
+Paste text from the clipboard.
+(@kbd{Ctrl-@key{V}} also works in line-editing mode.)
+@item @kbd{Ctrl-Shift-@key{X}} (@code{cut-text})
+``Cut'': Restricts the selection to the current input area,
+copies that restricted selection to the clipboard,
+and then deletes the restricted selection.
+(In character mode, the deletion is implemented by sending
+the appropriate number of Delete/Backspace characters to the application.)
+@item @kbd{Shift-Left} (@code{backward-char-extend})
+@itemx @kbd{Shift-Right} (@code{forward-char-extend})
+@itemx @kbd{Ctrl-Shift-Left} (@code{backward-word-extend})
+@itemx @kbd{Ctrl-Shift-Right} (@code{forward-word-extend})
+Moves the end-point of the current selection left or right
+one character or word (if @kbd{Ctrl} is pressed).
+If there is no selection, the caret position is treated as
+a zero-size selection.
+
+If the new end-point is within a current input-editing section,
+the cursor is moved to the new end-point.
+(Emulated using the appropriate number of Left/Right key-presses.) 
+@item @kbd{Ctrl-Shift-@key{S}} (@code{save-as-html})
+Save the display to a file.
+@item @kbd{Ctrl-Shift-@key{L}} (@code{cycle-input-mode})
+Cycle between the input modes: automatic, to line, to character, and back.
+The resulting mode is displayed temporarily.
+@end table
+
+The following are implemented by most browsers, rather than DomTerm,
+so it may not work on all browsers.
+@table @asis
+@item @kbd{Ctrl-Shift-@key{Plus}}
+Zoom in (makes text bigger).
+(Does not work in atom-domterm.)
+@item @kbd{Ctrl-Shift-@key{Minus}}
+@itemx @kbd{Ctrl-@key{Minus}}
+Zoom out (makes text smaller).
+(Does not work in atom-domterm.)
+@item @kbd{Ctrl-@key{0}}
+``Un-zoom'' to normal size.
+@item @kbd{@key{F11}} (@code{toggle-fullscreen})
+Toggle full-screen mode.
+@item @kbd{Shift-@key{F11}} (@code{toggle-fullscreen-current-window})
+(Not for Electron or Qt.)
+Toggle full-screen mode for the current sub-window.
+@item @kbd{Ctrl-Shift-@key{I}}
+Toogle Developer Window, useful for debugging or examining
+the state of the Document Object Model.
+@item @kbd{Ctrl-Shift-@key{M}}
+Enter @ref{Paging,Paging mode}.
+@end table
+
+@subsubheading Scrolling
+
+@table @asis
+@item @kbd{Ctrl-Shift-@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Ctrl-Shift-@key{PageDown}} (@code{scroll-page-down})
+Scroll one ``page'' up or down, respectively.
+(Specifically, the viewport height minus a height of one line.)
+@item @kbd{Ctrl-Shift-@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Ctrl-Shift-@key{Down}} (@code{scroll-line-down})
+Scroll one line up or down, respectively.
+@item @kbd{Ctrl-Shift-@key{Home}} (@code{scroll-top})
+Scroll to top.
+@item @kbd{Ctrl-Shift-@key{End}} (@code{scroll-bottom})
+Scroll to bottom.
+@end table
+
+See also the bindings for @ref{Paging} mode.
+@subsubheading Managing subwindows
+
+The prefix key @kbd{@mux-prefix} when followed by some other key
+controls sessions and windows.
+
+@table @asis
+@item @kbd{Ctrl-Shift-@key{T}}
+Create a new terminal in a new tab.
+@item @kbd{Ctrl-Shift-@key{N}}
+Create a new terminal in a new pane (sub-window).
+The new pane is create to the right or below the current pane,
+depending on space.
+@item @kbd{@mux-prefix Ctrl-@key{Left}}
+Create a new terminal pane to the left of the current one.
+@item @kbd{@mux-prefix Ctrl-@key{Right}}
+Create a new terminal pane to the right of the current one.
+@item @kbd{@mux-prefix Ctrl-@key{Up}}
+Create a new terminal pane above the current one.
+@item @kbd{@mux-prefix Ctrl-@key{Down}}
+Create a new terminal pane below the current one.
+@item @kbd{@mux-prefix @key{Left}}
+Select the previous pane or tab.
+@item @kbd{@mux-prefix @key{Right}}
+Select the next pane or tab.
+@item @kbd{@mux-prefix @key{d}}
+Detach from current session and close the (sub-)window.
+@end table
+
+@subheading Changing keybindings
+
+You can override the keymap (map from keystrokes to action).
+The @code{keymap.line-edit} @ref{Settings,setting} is a list (separated by commas or newlines),
+where each item is a quoted keystroke string, followed by a colon,
+followed by an action name. An action name is a string,
+but quotes are optional.
+
+To enable ``standard'' handling of Ctrl-V for Paste and
+Ctrl-C for Copy (while still ignalling interrup when there is no selection) do:
+@example
+keymap.master =
+ | "Ctrl-C": copy-text-or-interrupt
+ | "Ctrl-V": paste-text
+@end example
+
 @node Input line editing
 @chapter Input line editing
 
@@ -2154,14 +2286,19 @@ Also, if line is non-empty, add it to the history list.
 @item @kbd{Alt-@key{Enter}} (@code{insert-newline})
 Insert a literal newline.  Splits the current line at the current position,
 creating two new lines, with the caret after the new break.
-@item @kbd{Ctrl-@key{C}} (@code{copy-text})
-@itemx @kbd{Ctrl-Shift-@key{C}}
+@item @kbd{Ctrl-Shift-@key{C}}  (@code{copy-text})
 @itemx @kbd{Ctrl-@key{Insert}}
+@itemx @kbd{Cmd-@key{C}} @emph{(Only MacOS)}
 Copy selection to clipboard.
 (Selection can be partly or fully outside input area.)
+@item @kbd{Ctrl-@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
+If there is no selection, send Ctrl-C to the process - which
+normally interrupts it.
+If there is a selection, copy it to the clipboard
+(Also clear the clipboard, so a subsequent Ctrl-C will interrup.)
 @item @kbd{Ctrl-@key{V}} (@code{paste-text})
 @itemx @kbd{Ctrl-Shift-@key{V}}
-@itemx @kbd{Shift-@key{Insert}}  @emph{(Electron and Qt only)}
+@itemx @kbd{Shift-@key{Insert}}  @emph{(Only Electron, Qt, Webview)}
 Paste selection from clipboard.
 @item @kbd{Ctrl-@key{X}}
 @itemx @kbd{Ctrl-Shift-@key{X}}
@@ -2237,23 +2374,6 @@ Exit search mode, and move to previous/next history item.
 Exit search mode, accept current item, but continue editing it.
 @end table
 
-@subheading Changing keybindings
-
-You can override the keymap (map from keystrokes to action)
-used for input line editing (but not yet override other key-bindings).
-The @code{keymap.line-edit} is a list (separated by commas or newlines),
-where each item is a quoted keystroke string, followed by a colon,
-followed by an action name. An action name is a string,
-but quotes are optional.  The following example disables
-the binding for @kbd{Ctrl-A} and adds a binding that
-maps @kbd{Ctrl-H} to the @code{beginning-of-line} action.
-
-@example
-keymap.line-edit =
- | "Ctrl-A": ignore-action
- | 'Ctrl-H': beginning-of-line
-@end example
-
 @anchor{password-fields}
 @subheading Password fields
 
@@ -2271,6 +2391,23 @@ and to move around using the mouse or cursor keys.
 
 A password field is automatically created when we're in line-editing mode
 and echoing is turned off by the program reading the input.
+
+@subheading Changing keybindings
+
+You can override the keymap (map from keystrokes to action)
+used for input line editing.
+The @code{keymap.line-edit} is a list (separated by commas or newlines),
+where each item is a quoted keystroke string, followed by a colon,
+followed by an action name. An action name is a string,
+but quotes are optional.  The following example disables
+the binding for @kbd{Ctrl-A} and adds a binding that
+maps @kbd{Ctrl-H} to the @code{beginning-of-line} action.
+
+@example
+keymap.line-edit =
+ | "Ctrl-A": ignore-action
+ | 'Ctrl-H': beginning-of-line
+@end example
 
 @node Paging
 @chapter Paging and Pausing
@@ -2651,121 +2788,6 @@ div.domterm[session-number="1"] @{ background-color: #FEE @}
 div.domterm[session-name="compile"] @{ background-color: #EEF @}
 div.input-line @{ background-color: inherit @}
 @end example
-
-@node Keyboard shortcuts
-@chapter Keyboard shortcuts
-
-This does not list @ref{Input line editing,shortcuts specific to line-editing mode}.
-
-@table @asis
-@c FUTURE @item Ctrl-Shift-P
-@c Enter/exit pager mode
-@c FUTURE @item @mux-prefix
-@c Prefix for Screen or TMux
-@item @kbd{Ctrl-Shift-@key{C}} (@code{copy-text})
-@itemx @kbd{Ctrl-@key{Insert}}
-Copy the selection to the clipboard.
-It is copied as both plain text (@code{text/plain})
-and formatted HTML (@code{text/html}) in case the receiving
-application can paste the latter.
-(@kbd{Ctrl-@key{C}} also works in line-editing mode.)
-@item @kbd{Ctrl-Shift-@key{V}} (@code{paste-text})
-@itemx @kbd{Shift-@key{Insert}}  @emph{(Electron and Qt only)}
-Paste text from the clipboard.
-(@kbd{Ctrl-@key{V}} also works in line-editing mode.)
-@item @kbd{Ctrl-Shift-@key{X}} (@code{cut-text})
-``Cut'': Restricts the selection to the current input area,
-copies that restricted selection to the clipboard,
-and then deletes the restricted selection.
-(In character mode, the deletion is implemented by sending
-the appropriate number of Delete/Backspace characters to the application.)
-@item @kbd{Shift-Left} (@code{backward-char-extend})
-@itemx @kbd{Shift-Right} (@code{forward-char-extend})
-@itemx @kbd{Ctrl-Shift-Left} (@code{backward-word-extend})
-@itemx @kbd{Ctrl-Shift-Right} (@code{forward-word-extend})
-Moves the end-point of the current selection left or right
-one character or word (if @kbd{Ctrl} is pressed).
-If there is no selection, the caret position is treated as
-a zero-size selection.
-
-If the new end-point is within a current input-editing section,
-the cursor is moved to the new end-point.
-(Emulated using the appropriate number of Left/Right key-presses.) 
-@item @kbd{Ctrl-Shift-@key{S}} (@code{save-as-html})
-Save the display to a file.
-@item @kbd{Ctrl-Shift-@key{L}} (@code{cycle-input-mode})
-Cycle between the input modes: automatic, to line, to character, and back.
-The resulting mode is displayed temporarily.
-@end table
-
-The following are implemented by most browsers, rather than DomTerm,
-so it may not work on all browsers.
-@table @asis
-@item @kbd{Ctrl-Shift-@key{Plus}}
-Zoom in (makes text bigger).
-(Does not work in atom-domterm.)
-@item @kbd{Ctrl-Shift-@key{Minus}}
-@itemx @kbd{Ctrl-@key{Minus}}
-Zoom out (makes text smaller).
-(Does not work in atom-domterm.)
-@item @kbd{Ctrl-@key{0}}
-``Un-zoom'' to normal size.
-@item @kbd{@key{F11}} (@code{toggle-fullscreen})
-Toggle full-screen mode.
-@item @kbd{Shift-@key{F11}} (@code{toggle-fullscreen-current-window})
-(Not for Electron or Qt.)
-Toggle full-screen mode for the current sub-window.
-@item @kbd{Ctrl-Shift-@key{I}}
-Toogle Developer Window, useful for debugging or examining
-the state of the Document Object Model.
-@item @kbd{Ctrl-Shift-@key{M}}
-Enter @ref{Paging,Paging mode}.
-@end table
-
-@subsubheading Scrolling
-
-@table @asis
-@item @kbd{Ctrl-Shift-@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{Ctrl-Shift-@key{PageDown}} (@code{scroll-page-down})
-Scroll one ``page'' up or down, respectively.
-(Specifically, the viewport height minus a height of one line.)
-@item @kbd{Ctrl-Shift-@key{Up}} (@code{scroll-line-up})
-@itemx @kbd{Ctrl-Shift-@key{Down}} (@code{scroll-line-down})
-Scroll one line up or down, respectively.
-@item @kbd{Ctrl-Shift-@key{Home}} (@code{scroll-top})
-Scroll to top.
-@item @kbd{Ctrl-Shift-@key{End}} (@code{scroll-bottom})
-Scroll to bottom.
-@end table
-
-See also the bindings for @ref{Paging} mode.
-@subsubheading Managing subwindows
-
-The prefix key @kbd{@mux-prefix} when followed by some other key
-controls sessions and windows.
-
-@table @asis
-@item @kbd{Ctrl-Shift-@key{T}}
-Create a new terminal in a new tab.
-@item @kbd{Ctrl-Shift-@key{N}}
-Create a new terminal in a new pane (sub-window).
-The new pane is create to the right or below the current pane,
-depending on space.
-@item @kbd{@mux-prefix Ctrl-@key{Left}}
-Create a new terminal pane to the left of the current one.
-@item @kbd{@mux-prefix Ctrl-@key{Right}}
-Create a new terminal pane to the right of the current one.
-@item @kbd{@mux-prefix Ctrl-@key{Up}}
-Create a new terminal pane above the current one.
-@item @kbd{@mux-prefix Ctrl-@key{Down}}
-Create a new terminal pane below the current one.
-@item @kbd{@mux-prefix @key{Left}}
-Select the previous pane or tab.
-@item @kbd{@mux-prefix @key{Right}}
-Select the next pane or tab.
-@item @kbd{@mux-prefix @key{d}}
-Detach from current session and close the (sub-)window.
-@end table
 
 @node Tips and solutions
 @chapter Tips and solutions
