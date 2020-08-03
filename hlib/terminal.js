@@ -3123,7 +3123,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
-        if (dt.verbosity >= 2)
+        if (dt.verbosity >= 3)
             console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
         if (dt._composing > 0)
             return;
@@ -8749,7 +8749,7 @@ Terminal._makeWsUrl = function(query=null) {
         url = protocol+ws[1];
     else
         url = protocol+"//localhost:"+DomTerm.server_port+"/replsrc";
-    if (DomTerm.server_key) {
+    if (DomTerm.server_key && ('&'+query).indexOf('&server-key=') < 0) {
         query = (query ? (query + '&') : '')
             + 'server-key=' + DomTerm.server_key;
     }
