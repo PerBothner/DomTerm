@@ -158,3 +158,4 @@ DomTerm.openNewWindow = function(dt, options={}) {
 }
 
 window.DomTerm = DomTerm;
+window.DomTermLayout = DomTermLayout;
