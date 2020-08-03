@@ -495,7 +495,7 @@ firefox_browser_command()
     char *firefoxCommand = find_in_path("firefox");
     if (firefoxCommand != NULL)
         return firefoxCommand;
-#define firefoxMac "/Applications/Firefox.app/Contents/MacOS/firefox"
+#define firefoxMac "/Applications/Firefox.app"
     if (access(firefoxMac, X_OK) == 0)
       return "/usr/bin/open -a " firefoxMac;
     return NULL;
