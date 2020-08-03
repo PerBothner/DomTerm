@@ -1005,7 +1005,7 @@ DomTerm.focusedTerm = null; // used if !useIFrame
 // (if 2 - also request low-level focus)
 // Runs in terminal's frame
 Terminal.prototype.setFocused = function(focused) {
-    if (! this.topNode)
+    if (! this._rulerNode) // skip if _initializeDomTerm not called
         return;
     if (focused > 0) {
         this.topNode.classList.add("domterm-active");
