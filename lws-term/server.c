@@ -764,9 +764,14 @@ do_run_browser(struct options *options, char *url, int port)
     bool app_mode;
     if (strcmp(browser_specifier, "--firefox") == 0)
         browser_specifier = firefox_command();
-    else if (strcmp(browser_specifier, "--webview") == 0)
+    else if (strcmp(browser_specifier, "--webview") == 0) {
         browser_specifier = webview_command(options);
-    else if ((app_mode = ! strcmp(browser_specifier, "--chrome-app"))
+        if (browser_specifier == NULL) {
+                printf_error(options,
+                             "cannot find dt-webview command");
+                return EXIT_FAILURE;
+            }
+    } else if ((app_mode = ! strcmp(browser_specifier, "--chrome-app"))
              || ! strcmp(browser_specifier, "--chrome")
              || ! strcmp(browser_specifier, "--google-chrome")) {
         browser_specifier = chrome_command(app_mode);
