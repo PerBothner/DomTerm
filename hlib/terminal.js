@@ -707,12 +707,7 @@ Terminal.BELL_TEXT = "BELL!";
 /** Length of time to display BELL_TEXT. */
 Terminal.INFO_TIMEOUT = 800;
 
-window.addEventListener("unload",
-                        function(event) {
-                            DomTerm.forEachTerminal(dt => {
-                                dt.historySave();
-                                dt.reportEvent("CLOSE-SESSION");
-                            }) });
+window.addEventListener("unload", DomTerm.closeAll);
 
 // Handle selection
 DomTerm.EDITING_SELECTION = 1;

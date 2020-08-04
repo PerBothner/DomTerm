@@ -2,6 +2,12 @@
 
 webview::webview w(true, nullptr);
 
+void close_main_window(const char *seq, const char *req, void *arg)
+{
+    webview_destroy(&w);
+    exit(0);
+}
+
 void set_w_t(const char *seq, const char *req, void *arg)
 {
     size_t rlen = strlen(req);
@@ -43,8 +49,8 @@ int main(int argc, char **argv) {
         }
     }
     w.set_title("DomTerm");
-    webview_bind(&w, "setWindowTitle",
-                 set_w_t, NULL);
+    webview_bind(&w, "setWindowTitle", set_w_t, NULL);
+    webview_bind(&w, "closeMainWindow", close_main_window, NULL);
     w.set_size(width, height, WEBVIEW_HINT_NONE);
     w.navigate(url);
     w.run();

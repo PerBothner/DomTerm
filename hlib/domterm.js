@@ -87,8 +87,19 @@ DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
     //DomTerm.newSessionPid = 0;
 }
 
+DomTerm.closeAll = function(event) {
+    DomTerm.forEachTerminal(dt => {
+        dt.historySave();
+        dt.reportEvent("CLOSE-SESSION");
+    })
+}
+
 DomTerm.windowClose = function() {
-    window.close();
+    if (window.closeMainWindow) {
+        DomTerm.closeAll(null);
+        window.closeMainWindow(); // hook used by --webview
+    } else
+        window.close();
 }
 
 DomTerm._extractGeometryOptions = function(options={}) {
