@@ -458,6 +458,11 @@ If configuring with @code{--with-closure-compiler} do:
 sudo dnf install closure-compiler
 @end example
 
+If building the documentation and not condiguring @code{--without-docbook}:
+@example
+sudo dnf install docbook-style-xsl libxslt
+@end example
+
 If configuring with @code{--with-webview} (experimental) do:
 @example
 sudo dnf install gtk3-devel webkit2gtk3-devel
@@ -740,7 +745,7 @@ which is used if you open a domterm window with the @code{--webview} option.
 
 This has only been tested on Fedora and MacOS.
 
-This has some rough edges, most critically that Paste doesn't seem to work.
+This @ref{webview-frontend,works ok though with some rough edges}.
 
 @item --with-libclipboard=@var{libclipboard_dir}
 Using the @uref{https://github.com/jtanx/libclipboard,libclipboard library}
@@ -750,6 +755,10 @@ menu items work better.
 If you followed the
 @ref{installing-libclipboard,installation instructiona above}
 then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR/dist}.
+
+@item --without-docbook
+Don't use DocBook for generating HTML documentation.
+The result is plain HTML without a navigation bar.
 
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm
@@ -1899,6 +1908,33 @@ Start the Electron frontend (if available) with the @code{--electron} option.
 @subheading Qt
 
 Start the Qt frontend (if available) with the @code{--qt} option.
+
+@anchor{webview-frontend}
+@subheading Webview
+
+Start the Webview frontend (if available) with the @code{--webview} option.
+
+This is quite usable - nicer than using a web-browser.
+It uses JavaScript menus, which is OK except on Mac.
+
+Cat'ing large files is much faster than other browsers, probably due to
+deferred re-display.  Window re-sizing is slower.
+Both of these may change if we implement smarter lazy line-breaking.
+
+Some known issues:
+@itemize
+@item
+Windows zoom (with @kbd{Ctrl-@key{Minus}} or @kbd{Ctrl-Shift-@key{Plus}})
+doesn't work.  You can work around it with CSS styling:
+@code{body @{zoom: 120%@}}
+@item
+Copy from menu doesn't work.  Ctrl-Shift-C works.
+@item
+Clicking the window close button doesn't shut down cleanly.
+Using the @code{Quit} menu item works, as does typing @code{exit} from a shell.
+@item
+The @code{About DomTerm} menu item doesn't work.
+@end itemize
 
 @subheading Desktop browser
 
