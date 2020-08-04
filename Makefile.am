@@ -455,6 +455,11 @@ endif
 
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
+if WITH_WEBVIEW
+install-exec-local: bin/dt-webview$(EXEEXT)
+	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-webview$(EXEEXT) "$(DESTDIR)$(bindir)"
+endif
+
 install-data-local:
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
 if WITH_JAVA
