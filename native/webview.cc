@@ -22,6 +22,10 @@ int main(int argc, char **argv) {
 #endif
     char *geometry = NULL;
     char *url = NULL;
+#ifdef WEBVIEW_GTK
+    // See https://wiki.archlinux.org/index.php/GTK#Disable_overlay_scrollbars
+    setenv("GTK_OVERLAY_SCROLLING", "0", 1);
+#endif
     for (int i = 1; i < argc; i++) {
         char *arg = argv[i];
         if (strcmp(arg, "--geometry") == 0 && i+1 < argc) {
