@@ -155,7 +155,7 @@ DomTerm.createMenus = function(options) {
     let openLink = options.requestOpenLink;
     const homePageItem = ! openLink ? null
           : menuItem({label: 'DomTerm home page',
-                      click: function() { openLink('http://domterm.org') }});
+                      click: function() { openLink('https://domterm.org') }});
     const aboutItem = menuItem({label: 'About DomTerm',
                                 click: DomTerm.showAboutMessage});
     const openLinkItem = menuItem({label: 'Open Link',
