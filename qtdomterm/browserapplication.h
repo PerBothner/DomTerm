@@ -126,6 +126,7 @@ private:
     QString nameTemplate;
     int nextSessionNameIndex;
     int saveFileCounter;
+    bool headless;
 };
 
 #endif // BROWSERAPPLICATION_H

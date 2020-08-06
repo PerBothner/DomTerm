@@ -86,6 +86,7 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
     , m_privateProfile(0)
     , nextSessionNameIndex(1)
     , saveFileCounter(0)
+    , headless(processOptions->headless)
 {
     nameTemplate = QLatin1String("domterm-%1");
     QCoreApplication::setOrganizationName(QLatin1String("DomTerm"));
@@ -244,7 +245,7 @@ bool BrowserApplication::event(QEvent* event)
     switch (event->type()) {
     case QEvent::ApplicationActivate: {
         clean();
-        if (!m_mainWindows.isEmpty()) {
+        if (!m_mainWindows.isEmpty() && ! headless) {
             BrowserMainWindow *mw = mainWindow();
             if (mw && !mw->isMinimized()) {
                 mainWindow()->show();
@@ -294,7 +295,8 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
             browser->setSize(width, height);
     }
     m_mainWindows.prepend(browser);
-    browser->show();
+    if (! headless)
+        browser->show();
     return browser;
 }
 
@@ -362,6 +364,7 @@ QIcon BrowserApplication::defaultIcon() const
 }
 
 ProcessOptions::ProcessOptions()
+    : headless(false)
 {
 }
 QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state)

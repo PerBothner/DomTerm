@@ -60,6 +60,7 @@ const char* const short_options = "+:vhw:e:c:S:";
 
 #define QT_OPTION 1000
 #define GEOMETRY_OPTION 1001
+#define HEADLESS_OPTION 1002
 
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
@@ -69,6 +70,7 @@ const struct option long_options[] = {
     // We just need to pass it through without complaint to the QApplication.
     {"remote-debugging-port", 1, NULL, QT_OPTION},
     {"geometry", 1, NULL, GEOMETRY_OPTION},
+    {"headless", 0, NULL, HEADLESS_OPTION},
     {NULL,      0, NULL,  0}
 };
 
@@ -108,6 +110,9 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
             case 'v':
                 print_version_and_exit();
                 break;
+            case HEADLESS_OPTION:
+                processOptions->headless = true;
+                break;
             case GEOMETRY_OPTION:
                 // syntax of geometry option has been checked by domterm
                 processOptions->geometry = QString(optarg);
@@ -146,10 +151,11 @@ int main(int argc, char **argv)
     ProcessOptions* processOptions = new ProcessOptions();
     QSharedDataPointer<ProcessOptions> processOptionsPtr(processOptions);
 
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-
     parseArgs(argc, argv, processOptions);
     optind = 1;
+
+    if (! processOptions->headless)
+        QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     BrowserApplication application(argc, argv, processOptionsPtr);
     //if (!application.isTheOnlyBrowser())
