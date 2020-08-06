@@ -1933,6 +1933,9 @@ Copy from menu doesn't work.  Ctrl-Shift-C works.
 Clicking the window close button doesn't shut down cleanly.
 Using the @code{Quit} menu item works, as does typing @code{exit} from a shell.
 @item
+Middle-button click does a paste from the clipboard,
+but it should paste from the selection.
+@item
 The @code{About DomTerm} menu item doesn't work.
 @end itemize
 
