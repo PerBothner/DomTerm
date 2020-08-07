@@ -11,11 +11,11 @@ body {
 
 div.navbar {
   position: absolute;
-  top: 160px; right: 0.2em; bottom: 0em; left: 0em;
+  right: 0.2em; bottom: 0em; left: 0em;
   height: auto;
 }
 
-div.navcol {
+div.toc-sidebar {
   position: absolute;
   width: 25%;
   top: 0em; right: 0em; bottom: 0em; left: 0em;
@@ -24,7 +24,7 @@ div.navcol {
 
 /* The child selectors are a hack to hide these rules from WinIE6,
    which gets confused by 'fixed' */
-body>div.navcol { 
+body>div.toc-sidebar {
   position: fixed ;
 }
 } /* end @media */

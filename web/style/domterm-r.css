@@ -15,9 +15,9 @@ div.navbar {
   overflow: auto;
 }
 
-div.navcol{ margin-left: 30px; }
+div.toc-sidebar{ margin-left: 30px; }
 
-div.navcol { 
+div.toc-sidebar {
   position: absolute;
   width: 12.5em; 
   top: 0em; right: 0em; bottom: 0em;
@@ -25,7 +25,7 @@ div.navcol {
 
 /* The child selectors are a hack to hide these rules from WinIE6,
    which gets confused by 'fixed' */
-body>div.navcol { 
+body>div.toc-sidebar {
   position: fixed ;
 }
 } /* end @media */

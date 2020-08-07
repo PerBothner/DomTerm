@@ -1,1 +1,7 @@
 @import "kawa.css";
+
+div.header { font-size: smaller; color: darkgrey }
+
+h1.settitle { display: none }
+div[node="index"] ul.no-bullet { display: none }
+div.toc-sidebar div.toc { padding-right: 0px }

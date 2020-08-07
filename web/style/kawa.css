@@ -15,7 +15,6 @@ body {
   font-family: verdana, helvetica, sans-serif;
   line-height: 1.2;
 }
-div.chapter, div.sect1 { padding: 1ex 2em}
 h1 {
   line-height: 1;
   text-align: center;
@@ -23,7 +22,7 @@ h1 {
   font-weight: normal }
 a {
   border-style: none;
-  text-decoration-color: #aaf }
+  text-decoration-color: #66f }
 a:link, a:visited {
   color: inherit; }
 h1, h2, h3, h4 {
@@ -136,16 +135,19 @@ html {
 
 span.ignore { display: none }
 
-div.navcol, a:link, a:visited { 
-    background: #f2f2e0;
+div.toc-sidebar, a:link, a:visited {
+    background: #f4f4e4;
+}
+#slider, div.toc-sidebar, div.toc-sidebar a {
+    background: #e8f0dc;
 }
 
 /* Local navigation menu, along the left or right side */
 
-div.navcol hr {			/* Hide the HR inside the menu */
+div.toc-sidebar hr {			/* Hide the HR inside the menu */
   display: none }
 
-div.navcol li {
+div.toc-sidebar li {
   display: block;
   font-size: medium;
   text-indent: 0;
@@ -159,24 +161,24 @@ div.navbar > ul {
 div#Menu p.navhead {
   font-weight: bold }
 
-div.navcol ul
+div.toc-sidebar ul
 {
 margin: 0;
 padding: 0;
 list-style-type: none;
 }
 
-div.navcol li { margin: 0 ; }
-div.navbar ul ul, div.navcol ul ul { margin-left: 0.6em; }
+div.toc-sidebar li { margin: 0 ; }
+div.toc-sidebar ul ul { margin-left: 0.6em; }
 
-div.navbar li { padding: 0px 4px;}
-div.navbar a { display: block; }
+div.toc-sidebar div.toc li { padding: 0px 0px 0px 4px;}
+div.toc-sidebar div.toc a { display: block; }
 
-div.navcol a { text-decoration: none; }
+div.toc-sidebar a { text-decoration: none; }
 /* The following is redundant, but is needed for IE 6.0. */
 div.navheader ul a { text-decoration: none; }
 
-div.navcol > a:hover, a:hover, a.logo:hover, div.logo:hover
+div.toc-sidebar a:hover, a:hover, a.logo:hover, div.logo:hover
 {
 color: #fff;
 background: #608090;
@@ -200,13 +202,17 @@ div.navheader a {
   text-decoration: underline;
  }
 
-div.navcol *.logo { 
+div.toc-sidebar *.logo {
   font-size: xx-large
 }
 div.logo {
-    width: 100%; height: 160px;
+    width: 100%; min-height: 120px;
 }
-div.navcol > a img { float: none; padding: 15px 0.1em; height: 80%; width: auto; }
+div.toc-sidebar > a img {
+    float: none;
+    padding: 15px 0.1em;
+    width: 60%;
+}
 
 code[class="literal"] strong { color: purple }
 p[class="synopsis"] code strong { color: purple }
@@ -230,11 +236,11 @@ p.synopsis span.kind:after { content: "]" }
 p.synopsis > code { font-weight: bold; }
 blockquote { margin-left: 40px; margin-right: 40px }
 
-div[class="navcol"] div > ul > li { font-size: larger }
+div[class="toc-sidebar"] div > ul > li { font-size: larger }
 
 /* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
 
-img { padding: 3px; width: 100% }
+img { padding: 6px; width: 100% }
 @media (min-width: 50em) {
     img { float: right; width: 50% }
 }

@@ -64,9 +64,9 @@
                                     or count($next) &gt; 0"/>
 
   <xsl:if test="$suppress.navigation = '0' and $suppress.header.navigation = '0'">
-      <div class="navcol">
+      <div class="toc-sidebar">
         <xsl:call-template name="user.header.logo"/>
-    <div class="navbar">
+    <div class="toc">
       <xsl:call-template name="extra.header.navigation"/>
       <xsl:call-template name="section.toc">
         <xsl:with-param name="toc.title.p" select="0"/>
