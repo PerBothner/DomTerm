@@ -11,12 +11,15 @@ function createInitialWindow (argv) {
     // and load the index.html of the app.
     let argc = argv.length;
     let openDevTools = false;
+    let headless = false;
     var url = "http://localhost:7033/#ws=same";
     var geometry = null;
     for (let i = 2; i < argc; i++) {
         let arg = argv[i];
         if (arg == "--devtools")
             openDevTools = true;
+        else if (arg == "--headless")
+            headless = true;
         else if (arg == "--url" && i+1 < argc)
             url = argv[++i];
         else if (arg == "--geometry" && i+1 < argc)
@@ -46,13 +49,13 @@ function createInitialWindow (argv) {
             options.position = m[hasPos+1];
         }
     }
-    createNewWindow(url, options);
+    createNewWindow(url, options, headless);
 }
 var previousUrl = null;
 var previousWidth = 800;
 var previousHeight = 600;
 
-function createNewWindow (url, options) {
+function createNewWindow (url, options, headless) {
     let w = options.width;
     let h = options.height;
     if (w <= 0)
@@ -106,7 +109,8 @@ function createNewWindow (url, options) {
     win.loadURL(url);
     if (options.openDevTools)
         win.webContents.openDevTools()
-    win.once('ready-to-show', function () { win.show(); });
+    if (! headless)
+        win.once('ready-to-show', function () { win.show(); });
     win.on('closed', () => {
         let index = windowList.indexOf(win);
         if (index >= 0)
@@ -115,7 +119,7 @@ function createNewWindow (url, options) {
 }
 
 ipcMain.on('new-window', (event, url, options) => {
-    createNewWindow(url, options);
+    createNewWindow(url, options, false);
 });
 
 // This method will be called when Electron has finished
