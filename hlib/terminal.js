@@ -239,6 +239,7 @@ class Terminal {
 
     this.charWidth = 1;  // Width of a character in pixels
     this.charHeight = 1; // Height of a character in pixels
+    this._computedZoom = 1.0;
 
     this.numRows = 24;
     this.numColumns = 80;
@@ -3540,6 +3541,10 @@ Terminal.prototype.measureWindow = function()  {
         this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" numCols:"+this.numColumns+" numRows:"+this.numRows);
 
     this._updateMiscOptions();
+    let computedZoom = window.getComputedStyle(document.body)['zoom'];
+    this._computedZoom = Number(computedZoom);
+    if (! this._computedZoom)
+        this._computedZoom = 1.0;
 };
 
 Terminal.prototype._updateMiscOptions = function() {
@@ -3794,8 +3799,8 @@ Terminal.prototype._mouseHandler = function(ev) {
         return;
 
     // Get mouse coordinates relative to topNode.
-    var xdelta = ev.pageX;
-    var ydelta = ev.pageY + this.topNode.scrollTop;
+    var xdelta = ev.pageX / this._computedZoom;
+    var ydelta = ev.pageY / this._computedZoom + this.topNode.scrollTop;
     for (var top = this.topNode; top != null; top = top.offsetParent) {
         xdelta -= top.offsetLeft;
         ydelta -= top.offsetTop;
