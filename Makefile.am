@@ -457,7 +457,7 @@ ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
 if WITH_WEBVIEW
 install-exec-local: bin/dt-webview$(EXEEXT)
-	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-webview$(EXEEXT) "$(DESTDIR)$(bindir)"
+	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-webview$(EXEEXT) "$(DESTDIR)$(bindir)/dt-webview$(EXEEXT)"
 endif
 
 install-data-local:
