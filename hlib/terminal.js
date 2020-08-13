@@ -260,6 +260,7 @@ class Terminal {
     // When line-editing this is the *input* caret;
     // output is inserted at (outputContainer,outputBefore)
     this._caretNode = null;
+    this.viewCaretNode = null;
     // When line-editing this is the actively edited line,
     // that has not yet been sent to the process.
     // In this case _caretNode is required to be within _inputLine.
@@ -3088,7 +3089,12 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     // Should be zero - support for topNode.offsetLeft!=0 is broken
     this._topLeft = dt.topNode.offsetLeft;
 
-    this._pendingSelected = 0; // 0: normal; 1: defer; 2: deferred
+
+    // -1: mouse not pressed; >= 0: mouse pressed; 1: selectionchange called
+    // (We want to not update selection while a mouse button mouse is pressed.)
+    this._mouseSelectionState = -1;
+    this._didExtend = false;
+
     topNode.addEventListener('wheel',
                              function(e) { dt._disableScrollOnOutput = true; },
                              {passive: true});
@@ -3097,9 +3103,9 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     topNode.addEventListener("mouseleave",
                              function(e) {
                                  dt._altPresssed = false;
-                                 if (dt._pendingSelected == 2)
+                                 if (dt._mouseSelectionState >= 0)
                                      dt._updateSelected();
-                                 dt._pendingSelected = 0;
+                                 dt._mouseSelectionState = -1;
                              }, false);
     function handleContextMenu(e) {
         if (dt.sstate.mouseMode != 0
@@ -3120,7 +3126,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let point = sel.isCollapsed;
         dt._usingSelectionCaret = ! point && dt.isLineEditing();
         if (dt.verbosity >= 3)
-            console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" pend:"+dt._pendingSelected);
+            console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
         if (dt._composing > 0)
             return;
         let wasFocus = dt._focusinLastEvent;
@@ -3131,10 +3137,13 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
             // to this window.  It selects the very first text location.
             return; //  Ignore it.
         }
-        if (dt._pendingSelected == 0)
+        if (dt._mouseSelectionState < 0)
             dt._updateSelected();
-        else
-            dt._pendingSelected = 2;
+        else {
+            if (dt._mouseSelectionState > 0)
+                dt._didExtend = true;
+            dt._mouseSelectionState = 1;
+        }
 
         if (point) {
             dt._restoreCaret();
@@ -3589,6 +3598,9 @@ DomTerm.showContextMenu = null;
 
 Terminal.prototype._clearSelection = function() {
     document.getSelection().collapse(this.focusArea, 0);
+    let viewCaretNode = this.viewCaretNode;
+    if (viewCaretNode && viewCaretNode.parentNode)
+        viewCaretNode.parentNode.removeChild(viewCaretNode);
 }
 
 /** Do after selection has changed, but "stabilized".
@@ -3608,17 +3620,47 @@ Terminal.prototype._updateSelected = function() {
         }
     }
 
-    //this._pendingSelected = false;
     let sel = document.getSelection();
-    // FIXME using toString is probably wasteful. isCollapsed can be wrong.
-    let point = sel.toString().length == 0;
+    let point =
+        ! dt._didExtend
+        && (sel.focusNode === sel.anchorNode
+            ? sel.focusOffset === sel.anchorOffset
+            // toString is probably wasteful - but isCollapsed can be wrong.
+            : sel.toString().length == 0);
+    if (this._pagingMode > 0 || ! point) {
+        if (! this.viewCaretNode) {
+            let vcaretNode = this._createSpanNode();
+            this.viewCaretNode = vcaretNode;
+            vcaretNode.setAttribute("std", "caret");
+            vcaretNode.classList.add("focus-caret");
+            // A work-around for a Chrome bug (?) where a border or outline
+            // is not shown at the left edge of the domterm window.
+            // Instead we create this relative-positiond filled vcaretBar.
+            let vcaretBar = this._createSpanNode();
+            vcaretNode.appendChild(vcaretBar);
+        }
+        if (sel.focusNode !== this.viewCaretNode) {
+            let r = document.createRange();
+            r.setStart(sel.focusNode, sel.focusOffset);
+            // FIXME if after LINE node and end od DIV, move to start of next DIV.
+            r.insertNode(this.viewCaretNode);
+            if (point) {
+                sel.collapse(this.viewCaretNode, 0);
+            } else {
+                sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset,
+                                     this.viewCaretNode, 0);
+            }
+        }
+    }
 
     let moveCaret = false;
     let currentPreNode = null;       // current class="domterm-pre" element
     let targetPreNode = null;        // target class="domterm-pre" element
     let readlineForced = dt._altPressed;
     let moveOption = readlineForced ? "w" : null;
-    if (dt._caretNode && dt._caretNode.parentNode !== null) {
+    if (dt._caretNode && dt._caretNode.parentNode !== null
+        // only moveCaret if (single non-drag) mouse-click and not in paging-mode
+        && this._pagingMode == 0 && ! this._didExtend) {
         if (readlineForced) {
             targetPreNode = dt._getOuterBlock(sel.focusNode);
             moveCaret = targetPreNode != null;
@@ -3743,12 +3785,11 @@ Terminal.prototype._updateSelected = function() {
                     this.outputContainer = dt._caretNode.nextSibling;
                 }
             }
-            if (! point)
-                sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset, dt._caretNode, 0);
         }
     }
     if (point
         && this._composing <= 0
+        && this._pagingMode == 0
         && DomTerm.focusedTerm==this
         && this.caretStyle !== Terminal.NATIVE_CARET_STYLE) {
         this._clearSelection();
@@ -3756,7 +3797,7 @@ Terminal.prototype._updateSelected = function() {
 }
 Terminal.prototype._mouseHandler = function(ev) {
     if (this.verbosity >= 2)
-        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button+" pendsel:"+this._pendingSelected+" alt:"+ev.altKey);
+        this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button+" alt:"+ev.altKey);
 
     if (ev.type == "mousedown" && ev.button == 2 && DomTerm.usingJsMenus) {
         // Avoids clearing selection.  Helps on Chrome, at least.
@@ -3765,9 +3806,9 @@ Terminal.prototype._mouseHandler = function(ev) {
     }
     this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
-    if (this._pendingSelected == 2)
+    if (this._mouseSelectionState > 0)
         this._updateSelected();
-    this._pendingSelected = ev.type == "mouseup" ? 0 : 1;
+    this._mouseSelectionState = ev.type == "mouseup" ? -1 : 0
     if (ev.type == "mouseup") {
         this._usingScrollBar = false;
         if (this.sstate.mouseMode == 0 && ev.button == 0) {
@@ -3782,6 +3823,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
             this._usingScrollBar = true;
         this._markMode = 0;
+        this._didExtend = ev.shiftKey;
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
         this.maybeFocus();
@@ -3790,12 +3832,15 @@ Terminal.prototype._mouseHandler = function(ev) {
         DomTerm._contextTarget = ev.target;
         DomTerm._contextLink = DomTerm._isInElement(ev.target, "A");
     }
+    /*
     if (ev.type == "mouseup" && this.sstate.mouseMode == 0
         && this._currentlyPagingOrPaused()
         && this.topNode.scrollTop+this.availHeight >= this._vspacer.offsetTop)
             this._pauseContinue();
+    */
 
-    if (ev.shiftKey || ev.target == this.topNode || this.sstate.mouseMode == 0)
+    if (ev.shiftKey || ev.target == this.topNode || this.sstate.mouseMode == 0
+        || this._pagingMode || this.isLineEditing())
         return;
 
     // Get mouse coordinates relative to topNode.
@@ -5924,7 +5969,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
             } else if (tagName == "span") {
-                if (cls == "focus-area")
+                if (cls == "focus-area" || cl == "focus-caret")
                     break;
                 if (cls == "wc-node") {
                     string += node.textContent;
@@ -7373,6 +7418,23 @@ Terminal.prototype.keyEnterToString  = function() {
         return "\r";
 }
 
+Terminal._keyCodeToValue = function(ecode) {
+    if (ecode.startsWith("Digit"))
+        return ecode.substring(5);
+    if (ecode.startsWith("Key"))
+            return ecode.substring(3);
+    switch (ecode) {
+    case "Minus": return "-";
+    case "Plus": return "+";
+    case "Equal": return "=";
+    case "Comma": return ",";
+    case "Semicolon": return ";";
+    case "Comma": return ",";
+    case "Period": return ".";
+    }
+    return "";
+}
+
 Terminal.prototype.eventToKeyName = function(event) {
     if (! event.key)
         return browserKeymap.keyName(event);
@@ -7390,11 +7452,17 @@ Terminal.prototype.eventToKeyName = function(event) {
     if (base.length == 1 && base >= 'a' && base <= 'z')
         base = base.toUpperCase();
     let name = base
+    let shift = event.shiftKey && base != "Shift"
+    if (shift && base.length == 1) {
+        let codeChar = Terminal._keyCodeToValue(event.code);
+        if (codeChar && codeChar != base)
+            shift = false;
+    }
     if (name == null || event.altGraphKey) return null
     if (event.altKey && base != "Alt") name = "Alt-" + name
     if (event.ctrlKey && base != "Ctrl") name = "Ctrl-" + name
     if (event.metaKey && base != "Cmd") name = "Cmd-" + name
-    if (event.shiftKey && base != "Shift") name = "Shift-" + name
+    if (shift) name = "Shift-" + name
     return name;
 }
 
@@ -8031,6 +8099,8 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Shift-S": "save-as-html",
             "Ctrl-Shift-T": "new-tab",
             "Ctrl-Shift-X": "cut-text",
+            "Ctrl-!": "swap-focus-anchor",
+            //"Ctrl-@": "toggle-mark-mode",
             "Shift-Left": "backward-char-extend",
             "Shift-Mod-Left": "backward-word-extend",
             "Shift-Right": "forward-char-extend",
@@ -8150,6 +8220,8 @@ DomTerm.handleKey = function(map, dt, keyName) {
     }
     if (typeof command == "string" || command instanceof String)
         command = commandMap[command];
+    if (command)
+        dt._didExtend = false;
     if (typeof command == "function")
         return command(dt, keyName);
     else
@@ -8235,7 +8307,7 @@ Terminal.prototype.keyDownHandler = function(event) {
             return;
         }
     } else if (key >= 35 && key <= 40) {
-        this._clearSelection();
+        //this._clearSelection();
     }
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
         event.preventDefault();
@@ -9137,14 +9209,11 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
     case "Home":
         this._pageTop();
         return true;
-    case "End":
-        this._pageBottom();
-        return true;
     case "Down":
-        this._pageLine(1);
+        this._pageLine(1); // FIXME
         return true;
     case "Up":
-        this._pageLine(-1);
+        this._pageLine(-1); // FIXME
         return true;
     case "'m'":
     case "'M'":
@@ -9162,7 +9231,11 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
     case "'a'":
         DomTerm.doNamedCommand("toggle-auto-pager");
         return true;
-    case "Ctrl-C":
+    case "Left":       return commandMap['backward-char'](this, keyName);
+    case "Right":      return commandMap['forward-char'](this, keyName);
+    case "End":        return commandMap['scroll-bottom'](this, keyName);
+    //case "Ctrl-C":     return commandMap['copy-text'](this, keyName);
+    case "Ctrl-C": // ??? 'copy-text-or-interrupt'
         this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
         this._pauseContinue(true);
         this._adjustPauseLimit();
@@ -9336,7 +9409,8 @@ Terminal.prototype.editorMoveToRangeStart = function(range) {
     } catch(e) {
         console.log("caught "+e);
     }
-    this._inputLine.normalize();
+    if (this._inputLine && this._inputLine.parentNode)
+        this._inputLine.normalize();
     this._restoreCaret();
 }
 
@@ -9360,8 +9434,7 @@ Terminal.prototype.editorMoveHomeOrEnd = function(toEnd) {
 }
 
 Terminal.prototype.editorMoveToPosition = function(node, offset) {
-    let r = new Range();
-    r.selectNodeContents(this._inputLine);
+    let r = this.editorRestrictedRange();
     let c = r.comparePoint(node, offset);
     if (c == 0)
         r.setStart(node, offset);
@@ -9593,7 +9666,7 @@ Terminal.scanInRange = function(range, backwards, state) {
         */
         if (! (node instanceof Text)) {
             if (node.nodeName == "SPAN" && node.getAttribute("std") == "caret")
-                return true;
+                return ! node.classList.contains("focus-caret");
             if (node.nodeName == "SPAN"
                 && node.getAttribute("line") != null) {
                 let stopped = false;
@@ -9734,13 +9807,30 @@ Terminal.prototype.deleteSelected = function(toClipboard) {
     }
     if (toClipboard)
         DomTerm.valueToClipboard({text: text, html: html });
-    sel.removeAllRanges();
+    this._clearSelection();
+}
+
+Terminal.prototype.editorRestrictedToInputline = function() {
+    return this._pagingMode == 0;
+}
+
+Terminal.prototype.editorRestrictedRange = function() {
+    let range = document.createRange();
+    if (this.editorRestrictedToInputline()) {
+        range.selectNodeContents(this._inputLine);
+    } else {
+        if (this.usingAlternateScreenBuffer) {
+            range.setStartBefore(DomTerm._currentBufferNode(this, false));
+            range.setEndAfter(this.initial);
+        } else
+            range.selectNode(this.initial);
+    }
+    return range;
 }
 
 /**
  * unit: "char", "word"
- * action: one of "move", "extend" (extend selection),
- *   "delete", or "kill" (cut to clipboard).
+ * action: one of "move", "delete", or "kill" (cut to clipboard).
  * stopAt: one of "", "line" (stop before moving to different hard line),
  * or "visible-line" (stop before moving to different screen line).
  */
@@ -9757,7 +9847,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     let linesCount = 0;
 
     let sel = document.getSelection();
-    if (! sel.isCollapsed && action != "extend") {
+    if (! sel.isCollapsed) {
         if (doDelete) {
             this.deleteSelected(action=="kill");
         } else {
@@ -9766,17 +9856,22 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
             let offset = backwards ? r.startOffset : r.endOffset;
             this.editorMoveToPosition(node, offset);
         }
-        sel.removeAllRanges();
+        if (this._pagingMode == 0)
+            sel.removeAllRanges();
     } else {
         this._removeCaret();
-        range = document.createRange();
-        range.selectNodeContents(this._inputLine);
-        if (backwards)
-            range.setEndBefore(this._caretNode);
-        else
-            range.setStartAfter(this._caretNode);
-        if (action == "extend" && sel.isCollapsed)
-            sel.collapse(dt._caretNode, 0);
+        range = this.editorRestrictedRange();
+        if (this._pagingMode == 0 || sel.anchorNode == null) {
+            if (backwards)
+                range.setEndBefore(this._caretNode);
+            else
+                range.setStartAfter(this._caretNode);
+        } else {
+            if (backwards)
+                range.setEnd(sel.anchorNode, sel.anchorOffset);
+            else
+                range.setStart(sel.anchorNode, sel.anchorOffset);
+        }
         let scanState = { linesCount: 0, todo: todo, unit: unit, stopAt: stopAt };
         Terminal.scanInRange(range, backwards, scanState);
         linesCount = scanState.linesCount;
@@ -9786,21 +9881,21 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
             if (linesCount > 0)
                 this._updateAutomaticPrompts();
             this._restoreCaret();
-        } else if (action=="extend") {
-            sel.extend(backwards?range.startContainer:range.endContainer,
-                       backwards?range.startOffset:range.endOffset);
         } else {
             if (! backwards)
                 range.collapse();
-            dt.editorMoveToRangeStart(range);
+            if (dt._pagingMode == 0)
+                dt.editorMoveToRangeStart(range);
+            else
+                sel.collapse(range.startContainer, range.startOffset);
         }
     }
     return todo;
 }
 
 Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {
-    //return this.editorBackspace(count, "extend", unit, stopAt);
     this.sstate.goalColumn = undefined;
+    this._didExtend = true;
     let doWords = unit == "word";
     let doLines = unit == "line";
     let backwards = count > 0;
@@ -9815,7 +9910,7 @@ Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {
     this._removeCaret();
     range = document.createRange();
     range.selectNodeContents(this.initial);
-    if (sel.isCollapsed)
+    if (this._pagingMode == 0 && sel.isCollapsed)
         sel.collapse(dt._caretNode, 0);
     //let rangeForwards = sel.rangeCount != 1
     //    || sel.anchorNode === sel.getRangeAt(0).startContainer;

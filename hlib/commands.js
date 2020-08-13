@@ -244,6 +244,23 @@ cmd('down-line-or-history',
             dt.historyMove(1)
         return true;
     });
+cmd('toggle-mark-mode',
+    function(dt, key) {
+        let cl = dt.topNode.classList;
+        cl.toggle('markmode');
+        // dt._markMode = dt._markMode ? 0 : 2; // FIXME
+        return true;
+    });
+cmd('swap-focus-anchor',
+    function(dt, key) {
+        let sel = window.getSelection();
+        if (! sel.isCollapsed) {
+            sel.setBaseAndExtent(sel.focusNode, sel.focusOffset,
+                                 sel.anchorNode, sel.anchorOffset);
+            dt._didExtend = true;
+        }
+        return true;
+    });
 cmd('ignore-action',
     function(dt, key) {
         return true; });

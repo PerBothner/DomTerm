@@ -67,3 +67,11 @@ span[line] > span.pprint-pre-break,
 span[line] > span.pprint-post-break,
 span.pprint-indent {
     visibility: hidden; position: absolute }
+
+div.domterm span.focus-caret {
+    position: relative;
+}
+div.domterm span.focus-caret span {
+    position: absolute;
+    top: 0px; bottom: 0px;
+}
