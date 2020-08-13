@@ -1626,12 +1626,6 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             } else {
                 lastParent.appendChild(next);
                 lineStart = prevLineEnd;
-                let beforeLine = prevLineEnd.previousSibling;
-                if (beforeLine instanceof Element
-                    && this._isAnAncestor(this.outputContainer,beforeLine)
-                    && beforeLine.getAttribute("std")) {
-                    beforeLine.appendChild(prevLineEnd)
-                }
             }
             lineStart._widthMode = Terminal._WIDTH_MODE_NORMAL;
             lineStart._widthColumns = 0;
