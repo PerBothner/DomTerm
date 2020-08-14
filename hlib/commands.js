@@ -284,8 +284,13 @@ cmd('down-line-extend',
 cmd('toggle-mark-mode',
     function(dt, key) {
         let cl = dt.topNode.classList;
-        cl.toggle('markmode');
-        // dt._markMode = dt._markMode ? 0 : 2; // FIXME
+        if (dt._markMode) {
+            dt._markMode = false;
+            cl.remove('markmode');
+        } else {
+            dt._markMode = true;
+            cl.add('markmode');
+        }
         return true;
     });
 cmd('swap-focus-anchor',

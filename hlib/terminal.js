@@ -140,8 +140,8 @@ class Terminal {
     this._clientWantsEditing = 0;
     this._numericArgument = null;
 
-    // Emacs-style mark: 0: disabled; 1: transient; 2: stable (set by ctrl-@)
-    this._markMode = 0;
+    // Emacs-style mark mode
+    this._markMode = false;
 
     // We have two variations of autoEditing:
     // - If autoCheckInferior is false, then the inferior actively sends OSC 71
@@ -174,7 +174,6 @@ class Terminal {
     this._replayMode = false;
 
     this.caretStyle = Terminal.DEFAULT_CARET_STYLE;
-    this._usingSelectionCaret = false;
     this.caretStyleFromSettings = -1; // style.caret from settings.ini
     sstate.caretStyleFromCharSeq = -1; // caret from escape sequence
     sstate.showCaret = true;
@@ -371,6 +370,7 @@ class Terminal {
         // FIXME only if "scrollWanted"
         if (dt._pagingMode == 0)
             dt._scrollIfNeeded();
+        /*
         if (dt._markMode > 0) {
             // update selection so focus follows caret
             dt._restoreCaretNode();
@@ -378,6 +378,7 @@ class Terminal {
             let sel = document.getSelection();
             sel.extend(dt._caretNode, 0);
         }
+        */
         dt._restoreInputLine();
     };
     this._unforceWidthInColumns =
@@ -2027,7 +2028,7 @@ Terminal.prototype.setCaretStyle = function(style) {
 };
 
 Terminal.prototype.useStyledCaret = function() {
-    return this.caretStyle !== Terminal.NATIVE_CARET_STYLE && ! this._usingSelectionCaret
+    return this.caretStyle !== Terminal.NATIVE_CARET_STYLE
         && this.sstate.showCaret;
 };
 /* True if caret element needs a "value" character. */
@@ -3118,7 +3119,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     this._selectionchangeListener = function(e) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
-        dt._usingSelectionCaret = ! point && dt.isLineEditing();
         if (dt.verbosity >= 3)
             console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
         if (dt._composing > 0)
@@ -3826,7 +3826,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     if (ev.type == "mousedown") {
         if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
             this._usingScrollBar = true;
-        this._markMode = 0;
+        this._markMode = false;
         this._didExtend = ev.shiftKey;
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
@@ -8159,6 +8159,7 @@ DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
 DomTerm.lineEditKeymapDefault = new browserKeymap({
     //"Tab": 'client-action',
     //"Ctrl-T": 'client-action',
+    "Ctrl-@": "toggle-mark-mode",
     "Ctrl-C": DomTerm.isMac ? "client-action" : "copy-text-or-interrupt",
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
@@ -8224,6 +8225,9 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
 DomTerm.pagingKeymapDefault = new browserKeymap({
+    "F11": "toggle-fullscreen",
+    "Shift-F11": "toggle-fullscreen-current-window",
+    "Ctrl-Shift-M": "toggle-paging-mode",
     "'a'": "toggle-auto-pager",
     "'0'": "numeric-argument",
     "'1'": "numeric-argument",
@@ -8254,6 +8258,11 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Left": "backward-char",
     "Mod-Left": 'backward-word',
     "Right": "forward-char",
+    "Mod-Right": 'forward-word',
+    "Shift-Left": "backward-char-extend",
+    "Shift-Mod-Left": "backward-word-extend",
+    "Shift-Right": "forward-char-extend",
+    "Shift-Mod-Right": "forward-word-extend",
     "Up": "up-line",
     "Down": "down-line",
     "Shift-Up": "up-line-extend",
@@ -8318,6 +8327,15 @@ Terminal.prototype.doLineEdit = function(keyName) {
     this.editorAddLine();
     let asKeyPress = DomTerm.keyNameChar(keyName);
     let keymaps = [ DomTerm.lineEditKeymap ];
+    if (this._markMode && keyName.indexOf("Shift-") < 0) {
+        let skeyName = "Shift-" + keyName;
+        for (let map of keymaps) {
+            let cmd = map.lookup(skeyName);
+            if (typeof cmd === "string" && cmd.endsWith("-extend")) {
+                return commandMap[cmd](this, keyName);
+            }
+        }
+    }
     for (let map of keymaps) {
         let ret = DomTerm.handleKey(map, this, keyName);
         if (ret)
@@ -8378,7 +8396,8 @@ Terminal.prototype.keyDownHandler = function(event) {
         return;
     if (this._composing == 0)
         this._composing = -1;
-    if (event.shiftKey || this._markMode == 2) {
+    /*
+    if (event.shiftKey || this._markMode) {
         switch (key) {
         case 37: // Left
         case 39: // Right
@@ -8392,9 +8411,10 @@ Terminal.prototype.keyDownHandler = function(event) {
     } else if (key >= 35 && key <= 40) {
         //this._clearSelection();
     }
-    if (this._currentlyPagingOrPaused()
-        && this.pageKeyHandler(keyName)) {
-        event.preventDefault();
+    */
+    if (this._currentlyPagingOrPaused()) {
+        if (this.pageKeyHandler(keyName))
+            event.preventDefault();
         return;
     }
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
@@ -9270,6 +9290,13 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
     // Ctrl-Shift-Up / C-S-Down to scroll by one line, in all modes?
     if (this.verbosity >= 2)
         this.log("page-key key:"+keyName);
+    if (this._markMode && keyName.indexOf("Shift-") < 0) {
+        let skeyName = "Shift-" + keyName;
+        let cmd = DomTerm.pagingKeymap.lookup(skeyName);
+        if (typeof cmd === "string" && cmd.endsWith("-extend")) {
+            return commandMap[cmd](this, keyName);
+        }
+    }
     switch (keyName) {
         // C-Home start
         // C-End end
@@ -9972,18 +9999,13 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
     let linesCount = 0;
 
     let sel = document.getSelection();
-    if (! sel.isCollapsed) {
-        if (doDelete) {
-            this.deleteSelected(action=="kill");
-        } else {
-            let r = sel.getRangeAt(0);
-            let node = backwards ? r.startContainer : r.endContainer;
-            let offset = backwards ? r.startOffset : r.endOffset;
-            this.editorMoveToPosition(node, offset);
-        }
+    if (! sel.isCollapsed && doDelete) {
+        this.deleteSelected(action=="kill");
         if (this._pagingMode == 0)
             sel.removeAllRanges();
     } else {
+        if (! sel.isCollapsed)
+            sel.collapse(sel.focusNode, sel.focusOffset);
         this._removeCaret();
         range = this.editorRestrictedRange();
         if (this._pagingMode == 0 || sel.anchorNode == null) {
