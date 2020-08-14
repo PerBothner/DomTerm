@@ -114,6 +114,7 @@ cmd('toggle-auto-pager',
         } else
             DomTerm.setAutoPaging("toggle", dt);
         DomTerm.autoPagerChanged(dt, dt._autoPaging);
+        return true;
     });
 
 cmd('save-as-html',
@@ -224,6 +225,22 @@ cmd('kill-line',
         let count = dt.numericArgumentGet();
         dt.editorBackspace(- count, "kill", "line", "buffer");
         return true; });
+cmd('beginning-of-buffer',
+    function(dt, key) {
+        dt.editorMoveStartOrEndBuffer(false, "move"); dt._numericArgument = null;
+        return true; });
+cmd('end-of-buffer',
+    function(dt, key) {
+        dt.editorMoveStartOrEndBuffer(true, "move"); dt._numericArgument = null;
+        return true; });
+cmd('beginning-of-buffer-extend',
+    function(dt, key) {
+        dt.editorMoveStartOrEndBuffer(false, "extend"); dt._numericArgument = null;
+        return true; });
+cmd('end-of-buffer-extend',
+    function(dt, key) {
+        dt.editorMoveStartOrEndBuffer(true, "extend"); dt._numericArgument = null;
+        return true; });
 cmd('beginning-of-input',
     function(dt, key) {
         dt.editorMoveHomeOrEnd(false); dt._numericArgument = null;
@@ -242,6 +259,26 @@ cmd('down-line-or-history',
     function(dt, key) {
         if (! dt.editorMoveLines(false, dt.numericArgumentGet()))
             dt.historyMove(1)
+        return true;
+    });
+cmd('up-line',
+    function(dt, key) {
+        dt.editorMoveLines(true, dt.numericArgumentGet(), false);
+        return true;
+    });
+cmd('down-line',
+    function(dt, key) {
+        dt.editorMoveLines(false, dt.numericArgumentGet(), false)
+        return true;
+    });
+cmd('up-line-extend',
+    function(dt, key) {
+        dt.editorMoveLines(true, dt.numericArgumentGet(), true);
+        return true;
+    });
+cmd('down-line-extend',
+    function(dt, key) {
+        dt.editorMoveLines(false, dt.numericArgumentGet(), true)
         return true;
     });
 cmd('toggle-mark-mode',
@@ -295,10 +332,13 @@ cmd('control-action',
 cmd('numeric-argument',
     function(dt, key) {
         let klen = key.length;
-        let c = key.charAt(klen-1);
+        let c = key.charAt(klen == 3 ? 1 : klen-1);
         dt._numericArgument = dt._numericArgument == null ? c
             : dt._numericArgument + c;
-        dt._displayInfoMessage("count: "+dt._numericArgument);
+        if (dt._pagingMode)
+            dt._updatePagerInfo();
+        else
+            dt._displayInfoMessage("count: "+dt._numericArgument);
         return true;
     });
 cmd('accept-line',

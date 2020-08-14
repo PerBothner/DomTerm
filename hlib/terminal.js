@@ -3593,8 +3593,12 @@ DomTerm.showContextMenu = null;
 Terminal.prototype._clearSelection = function() {
     document.getSelection().collapse(this.focusArea, 0);
     let viewCaretNode = this.viewCaretNode;
-    if (viewCaretNode && viewCaretNode.parentNode)
+    if (viewCaretNode && viewCaretNode.parentNode) {
+        let viewCaretPrevious = viewCaretNode.previousSibling;
         viewCaretNode.parentNode.removeChild(viewCaretNode);
+        if (viewCaretPrevious instanceof Text)
+            this._normalize1(viewCaretPrevious);
+    }
 }
 
 /** Do after selection has changed, but "stabilized".
@@ -3636,7 +3640,12 @@ Terminal.prototype._updateSelected = function() {
         if (sel.focusNode !== this.viewCaretNode) {
             let r = document.createRange();
             r.setStart(sel.focusNode, sel.focusOffset);
-            // FIXME if after LINE node and end od DIV, move to start of next DIV.
+            // FIXME if after LINE node and end of DIV, move to start of next DIV.
+            let viewCaretPrevious = this.viewCaretNode.previousSibling;
+            if (viewCaretPrevious instanceof Text) {
+                viewCaretPrevious.parentNode.removeChild(this.viewCaretNode);
+                this._normalize1(viewCaretPrevious);
+            }
             r.insertNode(this.viewCaretNode);
             if (point) {
                 sel.collapse(this.viewCaretNode, 0);
@@ -3644,6 +3653,7 @@ Terminal.prototype._updateSelected = function() {
                 sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset,
                                      this.viewCaretNode, 0);
             }
+            this.scrollToCaret(this.viewCaretNode);
         }
     }
 
@@ -4472,6 +4482,10 @@ Terminal.prototype._fixOutputPosition = function() {
                 this.outputContainer = container.parentNode;
                 this.outputBefore = part2;
             }
+        } else {
+            this.outputBefore = container.childNodes[pos];
+            if (this.outputBefore === undefined)
+                this.outputBefore = null;
         }
     }
     return this.outputBefore;
@@ -6293,6 +6307,27 @@ Terminal.prototype._scrollIfNeeded = function() {
     }
 }
 
+Terminal.prototype.scrollToCaret = function(caret = null) {
+    if (caret == null) {
+        caret = this.viewCaretNode;
+        if (caret == null || caret.parentNode == null)
+            caret = this._caretNode;
+    }
+    if (caret.parentNode == null)
+        return;
+    let top = caret.offsetTop;
+    let bottom = top + caret.offsetHeight;
+    let parent = caret;
+    while ((parent = parent.offsetParent) != null && parent != this.topNode) {
+        top += parent.offsetTop;
+        bottom += parent.offsetTop;
+    }
+    if (top < this.topNode.scrollTop)
+        this.topNode.scrollTop = top;
+    else if (bottom > this.topNode.scrollTop + this.availHeight)
+        this.topNode.scrollTop = bottom - this.availHeight;
+}
+
 Terminal.prototype._enableScroll = function() {
     this._disableScrollOnOutput = false;
     this._scrollIfNeeded();
@@ -7676,7 +7711,7 @@ Terminal._rangeAsText = function(range) {
     }
     function lineHandler(node) { return true; }
     let scanState = { linesCount: 0, todo: Infinity, unit: "char", stopAt: "",
-                      wrapText: wrapText, elementExit, elementExit, lineHandler };
+                      wrapText: wrapText, elementExit, lineHandler };
     Terminal.scanInRange(range, false, scanState);
     return t;
 }
@@ -8063,12 +8098,16 @@ DomTerm.autoPagerChanged = function(dt, mode) {
                                +(mode?"on":"off"));
 }
 
-Terminal.prototype._pushToCaret = function() {
-    this._fixOutputPosition();
+Terminal.prototype._pushToCaret = function(useFocus = false) {
+    //this._fixOutputPosition();
     let saved = {
         before: this.outputBefore, container: this.outputContainer };
-    this.outputBefore = this._caretNode;
-    this.outputContainer = this._caretNode.parentNode;
+    if (useFocus && this.viewCaretNode && this.viewCaretNode.parentNode) {
+        this.outputBefore = this.viewCaretNode;
+    } else {
+        this.outputBefore = this._caretNode;
+    }
+    this.outputContainer = this.outputBefore.parentNode;
     this.resetCursorCache();
     return saved;
 }
@@ -8150,7 +8189,6 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-End": "scroll-bottom",
     "Alt-Home": "beginning-of-input",
     "Alt-End": "end-of-input",
-    "End": "end-of-line",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Down": "down-line-or-history",
@@ -8168,6 +8206,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Alt-8": "numeric-argument",
     "Alt-9": "numeric-argument",
     "Alt--": "numeric-argument",
+    "Alt-.": "numeric-argument",
     // The following should be controlled by a user preference
     // for emacs-like keybindings. FIXME
     "Alt-B": "backward-word",
@@ -8183,6 +8222,56 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "(keypress)": "insert-char"
 });
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
+
+DomTerm.pagingKeymapDefault = new browserKeymap({
+    "'a'": "toggle-auto-pager",
+    "'0'": "numeric-argument",
+    "'1'": "numeric-argument",
+    "'2'": "numeric-argument",
+    "'3'": "numeric-argument",
+    "'4'": "numeric-argument",
+    "'5'": "numeric-argument",
+    "'6'": "numeric-argument",
+    "'7'": "numeric-argument",
+    "'8'": "numeric-argument",
+    "'9'": "numeric-argument",
+    "'-'": "numeric-argument",
+    "'.'": "numeric-argument",
+    "Alt-0": "numeric-argument",
+    "Alt-1": "numeric-argument",
+    "Alt-2": "numeric-argument",
+    "Alt-3": "numeric-argument",
+    "Alt-4": "numeric-argument",
+    "Alt-5": "numeric-argument",
+    "Alt-6": "numeric-argument",
+    "Alt-7": "numeric-argument",
+    "Alt-8": "numeric-argument",
+    "Alt-9": "numeric-argument",
+    "Alt--": "numeric-argument",
+    "Alt-.": "numeric-argument",
+    "Ctrl-!": "swap-focus-anchor",
+    "Ctrl-@": "toggle-mark-mode",
+    "Left": "backward-char",
+    "Mod-Left": 'backward-word',
+    "Right": "forward-char",
+    "Up": "up-line",
+    "Down": "down-line",
+    "Shift-Up": "up-line-extend",
+    "Shift-Down": "down-line-extend",
+    "Mod-Right": 'forward-word',
+    "Ctrl-Down": "scroll-line-down",
+    "Ctrl-Up": "scroll-line-up",
+    "Home": "beginning-of-line",
+    "End": "end-of-line",
+    "Shift-Home": "beginning-of-line-extend",
+    "Shift-End": "end-of-line-extend",
+    "Ctrl-Home": "beginning-of-buffer",
+    "Ctrl-End": "end-of-buffer",
+    "Ctrl-Shift-Home": "beginning-of-buffer-extend",
+    "Ctrl-Shift-End": "end-of-buffer-extend",
+    "Ctrl-End": "scroll-bottom"
+});
+DomTerm.pagingKeymap = DomTerm.pagingKeymapDefault;
 
 /** If keyName is a key-press, return pressed key; otherwise null. */
 DomTerm.keyNameChar = function(keyName) {
@@ -8303,12 +8392,12 @@ Terminal.prototype.keyDownHandler = function(event) {
     } else if (key >= 35 && key <= 40) {
         //this._clearSelection();
     }
-    if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
+    if (this._currentlyPagingOrPaused()
+        && this.pageKeyHandler(keyName)) {
         event.preventDefault();
         return;
     }
-    if (this._currentlyPagingOrPaused()
-        && this.pageKeyHandler(keyName)) {
+    if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
         event.preventDefault();
         return;
     }
@@ -8411,8 +8500,8 @@ Terminal.prototype.keyPressHandler = function(event) {
         return;
     if (this._composing > 0)
         return;
-    if (this._currentlyPagingOrPaused()
-        && this.pageKeyHandler(keyName)) {
+    if (this._currentlyPagingOrPaused()) {
+        this.pageKeyHandler(keyName);
         event.preventDefault();
         return;
     }
@@ -9088,7 +9177,7 @@ Terminal.prototype._pageScrollAbsolute = function(percent) {
     if (limit > vtop) {// set _displayPostEofPage mode
         var vpad = limit - vtop;
         var maxpad = this.availHeight - this.charHeight; // matches 'less'
-        this._adjustSpacer(vpad > maxMap ? maxpad : vpad);
+        this._adjustSpacer(vpad > maxpad ? maxpad : vpad);
     }
     this.topNode.scrollTop = scrollTop;
 }
@@ -9163,10 +9252,6 @@ DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {
         : mode == "on" || mode == "true";
 }
 
-Terminal.prototype._pageNumericArgumentGet = function(def = 1) {
-    var arg = this._numericArgument;
-    return arg == null ? def : Number(arg);
-}
 Terminal.prototype._pageNumericArgumentClear = function() {
     var hadValue =  this._numericArgument;
     this._numericArgument = null;
@@ -9174,7 +9259,7 @@ Terminal.prototype._pageNumericArgumentClear = function() {
         this._updatePagerInfo();
 }
 Terminal.prototype._pageNumericArgumentAndClear = function(def = 1) {
-    var val = this._pageNumericArgumentGet(def);
+    var val = this.numericArgumentGet(def);
     this._pageNumericArgumentClear();
     return val;
 }
@@ -9200,15 +9285,6 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
     case "PageDown":
         this._pagePage(this._pageNumericArgumentAndClear(1));
         return true;
-    case "Home":
-        this._pageTop();
-        return true;
-    case "Down":
-        this._pageLine(1); // FIXME
-        return true;
-    case "Up":
-        this._pageLine(-1); // FIXME
-        return true;
     case "'m'":
     case "'M'":
         var oldMode = this._pagingMode;
@@ -9222,12 +9298,6 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
         // MAYBE: 'P' toggle pager/pause mode
         this._pageScrollAbsolute(this._pageNumericArgumentAndClear(50));
         return true;
-    case "'a'":
-        DomTerm.doNamedCommand("toggle-auto-pager");
-        return true;
-    case "Left":       return commandMap['backward-char'](this, keyName);
-    case "Right":      return commandMap['forward-char'](this, keyName);
-    case "End":        return commandMap['scroll-bottom'](this, keyName);
     //case "Ctrl-C":     return commandMap['copy-text'](this, keyName);
     case "Ctrl-C": // ??? 'copy-text-or-interrupt'
         this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
@@ -9235,18 +9305,9 @@ Terminal.prototype.pageKeyHandler = function(keyName) {
         this._adjustPauseLimit();
         return true;
     default:
-        let asKeyPress = DomTerm.keyNameChar(keyName);
-        if (asKeyPress) {
-            var arg = this._numericArgument;
-            let key = asKeyPress.charCodeAt(0);
-            // '0'..'9' || '-' and initial || .'.
-            if ((key >= 48 && key <= 57) || (key == 45 && ! arg) || key == 46) {
-                arg = arg ? arg + asKeyPress : asKeyPress;
-                this._numericArgument = arg;
-                this._updatePagerInfo();
-                return true;
-            }
-        }
+        let ret = DomTerm.handleKey(DomTerm.pagingKeymap, this, keyName);
+        if (ret)
+            return ret;
     }
     return false;
 };
@@ -9313,26 +9374,52 @@ Terminal.prototype.editorAddLine = function() {
         this._inputLine.classList.add("noecho");
 }
 
-// FIXME combine with _pageNumericArgumentGet
-Terminal.prototype.numericArgumentGet = function() {
+Terminal.prototype.numericArgumentGet = function(def = 1) {
     let s = this._numericArgument;
     if (s == null)
-       return 1;
+       return def;
     if (s == "-")
         s = "-1";
     this._numericArgument = null;
-    this._displayInfoMessage(null);
+    if (this._pagingMode)
+        this._updatePagerInfo();
+    else
+        this._displayInfoMessage(null);
     return Number(s);
 }
 
-Terminal.prototype.editorMoveLines = function(backwards, count) {
+Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) {
     if (count == 0)
         return true;
     let delta1 = backwards ? -1 : 1;
     let goalColumn = this.sstate.goalColumn;
-    let save = this._pushToCaret();
+    let save = this._pushToCaret(this._pagingMode);
     let oldColumn = this.getCursorColumn();
     let oldLine = this.getAbsCursorLine();
+    if (this._pagingMode) {
+        let column = oldColumn;
+        if (goalColumn && goalColumn > column)
+            column = goalColumn;
+        let line = backwards ? oldLine - count : oldLine + count;
+        this.moveToAbs(line, column, false);
+        let r = new Range();
+        let sel = window.getSelection();
+        if (typeof this.outputBefore == "number")
+            r.setEnd(this.outputContainer, this.outputBefore);
+        else if (this.outputBefore)
+            r.setEndBefore(this.outputBefore);
+        else
+            r.selectNodeContents(this.outputContainer);
+        // Same logic as editorMoveStartOrEndBuffer
+        if (extend)
+            sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset,
+                                 r.endContainer, r.endOffset);
+        else
+            sel.collapse(r.endContainer, r.endOffset);
+        this._popFromCaret(save);
+        this.sstate.goalColumn = column;
+        return;
+    }
     this._popFromCaret(save);
     this.editorMoveStartOrEndLine(false);
     save = this._pushToCaret();
@@ -9400,12 +9487,28 @@ Terminal.prototype.editorMoveToRangeStart = function(range) {
         let p = this._caretNode.parentNode;
         if (p) p.removeChild(this._caretNode);
         range.insertNode(this._caretNode);
+        this.scrollToCaret(this._caretNode);
     } catch(e) {
         console.log("caught "+e);
     }
     if (this._inputLine && this._inputLine.parentNode)
         this._inputLine.normalize();
     this._restoreCaret();
+}
+
+Terminal.prototype.editorMoveStartOrEndBuffer = function(toEnd, action="move") {
+    let r = new Range();
+    let sel = window.getSelection();
+    if (toEnd)
+        r.selectNodeContents(this.initial);
+    else
+        r.setEnd(this.lineStarts[0], 0);
+    if (action == "move") {
+            sel.collapse(r.endContainer, r.endOffset);
+    } else {
+        sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset,
+                             r.endContainer, r.endOffset);
+    }
 }
 
 Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
@@ -9644,6 +9747,23 @@ Terminal.scanInRange = function(range, backwards, state) {
             (state.elementExit) (node);
         return node === lastNode ? null : false;
     }
+    function blockAfterLine(line) {
+        function f(n) {
+            let ch = n.firstChild;
+            return n !== line && ch !== null
+                && (Terminal.isNormalBlock(ch) || n);
+            /*
+            if (n == line || ch == null)
+                return false;
+            if (! Terminal.isNormalBlock(ch))
+                return n;
+            return true;
+            */
+        }
+        let n = Terminal._forEachElementIn(range.commonAncestorContainer,
+                                           f, false, false, line);
+        return range.isPointInRange(n, 0) ? n : null;
+    }
     function fun(node) {
         if (skipFirst > 0) {
             skipFirst--;
@@ -9687,15 +9807,26 @@ Terminal.scanInRange = function(range, backwards, state) {
                             node = next;
                     }
                     if (backwards) {
-                        if (stopped)
-                            range.setStartAfter(node);
+                        if (stopped) {
+                            let next = blockAfterLine(node);
+                            if (next)
+                                range.setStart(next, 0);
+                            else
+                                range.setStartAfter(node);
+                        }
                         else
                             range.setStartBefore(node);
                     } else {
                         if (stopped)
                             range.setEndBefore(node);
-                        else
-                            range.setEndAfter(node);
+                        else {
+                            let next = blockAfterLine(node);
+                            if (next)
+                                range.setEnd(next, 0);
+                            else
+                                range.setEndAfter(node);
+                            //return false;
+                        }
                     }
                     return null;
                 }

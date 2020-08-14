@@ -97,6 +97,9 @@ div.domterm span.focus-caret span {
     width: 2px;
     background-color: purple;
 }
+div.domterm.markmode span.focus-caret span {
+    background-color: red;
+}
 div.domterm-active span[caret="blinking-block"][std="caret"],
 div.domterm-active span[caret="blinking-bar"][std="caret"],
 div.domterm-active span[caret="blinking-underline"][std="caret"] {
