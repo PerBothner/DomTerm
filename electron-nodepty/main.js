@@ -96,11 +96,13 @@ function preprocessArgs(argv) {
     initLog(verbosity);
     initSettings(settings, (data) => {
         let jsettings = JSON.stringify(data);
+        let lsettings = "{}"; // FIXME
         for (let i = sessionList.length; --i >= 0; ) {
             const connections = sessionList[i].connections;
             for (let j = connections.length; --j >= 0; ) {
                 const connection = connections[j];
-                sendSettings(connection.window, connection.paneId, jsettings);
+                sendSettings(connection.window, connection.paneId,
+                             jsettings);
             }
         }
     });
@@ -113,6 +115,7 @@ function createInitialWindow (argv) {
     let openDevTools = false;
     let rurl = "dtresource:/index.html";
     var geometry = null;
+    let lsettings = {}; // FIXME
     for (let i = 2; i < argc; i++) {
         let arg = argv[i];
         if (arg == "--verbose") {
@@ -278,6 +281,9 @@ ipcMain.on('report-event', (event, paneId, name, data) => {
             let settings = settingsData();
             if (settings)
                 sendSettings(win, paneId, JSON.stringify(settings));
+            let lsettings = {}; // FIXME
+            win.webContents.send('output-data', paneId,
+                         urgentWrap('\x1B]88;'+ JSON.stringify(lsettings)+'\x07'));
         }
     }
 });

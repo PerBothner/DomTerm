@@ -37,7 +37,7 @@ DomTerm.loadDomTerm = function() {
     DomTerm.mainLocation = location.href;
     let name = "kterm1";
     let termElement = DomTerm.makeElement(name, document.body);
-    let term = new window.DTerminal(name);
+    let term = new window.DTerminal(name, termElement);
     DomTerm.setInputMode(99, term);
     DomTerm.supportsAutoInputMode = false;
 
