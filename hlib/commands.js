@@ -44,25 +44,31 @@ cmd('scroll-bottom',
 cmd('scroll-line-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pageLine(-1);
+        dt._pageLine(- dt.numericArgumentGet(1));
         return true;
     });
 cmd('scroll-line-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pageLine(1);
+        dt._pageLine(dt.numericArgumentGet(1));
         return true;
     });
 cmd('scroll-page-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pagePage(-1);
+        dt._pagePage(- dt.numericArgumentGet(1));
         return true;
     });
 cmd('scroll-page-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pagePage(1);
+        dt._pagePage(dt.numericArgumentGet(1));
+        return true;
+    });
+cmd('scroll-percentage',
+    function(dt, key) {
+        dt._disableScrollOnOutput = true;
+        dt._pageScrollAbsolute(dt.numericArgumentGet(50));
         return true;
     });
 cmd('enter-mux-mode',
@@ -116,7 +122,14 @@ cmd('toggle-auto-pager',
         DomTerm.autoPagerChanged(dt, dt._autoPaging);
         return true;
     });
-
+cmd('toggle-pause-mode',
+    function(dt, key) {
+        let oldMode = dt._pagingMode;
+        if (oldMode==2)
+            dt._pauseContinue();
+        dt._enterPaging(oldMode==1);
+        return true;
+    });
 cmd('save-as-html',
     function(dt, key) {
         DomTerm.doSaveAs(dt);
@@ -136,12 +149,25 @@ cmd('copy-html',
     });
 cmd('copy-text-or-interrupt',
     function(dt, key) {
-        if (document.getSelection().isCollapsed)
-            return (commandMap['client-action'])(dt, key);
-        let value = Terminal._selectionValue(false);
-        dt._clearSelection();
-        return DomTerm.valueToClipboard(value);
-   });
+        let cmd = document.getSelection().isCollapsed || key === dt.previousKeyName
+            ? 'client-action'
+            : 'copy-text';
+        return (commandMap[cmd])(dt, key);
+    });
+cmd('paging-interrupt',
+    function(dt, key) {
+        dt.reportKeyEvent(key, dt.keyNameToChars(key));
+        dt._pauseContinue(true);
+        dt._adjustPauseLimit();
+        return true;
+    });
+cmd('paging-copy-or-interrupt',
+    function(dt, key) {
+        let cmd = document.getSelection().isCollapsed || key === dt.previousKeyName
+            ? 'paging-interrupt'
+            : 'copy-text';
+        return (commandMap[cmd])(dt, key);
+    });
 cmd('cut-text',
     function(dt, key) {
         if (! window.getSelection().isCollapsed) {

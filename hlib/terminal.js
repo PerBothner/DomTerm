@@ -5977,7 +5977,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
             } else if (tagName == "span") {
-                if (cls == "focus-area" || cl == "focus-caret")
+                if (cls == "focus-area" || cls == "focus-caret")
                     break;
                 if (cls == "wc-node") {
                     string += node.textContent;
@@ -7477,6 +7477,7 @@ Terminal.prototype.eventToKeyName = function(event) {
         case "ArrowUp": base = "Up"; break;
         case "ArrowDown": base = "Down"; break;
         case "Escape": base = "Esc"; break;
+        case " ": base = "Space"; break;
     }
     if (base.length == 1 && base >= 'a' && base <= 'z')
         base = base.toUpperCase();
@@ -8227,6 +8228,8 @@ DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 DomTerm.pagingKeymapDefault = new browserKeymap({
     "F11": "toggle-fullscreen",
     "Shift-F11": "toggle-fullscreen-current-window",
+    "Ctrl-C": DomTerm.isMac ? "paging-interrupt" : "paging-copy-or-interrupt",
+    "Ctrl-Shift-C": "copy-text",
     "Ctrl-Shift-M": "toggle-paging-mode",
     "'a'": "toggle-auto-pager",
     "'0'": "numeric-argument",
@@ -8276,9 +8279,18 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-End": "end-of-line-extend",
     "Ctrl-Home": "beginning-of-buffer",
     "Ctrl-End": "end-of-buffer",
+    //"Ctrl-Home": "scroll-top",
+    //"Ctrl-End": "scroll-bottom",
     "Ctrl-Shift-Home": "beginning-of-buffer-extend",
     "Ctrl-Shift-End": "end-of-buffer-extend",
-    "Ctrl-End": "scroll-bottom"
+    "Enter": "scroll-line-down",
+    "PageUp": "scroll-page-up",
+    "Shift-Space": "scroll-page-up",
+    "PageDown": "scroll-page-down",
+    "Space": "scroll-page-down",
+    "'m'": "toggle-pause-mode",
+    "'p'": "scroll-percentage",
+    "'%'": "scroll-percentage"
 });
 DomTerm.pagingKeymap = DomTerm.pagingKeymapDefault;
 
@@ -8302,22 +8314,38 @@ DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
 }
 
 DomTerm.handleKey = function(map, dt, keyName) {
-    let command;
-    if (typeof map == "function")
-        command = map(this, keyName);
-    else {
-        command = map.lookup(keyName);
-        if (! command && DomTerm.keyNameChar(keyName) != null)
-            command = map.lookup("(keypress)");
+    let maps = typeof map == "object" && map instanceof Array ? map : [map];
+    if (dt._markMode && keyName.indexOf("Shift-") < 0) {
+        let skeyName = "Shift-" + keyName;
+        for (let map of maps) {
+            let cmd = map.lookup(skeyName);
+            if (typeof cmd === "string" && cmd.endsWith("-extend")) {
+                let r = commandMap[cmd](this, keyName);
+                dt.previousKeyName = keyName;
+                return r;
+            }
+        }
     }
-    if (typeof command == "string" || command instanceof String)
-        command = commandMap[command];
-    if (command)
-        dt._didExtend = false;
-    if (typeof command == "function")
-        return command(dt, keyName);
-    else
-        return command;
+    let command;
+    for (let map of maps) {
+        if (typeof map == "function")
+            command = map(this, keyName);
+        else {
+            command = map.lookup(keyName);
+            if (! command && DomTerm.keyNameChar(keyName) != null)
+                command = map.lookup("(keypress)");
+        }
+        if (typeof command == "string" || command instanceof String)
+            command = commandMap[command];
+        if (command) {
+            dt._didExtend = false;
+            let r = typeof command == "function" ? command(dt, keyName)
+                : command;
+            dt.previousKeyName = keyName;
+            return r;
+        }
+    }
+    return false;
 };
 
 Terminal.prototype.doLineEdit = function(keyName) {
@@ -8325,23 +8353,8 @@ Terminal.prototype.doLineEdit = function(keyName) {
         this.log("doLineEdit "+keyName);
 
     this.editorAddLine();
-    let asKeyPress = DomTerm.keyNameChar(keyName);
     let keymaps = [ DomTerm.lineEditKeymap ];
-    if (this._markMode && keyName.indexOf("Shift-") < 0) {
-        let skeyName = "Shift-" + keyName;
-        for (let map of keymaps) {
-            let cmd = map.lookup(skeyName);
-            if (typeof cmd === "string" && cmd.endsWith("-extend")) {
-                return commandMap[cmd](this, keyName);
-            }
-        }
-    }
-    for (let map of keymaps) {
-        let ret = DomTerm.handleKey(map, this, keyName);
-        if (ret)
-            return ret;
-    }
-    return false;
+    return DomTerm.handleKey(keymaps, this, keyName);
 };
 
 DomTerm.saveFileCounter = 0;
@@ -9254,7 +9267,7 @@ Terminal.prototype._pageBottom = function() {
 
 Terminal.prototype._enterPaging = function(pause) {
     // this._displayInputModeWithTimeout(displayString);
-    this._pageNumericArgumentClear();
+    this._numericArgument = null;
     this._pagingMode = pause ? 2 : 1;
     this.modeLineGenerator = _pagerModeInfo;
     this._updatePagerInfo();
@@ -9272,71 +9285,8 @@ DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {
         : mode == "on" || mode == "true";
 }
 
-Terminal.prototype._pageNumericArgumentClear = function() {
-    var hadValue =  this._numericArgument;
-    this._numericArgument = null;
-    if (hadValue)
-        this._updatePagerInfo();
-}
-Terminal.prototype._pageNumericArgumentAndClear = function(def = 1) {
-    var val = this.numericArgumentGet(def);
-    this._pageNumericArgumentClear();
-    return val;
-}
-
 Terminal.prototype.pageKeyHandler = function(keyName) {
-    var arg = this._numericArgument;
-    // Shift-PageUp and Shift-PageDown should maybe work in all modes?
-    // Ctrl-Shift-Up / C-S-Down to scroll by one line, in all modes?
-    if (this.verbosity >= 2)
-        this.log("page-key key:"+keyName);
-    if (this._markMode && keyName.indexOf("Shift-") < 0) {
-        let skeyName = "Shift-" + keyName;
-        let cmd = DomTerm.pagingKeymap.lookup(skeyName);
-        if (typeof cmd === "string" && cmd.endsWith("-extend")) {
-            return commandMap[cmd](this, keyName);
-        }
-    }
-    switch (keyName) {
-        // C-Home start
-        // C-End end
-    case "Enter":
-        this._pageLine(this._pageNumericArgumentAndClear(1));
-        return true;
-    case "PageUp":
-        // Also Shift-Space
-        // Also backspace? DEL? 'b'?
-        this._pagePage(- this._pageNumericArgumentAndClear(1));
-        return true;
-    case "Space":
-    case "PageDown":
-        this._pagePage(this._pageNumericArgumentAndClear(1));
-        return true;
-    case "'m'":
-    case "'M'":
-        var oldMode = this._pagingMode;
-        if (oldMode==2)
-            this._pauseContinue();
-        this._enterPaging(oldMode==1);
-        return true;
-    case "'p'":
-    case "'%'":
-        // MAYBE: 'p' relative to current "group"; 'P' relative to absline 0.
-        // MAYBE: 'P' toggle pager/pause mode
-        this._pageScrollAbsolute(this._pageNumericArgumentAndClear(50));
-        return true;
-    //case "Ctrl-C":     return commandMap['copy-text'](this, keyName);
-    case "Ctrl-C": // ??? 'copy-text-or-interrupt'
-        this.reportKeyEvent(keyName, this.keyNameToChars(keyName));
-        this._pauseContinue(true);
-        this._adjustPauseLimit();
-        return true;
-    default:
-        let ret = DomTerm.handleKey(DomTerm.pagingKeymap, this, keyName);
-        if (ret)
-            return ret;
-    }
-    return false;
+    return DomTerm.handleKey(DomTerm.pagingKeymap, this, keyName);
 };
 
 /*
