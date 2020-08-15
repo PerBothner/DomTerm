@@ -206,7 +206,7 @@ function createNewWindow (url, options) {
         }
     }
     if (process.platform == "win32")
-	bwoptions.icon = __dirname.replace("\\electron", "\\domterm2.ico");
+	bwoptions.icon = __dirname.replace("\\electron-nodepty", "\\doc\\domterm2.ico");
     let win = new BrowserWindow(bwoptions);
     windowList.push(win);
     let session = createSession();
