@@ -285,8 +285,12 @@ merged_settings(struct json_object *cmd_settings)
     if (cmd_settings) {
         if (jsettings == NULL)
             return json_object_get(cmd_settings);
+#if JSON_C_VERSION_NUM >= ((0 << 16) | (13 << 8))
         jsettings = NULL;
         json_object_deep_copy(settings_json_object, &jsettings, NULL);
+#else
+	jsettings = json_tokener_parse(json_object_get_string(settings_json_object));
+#endif
         json_object_object_foreach(cmd_settings, key, val) {
             json_object_object_add(jsettings, key, json_object_get(val));
         }
