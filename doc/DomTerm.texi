@@ -5134,6 +5134,34 @@ No support for using other non-Electron front-ends,
 including using a web-browser.  (Could be implemented, of course,
 by adding server for http and WebSockets.)
 
+@subheading Builing and running
+
+You will probably need to
+run @uref{https://github.com/electron/electron-rebuild,electron-rebuild};
+the easiest way is to use @code{npm}:
+
+@example
+cd $DOMTERM_DIR/electron-nodepty
+npm install
+npm install --save-dev electron-rebuild
+$(npm bin)/electron-rebuild --version $(electron --version)
+@end example
+
+The file @code{hlib/domterm-version.js} built from
+@code{hlib/domterm-version.js.in} by the @code{configure} script.
+If you don't have the shell and other Unix-style tools to
+generate and run @code{configure}, you can cheat by
+just copying @code{hlib/domterm-version.js.in} over:
+@example
+cd $DOMTERM_DIR/hlib && cp domterm-version.js.in domterm-version.js
+@end example
+
+To start DomTerm do:
+
+@example
+electron $DOMTERM_DIR/electron-nodepty
+@end example
+
 @node The DomTerm JavaScript class
 @section The DomTerm JavaScript class
 
