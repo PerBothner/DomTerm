@@ -420,13 +420,18 @@ To download the sources do:
 git clone https://github.com/PerBothner/DomTerm
 @end example
 
-Alternatively, it may be easier to grab one of the sporadic
-@uref{https://github.com/PerBothner/DomTerm/releases,releases}.
-A file named @code{domterm-@var{version}.tar.gz} is a GNU-style release;
-it includes some generated files (such as the @code{configure} script),
-for convenience.
-A file named @code{domterm-@var{version}-wsl.zip} contains
-compiled installable files for WSL (Windows Subsystem for Linux).
+The following instructions assume a Unix-like environment
+(Linux, BSD, MacOS, or WSL on Windows).
+On other platforms (including plain Windows without WSL)
+you may be able to use @ref{electron-nodepty} (experimental).
+
+@c Alternatively, it may be easier to grab one of the sporadic
+@c @uref{https://github.com/PerBothner/DomTerm/releases,releases}.
+@c A file named @code{domterm-@var{version}.tar.gz} is a GNU-style release;
+@c it includes some generated files (such as the @code{configure} script),
+@c for convenience.
+@c A file named @code{domterm-@var{version}-wsl.zip} contains
+@c compiled installable files for WSL (Windows Subsystem for Linux).
 
 @subheading Prerequisites
 
@@ -5107,14 +5112,10 @@ as there are fewer dependencies, and they can mostly be handled by @code{npm}.
 
 The code is more compact and easier to understand than the C code.
 
-Potentially works on plain Windows (without WSL),
-optionally using the new Windows pty support.
+Runs on native Windows (without needing WSL),
+using @uref{https://github.com/microsoft/node-pty,node-pty}.
 
 Uses Electron ipc instead of WebSockets.
-
-Can use hidden windows for detached process.
-Probably easier to implement remote proxy server,
-using a local hidden window to save state in case connection goes down.
 
 @subheading Issues
 
