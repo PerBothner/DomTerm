@@ -1,8 +1,8 @@
 // @configure_input@
 DomTerm.versionString = "@DOMTERM_VERSION@";
-DomTerm.copyrightYear = @DOMTERM_YEAR@;
+DomTerm.copyrightYear = "@DOMTERM_YEAR@";
 DomTerm.inAtomFlag = false;
-DomTerm.useXtermJs = @WITH_XTERMJS@;
+DomTerm._useXtermJs = "@WITH_XTERMJS@";
 
 DomTerm.versions = {};
 DomTerm.versions.domterm = DomTerm.versionString;
@@ -40,3 +40,8 @@ DomTerm.versionInfo = "version="+DomTerm.versionString;
 
 DomTerm.isMac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
     : typeof os != "undefined" ? os.platform() == "darwin" : false;
+
+DomTerm.usingXtermJs = function() {
+    // This works even if autoconf substitions haven't been made.
+    return DomTerm._useXtermJs.charAt(0) === "1";
+}

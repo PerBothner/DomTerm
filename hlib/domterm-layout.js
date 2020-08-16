@@ -151,7 +151,7 @@ DomTermLayout._elementToLayoutItem = function(goal, item = DomTermLayout.manager
 }
 
 DomTermLayout._selectLayoutPane = function(component, originMode) {
-    if (! DomTerm.useIFram && ! DomTerm.useXtermJs) {
+    if (! DomTerm.useIFrame && ! DomTerm.usingXtermJs()) {
         let element = component.container.getElement()[0].firstChild;
         let dt = element && element.classList.contains("domterm")
             ? element.terminal
@@ -359,7 +359,7 @@ DomTermLayout.initialize = function() {
         DomTermLayout.showFocusedPaneL(container.parent, wrapped);
         wrapped.classList.add("lm_content");
         container.setTitle(name);
-        //if (! DomTerm.useXtermJs)
+        //if (! DomTerm.usingXtermJs())
         //container.on('resize', DomTerm.layoutResized, wrapped);
         container.on('destroy', DomTermLayout.layoutClosed, container);
 

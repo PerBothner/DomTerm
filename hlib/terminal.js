@@ -722,7 +722,7 @@ DomTerm.EDITING_SELECTION = 1;
 
 DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
     let topNode;
-    if (DomTerm.useXtermJs) {
+    if (DomTerm.usingXtermJs()) {
         let xterm = new window.Terminal();
         xterm.open(parent);
         topNode = xterm.element;
@@ -2188,7 +2188,7 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
             this.outputContainer.insertBefore(inputLine, this.outputBefore);
             //this.outputContainer.normalize();
             this.outputBefore = inputLine;
-            if (this._pagingMode == 0 && ! DomTerm.useXtermJs)
+            if (this._pagingMode == 0 && ! DomTerm.usingXtermJs())
                 this.maybeFocus();
             if (this.isLineEditing()) {
                 let dt = this;
@@ -3208,7 +3208,7 @@ Terminal.prototype.resizeHandler = function() {
         dt.log("ResizeSensor called "+dt.name); 
     var oldWidth = dt.availWidth;
     dt.measureWindow();
-    if (DomTerm.useXtermJs) return;
+    if (DomTerm.usingXtermJs()) return;
     let minColumns = dt.getOption("terminal.minimum-width", 5);
     if (this.numColumns < minColumns)
         this.forceWidthInColumns(minColumns);
@@ -3500,7 +3500,7 @@ Terminal.prototype.forceWidthInColumns = function(numCols) {
 };
 
 Terminal.prototype.measureWindow = function()  {
-    if (DomTerm.useXtermJs) {
+    if (DomTerm.usingXtermJs()) {
         window.fit.fit(this.xterm);
         return;
     }
@@ -4111,7 +4111,7 @@ Terminal.prototype._createPendingSpan = function(span = this._createSpanNode()) 
 }
 
 Terminal.prototype._addPendingInput = function(str) {
-    if (DomTerm.useXtermJs)
+    if (DomTerm.usingXtermJs())
         return;
     this._restoreCaretNode();
     const caret = this._caretNode;
@@ -6259,7 +6259,7 @@ Terminal.prototype.pushControlState = function() {
     };
     this.decoder = new TextDecoder(); //label = "utf-8");
     this._savedControlState = saved;
-    if (! DomTerm.useXtermJs)
+    if (! DomTerm.usingXtermJs())
         this.parser.pushControlState(saved);
 }
 Terminal.prototype.popControlState = function() {
@@ -6267,7 +6267,7 @@ Terminal.prototype.popControlState = function() {
     if (saved) {
         this.decoder = saved.decoder;
         this._savedControlState = saved._savedControlState;
-        if (! DomTerm.useXtermJs) {
+        if (! DomTerm.usingXtermJs()) {
             this.parser.popControlState(saved);
         }
         // Control sequences in "urgent messages" don't count to
@@ -6281,7 +6281,7 @@ Terminal.prototype.popControlState = function() {
     }
 }
 
-// overridden if useXtermJs
+// overridden if usingXtermJs()
 Terminal.prototype.insertString = function(str) {
     this.parser.insertString(str);
 }
@@ -7982,7 +7982,7 @@ DomTerm.setInputMode = function(mode, dt = DomTerm.focusedTerm) {
         dt.clientDoesEcho = false;
         break;
     }
-    if (DomTerm.useXtermJs)
+    if (DomTerm.usingXtermJs())
         return;
     if (dt.isLineEditing())
         dt.editorAddLine();
@@ -8498,7 +8498,7 @@ Terminal.prototype.keyDownHandler = function(event) {
             if (this.scrollOnKeystroke)
                 this._enableScroll();
             event.preventDefault();
-            if (! DomTerm.useXtermJs) {
+            if (! DomTerm.usingXtermJs()) {
             /*
             if (keyName == "Delete") {
                 let sel = window.getSelection();
@@ -8878,7 +8878,7 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
     wsocket.onopen = function(e) {
         if (topNode == null)
             return;
-        if (DomTerm.useXtermJs && window.Terminal != undefined) {
+        if (DomTerm.usingXtermJs() && window.Terminal != undefined) {
             DomTerm.initXtermJs(wt, topNode);
             DomTerm.setFocus(wt, "N");
         } else {
