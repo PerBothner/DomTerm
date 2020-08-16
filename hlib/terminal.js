@@ -8320,7 +8320,7 @@ DomTerm.handleKey = function(map, dt, keyName) {
         for (let map of maps) {
             let cmd = map.lookup(skeyName);
             if (typeof cmd === "string" && cmd.endsWith("-extend")) {
-                let r = commandMap[cmd](this, keyName);
+                let r = commandMap[cmd](dt, keyName);
                 dt.previousKeyName = keyName;
                 return r;
             }
