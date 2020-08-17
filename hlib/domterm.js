@@ -8,6 +8,8 @@ class DomTermLayout {
 
 DomTermLayout.manager = null;
 
+DomTerm.verbosity = 0;
+
 DomTerm._instanceCounter = 0;
 
 /** The <body>, or a node below the menubar if using jsMenus. */

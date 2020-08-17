@@ -178,8 +178,6 @@ class Terminal {
     sstate.caretStyleFromCharSeq = -1; // caret from escape sequence
     sstate.showCaret = true;
 
-    this.verbosity = 0;
-
     // Use the doLineEdit function when isLineEditing().
     // True if a client performs echo on lines sent to it.
     // In that case, when isLineEditing(), when a completed
@@ -1550,7 +1548,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
     //this._removeInputLine();
     var absLine = this.currentAbsLine;
     var column = this.currentCursorColumn;
-    if (this.verbosity >= 3)
+    if (DomTerm.verbosity >= 3)
         this.log("moveTo lineCount:"+this.lineStarts.length+" homeL:"+this.homeLine+" goalLine:"+goalAbsLine+" line:"+absLine+" goalCol:"+goalColumn+" col:"+column);
     // This moves current (and parent) forwards in the DOM tree
     // until we reach the desired (goalAbsLine,goalColumn).
@@ -3119,7 +3117,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     this._selectionchangeListener = function(e) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
-        if (dt.verbosity >= 3)
+        if (DomTerm.verbosity >= 3)
             console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
         if (dt._composing > 0)
             return;
@@ -3204,7 +3202,7 @@ DomTerm._checkStyleResize = function(dt) { dt.resizeHandler(); }
 Terminal.prototype.resizeHandler = function() {
     var dt = this;
     // FIXME we want the resize-sensor to be a child of helperNode
-    if (dt.verbosity > 0)
+    if (DomTerm.verbosity > 0)
         dt.log("ResizeSensor called "+dt.name); 
     var oldWidth = dt.availWidth;
     dt.measureWindow();
@@ -3371,7 +3369,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         }, false);
     }
     function compositionStart(ev) {
-        if (dt.verbosity >= 1)
+        if (DomTerm.verbosity >= 1)
             dt.log("compositionStart "+JSON.stringify(ev.data)+" was-c:"+dt._composing);
         dt._composing = 1;
         dt.focusArea.style['z-index'] = 8;
@@ -3397,7 +3395,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         dt._removeCaret();
     }
     function compositionEnd(ev) {
-        if (dt.verbosity >= 1)
+        if (DomTerm.verbosity >= 1)
             dt.log("compositionEnd "+JSON.stringify(ev.data));
         dt._composing = 0;
         let data = ev.data;
@@ -3508,7 +3506,7 @@ Terminal.prototype.measureWindow = function()  {
     if (! ruler)
         return;
     var availHeight = this.topNode.clientHeight;
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         console.log("measureWindow "+this.name+" avH:"+availHeight);
     var clientWidth = this.topNode.clientWidth;
     if (availHeight == 0 || clientWidth == 0) {
@@ -3518,7 +3516,7 @@ Terminal.prototype.measureWindow = function()  {
     this.charWidth = rbox.width/26.0;
     this.charHeight = rbox.height;
     this.rightMarginWidth = this._wrapDummy.offsetWidth;
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.name+"["+this.topNode.getAttribute("class")+"] clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight+" rbox:"+rbox);
     var availWidth = clientWidth - this.rightMarginWidth;
     var numRows = Math.floor(availHeight / this.charHeight);
@@ -3540,7 +3538,7 @@ Terminal.prototype.measureWindow = function()  {
     this._setRegionTB(0, -1);
     this.availHeight = availHeight;
     this.availWidth = availWidth;
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" numCols:"+this.numColumns+" numRows:"+this.numRows);
 
     this._updateMiscOptions();
@@ -3800,7 +3798,7 @@ Terminal.prototype._updateSelected = function() {
     }
 }
 Terminal.prototype._mouseHandler = function(ev) {
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button+" alt:"+ev.altKey);
 
     if (ev.type == "mousedown" && ev.button == 2 && DomTerm.usingJsMenus) {
@@ -3914,7 +3912,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         return;
     }
 
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" row:"+row+" col:"+col+" button:"+button+" mode:"+this.sstate.mouseMode+" ext_coord:"+this.sstate.mouseCoordEncoding);
 
     if (button < 0 || col < 0 || col >= this.numColumns
@@ -4070,7 +4068,7 @@ Terminal.prototype.reportEvent = function(name, data = "") {
     // 0xFD cannot appear in a UTF-8 sequence
     let str = name + ' ' + data;
     let slen = str.length;
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("reportEvent "+this.name+": "+str);
     // Max 3 bytes per UTF-16 character
     let buffer = new ArrayBuffer(2 + 3 * slen);
@@ -5372,7 +5370,7 @@ DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
 }
 
 Terminal.prototype._unsafeInsertHTML = function(text) {
-    if (this.verbosity >= 1)
+    if (DomTerm.verbosity >= 1)
         this.log("_unsafeInsertHTML "+JSON.stringify(text));
     if (text.length > 0) {
         if (this.outputBefore == null)
@@ -6127,7 +6125,7 @@ Terminal.prototype._pauseContinue = function(skip = false) {
     this.modeLineGenerator = null;
     if (wasMode != 0)
         this._updatePagerInfo();
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("pauseContinue was mode="+wasMode);
     if (wasMode == 2) {
         var text = this.parser._textParameter;
@@ -6137,7 +6135,7 @@ Terminal.prototype._pauseContinue = function(skip = false) {
         text = this.parser._textParameter;
         if (! this._autoPaging || text == null || text.length < 500 || skip) {
             this._confirmedCount = this._receivedCount;
-            if (this.verbosity >= 2)
+            if (DomTerm.verbosity >= 2)
                 this.log("report RECEIVED "+this._confirmedCount);
             this.reportEvent("RECEIVED", this._confirmedCount);
         }
@@ -6185,7 +6183,7 @@ Terminal.prototype._requestDeletePendingEcho = function() {
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
 Terminal.prototype.insertBytes = function(bytes) {
     var len = bytes.length;
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+len+" received:"+this._receivedCount);
     while (len > 0) {
         if (this.decoder == null)
@@ -6297,7 +6295,7 @@ Terminal.prototype._scrollNeeded = function() {
 Terminal.prototype._scrollIfNeeded = function() {
     let needed = this._scrollNeeded();
     if (needed > this.topNode.scrollTop) {
-        if (this.verbosity >= 3)
+        if (DomTerm.verbosity >= 3)
             this.log("scroll-needed was:"+this.topNode.scrollTop+" to "
                      +needed);
         if (this._usingScrollBar || this._disableScrollOnOutput)
@@ -6477,7 +6475,7 @@ Terminal.prototype._insertIntoLines = function(el, line) {
  * startLine == -2 means break all lines until current input line.
  */
 Terminal.prototype._breakAllLines = function(startLine = -1) {
-    if (this.verbosity >= 3)
+    if (DomTerm.verbosity >= 3)
         this.log("_breakAllLines startLine:"+startLine
                  +" cols:"+this.numColumns);
     // The indentation array is a stack of the following:
@@ -7107,7 +7105,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     if (nsegments == 0)
         return;
     let isegment = 0;
-    if (this.verbosity >= 3)
+    if (DomTerm.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str)+"'");
     let absLine = this.getAbsCursorLine();
     var fits = true;
@@ -7363,7 +7361,7 @@ Terminal.prototype.insertNode = function (node) {
 */
 Terminal.prototype.processResponseCharacters = function(str) {
     if (! this._replayMode) {
-        if (this.verbosity >= 3)
+        if (DomTerm.verbosity >= 3)
             this.log("processResponse: "+JSON.stringify(str));
         this.processInputCharacters(str);
     }
@@ -7378,7 +7376,7 @@ Terminal.prototype.reportText = function(text, suffix) {
 
 /** This function should be overidden. */
 Terminal.prototype.processInputCharacters = function(str) {
-    if (this.verbosity >= 1) {
+    if (DomTerm.verbosity >= 1) {
         let jstr = str.length > 200
             ? JSON.stringify(str.substring(0,200))+"..."
             : JSON.stringify(str);
@@ -8041,7 +8039,7 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
     this._doDeferredDeletion();
     // For now we only support the normal case when outputBefore == inputLine.
     var oldInputLine = this._inputLine;
-    if (this.verbosity >= 2 && oldInputLine)
+    if (DomTerm.verbosity >= 2 && oldInputLine)
         this.log("sendInputContents "+this.toQuoted(this.grabInput(this._inputLine))+" sendEnter:"+sendEnter);
     var spanNode;
     var line = this.getAbsCursorLine();
@@ -8349,7 +8347,7 @@ DomTerm.handleKey = function(map, dt, keyName) {
 };
 
 Terminal.prototype.doLineEdit = function(keyName) {
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("doLineEdit "+keyName);
 
     this.editorAddLine();
@@ -8392,7 +8390,7 @@ Terminal.prototype._isOurEvent = function(event) {
 Terminal.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     let keyName = this.eventToKeyName(event);
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+keyName+" old:"+(this._inputLine != null)+" col:"+document.getSelection().isCollapsed);
     if (event.ctrlKey && event.shiftKey && key==88) { // Ctrl-Shift-X
         if (! this.isLineEditing()) {
@@ -8527,7 +8525,7 @@ Terminal.prototype.keyDownHandler = function(event) {
 Terminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     let keyName = this.eventToKeyName(event);
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+keyName+" in-l:"+this._inputLine);
     if (! this._isOurEvent(event))
         return;
@@ -8568,7 +8566,7 @@ Terminal.prototype.keyPressHandler = function(event) {
 Terminal.prototype.inputHandler = function(event) {
     if (this._composing > 0)
         this.focusBackground.style.width = `${this.focusArea.offsetWidth}px`;
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("input "+event+" which:"+event.which+" data:"+JSON.stringify(event.data));
     if (event.target == this._inputLine && ! this.isLineEditing()
         && this._inputLine != this._deferredForDeletion) {
@@ -8892,7 +8890,7 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
 
 Terminal.newWS = function(wspath, wsprotocol, wt) {
     var wsocket = new WebSocket(wspath, wsprotocol);
-    if (wt.verbosity > 0)
+    if (DomTerm.verbosity > 0)
         console.log("created WebSocket on  "+wspath);
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
@@ -8907,7 +8905,7 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
         DomTerm._handleOutputData(wt, evt.data);
     }
     wsocket.onclose = function(e) {
-        if (wt.verbosity > 0)
+        if (DomTerm.verbosity > 0)
             console.log("unexpected WebSocket close code:"+e.code);
         if (true) {
             let reconnect = "&reconnect=" + wt._receivedCount;
@@ -10183,7 +10181,7 @@ Terminal.prototype.exitMuxMode = function() {
 
 /** Runs in DomTerm sub-window. */
 Terminal.prototype._muxKeyHandler = function(event, key, press) {
-    if (this.verbosity >= 2)
+    if (DomTerm.verbosity >= 2)
         this.log("mux-key key:"+key+" event:"+event+" press:"+press);
     let paneOp = 0;
     switch (key) {

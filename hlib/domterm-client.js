@@ -258,7 +258,8 @@ function setupParentMessages2() {
 function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
-    // console.log("loadHandler "+location);
+    if (DomTerm.verbosity > 0)
+        console.log("loadHandler "+location);
     DomTerm.layoutTop = document.body;
     let url = location.href;
     let hashPos = url.indexOf('#');

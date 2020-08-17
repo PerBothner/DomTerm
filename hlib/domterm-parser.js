@@ -21,7 +21,7 @@ class DTParser {
         var slen = str.length;
         if (slen == 0)
             return;
-        if (term.verbosity >= 2) {
+        if (DomTerm.verbosity >= 2) {
             //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
             let maxLog = 200;
             if (str.length > maxLog)
@@ -1472,7 +1472,7 @@ class DTParser {
 
     handleOperatingSystemControl(code, text) {
         const term = this.term;
-        if (term.verbosity >= 2)
+        if (DomTerm.verbosity >= 2)
             term.log("handleOperatingSystemControl "+code+" '"+text+"'");
         if (! (code >= 110 && code <= 118))
             term._breakDeferredLines();
@@ -1641,7 +1641,7 @@ class DTParser {
                 }
                 let firstEditCommand = term._inputLine == null;
                 extractEditKey(text);
-                if (term.verbosity >= 2)
+                if (DomTerm.verbosity >= 2)
                     term.log("OSC KEY k:"+keyName+" kstr:"+term.toQuoted(kstr)+" seq:"+seqno);
                 if (firstEditCommand) { 
                     processEditKey(term);
