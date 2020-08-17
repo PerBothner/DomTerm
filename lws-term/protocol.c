@@ -1477,7 +1477,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                         pclient->awaiting_connection ||
 #endif
                         pclient->session_number == snumber) {
+#if __APPLE__
                         pclient->awaiting_connection = false;
+#endif
                         link_command(wsi, client, pclient);
                         lwsl_info("connection to existing session %ld established\n", snumber);
                         break;
