@@ -54,18 +54,12 @@ extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
 extern struct lws_vhost *vhost;
-#define NEW_PTY_LIST 1
-#if NEW_PTY_LIST
 extern struct pty_client **pty_clients; // malloc'd array
 extern int pty_clients_size;
 #define VALID_SESSION_NUMBER(NUM) \
     ((NUM) > 0 && (NUM) < pty_clients_size && pty_clients[NUM] != NULL && pty_clients[NUM]->session_number == (NUM))
 #define PCLIENT_FROM_NUMBER(NUM) \
     (VALID_SESSION_NUMBER(NUM) ? pty_clients[NUM] : NULL)
-#else
-extern int last_session_number;
-extern struct pty_client *pty_client_list;
-#endif
 extern struct tty_client *ws_client_list;
 extern int http_port;
 //extern struct tty_client *focused_client;
@@ -110,9 +104,6 @@ enum option_name {
  * This is the user structure for the libwebsockets "pty" protocol.
  */
 struct pty_client {
-#if !NEW_PTY_LIST
-    struct pty_client *next_pty_client;
-#endif
     int pid;
     int pty; // pty master
     int pty_slave;
@@ -380,15 +371,10 @@ struct resource {
 };
 extern struct resource resources[];
 #endif
-#if NEW_PTY_LIST
 #define FOREACH_PCLIENT(P) \
     for (struct pty_client *P = pty_clients == NULL ? NULL : pty_clients[1];\
          P != NULL;\
          P = pty_clients[P->session_number+1])
-#else
-#define FOREACH_PCLIENT(VAR) \
-    for (struct pty_client *VAR = pty_client_list; VAR != NULL; VAR = (VAR)->next_pty_client)
-#endif
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
        VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)

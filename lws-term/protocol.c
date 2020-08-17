@@ -30,18 +30,12 @@ static char request_contents_message[] =
 static char start_replay_mode[] = URGENT_WRAP("\033[97u");
 static char end_replay_mode[] = URGENT_WRAP("\033[98u");
 
-#if NEW_PTY_LIST
 /* Invariant: if VALID_SESSION_NUMBER(snum) is false
    then pty_clients[snum] is either NULL or the next valid pty_client
    where snext == pty_clients[snum]->session_number and
    snext > snum && VALID_SESSION_NUMBER(snext). */
 struct pty_client **pty_clients; // malloc'd array
 int pty_clients_size; // size of pty_clients array
-#else
-struct pty_client *pty_client_list;
-struct pty_client *pty_client_last;
-int last_session_number = 0;
-#endif
 struct tty_client *ws_client_list;
 
 int
@@ -171,26 +165,12 @@ pty_destroy(struct pty_client *pclient)
 {
     lwsl_notice("exited application for session %d\n",
                 pclient->session_number);
-#if NEW_PTY_LIST
     int snum = pclient->session_number;
     if (VALID_SESSION_NUMBER(snum)) {
         struct pty_client *next = pty_clients[snum+1];
         for (; snum >= 0 && pty_clients[snum] == pclient; snum--)
             pty_clients[snum] = next;
     }
-#else
-    struct pty_client **p = &pty_client_list;
-    struct pty_client *prev = NULL;
-    for (;*p != NULL; p = &(*p)->next_pty_client) {
-      if (*p == pclient) {
-        *p = pclient->next_pty_client;
-        if (pty_client_last == pclient)
-          pty_client_last = prev;
-        break;
-      }
-      prev = *p;
-    }
-#endif
     // stop event loop
     pclient->exit = true;
     if (pclient->ttyname != NULL) {
@@ -443,7 +423,6 @@ create_pclient(const char *cmd, char*const*argv,
     struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
     pclient->ttyname = tname;
     pclient->packet_mode = packet_mode;
-#if NEW_PTY_LIST
     int snum = 1;
     for (; ; snum++) {
         if (snum >= pty_clients_size) {
@@ -467,16 +446,6 @@ create_pclient(const char *cmd, char*const*argv,
             break;
         }
     }
-#else
-    pclient->next_pty_client = NULL;
-    server->session_count++;
-    if (pty_client_last == NULL)
-        pty_client_list = pclient;
-    else
-        pty_client_last->next_pty_client = pclient;
-    pty_client_last = pclient;
-    pclient->session_number = session_number;
-#endif
     pclient->pid = -1;
     pclient->pty = master;
     pclient->pty_slave = slave;
