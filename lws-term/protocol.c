@@ -460,6 +460,9 @@ create_pclient(const char *cmd, char*const*argv,
         pclient->cmd_settings = NULL;
     pclient->cwd = cwd;
     pclient->env = env;
+#if __APPLE__
+    pclient->awaiting_connection = false;
+#endif
 #if REMOTE_SSH
 #if PASS_STDFILES_UNIX_SOCKET
     pclient->proxy_in = -1;
@@ -1454,16 +1457,27 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         if (argval != NULL) {
             lwsl_info("dummy connection (no session) established\n");
         } else {
-            long snumber;
-            if ((argval = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1)) != NULL
-                && (snumber = strtol(argval, NULL, 10)) != 0) {
+            argval = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1);
+            long snumber = argval == NULL ? 0 : strtol(argval, NULL, 10);
+#if !__APPLE__
+            if (snumber <= 0) {
+                struct pty_client *pclient = create_link_pclient(wsi, client);
+                lwsl_info("connection to new session %d established\n", pclient->session_number);
+            } else
+#endif
+            {
                 struct pty_client *pclient = pty_client_list;
                 for (; ; pclient = pclient->next_pty_client) {
                     if (pclient == NULL) {
                         lwsl_notice("connection to non-existing session %ld - error\n", snumber);
                         break;
                     }
-                    if (pclient->session_number == snumber) {
+                    if (
+#if __APPLE__
+                        pclient->awaiting_connection ||
+#endif
+                        pclient->session_number == snumber) {
+                        pclient->awaiting_connection = false;
                         link_command(wsi, client, pclient);
                         lwsl_info("connection to existing session %ld established\n", snumber);
                         break;
@@ -1477,9 +1491,6 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                     client->initialized = 1;
                     lws_callback_on_writable(wsi);
                 }
-            } else {
-                struct pty_client *pclient = create_link_pclient(wsi, client);
-                lwsl_info("connection to new session %d established\n", pclient->session_number);
             }
         }
         server->client_count++;
@@ -1667,9 +1678,14 @@ display_session(struct options *options, struct pty_client *pclient,
         if (encoded)
             url = encoded;
         char *buf = xmalloc(strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
-        if (pclient != NULL)
+        if (pclient != NULL) {
             sprintf(buf, "%s#session-number=%d", main_html_url, pclient->session_number);
-        else if (port == -105) // view saved file
+#if __APPLE__
+            // Needed when using /usr/bin/open as it drops #hash parts
+            // of file: URLS.
+            pclient->awaiting_connection = true;
+#endif
+        } else if (port == -105) // view saved file
             sprintf(buf, "%s#view-saved=%s",  main_html_url, url);
         else if (port == -104) // browse url
             sprintf(buf, "%s#browse=%s",  main_html_url, url);

@@ -112,6 +112,9 @@ struct pty_client {
     bool exit;
     bool session_name_unique;
     bool packet_mode;
+#if __APPLE__
+    bool awaiting_connection;
+#endif
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
     int paused;
