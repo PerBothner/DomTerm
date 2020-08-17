@@ -30,8 +30,18 @@ static char request_contents_message[] =
 static char start_replay_mode[] = URGENT_WRAP("\033[97u");
 static char end_replay_mode[] = URGENT_WRAP("\033[98u");
 
+#if NEW_PTY_LIST
+/* Invariant: if VALID_SESSION_NUMBER(snum) is false
+   then pty_clients[snum] is either NULL or the next valid pty_client
+   where snext == pty_clients[snum]->session_number and
+   snext > snum && VALID_SESSION_NUMBER(snext). */
+struct pty_client **pty_clients; // malloc'd array
+int pty_clients_size; // size of pty_clients array
+#else
 struct pty_client *pty_client_list;
 struct pty_client *pty_client_last;
+int last_session_number = 0;
+#endif
 struct tty_client *ws_client_list;
 
 int
@@ -161,6 +171,14 @@ pty_destroy(struct pty_client *pclient)
 {
     lwsl_notice("exited application for session %d\n",
                 pclient->session_number);
+#if NEW_PTY_LIST
+    int snum = pclient->session_number;
+    if (VALID_SESSION_NUMBER(snum)) {
+        struct pty_client *next = pty_clients[snum+1];
+        for (; snum >= 0 && pty_clients[snum] == pclient; snum--)
+            pty_clients[snum] = next;
+    }
+#else
     struct pty_client **p = &pty_client_list;
     struct pty_client *prev = NULL;
     for (;*p != NULL; p = &(*p)->next_pty_client) {
@@ -172,7 +190,7 @@ pty_destroy(struct pty_client *pclient)
       }
       prev = *p;
     }
-
+#endif
     // stop event loop
     pclient->exit = true;
     if (pclient->ttyname != NULL) {
@@ -389,7 +407,6 @@ create_pclient(const char *cmd, char*const*argv,
                struct options *opts)
 {
     struct lws *outwsi;
-    int session_number = ++last_session_number;
     int master;
     int slave;
     bool packet_mode = false;
@@ -426,6 +443,31 @@ create_pclient(const char *cmd, char*const*argv,
     struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
     pclient->ttyname = tname;
     pclient->packet_mode = packet_mode;
+#if NEW_PTY_LIST
+    int snum = 1;
+    for (; ; snum++) {
+        if (snum >= pty_clients_size) {
+            int newsize = 3 * pty_clients_size >> 1;
+            if (newsize < 20)
+                newsize = 20;
+            pty_clients = realloc(pty_clients, newsize * sizeof(struct pty_client*));
+            for (int i = pty_clients_size; i < newsize; i++)
+                pty_clients[i] = NULL;
+            pty_clients_size = newsize;
+        }
+        struct pty_client *next = pty_clients[snum];
+        if (next == NULL || next->session_number > snum) {
+            // Maintain invariant
+            for (int iprev = snum;
+                 --iprev >= 0 && pty_clients[iprev] == next; ) {
+                pty_clients[iprev] = pclient;
+            }
+            pty_clients[snum] = pclient;
+            pclient->session_number = snum;
+            break;
+        }
+    }
+#else
     pclient->next_pty_client = NULL;
     server->session_count++;
     if (pty_client_last == NULL)
@@ -433,6 +475,8 @@ create_pclient(const char *cmd, char*const*argv,
     else
         pty_client_last->next_pty_client = pclient;
     pty_client_last = pclient;
+    pclient->session_number = session_number;
+#endif
     pclient->pid = -1;
     pclient->pty = master;
     pclient->pty_slave = slave;
@@ -449,7 +493,6 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->first_client_wsi = NULL;
     pclient->last_client_wsi_ptr = &pclient->first_client_wsi;
     pclient->recent_tclient = NULL;
-    pclient->session_number = session_number;
     pclient->session_name_unique = false;
     pclient->pty_wsi = outwsi;
     pclient->cmd = cmd;
@@ -608,13 +651,12 @@ struct pty_client *
 find_session(const char *specifier)
 {
     struct pty_client *session = NULL;
-    struct pty_client *pclient = pty_client_list;
     char *pend;
     pid_t pid = strtol(specifier, &pend, 10);
     if (*pend != '\0' || *specifier == '\0')
         pid = -1;
 
-    for (; pclient != NULL; pclient = pclient->next_pty_client) {
+    FOREACH_PCLIENT(pclient) {
         int match = 0;
         if (pclient->pid == pid && pid != -1)
             return pclient;
@@ -986,8 +1028,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         pclient->session_name = session_name;
         pclient->session_name_unique = true;
         json_object_put(obj);
-        for (struct pty_client *p = pty_client_list;
-             p != NULL; p = p->next_pty_client) {
+        FOREACH_PCLIENT(p) {
             if (p != pclient && p->session_name != NULL
                 && strcmp(session_name, p->session_name) == 0) {
                 struct lws *twsi;
@@ -1459,40 +1500,37 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         } else {
             argval = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1);
             long snumber = argval == NULL ? 0 : strtol(argval, NULL, 10);
-#if !__APPLE__
-            if (snumber <= 0) {
-                struct pty_client *pclient = create_link_pclient(wsi, client);
+            struct pty_client *pclient = NULL;
+            if (VALID_SESSION_NUMBER(snumber))
+                pclient = pty_clients[snumber];
+            else {
+#if __APPLE__
+                FOREACH_PCLIENT(P) {
+                    if (p->awaiting_connection) {
+                        pclient = p;
+                        p->awaiting_connection = false;
+                        break;
+                    }
+                }
+#endif
+            }
+            if (pclient != NULL) {
+                link_command(wsi, client, pclient);
+                lwsl_info("connection to existing session %ld established\n", snumber);
+            } else if (snumber > 0) {
+                lwsl_notice("connection to non-existing session %ld - error\n", snumber);
+            } else {
+                pclient = create_link_pclient(wsi, client);
                 lwsl_info("connection to new session %d established\n", pclient->session_number);
-            } else
-#endif
-            {
-                struct pty_client *pclient = pty_client_list;
-                for (; ; pclient = pclient->next_pty_client) {
-                    if (pclient == NULL) {
-                        lwsl_notice("connection to non-existing session %ld - error\n", snumber);
-                        break;
-                    }
-                    if (
-#if __APPLE__
-                        pclient->awaiting_connection ||
-#endif
-                        pclient->session_number == snumber) {
-#if __APPLE__
-                        pclient->awaiting_connection = false;
-#endif
-                        link_command(wsi, client, pclient);
-                        lwsl_info("connection to existing session %ld established\n", snumber);
-                        break;
-                    }
-                }
-                argval = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
-                if (argval != NULL) {
-                    snumber = strtol(argval, NULL, 10);
-                    client->confirmed_count = snumber;
-                    client->sent_count = snumber; // FIXME
-                    client->initialized = 1;
-                    lws_callback_on_writable(wsi);
-                }
+            }
+
+            argval = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
+            if (argval != NULL) {
+                snumber = strtol(argval, NULL, 10);
+                client->confirmed_count = snumber;
+                client->sent_count = snumber; // FIXME
+                client->initialized = 1;
+                lws_callback_on_writable(wsi);
             }
         }
         server->client_count++;
@@ -1898,8 +1936,7 @@ handle_command(int argc, char** argv, const char*cwd,
         if (p)
             sscanf(p+(sizeof(pid_key)-1), "%d", &current_session_pid);
         if (current_session_pid) {
-            struct pty_client *pclient = pty_client_list;
-            for (; pclient != NULL; pclient = pclient->next_pty_client) {
+            FOREACH_PCLIENT(pclient) {
                 if (pclient->pid == current_session_pid) {
                     opts->requesting_session = pclient;
                     break;

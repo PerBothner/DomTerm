@@ -140,23 +140,22 @@ int html_action(int argc, char** argv, const char*cwd,
         char *tname = xmalloc(tlen+1);
         strncpy(tname, t1, tlen);
         tname[tlen] = 0;
-        struct pty_client *pclient = pty_client_list;
-        while (pclient && strcmp(pclient->ttyname, tname) != 0)
-            pclient = pclient->next_pty_client;
-        if (pclient) {
-            struct lws *twsi;
-            FOREACH_WSCLIENT(twsi, pclient) {
-                struct tty_client *tclient =
-                    (struct tty_client *) lws_wsi_user(twsi);
-                sbuf_extend(&tclient->ob, sb.len);
-                memcpy(tclient->ob.buffer+tclient->ob.len,
-                       sb.buffer, sb.len);
-                tclient->ob.len += sb.len;
-                tclient->ocount += sb.len;
-                lws_callback_on_writable(twsi);
+        FOREACH_PCLIENT(pclient) {
+            if (strcmp(pclient->ttyname, tname) == 0) {
+                struct lws *twsi;
+                FOREACH_WSCLIENT(twsi, pclient) {
+                    struct tty_client *tclient =
+                        (struct tty_client *) lws_wsi_user(twsi);
+                    sbuf_extend(&tclient->ob, sb.len);
+                    memcpy(tclient->ob.buffer+tclient->ob.len,
+                           sb.buffer, sb.len);
+                    tclient->ob.len += sb.len;
+                    tclient->ocount += sb.len;
+                    lws_callback_on_writable(twsi);
+                }
+                sbuf_free(&sb);
+                return EXIT_SUCCESS;
             }
-            sbuf_free(&sb);
-            return EXIT_SUCCESS;
         }
     }
 #else
@@ -475,23 +474,22 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
 int list_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi, struct options *opts)
 {
-    struct pty_client *pclient = pty_client_list;
+    int nclients = 0;
     FILE *out = fdopen(dup(opts->fd_out), "w");
-    if (pclient == NULL)
-       fprintf(out, "(no domterm sessions or server)\n");
-    else {
-        for (; pclient != NULL; pclient = pclient->next_pty_client) {
-            fprintf(out, "pid: %d", pclient->pid);
-            fprintf(out, ", session#: %d", pclient->session_number);
-            if (pclient->session_name != NULL)
-              fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
-            int nwindows = 0;
-            struct lws *w;
-            FOREACH_WSCLIENT(w, pclient) { nwindows++; }
-            fprintf(out, ", #windows: %d", nwindows);
-            fprintf(out, "\n");
-       }
+    FOREACH_PCLIENT(pclient)  {
+        fprintf(out, "pid: %d", pclient->pid);
+        fprintf(out, ", session#: %d", pclient->session_number);
+        if (pclient->session_name != NULL)
+            fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
+        int nwindows = 0;
+        struct lws *w;
+        FOREACH_WSCLIENT(w, pclient) { nwindows++; }
+        fprintf(out, ", #windows: %d", nwindows);
+        fprintf(out, "\n");
+        nclients++;
     }
+    if (nclients == 0)
+        fprintf(out, "(no domterm sessions or server)\n");
     fclose(out);
     return EXIT_SUCCESS;
 }
@@ -518,17 +516,15 @@ json_print_property(FILE *out, struct json_object *jobj, char *fname,
 int status_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi, struct options *opts)
 {
-    struct pty_client *pclient = pty_client_list;
     FILE *out = fdopen(dup(opts->fd_out), "w");
     print_version(out);
     if (settings_fname)
         fprintf(out, "Reading settings from: %s\n", settings_fname);
     if (backend_socket_name != NULL)
         fprintf(out, "Backend command socket: %s\n", backend_socket_name);
-    if (pclient == NULL)
-       fprintf(out, "(no domterm sessions or server)\n");
-    else {
-        for (; pclient != NULL; pclient = pclient->next_pty_client) {
+    int nclients = 0;
+    FOREACH_PCLIENT(pclient) {
+        nclients++;
             fprintf(out, "session#: %d, ", pclient->session_number);
             const char* remote = GET_REMOTE_HOSTUSER(pclient);
             if (remote)
@@ -536,7 +532,7 @@ int status_action(int argc, char** argv, const char*cwd,
             else
                 fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
             if (pclient->session_name != NULL)
-              fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
+                fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
             if (pclient->paused)
                 fprintf(out, ", paused");
             fprintf(out, "\n");
@@ -578,8 +574,9 @@ int status_action(int argc, char** argv, const char*cwd,
             }
             if (nwindows == 0)
                 fprintf(out, "  (detached)\n");
-       }
     }
+    if (nclients == 0)
+        fprintf(out, "(no domterm sessions or server)\n");
     fclose(out);
     return EXIT_SUCCESS;
 }

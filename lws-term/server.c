@@ -168,7 +168,6 @@ struct lws_vhost *vhost;
 struct lws *focused_wsi = NULL;
 struct lws_context_creation_info info;
 struct cmd_client *cclient;
-int last_session_number = 0;
 
 static const struct lws_protocols protocols[] = {
         /* http server for (mostly) static data */
