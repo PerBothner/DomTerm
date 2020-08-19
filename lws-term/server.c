@@ -36,6 +36,18 @@ daemonize()
 #endif
 }
 
+void
+maybe_daemonize()
+{
+    if (opts.do_daemonize > 0) {
+        lwsl_notice("about to switch to background 'daemon' mode - no more messages.\n");
+        lwsl_notice("(To see more messages use --no-daemonize option.)\n");
+        tty_restore(-1);
+        daemonize();
+        opts.do_daemonize = -1;
+    }
+}
+
 int
 subst_run_command(struct options *opts, const char *browser_command,
                   const char *url, int port)
@@ -1333,12 +1345,8 @@ main(int argc, char **argv)
             exit(ret);
     }
 
-    if (opts.do_daemonize && ret == 0) {
-        lwsl_notice("about to switch to background 'daemon' mode - no more messages.\n");
-        lwsl_notice("(To see more messages use --no-daemonize option.)\n");
-        daemonize();
-    }
-
+    if (ret == 0)
+        maybe_daemonize();
     watch_settings_file();
 
     // libwebsockets main loop

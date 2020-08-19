@@ -149,11 +149,9 @@ struct pty_client {
     const char*cwd;
     char *const*env;
 #if REMOTE_SSH
-    // The following are used for closing on end
-#if PASS_STDFILES_UNIX_SOCKET
-    int proxy_in, proxy_out, proxy_err;
-#endif
-    int proxy_socket;
+    // Domain socket to communicate between client and (local) server.
+    int cmd_socket;
+    struct pty_client *cur_pclient;
 #endif
 };
 
@@ -163,15 +161,25 @@ struct pty_client {
  * The backback handler moves data to/from a paired pty_client pclient.
  */
 struct tty_client {
-    struct tty_client *next_ws_client;
+    struct tty_client *next_ws_client; // link in list headed by ws_client_list  [an 'out' field]
+    struct lws *next_client_wsi; // link in list headed by pty_client:first_client_wsi [an 'out' field]
     struct pty_client *pclient;
+
+    /// Normally a tty_client wraps a bi-directional input/output file/socket.
+    /// In some proxy modes we have distinct file descriptors for in and out.
+    /// Hence we need two struct lws objects and two struct tty_client objects.
+    /// The latter two point at each other using the inout_client field.
+    /// The 'in' client handles reading from one descriptor (and writing
+    /// to the pclient); it has connection_number > 0.
+    /// The 'out' client handles writing (data that has been read from the
+    /// pclient)to the other descriptor ; it has the negated connection_number.
+    /// An 'in' field is only valid in an 'in' or bi-directional client.
+    /// An 'out' field is only valid in an 'out' or bi-directional client.
+    struct tty_client *inout_client; // [as 'in' field points to 'out' client and vice versa]
 
     // 0: Not initialized; 2: initialized
     // 1: reconnecting - client has state, but connection was dropped
     int initialized : 3;
-
-    //bool pty_started; = pclient!=NULL
-    bool authenticated;
 
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
@@ -182,26 +190,25 @@ struct tty_client {
     // 2: sent window-contents request to browser
     char requesting_contents;
 
-    char *version_info; // received from client
+    char *version_info; // received from client [an 'in' field]
     // both sent_count and confirmed_count are modulo MASK28.
-    long sent_count; // # bytes sent to (any) tty_client
-    long confirmed_count; // # bytes confirmed received from (some) tty_client
+    long sent_count; // # bytes sent to (any) tty_client [an 'out' field]
+    long confirmed_count; // # bytes confirmed received from (some) tty_client [an 'out' field]
     struct lws *wsi;
-    struct lws *next_client_wsi;
-    struct sbuf inb;  // input buffer (data/events from client)
+    struct sbuf inb;  // input buffer (data/events from client) [an 'in' field]
     struct sbuf ob; // data to be sent to UI (or proxy)
-    // (a mix of output from pty and from server)
+    // (a mix of output from pty and from server) [an 'out' field]
 
     size_t ocount; // amount to increment sent_count (ocount <= ob.len)
     // (This is bytes read from pty output, and does not include
-    // uncounted messages from the server.)
+    // uncounted messages from the server.) [an 'out' field]
 
-    int connection_number;
+    int connection_number; // unique number [negative if an 'out' client]
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
 #if REMOTE_SSH
     int proxy_fd;
-    char *pending_browser_command;
+    char *pending_browser_command; // [an 'out' field]
 #endif
 };
 
@@ -281,8 +288,8 @@ struct tty_server {
 extern int
 callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
-extern void
-initialize_resource_map(struct lws_context *, const char*);
+extern void initialize_resource_map(struct lws_context *, const char*);
+extern void maybe_daemonize(void);
 
 extern int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
@@ -335,6 +342,7 @@ extern bool check_option_arg(char *arg, struct options *opts);
 #define REMOTE_HOSTUSER_KEY "`remote-host-user"
 // if using ssh: "USER@HOST" or "HOST"; otherwise NULL
 #define GET_REMOTE_HOSTUSER(PCLIENT) get_setting((PCLIENT)->cmd_settings, REMOTE_HOSTUSER_KEY)
+#define PTY_FOR_SSH 0
 
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);

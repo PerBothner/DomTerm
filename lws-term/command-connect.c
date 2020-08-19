@@ -130,7 +130,7 @@ client_connect (char *socket_path)
     return -1;
 }
 
-#if REMOTE_SSH && !PASS_STDFILES_UNIX_SOCKET
+#if REMOTE_SSH
 int
 callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
                     void *user, void *in, size_t len)
@@ -145,8 +145,8 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
         unsigned char *rbuf = client->rbuffer;
         int cur_out = STDOUT_FILENO;
         int nr = read(client->socket, rbuf, client->rsize);
-        lwsl_notice("- RAW_RX n:%d\n", nr);
         if (nr <= 0) {
+            lwsl_notice("- RAW_RX before exit:%d\n", client->exit_code);
             exit(client->exit_code);
             /*
             close(client->socket);
@@ -155,10 +155,13 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
 	    return -1;
             */
         }
+#if PASS_STDFILES_UNIX_SOCKET
+        client->exit_code = rbuf[nr-1];
+#else
         int start = 0;
         for (int i = 0; ; i++) {
 	    int ch = i >= nr ? -1 : rbuf[i];
-            if (ch <= '\003') {
+            if (ch <= '\003' && (cur_out >= 0 || ch < 0)) {
                 if (i > start) {
                     if (cur_out < 0)
                         client->exit_code = rbuf[nr-1];
@@ -172,14 +175,19 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
                     cur_out = STDERR_FILENO;
                 else if (ch == PASS_STDFILES_SWITCH_TO_STDOUT)
                     cur_out = STDOUT_FILENO;
-                else if (ch == PASS_STDFILES_EXIT_CODE)
+                else if (ch == PASS_STDFILES_EXIT_CODE) {
                     cur_out = -1;
+                }
             }
         }
+#endif
+        return 0;
+    default:
         return 0;
     }
-
 }
+#endif
+#if REMOTE_SSH && !PASS_STDFILES_UNIX_SOCKET
 int
 callback_cmd_stdin(struct lws *wsi, enum lws_callback_reasons reason,
                     void *user, void *in, size_t len)
@@ -194,14 +202,22 @@ callback_cmd_stdin(struct lws *wsi, enum lws_callback_reasons reason,
         if (nr > 0)
             write(client->socket, rbuf, nr);
         return 0;
-    }
+    default:
+        return 0;
+   }
 }
-
+#endif
+#if REMOTE_SSH
 static const struct lws_protocols cmd_protocols[] = {
         /* Unix domain socket for client to send to commands to server.
-           This is socket on the client. */
+           This is the socket on the client side.
+           The callback handles output from the server (stdout, stdin,
+           exit code), and sends it to stdout/stderr/exit. */
         { "cmd-socket", callback_cmd_socket, sizeof(struct cmd_socket_client),  0},
+#if !PASS_STDFILES_UNIX_SOCKET
+        /* Listen to stdin on client and forwards over socket to server. */
         { "cmd-stdin", callback_cmd_stdin, sizeof(struct cmd_socket_client),  0},
+#endif
         {NULL,        NULL,          0,                          0}
 };
 #endif
@@ -224,6 +240,19 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     iov[0].iov_len = jlen;
     iov[1].iov_base = "\f";
     iov[1].iov_len = 1;
+
+    info.protocols = cmd_protocols;
+    context = lws_create_context(&info);
+    vhost = lws_create_vhost(context, &info);
+    lws_sock_file_fd_type fd;
+    fd.filefd = socket;
+    struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-socket", NULL);
+    lwsl_notice("cmd-socket fd:%d wsi:%p\n", socket, cmdwsi);
+    struct cmd_socket_client *cclient = (struct cmd_socket_client *) lws_wsi_user(cmdwsi);
+    cclient->socket = socket;
+    cclient->exit_code = 0;
+    cclient->rsize = 5000;
+    cclient->rbuffer = xmalloc(cclient->rsize);
 
 #if PASS_STDFILES_UNIX_SOCKET
     struct msghdr msg;
@@ -252,22 +281,9 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     lwsl_notice("sending command '%s' to server\n",
                 argc ? argv[0] : "(implicit-new)");
     ssize_t n1 = sendmsg(socket, &msg, 0);
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
     //don't close STDERR_FILENO, for the sake of lwsl_notice below
 #else
-    info.protocols = cmd_protocols;
-    context = lws_create_context(&info);
-    vhost = lws_create_vhost(context, &info);
-    lws_sock_file_fd_type fd;
-    fd.filefd = socket;
-    struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-socket", NULL);
     fd.filefd = STDIN_FILENO;
-    struct cmd_socket_client *cclient = (struct cmd_socket_client *) lws_wsi_user(cmdwsi);
-    cclient->socket = socket;
-    cclient->exit_code = 0;
-    cclient->rsize = 5000;
-    cclient->rbuffer = xmalloc(cclient->rsize);
     struct lws *inwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-stdin", NULL);
     struct cmd_socket_client *iclient = (struct cmd_socket_client *) lws_wsi_user(inwsi);
     iclient->socket = socket;
@@ -278,21 +294,12 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
 #endif
     json_object_put(jobj);
     char ret = 0;
-#if PASS_STDFILES_UNIX_SOCKET
-    ssize_t n2 = read(socket, &ret, 1);
-    if (n1 < 0 || n2 != 1)
-        ret = -1;
-    //if (close(socket) != 0)
-    //  fatal("bad close of socket");
-    close(socket);
-#else
     while (!force_exit) {
         lws_service(context, 100);
     }
 
     lws_context_destroy(context);
-#endif
-    lwsl_notice("received exit code %d from server; exiting", ret);
+    lwsl_notice("received exit code %d from server; exiting\n", ret);
     return ret;
 }
 
@@ -344,7 +351,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 ssize_t n = recvmsg(sockfd, &msg, 0);
                 if (msg.msg_controllen > 0) {
                     memcpy(myfds, CMSG_DATA(cmsg), 3*sizeof(int));
-                    lwsl_notice("callback_cmd fds:%d/%d/%d\n",  myfds[0], myfds[1], myfds[2]);
+                    lwsl_notice("callback_cmd fds:%d/%d/%d tn(0)=%s it(1)=%d\n",  myfds[0], myfds[1], myfds[2], ttyname(myfds[0]), isatty(myfds[1]));
                     opts.fd_in = myfds[0];
                     opts.fd_out = myfds[1];
                     opts.fd_err = myfds[2];

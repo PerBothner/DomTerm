@@ -473,8 +473,9 @@ void tty_restore(int tty_in)
 {
     if (tty_in < 0)
         tty_in = tty_raw_fd;
-    if (tty_in >= 0)
-        tcsetattr(tty_in, TCSANOW, &save_term);
+    if (tty_in >= 0) {
+        int r = tcsetattr(tty_in, TCSANOW, &save_term);
+    }
     tty_raw_fd = -1;
 }
 

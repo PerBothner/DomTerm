@@ -6,8 +6,8 @@
 // I can't get this to work on MacOS.
 // Alternatively, multiplex stdout, stderr, and exit code on connection socket.
 // (PASS_STDFILES_UNIX_SOCKET seems in principle preferable, but isn't
-// available on all platforms, and until there is a clear advantage, it seems
-// seems better to disable for platform consistency and simpler testing.)
+// available on all platforms, and until there is a clear advantage,
+// it seems better to disable for platform consistency and simpler testing.)
 #define PREFER_PASS_STDFILES_UNIX_SOCKET 0
 #define USING_NAMED_PIPES_FOR_CLIENT 0 /*for now*/
 #if defined(__APPLE__) || USING_NAMED_PIPES_FOR_CLIENT || !PREFER_PASS_STDFILES_UNIX_SOCKET
@@ -20,15 +20,15 @@
 // Send following bytes to stderr.
 #define PASS_STDFILES_SWITCH_TO_STDERR '\003'
 //#define PASS_STDFILES_SWITCH_TO_STDERR_STRING "\003"
+#else
+#define PASS_STDFILES_UNIX_SOCKET 1
+#endif
 struct cmd_socket_client {
     int socket;
     int exit_code;
     size_t rsize;
     unsigned char *rbuffer;
 };
-#else
-#define PASS_STDFILES_UNIX_SOCKET 1
-#endif
 
 extern int client_connect (char *socket_path);
 extern int client_send_command(int socket, int argc, char *const*argv,
