@@ -1013,7 +1013,7 @@ Terminal.prototype.setFocused = function(focused) {
         }
         if (focused == 2)
             this.maybeFocus();
-    } else {
+    } else if (this.topNode) {
         this.topNode.classList.remove("domterm-active");
     }
     if (this.sstate.sendFocus)
