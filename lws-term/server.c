@@ -206,15 +206,15 @@ static const struct lws_protocols protocols[] = {
           (keystokes and other events) received via ssh to the pty/application.
           Output read from the pty_client is written to the file handle (stdout)
           (instead of being written to websocket client).
-          The proxy-out protocol also runs on the Remote end. It copies
-          output from the pty/application and writes it to the ssh.
-          Use struct tty_client for "proxy" protocol; that way
-          callback_pty can be (mostly?) unchanged.
-          Input read from file handle (stdin) is written to the pty.
+
+          If the proxy wraps a socket, there is a single "proxy" wsi.
+          If the proxy is an input/output pair, then we need to
+          use two struct lws instances (the "proxy" instands wraps input,
+          while "proxy-out" wraps output), but they share the same
+          "user-data", the sa,e tty_client instance.
         */
-        //{ "proxy-in", callback_proxy_in, sizeof(struct tty_client),  0},
-        //{ "proxy-out", callback_proxy_out, sizeof(struct tty_client),  0},
         { "proxy", callback_proxy, sizeof(struct tty_client),  0},
+        { "proxy-out", callback_proxy, 0,  0},
 #endif
 
 #if HAVE_INOTIFY

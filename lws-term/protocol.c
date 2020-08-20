@@ -109,9 +109,7 @@ void trim_preserved(struct pty_client *pclient)
 
     long read_count = pclient->preserved_sent_count - (pclient->preserved_end - pclient->preserved_start);
     long max_unconfirmed = 0;
-    struct lws *tclient_wsi;
-     FOREACH_WSCLIENT(tclient_wsi, pclient) {
-         struct tty_client *tclient = (struct tty_client *) lws_wsi_user(tclient_wsi);
+    FOREACH_WSCLIENT(tclient, pclient) {
          long unconfirmed = (read_count - tclient->confirmed_count) & MASK28;
          if (unconfirmed > max_unconfirmed)
              max_unconfirmed = unconfirmed;
@@ -233,30 +231,28 @@ static void
 unlink_tty_from_pty_only(struct pty_client *pclient,
                     struct lws *wsi, struct tty_client *tclient) {
     lwsl_notice("unlink_tty_from_pty_only p:%p w:%p t:%p\n", pclient, wsi, tclient);
-    for (struct lws **pwsi = &pclient->first_client_wsi; *pwsi != NULL; ) {
-      struct lws **nwsi = &((struct tty_client *) lws_wsi_user(*pwsi))->next_client_wsi;
-      if (wsi == *pwsi) {
-        if (*nwsi == NULL)
-          pclient->last_client_wsi_ptr = pwsi;
-        *pwsi = *nwsi;
-        break;
-      }
-      pwsi = nwsi;
+    for (struct tty_client **pt = &pclient->first_tclient; *pt != NULL; ) {
+        struct tty_client **nt = &(*pt)->next_tclient;
+        if (tclient == *pt) {
+            *pt = *nt;
+            break;
+        }
+        pt = nt;
     }
 }
+
 static void
 unlink_tty_from_pty(struct pty_client *pclient,
                     struct lws *wsi, struct tty_client *tclient) {
     unlink_tty_from_pty_only(pclient, wsi, tclient);
     // FIXME reclaim memory cleanup for tclient
-    struct lws *first_twsi = pclient->first_client_wsi;
-    if (first_twsi == NULL && pclient->detach_count == 0) {
+    struct tty_client *first_tclient = pclient->first_tclient;
+    if (first_tclient == NULL && pclient->detach_count == 0) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
     // If only one client left, do detachSaveSend
-    if (first_twsi != NULL) {
-        struct tty_client *first_tclient = lws_wsi_user(first_twsi);
-        if (first_tclient->next_client_wsi == NULL) {
+    if (first_tclient != NULL) {
+        if (first_tclient->next_tclient == NULL) {
             first_tclient->pty_window_number = -1;
             first_tclient->pty_window_update_needed = true;
             first_tclient->detachSaveSend = true;
@@ -305,14 +301,13 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
                   struct pty_client *pclient)
 {
     tclient->pclient = pclient;
-    struct lws *first_twsi = pclient->first_client_wsi;
-    tclient->next_client_wsi = NULL;
+    struct tty_client *first_tclient = pclient->first_tclient;
+    tclient->next_tclient = NULL;
     if (GET_REMOTE_HOSTUSER(pclient))
         tclient->proxyMode = proxy_display_local;
 
-    if (first_twsi != NULL) {
-        struct tty_client *first_tclient = lws_wsi_user(first_twsi);
-        if (first_tclient->next_client_wsi == NULL)
+    if (first_tclient != NULL) {
+        if (first_tclient->next_tclient == NULL)
             first_tclient->pty_window_number = 0;
 
         // Find the lowest unused pty_window_number.
@@ -321,29 +316,31 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
         int n = -1;
     next_pty_window_number:
         n++;
+#if 0
         FOREACH_WSCLIENT(xwsi, pclient) {
           struct tty_client *xclient = (struct tty_client *) lws_wsi_user(xwsi);
           if (xclient->pty_window_number == n)
               goto next_pty_window_number;
         }
+#endif
         tclient->pty_window_number = n;
 
         // If following this link_command there are now two clients,
         // notify both clients they don't have to save on detatch
-        if (first_tclient->next_client_wsi == NULL) {
+        if (first_tclient->next_tclient == NULL) {
             first_tclient->pty_window_update_needed = true;
             // these was exctly one other tclient
             tclient->detachSaveSend = true;
             lws_callback_on_writable(wsi);
             first_tclient->detachSaveSend = true;
-            lws_callback_on_writable(first_twsi);
+            lws_callback_on_writable(first_tclient->out_wsi);
         }
     }
     lwsl_notice("link_command wsi:%p tclient:%p pclient:%p\n",
                 wsi, tclient, pclient);
     tclient->pty_window_update_needed = true;
-    *pclient->last_client_wsi_ptr = wsi;
-    pclient->last_client_wsi_ptr = &tclient->next_client_wsi;
+    tclient->next_tclient = pclient->first_tclient;
+    pclient->first_tclient = tclient;
     if (tclient->proxyMode != proxy_command_local
         && tclient->proxyMode != proxy_display_local)
         focused_wsi = wsi;
@@ -457,8 +454,8 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->saved_window_contents = NULL;
     pclient->preserved_output = NULL;
     pclient->preserve_mode = 1;
-    pclient->first_client_wsi = NULL;
-    pclient->last_client_wsi_ptr = &pclient->first_client_wsi;
+    pclient->first_tclient = NULL;
+    //pclient->last_client_wsi_ptr = &pclient->first_client_wsi;
     pclient->recent_tclient = NULL;
     pclient->session_name_unique = false;
     pclient->pty_wsi = outwsi;
@@ -914,17 +911,15 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "RECEIVED") == 0) {
         if (proxyMode == proxy_display_local)
             return false;
-        struct tty_client *oclient = client->inout_client == NULL ? client
-            : client->inout_client;
         long count;
         sscanf(data, "%ld", &count);
-        oclient->confirmed_count = count;
-        if (((oclient->sent_count - oclient->confirmed_count) & MASK28) < 1000
+        client->confirmed_count = count;
+        if (((client->sent_count - client->confirmed_count) & MASK28) < 1000
             && pclient != NULL && pclient->paused) {
 #if USE_RXFLOW
             lwsl_info("session %d unpaused (flow control) (sent:%ld confirmed:%ld)\n",
                       pclient->session_number,
-                      oclient->sent_count, oclient->confirmed_count);
+                      client->sent_count, client->confirmed_count);
             lws_rx_flow_control(pclient->pty_wsi,
                                 1|LWS_RXFLOW_REASON_FLAG_PROCESS_NOW);
 #endif
@@ -994,15 +989,12 @@ reportEvent(const char *name, char *data, size_t dlen,
         FOREACH_PCLIENT(p) {
             if (p != pclient && p->session_name != NULL
                 && strcmp(session_name, p->session_name) == 0) {
-                struct lws *twsi;
                 struct pty_client *pp = p;
                 p->session_name_unique = false;
                 for (;;) {
-                    FOREACH_WSCLIENT(twsi, pp) {
-                        struct tty_client *t =
-                            (struct tty_client *) lws_wsi_user(twsi);
+                    FOREACH_WSCLIENT(t, pp) {
                         t->pty_window_update_needed = true;
-                        lws_callback_on_writable(twsi);
+                        lws_callback_on_writable(t->out_wsi);
                     }
                     if (! pclient->session_name_unique || pp == pclient)
                         break;
@@ -1091,12 +1083,9 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "ECHO-URGENT") == 0) {
         json_object *obj = json_tokener_parse(data);
         const char *kstr = json_object_get_string(obj);
-        struct lws *tty_wsi;
-        FOREACH_WSCLIENT(tty_wsi, pclient) {
-            struct tty_client *t =
-                (struct tty_client *) lws_wsi_user(tty_wsi);
+        FOREACH_WSCLIENT(t, pclient) {
             printf_to_browser(t, URGENT_WRAP("%s"), kstr);
-            lws_callback_on_writable(tty_wsi);
+            lws_callback_on_writable(t->out_wsi);
         }
         json_object_put(obj);
     } else {
@@ -1104,8 +1093,7 @@ reportEvent(const char *name, char *data, size_t dlen,
     return true;
 }
 
-void init_tclient_struct(struct tty_client *client, struct lws *wsi,
-    struct tty_client *in_client)
+void init_tclient_struct(struct tty_client *client, struct lws *wsi)
 {
     client->initialized = 0;
     client->next_ws_client = ws_client_list;
@@ -1114,6 +1102,7 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi,
     client->uploadSettingsNeeded = true;
     client->requesting_contents = 0;
     client->wsi = wsi;
+    client->out_wsi = wsi;
     client->version_info = NULL;
     client->pclient = NULL;
     client->sent_count = 0;
@@ -1123,13 +1112,7 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi,
     sbuf_extend(&client->ob, 2048);
     client->ocount = 0;
     client->proxyMode = no_proxy; // FIXME
-    if (in_client != NULL) {
-        in_client->inout_client = client;
-        client->connection_number = - in_client->connection_number;
-    } else {
-        client->connection_number = ++server->connection_count;
-    }
-    client->inout_client = in_client;
+    client->connection_number = ++server->connection_count;
     client->pty_window_number = -1;
     client->pty_window_update_needed = false;
 #if REMOTE_SSH
@@ -1288,8 +1271,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
     }
     if (client->detachSaveSend) { // proxyMode != proxy_local ???
         int tcount = 0;
-        struct lws *tty_wsi;
-        FOREACH_WSCLIENT(tty_wsi, pclient) {
+        FOREACH_WSCLIENT(tclient, pclient) {
             if (++tcount >= 2) break;
         }
         int code = tcount >= 2 ? 0 : pclient->detach_count != 0 ? 2 : 1;
@@ -1333,7 +1315,6 @@ close_local_proxy(struct pty_client *pclient, int exit_code)
 {
 #if PASS_STDFILES_UNIX_SOCKET
     lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number, pclient->cmd_socket);
-    //lws_set_timeout(pclient->proxy_out_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
 #else
     lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number,  pclient->cmd_socket);
 #endif
@@ -1357,21 +1338,21 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
     if (tclient==NULL)
         lwsl_notice("callback_proxy wsi:%p reason:%d - no client\n", wsi, reason);
     else
-        lwsl_notice("callback_proxy wsi:%p reason:%d fd:%d conn#%d\n", wsi, reason, tclient==NULL? -99 : tclient->proxy_fd, tclient->connection_number);
+        lwsl_notice("callback_proxy wsi:%p reason:%d fd:%d conn#%d\n", wsi, reason, tclient==NULL? -99 : tclient->proxy_fd_in, tclient->connection_number);
     switch (reason) {
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         lwsl_notice("proxy RAW_CLOSE_FILE\n");
         tty_client_destroy(wsi, tclient);
         return 0;
     case LWS_CALLBACK_RAW_RX_FILE: ;
-        if (tclient->proxy_fd < 0) {
+        if (tclient->proxy_fd_in < 0) {
             lwsl_notice("proxy RAW_RX_FILE - no fd cleanup\n");
             // cleanup? FIXME
             return 0;
         }
         // read data, send to
         sbuf_extend(&tclient->inb, 1024);
-        n = read(tclient->proxy_fd,
+        n = read(tclient->proxy_fd_in,
                          tclient->inb.buffer + tclient->inb.len,
                          tclient->inb.size - tclient->inb.len);
         lwsl_notice("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
@@ -1380,7 +1361,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
             tclient->inb.len += n;
         return handle_input(wsi, tclient, tclient->proxyMode);
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
-        if (tclient->proxy_fd < 0) {
+        if (tclient->proxy_fd_out < 0) {
             lwsl_notice("proxy RAW_WRITEABLE_FILE - no fd cleanup\n");
 #if 0
             // cleanup? FIXME
@@ -1407,11 +1388,11 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                 display_session(&opts, tclient->pclient, NULL, http_port);
                 free(tclient->pending_browser_command);
                 tclient->pending_browser_command = NULL;
-                if (tclient->inout_client) {
-                    tclient->inout_client->inout_client = NULL;
-                    lws_set_timeout(tclient->inout_client->wsi,
+                if (tclient->out_wsi) {
+                    lwsl_notice("set_timeout clear tc:%p\n", tclient->wsi);
+                    lws_set_timeout(tclient->wsi,
                                     PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
-                    tclient->inout_client = NULL;
+                    tclient->out_wsi = NULL;
                 }
                 maybe_daemonize();
                 ////tty_client_destroy(wsi, tclient);
@@ -1419,7 +1400,8 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
 #if PASS_STDFILES_UNIX_SOCKET
                 close_local_proxy(pclient, 0);
 #endif
-                tclient->proxy_fd = -1;
+                tclient->proxy_fd_in = -1;
+                tclient->proxy_fd_out = -1;
                 //tty_client_destroy(pin_lws, lws_wsi_user(pout_lws)); //FIXME
                 // daemonize - FIXME
                 return -1;
@@ -1431,7 +1413,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
             lwsl_notice("proxy WRITABLE/close blen:%zu\n", buf.len);
         }
         // data in tclient->ob.
-        n = write(tclient->proxy_fd, buf.buffer, buf.len);
+        n = write(tclient->proxy_fd_out, buf.buffer, buf.len);
         lwsl_notice("proxy RAW_WRITEABLE len:%zu written:%zu\n", buf.len, n );
         sbuf_free(&buf);
         return tclient->pclient == NULL ? -1 : 0; // FIXME
@@ -1461,7 +1443,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         break;
 
     case LWS_CALLBACK_ESTABLISHED:
-        init_tclient_struct(client, wsi, NULL);
+        init_tclient_struct(client, wsi);
         lwsl_notice("tty/CALLBACK_ESTABLISHED conn#%d\n", client->connection_number);
         char arg[100]; // FIXME
         if (! check_server_key(wsi, arg, sizeof(arg) - 1))
@@ -1583,37 +1565,32 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
     fd.filefd = options->fd_in;
     struct lws *pin_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
                                                      "proxy", NULL);
-    struct tty_client *in_client =
+    struct tty_client *tclient =
         ((struct tty_client *) lws_wsi_user(pin_lws));
-    init_tclient_struct(in_client, pin_lws, NULL);
-    in_client->proxy_fd = options->fd_in;
-    lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, in_client->connection_number, pin_lws, ttyname(options->fd_in));
-    in_client->proxyMode = proxyMode;
-    in_client->pclient = pclient;
+    init_tclient_struct(tclient, pin_lws);
+    tclient->proxy_fd_in = options->fd_in;
+    tclient->proxy_fd_out = options->fd_out;
+    lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws, ttyname(options->fd_in));
+    tclient->proxyMode = proxyMode;
+    tclient->pclient = pclient;
 
     struct lws *pout_lws;
-    struct tty_client *out_client;
     if (options->fd_out == options->fd_in) {
         pout_lws = pin_lws;
-        out_client = in_client;
     } else {
         fd.filefd = options->fd_out;
         // maybe set last 'parent' argument ???
-        pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd, "proxy", NULL);
-        out_client = ((struct tty_client *) lws_wsi_user(pout_lws));
-        init_tclient_struct(out_client, pout_lws, in_client);
-        lwsl_notice("- make_proxy out-conn#%d wsi:%p\n", out_client->connection_number, pout_lws);
-        out_client->proxy_fd = options->fd_out;
-#if PASS_STDFILES_UNIX_SOCKET
-        pclient->proxy_out_wsi = pout_lws;
-#endif
+        pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd, "proxy-out", NULL);
+        lws_set_wsi_user(pout_lws, tclient);
+        tclient->out_wsi = pout_lws;
+        lwsl_notice("- make_proxy out-conn#%d wsi:%p\n", tclient->connection_number, pout_lws);
     }
     if (pclient)
-        link_command(pout_lws, out_client, pclient);
-    out_client->proxyMode = proxyMode; // do after link_command
+        link_command(pout_lws, tclient, pclient);
+    tclient->proxyMode = proxyMode; // do after link_command
     if (proxyMode == proxy_command_local) {
         lwsl_notice("proxy-local browser:%s\n", options->browser_command);
-        out_client->pending_browser_command
+        tclient->pending_browser_command
             = options->browser_command ? strdup(options->browser_command)
             : NULL;
     }
@@ -1765,17 +1742,16 @@ int attach_action(int argc, char** argv, const char*cwd,
 
     // If there is an existing tty_client, request contents from browser,
     // if not already doing do.
-    struct lws *tty_wsi;
-    FOREACH_WSCLIENT(tty_wsi, pclient) {
-        if (((struct tty_client *) lws_wsi_user(tty_wsi))
-            ->requesting_contents > 0)
+    struct tty_client *requesting = NULL;
+    FOREACH_WSCLIENT(tclient, pclient) {
+        if (tclient->requesting_contents > 0) {
+            requesting = tclient;
             break;
+        }
     }
-    if (tty_wsi == NULL && (tty_wsi = pclient->first_client_wsi) != NULL) {
-        struct tty_client *tclient =
-            (struct tty_client *) lws_wsi_user(tty_wsi);
-        tclient->requesting_contents = 1;
-        lws_callback_on_writable(tty_wsi);
+    if (requesting == NULL && (requesting = pclient->first_tclient) != NULL) {
+        requesting->requesting_contents = 1;
+        lws_callback_on_writable(requesting->out_wsi);
     }
 
     return display_session(opts, pclient, NULL, http_port);
@@ -2017,13 +1993,11 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
         case LWS_CALLBACK_RAW_RX_FILE: {
             lwsl_notice("callback_pty LWS_CALLBACK_RAW_RX_FILE wsi:%p len:%zu\n",
                         wsi, len);
-            struct lws *wsclient_wsi;
             long min_unconfirmed = LONG_MAX;
             int avail = INT_MAX;
             int tclients_seen = 0;
             long last_sent_count = -1, last_confirmed_count = -1;
-            FOREACH_WSCLIENT(wsclient_wsi, pclient) {
-                struct tty_client *tclient = (struct tty_client *) lws_wsi_user(wsclient_wsi);
+            FOREACH_WSCLIENT(tclient, pclient) {
                 tclients_seen++;
                 last_sent_count = tclient->sent_count;
                 last_confirmed_count = tclient->confirmed_count;
@@ -2060,9 +2034,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             if (avail >= eof_len) {
                 char *data_start = NULL;
                 int data_length = 0, read_length = 0;
-                FOREACH_WSCLIENT(wsclient_wsi, pclient) {
-                    struct tty_client *tclient =
-                        (struct tty_client *) lws_wsi_user(wsclient_wsi);
+                FOREACH_WSCLIENT(tclient, pclient) {
                     if (data_start == NULL) {
                         data_start = tclient->ob.buffer+tclient->ob.len;
                         ssize_t n;
@@ -2112,7 +2084,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                     }
                     tclient->ob.len += data_length;
                     tclient->ocount += read_length;
-                    lws_callback_on_writable(wsclient_wsi);
+                    lws_callback_on_writable(tclient->out_wsi);
                 }
                 if (should_backup_output(pclient)) {
                     if (pclient->preserved_output == NULL) {
@@ -2142,12 +2114,9 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             lwsl_notice("callback_pty LWS_CALLBACK_RAW_CLOSE_FILE cmd_sock:%d\n", pclient->cmd_socket);
             pclient->eof_seen = 1;
             int status = pty_destroy(pclient);
-            struct lws *wsclient_wsi;
-            FOREACH_WSCLIENT(wsclient_wsi, pclient) {
-                struct tty_client *tclient =
-                    (struct tty_client *) lws_wsi_user(wsclient_wsi);
-                lwsl_notice("- pty close ws:%p conn#%d proxy_fd:%d\n", wsclient_wsi, tclient->connection_number, tclient->proxy_fd);
-                if (tclient->proxy_fd >= 0) {
+            FOREACH_WSCLIENT(tclient, pclient) {
+                lwsl_notice("- pty close conn#%d proxy_fd:%d\n", tclient->connection_number, tclient->proxy_fd_in);
+                if (tclient->proxy_fd_in >= 0) {
 #if PASS_STDFILES_UNIX_SOCKET
 //                    printf_to_browser(tclient, "%c",
 //                                      WEXITSTATUS(status));
@@ -2158,9 +2127,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
 #endif
                 }
                 // FIXME tclient->exit_status = WEXITSTATUS(status);
-                lws_callback_on_writable(wsclient_wsi);
-                if (tclient->inout_client)
-                    tclient->inout_client->pclient = NULL;
+                lws_callback_on_writable(tclient->out_wsi);
                 tclient->pclient = NULL;
             }
 #if REMOTE_SSH && PASS_STDFILES_UNIX_SOCKET

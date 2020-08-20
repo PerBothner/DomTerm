@@ -121,8 +121,7 @@ struct pty_client {
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
     int paused;
-    struct lws *first_client_wsi;
-    struct lws **last_client_wsi_ptr;
+    struct tty_client *first_tclient;
     struct lws *pty_wsi;
     struct tty_client *recent_tclient;
     char *saved_window_contents;
@@ -162,20 +161,22 @@ struct pty_client {
  */
 struct tty_client {
     struct tty_client *next_ws_client; // link in list headed by ws_client_list  [an 'out' field]
-    struct lws *next_client_wsi; // link in list headed by pty_client:first_client_wsi [an 'out' field]
+    struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
 
     /// Normally a tty_client wraps a bi-directional input/output file/socket.
     /// In some proxy modes we have distinct file descriptors for in and out.
-    /// Hence we need two struct lws objects and two struct tty_client objects.
-    /// The latter two point at each other using the inout_client field.
-    /// The 'in' client handles reading from one descriptor (and writing
-    /// to the pclient); it has connection_number > 0.
-    /// The 'out' client handles writing (data that has been read from the
-    /// pclient)to the other descriptor ; it has the negated connection_number.
-    /// An 'in' field is only valid in an 'in' or bi-directional client.
-    /// An 'out' field is only valid in an 'out' or bi-directional client.
-    struct tty_client *inout_client; // [as 'in' field points to 'out' client and vice versa]
+    /// Hence we need two struct lws objects, but they share the same
+    /// "user_data", a single tty_client object.
+    /// If the file/socket is bi-directional, then 'wsi' == 'out_wsi'.
+    /// Otherwise, 'wsi' handles reading from one descriptor (and writing
+    /// to the pclient);
+    /// 'out_wsi' handles writing (data that has been read from the
+    /// pclient) to the other descriptor.
+    /// An 'in' field is used in conjuction with 'wsi'.
+    /// An 'out' field is used in conjuction with 'out_wsi'.
+    struct lws *wsi;
+    struct lws *out_wsi;
 
     // 0: Not initialized; 2: initialized
     // 1: reconnecting - client has state, but connection was dropped
@@ -194,7 +195,6 @@ struct tty_client {
     // both sent_count and confirmed_count are modulo MASK28.
     long sent_count; // # bytes sent to (any) tty_client [an 'out' field]
     long confirmed_count; // # bytes confirmed received from (some) tty_client [an 'out' field]
-    struct lws *wsi;
     struct sbuf inb;  // input buffer (data/events from client) [an 'in' field]
     struct sbuf ob; // data to be sent to UI (or proxy)
     // (a mix of output from pty and from server) [an 'out' field]
@@ -203,11 +203,11 @@ struct tty_client {
     // (This is bytes read from pty output, and does not include
     // uncounted messages from the server.) [an 'out' field]
 
-    int connection_number; // unique number [negative if an 'out' client]
+    int connection_number; // unique number
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
 #if REMOTE_SSH
-    int proxy_fd;
+    int proxy_fd_in, proxy_fd_out;
     char *pending_browser_command; // [an 'out' field]
 #endif
 };
@@ -384,8 +384,8 @@ extern struct resource resources[];
          P != NULL;\
          P = pty_clients[P->session_number+1])
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
-  for (VAR = (PCLIENT)->first_client_wsi; VAR != NULL; \
-       VAR = ((struct tty_client *) lws_wsi_user(VAR))->next_client_wsi)
+  for (struct tty_client *VAR = (PCLIENT)->first_tclient; VAR != NULL; \
+       VAR = (VAR)->next_tclient)
 #define FORALL_WSCLIENT(VAR)      \
   for (VAR = ws_client_list; VAR != NULL;   \
        VAR = (VAR)->next_ws_client)

@@ -142,16 +142,13 @@ int html_action(int argc, char** argv, const char*cwd,
         tname[tlen] = 0;
         FOREACH_PCLIENT(pclient) {
             if (strcmp(pclient->ttyname, tname) == 0) {
-                struct lws *twsi;
-                FOREACH_WSCLIENT(twsi, pclient) {
-                    struct tty_client *tclient =
-                        (struct tty_client *) lws_wsi_user(twsi);
+                FOREACH_WSCLIENT(tclient, pclient) {
                     sbuf_extend(&tclient->ob, sb.len);
                     memcpy(tclient->ob.buffer+tclient->ob.len,
                            sb.buffer, sb.len);
                     tclient->ob.len += sb.len;
                     tclient->ocount += sb.len;
-                    lws_callback_on_writable(twsi);
+                    lws_callback_on_writable(tclient->out_wsi);
                 }
                 sbuf_free(&sb);
                 return EXIT_SUCCESS;
@@ -482,8 +479,7 @@ int list_action(int argc, char** argv, const char*cwd,
         if (pclient->session_name != NULL)
             fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
         int nwindows = 0;
-        struct lws *w;
-        FOREACH_WSCLIENT(w, pclient) { nwindows++; }
+        FOREACH_WSCLIENT(tclient, pclient) { nwindows++; }
         fprintf(out, ", #windows: %d", nwindows);
         fprintf(out, "\n");
         nclients++;
@@ -537,10 +533,7 @@ int status_action(int argc, char** argv, const char*cwd,
                 fprintf(out, ", paused");
             fprintf(out, "\n");
             int nwindows = 0;
-            struct lws *w;
-            FOREACH_WSCLIENT(w, pclient) {
-                struct tty_client *tclient =
-                    (struct tty_client *) lws_wsi_user(w);
+            FOREACH_WSCLIENT(tclient, pclient) {
                 int number = tclient->pty_window_number;
                 if (tclient->proxyMode == proxy_remote) {
                     // FIXME Use SSH_CONNECTION to print client address
