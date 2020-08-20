@@ -54,13 +54,20 @@ extern volatile bool force_exit;
 extern struct lws_context *context;
 extern struct tty_server *server;
 extern struct lws_vhost *vhost;
+
 extern struct pty_client **pty_clients; // malloc'd array
 extern int pty_clients_size;
 #define VALID_SESSION_NUMBER(NUM) \
     ((NUM) > 0 && (NUM) < pty_clients_size && pty_clients[NUM] != NULL && pty_clients[NUM]->session_number == (NUM))
 #define PCLIENT_FROM_NUMBER(NUM) \
     (VALID_SESSION_NUMBER(NUM) ? pty_clients[NUM] : NULL)
-extern struct tty_client *ws_client_list;
+extern struct tty_client **tty_clients; // malloc'd array
+extern int tty_clients_size;
+#define VALID_CONNECTION_NUMBER(NUM) \
+    ((NUM) > 0 && (NUM) < tty_clients_size && tty_clients[NUM] != NULL && tty_clients[NUM]->connection_number == (NUM))
+#define TCLIENT_FROM_NUMBER(NUM) \
+    (VALID_CONNECTION_NUMBER(NUM) ? tty_clients[NUM] : NULL)
+
 extern int http_port;
 //extern struct tty_client *focused_client;
 extern struct lws_context_creation_info info; // FIXME rename
@@ -122,6 +129,7 @@ struct pty_client {
     int detach_count;
     int paused;
     struct tty_client *first_tclient;
+    struct tty_client **last_tclient_ptr;
     struct lws *pty_wsi;
     struct tty_client *recent_tclient;
     char *saved_window_contents;
@@ -160,7 +168,6 @@ struct pty_client {
  * The backback handler moves data to/from a paired pty_client pclient.
  */
 struct tty_client {
-    struct tty_client *next_ws_client; // link in list headed by ws_client_list  [an 'out' field]
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
 
@@ -340,6 +347,7 @@ extern bool check_option_arg(char *arg, struct options *opts);
 // A "setting" that starts with "`" is an internal setting.
 #define LOCAL_SESSIONNUMBER_KEY "`local-session-number"
 #define REMOTE_HOSTUSER_KEY "`remote-host-user"
+
 // if using ssh: "USER@HOST" or "HOST"; otherwise NULL
 #define GET_REMOTE_HOSTUSER(PCLIENT) get_setting((PCLIENT)->cmd_settings, REMOTE_HOSTUSER_KEY)
 #define PTY_FOR_SSH 0
@@ -386,9 +394,10 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (struct tty_client *VAR = (PCLIENT)->first_tclient; VAR != NULL; \
        VAR = (VAR)->next_tclient)
-#define FORALL_WSCLIENT(VAR)      \
-  for (VAR = ws_client_list; VAR != NULL;   \
-       VAR = (VAR)->next_ws_client)
+#define FORALL_WSCLIENT(VAR) \
+    for (VAR = tty_clients == NULL ? NULL : tty_clients[1];\
+         VAR != NULL;\
+         VAR = tty_clients[VAR->connection_number+1])
 
 // These are used to delimit "out-of-band" urgent messages.
 #define URGENT_START_STRING "\023\026"

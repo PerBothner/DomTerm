@@ -120,6 +120,7 @@ class Terminal {
     sstate.paneNumber = -1;
     sstate.doLinkify = true;
     this.windowNumber = -1;
+    this.windowForSessionNumber = -1;
     this._settingsCounterInstance = -1;
     
     this._deferredLinebreaksStart = -1;
@@ -5095,14 +5096,16 @@ Terminal.prototype.setSessionName = function(title) {
     this.setWindowTitle(title, 30);
 }
 
-Terminal.prototype.setSessionNumber = function(snumber, unique, wnumber) {
+Terminal.prototype.setSessionNumber = function(snumber, unique,
+                                               windowForSession, windowNumber) {
     this.sstate.sessionNumber = snumber;
     this.topNode.setAttribute("session-number", snumber);
     if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
         DomTerm.sendParentMessage("set-session-number", snumber);
     }
     this.sstate.sessionNameUnique = unique;
-    this.windowNumber = wnumber;
+    this.windowNumber = windowNumber;
+    this.windowForSessionNumber = windowForSession;
     this.updateWindowTitle();
 }
 
@@ -5119,23 +5122,15 @@ Terminal.prototype.sessionName = function() {
             if (! rhost)
                 host = "";
             sname = "DomTerm" + ":" + lsession + "=" +rhost+":" + this.sstate.sessionNumber;
-        } else
+        } else {
             sname = "DomTerm" + ":" + this.sstate.sessionNumber;
+        }
     }
     else if (! this.sstate.sessionNameUnique)
         sname = sname + ":" + this.sstate.sessionNumber;
-    if (this.windowNumber >= 0) {
-        /*
-        function format2Letters(n) {
-            var rem = n % 26;
-            var last = String.fromCharCode(97+rem);
-            if (n > 26)
-                return format2Letters((n - rem) / 26) + last;
-            else
-                return last;
-        }
-        sname = sname + format2Letters(this.windowNumber);
-        */
+    if (this.windowNumber >= 0
+        && (this.windowForSessionNumber >= 0
+            || this.sstate.sessionNumber !== this.windowNumber)) {
         sname = sname + "." + this.windowNumber;
     }
     return sname;

@@ -1243,7 +1243,8 @@ class DTParser {
             case 91:
                 term.setSessionNumber(this.getParameter(1, 0),
                                       this.getParameter(2, 0) != 0,
-                                      this.getParameter(3, 0)-1);
+                                      this.getParameter(3, 0)-1,
+                                      this.getParameter(4, 0));
                 break;
             case 92:
                 switch (this.getParameter(1, 0)) {

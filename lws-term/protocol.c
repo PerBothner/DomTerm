@@ -36,7 +36,8 @@ static char end_replay_mode[] = URGENT_WRAP("\033[98u");
    snext > snum && VALID_SESSION_NUMBER(snext). */
 struct pty_client **pty_clients; // malloc'd array
 int pty_clients_size; // size of pty_clients array
-struct tty_client *ws_client_list;
+struct tty_client **tty_clients; // malloc'd array
+int tty_clients_size;
 
 int
 send_initial_message(struct lws *wsi) {
@@ -234,6 +235,8 @@ unlink_tty_from_pty_only(struct pty_client *pclient,
     for (struct tty_client **pt = &pclient->first_tclient; *pt != NULL; ) {
         struct tty_client **nt = &(*pt)->next_tclient;
         if (tclient == *pt) {
+            if (*nt == NULL)
+                pclient->last_tclient_ptr = pt;
             *pt = *nt;
             break;
         }
@@ -273,14 +276,13 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
 
     struct pty_client *pclient = tclient->pclient;
 
-    struct tty_client *t;
-    for (struct tty_client **pt = &ws_client_list; (t = *pt) != NULL; ) {
-        struct tty_client **next = &t->next_ws_client;
-        if (*pt == tclient) {
-            *pt = *next;
-        }
-        pt = next;
+    int snum = tclient->connection_number;
+    if (VALID_CONNECTION_NUMBER(snum)) {
+        struct tty_client *next = tty_clients[snum+1];
+        for (; snum >= 0 && tty_clients[snum] == tclient; snum--)
+            tty_clients[snum] = next;
     }
+    tclient->connection_number = -1;
     if (pclient != NULL)
         unlink_tty_from_pty_only(pclient, wsi, tclient);
 }
@@ -312,17 +314,13 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
 
         // Find the lowest unused pty_window_number.
         // This is O(n^2), but typically n==0.
-        struct lws *xwsi;
         int n = -1;
     next_pty_window_number:
         n++;
-#if 0
-        FOREACH_WSCLIENT(xwsi, pclient) {
-          struct tty_client *xclient = (struct tty_client *) lws_wsi_user(xwsi);
+        FOREACH_WSCLIENT(xclient, pclient) {
           if (xclient->pty_window_number == n)
               goto next_pty_window_number;
         }
-#endif
         tclient->pty_window_number = n;
 
         // If following this link_command there are now two clients,
@@ -339,8 +337,8 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     lwsl_notice("link_command wsi:%p tclient:%p pclient:%p\n",
                 wsi, tclient, pclient);
     tclient->pty_window_update_needed = true;
-    tclient->next_tclient = pclient->first_tclient;
-    pclient->first_tclient = tclient;
+    *pclient->last_tclient_ptr = tclient;
+    pclient->last_tclient_ptr = &tclient->next_tclient;
     if (tclient->proxyMode != proxy_command_local
         && tclient->proxyMode != proxy_display_local)
         focused_wsi = wsi;
@@ -431,6 +429,8 @@ create_pclient(const char *cmd, char*const*argv,
         }
         struct pty_client *next = pty_clients[snum];
         if (next == NULL || next->session_number > snum) {
+            if (VALID_CONNECTION_NUMBER(snum))
+                continue;
             // Maintain invariant
             for (int iprev = snum;
                  --iprev >= 0 && pty_clients[iprev] == next; ) {
@@ -455,7 +455,7 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->preserved_output = NULL;
     pclient->preserve_mode = 1;
     pclient->first_tclient = NULL;
-    //pclient->last_client_wsi_ptr = &pclient->first_client_wsi;
+    pclient->last_tclient_ptr = &pclient->first_tclient;
     pclient->recent_tclient = NULL;
     pclient->session_name_unique = false;
     pclient->pty_wsi = outwsi;
@@ -1096,8 +1096,6 @@ reportEvent(const char *name, char *data, size_t dlen,
 void init_tclient_struct(struct tty_client *client, struct lws *wsi)
 {
     client->initialized = 0;
-    client->next_ws_client = ws_client_list;
-    ws_client_list = client;
     client->detachSaveSend = false;
     client->uploadSettingsNeeded = true;
     client->requesting_contents = 0;
@@ -1112,13 +1110,47 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi)
     sbuf_extend(&client->ob, 2048);
     client->ocount = 0;
     client->proxyMode = no_proxy; // FIXME
-    client->connection_number = ++server->connection_count;
+    client->connection_number = -1;
     client->pty_window_number = -1;
     client->pty_window_update_needed = false;
 #if REMOTE_SSH
     client->pending_browser_command = NULL;
 #endif
     lwsl_notice("init_tclient_struct conn#%d\n",  client->connection_number);
+}
+
+static void
+set_connection_number(struct tty_client *tclient, struct pty_client *hint)
+{
+    int snum = 1;
+    if (hint != NULL && ! VALID_CONNECTION_NUMBER(hint->session_number))
+        snum = hint->session_number;
+    for (; ; snum++) {
+        if (snum >= tty_clients_size) {
+            int newsize = 3 * tty_clients_size >> 1;
+            if (newsize < 20)
+                newsize = 20;
+            tty_clients = realloc(tty_clients, newsize * sizeof(struct tty_client*));
+            for (int i = tty_clients_size; i < newsize; i++)
+                tty_clients[i] = NULL;
+            tty_clients_size = newsize;
+        }
+        struct tty_client *next = tty_clients[snum];
+        if (next == NULL || next->connection_number > snum) {
+            if ((hint == NULL || snum != hint->session_number)
+                && VALID_SESSION_NUMBER(snum))
+                continue;
+            // Maintain invariant
+            for (int iprev = snum;
+                 --iprev >= 0 && tty_clients[iprev] == next; ) {
+                tty_clients[iprev] = tclient;
+            }
+            tty_clients[snum] = tclient;
+            tclient->connection_number = snum;
+            break;
+        }
+    }
+    lwsl_notice("set_connection_number %p to %d\n", tclient, tclient->connection_number);
 }
 
 /** Copy input (keyboard and events) from browser to pty/application.
@@ -1212,7 +1244,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
     }
     if (client->initialized == 0 && proxyMode != proxy_command_local) {
         if (pclient->cmd_settings) {
-            json_object_put(pclient->cmd_settings);
+            //json_object_put(pclient->cmd_settings);
             sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
                         json_object_to_json_string_ext(pclient->cmd_settings, JSON_C_TO_STRING_PLAIN));
         } else {
@@ -1264,10 +1296,11 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
     }
     if (client->pty_window_update_needed && nonProxy) {
         client->pty_window_update_needed = false;
-        sbuf_printf(bufp, URGENT_WRAP("\033[91;%d;%d;%du"),
+        sbuf_printf(bufp, URGENT_WRAP("\033[91;%d;%d;%d;%du"),
                     pclient->session_number,
                     pclient->session_name_unique,
-                    client->pty_window_number+1);
+                    client->pty_window_number+1,
+                    client->connection_number);
     }
     if (client->detachSaveSend) { // proxyMode != proxy_local ???
         int tcount = 0;
@@ -1480,6 +1513,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 pclient = create_link_pclient(wsi, client);
                 lwsl_info("connection to new session %d established\n", pclient->session_number);
             }
+            set_connection_number(client, pclient);
 
             argval = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
             if (argval != NULL) {
@@ -1568,6 +1602,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
     struct tty_client *tclient =
         ((struct tty_client *) lws_wsi_user(pin_lws));
     init_tclient_struct(tclient, pin_lws);
+    set_connection_number(tclient, pclient);
     tclient->proxy_fd_in = options->fd_in;
     tclient->proxy_fd_out = options->fd_out;
     lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws, ttyname(options->fd_in));

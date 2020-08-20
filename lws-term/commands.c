@@ -534,12 +534,13 @@ int status_action(int argc, char** argv, const char*cwd,
             fprintf(out, "\n");
             int nwindows = 0;
             FOREACH_WSCLIENT(tclient, pclient) {
-                int number = tclient->pty_window_number;
+                int number = tclient->connection_number;
                 if (tclient->proxyMode == proxy_remote) {
                     // FIXME Use SSH_CONNECTION to print client address
                     // (Get this from env when display_session was called.)
                     fprintf(out, "  (connected via ssh)");
-                } else if (number >= 0)
+                }
+                if (number >= 0)
                     fprintf(out, "  window %d:", number);
                 if (tclient->version_info) {
                     struct json_object *vobj =
