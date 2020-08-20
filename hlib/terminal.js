@@ -5240,9 +5240,15 @@ Terminal.prototype.setSettings = function(obj) {
 
 Terminal.prototype.updateSettings = function() {
     let getOption = (name) => this.getOption(name);
+    let val = getOption("log.js-verbosity", -1);
+    if (val) {
+        let v = Number(val);
+        if (v >= 0)
+            DomTerm.verbosity = v;
+    }
     this.linkAllowedUrlSchemes = Terminal.prototype.linkAllowedUrlSchemes;
     var link_conditions = "";
-    var val = getOption("open.file.application");
+    val = getOption("open.file.application");
     var a = val ? val : "";
     val = getOption("open.link.application");
     if (val)

@@ -258,11 +258,17 @@ function setupParentMessages2() {
 function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
-    if (DomTerm.verbosity > 0)
-        console.log("loadHandler "+location);
-    DomTerm.layoutTop = document.body;
     let url = location.href;
+    let m = url.match(/[#&]js-verbosity=([^&]*)/);
+    if (m) {
+        let v = Number(m[1]);
+        if (v >= 0)
+            DomTerm.verbosity = v;
+    }
     let hashPos = url.indexOf('#');
+    if (DomTerm.verbosity > 0)
+        console.log("loadHandler "+url);
+    DomTerm.layoutTop = document.body;
     let uhash = "";
     if (hashPos >= 0) {
         uhash = url.substring(hashPos);
@@ -274,7 +280,7 @@ function loadHandler(event) {
         DomTerm.mainLocation = "http://localhost:"+DomTerm.server_port+"/simple.html";
     } else
         DomTerm.mainLocation = url;
-    var m = url.match(/[#&]server-key=([^&]*)/);
+    m = url.match(/[#&]server-key=([^&]*)/);
     if (! DomTerm.server_key && (m = url.match(/[#&]server-key=([^&]*)/))) {
         DomTerm.server_key = m[1];
     }
