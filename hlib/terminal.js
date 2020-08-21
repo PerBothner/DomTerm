@@ -5105,6 +5105,8 @@ Terminal.prototype.setSessionNumber = function(snumber, unique,
     }
     this.sstate.sessionNameUnique = unique;
     this.windowNumber = windowNumber;
+    if (DomTermLayout._mainWindowNumber < 0)
+        DomTermLayout._mainWindowNumber = windowNumber;
     this.windowForSessionNumber = windowForSession;
     this.updateWindowTitle();
 }
@@ -8942,7 +8944,7 @@ Terminal._makeWsUrl = function(query=null) {
     }
     if (! DomTerm.isInIFrame()) {
         query = (query ? (query + '&') : '')
-            + 'window-main=true';
+            + 'main-window=true';
     }
     if (query)
         url = url + '?' + query;

@@ -217,7 +217,7 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
     // (Cross-Origin Resource Sharing) restrictions on desktop browsers.
     if (url.startsWith("file:///")) {
         url = "http://localhost:"+DomTerm.server_port+"/saved-file/?server-key="+DomTerm.server_key+"&file="+urlEncoded.substring(7);
-        return DomTermLayout.makeIFrameWrapper(url, false, contextNode);
+        return DomTermLayout.makeIFrameWrapper(url, 'V', contextNode);
     }
     let el = DomTerm.makeElement(DomTerm.freshName());
     el.innerHTML = "<h2>waiting for file data ...</h2>";

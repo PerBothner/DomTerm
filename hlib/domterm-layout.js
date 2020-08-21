@@ -13,6 +13,8 @@ DomTermLayout._oldFocusedItem = null;
 // Same as DomTermLayout._oldFocusedItem.container._contentElement1
 DomTermLayout._oldFocusedContent = null;
 
+DomTermLayout._mainWindowNumber = -1;
+
 DomTermLayout.selectNextPane = function(forwards, wrapper=DomTermLayout._oldFocusedContent) {
     let item = DomTermLayout._elementToLayoutItem(wrapper);
     var r = item;
@@ -379,7 +381,7 @@ DomTermLayout.initialize = function() {
 
     DomTermLayout.manager.registerComponent( 'browser', function( container, componentConfig ){
         container.on('destroy', DomTermLayout.layoutClosed, container);
-        let el = DomTermLayout.makeIFrameWrapper(container._config.url, false);
+        let el = DomTermLayout.makeIFrameWrapper(container._config.url, 'B');
         container._contentElement1 = el;
         el.classList.add("lm_content");
         //container.on('resize', DomTerm.layoutResized, el);
@@ -463,17 +465,23 @@ DomTermLayout.initSaved = function(data) {
         }
 }
 
-DomTermLayout.makeIFrameWrapper = function(location, terminal=true,
+// mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)
+DomTermLayout.makeIFrameWrapper = function(location, mode='T',
                                      parent=DomTerm.layoutTop) {
     let ifr = document.createElement("iframe");
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
-    if (terminal) {
+    if (mode == 'T') {
         if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
             location = location
                 + (location.indexOf('#') >= 0 ? '&' : '#')
                 + "server-key=" + DomTerm.server_key;
         }
+    }
+    if (DomTermLayout._mainWindowNumber >= 0 && (mode == 'T' || mode == 'V')) {
+         location = location
+                + (location.indexOf('#') >= 0 ? '&' : '#')
+                + "main-window=" + DomTermLayout._mainWindowNumber;
     }
     ifr.setAttribute("src", location);
     ifr.setAttribute("class", "domterm-wrapper");

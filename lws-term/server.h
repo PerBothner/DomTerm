@@ -191,7 +191,7 @@ struct tty_client {
 
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
-    bool window_main; // main or only connection for window (not a pane)
+    int main_window; // 0 if top-level, or number of main window
     enum proxy_mode proxyMode;
 
     // 1: attach requested - need to get contents from existing window

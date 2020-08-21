@@ -1102,6 +1102,7 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi)
     client->wsi = wsi;
     client->out_wsi = wsi;
     client->version_info = NULL;
+    client->main_window = -1;
     client->pclient = NULL;
     client->sent_count = 0;
     client->confirmed_count = 0;
@@ -1375,7 +1376,8 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
     switch (reason) {
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         lwsl_notice("proxy RAW_CLOSE_FILE\n");
-        tty_client_destroy(wsi, tclient);
+        if (tclient->wsi == wsi)
+            tty_client_destroy(wsi, tclient);
         return 0;
     case LWS_CALLBACK_RAW_RX_FILE: ;
         if (tclient->proxy_fd_in < 0) {
@@ -1481,9 +1483,15 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         char arg[100]; // FIXME
         if (! check_server_key(wsi, arg, sizeof(arg) - 1))
             return -1;
-        const char*window_main = lws_get_urlarg_by_name(wsi, "window-main=", arg, sizeof(arg) - 1);
-        client->window_main
-            = window_main && strcmp(window_main, "true") == 0;
+        const char*main_window = lws_get_urlarg_by_name(wsi, "main-window=", arg, sizeof(arg) - 1);
+        client->main_window = -1;
+        if (main_window != NULL) {
+            if (strcmp(main_window, "true") == 0)
+                client->main_window = 0;
+            long num = strtol(main_window, NULL, 10);
+            if (num > 0)
+                client->main_window = (int) num;
+        }
         const char*argval = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
         if (argval != NULL) {
             lwsl_info("dummy connection (no session) established\n");

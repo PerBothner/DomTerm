@@ -540,8 +540,12 @@ int status_action(int argc, char** argv, const char*cwd,
                     // (Get this from env when display_session was called.)
                     fprintf(out, "  (connected via ssh)");
                 }
-                if (number >= 0)
-                    fprintf(out, "  window %d:", number);
+                if (number >= 0) {
+                    fprintf(out, "  window %d", number);
+                    if (tclient->main_window > 0)
+                        fprintf(out, " in %d", tclient->main_window);
+                    fprintf(out, ":");
+                }
                 if (tclient->version_info) {
                     struct json_object *vobj =
                         json_tokener_parse(tclient->version_info);
@@ -714,7 +718,7 @@ int window_action(int argc, char** argv, const char*cwd,
         return EXIT_FAILURE;
     }
     FORALL_WSCLIENT(wclient) {
-        if (wclient->window_main) {
+        if (wclient->main_window == 0) {
             printf_to_browser(wclient, seq);
             lws_callback_on_writable(wclient->wsi);
         }
