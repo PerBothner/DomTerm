@@ -509,6 +509,138 @@ json_print_property(FILE *out, struct json_object *jobj, char *fname,
     return val != NULL;
 }
 
+static void tclient_status_info(struct tty_client *tclient, FILE *out)
+{
+    if (tclient->version_info) {
+        struct json_object *vobj =
+            json_tokener_parse(tclient->version_info);
+        char *prefix = " ";
+        if (json_print_property(out, vobj, "qtwebengine", prefix, NULL))
+            prefix = ", ";
+        if (json_print_property(out, vobj, "atom", prefix, NULL))
+            prefix = ", ";
+        if (json_print_property(out, vobj, "electron", prefix, NULL))
+            prefix = ", ";
+        if (json_print_property(out, vobj, "javaFX", prefix, NULL))
+            prefix = ", ";
+        if (json_print_property(out, vobj, "chrome", prefix, NULL))
+            prefix = ", ";
+        if (json_print_property(out, vobj, "appleWebKit", prefix, NULL))
+            prefix = ", ";
+        if (json_print_property(out, vobj, "firefox", prefix, NULL))
+            prefix = ", ";
+        //fprintf(out, " %s\n", tclient->version_info);
+        json_object_put(vobj);
+    }
+}
+
+static void pclient_status_info(struct pty_client *pclient, FILE *out)
+{
+    const char* remote = GET_REMOTE_HOSTUSER(pclient);
+    if (remote)
+        fprintf(out, "ssh to remote %s", remote);
+    else
+        fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
+    if (pclient->session_name != NULL)
+        fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
+    if (pclient->paused)
+        fprintf(out, ", paused");
+}
+
+static void status_by_session(FILE * out)
+{
+    int nclients = 0;
+    FOREACH_PCLIENT(pclient) {
+        nclients++;
+            fprintf(out, "session#: %d, ", pclient->session_number);
+            pclient_status_info(pclient, out);
+            fprintf(out, "\n");
+            int nwindows = 0;
+            FOREACH_WSCLIENT(tclient, pclient) {
+                int number = tclient->connection_number;
+                if (tclient->proxyMode == proxy_remote) {
+                    fprintf(out, "  (connected via ssh)");
+                }
+                if (number >= 0) {
+                    fprintf(out, "  window %d", number);
+                    if (tclient->main_window > 0)
+                        fprintf(out, " in %d", tclient->main_window);
+                    fprintf(out, ":");
+                }
+                tclient_status_info(tclient, out);
+                fprintf(out, "\n");
+                nwindows++;
+            }
+            if (nwindows == 0)
+                fprintf(out, "  (detached)\n");
+    }
+    if (nclients == 0)
+        fprintf(out, "(no domterm sessions or server)\n");
+}
+
+static void status_by_connection(FILE *out)
+{
+    struct tty_client *tclient, *sub_client;
+    int nclients = 0, nsessions = 0, nremote = 0;
+    FORALL_WSCLIENT(tclient) {
+        nclients++;
+        if (tclient->proxyMode == proxy_remote) {
+            nremote++;
+            continue;
+        }
+        if (tclient->main_window > 0)
+            continue;
+        int number = tclient->connection_number;
+        if (number >= 0)
+            fprintf(out, "Window %d: ", number);
+        else
+            fprintf(out, "Window: ");
+        tclient_status_info(tclient, out);
+        fprintf(out, "\n");
+        FORALL_WSCLIENT(sub_client) {
+            if (sub_client->main_window != number
+                && sub_client->connection_number != number)
+                continue;
+
+            struct pty_client *pclient = sub_client->pclient;
+            fprintf(out, "  session#: %d", pclient->session_number);
+            if (pclient->session_number != sub_client->connection_number
+                || (pclient->first_tclient && pclient->first_tclient->next_tclient))
+                fprintf(out, ".%d", sub_client->connection_number);
+            fprintf(out, ", ");
+            pclient_status_info(pclient, out);
+            fprintf(out, "\n");
+        }
+    }
+    if (nremote > 0) {
+        fprintf(out, "Connected remotedly via ssh:\n");
+        FORALL_WSCLIENT(tclient) {
+            struct pty_client *pclient = tclient->pclient;
+            if (tclient->proxyMode != proxy_remote || pclient == NULL)
+                continue;
+            // FIXME Use SSH_CONNECTION to print client address
+            // (Get this from env when display_session was called.)
+            fprintf(out, "  session#: %d, ", pclient->session_number);
+            pclient_status_info(pclient, out);
+            fprintf(out, "\n");
+        }
+    }
+    bool seen_detached = false;
+    FOREACH_PCLIENT(pclient) {
+        nsessions++;
+        if (pclient->first_tclient == NULL) {
+            if (! seen_detached)
+                fprintf(out, "Detached sessions:\n");
+            seen_detached = true;
+            fprintf(out, "  session#: %d, ", pclient->session_number);
+            pclient_status_info(pclient, out);
+            fprintf(out, "\n");
+        }
+    }
+    if (nclients + nsessions == 0)
+        fprintf(out, "(no domterm sessions or server)\n");
+}
+
 int status_action(int argc, char** argv, const char*cwd,
                       char **env, struct lws *wsi, struct options *opts)
 {
@@ -518,63 +650,11 @@ int status_action(int argc, char** argv, const char*cwd,
         fprintf(out, "Reading settings from: %s\n", settings_fname);
     if (backend_socket_name != NULL)
         fprintf(out, "Backend command socket: %s\n", backend_socket_name);
-    int nclients = 0;
-    FOREACH_PCLIENT(pclient) {
-        nclients++;
-            fprintf(out, "session#: %d, ", pclient->session_number);
-            const char* remote = GET_REMOTE_HOSTUSER(pclient);
-            if (remote)
-                fprintf(out, "ssh to remote %s", remote);
-            else
-                fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
-            if (pclient->session_name != NULL)
-                fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
-            if (pclient->paused)
-                fprintf(out, ", paused");
-            fprintf(out, "\n");
-            int nwindows = 0;
-            FOREACH_WSCLIENT(tclient, pclient) {
-                int number = tclient->connection_number;
-                if (tclient->proxyMode == proxy_remote) {
-                    // FIXME Use SSH_CONNECTION to print client address
-                    // (Get this from env when display_session was called.)
-                    fprintf(out, "  (connected via ssh)");
-                }
-                if (number >= 0) {
-                    fprintf(out, "  window %d", number);
-                    if (tclient->main_window > 0)
-                        fprintf(out, " in %d", tclient->main_window);
-                    fprintf(out, ":");
-                }
-                if (tclient->version_info) {
-                    struct json_object *vobj =
-                        json_tokener_parse(tclient->version_info);
-                    char *prefix = " ";
-                    if (json_print_property(out, vobj, "qtwebengine", prefix, NULL))
-                        prefix = ", ";
-                    if (json_print_property(out, vobj, "atom", prefix, NULL))
-                        prefix = ", ";
-                    if (json_print_property(out, vobj, "electron", prefix, NULL))
-                        prefix = ", ";
-                    if (json_print_property(out, vobj, "javaFX", prefix, NULL))
-                        prefix = ", ";
-                    if (json_print_property(out, vobj, "chrome", prefix, NULL))
-                        prefix = ", ";
-                    if (json_print_property(out, vobj, "appleWebKit", prefix, NULL))
-                        prefix = ", ";
-                    if (json_print_property(out, vobj, "firefox", prefix, NULL))
-                        prefix = ", ";
-                    //fprintf(out, " %s\n", tclient->version_info);
-                    json_object_put(vobj);
-                }
-                fprintf(out, "\n");
-                nwindows++;
-            }
-            if (nwindows == 0)
-                fprintf(out, "  (detached)\n");
-    }
-    if (nclients == 0)
-        fprintf(out, "(no domterm sessions or server)\n");
+    bool by_session = argc > 1 && strcmp(argv[1], "--by-session") == 0;
+    if (by_session)
+        status_by_session(out);
+    else
+        status_by_connection(out);
     fclose(out);
     return EXIT_SUCCESS;
 }
