@@ -1421,12 +1421,12 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                 display_session(&opts, tclient->pclient, NULL, http_port);
                 free(tclient->pending_browser_command);
                 tclient->pending_browser_command = NULL;
-                if (tclient->out_wsi) {
+                if (tclient->out_wsi && tclient->out_wsi != tclient->wsi) {
                     lwsl_notice("set_timeout clear tc:%p\n", tclient->wsi);
                     lws_set_timeout(tclient->wsi,
                                     PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
-                    tclient->out_wsi = NULL;
                 }
+                tclient->out_wsi = NULL;
                 maybe_daemonize();
                 ////tty_client_destroy(wsi, tclient);
                 //unlink_tty_from_pty_only(tclient->pclient, wsi, tclient);
