@@ -17,10 +17,10 @@ static void make_html_file(int);
 static char *make_socket_name(bool);
 
 /** Returns a fresh copy of the (non-empty) geometry string, or NULL. */
-static char *
+static const char *
 geometry_option(struct options *options)
 {
-    char *geometry = options->geometry;
+    const char *geometry = get_setting(options->settings, "geometry");
     return geometry && geometry[0] ? geometry : default_size;
 }
 
@@ -60,7 +60,7 @@ subst_run_command(struct options *opts, const char *browser_command,
     const char *url_fixed = url;
     size_t ulen = strlen(url);
     if (upos && gpos && gpos == upos+2) {
-        char *geometry = geometry_option(opts);
+        const char *geometry = geometry_option(opts);
         skip = 4;
         if (geometry) {
             char *tbuf = xmalloc(ulen+strlen(geometry)+20);
@@ -451,41 +451,47 @@ fix_for_windows(char * fname)
 }
 
 /* Result is cached. */
-char *
-chrome_command(bool app_mode)
+const char *
+chrome_command(bool app_mode, struct options *options)
 {
     if (app_mode) {
-        static char *abin = NULL;
+        static const char *abin = NULL;
         if (abin != NULL)
             return abin[0] ? abin : NULL;
-        char *c = chrome_command(false); // recusive, for simplicity
+        const char *c = chrome_command(false, options); // recusive, for simplicity
         if (c == NULL) {
             abin = ""; // cache as "not found"
             return NULL;
         }
         char *args = " --app='%U%g'";
-        abin = xmalloc(strlen(c)+strlen(args)+1);
-        sprintf(abin, "%s%s", c, args);
+        char * tbin = xmalloc(strlen(c)+strlen(args)+1);
+        sprintf(tbin, "%s%s", c, args);
+        abin = tbin;
         return abin;
     }
-    static char *cbin = NULL;
-    if (main_options->command_chrome != NULL)
-        return main_options->command_chrome;
+    static const char *cbin = NULL;
+    const char *chrome_cmd = get_setting(options->settings, "command.chrome");
+    if (chrome_cmd != NULL)
+        return chrome_cmd;
     if (cbin)
       return cbin[0] ? cbin : NULL;
     cbin = getenv("CHROME_BIN");
     if (cbin != NULL && access(cbin, X_OK) == 0)
-        return maybe_quote_arg(cbin);
+        return (cbin = maybe_quote_arg(cbin));
     if (is_WindowsSubsystemForLinux()) {
 #define CHROME_EXE "/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"
 	if (access(CHROME_EXE, X_OK) == 0)
             return (cbin = "'" CHROME_EXE "'");
     }
-    cbin = find_in_path("chrome");
-    if (cbin == NULL)
-        cbin = find_in_path("google-chrome");
-    if (cbin != NULL)
-        return maybe_quote_arg(cbin);
+    char *pbin = find_in_path("chrome");
+    if (pbin == NULL)
+        pbin = find_in_path("google-chrome");
+    if (pbin != NULL) {
+        cbin = maybe_quote_arg(pbin);
+        if (cbin != pbin)
+            free(pbin);
+        return cbin;
+    }
 #if __APPLE__
     // FIXME - better to open -a "Google Chrome" OR open -b com.google.Chrome
 #define CHROME_MAC "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -496,11 +502,12 @@ chrome_command(bool app_mode)
     return NULL;
 }
 
-char *
-firefox_browser_command()
+const char *
+firefox_browser_command(struct options *options)
 {
-    if (main_options->command_firefox != NULL)
-        return main_options->command_firefox;
+    const char *firefox_cmd = get_setting(options->settings, "command.firefox");
+    if (firefox_cmd != NULL)
+        return firefox_cmd;
     if (is_WindowsSubsystemForLinux())
         return "'/mnt/c/Program Files (x86)/Mozilla Firefox/firefox.exe'";
     char *firefoxCommand = find_in_path("firefox");
@@ -512,10 +519,10 @@ firefox_browser_command()
     return NULL;
 }
 
-char *
-firefox_command()
+const char *
+firefox_command(struct options *options)
 {
-    char *firefox = firefox_browser_command();
+    const char *firefox = firefox_browser_command(options);
     return firefox ? firefox : "firefox";
 }
 
@@ -529,7 +536,7 @@ qtwebengine_command(struct options *options)
         return NULL;
     }
     int bsize = strlen(cmd)+100;
-    char *geometry = geometry_option(options);
+    const char *geometry = geometry_option(options);
     if (geometry)
         bsize += strlen(geometry);
     if (options->qt_remote_debugging)
@@ -559,7 +566,7 @@ webview_command(struct options *options)
         return NULL;
     }
     int bsize = strlen(cmd)+100;
-    char *geometry = geometry_option(options);
+    const char *geometry = geometry_option(options);
     if (geometry)
         bsize += strlen(geometry);
     char *buf = xmalloc(bsize);
@@ -576,17 +583,18 @@ webview_command(struct options *options)
 static char *
 electron_command(struct options *options)
 {
-    bool epath_free_needed = false;
-    char *epath = main_options->command_electron;
+    char *epath_free_needed = NULL;
+    const char *epath = get_setting(options->settings, "command.electron");
     if (epath == NULL) {
         char *ppath = find_in_path("electron");
         if (ppath == NULL && is_WindowsSubsystemForLinux())
             ppath = find_in_path("electron.exe");
         if (ppath == NULL)
             return NULL;
-        epath = realpath(ppath, NULL);
+        epath_free_needed = realpath(ppath, NULL);
+        epath = epath_free_needed;
         free(ppath);
-        epath_free_needed = true;
+
     }
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *app_fixed = fix_for_windows(app);
@@ -596,7 +604,7 @@ electron_command(struct options *options)
     char *format = "%s %s%s%s --url '%%U'";
 #endif
     const char *g1 = "", *g2 = "";
-    char *geometry = geometry_option(options);
+    const char *geometry = geometry_option(options);
     if (geometry) {
         g1 = " --geometry ";
         g2 = geometry;
@@ -607,7 +615,7 @@ electron_command(struct options *options)
     if (app_fixed != app)
         free(app_fixed);
     if (epath_free_needed)
-        free(epath);
+        free(epath_free_needed);
     return buf;
 }
 
@@ -660,7 +668,7 @@ browser_run_browser(struct options *options, char *url,
 {
     struct json_object *jobj = json_object_new_object();
     json_object_object_add(jobj, "url",  json_object_new_string(url));
-    char *geometry = geometry_option(options);
+    const char *geometry = geometry_option(options);
     if (geometry)
         json_object_object_add(jobj, "geometry", json_object_new_string(geometry));
     const char *json_data = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
@@ -673,7 +681,7 @@ browser_run_browser(struct options *options, char *url,
 int
 do_run_browser(struct options *options, char *url, int port)
 {
-    char *browser_specifier;
+    const char *browser_specifier;
     if (options != NULL && options->browser_command != NULL) {
         browser_specifier = options->browser_command;
         opts.browser_command = browser_specifier;
@@ -690,7 +698,7 @@ do_run_browser(struct options *options, char *url, int port)
     }
 #endif
     if (browser_specifier == NULL && port_specified < 0) {
-        char *default_frontend = main_options->default_frontend;
+        const char *default_frontend = get_setting(options->settings, "frontend.default");
         if (default_frontend == NULL)
             default_frontend = "electron;qt;chrome-app;firefox;browser";
         const char *p = default_frontend;
@@ -728,13 +736,13 @@ do_run_browser(struct options *options, char *url, int port)
                         break;
                     }
                 } else if (strcmp(cmd, "firefox") == 0) {
-                    browser_specifier = firefox_browser_command();
+                    browser_specifier = firefox_browser_command(options);
                     if (browser_specifier != NULL)
                         break;
                 } else if ((app_mode = ! strcmp(cmd, "chrome-app"))
                            || ! strcmp(cmd, "chrome")
                            || ! strcmp(cmd, "google-chrome")) {
-                    browser_specifier = chrome_command(app_mode);
+                    browser_specifier = chrome_command(app_mode, options);
                     if (browser_specifier != NULL)
                         break;
                 } else {
@@ -774,7 +782,7 @@ do_run_browser(struct options *options, char *url, int port)
     }
     bool app_mode;
     if (strcmp(browser_specifier, "--firefox") == 0)
-        browser_specifier = firefox_command();
+        browser_specifier = firefox_command(options);
     else if (strcmp(browser_specifier, "--webview") == 0) {
         browser_specifier = webview_command(options);
         if (browser_specifier == NULL) {
@@ -785,7 +793,7 @@ do_run_browser(struct options *options, char *url, int port)
     } else if ((app_mode = ! strcmp(browser_specifier, "--chrome-app"))
              || ! strcmp(browser_specifier, "--chrome")
              || ! strcmp(browser_specifier, "--google-chrome")) {
-        browser_specifier = chrome_command(app_mode);
+        browser_specifier = chrome_command(app_mode, options);
             if (browser_specifier == NULL) {
                 printf_error(options,
                              "neither chrome or google-chrome command found");
@@ -826,17 +834,8 @@ get_domterm_jar_path()
 void  init_options(struct options *opts)
 {
     opts->cmd_settings = NULL;
+    opts->settings = NULL;
     opts->browser_command = NULL;
-    // FIXME ue OPTION_S macro
-    opts->geometry = NULL;
-    opts->openfile_application = NULL;
-    opts->openlink_application = NULL;
-    opts->command_firefox = NULL;
-    opts->command_chrome = NULL;
-    opts->command_electron = NULL;
-    opts->command_ssh = NULL;
-    opts->command_remote_domterm = NULL;
-    opts->default_frontend = NULL;
     opts->http_server = false;
     opts->something_done = false;
     opts->verbosity = 0;
@@ -866,7 +865,6 @@ void  init_options(struct options *opts)
     opts->fd_cmd_socket = -1;
     opts->session_name = NULL;
     opts->settings_file = NULL;
-    opts->shell_command = NULL;
     opts->shell_argv = NULL;
 }
 
@@ -1023,7 +1021,8 @@ int process_options(int argc, char **argv, struct options *opts)
                     exit(-1);
                 }
                 regfree(&rx);
-                opts->geometry = optarg;
+                //opts->geometry = optarg;
+                set_setting(&opts->cmd_settings, "geometry", optarg);
 
                 free(default_size);
                 char *p = optarg;
@@ -1043,7 +1042,7 @@ int process_options(int argc, char **argv, struct options *opts)
                 break;
             case CHROME_OPTION:
             case CHROME_APP_OPTION: {
-                char *cbin = chrome_command(c == CHROME_APP_OPTION);
+                const char *cbin = chrome_command(c == CHROME_APP_OPTION, opts);
                 if (cbin == NULL) {
                     fprintf(stderr, "neither chrome or google-chrome command found\n");
                     exit(-1);
@@ -1198,9 +1197,7 @@ main(int argc, char **argv)
 #endif
 
     read_settings_file(&opts, false);
-    struct json_object *msettings = merged_settings(opts.cmd_settings);
-    set_settings(&opts, msettings);
-    json_object_put(msettings);
+    set_settings(&opts);
 
     if (process_options(argc, argv, &opts) != 0)
         return -1;

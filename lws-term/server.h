@@ -241,20 +241,9 @@ struct options {
     int verbosity;
     int debug_level;
     struct json_object *cmd_settings;
-#if 0
-    FIXME use OPTION_S - handle shell_command special?
-#else
-    char *default_frontend;
-    char *command_firefox;
-    char *command_chrome;
-    char *command_electron;
-    char *command_ssh;
-    char *command_remote_domterm;
-    char *geometry;
-    char *openfile_application;
-    char *openlink_application;
-#endif
-    char *browser_command;
+    struct json_object *settings; // merge of cmd_settings and global settings
+    // Possible memory leak if we start recalim options objects.
+    const char *browser_command;
     char *tty_packet_mode;
     struct pty_client *requesting_session;
     int paneOp;
@@ -278,8 +267,7 @@ struct options {
     int fd_cmd_socket;
     char *session_name;
     char *settings_file;
-    char *shell_command;
-    char **shell_argv;                        // parse_args(shell_command);
+    char **shell_argv;               // parse_args("shell.default" setting);
 };
 
 struct tty_server {
@@ -330,15 +318,15 @@ extern void printf_to_browser(struct tty_client *, const char *, ...);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
 extern void init_options(struct options *options);
-extern char *firefox_browser_command();
-extern char *chrome_command(bool app_mode);
+extern const char *firefox_browser_command(struct options *options);
+extern const char *chrome_command(bool app_mode, struct options *options);
 extern void default_link_command(const char *url);
 extern int process_options(int argc, char **argv, struct options *options);
 extern char** default_command(struct options *opts);
 extern void request_upload_settings();
 extern void read_settings_file(struct options*, bool);
 extern struct json_object *merged_settings(struct json_object *cmd_settings);
-extern void set_settings(struct options *options, struct json_object *msettings);
+extern void set_settings(struct options *options);
 extern enum option_name lookup_option(const char *name);
 extern const char *get_setting(json_object *opts, const char *key);
 extern void set_setting(struct json_object **, const char *key, const char *val);
@@ -375,7 +363,7 @@ extern void make_html_text(struct sbuf *obuf, int port, int options,
 extern int count_args(char**);
 extern char** parse_args(const char*, bool);
 extern char* parse_string(const char*, bool);
-extern char * maybe_quote_arg(char *in);
+extern const char * maybe_quote_arg(const char *in);
 extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);
 

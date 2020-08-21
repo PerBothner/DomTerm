@@ -417,9 +417,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             }
             json_object_put(jobj);
             optind = 1;
-            struct json_object *msettings = merged_settings(opts.cmd_settings);
-            set_settings(&opts, msettings);
-            json_object_put(msettings);
+            set_settings(&opts);
             process_options(argc, argv, &opts);
             int ret = handle_command(argc-optind, argv+optind,
                                      cwd, env, wsi, &opts);

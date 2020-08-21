@@ -302,33 +302,16 @@ merged_settings(struct json_object *cmd_settings)
 }
 
 void
-set_settings(struct options *options, struct json_object *msettings)
+set_settings(struct options *options)
 {
-#undef OPTION_S
-#undef OPTION_F
-#define OPTION_S(FIELD, STR, TYPE)    \
-    if (options->FIELD) {        \
-        free(options->FIELD);    \
-        options->FIELD = NULL;   \
-    }
-#define OPTION_F(NAME, STR, TYPE) /* nothing */
-#include "option-names.h"
+    if (options->settings != NULL)
+        json_object_put(options->settings);
+    struct json_object *msettings = merged_settings(options->cmd_settings);
+    options->settings = msettings;
 
-    json_object_object_foreach(msettings, key, val) {
-#undef OPTION_S
-#define OPTION_S(FIELD,NAME, TYPE)                           \
-        if (strcmp(key, NAME) == 0) {                   \
-            const char *vstr = json_object_get_string(val); \
-            int vlen = json_object_get_string_len(val); \
-            options->FIELD = xmalloc(vlen+1);         \
-            memcpy(options->FIELD, vstr, vlen);\
-            options->FIELD[vlen] = '\0';              \
-        }
-#include "option-names.h"
-    }
     if (options->shell_argv)
         free(options->shell_argv);
-    options->shell_argv = parse_args(options->shell_command, false);
+    options->shell_argv = parse_args(get_setting(options->settings, "shell.default"), false);
 }
 
 void

@@ -295,12 +295,12 @@ parse_string(const char *args, bool check_shell_specials)
 }
 
 /** If 'in' has "special" characters, return 'in' surrounded by single-quotes.
- * If so, the result is freshly allocated and the original 'in' is free'd.
+ * If so, the result is freshly allocated; the original is unmodified.
  * A single quote in the input is surrounded by double-quotes.
  * If no special characters, return 'in' unchanged.
  */
-char *
-maybe_quote_arg(char *in)
+const char *
+maybe_quote_arg(const char *in)
 {
     char *out = NULL;
     char *q = NULL;
@@ -349,7 +349,6 @@ maybe_quote_arg(char *in)
             }
         }
     }
-    free(in);
     return out;
 }
 

@@ -728,9 +728,9 @@ check_template(const char *template, json_object *obj)
     else if (strcmp(template, "firefox") == 0
              || strcmp(template, "chrome") == 0
              || strcmp(template, "google-chrome") == 0) {
-        char *chr = strcmp(template, "firefox") == 0
-          ? firefox_browser_command()
-          : chrome_command(false);
+        const char *chr = strcmp(template, "firefox") == 0
+          ? firefox_browser_command(main_options)
+            : chrome_command(false, main_options);
         if (chr == NULL)
             return NULL;
         char *buf = xmalloc(strlen(chr) + strlen(href)+4);
@@ -805,7 +805,7 @@ check_template(const char *template, json_object *obj)
 }
 
 bool
-handle_tlink(char *template, json_object *obj)
+handle_tlink(const char *template, json_object *obj)
 {
     char *t = strdup(template);
     char *p = t;
@@ -847,7 +847,7 @@ void
 handle_link(json_object *obj)
 {
     if (json_object_object_get_ex(obj, "filename", NULL)) {
-        char *template = main_options->openfile_application;
+        const char *template = get_setting(main_options->settings, "open.file.application");
         if (template == NULL)
             template =
               "{in-atom}{with-position|!.html}atom;"
@@ -857,7 +857,7 @@ handle_link(json_object *obj)
         if (handle_tlink(template, obj))
             return;
     }
-    char *template = main_options->openlink_application;
+    const char *template = get_setting(main_options->settings, "open.link.application");
     if (template == NULL)
         template = "{!mailto:}browser;{!mailto:}chrome;{!mailto:}firefox";
     handle_tlink(template, obj);
@@ -1019,7 +1019,8 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
         struct options opts;
         init_options(&opts);
-        opts.geometry = geom;
+        //opts.geometry = geom;
+        set_setting(&opts.cmd_settings, "geometry", geom);
         do_run_browser(&opts, data, -1);
         if (geom != NULL)
             free(geom);
@@ -1645,8 +1646,7 @@ display_session(struct options *options, struct pty_client *pclient,
                 const char *url, int port)
 {
     int session_number = pclient == NULL ? -1 : pclient->session_number;
-    const char *browser_specifier = options == NULL ? NULL
-      : options->browser_command;
+    const char *browser_specifier = options->browser_command;
     lwsl_notice("display_session %d browser:%s\n", session_number, browser_specifier);
 #if REMOTE_SSH
     if (browser_specifier != NULL
@@ -1864,8 +1864,9 @@ handle_remote(int argc, char** argv, char* at,
     char** ssh_args;
     char* _ssh_args[2];
     int ssh_argc;
-    if (opts->command_ssh) {
-        ssh_args = parse_args(opts->command_ssh, false);
+    const char *ssh_cmd = get_setting(opts->settings, "command.ssh");
+    if (ssh_cmd) {
+        ssh_args = parse_args(ssh_cmd, false);
         ssh_argc = count_args(ssh_args);
     } else {
         ssh_args = _ssh_args;
@@ -1881,8 +1882,9 @@ handle_remote(int argc, char** argv, char* at,
     char** domterm_args;
     char* _domterm_args[2];
     int domterm_argc;
-    if (opts->command_remote_domterm) {
-        domterm_args = parse_args(opts->command_remote_domterm, false);
+    const char *domterm_cmd = get_setting(opts->settings, "command.remote-domterm");
+    if (domterm_cmd) {
+        domterm_args = parse_args(domterm_cmd, false);
         domterm_argc = count_args(domterm_args);
     } else {
         domterm_args = _domterm_args;
