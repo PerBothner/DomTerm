@@ -994,11 +994,14 @@ This test works over an @code{ssh} connection.
 or that @code{TERM} be either empty or contain the string @code{xterm};
 otherwise it does not try to the request code.)
 
-@item @b{@code{status}}
+@item @b{@code{status}} [@code{--verbose}] [@code{--by-session}]
 
 Prints various bits of information about the backend,
 sessions, windows, and version numbers.
 The information displayed and the format are likely to change.
+The default groups sessions by top-level window;
+the @code{--by-session} groups windows by session.
+The @code{--verbose} option adds more detail.
 
 @item @b{@code{settings}} @var{name}@code{=}@var{value} ...
 Change the specified @ref{Settings,local settings} for the current session.
@@ -1624,6 +1627,9 @@ Delay an extra @var{delay} seconds before sending keyboard
 and other events from client (browser) to server (application).
 Especially useful for testing @code{predicted-input-timeout},
 which should be higher than @code{debug.input.extra-delay}.
+
+@item @code{@b{log.js-verbosity} =} @var{level}
+Write more information to the JavaScript console.
 @end table
 
 @subsubheading Miscellaneous settings
