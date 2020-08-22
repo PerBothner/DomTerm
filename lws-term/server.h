@@ -213,10 +213,9 @@ struct tty_client {
     int connection_number; // unique number
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
-#if REMOTE_SSH
     int proxy_fd_in, proxy_fd_out;
     char *pending_browser_command; // [an 'out' field]
-#endif
+    char *ssh_connection_info;
 };
 
 struct http_client {

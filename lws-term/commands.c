@@ -538,7 +538,28 @@ static void pclient_status_info(struct pty_client *pclient, FILE *out)
         fprintf(out, ", paused");
 }
 
-static void status_by_session(FILE * out)
+static void show_connection_info(struct tty_client *tclient,
+                                 FILE * out, int verbosity)
+{
+    const char *cinfo = tclient->ssh_connection_info;
+    if (cinfo != NULL) {
+        char *sp1 = strchr(cinfo, ' ');
+        char *sp2 = sp1 ? strchr(sp1 + 1, ' ') : NULL;
+        char *sp3 = sp2 ? strchr(sp2 + 1, ' ') : NULL;
+        size_t clen = strlen(cinfo);
+        if (verbosity > 0 && sp2)
+            fprintf(out, " from %.*s:%.*s to %.*s:%.*s",
+                    sp1 - cinfo, cinfo,
+                    sp2 - sp1 - 1, sp1 + 1,
+                    sp3 - sp2 - 1, sp2 + 1,
+                    cinfo + clen - sp3 - 1, sp3 + 1);
+        else
+            fprintf(out, " from %.*s",
+                    sp1 ? sp1 - cinfo : clen, cinfo);
+    }
+}
+
+static void status_by_session(FILE * out, int verbosity)
 {
     int nclients = 0;
     FOREACH_PCLIENT(pclient) {
@@ -550,15 +571,19 @@ static void status_by_session(FILE * out)
             FOREACH_WSCLIENT(tclient, pclient) {
                 int number = tclient->connection_number;
                 if (tclient->proxyMode == proxy_remote) {
-                    fprintf(out, "  (connected via ssh)");
+                    if (number >= 0)
+                        fprintf(out, "  connection %d", number);
+                    fprintf(out, " via ssh");
+                    show_connection_info(tclient, out, verbosity);
+                } else {
+                    if (number >= 0) {
+                        fprintf(out, "  window %d", number);
+                        if (tclient->main_window > 0)
+                            fprintf(out, " in %d", tclient->main_window);
+                        fprintf(out, ":");
+                    }
+                    tclient_status_info(tclient, out);
                 }
-                if (number >= 0) {
-                    fprintf(out, "  window %d", number);
-                    if (tclient->main_window > 0)
-                        fprintf(out, " in %d", tclient->main_window);
-                    fprintf(out, ":");
-                }
-                tclient_status_info(tclient, out);
                 fprintf(out, "\n");
                 nwindows++;
             }
@@ -569,14 +594,13 @@ static void status_by_session(FILE * out)
         fprintf(out, "(no domterm sessions or server)\n");
 }
 
-static void status_by_connection(FILE *out)
+static void status_by_connection(FILE *out, int verbosity)
 {
     struct tty_client *tclient, *sub_client;
-    int nclients = 0, nsessions = 0, nremote = 0;
+    int nclients = 0, nsessions = 0;
     FORALL_WSCLIENT(tclient) {
         nclients++;
         if (tclient->proxyMode == proxy_remote) {
-            nremote++;
             continue;
         }
         if (tclient->main_window > 0)
@@ -594,28 +618,48 @@ static void status_by_connection(FILE *out)
                 continue;
 
             struct pty_client *pclient = sub_client->pclient;
-            fprintf(out, "  session#: %d", pclient->session_number);
+            fprintf(out, "  session#%d", pclient->session_number);
             if (pclient->session_number != sub_client->connection_number
                 || (pclient->first_tclient && pclient->first_tclient->next_tclient))
                 fprintf(out, ".%d", sub_client->connection_number);
-            fprintf(out, ", ");
+            fprintf(out, ": ");
             pclient_status_info(pclient, out);
             fprintf(out, "\n");
         }
     }
-    if (nremote > 0) {
-        fprintf(out, "Connected remotedly via ssh:\n");
-        FORALL_WSCLIENT(tclient) {
-            struct pty_client *pclient = tclient->pclient;
-            if (tclient->proxyMode != proxy_remote || pclient == NULL)
-                continue;
-            // FIXME Use SSH_CONNECTION to print client address
-            // (Get this from env when display_session was called.)
-            fprintf(out, "  session#: %d, ", pclient->session_number);
+    FOREACH_PCLIENT(pclient) {
+        int nremote = 0;
+        struct tty_client *single_tclient = NULL;
+        FOREACH_WSCLIENT(tclient, pclient) {
+            if (tclient->proxyMode == proxy_remote) {
+                nremote++;
+                if (verbosity > 0) {
+                    int number = tclient->connection_number;
+                    fprintf(out, "Connection %d via ssh", number);
+                    show_connection_info(tclient, out, verbosity);
+                    fprintf(out, "\n");
+                } else {
+                    //cinfo = tclient->ssh_connection_info;
+                    single_tclient = tclient;
+                }
+            }
+        }
+        if (nremote > 0) {
+            if (verbosity == 0) {
+                if (nremote == 1) {
+                    fprintf(out, "Connection %d via ssh", single_tclient->connection_number);
+                    show_connection_info(single_tclient, out, verbosity);
+                } else {
+                    fprintf(out, "%d connections via ssh:", nremote);
+                }
+                fprintf(out, "\n");
+            }
+            fprintf(out, "  session#%d: ", pclient->session_number);
             pclient_status_info(pclient, out);
             fprintf(out, "\n");
         }
     }
+
     bool seen_detached = false;
     FOREACH_PCLIENT(pclient) {
         nsessions++;
@@ -634,17 +678,25 @@ static void status_by_connection(FILE *out)
 
 int status_action(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
+    int verbosity = 0;
+    bool by_session = false;
+    for (int i = 1; i < argc; i++) {
+        char *arg = argv[i];
+        if (strcmp(arg, "--by-session") == 0)
+            by_session = true;
+        else if (strcmp(arg, "--verbose") == 0)
+            verbosity++;
+    }
     FILE *out = fdopen(dup(opts->fd_out), "w");
     print_version(out);
     if (settings_fname)
         fprintf(out, "Reading settings from: %s\n", settings_fname);
     if (backend_socket_name != NULL)
         fprintf(out, "Backend command socket: %s\n", backend_socket_name);
-    bool by_session = argc > 1 && strcmp(argv[1], "--by-session") == 0;
     if (by_session)
-        status_by_session(out);
+        status_by_session(out, verbosity);
     else
-        status_by_connection(out);
+        status_by_connection(out, verbosity);
     fclose(out);
     return EXIT_SUCCESS;
 }

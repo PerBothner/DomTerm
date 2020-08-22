@@ -283,6 +283,8 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
             tty_clients[snum] = next;
     }
     tclient->connection_number = -1;
+    free(tclient->ssh_connection_info);
+    tclient->ssh_connection_info = NULL;
     if (pclient != NULL)
         unlink_tty_from_pty_only(pclient, wsi, tclient);
 }
@@ -1113,9 +1115,8 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi)
     client->connection_number = -1;
     client->pty_window_number = -1;
     client->pty_window_update_needed = false;
-#if REMOTE_SSH
+    client->ssh_connection_info = NULL;
     client->pending_browser_command = NULL;
-#endif
     lwsl_notice("init_tclient_struct conn#%d\n",  client->connection_number);
 }
 
@@ -1615,6 +1616,11 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
     lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws, ttyname(options->fd_in));
     tclient->proxyMode = proxyMode;
     tclient->pclient = pclient;
+    const char *ssh_connection;
+    if (proxyMode == proxy_remote
+        && (ssh_connection = getenv_from_array("SSH_CONNECTION", options->env)) != NULL) {
+        tclient->ssh_connection_info = strdup(ssh_connection);
+    }
 
     struct lws *pout_lws;
     if (options->fd_out == options->fd_in) {
