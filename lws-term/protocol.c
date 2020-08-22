@@ -460,13 +460,13 @@ create_pclient(const char *cmd, char*const*argv,
     pclient->session_name_unique = false;
     pclient->pty_wsi = outwsi;
     pclient->cmd = cmd;
-    pclient->argv = argv;
+    pclient->argv = copy_strings(argv);
     if (opts->cmd_settings)
         pclient->cmd_settings = json_object_get(opts->cmd_settings);
     else
         pclient->cmd_settings = NULL;
-    pclient->cwd = cwd;
-    pclient->env = env;
+    pclient->cwd = strdup(cwd);
+    pclient->env = copy_strings(env);
 #if __APPLE__
     pclient->awaiting_connection = false;
 #endif
@@ -484,9 +484,7 @@ create_link_pclient(struct lws *wsi, struct tty_client *tclient)
     char *cmd = find_in_path(argv[0]);
     if (cmd == NULL)
         return NULL;
-    struct pty_client *pclient = create_pclient(cmd, copy_strings(argv),
-                                                strdup("."),
-                                                copy_strings(environ),
+    struct pty_client *pclient = create_pclient(cmd, argv, ".", environ,
                                                 main_options);
     link_command(wsi, (struct tty_client *) lws_wsi_user(wsi), pclient);
     return pclient;
@@ -1736,7 +1734,7 @@ display_session(struct options *options, struct pty_client *pclient,
     return r;
 }
 
-int new_action(int argc, char** argv, const char*cwd, char **env,
+int new_action(int argc, char** argv,
                struct lws *wsi, struct options *opts)
 {
     int skip = argc == 0 || index(argv[0], '/') != NULL ? 0 : 1;
@@ -1756,8 +1754,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
         printf_error(opts, "cannot execute '%s'", argv0);
         return EXIT_FAILURE;
     }
-    struct pty_client *pclient = create_pclient(cmd, copy_strings(args),
-                                                strdup(cwd), copy_strings(env),
+    struct pty_client *pclient = create_pclient(cmd, args, opts->cwd, opts->env,
                                                 opts);
     int r = display_session(opts, pclient, NULL, http_port);
     if (opts->session_name) {
@@ -1767,8 +1764,7 @@ int new_action(int argc, char** argv, const char*cwd, char **env,
     return r;
 }
 
-int attach_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi, struct options *opts)
+int attach_action(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
     optind = 1;
     process_options(argc, argv, opts);
@@ -1800,8 +1796,7 @@ int attach_action(int argc, char** argv, const char*cwd,
     return display_session(opts, pclient, NULL, http_port);
 }
 
-int browse_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi, struct options *opts)
+int browse_action(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
     optind = 1;
     process_options(argc, argv, opts);
@@ -1849,7 +1844,6 @@ word_matches(const char *p1, const char *p2)
 
 void
 handle_remote(int argc, char** argv, char* at,
-              const char*cwd, char **env,
               struct options *opts)
 {
     // Running 'domterm --BROWSER user@host COMMAND' translates
@@ -1910,7 +1904,7 @@ handle_remote(int argc, char** argv, char* at,
             fatal("too many arguments");
         rargv[rargc] = NULL;
 #if 1
-        char *dt = getenv_from_array("DOMTERM", env);
+        const char *dt = getenv_from_array("DOMTERM", opts->env);
         char *tn;
         struct pty_client *cur_pclient = NULL;
         if (dt && (tn = strstr(dt, ";tty=")) != NULL) {
@@ -1930,8 +1924,8 @@ handle_remote(int argc, char** argv, char* at,
         if (isatty(tin)) {
             tty_save_set_raw(tin);
         }
-        struct pty_client *pclient = create_pclient(ssh, copy_strings(rargv),
-                                                    strdup(cwd), copy_strings(env),
+        struct pty_client *pclient = create_pclient(ssh, rargv,
+                                                    opts->cwd, opts->env,
                                                     opts);
 #if 1
         if (cur_pclient) {
@@ -1989,12 +1983,11 @@ handle_remote(int argc, char** argv, char* at,
 #endif
 
 int
-handle_command(int argc, char** argv, const char*cwd,
-               char **env, struct lws *wsi, struct options *opts)
+handle_command(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
     lwsl_notice("handle_command argv0:%s\n", argv[0]);
     struct command *command = argc == 0 ? NULL : find_command(argv[0]);
-    char *domterm_env_value = getenv_from_array("DOMTERM", env);
+    const char *domterm_env_value = getenv_from_array("DOMTERM", opts->env);
     if (domterm_env_value) {
         static char pid_key[] = ";pid=";
         int current_session_pid = 0;
@@ -2012,14 +2005,14 @@ handle_command(int argc, char** argv, const char*cwd,
     }
     if (command != NULL) {
         lwsl_notice("handle command '%s'\n", command->name);
-        return (*command->action)(argc, argv, cwd, env, wsi, opts);
+        return (*command->action)(argc, argv, wsi, opts);
     }
     char *at;
     if (argc == 0 || index(argv[0], '/') != NULL) {
-        return new_action(argc, argv, cwd, env, wsi, opts);
+        return new_action(argc, argv, wsi, opts);
 #if REMOTE_SSH
     } else if ((at = index(argv[0], '@')) != NULL) {
-        handle_remote(argc, argv, at, cwd, env, opts);
+        handle_remote(argc, argv, at, opts);
         return EXIT_WAIT;
 #endif
     } else {

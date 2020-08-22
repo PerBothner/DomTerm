@@ -324,6 +324,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             int jpos = 0;
             struct options opts;
             init_options(&opts);
+            destroy_options(&opts);
             for (;;) {
                 if (jblen-jpos < 512) {
                     jblen = (3 * jblen) >> 1;
@@ -390,7 +391,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             //   fatal("jswon no cwd");
             int argc = -1;
             char **argv = NULL;
-            char **env = NULL;
+            const char**env = NULL;
             if (json_object_object_get_ex(jobj, "cwd", &jcwd)
                 && (cwd = strdup(json_object_get_string(jcwd))) != NULL) {
             }
@@ -406,7 +407,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 int nenv = json_object_array_length(jenv);
                 env = xmalloc(sizeof(char*) * (nenv+1));
                 for (int i = 0; i <nenv; i++) {
-                  env[i] = strdup(json_object_get_string(json_object_array_get_idx(jenv, i)));
+                  env[i] = json_object_get_string(json_object_array_get_idx(jenv, i));
                 }
                 env[nenv] = NULL;
             }
@@ -415,12 +416,15 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                     json_object_put(opts.cmd_settings);
                 opts.cmd_settings = json_object_get(joptions);
             }
-            json_object_put(jobj);
             optind = 1;
             set_settings(&opts);
+            opts.env = copy_strings((char*const*) env);
+            opts.cwd = cwd;
+            json_object_put(jobj);
+            free(env);
             process_options(argc, argv, &opts);
-            int ret = handle_command(argc-optind, argv+optind,
-                                     cwd, env, wsi, &opts);
+            int ret = handle_command(argc-optind, argv+optind, wsi, &opts);
+            destroy_options(&opts);
             if (ret == EXIT_WAIT)
                 break;
 #if PASS_STDFILES_UNIX_SOCKET

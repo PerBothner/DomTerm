@@ -831,7 +831,7 @@ get_domterm_jar_path()
     return get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm.jar");
 }
 
-void  init_options(struct options *opts)
+void init_options(struct options *opts)
 {
     opts->cmd_settings = NULL;
     opts->settings = NULL;
@@ -866,6 +866,15 @@ void  init_options(struct options *opts)
     opts->session_name = NULL;
     opts->settings_file = NULL;
     opts->shell_argv = NULL;
+    opts->env = NULL;
+    opts->cwd = NULL;
+}
+
+void destroy_options(struct options *opts)
+{
+    // FIXME implement to fix memory leaks
+    free((void*) opts->env);
+    free((void*) opts->cwd);
 }
 
 static char **default_argv = NULL;
@@ -1231,8 +1240,7 @@ main(int argc, char **argv)
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
                 && socket < 0))) {
         lwsl_notice("handling command '%s' locally\n", command->name);
-        exit((*command->action)(argc-optind, argv+optind,
-                                NULL, NULL, NULL, &opts));
+        exit((*command->action)(argc-optind, argv+optind, NULL, &opts));
     }
     if (socket >= 0) {
         exit(client_send_command(socket, argc, argv, environ));
@@ -1333,11 +1341,9 @@ main(int argc, char **argv)
         opts.http_server = true;
         ret = 0;
     } else {
-        char *pwd = getcwd(NULL, 0);
-        ret = handle_command(argc-optind, argv+optind,
-                             pwd, environ, NULL, &opts);
-        if (pwd)
-            free(pwd);
+        opts.cwd = getcwd(NULL, 0);
+        opts.env = copy_strings(environ);
+        ret = handle_command(argc-optind, argv+optind, NULL, &opts);
         if (ret == EXIT_FAILURE)
             exit(ret);
     }

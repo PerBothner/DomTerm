@@ -393,6 +393,9 @@ url_encode(const char *in, int mode)
     return out;
 }
 
+/* Create a copy of an array os strings (as in argv or environ)
+ * The result is a one malloc'd "blob" to be free'd with a single call to free.
+ */
 char*const*
 copy_strings(char*const* strs)
 {
@@ -682,11 +685,11 @@ extract_command_from_list(const char *list, const char **startp,
     return p;
 }
 
-char *
-getenv_from_array(char* key, char**envarray)
+const char *
+getenv_from_array(char* key, char*const*envarray)
 {
     extern char **environ;  // Needed on MacOS.
-    char **p = envarray ? envarray : environ;
+    char *const*p = envarray ? envarray : (char*const*)environ;
     int keylen = strlen(key);
     for (; *p; p++) {
         char *e = *p;

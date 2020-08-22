@@ -268,6 +268,8 @@ struct options {
     char *session_name;
     char *settings_file;
     char **shell_argv;               // parse_args("shell.default" setting);
+    const char*cwd;
+    char *const*env;
 };
 
 struct tty_server {
@@ -306,8 +308,7 @@ extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 const char *domterm_settings_default(void);
 extern bool is_WindowsSubsystemForLinux(void);
-extern int handle_command(int argc, char**argv, const char*cwd,
-                          char **env, struct lws *wsi,
+extern int handle_command(int argc, char**argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
                            const char *, int);
@@ -318,6 +319,7 @@ extern void printf_to_browser(struct tty_client *, const char *, ...);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
 extern void init_options(struct options *options);
+extern void destroy_options(struct options *options);
 extern const char *firefox_browser_command(struct options *options);
 extern const char *chrome_command(bool app_mode, struct options *options);
 extern void default_link_command(const char *url);
@@ -352,7 +354,7 @@ extern bool write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
 extern char *url_encode(const char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
-extern char *getenv_from_array(char* key, char**envarray);
+extern const char *getenv_from_array(char* key, char*const*envarray);
 extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_WHEN_SIMPLE 1
 #define LIB_WHEN_OUTER 2
@@ -405,8 +407,7 @@ extern struct resource resources[];
  * The return value should be one of EXIT_SUCCESS, EXIT_FAILURE,
  * or EXIT_IN_SERVER (if executed by command).
  */
-typedef int (*action_t)(int argc, char** argv, const char*cwd,
-                        char **env, struct lws *wsi,
+typedef int (*action_t)(int argc, char** argv, struct lws *wsi,
                         struct options *opts);
 
 struct command {
@@ -416,16 +417,11 @@ struct command {
 };
 
 extern struct command * find_command(const char *name);
-extern int attach_action(int, char**, const char*, char **,
-                         struct lws *, struct options *);
-extern int browse_action(int, char**, const char*, char **,
-                         struct lws *, struct options *);
-extern int view_saved_action(int, char**, const char*, char **,
-                             struct lws *, struct options *);
-extern int help_action(int, char**, const char*, char **,
-                       struct lws *, struct options *);
-extern int new_action(int, char**, const char*, char **,
-                      struct lws *, struct options *);
+extern int attach_action(int, char**, struct lws *, struct options *);
+extern int browse_action(int, char**, struct lws *, struct options *);
+extern int view_saved_action(int, char**, struct lws *, struct options *);
+extern int help_action(int, char**, struct lws *, struct options *);
+extern int new_action(int, char**, struct lws *, struct options *);
 extern void print_version(FILE*);
 extern char*find_in_path();
 extern void print_help(FILE*);

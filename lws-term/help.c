@@ -62,8 +62,7 @@ void print_help(FILE* out) {
   print_help_file("domterm", out);
 }
 
-int help_action(int argc, char** argv, const char*cwd,
-                char **env, struct lws *wsi, struct options *opts)
+int help_action(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
     int ecode = EXIT_SUCCESS;
     char *topic = NULL;

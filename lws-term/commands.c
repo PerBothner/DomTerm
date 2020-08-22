@@ -11,8 +11,7 @@
 
 struct lws;
 
-int is_domterm_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi,
+int is_domterm_action(int argc, char** argv, struct lws *wsi,
                       struct options *opts)
 {
     return probe_domterm(false) > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
@@ -54,9 +53,8 @@ static void print_base_element(const char *base_url, struct sbuf *sbuf)
     }
 }
 
-int html_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi,
-                      struct options *opts)
+int html_action(int argc, char** argv, struct lws *wsi,
+                struct options *opts)
 {
     bool is_hcat = argc > 0 && strcmp(argv[0], "hcat") == 0;
     if (opts == main_options) // client mode
@@ -89,6 +87,7 @@ int html_action(int argc, char** argv, const char*cwd,
         while (i < argc)  {
             char *fname = argv[i++];
             char *fname_abs = fname;
+            const char*cwd = opts->cwd;
             if (fname[0] != '/' && cwd != NULL) {
                 fname_abs = xmalloc(strlen(cwd) + strlen(fname) +2);
                 sprintf(fname_abs, "%s/%s", cwd, fname);
@@ -112,7 +111,7 @@ int html_action(int argc, char** argv, const char*cwd,
         }
     } else {
         if (base_url == NULL)
-            base_url = cwd != NULL ? strdup(cwd) : getcwd(NULL, 0);
+            base_url = opts->cwd != NULL ? strdup(opts->cwd) : getcwd(NULL, 0);
         if (base_url != NULL) {
             print_base_element(base_url, &sb);
         }
@@ -165,8 +164,7 @@ int html_action(int argc, char** argv, const char*cwd,
     return ret;
 }
 
-int imgcat_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi,
+int imgcat_action(int argc, char** argv, struct lws *wsi,
                   struct options *opts)
 {
     check_domterm(opts);
@@ -310,8 +308,7 @@ static char *read_response(struct options *opts)
     return buf;
 }
 
-int print_stylesheet_action(int argc, char** argv, const char*cwd,
-                            char **env, struct lws *wsi,
+int print_stylesheet_action(int argc, char** argv, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -338,8 +335,7 @@ int print_stylesheet_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int list_stylesheets_action(int argc, char** argv, const char*cwd,
-                            char **env, struct lws *wsi,
+int list_stylesheets_action(int argc, char** argv, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -364,8 +360,7 @@ int list_stylesheets_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int load_stylesheet_action(int argc, char** argv, const char*cwd,
-                           char **env, struct lws *wsi,
+int load_stylesheet_action(int argc, char** argv, struct lws *wsi,
                            struct options *opts)
 {
     check_domterm(opts);
@@ -438,22 +433,19 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
     return EXIT_SUCCESS;
 }
 
-int enable_stylesheet_action(int argc, char** argv, const char*cwd,
-                             char **env, struct lws *wsi,
+int enable_stylesheet_action(int argc, char** argv, struct lws *wsi,
                              struct options *opts)
 {
     return maybe_disable_stylesheet(false, argc, argv, opts);
 }
 
-int disable_stylesheet_action(int argc, char** argv, const char*cwd,
-                             char **env, struct lws *wsi,
+int disable_stylesheet_action(int argc, char** argv, struct lws *wsi,
                              struct options *opts)
 {
     return maybe_disable_stylesheet(true, argc, argv, opts);
 }
 
-int add_stylerule_action(int argc, char** argv, const char*cwd,
-                            char **env, struct lws *wsi,
+int add_stylerule_action(int argc, char** argv, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -468,8 +460,7 @@ int add_stylerule_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int list_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, struct options *opts)
+int list_action(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
     int nclients = 0;
     FILE *out = fdopen(dup(opts->fd_out), "w");
@@ -641,8 +632,7 @@ static void status_by_connection(FILE *out)
         fprintf(out, "(no domterm sessions or server)\n");
 }
 
-int status_action(int argc, char** argv, const char*cwd,
-                      char **env, struct lws *wsi, struct options *opts)
+int status_action(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
     FILE *out = fdopen(dup(opts->fd_out), "w");
     print_version(out);
@@ -659,8 +649,7 @@ int status_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int view_saved_action(int argc, char** argv, const char*cwd,
-                  char **env, struct lws *wsi,
+int view_saved_action(int argc, char** argv, struct lws *wsi,
                   struct options *opts)
 {
     optind = 1;
@@ -685,9 +674,10 @@ int view_saved_action(int argc, char** argv, const char*cwd,
     char *fencoded = NULL;
     if (! saw_scheme) {
         if (file[0] != '/') {
-          fencoded = xmalloc(strlen(cwd)+strlen(file)+2);
-          sprintf(fencoded, "%s/%s", cwd, file);
-          file = fencoded;
+            const char *cwd = opts->cwd;
+            fencoded = xmalloc(strlen(cwd)+strlen(file)+2);
+            sprintf(fencoded, "%s/%s", cwd, file);
+            file = fencoded;
         }
         if (access(file, R_OK) != 0) {
             printf_error(opts,
@@ -704,8 +694,7 @@ int view_saved_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int freshline_action(int argc, char** argv, const char*cwd,
-                         char **env, struct lws *wsi,
+int freshline_action(int argc, char** argv, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
@@ -715,8 +704,7 @@ int freshline_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int settings_action(int argc, char** argv, const char*cwd,
-                         char **env, struct lws *wsi,
+int settings_action(int argc, char** argv, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
@@ -742,8 +730,7 @@ int settings_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int reverse_video_action(int argc, char** argv, const char*cwd,
-                         char **env, struct lws *wsi,
+int reverse_video_action(int argc, char** argv, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
@@ -770,8 +757,7 @@ int reverse_video_action(int argc, char** argv, const char*cwd,
     return EXIT_SUCCESS;
 }
 
-int window_action(int argc, char** argv, const char*cwd,
-                         char **env, struct lws *wsi,
+int window_action(int argc, char** argv, struct lws *wsi,
                          struct options *opts)
 {
     struct tty_client *wclient;
@@ -810,7 +796,7 @@ int window_action(int argc, char** argv, const char*cwd,
              || strcmp(subcommand, "toggle-hide") == 0
              || strcmp(subcommand, "toggle-minimize") == 0) {
         static char** no_args = { NULL };
-        return new_action(0, no_args, cwd, env, wsi, opts);
+        return new_action(0, no_args, wsi, opts);
     } else {
         printf_error(opts, "domterm window: no window to '%s'", subcommand);
         return EXIT_FAILURE;
