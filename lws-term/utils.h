@@ -50,6 +50,7 @@ struct sbuf {
 
 extern void sbuf_init(struct sbuf *buf);
 extern void sbuf_free(struct sbuf *buf);
+extern char *sbuf_strdup(struct sbuf *buf);
 extern void sbuf_extend(struct sbuf *buf, int needed);
 extern void *sbuf_blank(struct sbuf *buf, int space);
 extern void sbuf_append(struct sbuf *buf, const void *bytes, ssize_t length);

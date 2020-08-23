@@ -5,6 +5,7 @@ OPTION_S(shell_command, "shell.default", OPTION_MISC_TYPE)
 OPTION_S(command_firefox, "command.firefox", OPTION_MISC_TYPE)
 OPTION_S(command_chrome, "command.chrome", OPTION_MISC_TYPE)
 OPTION_S(command_electron, "command.electron", OPTION_MISC_TYPE)
+OPTION_S(command_headless, "command.headless", OPTION_MISC_TYPE)
 OPTION_S(command_ssh, "command.ssh", OPTION_MISC_TYPE)
 OPTION_S(command_remote_domterm, "command.remote-domterm", OPTION_MISC_TYPE)
 /*OPTION_S(window_geometry, "geometry", OPTION_MISC_TYPE)*/

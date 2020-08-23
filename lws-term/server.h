@@ -232,6 +232,7 @@ struct cmd_client {
 
 struct options {
     bool readonly;                            // whether not allow clients to write to the TTY
+    bool headless;
     bool http_server;
     bool ssl;
     bool force_option;

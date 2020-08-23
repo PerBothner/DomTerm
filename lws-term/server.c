@@ -264,6 +264,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define ELECTRON_OPTION 1003
 #define CHROME_APP_OPTION 1004
 #define WEBVIEW_OPTION 1005
+#define HEADLESS_OPTION 1006
 #define VERBOSE_OPTION 1200
 #define FORCE_OPTION 2001
 #define DAEMONIZE_OPTION 2002
@@ -311,6 +312,7 @@ static const struct option options[] = {
         {"settings",     required_argument, NULL, SETTINGS_FILE_OPTION},
         {"tty-packet-mode",optional_argument,NULL,TTY_PACKET_MODE_OPTION},
         {"detached",     no_argument,       NULL, DETACHED_OPTION},
+        {"headless",     no_argument,       NULL, HEADLESS_OPTION},
         {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
         {"pane",         no_argument,       NULL, PANE_OPTION},
         {"tab",          no_argument,       NULL, TAB_OPTION},
@@ -535,24 +537,20 @@ qtwebengine_command(struct options *options)
             free(cmd);
         return NULL;
     }
-    int bsize = strlen(cmd)+100;
+    struct sbuf sb;
+    sbuf_init(&sb);
     const char *geometry = geometry_option(options);
-    if (geometry)
-        bsize += strlen(geometry);
-    if (options->qt_remote_debugging)
-      bsize += strlen(options->qt_remote_debugging);
-    char *buf = xmalloc(bsize);
-    strcpy(buf, cmd);
+    sbuf_append(&sb, cmd, -1);
     free(cmd);
-    if (geometry) {
-        strcat(buf, " --geometry ");
-        strcat(buf, geometry);
-    }
-    if (options->qt_remote_debugging) {
-        strcat(buf, " --remote-debugging-port=");
-        strcat(buf, options->qt_remote_debugging);
-    }
-    strcat(buf, " --connect '%U'");
+    if (geometry)
+        sbuf_printf(&sb, " --geometry %s", geometry);
+    if (options->qt_remote_debugging)
+        sbuf_printf(&sb, " --remote-debugging-port=%s");
+    if (options->headless)
+        sbuf_append(&sb, " --headless", -1);
+    sbuf_append(&sb, " --connect '%U'", -1);
+    char *buf = sbuf_strdup(&sb);
+    sbuf_free(&sb);
     return buf;
 }
 
@@ -598,24 +596,27 @@ electron_command(struct options *options)
     }
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *app_fixed = fix_for_windows(app);
+    struct sbuf sb;
+    sbuf_init(&sb);
 #ifdef __APPLE__
-    char *format = "/usr/bin/open -a %s --args %s%s%s --url '%%U'";
+    sbuf_printf(&sb, "/usr/bin/open -a %s --args", epath);
 #else
-    char *format = "%s %s%s%s --url '%%U'";
+    sbuf_printf(&sb, "%s", epath);
 #endif
-    const char *g1 = "", *g2 = "";
+    char *format = "s%s%s %s --url '%%U'";
+    sbuf_printf(&sb, " %s", app_fixed);
     const char *geometry = geometry_option(options);
-    if (geometry) {
-        g1 = " --geometry ";
-        g2 = geometry;
-    }
-    char *buf = xmalloc(strlen(epath)+strlen(app_fixed)+strlen(format)
-                        +strlen(g1)+strlen(g2));
-    sprintf(buf, format, epath, app_fixed, g1, g2);
+    if (geometry)
+        sbuf_printf(&sb, " --geometry %s", geometry);
+    if (options->headless)
+        sbuf_printf(&sb, " --headless");
+    sbuf_append(&sb, " --url '%U'", -1);
     if (app_fixed != app)
         free(app_fixed);
     if (epath_free_needed)
         free(epath_free_needed);
+    char *buf = sbuf_strdup(&sb);
+    sbuf_free(&sb);
     return buf;
 }
 
@@ -715,7 +716,7 @@ do_run_browser(struct options *options, char *url, int port)
                 int argv0_length = argv0_end-start;
                 bool app_mode;
                 if (strcmp(cmd, "electron") == 0) {
-                     browser_specifier = electron_command(options);
+                    browser_specifier = electron_command(options);
                      if (browser_specifier != NULL) {
                          free (cmd);
                          do_electron = true;
@@ -772,7 +773,7 @@ do_run_browser(struct options *options, char *url, int port)
         }
         do_Qt = true;
     }
-    if (strcmp(browser_specifier, "--electron") == 0) {
+    else if (strcmp(browser_specifier, "--electron") == 0) {
         browser_specifier = electron_command(options);
         do_electron = true;
         if (browser_specifier == NULL) {
@@ -780,6 +781,16 @@ do_run_browser(struct options *options, char *url, int port)
             return EXIT_FAILURE;
         }
     }
+    else if (options->headless) {
+        const char *hcmd = get_setting(options->settings, "command.headless");
+        if (hcmd) {
+            browser_specifier = hcmd;
+        } else {
+             printf_error(options, "unspecified browser for --headless");
+             return EXIT_FAILURE;
+        }
+    }
+
     bool app_mode;
     if (strcmp(browser_specifier, "--firefox") == 0)
         browser_specifier = firefox_command(options);
@@ -836,6 +847,7 @@ void init_options(struct options *opts)
     opts->cmd_settings = NULL;
     opts->settings = NULL;
     opts->browser_command = NULL;
+    opts->headless = false;
     opts->http_server = false;
     opts->something_done = false;
     opts->verbosity = 0;
@@ -1017,6 +1029,9 @@ int process_options(int argc, char **argv, struct options *opts)
             case ELECTRON_OPTION:
             case FIREFOX_OPTION:
                 opts->browser_command = argv[optind-1];
+                break;
+            case HEADLESS_OPTION:
+                opts->headless = true;
                 break;
             case GEOMETRY_OPTION: {
                 regex_t rx;
@@ -1610,10 +1625,11 @@ make_main_html_text(struct sbuf *obuf, int port)
                 "<html><head>\n"
                 "<meta http-equiv='Content-Type' content='text/html;"
                 " charset=UTF-8'>\n"
+                "<meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'unsafe-inline'\">\n"
                 "<script type='text/javascript'>\n"
                 "var DomTerm_server_key = '%.*s';\n"
                 "var newloc = 'http://localhost:%d/no-frames.html' + location.hash;\n"
-                "newloc += (newloc.indexOf('#') >= 0 ? '&' : '#')+'server-key=' + DomTerm_server_key;\n"
+                "newloc += (newloc.includes('#') ? ';' : '#')+'server-key=' + DomTerm_server_key;\n"
                 "location.replace(newloc);\n"
                 "</script>\n"
                 "</head>\n"

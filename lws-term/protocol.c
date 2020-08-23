@@ -1711,31 +1711,40 @@ display_session(struct options *options, struct pty_client *pclient,
             : NULL;
         if (encoded)
             url = encoded;
-        char *buf = xmalloc(strlen(main_html_url) + (url == NULL ? 60 : strlen(url) + 60));
+        struct sbuf sb;
+        sbuf_init(&sb);
         if (pclient != NULL) {
-            sprintf(buf, "%s#session-number=%d", main_html_url, pclient->session_number);
+            sbuf_printf(&sb, "%s#;session-number=%d", main_html_url, pclient->session_number);
 #if __APPLE__
             // Needed when using /usr/bin/open as it drops #hash parts
             // of file: URLS.
             pclient->awaiting_connection = true;
 #endif
+            if (options->headless)
+                sbuf_printf(&sb, ";headless=true");
+            const char *verbosity = get_setting(options->settings, "log.js-verbosity");
+            if (verbosity) {
+                char *endv;
+                double d = strtod(verbosity, &endv);
+                if (endv == verbosity + strlen(verbosity))
+                    sbuf_printf(&sb, ";js-verbosity=%g", d);
+            }
         } else if (port == -105) // view saved file
-            sprintf(buf, "%s#view-saved=%s",  main_html_url, url);
+            sbuf_printf(&sb, "%s#view-saved=%s",  main_html_url, url);
         else if (port == -104) // browse url
-            sprintf(buf, "%s#browse=%s",  main_html_url, url);
+            sbuf_printf(&sb, "%s#browse=%s",  main_html_url, url);
         else
-            sprintf(buf, "%s", url);
+            sbuf_printf(&sb, "%s", url);
         if (encoded)
             free(encoded);
         if (browser_specifier
             && strcmp(browser_specifier, "--print-url") == 0) {
-            int ulen = strlen(buf);
-            buf[ulen] = '\n';
-            if (write(options->fd_out, buf, ulen+1) <= 0)
+            sbuf_append(&sb, "\n", 1);
+            if (write(options->fd_out, sb.buffer, sb.len) <= 0)
                 lwsl_err("write failed - display_session\n");
         } else
-            r = do_run_browser(options, buf, port);
-        free(buf);
+            r = do_run_browser(options, sb.buffer, port);
+        sbuf_free(&sb);
     }
     return r;
 }

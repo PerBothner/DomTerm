@@ -714,6 +714,15 @@ void sbuf_free(struct sbuf *buf)
     sbuf_init(buf);
 }
 
+char *sbuf_strdup(struct sbuf *buf)
+{
+    size_t len = buf->len;
+    char *r = xmalloc(len + 1);
+    memcpy(r, buf->buffer, len);
+    r[len] = '\0';
+    return r;
+}
+
 void
 sbuf_extend(struct sbuf *buf, int needed)
 {

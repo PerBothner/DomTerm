@@ -259,7 +259,7 @@ function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
     let url = location.href;
-    let m = url.match(/[#&]js-verbosity=([^&]*)/);
+    let m = url.match(/js-verbosity=([0-9]*)/);
     if (m) {
         let v = Number(m[1]);
         if (v >= 0)
@@ -280,14 +280,13 @@ function loadHandler(event) {
         DomTerm.mainLocation = "http://localhost:"+DomTerm.server_port+"/simple.html";
     } else
         DomTerm.mainLocation = url;
-    m = url.match(/[#&]server-key=([^&]*)/);
-    if (! DomTerm.server_key && (m = url.match(/[#&]server-key=([^&]*)/))) {
+    if (! DomTerm.server_key && (m = url.match(/[#;]server-key=([^&;]*)/))) {
         DomTerm.server_key = m[1];
     }
     if (DomTerm.usingQtWebEngine && ! DomTerm.isInIFrame()) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
-    m = location.hash.match(/atom([^&]*)/);
+    m = location.hash.match(/atom([^&;]*)/);
     if (m) {
         DomTerm.inAtomFlag = true;
         if (DomTerm.isInIFrame()) {
@@ -307,7 +306,7 @@ function loadHandler(event) {
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
         if (DomTerm.setContextMenu && ! DomTerm.simpleLayout)
             DomTerm.setContextMenu();
-    m = location.hash.match(/open=([^&]*)/);
+    m = location.hash.match(/open=([^&;]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
         DomTermLayout.initSaved(JSON.parse(open_encoded));
@@ -360,10 +359,10 @@ function loadHandler(event) {
     }
     // non-null if we need to create a websocket but we have no Terminal
     let no_session = null;
-    if ((m = location.hash.match(/view-saved=([^&]*)/))) {
+    if ((m = location.hash.match(/view-saved=([^&;]*)/))) {
         viewSavedFile(m[1]);
         no_session = "view-saved";
-    } else if ((m = location.hash.match(/browse=([^&]*)/))) {
+    } else if ((m = location.hash.match(/browse=([^&;]*)/))) {
         DomTermLayout.makeIFrameWrapper(decodeURIComponent(m[1]),
                                         false, DomTerm.layoutTop);
         no_session = "browse";
@@ -396,7 +395,7 @@ function loadHandler(event) {
             connectAjax("domterm", "", topNodes[i]);
     } else {
         if (no_session)
-            query = (query ? query + "&" : "") + "no-session=" + no_session;
+            query = (query ? query + ";" : "") + "no-session=" + no_session;
         var wsurl = DTerminal._makeWsUrl(query);
         for (var i = 0; i < topNodes.length; i++) {
             DTerminal.connectWS(null, wsurl, "domterm",
