@@ -152,10 +152,9 @@ DomTerm.createMenus = function(options) {
           menuItem({label: 'Detach session',
                     click: function() {
                         DomTerm.doNamedCommand('detach-session'); }});
-    let openLink = options.requestOpenLink;
-    const homePageItem = ! openLink ? null
-          : menuItem({label: 'DomTerm home page',
-                      click: function() { openLink('https://domterm.org') }});
+    const homePageItem =
+          menuItem({label: 'DomTerm home page',
+                    click: function() { DomTerm.requestOpenLink({href: 'https://domterm.org'}) }});
     const aboutItem = menuItem({label: 'About DomTerm',
                                 click: DomTerm.showAboutMessage});
     const openLinkItem = menuItem({label: 'Open Link',
@@ -324,8 +323,7 @@ DomTerm.setContextMenu = function() {
         DomTerm.createMenus({platform: "electron",
                              popup: popup,
                              menuItem: menuItem,
-                             Menu: Menu,
-                             requestOpenLink: electronAccess.shell.openExternal
+                             Menu: Menu
                             });
     } else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine) {
         function menuItem(options) {
@@ -341,10 +339,7 @@ DomTerm.setContextMenu = function() {
         DomTerm.createMenus({platform: "generic",
                              popup: popup,
                              menuItem: menuItem,
-                             Menu: Menu,
-                             requestOpenLink: function(url) {
-                                 DomTerm.requestOpenLink({href: url});
-                             }
+                             Menu: Menu
                             });
     }
 }
