@@ -12,6 +12,7 @@ OPTION_S(command_remote_domterm, "command.remote-domterm", OPTION_MISC_TYPE)
 OPTION_S(geometry, "geometry", OPTION_MISC_TYPE)
 OPTION_S(openfile_application, "open.file.application", OPTION_MISC_TYPE)
 OPTION_S(openlink_application, "open.link.application", OPTION_MISC_TYPE)
+OPTION_S(log_file, "log.file", OPTION_STRING_TYPE)
 
 /* front-end options */
 OPTION_F(style_user, "style.user", OPTION_MISC_TYPE)

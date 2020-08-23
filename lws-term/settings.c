@@ -141,6 +141,15 @@ callback_inotify(struct lws *wsi, enum lws_callback_reasons reason,
 }
 #endif
 
+static const char *read_settings_message, *read_settings_filename;
+
+// Needs to be called after logging (which depends on settings) is set up.
+void
+read_settings_emit_notice()
+{
+    lwsl_notice("%s: %s\n", read_settings_message, read_settings_filename);
+}
+
 void
 read_settings_file(struct options *options, bool re_reading)
 {
@@ -166,7 +175,10 @@ read_settings_file(struct options *options, bool re_reading)
             : "Non-readable settings file";
         bad = true;
     }
-    lwsl_notice("%s: %s\n", vmsg, settings_fname);
+    read_settings_message = vmsg;
+    read_settings_filename = settings_fname;
+    if (re_reading)
+        read_settings_emit_notice();
     if (bad)
         return;
     json_object_object_add(jobj, "##",

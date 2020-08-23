@@ -24,6 +24,14 @@ geometry_option(struct options *options)
     return geometry && geometry[0] ? geometry : default_size;
 }
 
+static FILE *_logfile = NULL;
+static void lwsl_emit_stderr_with_flush(int level, const char * line) {
+    char buf[50];
+    lwsl_timestamp(level, buf, sizeof(buf));
+    fprintf(_logfile, "%s%s", buf, line);
+    fflush(_logfile);
+}
+
 static void
 daemonize()
 {
@@ -40,8 +48,12 @@ void
 maybe_daemonize()
 {
     if (opts.do_daemonize > 0) {
-        lwsl_notice("about to switch to background 'daemon' mode - no more messages.\n");
-        lwsl_notice("(To see more messages use --no-daemonize option.)\n");
+        if (_logfile == NULL || _logfile == stdout || _logfile == stderr) {
+            lwsl_notice("about to switch to background 'daemon' mode - no more messages.\n");
+            lwsl_notice("(To see more messages use --no-daemonize option.)\n");
+        } else {
+            lwsl_notice("about to switch to background 'daemon' mode\n");
+        }
         tty_restore(-1);
         daemonize();
         opts.do_daemonize = -1;
@@ -1151,17 +1163,6 @@ int process_options(int argc, char **argv, struct options *opts)
     return 0;
 }
 
-#define LOG_TO_FILE 1
-#if LOG_TO_FILE
-static FILE *_logfile = NULL;
-void lwsl_emit_stderr_with_flush(int level, const char *  	line) {
-    char buf[50];
-    lwsl_timestamp(level, buf, sizeof(buf));
-    fprintf(_logfile, "%s%s", buf, line);
-    fflush(_logfile);
-}
-#endif
-
 int
 main(int argc, char **argv)
 {
@@ -1197,22 +1198,55 @@ main(int argc, char **argv)
 
     init_options(&opts);
     prescan_options(argc, argv, &opts);
-    if (opts.debug_level == 0 && opts.verbosity > 0)
-        lws_set_log_level(LLL_ERR|LLL_WARN|LLL_NOTICE
-                          |(opts.verbosity > 1 ? LLL_INFO : 0),
-                          lwsl_emit_stderr_notimestamp);
-    else {
-#if LOG_TO_FILE
-        char logname[50];
-        if (opts.debug_level) {
-            sprintf(logname, "/tmp/lws-%d.log", getpid());
-            _logfile = fopen(logname, "a");
-        }
-        lws_set_log_level(opts.debug_level, lwsl_emit_stderr_with_flush);
-#else
-        lws_set_log_level(opts.debug_level, NULL);
-#endif
+
+    read_settings_file(&opts, false);
+    set_settings(&opts);
+
+    int debug_level = opts.debug_level;
+    const char *logfilefmt = get_setting(opts.settings, "log.file");
+    if (opts.debug_level == 0 && opts.verbosity > 0) {
+         debug_level = LLL_ERR|LLL_WARN|LLL_NOTICE
+             |(opts.verbosity > 1 ? LLL_INFO : 0);
+         if (logfilefmt == NULL)
+             logfilefmt = "notimestamp";
     }
+
+    if (logfilefmt == NULL)
+        logfilefmt = "/tmp/domterm-%P.log";
+    if (opts.debug_level == 0)
+        lws_set_log_level(debug_level, NULL);
+    else if (strcmp(logfilefmt, "stderr") == 0)
+        lws_set_log_level(debug_level, lwsl_emit_stderr);
+    else if (strcmp(logfilefmt, "stdout") == 0) {
+        _logfile = stdout;
+        lws_set_log_level(debug_level, lwsl_emit_stderr_with_flush);
+    } else if (strcmp(logfilefmt, "stderr-notimestamp") == 0
+               || strcmp(logfilefmt, "notimestamp") == 0)
+        lws_set_log_level(debug_level, lwsl_emit_stderr_notimestamp);
+    else {
+        struct sbuf sb;
+        sbuf_init(&sb);
+        const char *p = logfilefmt;
+        for (; *p; p++) {
+            char *pc = strchr(p, '%');
+            if (pc == NULL) {
+                sbuf_append(&sb, p, strlen(p));
+                break;
+            }
+            sbuf_append(&sb, p, pc-p);
+            p = pc+1;
+            if (pc[1] == 'P') {
+                sbuf_printf(&sb, "%d", getpid());
+            } else if (pc[1] == '%') {
+                sbuf_append(&sb, "%", 1);
+            }
+        }
+        sbuf_append(&sb, "", 1);
+        _logfile = fopen(sb.buffer, "a");
+        sbuf_free(&sb);
+        lws_set_log_level(debug_level, lwsl_emit_stderr_with_flush);
+    }
+
     lwsl_notice("domterm terminal server %s (git describe: %s)\n",
                 LDOMTERM_VERSION, git_describe);
     lwsl_notice("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
@@ -1220,8 +1254,7 @@ main(int argc, char **argv)
     lwsl_notice("Using Libwebsockets " LWS_LIBRARY_VERSION "\n");
 #endif
 
-    read_settings_file(&opts, false);
-    set_settings(&opts);
+    read_settings_emit_notice();
 
     if (process_options(argc, argv, &opts) != 0)
         return -1;

@@ -327,6 +327,7 @@ extern int process_options(int argc, char **argv, struct options *options);
 extern char** default_command(struct options *opts);
 extern void request_upload_settings();
 extern void read_settings_file(struct options*, bool);
+extern void read_settings_emit_notice();
 extern struct json_object *merged_settings(struct json_object *cmd_settings);
 extern void set_settings(struct options *options);
 extern enum option_name lookup_option(const char *name);

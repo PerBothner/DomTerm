@@ -1622,14 +1622,28 @@ echo within @var{timeout} seconds.  The default timeout is 0.4 seconds.
 
 @subsubheading Debugging and logging
 @table @asis
+@item @code{@b{log.file} = } @var{specifier}
+Send logging output (as controlled by the @code{-d} and @code{--verbose} flags)
+to the specified file.
+The @var{specifier} can be one of these special values:
+@code{stderr} writes log entries to standard error, with timestamps and colors;
+@code{stderr-notimestamp} (or @code{notimestamp}) is the same as @code{stderr} without timestamps;
+@code{stdout} writes to standard output, with timestamps and no colors.
+Otherwise, @var{specifier} is printf-style format string
+that is used for a file that is appended to:
+@code{%P} is replaced by Process ID of the @code{domterm} process;
+@code{%%} is a literal percent symbol.
+
+The default is @code{/tmp/domterm-%P.log}.
+
+@item @code{@b{log.js-verbosity} =} @var{level}
+Write more information to the JavaScript console.
+
 @item @code{@b{debug.input.extra-delay} = } @var{delay}
 Delay an extra @var{delay} seconds before sending keyboard
 and other events from client (browser) to server (application).
 Especially useful for testing @code{predicted-input-timeout},
 which should be higher than @code{debug.input.extra-delay}.
-
-@item @code{@b{log.js-verbosity} =} @var{level}
-Write more information to the JavaScript console.
 @end table
 
 @subsubheading Miscellaneous settings
