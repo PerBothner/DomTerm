@@ -1503,7 +1503,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 pclient = pty_clients[snumber];
             else {
 #if __APPLE__
-                FOREACH_PCLIENT(P) {
+                FOREACH_PCLIENT(p) {
                     if (p->awaiting_connection) {
                         pclient = p;
                         p->awaiting_connection = false;
