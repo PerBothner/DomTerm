@@ -1,20 +1,6 @@
 /* Optional - user-overridable styling */
 
-div.domterm::selection {
-    background: rgba(0,0,100,0.9);
-    color: #FFFFFF
-}
-div[reverse-video]::selection { // FIXME doesn't work
-    background: green;
-    color: #000
-}
-/* For some reason selectors like div.domterm::selection don't work */
-/* The following works, but needs some tweaking:
-div.domterm {--selection-background: blue; --selection-color: #FFF }
-div.domterm.markmode {--selection-background: lightblue; --selection-color: #FFF }
-div.domterm[reverse-video] {--selection-background: green; --selection-color: #000 }
-div::selection { color: var(--selection-color); background-color: var(--selection-background) }
-*/
+div.domterm.markmode *::selection {background-color: cyan; color: #FFF }
 
 /* "\2936" is "arrow pointing downwards then curving leftward".
 It is used to indicate a wrapped line, rather like a hyphen. */
