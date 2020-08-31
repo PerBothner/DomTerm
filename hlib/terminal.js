@@ -5320,14 +5320,31 @@ Terminal.prototype.updateSettings = function() {
         a = m[1]+m[3];
     }
 
-    var style_dark = getOption("style.dark");
-    if (style_dark) {
+    var style_dark = getOption("style.dark", "auto");
+    if (style_dark !== this._style_dark_old) {
+        this._style_dark_old = style_dark;
+        let dark_query = this._style_dark_query;
+        if (style_dark === "auto" && ! dark_query && window.matchMedia) {
+            dark_query = window.matchMedia('(prefers-color-scheme: dark)');
+            this._style_dark_query = dark_query;
+        }
+        if (this._style_dark_listener) {
+            dark_query.removeEventListener('change', this._style_dark_listener);
+            this._style_dark_listener = undefined;
+        }
+        if (style_dark === "auto") {
+            if (dark_query) {
+                this._style_dark_listener = (e) => {
+                    this.setReverseVideo(e.matches);
+                };
+                dark_query.addEventListener('change', this._style_dark_listener);
+                style_dark = dark_query.matches ? "true" : "false";
+            } else
+                style_dark = "false";
+        }
         this.setReverseVideo(this._asBoolean(style_dark));
-        this._style_dark_set = true;
-    } else if (this._style_dark_set) {
-        this.setReverseVideo(false);
-        this._style_dark_set = false;
     }
+
     let cstyle = getOption("style.caret");
     if (cstyle) {
         cstyle = String(cstyle).trim();
