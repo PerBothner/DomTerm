@@ -777,7 +777,12 @@ class DTParser {
                     }
                 }
                 // 990 is "DM" in roman numerals.
-                term.processResponseCharacters("\x1B[>990;"+vnum+";0c");
+                let response = "\x1B[>990;"+vnum+";0c";
+                //let response = "\x1B[>65;5003;1c"; // GNOME terminal 3.36.1.1
+                //let response = "\x1B[>41;351;0c"; // xterm 352
+                //let response = "x1B[>0;115;0c"; // Konsole 20.04.1
+                //let response = "\x1B[>0;276;0c"; // xterm.js
+                term.processResponseCharacters(response);
             } else if (this._flagChars.indexOf('=') >= 0) {
                 // Send Device Attributes (Tertiary DA).
                 term.processResponseCharacters("\x1BP!|00000000\x1B\\");
