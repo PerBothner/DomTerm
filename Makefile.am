@@ -50,10 +50,10 @@ endif
 endif
 MISCBINS =
 if WITH_QTWEBENGINE
-MISCBINS += bin/qtdomterm
+MISCBINS += bin/qtdomterm$(EXEEXT)
 endif
 if WITH_WEBVIEW
-MISCBINS += bin/dt-webview
+MISCBINS += bin/dt-webview$(EXEEXT)
 endif
 domterm_jar_dir = share/domterm
 
@@ -455,8 +455,12 @@ endif
 
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
+install-exec-local: $(MISCBINS)
+	$(MKDIR_P) $(DESTDIR)$(bindir)
+if WITH_QTWEBENGINE
+	$(INSTALL_PROGRAM) bin/qtdomterm$(EXEEXT) $(DESTDIR)$(bindir)/qtdomterm$(EXEEXT)
+endif
 if WITH_WEBVIEW
-install-exec-local: bin/dt-webview$(EXEEXT)
 	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-webview$(EXEEXT) "$(DESTDIR)$(bindir)/dt-webview$(EXEEXT)"
 endif
 
@@ -503,12 +507,6 @@ endif
 
 install-ldomterm:
 	cd lws-term && $(MAKE) install
-
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(bindir)
-if WITH_QTWEBENGINE
-	$(INSTALL_PROGRAM) bin/qtdomterm$(EXEEXT) $(DESTDIR)$(bindir)/qtdomterm$(EXEEXT)
-endif
 
 $(pkgdatadir)/help:
 	$(MKDIR_P) $(pkgdatadir)/help
