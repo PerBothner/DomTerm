@@ -3651,14 +3651,28 @@ Terminal.prototype._updateSelected = function() {
         }
         if (sel.focusNode !== this.viewCaretNode) {
             let r = document.createRange();
-            r.setStart(sel.focusNode, sel.focusOffset);
+            let focusNode = sel.focusNode;
+            let focusOffset = sel.focusOffset;
+            if (focusNode.parentNode === this._caretNode
+               || focusNode === this._caretNode) {
+                r.selectNode(this._caretNode);
+                if (focusOffset == 0) {
+                    focusNode = r.startContainer;
+                    focusOffset = r.startOffset;
+                } else {
+                    focusNode = r.endContainer;
+                    focusOffset = r.endOffset;
+                }
+            }
+            r.setStart(focusNode, focusOffset);
             // FIXME if after LINE node and end of DIV, move to start of next DIV.
             let viewCaretPrevious = this.viewCaretNode.previousSibling;
             if (viewCaretPrevious instanceof Text) {
                 viewCaretPrevious.parentNode.removeChild(this.viewCaretNode);
                 this._normalize1(viewCaretPrevious);
             }
-            r.insertNode(this.viewCaretNode);
+            if (focusNode !== this.viewCaretNode.firstChild)
+                r.insertNode(this.viewCaretNode);
             if (point) {
                 sel.collapse(this.viewCaretNode, 0);
             } else {
