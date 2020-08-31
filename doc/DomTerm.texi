@@ -1639,6 +1639,16 @@ The default is @code{/tmp/domterm-%P.log}.
 @item @code{@b{log.js-verbosity} =} @var{level}
 Write more information to the JavaScript console.
 
+@item @code{@b{log.js-to-server} =} @var{setting}
+Send diagnostic/logging messages in the browser
+(normally written to the JavaScript console as controlled by
+by @code{log.js-verbosity}) where it is written using @code{lwsl_notice}
+to the location specified by @code{log.file}.
+
+Sets the @code{-d} option to 5 if not specified;
+if specified the @code{-d @var{mask}} must have 4 set in the @var{mask}.
+(If you divide @var{mask} by 4, the result must be an odd integer.)
+
 @item @code{@b{debug.input.extra-delay} = } @var{delay}
 Delay an extra @var{delay} seconds before sending keyboard
 and other events from client (browser) to server (application).

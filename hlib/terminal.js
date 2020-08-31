@@ -995,12 +995,36 @@ Terminal.prototype._maybeAddTailHider = function(oldGroup) {
         }
 }
 
-// For debugging (may be overridden)
 Terminal.prototype.log = function(str) {
     // JSON.stringify encodes escape as "\\u001b" which is hard to read.
     str = str.replace(/\\u001b/g, "\\e").replace(/[\u007f]/g, "\\x7f");
-    console.log(str);
+    let to_server = DomTerm.logToServer;
+    let report = to_server === "yes" || to_server === "true";
+    if (report) {
+        let saveVerbosity = DomTerm.verbosity;
+        if (this._socketOpen) {
+            DomTerm.verbosity = 0;
+            try {
+                this.reportEvent("LOG", JSON.stringify(str));
+            } catch (e) {
+                console.log("couldn't log-to-server: "+str);
+            }
+            DomTerm.verbosity = saveVerbosity;
+        } else
+            DomTerm.log(str, this);
+    }
+    if (! report || to_server === "both")
+        console.log(str);
 };
+Terminal.prototype._handleSavedLog = function(str) {
+    if (this._socketOpen && DomTerm._savedLogEntries) {
+        let arr = DomTerm._savedLogEntries;
+        let len = arr.length;
+        for (let i = 0; i < len; i++)
+            this.log(arr[i]);
+        DomTerm._savedLogEntries = null;
+    }
+}
 
 DomTerm.focusedTerm = null; // used if !useIFrame
 
@@ -3128,9 +3152,11 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         if (DomTerm.verbosity >= 3)
-            console.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
+            dt.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
         if (dt._composing > 0)
             return;
+        if (sel.toString().startsWith("/home/") )
+            console.log("-startswith xxx");
         let wasFocus = dt._focusinLastEvent;
         dt._focusinLastEvent = false;
         if (point && wasFocus && sel.focusOffset === 0
@@ -3517,7 +3543,7 @@ Terminal.prototype.measureWindow = function()  {
         return;
     var availHeight = this.topNode.clientHeight;
     if (DomTerm.verbosity >= 2)
-        console.log("measureWindow "+this.name+" avH:"+availHeight);
+        this.log("measureWindow "+this.name+" avH:"+availHeight);
     var clientWidth = this.topNode.clientWidth;
     if (availHeight == 0 || clientWidth == 0) {
         return;
@@ -5267,12 +5293,18 @@ Terminal.prototype.setSettings = function(obj) {
 
 Terminal.prototype.updateSettings = function() {
     let getOption = (name) => this.getOption(name);
-    let val = getOption("log.js-verbosity", -1);
+    let val;
+
+    val = getOption("log.js-verbosity", -1);
     if (val) {
         let v = Number(val);
         if (v >= 0)
             DomTerm.verbosity = v;
     }
+    val = getOption("log.js-to-", false);
+    if (val)
+        DomTerm.logToServer = val;
+
     this.linkAllowedUrlSchemes = Terminal.prototype.linkAllowedUrlSchemes;
     var link_conditions = "";
     val = getOption("open.file.application");
@@ -8907,6 +8939,8 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
             DomTerm.initXtermJs(wt, topNode);
             DomTerm.setFocus(wt, "N");
         } else {
+            wt._socketOpen = true;
+            wt._handleSavedLog();
             if (topNode.classList.contains("domterm-wrapper"))
                 topNode = DomTerm.makeElement(name, topNode);
             wt.initializeTerminal(topNode);
@@ -8918,7 +8952,7 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
 Terminal.newWS = function(wspath, wsprotocol, wt) {
     var wsocket = new WebSocket(wspath, wsprotocol);
     if (DomTerm.verbosity > 0)
-        console.log("created WebSocket on  "+wspath);
+        DomTerm.log("created WebSocket on  "+wspath);
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
     wt.processInputBytes = function(bytes) {
@@ -8934,6 +8968,7 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
     wsocket.onclose = function(e) {
         if (DomTerm.verbosity > 0)
             console.log("unexpected WebSocket close code:"+e.code);
+        wt._socketOpen = false;
         if (true) {
             let reconnect = "&reconnect=" + wt._receivedCount;
             let m = wspath.match(/^(.*)&reconnect=([0-9]+)(.*)$/);
@@ -8945,6 +8980,8 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
             wsocket.onopen = function(e) {
                 wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
                 wt._confirmedCount = wt._receivedCount;
+                wt._socketOpen = true;
+                wt._handleSavedLog();
             };
         }
     }

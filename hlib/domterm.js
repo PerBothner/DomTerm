@@ -9,6 +9,25 @@ class DomTermLayout {
 DomTermLayout.manager = null;
 
 DomTerm.verbosity = 0;
+DomTerm.logToServer = false;
+DomTerm._savedLogEntries = null;
+
+DomTerm.log = function(str, dt=null) {
+    if (dt && dt._socketOpen)
+        dt.log(str);
+    else {
+        let to_server = DomTerm.logToServer;
+        let report = to_server === "yes" || to_server === "true";
+        if (report || report === "both") {
+            if (! DomTerm._savedLogEntries)
+                DomTerm._savedLogEntries = new Array();
+            DomTerm._savedLogEntries.push(str);
+        }
+        if (! report || report == "bothner") {
+            console.log(str);
+        }
+    }
+}
 
 DomTerm._instanceCounter = 0;
 

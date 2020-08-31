@@ -259,29 +259,30 @@ function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
     let url = location.href;
-    let m = url.match(/js-verbosity=([0-9]*)/);
+    let hash = location.hash.replace(/^#[;]*/, '').replace(/;/g, '&');
+    let params = new URLSearchParams(hash);
+    let m = params.get('js-verbosity');
     if (m) {
-        let v = Number(m[1]);
+        let v = Number(m);
         if (v >= 0)
             DomTerm.verbosity = v;
     }
-    let hashPos = url.indexOf('#');
-    if (DomTerm.verbosity > 0)
-        console.log("loadHandler "+url);
+    m = params.get('log-to-server');
+    if (m)
+        DomTerm.logToServer = m;
     DomTerm.layoutTop = document.body;
-    let uhash = "";
-    if (hashPos >= 0) {
-        uhash = url.substring(hashPos);
-        url = url.substring(0, hashPos);
-    }
+    if (DomTerm.verbosity > 0)
+        DomTerm.log("loadHandler "+url);
     DomTerm.server_port = location.port || DomTerm.server_port;
     DomTerm.topLocation = url;
     if (DomTerm.useIFrame) {
         DomTerm.mainLocation = "http://localhost:"+DomTerm.server_port+"/simple.html";
-    } else
-        DomTerm.mainLocation = url;
-    if (! DomTerm.server_key && (m = url.match(/[#;]server-key=([^&;]*)/))) {
-        DomTerm.server_key = m[1];
+    } else {
+        let hashPos = url.indexOf('#');
+        DomTerm.mainLocation = hashPos < 0 ? url : url.substring(0, hashPos);
+    }
+    if (! DomTerm.server_key && (m = params.get('server-key')) != null) {
+        DomTerm.server_key = m;
     }
     if (DomTerm.usingQtWebEngine && ! DomTerm.isInIFrame()) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
@@ -364,15 +365,24 @@ function loadHandler(event) {
         no_session = "view-saved";
     } else if ((m = location.hash.match(/browse=([^&;]*)/))) {
         DomTermLayout.makeIFrameWrapper(decodeURIComponent(m[1]),
-                                        false, DomTerm.layoutTop);
+                                        'B', DomTerm.layoutTop);
         no_session = "browse";
     }
     if (location.pathname === "/saved-file/") {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
         return;
     }
+    let paneParams = new URLSearchParams();
+    let copyParams = ['server-key', 'js-verbosity', 'log-to-server'];
+    for (let i = copyParams.length;  --i >= 0; ) {
+        let pname = copyParams[i];
+        let pvalue = params.get(pname);
+        if (pvalue)
+            paneParams.set(pname, pvalue);
+    }
+    DomTerm.mainLocationParams = paneParams.toString();
     if (DomTerm.useIFrame == 2 && ! DomTerm.isInIFrame()) {
-        DomTermLayout.makeIFrameWrapper(DomTerm.mainLocation+uhash);
+        DomTermLayout.makeIFrameWrapper(DomTerm.mainLocation/*+location.hash*/);
         return;
     }
     if (DomTerm.loadDomTerm) {
@@ -387,7 +397,7 @@ function loadHandler(event) {
         let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
         topNodes = [ DomTerm.makeElement(name) ];
     }
-    let query = location.hash ? location.hash.substring(1) : null;
+    let query = hash; // location.hash ? location.hash.substring(1).replace(/;/g, '&') : null;
     if (location.search.search(/wait/) >= 0) {
     } else if (location.hash == "#ajax" || ! window.WebSocket) {
         DomTerm.usingAjax = true;
@@ -395,7 +405,7 @@ function loadHandler(event) {
             connectAjax("domterm", "", topNodes[i]);
     } else {
         if (no_session)
-            query = (query ? query + ";" : "") + "no-session=" + no_session;
+            query = (query ? query + "&" : "") + "no-session=" + no_session;
         var wsurl = DTerminal._makeWsUrl(query);
         for (var i = 0; i < topNodes.length; i++) {
             DTerminal.connectWS(null, wsurl, "domterm",

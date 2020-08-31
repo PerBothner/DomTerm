@@ -960,8 +960,8 @@ reportEvent(const char *name, char *data, size_t dlen,
                 && ioctl (pclient->pty, FIONREAD, &to_drain) != 0)
               to_drain = 0;
           }
-        lwsl_notice("report KEY pty:%d canon:%d echo:%d klen:%d\n",
-                    pclient->pty, isCanon, isEchoing, klen);
+        lwsl_info("report KEY pty:%d canon:%d echo:%d klen:%d\n",
+                  pclient->pty, isCanon, isEchoing, klen);
           if (write(pclient->pty, kstr, klen) < klen)
              lwsl_err("write INPUT to pty\n");
           while (to_drain > 0) {
@@ -1081,6 +1081,16 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->requesting_contents = 0;
         pclient->saved_window_sent_count = rcount;
         trim_preserved(pclient);
+    } else if (strcmp(name, "LOG") == 0) {
+        static bool note_written = false;
+        if (! note_written)
+            lwsl_notice("(lines starting with '#NN:' (like the following) are from browser at connection NN)\n");
+        json_object *dobj = json_tokener_parse(data);
+        const char *dstr = json_object_get_string(dobj);
+        int dlen = json_object_get_string_len(dobj);
+        lwsl_notice("#%d: %.*s\n", client->connection_number, dlen, dstr);
+        json_object_put(dobj);
+        note_written = true;
     } else if (strcmp(name, "ECHO-URGENT") == 0) {
         json_object *obj = json_tokener_parse(data);
         const char *kstr = json_object_get_string(obj);
@@ -1171,7 +1181,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
         pclient->recent_tclient = client;
     // FIXME handle PENDING
     int start = 0;
-    lwsl_notice("handle_input len:%zu conn#%d pmode:%d pty:%d\n", clen, client->connection_number, proxyMode, pclient==NULL? -99 : pclient->pty);
+    lwsl_info("handle_input len:%zu conn#%d pmode:%d pty:%d\n", clen, client->connection_number, proxyMode, pclient==NULL? -99 : pclient->pty);
     for (int i = 0; ; i++) {
         if (i+1 == clen && msg[i] >= 128)
             break;
@@ -1234,7 +1244,7 @@ static void
 handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode proxyMode)
 {
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
-    lwsl_notice("handle_output conn#%d initialized:%d pmode:%d len0:%zu->%zu\n", client->connection_number, client->initialized, proxyMode, client->ob.len, bufp->len);
+    lwsl_info("handle_output conn#%d initialized:%d pmode:%d len0:%zu->%zu\n", client->connection_number, client->initialized, proxyMode, client->ob.len, bufp->len);
     bool nonProxy = proxyMode != proxy_command_local && proxyMode != proxy_display_local;
     if (client->uploadSettingsNeeded) { // proxyMode != proxy_local ???
         client->uploadSettingsNeeded = false;
@@ -1370,9 +1380,9 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
     struct sbuf buf;
     ssize_t n;
     if (tclient==NULL)
-        lwsl_notice("callback_proxy wsi:%p reason:%d - no client\n", wsi, reason);
+        lwsl_info("callback_proxy wsi:%p reason:%d - no client\n", wsi, reason);
     else
-        lwsl_notice("callback_proxy wsi:%p reason:%d fd:%d conn#%d\n", wsi, reason, tclient==NULL? -99 : tclient->proxy_fd_in, tclient->connection_number);
+        lwsl_info("callback_proxy wsi:%p reason:%d fd:%d conn#%d\n", wsi, reason, tclient==NULL? -99 : tclient->proxy_fd_in, tclient->connection_number);
     switch (reason) {
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         lwsl_notice("proxy RAW_CLOSE_FILE\n");
@@ -1381,7 +1391,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         return 0;
     case LWS_CALLBACK_RAW_RX_FILE: ;
         if (tclient->proxy_fd_in < 0) {
-            lwsl_notice("proxy RAW_RX_FILE - no fd cleanup\n");
+            lwsl_info("proxy RAW_RX_FILE - no fd cleanup\n");
             // cleanup? FIXME
             return 0;
         }
@@ -1390,14 +1400,14 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         n = read(tclient->proxy_fd_in,
                          tclient->inb.buffer + tclient->inb.len,
                          tclient->inb.size - tclient->inb.len);
-        lwsl_notice("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
+        lwsl_info("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
                     (long) n, tclient->inb.size, tclient->inb.len);
         if (n > 0)
             tclient->inb.len += n;
         return handle_input(wsi, tclient, tclient->proxyMode);
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
         if (tclient->proxy_fd_out < 0) {
-            lwsl_notice("proxy RAW_WRITEABLE_FILE - no fd cleanup\n");
+            lwsl_info("proxy RAW_WRITEABLE_FILE - no fd cleanup\n");
 #if 0
             // cleanup? FIXME
             if (tclient->pclient)
@@ -1465,8 +1475,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 {
     struct tty_client *client = (struct tty_client *) user;
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
-    lwsl_notice("callback_tty %p reason:%d conn#%d\n", wsi, (int) reason,
-                client == NULL ? -1 : client->connection_number);
+    lwsl_info("callback_tty %p reason:%d conn#%d\n", wsi, (int) reason,
+              client == NULL ? -1 : client->connection_number);
 
     switch (reason) {
     case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
@@ -1555,7 +1565,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         handle_output(client, &buf, client->proxyMode);
         // end handle_output
         int written = buf.len - LWS_PRE;
-        lwsl_notice("tty SERVER_WRITEABLE conn#%d written:%d to %p\n", client->connection_number, written, wsi);
+        lwsl_info("tty SERVER_WRITEABLE conn#%d written:%d to %p\n", client->connection_number, written, wsi);
         if (written > 0
             && lws_write(wsi, buf.buffer+LWS_PRE, written, LWS_WRITE_BINARY) != written)
             lwsl_err("lws_write\n");
@@ -1714,6 +1724,9 @@ display_session(struct options *options, struct pty_client *pclient,
         struct sbuf sb;
         sbuf_init(&sb);
         if (pclient != NULL) {
+            // Note we use ';' rather than the traditional '&' to separate parts
+            // of the fragment.  Using '&' causes a mysterious bug (at
+            // least on Electron, Qt, and Webview) when added "&js-verbodity=N".
             sbuf_printf(&sb, "%s#;session-number=%d", main_html_url, pclient->session_number);
 #if __APPLE__
             // Needed when using /usr/bin/open as it drops #hash parts
@@ -1728,6 +1741,12 @@ display_session(struct options *options, struct pty_client *pclient,
                 double d = strtod(verbosity, &endv);
                 if (endv == verbosity + strlen(verbosity))
                     sbuf_printf(&sb, ";js-verbosity=%g", d);
+            }
+            const char *log_to_server = get_setting(options->settings, "log.js-to-server");
+            if (log_to_server && (strcmp(log_to_server, "yes") == 0
+                                  || strcmp(log_to_server, "true") == 0
+                                  || strcmp(log_to_server, "both") == 0)) {
+                sbuf_printf(&sb, ";log-to-server=%s", log_to_server);
             }
         } else if (port == -105) // view saved file
             sbuf_printf(&sb, "%s#view-saved=%s",  main_html_url, url);
@@ -2044,8 +2063,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
     struct pty_client *pclient = (struct pty_client *) user;
     switch (reason) {
         case LWS_CALLBACK_RAW_RX_FILE: {
-            lwsl_notice("callback_pty LWS_CALLBACK_RAW_RX_FILE wsi:%p len:%zu\n",
-                        wsi, len);
+            lwsl_info("callback_pty LWS_CALLBACK_RAW_RX_FILE wsi:%p len:%zu\n",
+                      wsi, len);
             long min_unconfirmed = LONG_MAX;
             int avail = INT_MAX;
             int tclients_seen = 0;
@@ -2097,8 +2116,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                             // it's safe to access data_start[-1].
                             char save_byte = data_start[-1];
                             n = read(pclient->pty, data_start-1, avail+1);
-                            lwsl_notice("RAW_RX pty %d session %d read %ld tclient#%d a\n",
-                                        pclient->pty, pclient->session_number, (long) n, tclient->connection_number);
+                            lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d a\n",
+                                      pclient->pty, pclient->session_number, (long) n, tclient->connection_number);
                             char pcmd = data_start[-1];
                             data_start[-1] = save_byte;
 #if TIOCPKT_IOCTL
@@ -2125,9 +2144,9 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
 #endif
                         } else {
                             n = read(pclient->pty, data_start, avail);
-                            lwsl_notice("RAW_RX pty %d session %d read %ld tclient#%d b\n",
-                                        pclient->pty, pclient->session_number,
-                                        (long) n, tclient->connection_number);
+                            lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d b\n",
+                                      pclient->pty, pclient->session_number,
+                                      (long) n, tclient->connection_number);
                             read_length = n;
                         }
                         data_length += read_length;
@@ -2190,8 +2209,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         break;
     default:
-        lwsl_notice("callback_pty default reason:%d\n", (int) reason);
-            break;
+        lwsl_info("callback_pty default reason:%d\n", (int) reason);
+        break;
     }
 
     return 0;

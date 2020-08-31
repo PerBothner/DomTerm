@@ -472,6 +472,9 @@ DomTermLayout.makeIFrameWrapper = function(location, mode='T',
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
     if (mode == 'T') {
+        if (DomTerm.mainLocationParams)
+            location += (location.indexOf('#') >= 0 ? '&' : '#')
+            + DomTerm.mainLocationParams;
         if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
             location = location
                 + (location.indexOf('#') >= 0 ? '&' : '#')

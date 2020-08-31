@@ -1204,16 +1204,23 @@ main(int argc, char **argv)
 
     int debug_level = opts.debug_level;
     const char *logfilefmt = get_setting(opts.settings, "log.file");
-    if (opts.debug_level == 0 && opts.verbosity > 0) {
+    if (debug_level == 0 && opts.verbosity > 0) {
          debug_level = LLL_ERR|LLL_WARN|LLL_NOTICE
              |(opts.verbosity > 1 ? LLL_INFO : 0);
          if (logfilefmt == NULL)
              logfilefmt = "notimestamp";
     }
+    if (debug_level == 0) {
+        const char *to_server = get_setting(opts.settings, "log.js-to-server");
+        if (to_server && (strcmp(to_server, "true") == 0
+                          || strcmp(to_server, "yes") == 0
+                          || strcmp(to_server, "both") == 0))
+            debug_level = LLL_ERR|LLL_NOTICE;
+    }
 
     if (logfilefmt == NULL)
         logfilefmt = "/tmp/domterm-%P.log";
-    if (opts.debug_level == 0)
+    if (debug_level == 0)
         lws_set_log_level(debug_level, NULL);
     else if (strcmp(logfilefmt, "stderr") == 0)
         lws_set_log_level(debug_level, lwsl_emit_stderr);
