@@ -5212,7 +5212,7 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     this.sstate.bracketedPasteMode = false;
     this.sstate.wraparoundMode = 2;
     this.forceWidthInColumns(-1);
-    this.sstate.mouseMode = 0;
+    this.setMouseMode(0);
     this.sstate.mouseCoordEncoding = 0;
     this._Glevel = 0;
     this.charMapper = null;
