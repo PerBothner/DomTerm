@@ -1857,6 +1857,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                && ! current.getAttribute("line")
                && ! current.getAttribute("content-value")
                && current !== this._caretNode
+               && current !== this.viewCaretNode
                //&& ! tab
                //&& ! current.classList.contains("tail-hider")
                && current.getAttribute("std") !== "prompt")) {
