@@ -458,6 +458,12 @@ class Terminal {
         this._selectionchangeListener = null;
     }
 
+    /// Are we reporting mouse events?
+    mouseReporting() {
+        return this.sstate.mouseMode !== 0
+            && ! this._pagingMode && ! this.isLineEditing();
+    }
+
     detachSession() {
         console.log("detachSession "+this.name+" sname:"+this.sessionName());
         this.reportEvent("DETACH", "");
@@ -688,8 +694,10 @@ class Terminal {
         var handler = this._mouseEventHandler;
         if (value) {
             this.topNode.addEventListener("wheel", handler);
+            this.topNode.classList.add("hide-selection");
         } else {
             this.topNode.removeEventListener("wheel", handler);
+            this.topNode.classList.remove("hide-selection");
         }
         if (value !== 1003)
             this.topNode.removeEventListener("mousemove", handler);
@@ -3609,6 +3617,10 @@ Terminal.prototype._clearSelection = function() {
 Terminal.prototype._updateSelected = function() {
     let dt = this;
 
+    if (this.mouseReporting()) {
+        return;
+    }
+
     function removeSelectionMarker(marker) {
         if (marker.parentNode !== null) {
             const prev = marker.previousSibling;
@@ -3846,6 +3858,9 @@ Terminal.prototype._mouseHandler = function(ev) {
     if (ev.shiftKey || ev.target == this.topNode || this.sstate.mouseMode == 0
         || this._pagingMode || this.isLineEditing())
         return;
+
+    if (ev.shiftKey || ev.target == this.topNode || ! this.mouseReporting())
+         return;
 
     // Get mouse coordinates relative to topNode.
     var xdelta = ev.pageX / this._computedZoom;

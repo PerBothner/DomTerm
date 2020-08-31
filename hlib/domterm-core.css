@@ -75,3 +75,13 @@ div.domterm span.focus-caret span {
     position: absolute;
     top: 0px; bottom: 0px;
 }
+
+/* Doesn't seem to work on Chrome */
+div.domterm span[std="caret"] {
+    user-select: all
+}
+
+.hide-selection *::selection {
+    color: inherit;
+    background-color: inherit;
+}
