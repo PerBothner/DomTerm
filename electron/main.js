@@ -118,8 +118,31 @@ function createNewWindow (url, options, headless) {
     });
 }
 
-ipcMain.on('new-window', (event, url, options) => {
-    createNewWindow(url, options, false);
+function eventToWindow(event) {
+    return BrowserWindow.fromWebContents(event.sender);
+}
+
+ipcMain.on('window-ops', (event, command, arg) => {
+    switch (command) {
+    case 'new-window':
+        createNewWindow(arg.url, arg, false);
+        break;
+    case 'hide':
+        eventToWindow(event).hide();
+        break;
+    case 'show':
+        eventToWindow(event).show();
+        break;
+    case 'minimize':
+        eventToWindow(event).minimize();
+        break;
+    case 'toggle-devtools':
+        eventToWindow(event).toggleDevTools();
+        break;
+    case 'set-menubar-visibility':
+        eventToWindow(event).setMenuBarVisibility(arg);
+        break;
+    }
 });
 
 // This method will be called when Electron has finished

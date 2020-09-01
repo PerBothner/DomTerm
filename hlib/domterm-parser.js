@@ -1042,30 +1042,31 @@ class DTParser {
             switch (this.getParameter(0, 0)) {
             case 1:
                 if (DomTerm.isElectron()) {
-                    electronAccess.getCurrentWindow().show();
+                    electronAccess.ipcRenderer.send('window-ops', 'show', null);
                 }
                 break;
             case 2:
-                if (DomTerm.isElectron()) {
-                    let win = electronAccess.getCurrentWindow()
-                    const sub = this.getParameter(1, 0);
-                    switch (sub) {
-                    case 72:
-                        win.hide();
-                        break;
-                    case 73:
-                    case 74:
-                        if (document.hidden)
-                            win.show();
-                        else if (sub == 73)
-                            win.minimize();
-                        else
-                            win.hide();
-                        break;
-                    default:
-                        win.minimize();
-                        break;
-                    }
+                const sub = this.getParameter(1, 0);
+                let wop = null;
+                switch (sub) {
+                case 72:
+                    wop = 'hide';
+                    break;
+                case 73:
+                case 74:
+                    if (document.hidden)
+                        wop = 'show';
+                    else if (sub == 73)
+                        wop = 'minimize';
+                    else
+                        wop = 'hide';
+                    break;
+                default:
+                    wop = 'minimize';
+                    break;
+                }
+                if (wop && DomTerm.isElectron()) {
+                    electronAccess.ipcRenderer.send('window-ops', wop, null);
                 }
                 break;
             case 14:

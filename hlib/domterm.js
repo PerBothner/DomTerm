@@ -168,12 +168,12 @@ DomTerm.openNewWindow = function(dt, options={}) {
     options = DomTerm._extractGeometryOptions(options);
     let url = options.url;
     if (! url)
-        url = DomTerm.topLocation;
+        options.url = DomTerm.topLocation;
     if (DomTerm.isElectron()) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("domterm-new-window", options);
         } else {
-            electronAccess.ipcRenderer.send('new-window', url, options);
+            electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
         }
     } else {
         let width = options.width;

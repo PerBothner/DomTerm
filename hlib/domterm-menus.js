@@ -51,7 +51,7 @@ DomTerm.createMenus = function(options) {
 
     function showMenubar(show) {
         if (electronMenus)
-            electronAccess.getCurrentWindow().setMenuBarVisibility(show);
+            electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', show);
         else
             Menu.setApplicationMenu(show ? DomTerm.savedMenuBar : null);
     }
@@ -288,7 +288,7 @@ DomTerm.createMenus = function(options) {
     if (electronMenus)
         menuBar = Menu.buildFromTemplate(menuBar.items);
     else if (isElectron)
-        electronAccess.getCurrentWindow().setMenuBarVisibility(false);
+        electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
     Menu.setApplicationMenu(menuBar);
     DomTerm.savedMenuBar = menuBar;
 

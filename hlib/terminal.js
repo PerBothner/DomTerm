@@ -10298,7 +10298,7 @@ Terminal.prototype._muxKeyHandler = function(event, key, press) {
         break;
     case 68:
         if (event.ctrlKey && DomTerm.isElectron()) {
-            electronAccess.getCurrentWindow().toggleDevTools();
+            electronAccess.ipcRenderer.send('window-ops', 'toggle-devtools', null);
             this.exitMuxMode();
             event.preventDefault();
         }
