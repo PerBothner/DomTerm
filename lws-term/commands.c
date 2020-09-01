@@ -506,6 +506,10 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
         struct json_object *vobj =
             json_tokener_parse(tclient->version_info);
         char *prefix = " ";
+        if (tclient->headless) {
+            fprintf(out, "headless");
+            prefix = ", ";
+        }
         if (json_print_property(out, vobj, "qtwebengine", prefix, NULL))
             prefix = ", ";
         if (json_print_property(out, vobj, "atom", prefix, NULL))

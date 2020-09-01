@@ -1107,6 +1107,7 @@ reportEvent(const char *name, char *data, size_t dlen,
 void init_tclient_struct(struct tty_client *client, struct lws *wsi)
 {
     client->initialized = 0;
+    client->headless = false;
     client->detachSaveSend = false;
     client->uploadSettingsNeeded = true;
     client->requesting_contents = 0;
@@ -1502,7 +1503,10 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             if (num > 0)
                 client->main_window = (int) num;
         }
-        const char*argval = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
+        const char*argval = lws_get_urlarg_by_name(wsi, "headless=", arg, sizeof(arg) - 1);
+        if (argval && strcmp(argval, "true") == 0)
+            client->headless = true;
+        argval = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
         if (argval != NULL) {
             lwsl_info("dummy connection (no session) established\n");
         } else {

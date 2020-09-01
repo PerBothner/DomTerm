@@ -373,7 +373,7 @@ function loadHandler(event) {
         return;
     }
     let paneParams = new URLSearchParams();
-    let copyParams = ['server-key', 'js-verbosity', 'log-to-server'];
+    let copyParams = ['server-key', 'js-verbosity', 'log-to-server', 'headless'];
     for (let i = copyParams.length;  --i >= 0; ) {
         let pname = copyParams[i];
         let pvalue = params.get(pname);

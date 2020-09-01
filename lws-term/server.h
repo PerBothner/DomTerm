@@ -189,6 +189,7 @@ struct tty_client {
     // 1: reconnecting - client has state, but connection was dropped
     int initialized : 3;
 
+    bool headless;
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
     int main_window; // 0 if top-level, or number of main window
