@@ -973,6 +973,21 @@ on the current window's width/height ratio.
 @item @code{--tab}
 Create new tab.
 
+@item @code{--headless}
+Create an ``invisible'' (hidden) browser window.
+This runs all the regular display logic except actually displaying on
+a screen.  This (experimental) feature is useful for testing
+(of DomTerm or of other applications).
+It is also useful as a backup of the display in case of network disconnect.
+(The headless server runs on the same remote computer as the session.)
+
+You should use the @code{command.headless} setting to specify the
+command to run the headless browser.
+This can be any command that can take a URL argument (using with a @code{%U} pattern that is filled in by @code{domterm}).
+Alternatively, you can use @code{--headless} with either
+@code{--qt} or @code{--electron} to use the Qt or Electron frontends
+in headless mode.
+
 @item @code{--detached}
 When creating a new session, it is detached, without a window.
 @end table
@@ -1432,7 +1447,7 @@ one of @code{true}, @code{yes}, or @code{on}
 enable the preference;
 one of @code{false}, @code{no}, or @code{off}  disable the preference.
 
-@subsubheading Commmand values
+@subsubheading Command values
 
 A @var{command} is one or more arguments separate by spaces.
 Special characters (including spaces) can be protected in single quotes
@@ -1440,6 +1455,10 @@ Special characters (including spaces) can be protected in single quotes
 Escape sequences starting with backslash (see below)
 are processed within double quotes and outside quotes.
 (They are currently also processed within single quotes, but that may change.)
+
+Commands that display a session should include the pattern @code{%U}
+for URL that is filled in by the server.
+If the command does not contain a @code{%U}, it is added at the end.
 
 @subsubheading String values
 
@@ -1532,6 +1551,10 @@ Command to use for respectively @code{--firefox},
 
 The default for these is to search in the @code{PATH},
 possibly with some platform-depending knowledge of default locations.
+
+@item @code{@b{command.headless} =} @var{command}
+Command used when the @code{--headless} option requests
+an ``invisible'' (hidden) window.
 
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size and/or of new top-level windows
@@ -2129,6 +2152,18 @@ A @dfn{non-session window} displays something other than
 a DomTerm session.  The @code{domterm browse} command creates
 a non-session window that displays a specified web page.
 One use of this for is viewing documentation.
+
+Every session has a unique integer session number.
+Every window has a unique window (or connection) number.
+Normally, when a new terminal session is created a window will
+be created with the same window number as the session number.
+However, there may be detached sessions without windows,
+and (rarely) there may be sessions that use multiple windows.
+These numbers are unique with a domterm server:
+If you connect to a @ref{Remote serving,remote domterm server}
+the session numbers may be different on the local and remote end.
+Also the remote server will use a proxy connection with
+a connection number that is similar to a window number.
 
 @subheading Managing sessions
 
