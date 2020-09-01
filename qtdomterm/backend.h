@@ -58,7 +58,7 @@ public slots:
     void setSavedHtml(const QString &info) { _savedHtml = info; }
     void closeMainWindow();
     void openNewWindow(int width, int height, const QString& position,
-                       const QString& url);
+                       const QString& url, bool headless);
     void showContextMenu(const QString& contextType);
     void setSetting(const QString& key, const QString& value);
     void setClipboard(const QString& plain, const QString& html);

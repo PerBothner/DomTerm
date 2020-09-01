@@ -684,6 +684,8 @@ browser_run_browser(struct options *options, char *url,
     const char *geometry = geometry_option(options);
     if (geometry)
         json_object_object_add(jobj, "geometry", json_object_new_string(geometry));
+    if (options->headless)
+        json_object_object_add(jobj, "headless", json_object_new_boolean(1));
     const char *json_data = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
     printf_to_browser(tclient,
                       URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,

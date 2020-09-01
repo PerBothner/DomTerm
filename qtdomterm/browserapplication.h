@@ -103,7 +103,7 @@ public:
 
 public slots:
   BrowserMainWindow *newMainWindow(const QString& url, int width, int height,
-                                   const QString& position,
+                                   const QString& position, bool headless,
                                    QSharedDataPointer<ProcessOptions> processOption);
     BrowserMainWindow *newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOption);
     void quitBrowser();
@@ -126,7 +126,7 @@ private:
     QString nameTemplate;
     int nextSessionNameIndex;
     int saveFileCounter;
-    bool headless;
+    bool headlessOption;
 };
 
 #endif // BROWSERAPPLICATION_H

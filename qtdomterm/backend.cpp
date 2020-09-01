@@ -194,13 +194,13 @@ void Backend::closeMainWindow()
     webView()->webPage()->mainWindow()->close();
 }
 
-void Backend::openNewWindow(int width, int height,
-                            const QString& position, const QString& url)
+void Backend::openNewWindow(int width, int height, const QString& position,
+                            const QString& url, bool headless)
 {
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     QString xurl = url + (url.indexOf('#') < 0 ? "#" : "&") + "qtwebengine";
     BrowserApplication::instance()->newMainWindow(xurl, width, height,
-                                                  position, options);
+                                                  position, headless, options);
 }
 
 void Backend::showContextMenu(const QString& contextType)
