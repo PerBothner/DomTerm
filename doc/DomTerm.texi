@@ -1121,29 +1121,37 @@ The @code{status} command shows more information,
 including some information about each window.
 @end table
 
-@subheading Windows visibility
+@subheading Windows operations
+
+@table @asis
+@item @b{@code{window}} @var{window-specifier} ... @var{subcommand} @var{options} ...
+Do the @var{subcommand} on the windows specified by the @var{window-specifier} list.
+A @var{window-specifier} can be a window (connection) number;
+or the @code{top} specifier (all top-level windows).
+If there is no @var{window-specifier} the default depends on the @var{subcommand}; if not specified it is @code{top}.
+@end table
 
 The following operations are currently only
 implemented for the Electron front-end.
 
 @table @asis
-@item @code{window minimize}
-Minimize (iconify) all top-level windows.
+@item @b{@code{window}} @var{window-specifier} ... @b{@code{minimize}}
+Minimize (iconify) the specified top-level windows.
 The minimized windows may be still visible in the task bar,
 as an icon on the desktop, or during an ``windows expose'' operation
-@item @code{window hide}
-Hide all top-level windows.
+@item @b{@code{window}} @var{window-specifier} ... @b{@code{hide}}
+Hide the specified top-level windows.
 The hidden windows are @emph{not} visible in the task bar,
 as icons on the desktop, or during an ``windows expose'' operation
-@item @code{window show}
-Show all minimized or hidden windows.
+@item @b{@code{window}} @var{window-specifier} ... @b{@code{show}}
+Show the specified minimized or hidden windows.
 If there are no windows, create one.
-@item @code{window toggle-minimize}
+@item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-minimize}}
 Toggle between normal and minimized state:
 If a window is hidden or minimized, show it.
 If visible, minimize it.
 If there are no windows, create one.
-@item @code{window toggle-hide}
+@item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-hide}}
 Toggle between normal and hidden state:
 If a window is hidden or minimized, show it.
 If visible, hide it.
@@ -1584,9 +1592,10 @@ See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
 @item @code{@b{style.dark} =} @var{value}
 This option (if set) selects ``reverse video'', which is a color preference
 for a darker background and a ligher foreground (text).
-
-The default is @code{off}, which selects
+The default is @code{auto}, which follows the system/desktop preference
+if possible, or otherwise @code{off}, which selects
 lighter background and a darker foreground colors.
+Currently @code{auto} is only known to work on Firefox running on Gnome.
 
 @item @code{@b{style.caret} =} @var{value}
 Change the style of the caret (text input cursor).

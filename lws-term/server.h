@@ -386,10 +386,10 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (struct tty_client *VAR = (PCLIENT)->first_tclient; VAR != NULL; \
        VAR = (VAR)->next_tclient)
+#define TCLIENT_FIRST (tty_clients == NULL ? NULL : tty_clients[1])
+#define TCLIENT_NEXT(VAR) (tty_clients[VAR->connection_number+1])
 #define FORALL_WSCLIENT(VAR) \
-    for (VAR = tty_clients == NULL ? NULL : tty_clients[1];\
-         VAR != NULL;\
-         VAR = tty_clients[VAR->connection_number+1])
+    for (VAR = TCLIENT_FIRST; VAR != NULL; VAR = TCLIENT_NEXT(VAR))
 
 // These are used to delimit "out-of-band" urgent messages.
 #define URGENT_START_STRING "\023\026"

@@ -813,25 +813,71 @@ int reverse_video_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
+enum window_spec_kind {
+    w_number = 0,
+    w_top = 1,
+    w_current = 2,
+    w_current_top = 3
+};
+enum window_op_kind {
+    w_none = 0,
+    w_simple = 1
+};
+
 int window_action(int argc, char** argv, struct lws *wsi,
                          struct options *opts)
 {
     struct tty_client *wclient;
-    char *subcommand = argc >= 2 ? argv[1] : NULL;
+    int first_window_number = 1;
+    int i = first_window_number;
+    for (; i < argc; i++) {
+        char *arg = argv[i];
+        if (strcmp(arg, "top") == 0
+            || strcmp(arg, "current") == 0
+            || strcmp(arg, "current-top") == 0)
+            continue;
+        if (arg[0] == '\0')
+            break;
+        char *endptr;
+        long num = strtol(arg, &endptr, 10);
+        if (arg[0] == '\0' || *endptr)
+            break;
+        if (! VALID_CONNECTION_NUMBER(num)) {
+            printf_error(opts, "domterm window: invalid window number %d",
+                         num);
+            return EXIT_FAILURE;
+        }
+    }
+    char **wspec_start = &argv[first_window_number];
+    int wspec_count = i - first_window_number;
+    char *subcommand = argc >= i ? argv[i] : NULL;
     bool seen = false;
     char *seq = NULL;
+    enum window_op_kind w_op_kind = w_none;
+    char *default_windows = NULL;
     if (subcommand == NULL) { }
-    else if (strcmp(subcommand, "show") == 0)
+    else if (strcmp(subcommand, "show") == 0) {
+        w_op_kind = w_simple;
+        default_windows = "top";
         seq = OUT_OF_BAND_START_STRING "\033[1t" URGENT_END_STRING;
-    else if (strcmp(subcommand, "minimize") == 0)
+    } else if (strcmp(subcommand, "minimize") == 0) {
+        w_op_kind = w_simple;
+        default_windows = "top";
         seq = OUT_OF_BAND_START_STRING "\033[2t" URGENT_END_STRING;
-    else if (strcmp(subcommand, "hide") == 0)
+    } else if (strcmp(subcommand, "hide") == 0) {
+        w_op_kind = w_simple;
+        default_windows = "top";
         seq = OUT_OF_BAND_START_STRING "\033[2;72t" URGENT_END_STRING;
-    else if (strcmp(subcommand, "toggle-minimize") == 0)
+    } else if (strcmp(subcommand, "toggle-minimize") == 0) {
+        w_op_kind = w_simple;
+        default_windows = "top";
         seq = OUT_OF_BAND_START_STRING "\033[2;73t" URGENT_END_STRING;
-    else if (strcmp(subcommand, "toggle-hide") == 0)
+    } else if (strcmp(subcommand, "toggle-hide") == 0) {
+        w_op_kind = w_simple;
+        default_windows = "top";
         seq = OUT_OF_BAND_START_STRING "\033[2;74t" URGENT_END_STRING;
-    if (seq == NULL) {
+    }
+    if (w_op_kind == w_none) {
         printf_error(opts,
                      subcommand
                      ? "domterm window: unknown sub-command '%s'"
@@ -839,12 +885,47 @@ int window_action(int argc, char** argv, struct lws *wsi,
                 subcommand);
         return EXIT_FAILURE;
     }
-    FORALL_WSCLIENT(wclient) {
-        if (wclient->main_window == 0) {
-            printf_to_browser(wclient, seq);
-            lws_callback_on_writable(wclient->wsi);
+    if (wspec_count == 0) {
+        if (default_windows == NULL) {
+            printf_error(opts, "missing window specifier - required for window $s",
+                         subcommand);
+             return EXIT_FAILURE;
         }
-        seen = true;
+        wspec_start= &default_windows;
+        wspec_count = 1;
+    }
+    for (i = 0; i < wspec_count; i++) {
+        char *arg = wspec_start[i];
+        enum window_spec_kind w_spec;
+        if (strcmp(arg, "top") == 0)
+            w_spec = w_top;
+#if 0
+        else if (strcmp(arg, "current") == 0)
+            w_spec = w_current;
+        else if (strcmp(arg, "current-top") == 0)
+            w_spec = w_current_top;
+#endif
+        else {
+            w_spec = w_number;
+        }
+        struct tty_client *tclient =
+            w_spec == w_number ? tty_clients[strtol(arg, NULL, 10)]
+            : TCLIENT_FIRST;
+        for (; tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
+            bool skip = false;
+            if (w_spec == w_top || w_spec == w_current_top)
+                skip = tclient->main_window != 0;
+            if (! skip) {
+                switch (w_op_kind) {
+                default:
+                    printf_to_browser(tclient, seq);
+                    lws_callback_on_writable(tclient->wsi);
+                }
+                seen = true;
+            }
+            if (w_spec == w_number)
+                break;
+        }
     }
     if (seen)
         return EXIT_SUCCESS;
