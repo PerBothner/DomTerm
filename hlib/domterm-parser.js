@@ -1715,6 +1715,16 @@ class DTParser {
             if (code == 95)
                 term.processResponseCharacters("\x9D" + r + "\n");
             break;
+        case 97:
+            switch (text) {
+            case 'close':
+                term.close();
+                break;
+            case 'detach':
+                term.detachSession();
+                break;
+            }
+            break;
         case 102:
             DTParser.sendSavedHtml(term, term.getAsHTML(true));
             break;

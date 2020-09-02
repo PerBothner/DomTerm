@@ -876,6 +876,14 @@ int window_action(int argc, char** argv, struct lws *wsi,
         w_op_kind = w_simple;
         default_windows = "top";
         seq = OUT_OF_BAND_START_STRING "\033[2;74t" URGENT_END_STRING;
+    } else if (strcmp(subcommand, "close") == 0) {
+        w_op_kind = w_simple;
+        //default_windows = "current";
+        seq = OUT_OF_BAND_START_STRING "\033]97;close\007" URGENT_END_STRING;
+    } else if (strcmp(subcommand, "detach") == 0) {
+        w_op_kind = w_simple;
+        //default_windows = "current";
+        seq = OUT_OF_BAND_START_STRING "\033]97;detach\007" URGENT_END_STRING;
     }
     if (w_op_kind == w_none) {
         printf_error(opts,
@@ -887,7 +895,7 @@ int window_action(int argc, char** argv, struct lws *wsi,
     }
     if (wspec_count == 0) {
         if (default_windows == NULL) {
-            printf_error(opts, "missing window specifier - required for window $s",
+            printf_error(opts, "missing window specifier - required for window %s",
                          subcommand);
              return EXIT_FAILURE;
         }

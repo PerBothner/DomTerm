@@ -1129,6 +1129,12 @@ Do the @var{subcommand} on the windows specified by the @var{window-specifier} l
 A @var{window-specifier} can be a window (connection) number;
 or the @code{top} specifier (all top-level windows).
 If there is no @var{window-specifier} the default depends on the @var{subcommand}; if not specified it is @code{top}.
+@item @b{@code{window}} @var{window-specifier} ... @b{@code{close}}
+Close specified window(s), as if you clicked on the ``close'' button.
+@item @b{@code{window}} @var{window-specifier} ... @b{@code{detach}}
+Close specified window(s),
+and (assuming there are no more windows attached to the session)
+make the session detached.
 @end table
 
 The following operations are currently only
@@ -4766,6 +4772,10 @@ Send saved state to new window.
 
 @item @code{"\e]231;"} @var{jtext} @code{"\a"}
 Paste the contents of the JSON-encoded string @var{jtext}.
+
+@item @code{"\e]97;"} @var{command} @code{"\a"}
+Execute the named @var{command}.
+Currently, @code{close} and @code{detach} are allowed.
 @end table
 
 @subsubsection Command parts (shell integration)
@@ -5009,7 +5019,6 @@ If the code is @code{96}, no response is sent.
 If the code is @code{95}, the result to the client is
 @code{"\x9D"} @var{index} @code{"\n"} where @var{index}
 is the index of the replaced or created stylesheet.
-
 @end table
 
 @anchor{escapes-pretty-printing}
