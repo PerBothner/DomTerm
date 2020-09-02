@@ -1135,29 +1135,29 @@ Close specified window(s), as if you clicked on the ``close'' button.
 Close specified window(s),
 and (assuming there are no more windows attached to the session)
 make the session detached.
-@end table
 
-The following operations are currently only
-implemented for the Electron front-end.
-
-@table @asis
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{minimize}}
+@emph{(Electron and Qt only.)}
 Minimize (iconify) the specified top-level windows.
 The minimized windows may be still visible in the task bar,
 as an icon on the desktop, or during an ``windows expose'' operation
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{hide}}
+@emph{(Electron and Qt only.)}
 Hide the specified top-level windows.
 The hidden windows are @emph{not} visible in the task bar,
 as icons on the desktop, or during an ``windows expose'' operation
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{show}}
+@emph{(Electron and Qt only.)}
 Show the specified minimized or hidden windows.
 If there are no windows, create one.
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-minimize}}
+@emph{(Electron and Qt only.)}
 Toggle between normal and minimized state:
 If a window is hidden or minimized, show it.
 If visible, minimize it.
 If there are no windows, create one.
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-hide}}
+@emph{(Electron and Qt only.)}
 Toggle between normal and hidden state:
 If a window is hidden or minimized, show it.
 If visible, hide it.
@@ -4886,25 +4886,25 @@ a fresh empty line added.
 
 @table @asis
 @item @code{"\e[1t"}
-@emph{(Electron only.)} Un-minimize (de-iconify) current window.
+@emph{(Electron and Qt only.)} Un-minimize (de-iconify) current window.
 This undoes buth minimize and hide operations.
 [In xterm.]
 @item @code{"\e[2t"}
-@emph{(Electron only.)} Minimize (iconify) current window.
+@emph{(Electron and Qt only.)} Minimize (iconify) current window.
 The minimized window may be still visible in the task bar,
 as an icon on the desktop, or during an ``windows expose'' operation.
 [In xterm.]
 @item @code{"\e[2;72t"}
-@emph{(Electron only.)} Hide current window.
+@emph{(Electron and Qt only.)} Hide current window.
 The minimized window is @emph{not} visible in the task bar,
 as an icon on the desktop, or during an ``windows expose'' operation
 @item @code{"\e[2;73t"}
-@emph{(Electron only.)}
+@emph{(Electron and Qt only.)}
 Toggle between normal and minimized state:
 If hidden or minimized, show it.
 If visible, minimize it.
 @item @code{"\e[2;74t"}
-@emph{(Electron only.)}
+@emph{(Electron and Qt only.)}
 Toggle between normal and hidden state:
 If hidden or minimized, show it.
 If visible, hide it.

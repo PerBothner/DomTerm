@@ -1041,9 +1041,7 @@ class DTParser {
             var w, h;
             switch (this.getParameter(0, 0)) {
             case 1:
-                if (DomTerm.isElectron()) {
-                    electronAccess.ipcRenderer.send('window-ops', 'show', null);
-                }
+                DomTerm.windowOp('show');
                 break;
             case 2:
                 const sub = this.getParameter(1, 0);
@@ -1065,9 +1063,8 @@ class DTParser {
                     wop = 'minimize';
                     break;
                 }
-                if (wop && DomTerm.isElectron()) {
-                    electronAccess.ipcRenderer.send('window-ops', wop, null);
-                }
+                if (wop)
+                    DomTerm.windowOp(wop);
                 break;
             case 14:
                 if (this.getParameter(1, 0) == 2) {

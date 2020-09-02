@@ -56,7 +56,7 @@ public slots:
     void saveFile(const QString& html);
     void setWindowTitle(const QString& title);
     void setSavedHtml(const QString &info) { _savedHtml = info; }
-    void closeMainWindow();
+    void windowOp(const QString& opname);
     void openNewWindow(int width, int height, const QString& position,
                        const QString& url, bool headless);
     void showContextMenu(const QString& contextType);

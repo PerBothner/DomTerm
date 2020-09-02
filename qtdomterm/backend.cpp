@@ -186,12 +186,19 @@ void Backend::saveFile(const QString& html)
 
 void Backend::setWindowTitle(const QString& title)
 {
-    webView()->webPage()->mainWindow()->setWindowTitle(title);
+    webView()->mainWindow()->setWindowTitle(title);
 }
 
-void Backend::closeMainWindow()
+void Backend::windowOp(const QString& opname)
 {
-    webView()->webPage()->mainWindow()->close();
+    if (opname == "close")
+        webView()->mainWindow()->close();
+    else if (opname == "show")
+        webView()->mainWindow()->showNormal();
+    else if (opname == "hide")
+        webView()->mainWindow()->hide();
+    else if (opname == "minimize")
+         webView()->mainWindow()->showMinimized();
 }
 
 void Backend::openNewWindow(int width, int height, const QString& position,

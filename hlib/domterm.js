@@ -123,6 +123,13 @@ DomTerm.windowClose = function() {
         window.close();
 }
 
+// 'hide', 'show', 'minimize'
+DomTerm.windowOp = function(opname) {
+    if (DomTerm.isElectron()) {
+        electronAccess.ipcRenderer.send('window-ops', opname, null);
+    }
+}
+
 DomTerm._extractGeometryOptions = function(options={}) {
     if (options.width && options.height)
         return options;

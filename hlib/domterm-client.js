@@ -199,7 +199,8 @@ function setupQWebChannel(channel) {
         DomTerm.doCopy(true);
     });
     DomTerm.saveFile = function(data) { backend.saveFile(data); }
-    DomTerm.windowClose = function() { backend.closeMainWindow(); };
+    DomTerm.windowClose = function() { backend.windowOp('close'); }
+    DomTerm.windowOp = function(opname) { backend.windowOp(opname); }
     DomTerm.setTitle = function(title) {
         backend.setWindowTitle(title == null ? "" : title); };
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
