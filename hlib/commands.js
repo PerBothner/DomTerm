@@ -177,7 +177,11 @@ cmd('cut-text',
         return true; });
 cmd('backward-char',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "move", "char");
+        dt.editorBackspace(dt.numericArgumentGet(), "move", "char", "input");
+        return true; });
+cmd('backward-char-focus',
+    function(dt, key) {
+        dt.editorBackspace(dt.numericArgumentGet(), "move-focus", "char", "buffer");
         return true; });
 cmd('backward-word',
     function(dt, key) {
@@ -185,7 +189,11 @@ cmd('backward-word',
         return true; });
 cmd('forward-char',
     function(dt, key) {
-        dt.editorBackspace(- dt.numericArgumentGet(), "move", "char");
+        dt.editorBackspace(- dt.numericArgumentGet(), "move", "char", "input");
+        return true; });
+cmd('forward-char-focus',
+    function(dt, key) {
+        dt.editorBackspace(- dt.numericArgumentGet(), "move-focus", "char", "buffer");
         return true; });
 cmd('forward-word',
     function(dt, key) {
@@ -309,14 +317,7 @@ cmd('down-line-extend',
     });
 cmd('toggle-mark-mode',
     function(dt, key) {
-        let cl = dt.topNode.classList;
-        if (dt._markMode) {
-            dt._markMode = false;
-            cl.remove('markmode');
-        } else {
-            dt._markMode = true;
-            cl.add('markmode');
-        }
+        dt.setMarkMode('toggle');
         return true;
     });
 cmd('swap-focus-anchor',

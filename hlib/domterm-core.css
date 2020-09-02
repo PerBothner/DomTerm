@@ -70,10 +70,12 @@ span.pprint-indent {
 
 div.domterm span.focus-caret {
     position: relative;
+    --focus-color: #f04080;
 }
 div.domterm span.focus-caret span {
     position: absolute;
     top: 0px; bottom: 0px;
+    user-select: all
 }
 
 /* Doesn't seem to work on Chrome */
