@@ -408,8 +408,17 @@ DomTermLayout.initialize = function() {
     DomTermLayout.manager.init();
     DomTermLayout.manager.on('activeContentItemChanged',
                              activeContentItemHandler);
-    DomTermLayout.manager.root.element[0]
-        .addEventListener('click', checkClick, false);
+    let root = DomTermLayout.manager.root.element[0];
+    root.addEventListener('click', checkClick, false);
+    root.addEventListener('mousedown',
+                          function (ev) {
+                              for (let p = ev.target; p; p = p.parentNode) {
+                                  if (p.classList.contains("lm_header")) {
+                                      ev.preventDefault();
+                                      return;
+                                  }
+                              }
+                          }, false);
     DomTermLayout.manager.on('stateChanged',
                              function() {
                                  let item = DomTermLayout._oldFocusedItem;
