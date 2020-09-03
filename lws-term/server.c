@@ -1079,15 +1079,11 @@ int process_options(int argc, char **argv, struct options *opts)
             }
                 break;
             case CHROME_OPTION:
-            case CHROME_APP_OPTION: {
-                const char *cbin = chrome_command(c == CHROME_APP_OPTION, opts);
-                if (cbin == NULL) {
-                    fprintf(stderr, "neither chrome or google-chrome command found\n");
-                    exit(-1);
-                }
-                opts->browser_command = cbin;
+                opts->browser_command = "--chrome";
                 break;
-            }
+            case CHROME_APP_OPTION:
+                opts->browser_command = "--chrome-app";
+                break;
             case QTDOMTERM_OPTION:
                 opts->browser_command = "--qtwebengine";
                 break;
