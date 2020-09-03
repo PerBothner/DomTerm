@@ -3871,11 +3871,9 @@ Terminal.prototype._mouseHandler = function(ev) {
     if (DomTerm.verbosity >= 2)
         this.log("mouse event "+ev.type+": "+ev+" t:"+this.topNode.id+" pageX:"+ev.pageX+" Y:"+ev.pageY+" mmode:"+this.sstate.mouseMode+" but:"+ev.button+" alt:"+ev.altKey);
 
-    if (ev.type == "mousedown" && ev.button == 2 && DomTerm.usingJsMenus) {
-        // Avoids clearing selection.  Helps on Chrome, at least.
+    // Avoids clearing selection.  Helps on Chrome, at least.
+    if (ev.type == "mousedown" && ev.button == 2)
         ev.preventDefault();
-        return;
-    }
     this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
     let selState = this._mouseSelectionState;
@@ -3914,10 +3912,6 @@ Terminal.prototype._mouseHandler = function(ev) {
         && this.topNode.scrollTop+this.availHeight >= this._vspacer.offsetTop)
             this._pauseContinue();
     */
-
-    if (ev.shiftKey || ev.target == this.topNode || this.sstate.mouseMode == 0
-        || this._pagingMode || this.isLineEditing())
-        return;
 
     if (ev.shiftKey || ev.target == this.topNode || ! this.mouseReporting())
          return;
