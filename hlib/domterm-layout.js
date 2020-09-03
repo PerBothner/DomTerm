@@ -412,7 +412,8 @@ DomTermLayout.initialize = function() {
     root.addEventListener('click', checkClick, false);
     root.addEventListener('mousedown',
                           function (ev) {
-                              for (let p = ev.target; p; p = p.parentNode) {
+                              for (let p = ev.target; p instanceof Element;
+                                   p = p.parentNode) {
                                   if (p.classList.contains("lm_header")) {
                                       ev.preventDefault();
                                       return;

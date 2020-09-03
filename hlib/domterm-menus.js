@@ -159,7 +159,7 @@ DomTerm.createMenus = function(options) {
                                 click: DomTerm.showAboutMessage});
     const openLinkItem = menuItem({label: 'Open Link',
                                    click: function(mitem, bwin, ev) {
-                                       DomTerm.handleLink(DomTerm._contextLink);
+                                       DomTerm.handleLink();
                                    }});
     const copyLinkItem = menuItem({label: 'Copy Link Address',
                                    click: function(mitem, bwin, ev) {
@@ -293,6 +293,7 @@ DomTerm.createMenus = function(options) {
     DomTerm.savedMenuBar = menuBar;
 
     DomTerm.showContextMenu = function(options) {
+        DomTerm._contextOptions = options;
         const mode = options.inputMode;
         if (mode) {
             charModeItem.checked = mode == 99;

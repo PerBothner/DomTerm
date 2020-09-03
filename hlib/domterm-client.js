@@ -132,8 +132,6 @@ DomTerm.handleSimpleMessage = function(command) {
         DomTerm.saveWindowContents();  //or maybe DomTerm.detach();
     else if (command=="destroy-window")
         dt.reportEvent("destroy-window", "");
-    else if (command=="open-link")
-        DomTerm.handleLink(DomTerm._contextLink);
     else if (command=="copy-link-address")
         DomTerm.copyLink();
     else if (command=="copy")
@@ -524,6 +522,8 @@ function handleMessage(event) {
         DomTerm.valueToClipboard(data.args[0]);
     } else if (data.command=="copy-selection") { // message to child
         DomTerm.doCopy(data.args[0]);
+    } else if (data.command=="open-link") { // message to child
+        DomTerm.handleLink(data.args[0]);
     } else if (data.args.length == 0) {
         DomTerm.handleSimpleMessage(data.command);
     } else

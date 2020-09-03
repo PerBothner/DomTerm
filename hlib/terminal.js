@@ -3148,16 +3148,26 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
                                  dt._mouseSelectionState = -1;
                              }, false);
     function handleContextMenu(e) {
-        if (dt.sstate.mouseMode != 0
-            || (DomTerm.showContextMenu
-                && ! e.shiftKey
-                && DomTerm.showContextMenu({"contextType":
-                                            DomTerm._contextLink?"A":"",
-                                            "inputMode": dt.getInputMode(),
-                                            "autoPaging": dt._autoPaging,
-                                            "clientX": e.clientX,
-                                            "clientY": e.clientY })))
+        if (dt.sstate.mouseMode != 0)
             e.preventDefault();
+        else if (DomTerm.showContextMenu && ! e.shiftKey) {
+            let opts = {inputMode: dt.getInputMode(),
+                        autoPaging: dt._autoPaging,
+                        clientX: e.clientX, clientY: e.clientY };
+            let link = DomTerm._isInElement(e.target, "A");
+            if (link) {
+                opts.contextType = "A";
+                opts.href = link.getAttribute("href");
+                let range = document.createRange();
+                range.selectNodeContents(link);
+                opts.contentValue = {
+                    text: Terminal._rangeAsText(range),
+                    html: Terminal._rangeAsHTML(range)
+                };
+            }
+            if (DomTerm.showContextMenu(opts))
+                e.preventDefault();
+        }
     }
     this.topNode.addEventListener("contextmenu", handleContextMenu, false);
 
@@ -3487,7 +3497,9 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                                          if (! n.classList.contains("plain")
                                              || e.ctrlKey) {
                                              e.preventDefault();
-                                             DomTerm.handleLink(n);
+                                             DomTerm.handleLinkRef(n.getAttribute("href"),
+                                                                   n.textContent, dt);
+
                                          }
                                          return;
                                      }
@@ -3901,10 +3913,6 @@ Terminal.prototype._mouseHandler = function(ev) {
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
         this.maybeFocus();
-    }
-    if (this.sstate.mouseMode == 0 && ev.button == 2) {
-        DomTerm._contextTarget = ev.target;
-        DomTerm._contextLink = DomTerm._isInElement(ev.target, "A");
     }
     /*
     if (ev.type == "mouseup" && this.sstate.mouseMode == 0
@@ -5124,14 +5132,14 @@ DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
         dt.reportEvent("LINK", JSON.stringify(obj));
 }
 
-DomTerm.handleLink = function(element) {
-    if (DomTerm.dispatchTerminalMessage("open-link"))
+DomTerm.handleLink = function(options=DomTerm._contextOptions) {
+    if (DomTerm.dispatchTerminalMessage("open-link", options))
         return;
-    let dt = DomTerm._getAncestorDomTerm(element);
-    if (! dt)
-        return;
-    DomTerm.handleLinkRef(element.getAttribute("href"),
-                          element.textContent, dt);
+    let dt = DomTerm.focusedTerm;
+    if (dt && options && options.href) {
+        let contents = options.contentValue &&  options.contentValue.text;
+        DomTerm.handleLinkRef(options.href, contents, dt);
+    }
 }
 DomTerm.handleLinkRef = function(href, textContent, dt) {
     if (href.startsWith('#'))
@@ -7721,36 +7729,20 @@ Terminal.prototype.pasteText = function(str) {
     }
 };
 
-DomTerm.copyLink = function(element=DomTerm._contextLink) {
-    if (element instanceof Element) {
-        let href = element.getAttribute("href");
-        if (href)
-            DomTerm.copyText(href);
-    }
-}
-DomTerm.copyText = function(str) {
-    var container = document.firstElementChild.lastChild;
-    var element = document.createElement("span");
-    element.appendChild(document.createTextNode(str));
-    element.setAttribute("style", "position: fixed");
-    container.appendChild(element);
-    DomTerm.copyElement(element);
-    container.removeChild(element);
+DomTerm.copyLink = function(options=DomTerm._contextOptions) {
+    let href = options && options.href;
+    if (href)
+        DomTerm.copyText(href);
 }
 
-DomTerm.copyElement = function(element=DomTerm._contextLink) {
-    var selection = window.getSelection();
-    var range = document.createRange();
-    range.selectNodeContents(element);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    DomTerm.doCopy();
-    selection.removeAllRanges();
+DomTerm.copyText = function(str) {
+    return DomTerm.valueToClipboard({ text: str, html: "" });
 }
 
 DomTerm.doContextCopy = function() {
-    if (DomTerm._contextLink && window.getSelection().isCollapsed)
-        DomTerm.copyElement();
+    let contentValue = DomTerm._contextOptions && DomTerm._contextOptions.contentValue;
+    if (contentValue && window.getSelection().isCollapsed)
+        DomTerm.valueToClipboard(contentValue);
     else
         DomTerm.doCopy();
 }
