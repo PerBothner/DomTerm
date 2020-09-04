@@ -2122,6 +2122,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                             n = read(pclient->pty, data_start-1, avail+1);
                             lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d a\n",
                                       pclient->pty, pclient->session_number, (long) n, tclient->connection_number);
+                            if (n == 0)
+                                return -1;
                             char pcmd = data_start[-1];
                             data_start[-1] = save_byte;
 #if TIOCPKT_IOCTL
@@ -2148,9 +2150,11 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
 #endif
                         } else {
                             n = read(pclient->pty, data_start, avail);
-                            lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d b\n",
+                            lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d\n",
                                       pclient->pty, pclient->session_number,
                                       (long) n, tclient->connection_number);
+                            if (n == 0)
+                                return -1;
                             read_length = n;
                         }
                         data_length += read_length;
@@ -2193,10 +2197,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             FOREACH_WSCLIENT(tclient, pclient) {
                 lwsl_notice("- pty close conn#%d proxy_fd:%d\n", tclient->connection_number, tclient->proxy_fd_in);
                 if (tclient->proxy_fd_in >= 0) {
-#if PASS_STDFILES_UNIX_SOCKET
-//                    printf_to_browser(tclient, "%c",
-//                                      WEXITSTATUS(status));
-#else
+#if !PASS_STDFILES_UNIX_SOCKET
                     printf_to_browser(tclient, "%c%c",
                                       PASS_STDFILES_EXIT_CODE,
                                       WEXITSTATUS(status));
