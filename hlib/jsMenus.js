@@ -103,19 +103,19 @@ class Menu {
 		this.node = menuNode;
 		Menu._currentMenuNode = menuNode;
 
+		let top = Menu.contextMenuParent || document.body;
 		if(this.node.parentNode) {
 			if(menuNode === this.node) return;
 			this.node.parentNode.replaceChild(menuNode, this.node);
 		} else {
-			let el = Menu.contextMenuParent || document.body;
-			el.appendChild(this.node);
+			top.appendChild(this.node);
 		}
 
 		let width = menuNode.clientWidth;
 		let height = menuNode.clientHeight;
-		let wwidth = window.innerWidth;
+		let wwidth = top.offsetWidth;
 
-		if((x + width) > wwidth) {
+		if ((x + width) > wwidth) {
 			setRight = true;
 			if(submenu && ! menubarSubmenu) {
 				x = wwidth - itemNode.parentNode.offsetLeft + 2;
@@ -128,8 +128,9 @@ class Menu {
 			}
 		}
 
-		if((y + height) > window.innerHeight) {
-			y = window.innerHeight - height;
+		let wheight = top.offsetHeight;
+		if((y + height) > wheight) {
+			y = wheight - height;
 		}
 
 		if(!setRight) {
