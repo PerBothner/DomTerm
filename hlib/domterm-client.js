@@ -22,6 +22,7 @@ DomTerm.usingJsMenus = function() {
 // - Performance (extra overhead).
 // - jsMenus has problems, especially when mouse leaves the menu.
 //   (A click should popdown menus, but doesn't. Keyboard navigation breaks.)
+//   Also keyboard event in an iframe go to the iframe
 // - When using jsMenus with most deskop browsers, menu Copy doesn't work;
 //   it does work when !useIFrame. (Menu Paste doesn't work either way.)
 // - Popout-window buttons don't work.

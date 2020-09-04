@@ -3537,18 +3537,29 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
 };
 
 /* If browsers allows, should re-size actual window instead. FIXME */
-Terminal.prototype.forceWidthInColumns = function(numCols) {
+Terminal.prototype.forceWidthInColumns = function(numCols, numRows = -1) {
+    const topNode = this.topNode;
+    const ruler = this._rulerNode;
     if (numCols <= 0) {
-        this.topNode.style.width = "";
+        topNode.style.width = "";
     } else {
         // FIXME add sanity check?
-        var ruler = this._rulerNode;
-        var charWidth = ruler.offsetWidth/26.0;
+        let charWidth = ruler.offsetWidth/26.0;
         // Add half a column for rounding issues - see comment in measureWindow
-        var width = (numCols + 0.5) * charWidth + this.rightMarginWidth
-            + (this.topNode.offsetWidth - this.topNode.clientWidth);
-        var topNode = this.topNode;
+        let width = (numCols + 0.5) * charWidth + this.rightMarginWidth
+            + (topNode.offsetWidth - topNode.clientWidth);
         topNode.style.width = width+"px";
+    }
+    if (numRows <= 0) {
+        topNode.style.height = "";
+    } else {
+        let charHeight = ruler.offsetHeight;
+        // Add half a column for rounding issues - see comment in measureWindow
+        let height = (numRows + 0.5) * charHeight
+            + (topNode.offsetHeight - topNode.clientHeight);
+        topNode.style.height = height+"px";
+    }
+    if (numCols > 0 || numRows > 0) {
         window.addEventListener("resize", this._unforceWidthInColumns, true);
         this.measureWindow();
         this.eraseDisplay(2);

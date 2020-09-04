@@ -991,6 +991,8 @@ class DTParser {
             if (this._flagChars.indexOf('!') >= 0) {
                 // Soft terminal reset (DECSTR)
                 term.resetTerminal(false, false);
+            } else if (this._flagChars.indexOf('"') >= 0) {
+                // Set conformance level (DECSCL)
             }
             break;
         case 113 /*'q'*/:
@@ -1035,83 +1037,95 @@ class DTParser {
                         = this.get_DEC_private_mode(param);
                 }
                 break;
+            } else if (this._flagChars == '') {
+                term.saveCursor();
             }
             break;
         case 116 /*'t'*/: // Xterm window manipulation.
-            var w, h;
-            switch (this.getParameter(0, 0)) {
-            case 1:
-                DomTerm.windowOp('show');
-                break;
-            case 2:
-                const sub = this.getParameter(1, 0);
-                let wop = null;
-                switch (sub) {
-                case 72:
-                    wop = 'hide';
+            if (this._flagChars == '') { // Window manipulation (XTWINOPS)
+                let w, h;
+                switch (this.getParameter(0, 0)) {
+                case 1:
+                    DomTerm.windowOp('show');
                     break;
-                case 73:
-                case 74:
-                    if (document.hidden)
-                        wop = 'show';
-                    else if (sub == 73)
-                        wop = 'minimize';
-                    else
+                case 2:
+                    const sub = this.getParameter(1, 0);
+                    let wop = null;
+                    switch (sub) {
+                    case 72:
                         wop = 'hide';
+                        break;
+                    case 73:
+                    case 74:
+                        if (document.hidden)
+                            wop = 'show';
+                        else if (sub == 73)
+                            wop = 'minimize';
+                        else
+                            wop = 'hide';
+                        break;
+                    default:
+                        wop = 'minimize';
+                        break;
+                    }
+                    if (wop)
+                        DomTerm.windowOp(wop);
                     break;
-                default:
-                    wop = 'minimize';
+                case 8: // Resize text area to given height and width in chars
+                    h = this.getParameter(1, term.numRows);
+                    w = this.getParameter(2, term.numColumns);
+                    term.forceWidthInColumns(w, h);
+                    break;
+                case 14:
+                    if (this.getParameter(1, 0) == 2) {
+                        w = window.outerWidth;
+                        h = window.outerHeight;
+                    } else {
+                        w = term.availWidth;
+                        h = term.availHeight;
+                    }
+                    term.processResponseCharacters("\x1B[4;"+Math.trunc(h)
+                                                   +";"+Math.trunc(w)+"t");
+                    break;
+                case 18: // Report the size of the text area in characters.
+                    term.processResponseCharacters("\x1B[8;"+term.numRows
+                                                   +";"+term.numColumns+"t");
+                    break;
+                case 22:  // save the window's title(s) on stack
+                    {
+                        const kind = this.getParameter(1, 0);
+                        const old = term.sstate.save_title;
+                        let wName = kind == 1 && old ? old.windowName
+                            : term.sstate.windowName;
+                        let iName = kind == 2 && old ? old.iconName
+                            : term.sstate.iconName;
+                        term.sstate.save_title = {
+                            windowName: term.sstate.windowName,
+                            iconName: term.sstate.iconName,
+                            next: old
+                        };
+                    }
+                    break;
+                case 23: // restore the window's title(s) from stack
+                    let stitle = term.sstate.save_title;
+                    if (stitle) {
+                        const kind = this.getParameter(1, 0);
+                        if (kind == 0 || kind == 2)
+                            term.sstate.windowName = stitle.windowName;
+                        if (kind == 0 || kind == 1)
+                            term.sstate.iconName = stitle.iconName;
+                        term.sstate.save_title = stitle.next;
+                        term.updateWindowTitle();
+                    }
                     break;
                 }
-                if (wop)
-                    DomTerm.windowOp(wop);
-                break;
-            case 14:
-                if (this.getParameter(1, 0) == 2) {
-                    w = window.outerWidth;
-                    h = window.outerHeight;
-                } else {
-                    w = term.availWidth;
-                    h = term.availHeight;
-                }
-                term.processResponseCharacters("\x1B[4;"+Math.trunc(h)
-                                               +";"+Math.trunc(w)+"t");
-                break;
-            case 18: // Report the size of the text area in characters.
-                term.processResponseCharacters("\x1B[8;"+term.numRows
-                                               +";"+term.numColumns+"t");
-                break;
-            case 22:  // save the window's title(s) on stack
-                {
-                    const kind = this.getParameter(1, 0);
-                    const old = term.sstate.save_title;
-                    let wName = kind == 1 && old ? old.windowName
-                        : term.sstate.windowName;
-                    let iName = kind == 2 && old ? old.iconName
-                        : term.sstate.iconName;
-                    term.sstate.save_title = {
-                        windowName: term.sstate.windowName,
-                        iconName: term.sstate.iconName,
-                        next: old
-                    };
-                }
-                break;
-            case 23: // restore the window's title(s) from stack
-                let stitle = term.sstate.save_title;
-                if (stitle) {
-                    const kind = this.getParameter(1, 0);
-                    if (kind == 0 || kind == 2)
-                        term.sstate.windowName = stitle.windowName;
-                    if (kind == 0 || kind == 1)
-                        term.sstate.iconName = stitle.iconName;
-                    term.sstate.save_title = stitle.next;
-                    term.updateWindowTitle();
-                }
-                break;
             };
             break;
         case 117 /*'u'*/:
             switch (this.getParameter(0, 0)) {
+            case 0: // Restore cursor (SCORC)
+                term.restoreCursor();
+                break;
             case 11:
                 this.controlSequenceState = DTParser.SEEN_ERROUT_END_STATE;
                 break;
