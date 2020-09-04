@@ -8170,8 +8170,7 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
         this.resetCursorCache();
     } else if (passwordField) {
         this.sstate.hiddenText = undefined;
-        while (oldInput.firstChild)
-            oldInput.removeChild(oldInput.firstChild);
+        oldInput.parentNode.removeChild(oldInput);
         if (this.outputContainer == oldInput)
             this.outputBefore = null;
     } else {
