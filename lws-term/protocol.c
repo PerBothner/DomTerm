@@ -229,8 +229,9 @@ printf_to_browser(struct tty_client *tclient, const char *format, ...)
 
 // Unlink wsi from pclient's list of client_wsi-s.
 static void
-unlink_tty_from_pty_only(struct pty_client *pclient,
-                    struct lws *wsi, struct tty_client *tclient) {
+unlink_tty_from_pty(struct pty_client *pclient,
+                    struct lws *wsi, struct tty_client *tclient)
+{
     lwsl_notice("unlink_tty_from_pty_only p:%p w:%p t:%p\n", pclient, wsi, tclient);
     for (struct tty_client **pt = &pclient->first_tclient; *pt != NULL; ) {
         struct tty_client **nt = &(*pt)->next_tclient;
@@ -242,17 +243,12 @@ unlink_tty_from_pty_only(struct pty_client *pclient,
         }
         pt = nt;
     }
-}
-
-static void
-unlink_tty_from_pty(struct pty_client *pclient,
-                    struct lws *wsi, struct tty_client *tclient) {
-    unlink_tty_from_pty_only(pclient, wsi, tclient);
-    // FIXME reclaim memory cleanup for tclient
     struct tty_client *first_tclient = pclient->first_tclient;
-    if (first_tclient == NULL && pclient->detach_count == 0) {
+    if ((tclient->proxyMode != proxy_command_local && first_tclient == NULL && pclient->detach_count == 0)
+        || tclient->proxyMode == proxy_display_local) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
+
     // If only one client left, do detachSaveSend
     if (first_tclient != NULL) {
         if (first_tclient->next_tclient == NULL) {
@@ -286,7 +282,7 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
     free(tclient->ssh_connection_info);
     tclient->ssh_connection_info = NULL;
     if (pclient != NULL)
-        unlink_tty_from_pty_only(pclient, wsi, tclient);
+        unlink_tty_from_pty(pclient, wsi, tclient);
 }
 
 static void
@@ -1223,7 +1219,9 @@ handle_input(struct lws *wsi, struct tty_client *client,
                     *name_end = save_name_end;
                     *eol = save_data_end;
                     continue;
-                }
+                } else if (proxyMode == proxy_remote
+                           && strcmp(cname, "CLOSE-SESSION") == 0)
+                    return -1;
             } else {
                 break;
             }
@@ -1441,8 +1439,6 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                 }
                 tclient->out_wsi = NULL;
                 maybe_daemonize();
-                ////tty_client_destroy(wsi, tclient);
-                //unlink_tty_from_pty_only(tclient->pclient, wsi, tclient);
 #if PASS_STDFILES_UNIX_SOCKET
                 close_local_proxy(pclient, 0);
 #endif
