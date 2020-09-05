@@ -70,7 +70,7 @@ span.pprint-indent {
 
 div.domterm span.focus-caret {
     position: relative;
-    --focus-color: #f04080;
+    --focus-color: purple;
 }
 div.domterm span.focus-caret span {
     position: absolute;
