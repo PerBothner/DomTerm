@@ -973,6 +973,7 @@ on the current window's width/height ratio.
 @item @code{--tab}
 Create new tab.
 
+@anchor{Headless mode}
 @item @code{--headless}
 Create an ``invisible'' (hidden) browser window.
 This runs all the regular display logic except actually displaying on
@@ -990,6 +991,10 @@ in headless mode.
 
 @item @code{--detached}
 When creating a new session, it is detached, without a window.
+
+@item @code{--browser-pipe}
+@emph{(Internal use.)} Proxy input and output,
+usually over an @code{ssh} connection.
 @end table
 
 @subheading Miscellaneous commands
@@ -1568,7 +1573,7 @@ possibly with some platform-depending knowledge of default locations.
 
 @item @code{@b{command.headless} =} @var{command}
 Command used when the @code{--headless} option requests
-an ``invisible'' (hidden) window.
+an ``invisible'' @ref{Headless mode,headless} window.
 
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size and/or of new top-level windows
@@ -2051,7 +2056,7 @@ See @uref{https://github.com/PerBothner/theia,this fork}.
 @chapter Remote serving
 
 To run a shell or command on a remote computer you
-can of course run the@code{ssh} command in DomTerm window.
+can of course run the @code{ssh} command in a DomTerm window.
 This works, but has some limitation, most notably there is no
 persistent session on the remote server if the connection fails.
 Various tools can be used to provide persistence, but
@@ -2059,11 +2064,17 @@ DomTerm provides integrated functionality.
 
 One option is to use a web browser to connect to DomTerm
 as a web server running on the remote host.  This works best
-if you want to set up a public-acessible service.
+if you want to set up a public-accessible service.
 Alternatively, DomTerm can run as a layer on top of ssh;
 that is usually easier to use and set up.
 
-@subheading Remoting over ssh (experimental)
+@menu
+Remoting over ssh::
+Web serving::
+@end menu
+
+@node Remoting over ssh
+@section Remoting over ssh
 
 The command syntax:
 @example
@@ -2076,7 +2087,155 @@ then the session will be displayed in a local window,
 as specified by the optional @var{browser-specifier}.  For example.
 if the latter is @code{--tab}, a new tab will be created in the current window.
 
-@subsubheading Build domterm for a server
+Note each sub-window is independent and can be local
+or connected to different remote server.
+
+This mechanism does not require any superuser access, network ports/servers,
+or credential/security management beyond those used by standard @code{ssh}.
+
+@ref{Architecture remote over ssh,Here} is a summary of how it works.
+
+@subheading Local vs remote state
+
+When you create a remote connection, there are distinct servers running
+on the local machine vs the remote machine.
+Suppose you have a local window and you create a remote session
+as a sub-window:
+@example
+domterm --below @@192.168.1.55
+@end example
+The if you run the @code{domterm status} it tells you about the local session
+(session 1) and the remote session (session 2 on @code{192.168.1.55}):
+@example
+Window 1:  qtwebengine: 5.6.1, chrome: 45.0.2454.101
+  session#1: pid: 5287, tty: /dev/pts/2
+  session#2: ssh to remote @@192.168.1.55
+@end example
+You can also see the status of the remote server
+using @code{domterm @@192.168.1.55 status}.
+Note that what the local server thinks of
+as session 2 is a proxy for session 1 on the remote server:
+@example
+Connection 1 via ssh from 192.168.1.58
+  session#1: pid: 6464, tty: /dev/pts/1
+@end example
+
+@subheading Attaching and detaching
+
+It you detach from a remote session,
+the session will be detached on the remote end,
+while the local server will remove all state from its end.
+
+Later you can connect to a detached session @var{number} on @var{host}:
+@example
+domterm @@@var{host} attach :@var{number}
+@end example
+Note that the @var{number} is the session number as managed by the remote
+server.  This may be different from the local session number
+that the session had before you detached it.  To find out which
+sessions have been detached on @var{host} you can ask
+the remote server for its status, including detached sessions:
+@example
+domterm @@@var{host} status
+@end example
+
+@subheading Slow connections
+
+Normally terminal interaction sends each character (keystroke)
+individually to the remove server, and the process on the remote
+server will respond with terminal escape sequence to update the
+display to match what you typed.  This called echo.
+This can be annoying if the round-trip time is noticable.
+
+To alleviate this, DomTerm predicts echo from certain key-presses,
+based on what it @emph{expects} the remote server to do.
+This is done for regular characters (which are inserted),
+left and right arrow (move caret), Backspace (delete previous character),
+and Delete (delete following character).
+This predication is shown with a gray background to indicate it
+is @emph{tentative}.
+After a while (controllable by the @code{predicted-input-timeout} setting),
+if the predicated echo does not happen, DomTerm will undo its predication.
+You should set @code{predicted-input-timeout} to be longer than
+the typical round-trip time; the default is 0.4 seconds.
+
+For example suppose you type @code{A},
+then @code{B}, the @code{C}. DomTerm tentatively inserts @code{ABC}.
+Then it receives echo to insert @code{AB}.
+First, DomTerm removes the prediction, and performs whatever updates
+have been requested.  Then DomTerm compared the resulting line with what
+it predicted.  It sees that the current display corresponds to echo
+of @code{A}, and @code{B}, but not @code{C}.  It therefore updates
+the display to show a predicted tentative @code{C}.
+
+Another way to deal with a slow connection is to switch to
+@ref{Input line editing,line-editing mode}.  Then you can compose
+an input line (or even multiple input lines) completely locally,
+before you type @kbd{@key{Enter}} to send the line(s) to the server.
+You can switch back and forth as much as it is convenient,
+even in the middle of a line.  If you have a partial input line
+(by default shown with a green border), and then switch to
+regular character mode, the partial line is converted to
+a predicated insertion and then sent to the server
+(which will normally echo it).
+
+@subheading Dealing with connection loss
+
+When connecting over a network, there is always the issue
+of how to deal with temporary or permanent connection failure.
+Also, what happens if your local laoptop dies (runs out of power or
+is re-booted) or you start a session using your work computer,
+and want to check on the sesssion using your home computer?
+
+DomTerm offers these strategies:
+@itemize
+@item
+In many cases, after the network freezes or you sleep either
+the local or remote computer, reconnecting happens smoothly without problems.
+The local display state will persist in the local browser process.
+@item
+Explicit detaching and re-attaching.
+If you have warning you will need to disconnect, especially if you may have
+to re-connect from a different computer or network, it is best to
+explicitly detach the session.  The local display state will be downloaded
+to and saved on the remote server.
+The remote server and user process will
+remain alive, but no resources will be needed for a browser process
+or local server state until you re-attach.
+@item
+Background headless browser.
+If you are concerned you be disconnected without warning and/or
+have to re-connect from another computer, you can create a
+duplicate @ref{Headless mode,headless} window running on the remote server.
+The session will be attached to two connections:
+The headless window on the remote server,
+and a regular display window on the local computer.
+The connections will be synchronized (as long as both are alive and connected),
+and both will have the display state.
+Even if the local computer dies, if you attach to the
+server, it can request the needed display state from the headless window.
+
+It is planned (but not yet implemented)
+to have an option to automatically create the background headless window.
+@end itemize
+
+@subheading Sharing sessions (experimental)
+
+Multiple people can attach to the same remote session, assuming
+they all have ssh login access to the remote computer.
+
+For security reasons, it is probably best to create a separate user
+identity for shared sessions.  Using Unix user groups may also
+be practical but hasn't been explored.
+It would also be useful to be able to grant some users
+read-only access and some modification acess (to allow user input).
+This should be dynamically switchable a session owner.
+
+In addtion to security, there are practical issues to resolve,
+such as what happens when different users have their windows
+set to different widths.
+
+@subheading Build domterm for a server
 
 If the @code{domterm} command is not installed on your remote server,
 build DomTerm as shown (on a compatible platform).
@@ -2100,7 +2259,8 @@ After that you should be able to connect from your local machine using the @code
 domterm command.remote-domterm=@var{remote_dir}/DT/bin/domterm @var{remote_user}@@@var{remote_host} [@var{command}]
 @end example
 
-@subheading DomTerm as a web server
+@node Web serving
+@section Web serving
 
 To start DomTerm as a web server, run the @code{domterm} command
 with the @code{--port} option.
@@ -2110,10 +2270,8 @@ with the @code{--ssl} option - see below.
 It is of course possible to run the @code{ssh} command from a
 DomTerm session, but that does not provide a persistent session on
 the remote server if the connection fails.
-There are plans to be able to connect over ssh to a remote domterm server,
-but that is not yet implemented.
 
-@subsubheading Using https
+@subheading Using https
 
 To use https you need a certificate.
 
@@ -5527,6 +5685,73 @@ a `class` attribute (for example `green-foreground-style` and
 `underlined-style`).  A default stylesheet can map each style class to
 the correspoding CSS rules.  This has the advantage that one could
 override the highlighting appearance with a custom style sheet.
+
+@anchor{Architecture remote over ssh}
+@subsection Remote connection over ssh
+
+The support for remote connections is relatively thin
+layering on top of @uref{https://www.ssh.com/ssh/,ssh}.
+When you type:
+@example
+domterm @var{user}@@@var{host} @var{command}
+@end example
+it basically translates to:
+@example
+ssh @var{user}@@@var{host} domterm --browser-pipe @var{command}
+@end example
+
+All connection setup and logging in are handled by @code{ssh}.
+If you do a command like:
+@example
+domterm @var{user}@@@var{host} status
+@end example
+this will run @code{domterm --browser-pipe status} on the @var{host}.
+In this case the @code{--browser-pipe} option is irrelevant:
+Output from the command will be printed on standard output
+which @code{ssh} then sends back to the local @code{domterm},
+which prints in on the local terminal.
+
+If the command creates a window, things get more interesting.  For example:
+@example
+domterm --qt @var{user}@@@var{host} attach :1
+@end example
+Again, @code{ssh} will execute @code{domterm --browser-pipe attach :1}
+on the remote @var{host}.  This will attach to existing session 1.
+Then, when @code{domterm} would normally create a a new window,
+it sees the @code{--browser-pipe}.  It prints a special escape character,
+which is sent back to the local @code{domterm} server, which switches
+from command-proxy mode to display-proxy mode, opening up a window.
+(A Qt window because of the @code{--qt} option.)
+In display-proxy mode, characters and other events from the window
+are written to the input of the @code{ssh} process,
+while output from the remote user process are sent
+via the remote domterm server over ssh to the local domterm server,
+which displays them in the window.
+
+@example
+            ┌─────────────────────────────────────┐
+ Front-end  │  Window, input devices (keyboard)   │
+            ├─────────────────────────────────────┤
+            │  Browser engine (runs terminal.js)  │
+            └-────────────────────────────────────┘
+                  🠉
+               WebSockets connection (local)
+                  🠋
+            ┌─────────────────────────────────────┐
+ Local      │  Proxy (local end)                  │
+ back-end   ├─────────────────────────────────────┤
+            │  Ssh client (local session)         │
+            └-────────────────────────────────────┘
+                  🠉
+               ssh connection (network)
+                  🠋
+            ┌─────────────────────────────────────┐
+  Remote    │  Proxy (remote end)                 │
+  back-end  ├─────────────────────────────────────┤
+            │  Application (session)              │
+            └─────────────────────────────────────┘
+@end example
+(Compare with diagram at @ref{Terminology}.)
 
 @subsection Predictive echo
 
