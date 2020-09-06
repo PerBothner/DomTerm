@@ -478,7 +478,6 @@ class Terminal {
     }
 
     detachSession() {
-        console.log("detachSession "+this.name+" sname:"+this.sessionName());
         this.reportEvent("DETACH", "");
         if (this._detachSaveNeeded == 1)
             this._detachSaveNeeded = 2;
@@ -3195,9 +3194,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
             dt._mouseSelectionState = 1;
         }
 
-        if (point) {
-            dt._restoreCaret();
-        }
+        dt._restoreCaret();
     }
     document.addEventListener("selectionchange", dt._selectionchangeListener);
 
@@ -3698,7 +3695,7 @@ Terminal.prototype._updateSelected = function() {
             ? sel.focusOffset === sel.anchorOffset
             // toString is probably wasteful - but isCollapsed can be wrong.
             : sel.toString().length == 0);
-    if (this._pagingMode > 0 || ! point) {
+    if (this._pagingMode > 0 || (! point && this.isLineEditing())) {
         if (! this.viewCaretNode) {
             let vcaretNode = this._createSpanNode();
             this.viewCaretNode = vcaretNode;
@@ -3729,7 +3726,12 @@ Terminal.prototype._updateSelected = function() {
                     focusOffset = r.endOffset;
                 }
             }
-            r.setStart(focusNode, focusOffset);
+            if (focusNode instanceof Text && focusOffset == 0)
+                r.setStartBefore(focusNode);
+            else if (focusNode instanceof Text && focusOffset == focusNode.length)
+                r.setStartAfter(focusNode);
+            else
+                r.setStart(focusNode, focusOffset);
             // FIXME if after LINE node and end of DIV, move to start of next DIV.
             let viewCaretPrevious = this.viewCaretNode.previousSibling;
             if (viewCaretPrevious instanceof Text) {
@@ -9355,6 +9357,9 @@ Terminal.prototype._enterPaging = function(pause) {
 }
 
 Terminal.prototype._exitPaging = function() {
+    let focusCaret = this.viewCaretNode;
+    if (focusCaret && focusCaret.parentNode)
+        focusCaret.parentNode.removeChild(focusCaret);
     this._pagingMode = 0;
     this.modeLineGenerator = null;
     this._updatePagerInfo();
@@ -9774,7 +9779,8 @@ DomTerm.editorNonWordChar = function(ch) {
  * state.todo: Infinity, or maximum number of units
  * state.unit: "char", "word", "line"
  * state.stopAt: one of "", "line" (stop before moving to different hard line),
- *   or "visible-line" (stop before moving to different screen line).
+ *   "visible-line" (stop before moving to different screen line),
+ *   "input" (line-edit input area), or "buffer".
  * state.linesCount: increment for each newline
  * state.wrapText: function called on each text node
  * state.lineHandler: handler for non-stopping lines.
@@ -10017,9 +10023,11 @@ Terminal.prototype.editorRestrictedRange = function(restrictToInputLine) {
  * action: one of "move" (move caret), "move-focus" (move selection's focus),
  * "extend", "delete", or "kill" (cut to clipboard).
  * stopAt: one of "", "line" (stop before moving to different hard line),
- * or "visible-line" (stop before moving to different screen line).
+ * or "visible-line" (stop before moving to different screen line),
+ * "input" (line-edit input area), or "buffer".
  */
-Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
+Terminal.prototype.editorBackspace = function(count, action, unit,
+                                              stopAt=this._pagingMode?"buffer":"") {
     this.sstate.goalColumn = undefined;
     let doDelete = action == "delete" || action == "kill";
     let doWords = unit == "word";
@@ -10037,7 +10045,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
         if (this._pagingMode == 0)
             sel.removeAllRanges();
     } else {
-        if (! sel.isCollapsed && action != "extend")
+        if (! sel.isCollapsed && action != "extend" && action != "extend-focus")
             sel.collapse(sel.focusNode, sel.focusOffset);
         this._removeCaret();
         range = this.editorRestrictedRange(stopAt!=="buffer");
@@ -10045,7 +10053,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
         if (action == "move" || sel.anchorNode === null
             || sel.anchorNode === this.focusArea) {
             let caret = (this.viewCaretNode && this.viewCaretNode.parentNode
-                         && action == "move-focus")
+                         && (action == "move-focus" || action == "extend-focus"))
                 ? this.viewCaretNode
                 : this._caretNode;
             anchorNode = caret;
@@ -10072,7 +10080,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
             if (linesCount > 0)
                 this._updateAutomaticPrompts();
             this._restoreCaret();
-        } else if (action == "extend") {
+        } else if (action == "extend" || action == "extend-focus") {
             if (backwards)
                 sel.setBaseAndExtent(anchorNode, anchorOffset,
                                      range.startContainer, range.startOffset);
@@ -10093,7 +10101,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit, stopAt="") {
 
 Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {
     this._didExtend = true;
-    return this.editorBackspace(count, "extend", unit, stopAt);
+    return this.editorBackspace(count, this._pagingMode > 0 ? "extend-focus" : "extend", unit, stopAt);
 }
 
 Terminal.prototype._lastDigit = function(str) {
