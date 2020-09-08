@@ -171,33 +171,33 @@ cmd('paging-copy-or-interrupt',
 cmd('cut-text',
     function(dt, key) {
         if (! window.getSelection().isCollapsed) {
-            //dt.editorBackspace(1, "kill", "line", "buffer");
+            //dt.editMove(1, "kill", "line", "buffer");
             dt.deleteSelected(true);
         }
         return true; });
 cmd('backward-char',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "move", "char", "input");
+        dt.editMove(dt.numericArgumentGet(), "move", "char", "input");
         return true; });
 cmd('backward-char-focus',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "move-focus", "char", "buffer");
+        dt.editMove(dt.numericArgumentGet(), "move-focus", "char", "buffer");
         return true; });
 cmd('backward-word',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "move", "word");
+        dt.editMove(dt.numericArgumentGet(), "move", "word");
         return true; });
 cmd('forward-char',
     function(dt, key) {
-        dt.editorBackspace(- dt.numericArgumentGet(), "move", "char", "input");
+        dt.editMove(- dt.numericArgumentGet(), "move", "char", "input");
         return true; });
 cmd('forward-char-focus',
     function(dt, key) {
-        dt.editorBackspace(- dt.numericArgumentGet(), "move-focus", "char", "buffer");
+        dt.editMove(- dt.numericArgumentGet(), "move-focus", "char", "buffer");
         return true; });
 cmd('forward-word',
     function(dt, key) {
-        dt.editorBackspace(- dt.numericArgumentGet(), "move", "word");
+        dt.editMove(- dt.numericArgumentGet(), "move", "word");
         return true; });
 cmd('backward-char-extend',
     function(dt, key) {
@@ -217,15 +217,15 @@ cmd('forward-word-extend',
         return true; });
 cmd('backward-delete-char',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "delete", "char");
+        dt.editMove(dt.numericArgumentGet(), "delete", "char");
         return true; });
 cmd('backward-delete-word',
     function(dt, key) {
-        dt.editorBackspace(dt.numericArgumentGet(), "delete", "word");
+        dt.editMove(dt.numericArgumentGet(), "delete", "word");
         return true; });
 cmd('forward-delete-char',
     function(dt, key) {
-        dt.editorBackspace(- dt.numericArgumentGet(), "delete", "char");
+        dt.editMove(- dt.numericArgumentGet(), "delete", "char");
         return true; });
 cmd('forward-delete-char-or-eof',
    function(dt, key) {
@@ -236,7 +236,7 @@ cmd('forward-delete-char-or-eof',
    });
 cmd('forward-delete-word',
     function(dt, key) {
-    dt.editorBackspace(- dt.numericArgumentGet(), "delete", "word");
+    dt.editMove(- dt.numericArgumentGet(), "delete", "word");
         return true; });
 cmd('beginning-of-line',
     function(dt, key) {
@@ -257,7 +257,7 @@ cmd('end-of-line-extend',
 cmd('kill-line',
     function(dt, key) {
         let count = dt.numericArgumentGet();
-        dt.editorBackspace(- count, "kill", "line", "buffer");
+        dt.editMove(- count, "kill", "line", "buffer");
         return true; });
 cmd('beginning-of-buffer',
     function(dt, key) {
@@ -409,7 +409,7 @@ cmd('insert-char',
         let str = keyName.substring(1, keyName.length-1);
         let sel = window.getSelection();
         if (! sel.isCollapsed) {
-            dt.editorBackspace(1, "delete", "char");
+            dt.editMove(1, "delete", "char");
         }
         let count = dt.numericArgumentGet();
         if (count >= 0)

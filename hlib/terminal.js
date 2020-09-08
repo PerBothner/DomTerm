@@ -9558,7 +9558,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
     }
     parent.insertBefore(this._caretNode, next);
     parent.normalize();
-    this.editorBackspace(- column, "move", "char", "line");
+    this.editMove(- column, "move", "char", "line");
     this.sstate.goalColumn = column;
     this._restoreCaret();
     return count <= 0;
@@ -9601,7 +9601,7 @@ Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
     if (action == "extend")
         this.extendSelection(count, "char", "line");
     else
-        this.editorBackspace(count, action, "char", "line");
+        this.editMove(count, action, "char", "line");
     this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
@@ -10025,7 +10025,7 @@ Terminal.prototype.editorRestrictedRange = function(restrictToInputLine) {
     return range;
 }
 
-/** (misleadingly named)
+/** Do an edit operation, such as move, extend selection, or delete.
  * unit: "char", "word"
  * action: one of "move" (move caret), "move-focus" (move selection's focus),
  * "extend", "delete", or "kill" (cut to clipboard).
@@ -10033,7 +10033,7 @@ Terminal.prototype.editorRestrictedRange = function(restrictToInputLine) {
  * or "visible-line" (stop before moving to different screen line),
  * "input" (line-edit input area), or "buffer".
  */
-Terminal.prototype.editorBackspace = function(count, action, unit,
+Terminal.prototype.editMove = function(count, action, unit,
                                               stopAt=this._pagingMode?"buffer":"") {
     this.sstate.goalColumn = undefined;
     let doDelete = action == "delete" || action == "kill";
@@ -10108,7 +10108,7 @@ Terminal.prototype.editorBackspace = function(count, action, unit,
 
 Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {
     this._didExtend = true;
-    return this.editorBackspace(count, this._pagingMode > 0 ? "extend-focus" : "extend", unit, stopAt);
+    return this.editMove(count, this._pagingMode > 0 ? "extend-focus" : "extend", unit, stopAt);
 }
 
 Terminal.prototype._lastDigit = function(str) {
