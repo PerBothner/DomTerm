@@ -72,7 +72,7 @@ function createNewWindow (url, options, headless) {
         previousUrl = url;
     let bwoptions = {
         width: w, height: h,
-        webPreferences: {nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
+        webPreferences: {enableRemoteModule: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
         useContentSize: true, show: false};
     if (options.x !== undefined && options.y !== undefined) {
         bwoptions.x = options.x;
