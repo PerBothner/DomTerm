@@ -9831,7 +9831,7 @@ Terminal.scanInRange = function(range, backwards, state) {
         }
         let n = Terminal._forEachElementIn(range.commonAncestorContainer,
                                            f, false, false, line);
-        return range.isPointInRange(n, 0) ? n : null;
+        return n && range.isPointInRange(n, 0) ? n : null;
     }
     function fun(node) {
         if (skipFirst > 0) {
