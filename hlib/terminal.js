@@ -8341,9 +8341,9 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Alt-.": "numeric-argument",
     "Ctrl-!": "swap-focus-anchor",
     "Ctrl-@": "toggle-mark-mode",
-    "Left": "backward-char-focus",
+    "Left": "backward-char",
     "Mod-Left": 'backward-word',
-    "Right": "forward-char-focus",
+    "Right": "forward-char",
     "Mod-Right": 'forward-word',
     "Shift-Left": "backward-char-extend",
     "Shift-Mod-Left": "backward-word-extend",
@@ -9467,12 +9467,20 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
     let oldColumn = this.getCursorColumn();
     let oldLine = this.getAbsCursorLine();
     if (this._pagingMode) {
+        let ok = true;
         let startBefore = this.outputBefore;
         let startContainer = this.outputContainer;
         let column = oldColumn;
         if (goalColumn && goalColumn > column)
             column = goalColumn;
         let line = backwards ? oldLine - count : oldLine + count;
+        if (line < 0) {
+            ok = false;
+            line = 0;
+        } else if (line >= this.lineStarts.length) {
+            ok = false;
+            line = this.lineStarts.length - 1;
+        }
         this.moveToAbs(line, column, false);
         function posToRangeEnd(outputBefore, outputContainer) {
             let r = new Range();
@@ -9503,7 +9511,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
             sel.collapse(r.endContainer, r.endOffset);
         this._popFromCaret(save);
         this.sstate.goalColumn = column;
-        return;
+        return ok;
     }
     this._popFromCaret(save);
     this.editorMoveStartOrEndLine(false);
@@ -9596,12 +9604,12 @@ Terminal.prototype.editorMoveStartOrEndBuffer = function(toEnd, action="move") {
     }
 }
 
-Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, action="move") {
+Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, extend=false) {
     let count = toEnd ? -Infinity : Infinity;
-    if (action == "extend")
+    if (extend)
         this.extendSelection(count, "char", "line");
     else
-        this.editMove(count, action, "char", "line");
+        this.editMovePosition(count, "char", "line");
     this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
@@ -10034,7 +10042,7 @@ Terminal.prototype.editorRestrictedRange = function(restrictToInputLine) {
  * "input" (line-edit input area), or "buffer".
  */
 Terminal.prototype.editMove = function(count, action, unit,
-                                              stopAt=this._pagingMode?"buffer":"") {
+                                              stopAt/*??*/=this._pagingMode?"buffer":"") {
     this.sstate.goalColumn = undefined;
     let doDelete = action == "delete" || action == "kill";
     let doWords = unit == "word";
@@ -10052,10 +10060,14 @@ Terminal.prototype.editMove = function(count, action, unit,
         if (this._pagingMode == 0)
             sel.removeAllRanges();
     } else {
-        if (! sel.isCollapsed && action != "extend" && action != "extend-focus")
-            sel.collapse(sel.focusNode, sel.focusOffset);
+        if (! sel.isCollapsed) {
+            if (action == "move-extend")
+                sel.collapse(sel.focusNode, sel.focusOffset);
+            else if (action == "move")
+                this._clearSelection();
+        }
         this._removeCaret();
-        range = this.editorRestrictedRange(stopAt!=="buffer");
+        range = this.editorRestrictedRange(stopAt!=="buffer" && this._inputLine);
         let anchorNode, anchorOffset;
         if (action == "move" || sel.anchorNode === null
             || sel.anchorNode === this.focusArea) {
@@ -10104,6 +10116,12 @@ Terminal.prototype.editMove = function(count, action, unit,
         }
     }
     return todo;
+}
+
+// Move caret or focus-caret depending on context.
+Terminal.prototype.editMovePosition = function(count, unit, stopAt=this._pagingMode?"buffer":"input") {
+    let action = this._pagingMode == 0 ? "move" : "move-focus";
+    this.editMove(count, action, unit, stopAt);
 }
 
 Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {

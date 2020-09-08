@@ -177,27 +177,19 @@ cmd('cut-text',
         return true; });
 cmd('backward-char',
     function(dt, key) {
-        dt.editMove(dt.numericArgumentGet(), "move", "char", "input");
-        return true; });
-cmd('backward-char-focus',
-    function(dt, key) {
-        dt.editMove(dt.numericArgumentGet(), "move-focus", "char", "buffer");
+        dt.editMovePosition(dt.numericArgumentGet(), "char");
         return true; });
 cmd('backward-word',
     function(dt, key) {
-        dt.editMove(dt.numericArgumentGet(), "move", "word");
+        dt.editMovePosition(dt.numericArgumentGet(), "word");
         return true; });
 cmd('forward-char',
     function(dt, key) {
-        dt.editMove(- dt.numericArgumentGet(), "move", "char", "input");
-        return true; });
-cmd('forward-char-focus',
-    function(dt, key) {
-        dt.editMove(- dt.numericArgumentGet(), "move-focus", "char", "buffer");
+        dt.editMovePosition(- dt.numericArgumentGet(), "char");
         return true; });
 cmd('forward-word',
     function(dt, key) {
-        dt.editMove(- dt.numericArgumentGet(), "move", "word");
+        dt.editMovePosition(- dt.numericArgumentGet(), "word");
         return true; });
 cmd('backward-char-extend',
     function(dt, key) {
@@ -248,11 +240,11 @@ cmd('end-of-line',
         return true; });
 cmd('beginning-of-line-extend',
     function(dt, key) {
-        dt.editorMoveStartOrEndLine(false, "extend"); dt._numericArgument = null;
+        dt.editorMoveStartOrEndLine(false, true); dt._numericArgument = null;
         return true; });
 cmd('end-of-line-extend',
     function(dt, key) {
-        dt.editorMoveStartOrEndLine(true, "extend"); dt._numericArgument = null;
+        dt.editorMoveStartOrEndLine(true, true); dt._numericArgument = null;
         return true; });
 cmd('kill-line',
     function(dt, key) {
