@@ -258,11 +258,22 @@ class Terminal {
     // When line-editing this is the *input* caret;
     // output is inserted at (outputContainer,outputBefore)
     this._caretNode = null;
-    this.viewCaretNode = null;
     // When line-editing this is the actively edited line,
     // that has not yet been sent to the process.
     // In this case _caretNode is required to be within _inputLine.
     this._inputLine = null;
+
+    let vcaretNode = this._createSpanNode();
+    this.viewCaretNode = vcaretNode;
+    vcaretNode.setAttribute("std", "caret");
+    vcaretNode.classList.add("focus-caret");
+    // A work-around for a Chrome bug (?) where a border or outline
+    // is not shown at the left edge of the domterm window.
+    // Instead we create this relative-positiond filled vcaretBar.
+    let vcaretNode1 = this._createSpanNode();
+    vcaretNode.appendChild(vcaretNode1);
+    let vcaretNode2 = this._createSpanNode();
+    vcaretNode1.appendChild(vcaretNode2);
 
     this._miniBuffer = null;
     this._searchMode = false;
@@ -3679,15 +3690,6 @@ Terminal.prototype._updateSelected = function() {
         return;
     }
 
-    function removeSelectionMarker(marker) {
-        if (marker.parentNode !== null) {
-            const prev = marker.previousSibling;
-            marker.parentNode.removeChild(marker);
-            if (prev instanceof Text)
-                dt._normalize1(prev);
-        }
-    }
-
     let sel = document.getSelection();
     let point =
         ! dt._didExtend
@@ -3696,19 +3698,6 @@ Terminal.prototype._updateSelected = function() {
             // toString is probably wasteful - but isCollapsed can be wrong.
             : sel.toString().length == 0);
     if (this._pagingMode > 0 || (! point && this.isLineEditing())) {
-        if (! this.viewCaretNode) {
-            let vcaretNode = this._createSpanNode();
-            this.viewCaretNode = vcaretNode;
-            vcaretNode.setAttribute("std", "caret");
-            vcaretNode.classList.add("focus-caret");
-            // A work-around for a Chrome bug (?) where a border or outline
-            // is not shown at the left edge of the domterm window.
-            // Instead we create this relative-positiond filled vcaretBar.
-            let vcaretNode1 = this._createSpanNode();
-            vcaretNode.appendChild(vcaretNode1);
-            let vcaretNode2 = this._createSpanNode();
-            vcaretNode1.appendChild(vcaretNode2);
-        }
         if (sel.focusNode !== this.viewCaretNode
             && sel.focusNode !== null
             && sel.focusNode !== this.focusArea) {
@@ -9352,11 +9341,29 @@ Terminal.prototype._enterPaging = function(pause) {
     // this._displayInputModeWithTimeout(displayString);
     this._numericArgument = null;
     this._pagingMode = pause ? 2 : 1;
+    this.topNode.classList.add("focusmode");
     this.modeLineGenerator = _pagerModeInfo;
     this._updatePagerInfo();
+    let sel = document.getSelection();
+    if (sel.focusNode == null || sel.focusNode == this.focusArea) {
+        let before = this._caretNode;
+        let parent = before.parentNode;
+        if (! parent) {
+            this._fixOutputPosition();
+            before = this.outputBefore;
+            parent = this.outputContainer;
+        }
+        parent.insertBefore(this.viewCaretNode, before);
+        sel.collapse(this.viewCaretNode, 0);
+    } else {
+        this._updateSelected();
+    }
 }
 
 Terminal.prototype._exitPaging = function() {
+    this.topNode.classList.remove("focusmode");
+    if (! this.isLineEditing())
+        this.setMarkMode(false);
     let focusCaret = this.viewCaretNode;
     if (focusCaret && focusCaret.parentNode)
         focusCaret.parentNode.removeChild(focusCaret);

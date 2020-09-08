@@ -70,7 +70,7 @@ span.pprint-indent {
 
 div.domterm span.focus-caret {
     position: relative;
-    --focus-color: purple;
+    --focus-color: #a0522d; /* sienna */
 }
 div.domterm span.focus-caret span {
     position: absolute;

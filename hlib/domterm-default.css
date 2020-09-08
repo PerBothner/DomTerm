@@ -51,7 +51,7 @@ div.domterm-spacer {
 div.domterm { --monospace-family: Terminal; }
 div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family),monospace }
 div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
-span.editing[std="input"] { outline: solid 2px greenyellow }
+span.editing[std="input"] { outline: 3px dashed #a0522d80 } /* sienna 50% */
 div.domterm-show-info span.editing { font-family: var(--monospace-family) }
 div.input-line { background-color: var(--input-line-color) } /* a very pale yellow */
 span[std="input"], span.focus-area { background-color: var(--input-span-color) } /* a pale yellow */
@@ -89,7 +89,10 @@ div.domterm span.focus-caret span span {
     width: 2px;
     background-color: var(--focus-color);
 }
-div.domterm.markmode span.focus-caret span {
+div.domterm.focusmode span.focus-caret{
+    --focus-color: purple;
+}
+div.domterm.markmode span.focus-caret {
     --focus-color: orange;
 }
 div.domterm-active span[caret="blinking-block"][std="caret"],
