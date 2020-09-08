@@ -6,7 +6,6 @@
     const _electronAccess = {
         BrowserWindow: remote.BrowserWindow,
         clipboard: _electron.clipboard,
-        dialog: remote.dialog,
         fs: _fs,
         getCurrentWindow: remote.getCurrentWindow,
         ipcRenderer: _electron.ipcRenderer,

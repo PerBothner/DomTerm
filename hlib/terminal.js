@@ -7866,17 +7866,17 @@ DomTerm.doSaveAs = function(dt = DomTerm.focusedTerm) {
 DomTerm.saveFile = function(data) {
     var fname = "domterm-saved-"+(++DomTerm.saveFileCounter)+".html";
     if (DomTerm.isElectron()) {
-        const dialog = electronAccess.dialog;
-        const fs = electronAccess.fs;
         function callback(value) {
             let filePath = value.filePath;
             if (filePath)
-                fs.writeFile(filePath, data, function (err) {
+                electronAccess.fs.writeFile(filePath, data, function (err) {
                     if (err)
                         alert("An error ocurred creating the file "+ err.message);
                 });
         }
-        dialog.showSaveDialog({defaultPath: fname}).then(callback);
+        electronAccess.ipcRenderer.invoke('open-dialog', 'save',
+                                          {defaultPath: fname})
+            .then(callback);
     } else {
         let filePath = prompt("save contents as: ", fname);
         if (filePath)

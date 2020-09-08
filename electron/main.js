@@ -1,4 +1,4 @@
-const {app, ipcMain, BrowserWindow, screen} = require('electron')
+const {app, ipcMain, BrowserWindow, screen, dialog} = require('electron')
 const path = require('path')
 const url = require('url')
 
@@ -143,6 +143,10 @@ ipcMain.on('window-ops', (event, command, arg) => {
         eventToWindow(event).setMenuBarVisibility(arg);
         break;
     }
+});
+
+ipcMain.handle('open-dialog', async (event, kind, options) => {
+    return await dialog.showSaveDialog(options);
 });
 
 // This method will be called when Electron has finished
