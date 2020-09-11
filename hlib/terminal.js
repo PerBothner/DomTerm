@@ -8253,6 +8253,8 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Shift-Mod-Left": "backward-word-extend",
     "Shift-Right": "forward-char-extend",
     "Shift-Mod-Right": "forward-word-extend",
+    "Shift-Up": "up-line-extend",
+    "Shift-Down": "down-line-extend",
     "Shift-End": "end-of-line-extend",
     "Shift-Home": "beginning-of-line-extend",
     "Ctrl-Down": "scroll-line-down",
