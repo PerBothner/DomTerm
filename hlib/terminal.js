@@ -8300,7 +8300,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-B": "backward-char",
     "Ctrl-D": "forward-delete-char-or-eof",
     "Ctrl-E": "end-of-line",
-    //"Ctrl-F": "forward-char",
+    "Ctrl-F": "forward-char",
     "Ctrl-K": "kill-line",
     "Ctrl-N": "down-line-or-history",
     "Ctrl-P": "up-line-or-history",
