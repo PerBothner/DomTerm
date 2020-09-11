@@ -2032,7 +2032,7 @@ Terminal.prototype._removeCaret = function(normalize=true) {
 Terminal.prototype._removeInputFromLineTable = function() {
     let startLine = this.getAbsCursorLine();
     let seenAfter = false;
-    function removeInputLineBreaks(lineStart, lineno) {
+    function removeInputLineBreaks(lineStart, lineAttr, lineno) {
         if (lineStart.getAttribute("line"))
             return true;
         seenAfter = true;
@@ -2045,6 +2045,16 @@ Terminal.prototype._removeInputFromLineTable = function() {
 Terminal.prototype._removeInputLine = function() {
     if (this.inputFollowsOutput) {
         this._removeCaret();
+        let inputLine = this._inputLine;
+        if (inputLine) {
+            if (inputLine.parentNode) {
+                this._removeInputFromLineTable();
+                if (this.outputBefore == inputLine)
+                    this.outputBefore = inputLine.nextSibling;
+                inputLine.parentNode.removeChild(inputLine);
+            }
+            return;
+        }
         var caretParent = this._caretNode.parentNode;
         if (caretParent != null) {
             let r;
@@ -2231,10 +2241,10 @@ Terminal.prototype._restoreCaretNode = function() {
 }
 
 Terminal.prototype._restoreInputLine = function(caretToo = true) {
-    let inputLine = this.isLineEditing() ? this._inputLine : this._caretNode;
+    let inputLine = this._inputLine || this._caretNode;
     if (this.inputFollowsOutput && inputLine != null) {
         let lineno;
-        if (this.isLineEditing()) {
+        if (this._inputLine) {
             lineno = this.getAbsCursorLine();
             inputLine.startLineNumber = lineno;
         }
@@ -2245,7 +2255,7 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
             this.outputBefore = inputLine;
             if (this._pagingMode == 0 && ! DomTerm.usingXtermJs())
                 this.maybeFocus();
-            if (this.isLineEditing()) {
+            if (this._inputLine) {
                 let dt = this;
                 // Takes time proportional to the number of lines in _inputLine
                 // times lines below the input.  Both are likely to be small.
@@ -6460,18 +6470,29 @@ Terminal.prototype._breakDeferredLines = function() {
 
 Terminal._forceMeasureBreaks = false;
 
-Terminal.prototype._adjustLines = function(startLine, action) {
+Terminal.prototype._adjustLines = function(startLine, action, single=false, stopLine=null) {
     var delta = 0;
     var prevLine = this.lineStarts[startLine];
     var skipRest = false;
     for (var line = startLine+1;  line < this.lineStarts.length;  line++) {
         var lineStart = this.lineStarts[line];
+        if (lineStart === stopLine)
+            skipRest = true;
         if (delta > 0) {
             this.lineStarts[line-delta] = lineStart;
             this.lineEnds[line-delta-1] = this.lineEnds[line-1];
         }
         let lineAttr = lineStart.getAttribute("line");
-        if (action(lineStart, line-delta)) {
+        if (skipRest || ! this.isSpanNode(lineStart) || ! lineAttr) {
+            if (single && line > startLine+1) {
+                if (delta == 0)
+                    break;
+                skipRest = true;
+            }
+            prevLine = lineStart;
+            continue;
+        }
+        if (action(lineStart, lineAttr, line-delta)) {
             delta++;
         } else
 	    prevLine = lineStart;
@@ -6487,33 +6508,11 @@ Terminal.prototype._adjustLines = function(startLine, action) {
 }
 
 // Remove existing soft line breaks.
-// FIXME use _adjustLines
 Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
-    var delta = 0;
-    var prevLine = this.lineStarts[startLine];
-    var skipRest = false;
-    for (let line = startLine+1;  line < this.lineStarts.length;  line++) {
-        var lineStart = this.lineStarts[line];
-        if (lineStart === stopLine)
-            skipRest = true;
-        if (delta > 0) {
-            this.lineStarts[line-delta] = this.lineStarts[line];
-            this.lineEnds[line-delta-1] = this.lineEnds[line-1];
-        }
-        let lineAttr = lineStart.getAttribute("line");
-        if (skipRest || ! this.isSpanNode(lineStart) || ! lineAttr) {
-            if (single && line > startLine+1) {
-                if (delta == 0)
-                    break;
-                skipRest = true;
-            }
-            prevLine = lineStart;
-            continue;
-        }
+    let action = (lineStart, lineAttr, lineno) => {
         if (lineStart.getAttribute("breaking")=="yes") {
             lineStart.removeAttribute("breaking");
-            for (var child = lineStart.firstChild;
-                 child != null; ) {
+            for (let child = lineStart.firstChild; child != null; ) {
                 var next = child.nextSibling;
                 if (child instanceof Text /* added '\n' */
                     || child.classList.contains("pprint-indent"))
@@ -6542,18 +6541,11 @@ Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
                 }
             }
             // Remove "soft" "fill" "miser" "space" breaks from the line-table
-            delta++;
+            return true;
         } else
-	    prevLine = lineStart;
-    }
-    if (delta == 0)
-        return false;
-    // Update line tables
-    var lineCount = this.lineEnds.length;
-    this.lineEnds[lineCount-delta-1] = this.lineEnds[lineCount-1];
-    this.lineStarts.length = lineCount-delta;
-    this.lineEnds.length = lineCount-delta;
-    return true; // FIXME needlessly conservative
+            return false;
+    };
+    return this._adjustLines(startLine, action, single, stopLine);
 }
 
 Terminal.prototype._insertIntoLines = function(el, line) {
