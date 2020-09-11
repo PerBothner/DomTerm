@@ -8452,7 +8452,7 @@ Terminal.prototype._adjustPauseLimit = function() {
     if (node == null)
         return;
     let offsetTop = 0;
-    for (; node !== this.topNode; node = node.offsetParent) {
+    for (; node && node !== this.topNode; node = node.offsetParent) {
         offsetTop += node.offsetTop;
     }
     var limit = offsetTop + this.availHeight;
