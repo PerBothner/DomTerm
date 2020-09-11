@@ -2032,7 +2032,7 @@ Terminal.prototype._removeCaret = function(normalize=true) {
 Terminal.prototype._removeInputFromLineTable = function() {
     let startLine = this.getAbsCursorLine();
     let seenAfter = false;
-    function removeInputLineBreaks(lineStart, lineAttr, lineno) {
+    function removeInputLineBreaks(prevLine, lineStart, lineAttr, lineno) {
         if (lineStart.getAttribute("line"))
             return true;
         seenAfter = true;
@@ -6492,7 +6492,7 @@ Terminal.prototype._adjustLines = function(startLine, action, single=false, stop
             prevLine = lineStart;
             continue;
         }
-        if (action(lineStart, lineAttr, line-delta)) {
+        if (action(prevLine, lineStart, lineAttr, line-delta)) {
             delta++;
         } else
 	    prevLine = lineStart;
@@ -6509,7 +6509,7 @@ Terminal.prototype._adjustLines = function(startLine, action, single=false, stop
 
 // Remove existing soft line breaks.
 Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
-    let action = (lineStart, lineAttr, lineno) => {
+    let action = (prevLine, lineStart, lineAttr, lineno) => {
         if (lineStart.getAttribute("breaking")=="yes") {
             lineStart.removeAttribute("breaking");
             for (let child = lineStart.firstChild; child != null; ) {
