@@ -488,6 +488,11 @@ class Terminal {
             && ! this._pagingMode && ! this.isLineEditing();
     }
 
+    maybeResetWantsEditing() {
+        if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
+            this._clientWantsEditing = 0;
+    }
+
     detachSession() {
         this.reportEvent("DETACH", "");
         if (this._detachSaveNeeded == 1)

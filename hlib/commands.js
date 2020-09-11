@@ -333,15 +333,12 @@ cmd('client-action',
         if (! dt.isLineEditing())
             return false;
         let str = dt.keyNameToChars(key);
-        let input = dt._inputLine;
         if (str) {
-            dt._updateRemote(input);
-            dt.processInputCharacters(str);
-            input.classList.add("pending");
-            dt._deferredForDeletion = input;
-            input.continueEditing = true;
-            dt.outputBefore = dt._caretNode;
-            dt.outputContainer = dt._caretNode.parentNode;
+            dt.editorMoveHomeOrEnd(true);
+            dt.editorInsertString(str);
+            dt._sendInputContents(false);
+            dt._inputLine = null;
+            dt.maybeResetWantsEditing();
             return true;
         }
         return false; });
@@ -368,8 +365,7 @@ cmd('numeric-argument',
 cmd('accept-line',
     function(dt, key) {
         dt.processEnter();
-        if (dt._lineEditingMode == 0 && dt.autoLazyCheckInferior)
-            dt._clientWantsEditing = 0;
+        dt.maybeResetWantsEditing();
         return true; });
 cmd('insert-newline',
     function(dt, key) {
