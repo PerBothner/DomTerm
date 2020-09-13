@@ -961,16 +961,17 @@ Either option (they do the same thing)
 runs @code{qtdomterm} with the @code{--connect} option,
 after starting up a websockets server.
 
-@item @code{--left}
-@itemx @code{--right}
-@itemx @code{--above}
-@itemx @code{--below}
-If there is a current DomTerm window, split it in two,
-and create a new window to the left/right/above/below the old one.
-@item @code{--pane}
+@item @code{--left}[@code{=}@var{window}]
+@itemx @code{--right}[@code{=}@var{window}]
+@itemx @code{--above}[@code{=}@var{window}]
+@itemx @code{--below}[@code{=}@var{window}]
+Split @var{window} (a window number) in two,
+and create a new pane (sub-window) to the left/right/above/below the old one.
+If @var{window} is not specified, use teh current window.
+@item @code{--pane}[@code{=}@var{window}]
 Equivalent to either @code{--right} or @code{--below} depending
 on the current window's width/height ratio.
-@item @code{--tab}
+@item @code{--tab}[@code{=}@var{window}]
 Create new tab.
 
 @anchor{Headless mode}
