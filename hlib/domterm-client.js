@@ -454,8 +454,8 @@ function handleMessage(event) {
             options = Object.assign({}, options, { "clientX": x, "clientY": y});
         }
         DomTerm.showContextMenu(options);
-    } else if (data.command=="domterm-new-pane") { // either direction
-        DomTerm.newPane(data.args[0], data.args[1]);
+    } else if (data.command=="domterm-add-pane") { // in parent from child
+        DomTermLayout.addPane(data.args[0], data.args[1], iframe);
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="do-command") {

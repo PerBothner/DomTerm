@@ -216,6 +216,7 @@ struct tty_client {
     bool pty_window_update_needed;
     int proxy_fd_in, proxy_fd_out;
     char *pending_browser_command; // [an 'out' field]
+    int pending_paneOp;
     char *ssh_connection_info;
 };
 

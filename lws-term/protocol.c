@@ -1124,6 +1124,7 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi)
     client->pty_window_update_needed = false;
     client->ssh_connection_info = NULL;
     client->pending_browser_command = NULL;
+    client->pending_paneOp = -1;
     lwsl_notice("init_tclient_struct conn#%d\n",  client->connection_number);
 }
 
@@ -1429,6 +1430,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                 tty_restore(-1);
                 init_options(&opts);
                 opts.browser_command = tclient->pending_browser_command;
+                opts.paneOp = tclient->pending_paneOp;
                 display_session(&opts, tclient->pclient, NULL, http_port);
                 free(tclient->pending_browser_command);
                 tclient->pending_browser_command = NULL;
@@ -1651,6 +1653,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
         tclient->pending_browser_command
             = options->browser_command ? strdup(options->browser_command)
             : NULL;
+        tclient->pending_paneOp = options->paneOp;
     }
 }
 #endif
@@ -1682,39 +1685,41 @@ display_session(struct options *options, struct pty_client *pclient,
         return EXIT_WAIT;
     }
 #endif
-    int paneOp = 0;
+    int paneOp = options->paneOp;
     if (browser_specifier != NULL && browser_specifier[0] == '-') {
       if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
           pclient->detach_count = 1;
           return EXIT_SUCCESS;
       }
-      if (strcmp(browser_specifier, "--pane") == 0)
-          paneOp = 1;
-      else if (strcmp(browser_specifier, "--tab") == 0)
-          paneOp = 2;
-      else if (strcmp(browser_specifier, "--left") == 0)
-          paneOp = 10;
-      else if (strcmp(browser_specifier, "--right") == 0)
-          paneOp = 11;
-      else if (strcmp(browser_specifier, "--above") == 0)
-          paneOp = 12;
-      else if (strcmp(browser_specifier, "--below") == 0)
-          paneOp = 13;
-    }
-    if (paneOp > 0 && focused_wsi == NULL) {
-        browser_specifier = NULL;
-        paneOp = 0;
+      if (paneOp < 1 || paneOp > 13)
+          paneOp = 0;
     }
     int r = EXIT_SUCCESS;
     if (paneOp > 0) {
-        struct tty_client *tclient = (struct tty_client *) lws_wsi_user(focused_wsi);
+        char *eq = strchr(browser_specifier, '=');
+        struct tty_client *tclient;
+        if (eq) {
+            char *endp;
+            long w = strtol(eq+1, &endp, 10);
+            if (w <= 0 || *endp || ! VALID_CONNECTION_NUMBER(w)) {
+                printf_error(options, "invalid window number in '%s' option",
+                             browser_specifier);
+                return EXIT_FAILURE;
+            }
+            tclient = TCLIENT_FROM_NUMBER(w);
+        } else if (focused_wsi == NULL) {
+            printf_error(options, "no current window for '%s' option",
+                         browser_specifier);
+            return EXIT_FAILURE;
+        } else
+            tclient = (struct tty_client *) lws_wsi_user(focused_wsi);
         if (pclient != NULL)
              printf_to_browser(tclient, URGENT_WRAP("\033[90;%d;%du"),
                                paneOp, session_number);
         else
             printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
                                -port, paneOp, url);
-        lws_callback_on_writable(focused_wsi);
+        lws_callback_on_writable(tclient->out_wsi);
     } else {
         char *encoded = port == -104 || port == -105
             ? url_encode(url, 0)
@@ -1791,7 +1796,10 @@ int new_action(int argc, char** argv,
     struct pty_client *pclient = create_pclient(cmd, args, opts->cwd, opts->env,
                                                 opts);
     int r = display_session(opts, pclient, NULL, http_port);
-    if (opts->session_name) {
+    if (r == EXIT_FAILURE) {
+        lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
+    }
+    else if (opts->session_name) {
         pclient->session_name = strdup(opts->session_name);
         opts->session_name = NULL;
     }

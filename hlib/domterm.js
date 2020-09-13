@@ -84,27 +84,12 @@ DomTerm.forEachTerminal = function(func) {
     }
 }
 
-// True if pane should be split into a vertical stack, with new pane --below.
-DomTerm._splitVertically = function(dt) {
-    return dt.numColumns < 3*dt.numRows && (dt.numRows>40 || dt.numColumns<90);
-}
-
 /* Can be called in either DomTerm sub-window or layout-manager context. */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
-    if (paneOp == 1 && dt) // convert to --right or --below
-        paneOp = DomTerm._splitVertically(dt) ? 13 : 11;
-    if (paneOp == 1 && DomTerm.useIFrame && ! DomTerm.isInIFrame())
-        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "domterm-new-pane", paneOp, options);
-    else if (DomTerm.useIFrame && DomTerm.isInIFrame())
-        DomTerm.sendParentMessage("domterm-new-pane", paneOp, options);
-    else if (paneOp == 1 && DomTermLayout.addSibling) {
-        DomTermLayout.addSibling(options, DomTerm._splitVertically(dt));
-    } else if (paneOp == 2 && DomTermLayout.addTab)
-        DomTermLayout.addTab(options);
-    else if (DomTermLayout.addSibling) {
-        DomTermLayout.addSibling(options,
-                                 paneOp==12||paneOp==13, paneOp==11||paneOp==13);
-    }
+    if (DomTerm.useIFrame && DomTerm.isInIFrame())
+        DomTerm.sendParentMessage("domterm-add-pane", paneOp, options);
+    else if (DomTermLayout.addPane)
+        DomTermLayout.addPane(paneOp, options);
     //DomTerm.newSessionPid = 0;
 }
 

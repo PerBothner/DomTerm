@@ -7,6 +7,7 @@ DomTermLayout._pendingTerminals = null;
 DomTermLayout._oldFocusedPane = null;
 
 // The current (or previous) lm.items.Component
+// Same as DomTermLayout._elementToLayoutItem(DomTermLayout._oldFocusedContent)
 DomTermLayout._oldFocusedItem = null;
 
 // The current domterm *or* domterm-wrapper iframe Element.
@@ -51,20 +52,35 @@ DomTermLayout._indexInParent = function (component) {
     return i;
 }
 
-DomTermLayout.addSibling = function(newItemConfig,
-                                    isColumn, addAfter=true)
+DomTermLayout.shouldSplitVertically = function(w, h) {
+    return 2*w < 3*h && (h > 800 || w < 900)
+}
+
+DomTermLayout.addPane = function(paneOp, newItemConfig,
+                                 wrapper = DomTermLayout._oldFocusedContent)
 {
+    if (! DomTermLayout.manager)
+        DomTermLayout.initialize();
+    let oldItem = DomTermLayout._elementToLayoutItem(wrapper);
+    if (! oldItem)
+        return;
+    if (paneOp == 1) { // convert to --right or --below
+        paneOp = DomTermLayout.shouldSplitVertically(oldItem.container.width,
+                                                     oldItem.container.height)
+            ? 13 : 11;
+    }
     if (newItemConfig == null)
         newItemConfig = DomTermLayout.newItemConfig;
     else if (typeof newItemConfig == "number")
         newItemConfig = Object.assign({sessionNumber: newItemConfig },
                                       DomTermLayout.newItemConfig);
-    if (! DomTermLayout.manager)
-        DomTermLayout.initialize();
-    var r = DomTermLayout._oldFocusedItem;
-    var type = isColumn ? 'column' : 'row';
-    if (r) {
-        var p = r.parent;
+    if (paneOp == 2) { // new tab
+        oldItem.parent.addChild(newItemConfig); // FIXME index after oldItem
+    } else {
+        let isColumn = paneOp==12||paneOp==13;
+        let addAfter = paneOp==11||paneOp==13;
+        var type = isColumn ? 'column' : 'row';
+        var p = oldItem.parent;
         if (p && p.type == "stack") {
             var pp = p.parent;
             if (pp.type != type) {
@@ -77,21 +93,8 @@ DomTermLayout.addSibling = function(newItemConfig,
             pp.addChild(newItemConfig, addAfter ? i+1: i);
             return;
         }
-        r.parent.addChild(newItemConfig); // FIXME index after r
+        p.addChild(newItemConfig); // FIXME index after r
     }
-};
-
-DomTermLayout.addTab = function(newItemConfig = null) {
-    if (newItemConfig == null)
-        newItemConfig = DomTermLayout.newItemConfig;
-    else if (typeof newItemConfig == "number")
-        newItemConfig = Object.assign({sessionNumber: newItemConfig },
-                                      DomTermLayout.newItemConfig);
-    if (! DomTermLayout.manager)
-        DomTermLayout.initialize();
-    var r = DomTermLayout._oldFocusedItem;
-    if (r)
-        r.parent.addChild(newItemConfig); // FIXME index after r
 };
 
 DomTermLayout.showFocusedPane = function(item, lcontent = item.container._contentElement1) {

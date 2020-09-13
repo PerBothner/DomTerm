@@ -326,12 +326,12 @@ static const struct option options[] = {
         {"detached",     no_argument,       NULL, DETACHED_OPTION},
         {"headless",     no_argument,       NULL, HEADLESS_OPTION},
         {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
-        {"pane",         no_argument,       NULL, PANE_OPTION},
-        {"tab",          no_argument,       NULL, TAB_OPTION},
-        {"left",         no_argument,       NULL, LEFT_OPTION},
-        {"right",        no_argument,       NULL, RIGHT_OPTION},
-        {"above",        no_argument,       NULL, ABOVE_OPTION},
-        {"below",        no_argument,       NULL, BELOW_OPTION},
+        {"pane",         optional_argument, NULL, PANE_OPTION},
+        {"tab",          optional_argument, NULL, TAB_OPTION},
+        {"left",         optional_argument, NULL, LEFT_OPTION},
+        {"right",        optional_argument, NULL, RIGHT_OPTION},
+        {"above",        optional_argument, NULL, ABOVE_OPTION},
+        {"below",        optional_argument, NULL, BELOW_OPTION},
         {"print-url",    no_argument,       NULL, PRINT_URL_OPTION},
 #if REMOTE_SSH
         {"browser-pipe", no_argument,       NULL, BROWSER_PIPE_OPTION},
@@ -1027,12 +1027,15 @@ int process_options(int argc, char **argv, struct options *opts)
             case SETTINGS_FILE_OPTION:
             case 'd':
                 break; // handled in prescan_options
-            case PANE_OPTION:
             case TAB_OPTION:
             case LEFT_OPTION:
             case RIGHT_OPTION:
             case BELOW_OPTION:
             case ABOVE_OPTION:
+                opts->paneOp = c - PANE_OPTIONS_START;
+                opts->browser_command = argv[optind-1];
+                break;
+            case PANE_OPTION:
             case PRINT_URL_OPTION:
 #if REMOTE_SSH
             case BROWSER_PIPE_OPTION:
