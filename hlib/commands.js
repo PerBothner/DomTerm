@@ -111,6 +111,18 @@ cmd('toggle-paging-mode',
             dt._enterPaging(true);
         return true;
     });
+cmd('exit-paging-mode',
+    function(dt, key) {
+        if (dt._currentlyPagingOrPaused()) {
+            if (dt._markMode) {
+                dt.setMarkMode(false);
+            } else {
+                dt._pauseContinue();
+                dt._exitPaging();
+            }
+        }
+        return true;
+    });
 cmd('toggle-auto-pager',
     function(dt, key) {
         if (dt._currentlyPagingOrPaused()) {

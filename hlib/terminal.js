@@ -8313,6 +8313,7 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-F11": "toggle-fullscreen-current-window",
     "Ctrl-C": DomTerm.isMac ? "paging-interrupt" : "paging-copy-or-interrupt",
     "Ctrl-Shift-C": "copy-text",
+    "Esc": "exit-paging-mode",
     "Ctrl-Shift-M": "toggle-paging-mode",
     "'a'": "toggle-auto-pager",
     "'0'": "numeric-argument",
