@@ -3154,7 +3154,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     // Should be zero - support for topNode.offsetLeft!=0 is broken
     this._topLeft = dt.topNode.offsetLeft;
 
-
     // -1: mouse not pressed; >= 0: mouse pressed; 1: selectionchange called
     // (We want to not update selection while a mouse button mouse is pressed.)
     this._mouseSelectionState = -1;
@@ -8261,6 +8260,8 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-Up": "scroll-line-up",
     "Ctrl-PageUp": "scroll-page-up",
     "Ctrl-PageDown": "scroll-page-down",
+    "PageUp": "scroll-page-up",
+    "PageDown": "scroll-page-down",
     //"Shift-Mod-Home": "beginning-of-input-extend",
     //"Shift-Mod-End": "end-of-input-extend",
     "Backspace": "backward-delete-char",
@@ -8355,20 +8356,22 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Mod-Right": 'forward-word',
     "Ctrl-Down": "scroll-line-down",
     "Ctrl-Up": "scroll-line-up",
+    "Ctrl-PageUp": "scroll-page-up",
+    "Ctrl-PageDown": "scroll-page-down",
+    "PageUp": "scroll-page-up",
+    "PageDown": "scroll-page-down",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Shift-Home": "beginning-of-line-extend",
     "Shift-End": "end-of-line-extend",
-    "Ctrl-Home": "beginning-of-buffer",
-    "Ctrl-End": "end-of-buffer",
-    //"Ctrl-Home": "scroll-top",
-    //"Ctrl-End": "scroll-bottom",
-    "Ctrl-Shift-Home": "beginning-of-buffer-extend",
-    "Ctrl-Shift-End": "end-of-buffer-extend",
+    "Ctrl-Home": "scroll-top",
+    "Ctrl-End": "scroll-bottom",
+    "Alt-Home": "beginning-of-buffer",
+    "Alt-End": "end-of-buffer",
+    "Alt-Shift-Home": "beginning-of-buffer-extend",
+    "Alt-Shift-End": "end-of-buffer-extend",
     "Enter": "scroll-line-down",
-    "PageUp": "scroll-page-up",
     "Shift-Space": "scroll-page-up",
-    "PageDown": "scroll-page-down",
     "Space": "scroll-page-down",
     "'m'": "toggle-pause-mode",
     "'p'": "scroll-percentage",
@@ -8434,7 +8437,6 @@ Terminal.prototype.doLineEdit = function(keyName) {
     if (DomTerm.verbosity >= 2)
         this.log("doLineEdit "+keyName);
 
-    this.editorAddLine();
     let keymaps = [ DomTerm.lineEditKeymap ];
     return DomTerm.handleKey(keymaps, this, keyName);
 };
@@ -9590,16 +9592,19 @@ Terminal.prototype.editorMoveToRangeStart = function(range) {
 
 Terminal.prototype.editorMoveStartOrEndBuffer = function(toEnd, action="move") {
     let r = new Range();
-    let sel = window.getSelection();
     if (toEnd)
         r.selectNodeContents(this.initial);
     else
         r.setEnd(this.lineStarts[0], 0);
+    let sel = window.getSelection();
     if (action == "move") {
-            sel.collapse(r.endContainer, r.endOffset);
-    } else {
+        sel.collapse(r.endContainer, r.endOffset);
+    } else if (sel.anchorNode !== null && sel.anchorNode !== this.focusArea) {
         sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset,
                              r.endContainer, r.endOffset);
+    } else {
+        // slow but simple
+        this.extendSelection(toEnd ? -Infinity : Infinity, "char", "buffer");
     }
 }
 
