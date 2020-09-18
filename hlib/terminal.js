@@ -3122,7 +3122,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     focusArea.style.top = '0px';
     focusArea.style.bottom = '0px';
     focusArea.style['z-index'] = -1;
-    topNode.appendChild(focusArea);
+    topNode.insertBefore(focusArea, helperNode.nextSibling);
     focusArea.contentEditable = true;
 
     // The 'focusBackground' is only in the DOM when composing (IME) is active.
