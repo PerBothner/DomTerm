@@ -199,8 +199,9 @@ callback_cmd_stdin(struct lws *wsi, enum lws_callback_reasons reason,
         unsigned char *rbuf = client->rbuffer;
         int cur_out = STDOUT_FILENO;
         int nr = read(STDIN_FILENO, rbuf, client->rsize);
-        if (nr > 0)
-            write(client->socket, rbuf, nr);
+        if (nr <= 0)
+            return -1;
+        write(client->socket, rbuf, nr);
         return 0;
     default:
         return 0;

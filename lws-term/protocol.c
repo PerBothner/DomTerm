@@ -1402,8 +1402,9 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                          tclient->inb.size - tclient->inb.len);
         lwsl_info("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
                     (long) n, tclient->inb.size, tclient->inb.len);
-        if (n > 0)
-            tclient->inb.len += n;
+        if (n <= 0)
+            return -1;
+        tclient->inb.len += n;
         return handle_input(wsi, tclient, tclient->proxyMode);
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
         if (tclient->proxy_fd_out < 0) {
