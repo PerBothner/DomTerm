@@ -3339,15 +3339,20 @@ Terminal.prototype._clearInfoMessage = function() {
     this._displayInfoMessage(null);
 }
 
-Terminal.prototype._displaySizeInfoWithTimeout = function() {
+Terminal.prototype._sizeInfoText = function() {
     // Might be nicer to keep displaying the size-info while
     // button-1 is pressed. However, that seems a bit tricky.
-    var text = ""+this.numColumns+" x "+this.numRows
-        +" ("+this.availWidth+"px x "+this.availHeight+"px)";
-    var ratio = window.devicePixelRatio;
+    let text = ""+this.numColumns+" x "+this.numRows
+        +" ("+DomTerm.toFixed(this.availWidth, 2)+"px x "
+        +DomTerm.toFixed(this.availHeight, 2)+"px)";
+    let ratio = window.devicePixelRatio;
     if (ratio)
         text += " "+(ratio*100.0).toFixed(0)+"%";
-    this._displayInfoWithTimeout(text);
+    return text;
+}
+
+Terminal.prototype._displaySizeInfoWithTimeout = function() {
+    this._displayInfoWithTimeout(this._sizeInfoText());
 };
 
 Terminal.prototype._displayInfoMessage = function(contents) {

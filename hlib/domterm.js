@@ -59,6 +59,22 @@ DomTerm.escapeText = function(text) {
                         function(m) { return DomTerm._escapeMap[m]; });
 };
 
+// Like toFixed, but strip off trailing zeros and decimal point
+DomTerm.toFixed = function(n, d) {
+    let s = Number(n).toFixed(d);
+    let nzeros = 0;
+    let len = s.length;
+    for (;;) {
+        let last = s.charAt(len-nzeros-1);
+        if (last !== '0' && last !== '.')
+            break;
+        nzeros++;
+        if (last == '.')
+            break;
+    }
+    return nzeros ? s.substring(0, len-nzeros) : s;
+}
+
 DomTerm.isLineBlock = function(node) {
     let tag = node.tagName;
     return tag == "PRE" || tag == "P"
