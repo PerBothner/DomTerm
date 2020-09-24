@@ -1359,6 +1359,11 @@ Terminal.prototype.resetTabs = function() {
     this._tabDefaultStart = 0;
 };
 
+// Placeholder for future permisions-checking framework
+Terminal.prototype.checkPermission = function(featureName) {
+    return true;
+}
+
 Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText = false) {
     this.lineStarts.length = startLine;
     this.lineEnds.length = startLine;

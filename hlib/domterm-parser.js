@@ -1592,6 +1592,42 @@ class DTParser {
             */
             term._pushIntoElement(span);
             break;
+        case 52: { // Manipulate Selection Data (subset)
+            let semi = text.indexOf(';');
+            if (semi >= 0) {
+                let data = text.substring(semi+1);
+                for (let i = 0; i < semi; i++) {
+                    let where = text.charAt(i);
+                    if (data == '?') { // get
+                        let send_data = (text) => {
+                            term.processResponseCharacters("\x1B]52;"+where
+                                                           +";"+btoa(text)
+                                                           +"\x1B\\");
+                        };
+                        if (where == 'c') { // get clipboard
+                            if (term.checkPermission("get-clipboard"))
+                                navigator.clipboard.readText().then(send_data);
+                            else
+                                send_data("{get-clipboard not allowed}");
+                        } else if (where == 'p') { // get primary (selection)
+                            let text = term.checkPermission("get-selection")
+                                ? Terminal._selectionAsText()
+                                : "{get-selection not allowed}";
+                            send_data(text);
+                        }
+                    } else { // set
+                        let str = atob(data);
+                        if (where == 'c')  // set clipboard
+                            if (term.checkPermission("set-clipboard"))
+                                DomTerm.valueToClipboard({text: str });
+                        else if (where == 'p') { // set primary (selection)
+                            // TODO: Maybe copy to focus-area and selection
+                        }
+                    }
+                }
+            }
+            break;
+        }
         case 71:
             // handle tcsetattr
             var canon = text.indexOf(" icanon ") >= 0;
