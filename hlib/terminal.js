@@ -5350,7 +5350,7 @@ Terminal.prototype.updateSettings = function() {
         if (v >= 0)
             DomTerm.verbosity = v;
     }
-    val = getOption("log.js-to-", false);
+    val = getOption("log.js-to-server", false);
     if (val)
         DomTerm.logToServer = val;
 
