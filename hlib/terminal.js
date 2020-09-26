@@ -6311,6 +6311,16 @@ Terminal.prototype._requestDeletePendingEcho = function() {
         clear();
 }
 
+Terminal.prototype._maybeConfirm = function() {
+    if (this._pagingMode != 2 && ! this._replayMode
+        && (! this._savedControlState
+            || this._savedControlState.count_urgent > 0)
+        && ((this._receivedCount - this._confirmedCount) & Terminal._mask28) > 500) {
+        this._confirmedCount = this._receivedCount;
+        this.reportEvent("RECEIVED", this._confirmedCount);
+    }
+}
+
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
 Terminal.prototype.insertBytes = function(bytes) {
     var len = bytes.length;
@@ -6377,12 +6387,16 @@ Terminal.prototype.insertBytes = function(bytes) {
                     this.popControlState();
             }
         }
+        this._maybeConfirm();
     }
 }
 Terminal.prototype.pushControlState = function() {
     var saved = {
         decoder: this.decoder,
         receivedCount: this._receivedCount,
+        // 1 if we're inside an urgent message - counted in _receivedCount
+        // 0 if inside an urgent message not counted in _receivedCount
+        // -1 if seen initial byte only or not urgent
         count_urgent: -1,
         _savedControlState: this._savedControlState
     };
@@ -8867,13 +8881,7 @@ DomTerm._handleOutputData = function(dt, data) {
         dt.insertString(data);
         dlen = data.length;
         dt._receivedCount = (dt._receivedCount + dlen) & Terminal._mask28;
-    }
-    if (dt._pagingMode != 2 && ! dt._replayMode
-        && (! dt._savedControlState
-            || dt._savedControlState.count_urgent > 0)
-        && ((dt._receivedCount - dt._confirmedCount) & Terminal._mask28) > 500) {
-        dt._confirmedCount = dt._receivedCount;
-        dt.reportEvent("RECEIVED", dt._confirmedCount);
+        dt._maybeConfirm();
     }
     return dlen;
 }
