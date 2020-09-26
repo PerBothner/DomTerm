@@ -1,5 +1,5 @@
 dnl Autoconf script for DomTerm
-AC_INIT([DomTerm],[2.8.0],,domterm) dnl Also update package.json and domterm.spec
+AC_INIT([DomTerm],[2.8.0],[],[domterm]) dnl Also update package.json and domterm.spec
 AC_CONFIG_SRCDIR([doc/DomTerm.texi])
 AM_MAINTAINER_MODE([enable])
 
@@ -57,7 +57,7 @@ AC_ARG_WITH(javafx,
   AS_HELP_STRING(--with-javafx@<:@=jfxhome@:>@,Enable support for JavaFX))
 
 AC_ARG_WITH(closure_compiler,
-  AC_HELP_STRING("--with-closure-compiler[=@<:@=compiler.jar@:>],compress JavaScript with Closure))
+  AS_HELP_STRING(["--with-closure-compiler=@<:@=compiler.jar@:>],[compress JavaScript with Closure]))
 
 AC_ARG_WITH(docbook,
   AS_HELP_STRING(--without-docbook,Build manual using DocBook+xsltproc))
@@ -95,7 +95,7 @@ esac
 AC_CHECK_PROGS(QMAKE, qmake-qt5 qmake, qmake)
 
 AS_IF([test -z "$with_asciidoctor"],
-    AC_CHECK_PROG(with_asciidoctor, asciidoctor, "yes", "no"))
+    [AC_CHECK_PROG(with_asciidoctor, asciidoctor, "yes", "no")])
 AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
