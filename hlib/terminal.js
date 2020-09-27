@@ -7738,7 +7738,6 @@ Terminal.prototype.pasteText = function(str) {
     }
 
     if (editing) {
-        this.editorAddLine();
         this.editorInsertString(str);
     } else {
         this._clearSelection();
@@ -9743,6 +9742,7 @@ Terminal.prototype.editorContinueInput = function() {
 }
 
 Terminal.prototype.editorInsertString = function(str, inserting=true) {
+    this.editorAddLine();
     this._showPassword();
     this._updateLinebreaksStart(this.getAbsCursorLine(), true);
     for (;;) {
