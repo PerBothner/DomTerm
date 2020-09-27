@@ -12,7 +12,12 @@ clipboard_c* clipboard_manager = NULL;
 #define BUF_SIZE 1024
 
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
-#define UNCONFIRMED_LIMIT 8000
+// Maximum number of unconfirmed bytes before pausing
+// Must be at least as much as "flow-confirm-every" setting.
+#define MAX_UNCONFIRMED 8000
+// Maximum number of unconfirmed bytes to continue after pausing
+// Must be at least as much as "flow-confirm-every" setting.
+#define MAX_CONTINUE 4000
 
 #if defined(TIOCPKT)
 // See https://stackoverflow.com/questions/21641754/when-pty-pseudo-terminal-slave-fd-settings-are-changed-by-tcsetattr-how-ca
@@ -910,7 +915,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         long count;
         sscanf(data, "%ld", &count);
         client->confirmed_count = count;
-        if (((client->sent_count - client->confirmed_count) & MASK28) < 1000
+        if (((client->sent_count - client->confirmed_count) & MASK28) < MAX_CONTINUE
             && pclient != NULL && pclient->paused) {
 #if USE_RXFLOW
             lwsl_info("session %d unpaused (flow control) (sent:%ld confirmed:%ld)\n",
@@ -1568,7 +1573,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         handle_output(client, &buf, client->proxyMode);
         // end handle_output
         int written = buf.len - LWS_PRE;
-        lwsl_info("tty SERVER_WRITEABLE conn#%d written:%d to %p\n", client->connection_number, written, wsi);
+        lwsl_info("tty SERVER_WRITEABLE conn#%d written:%d sent: %ld to %p\n", client->connection_number, written, (long) client->sent_count, wsi);
         if (written > 0
             && lws_write(wsi, buf.buffer+LWS_PRE, written, LWS_WRITE_BINARY) != written)
             lwsl_err("lws_write\n");
@@ -2095,7 +2100,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (tavail < avail)
                     avail = tavail;
             }
-            if ((min_unconfirmed >= UNCONFIRMED_LIMIT || avail == 0
+            if ((min_unconfirmed >= MAX_UNCONFIRMED || avail == 0
                  || pclient->paused)
                 && ! GET_REMOTE_HOSTUSER(pclient)) {
                 if (! pclient->paused) {

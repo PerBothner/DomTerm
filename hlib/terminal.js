@@ -418,6 +418,10 @@ class Terminal {
         return opt === undefined ? dflt : opt;
     }
 
+    unconfirmedMax() {
+        return this.getOption("flow-confirm-every", 500);
+    }
+
     // state can be true, false or "toggle"
     setMarkMode(state) {
         let set = state == "toggle" ? ! this._markMode : state;
@@ -6263,13 +6267,7 @@ Terminal.prototype._pauseContinue = function(skip = false) {
         this.parser._textParameter = null;
         if (! skip && text)
             this.insertString(text);
-        text = this.parser._textParameter;
-        if (! this._autoPaging || text == null || text.length < 500 || skip) {
-            this._confirmedCount = this._receivedCount;
-            if (DomTerm.verbosity >= 2)
-                this.log("report RECEIVED "+this._confirmedCount);
-            this.reportEvent("RECEIVED", this._confirmedCount);
-        }
+        this._maybeConfirm();
     }
 }
 
@@ -6315,7 +6313,7 @@ Terminal.prototype._maybeConfirm = function() {
     if (this._pagingMode != 2 && ! this._replayMode
         && (! this._savedControlState
             || this._savedControlState.count_urgent > 0)
-        && ((this._receivedCount - this._confirmedCount) & Terminal._mask28) > 500) {
+        && ((this._receivedCount - this._confirmedCount) & Terminal._mask28) > this.unconfirmedMax()) {
         this._confirmedCount = this._receivedCount;
         this.reportEvent("RECEIVED", this._confirmedCount);
     }
