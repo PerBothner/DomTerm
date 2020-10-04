@@ -39,6 +39,15 @@
 #define HAVE_OPENSSL 0
 #endif
 
+#define BROKEN_LWS_SET_WSI_USER (LWS_LIBRARY_VERSION_MAJOR < 4)
+#if BROKEN_LWS_SET_WSI_USER
+#define WSI_GET_TCLIENT(WSI) (lws_wsi_user(WSI) ? *(struct tty_client**)lws_wsi_user(WSI) : NULL)
+#define WSI_SET_TCLIENT(WSI, TCLIENT) (*(struct tty_client**)lws_wsi_user(WSI) = TCLIENT)
+#else
+#define WSI_GET_TCLIENT(WSI) ((struct tty_client*)lws_wsi_user(WSI))
+#define WSI_SET_TCLIENT(WSI, TCLIENT) lws_set_wsi_user(WSI, TCLIENT)
+#endif
+
 #include "command-connect.h"
 
 #include "utils.h"
@@ -56,13 +65,19 @@ extern struct tty_server *server;
 extern struct lws_vhost *vhost;
 
 extern struct pty_client **pty_clients; // malloc'd array
-extern int pty_clients_size;
+extern int pty_clients_size; // number of allocated elements of pty_clients
 #define VALID_SESSION_NUMBER(NUM) \
     ((NUM) > 0 && (NUM) < pty_clients_size && pty_clients[NUM] != NULL && pty_clients[NUM]->session_number == (NUM))
+// Invariant for pty_clients array:
+// If SNUM is valid then pty_clients[SNUM].session_number == SNUM.
+// Otherwise (if SNUM is < pty_clients_size): pty_clients[SNUM] is points
+// to NULL or the next valid element in pty_clients.
 #define PCLIENT_FROM_NUMBER(NUM) \
     (VALID_SESSION_NUMBER(NUM) ? pty_clients[NUM] : NULL)
+
+// tty_clients has similar invariants and logic as pty_clients
 extern struct tty_client **tty_clients; // malloc'd array
-extern int tty_clients_size;
+extern int tty_clients_size; // number of allocated elements tty_clients
 #define VALID_CONNECTION_NUMBER(NUM) \
     ((NUM) > 0 && (NUM) < tty_clients_size && tty_clients[NUM] != NULL && tty_clients[NUM]->connection_number == (NUM))
 #define TCLIENT_FROM_NUMBER(NUM) \
@@ -122,9 +137,6 @@ struct pty_client {
     bool exit;
     bool session_name_unique;
     bool packet_mode;
-#if __APPLE__
-    bool awaiting_connection;
-#endif
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
     int paused;

@@ -279,6 +279,7 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
 
     int snum = tclient->connection_number;
     if (VALID_CONNECTION_NUMBER(snum)) {
+        // update to maintain tty_clients invariant
         struct tty_client *next = tty_clients[snum+1];
         for (; snum >= 0 && tty_clients[snum] == tclient; snum--)
             tty_clients[snum] = next;
@@ -305,9 +306,8 @@ setWindowSize(struct pty_client *client)
 void link_command(struct lws *wsi, struct tty_client *tclient,
                   struct pty_client *pclient)
 {
-    tclient->pclient = pclient;
+    tclient->pclient = pclient; // sometimes redundant
     struct tty_client *first_tclient = pclient->first_tclient;
-    tclient->next_tclient = NULL;
     if (GET_REMOTE_HOSTUSER(pclient))
         tclient->proxyMode = proxy_display_local;
 
@@ -470,9 +470,6 @@ create_pclient(const char *cmd, char*const*argv,
         pclient->cmd_settings = NULL;
     pclient->cwd = strdup(cwd);
     pclient->env = copy_strings(env);
-#if __APPLE__
-    pclient->awaiting_connection = false;
-#endif
 #if REMOTE_SSH
     pclient->cmd_socket = -1;
     pclient->cur_pclient = NULL;
@@ -1105,15 +1102,15 @@ reportEvent(const char *name, char *data, size_t dlen,
     return true;
 }
 
-void init_tclient_struct(struct tty_client *client, struct lws *wsi)
+void init_tclient_struct(struct tty_client *client)
 {
     client->initialized = 0;
     client->headless = false;
     client->detachSaveSend = false;
     client->uploadSettingsNeeded = true;
     client->requesting_contents = 0;
-    client->wsi = wsi;
-    client->out_wsi = wsi;
+    client->wsi = NULL;
+    client->out_wsi = NULL;
     client->version_info = NULL;
     client->main_window = -1;
     client->pclient = NULL;
@@ -1130,6 +1127,7 @@ void init_tclient_struct(struct tty_client *client, struct lws *wsi)
     client->ssh_connection_info = NULL;
     client->pending_browser_command = NULL;
     client->pending_paneOp = -1;
+    client->next_tclient = NULL;
     lwsl_notice("init_tclient_struct conn#%d\n",  client->connection_number);
 }
 
@@ -1478,7 +1476,7 @@ int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len)
 {
-    struct tty_client *client = (struct tty_client *) user;
+    struct tty_client *client = WSI_GET_TCLIENT(wsi);
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
     lwsl_info("callback_tty %p reason:%d conn#%d\n", wsi, (int) reason,
               client == NULL ? -1 : client->connection_number);
@@ -1493,63 +1491,75 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         break;
 
     case LWS_CALLBACK_ESTABLISHED:
-        init_tclient_struct(client, wsi);
-        lwsl_notice("tty/CALLBACK_ESTABLISHED conn#%d\n", client->connection_number);
+        lwsl_notice("tty/CALLBACK_ESTABLISHED %s client:%p\n", in, client);
         char arg[100]; // FIXME
+        long snum;
         if (! check_server_key(wsi, arg, sizeof(arg) - 1))
             return -1;
+
+        const char *no_session = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
+        const char*window = lws_get_urlarg_by_name(wsi, "window=", arg, sizeof(arg) - 1);
+        if (window != NULL) {
+            snum = strtol(window, NULL, 10);
+            if (! VALID_CONNECTION_NUMBER(snum)) {
+                lwsl_err("connection with invalid connection number %s - error\n", window);
+                break;
+            }
+            client = tty_clients[snum];
+        } else {
+            if (! no_session) {
+                // Needed on Apple when using /usr/bin/open as it
+                // drops #hash parts of file: URLS.
+                FORALL_WSCLIENT(client) {
+                    if (client->pclient && client->wsi == NULL) {
+                        break;
+                    }
+                }
+            }
+            if (client == NULL) {
+                client = xmalloc(sizeof(struct tty_client));
+                init_tclient_struct(client);
+            }
+        }
+        WSI_SET_TCLIENT(wsi, client);
+        pclient = client->pclient;
+        client->wsi = wsi;
+        client->out_wsi = wsi;
         const char*main_window = lws_get_urlarg_by_name(wsi, "main-window=", arg, sizeof(arg) - 1);
         client->main_window = -1;
         if (main_window != NULL) {
             if (strcmp(main_window, "true") == 0)
                 client->main_window = 0;
-            long num = strtol(main_window, NULL, 10);
-            if (num > 0)
-                client->main_window = (int) num;
+            else if ((snum = strtol(main_window, NULL, 10)) > 0)
+                client->main_window = (int) snum;
         }
-        const char*argval = lws_get_urlarg_by_name(wsi, "headless=", arg, sizeof(arg) - 1);
-        if (argval && strcmp(argval, "true") == 0)
+        const char*headless = lws_get_urlarg_by_name(wsi, "headless=", arg, sizeof(arg) - 1);
+        if (headless && strcmp(headless, "true") == 0)
             client->headless = true;
-        argval = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
-        if (argval != NULL) {
+
+        if (no_session != NULL) {
             lwsl_info("dummy connection (no session) established\n");
         } else {
-            argval = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1);
-            long snumber = argval == NULL ? 0 : strtol(argval, NULL, 10);
-            struct pty_client *pclient = NULL;
-            if (VALID_SESSION_NUMBER(snumber))
-                pclient = pty_clients[snumber];
-            else {
-#if __APPLE__
-                FOREACH_PCLIENT(p) {
-                    if (p->awaiting_connection) {
-                        pclient = p;
-                        p->awaiting_connection = false;
-                        break;
-                    }
-                }
-#endif
-            }
             if (pclient != NULL) {
                 link_command(wsi, client, pclient);
-                lwsl_info("connection to existing session %ld established\n", snumber);
-            } else if (snumber > 0) {
-                lwsl_notice("connection to non-existing session %ld - error\n", snumber);
+                lwsl_info("connection to existing session %ld established\n", pclient->session_number);
             } else {
                 pclient = create_link_pclient(wsi, client);
                 lwsl_info("connection to new session %d established\n", pclient->session_number);
             }
-            set_connection_number(client, pclient);
 
-            argval = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
-            if (argval != NULL) {
-                snumber = strtol(argval, NULL, 10);
-                client->confirmed_count = snumber;
-                client->sent_count = snumber; // FIXME
+            const char *reconnect = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
+            if (reconnect != NULL) {
+                snum = strtol(reconnect, NULL, 10);
+                client->confirmed_count = snum;
+                client->sent_count = snum; // FIXME
                 client->initialized = 1;
                 lws_callback_on_writable(wsi);
             }
         }
+        if (client->connection_number < 0)
+            set_connection_number(client, pclient);
+
         server->client_count++;
         // Defer start_pty so we can set up DOMTERM variable with version_info.
 
@@ -1597,6 +1607,10 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          if (focused_wsi == wsi)
               focused_wsi = NULL;
          tty_client_destroy(wsi, client);
+#if ! BROKEN_LWS_SET_WSI_USER
+         lws_set_wsi_user(wsi, NULL);
+#endif
+         free(client);
          lwsl_notice("client #:%d disconnected, total: %d\n", client->connection_number, server->client_count);
          server->client_count--;
          maybe_exit(0);
@@ -1627,7 +1641,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
                                                      "proxy", NULL);
     struct tty_client *tclient =
         ((struct tty_client *) lws_wsi_user(pin_lws));
-    init_tclient_struct(tclient, pin_lws);
+    init_tclient_struct(tclient);
     set_connection_number(tclient, pclient);
     tclient->proxy_fd_in = options->fd_in;
     tclient->proxy_fd_out = options->fd_out;
@@ -1648,9 +1662,10 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
         // maybe set last 'parent' argument ???
         pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd, "proxy-out", NULL);
         lws_set_wsi_user(pout_lws, tclient);
-        tclient->out_wsi = pout_lws;
         lwsl_notice("- make_proxy out-conn#%d wsi:%p\n", tclient->connection_number, pout_lws);
     }
+    tclient->wsi = pin_lws;
+    tclient->out_wsi = pout_lws;
     if (pclient)
         link_command(pout_lws, tclient, pclient);
     tclient->proxyMode = proxyMode; // do after link_command
@@ -1700,6 +1715,14 @@ display_session(struct options *options, struct pty_client *pclient,
       if (paneOp < 1 || paneOp > 13)
           paneOp = 0;
     }
+    int wnum = -1;
+    if (pclient != NULL) {
+        struct tty_client *tclient = xmalloc(sizeof(struct tty_client));
+        init_tclient_struct(tclient);
+        set_connection_number(tclient, pclient);
+        tclient->pclient = pclient; // maybe move to set_connection_number
+        wnum = tclient->connection_number;
+    }
     int r = EXIT_SUCCESS;
     if (paneOp > 0) {
         char *eq = strchr(browser_specifier, '=');
@@ -1721,7 +1744,7 @@ display_session(struct options *options, struct pty_client *pclient,
             tclient = (struct tty_client *) lws_wsi_user(focused_wsi);
         if (pclient != NULL)
              printf_to_browser(tclient, URGENT_WRAP("\033[90;%d;%du"),
-                               paneOp, session_number);
+                               paneOp, wnum);
         else
             printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
                                -port, paneOp, url);
@@ -1738,12 +1761,9 @@ display_session(struct options *options, struct pty_client *pclient,
             // Note we use ';' rather than the traditional '&' to separate parts
             // of the fragment.  Using '&' causes a mysterious bug (at
             // least on Electron, Qt, and Webview) when added "&js-verbodity=N".
-            sbuf_printf(&sb, "%s#;session-number=%d", main_html_url, pclient->session_number);
-#if __APPLE__
-            // Needed when using /usr/bin/open as it drops #hash parts
-            // of file: URLS.
-            pclient->awaiting_connection = true;
-#endif
+            int snum = pclient->session_number;
+            sbuf_printf(&sb, "%s#;session-number=%d", main_html_url, snum);
+            sbuf_printf(&sb, ";window=%d", wnum);
             if (options->headless)
                 sbuf_printf(&sb, ";headless=true");
             const char *verbosity = get_setting(options->settings, "log.js-verbosity");

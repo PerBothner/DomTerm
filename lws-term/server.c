@@ -198,7 +198,8 @@ static const struct lws_protocols protocols[] = {
         {"http-only", callback_http, sizeof(struct http_client),  0},
 
         /* websockets server for communicating with browser */
-        {"domterm",   callback_tty,  sizeof(struct tty_client),  0},
+        {"domterm",   callback_tty,
+         BROKEN_LWS_SET_WSI_USER ? sizeof(struct tty_client*) : 0,  0},
 
         /* callbacks for pty I/O, one pty for each session (process) */
         {"pty",       callback_pty,  sizeof(struct pty_client),  0},
