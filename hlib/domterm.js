@@ -176,7 +176,7 @@ DomTerm.openNewWindow = function(dt, options={}) {
     options = DomTerm._extractGeometryOptions(options);
     let url = options.url;
     if (! url)
-        options.url = DomTerm.topLocation;
+        options.url = url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
     if (DomTerm.isElectron()) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("domterm-new-window", options);

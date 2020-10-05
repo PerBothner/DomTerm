@@ -317,7 +317,7 @@ DomTermLayout._initTerminal = function(sessionNumber, container) {
     let wrapped;
     let paneNumber = DomTerm._newPaneNumber();
     if (DomTerm.useIFrame) {
-        let url = DomTerm.mainLocation;
+        let url = DomTerm.paneLocation;
         url += (url.indexOf('#') >= 0 ? '&' : '#')
             + "pane-number="+paneNumber;
         if (sessionNumber)

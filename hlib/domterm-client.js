@@ -276,12 +276,10 @@ function loadHandler(event) {
         DomTerm.log("loadHandler "+url);
     DomTerm.server_port = location.port || DomTerm.server_port;
     DomTerm.topLocation = url;
-    if (DomTerm.useIFrame) {
-        DomTerm.mainLocation = "http://localhost:"+DomTerm.server_port+"/simple.html";
-    } else {
-        let hashPos = url.indexOf('#');
-        DomTerm.mainLocation = hashPos < 0 ? url : url.substring(0, hashPos);
-    }
+    let hashPos = url.indexOf('#');
+    DomTerm.mainLocation = hashPos < 0 ? url : url.substring(0, hashPos);
+    DomTerm.paneLocation = ! DomTerm.useIFrame ? DomTerm.mainLocation
+        : "http://localhost:"+DomTerm.server_port+"/simple.html";
     if (! DomTerm.server_key && (m = params.get('server-key')) != null) {
         DomTerm.server_key = m;
     }
@@ -383,7 +381,7 @@ function loadHandler(event) {
     }
     DomTerm.mainLocationParams = paneParams.toString();
     if (DomTerm.useIFrame == 2 && ! DomTerm.isInIFrame()) {
-        DomTermLayout.makeIFrameWrapper(DomTerm.mainLocation/*+location.hash*/);
+        DomTermLayout.makeIFrameWrapper(DomTerm.paneLocation/*+location.hash*/);
         return;
     }
     if (DomTerm.loadDomTerm) {
