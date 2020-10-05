@@ -859,6 +859,7 @@ get_domterm_jar_path()
 
 void init_options(struct options *opts)
 {
+    opts->reference_count = 0;
     opts->cmd_settings = NULL;
     opts->settings = NULL;
     opts->browser_command = NULL;
@@ -902,6 +903,26 @@ void destroy_options(struct options *opts)
     // FIXME implement to fix memory leaks
     free((void*) opts->env);
     free((void*) opts->cwd);
+}
+
+struct options *link_options(struct options *opts)
+{
+    if (opts) {
+        opts->reference_count++;
+    } else {
+        opts = xmalloc(sizeof(struct options));
+        opts->reference_count = 1;
+        init_options(opts);
+    }
+    return opts;
+}
+
+void release_options(struct options *opts)
+{
+    if (opts != main_options && --opts->reference_count == 0) {
+        destroy_options(opts);
+        free(opts);
+    }
 }
 
 static char **default_argv = NULL;

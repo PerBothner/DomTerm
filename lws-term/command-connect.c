@@ -323,9 +323,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             size_t jblen = 512;
             char *jbuf = xmalloc(jblen);
             int jpos = 0;
-            struct options opts;
-            init_options(&opts);
-            destroy_options(&opts);
+            struct options *opts = link_options(NULL);
             for (;;) {
                 if (jblen-jpos < 512) {
                     jblen = (3 * jblen) >> 1;
@@ -354,9 +352,9 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 if (msg.msg_controllen > 0) {
                     memcpy(myfds, CMSG_DATA(cmsg), 3*sizeof(int));
                     lwsl_notice("callback_cmd fds:%d/%d/%d tn(0)=%s it(1)=%d\n",  myfds[0], myfds[1], myfds[2], ttyname(myfds[0]), isatty(myfds[1]));
-                    opts.fd_in = myfds[0];
-                    opts.fd_out = myfds[1];
-                    opts.fd_err = myfds[2];
+                    opts->fd_in = myfds[0];
+                    opts->fd_out = myfds[1];
+                    opts->fd_err = myfds[2];
                 }
 #else
 #if 1
@@ -364,11 +362,11 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
 		poll(&pfd, 1, 3000); // FIXME needed?
 #endif
 		ssize_t n = read(sockfd, jbuf+jpos, jblen-jpos);
-		opts.fd_in = sockfd;
-		opts.fd_out = sockfd;
-		opts.fd_err = sockfd;
+		opts->fd_in = sockfd;
+		opts->fd_out = sockfd;
+		opts->fd_err = sockfd;
 #endif
-                opts.fd_cmd_socket = sockfd;
+                opts->fd_cmd_socket = sockfd;
                 if (n <= 0) {
                   break;
                 } else if (jbuf[jpos+n-1] == '\f') {
@@ -413,25 +411,24 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 env[nenv] = NULL;
             }
             if (json_object_object_get_ex(jobj, "options", &joptions)) {
-                if (opts.cmd_settings)
-                    json_object_put(opts.cmd_settings);
-                opts.cmd_settings = json_object_get(joptions);
+                if (opts->cmd_settings)
+                    json_object_put(opts->cmd_settings);
+                opts->cmd_settings = json_object_get(joptions);
             }
             optind = 1;
-            set_settings(&opts);
-            opts.env = copy_strings((char*const*) env);
-            opts.cwd = cwd;
+            set_settings(opts);
+            opts->env = copy_strings((char*const*) env);
+            opts->cwd = cwd;
             json_object_put(jobj);
             free(env);
-            process_options(argc, argv, &opts);
-            int ret = handle_command(argc-optind, argv+optind, wsi, &opts);
-            destroy_options(&opts);
+            process_options(argc, argv, opts);
+            int ret = handle_command(argc-optind, argv+optind, wsi, opts);
             if (ret == EXIT_WAIT)
-                break;
+                break; // FIXME when to release_options
 #if PASS_STDFILES_UNIX_SOCKET
-            close(opts.fd_in);
-            close(opts.fd_out);
-            close(opts.fd_err);
+            close(opts->fd_in);
+            close(opts->fd_out);
+            close(opts->fd_err);
             char r[1];
             r[0] = (char) ret;
 #else
@@ -439,6 +436,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             r[0] = PASS_STDFILES_EXIT_CODE;
             r[1] = (char) ret;
 #endif
+            release_options(opts);
             if (write(sockfd, r, sizeof(r)) != sizeof(r))
                 lwsl_err("write failed sockfd:%d\n", sockfd);
             close(sockfd);

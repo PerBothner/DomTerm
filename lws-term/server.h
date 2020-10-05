@@ -182,6 +182,7 @@ struct pty_client {
 struct tty_client {
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
+    struct options *options;
 
     /// Normally a tty_client wraps a bi-directional input/output file/socket.
     /// In some proxy modes we have distinct file descriptors for in and out.
@@ -227,8 +228,6 @@ struct tty_client {
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
     int proxy_fd_in, proxy_fd_out;
-    char *pending_browser_command; // [an 'out' field]
-    int pending_paneOp;
     char *ssh_connection_info;
 };
 
@@ -245,6 +244,7 @@ struct cmd_client {
 #define MASK28 0xfffffff
 
 struct options {
+    int reference_count;
     bool readonly;                            // whether not allow clients to write to the TTY
     bool headless;
     bool http_server;
@@ -334,6 +334,8 @@ extern void fatal(const char *format, ...);
 extern const char *find_home(void);
 extern void init_options(struct options *options);
 extern void destroy_options(struct options *options);
+extern struct options *link_options(struct options *options);
+extern void release_options(struct options *options);
 extern const char *firefox_browser_command(struct options *options);
 extern const char *chrome_command(bool app_mode, struct options *options);
 extern void default_link_command(const char *url);

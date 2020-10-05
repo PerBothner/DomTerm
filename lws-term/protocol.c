@@ -289,6 +289,11 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
     tclient->ssh_connection_info = NULL;
     if (pclient != NULL)
         unlink_tty_from_pty(pclient, wsi, tclient);
+    if (tclient->options) {
+        release_options(tclient->options);
+        tclient->options = NULL;
+    }
+
 }
 
 static void
@@ -1015,11 +1020,11 @@ reportEvent(const char *name, char *data, size_t dlen,
             memcpy(geom, g, glen);
             geom[glen] = 0;
         }
-        struct options opts;
-        init_options(&opts);
-        //opts.geometry = geom;
-        set_setting(&opts.cmd_settings, "geometry", geom);
-        do_run_browser(&opts, data, -1);
+        struct options *options = client->options;
+        if (! options)
+            client->options = options = link_options(NULL);
+        set_setting(&options->cmd_settings, "geometry", geom);
+        do_run_browser(options, data, -1);
         if (geom != NULL)
             free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
@@ -1105,6 +1110,7 @@ reportEvent(const char *name, char *data, size_t dlen,
 void init_tclient_struct(struct tty_client *client)
 {
     client->initialized = 0;
+    client->options = NULL;
     client->headless = false;
     client->detachSaveSend = false;
     client->uploadSettingsNeeded = true;
@@ -1125,8 +1131,6 @@ void init_tclient_struct(struct tty_client *client)
     client->pty_window_number = -1;
     client->pty_window_update_needed = false;
     client->ssh_connection_info = NULL;
-    client->pending_browser_command = NULL;
-    client->pending_paneOp = -1;
     client->next_tclient = NULL;
     lwsl_notice("init_tclient_struct conn#%d\n",  client->connection_number);
 }
@@ -1421,10 +1425,9 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         }
         if (tclient->proxyMode == proxy_command_local) {
             unsigned char *fd = memchr(tclient->ob.buffer, 0xFD, tclient->ob.len);
-            lwsl_notice("check for FD: %p browser:%s text:%.*s\n", fd, tclient->pending_browser_command, (int) tclient->ob.len, tclient->ob.buffer);
+            lwsl_notice("check for FD: %p text:%.*s\n", fd, (int) tclient->ob.len, tclient->ob.buffer);
             if (fd && tclient->pclient) {
                 tclient->ob.len = 0; // FIXME - simplified
-                struct options opts;
                 struct termios termios;
                 if (pclient && tcgetattr(pclient->pty, &termios) == 0) {
                     termios.c_lflag &= ~(ICANON|ECHO);
@@ -1432,12 +1435,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                     tcsetattr(pclient->pty, TCSANOW, &termios);
                 }
                 tty_restore(-1);
-                init_options(&opts);
-                opts.browser_command = tclient->pending_browser_command;
-                opts.paneOp = tclient->pending_paneOp;
-                display_session(&opts, tclient->pclient, NULL, http_port);
-                free(tclient->pending_browser_command);
-                tclient->pending_browser_command = NULL;
+                display_session(tclient->options, tclient->pclient, NULL, http_port);
                 if (tclient->out_wsi && tclient->out_wsi != tclient->wsi) {
                     lwsl_notice("set_timeout clear tc:%p\n", tclient->wsi);
                     lws_set_timeout(tclient->wsi,
@@ -1668,14 +1666,8 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
     tclient->out_wsi = pout_lws;
     if (pclient)
         link_command(pout_lws, tclient, pclient);
+    tclient->options = link_options(options);
     tclient->proxyMode = proxyMode; // do after link_command
-    if (proxyMode == proxy_command_local) {
-        lwsl_notice("proxy-local browser:%s\n", options->browser_command);
-        tclient->pending_browser_command
-            = options->browser_command ? strdup(options->browser_command)
-            : NULL;
-        tclient->pending_paneOp = options->paneOp;
-    }
 }
 #endif
 
@@ -1719,6 +1711,7 @@ display_session(struct options *options, struct pty_client *pclient,
     if (pclient != NULL) {
         struct tty_client *tclient = xmalloc(sizeof(struct tty_client));
         init_tclient_struct(tclient);
+        tclient->options = link_options(options);
         set_connection_number(tclient, pclient);
         tclient->pclient = pclient; // maybe move to set_connection_number
         wnum = tclient->connection_number;
