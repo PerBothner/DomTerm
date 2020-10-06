@@ -1361,14 +1361,10 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
 }
 
 #if REMOTE_SSH
-void // FXIME REMOVE?
-close_local_proxy(struct pty_client *pclient, int exit_code)
-{
 #if PASS_STDFILES_UNIX_SOCKET
+void close_local_proxy(struct pty_client *pclient, int exit_code)
+{
     lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number, pclient->cmd_socket);
-#else
-    lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number,  pclient->cmd_socket);
-#endif
     if (pclient->cmd_socket >= 0) {
         char r = exit_code;
         if (write(pclient->cmd_socket, &r, 1) != 1)
@@ -1377,6 +1373,7 @@ close_local_proxy(struct pty_client *pclient, int exit_code)
         pclient->cmd_socket = -1;
     }
 }
+#endif
 
 int
 callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
@@ -1416,11 +1413,6 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
         if (tclient->proxy_fd_out < 0) {
             lwsl_info("proxy RAW_WRITEABLE_FILE - no fd cleanup\n");
-#if 0
-            // cleanup? FIXME
-            if (tclient->pclient)
-                close_local_proxy(tclient->pclient, 0);
-#endif
             return -1;
         }
         if (tclient->proxyMode == proxy_command_local) {
@@ -1964,7 +1956,7 @@ handle_remote(int argc, char** argv, char* at,
         if (rargc > max_rargc)
             fatal("too many arguments");
         rargv[rargc] = NULL;
-#if 1
+
         const char *dt = getenv_from_array("DOMTERM", opts->env);
         char *tn;
         struct pty_client *cur_pclient = NULL;
@@ -2004,40 +1996,6 @@ handle_remote(int argc, char** argv, char* at,
         // FIXME free fields - see reportEvent
         //int r = EXIT_WAIT; // FIXME
         pclient->cmd_socket = opts->fd_cmd_socket;
-#else
-            lwsl_notice("before fork ssh:%s in/out/err:%d/%d/%d\n",
-                        ssh, opts->fd_in, opts->fd_out, opts->fd_err);
-            pid_t pid = fork();
-            lwsl_notice("after fork ssh pid:%d\n", pid);
-            if (pid == 0) {
-                for (int i = 0; rargv[i] != NULL; i++) {
-                    lwsl_notice("- arg[%d]='%s'\n", i, rargv[i]);
-                }
-                /*
-                for (int i = 0; environ[i] != NULL; i++) {
-                    lwsl_notice("- env[%d]='%s'\n", i, environ[i]);
-                }
-                */
-                if (opts->fd_in != 0) {
-                    dup2(opts->fd_in, 0); close(opts->fd_in);
-                }
-                if (opts->fd_out != 1) {
-                    dup2(opts->fd_out, 1); close(opts->fd_out);
-                }
-                if (opts->fd_err != 2) {
-                    dup2(opts->fd_err, 2); close(opts->fd_err);
-                }
-                lwsl_notice("- after dup2 ttyname(0)=%s is(1)=%d\n", ttyname(0), isatty(1));
-                execve(ssh, rargv, environ);
-                exit(-1);
-            } else if (pid > 0) {// master
-                //free(args);
-            } else {
-                printf_error(opts, "could not fork front-end command");
-                // return EXIT_FAILURE;
-            }
-        }
-#endif
         free(rargv);
         //free(user);
 }
