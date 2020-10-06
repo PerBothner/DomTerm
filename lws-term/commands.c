@@ -622,6 +622,8 @@ static void status_by_connection(FILE *out, int verbosity)
                 continue;
 
             struct pty_client *pclient = sub_client->pclient;
+            if (pclient == NULL)
+                continue;
             fprintf(out, "  session#%d", pclient->session_number);
             if (pclient->session_number != sub_client->connection_number
                 || (pclient->first_tclient && pclient->first_tclient->next_tclient))
