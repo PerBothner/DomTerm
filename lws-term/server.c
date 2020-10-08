@@ -705,14 +705,6 @@ do_run_browser(struct options *options, char *url, int port)
         browser_specifier = opts.browser_command;
     }
     bool do_electron = false, do_Qt = false;
-#if 0
-    if (options != NULL && options->browser_command == NULL
-        && options->requesting_session && options->requesting_session->recent_tclient) {
-        browser_run_browser(options, url,
-                            options->requesting_session->recent_tclient);
-        return EXIT_SUCCESS;
-    }
-#endif
     if (browser_specifier == NULL && port_specified < 0) {
         const char *default_frontend = get_setting(options->settings, "frontend.default");
         if (default_frontend == NULL)
@@ -873,7 +865,6 @@ void init_options(struct options *opts)
     opts->do_daemonize = 1;
     opts->debug_level = 0;
     opts->iface = NULL;
-    opts->requesting_session = NULL;
     opts->tty_packet_mode = "no";
 #if HAVE_OPENSSL
     opts->ssl = false;

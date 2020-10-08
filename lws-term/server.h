@@ -257,7 +257,6 @@ struct options {
     // Possible memory leak if we start recalim options objects.
     const char *browser_command;
     char *tty_packet_mode;
-    struct pty_client *requesting_session;
     int paneOp;
     char *iface;
 #if HAVE_OPENSSL

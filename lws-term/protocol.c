@@ -2009,22 +2009,6 @@ handle_command(int argc, char** argv, struct lws *wsi, struct options *opts)
 {
     lwsl_notice("handle_command argv0:%s\n", argv[0]);
     struct command *command = argc == 0 ? NULL : find_command(argv[0]);
-    const char *domterm_env_value = getenv_from_array("DOMTERM", opts->env);
-    if (domterm_env_value) {
-        static char pid_key[] = ";pid=";
-        int current_session_pid = 0;
-        char *p = strstr(domterm_env_value, pid_key);
-        if (p)
-            sscanf(p+(sizeof(pid_key)-1), "%d", &current_session_pid);
-        if (current_session_pid) {
-            FOREACH_PCLIENT(pclient) {
-                if (pclient->pid == current_session_pid) {
-                    opts->requesting_session = pclient;
-                    break;
-                }
-            }
-        }
-    }
     if (command != NULL) {
         lwsl_notice("handle command '%s'\n", command->name);
         return (*command->action)(argc, argv, wsi, opts);
