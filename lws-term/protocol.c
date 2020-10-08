@@ -1007,6 +1007,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             }
         }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
+        struct options *options = client->options;
         static char gopt[] =  "geometry=";
         char *g0 = strstr(data, gopt);
         char *geom = NULL;
@@ -1019,11 +1020,10 @@ reportEvent(const char *name, char *data, size_t dlen,
             geom = xmalloc(glen+1);
             memcpy(geom, g, glen);
             geom[glen] = 0;
+            if (! options)
+                client->options = options = link_options(NULL);
+            set_setting(&options->cmd_settings, "geometry", geom);
         }
-        struct options *options = client->options;
-        if (! options)
-            client->options = options = link_options(NULL);
-        set_setting(&options->cmd_settings, "geometry", geom);
         display_session(options, NULL,
                         data[0] == '#' && g0 == data + 1 ? NULL : data, -1);
         if (geom != NULL)

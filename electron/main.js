@@ -125,6 +125,10 @@ function eventToWindow(event) {
 ipcMain.on('window-ops', (event, command, arg) => {
     switch (command) {
     case 'new-window':
+        if (! arg.width || ! arg.height) {
+            let sz = eventToWindow(event).getContentSize();
+            arg = Object.assign({ width: sz[0], height: sz[1] }, arg);
+        }
         createNewWindow(arg.url, arg, false);
         break;
     case 'hide':
