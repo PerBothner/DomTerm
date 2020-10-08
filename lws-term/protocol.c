@@ -382,9 +382,7 @@ void put_to_env_array(char **arr, int max, char* eval)
 }
 
 static struct pty_client *
-create_pclient(const char *cmd, char*const*argv,
-               const char*cwd, char *const*env,
-               struct options *opts)
+create_pclient(const char *cmd, char*const*argv, struct options *opts)
 {
     struct lws *outwsi;
     int master;
@@ -473,8 +471,6 @@ create_pclient(const char *cmd, char*const*argv,
         pclient->cmd_settings = json_object_get(opts->cmd_settings);
     else
         pclient->cmd_settings = NULL;
-    pclient->cwd = strdup(cwd);
-    pclient->env = copy_strings(env);
 #if REMOTE_SSH
     pclient->cmd_socket = -1;
     pclient->cur_pclient = NULL;
@@ -489,7 +485,7 @@ create_link_pclient(struct lws *wsi, struct tty_client *tclient)
     char *cmd = find_in_path(argv[0]);
     if (cmd == NULL)
         return NULL;
-    struct pty_client *pclient = create_pclient(cmd, argv, ".", environ,
+    struct pty_client *pclient = create_pclient(cmd, argv,
                                                 main_options);
     link_command(wsi, (struct tty_client *) lws_wsi_user(wsi), pclient);
     return pclient;
@@ -514,12 +510,14 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
     case 0: /* child */
             if (login_tty(slave))
                 _exit(1);
-            if (cwd == NULL || chdir(cwd) != 0) {
+            if (cwd != NULL && chdir(cwd) != 0) {
                 const char *home = find_home();
                 if (home == NULL || chdir(home) != 0)
                     if (chdir("/") != 0)
                         lwsl_err("chdir failed\n");
             }
+            if (env == NULL)
+                env = environ;
             int env_size = 0;
             while (env[env_size] != NULL) env_size++;
             int env_max = env_size + 10;
@@ -903,11 +901,13 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (pclient == NULL)
             return true;
         if (pclient->cmd) {
-            run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);
+            struct options *options = client->options;
+            run_command(pclient->cmd, pclient->argv,
+                        options ? options->cwd : NULL,
+                        options ? options->env : NULL,
+                        pclient);
             free((void*)pclient->cmd); pclient->cmd = NULL;
             free((void*)pclient->argv); pclient->argv = NULL;
-            free((void*)pclient->cwd); pclient->cwd = NULL;
-            free((void*)pclient->env); pclient->env = NULL;
         }
         if (pclient->saved_window_contents != NULL)
             lws_callback_on_writable(wsi);
@@ -1008,10 +1008,10 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
         static char gopt[] =  "geometry=";
-        char *g = strstr(data, gopt);
+        char *g0 = strstr(data, gopt);
         char *geom = NULL;
-        if (g != NULL) {
-            g += sizeof(gopt)-1;
+        if (g0 != NULL) {
+            char *g = g0 + sizeof(gopt)-1;
             char *gend = strstr(g, "&");
             if (gend == NULL)
                 gend = g + strlen(g);
@@ -1024,7 +1024,8 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (! options)
             client->options = options = link_options(NULL);
         set_setting(&options->cmd_settings, "geometry", geom);
-        do_run_browser(options, data, -1);
+        display_session(options, NULL,
+                        data[0] == '#' && g0 == data + 1 ? NULL : data, -1);
         if (geom != NULL)
             free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
@@ -1700,7 +1701,7 @@ display_session(struct options *options, struct pty_client *pclient,
           paneOp = 0;
     }
     int wnum = -1;
-    if (pclient != NULL) {
+    if (port != -104 && port != -105 && url == NULL) {
         struct tty_client *tclient = xmalloc(sizeof(struct tty_client));
         init_tclient_struct(tclient);
         tclient->options = link_options(options);
@@ -1727,7 +1728,7 @@ display_session(struct options *options, struct pty_client *pclient,
             return EXIT_FAILURE;
         } else
             tclient = (struct tty_client *) lws_wsi_user(focused_wsi);
-        if (pclient != NULL)
+        if (wnum >= 0)
              printf_to_browser(tclient, URGENT_WRAP("\033[90;%d;%du"),
                                paneOp, wnum);
         else
@@ -1742,12 +1743,17 @@ display_session(struct options *options, struct pty_client *pclient,
             url = encoded;
         struct sbuf sb;
         sbuf_init(&sb);
-        if (pclient != NULL) {
+        if (wnum >= 0) {
+            const char *main_url = url ? url : main_html_url;
+            sbuf_append(&sb, main_url, -1);
+            if (strchr(main_url, '#') == NULL)
+                sbuf_append(&sb, "#", 1);
             // Note we use ';' rather than the traditional '&' to separate parts
             // of the fragment.  Using '&' causes a mysterious bug (at
             // least on Electron, Qt, and Webview) when added "&js-verbodity=N".
-            int snum = pclient->session_number;
-            sbuf_printf(&sb, "%s#;session-number=%d", main_html_url, snum);
+            if (pclient != NULL) {
+                sbuf_printf(&sb, ";session-number=%d", pclient->session_number);
+            }
             sbuf_printf(&sb, ";window=%d", wnum);
             if (options->headless)
                 sbuf_printf(&sb, ";headless=true");
@@ -1804,8 +1810,7 @@ int new_action(int argc, char** argv,
         printf_error(opts, "cannot execute '%s'", argv0);
         return EXIT_FAILURE;
     }
-    struct pty_client *pclient = create_pclient(cmd, args, opts->cwd, opts->env,
-                                                opts);
+    struct pty_client *pclient = create_pclient(cmd, args, opts);
     int r = display_session(opts, pclient, NULL, http_port);
     if (r == EXIT_FAILURE) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
@@ -1977,9 +1982,7 @@ handle_remote(int argc, char** argv, char* at,
         if (isatty(tin)) {
             tty_save_set_raw(tin);
         }
-        struct pty_client *pclient = create_pclient(ssh, rargv,
-                                                    opts->cwd, opts->env,
-                                                    opts);
+        struct pty_client *pclient = create_pclient(ssh, rargv, opts);
 #if 1
         if (cur_pclient) {
             cur_pclient->cur_pclient = pclient;
@@ -1992,7 +1995,7 @@ handle_remote(int argc, char** argv, char* at,
         set_setting(&pclient->cmd_settings, REMOTE_HOSTUSER_KEY, host_arg);
         lwsl_notice("handle_remote pcl:%p\n", pclient);
         make_proxy(opts, pclient, proxy_command_local);
-        run_command(pclient->cmd, pclient->argv, pclient->cwd, pclient->env, pclient);
+        run_command(pclient->cmd, pclient->argv, opts->cwd, opts->env, pclient);
         // FIXME free fields - see reportEvent
         //int r = EXIT_WAIT; // FIXME
         pclient->cmd_socket = opts->fd_cmd_socket;

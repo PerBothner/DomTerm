@@ -911,8 +911,8 @@ struct options *link_options(struct options *opts)
         opts->reference_count++;
     } else {
         opts = xmalloc(sizeof(struct options));
-        opts->reference_count = 1;
         init_options(opts);
+        opts->reference_count = 1;
     }
     return opts;
 }

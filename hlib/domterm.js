@@ -175,23 +175,27 @@ DomTerm._extractGeometryOptions = function(options={}) {
 DomTerm.openNewWindow = function(dt, options={}) {
     options = DomTerm._extractGeometryOptions(options);
     let url = options.url;
-    if (! url)
-        options.url = url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
-    if (DomTerm.isElectron()) {
+    if (DomTerm.isElectron() && (url || ! dt)) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("domterm-new-window", options);
         } else {
+            if (! url)
+                options.url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
             electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
         }
     } else {
         let width = options.width;
         let height = options.height;
         if (dt) {
+            if (! url)
+                url = "";
             dt.reportEvent("OPEN-WINDOW",
                            url + (url.indexOf('#') < 0 ? '#' : '&') +
                            ((width && height) ? ("geometry="+width+"x"+height) : "")
                           );
         } else {
+            if (! url)
+                url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
             window.open(url, "_blank", "width="+width+",height="+height);
         }
     }

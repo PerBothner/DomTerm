@@ -165,8 +165,6 @@ struct pty_client {
     struct json_object *cmd_settings;
     const char *cmd;
     char*const*argv;
-    const char*cwd;
-    char *const*env;
 #if REMOTE_SSH
     // Domain socket to communicate between client and (local) server.
     int cmd_socket;
@@ -282,8 +280,8 @@ struct options {
     char *session_name;
     char *settings_file;
     char **shell_argv;               // parse_args("shell.default" setting);
-    const char*cwd;
-    char *const*env;
+    const char*cwd; // use as current current dir; NULL means that of process
+    char *const*env; // environment to use; if NULL use that of process
 };
 
 struct tty_server {
