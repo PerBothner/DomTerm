@@ -894,6 +894,8 @@ void destroy_options(struct options *opts)
     // FIXME implement to fix memory leaks
     free((void*) opts->env);
     free((void*) opts->cwd);
+    if (opts->cmd_settings)
+        json_object_put(opts->cmd_settings);
 }
 
 struct options *link_options(struct options *opts)

@@ -121,6 +121,14 @@ enum option_name {
 #undef OPTION_F
 };
 
+enum pclient_flags {
+    ssh_pclient_flag = 1,
+    session_name_unique_flag = 2,
+    packet_mode_flag = 4
+};
+#define SET_PCLIENT_FLAG(PCLIENT, FLAG, VALUE) \
+    ((VALUE) ? ((PCLIENT)->pflags |= (FLAG)) : ((PCLIENT)->pflags &= ~(FLAG)))
+
 /**
  * Data specific to a pty process.
  * This is the user structure for the libwebsockets "pty" protocol.
@@ -134,9 +142,8 @@ struct pty_client {
     int nrows, ncols;
     float pixh, pixw;
     int eof_seen;  // 1 means seen; 2 reported to client
+    enum pclient_flags pflags : 8;
     bool exit;
-    bool session_name_unique;
-    bool packet_mode;
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
     int paused;
@@ -162,7 +169,6 @@ struct pty_client {
     // (Should be minumum of saved_window_sent_count (if saved_window_contents)
     // and miniumum of confirmed_count for each tclient.)
 
-    struct json_object *cmd_settings;
     const char *cmd;
     char*const*argv;
 #if REMOTE_SSH
@@ -351,10 +357,6 @@ extern bool check_option_arg(char *arg, struct options *opts);
 // A "setting" that starts with "`" is an internal setting.
 #define LOCAL_SESSIONNUMBER_KEY "`local-session-number"
 #define REMOTE_HOSTUSER_KEY "`remote-host-user"
-
-// if using ssh: "USER@HOST" or "HOST"; otherwise NULL
-#define GET_REMOTE_HOSTUSER(PCLIENT) get_setting((PCLIENT)->cmd_settings, REMOTE_HOSTUSER_KEY)
-#define PTY_FOR_SSH 0
 
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);

@@ -189,10 +189,6 @@ pty_destroy(struct pty_client *pclient)
         free(pclient->preserved_output);
         pclient->preserved_output = NULL;
     }
-    if (pclient->cmd_settings) {
-        json_object_put(pclient->cmd_settings);
-        pclient->cmd_settings = NULL;
-    }
     if (pclient->cur_pclient) {
         pclient->cur_pclient->cur_pclient = NULL;
         pclient->cur_pclient = NULL;
@@ -313,7 +309,7 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
 {
     tclient->pclient = pclient; // sometimes redundant
     struct tty_client *first_tclient = pclient->first_tclient;
-    if (GET_REMOTE_HOSTUSER(pclient))
+    if ((pclient->pflags & ssh_pclient_flag) != 0)
         tclient->proxyMode = proxy_display_local;
 
     if (first_tclient != NULL) {
@@ -420,7 +416,7 @@ create_pclient(const char *cmd, char*const*argv, struct options *opts)
     outwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "pty", NULL);
     struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
     pclient->ttyname = tname;
-    pclient->packet_mode = packet_mode;
+    SET_PCLIENT_FLAG(pclient, packet_mode_flag, packet_mode);
     server->session_count++;
     int snum = 1;
     for (; ; snum++) {
@@ -463,14 +459,10 @@ create_pclient(const char *cmd, char*const*argv, struct options *opts)
     pclient->first_tclient = NULL;
     pclient->last_tclient_ptr = &pclient->first_tclient;
     pclient->recent_tclient = NULL;
-    pclient->session_name_unique = false;
+    pclient->pflags = 0;
     pclient->pty_wsi = outwsi;
     pclient->cmd = cmd;
     pclient->argv = copy_strings(argv);
-    if (opts->cmd_settings)
-        pclient->cmd_settings = json_object_get(opts->cmd_settings);
-    else
-        pclient->cmd_settings = NULL;
 #if REMOTE_SSH
     pclient->cmd_socket = -1;
     pclient->cur_pclient = NULL;
@@ -980,23 +972,24 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (pclient->session_name)
             free(pclient->session_name);
         pclient->session_name = session_name;
-        pclient->session_name_unique = true;
+        SET_PCLIENT_FLAG(pclient, session_name_unique_flag, true);
         json_object_put(obj);
         FOREACH_PCLIENT(p) {
             if (p != pclient && p->session_name != NULL
                 && strcmp(session_name, p->session_name) == 0) {
                 struct pty_client *pp = p;
-                p->session_name_unique = false;
+                SET_PCLIENT_FLAG(p, session_name_unique_flag, false);
                 for (;;) {
                     FOREACH_WSCLIENT(t, pp) {
                         t->pty_window_update_needed = true;
                         lws_callback_on_writable(t->out_wsi);
                     }
-                    if (! pclient->session_name_unique || pp == pclient)
+                    if ((pclient->pflags & session_name_unique_flag) == 0
+                        || pp == pclient)
                         break;
                     pp = pclient;
                 }
-                pclient->session_name_unique = false;
+                SET_PCLIENT_FLAG(pclient, session_name_unique_flag, false);
             }
         }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
@@ -1255,10 +1248,10 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         }
     }
     if (client->initialized == 0 && proxyMode != proxy_command_local) {
-        if (pclient->cmd_settings) {
-            //json_object_put(pclient->cmd_settings);
+        if (client->options->cmd_settings) {
+            //json_object_put(client->cmd_settings);
             sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
-                        json_object_to_json_string_ext(pclient->cmd_settings, JSON_C_TO_STRING_PLAIN));
+                        json_object_to_json_string_ext(client->options->cmd_settings, JSON_C_TO_STRING_PLAIN));
         } else {
             sbuf_printf(bufp, URGENT_WRAP("\033]88;{}\007"));
         }
@@ -1310,7 +1303,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         client->pty_window_update_needed = false;
         sbuf_printf(bufp, URGENT_WRAP("\033[91;%d;%d;%d;%du"),
                     pclient->session_number,
-                    pclient->session_name_unique,
+                    (pclient->pflags & session_name_unique_flag) != 0,
                     client->pty_window_number+1,
                     client->connection_number);
     }
@@ -2023,10 +2016,11 @@ handle_remote(int argc, char** argv, char* at,
             pclient->cur_pclient = cur_pclient;
         }
 #endif
+        pclient->pflags |= ssh_pclient_flag;
         char tbuf[20];
         sprintf(tbuf, "%d", pclient->session_number);
-        set_setting(&pclient->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
-        set_setting(&pclient->cmd_settings, REMOTE_HOSTUSER_KEY, host_arg);
+        set_setting(&opts->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
+        set_setting(&opts->cmd_settings, REMOTE_HOSTUSER_KEY, host_arg);
         lwsl_notice("handle_remote pcl:%p\n", pclient);
         make_proxy(opts, pclient, proxy_command_local);
         run_command(pclient->cmd, pclient->argv, opts->cwd, opts->env, pclient);
@@ -2094,7 +2088,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             }
             if ((min_unconfirmed >= MAX_UNCONFIRMED || avail == 0
                  || pclient->paused)
-                && ! GET_REMOTE_HOSTUSER(pclient)) {
+                && (pclient->pflags & session_name_unique_flag) == 0) {
                 if (! pclient->paused) {
 #if USE_RXFLOW
                     lwsl_info(tclients_seen == 1
@@ -2116,7 +2110,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                     if (data_start == NULL) {
                         data_start = tclient->ob.buffer+tclient->ob.len;
                         ssize_t n;
-                        if (pclient->packet_mode) {
+                        if ((pclient->pflags & packet_mode_flag) != 0) {
 #if USE_PTY_PACKET_MODE
                             // We know data_start > obuffer_raw, so
                             // it's safe to access data_start[-1].

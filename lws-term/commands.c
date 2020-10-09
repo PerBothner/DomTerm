@@ -531,10 +531,13 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
 
 static void pclient_status_info(struct pty_client *pclient, FILE *out)
 {
-    const char* remote = GET_REMOTE_HOSTUSER(pclient);
-    if (remote)
+    if ((pclient->pflags & ssh_pclient_flag) != 0
+        && pclient->first_tclient && pclient->first_tclient->options) {
+        const char* remote =
+            get_setting(pclient->first_tclient->options->cmd_settings,
+                        REMOTE_HOSTUSER_KEY);
         fprintf(out, "ssh to remote %s", remote);
-    else
+    } else
         fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
     if (pclient->session_name != NULL)
         fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
