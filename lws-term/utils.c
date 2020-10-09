@@ -644,7 +644,7 @@ void copy_file(FILE*in, FILE*out)
 /** Look for a 'command' in list.
  * A command is any string ending in a *non-quoted* ';' or '\n' or end of string.
  * Returns the end of the command.
- * If startp is on-NULL, it is set to the first non-whitespace char.
+ * If startp is non-NULL, it is set to the first non-whitespace char.
  * If endp is non-NULL it is the end of the command without trailing whitespace.
  * If cmd_endp is non-NULL it is set to the end of an initial "command" -
  *   i.e. first whitespace char or same as endp.
@@ -683,6 +683,46 @@ extract_command_from_list(const char *list, const char **startp,
     if (cmd_endp)
         *cmd_endp = cmd_end;
     return p;
+}
+
+// Check a 'template' (conditional string) that initial clauses match.
+// On match return rest of string after clauses.
+// 'template' is temporarily modified
+char *
+check_conditional(char *template, test_function_t tester, void* data)
+{
+    int size = 0;
+    while (template[0] == '{') {
+        // a disjunction of clauses, separated by '|'
+        bool ok = false; // true when a previous clause was true
+        char *clause = &template[1];
+        for (char *p = clause; ; p++) {
+            char ch = *p;
+            if (ch == '\0')
+              return NULL;
+            if (ch == '|' || ch == '}') {
+                if (! ok) {
+                    bool negate = *clause=='!';
+                    if (negate)
+                      clause++;
+                    int clen = p - clause;
+                    *p = '\0';
+                    ok = tester(clause, data);
+                    *p = ch;
+                    if (negate)
+                        ok = ! ok;
+                }
+                clause = p + 1;
+            }
+            if (ch == '}') {
+              if (! ok)
+                return NULL;
+              template = clause;
+              break;
+            }
+        }
+    }
+    return template[0] ? template : NULL;
 }
 
 const char *

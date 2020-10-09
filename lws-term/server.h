@@ -380,8 +380,6 @@ extern int count_args(char**);
 extern char** parse_args(const char*, bool);
 extern char* parse_string(const char*, bool);
 extern const char * maybe_quote_arg(const char *in);
-extern const char *extract_command_from_list(const char *, const char **,
-                                             const char**, const char **);
 
 #if COMPILED_IN_RESOURCES
 struct resource {

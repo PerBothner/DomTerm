@@ -1509,6 +1509,8 @@ and then joining all the arguments separated by a single space.
 Alert (Bell) (Unicode 0x07).
 @item @code{\b}
 Backspace (Unicode 0x08).
+@item @code{\e}
+Escape (Unicode 0x1B).
 @item @code{\f}
 Formfeed (Unicode 0x0c)
 @item @code{\n}
@@ -1532,6 +1534,34 @@ or plain slash (Unicode 0x2F - pointless but included for JSON compatibiity).
 @end table
 
 This is a superset of JSON.
+
+@anchor{conditional values}
+@subsubheading Conditional values
+
+A conditional value is one whose value depends on context
+of how the value is used.
+Specifically, it is a list of values (separated by newline or semi-colon),
+where each value is prefixed with zero or more conditions in @code{@{}...@code{@}} braces.
+All of the conditions must be satisfied for the following value to be selected.
+A condition is one or simple @dfn{simple conditions},
+optionally negated (by being prefixed by @samp{!}),
+separated by vertical bars @samp{|}.
+For example the condition @code{@{A|!B|C|!D@}} is true
+if either of the simple conditions @code{A} or @code{C} is true,
+or if @code{B} or @code{D} is false.
+
+The syntax and meaning of a simple condition depends on the keyword.
+For example, the @code{command.ssh} keyword accepts simple conditions
+of the form @code{@@@var{hostname}} or @code{@var{user}@@@var{hostname}},
+as shown in this example:
+@example
+command.ssh =
+ | @{@@gnu.org@}ssh -E /tmp/gnu-ssh.log
+ | ssh -E /tmp/ssh.log
+@end example
+This runs @code{ssh} with the @code{-E /tmp/gnu-ssh.log}
+when connecting remotely to @code{gnu.org},
+but with the flag @code{-E /tmp/ssh.log} when connecting to other hosts.
 
 @subheading Available settings
 
@@ -1638,17 +1668,33 @@ Add or replace keybindings for @ref{Input line editing,input line editing}.
 @subsubheading Remote connnections
 
 @table @asis
-@item @code{@b{command.remote-domterm} =} @var{domterm-command}
+@item @code{@b{command.remote-domterm} =} @var{conditional-command}
 When connecting to a remote server over ssh,
-use @var{command} to run @code{domterm} on the server.
+the command that runs @code{domterm} on the server.
 The default is @code{domterm}, but you may need to use this
 option if @code{domterm} is not in the remote @code{PATH} or
 you want to pass extra options (perhaps for debugging or logging)
 to @code{domterm}.
+The value is @ref{conditional values,conditional},
+where the simple conditions have the form of either
+@code{@@@var{hostname}} or @code{@var{user}@@@var{hostname}}.
+For example:
+@example
+command.remote-domterm =
+ | @{@@192.168.1.55@}/home/bothner/DT/bin/domterm
+ | @{jones@@mac.example.com@}/Users/jones/bin/domterm -d 15
+@end example
+The @code{@var{user}} and @code{@var{hostname}} are matched literally
+against those used to connect remotelty.
+If @code{@var{user}} is specified it must match exactly,
+otherwise any (or no) @code{@var{user}} matches.
 
-@item @code{@b{command.ssh} =} @var{ssh-command}
+@item @code{@b{command.ssh} =} @var{conditional-command}
 The command to use instead of @code{ssh} to connect to a remote
 server.
+The value is a list of alternative commands, optionally
+prefixed by @ref{conditional values,conditions},
+in the same way as for @code{command.remote-domterm}.
 
 @item @code{@b{predicted-input-timeout} =} @var{timeout}
 When the user types a ``simple'' keyboard action (a printable character,
@@ -3586,7 +3632,8 @@ which will invoke an appropriate viewer, such as a browser.
 
 Which application to use depends on two preference variables:
 @code{open.file.application} and @code{open.link.application}.
-Both are lists of templates, separated by semi-colons or newlines.
+Both are @ref{conditional values,conditional} lists of templates,
+separated by semi-colons or newlines.
 When opening a @code{file:} link both template lists are used
 (first @code{open.file.application} is tried then @code{open.link.application});
 otherwise, only @code{open.link.application} is tried.

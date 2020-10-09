@@ -639,8 +639,40 @@ find_session(const char *specifier)
 
 static char localhost_localdomain[] = "localhost.localdomain";
 
+struct test_link_data {
+    const char *href;
+    const char *position;
+    json_object *obj;
+};
+
+static bool test_link_clause(const char *clause, void* data)
+{
+    struct test_link_data *test_data = data;
+    int clen = strlen(clause);
+    if (clen > 1 && clause[clen-1] == ':') {
+        return strcmp(clause, test_data->href) == 0;
+    } else if (clause[0] == '.') {
+        const char *h = test_data->href;
+        const char *dot = NULL;
+        for (;*h && *h != '#' && *h != '?'; h++)
+            if (*h == '.')
+                dot = h;
+        return dot && clen == h - dot
+            && memcmp(dot, clause, clen) == 0;
+    } else if (clen == 7
+               && memcmp(clause, "in-atom", clen) == 0) {
+        struct json_object *jatom = NULL;
+        return  json_object_object_get_ex(test_data->obj, "isAtom", &jatom)
+            && json_object_get_boolean(jatom);
+    } else if (clen == 13
+               && memcmp(clause, "with-position", clen) == 0) {
+        return test_data->position != NULL;
+    }
+    return false;
+}
+
 char *
-check_template(const char *template, json_object *obj)
+check_template(char *template, json_object *obj)
 {
     const char *filename = get_setting(obj, "filename");
     const char *position = get_setting(obj, "position");
@@ -672,54 +704,15 @@ check_template(const char *template, json_object *obj)
             }
         }
     }
-
     int size = 0;
-    while (template[0] == '{') {
-        // a disjunction of clauses, separated by '|'
-        bool ok = false; // true when a previous clause was true
-        const char *clause = &template[1];
-        for (const char *p = clause; ; p++) {
-            char ch = *p;
-            if (ch == '\0')
-              return NULL;
-            if (ch == '|' || ch == '}') {
-                if (! ok) {
-                    bool negate = *clause=='!';
-                    if (negate)
-                      clause++;
-                    int clen = p - clause;
-                    if (clen > 1 && p[-1] == ':') {
-                        ok = strncmp(clause, href, clen) == 0;
-                    } else if (clause[0] == '.') {
-                        const char *h = href;
-                        const char *dot = NULL;
-                        for (;*h && *h != '#' && *h != '?'; h++)
-                          if (*h == '.')
-                            dot = h;
-                        ok = dot && clen == h - dot
-                          && memcmp(dot, clause, clen) == 0;
-                    } else if (clen == 7
-                               && memcmp(clause, "in-atom", clen) == 0) {
-                        struct json_object *jatom = NULL;
-                        ok = json_object_object_get_ex(obj, "isAtom", &jatom)
-                          && json_object_get_boolean(jatom);
-                    } else if (clen == 13
-                               && memcmp(clause, "with-position", clen) == 0) {
-                        ok = position != NULL;
-                    }
-                    if (negate)
-                        ok = ! ok;
-                }
-                clause = p + 1;
-            }
-            if (ch == '}') {
-              if (! ok)
-                return NULL;
-              template = clause;
-              break;
-            }
-        }
-    }
+    struct test_link_data test_data;
+    test_data.href = href;
+    test_data.position = position;
+    test_data.obj = obj;
+    template = check_conditional(template, test_link_clause, &test_data);
+    if (! template)
+        return NULL;
+
     if (strcmp(template, "atom") == 0)
         template = "atom '%F'%:P";
     else if (strcmp(template, "emacs") == 0)
@@ -819,7 +812,7 @@ handle_tlink(const char *template, json_object *obj)
             *semi = 0;
         else
             semi = NULL;
-        command = check_template(start, obj);
+        command = check_template(p + (start-p), obj);
         if (command != NULL)
            break;
         if (semi)
@@ -1900,6 +1893,59 @@ word_matches(const char *p1, const char *p2)
     }
 }
 
+struct test_host_data {
+    const char *host;
+};
+
+static bool test_host_clause(const char *clause, void* data)
+{
+    struct test_host_data *test_data = data;
+    char *at_in_clause = strchr(clause, '@');
+    if (at_in_clause) {
+        const char *at_in_connection = strchr(test_data->host, '@');
+        if (at_in_connection && at_in_clause == clause)
+            return strcmp(at_in_clause, at_in_connection) == 0;
+        else
+            return strcmp(clause, test_data->host) == 0;
+    }
+    return false; // actually ERROR
+}
+
+// Check list of conditional clauses for a match with 'host'.
+// Return freshly allocated command from matching conditional, or NULL.
+static char *
+expand_host_conditional(const char *expr, const char *host)
+{
+    char *r = NULL;
+    if (expr != NULL) {
+        struct test_host_data test_data;
+        test_data.host = host;
+        char *t = strdup(expr);
+        char *p = t;
+        for (;;) {
+            const char *start = NULL;
+            char *semi = (char*)
+                extract_command_from_list(p, &start, NULL, NULL);
+            if (*semi)
+                *semi = 0;
+            else
+                semi = NULL;
+            char *command = check_conditional(p + (start-p),
+                                              test_host_clause, &test_data);
+            if (command != NULL) {
+                r = strdup(command);
+                break;
+            }
+            if (semi)
+                p = semi+1;
+            else
+                break;
+        }
+        free(t);
+    }
+    return r;
+}
+
 void
 handle_remote(int argc, char** argv, char* at,
               struct options *opts)
@@ -1913,37 +1959,26 @@ handle_remote(int argc, char** argv, char* at,
     // Locally, we create a tclient in --BROWSER, but instead
     // of the pclient/pty we do the following.
 
-    char** ssh_args;
-    char* _ssh_args[2];
-    int ssh_argc;
+    char *host_arg = argv[0];
     const char *ssh_cmd = get_setting(opts->settings, "command.ssh");
-    if (ssh_cmd) {
-        ssh_args = parse_args(ssh_cmd, false);
-        ssh_argc = count_args(ssh_args);
-    } else {
-        ssh_args = _ssh_args;
-        ssh_args[0] = "ssh";
-        ssh_args[1] = NULL;
-        ssh_argc = 1;
-    }
+    char *ssh_expanded = expand_host_conditional(ssh_cmd, host_arg);
+    if (ssh_expanded == NULL)
+        ssh_expanded = strdup("ssh");
+    char** ssh_args = parse_args(ssh_expanded, false);
+    int ssh_argc = count_args(ssh_args);
+    free(ssh_expanded);
     char *ssh = ssh_args == 0 ? NULL : find_in_path(ssh_args[0]);
     if (ssh == NULL) {
         printf_error(opts, "domterm: ssh command not found - required for remote");
         return;
     }
-    char** domterm_args;
-    char* _domterm_args[2];
-    int domterm_argc;
     const char *domterm_cmd = get_setting(opts->settings, "command.remote-domterm");
-    if (domterm_cmd) {
-        domterm_args = parse_args(domterm_cmd, false);
-        domterm_argc = count_args(domterm_args);
-    } else {
-        domterm_args = _domterm_args;
-        domterm_args[0] = "domterm";
-        domterm_args[1] = NULL;
-        domterm_argc = 1;
-    }
+    char *dt_expanded = expand_host_conditional(domterm_cmd, host_arg);
+    if (dt_expanded == NULL)
+        dt_expanded = strdup("domterm");
+    char** domterm_args = parse_args(dt_expanded, false);
+    int domterm_argc = count_args(domterm_args);
+    free(dt_expanded);
 
     int max_rargc = argc+ssh_argc+domterm_argc+8;
         char** rargv = xmalloc(sizeof(char*)*(max_rargc+1));
@@ -1951,7 +1986,6 @@ handle_remote(int argc, char** argv, char* at,
         for (int i = 0; i < ssh_argc; i++)
             rargv[rargc++] = ssh_args[i];
         // argv[0] is @host or user@host. Pass host or user@host to ssh
-        char *host_arg = argv[0];
         rargv[rargc++] = at==host_arg ? at+1 : host_arg;
         for (int i = 0; i < domterm_argc; i++)
             rargv[rargc++] = domterm_args[i];
