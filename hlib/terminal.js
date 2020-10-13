@@ -101,8 +101,8 @@ class Terminal {
     this.name = name;
 
     // Options/state that should be saved/restored on detach/attach.
-    // Restricted to properties that are JSON-serializable.
-    // WORK IN PROGRESS
+    // Restricted to properties that are JSON-serializable,
+    // and that need to be saved/restored on detach/attach.
     var sstate = {};
 
     this.sstate = sstate;
@@ -458,7 +458,7 @@ class Terminal {
 
         // ??? FIXME do we want to get rid of this? at least rename it
         // The <div class='interaction'> that is either the main or the
-        // alternate screen buffer.  Same as _currentBufferNode()
+        // alternate screen buffer.  Same as _currentBufferNode(this, -1)
         this.initial = null;
 
         //this._caretNode = null;
@@ -841,8 +841,6 @@ DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
     var data =
         rcount
         + ',{"sstate":'+JSON.stringify(dt.sstate);
-    if (dt.usingAlternateScreenBuffer)
-        data += ', "alternateBuffer":'+dt.usingAlternateScreenBuffer;
     data += ', "html":'
         + JSON.stringify(dt.getAsHTML(false))
         +'}';
@@ -1203,7 +1201,7 @@ Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
 Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
         let needed = this.availHeight - this._vspacer.offsetTop
-            + this._homeOffset(this.homeLine);
+            + (this.initial.noScrollTop ? 0 : this._homeOffset(this.homeLine));
         this._adjustSpacer(needed > 0 ? needed : 0);
     }
 };
@@ -1534,22 +1532,18 @@ Terminal.prototype.saveCursor = function() {
 
 // Re-calculate alternate buffer's saveLastLine property.
 Terminal.prototype._restoreSaveLastLine = function() {
-    if (this.usingAlternateScreenBuffer) {
-        var line = 0;
-        var dt = this;
-        var altBuffer = DomTerm._currentBufferNode(this, true);
-        function findAltBuffer(node) {
-            if (node == altBuffer) {
-                altBuffer.saveLastLine = line;
-                return node;
-            }
-            if (node == dt.lineStarts[line])
-                line++;
-            return true;
+    let line = 0;
+    const findAltBuffer = (node) => {
+        if (node.parentNode == dt.topNode
+            && node.classList.contains("interaction")) {
+            node.saveLastLine = line;
         }
-        Terminal._forEachElementIn(this.topNode, findAltBuffer);
+        if (node == this.lineStarts[line])
+            line++;
+        return true;
     }
-}
+    Terminal._forEachElementIn(this.topNode, findAltBuffer);
+};
  
 Terminal.prototype.restoreCursor = function() {
     var saved = this.sstate.savedCursor;
@@ -2964,77 +2958,92 @@ Terminal.prototype._createLineNode = function(kind, text="") {
     return el;
 };
  
-DomTerm._currentBufferNode =
-    function(dt, alternate=dt.usingAlternateScreenBuffer) {
-    var bnode = null;
-    for (let node = dt.topNode.firstChild; node != null;
-         node = node.nextSibling) {
+// If index >= 0, index from first (top)
+// If index < 0, index from last (bottom).
+// 0 is first buffer; -1 is current (last) buffer.
+DomTerm._currentBufferNode = function(dt, index)
+{
+    let node = index >= 0 ? dt.topNode.firstChild : dt.topNode.lastChild;
+    let todo = index >= 0 ? index : -1 - index;
+    while (node) {
         if (node.nodeName == 'DIV'
-            && node.getAttribute('class') == 'interaction') {
-            bnode = node;
-            if (! alternate)
-                break;
+            && node.classList.contains('interaction')
+            && --todo < 0) {
+            break;
         }
+        node = index >= 0 ? node.nextSibling : node.previousSibling;
     }
-    return bnode;
+    return node;
+}
+
+Terminal.prototype.pushScreenBuffer = function(alternate = true) {
+    const line = this.getCursorLine();
+    const col = this.getCursorColumn();
+    const nextLine = this.lineEnds.length;
+    const bufNode = this._createBuffer(this._altBufferName,
+                                       alternate ? "alternate" : "main");
+    this.topNode.insertBefore(bufNode, this.initial.nextSibling);
+    const homeOffset = DomTerm._homeLineOffset(this);
+    const homeNode = this.lineStarts[this.homeLine - homeOffset];
+    homeNode.setAttribute("home-line", homeOffset);
+    bufNode.saveLastLine = nextLine;
+    this.sstate.savedCursorMain = this.sstate.savedCursor;
+    this.sstate.savedCursor = undefined;
+    this.sstate.savedPauseLimit = this._pauseLimit;
+    const newLineNode = bufNode.firstChild;
+    this.homeLine = nextLine;
+    this.outputContainer = newLineNode;
+    this.outputBefore = newLineNode.firstChild;
+    this._removeInputLine();
+    this.initial = bufNode;
+    this.resetCursorCache();
+    this.moveToAbs(line+this.homeLine, col, true);
+    this._adjustPauseLimit();
+    this.usingAlternateScreenBuffer = alternate;
+}
+
+Terminal.prototype.popScreenBuffer = function()
+{
+    const bufNode = this.initial;
+    const bufPrev = DomTerm._currentBufferNode(this, -2);
+    if (! bufPrev)
+        return;
+    this.initial = bufPrev;
+    this.lineStarts.length = bufNode.saveLastLine;
+    this.lineEnds.length = bufNode.saveLastLine;
+    let homeNode = null;
+    let homeOffset = -1;
+    Terminal._forEachElementIn(this.initial,
+                               function(node) {
+                                   const offset = node.getAttribute('home-line');
+                                   if (offset) {
+                                       homeNode = node;
+                                       homeOffset = 0 + parseInt(offset, 10);
+                                       return node;
+                                   }
+                                   return true;
+                               });
+    this.homeLine = this._computeHomeLine(homeNode, homeOffset, false);
+    this.sstate.savedCursor = this.sstate.savedCursorMain;
+    this.sstate.savedCursorMain = undefined;
+    this.moveToAbs(this.homeLine, 0, false);
+    bufNode.parentNode.removeChild(bufNode);
+    if (! DomTerm._currentBufferNode(this, -2))
+        bufPrev.setAttribute("buffer", "main only");
+    this._pauseLimit = this.sstate.savedPauseLimit;
 }
 
 Terminal.prototype.setAlternateScreenBuffer = function(val) {
     if (this.usingAlternateScreenBuffer != val) {
         this._setRegionTB(0, -1);
         if (val) {
-            var line = this.getCursorLine();
-            var col = this.getCursorColumn();
-            // FIXME should scroll top of new buffer to top of window.
-            var nextLine = this.lineEnds.length;
-            this.initial.setAttribute("buffer", "main");
-            var bufNode = this._createBuffer(this._altBufferName, "alternate");
-            this.topNode.insertBefore(bufNode, this._vspacer);
-            var homeOffset = DomTerm._homeLineOffset(this);
-            var homeNode = this.lineStarts[this.homeLine - homeOffset];
-            homeNode.setAttribute("home-line", homeOffset);
-            bufNode.saveLastLine = nextLine;
-            this.sstate.savedCursorMain = this.sstate.savedCursor;
-            this.sstate.savedCursor = undefined;
-            this.sstate.savedPauseLimit = this._pauseLimit;
-            var newLineNode = bufNode.firstChild;
-            this.homeLine = nextLine;
-            this.outputContainer = newLineNode;
-            this.outputBefore = newLineNode.firstChild;
-            this._removeInputLine();
-            this.initial = bufNode;
-            this.resetCursorCache();
-            this.moveToAbs(line+this.homeLine, col, true);
-            this._adjustPauseLimit();
+            this.pushScreenBuffer(val);
         } else {
-            var bufNode = this.initial;
-            this.initial = DomTerm._currentBufferNode(this, false);
-            this.initial.setAttribute("buffer", "main only");
-            this.lineStarts.length = bufNode.saveLastLine;
-            this.lineEnds.length = bufNode.saveLastLine;
-            var homeNode = null;
-            var homeOffset = -1;
-            Terminal._forEachElementIn(this.initial,
-                                   function(node) {
-                                       var offset = node.getAttribute('home-line');
-                                       if (offset) {
-                                           homeNode = node;
-                                           homeOffset = 0 + parseInt(offset, 10);
-                                           return node;
-                                       }
-                                       return true;
-                                   });
-            this.homeLine = this._computeHomeLine(homeNode, homeOffset, false);
-            this.sstate.savedCursor = this.sstate.savedCursorMain;
-            this.sstate.savedCursorMain = undefined;
-            this.moveToAbs(this.homeLine, 0, false);
-            bufNode.parentNode.removeChild(bufNode);
-            this._pauseLimit = this.sstate.savedPauseLimit;
+            this.popScreenBuffer();
+            this.usingAlternateScreenBuffer = val; // FIXME
         }
-        this.usingAlternateScreenBuffer = val;
     }
 };
-
 
 /** True if an img/object/a element.
  * These are treated as black boxes similar to a single
@@ -3279,7 +3288,7 @@ Terminal.prototype._computeHomeLine = function(home_node, home_offset,
         }
     }
     if (line < 0) {
-        line = alternate ? this.initial.saveLastLine : 0;
+        line = this.initial.saveLastLine;
     }
     var minHome = this.lineStarts.length - this.numRows;
     return line <= minHome ? minHome
@@ -3569,6 +3578,7 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
     // Otherwise the composition buffer may be displayed inside the
     // prompt string rather than the input area (specifically in _caretNode).
     this._addBlankLines(1, this.lineEnds.length, bufNode, null);
+    bufNode.saveLastLine = 0;
     return bufNode;
 };
 
@@ -4785,9 +4795,7 @@ Terminal.prototype.eraseDisplay = function(param) {
     case 3: // Delete saved scrolled-off lines - xterm extension
         this._pauseLimit = this.availHeight;
         var saveHome = this.homeLine;
-        this.homeLine =
-            this.usingAlternateScreenBuffer ? this.initial.saveLastLine
-            : 0;
+        this.homeLine = this.initial.saveLastLine;
         var removed = saveHome - this.homeLine;
         if (removed > 0) {
             this.moveToAbs(this.homeLine, 0, false);
@@ -4807,8 +4815,7 @@ Terminal.prototype.eraseDisplay = function(param) {
         while (lineFirst > 0
                && this.lineStarts[lineFirst].getAttribute("line") != null)
             lineFirst--;
-        let dstart = this.usingAlternateScreenBuffer ? this.initial.saveLastLine
-            : 0;
+        let dstart = this.initial.saveLastLine;
         let dcount = lineFirst - dstart;
         this.deleteLinesIgnoreScroll(dcount, dstart);
         this.homeLine = lineFirst >= this.homeLine ? dstart
@@ -7047,12 +7054,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         if (startLine == -2)
             firstInputLine = this._getOuterPre(this.outputContainer, "input-line");
         startLine = 0;
-        if (this.usingAlternateScreenBuffer) {
-            if (this.initial && this.initial.saveLastLine >= 0) // paranoia
-                startLine = this.initial.saveLastLine;
-            else
-                startLine = this.homeLine;
-        }
+        if (this.initial && this.initial.saveLastLine >= 0) // paranoia
+            startLine = this.initial.saveLastLine;
+        else
+            startLine = this.homeLine;
     }
 
     var changed = this._unbreakLines(startLine, false, firstInputLine);
@@ -8676,7 +8681,7 @@ Terminal.prototype.inputHandler = function(event) {
 
 // For debugging: Checks a bunch of invariants
 Terminal.prototype._checkTree = function() {
-    var node = DomTerm._currentBufferNode(this, false);
+    var node = DomTerm._currentBufferNode(this, 0);
     var dt = this;
     function error(str) {
         dt.log("ERROR: "+str);
@@ -8823,7 +8828,7 @@ Terminal.prototype._checkTree = function() {
     if (this.lineStarts.length - this.homeLine > this.numRows)
         error("bad homeLine value!");
     if (this.usingAlternateScreenBuffer) {
-        var main = DomTerm._currentBufferNode(this, false);
+        const main = DomTerm._currentBufferNode(this, 0);
         if (! main || main == this.initial)
             error("missing main-screenbuffer");
         if (this._isAnAncestor(this.initial, main))
@@ -10046,11 +10051,9 @@ Terminal.prototype.editorRestrictedRange = function(restrictToInputLine) {
     if (restrictToInputLine) {
         range.selectNodeContents(this._inputLine);
     } else {
-        if (this.usingAlternateScreenBuffer) {
-            range.setStartBefore(DomTerm._currentBufferNode(this, false));
-            range.setEndAfter(this.initial);
-        } else
-            range.selectNode(this.initial);
+        let firstBuf = DomTerm._currentBufferNode(this, 0);
+        range.setStartBefore(firstBuf);
+        range.setEndAfter(this.initial);
     }
     return range;
 }

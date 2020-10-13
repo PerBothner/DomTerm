@@ -1122,6 +1122,7 @@ class DTParser {
             };
             break;
         case 117 /*'u'*/:
+            let param1;
             switch (this.getParameter(0, 0)) {
             case 0: // Restore cursor (SCORC)
                 term.restoreCursor();
@@ -1250,6 +1251,26 @@ class DTParser {
                     span.setAttribute("domterm-hidden",
                                       param == 1 ? "false" : "true");
                     term._pushIntoElement(span);
+                }
+                break;
+            case 84:
+                param1 = this.getParameter(1, 0);
+                switch (param1) {
+                case 1: // pop buffer
+                    term.popScreenBuffer();
+                    term.restoreCursor();
+                    break;
+                case 2: // push new main buffer (no scrolling)
+                case 3: // push new main buffer (scroll to top)
+                    // case 4: push new alternate buffer (no scrolling) future?
+                case 5: // push new alternate buffer (scroll to top)
+                    term.saveCursor();
+                    term.pushScreenBuffer(param1==4);
+                    term.cursorSet(0, 0, false);
+                    term.eraseDisplay(0);
+                    if ((param1 & 1) == 0)
+                        term.initial.noScrollTop = true;
+                    break;
                 }
                 break;
             case 90:
@@ -1788,8 +1809,6 @@ class DTParser {
                 term.sstate = data.sstate;
                 term.topNode.setAttribute("session-number",
                                           term.sstate.sessionNumber);
-                if (data.alternateBuffer)
-                    term.usingAlternateScreenBuffer = data.alternateBuffer;
                 var dt = term;
                 term._inputLine = null;
                 function findInputLine(node) {
@@ -1799,7 +1818,10 @@ class DTParser {
                         dt._inputLine = node;
                     return true;
                 };
-                term.initial = DomTerm._currentBufferNode(term);
+                term.initial = DomTerm._currentBufferNode(term, -1);
+                let bufAttr = term.initial.getAttribute("buffer");
+                term.usingAlternateScreenBuffer =
+                    bufAttr && bufAttr.indexOf("alternate") >= 0;
                 Terminal._forEachElementIn(parent, findInputLine);
                 term.outputBefore =
                     term._inputLine != null ? term._inputLine : term._caretNode;

@@ -4933,21 +4933,20 @@ Lazy output is useful for displaying and inspecting large
 (or even infinite) data structures, such as as a directory hierarchy
 or a complex object graph.
 
-@subsubheading Alternate screen buffer
+@subsubheading Alternate screen buffers
 
 Xterm supports an ``alternate screen buffer'' which is used
 by character-based programs like emacs.
-Switching to the alternate buffer creates a new @code{<div class="interaction">},
-with a @code{buffer} attribute valued @code{"alternate"}
-(and an @code{id} attribute of the form @code{@var{xxx}_alternate}).
+DomTerm allows an arbitrary number of buffers
+(not just two), with the most recent (bottom-most) being the active one.
+Each buffer is a @code{<div class="interaction">} element.
+An alternate buffer has a @code{buffer="alternate"} attribute.
 It is the sibling of the normal screen buffer,
-which has a @code{buffer} attribute valued @code{"main"}
-(with @code{id} attribute of the form @code{@var{xxx}_normal}).
-This @code{<div>} contains one or more @var{logical-line}s.
+which has a @code{buffer} attribute valued @code{"main"}.
+The @code{"interaction"} element contains one or more @var{logical-line}s.
 Returning to the normal screen deletes the @code{<div>} for the
 alternative screen, along with all of its contents,
 and changes the @code{buffer} attribute back to @code{"main only"}.
-
 
 @anchor{DOM-pretty-printing}
 @subsubheading Pretty-printing and line-breaking
@@ -5478,6 +5477,30 @@ If the code is @code{96}, no response is sent.
 If the code is @code{95}, the result to the client is
 @code{"\x9D"} @var{index} @code{"\n"} where @var{index}
 is the index of the replaced or created stylesheet.
+@end table
+
+@subsubsection Alterate screen buffers
+
+@table @asis
+@item @code{"\e[84;2u"}
+@itemx @code{"\e[84;3u"}
+@itemx @code{"\e[84;5u"}
+Push a new buffer, and set the cursor to the upper left of the new buffer.
+This is similar to the standard xterm sequence @code{"\e[?1049h"},
+but it creates a buffer even if already using the alternate buffer.
+(The new buffer is marked as an "alternate" buffer if using @code{"\e[84;5u"},
+and a "main" buffer otherwise. There isn't much difference
+between them, though they may be styled differently.)
+
+Using @code{"\e[84;3u"} (or @code{"\e[84;5u"}) scrolls the top of the
+new buffer to the start of visible window;
+using @code{"\e[84;2u"} does not automatically scroll.
+In either case the default styling separates the new buffer from the
+previous buffer with a double line.
+
+@item @code{"\e[84;1u"}
+Pop the most recent buffer.
+(Ignored if it is the only buffer.)
 @end table
 
 @anchor{escapes-pretty-printing}

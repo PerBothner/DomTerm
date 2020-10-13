@@ -131,8 +131,8 @@ div.domterm h1 {
     margin-top: 0.2ex;
     margin-bottom: 0.4ex; }
 /* Below match "main" but not "main only" */
-div.domterm div.interaction[buffer="main"] {
-    border-bottom:  thick double green }
+div.interaction + div.interaction {
+    border-top: thick double green }
 div.interaction[buffer~="main"] div.command-group {
     border-top: 1px solid #00C00080; margin-top: -1px;
     background-clip: padding-box
