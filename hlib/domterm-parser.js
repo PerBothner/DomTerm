@@ -169,7 +169,7 @@ class DTParser {
                     this._textParameter = "";
                     break;
                 case 99 /*'c'*/: // Full Reset (RIS)
-                    term.resetTerminal(true, true);
+                    term.resetTerminal(1, true);
                     break;
                 case 110 /*'n'*/: // LS2
                 case 111 /*'o'*/: // LS3
@@ -990,7 +990,7 @@ class DTParser {
         case 112 /*'p'*/:
             if (this._flagChars.indexOf('!') >= 0) {
                 // Soft terminal reset (DECSTR)
-                term.resetTerminal(false, false);
+                term.resetTerminal(0, false);
             } else if (this._flagChars.indexOf('"') >= 0) {
                 // Set conformance level (DECSCL)
             }
@@ -1257,19 +1257,13 @@ class DTParser {
                 param1 = this.getParameter(1, 0);
                 switch (param1) {
                 case 1: // pop buffer
-                    term.popScreenBuffer();
-                    term.restoreCursor();
+                    this.popRestoreScreenBuffer();
                     break;
                 case 2: // push new main buffer (no scrolling)
                 case 3: // push new main buffer (scroll to top)
                     // case 4: push new alternate buffer (no scrolling) future?
                 case 5: // push new alternate buffer (scroll to top)
-                    term.saveCursor();
-                    term.pushScreenBuffer(param1==4);
-                    term.cursorSet(0, 0, false);
-                    term.eraseDisplay(0);
-                    if ((param1 & 1) == 0)
-                        term.initial.noScrollTop = true;
+                    term.pushClearScreenBuffer(param1==4, (param1 & 1) == 0);
                     break;
                 }
                 break;

@@ -1513,14 +1513,18 @@ Terminal.prototype.saveCursor = function() {
     this.sstate.savedCursor = {
         line: this.getCursorLine(),
         column: this.getCursorColumn(),
-        fgcolor:  this._currentStyleMap.get("color"),
-        bgcolor:  this._currentStyleMap.get("background-color"),
-        weight: this._currentStyleMap.get("font-weight"),
-        blink: this._currentStyleMap.get("text-blink"),
-        underline: this._currentStyleMap.get("text-underline"),
-        reverse: this._currentStyleMap.get("reverse"),
+        currentStyleMap: new Map(this._currentStyleMap),
         origin: this.sstate.originMode,
         wraparound: this.sstate.wraparoundMode,
+        mouseMode: this.sstate.mouseMode,
+        mouseCoordEncoding: this.sstate.mouseCoordEncoding,
+        tabsAdded: this._tabsAdded,
+        tabDefaultStart: this._tabDefaultStart,
+        regionTop: this._regionTop,
+        regionBottom: this._regionBottom,
+        regionLeft: this._regionLeft,
+        regionRight: this._regionLeft,
+        currentPprintGroup: this._currentPprintGroup,
         glevel: this._Glevel,
         charset0: this._Gcharsets[0],
         charset1: this._Gcharsets[1],
@@ -1534,7 +1538,7 @@ Terminal.prototype.saveCursor = function() {
 Terminal.prototype._restoreSaveLastLine = function() {
     let line = 0;
     const findAltBuffer = (node) => {
-        if (node.parentNode == dt.topNode
+        if (node.parentNode == this.topNode
             && node.classList.contains("interaction")) {
             node.saveLastLine = line;
         }
@@ -1545,7 +1549,7 @@ Terminal.prototype._restoreSaveLastLine = function() {
     Terminal._forEachElementIn(this.topNode, findAltBuffer);
 };
  
-Terminal.prototype.restoreCursor = function() {
+Terminal.prototype.restoreCursor = function(restoreExtraState = false) {
     var saved = this.sstate.savedCursor;
     if (saved) {
         this.moveToAbs(saved.line+this.homeLine, saved.column, true);
@@ -1555,14 +1559,19 @@ Terminal.prototype.restoreCursor = function() {
         this._Gcharsets[3] = saved.charset3;
         this._Glevel = saved.glevel;
         this.charMapper = saved.charMapper;
-        this._pushStyle("color", saved.fgcolor);
-        this._pushStyle("background-color", saved.bgcolor);
-        this._pushStyle("font-weight", saved.weight);
-        this._pushStyle("text-blink", saved.blink);
-        this._pushStyle("text-underline", saved.underline);
-        this._pushStyle("reverse", saved.reverse);
+        this._currentStyleMap = saved.currentStyleMap;
         this.sstate.originMode = saved.origin;
         this.sstate.wraparoundMode = saved.wraparound;
+        if (restoreExtraState) {
+            this.sstate.bracketedPasteMode = saved.bracketedPasteMode;
+            this.setMouseMode(saved.mouseMode);
+            this.sstate.mouseCoordEncoding = saved.mouseCoordEncoding;
+            this._tabsAdded = saved.tabsAdded;
+            this._tabDefaultStart = saved.tabDefaultStart;
+            this._setRegionTB(saved.regionTop, saved.regionBottom);
+            this._setRegionLR(saved.regionLeft, saved.regionRight);
+            this._currentPprintGroup = saved.currentPprintGroup;
+        }
     } else {
         this._Gcharsets[0] = null;
         this._Gcharsets[1] = null;
@@ -2974,6 +2983,20 @@ DomTerm._currentBufferNode = function(dt, index)
         node = index >= 0 ? node.nextSibling : node.previousSibling;
     }
     return node;
+}
+
+Terminal.prototype.pushClearScreenBuffer = function(alternate, noScrollTop) {
+    this.saveCursor();
+    this.pushScreenBuffer(alternate);
+    this.cursorSet(0, 0, false);
+    term.resetTerminal(-1, false);
+    this.eraseDisplay(0);
+    if (noScrollTop)
+        this.initial.noScrollTop = true;
+}
+Terminal.prototype.popRestoreScreenBuffer = function() {
+    this.popScreenBuffer();
+    this.restoreCursor(true);
 }
 
 Terminal.prototype.pushScreenBuffer = function(alternate = true) {
@@ -5302,27 +5325,35 @@ Terminal.prototype.updateWindowTitle = function() {
         DomTerm.setTitle(str);
 }
 
+// full==-1: reset stuff restored by restoreCursor(true)
+// full==0: normal reset
+// full==1: full reset
 Terminal.prototype.resetTerminal = function(full, saved) {
     // Corresponds to xterm's ReallyReset function
+
     if (saved)
         this.eraseDisplay(saved);
-    this._setRegionTB(0, -1);
-    this._setRegionLR(0, -1);
+
     this.sstate.originMode = false;
     this.sstate.bracketedPasteMode = false;
     this.sstate.wraparoundMode = 2;
-    this.forceWidthInColumns(-1);
-    this.setMouseMode(0);
-    this.sstate.mouseCoordEncoding = 0;
+    this._currentStyleMap = new Map();
     this._Glevel = 0;
     this.charMapper = null;
     this._Gcharsets[0] = null;
     this._Gcharsets[1] = null;
     this._Gcharsets[2] = null;
     this._Gcharsets[3] = null;
-    this._currentPprintGroup = null;
+    this.setMouseMode(0);
+    this.sstate.mouseCoordEncoding = 0;
     this.resetTabs();
+    this._setRegionTB(0, -1);
+    this._setRegionLR(0, -1);
+    this._currentPprintGroup = null;
 
+    if (full >= 0) {
+        this.forceWidthInColumns(-1);
+    }
     // FIXME a bunch more
 };
 
