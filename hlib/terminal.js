@@ -1516,6 +1516,7 @@ Terminal.prototype.saveCursor = function() {
         currentStyleMap: new Map(this._currentStyleMap),
         origin: this.sstate.originMode,
         wraparound: this.sstate.wraparoundMode,
+        bracketedPasteMode: this.sstate.bracketedPasteMode,
         mouseMode: this.sstate.mouseMode,
         mouseCoordEncoding: this.sstate.mouseCoordEncoding,
         tabsAdded: this._tabsAdded,
