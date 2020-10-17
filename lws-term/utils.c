@@ -117,7 +117,7 @@ base64_encode(const unsigned char *buffer, size_t length) {
     return ret;
 }
 
-int count_args(char **argv)
+int count_args(arglist_t argv)
 {
     int i = 0;
     while (argv[i])
@@ -282,10 +282,10 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
  * To free the buffer, free the result of this function;
  * do not free any individual arguments.
  */
-char**
+argblob_t
 parse_args(const char *args, bool check_shell_specials)
 {
-    return (char**) parse_arg_string(args, check_shell_specials, 1);
+    return (argblob_t) parse_arg_string(args, check_shell_specials, 1);
 }
 
 char*
@@ -396,12 +396,12 @@ url_encode(const char *in, int mode)
 /* Create a copy of an array os strings (as in argv or environ)
  * The result is a one malloc'd "blob" to be free'd with a single call to free.
  */
-char*const*
-copy_strings(char*const* strs)
+argblob_t
+copy_strings(const char*const* strs)
 {
     size_t ndata = 0;
     size_t nstrs = 0;
-    char*const* s = strs;
+    const char*const* s = strs;
     for (; *s; s++) {
         nstrs++;
         ndata += strlen(*s) + 1;
@@ -417,7 +417,7 @@ copy_strings(char*const* strs)
         d += strlen(d) + 1;
     }
     *t = NULL;
-    return (char*const*) r;
+    return (argblob_t) r;
 }
 
 static char *executable_path = NULL;
@@ -726,13 +726,13 @@ check_conditional(char *template, test_function_t tester, void* data)
 }
 
 const char *
-getenv_from_array(char* key, char*const*envarray)
+getenv_from_array(char* key, arglist_t envarray)
 {
     extern char **environ;  // Needed on MacOS.
-    char *const*p = envarray ? envarray : (char*const*)environ;
+    arglist_t p = envarray ? envarray : (arglist_t)environ;
     int keylen = strlen(key);
     for (; *p; p++) {
-        char *e = *p;
+        const char *e = *p;
         if (memcmp(e, key, keylen) == 0
             && e[keylen] == '=')
             return e + keylen + 1;

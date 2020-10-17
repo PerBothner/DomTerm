@@ -389,7 +389,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             // if (!json_object_object_get_ex(jobj, "cwd", &jcwd))
             //   fatal("jswon no cwd");
             int argc = -1;
-            char **argv = NULL;
+            const char **argv = NULL;
             const char**env = NULL;
             if (json_object_object_get_ex(jobj, "cwd", &jcwd)
                 && (cwd = strdup(json_object_get_string(jcwd))) != NULL) {
@@ -417,7 +417,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             }
             optind = 1;
             set_settings(opts);
-            opts->env = copy_strings((char*const*) env);
+            opts->env = copy_strings(env);
             opts->cwd = cwd;
             json_object_put(jobj);
             free(env);

@@ -193,6 +193,7 @@ pty_destroy(struct pty_client *pclient)
         pclient->cur_pclient->cur_pclient = NULL;
         pclient->cur_pclient = NULL;
     }
+    free((void*)pclient->argv);
 
     int status = -1;
     if (pclient->pid > 0) {
@@ -378,7 +379,7 @@ void put_to_env_array(char **arr, int max, char* eval)
 }
 
 static struct pty_client *
-create_pclient(const char *cmd, char*const*argv, struct options *opts)
+create_pclient(const char *cmd, arglist_t argv, struct options *opts)
 {
     struct lws *outwsi;
     int master;
@@ -473,7 +474,7 @@ create_pclient(const char *cmd, char*const*argv, struct options *opts)
 static struct pty_client *
 create_link_pclient(struct lws *wsi, struct tty_client *tclient)
 {
-    char** argv = default_command(main_options);
+    arglist_t argv = default_command(main_options);
     char *cmd = find_in_path(argv[0]);
     if (cmd == NULL)
         return NULL;
@@ -485,8 +486,8 @@ create_link_pclient(struct lws *wsi, struct tty_client *tclient)
 
 // FIXME use pclient->cmd instead of cmd etc
 static struct pty_client *
-run_command(const char *cmd, char*const*argv, const char*cwd,
-            char *const*env, struct pty_client *pclient)
+run_command(const char *cmd, arglist_t argv, const char*cwd,
+            arglist_t env, struct pty_client *pclient)
 {
     int master = pclient->pty;
     int slave = pclient->pty_slave;
@@ -509,7 +510,7 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
                         lwsl_err("chdir failed\n");
             }
             if (env == NULL)
-                env = environ;
+                env = (arglist_t)environ;
             int env_size = 0;
             while (env[env_size] != NULL) env_size++;
             int env_max = env_size + 10;
@@ -579,7 +580,7 @@ run_command(const char *cmd, char*const*argv, const char*cwd,
                 put_to_env_array(nenv, env_max, buf);
             }
 #endif
-            if (execve(cmd, argv, nenv) < 0) {
+            if (execve(cmd, (char * const*)argv, nenv) < 0) {
                 perror("execvp");
                 exit(1);
             }
@@ -1776,7 +1777,7 @@ display_session(struct options *options, struct pty_client *pclient,
     return r;
 }
 
-int new_action(int argc, char** argv,
+int new_action(int argc, arglist_t argv,
                struct lws *wsi, struct options *opts)
 {
     int skip = argc == 0 || index(argv[0], '/') != NULL ? 0 : 1;
@@ -1786,10 +1787,9 @@ int new_action(int argc, char** argv,
           return EXIT_FAILURE;
         skip = optind;
     }
-    char**args = argc == skip ? default_command(opts)
-      : (char**)(argv+skip);
-    char *argv0 = args[0];
-    char *cmd = find_in_path(argv0);
+    arglist_t args = argc == skip ? default_command(opts) : (argv+skip);
+    const char *argv0 = args[0];
+    const char *cmd = find_in_path(argv0);
     struct stat sbuf;
     if (cmd == NULL || access(cmd, X_OK) != 0
         || stat(cmd, &sbuf) != 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
@@ -1808,7 +1808,7 @@ int new_action(int argc, char** argv,
     return r;
 }
 
-int attach_action(int argc, char** argv, struct lws *wsi, struct options *opts)
+int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     optind = 1;
     process_options(argc, argv, opts);
@@ -1816,7 +1816,7 @@ int attach_action(int argc, char** argv, struct lws *wsi, struct options *opts)
         printf_error(opts, "domterm attach: missing session specifier");
         return EXIT_FAILURE;
     }
-    char *session_specifier = argv[optind];
+    const char *session_specifier = argv[optind];
     struct pty_client *pclient = find_session(session_specifier);
     if (pclient == NULL) {
         printf_error(opts, "no session '%s' found", session_specifier);
@@ -1840,7 +1840,7 @@ int attach_action(int argc, char** argv, struct lws *wsi, struct options *opts)
     return display_session(opts, pclient, NULL, http_port);
 }
 
-int browse_action(int argc, char** argv, struct lws *wsi, struct options *opts)
+int browse_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     optind = 1;
     process_options(argc, argv, opts);
@@ -1851,7 +1851,7 @@ int browse_action(int argc, char** argv, struct lws *wsi, struct options *opts)
         fclose(err);
         return EXIT_FAILURE;
     }
-    char *url = argv[optind];
+    const char *url = argv[optind];
     display_session(opts, NULL, url, -104);
     return EXIT_SUCCESS;
 }
@@ -1940,7 +1940,7 @@ expand_host_conditional(const char *expr, const char *host)
 }
 
 void
-handle_remote(int argc, char** argv, char* at,
+handle_remote(int argc, arglist_t argv, char* at,
               struct options *opts)
 {
     // Running 'domterm --BROWSER user@host COMMAND' translates
@@ -1952,29 +1952,30 @@ handle_remote(int argc, char** argv, char* at,
     // Locally, we create a tclient in --BROWSER, but instead
     // of the pclient/pty we do the following.
 
-    char *host_arg = argv[0];
+    const char *host_arg = argv[0];
     const char *ssh_cmd = get_setting(opts->settings, "command.ssh");
     char *ssh_expanded = expand_host_conditional(ssh_cmd, host_arg);
     if (ssh_expanded == NULL)
         ssh_expanded = strdup("ssh");
-    char** ssh_args = parse_args(ssh_expanded, false);
+    argblob_t ssh_args = parse_args(ssh_expanded, false);
     int ssh_argc = count_args(ssh_args);
     free(ssh_expanded);
     char *ssh = ssh_args == 0 ? NULL : find_in_path(ssh_args[0]);
     if (ssh == NULL) {
         printf_error(opts, "domterm: ssh command not found - required for remote");
+        free((void*)ssh_args);
         return;
     }
     const char *domterm_cmd = get_setting(opts->settings, "command.remote-domterm");
     char *dt_expanded = expand_host_conditional(domterm_cmd, host_arg);
     if (dt_expanded == NULL)
         dt_expanded = strdup("domterm");
-    char** domterm_args = parse_args(dt_expanded, false);
+    argblob_t domterm_args = parse_args(dt_expanded, false);
     int domterm_argc = count_args(domterm_args);
     free(dt_expanded);
 
     int max_rargc = argc+ssh_argc+domterm_argc+8;
-        char** rargv = xmalloc(sizeof(char*)*(max_rargc+1));
+    const char** rargv = xmalloc(sizeof(char*)*(max_rargc+1));
         int rargc = 0;
         for (int i = 0; i < ssh_argc; i++)
             rargv[rargc++] = ssh_args[i];
@@ -2028,12 +2029,14 @@ handle_remote(int argc, char** argv, char* at,
         //int r = EXIT_WAIT; // FIXME
         pclient->cmd_socket = opts->fd_cmd_socket;
         free(rargv);
+        free((void*)domterm_args);
+        free((void*)ssh_args);
         //free(user);
 }
 #endif
 
 int
-handle_command(int argc, char** argv, struct lws *wsi, struct options *opts)
+handle_command(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     lwsl_notice("handle_command argv0:%s\n", argv[0]);
     struct command *command = argc == 0 ? NULL : find_command(argv[0]);

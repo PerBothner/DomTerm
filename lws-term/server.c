@@ -135,8 +135,8 @@ subst_run_command(struct options *opts, const char *browser_command,
 }
 
 int start_command(struct options *opts, char *cmd) {
-    char **args = parse_args(cmd, true);
-    char *arg0;
+    arglist_t args = parse_args(cmd, true);
+    const char *arg0;
     if (args != NULL) {
         arg0 = find_in_path(args[0]);
         if (arg0 == NULL) {
@@ -173,10 +173,10 @@ int start_command(struct options *opts, char *cmd) {
     if (pid == 0) {
         putenv("ELECTRON_DISABLE_SECURITY_WARNINGS=true");
         daemonize();
-        execv(arg0, args);
+        execv(arg0, (char**) args);
         exit(-1);
     } else if (pid > 0) {// master
-        free(args);
+        free((void*) args);
     } else {
         printf_error(opts, "could not fork front-end command");
         return EXIT_FAILURE;
@@ -677,7 +677,7 @@ default_link_command(const char *url)
 
 /** Request browser client to open new browser window. */
 void
-browser_run_browser(struct options *options, char *url,
+browser_run_browser(struct options *options, const char *url,
                     struct tty_client *tclient)
 {
     struct json_object *jobj = json_object_new_object();
@@ -695,7 +695,7 @@ browser_run_browser(struct options *options, char *url,
 }
 
 int
-do_run_browser(struct options *options, char *url, int port)
+do_run_browser(struct options *options, const char *url, int port)
 {
     const char *browser_specifier;
     if (options != NULL && options->browser_command != NULL) {
@@ -918,9 +918,9 @@ void release_options(struct options *opts)
     }
 }
 
-static char **default_argv = NULL;
+static arglist_t default_argv = NULL;
 
-char** default_command(struct options *opts)
+arglist_t default_command(struct options *opts)
 {
     if (opts != NULL && opts->shell_argv != NULL)
         return opts->shell_argv;
@@ -928,12 +928,12 @@ char** default_command(struct options *opts)
         return default_argv;
 }
 
-void prescan_options(int argc, char **argv, struct options *opts)
+void prescan_options(int argc, arglist_t argv, struct options *opts)
 {
     // parse command line options
     optind = 1;
     for (;;) {
-        int c = getopt_long(argc, argv, opt_string, options, NULL);
+        int c = getopt_long(argc, (char * const*) argv, opt_string, options, NULL);
         if (c == -1) {
             if (optind < argc && check_option_arg(argv[optind], opts)) {
                 optind++;
@@ -971,13 +971,13 @@ print_version (FILE *out)
 #endif
 }
 
-int process_options(int argc, char **argv, struct options *opts)
+int process_options(int argc, arglist_t argv, struct options *opts)
 {
     // parse command line options
     optind = 1;
     int c;
     for (;;) {
-        int c = getopt_long(argc, argv, opt_string, options, NULL);
+        int c = getopt_long(argc, (char * const*)argv, opt_string, options, NULL);
         if (c == -1) {
             char *eq = optind >= argc ? NULL : strchr(argv[optind], '=');
             if (eq) {
@@ -1213,7 +1213,7 @@ main(int argc, char **argv)
     default_argv = parse_args(shell, false);
 
     init_options(&opts);
-    prescan_options(argc, argv, &opts);
+    prescan_options(argc, (arglist_t) argv, &opts);
 
     read_settings_file(&opts, false);
     set_settings(&opts);
@@ -1279,7 +1279,7 @@ main(int argc, char **argv)
 
     read_settings_emit_notice();
 
-    if (process_options(argc, argv, &opts) != 0)
+    if (process_options(argc, (arglist_t) argv, &opts) != 0)
         return -1;
     if (opts.something_done && argv[optind] == NULL)
         exit(0);
@@ -1311,7 +1311,7 @@ main(int argc, char **argv)
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
                 && socket < 0))) {
         lwsl_notice("handling command '%s' locally\n", command->name);
-        exit((*command->action)(argc-optind, argv+optind, NULL, &opts));
+        exit((*command->action)(argc-optind, (arglist_t)argv+optind, NULL, &opts));
     }
     if (socket >= 0) {
         exit(client_send_command(socket, argc, argv, environ));
@@ -1413,8 +1413,8 @@ main(int argc, char **argv)
         ret = 0;
     } else {
         opts.cwd = getcwd(NULL, 0);
-        opts.env = copy_strings(environ);
-        ret = handle_command(argc-optind, argv+optind, NULL, &opts);
+        opts.env = copy_strings((const char*const*) environ);
+        ret = handle_command(argc-optind, (arglist_t)argv+optind, NULL, &opts);
         if (ret == EXIT_FAILURE)
             exit(ret);
     }

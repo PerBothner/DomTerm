@@ -11,7 +11,7 @@
 
 struct lws;
 
-int is_domterm_action(int argc, char** argv, struct lws *wsi,
+int is_domterm_action(int argc, arglist_t argv, struct lws *wsi,
                       struct options *opts)
 {
     return probe_domterm(false) > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
@@ -26,7 +26,7 @@ copy_html_file(FILE *in, FILE *out)
     fflush(out);
 }
 
-static void print_base_element(const char *base_url, struct sbuf *sbuf)
+static void print_base_element(const char*base_url, struct sbuf *sbuf)
 {
     char *colon = strchr(base_url, ':');
     char *sl = colon ? strchr(base_url, '/') : NULL;
@@ -53,7 +53,7 @@ static void print_base_element(const char *base_url, struct sbuf *sbuf)
     }
 }
 
-int html_action(int argc, char** argv, struct lws *wsi,
+int html_action(int argc, arglist_t argv, struct lws *wsi,
                 struct options *opts)
 {
     bool is_hcat = argc > 0 && strcmp(argv[0], "hcat") == 0;
@@ -62,7 +62,7 @@ int html_action(int argc, char** argv, struct lws *wsi,
     int i = 1;
     char *base_url = NULL;
     for (i = 1; i < argc; i++) {
-        char *arg = argv[i];
+        const char *arg = argv[i];
         if (arg[0] == '-') {
             char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
             int neq = eq ? eq - arg - 1: -1;
@@ -85,15 +85,15 @@ int html_action(int argc, char** argv, struct lws *wsi,
 
     if (is_hcat && i < argc) {
         while (i < argc)  {
-            char *fname = argv[i++];
-            char *fname_abs = fname;
-            const char*cwd = opts->cwd;
+            const char *fname = argv[i++];
+            char *fname_abs = NULL;
+            const char *cwd = opts->cwd;
             if (fname[0] != '/' && cwd != NULL) {
                 fname_abs = xmalloc(strlen(cwd) + strlen(fname) +2);
                 sprintf(fname_abs, "%s/%s", cwd, fname);
             }
-            FILE *fin = fopen(fname_abs, "r");
-            if (fname_abs != fname)
+            FILE *fin = fopen(fname_abs ? fname_abs : fname, "r");
+            if (fname_abs != NULL)
                 free(fname_abs);
             if (fin == NULL) {
                 printf_error(opts, "missing html file '%s'", fname);
@@ -164,7 +164,7 @@ int html_action(int argc, char** argv, struct lws *wsi,
     return ret;
 }
 
-int imgcat_action(int argc, char** argv, struct lws *wsi,
+int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
     check_domterm(opts);
@@ -177,7 +177,7 @@ int imgcat_action(int argc, char** argv, struct lws *wsi,
     char *overflow = NULL;
     bool n_arg = false;
     for (int i = 1; i < argc; i++) {
-        char *arg = argv[i];
+        const char *arg = argv[i];
         if (arg[0] == '-') {
             char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
             int neq = eq ? eq - arg - 1: -1;
@@ -308,7 +308,7 @@ static char *read_response(struct options *opts)
     return buf;
 }
 
-int print_stylesheet_action(int argc, char** argv, struct lws *wsi,
+int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -335,7 +335,7 @@ int print_stylesheet_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int list_stylesheets_action(int argc, char** argv, struct lws *wsi,
+int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -360,7 +360,7 @@ int list_stylesheets_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int load_stylesheet_action(int argc, char** argv, struct lws *wsi,
+int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                            struct options *opts)
 {
     check_domterm(opts);
@@ -370,8 +370,8 @@ int load_stylesheet_action(int argc, char** argv, struct lws *wsi,
                      : "too many arguments to load-stylesheet");
         return EXIT_FAILURE;
     }
-    char *name = argv[1];
-    char *fname = argv[2];
+    const char *name = argv[1];
+    const char *fname = argv[2];
     int in = strcmp(fname, "-") == 0 ? 0 : open(fname, O_RDONLY);
     if (in < 0) {
         printf_error(opts, "cannot read '%s'", fname);
@@ -411,7 +411,7 @@ int load_stylesheet_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int maybe_disable_stylesheet(bool disable, int argc, char** argv,
+int maybe_disable_stylesheet(bool disable, int argc, arglist_t argv,
                              struct options *opts)
 {
     check_domterm(opts);
@@ -421,7 +421,7 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
                      : "(too many arguments to disable/enable-stylesheet)");
         return EXIT_FAILURE;
     }
-    char *specifier = argv[1];
+    const char *specifier = argv[1];
     FILE *tout = fdopen(get_tty_out(), "w");
     fprintf(tout, "\033]%d;%s\007", disable?91:92, specifier);
     fflush(tout);
@@ -433,19 +433,19 @@ int maybe_disable_stylesheet(bool disable, int argc, char** argv,
     return EXIT_SUCCESS;
 }
 
-int enable_stylesheet_action(int argc, char** argv, struct lws *wsi,
+int enable_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                              struct options *opts)
 {
     return maybe_disable_stylesheet(false, argc, argv, opts);
 }
 
-int disable_stylesheet_action(int argc, char** argv, struct lws *wsi,
+int disable_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                              struct options *opts)
 {
     return maybe_disable_stylesheet(true, argc, argv, opts);
 }
 
-int add_stylerule_action(int argc, char** argv, struct lws *wsi,
+int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
     check_domterm(opts);
@@ -460,7 +460,7 @@ int add_stylerule_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int list_action(int argc, char** argv, struct lws *wsi, struct options *opts)
+int list_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     int nclients = 0;
     FILE *out = fdopen(dup(opts->fd_out), "w");
@@ -482,7 +482,7 @@ int list_action(int argc, char** argv, struct lws *wsi, struct options *opts)
 }
 
 const char *
-json_get_property(struct json_object *jobj, char *fname)
+json_get_property(struct json_object *jobj, const char *fname)
 {
     struct json_object *jval = NULL;
     if (json_object_object_get_ex(jobj, fname, &jval)) {
@@ -491,7 +491,7 @@ json_get_property(struct json_object *jobj, char *fname)
     return NULL;
 }
 bool
-json_print_property(FILE *out, struct json_object *jobj, char *fname,
+json_print_property(FILE *out, struct json_object *jobj, const char *fname,
                     char *prefix, char *label)
 {
     const char *val = json_get_property(jobj, fname);
@@ -685,12 +685,12 @@ static void status_by_connection(FILE *out, int verbosity)
         fprintf(out, "(no domterm sessions or server)\n");
 }
 
-int status_action(int argc, char** argv, struct lws *wsi, struct options *opts)
+int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     int verbosity = 0;
     bool by_session = false;
     for (int i = 1; i < argc; i++) {
-        char *arg = argv[i];
+        const char *arg = argv[i];
         if (strcmp(arg, "--by-session") == 0)
             by_session = true;
         else if (strcmp(arg, "--verbose") == 0)
@@ -710,7 +710,7 @@ int status_action(int argc, char** argv, struct lws *wsi, struct options *opts)
     return EXIT_SUCCESS;
 }
 
-int view_saved_action(int argc, char** argv, struct lws *wsi,
+int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
     optind = 1;
@@ -755,7 +755,7 @@ int view_saved_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int freshline_action(int argc, char** argv, struct lws *wsi,
+int freshline_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
@@ -765,7 +765,7 @@ int freshline_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int settings_action(int argc, char** argv, struct lws *wsi,
+int settings_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
@@ -791,7 +791,7 @@ int settings_action(int argc, char** argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int reverse_video_action(int argc, char** argv, struct lws *wsi,
+int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
@@ -799,7 +799,7 @@ int reverse_video_action(int argc, char** argv, struct lws *wsi,
         printf_error(opts, "too many arguments to reverse-video");
         return EXIT_FAILURE;
     }
-    char *opt = argc < 2 ? "on" : argv[1];
+    const char *opt = argc < 2 ? "on" : argv[1];
     bool on;
     if (strcasecmp(opt, "on") == 0 || strcasecmp(opt, "yes") == 0
         || strcasecmp(opt, "true") == 0)
@@ -812,7 +812,7 @@ int reverse_video_action(int argc, char** argv, struct lws *wsi,
                      "arguments to reverse-video is not on/off/yes/no/true/false");
         return EXIT_FAILURE;
     }
-    char *cmd = on ? "\033[?5h" : "\033[?5l";
+    const char *cmd = on ? "\033[?5h" : "\033[?5l";
     if (write(get_tty_out(), cmd, strlen(cmd)) <= 0)
         return EXIT_FAILURE;
     return EXIT_SUCCESS;
@@ -829,14 +829,14 @@ enum window_op_kind {
     w_simple = 1
 };
 
-int window_action(int argc, char** argv, struct lws *wsi,
+int window_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
     struct tty_client *wclient;
     int first_window_number = 1;
     int i = first_window_number;
     for (; i < argc; i++) {
-        char *arg = argv[i];
+        const char *arg = argv[i];
         if (strcmp(arg, "top") == 0
             || strcmp(arg, "current") == 0
             || strcmp(arg, "current-top") == 0)
@@ -853,13 +853,13 @@ int window_action(int argc, char** argv, struct lws *wsi,
             return EXIT_FAILURE;
         }
     }
-    char **wspec_start = &argv[first_window_number];
+    arglist_t wspec_start = &argv[first_window_number];
     int wspec_count = i - first_window_number;
-    char *subcommand = argc >= i ? argv[i] : NULL;
+    const char *subcommand = argc >= i ? argv[i] : NULL;
     bool seen = false;
     char *seq = NULL;
     enum window_op_kind w_op_kind = w_none;
-    char *default_windows = NULL;
+    const char *default_windows = NULL;
     if (subcommand == NULL) { }
     else if (strcmp(subcommand, "show") == 0) {
         w_op_kind = w_simple;
@@ -904,11 +904,11 @@ int window_action(int argc, char** argv, struct lws *wsi,
                          subcommand);
              return EXIT_FAILURE;
         }
-        wspec_start= &default_windows;
+        wspec_start = &default_windows;
         wspec_count = 1;
     }
     for (i = 0; i < wspec_count; i++) {
-        char *arg = wspec_start[i];
+        const char *arg = wspec_start[i];
         enum window_spec_kind w_spec;
         if (strcmp(arg, "top") == 0)
             w_spec = w_top;
@@ -945,7 +945,7 @@ int window_action(int argc, char** argv, struct lws *wsi,
     else if (subcommand == 0
              || strcmp(subcommand, "toggle-hide") == 0
              || strcmp(subcommand, "toggle-minimize") == 0) {
-        static char** no_args = { NULL };
+        static arglist_t no_args = { NULL };
         return new_action(0, no_args, wsi, opts);
     } else {
         printf_error(opts, "domterm window: no window to '%s'", subcommand);

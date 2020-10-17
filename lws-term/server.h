@@ -170,7 +170,7 @@ struct pty_client {
     // and miniumum of confirmed_count for each tclient.)
 
     const char *cmd;
-    char*const*argv;
+    argblob_t argv;
 #if REMOTE_SSH
     // Domain socket to communicate between client and (local) server.
     int cmd_socket;
@@ -284,9 +284,9 @@ struct options {
     int fd_cmd_socket;
     char *session_name;
     char *settings_file;
-    char **shell_argv;               // parse_args("shell.default" setting);
+    argblob_t shell_argv;               // parse_args("shell.default" setting);
     const char*cwd; // use as current current dir; NULL means that of process
-    char *const*env; // environment to use; if NULL use that of process
+    argblob_t env; // environment to use; if NULL use that of process
 };
 
 struct tty_server {
@@ -325,11 +325,11 @@ extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 const char *domterm_settings_default(void);
 extern bool is_WindowsSubsystemForLinux(void);
-extern int handle_command(int argc, char**argv, struct lws *wsi,
+extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
-                           const char *, int);
-extern int do_run_browser(struct options *, char *url, int port);
+                           const const char *, int);
+extern int do_run_browser(struct options *, const char *url, int port);
 extern int start_command(struct options *, char *cmd);
 extern char* check_browser_specifier(const char *specifier);
 extern void printf_to_browser(struct tty_client *, const char *, ...);
@@ -342,8 +342,8 @@ extern void release_options(struct options *options);
 extern const char *firefox_browser_command(struct options *options);
 extern const char *chrome_command(bool app_mode, struct options *options);
 extern void default_link_command(const char *url);
-extern int process_options(int argc, char **argv, struct options *options);
-extern char** default_command(struct options *opts);
+extern int process_options(int argc, arglist_t argv, struct options *options);
+extern arglist_t default_command(struct options *opts);
 extern void request_upload_settings();
 extern void read_settings_file(struct options*, bool);
 extern void read_settings_emit_notice();
@@ -352,7 +352,7 @@ extern void set_settings(struct options *options);
 extern enum option_name lookup_option(const char *name);
 extern const char *get_setting(json_object *opts, const char *key);
 extern void set_setting(struct json_object **, const char *key, const char *val);
-extern bool check_option_arg(char *arg, struct options *opts);
+extern bool check_option_arg(const char *arg, struct options *opts);
 
 // A "setting" that starts with "`" is an internal setting.
 #define LOCAL_SESSIONNUMBER_KEY "`local-session-number"
@@ -370,7 +370,7 @@ extern bool write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
 extern char *url_encode(const char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
-extern const char *getenv_from_array(char* key, char*const*envarray);
+extern const char *getenv_from_array(char* key, arglist_t envarray);
 extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_WHEN_SIMPLE 1
 #define LIB_WHEN_OUTER 2
@@ -378,8 +378,8 @@ extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_AS_MODULE 8
 extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);
-extern int count_args(char**);
-extern char** parse_args(const char*, bool);
+extern int count_args(arglist_t);
+extern argblob_t parse_args(const char*, bool);
 extern char* parse_string(const char*, bool);
 extern const char * maybe_quote_arg(const char *in);
 
@@ -421,7 +421,7 @@ extern struct resource resources[];
  * The return value should be one of EXIT_SUCCESS, EXIT_FAILURE,
  * or EXIT_IN_SERVER (if executed by command).
  */
-typedef int (*action_t)(int argc, char** argv, struct lws *wsi,
+typedef int (*action_t)(int argc, arglist_t argv, struct lws *wsi,
                         struct options *opts);
 
 struct command {
@@ -431,11 +431,11 @@ struct command {
 };
 
 extern struct command * find_command(const char *name);
-extern int attach_action(int, char**, struct lws *, struct options *);
-extern int browse_action(int, char**, struct lws *, struct options *);
-extern int view_saved_action(int, char**, struct lws *, struct options *);
-extern int help_action(int, char**, struct lws *, struct options *);
-extern int new_action(int, char**, struct lws *, struct options *);
+extern int attach_action(int, arglist_t, struct lws *, struct options *);
+extern int browse_action(int, arglist_t, struct lws *, struct options *);
+extern int view_saved_action(int, arglist_t, struct lws *, struct options *);
+extern int help_action(int, arglist_t, struct lws *, struct options *);
+extern int new_action(int, arglist_t, struct lws *, struct options *);
 extern void print_version(FILE*);
 extern char*find_in_path();
 extern void print_help(FILE*);

@@ -3,6 +3,13 @@
 
 struct options;
 
+typedef const char *string_t;
+typedef const string_t *arglist_t; // Also used for environments
+
+// An argblob_t is the same as an arglist_t, but malloced as a single "blob"
+// This type indicates the receiver "owns" (is responsible for freeing) it
+typedef arglist_t argblob_t;
+
 extern void printf_error(struct options *opts, const char *format, ...)
 #ifdef __GNUC__
     __attribute__((format(printf, 2,3)))
@@ -40,7 +47,7 @@ get_sig(const char *sig_name);
 char *
 base64_encode(const unsigned char *buffer, size_t length);
 
-char*const* copy_strings(char*const* strs);
+argblob_t copy_strings(const char*const* strs);
 
 struct sbuf {
     void *buffer;

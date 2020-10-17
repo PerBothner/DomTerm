@@ -94,7 +94,7 @@ get_setting(struct json_object *settings, const char *key)
 }
 
 bool
-check_option_arg(char *arg, struct options *opts)
+check_option_arg(const char *arg, struct options *opts)
 {
     char *eq = strchr(arg, '=');
     if (eq == NULL)
@@ -322,7 +322,7 @@ set_settings(struct options *options)
     options->settings = msettings;
 
     if (options->shell_argv)
-        free(options->shell_argv);
+        free((void*) options->shell_argv);
     options->shell_argv = parse_args(get_setting(options->settings, "shell.default"), false);
 }
 
