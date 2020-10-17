@@ -2990,7 +2990,7 @@ Terminal.prototype.pushClearScreenBuffer = function(alternate, noScrollTop) {
     this.saveCursor();
     this.pushScreenBuffer(alternate);
     this.cursorSet(0, 0, false);
-    term.resetTerminal(-1, false);
+    this.resetTerminal(-1, false);
     this.eraseDisplay(0);
     if (noScrollTop)
         this.initial.noScrollTop = true;
