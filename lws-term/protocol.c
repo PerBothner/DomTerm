@@ -1249,7 +1249,7 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
         }
     }
     if (client->initialized == 0 && proxyMode != proxy_command_local) {
-        if (client->options->cmd_settings) {
+        if (client->options && client->options->cmd_settings) {
             //json_object_put(client->cmd_settings);
             sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
                         json_object_to_json_string_ext(client->options->cmd_settings, JSON_C_TO_STRING_PLAIN));
@@ -1508,8 +1508,14 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         if (main_window != NULL) {
             if (strcmp(main_window, "true") == 0)
                 client->main_window = 0;
-            else if ((snum = strtol(main_window, NULL, 10)) > 0)
+            else if ((snum = strtol(main_window, NULL, 10)) > 0) {
                 client->main_window = (int) snum;
+                if (client->options == NULL) {
+                    struct tty_client *main_client = TCLIENT_FROM_NUMBER(snum);
+                    if (main_client != NULL && main_client->options)
+                        client->options = link_options(main_client->options);
+                }
+            }
         }
         const char*headless = lws_get_urlarg_by_name(wsi, "headless=", arg, sizeof(arg) - 1);
         if (headless && strcmp(headless, "true") == 0)
