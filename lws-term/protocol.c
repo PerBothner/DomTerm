@@ -1300,11 +1300,13 @@ handle_output(struct tty_client *client, struct sbuf *bufp, enum proxy_mode prox
                     URGENT_END_STRING,
                     rcount);
     }
-    if (client->pty_window_update_needed && nonProxy) {
+    if (client->pty_window_update_needed && proxyMode != proxy_command_local) {
         client->pty_window_update_needed = false;
+        int kind = proxyMode == proxy_display_local ? 2
+            : (pclient->pflags & session_name_unique_flag) != 0;
         sbuf_printf(bufp, URGENT_WRAP("\033[91;%d;%d;%d;%du"),
+                    kind,
                     pclient->session_number,
-                    (pclient->pflags & session_name_unique_flag) != 0,
                     client->pty_window_number+1,
                     client->connection_number);
     }

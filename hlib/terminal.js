@@ -119,7 +119,15 @@ class Terminal {
     sstate.sessionNameUnique = false;
     sstate.paneNumber = -1;
     sstate.doLinkify = true;
+
+    // the local window number.
+    // Normally same as connectionNumber, except when remoting over ssh.
+    // When remoting over ssh, this is the local server's connection number.
     this.windowNumber = -1;
+    // connection number for (application, possibly-remote) process
+    // When remoting over ssh, this is the remote server's connection number.
+    this.connectionNumber = -1;
+
     this.windowForSessionNumber = -1;
     this._settingsCounterInstance = -1;
     
@@ -3444,8 +3452,13 @@ DomTerm.displayMiscInfo = function(dt, show) {
         if (dt.sstate.disconnected)
             contents += " disconnected";
         else if (dt.windowNumber >= 0)
-            contents += " connection:"+dt.windowNumber;
-        //+" session:"+dt.sstate.sessionNumber;
+            contents += " window:"+dt.windowNumber;
+        let lsession = dt.sstate.termOptions["`local-session-number"];
+        let rhost = dt.sstate.termOptions["`remote-host-user"];
+        if (lsession && rhost)
+            contents += " session (remote) "+rhost+" :"+lsession;
+        else
+            contents += " session :"+dt.sstate.sessionNumber;
         contents += "<br/>";
         contents += dt._modeInfo() + "<br/>Size: " + dt._sizeInfoText();
         if (dt.sstate.lastWorkingPath)
@@ -5258,18 +5271,26 @@ Terminal.prototype.setSessionName = function(title) {
     this.setWindowTitle(title, 30);
 }
 
-Terminal.prototype.setSessionNumber = function(snumber, unique,
+Terminal.prototype.setSessionNumber = function(kind, snumber,
                                                windowForSession, windowNumber) {
-    this.sstate.sessionNumber = snumber;
-    this.topNode.setAttribute("session-number", snumber);
-    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-        DomTerm.sendParentMessage("set-session-number", snumber);
+    let unique = kind != 0;
+    if (kind == 2) {
+        this.windowNumber = windowNumber;
+    } else {
+        this.sstate.sessionNumber = snumber;
+        this.topNode.setAttribute("session-number", snumber);
+        if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+            DomTerm.sendParentMessage("set-session-number", snumber);
+        }
+        this.sstate.sessionNameUnique = unique;
+        console.log("setSessionNumber "+snumber+" w:"+windowNumber+" kind:"+kind);
+        if (this.windowNumber < 0)
+            this.windowNumber = windowNumber;
+        this.connectionNumber = windowNumber;
+        if (DomTermLayout._mainWindowNumber < 0)
+            DomTermLayout._mainWindowNumber = windowNumber;
+        this.windowForSessionNumber = windowForSession;
     }
-    this.sstate.sessionNameUnique = unique;
-    this.windowNumber = windowNumber;
-    if (DomTermLayout._mainWindowNumber < 0)
-        DomTermLayout._mainWindowNumber = windowNumber;
-    this.windowForSessionNumber = windowForSession;
     this.updateWindowTitle();
 }
 
@@ -8995,7 +9016,7 @@ DomTerm.initXtermJs = function(dt, topNode) {
                                        return true;
                                    case 91:
                                        dt.setSessionNumber(params[1],
-                                                           params[2]!=0,
+                                                           params[2],
                                                            params[3]-1);
                                        return true;
                                    case 99:
