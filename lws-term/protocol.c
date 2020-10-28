@@ -261,6 +261,19 @@ unlink_tty_from_pty(struct pty_client *pclient,
     }
 }
 
+static void
+clear_connection_number(struct tty_client *tclient)
+{
+    int snum = tclient->connection_number;
+    if (VALID_CONNECTION_NUMBER(snum)) {
+        // update to maintain tty_clients invariant
+        struct tty_client *next = tty_clients[snum+1];
+        for (; snum >= 0 && tty_clients[snum] == tclient; snum--)
+            tty_clients[snum] = next;
+    }
+    tclient->connection_number = -1;
+}
+
 void
 tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
     // remove from clients list
@@ -273,15 +286,7 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient) {
     }
 
     struct pty_client *pclient = tclient->pclient;
-
-    int snum = tclient->connection_number;
-    if (VALID_CONNECTION_NUMBER(snum)) {
-        // update to maintain tty_clients invariant
-        struct tty_client *next = tty_clients[snum+1];
-        for (; snum >= 0 && tty_clients[snum] == tclient; snum--)
-            tty_clients[snum] = next;
-    }
-    tclient->connection_number = -1;
+    clear_connection_number(tclient);
     free(tclient->ssh_connection_info);
     tclient->ssh_connection_info = NULL;
     if (pclient != NULL)
@@ -1417,6 +1422,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                     tcsetattr(pclient->pty, TCSANOW, &termios);
                 }
                 tty_restore(-1);
+                clear_connection_number(tclient);
                 display_session(tclient->options, tclient->pclient, NULL, http_port);
                 if (tclient->out_wsi && tclient->out_wsi != tclient->wsi) {
                     lwsl_notice("set_timeout clear tc:%p\n", tclient->wsi);
