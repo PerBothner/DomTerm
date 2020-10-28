@@ -2116,8 +2116,8 @@ Alternatively, DomTerm can run as a layer on top of ssh;
 that is usually easier to use and set up.
 
 @menu
-Remoting over ssh::
-Web serving::
+* Remoting over ssh::
+* Web serving::
 @end menu
 
 @node Remoting over ssh
