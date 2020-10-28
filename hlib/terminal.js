@@ -433,6 +433,7 @@ class Terminal {
             this._markMode = false;
             cl.remove('markmode');
         }
+        this._displayInputModeWithTimeout(this._modeInfo("M"));
     }
 
     // This is called both when constructing a new Terminal, and
@@ -3420,21 +3421,42 @@ DomTerm.displayInfoInWidget = function(contents, dt) {
         div.setAttribute("class", "domterm-show-info");
         let top = dt.topNode;
         top.insertBefore(div, top.firstChild);
-        let bottom, right;
-        if (top.offsetParent) {
-            bottom = top.offsetParent.offsetHeight
-                - (top.offsetTop + top.offsetHeight);
-            right = top.offsetParent.offsetWidth
-                - (top.offsetLeft + top.clientWidth);
-        } else {
-            bottom = right = 0;
+        let topOffset = 0, leftOffset = 0; //, rightOffset = 0;
+        for (let n = top; n; n = n.offsetParent) {
+            topOffset += n.offsetTop;
+            leftOffset += n.offsetLeft;
         }
-        div.style["bottom"] = bottom + "px";
-        div.style["right"] = right + "px";
+        topOffset += 0.5 * dt.charHeight;
+        leftOffset += 0.25 * top.clientWidth;
+        div.style["top"] = topOffset + "px";
+        div.style["left"] = leftOffset + "px";
+        div.style["width"] = (top.clientWidth - leftOffset) + "px";
+        div.style["box-sizing"] = "border-box";
         dt._displayInfoWidget = div;
     }
     div.innerHTML = contents;
 };
+
+DomTerm.displayMiscInfo = function(dt, show) {
+    if (show) {
+        dt._showingMiscInfo = true;
+        let contents = "<span>DomTerm "+DomTerm.versionString;
+        if (dt.sstate.disconnected)
+            contents += " disconnected";
+        else if (dt.windowNumber >= 0)
+            contents += " connection:"+dt.windowNumber;
+        //+" session:"+dt.sstate.sessionNumber;
+        contents += "<br/>";
+        contents += dt._modeInfo() + "<br/>Size: " + dt._sizeInfoText();
+        if (dt.sstate.lastWorkingPath)
+            contents += "<br/>Last path: <code>"+DomTerm.escapeText(dt.sstate.lastWorkingPath)+"</code>";
+        contents += "</span>";
+        DomTerm.displayInfoMessage(contents, dt);
+    } else {
+        DomTerm.displayInfoMessage(null, dt);
+        dt._showingMiscInfo = undefined;
+    }
+}
 
 /** Display contents using displayInfoInWidget or something equivalent. */
 DomTerm.displayInfoMessage = DomTerm.displayInfoInWidget;
@@ -7636,6 +7658,7 @@ Terminal.prototype.eventToKeyName = function(event) {
         case "ArrowRight": base = "Right"; break;
         case "ArrowUp": base = "Up"; break;
         case "ArrowDown": base = "Down"; break;
+        case "Control": base = "Ctrl"; break;
         case "Escape": base = "Esc"; break;
         case " ": base = "Space"; break;
     }
@@ -8152,20 +8175,17 @@ Terminal.prototype.nextInputMode = function() {
     if (this._lineEditingMode < 0) {
         // was 'char' change to 'line'
         mode = 108; // 'l'
-        displayString = "Input mode: line";
     } else if (this._lineEditingMode == 0
                || ! DomTerm.supportsAutoInputMode) {
         // was 'auto' (or auto not supported), change to 'char'
         mode = 99; // 'c'
-        displayString = "Input mode: character";
     } else {
         // was 'line' change to 'auto'
         mode = 97; // 'a'
-        displayString = "Input mode: automatic";
     }
     DomTerm.setInputMode(mode, this);
     DomTerm.inputModeChanged(this, mode);
-    this._displayInputModeWithTimeout(displayString);
+    this._displayInputModeWithTimeout(this._modeInfo("I"));
 }
 
 Terminal.prototype._sendInputContents = function(sendEnter) {
@@ -8434,7 +8454,8 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Space": "scroll-page-down",
     "'m'": "toggle-pause-mode",
     "'p'": "scroll-percentage",
-    "'%'": "scroll-percentage"
+    "'%'": "scroll-percentage",
+    "(keypress)": "paging-keypress"
 });
 DomTerm.pagingKeymap = DomTerm.pagingKeymapDefault;
 
@@ -8552,6 +8573,22 @@ Terminal.prototype.keyDownHandler = function(event) {
         return;
     if (this._composing == 0)
         this._composing = -1;
+
+    if (this._keyupDisplayInfo) {
+        this.topNode.removeEventListener("keyup", this._keyupDisplayInfo, false);
+        this._keyupDisplayInfo = undefined;
+    } else if (this._showingMiscInfo) {
+        DomTerm.displayMiscInfo(this, false);
+    } else if (keyName == "Ctrl") {
+        let keyup = (e) => {
+            DomTerm.displayMiscInfo(this, true);
+            this.topNode.removeEventListener("keyup", keyup, false);
+            this._keyupDisplayInfo = undefined;
+        }
+        this._keyupDisplayInfo = keyup;
+        this.topNode.addEventListener("keyup", keyup, false);
+    }
+
     if (this._currentlyPagingOrPaused()) {
         if (this.pageKeyHandler(keyName))
             event.preventDefault();
@@ -9308,12 +9345,57 @@ Terminal.prototype._currentlyPagingOrPaused = function() {
     return this._pagingMode > 0;
 };
 
-function _pagerModeInfo(dt) {
-    var prefix =  dt._pagingMode == 2 ? "<b>PAUSED</b>" : "<b>PAGER</b>";
-    if (dt._numericArgument) {
-        return prefix+": numeric argument: "+dt._numericArgument;
+Terminal.prototype._modeInfo = function(emphasize="") {
+    let mode = "Mode:";
+    let emphPaging = emphasize.indexOf("P") >= 0;
+    let emphExtend = emphasize.indexOf("M") >= 0;
+    let emphInput = emphasize.indexOf("I") >= 0;
+    let emphContinued = emphasize.indexOf("C") >= 0;
+    if (emphContinued) {
+        mode += "<b>auto-pause-continued</b>";
     }
-    return prefix+": type SPACE for more; Ctrl-Shift-M to exit paging";
+    if (emphPaging)
+        mode += "<b>";
+    if (this._pagingMode > 0) {
+        mode += " paging";
+        if (emphExtend && ! emphPaging)
+            mode += "<b>";
+        if (this._markMode)
+            mode += "/extend";
+        else if (emphExtend)
+            mode += "(not extend)";
+        if (emphExtend && ! emphPaging)
+            mode += "</b>";
+        if (this._autoPaging)
+            mode += "(auto-pause)";
+    } else if (emphPaging) {
+        mode += " (not paging)";
+    } else {
+        if (emphExtend && ! emphPaging)
+            mode += "<b>";
+        if (this._markMode)
+            mode += "extend";
+        else if (emphExtend)
+            mode += "(not extend)";
+        if (emphExtend && ! emphPaging)
+            mode += "</b>";
+    }
+    if (emphPaging)
+        mode += "</b>";
+    mode += " ";
+    if (emphInput)
+        mode += "<b>";
+    if (this._lineEditingMode < 0)
+        mode += "input=char";
+    else if (this._lineEditingMode > 0)
+        mode += "input=line";
+    else if (this.isLineEditing())
+        mode += "input=auto (currently line)";
+    else
+        mode += "input=auto (currently char)";
+    if (emphInput)
+        mode += "</b>";
+    return mode;
 }
 
 Terminal.prototype._updatePagerInfo = function() {
@@ -9393,11 +9475,11 @@ Terminal.prototype._pageBottom = function() {
 
 Terminal.prototype._enterPaging = function(pause) {
     // this._displayInputModeWithTimeout(displayString);
+    this.topNode.classList.add("focusmode");
     this._numericArgument = null;
     this._pagingMode = pause ? 2 : 1;
-    this.topNode.classList.add("focusmode");
-    this.modeLineGenerator = _pagerModeInfo;
-    this._updatePagerInfo();
+    this._displayInputModeWithTimeout(this._modeInfo("P"));
+
     let sel = document.getSelection();
     if (sel.focusNode == null || sel.focusNode == this.focusArea) {
         let before = this._caretNode;
@@ -9422,8 +9504,7 @@ Terminal.prototype._exitPaging = function() {
     if (focusCaret && focusCaret.parentNode)
         focusCaret.parentNode.removeChild(focusCaret);
     this._pagingMode = 0;
-    this.modeLineGenerator = null;
-    this._updatePagerInfo();
+    this._displayInputModeWithTimeout(this._modeInfo("P"));
 }
 
 DomTerm.setAutoPaging = function(mode, dt = DomTerm.focusedTerm) {

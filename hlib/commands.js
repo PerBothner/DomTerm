@@ -102,6 +102,11 @@ cmd('toggle-fullscreen-current-window',
                 screenfull.request();
         }
     });
+cmd('paging-keypress',
+    function(dt, key) {
+        dt._displayInputModeWithTimeout(dt._modeInfo("P"));
+        return true;
+    });
 cmd('toggle-paging-mode',
     function(dt, key) {
         if (dt._currentlyPagingOrPaused()) {
