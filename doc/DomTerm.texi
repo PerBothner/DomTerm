@@ -2464,6 +2464,14 @@ Save the display to a file.
 @item @kbd{Ctrl-Shift-@key{L}} (@code{cycle-input-mode})
 Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
+@item @kbd{Ctrl-Shift-@key{M}}
+Enter @ref{Paging,Paging mode}.
+@item @kbd{@key{Ctrl}}
+Show a popup with useful information about version, mode, size,
+or other data.
+This is shown if you press and release the @key{Ctrl} key
+without pressing some other key.
+Easiest way to make the popup go away is to press @key{Ctrl} again.
 @end table
 
 The following are implemented by most browsers, rather than DomTerm,
@@ -2486,8 +2494,6 @@ Toggle full-screen mode for the current sub-window.
 @item @kbd{Ctrl-Shift-@key{I}}
 Toogle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
-@item @kbd{Ctrl-Shift-@key{M}}
-Enter @ref{Paging,Paging mode}.
 @end table
 
 @anchor{scrolling shortcuts}
