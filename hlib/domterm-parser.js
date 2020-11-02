@@ -1308,8 +1308,32 @@ class DTParser {
                 term._replayMode = false;
                 break;
             case 99:
-                if (this.getParameter(1, 0) == 99)
+                param1 = this.getParameter(1, 0);
+                switch (param1) {
+                case 96: //re-connected
+                    term.popRestoreScreenBuffer();
+                    break;
+                case 97:
+                    if (DomTerm.verbosity >= 1)
+                        term.log("RECONNECT request!");
+                    term.pushClearScreenBuffer(false, true);
+                    term.initial.classList.add("reconnecting");
+                    break;
+                case 98:
+                    if (DomTerm.verbosity >= 1)
+                        term.log("DISCONNECTED! (pty close)");
+                    if (term.initial.classList.contains("reconnecting"))
+                        term.popRestoreScreenBuffer();
+                    term.showConnectFailure(-1,
+                                            () => {
+                                                term.reportEvent("RECONNECT",
+                                                                term.sstate.sessionNumber);
+                                            }, true);
+                    break;
+                case 99:
                     term.eofSeen();
+                    break;
+                }
                 break;
             }
         break;
@@ -2058,6 +2082,14 @@ class DTParser {
                 term.pasteText(JSON.parse(text));
             } catch (e) {
                 term.log("caught " + e + " in OSC 213 (paste)");
+            }
+            break;
+        case 232:
+            try {
+                let str = JSON.parse(text);
+                term._ssh_error_msg = (term._ssh_error_msg || "") + str;
+            } catch (e) {
+                term.log("caught " + e + " in OSC 212 (ssh-error)");
             }
             break;
         case 1337: // various iTerms extensions:

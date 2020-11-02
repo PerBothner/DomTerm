@@ -87,3 +87,12 @@ div.domterm span[std="caret"] {
     color: inherit;
     background-color: inherit;
 }
+
+div.show-connection-failure {
+    position: fixed;
+    background: var(--background-color);
+    z-index: 2;
+    border: solid red medium;
+    padding: 2ex;
+}
+div.show-connection-failure div.domterm-pre { white-space: pre-wrap }

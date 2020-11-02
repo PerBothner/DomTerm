@@ -224,10 +224,11 @@ static const struct lws_protocols protocols[] = {
           If the proxy is an input/output pair, then we need to
           use two struct lws instances (the "proxy" instands wraps input,
           while "proxy-out" wraps output), but they share the same
-          "user-data", the sa,e tty_client instance.
+          "user-data", the same tty_client instance.
         */
         { "proxy", callback_proxy, sizeof(struct tty_client),  0},
         { "proxy-out", callback_proxy, 0,  0},
+        { "ssh-stderr", callback_ssh_stderr, sizeof(struct stderr_client), 0 },
 #endif
 
 #if HAVE_INOTIFY

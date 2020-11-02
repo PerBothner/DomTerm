@@ -137,11 +137,11 @@ struct pty_client {
     int pid;
     int pty; // pty master
     int pty_slave;
+    struct stderr_client *stderr_client;
     int session_number;
     char *session_name;
     int nrows, ncols;
     float pixh, pixw;
-    int eof_seen;  // 1 means seen; 2 reported to client
     enum pclient_flags pflags : 8;
     bool exit;
     // Number of "pending" re-attach after detach; -1 is allow infinite.
@@ -178,6 +178,22 @@ struct pty_client {
 #endif
 };
 
+struct stderr_client {
+    struct lws *wsi;
+    int pipe_reader;
+    int pipe_writer;
+    struct pty_client *pclient;
+};
+
+enum tclient_flags {
+    //no_flags = 0,
+    tclient_proxy_flag = 1,
+    detach_on_disconnect_flag = 2,
+    close_requested_flag = 4,
+    headless_flag = 8
+    //detach_requested_flag = 16,
+};
+
 /**
  * Data specific to a WebSocket (browser) client connection or a proxy stream.
  * The user structure for the libwebsockets "domterm" and "proxy" protocols.
@@ -206,7 +222,7 @@ struct tty_client {
     // 1: reconnecting - client has state, but connection was dropped
     int initialized : 3;
 
-    bool headless;
+    enum tclient_flags misc_flags;
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
     int main_window; // 0 if top-level, or number of main window
@@ -310,12 +326,12 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void
 
 extern int
 callback_pty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
-
 extern int
 callback_cmd(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
-
 extern int
 callback_inotify(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+extern int
+callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
 #ifdef RESOURCE_DIR
 extern char *get_resource_path();

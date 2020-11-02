@@ -506,7 +506,7 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
         struct json_object *vobj =
             json_tokener_parse(tclient->version_info);
         char *prefix = " ";
-        if (tclient->headless) {
+        if ((tclient->misc_flags & headless_flag) != 0) {
             fprintf(out, "headless");
             prefix = ", ";
         }
@@ -922,6 +922,7 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
             w_spec = w_number;
         }
         struct tty_client *tclient =
+            // error checking of arg was done in initial pass
             w_spec == w_number ? tty_clients[strtol(arg, NULL, 10)]
             : TCLIENT_FIRST;
         for (; tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {

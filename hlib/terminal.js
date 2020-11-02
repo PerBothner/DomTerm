@@ -498,7 +498,8 @@ class Terminal {
     /// Are we reporting mouse events?
     mouseReporting() {
         return this.sstate.mouseMode !== 0
-            && ! this._pagingMode && ! this.isLineEditing();
+            && ! this._pagingMode && ! this.isLineEditing()
+            && ! this.sstate.disconnected;
     }
 
     maybeResetWantsEditing() {
@@ -6337,11 +6338,13 @@ Terminal.prototype._doDeferredDeletion = function() {
 }
 
 Terminal.prototype._pauseContinue = function(skip = false) {
+    if (this.sstate.disconnected) {
+        this._reconnect();
+    }
     var wasMode = this._pagingMode;
     this._pagingMode = 0;
-    this.modeLineGenerator = null;
     if (wasMode != 0)
-        this._updatePagerInfo();
+        this._displayInputModeWithTimeout(this._modeInfo("C"));
     if (DomTerm.verbosity >= 2)
         this.log("pauseContinue was mode="+wasMode);
     if (wasMode == 2) {
@@ -9055,6 +9058,7 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
     }
     let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
     wsocket.onopen = function(e) {
+        wt._reconnectCount = 0;
         if (topNode == null)
             return;
         if (DomTerm.usingXtermJs() && window.Terminal != undefined) {
@@ -9071,10 +9075,73 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
     };
 }
 
+Terminal.prototype.showConnectFailure = function(ecode, reconnect, toRemote)  {
+    let reconnectId = "show-connectfail-reconnect";
+    let pageModeId = "show-connectfail-paging";
+    let msg = '<div class="show-connection-failure">';
+    if (toRemote) {
+        msg += '<h1>Connection to remote session lost</h1>';
+        if (this._ssh_error_msg) {
+            this.pushClearScreenBuffer(false, true);
+            this.insertString(this._ssh_error_msg);
+            let ssh_msg = this.initial.innerHTML;
+            this.popRestoreScreenBuffer();
+            msg += `<p>Ssh (connection from backend server) reported error:</p>`
+                + `<p><span std="error">${ssh_msg}</span></p>`;
+            this._ssh_error_msg = undefined;
+        } else
+            msg += `<p>Ssh connection from backend server to remote session timed out or closed.</p>`;
+    } else {
+        msg += '<h1>Connection to backend lost</h1>';
+        msg += `<p>Too may failures (error code ${ecode}) attempting WebSockets connection to backend server.</p>`;
+    }
+    msg += `<button id="${reconnectId}">Try to re-connect</button> <button id="${pageModeId}">Switch to read-only (paging) mode</button></div>`;
+    this.topNode.insertAdjacentHTML('afterbegin', msg);
+    let top = this.topNode;
+    let div = top.firstChild;
+    let topOffset = 0, leftOffset = 0;
+    for (let n = top; n; n = n.offsetParent) {
+        topOffset += n.offsetTop;
+        leftOffset += n.offsetLeft;
+    }
+    let w = top.offsetWidth;
+    div.style["top"] = (topOffset + 0.10 * this.availHeight) + "px";
+    div.style["left"] = (0.12 * w + leftOffset) + "px";
+    div.style["width"] = ((1 - 2 * 0.12) * w) + "px";
+    div.style["box-sizing"] = "border-box";
+
+    this.initial.style.opacity = "0.3";
+    this.sstate.disconnected = true;
+    let handler = (event) => {
+        let eid = event.srcElement.getAttribute('id');
+        if (eid == reconnectId || eid == pageModeId) {
+            this.initial.style.opacity = "";
+            div.removeEventListener("click", handler, false);
+            div.parentNode.removeChild(div);
+        }
+        if (eid == reconnectId) {
+            reconnect();
+            return;
+        }
+        if (eid == pageModeId) {
+            this._enterPaging();
+            this._reconnect = reconnect;
+            return;
+        }
+        console.log("click!");
+    }
+    div.addEventListener("click", handler, false);
+};
+
 Terminal.newWS = function(wspath, wsprotocol, wt) {
-    var wsocket = new WebSocket(wspath, wsprotocol);
-    if (DomTerm.verbosity > 0)
-        DomTerm.log("created WebSocket on  "+wspath);
+    let wsocket;
+    try {
+        wsocket = new WebSocket(wspath, wsprotocol);
+        if (DomTerm.verbosity > 0)
+            DomTerm.log("created WebSocket on  "+wspath);
+    } catch (e) {
+        DomTerm.log("caught "+e.toString());
+    }
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
     wt.processInputBytes = function(bytes) {
@@ -9087,12 +9154,17 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
     wsocket.onmessage = function(evt) {
         DomTerm._handleOutputData(wt, evt.data);
     }
+    wsocket.onerror = function(e) {
+        if (DomTerm.verbosity > 0)
+            DomTerm.log("unexpected WebSocket error code:"+e.code+" e:"+e);
+    }
     wsocket.onclose = function(e) {
         if (DomTerm.verbosity > 0)
-            console.log("unexpected WebSocket close code:"+e.code);
+            DomTerm.log("unexpected WebSocket (connection:"+wt.windowNumber+") close code:"+e.code+" e:"+e);
         wt._socketOpen = false;
-        if (true) {
+        let reconnect = () => {
             let reconnect = "&reconnect=" + wt._receivedCount;
+            wt._reconnectCount++;
             let m = wspath.match(/^(.*)&reconnect=([0-9]+)(.*)$/);
             if (m)
                 wspath = m[1] + reconnect + m[3];
@@ -9105,6 +9177,15 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
                 wt._socketOpen = true;
                 wt._handleSavedLog();
             };
+        };
+        let reconnectDelay = [0, 200, 400, 400][wt._reconnectCount];
+        if (reconnectDelay == 0)
+            reconnect();
+        else if (reconnectDelay)
+            setTimeout(reconnect, reconnectDelay);
+        else {
+            console.log("TOO MANY CONNECT fAILURES");
+            wt.showConnectFailure(e.code, reconnect, false);
         }
     }
     return wsocket;
