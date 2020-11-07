@@ -9633,10 +9633,9 @@ Terminal.prototype._togglePaging = function() {
 */
 
 Terminal.prototype._pauseNeeded = function() {
-    // The +1 is in case of rounding problems
     return (this._pagingMode > 0 || this._autoPaging || this._autoPagingTemporary)
         && this._pauseLimit >= 0
-        && this._vspacer.offsetTop + this.charHeight > this._pauseLimit + 1;
+        && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };
 
 Terminal.prototype.editorUpdateRemote = function() {
