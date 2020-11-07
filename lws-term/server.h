@@ -344,7 +344,7 @@ extern bool is_WindowsSubsystemForLinux(void);
 extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
-                           const const char *, int);
+                           const char *, int);
 extern int do_run_browser(struct options *, const char *url, int port);
 extern int start_command(struct options *, char *cmd);
 extern char* check_browser_specifier(const char *specifier);
