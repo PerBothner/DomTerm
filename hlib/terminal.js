@@ -4362,6 +4362,8 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
         let caret = this._caretNode;
         if (this.outputBefore == caret)
             this.outputBefore = caret.nextSibling;
+        if (caret.parentNode)
+            caret.parentNode.removeChild(caret);
         if (forwards)
             range.collapse();
         let start = range.startContainer;
