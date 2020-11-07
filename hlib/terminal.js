@@ -3586,7 +3586,11 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     }
     topNode.addEventListener("compositionstart", compositionStart, true);
     topNode.addEventListener("compositionupdate",
-                             (e) => {console.log("compositionupdate d:"+e.data);}, true);
+                             (e) => {
+                                 if (DomTerm.verbosity >= 2)
+                                     dt.log("compositionupdate d:"+e.data);
+                             },
+                             true);
     topNode.addEventListener("compositionend", compositionEnd, true);
     topNode.addEventListener("paste",
                              function(e) {
