@@ -39,6 +39,9 @@ h3 {
   font-size: large;
   margin: 1.5em 1em 1em 0
  }
+h3.section {
+    text-align: center; font-size: x-large
+}
 h3.subtitle {
   font-weight: normal;
   font-style: italic;
@@ -232,10 +235,12 @@ p[class="synopsis"][kind="Procedure"]:after,
   p[class="synopsis"][kind="Syntax"]:after
 { content: ")"; font-weight: bold; font-family: monospace; color: purple }
 
-p.synopsis span.kind { float: right; padding-left: 2em }
-p.synopsis span.kind:before { content: "[" }
-p.synopsis span.kind:after { content: "]" }
+p.synopsis span.kind, dl.def span.category { float: right; padding-left: 2em }
+p.synopsis span.kind { content: "[" }
+p.synopsis span.kind:before, dl.def span.category:before { content: "[" }
+p.synopsis span.kind:after, dl.def span.category:after { content: "]" }
 p.synopsis > code { font-weight: bold; }
+dl.def span.category-suffix { display: none }
 blockquote { margin-left: 40px; margin-right: 40px }
 
 div[class="toc-sidebar"] div > ul > li { font-size: larger }
