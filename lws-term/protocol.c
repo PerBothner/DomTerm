@@ -1537,8 +1537,9 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                          tclient->inb.size - tclient->inb.len);
         lwsl_info("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
                     (long) n, tclient->inb.size, tclient->inb.len);
-        if (n <= 0)
-            return -1;
+        if (n <= 0) {
+            return n < 0 && errno == EAGAIN ? 0 : -1;
+        }
         tclient->inb.len += n;
         return handle_input(wsi, tclient, tclient->proxyMode);
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
@@ -1748,6 +1749,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
         pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd, "proxy-out", NULL);
         lws_set_wsi_user(pout_lws, tclient);
         lwsl_notice("- make_proxy out-conn#%d wsi:%p\n", tclient->connection_number, pout_lws);
+        lws_rx_flow_control(pout_lws, 0);
     }
     tclient->wsi = pin_lws;
     tclient->out_wsi = pout_lws;
