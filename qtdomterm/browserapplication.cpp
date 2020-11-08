@@ -273,7 +273,7 @@ void BrowserApplication::openUrl(const QUrl &url)
 BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, bool headless, QSharedDataPointer<ProcessOptions> processOptions)
 {
     BrowserMainWindow *browser =
-        new BrowserMainWindow(this, url, processOptions);
+        new BrowserMainWindow(this, url, processOptions, nullptr, Qt::WindowFlags());
     int x = -1, y = -1;
     if (! position.isEmpty()) {
         QRegularExpression re("^([-+])([0-9]+)([-+])([0-9]+)$");

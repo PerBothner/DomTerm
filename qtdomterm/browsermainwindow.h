@@ -75,7 +75,7 @@ class BrowserMainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    BrowserMainWindow(BrowserApplication*application, const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent = 0, Qt::WindowFlags flags = 0);
+    BrowserMainWindow(BrowserApplication*application, const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags);
     ~BrowserMainWindow();
     QSize sizeHint() const;
     void setSize(int width, int height) { m_width = width; m_height = height; }

@@ -415,7 +415,7 @@ void BrowserMainWindow::slotEditFind()
                                           m_lastSearch, &ok);
     if (ok && !search.isEmpty()) {
         m_lastSearch = search;
-        currentTab()->findText(m_lastSearch, 0, invoke(this, &BrowserMainWindow::handleFindTextResult));
+        currentTab()->findText(m_lastSearch, QWebEnginePage::FindFlags(), invoke(this, &BrowserMainWindow::handleFindTextResult));
     }
 }
 
