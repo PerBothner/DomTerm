@@ -5105,7 +5105,27 @@ escape sequences as understood by bash's @code{echo -e}.
 Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 @code{"\xHH"} is the 8-bit characters whose value is HH (hexadecimal).
 
+@menu
+* Sequences handled by DomTerm::
+* Sequences sent by DomTerm::
+@end menu
+
+@node Sequences handled by DomTerm
 @subsection Special sequences sent by back-end and handled by DomTerm
+
+@menu
+* Miscellaneous sequences::
+* Command parts::
+* Window operations::
+* Urgent messages::
+* Diagnostic (error) messages::
+* Stylesheet manipulation::
+* Alterate screen buffers::
+* Pretty-printing escapes::  Pretty-printing
+@end menu
+
+@node Miscellaneous sequences
+@subsubsection Miscellaneous sequences
 
 @table @asis
 @item @code{"\e[3J"}
@@ -5183,14 +5203,6 @@ Essentially sets the @code{innerHTML} to @var{html-text}
 Simulate pressing @var{keyName}.  Used by auto-line mode.
 The @code{73} variant supresses echo.
 
-@item @code{"\e]104;" @var{op} @code{,} @var{url} "a\n"}
-Create a new sub-window (pane), based on the @var{op}.
-This displays the @var{url} webpage in an @code{<iframe>}.
-
-@item @code{"\e]105;" @var{op} @code{,} @var{saved-url} "a\n"}
-Create a new sub-window (pane), based on the @var{op}.
-This is displays the @var{saved-url}, a previously saved terminal session.
-
 @item @code{"\e[20u"}
 Starts a "fresh line": If at the beginning of line, does nothing.
 Otherwise moves to the start of a new line.
@@ -5224,9 +5236,6 @@ from the local settings, so the global settings (or default) will apply.
 @emph{Internal use: }
 Update user @ref{Settings,settings}.
 
-@item @code{"\e[90;" @var{op} "u"}
-Create a new sub-window (pane), based on the @var{op}.
-
 @item @code{"\e[92;" @var{op} "u"}
 Temporarily enable auto-paging if @var{op} is 1.
 Disables it if @var{op} is 2 (- only if temporarily enabled).
@@ -5250,6 +5259,7 @@ Execute the named @var{command}.
 Currently, @code{close} and @code{detach} are allowed.
 @end table
 
+@node Command parts
 @subsubsection Command parts (shell integration)
 
 The escape sequences will be deprecated
@@ -5354,9 +5364,21 @@ The previous input is ``re-opened'' for editing, and
 a fresh empty line added.
 @end table
 
+@node Window operations
 @subsubsection Window operations
 
 @table @asis
+@item @code{"\e[90;" @var{op} "u"}
+Create a new sub-window (pane), based on the @var{op}.
+
+@item @code{"\e]104;" @var{op} @code{,} @var{url} "a\n"}
+Create a new sub-window (pane), based on the @var{op}.
+This displays the @var{url} webpage in an @code{<iframe>}.
+
+@item @code{"\e]105;" @var{op} @code{,} @var{saved-url} "a\n"}
+Create a new sub-window (pane), based on the @var{op}.
+This displays the @var{saved-url}, a previously saved terminal session.
+
 @item @code{"\e[1t"}
 @emph{(Electron and Qt only.)} Un-minimize (de-iconify) current window.
 This undoes buth minimize and hide operations.
@@ -5392,6 +5414,7 @@ Save window and icon title to stack. [In xterm.]
 Restore window and icon title from stack. [In xterm.]
 @end table
 
+@node Urgent messages
 @subsubsection Urgent messages
 
 @table @asis
@@ -5418,6 +5441,7 @@ When DomTerm receives a sequence of bytes that contains
 an urgent sequence, it will execute that before handling preceding bytes.
 @end table
 
+@node Diagnostic (error) messages
 @subsubsection Diagnostic (error) messages
 
 @table @asis
@@ -5443,6 +5467,7 @@ parts of a diagnostic.
 
 @end table
 
+@node Stylesheet manipulation
 @subsubsection Stylesheet manipulation
 
 @table @asis
@@ -5493,6 +5518,7 @@ If the code is @code{95}, the result to the client is
 is the index of the replaced or created stylesheet.
 @end table
 
+@node Alterate screen buffers
 @subsubsection Alterate screen buffers
 
 @table @asis
@@ -5518,6 +5544,7 @@ Pop the most recent buffer.
 @end table
 
 @anchor{escapes-pretty-printing}
+@node Pretty printing escapes
 @subsubsection Pretty-printing
 
 "Pretty-printing" refers to breaking a text info multiple lines
@@ -5607,6 +5634,7 @@ Zu\e]115;"k-","k","ck"\aer
 @end example
 @end table
 
+@node Sequences sent by DomTerm
 @subsection Special sequences sent by DomTerm to back-end
 
 The prefix byte 0xFD is used to report an event or other information
@@ -5958,6 +5986,17 @@ Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
 @node Architecture notes
 @section Architecture notes
 
+@menu
+* Input modes:: Line vs character input modes
+* Line structure::
+* Colors and high-lighting::
+* Remote connection over ssh::
+* Predictive echo::
+* Connection closing and detaching::
+* Line breaking:: Line-breaking / pretty-printing
+@end menu
+
+@node Input modes
 @subsection Line vs character input modes
 
 In line input mode we can end up with double echoing:
@@ -5982,6 +6021,7 @@ sent to the server.  If the pty is in canonical mode, then
 a message is sent back to the front-end, which switches
 to line mode, and processes the event.
 
+@node Line structure
 @subsection Line structure
 
 "Line" here refer to "visual line": A section of the DOM that should be
@@ -5996,6 +6036,7 @@ Always points to a span node with the line attribute set.
 Normally lineEnds[i] == lineStarts[i+1]; however, sometimes
 lineStarts[i] is the start of a @code{<div>} or other block element.
 
+@node Colors and high-lighting
 @subsection Colors and high-lighting
 
 @emph{This needs updating.}
@@ -6025,6 +6066,7 @@ the correspoding CSS rules.  This has the advantage that one could
 override the highlighting appearance with a custom style sheet.
 
 @anchor{Architecture remote over ssh}
+@@node Remote connection over ssh
 @subsection Remote connection over ssh
 
 The support for remote connections is relatively thin
@@ -6091,6 +6133,7 @@ which displays them in the window.
 @end example
 (Compare with diagram at @ref{Terminology}.)
 
+@node Predictive echo
 @subsection Predictive echo
 
 @uref{https://mosh.org/,Mosh} implements local ``tentative echo'', which
@@ -6130,6 +6173,7 @@ In that case we try to create (after handling output) a new
 is a tail of the previous value.
 (We only do this if there are no changes to any other (logical) line.)
 
+@node Connection closing and detaching
 @subsection Connection closing and detaching
 
 A session can have one or more open windows,
@@ -6175,6 +6219,7 @@ Treat as a detach.
 The detach-count is incremented.
 @end itemize
 
+@node Line breaking
 @subsection Line-breaking / pretty-printing
 
 For a terminal emulator we need to preserve (not collapse) whitespace,
