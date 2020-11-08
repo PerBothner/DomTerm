@@ -250,7 +250,7 @@ clean-am:
 	  web/tools web/images \
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
-	if test -x "@QMAKE@"; then cd qtdomterm && $(MAKE) clean; fi
+	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm bin/dt-webview
 
 websocket_sources = org/domterm/websocket/DomServer.java
