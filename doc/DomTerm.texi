@@ -2569,7 +2569,7 @@ Emacs shell mode or GNU readline.
 
 @subheading Line vs character input mode
 
-DomTerm lets you switch between:
+DomTerm lets you switch between these modes:
 @itemize
 @item
 In @strong{character-at-a-time mode}
@@ -2580,10 +2580,7 @@ Plain characters are inserted; other keystrokes are editing commands.
 The contents of the input area are only sent to the application
 when you press @kbd{@key{Enter}} (normally).
 (This mode is similar to @dfn{shell mode} in Emacs.)
-@end itemize
 
-You can also select:
-@itemize
 @item
 @strong{Automatic input mode} automatically
 switches between character-at-a-time mode and line-edit mode.
@@ -2598,35 +2595,7 @@ have been put together by the operating system,
 so DomTerm selects line-edit mode (so you get DomTerm's superior
 ``input cooking'' editor instead of the very basic one
 provided by most operating systems).
-
-There are two possible ways DomTerm can detect cooked vs raw mode:
-@itemize
-@item
-The operating system's terminal driver can send an indication
-when the terminal switches between cooked and raw.
-
-Unfortunately, few modern operating systems provide a good way
-to request such notication.
-Linux has a seldom-used @code{EXTPROC} flag which is inspired by
-the @uref{https://en.wikipedia.org/wiki/STREAMS,System V Streams} packet mode.
-This adds an extra indicator byte to the terminal input stream.
-This mode is enabled by the @code{domterm} @code{--tty-packet-mode=extproc}
-command-line option.
-This is not the default (even on Linux).
-
-@item
-DomTerm can lazily check.
-When you type a character in the DomTerm terminal,
-it sends a special encoding to the @code{domterm} server,
-which checks the mode of the terminal:
-If the PTY is in raw mode, the character is sent to the application.
-If the PTY is in cooked mode, the character is sent back to the
-DomTerm front-end, which enters line-edit mode, inserting
-the character in the input area.
-Subsequent characters (until @kbd{@key{Enter}}) are handled
-locally by DomTerm without a trip to the backend.
-@end itemize
-
+See @ref{Automatic input mode,here for technical details}.
 @end itemize
 
 You can switch between character mode, line mode,
@@ -5987,7 +5956,7 @@ Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
 @section Architecture notes
 
 @menu
-* Input modes:: Line vs character input modes
+* Automatic input mode::
 * Line structure::
 * Colors and high-lighting::
 * Remote connection over ssh::
@@ -5996,30 +5965,36 @@ Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
 * Line breaking:: Line-breaking / pretty-printing
 @end menu
 
-@node Input modes
-@subsection Line vs character input modes
+@node Automatic input mode
+@subsection Automatic input mode
 
-In line input mode we can end up with double echoing:
-As you edit the input line, it is displayed.
-Then when the line is sent, the slave will normally echo the input.
+There are two possible ways DomTerm can detect cooked vs raw mode:
+@itemize
+@item
+The operating system's terminal driver can send an indication
+when the terminal switches between cooked and raw.
 
-Ideally you'd want to integrate with the kernel
-terminal sub-system, to suppress echoing.   In lieu of
-that, line editing mode could delete the input line
-from the DOM before sending them to the inferior.
-To avoid annoying flashing, this is done lazily:
-DomTerm waits to remove the input line until it gets some
-output from the inferior (usually the echo).
+Unfortunately, few modern operating systems provide a good way
+to request such notication.
+Linux has a seldom-used @code{EXTPROC} flag which is inspired by
+the @uref{https://en.wikipedia.org/wiki/STREAMS,System V Streams} packet mode.
+This adds an extra indicator byte to the terminal input stream.
+This mode is enabled by the @code{domterm} @code{--tty-packet-mode=extproc}
+command-line option.
+This is not the default (even on Linux).
 
-In addition to "char mode" and "line mode" (like the
-Emacs term mode) there is an "auto mode" which watches
-the states of the inferior pty to automatically switch
-between them.  In autoEditing mode, if we're currently
-in char mode, then a key event gets sent to the pty layer.
-If the pty is in non-canonical mode, the key event is
-sent to the server.  If the pty is in canonical mode, then
-a message is sent back to the front-end, which switches
-to line mode, and processes the event.
+@item
+DomTerm can lazily check.
+When you type a character in the DomTerm terminal,
+it sends a special encoding to the @code{domterm} server,
+which checks the mode of the terminal:
+If the PTY is in raw mode, the character is sent to the application.
+If the PTY is in cooked mode, the character is sent back to the
+DomTerm front-end, which enters line-edit mode, inserting
+the character in the input area.
+Subsequent characters (until @kbd{@key{Enter}}) are handled
+locally by DomTerm without a trip to the backend.
+@end itemize
 
 @node Line structure
 @subsection Line structure
