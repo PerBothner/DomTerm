@@ -5090,7 +5090,7 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 * Diagnostic (error) messages::
 * Stylesheet manipulation::
 * Alterate screen buffers::
-* Pretty-printing escapes::  Pretty-printing
+* Pretty printing escapes::  Pretty-printing
 @end menu
 
 @node Miscellaneous sequences
@@ -6041,7 +6041,7 @@ the correspoding CSS rules.  This has the advantage that one could
 override the highlighting appearance with a custom style sheet.
 
 @anchor{Architecture remote over ssh}
-@@node Remote connection over ssh
+@node Remote connection over ssh
 @subsection Remote connection over ssh
 
 The support for remote connections is relatively thin
