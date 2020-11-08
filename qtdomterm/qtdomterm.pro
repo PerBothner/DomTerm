@@ -14,7 +14,6 @@ HEADERS += \
     backend.h \
     browserapplication.h \
     browsermainwindow.h \
-    modelmenu.h \
     savepagedialog.h \
     webview.h
 
@@ -22,7 +21,6 @@ SOURCES += \
     backend.cpp \
     browserapplication.cpp \
     browsermainwindow.cpp \
-    modelmenu.cpp \
     savepagedialog.cpp \
     webview.cpp \
     main.cpp
