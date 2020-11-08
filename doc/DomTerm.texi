@@ -2787,6 +2787,8 @@ need to press @kbd{@key{Shift}}, and you can use a repeat count.
 @table @asis
 @item @kbd{Ctrl-@key{PageUp}} (@code{scroll-page-up})
 @itemx @kbd{Ctrl-@key{PageDown}} (@code{scroll-page-down})
+@itemx @kbd{@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{@key{PageDown}} (@code{scroll-page-down})
 Scroll @var{count} pages up or down, respectively.
 @item @kbd{Ctrl-@key{Up}} (@code{scroll-line-up})
 @itemx @kbd{Ctrl-@key{Down}} (@code{scroll-line-down})
@@ -2835,7 +2837,8 @@ and the ``final end'' is called the @dfn{focus position}.
 The latter is indicated by a special @dfn{focus caret},
 by default a brown I-beam caret.
 
-The commands in this sextion do not move the edit caret, only the focus position.
+The commands in this section do not move the edit caret, only the focus position.
+These shortcuts are the same as line-edit mode, unless otherwise noted.
 
 @table @asis
 @item @kbd{Ctrl-Shift-@key{C}}  (@code{copy-text})
@@ -2855,7 +2858,7 @@ If there is a selection, copy it to the clipboard.
 Paste selection from clipboard.
 @item @kbd{Ctrl-@key{X}} (@code{cut-text})
 @itemx @kbd{Ctrl-Shift-@key{X}}
-Cut (delete) the selection and copy eth contents to clipboard.
+Cut (delete) the selection and copy the contents to clipboard.
 Only removes text within the input area.
 @item @kbd{Ctrl-@key{!}}  (@code{swap-focus-anchor})
 If there is a non-collapsed selection, swap focus and anchor (selection ends).
@@ -2881,6 +2884,9 @@ Extend selection to start/end of line.
 @item @kbd{Shift-@key{Up}} (@code{up-line-extend})
 @itemx @kbd{Shift-@key{Down}} (@code{down-line-extend})
 Extend selection by moving focus up/down @var{count} lines.
+@item @kbd{Shift-Alt-@key{Home}} (@code{beginning-of-buffer-extend})
+@itemx @kbd{Shift-Alt-@key{End}} (@code{end-of-buffer-extend})
+Extend selection by moving focus position to start/end of the buffer.
 @end table
 
 @subsubheading Extend mode
@@ -2914,6 +2920,8 @@ whose name ends with @code{-extend}, that command is executed instead.
 @itemx @kbd{@key{Down}} (@code{down-line-extend})
 @itemx @kbd{@key{Home}} (@code{beginning-of-line-extend})
 @itemx @kbd{@key{End}} (@code{end-of-line-extend})
+@itemx @kbd{Alt-@key{Home}} (@code{beginning-of-buffer-extend})
+@itemx @kbd{Alt-@key{End}} (@code{end-of-buffer-extend})
 Extends the selection, as if @kbd{@key{Shift}} was pressed.
 @end table
 
