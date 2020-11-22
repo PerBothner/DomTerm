@@ -864,7 +864,7 @@ void init_options(struct options *opts)
     opts->force_option = 0;
     opts->socket_name = NULL;
     opts->do_daemonize = 1;
-    opts->debug_level = 15;
+    opts->debug_level = 0;
     opts->iface = NULL;
     opts->tty_packet_mode = "no";
 #if HAVE_OPENSSL
