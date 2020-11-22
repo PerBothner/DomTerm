@@ -1200,11 +1200,11 @@ void init_tclient_struct(struct tty_client *client)
 }
 
 static void
-set_connection_number(struct tty_client *tclient, struct pty_client *hint)
+set_connection_number(struct tty_client *tclient, int hint)
 {
     int snum = 1;
-    if (hint != NULL && ! VALID_CONNECTION_NUMBER(hint->session_number))
-        snum = hint->session_number;
+    if (hint > 0 && ! VALID_CONNECTION_NUMBER(hint))
+        snum = hint;
     for (; ; snum++) {
         if (snum >= tty_clients_size) {
             int newsize = 3 * tty_clients_size >> 1;
@@ -1217,7 +1217,7 @@ set_connection_number(struct tty_client *tclient, struct pty_client *hint)
         }
         struct tty_client *next = tty_clients[snum];
         if (next == NULL || next->connection_number > snum) {
-            if ((hint == NULL || snum != hint->session_number)
+            if ((hint < 0 || snum != hint)
                 && VALID_SESSION_NUMBER(snum))
                 continue;
             // Maintain invariant
@@ -1625,19 +1625,23 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_ESTABLISHED:
         lwsl_notice("tty/CALLBACK_ESTABLISHED %s client:%p\n", in, client);
         char arg[100]; // FIXME
-        long snum;
+        long wnum = -1;
         if (! check_server_key(wsi, arg, sizeof(arg) - 1))
             return -1;
 
+        const char *reconnect = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
+        long reconnect_value = reconnect == NULL ? -1
+            : strtol(reconnect, NULL, 10);
         const char *no_session = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
         const char*window = lws_get_urlarg_by_name(wsi, "window=", arg, sizeof(arg) - 1);
         if (window != NULL) {
-            snum = strtol(window, NULL, 10);
-            if (! VALID_CONNECTION_NUMBER(snum)) {
+            wnum = strtol(window, NULL, 10);
+            if (VALID_CONNECTION_NUMBER(wnum))
+                client = tty_clients[wnum];
+            else if (reconnect_value < 0) {
                 lwsl_err("connection with invalid connection number %s - error\n", window);
                 break;
             }
-            client = tty_clients[snum];
         } else {
             if (! no_session) {
                 // Needed on Apple when using /usr/bin/open as it
@@ -1648,18 +1652,24 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                     }
                 }
             }
-            if (client == NULL) {
-                client = xmalloc(sizeof(struct tty_client));
-                init_tclient_struct(client);
-            }
+        }
+        if (client == NULL) {
+            client = xmalloc(sizeof(struct tty_client));
+            init_tclient_struct(client);
         }
         WSI_SET_TCLIENT(wsi, client);
         pclient = client->pclient;
+        if (pclient == NULL) {
+            const char*snumber = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1);
+            if (snumber)
+                pclient = PCLIENT_FROM_NUMBER(strtol(snumber, NULL, 10));
+        }
         client->wsi = wsi;
         client->out_wsi = wsi;
         const char*main_window = lws_get_urlarg_by_name(wsi, "main-window=", arg, sizeof(arg) - 1);
         client->main_window = -1;
         if (main_window != NULL) {
+            long snum;
             if (strcmp(main_window, "true") == 0)
                 client->main_window = 0;
             else if ((snum = strtol(main_window, NULL, 10)) > 0) {
@@ -1695,17 +1705,17 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 }
             }
 
-            const char *reconnect = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
-            if (reconnect != NULL) {
-                snum = strtol(reconnect, NULL, 10);
-                client->confirmed_count = snum;
-                client->sent_count = snum; // FIXME
+            if (reconnect_value >= 0) {
+                client->confirmed_count = reconnect_value;
+                client->sent_count = reconnect_value; // FIXME
                 client->initialized = 1;
                 lws_callback_on_writable(wsi);
             }
         }
         if (client->connection_number < 0)
-            set_connection_number(client, pclient);
+            set_connection_number(client,
+                                  reconnect_value > 0 && wnum > 0 ? wnum
+                                  : pclient ? pclient->session_number : -1);
 
         server->client_count++;
         // Defer start_pty so we can set up DOMTERM variable with version_info.
@@ -1742,6 +1752,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         break;
 
     case LWS_CALLBACK_CLOSED:
+        if (client == NULL)
+            break;
          if (focused_wsi == wsi)
               focused_wsi = NULL;
          tty_client_destroy(wsi, client);
@@ -1786,7 +1798,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
         ((struct tty_client *) lws_wsi_user(pin_lws));
     init_tclient_struct(tclient);
     tclient->misc_flags |= tclient_proxy_flag;
-    set_connection_number(tclient, pclient);
+    set_connection_number(tclient, pclient ? pclient->session_number : -1);
     tclient->proxy_fd_in = fd_in;
     tclient->proxy_fd_out = fd_out;
     lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws, ttyname(options->fd_in));
@@ -1870,7 +1882,7 @@ display_session(struct options *options, struct pty_client *pclient,
         struct tty_client *tclient = xmalloc(sizeof(struct tty_client));
         init_tclient_struct(tclient);
         tclient->options = link_options(options);
-        set_connection_number(tclient, pclient);
+        set_connection_number(tclient, pclient ? pclient->session_number : -1);
         tclient->pclient = pclient; // maybe move to set_connection_number
         wnum = tclient->connection_number;
     }
