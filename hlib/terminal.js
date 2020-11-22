@@ -8640,8 +8640,6 @@ Terminal.prototype.keyDownHandler = function(event) {
         this._muxKeyHandler(event, key, false);
         return;
     }
-    if (! ((key >= 48 && key <= 57) || key == 45))
-        this._adjustPauseLimit();
     if (this.isLineEditing()) {
         if (! this.useStyledCaret())
             this.maybeFocus();
