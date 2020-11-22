@@ -531,12 +531,18 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
 
 static void pclient_status_info(struct pty_client *pclient, FILE *out)
 {
+    struct tty_client *tclient = pclient->first_tclient;
     if ((pclient->pflags & ssh_pclient_flag) != 0
-        && pclient->first_tclient && pclient->first_tclient->options) {
+        && tclient && tclient->options) {
         const char* remote =
-            get_setting(pclient->first_tclient->options->cmd_settings,
+            get_setting(tclient->options->cmd_settings,
                         REMOTE_HOSTUSER_KEY);
         fprintf(out, "ssh to remote %s", remote);
+        remote =
+            get_setting(tclient->options->cmd_settings,
+                        REMOTE_SESSIONNUMBER_KEY);
+        if (remote)
+            fprintf(out, "#%s", remote);
     } else
         fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
     if (pclient->session_name != NULL)
@@ -630,9 +636,6 @@ static void status_by_connection(FILE *out, int verbosity)
                 continue;
             }
             fprintf(out, "  session#%d", pclient->session_number);
-            if (pclient->session_number != sub_client->connection_number
-                || (pclient->first_tclient && pclient->first_tclient->next_tclient))
-                fprintf(out, ".%d", sub_client->connection_number);
             fprintf(out, ": ");
             pclient_status_info(pclient, out);
             fprintf(out, "\n");

@@ -377,6 +377,7 @@ extern bool check_option_arg(const char *arg, struct options *opts);
 // A "setting" that starts with "`" is an internal setting.
 #define LOCAL_SESSIONNUMBER_KEY "`local-session-number"
 #define REMOTE_HOSTUSER_KEY "`remote-host-user"
+#define REMOTE_SESSIONNUMBER_KEY "`remote-session-number"
 
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);

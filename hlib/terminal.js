@@ -3445,12 +3445,12 @@ DomTerm.displayMiscInfo = function(dt, show) {
             contents += " disconnected";
         else if (dt.windowNumber >= 0)
             contents += " window:"+dt.windowNumber;
-        let lsession = dt.sstate.termOptions["`local-session-number"];
+        let sessionNumber = dt.sstate.sessionNumber;
         let rhost = dt.getRemoteHostUser();
-        if (lsession && rhost)
-            contents += " session (remote) "+rhost+"#"+lsession;
+        if (rhost)
+            contents += " session (remote) "+rhost+"#"+sessionNumber;
         else
-            contents += " session :"+dt.sstate.sessionNumber;
+            contents += " session :"+sessionNumber;
         contents += "<br/>";
         contents += dt._modeInfo() + "<br/>Size: " + dt._sizeInfoText();
         if (dt.sstate.lastWorkingPath)
@@ -5280,8 +5280,8 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("set-session-number", snumber);
         }
+        this.reportEvent("SESSION-NUMBER-ECHO", snumber);
         this.sstate.sessionNameUnique = unique;
-        console.log("setSessionNumber "+snumber+" w:"+windowNumber+" kind:"+kind);
         if (this.windowNumber < 0)
             this.windowNumber = windowNumber;
         this.connectionNumber = windowNumber;
@@ -5295,27 +5295,27 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
 // FIXME misleading function name - this is not just the session name
 Terminal.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("session-name");
+    let snumber = this.sstate.sessionNumber;
     if (! sname) {
-        let lsession = this.sstate.termOptions["`local-session-number"];
         let rhost = this.getRemoteHostUser();
-        if (lsession && rhost) {
+        sname  = "DomTerm";
+        let wnumber = this.windowNumber;
+        if (wnumber)
+            sname += ":"+wnumber;
+        if (rhost) {
             let at = rhost.indexOf('@');
             if (at >= 0)
                 rhost = rhost.substring(at+1);
             if (! rhost)
                 host = "";
-            sname = "DomTerm" + ":" + lsession + "=" +rhost+":" + this.sstate.sessionNumber;
+            sname += "=" + rhost + "#" + snumber;
         } else {
-            sname = "DomTerm" + ":" + this.sstate.sessionNumber;
+            if (snumber && snumber != wnumber)
+                sname += "#"+snumber;
         }
     }
     else if (! this.sstate.sessionNameUnique)
-        sname = sname + ":" + this.sstate.sessionNumber;
-    if (this.windowNumber >= 0
-        && (this.windowForSessionNumber >= 0
-            || this.sstate.sessionNumber !== this.windowNumber)) {
-        sname = sname + "." + this.windowNumber;
-    }
+        sname = sname + "#" + snumber;
     return sname;
 };
 

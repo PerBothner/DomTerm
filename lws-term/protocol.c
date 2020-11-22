@@ -668,7 +668,7 @@ find_session(const char *specifier)
         if (pclient->session_name != NULL
             && strcmp(specifier, pclient->session_name) == 0)
             match = 1;
-        else if (specifier[0] == ':'
+        else if ((specifier[0] == '#' || specifier[0] == ':'/*DEPRECATED*/)
                  && strtol(specifier+1, NULL, 10) == pclient->session_number)
           match = 1;
         if (match) {
@@ -1046,6 +1046,12 @@ reportEvent(const char *name, char *data, size_t dlen,
                 SET_PCLIENT_FLAG(pclient, session_name_unique_flag, false);
             }
         }
+    } else if (strcmp(name, "SESSION-NUMBER-ECHO") == 0) {
+        struct options *options = client->options;
+        if (proxyMode == proxy_display_local && options) {
+            set_setting(&options->cmd_settings, REMOTE_SESSIONNUMBER_KEY, data);
+        }
+        return true;
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
         struct options *options = client->options;
         static char gopt[] =  "geometry=";
@@ -1927,7 +1933,7 @@ display_session(struct options *options, struct pty_client *pclient,
                 sbuf_append(&sb, "#", 1);
             // Note we use ';' rather than the traditional '&' to separate parts
             // of the fragment.  Using '&' causes a mysterious bug (at
-            // least on Electron, Qt, and Webview) when added "&js-verbodity=N".
+            // least on Electron, Qt, and Webview) when added "&js-verbosity=N".
             if (pclient != NULL) {
                 sbuf_printf(&sb, ";session-number=%d", pclient->session_number);
             }
