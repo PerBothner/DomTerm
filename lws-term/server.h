@@ -124,7 +124,8 @@ enum option_name {
 enum pclient_flags {
     ssh_pclient_flag = 1,
     session_name_unique_flag = 2,
-    packet_mode_flag = 4
+    packet_mode_flag = 4,
+    timed_out_flag = 8
 };
 #define SET_PCLIENT_FLAG(PCLIENT, FLAG, VALUE) \
     ((VALUE) ? ((PCLIENT)->pflags |= (FLAG)) : ((PCLIENT)->pflags &= ~(FLAG)))
@@ -303,6 +304,9 @@ struct options {
     argblob_t shell_argv;               // parse_args("shell.default" setting);
     const char*cwd; // use as current current dir; NULL means that of process
     argblob_t env; // environment to use; if NULL use that of process
+    long remote_input_timeout; // remote-input-timeout setting, as ms
+    long remote_output_timeout; // remote-output-timeout setting, as ms
+    long remote_output_interval; // remote-output-timeout setting, as ms
 };
 
 struct tty_server {
@@ -429,6 +433,7 @@ extern struct resource resources[];
 #define COMMAND_IN_CLIENT_IF_NO_SERVER 4
 #define COMMAND_IN_SERVER 8
 #define COMMAND_CHECK_DOMTERM 16
+#define REATTACH_COMMAND "INTERNAL-re-attach"
 
 // 0xFD cannot appear in a UTF-8 sequence
 #define REPORT_EVENT_PREFIX 0xFD

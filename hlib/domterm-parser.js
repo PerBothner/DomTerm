@@ -1310,25 +1310,22 @@ class DTParser {
             case 99:
                 param1 = this.getParameter(1, 0);
                 switch (param1) {
-                case 96: //re-connected
-                    term.popRestoreScreenBuffer();
-                    break;
-                case 97:
+                case 95:
                     if (DomTerm.verbosity >= 1)
                         term.log("RECONNECT request!");
                     term.pushClearScreenBuffer(false, true);
                     term.initial.classList.add("reconnecting");
                     break;
+                case 96: //re-connected
+                    term.popRestoreScreenBuffer();
+                    break;
+                case 97:
                 case 98:
                     if (DomTerm.verbosity >= 1)
                         term.log("DISCONNECTED! (pty close)");
                     if (term.initial.classList.contains("reconnecting"))
                         term.popRestoreScreenBuffer();
-                    term.showConnectFailure(-1,
-                                            () => {
-                                                term.reportEvent("RECONNECT",
-                                                                term.sstate.sessionNumber);
-                                            }, true);
+                    term.showConnectFailure(-1);
                     break;
                 case 99:
                     term.eofSeen();

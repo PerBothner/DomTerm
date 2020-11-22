@@ -93,6 +93,17 @@ get_setting(struct json_object *settings, const char *key)
         return NULL;
 }
 
+double
+get_setting_d(struct json_object *settings, const char *key, double dfault)
+{
+    errno = 0;
+    struct json_object *value;
+    if (settings == NULL
+        || ! json_object_object_get_ex(settings, key, &value))
+        return dfault;
+    return json_object_get_double(value);
+}
+
 bool
 check_option_arg(const char *arg, struct options *opts)
 {
@@ -324,6 +335,16 @@ set_settings(struct options *options)
     if (options->shell_argv)
         free((void*) options->shell_argv);
     options->shell_argv = parse_args(get_setting(options->settings, "shell.default"), false);
+    double d = get_setting_d(options->settings, "remote-output-interval", 10.0);
+    options->remote_output_interval = (long) (d * 1000);
+    double d2 = get_setting_d(options->settings, "remote-output-timeout", -1.0);
+    if (d2 < 0)
+        d2  = 2 * d;
+    options->remote_output_timeout = (long) (d2 * 1000);
+    d = get_setting_d(options->settings, "remote-input-timeout", -1.0);
+    if (d < 0)
+        d  = 2 * get_setting_d(options->settings, "remote-input-interval", 10.0);
+    options->remote_input_timeout = (long) (d * 1000);
 }
 
 void

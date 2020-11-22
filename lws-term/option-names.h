@@ -33,3 +33,14 @@ OPTION_F(flow_confirm_each, "flow-confirm-every", OPTION_NUMBER_TYPE)
 //OPTION_S(flow_max_continue, "flow-max-continue", OPTION_NUMBER_TYPE)
 OPTION_F(log_js_verbosity, "log.js-verbosity", OPTION_NUMBER_TYPE)
 OPTION_F(log_js_to_server, "log.js-to-server", OPTION_STRING_TYPE)
+
+/** Local browser sends input to remote server at least this frequently. */
+OPTION_F(remote_input_interval, "remote-input-interval", OPTION_NUMBER_TYPE)
+/** Remote server times out if no input received from browser by this time.
+ * Defaults to 2 * remote-input-interval */
+OPTION_F(remote_input_timeout, "remote-input-timeout", OPTION_NUMBER_TYPE)
+/** Remote server sends output to browser this frequently, if non-zero.
+ * Defaults to 10.0 (seconds). */
+OPTION_F(remote_output_interval, "remote-output-interval", OPTION_NUMBER_TYPE)
+/** Browser times out if no output received from remote server */
+OPTION_F(remote_output_timeout, "remote-output-timeout", OPTION_NUMBER_TYPE)

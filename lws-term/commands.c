@@ -625,8 +625,10 @@ static void status_by_connection(FILE *out, int verbosity)
                 continue;
 
             struct pty_client *pclient = sub_client->pclient;
-            if (pclient == NULL)
+            if (pclient == NULL) {
+                fprintf(out, "  disconnected .%d\n", sub_client->connection_number);
                 continue;
+            }
             fprintf(out, "  session#%d", pclient->session_number);
             if (pclient->session_number != sub_client->connection_number
                 || (pclient->first_tclient && pclient->first_tclient->next_tclient))
@@ -700,8 +702,10 @@ int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
     print_version(out);
     if (settings_fname)
         fprintf(out, "Reading settings from: %s\n", settings_fname);
+    fprintf(out, "Backend pid:%d", getpid());
     if (backend_socket_name != NULL)
-        fprintf(out, "Backend command socket: %s\n", backend_socket_name);
+        fprintf(out, " command-socket:%s", backend_socket_name);
+    fprintf(out, "\n");
     if (by_session)
         status_by_session(out, verbosity);
     else
@@ -999,6 +1003,8 @@ struct command commands[] = {
     .action = freshline_action },
   { .name = "attach", .options = COMMAND_IN_SERVER,
     .action = attach_action},
+  { .name = REATTACH_COMMAND,
+    .options = COMMAND_IN_SERVER|COMMAND_ALIAS },
   { .name = "browse", .options = COMMAND_IN_SERVER,
     .action = browse_action},
   { .name = "view-saved", .options = COMMAND_IN_SERVER,

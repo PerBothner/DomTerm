@@ -425,6 +425,12 @@ class Terminal {
         opt = this._globalOptions[name];
         return opt === undefined ? dflt : opt;
     }
+    getRemoteHostUser() {
+        return this.sstate.termOptions["`remote-host-user"];
+    }
+    isRemoteSession() {
+        return !!this.getRemoteHostUser();
+    }
 
     unconfirmedMax() {
         return this.getOption("flow-confirm-every", 500);
@@ -826,21 +832,6 @@ DomTerm.isFrameParent = function() {
     return DomTerm.useIFrame && ! DomTerm.isInIFrame()
         && DomTermLayout._oldFocusedContent;
 }
-
-/*
-DomTerm.detach = function(dt=DomTerm.focusedTerm) {
-    if (DomTerm.isFrameParent()) {
-        DomTerm.sendChildMessage(DomTermLayout._oldFocusedContent, "detach");
-        return;
-    }
-    if (dt) {
-        dt.reportEvent("DETACH", "");
-        if (dt._detachSaveNeeded == 1)
-            dt._detachSaveNeeded = 2;
-        dt.close();
-    }
-};
-*/
 
 DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
     if (!dt)
@@ -3455,9 +3446,9 @@ DomTerm.displayMiscInfo = function(dt, show) {
         else if (dt.windowNumber >= 0)
             contents += " window:"+dt.windowNumber;
         let lsession = dt.sstate.termOptions["`local-session-number"];
-        let rhost = dt.sstate.termOptions["`remote-host-user"];
+        let rhost = dt.getRemoteHostUser();
         if (lsession && rhost)
-            contents += " session (remote) "+rhost+" :"+lsession;
+            contents += " session (remote) "+rhost+"#"+lsession;
         else
             contents += " session :"+dt.sstate.sessionNumber;
         contents += "<br/>";
@@ -5306,7 +5297,7 @@ Terminal.prototype.sessionName = function() {
     var sname = this.topNode.getAttribute("session-name");
     if (! sname) {
         let lsession = this.sstate.termOptions["`local-session-number"];
-        let rhost = this.sstate.termOptions["`remote-host-user"];
+        let rhost = this.getRemoteHostUser();
         if (lsession && rhost) {
             let at = rhost.indexOf('@');
             if (at >= 0)
@@ -5434,7 +5425,7 @@ Terminal.prototype.setSettings = function(obj) {
 }
 
 Terminal.prototype.updateSettings = function() {
-    let getOption = (name) => this.getOption(name);
+    let getOption = (name, dflt = undefined) => this.getOption(name, dflt);
     let val;
 
     val = getOption("log.js-verbosity", -1);
@@ -5460,6 +5451,17 @@ Terminal.prototype.updateSettings = function() {
             break;
         this.linkAllowedUrlSchemes += m[2];
         a = m[1]+m[3];
+    }
+    if (this.isRemoteSession()) {
+        this._remote_input_interval =
+            1000 * getOption("remote-input-interval", 10);
+        let timeout = getOption("remote-output-timeout", -1);
+        if (timeout < 0)
+            timeout = 2 * getOption("remote-output-interval", 10);
+        this._remote_output_timeout = 1000 * timeout;
+    } else {
+        this._remote_input_interval = 0;
+        this._remote_output_timeout = 0;
     }
 
     var style_dark = getOption("style.dark", "auto");
@@ -6358,7 +6360,7 @@ Terminal.prototype._pauseContinue = function(skip = false) {
         this.parser._textParameter = null;
         if (! skip && text)
             this.insertString(text);
-        this._maybeConfirm();
+        this._maybeConfirmReceived();
     }
 }
 
@@ -6400,13 +6402,16 @@ Terminal.prototype._requestDeletePendingEcho = function() {
         clear();
 }
 
-Terminal.prototype._maybeConfirm = function() {
+Terminal.prototype._confirmReceived = function() {
+    this._confirmedCount = this._receivedCount;
+    this.reportEvent("RECEIVED", this._confirmedCount);
+}
+Terminal.prototype._maybeConfirmReceived = function() {
     if (this._pagingMode != 2 && ! this._replayMode
         && (! this._savedControlState
             || this._savedControlState.count_urgent > 0)
         && ((this._receivedCount - this._confirmedCount) & Terminal._mask28) > this.unconfirmedMax()) {
-        this._confirmedCount = this._receivedCount;
-        this.reportEvent("RECEIVED", this._confirmedCount);
+        this._confirmReceived();
     }
 }
 
@@ -6476,7 +6481,7 @@ Terminal.prototype.insertBytes = function(bytes) {
                     this.popControlState();
             }
         }
-        this._maybeConfirm();
+        this._maybeConfirmReceived();
     }
 }
 Terminal.prototype.pushControlState = function() {
@@ -8284,7 +8289,10 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
 }
 
 DomTerm.inputModeChanged = function(dt, mode) {
+    if (mode === dt._oldInputMode)
+        return;
     dt.reportEvent("INPUT-MODE-CHANGED", '"'+String.fromCharCode(mode)+'"');
+    dt._oldInputMode = mode;
 }
 DomTerm.autoPagerChanged = function(dt, mode) {
     dt._displayInfoWithTimeout("<b>PAGER</b>: auto paging mode "
@@ -8982,7 +8990,7 @@ DomTerm._handleOutputData = function(dt, data) {
         dt.insertString(data);
         dlen = data.length;
         dt._receivedCount = (dt._receivedCount + dlen) & Terminal._mask28;
-        dt._maybeConfirm();
+        dt._maybeConfirmReceived();
     }
     return dlen;
 }
@@ -9081,7 +9089,15 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
     };
 }
 
-Terminal.prototype.showConnectFailure = function(ecode, reconnect, toRemote)  {
+Terminal.prototype.showConnectFailure = function(ecode, reconnect=null, toRemote=true)  {
+    if (this._showConnectFailElement)
+        return;
+
+    if (reconnect == null) {
+        reconnect = () => {
+            this.reportEvent("RECONNECT", this.sstate.sessionNumber+","+this._receivedCount);
+        };
+    }
     let reconnectId = "show-connectfail-reconnect";
     let pageModeId = "show-connectfail-paging";
     let msg = '<div class="show-connection-failure">';
@@ -9105,6 +9121,7 @@ Terminal.prototype.showConnectFailure = function(ecode, reconnect, toRemote)  {
     this.topNode.insertAdjacentHTML('afterbegin', msg);
     let top = this.topNode;
     let div = top.firstChild;
+    this._showConnectFailElement = div;
     let topOffset = 0, leftOffset = 0;
     for (let n = top; n; n = n.offsetParent) {
         topOffset += n.offsetTop;
@@ -9124,8 +9141,10 @@ Terminal.prototype.showConnectFailure = function(ecode, reconnect, toRemote)  {
             this.initial.style.opacity = "";
             div.removeEventListener("click", handler, false);
             div.parentNode.removeChild(div);
+            this._showConnectFailElement = undefined;
         }
         if (eid == reconnectId) {
+            this.sstate.disconnected = false;
             reconnect();
             return;
         }
@@ -9134,7 +9153,6 @@ Terminal.prototype.showConnectFailure = function(ecode, reconnect, toRemote)  {
             this._reconnect = reconnect;
             return;
         }
-        console.log("click!");
     }
     div.addEventListener("click", handler, false);
 };
@@ -9150,15 +9168,42 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
     }
     wsocket.binaryType = "arraybuffer";
     wt.closeConnection = function() { wsocket.close(); };
+    wt._remote_input_timer_id = 0; // -1 means inside remote_input_timer
+    let remote_input_timer = () => {
+        if (! wt._remote_input_interval)
+            return;
+        wt._remote_input_timer_id = -1;
+        wt._confirmReceived();
+    };
     wt.processInputBytes = function(bytes) {
         let delay = wt.getOption("debug.input.extra-delay", 0);
-        if (delay)
-            setTimeout(function() { wsocket.send(bytes); }, delay*1000);
-        else
+        let sendBytes = () => {
+            if (wt._remote_input_timer_id > 0) {
+                clearTimeout(wt._remote_input_timer_id);
+                wt._remote_input_timer_id = 0;
+            }
+            if (wt._remote_input_interval > 0 && ! wt.sstate.disconnected)
+                wt._remote_input_timer_id = setTimeout(remote_input_timer, wt._remote_input_interval);
             wsocket.send(bytes);
+        };
+        if (delay && wt._remote_input_timer_id >= 0)
+            setTimeout(sendBytes, delay*1000);
+        else
+            sendBytes();
     };
+    let remote_output_timer = () => {
+        wt.log("TIMEOUT - no output");
+        wt.showConnectFailure(-1);
+    }
+    wt._remote_output_timer_id = 0; // -1 means inside remote_output_timer
     wsocket.onmessage = function(evt) {
         DomTerm._handleOutputData(wt, evt.data);
+        if (wt._remote_output_timer_id > 0) {
+            clearTimeout(wt._remote_output_timer_id);
+            wt._remote_output_timer_id = 0;
+        }
+        if (wt._remote_output_timeout > 0)
+            wt._remote_output_timer_id = setTimeout(remote_output_timer, wt._remote_output_timeout);
     }
     wsocket.onerror = function(e) {
         if (DomTerm.verbosity > 0)
