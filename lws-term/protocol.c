@@ -2170,9 +2170,28 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
     // of the pclient/pty we do the following.
 
     const char *host_arg = argv[0];
-    char *at = strchr(host_arg, '@');
+    char *host_url;
+    char *host_spec = NULL;
+    if (strncmp(host_arg, "ssh://", 6) == 0) {
+        host_url = strdup(host_arg);
+        host_arg += 6;
+    } else {
+        // An ssh URL may not be of the form "ssh://@HOSTNAME".
+        // So skip an initial '@' and then prepend "ssh://".
+        const char *h = host_arg[0] == '@' ? host_arg + 1 : host_arg;
+        char *tmp = xmalloc(strlen(h)+7);
+        sprintf(tmp, "ssh://%s", h);
+        host_url = tmp;
+    }
+    if (strchr(host_arg, '@') == NULL) {
+        char *tmp = xmalloc(strlen(host_arg)+2);
+        sprintf(tmp, "@%s", host_arg);
+        host_spec = tmp;
+    } else {
+        host_spec = strdup(host_arg);
+    }
     const char *ssh_cmd = get_setting(opts->settings, "command.ssh");
-    char *ssh_expanded = expand_host_conditional(ssh_cmd, host_arg);
+    char *ssh_expanded = expand_host_conditional(ssh_cmd, host_spec);
     static char *ssh_default = "ssh";
     if (ssh_expanded == NULL)
         ssh_expanded = strdup(ssh_default);
@@ -2186,7 +2205,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         return NULL;
     }
     const char *domterm_cmd = get_setting(opts->settings, "command.remote-domterm");
-    char *dt_expanded = expand_host_conditional(domterm_cmd, host_arg);
+    char *dt_expanded = expand_host_conditional(domterm_cmd, host_spec);
     if (dt_expanded == NULL)
         dt_expanded = strdup("domterm");
     argblob_t domterm_args = parse_args(dt_expanded, false);
@@ -2198,8 +2217,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         int rargc = 0;
         for (int i = 0; i < ssh_argc; i++)
             rargv[rargc++] = ssh_args[i];
-        // argv[0] is @host or user@host. Pass host or user@host to ssh
-        rargv[rargc++] = at==host_arg ? at+1 : host_arg;
+        rargv[rargc++] = host_url;
         for (int i = 0; i < domterm_argc; i++)
             rargv[rargc++] = domterm_args[i];
         rargv[rargc++] = "--browser-pipe";
@@ -2256,7 +2274,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         char tbuf[20];
         sprintf(tbuf, "%d", pclient->session_number);
         set_setting(&opts->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
-        set_setting(&opts->cmd_settings, REMOTE_HOSTUSER_KEY, host_arg);
+        set_setting(&opts->cmd_settings, REMOTE_HOSTUSER_KEY, host_spec);
         lwsl_notice("handle_remote pcl:%p\n", pclient);
         if (tclient == NULL)
             make_proxy(opts, pclient, proxy_command_local);
@@ -2269,6 +2287,8 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         free(rargv);
         free((void*)domterm_args);
         free((void*)ssh_args);
+        free(host_spec);
+        free(host_url);
         //free(user);
     return pclient;
 }
@@ -2281,18 +2301,17 @@ handle_command(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
                 argc == 0 ? "(default-new)" :argv[0],
                 opts == main_options ? "locally"
                 : "received from command socket");
-    struct command *command = argc == 0 ? NULL : find_command(argv[0]);
+    const char *argv0 = argc > 0 ? argv[0] : "";
+    struct command *command = argc == 0 ? NULL : find_command(argv0);
     if (command != NULL) {
         lwsl_notice("handle command '%s'\n", command->name);
         return (*command->action)(argc, argv, wsi, opts);
     }
-    if (argc == 0 || index(argv[0], '/') != NULL) {
-        return new_action(argc, argv, wsi, opts);
-#if REMOTE_SSH
-    } else if (strchr(argv[0], '@') != NULL) {
+    if (strchr(argv0, '@') != NULL || strncmp(argv0, "ssh://", 6) == 0) {
         handle_remote(argc, argv, opts, NULL);
         return EXIT_WAIT;
-#endif
+    } else if (argc == 0 || strchr(argv0, '/') != NULL) {
+        return new_action(argc, argv, wsi, opts);
     } else {
         // normally caught earlier
         printf_error(opts, "domterm: unknown command '%s'", argv[0]);
