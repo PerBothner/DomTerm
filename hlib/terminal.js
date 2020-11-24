@@ -9747,6 +9747,7 @@ Terminal.prototype.numericArgumentGet = function(def = 1) {
 Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) {
     if (count == 0)
         return true;
+    this.editorAddLine();
     let delta1 = backwards ? -1 : 1;
     let goalColumn = this.sstate.goalColumn;
     let save = this._pushToCaret(this._pagingMode);
