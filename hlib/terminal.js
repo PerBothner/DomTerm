@@ -8224,21 +8224,20 @@ Terminal.prototype.nextInputMode = function() {
 }
 
 Terminal.prototype._sendInputContents = function(sendEnter) {
-    let oldInput = this._inputLine;
-    let passwordField = oldInput && oldInput.classList.contains("noecho")
+    let oldInputLine = this._inputLine;
+    let passwordField = oldInputLine
+        && oldInputLine.classList.contains("noecho")
         && this.sstate.hiddenText;
-    if (sendEnter)
+    if (sendEnter && oldInputLine)
         this.editorMoveHomeOrEnd(true);
     let enterToSend = ! sendEnter ? ""
         : passwordField && this._clientPtyExtProc ? "\n"
         : this.keyEnterToString();
     if (passwordField)
         this.reportText(passwordField, enterToSend);
-    else
-        this._updateRemote(oldInput, enterToSend);
+    else if (oldInputLine)
+        this._updateRemote(oldInputLine, enterToSend);
     this._doDeferredDeletion();
-    // For now we only support the normal case when outputBefore == inputLine.
-    var oldInputLine = this._inputLine;
     if (DomTerm.verbosity >= 2 && oldInputLine)
         this.log("sendInputContents "+this.toQuoted(this.grabInput(this._inputLine))+" sendEnter:"+sendEnter);
     var spanNode;
@@ -8265,25 +8264,28 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
     }
     this._inputLine = null;
     if (suppressEcho) {
-        this._createPendingSpan(oldInputLine);
+        if (oldInputLine != null)
+            this._createPendingSpan(oldInputLine);
         this._removeInputFromLineTable();
         this.resetCursorCache();
     } else if (passwordField) {
         this.sstate.hiddenText = undefined;
-        oldInput.parentNode.removeChild(oldInput);
-        if (this.outputContainer == oldInput)
+        oldInputLine.parentNode.removeChild(oldInputLine);
+        if (this.outputContainer == oldInputLine)
             this.outputBefore = null;
     } else {
         this._removeCaret();
-        let inputParent = oldInputLine.parentNode;
-        this._removeInputLine();
-        if (inputParent.getAttribute("std") == "input") {
-            this._moveNodes(oldInputLine.firstChild, inputParent, oldInputLine);
-            inputParent.removeChild(oldInputLine);
-            if (this.outputContainer == oldInputLine)
-                this.outputContainer = inputParent;
+        if (oldInputLine) {
+            let inputParent = oldInputLine.parentNode;
+            this._removeInputLine();
+            if (inputParent.getAttribute("std") == "input") {
+                this._moveNodes(oldInputLine.firstChild, inputParent, oldInputLine);
+                inputParent.removeChild(oldInputLine);
+                if (this.outputContainer == oldInputLine)
+                    this.outputContainer = inputParent;
+            }
+            this.resetCursorCache();
         }
-        this.resetCursorCache();
         this.cursorLineStart(1);
     }
 }
@@ -9689,7 +9691,7 @@ Terminal.prototype._pauseNeeded = function() {
 
 Terminal.prototype.editorUpdateRemote = function() {
     let input = this._inputLine;
-    if (input.textBefore === undefined) {
+    if (input && input.textBefore === undefined) {
         let r = new Range();
         r.selectNodeContents(input);
         let localText = r.toString();
