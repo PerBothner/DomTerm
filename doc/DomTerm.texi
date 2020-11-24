@@ -867,6 +867,16 @@ The @var{command} specifies one of a set of commands used to control
 If @var{command} is not specified, the default command is @code{new},
 which creates a new session using a default shell such as @code{/bin/bash}.
 
+@subsubheading Communicating with a remote computer
+
+You can run a @var{command} on a different (remote) computer
+named @var{host}, using the following syntax:
+@display
+@code{domterm} [@var{options}] @var{user}@code{@@}@var{host} [@var{command} @var{arg}...]
+@end display
+This uses @uref{https://en.wikipedia.org/wiki/SSH_(Secure_Shell),@code{ssh}}.
+For details @ref{Remoting over ssh,see here}:
+
 @anchor{session-creating}
 @subheading Creating a new session
 
@@ -2167,6 +2177,25 @@ This mechanism does not require any superuser access, network ports/servers,
 or credential/security management beyond those used by standard @code{ssh}.
 
 @ref{Architecture remote over ssh,Here} is a summary of how it works.
+
+@subheading Specifing the remote destination
+
+The general syntax is:
+@example
+@code{domterm} [@var{options}] @var{remote-destination} [@var{remote-options}] [@var{command} @var{args}]
+@end example
+where a @var{remote-destination} is
+[@var{user}]@code{@@}@var{host}[@code{:@var{port}}] .
+Here @var{host} is the name or IP address of the remote computer,
+as processed by the @code{ssh} command.
+The @var{user} is the user name on the remote @var{host},
+by default the same as the current local user name.
+The @var{port} is the protocol port which the remote ssh server
+listens to, by default 22.
+
+You can also use URL syntax
+@code{ssh://[@var{user}@code{@@}]@var{host}}[@code{:@var{port}}],
+which is converted to the former syntax.
 
 @subheading Local vs remote state
 
