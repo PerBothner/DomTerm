@@ -60,6 +60,7 @@ extern char *backend_socket_name;
 extern const char *settings_fname;
 extern struct json_object *settings_json_object;
 extern volatile bool force_exit;
+extern struct lws *cmdwsi;
 extern struct lws_context *context;
 extern struct tty_server *server;
 extern struct lws_vhost *vhost;
@@ -324,6 +325,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 
 extern void initialize_resource_map(struct lws_context *, const char*);
 extern void maybe_daemonize(void);
+extern void do_exit(int, bool);
 
 extern int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

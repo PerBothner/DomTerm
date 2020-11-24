@@ -310,6 +310,9 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
     struct cmd_client *cclient = (struct cmd_client *) user;
     int socket;
     switch (reason) {
+    case LWS_CALLBACK_TIMER: // invoked from do_exit
+            do_exit(0, false);
+            break;
         case LWS_CALLBACK_RAW_RX_FILE:
             socket = cclient->socket;
             //fprintf(stderr, "callback_cmd RAW_RX reason:%d socket:%d getpid:%d\n", (int) reason, socket, getpid());

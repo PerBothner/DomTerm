@@ -1055,6 +1055,12 @@ $ domterm --above browse http://example.com/
 The @var{filename} is an HTML file of a previously saved session.
 Open the session is ``view'' mode: Lines will be re-wrapped
 on window re-size, links are clickable, and hide/show buttons work.
+
+@item @b{@code{kill-server}} [@code{--only}]
+Kill the @code{domterm} server.
+This also kills all local sessions.
+Also close any windows, unless @code{--only} is specified.
+(This may kill remote sessions if their only window is closed.)
 @end table
 
 @subheading ``Printing'' images or html

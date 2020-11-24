@@ -158,14 +158,35 @@ should_backup_output(struct pty_client *pclient)
 }
 
 void
+do_exit(int exit_code, bool kill_clients)
+{
+    struct tty_client *tclient;
+    bool wait_needed = false;
+    if (kill_clients) {
+        FORALL_WSCLIENT(tclient) {
+            if (tclient->out_wsi) {
+                printf_to_browser(tclient,
+                                  OUT_OF_BAND_START_STRING "\033]97;kill\007" URGENT_END_STRING);
+                lws_callback_on_writable(tclient->out_wsi);
+                wait_needed = true;
+            }
+        }
+    }
+    if (wait_needed) {
+        lws_set_timer_usecs(cmdwsi, 500 * LWS_USEC_PER_SEC/1000);
+        return;
+    }
+    force_exit = true;
+    lws_cancel_service(context);
+    exit(exit_code);
+}
+
+void
 maybe_exit(int exit_code)
 {
     lwsl_notice("maybe_exit %d sess:%d cl:%d\n", exit_code, server->session_count, server->client_count);
-    if (server->session_count + server->client_count == 0) {
-        force_exit = true;
-        lws_cancel_service(context);
-        exit(exit_code);
-    }
+    if (server->session_count + server->client_count == 0)
+        do_exit(exit_code, false);
 }
 
 static void

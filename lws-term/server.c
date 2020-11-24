@@ -12,6 +12,7 @@ extern char **environ;
 static struct options opts;
 struct options *main_options = &opts;
 static char *default_size = NULL;
+struct lws *cmdwsi = NULL;
 
 static void make_html_file(int);
 static char *make_socket_name(bool);
@@ -1390,7 +1391,7 @@ main(int argc, char **argv)
     lwsl_notice("creating server socket: '%s'\n", cname);
     lws_sock_file_fd_type csocket;
     csocket.filefd = create_command_socket(cname);
-    struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
+    cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
     cclient = (struct cmd_client *) lws_wsi_user(cmdwsi);
     cclient->socket = csocket.filefd;
     make_html_file(http_port);

@@ -717,6 +717,17 @@ int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
     return EXIT_SUCCESS;
 }
 
+int kill_server_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+{
+    if (opts == main_options) { // client mode
+        printf_error(opts, "no domterm server found");
+        return EXIT_FAILURE;
+    }
+    bool kill_clients = argc == 1 || strcmp(argv[1], "--only") != 0;
+    do_exit(1, kill_clients);
+    return EXIT_SUCCESS;
+}
+
 int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
@@ -1030,6 +1041,9 @@ struct command commands[] = {
     .action = window_action},
   { .name = "settings", .options = COMMAND_IN_CLIENT,
     .action = settings_action },
+  { .name = "kill-server",
+    .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
+    .action = kill_server_action },
   { .name = 0 }
   };
 

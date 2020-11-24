@@ -1803,6 +1803,9 @@ class DTParser {
             case 'close':
                 term.close();
                 break;
+            case 'kill': // force-close
+                term.close(); // For now
+                break;
             case 'detach':
                 term.detachSession();
                 break;
