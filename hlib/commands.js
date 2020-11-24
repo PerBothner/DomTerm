@@ -128,6 +128,14 @@ cmd('exit-paging-mode',
         }
         return true;
     });
+cmd('exit-line-mode',
+    function(dt, key) {
+        if (dt._markMode) {
+            dt.setMarkMode(false);
+            return true
+        }
+        return false;
+    });
 cmd('toggle-auto-pager',
     function(dt, key) {
         if (dt._currentlyPagingOrPaused()) {

@@ -8408,6 +8408,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Alt-9": "numeric-argument",
     "Alt--": "numeric-argument",
     "Alt-.": "numeric-argument",
+    "Esc": "exit-line-mode",
     "Ctrl-!": "swap-focus-anchor",
     "Ctrl-@": "toggle-mark-mode",
     // The following should be controlled by a user preference
