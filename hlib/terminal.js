@@ -9222,6 +9222,10 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
                 wspath = m[1] + reconnect + m[3];
             else
                 wspath = wspath + reconnect;
+            let remote = wt.getRemoteHostUser();
+            if (remote)
+                wspath += ("&remote=" + encodeURIComponent(remote)
+                           + "&rsession=" + wt.sstate.sessionNumber);
             let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
             wsocket.onopen = function(e) {
                 wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));

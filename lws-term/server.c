@@ -370,7 +370,6 @@ tty_server_new() {
     struct tty_server *ts = xmalloc(sizeof(struct tty_server));
 
     memset(ts, 0, sizeof(struct tty_server));
-    ts->client_count = 0;
     ts->session_count = 0;
 
     return ts;

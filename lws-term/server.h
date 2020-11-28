@@ -192,8 +192,9 @@ enum tclient_flags {
     tclient_proxy_flag = 1,
     detach_on_disconnect_flag = 2,
     close_requested_flag = 4,
-    headless_flag = 8
-    //detach_requested_flag = 16,
+    close_expected_flag = 8,
+    headless_flag = 16
+    //detach_requested_flag = 32,
 };
 
 /**
@@ -311,7 +312,6 @@ struct options {
 };
 
 struct tty_server {
-    int client_count;                         // number of current_clients
     int session_count;                        // session count
     int connection_count;                     // clients requested (ever)
     bool client_can_close;
@@ -425,6 +425,7 @@ extern struct resource resources[];
 #define TCLIENT_NEXT(VAR) (tty_clients[VAR->connection_number+1])
 #define FORALL_WSCLIENT(VAR) \
     for (VAR = TCLIENT_FIRST; VAR != NULL; VAR = TCLIENT_NEXT(VAR))
+#define NO_TCLIENTS (TCLIENT_FIRST == NULL)
 
 // These are used to delimit "out-of-band" urgent messages.
 #define URGENT_START_STRING "\023\026"
