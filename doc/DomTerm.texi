@@ -360,7 +360,7 @@ If you hover the mouse over the red disk you will see the specific exit code.
 @item
 Hide/show buttons: If you click on the downward-pointing rectangle
 in the right gutter, the following input and output of the command are hidden.
-(See the @code{ls -l Makefile*} command in teh screenshot.)
+(See the @code{ls -l Makefile*} command in the screenshot.)
 @item
 Clicking the mouse in the input line moves the input cursor.
 (Implemented by DomTerm sending the appropriate number of arrow keys.)
@@ -977,7 +977,7 @@ after starting up a websockets server.
 @itemx @code{--below}[@code{=}@var{window}]
 Split @var{window} (a window number) in two,
 and create a new pane (sub-window) to the left/right/above/below the old one.
-If @var{window} is not specified, use teh current window.
+If @var{window} is not specified, use the current window.
 @item @code{--pane}[@code{=}@var{window}]
 Equivalent to either @code{--right} or @code{--below} depending
 on the current window's width/height ratio.
@@ -994,11 +994,15 @@ It is also useful as a backup of the display in case of network disconnect.
 (The headless server runs on the same remote computer as the session.)
 
 You should use the @code{command.headless} setting to specify the
-command to run the headless browser.
+command for running the headless browser.
 This can be any command that can take a URL argument (using with a @code{%U} pattern that is filled in by @code{domterm}).
-Alternatively, you can use @code{--headless} with either
-@code{--qt} or @code{--electron} to use the Qt or Electron frontends
-in headless mode.
+If @code{command.headless} is not set, but 
+one of @code{--chrome}, @code{--qt}, or @code{--electron} is specified
+the corresponding frontend in used headless mode.
+(Using @code{--chrome} seems to work best.)
+If none of these are set,
+the default is as if @code{--chrome} was specified,
+assuming the Chrome browser is available.
 
 @item @code{--detached}
 When creating a new session, it is detached, without a window.
@@ -3625,7 +3629,7 @@ If using an input editor library that handles multi-line input commands
 DomTerm will scan the output for text that "looks" like a URL or
 a mail address, and turn it into a clickable link.
 To reduce accidental clicks, these automatic links are only active
-if you also hold the control key; you can also use teh context menu.
+if you also hold the control key; you can also use the context menu.
 
 The links are only visible when you hover the mouse over them.
 (This is because what is a link is a guess, and so we don't want to clutter

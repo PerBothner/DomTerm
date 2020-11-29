@@ -466,56 +466,54 @@ fix_for_windows(char * fname)
     return fname;
 }
 
-/* Result is cached. */
+/** Return freshly allocated command string or NULL */
 const char *
 chrome_command(bool app_mode, struct options *options)
 {
-    if (app_mode) {
-        static const char *abin = NULL;
-        if (abin != NULL)
-            return abin[0] ? abin : NULL;
-        const char *c = chrome_command(false, options); // recusive, for simplicity
-        if (c == NULL) {
-            abin = ""; // cache as "not found"
-            return NULL;
-        }
-        char *args = " --app='%U%g'";
-        char * tbin = xmalloc(strlen(c)+strlen(args)+1);
-        sprintf(tbin, "%s%s", c, args);
-        abin = tbin;
-        return abin;
-    }
-    static const char *cbin = NULL;
+    bool free_needed = false;
     const char *chrome_cmd = get_setting(options->settings, "command.chrome");
-    if (chrome_cmd != NULL)
-        return chrome_cmd;
-    if (cbin)
-      return cbin[0] ? cbin : NULL;
-    cbin = getenv("CHROME_BIN");
-    if (cbin != NULL && access(cbin, X_OK) == 0)
-        return (cbin = maybe_quote_arg(cbin));
-    if (is_WindowsSubsystemForLinux()) {
-#define CHROME_EXE "/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"
-	if (access(CHROME_EXE, X_OK) == 0)
-            return (cbin = "'" CHROME_EXE "'");
+    if (chrome_cmd == NULL && (chrome_cmd = getenv("CHROME_BIN")) != NULL
+        && access(chrome_cmd, X_OK) == 0) {
+        const char *c = maybe_quote_arg(chrome_cmd);
+        free_needed = c != chrome_cmd;
+        chrome_cmd = c;
     }
-    char *pbin = find_in_path("chrome");
-    if (pbin == NULL)
-        pbin = find_in_path("google-chrome");
-    if (pbin != NULL) {
-        cbin = maybe_quote_arg(pbin);
-        if (cbin != pbin)
-            free(pbin);
-        return cbin;
+    if (chrome_cmd == NULL) {
+        char *pbin = find_in_path("chrome");
+        if (pbin == NULL)
+            pbin = find_in_path("google-chrome");
+        if (pbin != NULL) {
+            chrome_cmd = maybe_quote_arg(pbin);
+            free_needed = chrome_cmd != pbin;
+        }
+    }
+    if (chrome_cmd == NULL && is_WindowsSubsystemForLinux()) {
+#define CHROME_EXE "/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+	if (access(CHROME_EXE, X_OK) == 0) {
+            chrome_cmd = "'" CHROME_EXE "'";
+        }
     }
 #if __APPLE__
     // FIXME - better to open -a "Google Chrome" OR open -b com.google.Chrome
 #define CHROME_MAC "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    if (access(CHROME_MAC, X_OK) == 0)
-        return (cbin = "/usr/bin/open -a '" CHROME_MAC "'");
+    if (chrome_cmd == NULL && access(CHROME_MAC, X_OK) == 0) {
+        chrome_cmd = "/usr/bin/open -a '" CHROME_MAC "'";
+    }
 #endif
-    cbin = ""; // cache as "not found"
-    return NULL;
+    if (chrome_cmd == NULL)
+        return NULL;
+    struct sbuf sb;
+    sbuf_init(&sb);
+    sbuf_append(&sb, chrome_cmd, -1);
+    if (free_needed)
+        free((void*) chrome_cmd);
+    if (options->headless)
+        sbuf_append(&sb, " --headless --remote-debugging-port=0 '%U'", -1);
+    else if (app_mode)
+        sbuf_append(&sb, " --app='%U%g'", -1);
+    char *buf = sbuf_strdup(&sb);
+    sbuf_free(&sb);
+    return buf;
 }
 
 const char *
@@ -542,6 +540,7 @@ firefox_command(struct options *options)
     return firefox ? firefox : "firefox";
 }
 
+/** Return freshly allocated command string or NULL */
 static char *
 qtwebengine_command(struct options *options)
 {
@@ -568,6 +567,7 @@ qtwebengine_command(struct options *options)
     return buf;
 }
 
+/** Return freshly allocated command string or NULL */
 static char *
 webview_command(struct options *options)
 {
@@ -592,6 +592,7 @@ webview_command(struct options *options)
     return buf;
 }
 
+/** Return freshly allocated command string or NULL */
 static char *
 electron_command(struct options *options)
 {
@@ -617,7 +618,6 @@ electron_command(struct options *options)
 #else
     sbuf_printf(&sb, "%s", epath);
 #endif
-    char *format = "s%s%s %s --url '%%U'";
     sbuf_printf(&sb, " %s", app_fixed);
     const char *geometry = geometry_option(options);
     if (geometry)
@@ -773,6 +773,7 @@ do_run_browser(struct options *options, const char *url, int port)
             p = semi+1;
         }
     }
+    bool app_mode;
     if (strcmp(browser_specifier, "--qtwebengine") == 0) {
         browser_specifier = qtwebengine_command(options);
         if (browser_specifier == NULL) {
@@ -788,27 +789,6 @@ do_run_browser(struct options *options, const char *url, int port)
             printf_error(options, "'electron' not found in PATH");
             return EXIT_FAILURE;
         }
-    }
-    else if (options->headless) {
-        const char *hcmd = get_setting(options->settings, "command.headless");
-        if (hcmd) {
-            browser_specifier = hcmd;
-        } else {
-             printf_error(options, "unspecified browser for --headless");
-             return EXIT_FAILURE;
-        }
-    }
-
-    bool app_mode;
-    if (strcmp(browser_specifier, "--firefox") == 0)
-        browser_specifier = firefox_command(options);
-    else if (strcmp(browser_specifier, "--webview") == 0) {
-        browser_specifier = webview_command(options);
-        if (browser_specifier == NULL) {
-                printf_error(options,
-                             "cannot find dt-webview command");
-                return EXIT_FAILURE;
-            }
     } else if ((app_mode = ! strcmp(browser_specifier, "--chrome-app"))
              || ! strcmp(browser_specifier, "--chrome")
              || ! strcmp(browser_specifier, "--google-chrome")) {
@@ -816,6 +796,28 @@ do_run_browser(struct options *options, const char *url, int port)
             if (browser_specifier == NULL) {
                 printf_error(options,
                              "neither chrome or google-chrome command found");
+                return EXIT_FAILURE;
+            }
+    }
+    else if (options->headless) {
+        const char *hcmd = get_setting(options->settings, "command.headless");
+        if (hcmd) {
+            browser_specifier = hcmd;
+        } else if ((hcmd = chrome_command(true, options)) != NULL) {
+            // default to chrome for headless
+            browser_specifier = hcmd;
+        } else {
+             printf_error(options, "unspecified browser for --headless");
+             return EXIT_FAILURE;
+        }
+    }
+    if (strcmp(browser_specifier, "--firefox") == 0)
+        browser_specifier = firefox_command(options);
+    else if (strcmp(browser_specifier, "--webview") == 0) {
+        browser_specifier = webview_command(options);
+        if (browser_specifier == NULL) {
+                printf_error(options,
+                             "cannot find dt-webview command");
                 return EXIT_FAILURE;
             }
     }
@@ -840,8 +842,9 @@ do_run_browser(struct options *options, const char *url, int port)
 
     if (browser_specifier[0] == '\0')
         return default_browser_run(url, port, options);
-    else
-        return subst_run_command(options, browser_specifier, url, port);
+    int r = subst_run_command(options, browser_specifier, url, port);
+    // FIXME: free(browser_specifier)
+    return r;
 }
 
 char *
