@@ -238,6 +238,8 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
     FOREACH_WSCLIENT(tclient, pclient) {
         lwsl_notice("- pty close %d conn#%d proxy_fd:%d mode:%d\n", status, tclient->connection_number, tclient->proxy_fd_in, tclient->proxyMode);
         tclient->pclient = NULL;
+        if (tclient->out_wsi == NULL)
+            continue;
         if ((pclient->pflags & ssh_pclient_flag) != 0) {
             if ((tclient->misc_flags & tclient_proxy_flag) == 0) {
                 printf_to_browser(tclient,
