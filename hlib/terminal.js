@@ -10363,7 +10363,9 @@ Terminal.prototype.editMove = function(count, action, unit,
                 this._clearSelection();
         }
         this._removeCaret();
-        range = this.editorRestrictedRange(stopAt!=="buffer" && this._inputLine);
+        range = this.editorRestrictedRange(stopAt!=="buffer"
+                                           && this._inputLine
+                                           && this._pagingMode == 0);
         let anchorNode, anchorOffset;
         if (action == "move" || sel.anchorNode === null
             || sel.anchorNode === this.focusArea) {
