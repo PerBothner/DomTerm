@@ -281,7 +281,7 @@ struct options {
     struct json_object *settings; // merge of cmd_settings and global settings
     // Possible memory leak if we start recalim options objects.
     const char *browser_command;
-    char *tty_packet_mode;
+    const char *tty_packet_mode;
     int paneOp;
     char *iface;
 #if HAVE_OPENSSL

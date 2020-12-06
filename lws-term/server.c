@@ -77,7 +77,7 @@ subst_run_command(struct options *opts, const char *browser_command,
         skip = 4;
         if (geometry) {
             char *tbuf = xmalloc(ulen+strlen(geometry)+20);
-            char *g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
+            const char *g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
             sprintf(tbuf, "%s%s%s", url_fixed, g1, geometry);
 	    free(url_tmp);
 	    url_fixed = url_tmp = tbuf;
@@ -87,8 +87,8 @@ subst_run_command(struct options *opts, const char *browser_command,
     char *cmd = xmalloc(clen + ulen + 40);
     char *wpos;
     if (is_WindowsSubsystemForLinux() && strstr(browser_command, ".exe") != NULL) {
-        char *wsl_prefix = "file:///mnt/c/";
-	int wsl_prefix_length = strlen(wsl_prefix);
+        const char *wsl_prefix = "file:///mnt/c/";
+        size_t wsl_prefix_length = strlen(wsl_prefix);
         if (memcmp(url, wsl_prefix, wsl_prefix_length) == 0) {
 	    char *tbuf = xmalloc(ulen);
             sprintf(tbuf, "file:///c:/%s", url+wsl_prefix_length);
@@ -102,7 +102,7 @@ subst_run_command(struct options *opts, const char *browser_command,
             char *tbuf = xmalloc(2 * ulen);
             const char *p0 = url_fixed;
             char *p1 = tbuf;
-            char *metas = "()%!^\"<>&| \t";
+            const char *metas = "()%!^\"<>&| \t";
             for (;;) {
                 char ch = *p0++;
                 if (ch != 0 && strchr(metas, ch)) {
@@ -637,8 +637,8 @@ electron_command(struct options *options)
 int
 default_browser_run(const char *url, int port, struct options *options)
 {
-    char *pattern;
-    bool free_needed = false;
+    const char *pattern;
+    char *mpattern = NULL; // malloc'd pattern
 #ifdef DEFAULT_BROWSER_COMMAND
     pattern = DEFAULT_BROWSER_COMMAND;
 #elif __APPLE__
@@ -650,19 +650,17 @@ default_browser_run(const char *url, int port, struct options *options)
     if (is_WindowsSubsystemForLinux()) {
         pattern = "/mnt/c/Windows/System32/cmd.exe /c start '%U'";
     } else {
-        free_needed = true;
-        pattern = find_in_path("xdg-open");
-        if (pattern == NULL)
-            pattern = find_in_path("kde-open");
-        if (pattern == NULL) {
+        mpattern = find_in_path("xdg-open");
+        if (mpattern == NULL)
+            mpattern = find_in_path("kde-open");
+        if (mpattern == NULL) {
             pattern = "firefox";
-            free_needed = false;
-        }
+        } else
+            pattern = mpattern;
     }
 #endif
     int r = subst_run_command(options, pattern, url, 0);
-    if (free_needed)
-        free(pattern);
+    free(mpattern);
     return r;
 }
 
@@ -822,7 +820,7 @@ do_run_browser(struct options *options, const char *url, int port)
             }
     }
 
-    char *do_pattern = do_electron ? "\"electron\":\""
+    const char *do_pattern = do_electron ? "\"electron\":\""
         : do_Qt ? "\"qtwebengine\":\""
         : NULL;
     // If there is an existing Electron or Qt instance, we want to re-use it.
@@ -1214,7 +1212,7 @@ main(int argc, char **argv)
 #endif
     info.mounts = &mount_domterm_zip;
 
-    char *shell = getenv("SHELL");
+    const char *shell = getenv("SHELL");
     if (shell == NULL)
         shell = DEFAULT_SHELL;
     default_argv = parse_args(shell, false);
@@ -1272,7 +1270,7 @@ main(int argc, char **argv)
             }
         }
         sbuf_append(&sb, "", 1);
-        _logfile = fopen(sb.buffer, "a");
+        _logfile = fopen((const char *) sb.buffer, "a");
         sbuf_free(&sb);
         lws_set_log_level(debug_level, lwsl_emit_stderr_with_flush);
     }
@@ -1508,11 +1506,11 @@ static const char *
 domterm_dir(bool settings, bool check_wsl)
 {
     char *user_profile;
-    char *user_prefix = "C:\\Users\\";
+    const char *user_prefix = "C:\\Users\\";
     size_t user_prefix_length;
     char *tmp;
     char *xdg_home = getenv(settings ? "XDG_CONFIG_HOME" : "XDG_RUNTIME_DIR");
-    char *sini = settings ? "/settings.ini" : "";
+    const char *sini = settings ? "/settings.ini" : "";
     if (xdg_home) {
 	tmp = xmalloc(strlen(xdg_home)+40);
 	sprintf(tmp, "%s/domterm%s", xdg_home, sini);
@@ -1582,7 +1580,7 @@ make_socket_name(bool html_filename)
               dot = -1;
         }
 	int socket_name_length = strlen(socket_name);
-        char *ext;
+        const char *ext;
 	if (html_filename) {
             ext = dot < 0 ? ".html" : "";
 	    if (dot >= 0)
@@ -1724,7 +1722,7 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
     }
     struct lib_info *lib;
     for (lib = standard_jslibs; lib->file != NULL; lib++) {
-        char *jstype = (lib->options & LIB_AS_MODULE) ? "module" : "text/javascript";
+        const char *jstype = (lib->options & LIB_AS_MODULE) ? "module" : "text/javascript";
         if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER)) != 0)
             sbuf_printf(obuf,
                         "<script type='%s' src='%s'> </script>\n",
