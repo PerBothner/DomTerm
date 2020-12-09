@@ -24,10 +24,10 @@ class DTParser {
         if (DomTerm.verbosity >= 2) {
             //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
             let maxLog = 200;
-            if (str.length > maxLog)
-                term.log("insertString "+JSON.stringify(str.substring(0,maxLog))+"... state:"+this.controlSequenceState/*+" ms:"+ms*/);
-            else
-                term.log("insertString "+JSON.stringify(str)+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
+            let jstr = str.length > maxLog
+                ? JSON.stringify(str.substring(0,maxLog))+"..."
+                : JSON.stringify(str);
+            term.log("insertString "+jstr+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
         }
         if (term._pagingMode == 2) {
             this._textParameter = this._textParameter + str;
