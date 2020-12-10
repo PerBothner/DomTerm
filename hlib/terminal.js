@@ -7335,6 +7335,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         if (prev instanceof Element
             && prev.getAttribute("std")
             && prev.getAttribute("std") != "prompt"
+            && prev.getAttribute("std") != "caret"
             && prev.getAttribute("std") != "hider") {
             this.outputContainer = this.outputBefore.previousSibling;
             this.outputBefore = null;
