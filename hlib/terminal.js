@@ -3343,8 +3343,13 @@ Terminal.prototype.resizeHandler = function() {
         dt._restoreSaveLastLine();
         dt.resetCursorCache();
     }
-    dt.homeLine = dt._computeHomeLine(home_node, home_offset,
-                                      dt.usingAlternateScreenBuffer);
+    if (dt.usingAlternateScreenBuffer)
+        dt.homeLine = dt._computeHomeLine(home_node, home_offset, true);
+    else {
+        const minHome = this.lineStarts.length - this.numRows;
+        const bufferFirstLine = this.initial.saveLastLine;
+        dt.homeLine = minHome >= bufferFirstLine ? minHome : bufferFirstLine;
+    }
     dt._checkSpacer();
     dt._scrollIfNeeded();
 }
@@ -6140,6 +6145,7 @@ Terminal.prototype._popPprintGroup = function() {
     }
 }
 
+// Difference between homeLine and and containing block element
 DomTerm._homeLineOffset = function(dt) {
     var home_offset = 0;
     while (dt.homeLine - home_offset >= 0) {
