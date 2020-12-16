@@ -7699,9 +7699,12 @@ Terminal._keyCodeToValue = function(ecode) {
 Terminal.prototype.eventToKeyName = function(event) {
     if (! event.key)
         return browserKeymap.keyName(event);
-    if (event.type == "keypress")
-        return "'" + event.key + "'"
     let base = event.key;
+    let shift = event.shiftKey && base != "Shift"
+    if (event.type == "keypress") {
+        base = "'" + base + "'";
+        shift = false;
+    }
     // Normalize keynames to match (older) browserKeymap names
     switch (base) {
         case "ArrowLeft": base = "Left"; break;
@@ -7715,7 +7718,6 @@ Terminal.prototype.eventToKeyName = function(event) {
     if (base.length == 1 && base >= 'a' && base <= 'z')
         base = base.toUpperCase();
     let name = base
-    let shift = event.shiftKey && base != "Shift"
     if (shift && base.length == 1) {
         let codeChar = Terminal._keyCodeToValue(event.code);
         if (codeChar && codeChar != base)
