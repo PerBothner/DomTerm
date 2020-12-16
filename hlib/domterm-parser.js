@@ -33,7 +33,7 @@ class DTParser {
             this._textParameter = this._textParameter + str;
             return;
         }
-        if (term._disableScrollOnOutput && term._scrollNeeded() == term.topNode.scrollTop)
+        if (term._disableScrollOnOutput && term._scrolledAtBottom())
             term._disableScrollOnOutput = false;
         /*
           var indexTextEnd = function(str, start) {

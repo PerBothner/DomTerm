@@ -6534,9 +6534,16 @@ Terminal.prototype._scrollNeeded = function() {
     var last = this._vspacer;
     if (! last)
         return 0;
-    var lastBottom = last.offsetTop + last.offsetHeight;
+    let lastBottom = last.getBoundingClientRect().bottom+this.topNode.scrollTop
     return lastBottom - this.availHeight;
 };
+
+// Optimization of term._scrollNeeded() == term.topNode.scrollTop (appro)
+Terminal.prototype._scrolledAtBottom = function() {
+    var last = this._vspacer;
+    return last == null
+        || Math.abs(last.getBoundingClientRect().bottom - this.availHeight) < 0.2;
+}
 
 Terminal.prototype._scrollIfNeeded = function() {
     let needed = this._scrollNeeded();
