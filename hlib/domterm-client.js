@@ -299,9 +299,11 @@ function loadHandler(event) {
              }
         }
         setupParentMessages2();
+        /* Not relevant with new multi-message framework.
         DomTerm.displayInfoMessage = function(contents, dt) {
             DomTerm.sendParentMessage("domterm-status-message", contents);
         }
+        */
     }
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
         if (DomTerm.setContextMenu && ! DomTerm.simpleLayout)

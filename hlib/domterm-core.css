@@ -21,7 +21,7 @@ pre { padding: 0px; margin: 0px; }
 div.domterm-show-info {
     position: fixed;
     z-index: 100;
-    background-color: inherit
+    background-color: transparent
 }
 div.domterm-pre span.wc-node {
     display: inline-block;

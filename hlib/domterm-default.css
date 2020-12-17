@@ -63,7 +63,11 @@ div.domterm-show-info {
     right: 4px; left: 25%; /* overwritten in element */
     top: 1ex;
     padding: 1px 4px;
+}
+div.domterm-show-info > div {
     border: 2px solid blue;
+    margin-top: 1px;
+    background-color: var(--background-color)
 }
 
 div.domterm span[caret="block"][std="caret"], div.domterm span[caret="blinking-block"][std="caret"] {

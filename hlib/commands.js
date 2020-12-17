@@ -381,10 +381,7 @@ cmd('numeric-argument',
         let c = key.charAt(klen == 3 ? 1 : klen-1);
         dt._numericArgument = dt._numericArgument == null ? c
             : dt._numericArgument + c;
-        if (dt._pagingMode)
-            dt._updatePagerInfo();
-        else
-            dt._displayInfoMessage("count: "+dt._numericArgument);
+        dt._updateCountInfo();
         return true;
     });
 cmd('accept-line',
@@ -398,9 +395,15 @@ cmd('insert-newline',
         return true; });
 cmd('backward-search-history',
     function(dt, key) {
+        dt.editorAddLine();
         dt.showMiniBuffer("backward history search: \u2018", "\u2019");
         function search(mrecords, observer) {
+            dt._inputLine = dt._miniBuffer.saveInputLine;
+            dt._caretNode = dt._miniBuffer.saveCaretNode;
             dt.historySearch(dt._miniBuffer.textContent);
+            dt._inputLine = dt._miniBuffer;
+            dt._caretNode = dt._miniBuffer.caretNode;
+            DomTerm._resizeInfoDisplay(dt._miniBuffer.parentNode.parentNode);
         }
         let observer = new MutationObserver(search);
         observer.observe(dt._miniBuffer,

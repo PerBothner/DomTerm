@@ -204,9 +204,6 @@ class Terminal {
     this._pendingEcho = "";
 
     this._displayInfoWidget = null;
-    this._displayInfoShowing = false;
-    this._displaySizePendingTimeouts = 0;
-    this.modeLineGenerator = null;
 
     // Table of named options local to this terminal.
     // Maybe set from command-line or UI
@@ -410,9 +407,17 @@ class Terminal {
     this._mouseEnterHandler =
         function(event) {
             var ref;
+            let curTarget = event.currentTarget;
             if (dt.sstate.mouseMode == 0
-                && (ref = event.target.getAttribute("href"))) {
-                dt._displayInfoWithTimeout(DomTerm.escapeText(ref));
+                && (ref = curTarget.getAttribute("href"))) {
+                // Consider: https://github.com/mdings/electron-tooltip
+                if (true) {
+                    dt._linkInfoDiv =
+                        dt._displayInfoWithTimeout(DomTerm.escapeText(ref), dt._linkInfoDiv);
+                } else {
+                    curTarget.setAttribute("title", ref);
+                    //curTarget.addEventListener, remove, false);
+                }
             }
         };
     this.wcwidth = new WcWidth();
@@ -438,7 +443,8 @@ class Terminal {
 
     // state can be true, false or "toggle"
     setMarkMode(state) {
-        let set = state == "toggle" ? ! this._markMode : state;
+        let oldState = this._markMode;
+        let set = state == "toggle" ? ! oldState : state;
         let cl = this.topNode.classList;
         if (set) {
             this._markMode = true;
@@ -447,7 +453,8 @@ class Terminal {
             this._markMode = false;
             cl.remove('markmode');
         }
-        this._displayInputModeWithTimeout(this._modeInfo("M"));
+        if (oldState !== this._markMode)
+            this._displayInputModeWithTimeout(this._modeInfo("M"));
     }
 
     // This is called both when constructing a new Terminal, and
@@ -476,7 +483,6 @@ class Terminal {
         // alternate screen buffer.  Same as _currentBufferNode(this, -1)
         this.initial = null;
 
-        //this._caretNode = null;
         if (this._caretNode && this._caretNode.parentNode)
             this._caretNode.parentNode.removeChild(this._caretNode);
         this.sstate.doLinkify = false;
@@ -763,7 +769,7 @@ Terminal.BELL_TIMEOUT = 400;
 /** On receiving BEL (ctrl-G) display this text in info widget. */
 Terminal.BELL_TEXT = "BELL!";
 /** Length of time to display BELL_TEXT. */
-Terminal.INFO_TIMEOUT = 800;
+Terminal.INFO_TIMEOUT = 1200;
 
 window.addEventListener("unload", DomTerm.closeAll);
 
@@ -3342,6 +3348,13 @@ Terminal.prototype.resizeHandler = function() {
         dt._breakAllLines(-2);
         dt._restoreSaveLastLine();
         dt.resetCursorCache();
+        if (dt._displayInfoWidget) {
+            DomTerm._positionInfoWidget(dt._displayInfoWidget, dt);
+            for (let ch = dt._displayInfoWidget.firstChild; ch;
+                 ch = ch.nextChild) {
+                 DomTerm._resizeInfoDisplay(ch);
+            }
+        }
     }
     if (dt.usingAlternateScreenBuffer)
         dt.homeLine = dt._computeHomeLine(home_node, home_offset, true);
@@ -3366,26 +3379,24 @@ Terminal.prototype.detachResizeSensor = function() {
 };
 
 Terminal.prototype._displayInputModeWithTimeout = function(text) {
-    this._displayInfoWithTimeout(text);
+    text = '<span>'+text+'</span>';
+    this._modeInfoDiv = this._displayInfoWithTimeout(text, this._modeInfoDiv);
 };
 
-Terminal.prototype._displayInfoWithTimeout = function(text, timeout = Terminal.INFO_TIMEOUT) {
+Terminal.prototype._displayInfoWithTimeout = function(text, div = null, timeout = Terminal.INFO_TIMEOUT) {
     var dt = this;
-    dt._displayInfoMessage(text);
-    dt._displaySizePendingTimeouts++;
+    if (div == null)
+        div = document.createElement("div");
+    div = DomTerm.addInfoDisplay(text, div, dt);
     function clear() {
-        if (! dt._displayInfoShowing) {
-            dt._displaySizePendingTimeouts = 0;
-        } else if (--dt._displaySizePendingTimeouts == 0) {
-            dt._updatePagerInfo();
-        }
+        div.timeoutId = undefined;
+        DomTerm.removeInfoDisplay(div, dt);
     };
-    setTimeout(clear, timeout);
+    if (div.timeoutId)
+        clearTimeout(div.timeoutId);
+    div.timeoutId = setTimeout(clear, timeout);
+    return div;
 };
-
-Terminal.prototype._clearInfoMessage = function() {
-    this._displayInfoMessage(null);
-}
 
 Terminal.prototype._sizeInfoText = function() {
     // Might be nicer to keep displaying the size-info while
@@ -3400,51 +3411,68 @@ Terminal.prototype._sizeInfoText = function() {
 }
 
 Terminal.prototype._displaySizeInfoWithTimeout = function() {
-    this._displayInfoWithTimeout(this._sizeInfoText());
+    this._resizeInfoDiv =
+        this._displayInfoWithTimeout(this._sizeInfoText(), this._resizeInfoDiv);
 };
 
-Terminal.prototype._displayInfoMessage = function(contents) {
-    DomTerm.displayInfoMessage(contents, this);
-    this._displayInfoShowing = contents != null;
-    if (contents == null)
-        this._displaySizePendingTimeouts = 0;
-}
-
-/** Display contents in _displayInfoWidget., or clear if null.
- * The contents is updated with innerHTML, so "<>&" must be escaped. */
-DomTerm.displayInfoInWidget = function(contents, dt) {
-    var div = dt._displayInfoWidget;
-    if (contents == null) {
-        if (div != null) {
-            div.parentNode.removeChild(div);
+DomTerm.removeInfoDisplay = function(div, dt) {
+    var widget = dt._displayInfoWidget;
+    if (widget && div && div.parentNode == widget) {
+        widget.removeChild(div);
+        if (widget.firstChild == null) {
+            widget.parentNode.removeChild(widget);
             dt._displayInfoWidget = null;
         }
-        return;
     }
-    if (div == null) {
+}
+DomTerm._positionInfoWidget = function(widget, dt) {
+    let top = dt.topNode;
+    top.insertBefore(widget, top.firstChild);
+    let topOffset = 0, leftOffset = 0; //, rightOffset = 0;
+    for (let n = top; n; n = n.offsetParent) {
+        topOffset += n.offsetTop;
+        leftOffset += n.offsetLeft;
+    }
+    topOffset += (dt.numRows > 10 ? 1.2 : 0.2) * dt.charHeight;
+    leftOffset += 0.20 * top.clientWidth;
+    widget.style["top"] = topOffset + "px";
+    widget.style["left"] = leftOffset + "px";
+    widget.style["width"] = (top.clientWidth - leftOffset) + "px";
+}
+
+DomTerm._resizeInfoDisplay = function(div) {
+    let child = div.firstChild;
+    if (child instanceof Element && child === div.lastChild) {
+        div.style["margin-left"] = "";
+        let clW = div.clientWidth;
+        let chW = child.getBoundingClientRect().width;
+        if (clW > chW + 10)
+            div.style["margin-left"] = ""+(clW - chW - 5)+"px";
+    }
+}
+
+DomTerm.addInfoDisplay = function(contents, div, dt) {
+    var widget = dt._displayInfoWidget;
+    if (widget == null) {
+        widget = document.createElement("div");
+        widget.setAttribute("class", "domterm-show-info");
+        DomTerm._positionInfoWidget(widget, dt);
+        widget.style["box-sizing"] = "border-box";
+        dt._displayInfoWidget = widget;
+    }
+    if (! div)
         div = document.createElement("div");
-        div.setAttribute("class", "domterm-show-info");
-        let top = dt.topNode;
-        top.insertBefore(div, top.firstChild);
-        let topOffset = 0, leftOffset = 0; //, rightOffset = 0;
-        for (let n = top; n; n = n.offsetParent) {
-            topOffset += n.offsetTop;
-            leftOffset += n.offsetLeft;
-        }
-        topOffset += 0.5 * dt.charHeight;
-        leftOffset += 0.25 * top.clientWidth;
-        div.style["top"] = topOffset + "px";
-        div.style["left"] = leftOffset + "px";
-        div.style["width"] = (top.clientWidth - leftOffset) + "px";
-        div.style["box-sizing"] = "border-box";
-        dt._displayInfoWidget = div;
-    }
+    if (div.parentNode !== widget)
+        widget.appendChild(div);
+    if (contents.indexOf('<') < 0)
+        contents = "<span>" + contents + "</span>";
     div.innerHTML = contents;
+    DomTerm._resizeInfoDisplay(div);
+    return div;
 };
 
 DomTerm.displayMiscInfo = function(dt, show) {
     if (show) {
-        dt._showingMiscInfo = true;
         let contents = "<span>DomTerm "+DomTerm.versionString;
         if (dt.sstate.disconnected)
             contents += " disconnected";
@@ -3461,27 +3489,33 @@ DomTerm.displayMiscInfo = function(dt, show) {
         if (dt.sstate.lastWorkingPath)
             contents += "<br/>Last path: <code>"+DomTerm.escapeText(dt.sstate.lastWorkingPath)+"</code>";
         contents += "</span>";
-        DomTerm.displayInfoMessage(contents, dt);
-    } else {
-        DomTerm.displayInfoMessage(null, dt);
+        dt._showingMiscInfo = DomTerm.addInfoDisplay(contents, dt._showingMiscInfo, dt);
+    } else if (dt._showingMiscInfo) {
+        DomTerm.removeInfoDisplay(dt._showingMiscInfo, dt);
         dt._showingMiscInfo = undefined;
     }
 }
 
-/** Display contents using displayInfoInWidget or something equivalent. */
-DomTerm.displayInfoMessage = DomTerm.displayInfoInWidget;
-
 Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
-    DomTerm.displayInfoInWidget(prefix, this);
-    let miniBuffer = this._createSpanNode("editing");
-    miniBuffer.setAttribute("std", "input");
+    let contents = '<span>' + prefix
+        + '<span class="editing" std="input"></span>'
+        + postfix + '</span>';
+    let div = DomTerm.addInfoDisplay(contents, null, this);
+    let miniBuffer = div.querySelector(".editing");
     this._miniBuffer = miniBuffer;
-    var div = this._displayInfoWidget;
-    div.appendChild(miniBuffer);
-    div.insertAdjacentHTML("beforeend", postfix);
+    miniBuffer.saveInputLine = this._inputLine;
+    miniBuffer.saveCaretNode = this._caretNode;
+    let caretNode = this._createSpanNode();
+    caretNode.setAttribute("std", "caret");
+    this._inputLine = miniBuffer;
+    this._caretNode = caretNode;
+    miniBuffer.caretNode = caretNode;
+    miniBuffer.appendChild(caretNode);
+    miniBuffer.infoDiv = div;
     document.getSelection().collapse(miniBuffer, 0);
     miniBuffer.contentEditable = true;
     div.contentEditable = false;
+    return miniBuffer;
 }
 
 // Set up event handlers and more for an actual session.
@@ -4707,19 +4741,19 @@ function(str, forwards = this.historySearchForwards) {
             i -= this.historyCursor >= 0 ? this.historyCursor
                 : this.history.length;
             this.historyMove(i);
-            if (this._displayInfoWidget
-                && this._displayInfoWidget.firstChild instanceof Text) {
-                let prefix = this._displayInfoWidget.firstChild;
-                if (prefix.data.startsWith("failed "))
+            if (this._miniBuffer) {
+                let prefix = this._miniBuffer.previousSibling;
+                if (prefix instanceof Text
+                    && prefix.data.startsWith("failed "))
                     prefix.deleteData(0, 7);
             }
             return;
         }
     }
-    if (this._displayInfoWidget
-        && this._displayInfoWidget.firstChild instanceof Text) {
-        let prefix = this._displayInfoWidget.firstChild;
-        if (! prefix.data.startsWith("failed "))
+    if (this._miniBuffer) {
+        let prefix = this._miniBuffer.previousSibling;
+        if (prefix instanceof Text
+            && ! prefix.data.startsWith("failed "))
             prefix.insertData(0, "failed ");
     }
 }
@@ -5225,7 +5259,7 @@ Terminal.prototype.color256 = function(u) {
 
 Terminal.prototype.handleBell = function() {
     if (Terminal.BELL_TEXT && Terminal.BELL_TIMEOUT)
-        this._displayInfoWithTimeout(Terminal.BELL_TEXT, Terminal.BELL_TIMEOUT);
+        this._displayInfoWithTimeout(Terminal.BELL_TEXT, null, Terminal.BELL_TIMEOUT);
 };
 
 DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
@@ -8664,11 +8698,6 @@ Terminal.prototype.keyDownHandler = function(event) {
         if (! this.useStyledCaret())
             this.maybeFocus();
         if (this._searchMode) {
-            if (keyName == "Backspace" || keyName == "Delete"
-                || keyName == "Left" || keyName == "Right"
-                || keyName == "Ctrl" || keyName == "Alt") {
-                return;
-            }
             if (keyName == "Ctrl-R" || keyName == "Ctrl-S") {
                 this.historySearchForwards = keyName == "Ctrl-S";
                 this.historySearchStart =
@@ -8694,13 +8723,16 @@ Terminal.prototype.keyDownHandler = function(event) {
             if (keyName == "Esc" || keyName == "Enter" || keyName == "Tab"
                 || keyName == "Down" || keyName == "Up"
                 || event.ctrlKey || event.altKey) {
-                DomTerm.displayInfoInWidget(null, this);
-                this.historySearchSaved = this._miniBuffer.textContent;
+                let miniBuffer = this._miniBuffer;
+                DomTerm.removeInfoDisplay(miniBuffer.infoDiv, this);
+                this.historySearchSaved = miniBuffer.textContent;
+                this._inputLine = miniBuffer.saveInputLine;
+                this._caretNode = miniBuffer.saveCaretNode;
                 this.historyAdd(this._inputLine.textContent, false);
                 this._searchMode = false;
-                if (this._miniBuffer.observer) {
-                    this._miniBuffer.observer.disconnect();
-                    this._miniBuffer.observer = undefined;
+                if (miniBuffer.observer) {
+                    miniBuffer.observer.disconnect();
+                    miniBuffer.observer = undefined;
                 }
                 this._miniBuffer = null;
                 if (keyName == "Tab") {
@@ -8766,11 +8798,7 @@ Terminal.prototype.keyPressHandler = function(event) {
         this._enableScroll();
     this._adjustPauseLimit();
     if (this.isLineEditing()) {
-        if (this._searchMode) {
-            this._miniBuffer.focus();
-            return;
-        }
-        else if (this.doLineEdit(keyName))
+        if (this.doLineEdit(keyName))
             event.preventDefault();
     } else {
         if (event.which !== 0
@@ -8853,6 +8881,10 @@ Terminal.prototype._checkTree = function() {
         error("bad inputLine");
     if (this.homeLine < 0 || this.homeLine >= nlines)
         error("homeLine out of range");
+    if (this.viewCaretNode==this.outputContainer)
+        error("outputContainer is focus-node");
+    if (this.viewCaretNode && this.viewCaretNode.textContent)
+        error("non-empty focus-node");
     if (false) {
         // this can happen after a resize.
         let aline = this.currentAbsLine;
@@ -9573,11 +9605,18 @@ Terminal.prototype._modeInfo = function(emphasize="") {
     return mode;
 }
 
+Terminal.prototype._updateCountInfo = function() {
+    if (this._numericArgument) {
+        let info = "<span>count: "+this._numericArgument+"</span>";
+        this._countInfoDiv = DomTerm.addInfoDisplay(info, this._countInfoDiv, this);
+    } else if (this._countInfoDiv) {
+        DomTerm.removeInfoDisplay(this._countInfoDiv, this);
+        this._countInfoDiv = undefined;
+    }
+}
+
 Terminal.prototype._updatePagerInfo = function() {
-    if (this.modeLineGenerator != null)
-        this._displayInfoMessage(this.modeLineGenerator(this));
-    else
-        this._clearInfoMessage();
+    this._updateCountInfo();
 }
 
 Terminal.prototype._pageScrollAbsolute = function(percent) {
@@ -9761,17 +9800,13 @@ Terminal.prototype.numericArgumentGet = function(def = 1) {
     if (s == "-")
         s = "-1";
     this._numericArgument = null;
-    if (this._pagingMode)
-        this._updatePagerInfo();
-    else
-        this._displayInfoMessage(null);
+    this._updatePagerInfo();
     return Number(s);
 }
 
 Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) {
     if (count == 0)
         return true;
-    this.editorAddLine();
     let delta1 = backwards ? -1 : 1;
     let goalColumn = this.sstate.goalColumn;
     let save = this._pushToCaret(this._pagingMode);
@@ -9824,6 +9859,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
         this.sstate.goalColumn = column;
         return ok;
     }
+    this.editorAddLine();
     this._popFromCaret(save);
     this.editorMoveStartOrEndLine(false);
     save = this._pushToCaret();
@@ -10035,6 +10071,7 @@ Terminal.prototype.editorContinueInput = function() {
 }
 
 Terminal.prototype.editorInsertString = function(str, inserting=true) {
+    console.trace("in editorInsertString");
     this.editorAddLine();
     this._showPassword();
     this._updateLinebreaksStart(this.getAbsCursorLine(), true);
@@ -10045,8 +10082,10 @@ Terminal.prototype.editorInsertString = function(str, inserting=true) {
             let saved = this._pushToCaret();
             if (inserting) {
                 this.insertRawOutput(str1);
-                let line = this.lineStarts[this.getAbsCursorLine()];
-                line._widthColumns += this.strWidthInContext(str1, line);
+                if (! this._searchMode) {
+                    let line = this.lineStarts[this.getAbsCursorLine()];
+                    line._widthColumns += this.strWidthInContext(str1, line);
+                }
             } else {
                 let saveInserting = this.sstate.insertMode;
                 this.sstate.insertMode = inserting;
@@ -10581,14 +10620,14 @@ function _muxModeInfo(dt) {
 
 /** Runs in DomTerm sub-window. */
 Terminal.prototype.enterMuxMode = function() {
-    this.modeLineGenerator = _muxModeInfo;
+    this._showingMuxInfo = DomTerm.addInfoDisplay("window (MUX) mode", this._showingMuxInfo, this);
     this._muxMode = true;
     this._updatePagerInfo();
 }
 
 /** Runs in DomTerm sub-window. */
 Terminal.prototype.exitMuxMode = function() {
-    this.modeLineGenerator = null;
+    DomTerm.removeInfoDisplay(this._showingMuxInfo, this);
     this._muxMode = false;
     this._updatePagerInfo();
 }
