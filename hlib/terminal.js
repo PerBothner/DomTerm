@@ -3350,10 +3350,6 @@ Terminal.prototype.resizeHandler = function() {
         dt.resetCursorCache();
         if (dt._displayInfoWidget) {
             DomTerm._positionInfoWidget(dt._displayInfoWidget, dt);
-            for (let ch = dt._displayInfoWidget.firstChild; ch;
-                 ch = ch.nextChild) {
-                 DomTerm._resizeInfoDisplay(ch);
-            }
         }
     }
     if (dt.usingAlternateScreenBuffer)
@@ -3440,17 +3436,6 @@ DomTerm._positionInfoWidget = function(widget, dt) {
     widget.style["width"] = (top.clientWidth - leftOffset) + "px";
 }
 
-DomTerm._resizeInfoDisplay = function(div) {
-    let child = div.firstChild;
-    if (child instanceof Element && child === div.lastChild) {
-        div.style["margin-left"] = "";
-        let clW = div.clientWidth;
-        let chW = child.getBoundingClientRect().width;
-        if (clW > chW + 10)
-            div.style["margin-left"] = ""+(clW - chW - 5)+"px";
-    }
-}
-
 DomTerm.addInfoDisplay = function(contents, div, dt) {
     var widget = dt._displayInfoWidget;
     if (widget == null) {
@@ -3467,7 +3452,6 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
     if (contents.indexOf('<') < 0)
         contents = "<span>" + contents + "</span>";
     div.innerHTML = contents;
-    DomTerm._resizeInfoDisplay(div);
     return div;
 };
 

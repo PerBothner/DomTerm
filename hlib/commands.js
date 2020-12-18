@@ -403,7 +403,6 @@ cmd('backward-search-history',
             dt.historySearch(dt._miniBuffer.textContent);
             dt._inputLine = dt._miniBuffer;
             dt._caretNode = dt._miniBuffer.caretNode;
-            DomTerm._resizeInfoDisplay(dt._miniBuffer.parentNode.parentNode);
         }
         let observer = new MutationObserver(search);
         observer.observe(dt._miniBuffer,

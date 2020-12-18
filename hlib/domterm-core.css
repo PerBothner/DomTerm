@@ -20,8 +20,13 @@ pre { padding: 0px; margin: 0px; }
  * in the .domterm element doesn't work if we're scrolled. */
 div.domterm-show-info {
     position: fixed;
+    display: grid;
     z-index: 100;
     background-color: transparent
+}
+div.domterm-show-info > div {
+    justify-self: end;
+    overflow-wrap: anywhere;
 }
 div.domterm-pre span.wc-node {
     display: inline-block;
