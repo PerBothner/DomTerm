@@ -8665,17 +8665,18 @@ Terminal.prototype.keyDownHandler = function(event) {
         this.topNode.addEventListener("keyup", keyup, false);
     }
 
-    if (this._currentlyPagingOrPaused()) {
-        if (this.pageKeyHandler(keyName))
-            event.preventDefault();
+    if (this._muxMode) {
+        this._muxKeyHandler(event, key, false);
         return;
+    }
+    if (this._currentlyPagingOrPaused()) {
+        if (this.pageKeyHandler(keyName)) {
+            event.preventDefault();
+            return;
+        }
     }
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
         event.preventDefault();
-        return;
-    }
-    if (this._muxMode) {
-        this._muxKeyHandler(event, key, false);
         return;
     }
     if (this.isLineEditing()) {
@@ -8769,13 +8770,13 @@ Terminal.prototype.keyPressHandler = function(event) {
         return;
     if (this._composing > 0)
         return;
+    if (this._muxMode) {
+        this._muxKeyHandler(event, key, true);
+        return;
+    }
     if (this._currentlyPagingOrPaused()) {
         this.pageKeyHandler(keyName);
         event.preventDefault();
-        return;
-    }
-    if (this._muxMode) {
-        this._muxKeyHandler(event, key, true);
         return;
     }
     if (this.scrollOnKeystroke)
