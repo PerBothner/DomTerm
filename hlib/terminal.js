@@ -8634,12 +8634,6 @@ Terminal.prototype.keyDownHandler = function(event) {
     let keyName = this.eventToKeyName(event);
     if (DomTerm.verbosity >= 2)
         this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+keyName+" old:"+(this._inputLine != null)+" col:"+document.getSelection().isCollapsed);
-    if (event.ctrlKey && event.shiftKey && key==88) { // Ctrl-Shift-X
-        if (! this.isLineEditing()) {
-            this.deleteSelected(true);
-            return;
-        }
-    }
 
     if (! keyName && event.key)
         keyName = event.key;
