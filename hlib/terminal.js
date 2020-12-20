@@ -9783,9 +9783,12 @@ Terminal.prototype.numericArgumentGet = function(def = 1) {
     return Number(s);
 }
 
+/** Move COUNT lines down (or up if COUNT is negative).
+ * Return number of lines we aren't able to do.
+ */
 Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) {
     if (count == 0)
-        return true;
+        return 0;
     let delta1 = backwards ? -1 : 1;
     let goalColumn = this.sstate.goalColumn;
     let save = this._pushToCaret(this._pagingMode);
@@ -9836,7 +9839,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
             sel.collapse(r.endContainer, r.endOffset);
         this._popFromCaret(save);
         this.sstate.goalColumn = column;
-        return ok;
+        return ok ? 0 : 1;
     }
     this.editorAddLine();
     this._popFromCaret(save);
@@ -9895,7 +9898,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
     this.editMove(- column, "move", "char", "line");
     this.sstate.goalColumn = column;
     this._restoreCaret();
-    return count <= 0;
+    return count <= 0 ? 0 : count;
 }
 
 Terminal.prototype.editorMoveToRangeStart = function(range) {

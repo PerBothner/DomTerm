@@ -302,13 +302,13 @@ cmd('end-of-input',
         return true; });
 cmd('up-line-or-history',
     function(dt, key) {
-        if (! dt.editorMoveLines(true, dt.numericArgumentGet()))
+        if (dt.editorMoveLines(true, dt.numericArgumentGet()) > 0)
             dt.historyMove(-1);
         return true;
     });
 cmd('down-line-or-history',
     function(dt, key) {
-        if (! dt.editorMoveLines(false, dt.numericArgumentGet()))
+        if (dt.editorMoveLines(false, dt.numericArgumentGet()) > 0)
             dt.historyMove(1)
         return true;
     });
