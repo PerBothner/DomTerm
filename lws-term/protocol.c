@@ -2394,6 +2394,8 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
             int tclients_seen = 0;
             long last_sent_count = -1, last_confirmed_count = -1;
             FOREACH_WSCLIENT(tclient, pclient) {
+                if (! tclient->out_wsi)
+                    continue;
                 tclients_seen++;
                 last_sent_count = tclient->sent_count;
                 last_confirmed_count = tclient->confirmed_count;
@@ -2410,9 +2412,8 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                 if (tavail < avail)
                     avail = tavail;
             }
-            if ((min_unconfirmed >= MAX_UNCONFIRMED || avail == 0
-                 || pclient->paused)
-                && (pclient->pflags & session_name_unique_flag) == 0) {
+            if (min_unconfirmed >= MAX_UNCONFIRMED || avail == 0
+                || pclient->paused) {
                 if (! pclient->paused) {
 #if USE_RXFLOW
                     lwsl_info(tclients_seen == 1
@@ -2431,6 +2432,8 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                 char *data_start = NULL;
                 int data_length = 0, read_length = 0;
                 FOREACH_WSCLIENT(tclient, pclient) {
+                    if (! tclient->out_wsi)
+                        continue;
                     if (data_start == NULL) {
                         data_start = tclient->ob.buffer+tclient->ob.len;
                         ssize_t n;
