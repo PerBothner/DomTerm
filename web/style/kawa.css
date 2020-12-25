@@ -223,6 +223,7 @@ code[class="literal"] strong { color: purple }
 p[class="synopsis"] code strong { color: purple }
 p[class="synopsis"] code[class="function"] { color: purple }
 p[class="synopsis"] code[class="varname"] { color: purple }
+dl.def > dt strong { color: purple }
 
 p[class="synopsis"][kind="Procedure"] code[class="function"]:before,
   p[class="synopsis"][kind="Predicate"] code[class="function"]:before,
