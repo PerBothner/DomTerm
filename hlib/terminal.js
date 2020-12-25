@@ -272,6 +272,7 @@ class Terminal {
     this.viewCaretNode = vcaretNode;
     vcaretNode.setAttribute("std", "caret");
     vcaretNode.classList.add("focus-caret");
+    vcaretNode.stayOut = true;
     // A work-around for a Chrome bug (?) where a border or outline
     // is not shown at the left edge of the domterm window.
     // Instead we create this relative-positiond filled vcaretBar.
@@ -1028,6 +1029,7 @@ Terminal.prototype._maybeAddTailHider = function(oldGroup) {
         }
         if (nLines > 1) {
             const button = this._createSpanNode("tail-hider");
+            button.stayOut = true;
             firstLine.insertBefore(button, firstLine.firstChild);
             button.addEventListener("click",
                                     this._showHideEventHandler,
@@ -1936,21 +1938,17 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
     }
     while ((parent == this.topNode && Terminal.isBlockNode(current))
            || (current instanceof Element
+               && ! current.stayOut
                && current.nodeName === "SPAN"
-               && ! current.getAttribute("line")
-               && ! current.getAttribute("content-value")
-               && current !== this._caretNode
-               && current !== this.viewCaretNode
                //&& ! tab
-               //&& ! current.classList.contains("tail-hider")
-               && current.getAttribute("std") !== "prompt")) {
-        // not: std=="prompt"
-        // yes: class="term-style", std=="input"
+               && ! current.getAttribute("content-value"))) {
+        /*
         if (! (parent == this.topNode)
             && ! current.classList.contains("term-style")
             && current.getAttribute("std") !== "input"
             && current.getAttribute("class") !== "wc-node")
             console.log("unexpected child "+current.nodeName);
+        */
         parent = current;
         current = parent.firstChild;
     }
@@ -2972,6 +2970,7 @@ Terminal.prototype._createLineNode = function(kind, text="") {
     // the following is for debugging
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
     el.setAttribute("line", kind);
+    el.stayOut = true;
     el.outerPprintGroup = this._currentPprintGroup;
     if (text)
         el.appendChild(document.createTextNode(text));
@@ -3500,6 +3499,7 @@ Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
     miniBuffer.saveCaretNode = this._caretNode;
     let caretNode = this._createSpanNode();
     caretNode.setAttribute("std", "caret");
+    caretNode.stayOut = true;
     this._inputLine = miniBuffer;
     this._caretNode = caretNode;
     miniBuffer.caretNode = caretNode;
@@ -3536,6 +3536,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     let caretNode = this._createSpanNode();
     this._caretNode = caretNode;
     caretNode.setAttribute("std", "caret");
+    caretNode.stayOut = true;
     this.insertNode(caretNode);
     this.outputBefore = caretNode;
 
@@ -10067,6 +10068,7 @@ Terminal.prototype.editorContinueInput = function() {
     this.lineStarts[lastLineNo] = this.lineEnds[lastLineNo-1]
     let prompt = this._createSpanNode();
     prompt.setAttribute("std", "prompt");
+    prompt.stayOut = true;
     editSpan.appendChild(prompt);
     this.editorMoveHomeOrEnd(true);
     this.outputContainer=editSpan.parentNode;
@@ -10109,6 +10111,7 @@ Terminal.prototype.editorInsertString = function(str, inserting=true) {
         this.insertNode(newline);
         let prompt = this._createSpanNode();
         prompt.setAttribute("std", "prompt");
+        prompt.stayOut = true;
         this._pushIntoElement(prompt);
         this.popFromElement();
         this._updateAutomaticPrompts();
