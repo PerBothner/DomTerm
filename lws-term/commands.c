@@ -597,6 +597,8 @@ static void status_by_session(FILE * out, int verbosity)
                     }
                     tclient_status_info(tclient, out);
                 }
+                if ((tclient->misc_flags & is_primary_window) != 0)
+                     fprintf(out, " (primary)");
                 fprintf(out, "\n");
                 nwindows++;
             }

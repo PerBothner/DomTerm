@@ -126,7 +126,8 @@ enum pclient_flags {
     ssh_pclient_flag = 1,
     session_name_unique_flag = 2,
     packet_mode_flag = 4,
-    timed_out_flag = 8
+    timed_out_flag = 8,
+    has_primary_window = 16
 };
 #define SET_PCLIENT_FLAG(PCLIENT, FLAG, VALUE) \
     ((VALUE) ? ((PCLIENT)->pflags |= (FLAG)) : ((PCLIENT)->pflags &= ~(FLAG)))
@@ -193,8 +194,8 @@ enum tclient_flags {
     detach_on_disconnect_flag = 2,
     close_requested_flag = 4,
     close_expected_flag = 8,
-    headless_flag = 16
-    //detach_requested_flag = 32,
+    headless_flag = 16,
+    is_primary_window = 32
 };
 
 /**

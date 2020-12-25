@@ -5436,6 +5436,12 @@ If visible, minimize it.
 Toggle between normal and hidden state:
 If hidden or minimized, show it.
 If visible, hide it.
+@item @code{"\e[8;"} @var{columns} @code{";"} @var{rows} [@code{";"} @var{mode}] @code{"t"}
+Resize the text area to (@var{columns}, @var{rows}).
+If @var{mode} is 8, used to synchronize between primary and secondary windows:
+It is ignored for a primary window (except in replay mode),
+and is used by a secondary window so cursor motion matches.
+[In xterm, except for the optional @var{mode}.]
 @item @code{"\e[14t"}
 Report the text area size in pixels.  [In xterm.]
 @item @code{"\e[14;2t"}

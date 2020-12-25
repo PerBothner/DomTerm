@@ -308,6 +308,17 @@ unlink_tty_from_pty(struct pty_client *pclient,
         }
         pt = nt;
     }
+    if ((tclient->misc_flags & is_primary_window) != 0) {
+        tclient->misc_flags &= ~is_primary_window;
+        pclient->pflags &= has_primary_window;
+        FOREACH_WSCLIENT(tother, pclient) {
+            if (tother->out_wsi != NULL) {
+                tother->misc_flags |= is_primary_window;
+                pclient->pflags |= has_primary_window;
+                break;
+            }
+        }
+    }
     struct tty_client *first_tclient = pclient->first_tclient;
     if ((tclient->proxyMode != proxy_command_local && first_tclient == NULL && pclient->detach_count == 0
          && ((tclient->misc_flags & close_requested_flag) != 0
@@ -396,31 +407,32 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
         link_clients(tclient, pclient);
     struct tty_client *first_tclient = pclient->first_tclient;
 
-    if (first_tclient != NULL) {
-        if (first_tclient->next_tclient == NULL)
-            first_tclient->pty_window_number = 0;
-
-        // Find the lowest unused pty_window_number.
-        // This is O(n^2), but typically n==0.
-        int n = -1;
-    next_pty_window_number:
-        n++;
-        FOREACH_WSCLIENT(xclient, pclient) {
-          if (xclient->pty_window_number == n)
-              goto next_pty_window_number;
+    if ((pclient->pflags & has_primary_window) == 0) {
+        tclient->misc_flags |= is_primary_window;
+        pclient->pflags |= has_primary_window;
+    }
+    int n = 0;
+    struct tty_client *oclient = NULL;
+    FOREACH_WSCLIENT(xclient, pclient) {
+        if (xclient->out_wsi != NULL) {
+            n++;
+            if (xclient != tclient)
+                oclient = xclient;
         }
-        tclient->pty_window_number = n;
-
-        // If following this link_command there are now two clients,
-        // notify both clients they don't have to save on detach
-        if (first_tclient->next_tclient == NULL) {
-            first_tclient->pty_window_update_needed = true;
-            // these was exctly one other tclient
-            tclient->detachSaveSend = true;
-            lws_callback_on_writable(wsi);
-            first_tclient->detachSaveSend = true;
-            lws_callback_on_writable(first_tclient->out_wsi);
-        }
+    }
+    tclient->pty_window_number =
+        n <= 1 ? -1 :
+        // FIXME this should be an actual sequence number
+        (pclient->pflags & has_primary_window) != 0;
+    // If following this link_command there are now two clients,
+    // notify both clients they don't have to save on detach
+    if (oclient != NULL) {
+        oclient->pty_window_update_needed = true;
+        oclient->pty_window_number = 0;
+        tclient->detachSaveSend = true;
+        oclient->detachSaveSend = true;
+        lws_callback_on_writable(wsi);
+        lws_callback_on_writable(oclient->out_wsi);
     }
     lwsl_notice("link_command wsi:%p tclient:%p pclient:%p\n",
                 wsi, tclient, pclient);
@@ -918,6 +930,30 @@ handle_tlink(const char *template, json_object *obj)
     return r;
 }
 
+static void
+backup_output(struct pty_client *pclient, char *data_start, int data_length)
+{
+    if (pclient->preserved_output == NULL) {
+        pclient->preserved_start = PRESERVE_MIN;
+        pclient->preserved_end = 0;
+        pclient->preserved_size = 0;
+    }
+    size_t needed = pclient->preserved_end + data_length;
+    if (needed > pclient->preserved_size) {
+        size_t nsize = (3 * pclient->preserved_size) >> 1;
+        if (nsize < 1024)
+            nsize = 1024;
+        if (needed > nsize)
+            nsize = needed;
+        char * nbuffer = xrealloc(pclient->preserved_output, nsize);
+        pclient->preserved_output = nbuffer;
+        pclient->preserved_size = nsize;
+    }
+    memcpy(pclient->preserved_output + pclient->preserved_end,
+           data_start, data_length);
+    pclient->preserved_end += data_length;
+}
+
 void
 handle_link(json_object *obj)
 {
@@ -975,10 +1011,29 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient != NULL
+            && (client->misc_flags & is_primary_window) != 0
             && sscanf(data, "%d %d %g %g", &pclient->nrows, &pclient->ncols,
                       &pclient->pixh, &pclient->pixw) == 4) {
           if (pclient->pty >= 0)
             setWindowSize(pclient);
+          bool need_backup = should_backup_output(pclient);
+          FOREACH_WSCLIENT(wclient, pclient) {
+              if (wclient->out_wsi != NULL) {
+                  int olen = wclient->ob.len;
+                  printf_to_browser(wclient,
+                                    OUT_OF_BAND_START_STRING "\027"
+                                    "\033[8;%d;%d;%dt"
+                                    URGENT_END_STRING,
+                                    pclient->nrows, pclient->ncols, 8);
+                  int n = wclient->ob.len - olen;
+                  wclient->ocount += n;
+                  lws_callback_on_writable(wclient->out_wsi);
+                  if (need_backup) {
+                      backup_output(pclient, wclient->ob.buffer + olen, n);
+                      need_backup = false;
+                  }
+              }
+          }
         }
     } else if (strcmp(name, "VERSION") == 0) {
         char *version_info = xmalloc(dlen+1);
@@ -2490,25 +2545,7 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                     lws_callback_on_writable(tclient->out_wsi);
                 }
                 if (should_backup_output(pclient)) {
-                    if (pclient->preserved_output == NULL) {
-                        pclient->preserved_start = PRESERVE_MIN;
-                        pclient->preserved_end = 0;
-                        pclient->preserved_size = 0;
-                    }
-                    size_t needed = pclient->preserved_end + data_length;
-                    if (needed > pclient->preserved_size) {
-                          size_t nsize = (3 * pclient->preserved_size) >> 1;
-                          if (nsize < 1024)
-                              nsize = 1024;
-                          if (needed > nsize)
-                               nsize = needed;
-                          char * nbuffer = xrealloc(pclient->preserved_output, nsize);
-                          pclient->preserved_output = nbuffer;
-                          pclient->preserved_size = nsize;
-                     }
-                     memcpy(pclient->preserved_output + pclient->preserved_end,
-                            data_start, data_length);
-                     pclient->preserved_end += data_length;
+                    backup_output(pclient, data_start, data_length);
                 }
             }
             return 0;

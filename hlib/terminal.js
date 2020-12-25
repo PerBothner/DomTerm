@@ -437,6 +437,9 @@ class Terminal {
         return !!this.getRemoteHostUser();
     }
 
+    isPrimaryWindow() { return this.windowForSessionNumber == 0; }
+    isSecondaryWindow() { return this.windowForSessionNumber > 0; }
+
     unconfirmedMax() {
         return this.getOption("flow-confirm-every", 500);
     }
@@ -3026,6 +3029,7 @@ Terminal.prototype.pushScreenBuffer = function(alternate = true) {
     this.outputContainer = newLineNode;
     this.outputBefore = newLineNode.firstChild;
     this._removeInputLine();
+    bufNode.style.width = this.initial.style.width;
     this.initial = bufNode;
     this.resetCursorCache();
     this.moveToAbs(line+this.homeLine, col, true);
@@ -3458,16 +3462,21 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
 DomTerm.displayMiscInfo = function(dt, show) {
     if (show) {
         let contents = "<span>DomTerm "+DomTerm.versionString;
-        if (dt.sstate.disconnected)
-            contents += " disconnected";
-        else if (dt.windowNumber >= 0)
-            contents += " window:"+dt.windowNumber;
         let sessionNumber = dt.sstate.sessionNumber;
         let rhost = dt.getRemoteHostUser();
         if (rhost)
             contents += " session (remote) "+rhost+"#"+sessionNumber;
         else
-            contents += " session :"+sessionNumber;
+            contents += " session #"+sessionNumber;
+        if (dt.sstate.disconnected)
+            contents += " disconnected";
+        else if (dt.windowNumber >= 0) {
+            contents += " window:"+dt.windowNumber;
+            if (dt.isSecondaryWindow())
+                contents += " (secondary)";
+            else if (dt.isPrimaryWindow())
+                contents += " (primary)";
+        }
         contents += "<br/>";
         contents += dt._modeInfo() + "<br/>Size: " + dt._sizeInfoText();
         if (dt.sstate.lastWorkingPath)
@@ -3661,18 +3670,28 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
 };
 
 /* If browsers allows, should re-size actual window instead. FIXME */
-Terminal.prototype.forceWidthInColumns = function(numCols, numRows = -1) {
+Terminal.prototype.forceWidthInColumns = function(numCols, numRows = -1,
+                                                  mode = 0)
+{
+    if (mode == 8 && ! this.isSecondaryWindow() && ! this._replayMode)
+        return;
     const topNode = this.topNode;
     const ruler = this._rulerNode;
+    let buffers = document.getElementsByClassName("interaction");
+    // We set style.height on the topNode, but set style.width on the buffers.
+    // This allows overflow-x:auto on topNode to be useful.
+    // Also (FUTURE) we can do force-width differently for different buffers.
     if (numCols <= 0) {
-        topNode.style.width = "";
+        for (let i = buffers.length; --i >= 0; )
+            buffers[i].style.width = "";
     } else {
         // FIXME add sanity check?
         let charWidth = ruler.offsetWidth/26.0;
         // Add half a column for rounding issues - see comment in measureWindow
         let width = (numCols + 0.5) * charWidth + this.rightMarginWidth
             + (topNode.offsetWidth - topNode.clientWidth);
-        topNode.style.width = width+"px";
+        for (let i = buffers.length; --i >= 0; )
+            buffers[i].style.width = width+"px";
     }
     if (numRows <= 0) {
         topNode.style.height = "";
@@ -3684,11 +3703,16 @@ Terminal.prototype.forceWidthInColumns = function(numCols, numRows = -1) {
         topNode.style.height = height+"px";
     }
     if (numCols > 0 || numRows > 0) {
-        window.addEventListener("resize", this._unforceWidthInColumns, true);
-        this.measureWindow();
-        this.eraseDisplay(2);
-        this._setRegionLR(0, -1);
-        this.moveToAbs(this.homeLine, 0, false);
+        // Don't unforce on resize for seconary windows
+        if (mode != 8)
+            window.addEventListener("resize", this._unforceWidthInColumns, true);
+        //this.measureWindow();
+        this.resizeHandler();
+        if (mode != 8) {
+            this.eraseDisplay(2);
+            this._setRegionLR(0, -1);
+            this.moveToAbs(this.homeLine, 0, false);
+        }
     }
 };
 
@@ -3704,7 +3728,7 @@ Terminal.prototype.measureWindow = function()  {
     var availHeight = topBounding.height;
     if (DomTerm.verbosity >= 2)
         this.log("measureWindow "+this.name+" avH:"+availHeight);
-    var clientWidth = this.topNode.clientWidth;
+    let clientWidth = this.initial.clientWidth;
     if (availHeight == 0 || clientWidth == 0) {
         return;
     }

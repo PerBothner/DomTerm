@@ -1074,7 +1074,8 @@ class DTParser {
                 case 8: // Resize text area to given height and width in chars
                     h = this.getParameter(1, term.numRows);
                     w = this.getParameter(2, term.numColumns);
-                    term.forceWidthInColumns(w, h);
+                    term.forceWidthInColumns(w, h,
+                                             this.getParameter(3, 0));
                     break;
                 case 14:
                     if (this.getParameter(1, 0) == 2) {
@@ -2133,7 +2134,7 @@ class DTParser {
 DTParser.INITIAL_STATE = 0;
 /** We have seen ESC. */
 DTParser.SEEN_ESC_STATE = 1;
-/** We have seen ESC '['. */
+/** We have seen CSI: ESC '['. */
 DTParser.SEEN_ESC_LBRACKET_STATE = 2;
 /** We have seen OSC: ESC ']' or 0x9d. */
 DTParser.SEEN_OSC_STATE = 7;

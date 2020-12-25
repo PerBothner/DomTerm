@@ -23,6 +23,7 @@ div.domterm {
     --spacer-color:  #F0F0F8;
     --input-line-color: #ECECC8;
     --input-span-color: #FFFFD0 /* a pale yellow */;
+    overflow-x: auto;
 }
 div.domterm[reverse-video] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
