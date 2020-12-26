@@ -10,6 +10,7 @@ DomTermLayout.manager = null;
 
 DomTerm.verbosity = 0;
 DomTerm.logToServer = false;
+DomTerm.logStringMax = 200;
 DomTerm._savedLogEntries = null;
 
 DomTerm.log = function(str, dt=null) {
@@ -28,6 +29,18 @@ DomTerm.log = function(str, dt=null) {
         }
     }
 }
+
+DomTerm.JsonLimited = function(val) {
+    let maxLog = DomTerm.logStringMax;
+    if (maxLog > 0) {
+        if (typeof val === "string" && val.length > maxLog)
+            return JSON.stringify(val.substring(0,maxLog))+"...";
+        let jstr = JSON.stringify(val);
+        if (jstr.length > maxLog)
+             return jstr.substring(0,maxLog)+"...";
+    }
+    return JSON.stringify(val);
+};
 
 DomTerm._instanceCounter = 0;
 

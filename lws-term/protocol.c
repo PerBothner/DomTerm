@@ -2066,12 +2066,11 @@ display_session(struct options *options, struct pty_client *pclient,
             if (options->headless)
                 sbuf_printf(&sb, ";headless=true");
             const char *verbosity = get_setting(options->settings, "log.js-verbosity");
-            if (verbosity) {
-                char *endv;
-                double d = strtod(verbosity, &endv);
-                if (endv == verbosity + strlen(verbosity))
-                    sbuf_printf(&sb, ";js-verbosity=%g", d);
-            }
+            if (verbosity) // as OPTION_NUMBER_TYPE does not need encoding
+                sbuf_printf(&sb, ";js-verbosity=%s", verbosity);
+            const char *js_string_max = get_setting(options->settings, "log.js-string-max");
+            if (js_string_max) // as OPTION_NUMBER_TYPE does not need encoding
+                sbuf_printf(&sb, ";log-string-max=%s", js_string_max);
             const char *log_to_server = get_setting(options->settings, "log.js-to-server");
             if (log_to_server && (strcmp(log_to_server, "yes") == 0
                                   || strcmp(log_to_server, "true") == 0

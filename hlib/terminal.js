@@ -5497,6 +5497,8 @@ Terminal.prototype.updateSettings = function() {
     val = getOption("log.js-to-server", false);
     if (val)
         DomTerm.logToServer = val;
+    val = getOption("log.js-string-max", null);
+    DomTerm.logStringMax = val !== null ? val : 200;
 
     this.linkAllowedUrlSchemes = Terminal.prototype.linkAllowedUrlSchemes;
     var link_conditions = "";

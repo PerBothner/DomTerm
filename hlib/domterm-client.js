@@ -268,6 +268,12 @@ function loadHandler(event) {
         if (v >= 0)
             DomTerm.verbosity = v;
     }
+    m = params.get('log-string-max');
+    if (m) {
+        let v = Number(m);
+        if (! isNaN(v))
+            DomTerm.logStringMax = v;
+    }
     m = params.get('log-to-server');
     if (m)
         DomTerm.logToServer = m;
@@ -374,7 +380,8 @@ function loadHandler(event) {
         return;
     }
     let paneParams = new URLSearchParams();
-    let copyParams = ['server-key', 'js-verbosity', 'log-to-server', 'headless'];
+    let copyParams = ['server-key', 'js-verbosity', 'log-string-max',
+                      'log-to-server', 'headless'];
     for (let i = copyParams.length;  --i >= 0; ) {
         let pname = copyParams[i];
         let pvalue = params.get(pname);

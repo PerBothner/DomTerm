@@ -1785,6 +1785,9 @@ Sets the @code{-d} option to 5 if not specified;
 if specified the @code{-d @var{mask}} must have 4 set in the @var{mask}.
 (If you divide @var{mask} by 4, the result must be an odd integer.)
 
+@item @code{@b{log.js-string-max} =} @var{length}
+If positive, maximum length of strings to string to the JavaScript console.
+
 @item @code{@b{debug.input.extra-delay} = } @var{delay}
 Delay an extra @var{delay} seconds before sending keyboard
 and other events from client (browser) to server (application).

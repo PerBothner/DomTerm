@@ -23,10 +23,7 @@ class DTParser {
             return;
         if (DomTerm.verbosity >= 2) {
             //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
-            let maxLog = 200;
-            let jstr = str.length > maxLog
-                ? JSON.stringify(str.substring(0,maxLog))+"..."
-                : JSON.stringify(str);
+            let jstr = DomTerm.JsonLimited(str);
             term.log("insertString "+jstr+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
         }
         if (term._pagingMode == 2) {
@@ -1528,7 +1525,7 @@ class DTParser {
     handleOperatingSystemControl(code, text) {
         const term = this.term;
         if (DomTerm.verbosity >= 2)
-            term.log("handleOperatingSystemControl "+code+" '"+text+"'");
+            term.log("handleOperatingSystemControl "+code+" "+DomTerm.JsonLimited(text));
         if (! (code >= 110 && code <= 118))
             term._breakDeferredLines();
         let semi;
