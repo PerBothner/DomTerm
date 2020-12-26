@@ -6511,7 +6511,7 @@ Terminal.prototype.insertBytes = function(bytes) {
             plen = urgent_end + 1 - urgent_begin;
             if (begin2 == Terminal.URGENT_FIRST_COUNTED)
                 this._receivedCount = (this._receivedCount + plen) & Terminal._mask28;
-            bytes.copyWithin(0, urgent_end+1);
+            bytes.copyWithin(urgent_begin, urgent_end+1);
             len -= plen;
         } else {
             let start = 0;
