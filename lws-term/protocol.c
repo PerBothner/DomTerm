@@ -1208,14 +1208,18 @@ reportEvent(const char *name, char *data, size_t dlen,
         json_object *obj = json_tokener_parse(data);
         handle_link(obj);
         json_object_put(obj);
-    } else if (strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0) {
+    } else if (strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0
+        || strcmp(name, "REQUEST-SELECTION-TEXT") == 0) {
 #if HAVE_LIBCLIPBOARD
         if (clipboard_manager == NULL) {
             clipboard_manager = clipboard_new(NULL);
         }
         char *clipText;
+        clipboard_mode cmode =
+            strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0 ? LCB_CLIPBOARD
+            : LCB_PRIMARY;
         if (clipboard_manager
-            && (clipText = clipboard_text(clipboard_manager)) != NULL) {
+            && (clipText = clipboard_text_ex(clipboard_manager, NULL, cmode)) != NULL) {
             struct json_object *jobj = json_object_new_string(clipText);
             printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
                               json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN));

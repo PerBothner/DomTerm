@@ -2037,26 +2037,26 @@ save to the browser's ``Downloads'' area.
 You may be able to save the file elsewhere, depending
 on the browser and its settings.
 
-Microsoft Edge does at time of writing not handle the @code{tab-size}
+Microsoft Edge at time of writing does not handle the @code{tab-size}
 CSS property, so on that browser tab characters are always converted to spaces.
 
 @subsubheading Copy and paste
 
 Paste should work on all front-ends
 if domterm makes use of @ref{installing-libclipboard,libclipboard}.
-Otherwise, only Electron works as it should,
-though the keyboard shortcut Ctrl-Shift-V works on all tested platforms
-except Webview.
+Otherwise, only Electron and WebView work as they should,
+though the keyboard shortcut Ctrl-Shift-V works on all tested platforms,
 (On Qt the Paste menu-item is unreliable if the previous Copy
 was from a different application.
 On a desktop browsers like Firefox, custom menus can't do Paste though system manus can, because of security concerns.)
 
-The Copy menu-items work on Electron on Qt,
-but with some inconsistencies on desktop browsers.
-The keyboard shortcuts Ctrl-Shift-C works on all tested platforms
-except Webview.
+The Copy menu-items work on Electron or Qt,
+but there are issues on other front-ends.
+The keyboard shortcut Ctrl-Shift-C works on all tested platforms.
 
 Middle-button paste seems to work on most frontends (on Linux).
+An exception is WebKit-based browsers (Webview, Epiphany aka Gnome Web),
+though it works if you use @ref{installing-libclipboard,libclipboard}.
 
 @subsubheading Note on menus
 
@@ -2102,10 +2102,12 @@ doesn't work.  You can work around it with CSS styling:
 Copy from menu doesn't work.  Ctrl-Shift-C works.
 @item
 Clicking the window close button doesn't shut down cleanly.
-Using the @code{Quit} menu item works, as does typing @code{exit} from a shell.
+Using the @code{File}->@code{Quit} menu item works,
+as does typing @code{exit} from a shell.
 @item
 Middle-button click does a paste from the clipboard,
 but it should paste from the selection.
+Fixed if you use @ref{installing-libclipboard,libclipboard}.
 @item
 The @code{About DomTerm} menu item doesn't work.
 @end itemize

@@ -4031,6 +4031,17 @@ Terminal.prototype._mouseHandler = function(ev) {
     // Avoids clearing selection.  Helps on Chrome, at least.
     if (ev.type == "mousedown" && ev.button == 2)
         ev.preventDefault();
+    // Middle-button paste doesn't work on GtkWebKit/Wayland.
+    // (It uses clipboard instead of selection.)
+    if (ev.type == "mousedown" && ev.button == 1
+        && DomTerm.versions.appleWebKit
+        && DomTerm.versions.userAgent.match(/X11/)
+        && ((","+this.getOption("`server-for-clipboard", "")+",")
+            .indexOf(",selection-paste,") >= 0)) {
+        ev.preventDefault();
+        this.reportEvent("REQUEST-SELECTION-TEXT", "")
+        return;
+    }
     this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
     let selState = this._mouseSelectionState;

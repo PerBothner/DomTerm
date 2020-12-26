@@ -381,6 +381,7 @@ extern bool check_option_arg(const char *arg, struct options *opts);
 #define LOCAL_SESSIONNUMBER_KEY "`local-session-number"
 #define REMOTE_HOSTUSER_KEY "`remote-host-user"
 #define REMOTE_SESSIONNUMBER_KEY "`remote-session-number"
+#define SERVER_FOR_CLIPBOARD "`server-for-clipboard"
 
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);

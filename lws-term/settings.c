@@ -327,6 +327,10 @@ merged_settings(struct json_object *cmd_settings)
 void
 set_settings(struct options *options)
 {
+#if HAVE_LIBCLIPBOARD
+    set_setting(&options->cmd_settings,
+                SERVER_FOR_CLIPBOARD, "paste,selection-paste");
+#endif
     if (options->settings != NULL)
         json_object_put(options->settings);
     struct json_object *msettings = merged_settings(options->cmd_settings);
