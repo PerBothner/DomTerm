@@ -3689,8 +3689,7 @@ Terminal.prototype.forceWidthInColumns = function(numCols, numRows = -1,
         // FIXME add sanity check?
         let charWidth = ruler.offsetWidth/26.0;
         // Add half a column for rounding issues - see comment in measureWindow
-        let width = (numCols + 0.5) * charWidth + this.rightMarginWidth
-            + (topNode.offsetWidth - topNode.clientWidth);
+        let width = (numCols + 0.5) * charWidth + this.rightMarginWidth;
         for (let i = buffers.length; --i >= 0; )
             buffers[i].style.width = width+"px";
     }
