@@ -1,7 +1,9 @@
 /* Handle connect between client command and server command. */
 
+#ifndef __cplusplus
 // For accept4
 #define _GNU_SOURCE
+#endif
 
 #include "server.h"
 #include "command-connect.h"
@@ -144,7 +146,7 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         exit(client->exit_code);
         break;
-    case LWS_CALLBACK_RAW_RX_FILE: ;
+    case LWS_CALLBACK_RAW_RX_FILE: {
         unsigned char *rbuf = client->rbuffer;
         int cur_out = STDOUT_FILENO;
         int nr = read(client->socket, rbuf, client->rsize);
@@ -185,6 +187,7 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
         }
 #endif
         return 0;
+    }
     default:
         return 0;
     }
@@ -198,7 +201,7 @@ callback_cmd_stdin(struct lws *wsi, enum lws_callback_reasons reason,
     struct cmd_socket_client *client = (struct cmd_socket_client *) user;
     lwsl_notice("callback_cmd_stdin reason %d\n", reason);
     switch (reason) {
-    case LWS_CALLBACK_RAW_RX_FILE: ;
+    case LWS_CALLBACK_RAW_RX_FILE: {
         unsigned char *rbuf = client->rbuffer;
         int cur_out = STDOUT_FILENO;
         int nr = read(STDIN_FILENO, rbuf, client->rsize);
@@ -206,6 +209,7 @@ callback_cmd_stdin(struct lws *wsi, enum lws_callback_reasons reason,
             return -1;
         write(client->socket, rbuf, nr);
         return 0;
+    }
     default:
         return 0;
    }
@@ -242,7 +246,7 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     struct iovec iov[2];
     iov[0].iov_base = (char*) state_as_json;
     iov[0].iov_len = jlen;
-    iov[1].iov_base = "\f";
+    iov[1].iov_base = (void*) "\f";
     iov[1].iov_len = 1;
 
     info.protocols = cmd_protocols;
@@ -250,13 +254,13 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     vhost = lws_create_vhost(context, &info);
     lws_sock_file_fd_type fd;
     fd.filefd = socket;
-    struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-socket", NULL);
+    struct lws *cmdwsi = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd, "cmd-socket", NULL);
     lwsl_notice("cmd-socket fd:%d wsi:%p\n", socket, cmdwsi);
     struct cmd_socket_client *cclient = (struct cmd_socket_client *) lws_wsi_user(cmdwsi);
     cclient->socket = socket;
     cclient->exit_code = 0;
     cclient->rsize = 5000;
-    cclient->rbuffer = xmalloc(cclient->rsize);
+    cclient->rbuffer = (unsigned char*) xmalloc(cclient->rsize);
 
 #if PASS_STDFILES_UNIX_SOCKET
     struct msghdr msg;
@@ -288,7 +292,7 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     //don't close STDERR_FILENO, for the sake of lwsl_notice below
 #else
     fd.filefd = STDIN_FILENO;
-    struct lws *inwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "cmd-stdin", NULL);
+    struct lws *inwsi = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd, "cmd-stdin", NULL);
     struct cmd_socket_client *iclient = (struct cmd_socket_client *) lws_wsi_user(inwsi);
     iclient->socket = socket;
     iclient->rsize = cclient->rsize;
@@ -316,7 +320,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_TIMER: // invoked from do_exit
             do_exit(0, false);
             break;
-        case LWS_CALLBACK_RAW_RX_FILE:
+    case LWS_CALLBACK_RAW_RX_FILE: {
             socket = cclient->socket;
             //fprintf(stderr, "callback_cmd RAW_RX reason:%d socket:%d getpid:%d\n", (int) reason, socket, getpid());
             struct sockaddr sa;
@@ -327,13 +331,13 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             int sockfd = accept(socket, &sa, &slen);
 #endif
             size_t jblen = 512;
-            char *jbuf = xmalloc(jblen);
+            char *jbuf = challoc(jblen);
             int jpos = 0;
             struct options *opts = link_options(NULL);
             for (;;) {
                 if (jblen-jpos < 512) {
                     jblen = (3 * jblen) >> 1;
-                    jbuf = xrealloc(jbuf, jblen);
+                    jbuf = (char*) xrealloc(jbuf, jblen);
                 }
 #if PASS_STDFILES_UNIX_SOCKET
                 struct msghdr msg;
@@ -402,7 +406,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             }
             if (json_object_object_get_ex(jobj, "argv", &jargv)) {
                 argc = json_object_array_length(jargv);
-                argv = xmalloc(sizeof(char*) * (argc+1));
+                argv = (const char**) xmalloc(sizeof(const char*) * (argc+1));
                 for (int i = 0; i <argc; i++) {
                   argv[i] = strdup(json_object_get_string(json_object_array_get_idx(jargv, i)));
                 }
@@ -410,7 +414,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             }
             if (json_object_object_get_ex(jobj, "env", &jenv)) {
                 int nenv = json_object_array_length(jenv);
-                env = xmalloc(sizeof(char*) * (nenv+1));
+                env = (const char**) xmalloc(sizeof(const char*) * (nenv+1));
                 for (int i = 0; i <nenv; i++) {
                   env[i] = json_object_get_string(json_object_array_get_idx(jenv, i));
                 }
@@ -447,7 +451,8 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 lwsl_err("write failed sockfd:%d\n", sockfd);
             close(sockfd);
             // FIXME: free argv, cwd, env
-            break;
+        }
+        break;
     default:
       //fprintf(stderr, "callback_cmd default reason:%d\n", (int) reason);
             break;

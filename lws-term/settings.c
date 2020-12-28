@@ -107,18 +107,18 @@ get_setting_d(struct json_object *settings, const char *key, double dfault)
 bool
 check_option_arg(const char *arg, struct options *opts)
 {
-    char *eq = strchr(arg, '=');
+    const char *eq = strchr(arg, '=');
     if (eq == NULL)
         return false;
     size_t klen = eq-arg;
-    char *key = xmalloc(klen+1);
+    char *key = challoc(klen+1);
     memcpy(key, arg, klen);
     key[klen] = '\0';
     struct optinfo *opt = lookup_optinfo(key);
     if (opt == NULL)
         printf_error(opts, "unknown option '%s'", key);
     else if ((opt->flags & OPTION_NUMBER_TYPE) != 0) {
-        char *val = eq+1;
+        const char *val = eq+1;
         double d; int len;
         sscanf(val, " %lg %n", &d, &len);
         if (len != strlen(val))
@@ -178,7 +178,7 @@ read_settings_file(struct options *options, bool re_reading)
     int settings_fd = open(settings_fname, O_RDONLY);
     struct stat stbuf;
     bool bad = false;
-    char *vmsg =
+    const char *vmsg =
         re_reading ? "Re-reading settings file" : "Reading settings file";
     if (settings_fd == -1
         || fstat(settings_fd, &stbuf) != 0 || !S_ISREG(stbuf.st_mode)) {
@@ -197,13 +197,13 @@ read_settings_file(struct options *options, bool re_reading)
 
     off_t slen = stbuf.st_size;
     // +1 in case we need to write '\0' at end-of-file
-    char *sbuf = mmap(NULL, slen+1, PROT_READ|PROT_WRITE, MAP_PRIVATE,
-                      settings_fd, 0);
+    char *sbuf = (char*) mmap(NULL, slen+1, PROT_READ|PROT_WRITE, MAP_PRIVATE,
+                              settings_fd, 0);
     char *send = sbuf + slen;
     char *sptr = sbuf;
 
 
-    char *emsg = "";
+    const char *emsg = "";
     for (;;) {
     next:
         if (sptr == send)
@@ -359,6 +359,7 @@ watch_settings_file()
     inotify_add_watch(inotify_fd, settings_fname, IN_MODIFY);
     lws_sock_file_fd_type ifd;
     ifd.filefd = inotify_fd;
-    lws_adopt_descriptor_vhost(vhost, 0, ifd, "inotify", NULL);
+    lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC,
+                               ifd, "inotify", NULL);
 #endif
 }

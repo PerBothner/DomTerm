@@ -9,7 +9,6 @@ struct help_info {
 static bool html_option_seen = false;
 static bool man_option_seen = false;
 static bool text_option_seen = false;
-static char *pager_option = "";
 
 struct help_info help_table[] = {
   { "attach", "domterm-attach"},
@@ -30,11 +29,12 @@ struct help_info help_table[] = {
 void print_help_file(const char* name, FILE *out)
 {
     char *hdir = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/help");
-    char *buf = xmalloc(strlen(hdir)+strlen(name)+20);
+    char *buf = challoc(strlen(hdir)+strlen(name)+20);
     bool is_domterm = probe_domterm(true) > 0;
+    FILE *rfile = NULL;
     if (! text_option_seen && ! man_option_seen && is_domterm) {
         sprintf(buf, "%s/%s.html", hdir, name);
-        FILE *rfile = fopen(buf, "r");
+        rfile = fopen(buf, "r");
         if (rfile == NULL)
             goto err;
         fprintf(out, "\033[92;1u");
@@ -44,7 +44,7 @@ void print_help_file(const char* name, FILE *out)
         return;
     }
     sprintf(buf, "%s/%s.txt", hdir, name);
-    FILE *rfile = fopen(buf, "r");
+    rfile = fopen(buf, "r");
     if (rfile == NULL)
         goto err;
     if (is_domterm)
@@ -66,6 +66,7 @@ int help_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     int ecode = EXIT_SUCCESS;
     const char *topic = NULL;
+    const char *pager_option = "";
     for (int argi = 1; argi < argc; argi++) {
         topic = argv[argi];
         if (strcmp(topic, "--html") == 0)

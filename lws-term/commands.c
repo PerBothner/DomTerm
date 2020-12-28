@@ -28,8 +28,8 @@ copy_html_file(FILE *in, FILE *out)
 
 static void print_base_element(const char*base_url, struct sbuf *sbuf)
 {
-    char *colon = strchr(base_url, ':');
-    char *sl = colon ? strchr(base_url, '/') : NULL;
+    const char *colon = strchr(base_url, ':');
+    const char *sl = colon ? strchr(base_url, '/') : NULL;
     if (colon && (! sl || colon < sl))
         sbuf_printf(sbuf, "<base href='%s'/>", base_url);
     else {
@@ -60,11 +60,11 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
     if (opts == main_options) // client mode
         check_domterm(opts);
     int i = 1;
-    char *base_url = NULL;
+    const char *base_url = NULL;
     for (i = 1; i < argc; i++) {
         const char *arg = argv[i];
         if (arg[0] == '-') {
-            char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
+            const char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
             int neq = eq ? eq - arg - 1: -1;
             if (neq >= 0
                 && (memcmp(arg+2, "base-url=", neq) == 0
@@ -89,7 +89,7 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
             char *fname_abs = NULL;
             const char *cwd = opts->cwd;
             if (fname[0] != '/' && cwd != NULL) {
-                fname_abs = xmalloc(strlen(cwd) + strlen(fname) +2);
+                fname_abs = challoc(strlen(cwd) + strlen(fname) +2);
                 sprintf(fname_abs, "%s/%s", cwd, fname);
             }
             FILE *fin = fopen(fname_abs ? fname_abs : fname, "r");
@@ -172,14 +172,14 @@ int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
     for (int i = 1; i < argc; i++) {
         asize += strlen(argv[i]) + 4;
     }
-    char *abuf = xmalloc(asize);
+    char *abuf = challoc(asize);
     char *aptr = abuf;
-    char *overflow = NULL;
+    const char *overflow = NULL;
     bool n_arg = false;
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
         if (arg[0] == '-') {
-            char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
+            const char *eq = arg[1] == '-' ? strchr(arg, '=') : NULL;
             int neq = eq ? eq - arg - 1: -1;
             if (neq >= 0
                 && (memcmp(arg+2, "width=", neq) == 0
@@ -215,8 +215,8 @@ int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
               /* Handle error FIXME */
             }
             off_t len = stbuf.st_size;
-            unsigned char *img = mmap(NULL, len, PROT_READ, MAP_PRIVATE,
-                                      fimg, 0);
+            unsigned char *img = (unsigned char*)
+                mmap(NULL, len, PROT_READ, MAP_PRIVATE, fimg, 0);
             const char *mime;
 #if HAVE_LIBMAGIC
             magic_t magic; // FIXME should cache
@@ -244,7 +244,7 @@ int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
             char *b64 = base64_encode(img, len);
             munmap(img, len);
             int rsize = 100+strlen(mime)+strlen(b64)+ strlen(abuf);
-            char *response = xmalloc(rsize);
+            char *response = challoc(rsize);
             int n = snprintf(response, rsize,
                     n_arg ? "\033]72;%s<img%s src='data:%s;base64,%s'/>\007"
                     : "\033]72;<div style='overflow-x: %s'><img%s src='data:%s;base64,%s'/></div>\007",
@@ -269,10 +269,10 @@ static char *read_response(struct options *opts)
 {
     int fin = get_tty_in();
     size_t bsize = 2048;
-    char *buf = xmalloc(bsize);
+    char *buf = challoc(bsize);
     tty_save_set_raw(fin);
     int n = read(fin, buf, 2);
-    char *msg = NULL;
+    const char *msg = NULL;
     if (n != 2 ||
         (buf[0] != (char) 0x9D
          && (buf[0] != (char) 0xc2 || buf[1] != (char) 0x9d))) {
@@ -289,14 +289,14 @@ static char *read_response(struct options *opts)
                 msg = "(malformed response received)";
                 break;
             }
-            char *end = memchr(buf+old, '\n', n);
+            char *end = (char*) memchr(buf+old, '\n', n);
             if (end != NULL) {
                 *end = '\0';
                 break;
             }
             old += n;
             bsize = (3 * bsize) >> 1;
-            buf = xrealloc(buf, bsize);
+            buf = (char*) xrealloc(buf, bsize);
         }
     }
     if (msg) {
@@ -379,11 +379,11 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
     }
     size_t bsize = 2048;
     int off = 0;
-    char *buf = xmalloc(bsize);
+    char *buf = challoc(bsize);
     for (;;) {
         if (bsize == off) {
             bsize = (3 * bsize) >> 1;
-            buf = xrealloc(buf, bsize);
+            buf = (char*) xrealloc(buf, bsize);
         }
         ssize_t n = read(in, buf+off, bsize-off);
         if (n < 0) {
@@ -492,7 +492,7 @@ json_get_property(struct json_object *jobj, const char *fname)
 }
 bool
 json_print_property(FILE *out, struct json_object *jobj, const char *fname,
-                    char *prefix, char *label)
+                    const char *prefix, char *label)
 {
     const char *val = json_get_property(jobj, fname);
     if (val)
@@ -505,7 +505,7 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
     if (tclient->version_info) {
         struct json_object *vobj =
             json_tokener_parse(tclient->version_info);
-        char *prefix = " ";
+        const char *prefix = " ";
         if ((tclient->misc_flags & headless_flag) != 0) {
             fprintf(out, "headless");
             prefix = ", ";
@@ -556,9 +556,9 @@ static void show_connection_info(struct tty_client *tclient,
 {
     const char *cinfo = tclient->ssh_connection_info;
     if (cinfo != NULL) {
-        char *sp1 = strchr(cinfo, ' ');
-        char *sp2 = sp1 ? strchr(sp1 + 1, ' ') : NULL;
-        char *sp3 = sp2 ? strchr(sp2 + 1, ' ') : NULL;
+        const char *sp1 = strchr(cinfo, ' ');
+        const char *sp2 = sp1 ? strchr(sp1 + 1, ' ') : NULL;
+        const char *sp3 = sp2 ? strchr(sp2 + 1, ' ') : NULL;
         size_t clen = strlen(cinfo);
         if (verbosity > 0 && sp2)
             fprintf(out, " from %.*s:%.*s to %.*s:%.*s",
@@ -751,12 +751,12 @@ int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
         break;
       }
     }
-    char *fscheme = saw_scheme ? "" : "file://";
+    const char *fscheme = saw_scheme ? "" : "file://";
     char *fencoded = NULL;
     if (! saw_scheme) {
         if (file[0] != '/') {
             const char *cwd = opts->cwd;
-            fencoded = xmalloc(strlen(cwd)+strlen(file)+2);
+            fencoded = challoc(strlen(cwd)+strlen(file)+2);
             sprintf(fencoded, "%s/%s", cwd, file);
             file = fencoded;
         }
@@ -767,7 +767,7 @@ int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
             return EXIT_FAILURE;
         }
     }
-    char *url = xmalloc(strlen(main_html_url) + strlen(file) + 40);
+    char *url = challoc(strlen(main_html_url) + strlen(file) + 40);
     sprintf(url, "%s%s", fscheme, file);
     free(fencoded);
     display_session(opts, NULL, url, -105);
@@ -779,7 +779,7 @@ int freshline_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
     check_domterm(opts);
-    char *cmd = "\033[20u";
+    const char *cmd = "\033[20u";
     if (write(get_tty_out(), cmd, strlen(cmd)) <= 0)
         return EXIT_FAILURE;
     return EXIT_SUCCESS;
@@ -877,7 +877,7 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
     int wspec_count = i - first_window_number;
     const char *subcommand = argc >= i ? argv[i] : NULL;
     bool seen = false;
-    char *seq = NULL;
+    const char *seq = NULL;
     enum window_op_kind w_op_kind = w_none;
     const char *default_windows = NULL;
     if (subcommand == NULL) { }
