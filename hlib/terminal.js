@@ -7522,7 +7522,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         } else {
             textNode = this.insertRawOutput(seg);
         }
-        let prevLine = absLine;
+        //let prevLine = absLine;
+        let lineStart = this.lineStarts[absLine];
         let column = this.getCursorColumn();
         if (column + cols > this.numColumns && !atEnd ) {
             if (seg instanceof Element) {
@@ -7567,13 +7568,14 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             this.deleteCharactersRight(widthInColumns - cols, false);
             this._updateLinebreaksStart(absLine);
             column += cols;
-       } else {
-           this.currentCursorColumn = (column += cols);
+            if (lineStart._widthColumns !== undefined
+                && lineStart._widthColumns < column)
+                lineStart._widthColumns = column;
+        } else {
+            this.currentCursorColumn = (column += cols);
+            if (lineStart._widthColumns !== undefined)
+                lineStart._widthColumns += cols;
         }
-        let lineStart = this.lineStarts[prevLine];
-        if (lineStart._widthColumns !== undefined
-            && lineStart._widthColumns < column)
-            lineStart._widthColumns = column;
         widthInColumns -= cols;
         isegment++;
         this.currentAbsLine = absLine;
@@ -10091,7 +10093,6 @@ Terminal.prototype.editorContinueInput = function() {
 }
 
 Terminal.prototype.editorInsertString = function(str, inserting=true) {
-    console.trace("in editorInsertString");
     this.editorAddLine();
     this._showPassword();
     this._updateLinebreaksStart(this.getAbsCursorLine(), true);
