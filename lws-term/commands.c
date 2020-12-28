@@ -506,7 +506,7 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
         struct json_object *vobj =
             json_tokener_parse(tclient->version_info);
         const char *prefix = " ";
-        if ((tclient->misc_flags & headless_flag) != 0) {
+        if (tclient->is_headless) {
             fprintf(out, "headless");
             prefix = ", ";
         }
@@ -532,8 +532,7 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
 static void pclient_status_info(struct pty_client *pclient, FILE *out)
 {
     struct tty_client *tclient = pclient->first_tclient;
-    if ((pclient->pflags & ssh_pclient_flag) != 0
-        && tclient && tclient->options) {
+    if (pclient->is_ssh_pclient && tclient && tclient->options) {
         const char* remote =
             get_setting(tclient->options->cmd_settings,
                         REMOTE_HOSTUSER_KEY);
@@ -597,7 +596,7 @@ static void status_by_session(FILE * out, int verbosity)
                     }
                     tclient_status_info(tclient, out);
                 }
-                if ((tclient->misc_flags & is_primary_window) != 0)
+                if (tclient->is_primary_window)
                      fprintf(out, " (primary)");
                 fprintf(out, "\n");
                 nwindows++;

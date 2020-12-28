@@ -690,15 +690,15 @@ extract_command_from_list(const char *list, const char **startp,
 // Check a 'template' (conditional string) that initial clauses match.
 // On match return rest of string after clauses.
 // 'template' is temporarily modified
-char *
-check_conditional(char *tmplate, test_function_t tester, void* data)
+const char *
+check_conditional(const char *tmplate, test_function_t tester, void* data)
 {
     int size = 0;
     while (tmplate[0] == '{') {
         // a disjunction of clauses, separated by '|'
         bool ok = false; // true when a previous clause was true
-        char *clause = &tmplate[1];
-        for (char *p = clause; ; p++) {
+        const char *clause = &tmplate[1];
+        for (const char *p = clause; ; p++) {
             char ch = *p;
             if (ch == '\0')
               return NULL;
@@ -708,9 +708,10 @@ check_conditional(char *tmplate, test_function_t tester, void* data)
                     if (negate)
                       clause++;
                     int clen = p - clause;
-                    *p = '\0';
+                    char *tclause = strdup(clause);
+                    tclause[clen] = '\0';
                     ok = tester(clause, data);
-                    *p = ch;
+                    free(tclause);
                     if (negate)
                         ok = ! ok;
                 }
@@ -728,7 +729,7 @@ check_conditional(char *tmplate, test_function_t tester, void* data)
 }
 
 const char *
-getenv_from_array(char* key, arglist_t envarray)
+getenv_from_array(const char* key, arglist_t envarray)
 {
     extern char **environ;  // Needed on MacOS.
     arglist_t p = envarray ? envarray : (arglist_t)environ;

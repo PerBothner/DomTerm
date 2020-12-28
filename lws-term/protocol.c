@@ -149,7 +149,8 @@ void trim_preserved(struct pty_client *pclient)
      pclient->preserved_sent_count = (pclient->preserved_sent_count + unneeded) & MASK28;
      if (pclient->preserved_size >= 2 * max_unconfirmed) {
          pclient->preserved_size = max_unconfirmed + 512;
-         pclient->preserved_output = xrealloc(pclient->preserved_output, pclient->preserved_size);
+         pclient->preserved_output = (char*)
+             xrealloc(pclient->preserved_output, pclient->preserved_size);
      }
 }
 
@@ -195,7 +196,7 @@ static void
 pclient_close(struct pty_client *pclient, bool xxtimed_out)
 {
     int snum = pclient->session_number;
-    bool timed_out = (pclient->pflags & timed_out_flag) != 0;
+    bool timed_out = pclient->timed_out;
     lwsl_notice("exited application for session %d\n", snum);
     // stop event loop
     pclient->exit = true;
@@ -242,8 +243,8 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
         tclient->pclient = NULL;
         if (tclient->out_wsi == NULL)
             continue;
-        if ((pclient->pflags & ssh_pclient_flag) != 0) {
-            if ((tclient->misc_flags & tclient_proxy_flag) == 0) {
+        if (pclient->is_ssh_pclient) {
+            if (! tclient->is_tclient_proxy) {
                 printf_to_browser(tclient,
                                   timed_out
                                   ? URGENT_WRAP("\033[99;97u")
@@ -252,7 +253,7 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
                                   ? URGENT_WRAP("\033[99;98u")
                                   : eof_message);
                 if (! timed_out)
-                    tclient->misc_flags |= close_expected_flag;
+                    tclient->close_expected = true;
                 connection_failure = true;
             } else {
 #if !PASS_STDFILES_UNIX_SOCKET
@@ -310,23 +311,23 @@ unlink_tty_from_pty(struct pty_client *pclient,
         }
         pt = nt;
     }
-    if ((tclient->misc_flags & is_primary_window) != 0) {
-        tclient->misc_flags &= ~is_primary_window;
-        pclient->pflags &= has_primary_window;
+    if (tclient->is_primary_window) {
+        tclient->is_primary_window = false;
+        pclient->has_primary_window = false;
         FOREACH_WSCLIENT(tother, pclient) {
             if (tother->out_wsi != NULL) {
-                tother->misc_flags |= is_primary_window;
-                pclient->pflags |= has_primary_window;
+                tother->is_primary_window = true;
+                pclient->has_primary_window = true;
                 break;
             }
         }
     }
     struct tty_client *first_tclient = pclient->first_tclient;
     if ((tclient->proxyMode != proxy_command_local && first_tclient == NULL && pclient->detach_count == 0
-         && ((tclient->misc_flags & close_requested_flag) != 0
-             || (tclient->misc_flags & detach_on_disconnect_flag) == 0))
+         && (tclient->close_requested
+             || ! tclient->detach_on_disconnect))
         || tclient->proxyMode == proxy_display_local) {
-        lwsl_notice("- close pty flags %x pmode:%d\n", tclient->misc_flags, tclient->proxyMode);
+        lwsl_notice("- close pty pmode:%d\n", tclient->proxyMode);
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
 
@@ -409,9 +410,9 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
         link_clients(tclient, pclient);
     struct tty_client *first_tclient = pclient->first_tclient;
 
-    if ((pclient->pflags & has_primary_window) == 0) {
-        tclient->misc_flags |= is_primary_window;
-        pclient->pflags |= has_primary_window;
+    if (! pclient->has_primary_window) {
+        tclient->is_primary_window = true;
+        pclient->has_primary_window = true;
     }
     int n = 0;
     struct tty_client *oclient = NULL;
@@ -425,7 +426,7 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     tclient->pty_window_number =
         n <= 1 ? -1 :
         // FIXME this should be an actual sequence number
-        (pclient->pflags & has_primary_window) != 0;
+        pclient->has_primary_window;
     // If following this link_command there are now two clients,
     // notify both clients they don't have to save on detach
     if (oclient != NULL) {
@@ -455,15 +456,15 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     }
 }
 
-void put_to_env_array(char **arr, int max, char* eval)
+void put_to_env_array(const char **arr, int max, const char* eval)
 {
-    char *eq = index(eval, '=');
+    const char *eq = index(eval, '=');
     int name_len = eq - eval;
     for (int i = 0; ; i++) {
         if (arr[i] == NULL) {
             if (i == max)
                 abort();
-            arr[i] = eval;
+            arr[i] = (char *) eval;
             arr[i+1] = NULL;
         }
         if (strncmp(arr[i], eval, name_len+1) == 0) {
@@ -511,10 +512,11 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     lws_sock_file_fd_type fd;
     fd.filefd = master;
     //if (tclient == NULL)              return NULL;
-    outwsi = lws_adopt_descriptor_vhost(vhost, 0, fd, "pty", NULL);
+    outwsi = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd,
+                                        "pty", NULL);
     struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
     pclient->ttyname = tname;
-    SET_PCLIENT_FLAG(pclient, packet_mode_flag, packet_mode);
+    pclient->uses_packet_mode = packet_mode;
     server->session_count++;
     int snum = 1;
     if (t_hint && VALID_CONNECTION_NUMBER(t_hint->connection_number)
@@ -525,7 +527,8 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
             int newsize = 3 * pty_clients_size >> 1;
             if (newsize < 20)
                 newsize = 20;
-            pty_clients = realloc(pty_clients, newsize * sizeof(struct pty_client*));
+            pty_clients = (struct pty_client**)
+                realloc(pty_clients, newsize * sizeof(struct pty_client*));
             for (int i = pty_clients_size; i < newsize; i++)
                 pty_clients[i] = NULL;
             pty_clients_size = newsize;
@@ -562,7 +565,11 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     pclient->last_tclient_ptr = &pclient->first_tclient;
     pclient->recent_tclient = NULL;
     pclient->session_name = NULL;
-    pclient->pflags = 0;
+    pclient->timed_out = false;
+    pclient->session_name_unique = false;
+    pclient->is_ssh_pclient = false;
+    pclient->has_primary_window = false;
+    pclient->uses_packet_mode = false;
     pclient->pty_wsi = outwsi;
     pclient->cmd = cmd;
     pclient->argv = copy_strings(argv);
@@ -589,7 +596,7 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             close(slave);
             pclient_close(pclient, false); // ???
             break;
-    case 0: /* child */
+    case 0: { /* child */
 #if 0
             if (login_tty(slave))
                 _exit(1);
@@ -616,20 +623,20 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             int env_size = 0;
             while (env[env_size] != NULL) env_size++;
             int env_max = env_size + 10;
-            char **nenv = xmalloc((env_max + 1)*sizeof(const char*));
+            const char **nenv = (const char **) xmalloc((env_max + 1)*sizeof(const char*));
             memcpy(nenv, env, (env_size + 1)*sizeof(const char*));
 
             put_to_env_array(nenv, env_max, "TERM=xterm-256color");
 #if !  WITH_XTERMJS
             put_to_env_array(nenv, env_max, "COLORTERM=truecolor");
-            char* dinit = "DOMTERM=";
+            const char* dinit = "DOMTERM=";
 #ifdef LWS_LIBRARY_VERSION
 #define SHOW_LWS_LIBRARY_VERSION "=" LWS_LIBRARY_VERSION
 #else
 #define SHOW_LWS_LIBRARY_VERSION ""
 #endif
             const char *lstr = ";libwebsockets" SHOW_LWS_LIBRARY_VERSION;
-            char* pinit = ";tty=";
+            const char* pinit = ";tty=";
             char* ttyName = ttyname(0);
             char pidbuf[40];
             pid = getpid();
@@ -637,7 +644,7 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             size_t llen = strlen(lstr);
             size_t plen = strlen(pinit);
             int tlen = ttyName == NULL ? 0 : strlen(ttyName);
-            char *version_info =
+            const char *version_info =
               /* FIXME   tclient != NULL ? tclient->version_info
                     :*/ "version=" LDOMTERM_VERSION;
             int vlen = version_info == NULL ? 0 : strlen(version_info);
@@ -647,7 +654,7 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
                         pclient->session_number, pid);
                 mlen += strlen(pidbuf);
             }
-            char* ebuf = malloc(mlen+1);
+            char* ebuf = challoc(mlen+1);
             strcpy(ebuf, dinit);
             int offset = dlen;
             if (version_info)
@@ -682,12 +689,13 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
                 put_to_env_array(nenv, env_max, buf);
             }
 #endif
-            if (execve(cmd, (char * const*)argv, nenv) < 0) {
+            if (execve(cmd, (char * const*)argv, (char **) nenv) < 0) {
                 perror("execvp");
                 exit(1);
             }
             break;
-        default: /* parent */
+    }
+    default: /* parent */
             lwsl_notice("starting application: %s session:%d pid:%d pty:%d\n",
                         pclient->cmd, pclient->session_number, pid, master);
             close(slave);
@@ -742,7 +750,7 @@ struct test_link_data {
 
 static bool test_link_clause(const char *clause, void* data)
 {
-    struct test_link_data *test_data = data;
+    struct test_link_data *test_data = (struct test_link_data *) data;
     int clen = strlen(clause);
     if (clen > 1 && clause[clen-1] == ':') {
         return strcmp(clause, test_data->href) == 0;
@@ -767,7 +775,7 @@ static bool test_link_clause(const char *clause, void* data)
 }
 
 char *
-check_template(char *template, json_object *obj)
+check_template(const char *tmplate, json_object *obj)
 {
     const char *filename = get_setting(obj, "filename");
     const char *position = get_setting(obj, "position");
@@ -776,7 +784,7 @@ check_template(char *template, json_object *obj)
         if (filename[2] == '/')
             filename = filename + 2;
         else {
-            char *colon = strchr(filename+2, '/');
+            const char *colon = strchr(filename+2, '/');
             if (colon == NULL)
                 return NULL;
             int fhlen = colon - (filename + 2);
@@ -804,37 +812,37 @@ check_template(char *template, json_object *obj)
     test_data.href = href;
     test_data.position = position;
     test_data.obj = obj;
-    template = check_conditional(template, test_link_clause, &test_data);
-    if (! template)
+    tmplate = check_conditional(tmplate, test_link_clause, &test_data);
+    if (! tmplate)
         return NULL;
 
-    if (strcmp(template, "atom") == 0)
-        template = "atom '%F'%:P";
-    else if (strcmp(template, "emacs") == 0)
-        template = "emacs %+P '%F' > /dev/null 2>&1 ";
-    else if (strcmp(template, "emacsclient") == 0)
-        template = "emacsclient -n %+P '%F'";
-    else if (strcmp(template, "firefox") == 0
-             || strcmp(template, "chrome") == 0
-             || strcmp(template, "google-chrome") == 0) {
-        const char *chr = strcmp(template, "firefox") == 0
+    if (strcmp(tmplate, "atom") == 0)
+        tmplate = "atom '%F'%:P";
+    else if (strcmp(tmplate, "emacs") == 0)
+        tmplate = "emacs %+P '%F' > /dev/null 2>&1 ";
+    else if (strcmp(tmplate, "emacsclient") == 0)
+        tmplate = "emacsclient -n %+P '%F'";
+    else if (strcmp(tmplate, "firefox") == 0
+             || strcmp(tmplate, "chrome") == 0
+             || strcmp(tmplate, "google-chrome") == 0) {
+        const char *chr = strcmp(tmplate, "firefox") == 0
           ? firefox_browser_command(main_options)
             : chrome_command(false, main_options);
         if (chr == NULL)
             return NULL;
-        char *buf = xmalloc(strlen(chr) + strlen(href)+4);
+        char *buf = challoc(strlen(chr) + strlen(href)+4);
         sprintf(buf, "%s '%s'", chr, href);
         return buf;
     }
     int i;
-    for (i = 0; template[i]; i++) {
-        char ch = template[i];
-        if (ch == '%' && template[i+1]) {
-            char next = template[++i];
+    for (i = 0; tmplate[i]; i++) {
+        char ch = tmplate[i];
+        if (ch == '%' && tmplate[i+1]) {
+            char next = tmplate[++i];
             char prefix = 0;
-            if ((next == ':' || next == '+') && template[i+1]) {
+            if ((next == ':' || next == '+') && tmplate[i+1]) {
                 prefix = next;
-                next = template[++i];
+                next = tmplate[++i];
             }
             const char *field;
             if (next == 'F') field = filename;
@@ -848,17 +856,17 @@ check_template(char *template, json_object *obj)
         } else
           size++;
     }
-    char *buffer = xmalloc(size+1);
+    char *buffer = challoc(size+1);
     i = 0;
     char *p = buffer;
-    for (i = 0; template[i]; i++) {
-        char ch = template[i];
-        if (ch == '%' && template[i+1]) {
-            char next = template[++i];
+    for (i = 0; tmplate[i]; i++) {
+        char ch = tmplate[i];
+        if (ch == '%' && tmplate[i+1]) {
+            char next = tmplate[++i];
             char prefix = 0;
-            if ((next == ':' || next == '+') && template[i+1]) {
+            if ((next == ':' || next == '+') && tmplate[i+1]) {
                 prefix = next;
-                next = template[++i];
+                next = tmplate[++i];
             }
             char t2[2];
             const char *field;
@@ -894,9 +902,9 @@ check_template(char *template, json_object *obj)
 }
 
 bool
-handle_tlink(const char *template, json_object *obj)
+handle_tlink(const char *tmplate, json_object *obj)
 {
-    char *t = strdup(template);
+    char *t = strdup(tmplate);
     char *p = t;
     char *command = NULL;
     for (;;) {
@@ -947,7 +955,7 @@ backup_output(struct pty_client *pclient, char *data_start, int data_length)
             nsize = 1024;
         if (needed > nsize)
             nsize = needed;
-        char * nbuffer = xrealloc(pclient->preserved_output, nsize);
+        char * nbuffer = (char *) xrealloc(pclient->preserved_output, nsize);
         pclient->preserved_output = nbuffer;
         pclient->preserved_size = nsize;
     }
@@ -960,20 +968,20 @@ void
 handle_link(json_object *obj)
 {
     if (json_object_object_get_ex(obj, "filename", NULL)) {
-        const char *template = get_setting(main_options->settings, "open.file.application");
-        if (template == NULL)
-            template =
+        const char *tmplate = get_setting(main_options->settings, "open.file.application");
+        if (tmplate == NULL)
+            tmplate =
               "{in-atom}{with-position|!.html}atom;"
               "{with-position|!.html}emacsclient;"
               "{with-position|!.html}emacs;"
               "{with-position|!.html}atom";
-        if (handle_tlink(template, obj))
+        if (handle_tlink(tmplate, obj))
             return;
     }
-    const char *template = get_setting(main_options->settings, "open.link.application");
-    if (template == NULL)
-        template = "{!mailto:}browser;{!mailto:}chrome;{!mailto:}firefox";
-    handle_tlink(template, obj);
+    const char *tmplate = get_setting(main_options->settings, "open.link.application");
+    if (tmplate == NULL)
+        tmplate = "{!mailto:}browser;{!mailto:}chrome;{!mailto:}firefox";
+    handle_tlink(tmplate, obj);
 }
 
 static void
@@ -1013,7 +1021,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient != NULL
-            && (client->misc_flags & is_primary_window) != 0
+            && client->is_primary_window
             && sscanf(data, "%d %d %g %g", &pclient->nrows, &pclient->ncols,
                       &pclient->pixh, &pclient->pixw) == 4) {
           if (pclient->pty >= 0)
@@ -1038,7 +1046,7 @@ reportEvent(const char *name, char *data, size_t dlen,
           }
         }
     } else if (strcmp(name, "VERSION") == 0) {
-        char *version_info = xmalloc(dlen+1);
+        char *version_info = challoc(dlen+1);
         strcpy(version_info, data);
         client->version_info = version_info;
         if (proxyMode == proxy_display_local)
@@ -1132,29 +1140,28 @@ reportEvent(const char *name, char *data, size_t dlen,
         json_object *obj = json_tokener_parse(q);
         const char *kstr = json_object_get_string(obj);
         int klen = json_object_get_string_len(obj);
-        char *session_name = xmalloc(klen+1);
+        char *session_name = challoc(klen+1);
         strcpy(session_name, kstr);
         if (pclient->session_name)
             free(pclient->session_name);
         pclient->session_name = session_name;
-        SET_PCLIENT_FLAG(pclient, session_name_unique_flag, true);
+        pclient->session_name_unique = true;
         json_object_put(obj);
         FOREACH_PCLIENT(p) {
             if (p != pclient && p->session_name != NULL
                 && strcmp(session_name, p->session_name) == 0) {
                 struct pty_client *pp = p;
-                SET_PCLIENT_FLAG(p, session_name_unique_flag, false);
+                p->session_name_unique = false;
                 for (;;) {
                     FOREACH_WSCLIENT(t, pp) {
                         t->pty_window_update_needed = true;
                         lws_callback_on_writable(t->out_wsi);
                     }
-                    if ((pclient->pflags & session_name_unique_flag) == 0
-                        || pp == pclient)
+                    if (! pclient->session_name_unique || pp == pclient)
                         break;
                     pp = pclient;
                 }
-                SET_PCLIENT_FLAG(pclient, session_name_unique_flag, false);
+                pclient->session_name_unique = false;
             }
         }
     } else if (strcmp(name, "SESSION-NUMBER-ECHO") == 0) {
@@ -1174,7 +1181,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             if (gend == NULL)
                 gend = g + strlen(g);
             int glen = gend-g;
-            geom = xmalloc(glen+1);
+            geom = challoc(glen+1);
             memcpy(geom, g, glen);
             geom[glen] = 0;
             if (! options)
@@ -1197,7 +1204,8 @@ reportEvent(const char *name, char *data, size_t dlen,
                 client->requesting_contents = 1;
         }
     } else if (strcmp(name, "CLOSE-SESSION") == 0) {
-        client->misc_flags |= close_requested_flag|close_expected_flag;
+        client->close_requested = true;
+        client->close_expected = true;
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient != NULL) {
@@ -1287,7 +1295,12 @@ void init_tclient_struct(struct tty_client *client)
 {
     client->initialized = 0;
     client->options = NULL;
-    client->misc_flags = detach_on_disconnect_flag;
+    client->is_headless = false;
+    client->is_tclient_proxy = false;
+    client->is_primary_window = false;
+    client->close_requested = false;
+    client->close_expected = false;
+    client->detach_on_disconnect = true;
     client->detachSaveSend = false;
     client->uploadSettingsNeeded = true;
     client->requesting_contents = 0;
@@ -1322,7 +1335,8 @@ set_connection_number(struct tty_client *tclient, int hint)
             int newsize = 3 * tty_clients_size >> 1;
             if (newsize < 20)
                 newsize = 20;
-            tty_clients = realloc(tty_clients, newsize * sizeof(struct tty_client*));
+            tty_clients = (struct tty_client**)
+                realloc(tty_clients, newsize * sizeof(struct tty_client*));
             for (int i = tty_clients_size; i < newsize; i++)
                 tty_clients[i] = NULL;
             tty_clients_size = newsize;
@@ -1356,7 +1370,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
     if (server->options.readonly)
         return 0;
     size_t clen = client->inb.len;
-    unsigned char *msg = client->inb.buffer;
+    unsigned char *msg = (unsigned char*) client->inb.buffer;
     struct pty_client *pclient = client->pclient;
     if (pclient)
         pclient->recent_tclient = client;
@@ -1378,7 +1392,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
                 start = clen;
                 break;
             }
-            unsigned char* eol = memchr(msg+i, '\n', clen-i);
+            unsigned char* eol = (unsigned char*) memchr(msg+i, '\n', clen-i);
             if (eol) {
                 unsigned char *p = msg+i;
                 char* cname = (char*) ++p;
@@ -1429,7 +1443,8 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
 
     if (client->proxyMode == proxy_command_local) {
-        unsigned char *fd = memchr(client->ob.buffer, 0xFD, client->ob.len);
+        unsigned char *fd = (unsigned char *)
+            memchr(client->ob.buffer, 0xFD, client->ob.len);
         lwsl_notice("check for FD: %p text[%.*s] pclient:%p\n", fd, (int) client->ob.len, client->ob.buffer, pclient);
         if (fd && pclient) {
             client->ob.len = 0; // FIXME - simplified
@@ -1447,7 +1462,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
                 display_session(client->options, pclient, NULL, http_port);
                 if (client->out_wsi && client->out_wsi != client->wsi) {
                     lwsl_notice("set_timeout clear tc:%p\n", client->wsi);
-                    client->misc_flags |= close_expected_flag;
+                    client->close_expected = true;
                     lws_set_timeout(client->wsi,
                                     PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
                 }
@@ -1538,7 +1553,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     if (client->pty_window_update_needed && proxyMode != proxy_command_local) {
         client->pty_window_update_needed = false;
         int kind = proxyMode == proxy_display_local ? 2
-            : (pclient->pflags & session_name_unique_flag) != 0;
+            : (int) pclient->session_name_unique;
         lwsl_info("- send session info %d\n", pclient->session_number);
         sbuf_printf(bufp, URGENT_WRAP("\033[91;%d;%d;%d;%du"),
                     kind,
@@ -1575,7 +1590,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     if (! pclient && client->ob.buffer != NULL
         && proxyMode != proxy_command_local) {
         if (proxyMode != proxy_display_local) {
-            client->misc_flags |= close_expected_flag;
+            client->close_expected = true;
             sbuf_printf(bufp, "%s", eof_message);
         }
         sbuf_free(&client->ob);
@@ -1600,7 +1615,8 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         int written = bufp->len - LWS_PRE;
         lwsl_info("tty SERVER_WRITEABLE conn#%d written:%d sent: %ld to %p\n", client->connection_number, written, (long) client->sent_count, wsi);
         if (written > 0
-            && lws_write(wsi, bufp->buffer+LWS_PRE, written, LWS_WRITE_BINARY) != written)
+            && lws_write(wsi, (unsigned char*) bufp->buffer+LWS_PRE,
+                         written, LWS_WRITE_BINARY) != written)
             lwsl_err("lws_write\n");
     }
     sbuf_free(bufp);
@@ -1729,7 +1745,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         break;
 
-    case LWS_CALLBACK_ESTABLISHED:
+    case LWS_CALLBACK_ESTABLISHED: {
         lwsl_notice("tty/CALLBACK_ESTABLISHED %s client:%p\n", in, client);
         char arg[100]; // FIXME
         long wnum = -1;
@@ -1761,7 +1777,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             }
         }
         if (client == NULL) {
-            client = xmalloc(sizeof(struct tty_client));
+            client = (struct tty_client*) xmalloc(sizeof(struct tty_client));
             init_tclient_struct(client);
         }
         WSI_SET_TCLIENT(wsi, client);
@@ -1790,13 +1806,13 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         const char*headless = lws_get_urlarg_by_name(wsi, "headless=", arg, sizeof(arg) - 1);
         if (headless && strcmp(headless, "true") == 0)
-            client->misc_flags |= headless_flag;
+            client->is_headless = true;
 
         if (no_session != NULL) {
             lwsl_info("dummy connection (no session) established\n");
         } else {
             if (pclient != NULL) {
-                if ((pclient->pflags & ssh_pclient_flag) != 0)
+                if (pclient->is_ssh_pclient)
                     client->proxyMode = proxy_display_local;
                 if (client->pclient != pclient)
                     link_clients(client, pclient);
@@ -1850,6 +1866,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             lwsl_notice("client connected from %s (%s), #: %d\n", hostname, address, client->connection_number);
         }
         break;
+    }
 
     case LWS_CALLBACK_SERVER_WRITEABLE:
         return handle_output(client, client->proxyMode, false);
@@ -1862,7 +1879,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          // receive data from websockets client (browser)
          //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
         sbuf_extend(&client->inb, len < 1024 ? 1024 : len + 1);
-        sbuf_append(&client->inb, in, len);
+        sbuf_append(&client->inb, (char *) in, len);
         //((unsigned char*)client->inb.buffer)[client->inb.len] = '\0'; // ??
         // check if there are more fragmented messages
         if (lws_remaining_packet_payload(wsi) <= 0
@@ -1871,7 +1888,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         break;
 
-    case LWS_CALLBACK_CLOSED:
+    case LWS_CALLBACK_CLOSED: {
         if (client == NULL)
             break;
          if (focused_wsi == wsi)
@@ -1879,7 +1896,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 #if ! BROKEN_LWS_SET_WSI_USER
          lws_set_wsi_user(wsi, NULL);
 #endif
-         bool keep_client = (client->misc_flags & close_expected_flag) == 0;
+         bool keep_client = ! client->close_expected;
          if (keep_client) {
              client->wsi = NULL;
              client->out_wsi = NULL;
@@ -1890,7 +1907,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          lwsl_notice("client #:%d disconnected\n", client->connection_number);
          maybe_exit(0);
          break;
-
+    }
     case LWS_CALLBACK_PROTOCOL_INIT: /* per vhost */
     case LWS_CALLBACK_PROTOCOL_DESTROY: /* per vhost */
     default:
@@ -1917,12 +1934,13 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
         fd_out = dup(fd_out);
     lws_sock_file_fd_type fd;
     fd.filefd = fd_in;
-    struct lws *pin_lws = lws_adopt_descriptor_vhost(vhost, 0, fd,
-                                                     "proxy", NULL);
+    struct lws *pin_lws =
+        lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd,
+                                   "proxy", NULL);
     struct tty_client *tclient =
         ((struct tty_client *) lws_wsi_user(pin_lws));
     init_tclient_struct(tclient);
-    tclient->misc_flags |= tclient_proxy_flag;
+    tclient->is_tclient_proxy = true;
     set_connection_number(tclient, pclient ? pclient->session_number : -1);
     tclient->proxy_fd_in = fd_in;
     tclient->proxy_fd_out = fd_out;
@@ -1941,7 +1959,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
     } else {
         fd.filefd = fd_out;
         // maybe set last 'parent' argument ???
-        pout_lws = lws_adopt_descriptor_vhost(vhost, 0, fd, "proxy-out", NULL);
+        pout_lws = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd, "proxy-out", NULL);
         lws_set_wsi_user(pout_lws, tclient);
         lwsl_notice("- make_proxy out-conn#%d wsi:%p\n", tclient->connection_number, pout_lws);
         lws_rx_flow_control(pout_lws, 0);
@@ -1968,7 +1986,7 @@ display_pipe_session(struct options *options, struct pty_client *pclient)
         printf_to_browser(tclient, URGENT_WRAP(""));
     }
     lwsl_notice("should write open-window message\n");
-    char *s =  "\xFDREMOTE-WINDOW \n";
+    const char *s =  "\xFDREMOTE-WINDOW \n";
     int sl = strlen(s);
     int nn;
     if ((nn = write(options->fd_out, s, sl)) != sl)
@@ -2004,7 +2022,8 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     int wnum = -1;
     if (port != -104 && port != -105 && url == NULL) {
-        struct tty_client *tclient = xmalloc(sizeof(struct tty_client));
+        struct tty_client *tclient =
+            (struct tty_client *) xmalloc(sizeof(struct tty_client));
         init_tclient_struct(tclient);
         tclient->options = link_options(options);
         set_connection_number(tclient, pclient ? pclient->session_number : -1);
@@ -2013,7 +2032,7 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     int r = EXIT_SUCCESS;
     if (paneOp > 0) {
-        char *eq = strchr(browser_specifier, '=');
+        const char *eq = strchr(browser_specifier, '=');
         struct tty_client *tclient;
         if (eq) {
             char *endp;
@@ -2147,7 +2166,7 @@ int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
         printf_error(opts, "no session '%s' found", session_specifier);
         return EXIT_FAILURE;
     }
-    if ((pclient->pflags & ssh_pclient_flag) != 0) {
+    if (pclient->is_ssh_pclient) {
         printf_error(opts, "cannot attach to internal ssh session '%s' - attach to remote instead", session_specifier);
         return EXIT_FAILURE;
     }
@@ -2228,8 +2247,8 @@ struct test_host_data {
 
 static bool test_host_clause(const char *clause, void* data)
 {
-    struct test_host_data *test_data = data;
-    char *at_in_clause = strchr(clause, '@');
+    struct test_host_data *test_data = (struct test_host_data *) data;
+    const char *at_in_clause = strchr(clause, '@');
     if (at_in_clause) {
         const char *at_in_connection = strchr(test_data->host, '@');
         if (at_in_connection && at_in_clause == clause)
@@ -2250,7 +2269,7 @@ expand_host_conditional(const char *expr, const char *host)
         struct test_host_data test_data;
         test_data.host = host;
         char *t = strdup(expr);
-        char *p = t;
+        const char *p = t;
         for (;;) {
             const char *start = NULL;
             char *semi = (char*)
@@ -2259,8 +2278,8 @@ expand_host_conditional(const char *expr, const char *host)
                 *semi = 0;
             else
                 semi = NULL;
-            char *command = check_conditional(p + (start-p),
-                                              test_host_clause, &test_data);
+            const char *command =
+                check_conditional(p + (start-p), test_host_clause, &test_data);
             if (command != NULL) {
                 r = strdup(command);
                 break;
@@ -2297,12 +2316,12 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         // An ssh URL may not be of the form "ssh://@HOSTNAME".
         // So skip an initial '@' and then prepend "ssh://".
         const char *h = host_arg[0] == '@' ? host_arg + 1 : host_arg;
-        char *tmp = xmalloc(strlen(h)+7);
+        char *tmp = challoc(strlen(h)+7);
         sprintf(tmp, "ssh://%s", h);
         host_url = tmp;
     }
     if (strchr(host_arg, '@') == NULL) {
-        char *tmp = xmalloc(strlen(host_arg)+2);
+        char *tmp = challoc(strlen(host_arg)+2);
         sprintf(tmp, "@%s", host_arg);
         host_spec = tmp;
     } else {
@@ -2310,7 +2329,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
     }
     const char *ssh_cmd = get_setting(opts->settings, "command.ssh");
     char *ssh_expanded = expand_host_conditional(ssh_cmd, host_spec);
-    static char *ssh_default = "ssh";
+    static const char *ssh_default = "ssh";
     if (ssh_expanded == NULL)
         ssh_expanded = strdup(ssh_default);
     argblob_t ssh_args = parse_args(ssh_expanded, false);
@@ -2331,7 +2350,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
     free(dt_expanded);
 
     int max_rargc = argc+ssh_argc+domterm_argc+8;
-    const char** rargv = xmalloc(sizeof(char*)*(max_rargc+1));
+    const char** rargv = (const char**) xmalloc(sizeof(char*)*(max_rargc+1));
         int rargc = 0;
         for (int i = 0; i < ssh_argc; i++)
             rargv[rargc++] = ssh_args[i];
@@ -2345,8 +2364,8 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
             fatal("too many arguments");
         rargv[rargc] = NULL;
 
-        const char *dt = getenv_from_array("DOMTERM", opts->env);
-        char *tn;
+        const char *dt = getenv_from_array((char*) "DOMTERM", opts->env);
+        const char *tn;
         struct pty_client *cur_pclient = NULL;
         if (dt && (tn = strstr(dt, ";tty=")) != NULL) {
             tn += 5;
@@ -2373,7 +2392,9 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         int p = pipe(stderr_pipe);
         lws_sock_file_fd_type lfd;
         lfd.filefd = stderr_pipe[0];
-        struct lws *stderr_lws = lws_adopt_descriptor_vhost(vhost, 0, lfd, "ssh-stderr", NULL);
+        struct lws *stderr_lws =
+            lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, lfd,
+                                       "ssh-stderr", NULL);
         struct stderr_client *sclient =
             (struct stderr_client *) lws_wsi_user(stderr_lws);
         sclient->wsi = stderr_lws;
@@ -2388,7 +2409,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
             pclient->cur_pclient = cur_pclient;
         }
 #endif
-        pclient->pflags |= ssh_pclient_flag;
+        pclient->is_ssh_pclient = true;
         char tbuf[20];
         sprintf(tbuf, "%d", pclient->session_number);
         set_setting(&opts->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
@@ -2489,7 +2510,7 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                     if (data_start == NULL) {
                         data_start = tclient->ob.buffer+tclient->ob.len;
                         ssize_t n;
-                        if ((pclient->pflags & packet_mode_flag) != 0) {
+                        if (pclient->uses_packet_mode) {
 #if USE_PTY_PACKET_MODE
                             // We know data_start > obuffer_raw, so
                             // it's safe to access data_start[-1].
@@ -2553,11 +2574,11 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
              void *user, void *in, size_t len) {
     struct pty_client *pclient = (struct pty_client *) user;
     switch (reason) {
-        case LWS_CALLBACK_RAW_RX_FILE:
+    case LWS_CALLBACK_RAW_RX_FILE: {
             lwsl_info("callback_pty LWS_CALLBACK_RAW_RX_FILE wsi:%p len:%zu\n",
                       wsi, len);
             struct tty_client *tclient = pclient->first_tclient;
-            if ((pclient->pflags & ssh_pclient_flag) != 0
+            if (pclient->is_ssh_pclient
                 && tclient && tclient->options
                 && tclient->options->remote_output_timeout) {
                 lws_set_timer_usecs(wsi,
@@ -2565,11 +2586,12 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
                                     * (LWS_USEC_PER_SEC / 1000));
             }
             return handle_process_output(wsi, pclient, pclient->pty, NULL);
-        case LWS_CALLBACK_TIMER:
+    }
+    case LWS_CALLBACK_TIMER:
             // If we're the local (client) end of ssh.
             lwsl_notice("callback_pty LWS_CALLBACK_TIMER cmd_sock:%d\n", pclient->cmd_socket);
-            if ((pclient->pflags & ssh_pclient_flag) != 0) {
-                pclient->pflags |= timed_out_flag;
+            if (pclient->is_ssh_pclient) {
+                pclient->timed_out = true;
                 //pclient_close(pclient, true);
                 //break;
                 return -1;
@@ -2593,16 +2615,16 @@ callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *use
 {
     struct stderr_client *sclient = (struct stderr_client *) user;
     switch (reason) {
-    case LWS_CALLBACK_RAW_RX_FILE: ;
+    case LWS_CALLBACK_RAW_RX_FILE: {
         struct pty_client *pclient = sclient->pclient;
         if (!pclient)
         lwsl_notice("callback_ssh_stdin LWS_CALLBACK_RAW_RX_FILE sclient:%p pclient:%p\n", sclient, pclient);
         if (pclient) {
             struct tty_client *tclient = pclient->first_tclient;
             lwsl_notice("callback_ssh_stdin LWS_CALLBACK_RAW_RX_FILE sclient:%p pclient:%p tclient:%p\n", sclient, pclient, tclient);
-            if (tclient && (tclient->misc_flags & tclient_proxy_flag) == 0) {
+            if (tclient && ! tclient->is_tclient_proxy) {
                 size_t buf_len = 2000;
-                char *buf = xmalloc(buf_len);
+                char *buf = challoc(buf_len);
                 int nr = read(sclient->pipe_reader, buf, buf_len);
                 lwsl_notice("- read %d\n", nr);
                 if (nr > 0) {
@@ -2618,6 +2640,7 @@ callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *use
             return handle_process_output(wsi, pclient, sclient->pipe_reader, sclient);
         }
         return 0;
+    }
     default:
         lwsl_notice("callback_ssh_stdin reason %d\n", reason);
         return 0;

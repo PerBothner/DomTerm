@@ -120,16 +120,6 @@ enum option_name {
 #undef OPTION_F
 };
 
-enum pclient_flags {
-    ssh_pclient_flag = 1,
-    session_name_unique_flag = 2,
-    packet_mode_flag = 4,
-    timed_out_flag = 8,
-    has_primary_window = 16
-};
-#define SET_PCLIENT_FLAG(PCLIENT, FLAG, VALUE) \
-    ((VALUE) ? ((PCLIENT)->pflags |= (FLAG)) : ((PCLIENT)->pflags &= ~(FLAG)))
-
 /**
  * Data specific to a pty process.
  * This is the user structure for the libwebsockets "pty" protocol.
@@ -143,7 +133,11 @@ struct pty_client {
     char *session_name;
     int nrows, ncols;
     float pixh, pixw;
-    enum pclient_flags pflags : 8;
+    bool timed_out : 1;
+    bool session_name_unique :1;
+    bool is_ssh_pclient :1;
+    bool has_primary_window :1;
+    bool uses_packet_mode :1;
     bool exit;
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
@@ -186,16 +180,6 @@ struct stderr_client {
     struct pty_client *pclient;
 };
 
-enum tclient_flags {
-    //no_flags = 0,
-    tclient_proxy_flag = 1,
-    detach_on_disconnect_flag = 2,
-    close_requested_flag = 4,
-    close_expected_flag = 8,
-    headless_flag = 16,
-    is_primary_window = 32
-};
-
 /**
  * Data specific to a WebSocket (browser) client connection or a proxy stream.
  * The user structure for the libwebsockets "domterm" and "proxy" protocols.
@@ -224,7 +208,12 @@ struct tty_client {
     // 1: reconnecting - client has state, but connection was dropped
     int initialized : 3;
 
-    enum tclient_flags misc_flags;
+    bool is_headless : 1;
+    bool is_tclient_proxy : 1;
+    bool is_primary_window : 1;
+    bool close_requested : 1;
+    bool close_expected : 1;
+    bool detach_on_disconnect : 1;
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
     int main_window; // 0 if top-level, or number of main window
@@ -393,7 +382,7 @@ extern bool write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
 extern char *url_encode(const char *in, int mode);
 extern void copy_file(FILE*in, FILE*out);
-extern const char *getenv_from_array(char* key, arglist_t envarray);
+extern const char *getenv_from_array(const char* key, arglist_t envarray);
 extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_WHEN_SIMPLE 1
 #define LIB_WHEN_OUTER 2

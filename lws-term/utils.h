@@ -78,5 +78,5 @@ extern void sbuf_copy_file(struct sbuf *buf, FILE*in);
 extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);
 typedef bool (*test_function_t)(const char *clause, void* data);
-extern char *check_conditional(char *, test_function_t, void*);
+extern const char *check_conditional(const char *, test_function_t, void*);
 #endif //TTYD_UTIL_H
