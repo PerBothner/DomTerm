@@ -16,10 +16,11 @@ FRAMEWORK_ARG = -lxcb
 endif
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
-ldomterm_SOURCES = server.c utils.c protocol.c http.c whereami.c \
-  commands.c command-connect.c help.c junzip.c settings.c
+ldomterm_SOURCES = server.cc utils.cc protocol.cc http.cc whereami.c \
+  commands.cc command-connect.cc help.cc junzip.c settings.cc
 nodist_ldomterm_SOURCES = git-describe.c
 ldomterm_CFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
+ldomterm_CXXFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
 if ENABLE_LD_PRELOAD
 ldomterm_CFLAGS += -DENABLE_LD_PRELOAD
 endif
@@ -39,9 +40,9 @@ LWS_RESOURCES += $(XTERMJS_RESOURCES)
 endif
 if ENABLE_COMPILED_IN_RESOURCES
 nodist_ldomterm_SOURCES += resources.c
-ldomterm_CFLAGS += -DCOMPILED_IN_RESOURCES
+ldomterm_CXXFLAGS += -DCOMPILED_IN_RESOURCES
 else
-ldomterm_CFLAGS += -DRESOURCE_DIR='"../share/domterm"'
+ldomterm_CXXFLAGS += -DRESOURCE_DIR='"../share/domterm"'
 endif
 XXD = xxd
 CLEANFILES = resources.c git-describe.c xterm.stamp \

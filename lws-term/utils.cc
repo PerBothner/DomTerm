@@ -20,7 +20,7 @@
 #include <fcntl.h>
 #include "whereami.h"
 #if HAVE_GETRANDOM
-extern int getrandom(void *buf, size_t buflen, unsigned int flags);
+#include <sys/random.h>
 #else
 #include <time.h>
 #endif
