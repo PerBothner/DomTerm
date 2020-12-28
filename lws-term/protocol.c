@@ -33,8 +33,10 @@ static char request_contents_message[] =
     OUT_OF_BAND_START_STRING "\033[81u" URGENT_END_STRING;
 #define URGENT_WRAP(STR)  URGENT_START_STRING STR URGENT_END_STRING
 
-static char start_replay_mode[] = URGENT_WRAP("\033[97u");
-static char end_replay_mode[] = URGENT_WRAP("\033[98u");
+static char start_replay_mode[] =
+    OUT_OF_BAND_START_STRING "\033[97u" URGENT_END_STRING;
+static char end_replay_mode[] =
+    OUT_OF_BAND_START_STRING "\033[98u" URGENT_END_STRING;
 
 /* Invariant: if VALID_SESSION_NUMBER(snum) is false
    then pty_clients[snum] is either NULL or the next valid pty_client
@@ -117,7 +119,8 @@ void trim_preserved(struct pty_client *pclient)
     if (pclient->preserve_mode == 2 && pclient->saved_window_contents == NULL)
         return;
 
-    long read_count = pclient->preserved_sent_count - (pclient->preserved_end - pclient->preserved_start);
+    long old_length = pclient->preserved_end - pclient->preserved_start;
+    long read_count = pclient->preserved_sent_count + old_length;
     long max_unconfirmed = 0;
     FOREACH_WSCLIENT(tclient, pclient) {
          long unconfirmed = (read_count - tclient->confirmed_count) & MASK28;
@@ -131,7 +134,6 @@ void trim_preserved(struct pty_client *pclient)
              max_unconfirmed = unconfirmed;
      }
 
-     long old_length = pclient->preserved_end - pclient->preserved_start;
      if (max_unconfirmed >= old_length)
          return;
      // Do nothing if max_unconfirmed/old_length < 2/3.
@@ -1514,7 +1516,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         && pclient && pclient->preserved_output != NULL) {
         size_t pstart = pclient->preserved_start;
         size_t pend = pclient->preserved_end;
-        long read_count = pclient->preserved_sent_count - (pend - pstart);
+        long read_count = pclient->preserved_sent_count + (pend - pstart);
         long rcount = client->sent_count;
         long unconfirmed = (read_count - rcount) & MASK28;
         if (unconfirmed > 0 && pend - pstart >= unconfirmed) {
@@ -1567,14 +1569,6 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     if (client->requesting_contents == 1) { // proxyMode != proxy_local ???
         sbuf_printf(bufp, "%s", request_contents_message);
         client->requesting_contents = 2;
-        if (pclient->preserved_output == NULL) {
-            pclient->preserved_start = PRESERVE_MIN;
-            pclient->preserved_end = pclient->preserved_start;
-            pclient->preserved_size = 1024;
-            pclient->preserved_output =
-                xmalloc(pclient->preserved_size);
-        }
-        pclient->preserved_sent_count = client->sent_count;
     }
     if (pclient==NULL)
         lwsl_notice("- empty pclient buf:%d for %p\n", client->ob.buffer != NULL, client);
