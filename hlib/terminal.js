@@ -6489,9 +6489,11 @@ Terminal.prototype.insertBytes = function(bytes) {
         var urgent_end = -1;
         for (var i = 0; i < len; i++) {
             var ch = bytes[i];
-            if (ch == Terminal.URGENT_BEGIN1 && urgent_begin < 0)
+            if (ch == Terminal.URGENT_BEGIN1 && urgent_begin < 0) {
                 urgent_begin = i;
-            else if (ch == Terminal.URGENT_END) {
+                if (i > 0 && this._replayMode)
+                    break;
+            } else if (ch == Terminal.URGENT_END) {
                 urgent_end = i;
                 break;
             }
