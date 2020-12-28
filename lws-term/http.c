@@ -48,9 +48,9 @@ lws_finalize_write_http_header(struct lws *wsi, unsigned char *start,
 #endif
 
 #ifdef RESOURCE_DIR
-static char *resource_path = NULL;
+static const char *resource_path = NULL;
 static char domterm_jar_name[] = "domterm.jar";
-char *
+const char *
 get_resource_path()
 {
   if (resource_path == NULL) {
@@ -58,7 +58,7 @@ get_resource_path()
       if (resource_path[0] != '/') {
           char *cmd_path = get_executable_path();
           int cmd_dir_length = get_executable_directory_length();
-          char *buf = xmalloc(cmd_dir_length + strlen(resource_path)
+          char *buf = challoc(cmd_dir_length + strlen(resource_path)
                              + sizeof(domterm_jar_name) + 2);
           sprintf(buf, "%.*s/%s/%s", cmd_dir_length, cmd_path, resource_path,
                   domterm_jar_name);
@@ -164,7 +164,7 @@ bool check_server_key(struct lws *wsi, char *arg, size_t alen)
 static int
 write_simple_response(struct lws *wsi, struct http_client *hclient,
                       const char *content_type,
-                      void *content_data, unsigned int content_length,
+                      char *content_data, unsigned int content_length,
                       bool owns_data, unsigned char *buffer)
 {
     uint8_t *start = buffer+LWS_PRE, *p = start,
@@ -195,7 +195,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
     char buf[256];
 
     switch (reason) {
-        case LWS_CALLBACK_HTTP:
+    case LWS_CALLBACK_HTTP: {
             {
                 char name[100], rip[50];
                 lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), name, sizeof(name), rip, sizeof(rip));
@@ -251,7 +251,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             size_t saved_prefix_len = sizeof(saved_prefix)-1;
             if (!strncmp((const char *) in, saved_prefix, saved_prefix_len)) {
                 int blen = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_URI_ARGS);
-                char *buf = xmalloc(blen+1);
+                char *buf = challoc(blen+1);
                 const char *filename = NULL;
                 FILE *sfile = NULL;
                 struct stat stbuf;
@@ -263,7 +263,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     && (fd = open(filename, O_RDONLY)) >= 0
                     && fstat(fd, &stbuf) == 0
                     && (slen = stbuf.st_size) > 0
-                    && (buf = realloc(buf, slen)) != NULL
+                    && (buf = (char*) realloc(buf, slen)) != NULL
                     && (sfile = fdopen(fd, "r")) != NULL
                     && fread(buf, 1, slen, sfile) == slen) {
                     struct sbuf sb[1];
@@ -290,7 +290,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     close(fd);
                 return ret;
             }
-            const char* fname = in;
+            const char* fname = (char*) in;
             if (fname == NULL || strcmp(fname, "/") == 0) {
                 if (main_options->http_server)
                     fname = main_html_path;
@@ -358,7 +358,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
               return -1; /* error or can't reuse connection: close the socket */
             break;
 #endif
-
+    }
         case LWS_CALLBACK_HTTP_WRITEABLE:
             if (hclient->length) {
                 int max_chunk = 2000;

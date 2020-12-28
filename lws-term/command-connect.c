@@ -1,5 +1,8 @@
 /* Handle connect between client command and server command. */
 
+// For accept4
+#define _GNU_SOURCE
+
 #include "server.h"
 #include "command-connect.h"
 

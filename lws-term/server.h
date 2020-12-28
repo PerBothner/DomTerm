@@ -1,7 +1,5 @@
 #include "version.h"
 
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -341,7 +339,7 @@ extern int
 callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
 #ifdef RESOURCE_DIR
-extern char *get_resource_path();
+extern const char *get_resource_path();
 #endif
 extern int get_executable_directory_length();
 extern char* get_executable_path();
@@ -464,7 +462,7 @@ extern int view_saved_action(int, arglist_t, struct lws *, struct options *);
 extern int help_action(int, arglist_t, struct lws *, struct options *);
 extern int new_action(int, arglist_t, struct lws *, struct options *);
 extern void print_version(FILE*);
-extern char*find_in_path();
+extern char*find_in_path(const char*);
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, char *arg, size_t alen);
 

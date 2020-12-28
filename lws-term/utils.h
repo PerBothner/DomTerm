@@ -20,6 +20,8 @@ extern void printf_error(struct options *opts, const char *format, ...)
 void *
 xmalloc(size_t size);
 
+#define challoc(SIZE) ((char*) xmalloc(SIZE));
+
 // realloc with NULL check
 void *
 xrealloc(void *p, size_t size);
@@ -50,7 +52,7 @@ base64_encode(const unsigned char *buffer, size_t length);
 argblob_t copy_strings(const char*const* strs);
 
 struct sbuf {
-    void *buffer;
+    char *buffer;
     size_t len;
     size_t size;
 };
@@ -60,7 +62,7 @@ extern void sbuf_free(struct sbuf *buf);
 extern char *sbuf_strdup(struct sbuf *buf);
 extern void sbuf_extend(struct sbuf *buf, int needed);
 extern void *sbuf_blank(struct sbuf *buf, int space);
-extern void sbuf_append(struct sbuf *buf, const void *bytes, ssize_t length);
+extern void sbuf_append(struct sbuf *buf, const char *bytes, ssize_t length);
 extern void sbuf_printf(struct sbuf *buf, const char *format, ...)
 #ifdef __GNUC__
     __attribute__((format(printf, 2, 3)))

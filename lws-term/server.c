@@ -66,8 +66,8 @@ subst_run_command(struct options *opts, const char *browser_command,
                   const char *url, int port)
 {
     size_t clen = strlen(browser_command);
-    char *upos = strstr(browser_command, "%U");
-    char *gpos = strstr(browser_command, "%g");
+    const char *upos = strstr(browser_command, "%U");
+    const char *gpos = strstr(browser_command, "%g");
     int skip = 2;
     char *url_tmp = NULL;
     const char *url_fixed = url;
@@ -76,7 +76,7 @@ subst_run_command(struct options *opts, const char *browser_command,
         const char *geometry = geometry_option(opts);
         skip = 4;
         if (geometry) {
-            char *tbuf = xmalloc(ulen+strlen(geometry)+20);
+            char *tbuf = challoc(ulen+strlen(geometry)+20);
             const char *g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
             sprintf(tbuf, "%s%s%s", url_fixed, g1, geometry);
 	    free(url_tmp);
@@ -84,22 +84,22 @@ subst_run_command(struct options *opts, const char *browser_command,
             ulen = strlen(url_fixed);
         }
     }
-    char *cmd = xmalloc(clen + ulen + 40);
-    char *wpos;
+    char *cmd = challoc(clen + ulen + 40);
+    const char *wpos;
     if (is_WindowsSubsystemForLinux() && strstr(browser_command, ".exe") != NULL) {
         const char *wsl_prefix = "file:///mnt/c/";
         size_t wsl_prefix_length = strlen(wsl_prefix);
         if (memcmp(url, wsl_prefix, wsl_prefix_length) == 0) {
-	    char *tbuf = xmalloc(ulen);
+	    char *tbuf = challoc(ulen);
             sprintf(tbuf, "file:///c:/%s", url+wsl_prefix_length);
 	    free(url_tmp);
             url_fixed = url_tmp = tbuf;
 	}
 
-        char *cp = strstr(browser_command, "cmd.exe");
-        char *sp;
+        const char *cp = strstr(browser_command, "cmd.exe");
+        const char *sp;
         if (cp && ((sp = strchr(browser_command, ' ')) == NULL || sp > cp)) {
-            char *tbuf = xmalloc(2 * ulen);
+            char *tbuf = challoc(2 * ulen);
             const char *p0 = url_fixed;
             char *p1 = tbuf;
             const char *metas = "()%!^\"<>&| \t";
@@ -172,7 +172,7 @@ int start_command(struct options *opts, char *cmd) {
     }
     pid_t pid = fork();
     if (pid == 0) {
-        putenv("ELECTRON_DISABLE_SECURITY_WARNINGS=true");
+        putenv((char*) "ELECTRON_DISABLE_SECURITY_WARNINGS=true");
         daemonize();
         execv(arg0, (char**) args);
         exit(-1);
@@ -367,7 +367,7 @@ static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
 static struct tty_server *
 tty_server_new() {
-    struct tty_server *ts = xmalloc(sizeof(struct tty_server));
+    struct tty_server *ts = (struct tty_server *) xmalloc(sizeof(struct tty_server));
 
     memset(ts, 0, sizeof(struct tty_server));
     ts->session_count = 0;
@@ -433,7 +433,7 @@ find_in_path(const char *name)
     char *path = getenv("PATH");
     int plen = strlen(path);
     char *end = path + plen;
-    char *buf = xmalloc(plen + strlen(name) + 2);
+    char *buf = challoc(plen + strlen(name) + 2);
     for (;;) {
         char* colon = strchr(path, ':');
         if (colon == NULL)
@@ -458,7 +458,7 @@ fix_for_windows(char * fname)
         static int mnt_prefix_length = sizeof(mnt_prefix)-1;
         if (memcmp(fname, mnt_prefix, mnt_prefix_length) == 0
             && fname_length > mnt_prefix_length) {
-            char *buf = xmalloc(fname_length);
+            char *buf = challoc(fname_length);
             sprintf(buf, "%c:/%s", fname[mnt_prefix_length], fname+mnt_prefix_length+1);
             return buf;
         }
@@ -581,7 +581,7 @@ webview_command(struct options *options)
     const char *geometry = geometry_option(options);
     if (geometry)
         bsize += strlen(geometry);
-    char *buf = xmalloc(bsize);
+    char *buf = challoc(bsize);
     strcpy(buf, cmd);
     free(cmd);
     if (geometry) {
@@ -716,7 +716,7 @@ do_run_browser(struct options *options, const char *url, int port)
             const char *semi = extract_command_from_list(p, &start, &end, &argv0_end);
             int cmd_length = end-start;
             if (cmd_length > 0) {
-                char *cmd = xmalloc(cmd_length + 1);
+                char *cmd = challoc(cmd_length + 1);
                 memcpy(cmd, start, cmd_length);
                 cmd[cmd_length] = '\0';
                 int argv0_length = argv0_end-start;
@@ -908,7 +908,7 @@ struct options *link_options(struct options *opts)
     if (opts) {
         opts->reference_count++;
     } else {
-        opts = xmalloc(sizeof(struct options));
+        opts = (struct options *) xmalloc(sizeof(struct options));
         init_options(opts);
         opts->reference_count = 1;
     }
@@ -984,7 +984,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
     for (;;) {
         int c = getopt_long(argc, (char * const*)argv, opt_string, options, NULL);
         if (c == -1) {
-            char *eq = optind >= argc ? NULL : strchr(argv[optind], '=');
+            const char *eq = optind >= argc ? NULL : strchr(argv[optind], '=');
             if (eq) {
                 optind++;
                 continue;
@@ -1094,7 +1094,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
                 if (len == 0)
                     default_size = NULL;
                 else {
-                    char *r = xmalloc(len + 1);
+                    char *r = challoc(len + 1);
                     memcpy(r, optarg, len);
                     r[len] = 0;
                     default_size = r;
@@ -1256,7 +1256,7 @@ main(int argc, char **argv)
         sbuf_init(&sb);
         const char *p = logfilefmt;
         for (; *p; p++) {
-            char *pc = strchr(p, '%');
+            const char *pc = strchr(p, '%');
             if (pc == NULL) {
                 sbuf_append(&sb, p, strlen(p));
                 break;
@@ -1391,7 +1391,8 @@ main(int argc, char **argv)
     lwsl_notice("creating server socket: '%s'\n", cname);
     lws_sock_file_fd_type csocket;
     csocket.filefd = create_command_socket(cname);
-    cmdwsi = lws_adopt_descriptor_vhost(vhost, 0, csocket, "cmd", NULL);
+    cmdwsi = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC,
+                                        csocket, "cmd", NULL);
     cclient = (struct cmd_client *) lws_wsi_user(cmdwsi);
     cclient->socket = csocket.filefd;
     make_html_file(http_port);
@@ -1512,19 +1513,19 @@ domterm_dir(bool settings, bool check_wsl)
     char *xdg_home = getenv(settings ? "XDG_CONFIG_HOME" : "XDG_RUNTIME_DIR");
     const char *sini = settings ? "/settings.ini" : "";
     if (xdg_home) {
-	tmp = xmalloc(strlen(xdg_home)+40);
+	tmp = challoc(strlen(xdg_home)+40);
 	sprintf(tmp, "%s/domterm%s", xdg_home, sini);
     } else if (check_wsl && is_WindowsSubsystemForLinux()
 	&& (user_profile = get_WSL_userprofile()) != NULL
 	&& strlen(user_profile) > (user_prefix_length = strlen(user_prefix))
 	&& memcmp(user_profile, user_prefix, user_prefix_length) == 0) {
 	const char *fmt = "/mnt/c/Users/%s/AppData/%s/DomTerm%s";
-	char *subdir = settings ? "Roaming" : "Local";
-	tmp = xmalloc(strlen(fmt) + strlen(user_profile) + 40);
+	const char *subdir = settings ? "Roaming" : "Local";
+	tmp = challoc(strlen(fmt) + strlen(user_profile) + 40);
 	sprintf(tmp, fmt, user_profile+user_prefix_length, subdir, sini);
     } else {
         const char *home = find_home();
-        tmp = xmalloc(strlen(home)+30);
+        tmp = challoc(strlen(home)+30);
         sprintf(tmp, "%s/.domterm%s", home, sini);
         if (settings && access(tmp, R_OK) != 0)
             sprintf(tmp, "%s/.config/domterm%s", home, sini);
@@ -1589,15 +1590,15 @@ make_socket_name(bool html_filename)
             ext = dot < 0 ? ".socket" : "";
         int len = socket_name_length + strlen(ext);
         if (socket_name[0] != '/') {
-            r = xmalloc(len + strlen(ddir) + 2);
+            r = challoc(len + strlen(ddir) + 2);
             sprintf(r, "%s/%.*s%s", ddir, socket_name_length, socket_name, ext);
         } else {
-            r = xmalloc(len + 1);
+            r = challoc(len + 1);
             sprintf(r, "%.*s%s", socket_name_length, socket_name, ext);
         }
     } else {
       const char *sname = html_filename ? "/default.html" : "/default.socket";
-        r = xmalloc(strlen(ddir)+strlen(sname)+1);
+        r = challoc(strlen(ddir)+strlen(sname)+1);
         sprintf(r, "%s%s", ddir, sname);
     }
     return r;
@@ -1749,7 +1750,7 @@ make_html_file(int port)
     char *sext = strrchr(sname, '.');
     const char*prefix = "file://";
     const char *ext = ".html";
-    char *buf = xmalloc(strlen(prefix)+(sext-sname)+strlen(ext)+1);
+    char *buf = challoc(strlen(prefix)+(sext-sname)+strlen(ext)+1);
     sprintf(buf, "%s%.*s%s", prefix, (int) (sext-sname), sname, ext);
     main_html_url = buf;
     main_html_path = buf+strlen(prefix);

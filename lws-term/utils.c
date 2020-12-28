@@ -1,5 +1,7 @@
+#ifndef __cplusplus
+// For strcasestr
 #define _GNU_SOURCE
-
+#endif
 #include "server.h"
 #include "command-connect.h"
 
@@ -49,7 +51,7 @@ xstrdup(const char *s)
     if (s == NULL)
         return NULL;
     size_t len = strlen(s);
-    char *r = xmalloc(len+1);
+    char *r = challoc(len+1);
     strcpy(r, s);
     return r;
 }
@@ -99,7 +101,7 @@ base64_encode(const unsigned char *buffer, size_t length) {
     int i_shift = 0;
     int bytes_remaining = (int) length;
 
-    ret = dst = xmalloc((size_t) (((length + 2) / 3 * 4) + 1));
+    ret = dst = challoc((size_t) (((length + 2) / 3 * 4) + 1));
     while (bytes_remaining) {
         i_bits = (i_bits << 8) + *buffer++;
         bytes_remaining--;
@@ -167,10 +169,10 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
         char *q = NULL;
         if (pass == 1) {
             if (dim == 0) { // create single string result
-                str = xmalloc(lengths + (argc == 0 ? 1 :argc));
+                str = challoc(lengths + (argc == 0 ? 1 :argc));
                 q = (char*) str;
             } else { // create array of strings
-                argv = xmalloc((argc+1) * sizeof(char*) + lengths + argc);
+                argv = (char**) xmalloc((argc+1) * sizeof(char*) + lengths + argc);
                 q = (char*) &argv[argc+1];
             }
             context = -1;
@@ -339,7 +341,7 @@ maybe_quote_arg(const char *in)
                 return in;
             if (pass == 0) {
                 size_t in_size = (char*) p - in;
-                out = xmalloc(in_size + 5 * apos_count + 3);
+                out = challoc(in_size + 5 * apos_count + 3);
                 q = out;
                 *q++ = '\'';
             } else {
@@ -386,7 +388,7 @@ url_encode(const char *in, int mode)
             if (bad_count == 0)
                 return NULL;
             size_t in_size = (char*) p - in;
-            out = xmalloc(in_size + 2 * bad_count + 1);
+            out = challoc(in_size + 2 * bad_count + 1);
         } else
             *q = 0;
     }
@@ -407,7 +409,7 @@ copy_strings(const char*const* strs)
         ndata += strlen(*s) + 1;
     }
     size_t hsize = sizeof(char*) * (nstrs+1);
-    char** r = xmalloc(hsize + ndata);
+    char** r = (char**) xmalloc(hsize + ndata);
     s = strs;
     char *d = (char*)r  + hsize;
     char** t = r;
@@ -689,13 +691,13 @@ extract_command_from_list(const char *list, const char **startp,
 // On match return rest of string after clauses.
 // 'template' is temporarily modified
 char *
-check_conditional(char *template, test_function_t tester, void* data)
+check_conditional(char *tmplate, test_function_t tester, void* data)
 {
     int size = 0;
-    while (template[0] == '{') {
+    while (tmplate[0] == '{') {
         // a disjunction of clauses, separated by '|'
         bool ok = false; // true when a previous clause was true
-        char *clause = &template[1];
+        char *clause = &tmplate[1];
         for (char *p = clause; ; p++) {
             char ch = *p;
             if (ch == '\0')
@@ -717,12 +719,12 @@ check_conditional(char *template, test_function_t tester, void* data)
             if (ch == '}') {
               if (! ok)
                 return NULL;
-              template = clause;
+              tmplate = clause;
               break;
             }
         }
     }
-    return template[0] ? template : NULL;
+    return tmplate[0] ? tmplate : NULL;
 }
 
 const char *
@@ -757,7 +759,7 @@ void sbuf_free(struct sbuf *buf)
 char *sbuf_strdup(struct sbuf *buf)
 {
     size_t len = buf->len;
-    char *r = xmalloc(len + 1);
+    char *r = challoc(len + 1);
     memcpy(r, buf->buffer, len);
     r[len] = '\0';
     return r;
@@ -772,7 +774,7 @@ sbuf_extend(struct sbuf *buf, int needed)
         if (min_size < xsize)
             min_size = xsize;
         buf->size = min_size;
-        buf->buffer = realloc(buf->buffer, min_size);
+        buf->buffer = (char*) realloc(buf->buffer, min_size);
     }
 }
 void *
@@ -785,7 +787,7 @@ sbuf_blank(struct sbuf *buf, int space)
 }
 
 void
-sbuf_append(struct sbuf *buf, const void *bytes, ssize_t length)
+sbuf_append(struct sbuf *buf, const char *bytes, ssize_t length)
 {
     if (length < 0)
         length = strlen(bytes);
