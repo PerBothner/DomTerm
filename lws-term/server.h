@@ -63,24 +63,28 @@ extern struct lws_context *context;
 extern struct tty_server *server;
 extern struct lws_vhost *vhost;
 
-extern struct pty_client **pty_clients; // malloc'd array
-extern int pty_clients_size; // number of allocated elements of pty_clients
-#define VALID_SESSION_NUMBER(NUM) \
-    ((NUM) > 0 && (NUM) < pty_clients_size && pty_clients[NUM] != NULL && pty_clients[NUM]->session_number == (NUM))
-// Invariant for pty_clients array:
-// If SNUM is valid then pty_clients[SNUM].session_number == SNUM.
-// Otherwise (if SNUM is < pty_clients_size): pty_clients[SNUM] is points
-// to NULL or the next valid element in pty_clients.
-#define PCLIENT_FROM_NUMBER(NUM) \
-    (VALID_SESSION_NUMBER(NUM) ? pty_clients[NUM] : NULL)
-
-// tty_clients has similar invariants and logic as pty_clients
-extern struct tty_client **tty_clients; // malloc'd array
-extern int tty_clients_size; // number of allocated elements tty_clients
-#define VALID_CONNECTION_NUMBER(NUM) \
-    ((NUM) > 0 && (NUM) < tty_clients_size && tty_clients[NUM] != NULL && tty_clients[NUM]->connection_number == (NUM))
-#define TCLIENT_FROM_NUMBER(NUM) \
-    (VALID_CONNECTION_NUMBER(NUM) ? tty_clients[NUM] : NULL)
+// Assume each T has an index()  method that returns a unique positive integer.
+// This table manages the mapping between T and those indexes.
+template<typename T>
+class id_table {
+    // Invariant for elements array
+    // If SNUM is valid then elements[SNUM].index() == SNUM.
+    // Otherwise (if SNUM is < sz): elements[SNUM] points
+    // to nullptr or the next valid element in elements.
+    T** elements;
+    int sz = 0;
+public:
+    T* first() { return elements == nullptr ? nullptr : elements[1]; }
+    T* next(T* entry) { return elements[entry->index()+1]; }
+    T* operator[](int i) { return elements[i]; } // fast/unsafe lookup
+    int enter(T* entry, int hint);
+    void remove(T* entry);
+    bool valid_index(int i) {
+        return i > 0 && i < sz && elements[i] != nullptr
+            && elements[i]->index() == i;
+    }
+    T* operator()(int i) { return valid_index(i) ? elements[i] : nullptr; }
+};
 
 extern int http_port;
 //extern struct tty_client *focused_client;
@@ -124,7 +128,10 @@ enum option_name {
  * Data specific to a pty process.
  * This is the user structure for the libwebsockets "pty" protocol.
  */
-struct pty_client {
+class pty_client {
+public:
+    int index() { return session_number; }
+    static bool avoid_index(int i);
     int pid;
     int pty; // pty master
     int pty_slave;
@@ -173,6 +180,8 @@ struct pty_client {
 #endif
 };
 
+extern id_table<pty_client> pty_clients;
+
 struct stderr_client {
     struct lws *wsi;
     int pipe_reader;
@@ -186,6 +195,8 @@ struct stderr_client {
  * The backback handler moves data to/from a paired pty_client pclient.
  */
 struct tty_client {
+    int index() { return connection_number; }
+    static bool avoid_index(int i);
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
     struct options *options;
@@ -241,6 +252,8 @@ struct tty_client {
     int proxy_fd_in, proxy_fd_out;
     char *ssh_connection_info;
 };
+
+extern id_table<tty_client> tty_clients;
 
 struct http_client {
     bool owns_data;
@@ -404,14 +417,12 @@ struct resource {
 extern struct resource resources[];
 #endif
 #define FOREACH_PCLIENT(P) \
-    for (struct pty_client *P = pty_clients == NULL ? NULL : pty_clients[1];\
-         P != NULL;\
-         P = pty_clients[P->session_number+1])
+    for (struct pty_client *P = pty_clients.first(); P != nullptr; P = pty_clients.next(P))
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (struct tty_client *VAR = (PCLIENT)->first_tclient; VAR != NULL; \
        VAR = (VAR)->next_tclient)
-#define TCLIENT_FIRST (tty_clients == NULL ? NULL : tty_clients[1])
-#define TCLIENT_NEXT(VAR) (tty_clients[VAR->connection_number+1])
+#define TCLIENT_FIRST tty_clients.first()
+#define TCLIENT_NEXT(VAR) tty_clients.next(VAR)
 #define FORALL_WSCLIENT(VAR) \
     for (VAR = TCLIENT_FIRST; VAR != NULL; VAR = TCLIENT_NEXT(VAR))
 #define NO_TCLIENTS (TCLIENT_FIRST == NULL)

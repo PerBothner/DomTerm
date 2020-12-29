@@ -38,14 +38,8 @@ static char start_replay_mode[] =
 static char end_replay_mode[] =
     OUT_OF_BAND_START_STRING "\033[98u" URGENT_END_STRING;
 
-/* Invariant: if VALID_SESSION_NUMBER(snum) is false
-   then pty_clients[snum] is either NULL or the next valid pty_client
-   where snext == pty_clients[snum]->session_number and
-   snext > snum && VALID_SESSION_NUMBER(snext). */
-struct pty_client **pty_clients; // malloc'd array
-int pty_clients_size; // size of pty_clients array
-struct tty_client **tty_clients; // malloc'd array
-int tty_clients_size;
+id_table<pty_client> pty_clients;
+id_table<tty_client> tty_clients;
 
 static struct pty_client *
 handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client *tclient);
@@ -269,11 +263,7 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
     if (WEXITSTATUS(status) == 0xFF && connection_failure) {
         lwsl_notice("DISCONNECTED\n");
     }
-    if (VALID_SESSION_NUMBER(snum)) {
-        struct pty_client *next = pty_clients[snum+1];
-        for (; snum >= 0 && pty_clients[snum] == pclient; snum--)
-            pty_clients[snum] = next;
-    }
+    pty_clients.remove(pclient);
 
 // remove from sessions list
     server->session_count--;
@@ -344,13 +334,7 @@ unlink_tty_from_pty(struct pty_client *pclient,
 static void
 clear_connection_number(struct tty_client *tclient)
 {
-    int snum = tclient->connection_number;
-    if (VALID_CONNECTION_NUMBER(snum)) {
-        // update to maintain tty_clients invariant
-        struct tty_client *next = tty_clients[snum+1];
-        for (; snum >= 0 && tty_clients[snum] == tclient; snum--)
-            tty_clients[snum] = next;
-    }
+    tty_clients.remove(tclient);
     tclient->connection_number = -1;
 }
 
@@ -474,6 +458,58 @@ void put_to_env_array(const char **arr, int max, const char* eval)
     }
 }
 
+template<typename T>
+int id_table<T>::enter(T *entry, int hint)
+{
+    int snum = 1;
+    if (hint > 0 && ! valid_index(hint) && ! T::avoid_index(hint))
+        snum = hint;
+    for (; ; snum++) {
+        if (snum >= sz) {
+            int newsize = 3 * sz >> 1;
+            if (newsize < 20)
+                newsize = 20;
+            elements = (T**) realloc(elements, newsize * sizeof(T*));
+            for (int i = sz; i < newsize; i++)
+                elements[i] = nullptr;
+            sz = newsize;
+        }
+        T*next = elements[snum];
+        if (next == NULL || next->index() > snum) {
+            if ((hint < 0 || snum != hint)
+                && T::avoid_index(snum))
+                continue;
+            // Maintain invariant
+            for (int iprev = snum;
+                 --iprev >= 0 && elements[iprev] == next; ) {
+                elements[iprev] = entry;
+            }
+            elements[snum] = entry;
+            //pclient->session_number = snum;
+            break;
+        }
+    }
+    return snum;
+}
+template<typename T>
+void id_table<T>::remove(T* entry)
+{
+    if (entry == nullptr)
+        return;
+    int index = entry->index();
+    if (! valid_index(index))
+        return;
+    T* next = elements[index+1];
+    for (; index >= 0 && elements[index] == entry; index--)
+            elements[index] = next;
+}
+
+bool
+pty_client::avoid_index(int i)
+{
+    return tty_clients.valid_index(i);
+}
+
 static struct pty_client *
 create_pclient(const char *cmd, arglist_t argv, struct options *opts,
                bool ssh_remoting, struct tty_client *t_hint)
@@ -518,36 +554,14 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     pclient->ttyname = tname;
     pclient->uses_packet_mode = packet_mode;
     server->session_count++;
-    int snum = 1;
-    if (t_hint && VALID_CONNECTION_NUMBER(t_hint->connection_number)
-        && ! VALID_SESSION_NUMBER(t_hint->connection_number))
-        snum = t_hint->connection_number;
-    for (; ; snum++) {
-        if (snum >= pty_clients_size) {
-            int newsize = 3 * pty_clients_size >> 1;
-            if (newsize < 20)
-                newsize = 20;
-            pty_clients = (struct pty_client**)
-                realloc(pty_clients, newsize * sizeof(struct pty_client*));
-            for (int i = pty_clients_size; i < newsize; i++)
-                pty_clients[i] = NULL;
-            pty_clients_size = newsize;
-        }
-        struct pty_client *next = pty_clients[snum];
-        if (next == NULL || next->session_number > snum) {
-            if ((t_hint == NULL || snum != t_hint->connection_number)
-                 && VALID_CONNECTION_NUMBER(snum))
-                continue;
-            // Maintain invariant
-            for (int iprev = snum;
-                 --iprev >= 0 && pty_clients[iprev] == next; ) {
-                pty_clients[iprev] = pclient;
-            }
-            pty_clients[snum] = pclient;
-            pclient->session_number = snum;
-            break;
-        }
-    }
+
+    int hint = t_hint ? t_hint->connection_number : -1;
+    if (hint > 0 &&
+        (! tty_clients.valid_index(hint) || pty_clients.valid_index(hint)))
+        hint = -1;
+    int snum = pty_clients.enter(pclient, hint);
+    pclient->session_number = snum;
+
     pclient->pid = -1;
     pclient->pty = master;
     pclient->pty_slave = slave;
@@ -1324,38 +1338,17 @@ void init_tclient_struct(struct tty_client *client)
     lwsl_notice("init_tclient_struct conn#%d\n",  client->connection_number);
 }
 
+bool
+tty_client::avoid_index(int i)
+{
+    return pty_clients.valid_index(i);
+}
+
 static void
 set_connection_number(struct tty_client *tclient, int hint)
 {
-    int snum = 1;
-    if (hint > 0 && ! VALID_CONNECTION_NUMBER(hint))
-        snum = hint;
-    for (; ; snum++) {
-        if (snum >= tty_clients_size) {
-            int newsize = 3 * tty_clients_size >> 1;
-            if (newsize < 20)
-                newsize = 20;
-            tty_clients = (struct tty_client**)
-                realloc(tty_clients, newsize * sizeof(struct tty_client*));
-            for (int i = tty_clients_size; i < newsize; i++)
-                tty_clients[i] = NULL;
-            tty_clients_size = newsize;
-        }
-        struct tty_client *next = tty_clients[snum];
-        if (next == NULL || next->connection_number > snum) {
-            if ((hint < 0 || snum != hint)
-                && VALID_SESSION_NUMBER(snum))
-                continue;
-            // Maintain invariant
-            for (int iprev = snum;
-                 --iprev >= 0 && tty_clients[iprev] == next; ) {
-                tty_clients[iprev] = tclient;
-            }
-            tty_clients[snum] = tclient;
-            tclient->connection_number = snum;
-            break;
-        }
-    }
+    int snum = tty_clients.enter(tclient, hint);
+    tclient->connection_number = snum;
     lwsl_notice("set_connection_number %p to %d\n", tclient, tclient->connection_number);
 }
 
@@ -1759,7 +1752,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         const char*window = lws_get_urlarg_by_name(wsi, "window=", arg, sizeof(arg) - 1);
         if (window != NULL) {
             wnum = strtol(window, NULL, 10);
-            if (VALID_CONNECTION_NUMBER(wnum))
+            if (tty_clients.valid_index(wnum))
                 client = tty_clients[wnum];
             else if (reconnect_value < 0) {
                 lwsl_err("connection with invalid connection number %s - error\n", window);
@@ -1785,7 +1778,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         if (pclient == NULL) {
             const char*snumber = lws_get_urlarg_by_name(wsi, "session-number=", arg, sizeof(arg) - 1);
             if (snumber)
-                pclient = PCLIENT_FROM_NUMBER(strtol(snumber, NULL, 10));
+                pclient = pty_clients(strtol(snumber, NULL, 10));
         }
         client->wsi = wsi;
         client->out_wsi = wsi;
@@ -1798,7 +1791,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             else if ((snum = strtol(main_window, NULL, 10)) > 0) {
                 client->main_window = (int) snum;
                 if (client->options == NULL) {
-                    struct tty_client *main_client = TCLIENT_FROM_NUMBER(snum);
+                    struct tty_client *main_client = tty_clients(snum);
                     if (main_client != NULL && main_client->options)
                         client->options = link_options(main_client->options);
                 }
@@ -2037,12 +2030,12 @@ display_session(struct options *options, struct pty_client *pclient,
         if (eq) {
             char *endp;
             long w = strtol(eq+1, &endp, 10);
-            if (w <= 0 || *endp || ! VALID_CONNECTION_NUMBER(w)) {
+            if (w <= 0 || *endp || ! tty_clients.valid_index(w)) {
                 printf_error(options, "invalid window number in '%s' option",
                              browser_specifier);
                 return EXIT_FAILURE;
             }
-            tclient = TCLIENT_FROM_NUMBER(w);
+            tclient = tty_clients(w);
         } else if (focused_wsi == NULL) {
             printf_error(options, "no current window for '%s' option",
                          browser_specifier);
@@ -2159,7 +2152,7 @@ int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
             printf_error(opts, "bad reattach request '%s'", argv[optind]);
             return EXIT_FAILURE;
         }
-        pclient = PCLIENT_FROM_NUMBER(snum);
+        pclient = pty_clients(snum);
     } else
         pclient = find_session(session_specifier);
     if (pclient == NULL) {

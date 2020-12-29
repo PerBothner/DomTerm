@@ -866,7 +866,7 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
         long num = strtol(arg, &endptr, 10);
         if (arg[0] == '\0' || *endptr)
             break;
-        if (! VALID_CONNECTION_NUMBER(num)) {
+        if (! tty_clients.valid_index(num)) {
             printf_error(opts, "domterm window: invalid window number %d",
                          num);
             return EXIT_FAILURE;
