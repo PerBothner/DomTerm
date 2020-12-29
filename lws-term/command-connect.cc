@@ -434,7 +434,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             process_options(argc, argv, opts);
             int ret = handle_command(argc-optind, argv+optind, wsi, opts);
             if (ret == EXIT_WAIT)
-                break; // FIXME when to release_options
+                break; // FIXME when to options::release
 #if PASS_STDFILES_UNIX_SOCKET
             close(opts->fd_in);
             close(opts->fd_out);
@@ -446,7 +446,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             r[0] = PASS_STDFILES_EXIT_CODE;
             r[1] = (char) ret;
 #endif
-            release_options(opts);
+            options::release(opts);
             if (write(sockfd, r, sizeof(r)) != sizeof(r))
                 lwsl_err("write failed sockfd:%d\n", sockfd);
             close(sockfd);

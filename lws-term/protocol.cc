@@ -360,7 +360,7 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient,
         tclient->pclient = NULL;
     }
     if (tclient->options && !keep_client) {
-        release_options(tclient->options);
+        options::release(tclient->options);
         tclient->options = NULL;
     }
     tclient->wsi = NULL;

@@ -267,8 +267,12 @@ struct cmd_client {
 };
 #define MASK28 0xfffffff
 
-struct options {
-    int reference_count;
+class options {
+public:
+    options();
+    ~options();
+    static void release(struct options *);
+    int reference_count = 0;
     bool readonly;                            // whether not allow clients to write to the TTY
     bool headless;
     bool http_server;
@@ -278,9 +282,9 @@ struct options {
     int do_daemonize;
     int verbosity;
     int debug_level;
-    struct json_object *cmd_settings;
-    struct json_object *settings; // merge of cmd_settings and global settings
-    // Possible memory leak if we start recalim options objects.
+    struct json_object *cmd_settings = nullptr;
+    struct json_object *settings = nullptr; // merge of cmd_settings and global settings
+    // Possible memory leak if we start reclaiming options objects.
     const char *browser_command;
     const char *tty_packet_mode;
     int paneOp;
@@ -358,10 +362,7 @@ extern char* check_browser_specifier(const char *specifier);
 extern void printf_to_browser(struct tty_client *, const char *, ...);
 extern void fatal(const char *format, ...);
 extern const char *find_home(void);
-extern void init_options(struct options *options);
-extern void destroy_options(struct options *options);
 extern struct options *link_options(struct options *options);
-extern void release_options(struct options *options);
 extern const char *firefox_browser_command(struct options *options);
 extern const char *chrome_command(bool app_mode, struct options *options);
 extern void default_link_command(const char *url);

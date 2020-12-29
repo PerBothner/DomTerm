@@ -851,56 +851,53 @@ get_domterm_jar_path()
     return get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm.jar");
 }
 
-void init_options(struct options *opts)
+options::options()
 {
-    opts->reference_count = 0;
-    opts->cmd_settings = NULL;
-    opts->settings = NULL;
-    opts->browser_command = NULL;
-    opts->headless = false;
-    opts->http_server = false;
-    opts->something_done = false;
-    opts->verbosity = 0;
-    opts->paneOp = -1;
-    opts->force_option = 0;
-    opts->socket_name = NULL;
-    opts->do_daemonize = 1;
-    opts->debug_level = 0;
-    opts->iface = NULL;
-    opts->tty_packet_mode = "no";
+    browser_command = NULL;
+    headless = false;
+    http_server = false;
+    something_done = false;
+    verbosity = 0;
+    paneOp = -1;
+    force_option = 0;
+    socket_name = NULL;
+    do_daemonize = 1;
+    debug_level = 0;
+    iface = NULL;
+    tty_packet_mode = "no";
 #if HAVE_OPENSSL
-    opts->ssl = false;
-    opts->cert_path = NULL;
-    opts->key_path = NULL;
-    opts->ca_path = NULL;
-    opts->credential = NULL;
+    ssl = false;
+    cert_path = NULL;
+    key_path = NULL;
+    ca_path = NULL;
+    credential = NULL;
 #endif
-    opts->once = false;
-    opts->reconnect = 10;
-    opts->sig_code = SIGHUP;
-    opts->sig_name = NULL; // FIXME
-    opts->qt_remote_debugging = NULL;
-    opts->fd_in = STDIN_FILENO;
-    opts->fd_out = STDOUT_FILENO;
-    opts->fd_err = STDERR_FILENO;
-    opts->fd_cmd_socket = -1;
-    opts->session_name = NULL;
-    opts->settings_file = NULL;
-    opts->shell_argv = NULL;
-    opts->env = NULL;
-    opts->cwd = NULL;
-    opts->remote_output_interval = 0;
-    opts->remote_input_timeout = 0;
-    opts->remote_output_timeout = 0;
+    once = false;
+    reconnect = 10;
+    sig_code = SIGHUP;
+    sig_name = NULL; // FIXME
+    qt_remote_debugging = NULL;
+    fd_in = STDIN_FILENO;
+    fd_out = STDOUT_FILENO;
+    fd_err = STDERR_FILENO;
+    fd_cmd_socket = -1;
+    session_name = NULL;
+    settings_file = NULL;
+    shell_argv = NULL;
+    env = NULL;
+    cwd = NULL;
+    remote_output_interval = 0;
+    remote_input_timeout = 0;
+    remote_output_timeout = 0;
 }
 
-void destroy_options(struct options *opts)
+options::~options()
 {
     // FIXME implement to fix memory leaks
-    free((void*) opts->env);
-    free((void*) opts->cwd);
-    if (opts->cmd_settings)
-        json_object_put(opts->cmd_settings);
+    free((void*) env);
+    free((void*) cwd);
+    if (cmd_settings)
+        json_object_put(cmd_settings);
 }
 
 struct options *link_options(struct options *opts)
@@ -908,18 +905,17 @@ struct options *link_options(struct options *opts)
     if (opts) {
         opts->reference_count++;
     } else {
-        opts = (struct options *) xmalloc(sizeof(struct options));
-        init_options(opts);
+        opts = new struct options;
         opts->reference_count = 1;
     }
     return opts;
 }
 
-void release_options(struct options *opts)
+void
+options::release(struct options *opts)
 {
     if (opts != main_options && --opts->reference_count == 0) {
-        destroy_options(opts);
-        free(opts);
+        delete opts;
     }
 }
 
@@ -1217,7 +1213,6 @@ main(int argc, char **argv)
         shell = DEFAULT_SHELL;
     default_argv = parse_args(shell, false);
 
-    init_options(&opts);
     prescan_options(argc, (arglist_t) argv, &opts);
 
     read_settings_file(&opts, false);
