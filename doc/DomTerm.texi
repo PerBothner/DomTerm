@@ -4410,6 +4410,42 @@ use DomTerm for its terminal emulator.
 @node To do
 @chapter Ideas and projects for DomTerm
 
+@subheading Roadmap
+
+Planned improvements (without any promises or timeline),
+from higher priority to lower.
+
+@itemize @bullet
+@item
+Polish paging/pausing and update documentation.
+@item
+Polish and finish remote-ssh facility.
+Get auto-backup implemented.
+@item
+Find-in-page (search) facility.
+@item
+Continue converting lws-term to make better use of C++.
+@item
+Do line-breaking lazily.
+@item
+Implement ``infinite lines'': Escape sequences or mode so application
+(or library like @code{readline}) can ignore line-length,
+soft line-breaks, and window resize.  This will also allow
+variable width-fonts.
+@item
+Replace JSON library(in lws-term)  with a nicer C++ library,
+probably @uref{https://rapidjson.org/,RapidJSON} or @uref{nlohmann's,https://github.com/nlohmann/json}.
+@item
+Bundle documentation and add command to browse it.
+Use a zip file, with compressed images (with link to full images on website).
+@item
+Allow loading JavaScript extension code.
+@item
+Improve integration for selected applications: fish and other shells.
+Nushell.
+Mutt email client (handle html).  Info reader replacement supporting html.
+@end itemize
+
 @subheading Terminal emulator functionality
 
 @subsubheading Document any discrepancies from xterm and ANSI
@@ -4478,12 +4514,11 @@ Some toolkits to explore for integrated browser/application:
 A possible start is @uref{https://atom.io/packages/term2,term2}.
 @item
 @uref{http://nwjs.io/,NW.js} (formerly node-webkit).
+Seems to have slightly lower resouce usage than Electron,
+and using @code{nw} executable is better supported.
 @item
-@uref{http://webkitgtk.org/,WebKitGtk+}
-@item
-@uref{https://github.com/zserge/webview/,webview} uses
-Cocoa/WebKit on macOS, gtk-webkit2 on Linux and MSHTML (IE10/11) on Windows.
-It appears to work, and to be slightly zippier.
+@uref{http://webkitgtk.org/,WebKitGtk+}.
+Could use @uref{https://github.com/webview/webview/,webview} as a starting point.
 @end itemize
 
 In @code{qtdomterm} consider using @code{QDockWidget} so panes
@@ -4498,6 +4533,9 @@ that supports panes and tabs.
 If DomTerm is integrated in an application with its
 own window manager, such as Atom or Visual Studio Code,
 it would make sense to instead integrate with the latter manager.
+
+Considering @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System}.
+Requires @code{qt5-qtx11extras-devel} package on Fedora.
 
 Theia and Jupyter use @uref{https://phosphorjs.github.io/,PhosphorJS}, now archived.
 A newer version is part of @uref{https://jupyterlab.readthedocs.io/en/stable/,JupyterLab}.
@@ -4539,14 +4577,6 @@ Terminal emulators for Atom:
 
 Various Electron @uref{https://github.com/sindresorhus/awesome-electron,Awesome links}
 @uref{https://electron.atom.io/community/,Community links}.
-
-@subheading Extend use of keymaps
-
-Keybindings for line-edit mode are controlled
-by a keymap data structure
-(based on @uref{https://github.com/marijnh/browserkeymap,browserkeymap},
-and the defaut bindings can be changed by the serrttngs file.
-This needs to be generalized to other modes.
 
 @subheading Readline style hooks and improvements
 
