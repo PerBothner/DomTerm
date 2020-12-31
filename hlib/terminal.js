@@ -1212,7 +1212,7 @@ Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
 
 Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
-        let needed = this.availHeight - this._vspacer.offsetTop
+        let needed = this.actualHeight - this._vspacer.offsetTop
             + (this.initial.noScrollTop ? 0 : this._homeOffset(this.homeLine));
         this._adjustSpacer(needed > 0 ? needed : 0);
     }
@@ -3695,12 +3695,14 @@ Terminal.prototype.forceWidthInColumns = function(numCols, numRows = -1,
     }
     if (numRows <= 0) {
         topNode.style.height = "";
+        this._forcedHeight = undefined;
     } else {
         let charHeight = ruler.offsetHeight;
         // Add half a column for rounding issues - see comment in measureWindow
         let height = (numRows + 0.5) * charHeight
             + (topNode.offsetHeight - topNode.clientHeight);
-        topNode.style.height = height+"px";
+        this._forcedHeight = true;
+        this.availHeight = height;
     }
     if (numCols > 0 || numRows > 0) {
         // Don't unforce on resize for seconary windows
@@ -3724,8 +3726,9 @@ Terminal.prototype.measureWindow = function()  {
     let ruler = this._rulerNode;
     if (! ruler)
         return;
-    let topBounding = this.topNode.getBoundingClientRect();
-    var availHeight = topBounding.height;
+    this.actualHeight = this.topNode.getBoundingClientRect().height;
+    var availHeight = this._forcedHeight ? this.availHeight
+        : this.actualHeight;
     if (DomTerm.verbosity >= 2)
         this.log("measureWindow "+this.name+" avH:"+availHeight);
     let clientWidth = this.initial.clientWidth;
@@ -6592,14 +6595,14 @@ Terminal.prototype._scrollNeeded = function() {
     if (! last)
         return 0;
     let lastBottom = last.getBoundingClientRect().bottom+this.topNode.scrollTop
-    return lastBottom - this.availHeight;
+    return lastBottom - this.actualHeight;
 };
 
 // Optimization of term._scrollNeeded() == term.topNode.scrollTop (appro)
 Terminal.prototype._scrolledAtBottom = function() {
     var last = this._vspacer;
     return last == null
-        || Math.abs(last.getBoundingClientRect().bottom - this.availHeight) < 0.2;
+        || Math.abs(last.getBoundingClientRect().bottom - this.actualHeight) < 0.2;
 }
 
 Terminal.prototype._scrollIfNeeded = function() {
