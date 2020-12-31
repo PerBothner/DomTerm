@@ -18,31 +18,31 @@ div.domterm {
     color: black; background-color: #fffff8; /* fallback if var not handled */
     --background-color: var(--main-light-color);
     --foreground-color: var(--main-dark-color);
-    background-color: var(--background-color);
-    color: var(--foreground-color);
     --spacer-color:  #F0F0F8;
     --input-line-color: #ECECC8;
     --input-span-color: #FFFFD0 /* a pale yellow */;
     overflow-x: auto;
-}
-div.domterm[reverse-video] {
-    color: #fffff8; background-color: black; /* fallback if var not handled */
-    --background-color: var(--main-dark-color);
-    --foreground-color: var(--main-light-color);
-    background-color: var(--background-color);
-    color: var(--foreground-color);
-    --spacer-color:  #101040;
-    --input-line-color: #505030;
-    --input-span-color: #404020;
-}
-div.domterm-spacer {
-  background-image: repeating-linear-gradient(
+    background-image: repeating-linear-gradient(
       45deg,
       var(--spacer-color),
       var(--spacer-color) 5px,
       transparent 5px,
       transparent 15px
   );
+}
+div.interaction {
+    background-color: var(--background-color);
+    color: var(--foreground-color);
+}
+div.domterm[reverse-video] {
+    color: #fffff8; background-color: black; /* fallback if var not handled */
+    --background-color: var(--main-dark-color);
+    --foreground-color: var(--main-light-color);
+    --spacer-color:  #101040;
+    --input-line-color: #505030;
+    --input-span-color: #404020;
+}
+div.domterm-spacer {
 }
 
 /* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
