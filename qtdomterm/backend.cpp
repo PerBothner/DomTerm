@@ -32,6 +32,7 @@
 #include <QRegExp>
 #include <QtDebug>
 #include <QTimer>
+#include <QFileDialog>
 #include <QFileSystemWatcher>
 #include <QMimeData>
 #include <QtGui/QClipboard>
@@ -171,10 +172,19 @@ void Backend::close()
 void Backend::saveFile(const QString& html)
 {
     QString filePath = webView()->generateSaveFileName();
+#if 0
+    // FIXME The default is used only on the first call.  Bug in Qt?
+    filePath = QFileDialog::getSaveFileName(webView(), tr("Save this Page As"),
+                                            filePath);
+    if (filePath.isEmpty()) {
+        return;
+    }
+#else
     SavePageDialog dlg(webView(), /*format,*/ filePath);
     if (dlg.exec() != SavePageDialog::Accepted)
         return;
     filePath = dlg.filePath();
+#endif
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
       file.write(html.toUtf8());
