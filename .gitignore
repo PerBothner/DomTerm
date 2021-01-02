@@ -50,8 +50,9 @@ lws-term/resources.c
 lws-term/version.h
 lws-term/git-describe.c
 lws-term/tmp-resources
+qtdomterm/qtdomterm
 qtdomterm/dt_version.h
-qtdomterm/moc_*.cpp
+qtdomterm/*.moc.cpp
 qtdomterm/moc_predefs.h
 qtdomterm/webview.moc
 qtdomterm/ui_*.h

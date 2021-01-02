@@ -1,10 +1,9 @@
 dnl Autoconf script for DomTerm
 AC_INIT([DomTerm],[2.9.0],[],[domterm]) dnl Also update package.json and domterm.spec
-AC_CONFIG_SRCDIR([doc/DomTerm.texi])
-AM_MAINTAINER_MODE([enable])
-
 DOMTERM_VERSION="${PACKAGE_VERSION}"
 DOMTERM_YEAR="2020"
+AC_CONFIG_SRCDIR([doc/DomTerm.texi])
+AM_MAINTAINER_MODE([enable])
 
 AC_CONFIG_AUX_DIR(autotools-aux)
 AM_INIT_AUTOMAKE([foreign subdir-objects no-dependencies])
@@ -19,6 +18,14 @@ AC_PROG_LN_S
 AC_CHECK_FUNC([inotify_init], [HAVE_INOTIFY=1], [HAVE_INOTIFY=0])
 AC_CHECK_FUNC([getrandom], [HAVE_GETRANDOM=1], [HAVE_GETRANDOM=0])
 AC_CHECK_LIB(magic, magic_open, [HAVE_LIBMAGIC=1; LIBMAGIC_LIBS=-lmagic], [HAVE_LIBMAGIC=0])
+
+AC_CONFIG_MACRO_DIRS([qtdomterm])
+AT_WITH_QT([webenginewidgets network widgets webchannel], [])
+AM_CONDITIONAL([WITH_QTWEBENGINE], [test x"$with_qt" != x"no"])
+AC_ARG_WITH(qtwebengine,
+   AS_HELP_STRING([--with-qtwebengine],[Obsolete - use --with-qt]),
+   AC_MSG_ERROR([--with-qtwebengine flags is obsolete: use --with-qt instead]))
+
 
 AC_ARG_WITH(java,
   AS_HELP_STRING(--without-java,Build Java help library))
@@ -40,9 +47,6 @@ AC_ARG_WITH(libclipboard,
 
 AC_ARG_WITH(asciidoctor,
   AS_HELP_STRING(--with-asciidoctor,Use AsciiDoctor to build help and man pages))
-
-AC_ARG_WITH(qtwebengine,
-  AS_HELP_STRING(--with-qtwebengine,Build QtWebEngine front-end))
 
 AC_ARG_WITH(webview,
   AS_HELP_STRING(--with-webview,Build WebView front-end))
@@ -92,13 +96,10 @@ case ${host} in
     ;;
 esac
 
-AC_CHECK_PROGS(QMAKE, qmake-qt5 qmake, qmake)
-
 AS_IF([test -z "$with_asciidoctor"],
     [AC_CHECK_PROG(with_asciidoctor, asciidoctor, "yes", "no")])
 AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
-AM_CONDITIONAL(WITH_QTWEBENGINE, test "$with_qtwebengine" = "yes")
 AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
 
 AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
@@ -324,7 +325,7 @@ AC_SUBST(HAVE_LIBMAGIC)
 AC_SUBST(HAVE_OPENSSL)
 AC_SUBST(LIBMAGIC_LIBS)
 
-AC_CONFIG_FILES([Makefile hlib/domterm-version.js
-                 lws-term/Makefile qtdomterm/dt_version.h lws-term/version.h]
+AC_CONFIG_FILES([Makefile hlib/domterm-version.js lws-term/Makefile
+                 qtdomterm/Makefile qtdomterm/dt_version.h lws-term/version.h]
                  share/domterm/electron/package.json:electron/package.json)
 AC_OUTPUT

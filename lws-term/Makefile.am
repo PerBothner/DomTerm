@@ -46,7 +46,7 @@ ldomterm_CXXFLAGS += -DRESOURCE_DIR='"../share/domterm"'
 endif
 XXD = xxd
 CLEANFILES = resources.c git-describe.c xterm.stamp \
-  ../hlib/xterm.js ../hlib/xterm.css ../hlib/fit.js
+  ../hlib/xterm.js ../hlib/xterm.css ../hlib/fit.js ../bin/domterm$(EXEEXT)
 
 xterm.stamp:
 if WITH_XTERMJS
@@ -77,4 +77,5 @@ git-describe.c:
 
 install-exec-am: ../bin/domterm$(EXEEXT)
 	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) ../bin/domterm$(EXEEXT) "$(DESTDIR)$(bindir)"
-EXTRA_DIST = junzip.h server.h whereami.h utils.h command-connect.h
+EXTRA_DIST = junzip.h server.h whereami.h utils.h \
+  command-connect.h option-names.h

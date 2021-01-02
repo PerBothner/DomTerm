@@ -164,8 +164,6 @@ private:
 };
 #endif
 
-#include "webview.moc"
-
 #if !defined(QT_NO_UITOOLS)
 QObject *WebPage::createPlugin(const QString &classId, const QUrl &url, const QStringList &paramNames, const QStringList &paramValues)
 {

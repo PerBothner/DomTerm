@@ -1,10 +1,10 @@
-DIST_SUBDIRS = lws-term
+DIST_SUBDIRS = lws-term qtdomterm
 EXTRA_DIST = \
   hlib/terminal.js $(MISC_COPY_TO_JAR) $(JS_LIBS) $(CLIENT_DATA_FILES) \
   $(domterm_jar_sources) domterm-jar-manifest bin/jdomterm domterm.spec \
   domterm.desktop qtdomterm.desktop domterm.appdata.xml qtdomterm.appdata.xml \
-  electron/main.js electron/preload.js  \
-  doc/DomTerm.texi doc/webdoc.patch \
+  electron/main.js electron/preload.js repl-client.html.in \
+  doc/DomTerm.texi \
   doc/style/domterm.xsl doc/style/docbook-to-html.xsl \
   doc/domterm2.ico \
   doc/help/domterm.adoc \
@@ -18,14 +18,6 @@ EXTRA_DIST = \
   doc/help/domterm-window-specifier.adoc \
   doc/help/qtdomterm.adoc \
   $(DOC_IMAGES) $(DOC_TOOLS) \
-  qtdomterm/LICENSE qtdomterm/qtdomterm.pro qtdomterm/processoptions.h \
-  qtdomterm/backend.cpp qtdomterm/backend.h \
-  qtdomterm/browserapplication.cpp qtdomterm/browserapplication.h \
-  qtdomterm/browsermainwindow.cpp qtdomterm/browsermainwindow.h \
-  qtdomterm/modelmenu.cpp qtdomterm/modelmenu.h \
-  qtdomterm/savepagedialog.cpp qtdomterm/savepagedialog.h \
-  qtdomterm/webview.cpp qtdomterm/webview.h \
-  qtdomterm/main.cpp qtdomterm/savepagedialog.ui \
   native/preloads.cc \
   native/pty/apue.h native/pty/error.c native/pty/pty.c \
   native/pty/pty_fork.c native/pty/pty_fork.h
@@ -82,6 +74,9 @@ endif
 if WITH_LIBWEBSOCKETS
 SUBDIRS += lws-term
 endif
+if WITH_QTWEBENGINE
+SUBDIRS += qtdomterm
+endif
 
 if WITH_ASCIIDOCTOR
 man1_MANS = share/man/man1/domterm.1
@@ -127,6 +122,9 @@ share/domterm/electron/preload.js: electron/preload.js
 
 bin/domterm$(EXEEXT):
 	cd lws-term && make ../bin/domterm$(EXEEXT)
+
+bin/qtdomterm$(EXEEXT):
+	cd qtdomterm && make ../bin/qtdomterm$(EXEEXT)
 
 native/pty/org_domterm_pty_PTY.h: $(DOMTERM_JAR)
 	touch native/pty/org_domterm_pty_PTY.h
@@ -247,7 +245,7 @@ run-shell: $(DOMTERM_JAR)
 clean-am:
 	-rm -rf *.stamp tmp-* org/domterm/*.class org/domterm/*/*.class websocketterm/*.class libpty@LIBEXT@ build doc/DomTerm.xml web/*.html $(DOMTERM_JAR) $(WSDOMTERM_JAR) native/pty/*.o native/pty/org_domterm_pty_PTY.h lib/*$(LIBEXT)
 	-rm -rf hlib/dt-combined.js hlib/dt-outer.js repl-client.html jfx-term.html \
-	  web/tools web/images \
+	  web/tools web/images share/domterm/domterm2.ico \
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
@@ -438,13 +436,6 @@ WEB_SERVER_ROOT=bothner@bothner.com:domterm.org
 upload-web: web/index.html
 	cd web && \
 	  rsync -v -r -u -l -p -t --relative . $(WEB_SERVER_ROOT)
-
-bin/qtdomterm:
-	cd qtdomterm && @QMAKE@ -makefile PREFIX=$(prefix) && $(MAKE)
-if MACOS
-
-	cd bin && ln -s ../qtdomterm/QtDomTerm.app/Contents/MacOS/QtDomTerm qtdomterm
-endif
 
 bin/dt-webview: native/webview.cc
 if MACOS

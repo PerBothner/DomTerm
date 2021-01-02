@@ -444,7 +444,7 @@ On Fedora, you need to first:
 @example
 sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel libcap-devel asciidoctor zlib-devel
 @end example
-If configuring @code{--with-qtwebengine} (recommended), also do:
+If configuring @code{--with-qt} (recommended), also do:
 @example
 sudo dnf install gcc-c++ qt5-qtbase-devel qt5-qtwebengine-devel qt5-qtwebchannel-devel
 @end example
@@ -481,9 +481,9 @@ You need to install the following prerequisites:
 @example
 sudo apt-get install git gcc make automake libjson-c-dev pkg-config asciidoctor libmagic-dev zlib1g-dev
 @end example
-If configuring @code{--with-qtwebengine} (recommended), also do:
+If configuring @code{--with-qt} (recommended), also do:
 @example
-sudo apt-get install qt5-qmake qt5-default libqt5webengine5 libqt5webchannel5-dev qtwebengine5-dev
+sudo apt-get install qt5-default libqt5webengine5 libqt5webchannel5-dev qtwebengine5-dev
 @end example
 
 In the future you should be able to do @code{apt-get install libwebsockets-dev}, but at the time of writing the available package is too old,
@@ -727,7 +727,7 @@ export JDK_JAVA_OPTIONS='--module-path /path/to/javafx-sdk-13.0.1/lib --add-modu
 @end example
 @item --without-java
 Disable building anything that depends on Java.
-@item --with-qtwebengine
+@item --with-qt
 Use Qt and @uref{https://wiki.qt.io/QtWebEngine,QtWebEngine}
 to build @code{qtdomterm}, an advanced front-end that
 supports multiple tabs, screen re-sizing, and other nice features.
@@ -4577,6 +4577,12 @@ Terminal emulators for Atom:
 
 Various Electron @uref{https://github.com/sindresorhus/awesome-electron,Awesome links}
 @uref{https://electron.atom.io/community/,Community links}.
+@subheading View/copy mode (enhanced pager mode)
+
+Enhance the @ref{Paging} mode so it is a more general View/Copy mode.
+An important feature is being able to set and modify the selection
+without using a mouse.
+See @uref{https://github.com/microsoft/terminal/issues/4993,Windows Terminal issue}; tmux copy mode; iTerm2 copy mode.
 
 @subheading Readline style hooks and improvements
 
@@ -6383,3 +6389,7 @@ The Python tools were largely inspired or based on similar tools
 in @uref{https://github.com/mitotic/graphterm,GraphTerm},
 written by R. Saravanan (who also wrote the older XMLTerm,
 which was a big inspiration).
+
+Building of the @code{qtdomterm} directory makes use of
+@uref{https://github.com/tsuna/autotroll,AutoTroll} by
+Benoit Sigoure and Werner Lemberg.
