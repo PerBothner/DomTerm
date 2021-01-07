@@ -346,7 +346,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 resource++;
             if (resource->name != NULL) {
                 return write_simple_response(wsi, hclient, content_type,
-                                             resource->data, resource->length,
+                                             (char *) resource->data,
+                                             resource->length,
                                              false, buffer);
             }
             lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);

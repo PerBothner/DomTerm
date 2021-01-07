@@ -411,7 +411,7 @@ extern const char * maybe_quote_arg(const char *in);
 
 #if COMPILED_IN_RESOURCES
 struct resource {
-  char *name;
+  const char *name;
   unsigned char *data;
   unsigned int length;
 };

@@ -39,13 +39,13 @@ if WITH_XTERMJS
 LWS_RESOURCES += $(XTERMJS_RESOURCES)
 endif
 if ENABLE_COMPILED_IN_RESOURCES
-nodist_ldomterm_SOURCES += resources.c
+nodist_ldomterm_SOURCES += resources.cc
 ldomterm_CXXFLAGS += -DCOMPILED_IN_RESOURCES
 else
 ldomterm_CXXFLAGS += -DRESOURCE_DIR='"../share/domterm"'
 endif
 XXD = xxd
-CLEANFILES = resources.c git-describe.c xterm.stamp \
+CLEANFILES = resources.cc git-describe.c xterm.stamp \
   ../hlib/xterm.js ../hlib/xterm.css ../hlib/fit.js ../bin/domterm$(EXEEXT)
 
 xterm.stamp:
@@ -54,7 +54,7 @@ if WITH_XTERMJS
 endif
 	touch xterm.stamp
 
-resources.c: ../client-data-links.stamp xterm.stamp
+resources.cc: ../client-data-links.stamp xterm.stamp
 	echo '#include "server.h"' >tmp-resources.c
 	for file in $(LWS_RESOURCES); do \
 	  (cd $(top_builddir)/$(CLIENT_DATA_DIR)  && $(XXD) -i $$file -) | \
@@ -68,7 +68,7 @@ resources.c: ../client-data-links.stamp xterm.stamp
 	done
 	echo '    { NULL, NULL, 0}' >>tmp-resources.c; \
 	echo '};' >>tmp-resources.c; \
-	mv tmp-resources.c resources.c
+	mv tmp-resources.c $@
 
 git-describe.c:
 	test -d $(top_srcdir)/.git \
