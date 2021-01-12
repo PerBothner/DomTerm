@@ -67,6 +67,7 @@ div.domterm-show-info {
 }
 div.domterm-show-info > div {
     border: 2px solid blue;
+    padding: 1px;
     margin-top: 1px;
     background-color: var(--background-color)
 }
