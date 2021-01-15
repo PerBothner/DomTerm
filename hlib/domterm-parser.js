@@ -1787,7 +1787,6 @@ class DTParser {
             break;
         case 94:
             term.addStyleRule(JSON.parse(text));
-            term.measureWindow();
             break;
         case 95:
         case 96:
@@ -1834,6 +1833,7 @@ class DTParser {
                         dt._inputLine = node;
                     return true;
                 };
+                term._replayMode = true;
                 term.initial = DomTerm._currentBufferNode(term, -1);
                 let bufAttr = term.initial.getAttribute("buffer");
                 term.usingAlternateScreenBuffer =
@@ -1846,6 +1846,8 @@ class DTParser {
                 term._restoreLineTables(term.topNode, 0);
                 dt._restoreSaveLastLine();
                 DomTerm._addMouseEnterHandlers(term);
+                if (data.rows && data.columns)
+                    dt.forceWidthInColumns(data.columns, data.rows, 8);
                 dt._breakAllLines();
                 var home_node; // FIXME
                 var home_offset = -1;
@@ -1858,6 +1860,7 @@ class DTParser {
                 else
                     term._receivedCount = rcount;
                 term._confirmedCount = rcount;
+                term._replayMode = false;
             }
             break;
         case 104:

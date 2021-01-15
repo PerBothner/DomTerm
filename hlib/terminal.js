@@ -852,6 +852,7 @@ DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
     var data =
         rcount
         + ',{"sstate":'+JSON.stringify(dt.sstate);
+    data += ',"rows":'+dt.numRows+',"columns":'+dt.numColumns;
     data += ', "html":'
         + JSON.stringify(dt.getAsHTML(false))
         +'}';
@@ -3288,7 +3289,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         this.loadStyleSheet("user", "");
 
 
-    this.measureWindow();
     this.attachResizeSensor();
 
     var vspacer = document.createElement("div");
@@ -3400,9 +3400,15 @@ Terminal.prototype._displayInfoWithTimeout = function(text, div = null, timeout 
 Terminal.prototype._sizeInfoText = function() {
     // Might be nicer to keep displaying the size-info while
     // button-1 is pressed. However, that seems a bit tricky.
-    let text = ""+this.numColumns+" x "+this.numRows
-        +" ("+DomTerm.toFixed(this.availWidth, 2)+"px x "
-        +DomTerm.toFixed(this.availHeight, 2)+"px)";
+    let text = ""+this.numColumns+"\xD7"+this.numRows
+        +" ("+DomTerm.toFixed(this.availWidth, 2)+"\xD7"
+        +DomTerm.toFixed(this.availHeight, 2);
+    if (this.sstate.forcedSize) {
+        text += "px, actual:"
+            + DomTerm.toFixed(this.topNode.clientWidth -  this.rightMarginWidth)
+            + "\xD7" + DomTerm.toFixed(this.actualHeight);
+    }
+    text += "px)";
     let ratio = window.devicePixelRatio;
     if (ratio)
         text += " "+(ratio*100.0).toFixed(0)+"%";
@@ -3671,46 +3677,24 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
 };
 
 /* If browsers allows, should re-size actual window instead. FIXME */
-Terminal.prototype.forceWidthInColumns = function(numCols, numRows = -1,
-                                                  mode = 0)
+Terminal.prototype.forceWidthInColumns =
+    function(numCols, numRows = numCols <= 0 ? -1 : this.numRows,
+             mode = 0)
 {
     if (mode == 8 && ! this.isSecondaryWindow() && ! this._replayMode)
         return;
-    const topNode = this.topNode;
-    const ruler = this._rulerNode;
-    let buffers = document.getElementsByClassName("interaction");
-    // We set style.height on the topNode, but set style.width on the buffers.
-    // This allows overflow-x:auto on topNode to be useful.
-    // Also (FUTURE) we can do force-width differently for different buffers.
-    if (numCols <= 0) {
-        for (let i = buffers.length; --i >= 0; )
-            buffers[i].style.width = "";
-    } else {
-        // FIXME add sanity check?
-        let charWidth = ruler.offsetWidth/26.0;
-        // Add half a column for rounding issues - see comment in measureWindow
-        let width = (numCols + 0.5) * charWidth + this.rightMarginWidth;
-        for (let i = buffers.length; --i >= 0; )
-            buffers[i].style.width = width+"px";
-    }
-    if (numRows <= 0) {
-        topNode.style.height = "";
-        this._forcedHeight = undefined;
-    } else {
-        let charHeight = ruler.offsetHeight;
-        // Add half a column for rounding issues - see comment in measureWindow
-        let height = (numRows + 0.5) * charHeight
-            + (topNode.offsetHeight - topNode.clientHeight);
-        this._forcedHeight = true;
-        this.availHeight = height;
-    }
+    this.sstate.forcedSize = numCols <= 0 && numRows <= 0 ? undefined
+        : mode == 8 ? true : "secondary";
+    if ((numCols === this.numColumss || numCols < 0)
+        && (numRows === this.numRows || numRows < 0))
+        return;
+    this.numColumns = numCols;
+    this.numRows = numRows;
     if (numCols > 0 || numRows > 0) {
-        // Don't unforce on resize for seconary windows
-        if (mode != 8)
-            window.addEventListener("resize", this._unforceWidthInColumns, true);
-        //this.measureWindow();
         this.resizeHandler();
         if (mode != 8) {
+            // Don't unforce on resize for seconary windows
+            window.addEventListener("resize", this._unforceWidthInColumns, true);
             this.eraseDisplay(2);
             this._setRegionLR(0, -1);
             this.moveToAbs(this.homeLine, 0, false);
@@ -3727,23 +3711,25 @@ Terminal.prototype.measureWindow = function()  {
     if (! ruler)
         return;
     this.actualHeight = this.topNode.getBoundingClientRect().height;
-    var availHeight = this._forcedHeight ? this.availHeight
-        : this.actualHeight;
     if (DomTerm.verbosity >= 2)
-        this.log("measureWindow "+this.name+" avH:"+availHeight);
-    let clientWidth = this.initial.clientWidth;
-    if (availHeight == 0 || clientWidth == 0) {
-        return;
-    }
+        this.log("measureWindow "+this.name+" h:"+this.actualHeight);
+    let clientWidth = this.topNode.clientWidth;
     var rbox = ruler.getBoundingClientRect();
     this.charWidth = rbox.width/26.0;
     this.charHeight = rbox.height;
     this.rightMarginWidth = this._wrapDummy.getBoundingClientRect().width;
-    if (DomTerm.verbosity >= 2)
-        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.name+"["+this.topNode.getAttribute("class")+"] clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight+" rbox:"+rbox);
-    var availWidth = clientWidth - this.rightMarginWidth;
-    var numRows = Math.floor(availHeight / this.charHeight);
-    var numColumns = Math.floor(availWidth / this.charWidth);
+    let numRows, numColumns, availWidth, availHeight;
+    if (this.sstate.forcedSize) {
+        numRows = this.numRows;
+        numColumns = this.numColumns;
+        availHeight = (numRows + 0.5) * this.charHeight
+            + (this.topNode.offsetHeight - this.topNode.clientHeight);
+    } else {
+        availWidth = clientWidth - this.rightMarginWidth;
+        availHeight = this.actualHeight;
+        numRows = Math.floor(availHeight / this.charHeight);
+        numColumns = Math.floor(availWidth / this.charWidth);
+    }
     // KLUDGE Add some tolerance for rounding errors.
     // This is occasionally needed, at least on Chrome.
     // FIXME - Better would be to use separate line-breaking measurements
@@ -3751,6 +3737,18 @@ Terminal.prototype.measureWindow = function()  {
     // In that case we should line-break based on character counts rather
     // than measured offsets.
     availWidth = (numColumns + 0.5) * this.charWidth;
+
+    let styleWidth = ! this.sstate.forcedSize ? ""
+        : (availWidth + this.rightMarginWidth)+"px";
+    if (this._styleWidth != styleWidth) {
+        let buffers = document.getElementsByClassName("interaction");
+        for (let i = buffers.length; --i >= 0; )
+            buffers[i].style.width = styleWidth;
+        this._styleWidth != styleWidth;
+    }
+
+    if (DomTerm.verbosity >= 2)
+        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.name+"["+this.topNode.getAttribute("class")+"] clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight+" rbox:"+rbox);
     if ((numRows != this.numRows || numColumns != this.numColumns
          || availHeight != this.availHeight || availWidth != this.availWidth)
         && ! this.isSavedSession()) {
@@ -5350,6 +5348,9 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
         if (DomTermLayout._mainWindowNumber < 0)
             DomTermLayout._mainWindowNumber = windowNumber;
         this.windowForSessionNumber = windowForSession;
+        if (this.sstate.forcedSize == "secondary"
+            && !this.isSecondaryWindow())
+            this.forceWidthInColumns(-1);
     }
     this.updateWindowTitle();
 }
