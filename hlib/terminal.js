@@ -7510,8 +7510,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             fits = this.deleteCharactersRight(widthInColumns, true);
         }
     }
-    const atEnd = absLine >= this.lineStarts.length - 1;
-    if (! fits && ! atEnd) {
+    if (! fits && absLine < this.lineStarts.length - 1) {
         this._breakDeferredLines();
         absLine = this.getAbsCursorLine();
     }
@@ -7531,7 +7530,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         //let prevLine = absLine;
         let lineStart = this.lineStarts[absLine];
         let column = this.getCursorColumn();
-        if (column + cols > this.numColumns && !atEnd ) {
+        if (column + cols > this.numColumns) {
             if (seg instanceof Element) {
                 if (this.getCursorColumn() <= this.numColumns) {
                     isegment--;
