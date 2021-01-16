@@ -125,7 +125,8 @@ DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
 DomTerm.closeAll = function(event) {
     DomTerm.forEachTerminal(dt => {
         dt.historySave();
-        dt.reportEvent("CLOSE-SESSION");
+        if (dt.processInputBytes)
+            dt.reportEvent("CLOSE-SESSION");
     })
 }
 

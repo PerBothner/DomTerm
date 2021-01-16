@@ -831,10 +831,7 @@ Terminal.prototype._deleteData = function(text, start, count) {
 }
 
 Terminal.prototype.eofSeen = function() {
-    if (this.history) {
-        this.historySave();
-        this.history.length = 0;
-    }
+    this.historySave();
     DomTerm.closeFromEof(this);
 };
 
@@ -1463,6 +1460,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     start = cur;
                     startBlock = cur;
                     start._widthMode = Terminal._WIDTH_MODE_NORMAL;
+                    // FIXME calculate _widthColumns
                     if (! DomTerm.isLineBlock(cur)) {
                         cur.classList.add("domterm-opaque");
                         descend = false;
@@ -4812,7 +4810,7 @@ Terminal.prototype.historyStorageKey = function() {
 Terminal.prototype.historySave = function() {
     var h = this.history;
     try {
-        if (h.length > 0 && window.localStorage) {
+        if (h && h.length > 0 && window.localStorage) {
             let hmax = this.getOption("history.storage-max", 200);
             if (typeof hmax == "number") {
                 let first = h.length = hmax;
@@ -4820,6 +4818,7 @@ Terminal.prototype.historySave = function() {
                     h = h.slice(first);
             }
             localStorage[this.historyStorageKey()] = JSON.stringify(h);
+            h.length = 0;
         }
     } catch (e) { }  
 };
@@ -4869,9 +4868,10 @@ Terminal.prototype._positionFromRange = function(range) {
 
 Terminal.prototype._normalize1 = function(tnode) {
     if (tnode.nextSibling instanceof Text) {
-        const r = this._positionToRange();
+        let noPos = this.outputContainer === null;
+        const r = noPos || this._positionToRange();
         tnode.parentNode.normalize();
-        this._positionFromRange(r);
+        noPos || this._positionFromRange(r);
     }
 };
 
@@ -9346,11 +9346,12 @@ Terminal._makeWsUrl = function(query=null) {
 
 DomTerm.initSavedFile = function(topNode) {
     var name = "domterm";
-    var dt = new Terminal(name);
+    var dt = new Terminal(name, topNode, 'view-saved');
     dt.initial = document.getElementById(dt.makeId("main"));
     dt._initializeDomTerm(topNode);
     dt.sstate.windowName = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
     dt.topNode.classList.remove("domterm-noscript");
+    dt.measureWindow();
     dt._restoreLineTables(topNode, 0);
     dt._breakAllLines();
     dt.updateWindowTitle();
