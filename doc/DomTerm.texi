@@ -557,8 +557,9 @@ A cleaner solution/fix would be welcome.
 @subsubheading Building libwebsockets, if needed
 
 The @code{domterm} server requires libwebsockets version 2.2
-or newer.  As of January 2018, the version in Fedora 27 in fine,
-but the version in Ubuntu is too old.
+or newer.  Version 3.2 has reported problems.
+As of January 2021, the version in Fedora 33 seems fine,
+but the version in Ubuntu is best not used.
 If you need to build libwebsockets from source, do the following:
 
 @example
