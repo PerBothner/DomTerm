@@ -558,7 +558,7 @@ qtwebengine_command(struct options *options)
     if (geometry)
         sbuf_printf(&sb, " --geometry %s", geometry);
     if (options->qt_remote_debugging)
-        sbuf_printf(&sb, " --remote-debugging-port=%s");
+        sbuf_printf(&sb, " --remote-debugging-port=%s", options->qt_remote_debugging);
     if (options->headless)
         sbuf_append(&sb, " --headless", -1);
     sbuf_append(&sb, " --connect '%U'", -1);
