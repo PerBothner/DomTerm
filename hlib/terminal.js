@@ -1210,21 +1210,33 @@ Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
 
 Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
-        let needed = this.actualHeight - this._vspacer.offsetTop
-            + (this.initial.noScrollTop ? 0 : this._homeOffset(this.homeLine));
-        this._adjustSpacer(needed > 0 ? needed : 0);
+        let needed;
+        if (this._vspacer.dtHeight < 0)
+            needed = -1;
+        else {
+            needed = this.actualHeight - this._vspacer.offsetTop
+                + (this.initial.noScrollTop ? 0 : this._homeOffset(this.homeLine));
+            if (needed < 0)
+                needed = 0;
+        }
+        this._adjustSpacer(needed);
     }
 };
+
+/** Adjust height of _vspacer element.
+ * The value -1 is to force _checkSpacer to set the height to 0.
+ */
 Terminal.prototype._adjustSpacer = function(needed) {
     var vspacer = this._vspacer;
+    if (needed === NaN)
+        console.log("needed NAN!");
     if (vspacer.dtHeight != needed) {
         if (needed > 0) {
             vspacer.style.height = needed + "px";
-            vspacer.dtHeight = needed;
-        } else if (vspacer.dtHeight != 0) {
+        } else if (vspacer.dtHeight > 0) {
             vspacer.style.height = "";
-            vspacer.dtHeight = 0;
         }
+        vspacer.dtHeight = needed;
     }
 };
 
@@ -1720,7 +1732,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             if (lineCount > homeLine + this.numRows) {
                 homeLine = lineCount - this.numRows;
                 this.homeLine = homeLine;
-                this._adjustSpacer(0);
+                this._adjustSpacer(-1);
             }
         }
         var lineStart = this.lineStarts[goalAbsLine];
@@ -4963,8 +4975,11 @@ Terminal.prototype.eraseDisplay = function(param) {
         }
         break;
     }
-    if ((param == 0 || param == 2) && this._vspacer != null)
+    if ((param == 0 || param == 2) && this._vspacer != null) {
         this._setBackgroundColor(this._vspacer, this._currentStyleBackground());
+        if (this._vspacer.dtHeight < 0)
+            this._vspacer.dtHeight = 0;
+    }
     this.moveToAbs(saveLine, saveCol, true);
 };
 

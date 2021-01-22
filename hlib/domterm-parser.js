@@ -521,7 +521,7 @@ class DTParser {
                 this.controlSequenceState = DTParser.INITIAL_STATE;
                 this._textParameter = str.substring(i);
                 term._enterPaging(true);
-                term.topNode.scrollTop = term._pauseLimit - term.availHeight;
+                term.scrollToCaret();
                 term._updateDisplay();
                 return;
             }
@@ -613,7 +613,6 @@ class DTParser {
                 }
             }
         }
-
         if (term._pauseNeeded()) {
             this._textParameter = "";
             term._enterPaging(true);
