@@ -4056,6 +4056,15 @@ Terminal.prototype._mouseHandler = function(ev) {
     this._altPressed = ev.altKey;
     let selState = this._mouseSelectionState;
     this._mouseSelectionState = ev.type == "mouseup" ? -1 : 0
+
+    // Get mouse coordinates relative to topNode.
+    let xdelta = ev.pageX / this._computedZoom;
+    let ydelta = ev.pageY / this._computedZoom + this.topNode.scrollTop;
+    for (var top = this.topNode; top != null; top = top.offsetParent) {
+        xdelta -= top.offsetLeft;
+        ydelta -= top.offsetTop;
+    }
+
     if (ev.type == "mouseup") {
         if (selState > 0)
             this._updateSelected();
@@ -4071,7 +4080,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         */
     }
     if (ev.type == "mousedown") {
-        if (ev.button == 0 && ev.target == this.topNode) // in scrollbar
+        if (ev.button == 0 && xdelta >= this.topNode.clientWidth) // in scrollbar
             this._usingScrollBar = true;
         this.setMarkMode(false);
         this._didExtend = ev.shiftKey;
@@ -4089,14 +4098,6 @@ Terminal.prototype._mouseHandler = function(ev) {
 
     if (ev.shiftKey || ev.target == this.topNode || ! this.mouseReporting())
          return;
-
-    // Get mouse coordinates relative to topNode.
-    var xdelta = ev.pageX / this._computedZoom;
-    var ydelta = ev.pageY / this._computedZoom + this.topNode.scrollTop;
-    for (var top = this.topNode; top != null; top = top.offsetParent) {
-        xdelta -= top.offsetLeft;
-        ydelta -= top.offsetTop;
-    }
 
     // Temporarily set position to ev.target.
     // That way we can use updateCursorCache to get
