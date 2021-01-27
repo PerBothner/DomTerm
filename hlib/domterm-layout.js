@@ -17,6 +17,8 @@ DomTermLayout._oldFocusedContent = null;
 DomTermLayout._mainWindowNumber = -1;
 
 DomTermLayout.selectNextPane = function(forwards, wrapper=DomTermLayout._oldFocusedContent) {
+    if (DomTermLayout.manager == null)
+        return;
     let item = DomTermLayout._elementToLayoutItem(wrapper);
     var r = item;
     for (;;) {
