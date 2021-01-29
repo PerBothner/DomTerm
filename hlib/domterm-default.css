@@ -22,6 +22,7 @@ div.domterm {
     --input-line-color: #ECECC8;
     --input-span-color: #FFFFD0 /* a pale yellow */;
     overflow-x: auto;
+    padding-left: 2px;
     background-image: repeating-linear-gradient(
       45deg,
       var(--spacer-color),
