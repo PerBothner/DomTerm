@@ -3723,38 +3723,44 @@ Terminal.prototype.measureWindow = function()  {
     this.actualHeight = this.topNode.getBoundingClientRect().height;
     if (DomTerm.verbosity >= 2)
         this.log("measureWindow "+this.name+" h:"+this.actualHeight);
-    let clientWidth = this.topNode.clientWidth;
     var rbox = ruler.getBoundingClientRect();
     this.charWidth = rbox.width/26.0;
     this.charHeight = rbox.height;
     this.rightMarginWidth = this._wrapDummy.getBoundingClientRect().width;
-    let numRows, numColumns, availWidth, availHeight;
+    let numRows, numColumns, availWidth, availHeight, styleWidth;
     if (this.sstate.forcedSize) {
         numRows = this.numRows;
         numColumns = this.numColumns;
-        availHeight = (numRows + 0.5) * this.charHeight
-            + (this.topNode.offsetHeight - this.topNode.clientHeight);
+        availWidth = (numColumns + 0.5) * this.charWidth;
+        styleWidth = (availWidth + this.rightMarginWidth)+"px";
     } else {
-        availWidth = clientWidth - this.rightMarginWidth;
-        availHeight = this.actualHeight;
-        numRows = Math.floor(availHeight / this.charHeight);
-        numColumns = Math.floor(availWidth / this.charWidth);
+       styleWidth = "";
     }
-    // KLUDGE Add some tolerance for rounding errors.
-    // This is occasionally needed, at least on Chrome.
-    // FIXME - Better would be to use separate line-breaking measurements
-    // when in traditional terminal mode (monospace and no html emitted):
-    // In that case we should line-break based on character counts rather
-    // than measured offsets.
-    availWidth = (numColumns + 0.5) * this.charWidth;
-
-    let styleWidth = ! this.sstate.forcedSize ? ""
-        : (availWidth + this.rightMarginWidth)+"px";
     if (this._styleWidth != styleWidth) {
         let buffers = document.getElementsByClassName("interaction");
         for (let i = buffers.length; --i >= 0; )
             buffers[i].style.width = styleWidth;
-        this._styleWidth != styleWidth;
+        this._vspacer.style.width = styleWidth;
+        this._styleWidth = styleWidth;
+    }
+    if (this.sstate.forcedSize) {
+        availHeight = (numRows + 0.5) * this.charHeight
+            + (this.topNode.offsetHeight - this.topNode.clientHeight);
+    } else {
+        // We use initial's width (rather than topNode's), which allows
+        // topNode to include padding.  But style.width must have been reset.
+        availWidth = this.initial.getBoundingClientRect().width
+            - this.rightMarginWidth;
+        availHeight = this.actualHeight;
+        numRows = Math.floor(availHeight / this.charHeight);
+        numColumns = Math.floor(availWidth / this.charWidth);
+        // KLUDGE Add some tolerance for rounding errors.
+        // This is occasionally needed, at least on Chrome.
+        // FIXME - Better would be to use separate line-breaking measurements
+        // when in traditional terminal mode (monospace and no html emitted):
+        // In that case we should line-break based on character counts rather
+        // than measured offsets.
+        availWidth = (numColumns + 0.5) * this.charWidth;
     }
 
     if (DomTerm.verbosity >= 2)
@@ -4465,7 +4471,7 @@ Terminal.prototype._respondSimpleInput = function(str, keyName) {
 }
 
 Terminal.prototype.setWindowSize = function(numRows, numColumns,
-                                           availHeight, availWidth) {
+                                            availHeight, availWidth) {
     this.reportEvent("WS", numRows+" "+numColumns+" "+availHeight+" "+availWidth);
 };
 
