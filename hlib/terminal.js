@@ -7585,9 +7585,9 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 this.outputContainer = oldContainer;
                 this.outputBefore = null;
             }
+            this._updateLinebreaksStart(absLine);
             absLine++;
             this.deleteCharactersRight(widthInColumns - cols, false);
-            this._updateLinebreaksStart(absLine);
             column += cols;
             if (lineStart._widthColumns !== undefined
                 && lineStart._widthColumns < column)
@@ -7601,8 +7601,6 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         isegment++;
         this.currentAbsLine = absLine;
     }
-    if (! fits)
-        this._updateLinebreaksStart(absLine);
 };
 
 Terminal.prototype._updateLinebreaksStart = function(absLine, requestUpdate=false) {
