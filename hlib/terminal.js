@@ -7416,7 +7416,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         return;
     let isegment = 0;
     if (DomTerm.verbosity >= 3)
-        this.log("insertSimple '"+this.toQuoted(str)+"'");
+        this.log("insertSimple '"+this.toQuoted(str.substring(beginIndex,endIndex))+"'");
     let absLine = this.getAbsCursorLine();
     var fits = true;
     if (this.outputBefore instanceof Element
