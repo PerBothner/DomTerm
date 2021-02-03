@@ -25,7 +25,10 @@ AM_CONDITIONAL([WITH_QTWEBENGINE], [test x"$with_qt" != x"no"])
 AC_ARG_WITH(qtwebengine,
    AS_HELP_STRING([--with-qtwebengine],[Obsolete - use --with-qt]),
    AC_MSG_ERROR([--with-qtwebengine flags is obsolete: use --with-qt instead]))
-
+AC_ARG_WITH(qt-docking,
+   AS_HELP_STRING([--with-qt-docking],[Use Qt-Advanced-Docking-System]))
+AC_ARG_WITH(kddockwidgets,
+   AS_HELP_STRING([--with-kddockwidgets],[Use KDDockWidgets for Qt]))
 
 AC_ARG_WITH(java,
   AS_HELP_STRING(--without-java,Build Java help library))
@@ -175,6 +178,25 @@ DOMTERM_DIR_RELATIVE="/share/domterm"
 AC_SUBST(DOMTERM_DIR_RELATIVE)
 
 bindir_parent=`echo "$bindir" | sed -e 's|[^/]*/bin||'`
+
+case "${with_qt_docking}" in
+  "yes" | "")
+    ;;
+  *)
+    QT_DOCKING_LIBDIR="${with_qt_docking}/lib"
+    QT_DOCKING_CFLAGS="-I${with_qt_docking}/include"
+  esac
+case "${with_kddockwidgets}" in
+  "yes" | "")
+    ;;
+  *)
+    QT_DOCKING_LIBDIR="${with_kddockwidgets}/lib64"
+    QT_DOCKING_CFLAGS="-I${with_kddockwidgets}/include"
+  esac
+AM_CONDITIONAL(USE_QT_DOCKING, test "$with_qt_docking" != "no" -a "$with_qt_docking" != "")
+AM_CONDITIONAL(USE_KDDockWidgets, test "$with_kddockwidgets" != "no" -a "$with_kddockwidgets" != "")
+AC_SUBST(QT_DOCKING_CFLAGS)
+AC_SUBST(QT_DOCKING_LIBDIR)
 
 HAVE_OPENSSL=0
 PKG_PROG_PKG_CONFIG

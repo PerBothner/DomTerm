@@ -119,7 +119,7 @@ bool WebPage::certificateError(const QWebEngineCertificateError &error)
     return false;
 }
 
-void WebView::newPage(const QString& url, QSharedDataPointer<ProcessOptions> /*processOptions*/)
+void WebView::newPage(const QString& url)
 {
     setPage(new WebPage(QWebEngineProfile::defaultProfile(), this));
 
@@ -127,6 +127,37 @@ void WebView::newPage(const QString& url, QSharedDataPointer<ProcessOptions> /*p
     //fprintf(stderr, "WebView::newPage url:%s\n", url.toUtf8().constData());
     this->setUrl(url);
 }
+
+#if USE_KDDockWidgets
+void
+WebView::setDockWidget(KDDockWidgets::DockWidget *dock)
+{
+    dock->setWidget(this);
+    this->m_dockWidget = dock;
+}
+#endif
+
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+DockWidget *
+WebView::dockWidget()
+{
+    if (! m_dockWidget) {
+        //auto dock = new DockWidget(BrowserApplication::uniqueNameFromUrl(url));
+        auto dock = new DockWidget("DT-x");
+        dock->setWidget(this);
+        this->m_dockWidget = dock;
+    }
+    return m_dockWidget;
+}
+DockWidget *
+WebView::setDockWidget(const QString &uniqueName)
+{
+    auto dock = new DockWidget(uniqueName);
+    dock->setWidget(this);
+    this->m_dockWidget = dock;
+    return dock;
+}
+#endif
 
 #if 0
 class PopupWindow : public QWidget {

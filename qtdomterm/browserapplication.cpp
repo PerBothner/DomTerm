@@ -55,6 +55,8 @@
 
 #include <getopt.h>
 
+#include <QUrl>
+#include <QUrlQuery>
 #include <QtCore/QBuffer>
 #include <QtCore/QDir>
 #include <QtCore/QLibraryInfo>
@@ -76,9 +78,10 @@
 #include <QWebEngineSettings>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
-#include <QFileSystemWatcher>
 #include <QtCore/QDebug>
-
+#if USE_KDDockWidgets
+#include <kddockwidgets/Config.h>
+#endif
 QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
 
 BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer<ProcessOptions> processOptions)
@@ -94,8 +97,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
     QCoreApplication::setApplicationVersion(QLatin1String(QTDOMTERM_VERSION));
     QString serverName = QCoreApplication::applicationName()
         + QString::fromLatin1(QT_VERSION_STR).remove('.') + QLatin1String("webengine");
-
-    m_fileSystemWatcher = new QFileSystemWatcher(this);
 
     QLocalSocket socket;
     socket.connectToServer(serverName);
@@ -124,6 +125,18 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
     installTranslator(QLatin1String("qt_") + localSysName);
 
     QTimer::singleShot(0, this, SLOT(postLaunch()));
+
+#if USE_KDDockWidgets
+    auto flags = KDDockWidgets::Config::self().flags();
+    flags |= KDDockWidgets::Config::Flag_HideTitleBarWhenTabsVisible;
+    flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
+    flags |= KDDockWidgets::Config::Flag_NativeTitleBar;
+    //flags |= KDDockWidgets::Config::Flag_AlwaysTitleBarWhenFloating;
+    KDDockWidgets::Config::self().setFlags(flags);
+#endif
+#if USE_DOCK_MANAGER
+    m_DockManager = new ads::CDockManager();
+#endif
 }
 
 BrowserApplication::~BrowserApplication()
@@ -272,8 +285,23 @@ void BrowserApplication::openUrl(const QUrl &url)
 
 BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, bool headless, QSharedDataPointer<ProcessOptions> processOptions)
 {
+    QUrl xurl = url;
+    QUrlQuery fragment = QUrlQuery(xurl.fragment().replace(";", "&"));
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    if (! fragment.hasQueryItem("qtdocking")) {
+#if USE_KDDockWidgets
+        fragment.addQueryItem("qtdocking", "KDDockWidgets");
+#endif
+#if USE_DOCK_MANAGER
+        fragment.addQueryItem("qtdocking", "QtAdvancedDockingSystem");
+#endif
+    }
+#endif
+    xurl.setFragment(fragment.isEmpty() ? QString()
+                        : fragment.toString());
     BrowserMainWindow *browser =
-        new BrowserMainWindow(this, url, processOptions, nullptr, Qt::WindowFlags());
+        new BrowserMainWindow(this, xurl.toString(),
+                              processOptions, nullptr, Qt::WindowFlags());
     int x = -1, y = -1;
     if (! position.isEmpty()) {
         QRegularExpression re("^([-+])([0-9]+)([-+])([0-9]+)$");
@@ -327,6 +355,18 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QShared
                          pos, headlessOption,
                          processOptions);
 }
+
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+static int wcounter = 0;
+QString
+BrowserApplication::uniqueNameFromUrl(const QString& /*url*/)
+{
+    // FIXME
+    char buf[20];
+    sprintf(buf, "DT-%d", ++wcounter);
+    return QString(buf);
+}
+#endif
 
 BrowserMainWindow *BrowserApplication::mainWindow()
 {

@@ -297,6 +297,7 @@ public:
     char *socket_name;
     bool check_origin;                        // whether allow websocket connection from different origin
     bool once;                                // whether accept only one client and exit on disconnection
+    bool qt_frontend = false;
     char *credential;                         // encoded basic auth credential
     int reconnect;                            // reconnect timeout
     int sig_code;                             // close signal

@@ -213,5 +213,17 @@ DomTerm.openNewWindow = function(dt, options={}) {
     }
 }
 
+DomTerm.addLocationParams = function(url) {
+    if (DomTerm.mainLocationParams)
+        url += (url.indexOf('#') >= 0 ? '&' : '#')
+        + DomTerm.mainLocationParams;
+    if (DomTerm.server_key && ! url.match(/[#&]server-key=/)) {
+        url = url
+            + (url.indexOf('#') >= 0 ? '&' : '#')
+            + "server-key=" + DomTerm.server_key;
+    }
+    return url;
+}
+
 window.DomTerm = DomTerm;
 window.DomTermLayout = DomTermLayout;

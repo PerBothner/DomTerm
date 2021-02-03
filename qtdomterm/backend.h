@@ -52,6 +52,7 @@ signals:
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
     void reportEventToServer(const QString& name, const QString& data);
+
 public slots:
     void saveFile(const QString& html);
     void setWindowTitle(const QString& title);
@@ -59,6 +60,9 @@ public slots:
     void windowOp(const QString& opname);
     void openNewWindow(int width, int height, const QString& position,
                        const QString& url, bool headless);
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    void newPane(int paneOp, const QString& url);
+#endif
     void showContextMenu(const QString& contextType);
     void setSetting(const QString& key, const QString& value);
     void setClipboard(const QString& plain, const QString& html);

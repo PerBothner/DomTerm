@@ -44,6 +44,12 @@ ldomterm_CXXFLAGS += -DCOMPILED_IN_RESOURCES
 else
 ldomterm_CXXFLAGS += -DRESOURCE_DIR='"../share/domterm"'
 endif
+if USE_KDDockWidgets
+ldomterm_CXXFLAGS += -DUSE_KDDockWidgets=1 $(QT_DOCKING_CFLAGS) -DQT_DOCKING_LIBDIR='"$(QT_DOCKING_LIBDIR)"'
+endif
+if USE_QT_DOCKING
+ldomterm_CXXFLAGS += -DUSE_DOCK_MANAGER=1 $(QT_DOCKING_CFLAGS) -DQT_DOCKING_LIBDIR='"$(QT_DOCKING_LIBDIR)"'
+endif
 XXD = xxd
 CLEANFILES = resources.cc git-describe.c xterm.stamp \
   ../hlib/xterm.js ../hlib/xterm.css ../hlib/fit.js ../bin/domterm$(EXEEXT)

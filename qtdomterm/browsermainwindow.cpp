@@ -69,7 +69,8 @@
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
 #include <QVBoxLayout>
-
+#include <QUrl>
+#include <QUrlQuery>
 #include <QtCore/QDebug>
 
 template<typename Arg, typename R, typename C>
@@ -89,18 +90,41 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
 }
 
 BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
-                                     const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags)
+                                     const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent,
+#if USE_KDDockWidgets
+                                     Qt::WindowFlags
+#else
+                                     Qt::WindowFlags flags
+#endif
+    )
+#if USE_KDDockWidgets
+    : KDDockWidgets::MainWindow(BrowserApplication::uniqueNameFromUrl(url), KDDockWidgets::MainWindowOption_None, parent) // flags ingnored?
+#else
     : QMainWindow(parent, flags)
+#endif
     , m_application(application)
+#if USE_KDDockWidgets
+    , m_webView(new WebView(processOptions, nullptr))
+#else
     , m_webView(new WebView(processOptions, this))
+#endif
     , m_width(-1)
     , m_height(-1)
 {
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
     setupMenu();
-    m_webView->newPage(url, processOptions);
-
+    m_webView->newPage(url);
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    auto dockw = m_webView->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
+#if USE_KDDockWidgets
+    this->addDockWidget(dockw, KDDockWidgets::Location_OnLeft);
+#endif
+#if USE_DOCK_MANAGER
+    ads::CDockContainerWidget* container = BrowserApplication::instance()->dockManager()->addContainer(this);
+    container->addDockWidget(ads::TopDockWidgetArea, dockw, nullptr);
+#endif
+#else /* neither USE_KDDockWidgets or USE_DOCK_MANAGER */
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout;
     layout->setSpacing(0);
@@ -108,7 +132,7 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
     layout->addWidget(m_webView);
     centralWidget->setLayout(layout);
     setCentralWidget(centralWidget);
-
+#endif
     slotUpdateWindowTitle();
     loadDefaultState();
 }
@@ -393,10 +417,15 @@ void BrowserMainWindow::slotAboutApplication()
 void BrowserMainWindow::slotFileNew()
 {
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
-    QString url = options->url;
-    int h = url.indexOf('#');
-    url = (h < 0 ? url : url.left(h)) + "#qtwebengine";
-    BrowserApplication::instance()->newMainWindow(url, options);
+    QUrl url = options->url;
+    if (url.hasFragment()) {
+        QUrlQuery fragment = QUrlQuery(url.fragment().replace(";", "&"));
+        fragment.removeQueryItem("session-number");
+        fragment.removeQueryItem("window");
+        url.setFragment(fragment.isEmpty() ? QString()
+                        : fragment.toString());
+    }
+    BrowserApplication::instance()->newMainWindow(url.toString(), options);
 }
 
 void BrowserMainWindow::closeEvent(QCloseEvent *event)

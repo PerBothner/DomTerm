@@ -33,7 +33,6 @@
 #include <QtDebug>
 #include <QTimer>
 #include <QFileDialog>
-#include <QFileSystemWatcher>
 #include <QMimeData>
 #include <QtGui/QClipboard>
 
@@ -210,6 +209,43 @@ void Backend::windowOp(const QString& opname)
     else if (opname == "minimize")
          webView()->mainWindow()->showMinimized();
 }
+
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+void Backend::newPane(int paneOp, const QString& url)
+{
+    auto webv = new WebView(webView()->m_processOptions, nullptr);
+    webv->newPage(url);
+    auto dockw = webv->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
+    auto curDock = webView()->dockWidget();
+#if USE_DOCK_MANAGER
+    auto manager = BrowserApplication::instance()->dockManager();
+    ads::DockWidgetArea location = ads::NoDockWidgetArea;
+    switch (paneOp) {
+    case 2:
+        manager->addDockWidgetTabToArea(dockw, curDock->dockAreaWidget());
+        return;
+    case 10: location = ads::LeftDockWidgetArea; break;
+    case 11: location = ads::RightDockWidgetArea; break;
+    case 12: location = ads::TopDockWidgetArea; break;
+    case 13: location = ads::BottomDockWidgetArea; break;
+    }
+    manager->addDockWidget(location, dockw, curDock->dockAreaWidget());
+#endif
+#if USE_KDDockWidgets
+    KDDockWidgets::Location location = KDDockWidgets::Location_OnRight;
+    switch (paneOp) {
+    case 2:
+        curDock->addDockWidgetAsTab(dockw);
+        return;
+    case 10: location = KDDockWidgets::Location_OnLeft; break;
+    case 11: location = KDDockWidgets::Location_OnRight; break;
+    case 12: location = KDDockWidgets::Location_OnTop; break;
+    case 13: location = KDDockWidgets::Location_OnBottom; break;
+    }
+    curDock->addDockWidgetToContainingWindow(dockw, location, curDock);
+#endif
+}
+#endif
 
 void Backend::openNewWindow(int width, int height, const QString& position,
                             const QString& url, bool headless)

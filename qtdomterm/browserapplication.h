@@ -63,7 +63,6 @@
 QT_BEGIN_NAMESPACE
 class QNetworkAccessManager;
 class QWebEngineProfile;
-class QFileSystemWatcher;
 QT_END_NAMESPACE
 
 #include "processoptions.h"
@@ -72,6 +71,10 @@ QT_END_NAMESPACE
 
 class BrowserMainWindow;
 class CookieJar;
+
+#if USE_DOCK_MANAGER
+#include "DockManager.h"
+#endif
 
 class BrowserApplication : public QApplication
 {
@@ -89,8 +92,13 @@ public:
     QList<BrowserMainWindow*> mainWindows();
     QIcon icon(const QUrl &url) const;
     QIcon defaultIcon() const;
-    QFileSystemWatcher* fileSystemWatcher() { return m_fileSystemWatcher; }
-
+#if USE_DOCK_MANAGER
+    ads::CDockManager* dockManager() { return m_DockManager; }
+    void dockManager(ads::CDockManager* dm) { m_DockManager = dm; }
+#endif
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    static QString uniqueNameFromUrl(const QString& url);
+#endif
     QString generateSessionName();
     int getSaveFileCount() { return ++saveFileCounter; }
 
@@ -122,11 +130,13 @@ private:
 
     QAuthenticator m_lastAuthenticator;
     QAuthenticator m_lastProxyAuthenticator;
-    QFileSystemWatcher *m_fileSystemWatcher;
     QString nameTemplate;
     int nextSessionNameIndex;
     int saveFileCounter;
     bool headlessOption;
+#if USE_DOCK_MANAGER
+    ads::CDockManager* m_DockManager = nullptr;
+#endif
 };
 
 #endif // BROWSERAPPLICATION_H

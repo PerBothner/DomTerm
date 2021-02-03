@@ -657,6 +657,48 @@ cmake -DCMAKE_INSTALL_PREFIX=$LIBCLIPBOARD_DIR/dist ..
 make install
 @end example
 
+@subsubheading Optional: Qt Docking (experimental)
+
+Managing docking (draggable panes and tabes) using a native
+library has some advantages (compared to GoldenLayout).
+Specifically, you can drag panes between top-level windows.
+There are two candidate Qt libraries that are being considered:
+ @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System} (slightly smaller, more liberal license, nicer defaults) and
+@uref{https://www.kdab.com/development-resources/qt-tools/kddockwidgets/,KDDockWidgets} (seems slightly more solid, better Wayland support).
+Both are supported in a proof-of-concept way;
+both need more polishing and testing, which may determine a preference.
+
+To use @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,@strong{Qt Advanced Docking System}}:
+@example
+git clone https://github.com/PerBothner/Qt-Advanced-Docking-System.git
+git checkout multi-main
+QT_ADS_DIR=`pwd`/+installed+ #for example
+mkdir build
+cd build
+cmake  -DCMAKE_INSTALL_PREFIX=$QT_ADS_DIR ..
+make install
+@end example
+
+Then
+@example
+configure --with-qt-docking=$QT_ADS_DIR
+@end example
+
+To use @uref{https://www.kdab.com/development-resources/qt-tools/kddockwidgets/,@strong{KDDockWidgets}}:
+
+@example
+git clone https://github.com/KDAB/KDDockWidgets.git
+KDDOCK_DIR=`pwd`/+installed+ #for example
+mkdir build
+cd build
+cmake  -DCMAKE_INSTALL_PREFIX=$KDDOCK_DIR ..
+make install
+@end example
+
+@example
+configure ... --with-kddockwidgets=$KDDOCK_DIR
+@end example
+
 @subheading Building from source
 
 If building from the @code{git} respository, first do:

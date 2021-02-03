@@ -164,6 +164,16 @@ function setupQWebChannel(channel) {
     DomTerm.inputModeChanged = function(term, mode) {
         backend.inputModeChanged(mode);
     }
+    if (DomTerm.mainSearchParams.get('qtdocking')) {
+        DomTerm.newPane = function(paneOp, options=null, dt=DomTerm.focusedTerm) {
+            let url = DomTerm.paneLocation;
+            if (typeof options == "number") {
+                url += url.indexOf('#') >= 0 ? '&' : '#';
+                url += "session-number="+options;
+            }
+            backend.newPane(paneOp, DomTerm.addLocationParams(url));
+        };
+    }
     const oldAutoPagerChanged = DomTerm.autoPagerChanged;
     DomTerm.autoPagerChanged = function(term, mode) {
         backend.autoPagerChanged(mode);
@@ -262,6 +272,7 @@ function loadHandler(event) {
     let url = location.href;
     let hash = location.hash.replace(/^#[;]*/, '').replace(/;/g, '&');
     let params = new URLSearchParams(hash);
+    DomTerm.mainSearchParams = params;
     let m = params.get('js-verbosity');
     if (m) {
         let v = Number(m);
@@ -381,7 +392,7 @@ function loadHandler(event) {
     }
     let paneParams = new URLSearchParams();
     let copyParams = ['server-key', 'js-verbosity', 'log-string-max',
-                      'log-to-server', 'headless'];
+                      'log-to-server', 'headless', 'qtdocking'];
     for (let i = copyParams.length;  --i >= 0; ) {
         let pname = copyParams[i];
         let pvalue = params.get(pname);

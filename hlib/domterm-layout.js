@@ -73,9 +73,11 @@ DomTermLayout.addPane = function(paneOp, newItemConfig,
     }
     if (newItemConfig == null)
         newItemConfig = DomTermLayout.newItemConfig;
-    else if (typeof newItemConfig == "number")
-        newItemConfig = Object.assign({sessionNumber: newItemConfig },
+    else if (typeof newItemConfig == "number") {
+        // FIXME newItemConfig is actually window/connection-number
+        newItemConfig = Object.assign({windowNumber: newItemConfig, sessionNumber: newItemConfig },
                                       DomTermLayout.newItemConfig);
+    }
     if (paneOp == 2) { // new tab
         oldItem.parent.addChild(newItemConfig); // FIXME index after oldItem
     } else {
@@ -320,8 +322,8 @@ DomTermLayout._initTerminal = function(sessionNumber, container) {
     let paneNumber = DomTerm._newPaneNumber();
     if (DomTerm.useIFrame) {
         let url = DomTerm.paneLocation;
-        url += (url.indexOf('#') >= 0 ? '&' : '#')
-            + "pane-number="+paneNumber;
+        url += url.indexOf('#') >= 0 ? '&' : '#';
+        url += + "pane-number="+paneNumber; // ?? used for?
         if (sessionNumber)
             url += "&session-number="+sessionNumber;
         wrapped = DomTermLayout.makeIFrameWrapper(url);
@@ -487,14 +489,7 @@ DomTermLayout.makeIFrameWrapper = function(location, mode='T',
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
     if (mode == 'T') {
-        if (DomTerm.mainLocationParams)
-            location += (location.indexOf('#') >= 0 ? '&' : '#')
-            + DomTerm.mainLocationParams;
-        if (DomTerm.server_key && ! location.match(/[#&]server-key=/)) {
-            location = location
-                + (location.indexOf('#') >= 0 ? '&' : '#')
-                + "server-key=" + DomTerm.server_key;
-        }
+        location = DomTerm.addLocationParams(location);
     }
     if (DomTermLayout._mainWindowNumber >= 0 && (mode == 'T' || mode == 'V')) {
          location = location

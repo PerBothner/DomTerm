@@ -65,6 +65,15 @@ class Backend;
 class BrowserMainWindow;
 class ProcessOptions;
 #include "processoptions.h"
+#if USE_KDDockWidgets
+#include <kddockwidgets/KDDockWidgets.h>
+#include <kddockwidgets/DockWidget.h>
+typedef KDDockWidgets::DockWidget DockWidget;
+#endif
+#if USE_DOCK_MANAGER
+#include "DockManager.h"
+typedef ads::CDockWidget DockWidget;
+#endif
 
 class WebPage : public QWebEnginePage {
     Q_OBJECT
@@ -98,7 +107,7 @@ public:
     WebView(QSharedDataPointer<ProcessOptions> processOptions,
             QWidget *parent = 0);
     QSharedDataPointer<ProcessOptions> m_processOptions;
-    void newPage(const QString& url, QSharedDataPointer<ProcessOptions> processOptions);
+    void newPage(const QString& url);
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
     BrowserMainWindow *mainWindow() { return m_page->mainWindow(); }
@@ -111,7 +120,13 @@ public:
     void showContextMenu(const QString& contextType); // FIXME
     void loadUrl(const QUrl &url);
     QUrl url() const;
-
+#if USE_KDDockWidgets
+    void setDockWidget(KDDockWidgets::DockWidget *dock);
+#endif
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    DockWidget *dockWidget();
+    DockWidget *setDockWidget(const QString &uniqueName);
+#endif
     inline int progress() const { return m_progress; }
 public slots:
     QString generateSaveFileName();
@@ -138,6 +153,9 @@ private slots:
     void slotCopyInContext();
 
 private:
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    DockWidget *m_dockWidget;
+#endif
     QUrl m_initialUrl;
     int m_progress;
     WebPage *m_page;

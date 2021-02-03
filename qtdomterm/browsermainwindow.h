@@ -64,14 +64,22 @@ QT_END_NAMESPACE
 class WebView;
 class ProcessOptions;
 class BrowserApplication;
-
-
+#if USE_KDDockWidgets
+#include <kddockwidgets/DockWidget.h>
+#include <kddockwidgets/MainWindow.h>
+#endif
 /*!
     The MainWindow of the Browser Application.
 
     Handles the tab widget and all the actions
  */
-class BrowserMainWindow : public QMainWindow {
+class BrowserMainWindow
+#if USE_KDDockWidgets
+    : public KDDockWidgets::MainWindow
+#else
+    : public QMainWindow
+#endif
+{
     Q_OBJECT
 
 public:

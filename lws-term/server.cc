@@ -173,6 +173,15 @@ int start_command(struct options *opts, char *cmd) {
     pid_t pid = fork();
     if (pid == 0) {
         putenv((char*) "ELECTRON_DISABLE_SECURITY_WARNINGS=true");
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+        if (opts->qt_frontend) {
+#ifdef QT_DOCKING_LIBDIR
+            // FIXME - should append, not override
+            setenv("LD_LIBRARY_PATH", QT_DOCKING_LIBDIR, 1);
+#endif
+            putenv((char*) "XDG_SESSION_TYPE=x11");
+        }
+#endif
         daemonize();
         execv(arg0, (char**) args);
         exit(-1);
@@ -740,6 +749,7 @@ do_run_browser(struct options *options, const char *url, int port)
                     if (browser_specifier != NULL) {
                         free (cmd);
                         do_Qt = true;
+                        options->qt_frontend = true;
                         break;
                     }
                 } else if (strcmp(cmd, "firefox") == 0) {
@@ -778,6 +788,7 @@ do_run_browser(struct options *options, const char *url, int port)
             printf_error(options, "'qtdomterm' missing");
             return EXIT_FAILURE;
         }
+        options->qt_frontend = true;
         do_Qt = true;
     }
     else if (strcmp(browser_specifier, "--electron") == 0) {
@@ -841,6 +852,7 @@ do_run_browser(struct options *options, const char *url, int port)
     if (browser_specifier[0] == '\0')
         return default_browser_run(url, port, options);
     int r = subst_run_command(options, browser_specifier, url, port);
+    options->qt_frontend = false;
     // FIXME: free(browser_specifier)
     return r;
 }
@@ -1655,7 +1667,7 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/goldenlayout.js", LIB_WHEN_OUTER},
     {"hlib/domterm-layout.js", LIB_WHEN_OUTER},
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
-    {"hlib/qwebchannel.js", LIB_WHEN_OUTER},
+    {"hlib/qwebchannel.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/jsMenus.js", LIB_WHEN_OUTER},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
@@ -1677,6 +1689,7 @@ static struct lib_info standard_jslibs[] = {
 static void
 make_main_html_text(struct sbuf *obuf, int port)
 {
+    const char *start_html = "no-frames.html";
     sbuf_printf(obuf,
                 "<!DOCTYPE html>\n"
                 "<html><head>\n"
@@ -1685,15 +1698,15 @@ make_main_html_text(struct sbuf *obuf, int port)
                 "<meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'unsafe-inline'\">\n"
                 "<script type='text/javascript'>\n"
                 "var DomTerm_server_key = '%.*s';\n"
-                "var newloc = 'http://localhost:%d/no-frames.html' + location.hash;\n"
+                "var newloc = 'http://localhost:%d/%s' + location.hash;\n"
                 "newloc += (newloc.includes('#') ? ';' : '#')+'server-key=' + DomTerm_server_key;\n"
                 "location.replace(newloc);\n"
                 "</script>\n"
                 "</head>\n"
                 "<body></body></html>\n",
-                SERVER_KEY_LENGTH, server_key, port
+                SERVER_KEY_LENGTH, server_key, port, start_html
         );
-    lwsl_notice("initial html redirects to: 'http://localhost:%d/no-frames.html'\n", port);
+    lwsl_notice("initial html redirects to: 'http://localhost:%d/%s'\n", port, start_html);
 }
 void
 make_html_text(struct sbuf *obuf, int port, int hoptions,
