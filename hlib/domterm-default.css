@@ -86,14 +86,17 @@ div.domterm span[caret="underline"][std="caret"], div.domterm span[caret="blinki
 div.domterm span[caret="bar"][std="caret"], div.domterm span[caret="blinking-bar"][std="caret"] {
     border-right: 2px solid red; margin-right: -2px
 }
-div.domterm span.focus-caret > span {
-    border-top: 1px solid var(--focus-color);
-    border-bottom: 1px solid var(--focus-color);
+
+div.domterm span.focus-caret-line {
+    border-style: solid none;
+    border-color: var(--focus-color);
+    border-width: 1px;
     left: -4px;
     width: 8px
 }
-div.domterm span.focus-caret span span {
-    left: 3px;
+
+div.domterm span.focus-caret-mark {
+    left: -1px;
     width: 2px;
     background-color: var(--focus-color);
 }

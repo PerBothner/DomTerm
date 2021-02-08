@@ -275,11 +275,14 @@ class Terminal {
     vcaretNode.stayOut = true;
     // A work-around for a Chrome bug (?) where a border or outline
     // is not shown at the left edge of the domterm window.
-    // Instead we create this relative-positiond filled vcaretBar.
+    // Instead we create this relative-positioned filled vcaretBar.
     let vcaretNode1 = this._createSpanNode();
+    vcaretNode1.classList.add("focus-caret-mark");
     vcaretNode.appendChild(vcaretNode1);
     let vcaretNode2 = this._createSpanNode();
-    vcaretNode1.appendChild(vcaretNode2);
+    vcaretNode2.classList.add("focus-caret-line");
+    vcaretNode.appendChild(vcaretNode2);
+    this.viewCaretLineNode = vcaretNode2;
 
     this._miniBuffer = null;
     this._searchMode = false;
@@ -3894,6 +3897,7 @@ Terminal.prototype._updateSelected = function() {
                                      this.viewCaretNode, 0);
             }
             this.scrollToCaret(this.viewCaretNode);
+            this.adjustFocusCaretStyle();
         }
     }
 
@@ -6640,6 +6644,16 @@ Terminal.prototype._scrollIfNeeded = function() {
             this.topNode.scrollTop = needed;
     }
 }
+
+Terminal.prototype.adjustFocusCaretStyle = function() {
+    let caret = this.viewCaretNode;
+    if (caret && caret.parentNode) {
+        let lcaret = this.viewCaretLineNode;
+        let rect = caret.getBoundingClientRect();
+        lcaret.style.width = (this.availWidth + this.rightMarginWidth ) + "px";
+        lcaret.style.left = (-rect.x) + "px";
+    }
+};
 
 Terminal.prototype.scrollToCaret = function(caret = null) {
     if (caret == null) {
