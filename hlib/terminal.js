@@ -387,7 +387,7 @@ class Terminal {
         dt._breakDeferredLines();
         dt._checkSpacer();
         // FIXME only if "scrollWanted"
-        if (dt._pagingMode == 0)
+        if (dt.viewCaretNode.parentNode === null)
             dt._scrollIfNeeded();
         /*
         if (dt._markMode > 0) {
@@ -3723,6 +3723,9 @@ Terminal.prototype.measureWindow = function()  {
     let ruler = this._rulerNode;
     if (! ruler)
         return;
+    let lcaret = this.viewCaretLineNode;
+    lcaret.style.width = "";
+    lcaret.style.left = "";
     this.actualHeight = this.topNode.getBoundingClientRect().height;
     if (DomTerm.verbosity >= 2)
         this.log("measureWindow "+this.name+" h:"+this.actualHeight);
@@ -3781,6 +3784,7 @@ Terminal.prototype.measureWindow = function()  {
     if (DomTerm.verbosity >= 2)
         this.log("ruler ow:"+ruler.offsetWidth+" cl-h:"+ruler.clientHeight+" cl-w:"+ruler.clientWidth+" = "+(ruler.offsetWidth/26.0)+"/char h:"+ruler.offsetHeight+" numCols:"+this.numColumns+" numRows:"+this.numRows);
 
+    this.adjustFocusCaretStyle();
     this._updateMiscOptions();
     let computedZoom = window.getComputedStyle(document.body)['zoom'];
     this._computedZoom = Number(computedZoom);
@@ -3888,7 +3892,8 @@ Terminal.prototype._updateSelected = function() {
                 viewCaretPrevious.parentNode.removeChild(this.viewCaretNode);
                 this._normalize1(viewCaretPrevious);
             }
-            if (focusNode !== this.viewCaretNode.firstChild)
+            if (focusNode !== this.viewCaretNode.firstChild
+                && focusNode !== this.viewCaretNode.firstChild.firstChild)
                 r.insertNode(this.viewCaretNode);
             if (point) {
                 sel.collapse(this.viewCaretNode, 0);
@@ -3897,7 +3902,6 @@ Terminal.prototype._updateSelected = function() {
                                      this.viewCaretNode, 0);
             }
             this.scrollToCaret(this.viewCaretNode);
-            this.adjustFocusCaretStyle();
         }
     }
 
@@ -6437,12 +6441,32 @@ Terminal.prototype._doDeferredDeletion = function() {
     this._pendingEcho = "";
 }
 
-Terminal.prototype._pauseContinue = function(skip = false) {
+Terminal.prototype._downContinue = function(height, paging) {
+    let end = this._vspacer.offsetTop;
+    let limit = end + height;
+    if (limit > this._pauseLimit)
+        this._pauseLimit = limit;
+    let focusCaret = this.viewCaretNode;
+    if (focusCaret && focusCaret.parentNode) {
+        focusCaret.parentNode.removeChild(focusCaret);
+    }
+    this._clearSelection();
+    this._pauseContinue(paging);
+}
+
+Terminal.prototype._downLinesOrContinue = function(count, paging) {
+    let todo = this.editorMoveLines(false, count, false);
+    if (todo > 0) {
+        this._downContinue(todo * this.charHeight, paging);
+    }
+}
+
+Terminal.prototype._pauseContinue = function(paging, skip = false) {
     if (this.sstate.disconnected) {
         this._reconnect();
     }
     var wasMode = this._pagingMode;
-    this._pagingMode = 0;
+    this._pagingMode = paging ? 1 : 0;
     if (wasMode != 0)
         this._displayInputModeWithTimeout(this._modeInfo("C"));
     if (DomTerm.verbosity >= 2)
@@ -6655,7 +6679,7 @@ Terminal.prototype.adjustFocusCaretStyle = function() {
     }
 };
 
-Terminal.prototype.scrollToCaret = function(caret = null) {
+Terminal.prototype.scrollToCaret = function(caret = null, force = null) {
     if (caret == null) {
         caret = this.viewCaretNode;
         if (caret == null || caret.parentNode == null)
@@ -6663,17 +6687,15 @@ Terminal.prototype.scrollToCaret = function(caret = null) {
     }
     if (caret.parentNode == null)
         return;
-    let top = caret.offsetTop;
-    let bottom = top + caret.offsetHeight;
-    let parent = caret;
-    while ((parent = parent.offsetParent) != null && parent != this.topNode) {
-        top += parent.offsetTop;
-        bottom += parent.offsetTop;
-    }
-    if (top < this.topNode.scrollTop)
+    let rect = caret.getBoundingClientRect();
+    let top = rect.y + this.topNode.scrollTop - this.topNode.offsetTop;
+    let bottom = top + rect.height;
+    if (force === "bottom" || bottom > this.topNode.scrollTop + this.availHeight) {
+        this.topNode.scrollTop = Math.max(0, bottom - this.availHeight + 1);
+    } else if (force == "top" || top < this.topNode.scrollTop) {
         this.topNode.scrollTop = top;
-    else if (bottom > this.topNode.scrollTop + this.availHeight)
-        this.topNode.scrollTop = bottom - this.availHeight;
+    }
+    this.adjustFocusCaretStyle();
 }
 
 Terminal.prototype._enableScroll = function() {
@@ -8583,7 +8605,7 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-Right": "forward-char-extend",
     "Shift-Mod-Right": "forward-word-extend",
     "Up": "up-line",
-    "Down": "down-line",
+    "Down": "down-line-or-unpause",
     "Shift-Up": "up-line-extend",
     "Shift-Down": "down-line-extend",
     "Mod-Right": 'forward-word',
@@ -8591,8 +8613,8 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Ctrl-Up": "scroll-line-up",
     "Ctrl-PageUp": "scroll-page-up",
     "Ctrl-PageDown": "scroll-page-down",
-    "PageUp": "scroll-page-up",
-    "PageDown": "scroll-page-down",
+    "PageUp": "up-page",
+    "PageDown": "down-page-or-unpause",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Shift-Home": "beginning-of-line-extend",
@@ -8603,9 +8625,11 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Alt-End": "end-of-buffer",
     "Alt-Shift-Home": "beginning-of-buffer-extend",
     "Alt-Shift-End": "end-of-buffer-extend",
-    "Enter": "scroll-line-down",
-    "Shift-Space": "scroll-page-up",
-    "Space": "scroll-page-down",
+    "Shift-Enter": "up-line",
+    "Enter": "down-line-or-continue",
+    "Shift-Space": "up-page",
+    "Space": "down-page-or-continue",
+    "'c'": "exit-pager-disable-auto",
     "'m'": "toggle-pause-mode",
     "'p'": "scroll-percentage",
     "'%'": "scroll-percentage",
@@ -8746,7 +8770,8 @@ Terminal.prototype.keyDownHandler = function(event) {
             event.preventDefault();
             return;
         }
-    }
+    } else
+        this._adjustPauseLimit();
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
         event.preventDefault();
         return;
@@ -8853,7 +8878,6 @@ Terminal.prototype.keyPressHandler = function(event) {
     }
     if (this.scrollOnKeystroke)
         this._enableScroll();
-    this._adjustPauseLimit();
     if (this.isLineEditing()) {
         if (this.doLineEdit(keyName))
             event.preventDefault();
@@ -9715,6 +9739,75 @@ Terminal.prototype._pageScroll = function(delta) {
         this._pauseContinue();
 }
 
+Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
+    let cursor =
+        this.viewCaretNode && this.viewCaretNode.parentNode ? this.viewCaretNode
+        : this.outputBefore instanceof Element ? this.outputBefore
+        : this.outputContainer instanceof Element ? this.outputContainer
+        : this.outputContainer.parentNode;
+    let iline = this.lineStarts.length;
+    let line;
+    let lineBlock;
+    let force = count > 0 ? "bottom" : count < 0 ? "top" :null;
+    if (count < 0) {
+        moveUp = ! moveUp;
+        count = - count;
+    }
+    if (moveUp) {
+        let top = this.topNode.scrollTop;
+        top -= (count - 1) * this.actualHeight;
+        top += this.charHeight;
+        for (;;) {
+            --iline;
+            line = this.lineStarts[iline];
+            lineBlock = line.getAttribute("line") === null;
+            if (iline == 0)
+                break;
+            let lineRect = line.getBoundingClientRect();
+            // The "top" of a line starting with a line object
+            // is actually the bottom of the line object.
+            let lineTop = this.topNode.scrollTop
+                + (lineBlock ? lineRect.top : lineRect.bottom);
+            if (lineTop < top)
+                break;
+        }
+    } else {
+        let height = count * this.actualHeight;
+        let scTop = this.topNode.scrollTop;
+        let top = scTop + height;
+        top += this.actualHeight;
+        top -= this.charHeight;
+        let vtop = this._vspacer.getBoundingClientRect().y + scTop;
+        if (top > vtop) {
+            vtop -= this.actualHeight;
+            if (vtop >= 0)
+                this.topNode.scrollTop = vtop;
+            this._downContinue(height, paging);
+            return;
+        }
+        for (;;) {
+            --iline;
+            line = this.lineStarts[iline];
+            lineBlock = line.getAttribute("line") === null;
+            if (iline == 0)
+                break;
+            let lineEnd = this.lineEnds[iline];
+            if (lineEnd == null)
+                lineEnd = line;
+            let lineBot = this.topNode.scrollTop
+                + lineEnd.getBoundingClientRect().bottom;
+            if (lineBot <= top)
+                break;
+        }
+    }
+    if (lineBlock)
+        line.insertBefore(this.viewCaretNode, line.firstChild);
+    else
+        line.parentNode.insertBefore(this.viewCaretNode, line.nextSibling);
+    this._disableScrollOnOutput = true;
+    this.scrollToCaret(null, force);
+};
+
 Terminal.prototype._pagePage = function(count) {
     var amount = count * this.availHeight;
     if (count > 0)
@@ -9746,7 +9839,6 @@ Terminal.prototype._pageBottom = function() {
 }
 
 Terminal.prototype._enterPaging = function(pause) {
-    // this._displayInputModeWithTimeout(displayString);
     this.topNode.classList.add("focusmode");
     this._numericArgument = null;
     this._pagingMode = pause ? 2 : 1;
@@ -9763,6 +9855,7 @@ Terminal.prototype._enterPaging = function(pause) {
         }
         parent.insertBefore(this.viewCaretNode, before);
         sel.collapse(this.viewCaretNode, 0);
+        this.adjustFocusCaretStyle();
     } else {
         this._updateSelected();
     }

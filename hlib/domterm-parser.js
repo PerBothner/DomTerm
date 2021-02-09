@@ -613,13 +613,6 @@ class DTParser {
                 }
             }
         }
-        if (term._pauseNeeded()) {
-            this._textParameter = "";
-            term._enterPaging(true);
-            term.topNode.scrollTop = term._pauseLimit - term.availHeight;
-            term._updateDisplay();
-            return;
-        }
         term.requestUpdateDisplay();
     };
 

@@ -71,6 +71,21 @@ cmd('scroll-percentage',
         dt._pageScrollAbsolute(dt.numericArgumentGet(50));
         return true;
     });
+cmd('up-page',
+    function(dt, key) {
+        dt._pageUpOrDown(dt.numericArgumentGet(1), true);
+        return true;
+    });
+cmd('down-page-or-continue',
+    function(dt, key) {
+        dt._pageUpOrDown(dt.numericArgumentGet(1), false, false);
+        return true;
+    });
+cmd('down-page-or-unpause',
+    function(dt, key) {
+        dt._pageUpOrDown(dt.numericArgumentGet(1), false, true);
+        return true;
+    });
 cmd('enter-mux-mode',
     function(dt, key) {
         if (! dt.enterMuxMode)
@@ -136,6 +151,15 @@ cmd('exit-line-mode',
         }
         return false;
     });
+cmd('exit-pager-disable-auto',
+    function(dt, key) {
+        DomTerm.setAutoPaging("false", dt);
+        if (dt._currentlyPagingOrPaused()) {
+            dt._pauseContinue();
+            dt._exitPaging();
+        };
+        return true;
+    });
 cmd('toggle-auto-pager',
     function(dt, key) {
         if (dt._currentlyPagingOrPaused()) {
@@ -182,7 +206,7 @@ cmd('copy-text-or-interrupt',
 cmd('paging-interrupt',
     function(dt, key) {
         dt.reportKeyEvent(key, dt.keyNameToChars(key));
-        dt._pauseContinue(true);
+        dt._pauseContinue(false, true);
         dt._adjustPauseLimit();
         return true;
     });
@@ -320,6 +344,16 @@ cmd('up-line',
 cmd('down-line',
     function(dt, key) {
         dt.editorMoveLines(false, dt.numericArgumentGet(), false)
+        return true;
+    });
+cmd('down-line-or-unpause',
+    function(dt, key) {
+        dt._downLinesOrContinue(dt.numericArgumentGet(), true);
+        return true;
+    });
+cmd('down-line-or-continue',
+    function(dt, key) {
+        dt._downLinesOrContinue(dt.numericArgumentGet(), false);
         return true;
     });
 cmd('up-line-extend',
