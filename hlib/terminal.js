@@ -8471,12 +8471,12 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Shift-T": "new-tab",
             "Ctrl-Shift-X": "cut-text",
             //"Ctrl-@": "toggle-mark-mode",
-            "Ctrl-Shift-Home": "scroll-top",
-            "Ctrl-Shift-End": "scroll-bottom",
-            "Ctrl-Shift-Up": "scroll-line-up",
-            "Ctrl-Shift-Down": "scroll-line-down",
-            "Ctrl-Shift-PageUp": "scroll-page-up",
-            "Ctrl-Shift-PageDown": "scroll-page-down"
+            "Alt-Shift-Home": "scroll-top",
+            "Alt-Shift-End": "scroll-bottom",
+            "Alt-Shift-Up": "scroll-line-up",
+            "Alt-Shift-Down": "scroll-line-down",
+            "Alt-Shift-PageUp": "scroll-page-up",
+            "Alt-Shift-PageDown": "scroll-page-down"
         }, DomTerm.isMac ? {
             "Mod-V": "paste-text",
             "Mod-C": "copy-text"
@@ -8621,10 +8621,10 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-End": "end-of-line-extend",
     "Ctrl-Home": "scroll-top",
     "Ctrl-End": "scroll-bottom",
-    "Alt-Home": "beginning-of-buffer",
-    "Alt-End": "end-of-buffer",
-    "Alt-Shift-Home": "beginning-of-buffer-extend",
-    "Alt-Shift-End": "end-of-buffer-extend",
+    "Ctrl-Home": "beginning-of-buffer",
+    "Ctrl-End": "end-of-buffer",
+    "Ctrl-Shift-Home": "beginning-of-buffer-extend",
+    "Ctrl-Shift-End": "end-of-buffer-extend",
     "Shift-Enter": "up-line",
     "Enter": "down-line-or-continue",
     "Shift-Space": "up-page",

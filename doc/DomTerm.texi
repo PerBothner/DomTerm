@@ -2613,16 +2613,16 @@ the state of the Document Object Model.
 @subsubheading Scrolling
 
 @table @asis
-@item @kbd{Ctrl-Shift-@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{Ctrl-Shift-@key{PageDown}} (@code{scroll-page-down})
+@item @kbd{Alt-Shift-@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Alt-Shift-@key{PageDown}} (@code{scroll-page-down})
 Scroll one ``page'' up or down, respectively.
 (Specifically, the viewport height minus a height of one line.)
-@item @kbd{Ctrl-Shift-@key{Up}} (@code{scroll-line-up})
-@itemx @kbd{Ctrl-Shift-@key{Down}} (@code{scroll-line-down})
+@item @kbd{Alt-Shift-@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Alt-Shift-@key{Down}} (@code{scroll-line-down})
 Scroll one line up or down, respectively.
-@item @kbd{Ctrl-Shift-@key{Home}} (@code{scroll-top})
+@item @kbd{Alt-Shift-@key{Home}} (@code{scroll-top})
 Scroll to top.
-@item @kbd{Ctrl-Shift-@key{End}} (@code{scroll-bottom})
+@item @kbd{Alt-Shift-@key{End}} (@code{scroll-bottom})
 Scroll to bottom.
 @end table
 
@@ -3176,14 +3176,14 @@ commonly bound to Ctrl-F.
 
 In addition the following work as in all other modes:
 @table @asis
-@item @kbd{Ctrl-Shift-Home}
-@itemx @kbd{Ctrl-Shift-End}
+@item @kbd{Alt-Shift-Home}
+@itemx @kbd{Alt-Shift-End}
 Scroll to top/bottom.
-@item @kbd{Ctrl-Shift-PageUp}
-@itemx @kbd{Ctrl-Shift-PageDown}
+@item @kbd{Alt-Shift-PageUp}
+@itemx @kbd{Alt-Shift-PageDown}
 Scroll one ``page'' up or down.
-@item @kbd{Ctrl-Shift-Up}
-@itemx @kbd{Ctrl-Shift-Down}
+@item @kbd{Alt-Shift-Up}
+@itemx @kbd{Alt-Shift-Down}
 Scroll one line up or down.
 @end table
 
