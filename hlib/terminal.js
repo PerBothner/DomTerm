@@ -6452,6 +6452,7 @@ Terminal.prototype._downContinue = function(height, paging) {
     }
     this._clearSelection();
     this._pauseContinue(paging);
+    DomTerm.setAutoPaging("true", this);
 }
 
 Terminal.prototype._downLinesOrContinue = function(count, paging) {
