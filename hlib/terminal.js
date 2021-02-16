@@ -7268,6 +7268,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             return lineStart._widthColumns > dt.numColumns;
         }
         var end = dt.lineEnds[lineNo];
+        // FIXME use measureLeft if set
         return end != null && end.offsetLeft > dt.availWidth;
     }
 
@@ -7597,11 +7598,15 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 const tparent = textNode.parentNode;
                 const tprev = textNode.previousSibling;
                 const tnext = textNode.nextSibling;
-                const right = tnext !== null ? tnext.offsetLeft
-                      : tparent.offsetLeft + tparent.offsetWidth;
-                const left = tprev === null ? tparent.offsetLeft
+                let countColumns = ! Terminal._forceMeasureBreaks
+                    && lineStart._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
+                const left = countColumns ? column * this.charWidth
+                      : tprev === null ? tparent.offsetLeft
                       : tprev.offsetLeft + tprev.offsetWidth;
-                seg = this._breakString(textNode, this.lineEnds[absLine], left, right, this.availWidth, false, false/*FIXME-countColumns*/);
+                const right = countColumns ? left + cols * this.charWidth
+                      : tnext !== null ? tnext.offsetLeft
+                      : tparent.offsetLeft + tparent.offsetWidth;
+                seg = this._breakString(textNode, this.lineEnds[absLine], left, right, this.availWidth, false, countColumns);
                 if (seg) {
                     segments[isegment] = seg;
                     let r = this.strWidthInContext(seg, this.outputContainer);
