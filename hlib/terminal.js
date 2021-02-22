@@ -1718,10 +1718,10 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             let lineStart;
             if (newPre) {
                 var preNode = this._createPreNode();
+                preNode.appendChild(next);
+                parent.appendChild(preNode);
                 this._setBackgroundColor(preNode,
                                          this._getBackgroundColor(this._vspacer));
-                parent.appendChild(preNode);
-                preNode.appendChild(next);
                 lineStart = preNode;
             } else {
                 lastParent.appendChild(next);
