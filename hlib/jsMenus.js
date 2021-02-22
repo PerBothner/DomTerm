@@ -83,6 +83,8 @@ class Menu {
 	}
 
 	popup(x, y, itemNode = null, menubarSubmenu = false) {
+		Menu._keydownListen(true);
+
 		let setRight = false;
 
 		let submenu = itemNode != null || this.submenu;
@@ -269,6 +271,7 @@ class Menu {
 
 	static setApplicationMenu(menubar, parent=null) {
 		let oldNode = Menu._menubarNode;
+		Menu._keydownListen(true);
 		if (oldNode) {
 			let parent = oldNode.parentNode;
 			if (parent != null)
@@ -435,7 +438,6 @@ Menu._keydownListen = function(value) {
     }
     Menu._keydownListening = value;
 }
-Menu._keydownListen(true);
 
 Menu._isMac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
 			: typeof os != "undefined" ? os.platform() == "darwin" : false
