@@ -20,6 +20,11 @@ cmd('clear-buffer',
         dt.reportEvent("ECHO-URGENT", JSON.stringify("\x1b[7J"));
         return true;
     });
+cmd('reset-terminal-soft',
+    function(dt, key) {
+        dt.reportEvent("ECHO-URGENT", JSON.stringify("\x1b[!p"));
+        return true;
+    });
 cmd('new-window',
     function(dt, key) {
         DomTerm.openNewWindow(dt);

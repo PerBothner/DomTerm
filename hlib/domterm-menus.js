@@ -152,7 +152,11 @@ DomTerm.createMenus = function(options) {
           menuItem({label: 'Detach session',
                     click: function() {
                         DomTerm.doNamedCommand('detach-session'); }});
-    const homePageItem =
+    const resetMenuItem =
+          menuItem({label: 'Reset',
+                    click: function() {
+                        DomTerm.doNamedCommand('reset-terminal-soft'); }});
+   const homePageItem =
           menuItem({label: 'DomTerm home page',
                     click: function() { DomTerm.requestOpenLink({href: 'https://domterm.org'}) }});
     const aboutItem = menuItem({label: 'About DomTerm',
@@ -274,6 +278,7 @@ DomTerm.createMenus = function(options) {
     terminalMenu.append(cycleInputModesItem);
     terminalMenu.append(newTerminalMenuItem);
     terminalMenu.append(detachMenuItem);
+    terminalMenu.append(resetMenuItem);
     let helpMenu = new Menu();
     helpMenu.append(aboutItem);
     if (homePageItem != null)
