@@ -7601,10 +7601,15 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 const tnext = textNode.nextSibling;
                 let countColumns = ! Terminal._forceMeasureBreaks
                     && lineStart._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
-                const left = countColumns ? column * this.charWidth
+                let left = countColumns ? column * this.charWidth
                       : tprev === null ? tparent.offsetLeft
                       : tprev.offsetLeft + tprev.offsetWidth;
-                const right = countColumns ? left + cols * this.charWidth
+                // In case insertRawOutput appended to a pre-existing text node,
+                if (countColumns && textNode.length > seg.length) {
+                    left -= (this.strWidthInContext(textNode.data, this.outputContainer) - cols)
+                        * this.charWidth;
+                }
+                let right = countColumns ? left + cols * this.charWidth
                       : tnext !== null ? tnext.offsetLeft
                       : tparent.offsetLeft + tparent.offsetWidth;
                 seg = this._breakString(textNode, this.lineEnds[absLine], left, right, this.availWidth, false, countColumns);
