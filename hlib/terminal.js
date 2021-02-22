@@ -351,7 +351,9 @@ class Terminal {
     // (If the function returns null, uses the input unmodified.)
     this.charMapper = null;
     this._Gcharsets = [null, null, null, null];
-    this._Glevel = 0;
+    this._GlevelL = 0;
+    this._GlevelR = 0;
+    this._Gshift = 0;
 
     this._currentPprintGroup = null;
 
@@ -1552,7 +1554,9 @@ Terminal.prototype.saveCursor = function() {
         regionLeft: this._regionLeft,
         regionRight: this._regionLeft,
         currentPprintGroup: this._currentPprintGroup,
-        glevel: this._Glevel,
+        glevelL: this._GlevelL,
+        glevelR: this._GlevelR,
+        gshift: this._Gshift,
         charset0: this._Gcharsets[0],
         charset1: this._Gcharsets[1],
         charset2: this._Gcharsets[2],
@@ -1584,7 +1588,9 @@ Terminal.prototype.restoreCursor = function(restoreExtraState = false) {
         this._Gcharsets[1] = saved.charset1;
         this._Gcharsets[2] = saved.charset2;
         this._Gcharsets[3] = saved.charset3;
-        this._Glevel = saved.glevel;
+        this._GlevelL = saved.glevelL;
+        this._GlevelR = saved.glevelR;
+        this._Gshift = saved.gshift;
         this.charMapper = saved.charMapper;
         this._currentStyleMap = saved.currentStyleMap;
         this.sstate.originMode = saved.origin;
@@ -1600,12 +1606,7 @@ Terminal.prototype.restoreCursor = function(restoreExtraState = false) {
             this._currentPprintGroup = saved.currentPprintGroup;
         }
     } else {
-        this._Gcharsets[0] = null;
-        this._Gcharsets[1] = null;
-        this._Gcharsets[2] = null;
-        this._Gcharsets[3] = null;
-        this.charMapper = null;
-        this._Glevel = 0;
+        this.resetCharsets();
     }
 }; 
 
@@ -5460,6 +5461,17 @@ Terminal.prototype.updateWindowTitle = function() {
         DomTerm.setTitle(str);
 }
 
+Terminal.prototype.resetCharsets = function() {
+    this._GlevelL = 0;
+    this._GlevelR = 0;
+    this._Gshift = 0;
+    this.charMapper = null;
+    this._Gcharsets[0] = null;
+    this._Gcharsets[1] = null;
+    this._Gcharsets[2] = null;
+    this._Gcharsets[3] = null;
+};
+
 // full==-1: reset stuff restored by restoreCursor(true)
 // full==0: normal reset
 // full==1: full reset
@@ -5473,12 +5485,7 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     this.sstate.bracketedPasteMode = false;
     this.sstate.wraparoundMode = 2;
     this._currentStyleMap = new Map();
-    this._Glevel = 0;
-    this.charMapper = null;
-    this._Gcharsets[0] = null;
-    this._Gcharsets[1] = null;
-    this._Gcharsets[2] = null;
-    this._Gcharsets[3] = null;
+    this.resetCharsets();
     this.setMouseMode(0);
     this.sstate.mouseCoordEncoding = 0;
     this.resetTabs();
@@ -5655,7 +5662,29 @@ Terminal.prototype.updateSettings = function() {
 };
 
 Terminal.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
-    this._Glevel = g;
+    if (whenShifted)
+        this._GlevelR = g;
+    else
+        this._GlevelL = g;
+    if (this._Gcharsets[this._GlevelL] == null
+        && this._Gcharsets[this._GlevelR] == null) {
+        this.charMapper = null;
+        return;
+    }
+    /*
+    this.charMapper = (ch, bytes, nextIndex, endIndex) => {
+        let shifted;
+        if (ch >= 128 && ch <= 255) {
+            ch -= 128;
+            shifted = true;
+        }
+        this.charMapper = this._Gcharsets[g];
+        let set = this._Gcharsets[shifted ? this._GlevelR : this._GlevelL];
+        if (set == null)
+            return ch < 32 || ch >= 127 ? 0 : (ch | (1 << 21));
+        return set(ch, bytes, nextIndex, endIndex);
+    };
+    */
     this.charMapper = this._Gcharsets[g];
 };
 
@@ -5667,17 +5696,26 @@ Terminal.prototype._selectGcharset = function(g, whenShifted/*ignored*/) {
 // reference above. xterm seems in line with the reference
 // when running vttest however.
 // The table below now uses xterm's output from vttest.
-DomTerm.charsetSCLD = function(ch) {
+DomTerm.charsetSCLD = function(ch, bytes, nextIndex, endIndex) {
+    if (ch < 32 || ch >= 127)
+        return 0;
     if (ch >= 96 && ch <= 126)
-        return "\u25c6\u2592\u2409\u240c\u240d\u240a\u00b0\u00b1\u2424\u240b\u2518\u2510\u250c\u2514\u253c\u23ba\u23bb\u2500\u23bc\u23bd\u251c\u2524\u2534\u252c\u2502\u2264\u2265\u03c0\u2260\u00a3\u00b7".charAt(ch-96);
-    return null;
+        ch = "\u25c6\u2592\u2409\u240c\u240d\u240a\u00b0\u00b1\u2424\u240b\u2518\u2510\u250c\u2514\u253c\u23ba\u23bb\u2500\u23bc\u23bd\u251c\u2524\u2534\u252c\u2502\u2264\u2265\u03c0\u2260\u00a3\u00b7".charCodeAt(ch-96);
+    return ch | (1 << 21);
 };
-DomTerm.charsetUK = function(ch) {
+DomTerm.charsetUK = function(ch, bytes, nextIndex, endIndex) {
+    if (ch < 32 || ch >= 127)
+        return 0;
     // Convert '#' to pound (sterling) sign
     if (ch==35)
-        return "\xa3";
-    return null;
+        ch = 0xa3;
+    return ch | (1 << 21);
 };
+DomTerm.charset_8859_1 = function(ch, bytes, nextIndex, endIndex) {
+    if (ch < 32 || ch == 127)
+        return 0;
+    return ch | (1 << 21);
+}
 
 DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
     var links = node.getElementsByTagName("a");
@@ -6473,10 +6511,10 @@ Terminal.prototype._pauseContinue = function(paging, skip = false) {
     if (DomTerm.verbosity >= 2)
         this.log("pauseContinue was mode="+wasMode);
     if (wasMode == 2) {
-        var text = this.parser._textParameter;
-        this.parser._textParameter = null;
+        var text = this.parser._deferredBytes;
+        this.parser._deferredBytes = undefined;
         if (! skip && text)
-            this.insertString(text);
+            this.parseBytes(text);
         this._maybeConfirmReceived();
     }
 }
@@ -6538,8 +6576,6 @@ Terminal.prototype.insertBytes = function(bytes) {
     if (DomTerm.verbosity >= 2)
         this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+len+" received:"+this._receivedCount);
     while (len > 0) {
-        if (this.decoder == null)
-            this.decoder = new TextDecoder(); //label = "utf-8");
         var urgent_begin = -1;
         var urgent_end = -1;
         for (var i = 0; i < len; i++) {
@@ -6560,9 +6596,7 @@ Terminal.prototype.insertBytes = function(bytes) {
             && ((begin2 = bytes[urgent_begin+1]) == Terminal.URGENT_FIRST_COUNTED
                 || begin2 == Terminal.URGENT_FIRST_NONCOUNTED)) {
             this.pushControlState();
-            this.insertString(this.decoder
-                              .decode(bytes.slice(urgent_begin+2, urgent_end),
-                                      {stream:true}));
+            this.parseBytes(bytes, urgent_begin+2, urgent_end);
             this.popControlState();
             plen = urgent_end + 1 - urgent_begin;
             if (begin2 == Terminal.URGENT_FIRST_COUNTED)
@@ -6583,8 +6617,7 @@ Terminal.prototype.insertBytes = function(bytes) {
                     this._savedControlState.count_urgent = 0;
             }
             if (plen > start) {
-                this.insertString(this.decoder
-                                  .decode(bytes.slice(start, plen), {stream:true}));
+                this.parseBytes(bytes, start, plen);
             }
             // update receivedCount before calling push/popControlState
             this._receivedCount = (this._receivedCount + plen) & Terminal._mask28;
@@ -6592,7 +6625,7 @@ Terminal.prototype.insertBytes = function(bytes) {
                 len = 0;
             } else {
                 var dlen = plen + 1; // amount consumed this iteration
-                bytes = bytes.slice(dlen, len);
+                bytes = bytes.subarray(dlen, len);
                 len -= dlen;
                 if (plen == urgent_begin)
                     this.pushControlState();
@@ -6640,6 +6673,18 @@ Terminal.prototype.popControlState = function() {
 // overridden if usingXtermJs()
 Terminal.prototype.insertString = function(str) {
     this.parser.insertString(str);
+}
+// overridden if usingXtermJs()
+Terminal.prototype.parseBytes = function(bytes, beginIndex, endIndex) {
+    /*
+    //DEBUGGING of partial sequences
+    if (true) {
+        for (let i = beginIndex; i < endIndex; i++)
+            this.parser.parseBytes(bytes, i, i+1);
+        return;
+    }
+    */
+    this.parser.parseBytes(bytes, beginIndex, endIndex);
 }
 
 Terminal.prototype._scrollNeeded = function() {
@@ -9145,6 +9190,8 @@ DomTerm.initXtermJs = function(dt, topNode) {
     dt.topNode = xterm.element;
     dt.insertString = function(str) {
         xterm.write(str); };
+    dt.parseBytes = function(bytes, beginIndex, endIndex) {
+        xterm.write(bytes.slice(beginIndex, endIndex)); };
     xterm.on('data', function(data) {
         dt.processInputCharacters(data);
     });
@@ -9473,8 +9520,14 @@ Terminal.isDelimiter = (function() {
 
 Terminal.prototype.linkAllowedUrlSchemes = ":http:https:file:ftp:mailto:";
 
-Terminal.prototype.linkify = function(str, start, end, delimiter) {
+Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
     const dt = this;
+    let smode = this._getStdMode();
+    if (smode == "input" || smode == "prompt" || smode == "hider")
+        return false;
+    if (DomTerm._isInElement(this.outputContainer, "A"))
+        return false;
+
     function rindexDelimiter(str, start, end) {
         for (let i = end; --i >= start; )
             if (Terminal.isDelimiter(str.charCodeAt(i)))
@@ -9488,14 +9541,9 @@ Terminal.prototype.linkify = function(str, start, end, delimiter) {
     function isEmail(str) {
         return str.match(/^[^@]+@[^@]+\.[^@]+$/);
     }
-    let smode = this._getStdMode();
-    if (smode == "input" || smode == "prompt" || smode == "hider")
-        return false;
     let fstart = rindexDelimiter(str, start, end)+1;
     let fragment = str.substring(fstart > 0 ? fstart : start, end);
     let firstToMove = null;
-    if (DomTerm._isInElement(this.outputContainer, "A"))
-        return false;
     if (fstart == 0) {
         let container = this.outputContainer;
         let previous = container instanceof Text ? container

@@ -8,26 +8,45 @@ class DTParser {
         this.term = term;
         this.controlSequenceState = DTParser.INITIAL_STATE;
         this.parameters = new Array();
-        this._textParameter = "";
         this._savedControlState = null;
         this._flagChars = "";
         /** @type {Array|null} */
         this.saved_DEC_private_mode_flags = null;
     }
-
+    decodeBytes(bytes, beginIndex, endIndex) {
+        if (this.decoder == null)
+            this.decoder = new TextDecoder(); //label = "utf-8");
+        return this.decoder.decode(bytes.subarray(beginIndex, endIndex),
+                                  {stream:true});
+    }
     insertString(str) {
-        const term = this.term;
-        //const Terminal = window.DTerminal; // FIXME
-        var slen = str.length;
-        if (slen == 0)
+        if (this.encoder == null)
+            this.encoder = new TextEncoder();
+        let bytes = this.encoder.encode(str);
+        this.parseBytes(bytes, 0, bytes.length);
+    }
+
+    parseBytes(bytes, beginIndex = 0, endIndex = bytes.length) {
+        if (beginIndex === endIndex)
             return;
+        const term = this.term;
         if (DomTerm.verbosity >= 2) {
             //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
-            let jstr = DomTerm.JsonLimited(str);
-            term.log("insertString "+jstr+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
+            let jstr = DomTerm.JsonLimited(this.decodeBytes(bytes, beginIndex, endIndex));
+            term.log("parseBytes "+jstr+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
+        }
+        if (this._deferredBytes) {
+            let dlen = this._deferredBytes.length;
+            let narr = new Uint8Array(dlen + (endIndex - beginIndex));
+            narr.set(this._deferredBytes);
+            narr.set(bytes.subarray(beginIndex, endIndex), dlen)
+            this._deferredBytes = undefined;
+            bytes = narr;
+            beginIndex = 0;
+            endIndex = narr.length;
         }
         if (term._pagingMode == 2) {
-            this._textParameter = this._textParameter + str;
+            this._deferredBytes = bytes.slice(beginIndex, endIndex);
             return;
         }
         if (term._disableScrollOnOutput && term._scrolledAtBottom())
@@ -72,20 +91,12 @@ class DTParser {
         //if (term.isLineEditing())
             term._removeInputLine();
         var pendingEchoNode = term._deferredForDeletion;
-        var i = 0;
-        var prevEnd = 0;
-        for (; i < slen; i++) {
-            var ch = str.charCodeAt(i);
+        let i = beginIndex;
+        for (; i < endIndex; i++) {
+            let ch = bytes[i];
             //term.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
             var state = this.controlSequenceState;
             switch (state) {
-            case DTParser.SEEN_SURROGATE_HIGH:
-                // must have i==0
-                str = this.parameters[0] + str;
-                this.controlSequenceState = DTParser.INITIAL_STATE;
-                slen++;
-                i = -1;
-                break;
             case DTParser.SEEN_ESC_STATE:
                 this.controlSequenceState = DTParser.INITIAL_STATE;
                 if (ch != 91 /*'['*/ && ch != 93 /*']'*/
@@ -95,24 +106,6 @@ class DTParser {
                 case 35 /*'#'*/:
                     this.controlSequenceState = DTParser.SEEN_ESC_SHARP_STATE;
                     break;
-                case 40 /*'('*/: // Designate G0 Character Set (ISO 2022, VT100)
-                    this.controlSequenceState = DTParser.SEEN_ESC_CHARSET0;
-                    break;
-                case 41 /*')'*/: // Designate G1 Character Set
-                case 45 /*'-'*/:
-                    this.controlSequenceState = DTParser.SEEN_ESC_CHARSET1;
-                    break;
-                case 42 /*'*'*/: // Designate G2 Character Set
-                case 46 /*'.'*/:
-                    this.controlSequenceState = DTParser.SEEN_ESC_CHARSET2;
-                    break;
-                case 43 /*'+'*/: // Designate G3 Character Set
-                    this.controlSequenceState = DTParser.SEEN_ESC_CHARSET3;
-                    break;
-                case 47 /*'/'*/: // Designate G3 Character Set (VT300).
-                    // These work for 96-character sets only.
-                    // followed by A:  -> ISO Latin-1 Supplemental.
-                    break; // FIXME - not implemented
                 case 55 /*'7'*/: // DECSC
                     term.saveCursor(); // FIXME
                     break;
@@ -142,13 +135,11 @@ class DTParser {
                     this.controlSequenceState = DTParser.SEEN_DCS_STATE;
                     this.parameters.length = 1;
                     this.parameters[0] = null;
-                    this._textParameter = "";
                     break;
                 case 91 /*'['*/: // CSI
                     this.controlSequenceState = DTParser.SEEN_ESC_LBRACKET_STATE;
                     this.parameters.length = 1;
                     this.parameters[0] = null;
-                    this._textParameter = "";
                     this._flagChars = "";
                     break;
                 case 92 /*'\\'*/: // ST (String Terminator)
@@ -163,7 +154,6 @@ class DTParser {
                         : DTParser.SEEN_APC_STATE;
                     this.parameters.length = 1;
                     this.parameters[0] = null;
-                    this._textParameter = "";
                     break;
                 case 99 /*'c'*/: // Full Reset (RIS)
                     term.resetTerminal(1, true);
@@ -180,9 +170,68 @@ class DTParser {
                     //case 60 /*'<'*/: // Exit VT52 mode (Enter VT100 mode
                     //case 61 /*'='*/: // VT52 mode: Enter alternate keypad mode
                     //case 62 /*'>'*/: // VT52 mode: Enter alternate keypad mode
-                default: ;
+                default:
+                    if (ch >= 0x20 && ch <= 0x2F) {
+                        this.controlSequenceState =
+                            DTParser.SEEN_ESC_2022_PREFIX;
+                        this._flagsChars = String.fromCharCode(ch);
+                    }
                 }
-                prevEnd = i + 1;
+                break;
+            case DTParser.SEEN_ESC_2022_PREFIX:
+                if (ch >= 0x20 && ch <= 0x2F) {
+                    this._flagsChars += String.fromCharCode(ch);
+                }
+                else {
+                    this.controlSequenceState = DTParser.INITIAL_STATE;
+                    let cs = null;
+                    let level = -1;
+                    let set96 = false;
+                    switch (this._flagsChars) {
+                    case "(": // Designate G0 Character Set (ISO 2022, VT100)
+                        level = 0; set96 = false; break;
+                    case ")": // Designate G1 Character Set
+                        level = 1; set96 = false; break;
+                    case "-":
+                        level = 1; set96 = true; break;
+                        break;
+                    case "*": // Designate G2 Character Set
+                        level = 2; set96 = false; break;
+                    case ".":
+                        level = 2; set96 = true; break;
+                    case "+": // Designate G3 Character Set
+                        level = 3; set96 = false; break;
+                    case "/":
+                        level = 3; set96 = true; break;
+                    case "/":
+                        // Designate G3 Character Set (VT300).
+                        // These work for 96-character sets only.
+                        // followed by A:  -> ISO Latin-1 Supplemental.
+                        break; // FIXME - not implemented
+                    }
+                    switch (ch) {
+                    case 48 /*'0'*/: // DEC Special Character and Line Drawing Set.
+                        cs = DomTerm.charsetSCLD;
+                        break;
+                    case 65 /*'A'*/: // UK
+                        cs = DomTerm.charsetUK;
+                        break;
+                    case 66 /*'B'*/: // United States (USASCII).
+                        ch = DomTerm.charset_8859_;
+                        break;
+                    case 71: /*'G'*/
+                        if (this._flagsChars === "%") { // UTF-8
+                            term.resetCharsets();
+                        }
+                        break;
+                    default:
+                    }
+                    if (level >= 0) {
+                        var g = level;
+                        term._Gcharsets[g] = cs;
+                        term._selectGcharset(g, false);
+                    }
+                }
                 break;
             case DTParser.SEEN_ESC_LBRACKET_STATE:
             case DTParser.SEEN_DCS_STATE:
@@ -203,17 +252,26 @@ class DTParser {
                     this.parameters.push(null);
                 }
                 else if (state == DTParser.SEEN_DCS_STATE) {
-                    this.controlSequenceState = DTParser.SEEN_DCS_TEXT_STATE;
-                    prevEnd = i;
-                    i--;
+                    let j = this.scanTextParameter(bytes, i, endIndex);
+                    if (j < 0) {
+                        i = endIndex - 1;
+                    } else {
+                        try {
+                            this.handleDeviceControlString(this.parameters,
+                                                           this.decodeBytes(bytes, i, j));
+                        } catch (e) {
+                            console.log("caught "+e);
+                        }
+                        this.controlSequenceState = DTParser.INITIAL_STATE;
+                        i = bytes[j] == 27 ? j : j + 1;
+                    }
                 } else if ((ch >= 60 && ch <= 63) /* in "<=>?" */
                            || ch == 32 /*' '*/ || ch == 33 /*'!'*/
                            || ch == 39 /*"'"*/)
-                    this._flagChars += str.charAt(i);
+                    this._flagChars += String.fromCharCode(bytes[i]);
                 else {
                     this.handleControlSequence(ch);
                     this.parameters.length = 1;
-                    prevEnd = i + 1;
                 }
                 continue;
 
@@ -226,67 +284,33 @@ class DTParser {
                     this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
                 }
                 else if (ch == 59 /*';'*/ || ch == 7 || ch == 0 || ch == 27) {
-                    this.controlSequenceState = DTParser.SEEN_OSC_TEXT_STATE;
                     this.parameters.push("");
-                    if (ch != 59)
-                        i--; // re-read 7 or 0
-                    prevEnd = i + 1;
+                    let j = this.scanTextParameter(bytes, i, endIndex);
+                    if (j < 0) {
+                        i = endIndex - 1;
+                    } else {
+                        this.controlSequenceState = DTParser.INITIAL_STATE;
+                        let start = ch == 59 ? i + 1 : i;
+                        this.handleOperatingSystemControl(this.parameters[0],
+                                                          this.decodeBytes(bytes, start, j));
+                        this.parameters.length = 1;
+                        i = bytes[j] == 27 ? j - 1: j; // i is incremented at top of loop
+                    }
                 } else {
                     this.parameters.length = 1;
-                    prevEnd = i + 1;
                 }
                 continue;
-            case DTParser.SEEN_OSC_TEXT_STATE:
-            case DTParser.SEEN_DCS_TEXT_STATE:
             case DTParser.SEEN_PM_STATE:
             case DTParser.SEEN_APC_STATE:
-                if (ch == 7 || ch == 0 || ch == 0x9c || ch == 27) {
-                    this.controlSequenceState =
-                        ch == 27 ? DTParser.SEEN_ESC_STATE
-                        : DTParser.INITIAL_STATE;
-                    this._textParameter =
-                        this._textParameter + str.substring(prevEnd, i);
-                    try {
-                        if (state === DTParser.SEEN_DCS_TEXT_STATE) {
-                            this.handleDeviceControlString(this.parameters, this._textParameter);
-                        }
-                        else if (state == DTParser.SEEN_OSC_TEXT_STATE) {
-                            this.handleOperatingSystemControl(this.parameters[0], this._textParameter);
-                        } else {
-                            // APC and PM ignored
-                        }
-                    } catch (e) {
-                        console.log("caught "+e);
-                    }
-                    this._textParameter = "";
-                    this.parameters.length = 1;
-                    prevEnd = i + 1;
+                let j = this.scanTextParameter(bytes, i, endIndex);
+                if (j < 0) {
+                    i = endIndex - 1;
                 } else {
-                    // Do nothing, for now.
+                    this.controlSequenceState = DTParser.INITIAL_STATE;
+                    // ignore
+                    i = bytes[j] == 27 ? j - 1: j; // i is incremented at top of loop
                 }
                 continue;
-            case DTParser.SEEN_ESC_CHARSET0:
-            case DTParser.SEEN_ESC_CHARSET1:
-            case DTParser.SEEN_ESC_CHARSET2:
-            case DTParser.SEEN_ESC_CHARSET3:
-                var cs;
-                switch (ch) {
-                case 48 /*'0'*/: // DEC Special Character and Line Drawing Set.
-                    cs = DomTerm.charsetSCLD;
-                    break;
-                case 65 /*'A'*/: // UK
-                    cs = DomTerm.charsetUK;
-                    break;
-                case 66 /*'B'*/: // United States (USASCII).
-                default:
-                    cs = null;
-                };
-                var g = state-DTParser.SEEN_ESC_CHARSET0;
-                term._Gcharsets[g] = cs;
-                term._selectGcharset(term._Glevel, false);
-                this.controlSequenceState = DTParser.INITIAL_STATE;
-                prevEnd = i + 1;
-                break;
             case DTParser.SEEN_ESC_SHARP_STATE: /* SCR */
                 switch (ch) {
                 case 53 /*'5'*/: // DEC single-width line (DECSWL)
@@ -319,21 +343,11 @@ class DTParser {
                     term.moveToAbs(term.homeLine, 0, true);
                     break;
                 }
-                prevEnd = i + 1;
                 this.controlSequenceState = DTParser.INITIAL_STATE;
                 break;
             case DTParser.SEEN_ESC_SS2: // _Gcharsets[2]
             case DTParser.SEEN_ESC_SS3: // _Gcharsets[3]
-                var mapper = term._Gcharsets[state-DTParser.SEEN_ESC_SS2+2];
-                prevEnv = i;
-                if (mapper != null) {
-                    var chm = mapper(ch);
-                    if (chm != null) {
-                        term.insertSimpleOutput(str, prevEnd, i);
-                        term.insertSimpleOutput(chm, 0, chm.length);
-                        prevEnd = i + 1;
-                    }
-                }
+                // not implemented
                 this.controlSequenceState = DTParser.INITIAL_STATE;
                 break;
             case DTParser.SEEN_CR:
@@ -343,12 +357,10 @@ class DTParser {
             case DTParser.INITIAL_STATE:
             case DTParser.SEEN_ERROUT_END_STATE:
                 if (term.sstate.doLinkify && Terminal.isDelimiter(ch)
-                    && term.linkify(str, prevEnd, i, ch)) {
-                    prevEnd = i;
+                    && term.linkify("", 0, 0, ch)) {
                 }
                 switch (ch) {
                 case 13: // '\r' carriage return
-                    term.insertSimpleOutput(str, prevEnd, i);
                     //term.currentCursorColumn = column;
                     var oldContainer = term.outputContainer;
                     if (oldContainer instanceof Text)
@@ -356,7 +368,7 @@ class DTParser {
                     // FIXME adjust for _regionLeft
                     if (term._currentPprintGroup !== null) {
                         this.controlSequenceState = DTParser.SEEN_CR;
-                    } else if (i+1 < slen && str.charCodeAt(i+1) == 10 /*'\n'*/
+                    } else if (i+1 < endIndex && bytes[i+1] == 10 /*'\n'*/
                                && ! term.usingAlternateScreenBuffer
                                && (term._regionBottom == term.numRows
                                    || term.getCursorLine() != term._regionBottom-1)) {
@@ -378,12 +390,10 @@ class DTParser {
                         term.cursorLineStart(0);
                         this.controlSequenceState = DTParser.SEEN_CR;
                     }
-                    prevEnd = i + 1;
                     break;
                 case 10: // '\n' newline
                 case 11: // vertical tab
                 case 12: // form feed
-                    term.insertSimpleOutput(str, prevEnd, i);
                     if (term._currentPprintGroup !== null
                         && this.controlSequenceState == DTParser.SEEN_CR) {
                         this.handleOperatingSystemControl(118, "");
@@ -398,18 +408,16 @@ class DTParser {
                     if (this.controlSequenceState == DTParser.SEEN_CR) {
                         this.controlSequenceState =  DTParser.INITIAL_STATE;
                     }
-                    prevEnd = i + 1;
                     break;
                 case 27 /* Escape */:
-                    term.insertSimpleOutput(str, prevEnd, i);
                     var nextState = DTParser.SEEN_ESC_STATE;
                     if (state == DTParser.SEEN_ERROUT_END_STATE) {
                         // cancelled by an immediate start-of-error-output
-                        if (i + 5 <= slen
-                            && str.charCodeAt(i+1) == 91/*'['*/
-                            && str.charCodeAt(i+2) == 49/*'1'*/
-                            && str.charCodeAt(i+3) == 50/*'2'*/
-                            && str.charCodeAt(i+4) == 117/*'u'*/
+                        if (i + 5 <= endIndex
+                            && bytes[i+1] == 91/*'['*/
+                            && bytes[i+2] == 49/*'1'*/
+                            && bytes[i+3] == 50/*'2'*/
+                            && bytes[i+4] == 117/*'u'*/
                             && term._getStdMode() == "error") {
                             i += 4;
                             nextState = DTParser.INITIAL_STATE;
@@ -417,17 +425,13 @@ class DTParser {
                             term._pushStdMode(null);
                     }
                     //term.currentCursorColumn = column;
-                    prevEnd = i + 1;
                     this.controlSequenceState = nextState;
                     continue;
                 case 8 /*'\b'*/:
-                    term.insertSimpleOutput(str, prevEnd, i);
                     term._breakDeferredLines();
                     term.cursorLeft(1, false);
-                    prevEnd = i + 1;
                     break;
                 case 9 /*'\t'*/:
-                    term.insertSimpleOutput(str, prevEnd, i);
                     term._breakDeferredLines();
 		    {
                         term.tabToNextStop(true);
@@ -439,22 +443,18 @@ class DTParser {
                             && col > lineStart._widthColumns)
                             lineStart._widthColumns = col;
 		    }
-                    prevEnd = i + 1;
                     break;
                 case 7 /*'\a'*/:
-                    term.insertSimpleOutput(str, prevEnd, i);
                     //term.currentCursorColumn = column;
                     term.handleBell();
-                    prevEnd = i + 1;
                     break;
                 case 24: case 26:
                     this.controlSequenceState = DTParser.INITIAL_STATE;
                     break;
                 case 14 /*SO*/: // Switch to Alternate Character Set G1
                 case 15 /*SI*/: // Switch to Standard Character Set G0
-                    term.insertSimpleOutput(str, prevEnd, i);
-                    prevEnd = i + 1;
                     term._selectGcharset(15-ch, false);
+                    //term._Gshift = 15-ch;
                     break;
                 case 5 /*ENQ*/: // FIXME
                 case 0: case 1: case 2:  case 3:
@@ -463,8 +463,6 @@ class DTParser {
                 case 20: case 21: case 22: case 23: case 25:
                 case 28: case 29: case 30: case 31:
                     // ignore
-                    term.insertSimpleOutput(str, prevEnd, i);
-                    prevEnd = i + 1;
                     break;
                 case 0x9c: // ST (String Terminator
                     this.controlSequenceState = DTParser.INITIAL_STATE;
@@ -482,57 +480,136 @@ class DTParser {
                         : DTParser.SEEN_APC_STATE;
                     this.parameters.length = 1;
                     this.parameters[0] = null;
-                    this._textParameter = "";
                     break;
                 default:
-                    var i0 = i;
-                    if (ch >= 0xD800 && ch <= 0xDBFF) {
-                        i++;
-                        if (i == slen) {
-                            term.insertSimpleOutput(str, prevEnd, i0);
-                            this.parameters[0] = str.charAt(i0);
-                            this.controlSequenceState = DTParser.SEEN_SURROGATE_HIGH;
+                    let mapper = term.charMapper;
+                    let tstr = "";
+                    for (; i < endIndex; ) {
+                        let len;
+                        let ch = bytes[i];
+                        if (mapper) {
+                            ch = mapper(ch, bytes, i+1, endIndex);
+                            // returns CH | (LEN << 21)
+                            // where CH is codepoint of character seen, and
+                            // LEN is number of chars consumed by CH,
+                            // or 0 if a control character was seen,
+                            // or -1 if an incomplete encoding was seen.
+                            len = ch >> 21;
+                            ch &= 0x1FFFFF;
+                        } else { // handle UTF-8 inline
+                            if (ch < 32) {
+                                len = 0;
+                            } else if (ch < 127) {
+                                len = 1;
+                            } else if (ch < 0xA0) {
+                                len = 0;
+                            } else if (ch <= 0xDF) { // 2-byte character
+                                if (i + 2 > endIndex) {
+                                    len = -1;
+                                } else {
+                                    let ch2 = bytes[i+1];
+                                    if (ch2 >= 0x80 && ch2 <= 0xBF) {
+                                        ch = ((ch & 0x1F) << 6)
+                                            + (ch2 & 0x3F);
+                                        len = 2;
+                                    } else {
+                                        ch = DTParser.REPLACEMENT_CHARACTER;
+                                        len = ch2 >= 0x80 ? 2 : 1;
+                                    }
+                                }
+                            } else if (ch <= 0xEF) { // 3-byte character
+                                if (i + 3 > endIndex) {
+                                    len = -1;
+                                } else {
+                                    let ch2 = bytes[i+1];
+                                    let ch3 = bytes[i+2];
+                                    if (ch2 >= 0x80 && ch2 <= 0xBF
+                                        && ch2 >= 0x80 && ch2 <= 0xBF) {
+                                        ch = ((ch & 0x0F) << 12)
+                                            + ((ch2 & 0x3F) << 6)
+                                            + (ch3 & 0x3F);
+                                        len = 3;
+                                    } else {
+                                        ch = DTParser.REPLACEMENT_CHARACTER;
+                                        len = ch2 < 0x80 ? 1 : ch3 < 0x80 ? 2 : 3;
+                                    }
+                                }
+                            } else if (ch <= 0xF7) { // 4-byte character
+                                if (i + 4 > endIndex) {
+                                    len = -1;
+                                } else {
+                                    let ch2 = bytes[i+1];
+                                    let ch3 = bytes[i+2];
+                                    let ch4 = bytes[i+3];
+                                    if (ch2 >= 0x80 && ch2 <= 0xBF
+                                        && ch2 >= 0x80 && ch2 <= 0xBF
+                                        && ch3 >= 0x80 && ch3 <= 0xBF) {
+                                        ch = ((ch & 0x07) << 18)
+                                            + ((ch2 & 0x3F) << 12)
+                                            + ((ch3 & 0x3F) << 6)
+                                            + (ch4 & 0x3F);
+                                        len = 4;
+                                    } else {
+                                        ch = DTParser.REPLACEMENT_CHARACTER;
+                                        len = ch2 < 0x80 ? 1 : ch3 < 0x80 ? 2
+                                            : ch4 < 0x80 ? 3 : 4;
+                                    }
+                                }
+                            } else {
+                                ch = DTParser.REPLACEMENT_CHARACTER;
+                                len = 1;
+                            }
+                        }
+                        if (len < 0) {// ??
+                            // incomplete character
+                            this._deferredBytes = bytes.slice(i, endIndex);
+                            i = endIndex;
+                            break;
+                        } else if (len == 0) {
+                            if (tstr.length == 0)
+                                i++; // ignore character
                             break;
                         } else {
-                            ch = ((ch - 0xD800) * 0x400)
-                                + ( str.charCodeAt(i) - 0xDC00) + 0x10000;
+                            if (ch <= 0xFFFF) {
+                                tstr += String.fromCharCode(ch);
+                            } else {
+                                ch -= 0x10000;
+                                tstr += String.fromCharCode((ch >> 10) + 0xD800)
+                                    + String.fromCharCode((ch % 0x400) + 0xDC00);
+                            }
+                            i += len;
                         }
                     }
-                    var chm = term.charMapper == null ? null : term.charMapper(ch);
-                    var multipleChars = chm != null;
-                    if (chm != null && chm.length == 2) {
-                        var ch0 = chm.charCodeAt(0);
-                        var ch1 = chm.charCodeAt(1);
-                        if (ch0 >= 0xd800 && ch0 <= 0xdbff
-                            && ch1 >= 0xdc00 && ch1 <= 0xdfff) {
-                            ch = (ch0-0xd800)*0x400 + (ch1-0xdc00)+0x10000;
-                            multipleChars = false;
+                    if (tstr) {
+                        let tstart = 0;
+                        let tend = tstr.length;
+                        // Start checking for delimiters at 1, since we already tested the
+                        // initial byte at the head of case DTParser.INITIAL_STATE.
+                        for (let ti = 1; ; ti++) {
+                            let tch = ti < tend ? tstr.charCodeAt(ti)
+                                : i < endIndex ? bytes[i] : 'X';
+                            if (Terminal.isDelimiter(tch)
+                                && term.linkify(tstr, tstart, ti, tch)) {
+                                tstart = ti;
+                            }
+                            if (ti == tend) {
+                                term.insertSimpleOutput(tstr, tstart, tend);
+                                break;
+                            }
                         }
                     }
-                    if (multipleChars) {
-                        term.insertSimpleOutput(str, prevEnd, i0);
-                        term.insertSimpleOutput(chm, 0, chm.length);
-                        prevEnd = i + 1;
-                        break;
-                    }
+                    i--; // compensate for increment in 'for'
+                    continue;
                 }
                 break;
             case DTParser.PAUSE_REQUESTED:
                 this.controlSequenceState = DTParser.INITIAL_STATE;
-                this._textParameter = str.substring(i);
+                this._deferredBytes = bytes.subarray(i, endIndex);
                 term._enterPaging(true);
                 term.scrollToCaret();
                 term._updateDisplay();
                 return;
             }
-        }
-        if (this.controlSequenceState == DTParser.INITIAL_STATE) {
-            term.insertSimpleOutput(str, prevEnd, i);
-            //term.currentCursorColumn = column;
-        }
-        if (this.controlSequenceState === DTParser.SEEN_OSC_TEXT_STATE
-            || this.controlSequenceState === DTParser.SEEN_DCS_TEXT_STATE) {
-            this._textParameter = this._textParameter + str.substring(prevEnd, i);
         }
 
         // Check if output "accounts for" partial prefix of pendingEcho.
@@ -615,6 +692,19 @@ class DTParser {
         }
         term.requestUpdateDisplay();
     };
+
+    scanTextParameter(bytes, startIndex, endIndex) {
+        for (let j = startIndex; ; j++) {
+            if (j == endIndex) {
+                this._deferredBytes = bytes.slice(startIndex, endIndex);
+                return -1;
+            }
+            let cj = bytes[j];
+            if (cj == 7 || cj == 0 || cj == 0x9c || cj == 27) {
+                return j;
+            }
+        }
+    }
 
     handleControlSequence(last) {
         const term = this.term;
@@ -2098,16 +2188,13 @@ class DTParser {
     pushControlState(saved) {
         saved.controlSequenceState = this.controlSequenceState;
         saved.parameters = this.parameters;
-        saved.textParameter = this._textParameter;
         this.controlSequenceState = DTParser.INITIAL_STATE;
         this.parameters = new Array();
-        this._textParameter = null;
     }
 
     popControlState(saved) {
         this.controlSequenceState = saved.controlSequenceState;
         this.parameters = saved.parameters;
-        this._textParameter = saved.textParameter;
     }
 
     getParameter(index, defaultValue) {
@@ -2130,24 +2217,21 @@ DTParser.SEEN_ESC_STATE = 1;
 DTParser.SEEN_ESC_LBRACKET_STATE = 2;
 /** We have seen OSC: ESC ']' or 0x9d. */
 DTParser.SEEN_OSC_STATE = 7;
-/** We have seen OSC numeric-parameter ';'. */
-DTParser.SEEN_OSC_TEXT_STATE = 8;
+/** Saw ESC followed by one or more of 0x20..0x2F.
+* Used for ISO/IEC 2022 codes. */
+DTParser.SEEN_ESC_2022_PREFIX = 8;
 /** We have seen ESC '#'. */
 DTParser.SEEN_ESC_SHARP_STATE = 9;
-DTParser.SEEN_ESC_CHARSET0 = 10;
-DTParser.SEEN_ESC_CHARSET1 = 11;
-DTParser.SEEN_ESC_CHARSET2 = 12;
-DTParser.SEEN_ESC_CHARSET3 = 13;
 DTParser.SEEN_ESC_SS2 = 14;
 DTParser.SEEN_ESC_SS3 = 15;
-DTParser.SEEN_SURROGATE_HIGH = 16;
 DTParser.SEEN_CR = 17;
 /** Seen but deferred a request to exit std="error" mode. */
 DTParser.SEEN_ERROUT_END_STATE = 18;
 DTParser.SEEN_DCS_STATE = 19;
-DTParser.SEEN_DCS_TEXT_STATE = 20;
 DTParser.SEEN_PM_STATE = 21;
 DTParser.SEEN_APC_STATE = 22;
 DTParser.PAUSE_REQUESTED = 23;
+
+DTParser.REPLACEMENT_CHARACTER = 0xFFFD;
 
 window.DTParser = DTParser;
