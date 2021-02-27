@@ -1526,7 +1526,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         size_t pend = pclient->preserved_end;
         long read_count = pclient->preserved_sent_count + (pend - pstart);
         long rcount = client->sent_count;
-        long unconfirmed = (read_count - rcount) & MASK28;
+        long unconfirmed = (read_count - rcount - client->ocount) & MASK28;
         if (unconfirmed > 0 && pend - pstart >= unconfirmed) {
             pstart = pend - unconfirmed;
             sbuf_append(bufp, start_replay_mode, -1);
