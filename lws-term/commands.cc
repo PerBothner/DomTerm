@@ -883,31 +883,31 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
     else if (strcmp(subcommand, "show") == 0) {
         w_op_kind = w_simple;
         default_windows = "top";
-        seq = OUT_OF_BAND_START_STRING "\033[1t" URGENT_END_STRING;
+        seq = URGENT_WRAP("\033[1t");
     } else if (strcmp(subcommand, "minimize") == 0) {
         w_op_kind = w_simple;
         default_windows = "top";
-        seq = OUT_OF_BAND_START_STRING "\033[2t" URGENT_END_STRING;
+        seq = URGENT_WRAP("\033[2t");
     } else if (strcmp(subcommand, "hide") == 0) {
         w_op_kind = w_simple;
         default_windows = "top";
-        seq = OUT_OF_BAND_START_STRING "\033[2;72t" URGENT_END_STRING;
+        seq = URGENT_WRAP("\033[2;72t");
     } else if (strcmp(subcommand, "toggle-minimize") == 0) {
         w_op_kind = w_simple;
         default_windows = "top";
-        seq = OUT_OF_BAND_START_STRING "\033[2;73t" URGENT_END_STRING;
+        seq = URGENT_WRAP("\033[2;73t");
     } else if (strcmp(subcommand, "toggle-hide") == 0) {
         w_op_kind = w_simple;
         default_windows = "top";
-        seq = OUT_OF_BAND_START_STRING "\033[2;74t" URGENT_END_STRING;
+        seq = URGENT_WRAP("\033[2;74t");
     } else if (strcmp(subcommand, "close") == 0) {
         w_op_kind = w_simple;
         //default_windows = "current";
-        seq = OUT_OF_BAND_START_STRING "\033]97;close\007" URGENT_END_STRING;
+        seq = URGENT_WRAP("\033]97;close\007");
     } else if (strcmp(subcommand, "detach") == 0) {
         w_op_kind = w_simple;
         //default_windows = "current";
-        seq = OUT_OF_BAND_START_STRING "\033]97;detach\007" URGENT_END_STRING;
+        seq = URGENT_WRAP("\033]97;detach\007");
     }
     if (w_op_kind == w_none) {
         printf_error(opts,

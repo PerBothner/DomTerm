@@ -31,7 +31,6 @@ static char eof_message[] = URGENT_START_STRING "\033[99;99u" URGENT_END_STRING;
 #define eof_len (sizeof(eof_message)-1)
 static char request_contents_message[] =
     OUT_OF_BAND_START_STRING "\033[81u" URGENT_END_STRING;
-#define URGENT_WRAP(STR)  URGENT_START_STRING STR URGENT_END_STRING
 
 static char start_replay_mode[] =
     OUT_OF_BAND_START_STRING "\033[97u" URGENT_END_STRING;
