@@ -29,13 +29,10 @@ extern char **environ;
 
 static char eof_message[] = URGENT_START_STRING "\033[99;99u" URGENT_END_STRING;
 #define eof_len (sizeof(eof_message)-1)
-static char request_contents_message[] =
-    OUT_OF_BAND_START_STRING "\033[81u" URGENT_END_STRING;
+static char request_contents_message[] = URGENT_WRAP("\033[81u");
 
-static char start_replay_mode[] =
-    OUT_OF_BAND_START_STRING "\033[97u" URGENT_END_STRING;
-static char end_replay_mode[] =
-    OUT_OF_BAND_START_STRING "\033[98u" URGENT_END_STRING;
+static char start_replay_mode[] = "\033[97u";
+static char end_replay_mode[] = "\033[98u";
 
 id_table<pty_client> pty_clients;
 id_table<tty_client> tty_clients;

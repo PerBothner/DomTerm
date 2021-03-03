@@ -6566,8 +6566,7 @@ Terminal.prototype._confirmReceived = function() {
 }
 Terminal.prototype._maybeConfirmReceived = function() {
     if (this._pagingMode != 2 && ! this._replayMode
-        && (! this._savedControlState
-            || this._savedControlState.count_urgent > 0)
+        && (! this._savedControlState || this._savedControlState.counted)
         && ((this._receivedCount - this._confirmedCount) & Terminal._mask28) > this.unconfirmedMax()) {
         this._confirmReceived();
     }
@@ -6576,80 +6575,91 @@ Terminal.prototype._maybeConfirmReceived = function() {
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
 Terminal.prototype.insertBytes = function(bytes) {
     var len = bytes.length;
+    let startIndex = 0;
+    let endIndex = bytes.length;
     if (DomTerm.verbosity >= 2)
         this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+len+" received:"+this._receivedCount);
-    while (len > 0) {
-        var urgent_begin = -1;
-        var urgent_end = -1;
-        for (var i = 0; i < len; i++) {
+    while (startIndex < endIndex) {
+        let urgent_begin = -1;
+        let urgent_end = -1;
+        for (let  i = startIndex; i < endIndex; i++) {
             var ch = bytes[i];
-            if (ch == Terminal.URGENT_BEGIN1 && urgent_begin < 0) {
+            if (ch == Terminal.URGENT_BEGIN1) {
                 urgent_begin = i;
-                if (i > 0 && this._replayMode)
-                    break;
+                break;
             } else if (ch == Terminal.URGENT_END) {
                 urgent_end = i;
                 break;
             }
         }
-        var plen = urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin) ? urgent_begin
-            : urgent_end >= 0 ? urgent_end : len;
-        let begin2;
-        if (urgent_end > urgent_begin && urgent_begin >= 0
-            && ((begin2 = bytes[urgent_begin+1]) == Terminal.URGENT_FIRST_COUNTED
-                || begin2 == Terminal.URGENT_FIRST_NONCOUNTED)) {
-            this.pushControlState();
-            this.parseBytes(bytes, urgent_begin+2, urgent_end);
-            this.popControlState();
-            plen = urgent_end + 1 - urgent_begin;
-            if (begin2 == Terminal.URGENT_FIRST_COUNTED)
-                this._receivedCount = (this._receivedCount + plen) & Terminal._mask28;
-            bytes.copyWithin(urgent_begin, urgent_end+1);
-            len -= plen;
-        } else {
-            let start = 0;
-            if (plen > 0 && this._savedControlState
-                && this._savedControlState.count_urgent < 0) {
-                let ch = bytes[0];
-                if (ch == window.DTerminal.URGENT_STATELESS_COUNTED
-                    || ch == window.DTerminal.URGENT_FIRST_COUNTED) {
-                    start = 1;
-                    this._savedControlState.count_urgent = 1;
+        if (urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin)) {
+            if (urgent_begin > startIndex) {
+                let narr;
+                if (this.parser._deferredBytes) {
+                    let dlen = this.parser_deferredBytes.length;
+                    let narr = new Uint8Array(dlen + (urgent_begin - beginIndex));
+                    narr.set(this._deferredBytes);
+                    narr.set(bytes.subarray(beginIndex, urgent_begin), dlen)
+                } else {
+                    narr = bytes.slice(beginIndex, urgent_begin);
                 }
-                else
-                    this._savedControlState.count_urgent = 0;
+                this.parser._deferredBytes = narr;
             }
-            if (plen > start) {
-                this.parseBytes(bytes, start, plen);
+            this.pushControlState();
+            startIndex = urgent_begin + 1;
+
+        } else {
+            if (this._savedControlState
+                && this._savedControlState.urgent === undefined) {
+                startIndex += this._savedControlState.setFromFollowingByte(bytes[startIndex]);
             }
-            // update receivedCount before calling push/popControlState
-            this._receivedCount = (this._receivedCount + plen) & Terminal._mask28;
-            if (plen == len) {
-                len = 0;
+            if (urgent_end >= 0) {
+                this.parseBytes(bytes, startIndex, urgent_end);
+                this.popControlState();
+                startIndex = urgent_end + 1;
+                let defb = this.parser._deferredBytes;
+                if (startIndex == endIndex && defb) {
+                    this.parser._deferredBytes = undefined;
+                    this.parseBytes(defb);
+                }
             } else {
-                var dlen = plen + 1; // amount consumed this iteration
-                bytes = bytes.subarray(dlen, len);
-                len -= dlen;
-                if (plen == urgent_begin)
-                    this.pushControlState();
-                else //plen == urgent_end
-                    this.popControlState();
+                this.parseBytes(bytes, startIndex, endIndex);
+                startIndex = endIndex;
             }
         }
         this._maybeConfirmReceived();
     }
 }
+
 Terminal.prototype.pushControlState = function() {
+    const dt = this;
     var saved = {
-        decoder: this.decoder,
         receivedCount: this._receivedCount,
-        // 1 if we're inside an urgent message - counted in _receivedCount
-        // 0 if inside an urgent message not counted in _receivedCount
-        // -1 if seen initial byte only or not urgent
-        count_urgent: -1,
+        setFromFollowingByte(ch) {
+            let start;
+            if (ch == window.DTerminal.URGENT_STATELESS_COUNTED
+                || ch == window.DTerminal.URGENT_FIRST_COUNTED) {
+                start = 1;
+                this.counted = true;
+                this.urgent = ch == window.DTerminal.URGENT_FIRST_COUNTED;
+            }
+            else {
+                this.counted = false;
+                let urgent = ch == window.DTerminal.URGENT_FIRST_NONCOUNTED;
+                this.urgent = urgent;
+                start = urgent ? 1 : 0;
+            }
+            const preBytes = this._deferredBytes;
+            if (! this.urgent && preBytes) {
+                dt.savedControlState = this._savedControlState;
+                this._deferredBytes = undefined;
+                dt.parser.parseBytes(preBytes);
+                dt.savedControlState = this;
+            }
+            return start;
+        },
         _savedControlState: this._savedControlState
-    };
-    this.decoder = new TextDecoder(); //label = "utf-8");
+    }
     this._savedControlState = saved;
     if (! DomTerm.usingXtermJs())
         this.parser.pushControlState(saved);
@@ -6657,7 +6667,6 @@ Terminal.prototype.pushControlState = function() {
 Terminal.prototype.popControlState = function() {
     var saved = this._savedControlState;
     if (saved) {
-        this.decoder = saved.decoder;
         this._savedControlState = saved._savedControlState;
         if (! DomTerm.usingXtermJs()) {
             this.parser.popControlState(saved);
@@ -6665,8 +6674,7 @@ Terminal.prototype.popControlState = function() {
         // Control sequences in "urgent messages" don't count to
         // receivedCount. (They are typically window-specific and
         // should not be replayed when another window is attached.)
-        var old = this._receivedCount;
-        if (saved.count_urgent > 0)
+        if (saved.counted)
             this._receivedCount = (this._receivedCount + 2) & Terminal._mask28;
         else
             this._receivedCount = saved.receivedCount;
@@ -6678,16 +6686,30 @@ Terminal.prototype.insertString = function(str) {
     this.parser.insertString(str);
 }
 // overridden if usingXtermJs()
-Terminal.prototype.parseBytes = function(bytes, beginIndex, endIndex) {
+Terminal.prototype.parseBytes = function(bytes, beginIndex = 0, endIndex = bytes.length) {
+    let rlen = endIndex - beginIndex;
+    if (this.parser._deferredBytes)
+        rlen += this.parser._deferredBytes.length;
     /*
     //DEBUGGING of partial sequences
     if (true) {
+        // number of trailing bytes to do one-by-one; -1 is all of them.
+        let do_one_by_one = 0;
+        if (do_one_by_one >= 0 && endIndex > beginIndex + do_one_by_one) {
+            let next = endIndex - do_one_by_one;
+            this.parser.parseBytes(bytes, beginIndex, next);
+            beginIndex = next;
+        }
         for (let i = beginIndex; i < endIndex; i++)
             this.parser.parseBytes(bytes, i, i+1);
         return;
     }
     */
     this.parser.parseBytes(bytes, beginIndex, endIndex);
+    if (this.parser._deferredBytes)
+        rlen -= this.parser._deferredBytes.length;
+    this._receivedCount = (this._receivedCount + rlen) & Terminal._mask28;
+
 }
 
 Terminal.prototype._scrollNeeded = function() {
@@ -6723,7 +6745,8 @@ Terminal.prototype.adjustFocusCaretStyle = function() {
     if (caret && caret.parentNode) {
         let lcaret = this.viewCaretLineNode;
         let rect = caret.getBoundingClientRect();
-        lcaret.style.width = (this.availWidth + this.rightMarginWidth ) + "px";
+        lcaret.style.width =
+            (this.availWidth + this.rightMarginWidth - 1) + "px";
         lcaret.style.left = (-rect.x) + "px";
     }
 };
@@ -7773,7 +7796,7 @@ Terminal.prototype.insertNode = function (node) {
 * By default just calls processInputCharacters.
 */
 Terminal.prototype.processResponseCharacters = function(str) {
-    if (! this._replayMode) {
+    if (! this._replayMode && ! this.isSecondaryWindow()) {
         if (DomTerm.verbosity >= 3)
             this.log("processResponse: "+JSON.stringify(str));
         this.processInputCharacters(str);

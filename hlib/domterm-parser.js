@@ -8,12 +8,11 @@ class DTParser {
         this.term = term;
         this.controlSequenceState = DTParser.INITIAL_STATE;
         this.parameters = new Array();
-        this._savedControlState = null;
         this._flagChars = "";
         /** @type {Array|null} */
         this.saved_DEC_private_mode_flags = null;
     }
-    decodeBytes(bytes, beginIndex, endIndex) {
+    decodeBytes(bytes, beginIndex = 0, endIndex = bytes.length) {
         if (this.decoder == null)
             this.decoder = new TextDecoder(); //label = "utf-8");
         return this.decoder.decode(bytes.subarray(beginIndex, endIndex),
@@ -26,13 +25,17 @@ class DTParser {
         this.parseBytes(bytes, 0, bytes.length);
     }
 
-    parseBytes(bytes, beginIndex = 0, endIndex = bytes.length) {
+    parseBytes(bytes, beginIndex, endIndex) {
         if (beginIndex === endIndex)
             return;
         const term = this.term;
         if (DomTerm.verbosity >= 2) {
             //var d = new Date(); var ms = (1000*d.getSeconds()+d.getMilliseconds();
             let jstr = DomTerm.JsonLimited(this.decodeBytes(bytes, beginIndex, endIndex));
+            if (term._pagingMode == 2)
+                jstr += " paused";
+            if (term._savedControlState)
+                jstr += " urgent";
             term.log("parseBytes "+jstr+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
         }
         if (this._deferredBytes) {
@@ -45,8 +48,12 @@ class DTParser {
             beginIndex = 0;
             endIndex = narr.length;
         }
-        if (term._pagingMode == 2) {
-            this._deferredBytes = bytes.slice(beginIndex, endIndex);
+        if (term._pagingMode == 2
+            && ! (term._savedControlState
+                  && term._savedControlState.urgent)) {
+            this._deferredBytes =
+                beginIndex == 0 && endIndex == bytes.length ? bytes
+                : bytes.slice(beginIndex, endIndex);
             return;
         }
         if (term._disableScrollOnOutput && term._scrolledAtBottom())
@@ -400,6 +407,7 @@ class DTParser {
                     } else {
                         term._breakDeferredLines();
                         if (term._pauseNeeded()) {
+                            i--;
                             this.controlSequenceState = DTParser.PAUSE_REQUESTED;
                             continue;
                         }
@@ -689,6 +697,10 @@ class DTParser {
                     }
                 }
             }
+        }
+        if (this._deferredBytes && DomTerm.verbosity >= 3) {
+            let jstr = DomTerm.JsonLimited(this.decodeBytes(this._deferredBytes));;
+            term.log("deferred by parseBytes "+jstr);
         }
         term.requestUpdateDisplay();
     };
@@ -1385,8 +1397,8 @@ class DTParser {
             case 96:
                 term._receivedCount = this.getParameter(1,0);
                 term._confirmedCount = term._receivedCount;
-                if (this._savedControlState)
-                    this._savedControlState.receivedCount = term._receivedCount;
+                if (term._savedControlState)
+                    term._savedControlState.receivedCount = term._receivedCount;
                 break;
             case 97:
                 term._replayMode = true;
@@ -1944,7 +1956,7 @@ class DTParser {
                                                   dt.usingAlternateScreenBuffer);
                 term.updateWindowTitle();
                 let saved = term._savedControlState;
-                if (saved && saved.count_urgent <= 0)
+                if (saved && ! saved.urgent)
                     saved.receivedCount = rcount;
                 else
                     term._receivedCount = rcount;
@@ -2193,14 +2205,17 @@ class DTParser {
     };
 
     pushControlState(saved) {
+        saved.deferredBytes = this._deferredBytes;
         saved.controlSequenceState = this.controlSequenceState;
         saved.parameters = this.parameters;
         this.controlSequenceState = DTParser.INITIAL_STATE;
+        this._deferredBytes = undefined;
         this.parameters = new Array();
     }
 
     popControlState(saved) {
         this.controlSequenceState = saved.controlSequenceState;
+        this._deferredBytes = saved.deferredBytes;
         this.parameters = saved.parameters;
     }
 
