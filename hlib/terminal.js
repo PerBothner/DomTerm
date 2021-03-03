@@ -2335,7 +2335,10 @@ Terminal.prototype.cursorDown = function(count) {
         if (next < min)
             next = min;
     }
-    this.moveToAbs(next+this.homeLine, this.getCursorColumn(), true);
+    let col = this.getCursorColumn();
+    if (col === this.numColumns)
+        col--;
+    this.moveToAbs(next+this.homeLine, col, true);
 };
 
 Terminal.prototype.cursorNewLine = function(autoNewline) {
