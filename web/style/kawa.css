@@ -24,7 +24,11 @@ a {
   border-style: none;
   text-decoration-color: #66f }
 a:link, a:visited {
-  color: inherit; }
+    background: #f4f4e4;
+    color: inherit; }
+div.toc-sidebar a {
+    background: inherit
+}
 h1, h2, h3, h4 {
     color: #000;
     clear: right
@@ -140,11 +144,11 @@ html {
 
 span.ignore { display: none }
 
-div.toc-sidebar, a:link, a:visited {
-    background: #f4f4e4;
+body div#slider {
+    background: #e8f0dcc0;
 }
-#slider, div.toc-sidebar, div.toc-sidebar a {
-    background: #e8f0dc;
+#slider div.toc-sidebar nav, #slider  div.toc-sidebar header,  #slider *.sidebar-hider {
+    background: #e8f0dce0;
 }
 
 /* Local navigation menu, along the left or right side */
@@ -161,6 +165,13 @@ div.toc-sidebar li {
   border-width: 1px 0px 0px 1px;
   border-color: #AAA #666 #666 #AAA;
   list-style: none }		/* Remove triangle from H2 */
+div.toc-sidebar nav > ul > li {
+    border-left: 0px;
+}
+.sidebar-hider {
+    border-style: solid;
+    border-color: #AAA;
+}
 div.navbar > ul {
   padding: 0 }
 div#Menu p.navhead {
@@ -176,14 +187,16 @@ list-style-type: none;
 div.toc-sidebar li { margin: 0 ; }
 div.toc-sidebar ul ul { margin-left: 0.6em; }
 
-div.toc-sidebar div.toc li { padding: 0px 0px 0px 4px;}
+div.toc-sidebar div.toc li, body[show-sidebar="yes"] .sidebar-hider {
+    padding: 0px 0px 0px 4px;
+}
 div.toc-sidebar div.toc a { display: block; }
 
 div.toc-sidebar a { text-decoration: none; }
 /* The following is redundant, but is needed for IE 6.0. */
 div.navheader ul a { text-decoration: none; }
 
-div.toc-sidebar a:hover, a:hover, a.logo:hover, div.logo:hover
+div.toc-sidebar a:hover, a:hover, a.logo:hover, div.logo:hover, #slider .sidebar-hider:hover
 {
 color: #fff;
 background: #608090;
@@ -208,6 +221,7 @@ div.navheader a {
  }
 
 div.toc-sidebar *.logo {
+  box-sizing: border-box;
   font-size: xx-large
 }
 div.logo {
@@ -217,6 +231,12 @@ div.toc-sidebar > a img {
     float: none;
     padding: 15px 0.1em;
     width: 60%;
+}
+div#slider div.toc-sidebar header {
+    padding: 0px 2px;
+}
+div#slider div.toc-sidebar div.toc {
+    padding: 0px;
 }
 
 code[class="literal"] strong { color: purple }
@@ -245,6 +265,8 @@ dl.def span.category-suffix { display: none }
 blockquote { margin-left: 40px; margin-right: 40px }
 
 div[class="toc-sidebar"] div > ul > li { font-size: larger }
+
+/* div.subsubsection div.header { display: none } */
 
 /* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
 
