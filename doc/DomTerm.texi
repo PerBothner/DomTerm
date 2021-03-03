@@ -4556,6 +4556,9 @@ Some toolkits to explore for integrated browser/application:
 @uref{http://atom.io,Atom/Electon}
 A possible start is @uref{https://atom.io/packages/term2,term2}.
 @item
+@uref{https://tauri.studio/en/Tauri} aims to similar to Electron
+but ligher-weight.
+@item
 @uref{http://nwjs.io/,NW.js} (formerly node-webkit).
 Seems to have slightly lower resouce usage than Electron,
 and using @code{nw} executable is better supported.
@@ -4566,6 +4569,8 @@ Could use @uref{https://github.com/webview/webview/,webview} as a starting point
 
 In @code{qtdomterm} consider using @code{QDockWidget} so panes
 can be moved between windows.
+Better: Considering @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System}.
+Requires @code{qt5-qtx11extras-devel} package on Fedora.
 
 @subsubheading Using alternate window managers
 
@@ -4576,9 +4581,6 @@ that supports panes and tabs.
 If DomTerm is integrated in an application with its
 own window manager, such as Atom or Visual Studio Code,
 it would make sense to instead integrate with the latter manager.
-
-Considering @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System}.
-Requires @code{qt5-qtx11extras-devel} package on Fedora.
 
 Theia and Jupyter use @uref{https://phosphorjs.github.io/,PhosphorJS}, now archived.
 A newer version is part of @uref{https://jupyterlab.readthedocs.io/en/stable/,JupyterLab}.
