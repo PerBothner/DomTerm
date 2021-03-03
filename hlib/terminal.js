@@ -7592,6 +7592,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 // Optimize this case.  This avoids changing the DOM, which is
                 // desirble (for one it avoids messing with the selection).
                 this.outputBefore += str.length;
+                if (this.currentCursorColumn >= 0)
+                    this.currentCursorColumn += widthInColumns;
                 str = null;
                 nsegments = 0;
             }
