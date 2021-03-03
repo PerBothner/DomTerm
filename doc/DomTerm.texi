@@ -1776,21 +1776,21 @@ echo within @var{timeout} seconds.  The default timeout is 0.4 seconds.
 The following settings are used to timeout if a connection fails.
 All these values are in seconds; no timeout happens if the values are zero.
 @table @asis
-@item @code{@b{remote_input_interval} =} @var{input-interval}
+@item @code{@b{remote-input-interval} =} @var{input-interval}
 If non-zero, the local browser sends input data at least as
 frequently as every @var{input-interval} seconds.
 If there is no keyboard or other event, artificial data is sent.
 Defaults to 10 seconds,
-@item @code{@b{remote_input_timeout} =} @var{input-timeout}
+@item @code{@b{remote-input-timeout} =} @var{input-timeout}
 If the remote (application) end has not received any input data
 in @var{input-timeout} seconds and @var{input-timeout} is non-zero,
 it assume the connection has failed.
 Defaults to twice @code{remote_input_interval}.
-@item @code{@b{remote_output_interval} =} @var{output-interval}
+@item @code{@b{remote-output-interval} =} @var{output-interval}
 If non-zero, the remote (application) ends some data to the
 local browser at least every @code{remote_output_interval} seconds.
 Defaults to 10 seconds.
-@item @code{@b{remote_output_timeout} =} @var{output-timeout}
+@item @code{@b{remote-output-timeout} =} @var{output-timeout}
 If the local browser end of the connection has not received any output
 from the remote application end in @code{remote_output_timeout} seconds
 (and it is non-zero), it assume the connection has failed.
