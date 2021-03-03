@@ -714,14 +714,21 @@ class DTParser {
         if (last != 109 /*'m'*/)
             term._breakDeferredLines();
         switch (last) {
-        case 64 /*'@'*/: // ICH - insert character
-            var saveInsertMode = term.sstate.insertMode;
+        case 64 /*'@'*/: { // ICH - insert character
+            let saveInsertMode = term.sstate.insertMode;
+            let row = term.getAbsCursorLine();
+            let col = term.getCursorColumn();
             term.sstate.insertMode = true;
             param = this.getParameterOneIfDefault(0);
+            if (col === term.numColumns) {
+                col--;
+                term.moveToAbs(row, col, false);
+            }
             term.insertSimpleOutput(DomTerm.makeSpaces(param), 0, param);
-            term.cursorLeft(param, false);
+            term.moveToAbs(row, col, false);
             term.sstate.insertMode = saveInsertMode;
             break;
+        }
         case 65 /*'A'*/: // CUU - cursor up
             term.cursorDown(- this.getParameterOneIfDefault(0));
             break;
