@@ -382,7 +382,7 @@ depending on whether the back-end is in ``@uref{http://www.gnu.org/software/libc
 
 @subheading Miscelleanous
 
-Easily configured as a @ref{drop-down,``@strong{drop-down}'' (``Quake-style'')} terminal.
+Easily configured as a @ref{drop down,``@strong{drop-down}'' (``Quake-style'')} terminal.
 
 User @strong{preferences are controlled a CSS stylesheet},
 which can be changed by an application.
@@ -406,7 +406,7 @@ Optional @ref{Paging,@strong{automatic pagination}}.
 @strong{Predictive echo} (similar to @code{mosh}), which is
 useful for slow connections.
 
-Nicer @ref{password-fields, @strong{password fields}}.
+Nicer @ref{password fields, @strong{password fields}}.
 
 @node Downloading and building
 @chapter Downloading and building
@@ -423,7 +423,7 @@ git clone https://github.com/PerBothner/DomTerm
 The following instructions assume a Unix-like environment
 (Linux, BSD, MacOS, or WSL on Windows).
 On other platforms (including plain Windows without WSL)
-you may be able to use @ref{electron-nodepty} (experimental).
+you may be able to use @ref{electron nodepty} (experimental).
 
 @c Alternatively, it may be easier to grab one of the sporadic
 @c @uref{https://github.com/PerBothner/DomTerm/releases,releases}.
@@ -497,9 +497,9 @@ sudo apt-get install cmake
 @subsubheading Windows using WSL (Linux for Windows)
 
 For building from source on WSL (Windows Subsystem for  Linux)
-see the @ref{building-on-WSL,instructions below}.
+see the @ref{building on WSL,instructions below}.
 
-@anchor{wsl-binary-release}
+@anchor{wsl binary release}
 Alternatively, you can use of the pre-compiled
 @uref{https://github.com/PerBothner/DomTerm/releases,releases}.
 Download @code{domterm-@var{version}-wsl.zip}.
@@ -801,7 +801,7 @@ is recommended if if you a non-Electron front-end, as it makes Paste
 menu items work better.
 
 If you followed the
-@ref{installing-libclipboard,installation instructiona above}
+@ref{installing-libclipboard,installation instructions above}
 then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR/dist}.
 
 @item --without-docbook
@@ -841,7 +841,7 @@ into the configured @var{install-prefix} directory:
 make install
 @end example
 
-@anchor{building-on-WSL}
+@anchor{building on WSL}
 @subsubheading Windows using Linux for Windows
 
 Microsoft Windows is now supported using
@@ -1244,7 +1244,7 @@ a @ref{Settings,@dfn{settings option}}.
 @item @code{--geometry} @var{size-and-position}
 Specify the initial @var{size} and/or @var{position}
 of a new top-level window.
-See @ref{geometry-specifier}.
+See @ref{geometry specifier}.
 
 @item @code{--version}
 Print version information and copyright, and then exit.
@@ -1671,7 +1671,7 @@ an ``invisible'' @ref{Headless mode,headless} window.
 
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size and/or of new top-level windows
-using the syntax of a @ref{geometry-specifier}.
+using the syntax of a @ref{geometry specifier}.
 
 The default is @code{800x600}.
 @end table
@@ -1704,7 +1704,7 @@ Currently @code{auto} is only known to work on Firefox running on Gnome.
 
 @item @code{@b{style.caret} =} @var{value}
 Change the style of the caret (text input cursor).
-See @ref{caret-styling}.
+See @ref{caret styling}.
 @end table
 
 @subsubheading Key and mouse handling
@@ -1851,7 +1851,7 @@ of line-editing history to preserve,
 
 @item @code{@b{password-hide-char} =} @var{string}
 Character used to hide characters
-in @ref{password-fields,password fields}.
+in @ref{password fields,password fields}.
 The default is @code{"\u25CF"} ``black circle''.
 To change it to ``bullet'' you can do:
 @example
@@ -2031,7 +2031,7 @@ the Electron and Qt frontends.
 Multiple different frontends can talk to the same backend
 at the same time.
 
-@anchor{geometry-specifier}
+@anchor{geometry specifier}
 @subheading Window size and position (geometry specifier)
 
 You can request the initial size and position
@@ -2454,7 +2454,7 @@ so this is only suitable for testing.
 DomTerm can ``multiplex'' multiple terminal emulators
 (similar to tmux or GNU Screen).
 
-@subheading Terminology
+@subheading Sessions
 
 A @dfn{session} is an emulated terminal with a process running under it.
 A @code{domterm} @dfn{server} manages one or more sessions.
@@ -3052,7 +3052,7 @@ Exit search mode, and move to previous/next history item.
 Exit search mode, accept current item, but continue editing it.
 @end table
 
-@anchor{password-fields}
+@anchor{password fields}
 @subheading Password fields
 
 A ``password field'' is an input area where the typed characters
@@ -3374,7 +3374,7 @@ because of the @uref{https://en.wikipedia.org/wiki/Same-origin_policy,same-origi
 Work-arounds are being considered; please contact the maintainer if this
 is a feature you want.
 
-@anchor{caret-styling}
+@anchor{caret styling}
 @subheading Text caret (input cursor)
 
 You can change the look of the caret (text input cursor)
@@ -3480,7 +3480,7 @@ for how they may support some features differently.
 * Tips::  Miscellaneous tips
 * Detecting domterm terminal::
 * Shell prompts::  Shell prompts and tricks
-* drop-down:: Use as a drop-down terminal
+* drop down:: Use as a drop-down terminal
 * Python tips::
 * Names and titles::
 @end menu
@@ -3666,7 +3666,7 @@ with a @code{class} attribute specifying @code{input-line}).
 
 To create an @code{input-line} group you set the appropriate
 escape sequence @samp{\e[15u} in the end of the prompt string,
-as show in tip for @ref{bash-shell-prompt}.
+as show in tip for @ref{bash shell prompt}.
 If using an input editor library that handles multi-line input commands
 (such as JLine3), use the escape sequence @samp{\e[15;2u} instead.
 @end itemize
@@ -3918,7 +3918,7 @@ The following discussion tests @code{$DOMTERM} to decide
 whether to do domterm-specific actions.
 See @ref{Detecting domterm terminal,how to more reliably test for DomTerm}.
 
-@anchor{bash-shell-prompt}
+@anchor{bash shell prompt}
 @subheading Setting the Bash shell prompt
 
 Download @uref{tools/shell-integration.bash,shell-integration.bash}
@@ -3967,7 +3967,7 @@ then
 fi
 @end example
 
-@anchor{fish-shell-prompt}
+@anchor{fish shell prompt}
 @subheading Setting the Fish Shell (fish) prompt
 
 For @code{fish} (the Fish Shell),
@@ -4046,7 +4046,7 @@ fi
 This uses the @code{is_domterm} and @code{print_path_url}
 functions defined above.
 
-@node drop-down
+@node drop down
 @section Use as a drop-down terminal
 
 A @dfn{drop-down terminal} (sometimes called
@@ -4085,7 +4085,7 @@ We need to bind a shortcut key (hotkey) to a command like:
 @example
 wsl -e /mnt/c/path-to-domterm/bin/domterm --geometry=775x600+20+10 window toggle-minimize
 @end example
-where the @code{--geometry} option is an optional @ref{geometry-specifier},
+where the @code{--geometry} option is an optional @ref{geometry specifier},
 and @code{/mnt/c/path-to-domterm} is the location of your DomTerm installation.
 Note this needs to be a Unix-style path (since it is executed by @code{wsl})
 to a Windows directory (so Electron can find the needed files).
@@ -4149,7 +4149,7 @@ because of @uref{https://devblogs.microsoft.com/oldnewthing/?p=7723,this issue}.
 By default the terminal will have a default size and position,
 though if you resize and move the window, it should remember the
 size and position if you then hide and unhide it.
-You can use a @ref{geometry-specifier,geometry specifier} to give an
+You can use a @ref{geometry specifier,geometry specifier} to give an
 explicit position when it is created,
 either in the @ref{Settings} file, or with a @code{--geometry} option:
 @example
@@ -4792,7 +4792,7 @@ Consider using @uref{https://github.com/critiqjo/key-mon,key-mon}
 * Terminology::
 * DOM structure::
 * Wire byte protocol::
-* electron-nodepty:: Using node for background server
+* electron nodepty:: Using node for background server
 * The DomTerm JavaScript class::
 * Processes and security::
 * Architecture notes::
@@ -5080,7 +5080,7 @@ Returning to the normal screen deletes the @code{<div>} for the
 alternative screen, along with all of its contents,
 and changes the @code{buffer} attribute back to @code{"main only"}.
 
-@anchor{DOM-pretty-printing}
+@anchor{DOM pretty printing}
 @subsubheading Pretty-printing and line-breaking
 
 @table @asis
@@ -5751,7 +5751,8 @@ write:
 @example
 \e]115;"-","",""\a
 @end example
-German used to have a rule where ``ck'' would be hyphenated as ``k-k'',
+
+German used to  have a rule where ``ck'' would be hyphenated as ``k-k'',
 as in Zucker (sugar):
 @example
 Zu\e]115;"k-","k","ck"\aer
@@ -5828,7 +5829,7 @@ Requests the server to access the clipboard on its behalf,
 and send the contents using an OSC 231 sequence.
 @end table
 
-@node electron-nodepty
+@node electron nodepty
 @section electron-nodepty: Using node for background server
 
 The @code{electron-nodepty} directory contains an experimental version
@@ -6113,7 +6114,7 @@ Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
 @menu
 * Automatic input mode::
 * Line structure::
-* Colors and high-lighting::
+* Colors and high lighting::
 * Remote connection over ssh::
 * Predictive echo::
 * Connection closing and detaching::
@@ -6166,7 +6167,7 @@ Always points to a span node with the line attribute set.
 Normally lineEnds[i] == lineStarts[i+1]; however, sometimes
 lineStarts[i] is the start of a @code{<div>} or other block element.
 
-@node Colors and high-lighting
+@node Colors and high lighting
 @subsection Colors and high-lighting
 
 @emph{This needs updating.}
