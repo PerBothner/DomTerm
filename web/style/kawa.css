@@ -33,8 +33,7 @@ h1, h2, h3, h4 {
     color: #000;
     clear: right
 }
-h1, h2, h3, h4.subheading {
-  color: #114;
+h1, h2, h3, h4.subheading, h4.subsection {
   font-weight: bold;
   background-color: #e8f8f8;
   padding: 0.5ex 0.5em 0.3ex 0em;
@@ -261,12 +260,11 @@ p.synopsis span.kind { content: "[" }
 p.synopsis span.kind:before, dl.def span.category:before { content: "[" }
 p.synopsis span.kind:after, dl.def span.category:after { content: "]" }
 p.synopsis > code { font-weight: bold; }
-dl.def span.category-suffix { display: none }
 blockquote { margin-left: 40px; margin-right: 40px }
 
 div[class="toc-sidebar"] div > ul > li { font-size: larger }
 
-/* div.subsubsection div.header { display: none } */
+div.subsection div.header { display: none }
 
 /* *[accesskey]:after {content:' [' attr(accesskey) ']'} */
 
