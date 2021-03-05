@@ -6487,10 +6487,6 @@ Terminal.prototype._downContinue = function(height, paging) {
     let limit = end + height;
     if (limit > this._pauseLimit)
         this._pauseLimit = limit;
-    let focusCaret = this.viewCaretNode;
-    if (focusCaret && focusCaret.parentNode) {
-        focusCaret.parentNode.removeChild(focusCaret);
-    }
     this._clearSelection();
     this._pauseContinue(paging);
     DomTerm.setAutoPaging("true", this);
@@ -6499,6 +6495,7 @@ Terminal.prototype._downContinue = function(height, paging) {
 Terminal.prototype._downLinesOrContinue = function(count, paging) {
     let todo = this.editorMoveLines(false, count, false);
     if (todo > 0) {
+        this._pauseLimit = this._vspacer.offsetTop;
         this._downContinue(todo * this.charHeight, paging);
     }
 }
@@ -6507,6 +6504,7 @@ Terminal.prototype._pauseContinue = function(paging, skip = false) {
     if (this.sstate.disconnected) {
         this._reconnect();
     }
+    this._clearSelection();
     var wasMode = this._pagingMode;
     this._pagingMode = paging ? 1 : 0;
     if (wasMode != 0)
@@ -8854,13 +8852,11 @@ Terminal.prototype.keyDownHandler = function(event) {
         this._muxKeyHandler(event, key, false);
         return;
     }
-    if (this._currentlyPagingOrPaused()) {
-        if (this.pageKeyHandler(keyName)) {
-            event.preventDefault();
-            return;
-        }
-    } else
-        this._adjustPauseLimit();
+    if (this._currentlyPagingOrPaused()
+        && this.pageKeyHandler(keyName)) {
+        event.preventDefault();
+        return;
+    }
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
         event.preventDefault();
         return;
@@ -8942,6 +8938,7 @@ Terminal.prototype.keyDownHandler = function(event) {
                 }
             }
             }
+            this._adjustPauseLimit();
             this._respondSimpleInput(str, keyName);
         }
     }
@@ -10059,7 +10056,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
     let oldColumn = this.getCursorColumn();
     let oldLine = this.getAbsCursorLine();
     if (this._pagingMode) {
-        let ok = true;
+        let todo = 0;
         let startBefore = this.outputBefore;
         let startContainer = this.outputContainer;
         let column = oldColumn;
@@ -10067,10 +10064,10 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
             column = goalColumn;
         let line = backwards ? oldLine - count : oldLine + count;
         if (line < 0) {
-            ok = false;
+            todo = -line;
             line = 0;
         } else if (line >= this.lineStarts.length) {
-            ok = false;
+            todo = line - (this.lineStarts.length - 1);
             line = this.lineStarts.length - 1;
         }
         this.moveToAbs(line, column, false);
@@ -10103,7 +10100,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
             sel.collapse(r.endContainer, r.endOffset);
         this._popFromCaret(save);
         this.sstate.goalColumn = column;
-        return ok ? 0 : 1;
+        return todo;
     }
     this.editorAddLine();
     this._popFromCaret(save);
