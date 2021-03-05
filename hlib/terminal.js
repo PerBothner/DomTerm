@@ -6515,9 +6515,14 @@ Terminal.prototype._pauseContinue = function(paging, skip = false) {
         this.log("pauseContinue was mode="+wasMode);
     if (wasMode == 2) {
         var text = this.parser._deferredBytes;
-        this.parser._deferredBytes = undefined;
-        if (! skip && text)
-            this.parseBytes(text);
+        if (text) {
+            this.parser._deferredBytes = undefined;
+            if (skip) {
+                this._receivedCount
+                    = (this._receivedCount + text.length) & Terminal._mask28;
+            } else
+                this.parseBytes(text);
+        }
         this._maybeConfirmReceived();
     }
 }
