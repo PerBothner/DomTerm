@@ -2016,7 +2016,8 @@ display_session(struct options *options, struct pty_client *pclient,
         init_tclient_struct(tclient);
         tclient->options = link_options(options);
         set_connection_number(tclient, pclient ? pclient->session_number : -1);
-        link_clients(tclient, pclient);
+        if (pclient)
+            link_clients(tclient, pclient);
         wnum = tclient->connection_number;
     }
     int r = EXIT_SUCCESS;
