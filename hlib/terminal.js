@@ -389,8 +389,11 @@ class Terminal {
         dt._breakDeferredLines();
         dt._checkSpacer();
         // FIXME only if "scrollWanted"
+        dt._restoreInputLine();
         if (dt.viewCaretNode.parentNode === null)
             dt._scrollIfNeeded();
+        else
+            dt.adjustFocusCaretStyle();
         /*
         if (dt._markMode > 0) {
             // update selection so focus follows caret
@@ -400,7 +403,6 @@ class Terminal {
             sel.extend(dt._caretNode, 0);
         }
         */
-        dt._restoreInputLine();
     };
     this._unforceWidthInColumns =
         function(evt) {
