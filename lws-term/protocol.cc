@@ -1117,7 +1117,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         int klen = json_object_get_string_len(obj);
         int kstr0 = klen != 1 ? -1 : kstr[0];
         if (isCanon && kstr0 != 3 && kstr0 != 4 && kstr0 != 26) {
-            printf_to_browser(client, URGENT_WRAP("\033]%d;%.*s\007"),
+            printf_to_browser(client, OUT_OF_BAND_WRAP("\033]%d;%.*s\007"),
                               isEchoing ? 74 : 73, (int) dlen, data);
             lws_callback_on_writable(wsi);
         } else {
