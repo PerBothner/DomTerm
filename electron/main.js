@@ -149,6 +149,13 @@ ipcMain.on('window-ops', (event, command, arg) => {
     }
 });
 
+ipcMain.on('open-simple-window', (event, options, url) => {
+    let win = new BrowserWindow(options);
+    win.setMenu(null);
+    win.loadURL(url);
+    win.show();
+});
+
 ipcMain.handle('open-dialog', async (event, kind, options) => {
     return await dialog.showSaveDialog(options);
 });

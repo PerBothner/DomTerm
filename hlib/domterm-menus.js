@@ -28,12 +28,10 @@ DomTerm.aboutMessage = function() {
 DomTerm.showAboutMessage = function() {
     let msg = DomTerm.aboutMessage();
     if (DomTerm.isElectron()) {
-        let win = new electronAccess.
-            BrowserWindow({width: 500, height: 400,
-                           title: 'About DomTerm', show: false});
-        win.setMenu(null)
-        win.loadURL('data:text/html,'+encodeURIComponent(msg));
-        win.show();
+        electronAccess.ipcRenderer
+            .send('open-simple-window',
+                  {width: 500, height: 400, title: 'About DomTerm', show: false},
+                  'data:text/html,'+encodeURIComponent(msg));
     } else {
         let win = window.open("", "About DomTerm", 'height=500,width=400');
         win.document.title = "About DomTerm";

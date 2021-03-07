@@ -4,7 +4,6 @@
     const _require = require;
     const remote = _electron.remote;
     const _electronAccess = {
-        BrowserWindow: remote.BrowserWindow,
         clipboard: _electron.clipboard,
         fs: _fs,
         getCurrentWindow: remote.getCurrentWindow,
