@@ -1198,8 +1198,9 @@ reportEvent(const char *name, char *data, size_t dlen,
                 client->options = options = link_options(NULL);
             set_setting(&options->cmd_settings, "geometry", geom);
         }
-        display_session(options, NULL,
-                        data[0] == '#' && g0 == data + 1 ? NULL : data, -1);
+        const char* url = !data[0] || (data[0] == '#' && g0 == data + 1) ? NULL
+            : data;
+        display_session(options, NULL, url, -1);
         if (geom != NULL)
             free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
@@ -1823,9 +1824,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 arglist_t argv = default_command(main_options);
                 char *cmd = find_in_path(argv[0]);
                 if (cmd != NULL) {
-                    pclient = create_pclient(cmd, argv, main_options, false, NULL);
-                    link_command(wsi, (struct tty_client *) lws_wsi_user(wsi),
-                                 pclient);
+                    pclient = create_pclient(cmd, argv, main_options, false, client);
+                    link_command(wsi, client, pclient);
                     lwsl_info("connection to new session %d established\n",
                               pclient->session_number);
                 }

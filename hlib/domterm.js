@@ -201,10 +201,10 @@ DomTerm.openNewWindow = function(dt, options={}) {
         if (dt) {
             if (! url)
                 url = "";
-            dt.reportEvent("OPEN-WINDOW",
-                           url + (url.indexOf('#') < 0 ? '#' : '&') +
-                           ((width && height) ? ("geometry="+width+"x"+height) : "")
-                          );
+            if (width && height)
+                url += (url.indexOf('#') < 0 ? '#' : '&')
+                    + "geometry="+width+"x"+height;
+            dt.reportEvent("OPEN-WINDOW", url);
         } else {
             if (! url)
                 url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
