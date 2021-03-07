@@ -56,13 +56,13 @@ DomTerm.createMenus = function(options) {
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
           menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Cmd+C' : 'Ctrl+Shift+C',
-                        click() { DomTerm.doNamedCommand("copy-text"); }});
+                    clickClientAction: "copy-text"});
     const copyAsHtmlItem =
           menuItem({label: 'Copy as HTML',
-                    click() { DomTerm.doNamedCommand("copy-html"); }});
+                    clickClientAction: "copy-html"});
     const pasteItem =
           menuItem({label: 'Paste', accelerator: DomTerm.isMac ? 'Cmd+V' : 'Ctrl+Shift+V',
-                    click() { DomTerm.doPaste(); }});
+                    clickClientAction: "paste-text"});
     var showingMenuBar = true;
     const showMenuBarItem = menuItem({label: 'Show menubar',
                                       type: 'checkbox',
@@ -73,10 +73,8 @@ DomTerm.createMenus = function(options) {
                                       checked: true});
     const autoPagingItem = menuItem({label: 'Automatic Pager',
                                      accelerator: "Ctrl+Shift+M A",
-                                         type: 'checkbox',
-                                         click: function() {
-                                             DomTerm.setAutoPaging("toggle");
-                                         }});
+                                     type: 'checkbox',
+                                     clickClientAction: 'toggle-auto-pager'});
     function inputModeClickHandler(menuItem) {
         DomTerm.setInputMode(menuItem == charModeItem ? 99
                              : menuItem == lineModeItem ? 108
@@ -103,22 +101,16 @@ DomTerm.createMenus = function(options) {
                                     submenu: inputMenu});
     const saveAsItem = menuItem({label: 'Save as HTML',
                                  accelerator: 'CommandOrControl+Shift+S',
-                                 click: function() {
-                                     DomTerm.doSaveAs();
-                                 }});
+                                 clickClientAction: 'save-as-html'});
 
     const quitItem =  electronMenus ? menuItem({label: 'Quit', role: 'quit'})
           : menuItem({label: 'Quit', click: DomTerm.windowClose });
     const newWindowItem = menuItem({label: 'New terminal window',
                                     accelerator: DomTerm.isMac ? 'Cmd+N' : 'Ctrl+Shift+N',
-                                    click: function() {
-                                        DomTerm.openNewWindow(DomTerm.focusedTerm);
-                                    }});
+                                    clickClientAction: 'new-window'});
     const newTabItem = menuItem({label: 'New terminal tab',
-                                      accelerator: DomTerm.isMac ? 'Cmd+T' : 'Ctrl+Shift+T',
-                                      click: function() {
-                                          DomTerm.newPane(2);
-                                      }});
+                                 accelerator: DomTerm.isMac ? 'Cmd+T' : 'Ctrl+Shift+T',
+                                 clickClientAction: 'new-tab'});
     const newPaneItem = menuItem({label: 'New terminal (right/below)',
                                       accelerator: 'Ctrl+Shift+A Enter',
                                       click: function() {
@@ -148,12 +140,10 @@ DomTerm.createMenus = function(options) {
                                           submenu: newTerminalMenu});
     const detachMenuItem =
           menuItem({label: 'Detach session',
-                    click: function() {
-                        DomTerm.doNamedCommand('detach-session'); }});
+                    clickClientAction: 'detach-session'});
     const resetMenuItem =
           menuItem({label: 'Reset',
-                    click: function() {
-                        DomTerm.doNamedCommand('reset-terminal-soft'); }});
+                    clickClientAction: "reset-terminal-soft"});
    const homePageItem =
           menuItem({label: 'DomTerm home page',
                     click: function() { DomTerm.requestOpenLink({href: 'https://domterm.org'}) }});
@@ -210,10 +200,7 @@ DomTerm.createMenus = function(options) {
     editMenu.append(copyAsHtmlItem);
     editMenu.append(pasteItem);
     editMenu.append(menuItem({label: 'Clear Buffer',
-                              click:
-                              function() {
-                                  DomTerm.doNamedCommand('clear-buffer');
-                              }}));
+                              clickClientAction: 'clear-buffer'}));
     let viewMenu = new Menu();
     viewMenu.append(showMenuBarItem);
 
@@ -224,15 +211,11 @@ DomTerm.createMenus = function(options) {
         let fullscreenAllItem =
             menuItem({label: "Full screen (all)", type: 'checkbox',
                       accelerator: 'F11',
-                      click: function() {
-                          DomTerm.doNamedCommand('toggle-fullscreen');
-                      }})
+                      clickClientAction: 'toggle-fullscreen'});
         let fullscreenCurrentItem =
             menuItem({label: "Full screen (current)", type: 'checkbox',
                       accelerator: 'Shift-F11',
-                      click: function() {
-                          DomTerm.doNamedCommand('toggle-fullscreen-current-window');
-                      }})
+                      clickClientAction: 'toggle-fullscreen-current-window'});
         fullscreenExitItem = menuItem({label: "Exit full screen",
                                        visible: false, // hidden unless fullscreen
                                        click: function() {
@@ -319,6 +302,14 @@ DomTerm.setContextMenu = function() {
             if (options && options.accelerator
                 && options.accelerator.indexOf(' ') >= 0)
                 options.accelerator = undefined;
+            const clickClientAction = options && options.clickClientAction;
+            if (clickClientAction) {
+                // FIXME FUTURE Handle in main.js, to avoid need for "remote"
+                options.click = function() {
+                    DomTerm.doNamedCommand(clickClientAction);
+                };
+                options.clickClientAction = undefined;
+            }
             return new MenuItem(options);
         }
         function popup(cmenu, options) {
@@ -331,6 +322,13 @@ DomTerm.setContextMenu = function() {
                             });
     } else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine) {
         function menuItem(options) {
+            const clickClientAction = options && options.clickClientAction;
+            if (clickClientAction) {
+                options.click = function() {
+                    DomTerm.doNamedCommand(clickClientAction);
+                };
+                options.clickClientAction = undefined;
+            }
             return new MenuItem(options);
         }
         function popup(cmenu, options) {
