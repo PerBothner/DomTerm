@@ -49,25 +49,25 @@ cmd('scroll-bottom',
 cmd('scroll-line-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pageLine(- dt.numericArgumentGet(1));
+        dt._scrollLine(- dt.numericArgumentGet(1));
         return true;
     });
 cmd('scroll-line-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pageLine(dt.numericArgumentGet(1));
+        dt._scrollLine(dt.numericArgumentGet(1));
         return true;
     });
 cmd('scroll-page-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pagePage(- dt.numericArgumentGet(1));
+        dt._scrollPage(- dt.numericArgumentGet(1));
         return true;
     });
 cmd('scroll-page-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pagePage(dt.numericArgumentGet(1));
+        dt._scrollPage(dt.numericArgumentGet(1));
         return true;
     });
 cmd('scroll-percentage',

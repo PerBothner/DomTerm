@@ -8598,20 +8598,20 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Shift-Down": "down-line-extend",
     "Shift-End": "end-of-line-extend",
     "Shift-Home": "beginning-of-line-extend",
-    "Ctrl-Down": "scroll-line-down",
-    "Ctrl-Up": "scroll-line-up",
-    "Ctrl-PageUp": "scroll-page-up",
-    "Ctrl-PageDown": "scroll-page-down",
-    "PageUp": "scroll-page-up",
-    "PageDown": "scroll-page-down",
+    //"Alt-Down": "scroll-line-down",
+    //"Alt-Up": "scroll-line-up",
+    //"Alt-PageUp": "scroll-page-up",
+    //"Alt-PageDown": "scroll-page-down",
+    //"PageUp": "scroll-page-up", // ??
+    //"PageDown": "scroll-page-down", // ??
     //"Shift-Mod-Home": "beginning-of-input-extend",
     //"Shift-Mod-End": "end-of-input-extend",
     "Backspace": "backward-delete-char",
     "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
     "Mod-Delete": "forward-delete-word",
-    "Ctrl-Home": "scroll-top",
-    "Ctrl-End": "scroll-bottom",
+    //"Ctrl-Home": "scroll-top",
+    //"Ctrl-End": "scroll-bottom",
     "Alt-Home": "beginning-of-input",
     "Alt-End": "end-of-input",
     "Home": "beginning-of-line",
@@ -8698,18 +8698,16 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-Up": "up-line-extend",
     "Shift-Down": "down-line-extend",
     "Mod-Right": 'forward-word',
-    "Ctrl-Down": "scroll-line-down",
-    "Ctrl-Up": "scroll-line-up",
-    "Ctrl-PageUp": "scroll-page-up",
-    "Ctrl-PageDown": "scroll-page-down",
+    //"Alt-Down": "scroll-line-down",
+    //"Alt-Up": "scroll-line-up",
+    //"Alt-PageUp": "scroll-page-up",
+    //"Alt-PageDown": "scroll-page-down",
     "PageUp": "up-page",
     "PageDown": "down-page-or-unpause",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Shift-Home": "beginning-of-line-extend",
     "Shift-End": "end-of-line-extend",
-    "Ctrl-Home": "scroll-top",
-    "Ctrl-End": "scroll-bottom",
     "Ctrl-Home": "beginning-of-buffer",
     "Ctrl-End": "end-of-buffer",
     "Ctrl-Shift-Home": "beginning-of-buffer-extend",
@@ -9810,14 +9808,10 @@ Terminal.prototype._pageScrollAbsolute = function(percent) {
     this.topNode.scrollTop = scrollTop;
 }
 
-Terminal.prototype._pageScroll = function(delta) {
-    var scroll = this.topNode.scrollTop;
-    var limit = scroll + this.availHeight + delta;
-    var vtop = this._vspacer.offsetTop;
-    var extend = limit > this._pauseLimit;
-    if (extend)
-        this._pauseLimit = limit;
-    scroll += delta;
+Terminal.prototype._pageScroll = function(delta, scrollOnly = false) {
+    let scroll = this.topNode.scrollTop + delta;
+    let limit = scroll + this.availHeight;
+    let vtop = this._vspacer.offsetTop;
     if (scroll < 0)
         scroll = 0;
     // FIXME actual limit is this._vspacer.offsetTop - availHeight
@@ -9826,8 +9820,12 @@ Terminal.prototype._pageScroll = function(delta) {
         scroll = vtop;
     // FIXME may do nothing if spacer size is empty
     this.topNode.scrollTop = scroll;
-    if (limit > vtop)
-        this._pauseContinue();
+    if (! scrollOnly) {
+        if (limit > this._pauseLimit)
+            this._pauseLimit = limit;
+        if (limit > vtop)
+            this._pauseContinue();
+    }
 }
 
 Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
@@ -9899,17 +9897,17 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
     this.scrollToCaret(null, force);
 };
 
-Terminal.prototype._pagePage = function(count) {
+Terminal.prototype._scrollPage = function(count) {
     var amount = count * this.availHeight;
     if (count > 0)
         amount -= this.charHeight;
     else if (count < 0)
         amount += this.charHeight;
-    this._pageScroll(amount);
+    this._pageScroll(amount, true);
 }
 
-Terminal.prototype._pageLine = function(count) {
-    this._pageScroll(count * this.charHeight);
+Terminal.prototype._scrollLine = function(count) {
+    this._pageScroll(count * this.charHeight, true);
 }
 
 Terminal.prototype._pageTop = function() {
