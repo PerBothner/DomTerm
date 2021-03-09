@@ -6602,11 +6602,11 @@ Terminal.prototype.insertBytes = function(bytes) {
                 let narr;
                 if (this.parser._deferredBytes) {
                     let dlen = this.parser_deferredBytes.length;
-                    let narr = new Uint8Array(dlen + (urgent_begin - beginIndex));
+                    let narr = new Uint8Array(dlen + (urgent_begin - startIndex));
                     narr.set(this._deferredBytes);
-                    narr.set(bytes.subarray(beginIndex, urgent_begin), dlen)
+                    narr.set(bytes.subarray(startIndex, urgent_begin), dlen)
                 } else {
-                    narr = bytes.slice(beginIndex, urgent_begin);
+                    narr = bytes.slice(startIndex, urgent_begin);
                 }
                 this.parser._deferredBytes = narr;
             }
