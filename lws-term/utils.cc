@@ -710,7 +710,7 @@ check_conditional(const char *tmplate, test_function_t tester, void* data)
                     int clen = p - clause;
                     char *tclause = strdup(clause);
                     tclause[clen] = '\0';
-                    ok = tester(clause, data);
+                    ok = tester(tclause, data);
                     free(tclause);
                     if (negate)
                         ok = ! ok;
