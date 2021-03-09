@@ -24,7 +24,7 @@ DomTerm.log = function(str, dt=null) {
                 DomTerm._savedLogEntries = new Array();
             DomTerm._savedLogEntries.push(str);
         }
-        if (! report || report == "bothner") {
+        if (! report || report == "both") {
             console.log(str);
         }
     }
