@@ -2400,6 +2400,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         }
 #endif
         pclient->is_ssh_pclient = true;
+        pclient->preserve_mode = 0;
         char tbuf[20];
         sprintf(tbuf, "%d", pclient->session_number);
         set_setting(&opts->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
