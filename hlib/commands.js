@@ -10,7 +10,22 @@ function lookupCommand(name) {
     return commandMap[name];
 }
 
-cmd('cycle-input-mode',
+cmd('input-mode-line',
+    function(dt, key) {
+        DomTerm.setInputMode(108, dt);
+        return true;
+    });
+cmd('input-mode-char',
+    function(dt, key) {
+        DomTerm.setInputMode(99, dt);
+        return true;
+    });
+cmd('input-mode-auto',
+    function(dt, key) {
+        DomTerm.setInputMode(97, dt);
+        return true;
+    });
+cmd('input-mode-cycle',
     function(dt, key) {
         dt.nextInputMode();
         return true;
@@ -25,6 +40,11 @@ cmd('reset-terminal-soft',
         dt.reportEvent("ECHO-URGENT", JSON.stringify("\x1b[!p"));
         return true;
     });
+cmd('close-window',
+    function(dt, key) {
+        DomTerm.windowClose();
+        return true;
+    });
 cmd('new-window',
     function(dt, key) {
         DomTerm.openNewWindow(dt);
@@ -33,6 +53,31 @@ cmd('new-window',
 cmd('new-tab',
     function(dt, key) {
         DomTerm.newPane(2, null, dt);
+        return true;
+    });
+cmd('new-pane',
+    function(dt, key) {
+        DomTerm.newPane(1, null, dt);
+        return true;
+    });
+cmd('new-pane-left',
+    function(dt, key) {
+        DomTerm.newPane(10, null, dt);
+        return true;
+    });
+cmd('new-pane-right',
+    function(dt, key) {
+        DomTerm.newPane(11, null, dt);
+        return true;
+    });
+cmd('new-pane-above',
+    function(dt, key) {
+        DomTerm.newPane(12, null, dt);
+        return true;
+    });
+cmd('new-pane-below',
+    function(dt, key) {
+        DomTerm.newPane(13, null, dt);
         return true;
     });
 cmd('scroll-top',
@@ -498,4 +543,25 @@ cmd('insert-char',
 cmd('detach-session',
     function(dt, keyName) {
         dt.detachSession();
+        return true;
+    });
+cmd('open-link',
+    function(dt, keyName) {
+        DomTerm.handleLink();;
+        return true;
+    });
+cmd('copy-link-address',
+    function(dt, keyName) {
+        DomTerm.copyLink();;
+        return true;
+    });
+cmd('open-domterm-homepage',
+    function(dt, keyName) {
+        DomTerm.requestOpenLink({href: 'https://domterm.org'});
+        return true;
+    });
+cmd('show-about-message',
+    function(dt, keyName) {
+        DomTerm.showAboutMessage();
+        return true;
     });

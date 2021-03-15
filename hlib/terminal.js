@@ -8553,7 +8553,7 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Insert": "copy-text",
             "Shift-Insert": "paste-text",
             "Ctrl-Shift-A": "enter-mux-mode",
-            "Ctrl-Shift-L": "cycle-input-mode",
+            "Ctrl-Shift-L": "input-mode-cycle",
             "Ctrl-Shift-M": "toggle-paging-mode",
             "Ctrl-Shift-N": "new-window",
             "Ctrl-Shift-S": "save-as-html",

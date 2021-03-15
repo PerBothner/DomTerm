@@ -75,23 +75,17 @@ DomTerm.createMenus = function(options) {
                                      accelerator: "Ctrl+Shift+M A",
                                      type: 'checkbox',
                                      clickClientAction: 'toggle-auto-pager'});
-    function inputModeClickHandler(menuItem) {
-        DomTerm.setInputMode(menuItem == charModeItem ? 99
-                             : menuItem == lineModeItem ? 108
-                             : menuItem == autoModeItem ? 97
-                             : 0);
-    }
     // These are logically radio buttons, but I'm having
     // trouble getting that to work.
     const charModeItem = menuItem({label: 'Char mode', type: 'checkbox',
-                                   click: inputModeClickHandler});
+                                   clickClientAction: 'input-mode-char'});
     const lineModeItem = menuItem({label: 'Line mode', type: 'checkbox',
-                                   click: inputModeClickHandler});
+                                   clickClientAction: 'input-mode-line'});
     const autoModeItem = menuItem({label: 'Auto mode', type: 'checkbox',
-                                   click: inputModeClickHandler});
+                                   clickClientAction: 'input-mode-auto'});
     const cycleInputModesItem = menuItem({label: 'Cycle input modes',
                                           accelerator: 'Ctrl+Shift+L',
-                                          click: inputModeClickHandler});
+                                          clickClientAction: 'input-mode-cycle'});
 
     const inputMenu = new Menu();
     inputMenu.append(charModeItem);
@@ -104,7 +98,7 @@ DomTerm.createMenus = function(options) {
                                  clickClientAction: 'save-as-html'});
 
     const quitItem =  electronMenus ? menuItem({label: 'Quit', role: 'quit'})
-          : menuItem({label: 'Quit', click: DomTerm.windowClose });
+          : menuItem({label: 'Quit', clickClientAction: 'close-window'});
     const newWindowItem = menuItem({label: 'New terminal window',
                                     accelerator: DomTerm.isMac ? 'Cmd+N' : 'Ctrl+Shift+N',
                                     clickClientAction: 'new-window'});
@@ -113,29 +107,23 @@ DomTerm.createMenus = function(options) {
                                  clickClientAction: 'new-tab'});
     const newPaneItem = menuItem({label: 'New terminal (right/below)',
                                       accelerator: 'Ctrl+Shift+A Enter',
-                                      click: function() {
-                                          DomTerm.newPane(1);
-                                      }});
+                                  clickClientAction: 'new-pane'});
     const newTerminalMenu = new Menu();
     newTerminalMenu.append(newWindowItem);
     newTerminalMenu.append(newTabItem);
     newTerminalMenu.append(newPaneItem);
     newTerminalMenu.append(menuItem({label: 'New terminal above',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Up',
-                                     click: function() {
-                                         DomTerm.newPane(12); }}));
+                                     clickClientAction: 'new-pane-above'}));
     newTerminalMenu.append(menuItem({label: 'New terminal below',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Down',
-                                     click: function() {
-                                         DomTerm.newPane(13); }}));
+                                     clickClientAction: 'new-pane-below'}));
     newTerminalMenu.append(menuItem({label: 'New terminal left',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Left',
-                                     click: function() {
-                                         DomTerm.newPane(10); }}));
+                                     clickClientAction: 'new-pane-left'}));
     newTerminalMenu.append(menuItem({label: 'New terminal right',
                                      accelerator: 'Ctrl+Shift+A Ctrl+Right',
-                                     click: function() {
-                                         DomTerm.newPane(11); }}));
+                                     clickClientAction: 'new-pane-right'}));
     const newTerminalMenuItem = menuItem({label: 'New Terminal',
                                           submenu: newTerminalMenu});
     const detachMenuItem =
@@ -146,17 +134,13 @@ DomTerm.createMenus = function(options) {
                     clickClientAction: "reset-terminal-soft"});
    const homePageItem =
           menuItem({label: 'DomTerm home page',
-                    click: function() { DomTerm.requestOpenLink({href: 'https://domterm.org'}) }});
+                    clickClientAction: 'open-domterm-homepage'});
     const aboutItem = menuItem({label: 'About DomTerm',
-                                click: DomTerm.showAboutMessage});
+                                clickClientAction: 'show-about-message'});
     const openLinkItem = menuItem({label: 'Open Link',
-                                   click: function(mitem, bwin, ev) {
-                                       DomTerm.handleLink();
-                                   }});
+                                   clickClientAction: 'open-link'});
     const copyLinkItem = menuItem({label: 'Copy Link Address',
-                                   click: function(mitem, bwin, ev) {
-                                       DomTerm.copyLink();
-                                   }});
+                                   clickClientAction: 'copy-link-address'});
     const copyLinkTextItem =
           menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Cmd+C' : 'Ctrl+Shift+C',
                     click() { DomTerm.doContextCopy(); }});
