@@ -285,7 +285,7 @@ class Terminal {
     this.viewCaretLineNode = vcaretNode2;
 
     this._miniBuffer = null;
-    this._searchMode = false;
+    this._searchInHistoryMode = false;
 
     // True if _inputLine should move with outputBefore.
     this.inputFollowsOutput = true;
@@ -430,6 +430,21 @@ class Terminal {
         };
     this.wcwidth = new WcWidth();
   }
+
+    isLineEditing() {
+        return (this._lineEditingMode + this._clientWantsEditing > 0
+                // extproc turns off echo by the tty driver, which means we need
+                // to simulate echo if the applications requests icanon+echo mode.
+                // For simplicity in this case, ignore _lineEditingMode < 0..
+                || (this._clientPtyExtProc + this._clientPtyEcho
+                    + this._clientWantsEditing == 3)
+                || this._composing > 0)
+            && ! this._currentlyPagingOrPaused();
+    }
+
+    isLineEditingOrMinibuffer() {
+        return this.isLineEditing() || this._miniBuffer;
+    }
 
     getOption(name, dflt = undefined) {
         let opt = this.sstate.termOptions[name];
@@ -1997,7 +2012,7 @@ Terminal.prototype._followingText = function(cur, backwards = false) {
             return node;
         return true;
     }
-    return Terminal._forEachElementIn(this._getOuterBlock(cur), check,
+    return Terminal._forEachElementIn(this._getOuterBlock(cur, true), check,
                                       true, backwards, cur);
 };
 
@@ -2142,17 +2157,6 @@ Terminal.prototype.useStyledCaret = function() {
 /* True if caret element needs a "value" character. */
 Terminal.prototype._caretNeedsValue = function(caretStyle = this.caretStyle) {
     return caretStyle <= 4;
-}
-
-Terminal.prototype.isLineEditing = function() {
-    return (this._lineEditingMode + this._clientWantsEditing > 0
-            // extproc turns off echo by the tty driver, which means we need
-            // to simulate echo if the applications requests icanon+echo mode.
-            // For simplicity in this case, ignore _lineEditingMode < 0..
-            || (this._clientPtyExtProc + this._clientPtyEcho
-                + this._clientWantsEditing == 3)
-            || this._composing > 0)
-        && ! this._currentlyPagingOrPaused();
 }
 
 /** Number of Unicode code points in string */
@@ -3015,6 +3019,17 @@ DomTerm._currentBufferNode = function(dt, index)
     return node;
 }
 
+Terminal.prototype.getAllBuffers = function() {
+    let buffers = [];
+    for (let bnode = this.topNode.firstChild; bnode;
+         bnode = bnode.nextSibling) {
+        if (bnode.nodeName == 'DIV'
+            && bnode.classList.contains('interaction'))
+            buffers.push(bnode);
+    }
+    return buffers;
+}
+
 Terminal.prototype.pushClearScreenBuffer = function(alternate, noScrollTop) {
     this.saveCursor();
     this.pushScreenBuffer(alternate);
@@ -3129,9 +3144,10 @@ Terminal.isBlockTag = function(tag) { // lowercase tag
     return (einfo & DomTerm._ELEMENT_KIND_INLINE) == 0;
 }
 
-Terminal.prototype._getOuterBlock = function(node) {
+Terminal.prototype._getOuterBlock = function(node, stopIfInputLine=false) {
     for (var n = node; n; n = n.parentNode) {
-        if (Terminal.isBlockNode(n))
+        if ((stopIfInputLine && n == this._inputLine)
+            || Terminal.isBlockNode(n))
             return n;
     }
     return null;
@@ -3513,7 +3529,9 @@ DomTerm.displayMiscInfo = function(dt, show) {
     }
 }
 
-Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
+Terminal.prototype.showMiniBuffer = function(options) {
+    let prefix = options.prefix || "";
+    let postfix = options.postfix || "";
     let contents = '<span>' + prefix
         + '<span class="editing" std="input"></span>'
         + postfix + '</span>';
@@ -3533,7 +3551,28 @@ Terminal.prototype.showMiniBuffer = function(prefix, postfix) {
     document.getSelection().collapse(miniBuffer, 0);
     miniBuffer.contentEditable = true;
     div.contentEditable = false;
+    if (options.keymaps)
+        miniBuffer.keymaps = options.keymaps;
+    if (options.infoClassName)
+        div.classList.add(options.infoClassName);
+    if (options.mutationCallback) {
+        let observer = new MutationObserver(options.mutationCallback);
+        observer.observe(miniBuffer,
+                         { attributes: false, childList: true, characterData: true, subtree: true });
+        miniBuffer.observer = observer;
+    }
     return miniBuffer;
+}
+
+Terminal.prototype.removeMiniBuffer = function(miniBuffer = this._miniBuffer) {
+    if (miniBuffer.observer) {
+        miniBuffer.observer.disconnect();
+        miniBuffer.observer = undefined;
+    }
+    DomTerm.removeInfoDisplay(miniBuffer.infoDiv, this);
+    this._inputLine = miniBuffer.saveInputLine;
+    this._caretNode = miniBuffer.saveCaretNode;
+    this._miniBuffer = null;
 }
 
 // Set up event handlers and more for an actual session.
@@ -8553,6 +8592,7 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Insert": "copy-text",
             "Shift-Insert": "paste-text",
             "Ctrl-Shift-A": "enter-mux-mode",
+            "Ctrl-Shift-F": "find-text",
             "Ctrl-Shift-L": "input-mode-cycle",
             "Ctrl-Shift-M": "toggle-paging-mode",
             "Ctrl-Shift-N": "new-window",
@@ -8581,6 +8621,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     //"Ctrl-T": 'client-action',
     "Ctrl-@": "toggle-mark-mode",
     "Ctrl-C": DomTerm.isMac ? "client-action" : "copy-text-or-interrupt",
+    "Ctrl-F": "find-text",
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
     "Ctrl-X": "cut-text",
@@ -8655,6 +8696,7 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "F11": "toggle-fullscreen",
     "Shift-F11": "toggle-fullscreen-current-window",
     "Ctrl-C": DomTerm.isMac ? "paging-interrupt" : "paging-copy-or-interrupt",
+    "Ctrl-F": "find-text",
     "Ctrl-Shift-C": "copy-text",
     "Esc": "exit-paging-mode",
     "Ctrl-Shift-M": "toggle-paging-mode",
@@ -8782,7 +8824,8 @@ Terminal.prototype.doLineEdit = function(keyName) {
     if (DomTerm.verbosity >= 2)
         this.log("doLineEdit "+keyName);
 
-    let keymaps = [ DomTerm.lineEditKeymap ];
+    let keymaps = (this._miniBuffer && this._miniBuffer.keymaps)
+        || [ DomTerm.lineEditKeymap ];
     return DomTerm.handleKey(keymaps, this, keyName);
 };
 
@@ -8852,7 +8895,7 @@ Terminal.prototype.keyDownHandler = function(event) {
         this._muxKeyHandler(event, key, false);
         return;
     }
-    if (this._currentlyPagingOrPaused()
+    if (this._currentlyPagingOrPaused() && ! this._miniBuffer
         && this.pageKeyHandler(keyName)) {
         event.preventDefault();
         return;
@@ -8861,10 +8904,10 @@ Terminal.prototype.keyDownHandler = function(event) {
         event.preventDefault();
         return;
     }
-    if (this.isLineEditing()) {
+    if (this.isLineEditingOrMinibuffer()) {
         if (! this.useStyledCaret())
             this.maybeFocus();
-        if (this._searchMode) {
+        if (this._searchInHistoryMode) {
             if (keyName == "Ctrl-R" || keyName == "Ctrl-S") {
                 this.historySearchForwards = keyName == "Ctrl-S";
                 this.historySearchStart =
@@ -8891,17 +8934,10 @@ Terminal.prototype.keyDownHandler = function(event) {
                 || keyName == "Down" || keyName == "Up"
                 || event.ctrlKey || event.altKey) {
                 let miniBuffer = this._miniBuffer;
-                DomTerm.removeInfoDisplay(miniBuffer.infoDiv, this);
+                this.removeMiniBuffer(miniBuffer);
                 this.historySearchSaved = miniBuffer.textContent;
-                this._inputLine = miniBuffer.saveInputLine;
-                this._caretNode = miniBuffer.saveCaretNode;
                 this.historyAdd(this._inputLine.textContent, false);
-                this._searchMode = false;
-                if (miniBuffer.observer) {
-                    miniBuffer.observer.disconnect();
-                    miniBuffer.observer = undefined;
-                }
-                this._miniBuffer = null;
+                this._searchInHistoryMode = false;
                 if (keyName == "Tab") {
                     this.maybeFocus();
                     event.preventDefault();
@@ -8957,14 +8993,14 @@ Terminal.prototype.keyPressHandler = function(event) {
         this._muxKeyHandler(event, key, true);
         return;
     }
-    if (this._currentlyPagingOrPaused()) {
+    if (this._currentlyPagingOrPaused() && ! this._miniBuffer) {
         this.pageKeyHandler(keyName);
         event.preventDefault();
         return;
     }
-    if (this.scrollOnKeystroke)
+    if (this.scrollOnKeystroke && ! this._miniBuffer)
         this._enableScroll();
-    if (this.isLineEditing()) {
+    if (this.isLineEditingOrMinibuffer()) {
         if (this.doLineEdit(keyName))
             event.preventDefault();
     } else {
@@ -10317,7 +10353,8 @@ Terminal.prototype.editorContinueInput = function() {
 Terminal.prototype.editorInsertString = function(str, inserting=true) {
     this.editorAddLine();
     this._showPassword();
-    this._updateLinebreaksStart(this.getAbsCursorLine(), true);
+    if (! this._miniBuffer)
+        this._updateLinebreaksStart(this.getAbsCursorLine(), true);
     for (;;) {
         let nl = str.indexOf('\n');
         let str1 = nl < 0 ? str : str.substring(0, nl);
@@ -10325,7 +10362,7 @@ Terminal.prototype.editorInsertString = function(str, inserting=true) {
             let saved = this._pushToCaret();
             if (inserting) {
                 this.insertRawOutput(str1);
-                if (! this._searchMode) {
+                if (! this._miniBuffer) {
                     let line = this.lineStarts[this.getAbsCursorLine()];
                     line._widthColumns += this.strWidthInContext(str1, line);
                 }
@@ -10641,8 +10678,6 @@ Terminal.prototype.editMove = function(count, action, unit,
                                               stopAt/*??*/=this._pagingMode?"buffer":"") {
     this.sstate.goalColumn = undefined;
     let doDelete = action == "delete" || action == "kill";
-    let doWords = unit == "word";
-    let doLines = unit == "line";
     let backwards = count > 0;
     let todo = backwards ? count : -count;
     let dt = this;
@@ -10651,12 +10686,12 @@ Terminal.prototype.editMove = function(count, action, unit,
     let linesCount = 0;
 
     let sel = document.getSelection();
-    if (! sel.isCollapsed && doDelete) {
+    if (! sel.isCollapsed && doDelete && ! this._miniBuffer) {
         this.deleteSelected(action=="kill");
         if (this._pagingMode == 0)
             sel.removeAllRanges();
     } else {
-        if (! sel.isCollapsed) {
+        if (! sel.isCollapsed && ! this._miniBuffer) {
             if (action == "move-extend")
                 sel.collapse(sel.focusNode, sel.focusOffset);
             else if (action == "move")
@@ -10667,7 +10702,7 @@ Terminal.prototype.editMove = function(count, action, unit,
                                            && this._inputLine
                                            && this._pagingMode == 0);
         let anchorNode, anchorOffset;
-        if (action == "move" || sel.anchorNode === null
+        if (action == "move" || sel.anchorNode === null || this._miniBuffer
             || sel.anchorNode === this.focusArea) {
             let caret = (this.viewCaretNode && this.viewCaretNode.parentNode
                          && (action == "move-focus" || action == "extend-focus"))

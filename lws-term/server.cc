@@ -1657,6 +1657,8 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE},
     {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/wcwidth.js", LIB_WHEN_SIMPLE},
+    {"hlib/mark.es6.js", LIB_WHEN_SIMPLE},
+    {"hlib/domterm-findtext.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/FileSaver.js", LIB_WHEN_SIMPLE},
     {"hlib/ResizeSensor.js", LIB_WHEN_SIMPLE},
 #endif

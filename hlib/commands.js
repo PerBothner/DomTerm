@@ -1,4 +1,4 @@
-export { commandMap, lookupCommand };
+export { commandMap, lookupCommand, cmd };
 import { Terminal } from './terminal.js';
 
 const commandMap = new Object();
@@ -480,7 +480,6 @@ cmd('insert-newline',
 cmd('backward-search-history',
     function(dt, key) {
         dt.editorAddLine();
-        dt.showMiniBuffer("backward history search: \u2018", "\u2019");
         function search(mrecords, observer) {
             dt._inputLine = dt._miniBuffer.saveInputLine;
             dt._caretNode = dt._miniBuffer.saveCaretNode;
@@ -488,11 +487,10 @@ cmd('backward-search-history',
             dt._inputLine = dt._miniBuffer;
             dt._caretNode = dt._miniBuffer.caretNode;
         }
-        let observer = new MutationObserver(search);
-        observer.observe(dt._miniBuffer,
-                         { attributes: false, childList: true, characterData: true, subtree: true });
-        dt._miniBuffer.observer = observer;
-        dt._searchMode = true;
+        dt.showMiniBuffer({prefix: "backward history search: \u2018",
+                           postfix: "\u2019",
+                           mutationCallback: search});
+        dt._searchInHistoryMode = true;
         dt.historySearchForwards = false;
         dt.historySearchStart =
             dt.historyCursor < 0 ? dt.history.length
@@ -502,13 +500,16 @@ cmd('backward-search-history',
 
 cmd('insert-char',
     function(dt, keyName) {
+        let deleteSelection = false;
         let ch = keyName.length == 3 ? keyName.charCodeAt(1) : -1;
         if (ch >= 0 && ch < 32)
             return false;
         let str = keyName.substring(1, keyName.length-1);
-        let sel = window.getSelection();
-        if (! sel.isCollapsed) {
-            dt.editMove(1, "delete", "char");
+        if (deleteSelection) {
+            let sel = window.getSelection();
+            if (! sel.isCollapsed) {
+                dt.editMove(1, "delete", "char");
+            }
         }
         let count = dt.numericArgumentGet();
         if (count >= 0)

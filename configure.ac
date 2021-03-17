@@ -291,6 +291,8 @@ AC_SUBST(XTERMJS_PATH)
 dnl Files for "inner" JavaScript context
 HLIB_FIXED_FILES_INNER="\
   hlib/browserkeymap.js \
+  hlib/mark.es6.js \
+  hlib/domterm-findtext.js \
   hlib/sixel/SixelDecoder.js \
   hlib/sixel/Colors.js \
   hlib/terminal.js \
