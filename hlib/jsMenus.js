@@ -110,7 +110,7 @@ class Menu {
 			if(menuNode === this.node) return;
 			this.node.parentNode.replaceChild(menuNode, this.node);
 		} else {
-			top.appendChild(this.node);
+			(itemNode || top).appendChild(this.node);
 		}
 
 		let width = menuNode.clientWidth;
@@ -214,9 +214,19 @@ class Menu {
 		return false;
 	}
 
+	static _inMenubar(node) {
+		if (Menu._menubarNode === null)
+			return false;
+		while(node instanceof Element
+		      && ! node.classList.contains('submenu')) {
+			if(node === Menu._menubarNode)
+				return true;
+			node = node.parentNode;
+		}
+		return false;
+	}
 	static _mouseHandler(e) {
-		let inMenubar = Menu._menubarNode != null
-                    && Menu.isDescendant(Menu._menubarNode, e.target);
+		let inMenubar = Menu._inMenubar(e.target);
 		let menubarHandler = e.currentTarget == Menu._menubarNode;
 		let miNode = e.target;
 		while (miNode && ! miNode.jsMenuItem)
@@ -230,18 +240,6 @@ class Menu {
 		   if (miNode) select
 		   else popdownAll
 		*/
-		//console.log("HANDLE "+e.type+" inMB:"+inMenubar+" handler-t:"+e.currentTarget+" mbHandler:"+menubarHandler+" miNode:"+miNode);
-		if (e.type=="mouseup") {
-			/*
-			if (miNode != null) {
-			if active and not submenu: popdownAll and do click.
-			if (active and submenu) as-is.
-			if (! active) should not happen
-			} else {
-			do nothing
-			}
-			*/
-		}
 		if (e.type=="mousedown" && !miNode) {
 			if (Menu._topmostMenu)
 				Menu.popdownAll();
@@ -255,7 +253,7 @@ class Menu {
 					if(item.node.classList.contains('submenu-active')) {
 						miNode.jsMenu.node.activeItemNode = item.node;
 
-						item.popupSubmenu(item.node.offsetLeft, item.node.clientHeight, true);
+						item.popupSubmenu(item.node.offsetLeft, item.node.offsetHeight, true);
 					} else {
 						item.submenu.popdown();
 						miNode.jsMenu.node.currentSubmenu = null;

@@ -168,7 +168,7 @@ li.menu-item.separator {
 	z-index: 2147483647;
 }
 
-.menubar .menu-item.normal {
+.menubar > .menu-item.normal {
     display: inline-block;
     width: auto;
     height: 100%;
@@ -178,8 +178,8 @@ li.menu-item.separator {
     vertical-align: top;
 }
 
-.menubar .menu-item.normal .checkmark,
-.menubar .menu-item.normal .modifiers {
+.menubar > .menu-item.normal > .checkmark,
+.menubar > .menu-item.normal > .modifiers {
     display: none;
 }
 
