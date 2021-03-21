@@ -33,7 +33,10 @@ DomTerm.showAboutMessage = function() {
                   {width: 500, height: 400, title: 'About DomTerm', show: false},
                   'data:text/html,'+encodeURIComponent(msg));
     } else {
-        let win = window.open("", "About DomTerm", 'height=500,width=400');
+        let win = window.open("", "About DomTerm",
+                              "height=300,width=400"
+                              +",left="+(window.screenX+200)
+                              +",top="+(window.screenY+200));
         win.document.title = "About DomTerm";
         win.document.body.innerHTML = msg;
     }
