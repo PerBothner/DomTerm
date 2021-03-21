@@ -8,28 +8,67 @@ class FindText {
 
         this.mark = new Mark(term.getAllBuffers());
         this.searchString = "";
-        this.searchRegExp = false;
+        if (term._findRegExp === undefined)
+            term._findRegExp = false;
+        if (term._findMatchCase === undefined)
+            term._findMatchCase = false;
+        if (term._findMatchWord === undefined)
+            term._findMatchWord = false;
         this.matches = null;
         this.curMatch = -1;
-        //if (dt.viewCaretNode && dt.viewCaretNode.parentNode)
-        // ; // FIXME
         this.basePosition = term._positionToRange();
         this.currentlyForwards = true;
         this.buttonHandler = (event) => {
             let id = event.target.getAttribute("id");
-            FindText.doNext(term, id==='find-button-next');
+            const dt = this.term;
+            if (id === 'find-button-next')
+                FindText.doNext(term, true);
+            else if (id === 'find-button-previous')
+                FindText.doNext(term, false);
+            else if (id === 'find-button-kind') {
+                let rect = event.target.getBoundingClientRect();
+                let x = rect.x * term._computedZoom;
+                let y = rect.bottom * term._computedZoom;
+                DomTerm.popupMenu(this.kindPopupTemplate, {x: x, y: y});
+            }
         };
+        this.matchCaseTemplate = {
+            label: "Match Case",
+            type: "checkbox",
+            checked: term._findMatchCase,
+            accelerator: "Alt-C",
+            clickClientAction: "find-toggle-match-case"
+        };
+        this.matchWordTemplate = {
+            label: "Match Whole Word",
+            type: "checkbox",
+            checked: term._findMatchWord,
+            accelerator: "Alt-W",
+            clickClientAction: "find-toggle-match-word"
+        };
+        this.matchRegExpTemplate = {
+            label: "Regular Expression",
+            type: "checkbox",
+            checked: term._findRegExp,
+            accelerator: "Alt-R",
+            clickClientAction: "find-toggle-regexp"
+        };
+        this.kindPopupTemplate = [
+            this.matchCaseTemplate,
+            this.matchWordTemplate,
+            this.matchRegExpTemplate
+        ];
     }
 
     update() {
-        let text = this.term._miniBuffer.textContent;
-        console.log("findtext changed "+JSON.stringify(text));
+        let text = this.searchString;
         if (this.matches !== null)
             this.mark.unmark();
         if (text.length == 0) {
             this.matches = null;
             this.resultCountView.innerHTML = `No results`;
             this.resultCountView.classList.remove("not-found");
+            this.minibuf.infoDiv.classList.add("no-matches");
             return;
         }
         this.matches = [];
@@ -47,20 +86,52 @@ class FindText {
             each: eachMatch,
             acrossElements: true
         };
-        if (this.searchRegExp) {
-            this.mark.markRegExp(text, options);
-        } else {
-            this.mark.mark(text, options);
+        let regexp = this._regexp;
+        if (! regexp) {
+            if (! this.term._findRegExp) {
+                // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+                text = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+            let rmode = this.term._findMatchCase ? "gmu" : "gmui";
+            try {
+                // First do search without added word-boundary-markers,
+                // to catch and report errors without them.
+                regexp = new RegExp(text, rmode);
+                if (this.term._findMatchWord) {
+                    text = '\\b' + text + '\\b';
+                    regexp = new RegExp(text, rmode);
+                }
+            } catch (e) {
+                console.log(e);
+                this.resultCountView.innerText = e.message;
+                this.resultCountView.classList.add("not-found");
+                this.minibuf.infoDiv.classList.add("no-matches");
+                return;
+            }
+            this._regexp = regexp;
         }
+        this.mark.markRegExp(regexp, options);
         this.curMatch = -1;
         this.curMatch = this.findFollowingMatch(this.currentlyForwards);
         if (this.matches.length) {
             this.selectMatch(this.curMatch, this.currentlyForwards);
             this.resultCountView.classList.remove("not-found");
+            this.minibuf.infoDiv.classList.remove("no-matches");
         } else {
             this.resultCountView.innerHTML = `No results`;
             this.resultCountView.classList.add("not-found");
+            this.minibuf.infoDiv.classList.add("no-matches");
         }
+    }
+    updateSearchMode() {
+        this._regexp = null;
+        let str = this.term._findMatchCase ? "MatchCase" : "IgnoreCase";
+        if (this.term._findMatchWord)
+            str += "/Word";
+        if (this.term._findRegExp)
+            str += "/RX";
+        let button = this.minibuf.infoDiv.querySelector("#find-button-kind");
+        button.innerHTML = str;
     }
     selectMatch(index, forwards) {
         let parts = this.matches[index];
@@ -160,6 +231,34 @@ cmd('find-exit',
         return true;
     });
 
+cmd('find-toggle-match-case',
+    function(dt, key) {
+        let ft = dt._findText;
+        dt._findMatchCase = ! dt._findMatchCase;
+        ft.matchCaseTemplate.checked = dt._findMatchCase;
+        ft.updateSearchMode();
+        ft.update();
+        return true;
+    });
+cmd('find-toggle-match-word',
+    function(dt, key) {
+        let ft = dt._findText;
+        dt._findMatchWord = ! dt._findMatchWord;
+        ft.matchWordTemplate.checked = dt._findMatchWord;
+        ft.updateSearchMode();
+        ft.update();
+        return true;
+    });
+cmd('find-toggle-regexp',
+    function(dt, key) {
+        let ft = dt._findText;
+        dt._findRegExp = ! dt._findRegExp;
+        ft.matchRegExpTemplate.checked = dt._findRegExp;
+        ft.updateSearchMode();
+        ft.update();
+        return true;
+    });
+
 FindText.keymap = new window.browserKeymap({
     "Left": 'backward-char',
     "Mod-Left": 'backward-word',
@@ -177,6 +276,9 @@ FindText.keymap = new window.browserKeymap({
     "Mod-V": "paste-text",
     "Ctrl-X": "cut-text",
     "Ctrl-Shift-X": "cut-text",
+    "Alt-C": "find-toggle-match-case",
+    "Alt-R": "find-toggle-regexp",
+    "Alt-W": "find-toggle-match-word",
     "Esc": "find-exit",
     "(keypress)": "insert-char"
 });
@@ -184,19 +286,22 @@ FindText.keymap = new window.browserKeymap({
 FindText.startSearch = function(dt) {
     let ft = new FindText(dt);
     function changeCallback(mrecords, observer) {
+        ft.searchString = ft.term._miniBuffer.textContent;
+        ft._regexp = null;
         ft.update();
     }
     let minibuf = dt.showMiniBuffer({prefix: "Find: ",
-                                     postfix: ' <span class="find-result">No results</span><button class="find-text-button" id="find-button-previous">\u21e7</button><button  class="find-text-button" id="find-button-next">\u21e9</button>',
+                                     postfix: '<button class="find-text-button" id="find-button-kind">Plain</button><span class="find-result">No results</span></button><button class="find-text-button" id="find-button-previous">\u21e7</button><button  class="find-text-button" id="find-button-next">\u21e9</button>',
                                      keymaps: [ FindText.keymap /*,
                                                 DomTerm.lineEditKeymap*/ ],
-                                     infoClassName: "find-text",
+                                     infoClassName: "find-text no-matches",
                                      mutationCallback: changeCallback});
     for (let button of minibuf.infoDiv.querySelectorAll(".find-text-button")) {
         button.addEventListener("click", ft.buttonHandler);
     }
     ft.minibuf = minibuf;
-    ft.resultCountView = minibuf.nextSibling.nextSibling;
+    ft.resultCountView = minibuf.infoDiv.querySelector(".find-result");;
     dt._findText = ft;
+    ft.updateSearchMode();
     return ft;
 }

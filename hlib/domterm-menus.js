@@ -41,7 +41,7 @@ DomTerm.showAboutMessage = function() {
 
 DomTerm.createMenus = function(options) {
     let platform = options.platform;
-    let menuItem = options.menuItem;
+    let menuItem = options.menuItem; // DomTerm.makeMenuItem;
     let popup = options.popup;
     let Menu = options.Menu;
     let isElectron = DomTerm.isElectron();
@@ -185,6 +185,9 @@ DomTerm.createMenus = function(options) {
     editMenu.append(pasteItem);
     editMenu.append(menuItem({label: 'Clear Buffer',
                               clickClientAction: 'clear-buffer'}));
+    editMenu.append(menuItem({label: 'Find',
+                              accelerator: 'Ctrl+Shift+F',
+                              clickClientAction: 'find-text'}));
     let viewMenu = new Menu();
     viewMenu.append(showMenuBarItem);
 
@@ -279,7 +282,48 @@ DomTerm.createMenus = function(options) {
     };
 }
 
-DomTerm.setContextMenu = function() {
+if (DomTerm.isElectron() ) {
+    electronAccess.ipcRenderer.on('do-named-command', (e, command) => {
+        DomTerm.doNamedCommand(command);
+    });
+}
+
+DomTerm.popupMenu = function(items, options) {
+    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
+        electronAccess.ipcRenderer.send("show-context-menu", items, options);
+    } else if (false && DomTerm.usingQtWebEngine) {
+        // TODO
+    } else if (! DomTerm.isAtom()) {
+        let menu =  DomTerm.makeMenu(items);
+        let x = options.x || options.clientX || 0;
+        let y = options.y || options.clientY || 0;
+        //if (menu.node)
+        //    menu.popdown();
+        menu.popup(x, y);
+    }
+}
+DomTerm.makeMenu = function(items) {
+    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
+        const {Menu, MenuItem} = electronAccess;
+        let menu = new Menu();
+        for (item of items) {
+            menu.append(DomTerm.makeMenuItem(item));
+        }
+        return menu;
+    } else if (false && DomTerm.usingQtWebEngine) {
+        // TODO
+    } else if (! DomTerm.isAtom()) {
+        let menu = new Menu();
+        for (item of items) {
+            menu.append(DomTerm.makeMenuItem(item));
+        }
+        return menu;
+    }
+    return null;
+}
+DomTerm.makeMenuItem = function(options) {
+    if (DomTerm._makeMenuItem)
+        return DomTerm._makeMenuItem(options);
     if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
         const {Menu, MenuItem} = electronAccess;
         function menuItem(options) {
@@ -296,15 +340,11 @@ DomTerm.setContextMenu = function() {
             }
             return new MenuItem(options);
         }
-        function popup(cmenu, options) {
-            cmenu.popup(electronAccess.getCurrentWindow());
-        }
-        DomTerm.createMenus({platform: "electron",
-                             popup: popup,
-                             menuItem: menuItem,
-                             Menu: Menu
-                            });
-    } else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine) {
+        DomTerm._makeMenuItem = menuItem;
+        return menuItem(options);
+    } else if (false && DomTerm.usingQtWebEngine) {
+        // TODO
+    } else if (! DomTerm.isAtom()) {
         function menuItem(options) {
             const clickClientAction = options && options.clickClientAction;
             if (clickClientAction) {
@@ -315,16 +355,34 @@ DomTerm.setContextMenu = function() {
             }
             return new MenuItem(options);
         }
+        DomTerm._makeMenuItem = menuItem;
+        return menuItem(options);
+    }
+    return null; // ERROR
+}
+
+DomTerm.setContextMenu = function() {
+    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
+        const {Menu, MenuItem} = electronAccess;
         function popup(cmenu, options) {
-            let clientX = options.clientX || 0;
-            let clientY = options.clientY || 0;
+            cmenu.popup(options);
+        }
+        DomTerm.createMenus({platform: "electron",
+                             popup: popup,
+                             menuItem: DomTerm.makeMenuItem,
+                             Menu: Menu
+                            });
+    } else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine) {
+        function popup(cmenu, options) {
+            let clientX = options.x || options.clientX || 0;
+            let clientY = options.y || options.clientY || 0;
             if (cmenu.node)
                 cmenu.popdown();
             cmenu.popup(clientX, clientY);
         }
         DomTerm.createMenus({platform: "generic",
                              popup: popup,
-                             menuItem: menuItem,
+                             menuItem: DomTerm.makeMenuItem,
                              Menu: Menu
                             });
     }

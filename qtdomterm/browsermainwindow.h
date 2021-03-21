@@ -124,8 +124,6 @@ private slots:
 
     void slotFileNew();
     void slotEditFind();
-    void slotEditFindNext();
-    void slotEditFindPrevious();
     void slotViewZoomIn();
     void slotViewZoomOut();
     void slotViewResetZoom();
@@ -148,7 +146,6 @@ private slots:
 private:
     void loadDefaultState();
     void setupMenu();
-    void handleFindTextResult(bool found);
 
 private:
     BrowserApplication *m_application;
@@ -171,8 +168,6 @@ private:
 
     QIcon m_reloadIcon;
 
-    QString m_lastSearch;
-    QString m_printerOutputFileName;
     friend class BrowserApplication;
     friend class WebView;
 

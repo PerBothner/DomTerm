@@ -1,4 +1,4 @@
-const {app, ipcMain, BrowserWindow, screen, dialog} = require('electron')
+const {app, ipcMain, BrowserWindow, screen, dialog, Menu} = require('electron')
 const path = require('path')
 const url = require('url')
 
@@ -147,6 +147,26 @@ ipcMain.on('window-ops', (event, command, arg) => {
         eventToWindow(event).setMenuBarVisibility(arg);
         break;
     }
+});
+
+ipcMain.on('show-context-menu', (event, items, options) => {
+    items = items.map((item) => {
+        const clickClientAction = item.clickClientAction;
+        if (clickClientAction) {
+            item.click = function() {
+                event.sender.send('do-named-command', clickClientAction);
+            };
+            item.clickClientAction = undefined;
+        }
+        return item;
+    });
+    const menu = Menu.buildFromTemplate(items);
+    let oarg = {window: BrowserWindow.fromWebContents(event.sender)};
+    if (options.x !== undefined && options.y !== undefined) {
+        oarg.x = Math.round(options.x);
+        oarg.y = Math.round(options.y);
+    }
+    menu.popup(oarg);
 });
 
 ipcMain.on('open-simple-window', (event, options, url) => {

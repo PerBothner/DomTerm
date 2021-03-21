@@ -2105,7 +2105,7 @@ Terminal.prototype._removeInputLine = function() {
         this._removeCaret();
         let inputLine = this._inputLine;
         if (inputLine) {
-            if (inputLine.parentNode) {
+            if (inputLine.parentNode && inputLine !== this._miniBuffer) {
                 this._removeInputFromLineTable();
                 if (this.outputBefore == inputLine)
                     this.outputBefore = inputLine.nextSibling;
@@ -2289,7 +2289,8 @@ Terminal.prototype._restoreCaretNode = function() {
 
 Terminal.prototype._restoreInputLine = function(caretToo = true) {
     let inputLine = this._inputLine || this._caretNode;
-    if (this.inputFollowsOutput && inputLine != null) {
+    if (this.inputFollowsOutput && inputLine != null
+       && inputLine !== this._miniBuffer) {
         let lineno;
         if (this._inputLine) {
             lineno = this.getAbsCursorLine();
@@ -3554,7 +3555,7 @@ Terminal.prototype.showMiniBuffer = function(options) {
     if (options.keymaps)
         miniBuffer.keymaps = options.keymaps;
     if (options.infoClassName)
-        div.classList.add(options.infoClassName);
+        div.setAttribute("class", options.infoClassName);
     if (options.mutationCallback) {
         let observer = new MutationObserver(options.mutationCallback);
         observer.observe(miniBuffer,
@@ -3961,6 +3962,8 @@ Terminal.prototype._updateSelected = function() {
         if (readlineForced) {
             targetPreNode = dt._getOuterBlock(sel.focusNode);
             moveCaret = targetPreNode != null;
+        } else if (dt._miniBuffer) {
+            moveCaret = dt._isAnAncestor(sel.focusNode, dt._miniBuffer);
         } else {
             targetPreNode = dt._getOuterPre(sel.focusNode);
             currentPreNode = this._getOuterPre(this.outputContainer);
@@ -3977,7 +3980,7 @@ Terminal.prototype._updateSelected = function() {
     if (moveCaret && ! readlineForced
         && targetPreNode !== dt._getOuterPre(dt._caretNode))
         moveCaret = false;
-    if (moveCaret && ! this.isLineEditing()) {
+    if (moveCaret && ! dt.isLineEditingOrMinibuffer()) {
         let targetNode = sel.focusNode;
         let targetOffset = sel.focusOffset;
         if (! readlineForced) {

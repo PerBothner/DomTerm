@@ -59,13 +59,19 @@ div.domterm-show-info span.editing {
     padding: 0px 2px;
     outline-width: 1px;
     outline-style: solid;}
+div.find-text button#find-button-kind { margin-left: 0.3em }
+div.find-text button#find-button-kind:after { content: " \1401" }
 div.domterm-show-info div.find-text span.find-result {
     color: gray; padding: 0px 0.2em }
 div.domterm-show-info button.find-text-button {
     border: #aaa thin solid; border-radius: 0.3ex;
     padding: 1px; margin: 0px 0.6px;
 }
-div.domterm-show-info div.find-text span.find-result.not-found { color: pink }
+div.find-text.no-matches button#find-button-previous,
+div.find-text.no-matches button#find-button-next {
+    display: none
+}
+div.domterm-show-info div.find-text span.find-result.not-found { color: #ff3030 }
 div.input-line { background-color: var(--input-line-color) } /* a very pale yellow */
 span[std="input"], span.focus-area { background-color: var(--input-span-color) } /* a pale yellow */
 span[std="prompt"] { background-color: #E8FFE8 } /* a pale green */
