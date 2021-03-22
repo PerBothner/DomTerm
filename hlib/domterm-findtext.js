@@ -17,7 +17,6 @@ class FindText {
         this.matches = null;
         this.curMatch = -1;
         this.basePosition = term._positionToRange();
-        this.currentlyForwards = true;
         this.buttonHandler = (event) => {
             let id = event.target.getAttribute("id");
             const dt = this.term;
@@ -133,6 +132,14 @@ class FindText {
         let button = this.minibuf.infoDiv.querySelector("#find-button-kind");
         button.innerHTML = str;
     }
+    setDirection(forwards) {
+        if (this.currentlyForwards !== forwards) {
+            this.minibuf.infoDiv
+                .setAttribute("search-direction",
+                              forwards ? "forwards" : "backwards");
+        }
+        this.currentlyForwards = forwards;
+    }
     selectMatch(index, forwards) {
         let parts = this.matches[index];
         let nparts = parts.length;
@@ -183,7 +190,7 @@ class FindText {
 FindText.doNext = function(dt, forwards) {
     console.log("do find-doNext frow:"+forwards);
     let ft = dt._findText;
-    ft.currentlyForwards = forwards;
+    ft.setDirection(forwards);
     if (! ft) {
         return false; // ERROR?
     }
@@ -303,5 +310,6 @@ FindText.startSearch = function(dt) {
     ft.resultCountView = minibuf.infoDiv.querySelector(".find-result");;
     dt._findText = ft;
     ft.updateSearchMode();
+    ft.setDirection(true);
     return ft;
 }

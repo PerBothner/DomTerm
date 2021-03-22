@@ -63,9 +63,15 @@ div.find-text button#find-button-kind { margin-left: 0.3em }
 div.find-text button#find-button-kind:after { content: " \1401" }
 div.domterm-show-info div.find-text span.find-result {
     color: gray; padding: 0px 0.2em }
+
 div.domterm-show-info button.find-text-button {
-    border: #aaa thin solid; border-radius: 0.3ex;
+    border-color: #ccc; border-width: thin;  border-style: solid;
+    border-radius: 0.3ex;
     padding: 1px; margin: 0px 0.6px;
+}
+div.find-text[search-direction="backwards"] button#find-button-previous,
+div.find-text[search-direction="forwards"] button#find-button-next {
+    border-color: #000;
 }
 div.find-text.no-matches button#find-button-previous,
 div.find-text.no-matches button#find-button-next {
