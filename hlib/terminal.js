@@ -6643,7 +6643,7 @@ Terminal.prototype.insertBytes = function(bytes) {
             if (urgent_begin > startIndex) {
                 let narr;
                 if (this.parser._deferredBytes) {
-                    let dlen = this.parser_deferredBytes.length;
+                    let dlen = this.parser._deferredBytes.length;
                     let narr = new Uint8Array(dlen + (urgent_begin - startIndex));
                     narr.set(this._deferredBytes);
                     narr.set(bytes.subarray(startIndex, urgent_begin), dlen)
