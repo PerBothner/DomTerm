@@ -188,7 +188,6 @@ class FindText {
 }
 
 FindText.doNext = function(dt, forwards) {
-    console.log("do find-doNext frow:"+forwards);
     let ft = dt._findText;
     ft.setDirection(forwards);
     if (! ft) {
@@ -230,11 +229,7 @@ cmd('find-previous-match',
 
 cmd('find-exit',
     function(dt, key) {
-        let ft = dt._findText;
-        if (ft.matches !== null)
-            ft.mark.unmark();
-        dt.removeMiniBuffer(ft.minibuf);
-        dt._findText = undefined;
+        dt.removeMiniBuffer(dt._findText.minibuf);
         return true;
     });
 
@@ -301,14 +296,23 @@ FindText.startSearch = function(dt) {
                                      postfix: '<button class="find-text-button" id="find-button-kind">Plain</button><span class="find-result">No results</span></button><button class="find-text-button" id="find-button-previous">\u21e7</button><button  class="find-text-button" id="find-button-next">\u21e9</button>',
                                      keymaps: [ FindText.keymap /*,
                                                 DomTerm.lineEditKeymap*/ ],
-                                     infoClassName: "find-text no-matches",
+                                     infoClassName: "domterm-info-widget find-text no-matches",
                                      mutationCallback: changeCallback});
-    for (let button of minibuf.infoDiv.querySelectorAll(".find-text-button")) {
+    let panel = minibuf.infoDiv;
+    for (let button of panel.querySelectorAll(".find-text-button")) {
         button.addEventListener("click", ft.buttonHandler);
     }
     ft.minibuf = minibuf;
-    ft.resultCountView = minibuf.infoDiv.querySelector(".find-result");;
+    ft.resultCountView = panel.querySelector(".find-result");;
     dt._findText = ft;
+    let mCloseHandler = panel.closeHandler;
+    panel.closeHandler = (d) => {
+        if (ft.matches !== null)
+            ft.mark.unmark();
+        dt._findText = undefined;
+        if (mCloseHandler)
+            mCloseHandler(d);
+    };
     ft.updateSearchMode();
     ft.setDirection(true);
     return ft;

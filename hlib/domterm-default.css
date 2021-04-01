@@ -84,13 +84,34 @@ span[std="prompt"] { background-color: #E8FFE8 } /* a pale green */
 span[std="error"] { color: red; }
 span[std="hider"]:hover { background-color: yellow; color: red; cursor: pointer }
 div.domterm-show-info {
-    /*bottom: 0px;*/
-    right: 4px; left: 25%; /* overwritten in element */
+    right: 4px;
+    max-width: 80%;
     top: 1ex;
     padding: 1px 4px;
 }
-div.domterm-show-info > div {
+div.domterm-show-info.domterm-moving {
+    outline: thin dashed orange;
+}
+div.domterm-show-info div.domterm-show-info-header {
+    visibility: hidden;
+    outline: thin solid blue;
+    width: 100%;
+}
+div.domterm-show-info:hover div.domterm-show-info-header {
+    visibility: visible;
+}
+div.domterm-show-info-header {
+    display: flex; flex-direction: row-reverse;
+    line-height: 90%;
+    cursor: move;
+}
+div.domterm-show-info-header span {
+    cursor: pointer }
+div.domterm-show-info-header span::after {
+    content: "\2612" }
+div.domterm-info-widget {
     border: 2px solid blue;
+    width: auto;
     padding: 1px;
     margin-top: 1px;
     background-color: var(--background-color)

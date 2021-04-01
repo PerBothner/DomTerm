@@ -3457,10 +3457,21 @@ Terminal.prototype._displaySizeInfoWithTimeout = function() {
 };
 
 DomTerm.removeInfoDisplay = function(div, dt) {
+    let closeHandler = div.closeHandler;
+    if (closeHandler) {
+        div.closeHandler = undefined;
+        closeHandler(div);
+    }
     var widget = dt._displayInfoWidget;
     if (widget && div && div.parentNode == widget) {
         widget.removeChild(div);
-        if (widget.firstChild == null) {
+        let first = widget.firstChild;
+        if (first == null
+            || (first.nextSibling == null
+                && first.classList.contains("domterm-show-info-header"))) {
+            if (widget.mousedownHandler)
+                widget.removeEventHandler("mousedown", widget.mousedownHandler, false);
+            widget.mousedownHandler = undefined;
             widget.parentNode.removeChild(widget);
             dt._displayInfoWidget = null;
         }
@@ -3474,24 +3485,87 @@ DomTerm._positionInfoWidget = function(widget, dt) {
         topOffset += n.offsetTop;
         leftOffset += n.offsetLeft;
     }
-    topOffset += (dt.numRows > 10 ? 1.2 : 0.2) * dt.charHeight;
+    let offset = dt._displayInfoYoffset;
+    if (typeof offset == "number") {
+        topOffset = offset;
+    } else {
+        topOffset += (dt.numRows > 10 ? 1.2 : 0.2) * dt.charHeight;
+        dt._displayInfoYoffset = topOffset;
+    }
+    if (topOffset >= 0) {
+        widget.style["top"] = topOffset + "px";
+        widget.style["bottom"] = "auto";
+    } else {
+        widget.style["bottom"] = (- topOffset) + "px";
+        widget.style["top"] = "auto";
+    }
     leftOffset += 0.20 * top.clientWidth;
-    widget.style["top"] = topOffset + "px";
-    widget.style["left"] = leftOffset + "px";
-    widget.style["width"] = (top.clientWidth - leftOffset) + "px";
 }
 
 DomTerm.addInfoDisplay = function(contents, div, dt) {
-    var widget = dt._displayInfoWidget;
+    // FIXME inconsistent terminology 'widget'
+    // Maybe "domterm-show-info" should be "domterm-show-container".
+    // Maybe "domterm-info-widget" should be "domterm-info-panel" or "-popup".
+    let widget = dt._displayInfoWidget;
     if (widget == null) {
         widget = document.createElement("div");
         widget.setAttribute("class", "domterm-show-info");
+
+        let header = document.createElement("div");
+        header.setAttribute("class", "domterm-show-info-header");
+        let close = document.createElement("span");
+        header.appendChild(close);
+        widget.appendChild(header);
+
         DomTerm._positionInfoWidget(widget, dt);
         widget.style["box-sizing"] = "border-box";
         dt._displayInfoWidget = widget;
+        let closeAllWidgets = (ev) => {
+            for (let panel = widget.firstChild; panel !== null;) {
+                let next = panel.nextSibling;
+                if (panel.classList.contains("domterm-info-widget"))
+                    DomTerm.removeInfoDisplay(panel, dt);
+                panel = next;
+            }
+        }
+        widget.mouseDownHandler = (edown) => {
+            widget.classList.add("domterm-moving");
+            let oldX = edown.pageX / dt._computedZoom;
+            let oldY = edown.pageY / dt._computedZoom;// + this.topNode.scrollTop;
+            widget.mouseHandler = (e) => {
+                let x = e.pageX / dt._computedZoom;
+                let y = e.pageY / dt._computedZoom;// + this.topNode.scrollTop;
+                if (e.type == "mouseup" || e.type == "mouseleave") {
+                    //widget.mouseDown = undefined;
+                    if (widget.mouseHandler) {
+                        dt.topNode.removeEventListener("mouseup", widget.mouseHandler, false);
+                        dt.topNode.removeEventListener("mouseleave", widget.mouseHandler, false);
+                        dt.topNode.removeEventListener("mousemove", widget.mouseHandler, false);
+                        widget.classList.remove("domterm-moving");
+                        widget.mouseHandler = undefined;
+                    }
+                }
+                let diffY = y - oldY;
+                if (e.type == "mousemove"
+                    && Math.abs(diffY) >= 0) {
+                    let diffY = y - oldY;
+                    dt._displayInfoYoffset += diffY;
+                    DomTerm._positionInfoWidget(widget, dt);
+                    oldY = y;
+                }
+                e.preventDefault();
+            };
+            dt.topNode.addEventListener("mouseup", widget.mouseHandler, false);
+            dt.topNode.addEventListener("mouseleave", widget.mouseHandler, false);
+            dt.topNode.addEventListener("mousemove", widget.mouseHandler, false);
+            edown.preventDefault();
+        };
+        header.addEventListener("mousedown", widget.mouseDownHandler, false);
+        close.addEventListener("click", closeAllWidgets, false);
     }
     if (! div)
         div = document.createElement("div");
+    div.classList.add("domterm-info-widget");
     if (div.parentNode !== widget)
         widget.appendChild(div);
     if (contents.indexOf('<') < 0)
@@ -3562,18 +3636,20 @@ Terminal.prototype.showMiniBuffer = function(options) {
                          { attributes: false, childList: true, characterData: true, subtree: true });
         miniBuffer.observer = observer;
     }
+    div.closeHandler = (d) => {
+        if (miniBuffer.observer) {
+            miniBuffer.observer.disconnect();
+            miniBuffer.observer = undefined;
+        }
+        this._inputLine = miniBuffer.saveInputLine;
+        this._caretNode = miniBuffer.saveCaretNode;
+        this._miniBuffer = null;
+    };
     return miniBuffer;
 }
 
 Terminal.prototype.removeMiniBuffer = function(miniBuffer = this._miniBuffer) {
-    if (miniBuffer.observer) {
-        miniBuffer.observer.disconnect();
-        miniBuffer.observer = undefined;
-    }
     DomTerm.removeInfoDisplay(miniBuffer.infoDiv, this);
-    this._inputLine = miniBuffer.saveInputLine;
-    this._caretNode = miniBuffer.saveCaretNode;
-    this._miniBuffer = null;
 }
 
 // Set up event handlers and more for an actual session.
