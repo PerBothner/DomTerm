@@ -8,6 +8,7 @@ class DTParser {
         this.term = term;
         this.controlSequenceState = DTParser.INITIAL_STATE;
         this.parameters = new Array();
+        this.textParameter = null;
         this._flagChars = "";
         /** @type {Array|null} */
         this.saved_DEC_private_mode_flags = null;
@@ -259,19 +260,8 @@ class DTParser {
                     this.parameters.push(null);
                 }
                 else if (state == DTParser.SEEN_DCS_STATE) {
-                    let j = this.scanTextParameter(bytes, i, endIndex);
-                    if (j < 0) {
-                        i = endIndex - 1;
-                    } else {
-                        try {
-                            this.handleDeviceControlString(this.parameters,
-                                                           this.decodeBytes(bytes, i, j));
-                        } catch (e) {
-                            console.log("caught "+e);
-                        }
-                        this.controlSequenceState = DTParser.INITIAL_STATE;
-                        i = bytes[j] == 27 ? j : j + 1;
-                    }
+                    this.controlSequenceState = DTParser.SEEN_DCS_TEXT_STATE;
+                    i--;
                 } else if ((ch >= 60 && ch <= 63) /* in "<=>?" */
                            || ch == 32 /*' '*/ || ch == 33 /*'!'*/
                            || ch == 39 /*"'"*/)
@@ -291,33 +281,55 @@ class DTParser {
                     this.parameters[plen-1] = cur + (ch - 48 /*'0'*/);
                 }
                 else if (ch == 59 /*';'*/ || ch == 7 || ch == 0 || ch == 27) {
+                    this.controlSequenceState = DTParser.SEEN_OSC_TEXT_STATE;
                     this.parameters.push("");
-                    let j = this.scanTextParameter(bytes, i, endIndex);
-                    if (j < 0) {
-                        i = endIndex - 1;
-                    } else {
-                        this.controlSequenceState = DTParser.INITIAL_STATE;
-                        let start = ch == 59 ? i + 1 : i;
-                        this.handleOperatingSystemControl(this.parameters[0],
-                                                          this.decodeBytes(bytes, start, j));
-                        this.parameters.length = 1;
-                        i = bytes[j] == 27 ? j - 1: j; // i is incremented at top of loop
-                    }
+                    if (ch != 59)
+                        i--; // re-read 7 or 0
                 } else {
                     this.parameters.length = 1;
                 }
                 continue;
+            case DTParser.SEEN_OSC_TEXT_STATE:
+            case DTParser.SEEN_DCS_TEXT_STATE:
             case DTParser.SEEN_PM_STATE:
             case DTParser.SEEN_APC_STATE:
-                let j = this.scanTextParameter(bytes, i, endIndex);
-                if (j < 0) {
-                    i = endIndex - 1;
-                } else {
-                    this.controlSequenceState = DTParser.INITIAL_STATE;
-                    // ignore
-                    i = bytes[j] == 27 ? j - 1: j; // i is incremented at top of loop
+                for (let start = i; ; ) {
+                    let found = ch == 7 || ch == 0 || ch == 0x9c || ch == 27;
+                    if (! found && i + 1 < endIndex)
+                        ch = bytes[++i];
+                    else {
+                        let end = found ? i : i+1;
+                        let oldBytes = this.textParameter;
+                        let newBytes = bytes.subarray(start, end);
+                        let oldLen = oldBytes ? oldBytes.length : 0;
+                        let narr = new Uint8Array(oldLen + end - start)
+                        if (oldBytes)
+                            narr.set(oldBytes);
+                        narr.set(newBytes, oldLen);
+                        if (found) {
+                            this.controlSequenceState =
+                                ch == 27 ? DTParser.SEEN_ESC_STATE
+                                : DTParser.INITIAL_STATE;
+                            this.textParameter = null;
+                            try {
+                                let text = this.decodeBytes(narr);
+                                if (state == DTParser.SEEN_OSC_TEXT_STATE) {
+                                    this.handleOperatingSystemControl(this.parameters[0], text);
+                                } else if (state === DTParser.SEEN_DCS_TEXT_STATE) {
+                                    this.handleDeviceControlString(this.parameters, text);
+                                } else {
+                                    // APC and PM ignored
+                                }
+                            } catch (e) {
+                            }
+                        } else {
+                            this.textParameter = narr;
+                        }
+                        break;
+                    }
                 }
-                continue;
+                break;
+
             case DTParser.SEEN_ESC_SHARP_STATE: /* SCR */
                 switch (ch) {
                 case 53 /*'5'*/: // DEC single-width line (DECSWL)
@@ -704,19 +716,6 @@ class DTParser {
         }
         term.requestUpdateDisplay();
     };
-
-    scanTextParameter(bytes, startIndex, endIndex) {
-        for (let j = startIndex; ; j++) {
-            if (j == endIndex) {
-                this._deferredBytes = bytes.slice(startIndex, endIndex);
-                return -1;
-            }
-            let cj = bytes[j];
-            if (cj == 7 || cj == 0 || cj == 0x9c || cj == 27) {
-                return j;
-            }
-        }
-    }
 
     handleControlSequence(last) {
         const term = this.term;
@@ -2238,7 +2237,9 @@ DTParser.SEEN_ESC_STATE = 1;
 /** We have seen CSI: ESC '['. */
 DTParser.SEEN_ESC_LBRACKET_STATE = 2;
 /** We have seen OSC: ESC ']' or 0x9d. */
-DTParser.SEEN_OSC_STATE = 7;
+DTParser.SEEN_OSC_STATE = 6;
+/** We have seen OSC numeric-parameter ';'. */
+DTParser.SEEN_OSC_TEXT_STATE = 7;
 /** Saw ESC followed by one or more of 0x20..0x2F.
 * Used for ISO/IEC 2022 codes. */
 DTParser.SEEN_ESC_2022_PREFIX = 8;
@@ -2250,6 +2251,7 @@ DTParser.SEEN_CR = 17;
 /** Seen but deferred a request to exit std="error" mode. */
 DTParser.SEEN_ERROUT_END_STATE = 18;
 DTParser.SEEN_DCS_STATE = 19;
+DTParser.SEEN_DCS_TEXT_STATE = 20;
 DTParser.SEEN_PM_STATE = 21;
 DTParser.SEEN_APC_STATE = 22;
 DTParser.PAUSE_REQUESTED = 23;
