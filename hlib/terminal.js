@@ -3292,6 +3292,23 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
             dt.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
         if (dt._composing > 0)
             return;
+        if (! point && dt._displayInfoWidget) {
+            let focusWidget = dt._getOuterPre(sel.focusNode, "domterm-info-widget");
+            let anchorWidget = dt._getOuterPre(sel.anchorNode, "domterm-info-widget");
+            if (focusWidget !== anchorWidget) {
+                if (anchorWidget) {
+                    let wrange = new Range();
+                    wrange.selectNodeContents(anchorWidget);
+                    let comp = sel.focusNode
+                        .compareDocumentPosition(anchorWidget);
+                    if ((comp & 4) != 0)
+                        sel.extend(wrange.startContainer, wrange.startOffset);
+                    else
+                        sel.extend(wrange.endContainer, wrange.endOffset);
+                } else
+                    sel.extend(sel.anchorNode, sel.anchorOffset);
+            }
+        }
         let wasFocus = dt._focusinLastEvent;
         dt._focusinLastEvent = false;
         if (point && wasFocus && sel.focusOffset === 0
