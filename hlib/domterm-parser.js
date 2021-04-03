@@ -1015,12 +1015,12 @@ class DTParser {
                                                 term.rgb(this.getParameter(i+2,0),
                                                          this.getParameter(i+3,0),
                                                          this.getParameter(i+4,0)));
-                            i += 5;
+                            i += 4;
                         } else if (this.getParameter(i+1,-1) == 5
                                    && numParameters >= i+2) {
                             var c = this.getParameter(i+2,0);
                             term._pushStyle(property, term.color256(c));
-                            i += 2;
+                            i += 1;
                         }
                         break;
                     case 39: term._pushStyle("color", null/*defaultForegroundColor*/); break;
