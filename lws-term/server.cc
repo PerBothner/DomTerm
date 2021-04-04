@@ -945,6 +945,7 @@ void prescan_options(int argc, arglist_t argv, struct options *opts)
 {
     // parse command line options
     optind = 1;
+    opterr = 0;
     for (;;) {
         int c = getopt_long(argc, (char * const*) argv, opt_string, options, NULL);
         if (c == -1) {
@@ -955,18 +956,21 @@ void prescan_options(int argc, arglist_t argv, struct options *opts)
             //fprintf(stderr, "after args optind:%d argc:%d next:%s\n", optind, argc, argv[optind]);
             break;
         }
+        if (c == '?')
+            break;
         switch (c) {
-            case SETTINGS_FILE_OPTION:
-                opts->settings_file = optarg;
-                break;
-            case VERBOSE_OPTION:
-                opts->verbosity++;
-                break;
-            case 'd':
-                opts->debug_level = atoi(optarg);
-                break;
+        case SETTINGS_FILE_OPTION:
+            opts->settings_file = optarg;
+            break;
+        case VERBOSE_OPTION:
+            opts->verbosity++;
+            break;
+        case 'd':
+            opts->debug_level = atoi(optarg);
+            break;
         }
     }
+    opterr = 1;
 }
 
 void
