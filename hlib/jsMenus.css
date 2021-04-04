@@ -8,6 +8,17 @@ body { display: flex; flex-direction: column }
 .menubar { flex: 0 0 22px }
 div.below-menubar { flex: 1 1 0; min-height: 0;}
 
+.menu-item > button {
+    display: flex;
+    width: 100%;
+    border: none;
+    padding: 0px;
+    color: inherit;
+    background-color: inherit;
+    appearance: none;
+    outline: none;
+}
+
 .nwjs-menu {
 	font-family: 'Helvetica Neue', HelveticaNeue, 'TeX Gyre Heros', TeXGyreHeros, FreeSans, 'Nimbus Sans L', 'Liberation Sans', Arimo, Helvetica, Arial, sans-serif;
 	font-size: 14px;
@@ -116,11 +127,12 @@ li.menu-item.separator {
     align-self: center;
 }
 
-.menu-item .label {
+.menu-item > button > .label {
     padding: 0 22px 0 0;
     order: 0;
     flex: 1 0 auto;
     align-self: center;
+    text-align: left;
 }
 
 .menu-item.disabled,
@@ -177,9 +189,11 @@ li.menu-item.separator {
 .menubar .menu-item.normal > div {
     vertical-align: top;
 }
-
-.menubar > .menu-item.normal > .checkmark,
-.menubar > .menu-item.normal > .modifiers {
+.menubar > .menu-item {
+    margin: 0 1px;
+}
+.menubar > .menu-item.normal > button .checkmark,
+.menubar > .menu-item.normal > button .modifiers {
     display: none;
 }
 
