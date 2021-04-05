@@ -9,8 +9,9 @@ span.error-exit-mark:before { content: "\25CF"; color: red }
 div.input-line, div.command-group, div.domterm { position: relative }
 
 html, body { width: 100%; height: 100%; margin: 0px; overflow: hidden }
-div.domterm { -webkit-user-select: text }
-div.domterm { width: 100%; height: 100%; overflow-y: scroll; margin: 0px; padding: 0px; border: 0px }
+div.domterm { -webkit-user-select: text; overflow: hidden }
+div.domterm { width: 100%; height: 100%; margin: 0px; padding: 0px; border: 0px }
+div.domterm-buffers { overflow-y: scroll;  width: 100%; height: 100%; }
 div.domterm.xterm { overflow-y: hidden }
 div.domterm.domterm-noscript { word-break: break-all }
 pre { padding: 0px; margin: 0px; }
@@ -19,7 +20,7 @@ pre { padding: 0px; margin: 0px; }
  * .domterm-show-info's position: absolute works.  Setting position: relative
  * in the .domterm element doesn't work if we're scrolled. */
 div.domterm-show-info {
-    position: fixed;
+    position: absolute;
     display: grid;
     z-index: 100;
     background-color: transparent

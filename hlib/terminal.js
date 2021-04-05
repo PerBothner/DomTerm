@@ -369,12 +369,15 @@ class Terminal {
         this.topNode = topNode;
         topNode.spellcheck = false;
         topNode.terminal = this;
+        this.buffers = document.createElement("div");
+        this.buffers.classList.add("domterm-buffers");
+        topNode.appendChild(this.buffers);
         if (no_session=='view-saved') {
             let buffers = document.getElementsByClassName("interaction");
             this.initial = buffers[buffers.length-1];
         } else {
             this.initial = this._createBuffer(this._mainBufferName, "main only");
-            topNode.appendChild(this.initial);
+            this.buffers.appendChild(this.initial);
         }
     }
 
@@ -3007,7 +3010,7 @@ Terminal.prototype._createLineNode = function(kind, text="") {
 // 0 is first buffer; -1 is current (last) buffer.
 DomTerm._currentBufferNode = function(dt, index)
 {
-    let node = index >= 0 ? dt.topNode.firstChild : dt.topNode.lastChild;
+    let node = index >= 0 ? dt.buffers.firstChild : dt.buffers.lastChild;
     let todo = index >= 0 ? index : -1 - index;
     while (node) {
         if (node.nodeName == 'DIV'
@@ -3051,7 +3054,7 @@ Terminal.prototype.pushScreenBuffer = function(alternate = true) {
     const nextLine = this.lineEnds.length;
     const bufNode = this._createBuffer(this._altBufferName,
                                        alternate ? "alternate" : "main");
-    this.topNode.insertBefore(bufNode, this.initial.nextSibling);
+    this.buffers.insertBefore(bufNode, this.initial.nextSibling);
     const homeOffset = DomTerm._homeLineOffset(this);
     const homeNode = this.lineStarts[this.homeLine - homeOffset];
     homeNode.setAttribute("home-line", homeOffset);
@@ -3347,7 +3350,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     var vspacer = document.createElement("div");
     vspacer.setAttribute("class", "domterm-spacer");
     vspacer.dtHeight = 0;
-    topNode.appendChild(vspacer);
+    this.buffers.appendChild(vspacer);
     this._vspacer = vspacer;
 };
 
@@ -3498,25 +3501,16 @@ DomTerm._positionInfoWidget = function(widget, dt) {
     let top = dt.topNode;
     top.insertBefore(widget, top.firstChild);
     let topOffset = 0, leftOffset = 0; //, rightOffset = 0;
-    for (let n = top; n; n = n.offsetParent) {
-        topOffset += n.offsetTop;
-        leftOffset += n.offsetLeft;
-    }
     let offset = dt._displayInfoYoffset;
-    if (typeof offset == "number") {
-        topOffset = offset;
-    } else {
-        topOffset += (dt.numRows > 10 ? 1.2 : 0.2) * dt.charHeight;
-        dt._displayInfoYoffset = topOffset;
+    if (typeof offset !== "number") {
+        offset = (dt.numRows > 10 ? 1.2 : 0.2) * dt.charHeight;
+        dt._displayInfoYoffset = offset;
     }
-    if (topOffset >= 0) {
-        widget.style["top"] = topOffset + "px";
-        widget.style["bottom"] = "auto";
-    } else {
-        widget.style["bottom"] = (- topOffset) + "px";
-        widget.style["top"] = "auto";
+    if (offset < 0) {
+        topOffset = topOffset + dt.topNode.offsetHeight - widget.offsetHeight;
     }
-    leftOffset += 0.20 * top.clientWidth;
+    widget.style["top"] = (offset + topOffset) + "px";
+    widget.style["bottom"] = "auto";
 }
 
 DomTerm.addInfoDisplay = function(contents, div, dt) {
@@ -3534,7 +3528,6 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
         header.appendChild(close);
         widget.appendChild(header);
 
-        DomTerm._positionInfoWidget(widget, dt);
         widget.style["box-sizing"] = "border-box";
         dt._displayInfoWidget = widget;
         let closeAllWidgets = (ev) => {
@@ -3567,6 +3560,15 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
                     && Math.abs(diffY) >= 0) {
                     let diffY = y - oldY;
                     dt._displayInfoYoffset += diffY;
+                    // if close to top/bottom edge, switch to relative to it
+                    if (dt._displayInfoYoffset >= 0
+                        && dt._displayInfoYoffset + widget.offsetHeight > 0.8 * dt.topNode.offsetHeight)
+                        dt._displayInfoYoffset =
+                        dt._displayInfoYoffset + widget.offsetHeight - dt.topNode.offsetHeight;
+                    else if (dt._displayInfoYoffset < 0
+                             && widget.offsetHeight - dt._displayInfoYoffset > 0.8 * dt.topNode.offsetHeight)
+                        dt._displayInfoYoffset =
+                        dt._displayInfoYoffset - widget.offsetHeight + dt.topNode.offsetHeight;
                     DomTerm._positionInfoWidget(widget, dt);
                     oldY = y;
                 }
@@ -3588,6 +3590,7 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
     if (contents.indexOf('<') < 0)
         contents = "<span>" + contents + "</span>";
     div.innerHTML = contents;
+    DomTerm._positionInfoWidget(widget, dt);
     return div;
 };
 
@@ -4212,10 +4215,10 @@ Terminal.prototype._mouseHandler = function(ev) {
     let selState = this._mouseSelectionState;
     this._mouseSelectionState = ev.type == "mouseup" ? -1 : 0
 
-    // Get mouse coordinates relative to topNode.
+    // Get mouse coordinates relative to buffers.
     let xdelta = ev.pageX / this._computedZoom;
-    let ydelta = ev.pageY / this._computedZoom + this.topNode.scrollTop;
-    for (var top = this.topNode; top != null; top = top.offsetParent) {
+    let ydelta = ev.pageY / this._computedZoom + this.buffers.scrollTop;
+    for (var top = this.buffers; top != null; top = top.offsetParent) {
         xdelta -= top.offsetLeft;
         ydelta -= top.offsetTop;
     }
@@ -4235,7 +4238,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         */
     }
     if (ev.type == "mousedown") {
-        if (ev.button == 0 && xdelta >= this.topNode.clientWidth) // in scrollbar
+        if (ev.button == 0 && xdelta >= this.buffers.clientWidth) // in scrollbar
             this._usingScrollBar = true;
         this.setMarkMode(false);
         this._didExtend = ev.shiftKey;
@@ -6856,7 +6859,7 @@ Terminal.prototype._scrollNeeded = function() {
     var last = this._vspacer;
     if (! last)
         return 0;
-    let lastBottom = last.getBoundingClientRect().bottom+this.topNode.scrollTop
+    let lastBottom = last.getBoundingClientRect().bottom+this.buffers.scrollTop
     return lastBottom - this.actualHeight;
 };
 
@@ -6869,14 +6872,14 @@ Terminal.prototype._scrolledAtBottom = function() {
 
 Terminal.prototype._scrollIfNeeded = function() {
     let needed = this._scrollNeeded();
-    if (needed > this.topNode.scrollTop) {
+    if (needed > this.buffers.scrollTop) {
         if (DomTerm.verbosity >= 3)
-            this.log("scroll-needed was:"+this.topNode.scrollTop+" to "
+            this.log("scroll-needed was:"+this.buffers.scrollTop+" to "
                      +needed);
         if (this._usingScrollBar || this._disableScrollOnOutput)
             this._disableScrollOnOutput = true;
         else
-            this.topNode.scrollTop = needed;
+            this.buffers.scrollTop = needed;
     }
 }
 
