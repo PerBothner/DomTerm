@@ -8999,11 +8999,8 @@ Terminal.prototype.keyDownHandler = function(event) {
         event.preventDefault();
         return;
     }
-    if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
-        event.preventDefault();
-        return;
-    }
-    if (this.isLineEditingOrMinibuffer()) {
+    let editing = this.isLineEditingOrMinibuffer();
+    if (editing) {
         if (! this.useStyledCaret())
             this.maybeFocus();
         if (this._searchInHistoryMode) {
@@ -9044,34 +9041,34 @@ Terminal.prototype.keyDownHandler = function(event) {
                 }
             }
         }
-        if (this.doLineEdit(keyName))
+        if (this.doLineEdit(keyName)) {
             event.preventDefault();
-    } else {
-        var str = this.keyNameToChars(keyName);
+            return;
+        }
+    }
+    if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
+        event.preventDefault();
+        return;
+    }
+
+    if (! editing) {
+        let str = this.keyNameToChars(keyName);
         if (str) {
             if (this.scrollOnKeystroke)
                 this._enableScroll();
             event.preventDefault();
             if (! DomTerm.usingXtermJs()) {
-            /*
-            if (keyName == "Delete") {
-                let sel = window.getSelection();
-                if (! sel.isCollapsed) {
-                    && focus in input
+                if (keyName == "Left" || keyName == "Right") {
+                    this._editPendingInput(keyName == "Right", false);
                 }
-            }
-            */
-            if (keyName == "Left" || keyName == "Right") {
-                this._editPendingInput(keyName == "Right", false);
-            }
-            if (keyName == "Backspace" || keyName == "Delete") {
-                if (window.getSelection().isCollapsed)
-                    this._editPendingInput(keyName == "Delete", true);
-                else {
-                    this.deleteSelected(false);
-                    return;
+                if (keyName == "Backspace" || keyName == "Delete") {
+                    if (window.getSelection().isCollapsed)
+                        this._editPendingInput(keyName == "Delete", true);
+                    else {
+                        this.deleteSelected(false);
+                        return;
+                    }
                 }
-            }
             }
             this._adjustPauseLimit();
             this._respondSimpleInput(str, keyName);
