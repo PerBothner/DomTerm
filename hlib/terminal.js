@@ -3026,7 +3026,7 @@ DomTerm._currentBufferNode = function(dt, index)
 
 Terminal.prototype.getAllBuffers = function() {
     let buffers = [];
-    for (let bnode = this.topNode.firstChild; bnode;
+    for (let bnode = this.buffers.firstChild; bnode;
          bnode = bnode.nextSibling) {
         if (bnode.nodeName == 'DIV'
             && bnode.classList.contains('interaction'))
