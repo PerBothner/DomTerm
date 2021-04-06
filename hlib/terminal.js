@@ -3292,6 +3292,10 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         if (dt._composing > 0)
             return;
         if (! point && dt._displayInfoWidget) {
+            // The following hack wouldn't be needed if browsers supported
+            // 'user-select: contain', or if the work-around using
+            // contentEditable (see addInfoDisplay) worked consistently
+            // (it seems to work on Chrome).
             let focusWidget = dt._getOuterPre(sel.focusNode, "domterm-info-widget");
             let anchorWidget = dt._getOuterPre(sel.anchorNode, "domterm-info-widget");
             if (focusWidget !== anchorWidget) {
