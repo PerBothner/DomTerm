@@ -371,7 +371,7 @@ class Terminal {
         topNode.terminal = this;
         this.buffers = document.createElement("div");
         this.buffers.classList.add("domterm-buffers");
-        topNode.contentEditable = false;
+        this.buffers.contentEditable = false;
         topNode.appendChild(this.buffers);
         if (no_session=='view-saved') {
             let buffers = document.getElementsByClassName("interaction");
@@ -3232,6 +3232,8 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     focusBackground.setAttribute("std", "input");
     focusBackground.style.display = "inline-block";
     this.focusBackground = focusBackground;
+
+    topNode.contentEditable = true;
 
     var wrapDummy = this._createLineNode("soft");
     wrapDummy.setAttribute("breaking", "yes");
