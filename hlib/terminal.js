@@ -371,6 +371,7 @@ class Terminal {
         topNode.terminal = this;
         this.buffers = document.createElement("div");
         this.buffers.classList.add("domterm-buffers");
+        topNode.contentEditable = false;
         topNode.appendChild(this.buffers);
         if (no_session=='view-saved') {
             let buffers = document.getElementsByClassName("interaction");
@@ -3232,11 +3233,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     focusBackground.style.display = "inline-block";
     this.focusBackground = focusBackground;
 
-    // Note that Firefox has a bug (?) that throws NS_ERROR_FAILURE in some
-    // cases if selection is moved across contentEditable boundaries.
-    // So for simplicity ...
-    topNode.contentEditable = true;
-
     var wrapDummy = this._createLineNode("soft");
     wrapDummy.setAttribute("breaking", "yes");
     helperNode.appendChild(wrapDummy);
@@ -3521,6 +3517,8 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
     if (widget == null) {
         widget = document.createElement("div");
         widget.setAttribute("class", "domterm-show-info");
+        // Workaround for lack of browser support for 'user-select: contain'
+        widget.contentEditable = true;
 
         let header = document.createElement("div");
         header.setAttribute("class", "domterm-show-info-header");
@@ -3585,6 +3583,8 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
     if (! div)
         div = document.createElement("div");
     div.classList.add("domterm-info-widget");
+    // Workaround for lack of browser support for 'user-select: contain'
+    div.contentEditable = false;
     if (div.parentNode !== widget)
         widget.appendChild(div);
     if (contents.indexOf('<') < 0)
