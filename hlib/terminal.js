@@ -10505,7 +10505,10 @@ Terminal.prototype.editorDeleteRange = function(range, toClipboard,
     if (toClipboard)
         DomTerm.valueToClipboard({text: str,
                                   html: Terminal._rangeAsHTML(range)});
+    let hadCaret = this._caretNode && this._caretNode.parentNode;
     range.deleteContents();
+    if (hadCaret && ! this._caretNode.parentNode)
+        range.insertNode(this._caretNode);
     range.commonAncestorContainer.normalize();
     let lineNum = this.getAbsCursorLine();
     this._unbreakLines(lineNum, true, null);
