@@ -217,6 +217,12 @@ cmd('find-text',
         return true;
     });
 
+cmd('find-select-pattern',
+    function(dt, key) {
+        document.getSelection().selectAllChildren(dt._findText.minibuf);
+        return true;
+    });
+
 cmd('find-next-match',
     function(dt, key) {
         return FindText.doNext(dt, true);
@@ -276,6 +282,8 @@ FindText.keymap = new window.browserKeymap({
     "Up": "find-previous-match",
     "Ctrl-C": "copy-text",
     "Mod-V": "paste-text",
+    "Ctrl-F": "find-select-pattern",
+    "Ctrl-Shift-F": "find-select-pattern",
     "Ctrl-X": "cut-text",
     "Ctrl-Shift-X": "cut-text",
     "Alt-C": "find-toggle-match-case",
