@@ -6760,9 +6760,17 @@ Terminal.prototype.insertBytes = function(bytes) {
             startIndex = urgent_begin + 1;
 
         } else {
-            if (this._savedControlState
-                && this._savedControlState.urgent === undefined) {
-                startIndex += this._savedControlState.setFromFollowingByte(bytes[startIndex]);
+            let cstate = this._savedControlState;
+            if (cstate && cstate.urgent === undefined) {
+                startIndex += cstate.setFromFollowingByte(bytes[startIndex]);
+                if (! cstate.urgent && cstate.deferredBytes) {
+                    this._savedControlState = cstate._savedControlState;
+                    let defb = cstate.deferredBytes;
+                    cstate.deferredBytes = undefined;
+                    this._savedControlState = cstate._savedControlState;
+                    this.parseBytes(defb);
+                    this._savedControlState = cstate;
+                }
             }
             if (urgent_end >= 0) {
                 this.parseBytes(bytes, startIndex, urgent_end);
