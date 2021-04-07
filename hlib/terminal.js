@@ -3659,7 +3659,7 @@ Terminal.prototype.showMiniBuffer = function(options) {
     if (options.mutationCallback) {
         let observer = new MutationObserver(options.mutationCallback);
         observer.observe(miniBuffer,
-                         { attributes: false, childList: true, characterData: true, subtree: true });
+                         { attributes: false, childList: false, characterData: true, subtree: true });
         miniBuffer.observer = observer;
     }
     div.closeHandler = (d) => {
@@ -4004,6 +4004,8 @@ Terminal.prototype._updateSelected = function() {
     }
 
     let sel = document.getSelection();
+    if (sel.focusNode === this.focusArea)
+        return;
     let point =
         ! dt._didExtend
         && (sel.focusNode === sel.anchorNode
@@ -4012,8 +4014,7 @@ Terminal.prototype._updateSelected = function() {
             : sel.toString().length == 0);
     if (this._pagingMode > 0 || (! point && this.isLineEditing())) {
         if (sel.focusNode !== this.viewCaretNode
-            && sel.focusNode !== null
-            && sel.focusNode !== this.focusArea) {
+            && sel.focusNode !== null) {
             let r = document.createRange();
             let focusNode = sel.focusNode;
             let focusOffset = sel.focusOffset;
@@ -4059,6 +4060,7 @@ Terminal.prototype._updateSelected = function() {
     let readlineForced = dt._altPressed;
     let moveOption = readlineForced ? "w" : null;
     if (dt._caretNode && dt._caretNode.parentNode !== null
+        && sel.focusNode !== null
         // only moveCaret if (single non-drag) mouse-click and not in paging-mode
         && this._pagingMode == 0 && ! this._didExtend) {
         if (readlineForced) {
@@ -10744,7 +10746,7 @@ Terminal.prototype.deleteSelected = function(toClipboard) {
             text += rstring;
             html += Terminal._rangeAsHTML(r);
         }
-        if (this.isLineEditing())
+        if (this.isLineEditingOrMinibuffer())
             this.editorDeleteRange(r, false);
         else {
             let forwards = sr.endContainer === sel.anchorNode
@@ -10791,12 +10793,16 @@ Terminal.prototype.editMove = function(count, action, unit,
     let linesCount = 0;
 
     let sel = document.getSelection();
-    if (! sel.isCollapsed && doDelete && ! this._miniBuffer) {
+    let useSelection = ! sel.isCollapsed
+        && (! this._miniBuffer
+            || (this._isAnAncestor(sel.focusNode, this._miniBuffer)
+                && this._isAnAncestor(sel.anchorNode, this._miniBuffer)));
+    if (useSelection && doDelete) {
         this.deleteSelected(action=="kill");
         if (this._pagingMode == 0)
             sel.removeAllRanges();
     } else {
-        if (! sel.isCollapsed && ! this._miniBuffer) {
+        if (useSelection) {
             if (action == "move-extend")
                 sel.collapse(sel.focusNode, sel.focusOffset);
             else if (action == "move")
