@@ -312,11 +312,11 @@ class DTParser {
                                 : DTParser.INITIAL_STATE;
                             this.textParameter = null;
                             try {
-                                let text = this.decodeBytes(narr);
                                 if (state == DTParser.SEEN_OSC_TEXT_STATE) {
+                                    let text = this.decodeBytes(narr);
                                     this.handleOperatingSystemControl(this.parameters[0], text);
                                 } else if (state === DTParser.SEEN_DCS_TEXT_STATE) {
-                                    this.handleDeviceControlString(this.parameters, text);
+                                    this.handleDeviceControlString(this.parameters, narr);
                                 } else {
                                     // APC and PM ignored
                                 }
@@ -1449,14 +1449,15 @@ class DTParser {
         }
     };
 
-    handleDeviceControlString(params, text) {
+    handleDeviceControlString(params, bytes) {
         const term = this.term;
-        if (text.length == 0)
+        if (bytes.length == 0)
             return;
-        if (text.length > 2 && text.charCodeAt(0) == 36
-            && text.charCodeAt(1) == 113) { // DCS $ q Request Status String DECRQSS
+        if (bytes.length > 2 && bytes[0] === 36
+            && bytes[1] === 113) { // DCS $ q Request Status String DECRQSS
             let response = null;
             /*
+              let text = this.decodeBytes(bytes);
               switch (text.substring(2)) {
               case xxx: response = "???"; break;
               }
@@ -1466,12 +1467,12 @@ class DTParser {
                                            : "\x901$r\x9C");
             return;
         }
-        if (text.charCodeAt(0) === 113) { // 'q'
+        if (bytes[0] === 113) { // 'q'
             let palette = this._sixelPalette;
             if (! palette)
                 this._sixelPalette = palette = Object.assign([], PALETTE_ANSI_256);
             let six = new SixelDecoder(DEFAULT_BACKGROUND, palette);
-            six.decodeString(text, 1);
+            six.decode(bytes, 1);
             let w = six.width, h = six.height;
             let next = term.outputBefore;
             if (next == term._caretNode)
