@@ -294,7 +294,20 @@ class DTParser {
             case DTParser.SEEN_PM_STATE:
             case DTParser.SEEN_APC_STATE:
                 for (let start = i; ; ) {
-                    let found = ch == 7 || ch == 0 || ch == 0x9c || ch == 27;
+                    let found = ch == 7 || ch == 0 || ch == 27;
+                    if (ch == 0x9c) {
+                        // Few if any programs use 9C for String Terminator
+                        // because it can be part of a UTF-8 sequence.
+                        // However, Emca-48 does specify it. Ecma-48 requires
+                        // parameter bytes to be 0x8-0xD or 0x20-0x7E,
+                        // while 0x9c in UTF-8 must be preceded by a byte
+                        // with high-bit set, so we can use that to distinguish.
+                        let prev = i > start ? bytes[i-1]
+                            : this.textParameter && this.textParameter.length
+                            ? this.textParameter[this.textParameter.length-1]
+                            : 0;
+                        found = prev < 128;
+                    }
                     if (! found && i + 1 < endIndex)
                         ch = bytes[++i];
                     else {
