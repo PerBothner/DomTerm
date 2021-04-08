@@ -6401,8 +6401,15 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
             + '<pre style="background-color: #fee">'
             + str + '</pre></div>';
         this._scrubAndInsertHTML(str);
-    }
-    else if (ok > start) {
+    } else if (activeTags.length > 0) {
+        str = "";
+        while (activeTags.length)
+            str += '&lt;/' + activeTags.pop() + '&gt;'
+        str = '<div style="color: red"><b>Inserted invalid HTML - missing close tags:</b>'
+            + ' <code style="background-color: #fee">'
+            + str + '</code></div>';
+        this._scrubAndInsertHTML(str);
+    } else if (ok > start) {
         this._unsafeInsertHTML(str.substring(start, ok));
         this.resetCursorCache();
         this._updateLinebreaksStart(startLine);
