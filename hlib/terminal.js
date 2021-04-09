@@ -1778,6 +1778,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
     this.outputInWide = false;
     if (column != goalColumn) {
         var lineEnd = this.lineEnds[absLine];
+        let lineStart = this.lineStarts[absLine];
         // At this point we're at the correct line; scan to the desired column.
         mainLoop:
         while (column < goalColumn) {
@@ -1934,7 +1935,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                 }
                 // Otherwise, go to the next sibling.
                 ch = current.nextSibling;
-                if (ch != null) {
+                if (ch != null || (ch == lineEnd && parent == lineStart)) {
                     if (! ch)
                         console.log("setting current to null 2");
                     current = ch;
@@ -1964,7 +1965,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                 var sib = parent.nextSibling;
                 ch = parent; // ??
                 parent = parent.parentNode;
-                if (sib != null) {
+                if (sib != null || (sib == lineEnd && parent == lineStart)) {
                     current = sib;
                     //parent = ch;
                     break;
