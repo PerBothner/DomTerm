@@ -3546,10 +3546,10 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
         widget.mouseDownHandler = (edown) => {
             widget.classList.add("domterm-moving");
             let oldX = edown.pageX / dt._computedZoom;
-            let oldY = edown.pageY / dt._computedZoom;// + this.topNode.scrollTop;
+            let oldY = edown.pageY / dt._computedZoom;// + this.buffers.scrollTop;
             widget.mouseHandler = (e) => {
                 let x = e.pageX / dt._computedZoom;
-                let y = e.pageY / dt._computedZoom;// + this.topNode.scrollTop;
+                let y = e.pageY / dt._computedZoom;// + this.buffers.scrollTop;
                 if (e.type == "mouseup" || e.type == "mouseleave") {
                     //widget.mouseDown = undefined;
                     if (widget.mouseHandler) {
@@ -4259,7 +4259,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     /*
     if (ev.type == "mouseup" && this.sstate.mouseMode == 0
         && this._currentlyPagingOrPaused()
-        && this.topNode.scrollTop+this.availHeight >= this._vspacer.offsetTop)
+        && this.buffers.scrollTop+this.availHeight >= this._vspacer.offsetTop)
             this._pauseContinue();
     */
 
@@ -6887,7 +6887,7 @@ Terminal.prototype._scrollNeeded = function() {
     return lastBottom - this.actualHeight;
 };
 
-// Optimization of term._scrollNeeded() == term.topNode.scrollTop (appro)
+// Optimization of term._scrollNeeded() == term.buffers.scrollTop (approx)
 Terminal.prototype._scrolledAtBottom = function() {
     var last = this._vspacer;
     return last == null
@@ -6927,12 +6927,12 @@ Terminal.prototype.scrollToCaret = function(caret = null, force = null) {
     if (caret.parentNode == null)
         return;
     let rect = caret.getBoundingClientRect();
-    let top = rect.y + this.topNode.scrollTop - this.topNode.offsetTop;
+    let top = rect.y + this.buffers.scrollTop - this.topNode.offsetTop;
     let bottom = top + rect.height;
-    if (force === "bottom" || bottom > this.topNode.scrollTop + this.availHeight) {
-        this.topNode.scrollTop = Math.max(0, bottom - this.availHeight + 1);
-    } else if (force == "top" || top < this.topNode.scrollTop) {
-        this.topNode.scrollTop = top;
+    if (force === "bottom" || bottom > this.buffers.scrollTop + this.availHeight) {
+        this.buffers.scrollTop = Math.max(0, bottom - this.availHeight + 1);
+    } else if (force == "top" || top < this.buffers.scrollTop) {
+        this.buffers.scrollTop = top;
     }
     this.adjustFocusCaretStyle();
 }
@@ -9961,11 +9961,11 @@ Terminal.prototype._pageScrollAbsolute = function(percent) {
         var maxpad = this.availHeight - this.charHeight; // matches 'less'
         this._adjustSpacer(vpad > maxpad ? maxpad : vpad);
     }
-    this.topNode.scrollTop = scrollTop;
+    this.buffers.scrollTop = scrollTop;
 }
 
 Terminal.prototype._pageScroll = function(delta, scrollOnly = false) {
-    let scroll = this.topNode.scrollTop + delta;
+    let scroll = this.buffers.scrollTop + delta;
     let limit = scroll + this.availHeight;
     let vtop = this._vspacer.offsetTop;
     if (scroll < 0)
@@ -9975,7 +9975,7 @@ Terminal.prototype._pageScroll = function(delta, scrollOnly = false) {
     else if (scroll > vtop)
         scroll = vtop;
     // FIXME may do nothing if spacer size is empty
-    this.topNode.scrollTop = scroll;
+    this.buffers.scrollTop = scroll;
     if (! scrollOnly) {
         if (limit > this._pauseLimit)
             this._pauseLimit = limit;
@@ -9999,7 +9999,7 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
         count = - count;
     }
     if (moveUp) {
-        let top = this.topNode.scrollTop;
+        let top = this.buffers.scrollTop;
         top -= (count - 1) * this.actualHeight;
         top += this.charHeight;
         for (;;) {
@@ -10011,14 +10011,14 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
             let lineRect = line.getBoundingClientRect();
             // The "top" of a line starting with a line object
             // is actually the bottom of the line object.
-            let lineTop = this.topNode.scrollTop
+            let lineTop = this.buffers.scrollTop
                 + (lineBlock ? lineRect.top : lineRect.bottom);
             if (lineTop < top)
                 break;
         }
     } else {
         let height = count * this.actualHeight;
-        let scTop = this.topNode.scrollTop;
+        let scTop = this.buffers.scrollTop;
         let top = scTop + height;
         top += this.actualHeight;
         top -= this.charHeight;
@@ -10026,7 +10026,7 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
         if (top > vtop) {
             vtop -= this.actualHeight;
             if (vtop >= 0)
-                this.topNode.scrollTop = vtop;
+                this.buffers.scrollTop = vtop;
             this._downContinue(height, paging);
             return;
         }
@@ -10039,7 +10039,7 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
             let lineEnd = this.lineEnds[iline];
             if (lineEnd == null)
                 lineEnd = line;
-            let lineBot = this.topNode.scrollTop
+            let lineBot = this.buffers.scrollTop
                 + lineEnd.getBoundingClientRect().bottom;
             if (lineBot <= top)
                 break;
@@ -10067,20 +10067,20 @@ Terminal.prototype._scrollLine = function(count) {
 }
 
 Terminal.prototype._pageTop = function() {
-    this.topNode.scrollTop = 0;
+    this.buffers.scrollTop = 0;
 }
 
 Terminal.prototype._pageBottom = function() {
     let target = this._vspacer.offsetTop - this.availHeight;
     if (target < 0)
         target = 0;
-    if (target - this.topNode.scrollTop <= 1
+    if (target - this.buffers.scrollTop <= 1
         && this._currentlyPagingOrPaused()) {
         this._pauseLimit = -1;
         this._pauseContinue();
         return;
     }
-    this.topNode.scrollTop = target;
+    this.buffers.scrollTop = target;
 }
 
 Terminal.prototype._enterPaging = function(pause) {
