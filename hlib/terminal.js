@@ -1434,7 +1434,10 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                 if (ch == 10) {
                     if (i > 0)
                         cur.parentNode.insertBefore(document.createTextNode(data.substring(0,i)), cur);
-                    var line = this._createLineNode("hard", "\n");
+                    let white = window.getComputedStyle(cur.parentNode)['white-space'];
+                    let line = white=='normal' || white=='nowrap'
+                        ? this._createSpanNode('non-pre-newline', ' ')
+                        : this._createLineNode("hard", "\n");
                     cur.parentNode.insertBefore(line, cur);
                     this._deleteData(cur, 0, i+1);
                     cur = line; // continue with Element case below
@@ -6498,6 +6501,10 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     break;
                 if (cls == "wc-node") {
                     string += node.textContent;
+                    break;
+                }
+                if (cls == 'non-pre-newline') {
+                    string += '\n';
                     break;
                 }
             }
