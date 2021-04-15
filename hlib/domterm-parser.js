@@ -19,6 +19,21 @@ class DTParser {
         return this.decoder.decode(bytes.subarray(beginIndex, endIndex),
                                   {stream:true});
     }
+
+    /** Concatenate _deferredBytes with slice of bytes.
+     * Return concatenated array.  Clears _deferredBytes. */
+    withDeferredBytes(bytes, beginIndex = 0, endIndex = bytes.length) {
+        if (this._deferredBytes) {
+            let dlen = this._deferredBytes.length;
+            let narr = new Uint8Array(dlen + (endIndex - beginIndex));
+            narr.set(this._deferredBytes);
+            narr.set(bytes.subarray(beginIndex, endIndex), dlen);
+            this._deferredBytes = undefined;
+            return narr;
+        } else {
+            return bytes.slice(beginIndex, endIndex);
+        }
+    }
     insertString(str) {
         if (this.encoder == null)
             this.encoder = new TextEncoder();
@@ -40,14 +55,9 @@ class DTParser {
             term.log("parseBytes "+jstr+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
         }
         if (this._deferredBytes) {
-            let dlen = this._deferredBytes.length;
-            let narr = new Uint8Array(dlen + (endIndex - beginIndex));
-            narr.set(this._deferredBytes);
-            narr.set(bytes.subarray(beginIndex, endIndex), dlen)
-            this._deferredBytes = undefined;
-            bytes = narr;
+            bytes = this.withDeferredBytes(bytes, beginIndex, endIndex);
             beginIndex = 0;
-            endIndex = narr.length;
+            endIndex = bytes.length;
         }
         if (term._pagingMode == 2
             && ! (term._savedControlState
@@ -637,7 +647,7 @@ class DTParser {
                 break;
             case DTParser.PAUSE_REQUESTED:
                 this.controlSequenceState = DTParser.INITIAL_STATE;
-                this._deferredBytes = bytes.subarray(i, endIndex);
+                this._deferredBytes = this.withDeferredBytes(bytes, i, endIndex);
                 term._enterPaging(true);
                 term.scrollToCaret();
                 term._updateDisplay();

@@ -6760,16 +6760,7 @@ Terminal.prototype.insertBytes = function(bytes) {
         }
         if (urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin)) {
             if (urgent_begin > startIndex) {
-                let narr;
-                if (this.parser._deferredBytes) {
-                    let dlen = this.parser._deferredBytes.length;
-                    narr = new Uint8Array(dlen + (urgent_begin - startIndex));
-                    narr.set(this.parser._deferredBytes);
-                    narr.set(bytes.subarray(startIndex, urgent_begin), dlen)
-                } else {
-                    narr = bytes.slice(startIndex, urgent_begin);
-                }
-                this.parser._deferredBytes = narr;
+                this.parser._deferredByte = this.parser.withDeferredBytes(bytes, startIndex, urgent_begin);
             }
             this.pushControlState();
             startIndex = urgent_begin + 1;
