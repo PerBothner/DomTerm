@@ -1,6 +1,6 @@
 /* Optional - user-overridable styling */
 
-div.domterm.markmode *::selection {background-color: cyan; color: #FFF }
+div.domterm.markmode *::selection {background-color: slateblue; color: #FFF }
 
 /* "\2936" is "arrow pointing downwards then curving leftward".
 It is used to indicate a wrapped line, rather like a hyphen. */
