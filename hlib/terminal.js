@@ -1549,6 +1549,13 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                 if (cur.nodeName == "SPAN"
                     && cur.classList.contains("pprint-group"))
                     this._popPprintGroup();
+                if (cur == startBlock && this.lineEnds[startLine-1] === null) {
+                    // This simplifies traversal logic various places.
+                    // (Ideally should use a distinct "line"-type.)
+                    let end = this._createLineNode("hard", "\n");
+                    startBlock.appendChild(end);
+                    this.lineEnds[startLine-1] = end;
+                }
                 var next = cur.nextSibling;
                 if (next != null) {
                     cur = next;
