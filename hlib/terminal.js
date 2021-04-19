@@ -1670,6 +1670,21 @@ Terminal.prototype.cursorSet = function(line, column, regionRelative) {
     this.moveToAbs(line+this.homeLine, column, true);
 };
 
+Terminal.prototype._maybeGoDeeper = function(current) {
+    let parent = null;
+    while (current instanceof Element) {
+        let tag = current.tagName.toLowerCase();
+        if (! Terminal.isBlockTag(tag)
+            && tag !== "td"
+            && (tag !== "span" || current.stayOut
+                || current.getAttribute("content-value")))
+            break;
+        parent = current;
+        current = parent.firstChild;
+    }
+    return parent;
+}
+
 /** Move to the request position.
  * @param goalAbsLine number of lines (non-negative) to down topNode start
  * @param goalColumn number of columns to move right from the start of the goalLine
@@ -1983,21 +1998,10 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             }
         }
     }
-    while ((parent == this.topNode && Terminal.isBlockNode(current))
-           || (current instanceof Element
-               && ! current.stayOut
-               && current.nodeName === "SPAN"
-               //&& ! tab
-               && ! current.getAttribute("content-value"))) {
-        /*
-        if (! (parent == this.topNode)
-            && ! current.classList.contains("term-style")
-            && current.getAttribute("std") !== "input"
-            && current.getAttribute("class") !== "wc-node")
-            console.log("unexpected child "+current.nodeName);
-        */
-        parent = current;
-        current = parent.firstChild;
+    let nparent = this._maybeGoDeeper(current);
+    if (nparent) {
+        parent = nparent;
+        current = nparent.firstChild;
     }
     if (parent == this._caretNode) {
         console.log("moveAbs FIX1");
