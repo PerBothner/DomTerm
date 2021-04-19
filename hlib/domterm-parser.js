@@ -110,10 +110,21 @@ class DTParser {
             term._removeInputLine();
         var pendingEchoNode = term._deferredForDeletion;
         let i = beginIndex;
-        for (; i < endIndex; i++) {
-            let ch = bytes[i];
+        for (; ; i++) {
             //term.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
             var state = this.controlSequenceState;
+            if (state === DTParser.PAUSE_REQUESTED) {
+                this.controlSequenceState = DTParser.INITIAL_STATE;
+                this._deferredBytes = this.withDeferredBytes(bytes, i, endIndex);
+                term._pageUpOrDown('limit', false, true);
+                document.getSelection().collapse(term.viewCaretNode, 0);
+                term._enterPaging(true);
+                term._updateDisplay();
+                return;
+            }
+            if (i >= endIndex)
+                break;
+            let ch = bytes[i];
             switch (state) {
             case DTParser.SEEN_ESC_STATE:
                 this.controlSequenceState = DTParser.INITIAL_STATE;
@@ -645,13 +656,6 @@ class DTParser {
                     continue;
                 }
                 break;
-            case DTParser.PAUSE_REQUESTED:
-                this.controlSequenceState = DTParser.INITIAL_STATE;
-                this._deferredBytes = this.withDeferredBytes(bytes, i, endIndex);
-                term._enterPaging(true);
-                term.scrollToCaret();
-                term._updateDisplay();
-                return;
             }
         }
 

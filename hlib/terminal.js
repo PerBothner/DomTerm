@@ -10029,20 +10029,22 @@ Terminal.prototype._pageScroll = function(delta, scrollOnly = false) {
     }
 }
 
+/** Move focus cursor count number of pages up or down.
+ * However, if count === 'limit' (and !moveUp), move to pauselimit.
+ */
 Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
-    let cursor =
-        this.viewCaretNode && this.viewCaretNode.parentNode ? this.viewCaretNode
-        : this.outputBefore instanceof Element ? this.outputBefore
-        : this.outputContainer instanceof Element ? this.outputContainer
-        : this.outputContainer.parentNode;
     let iline = this.lineStarts.length;
     let line;
     let lineBlock;
-    let force = count > 0 ? "bottom" : count < 0 ? "top" :null;
-    if (count < 0) {
+    let force;
+    if (count === 'limit' || count > 0)
+        force = 'bottom';
+    else if (count < 0) {
+        force = 'top';
         moveUp = ! moveUp;
         count = - count;
-    }
+    } else
+        force = null;
     if (moveUp) {
         let top = this.buffers.scrollTop;
         top -= (count - 1) * this.actualHeight;
@@ -10062,18 +10064,28 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
                 break;
         }
     } else {
-        let height = count * this.actualHeight;
-        let scTop = this.buffers.scrollTop;
-        let top = scTop + height;
-        top += this.actualHeight;
-        top -= this.charHeight;
-        let vtop = this._vspacer.getBoundingClientRect().y + scTop;
-        if (top > vtop) {
-            vtop -= this.actualHeight;
-            if (vtop >= 0)
-                this.buffers.scrollTop = vtop;
-            this._downContinue(height, paging);
-            return;
+        let top;
+        if (count === 'limit') {
+            top = this._pauseLimit;
+        } else {
+            let cursor =
+                this.viewCaretNode && this.viewCaretNode.parentNode ? this.viewCaretNode
+                : this.outputBefore instanceof Element ? this.outputBefore
+                : this.outputContainer instanceof Element ? this.outputContainer
+                : this.outputContainer.parentNode;
+            let height = count * this.actualHeight;
+            let scTop = this.buffers.scrollTop;
+            top = cursor.getBoundingClientRect().y + scTop + height;
+            let vtop = this._vspacer.getBoundingClientRect().y + scTop;
+            if (top > vtop) {
+                vtop -= this.actualHeight;
+                if (vtop >= 0)
+                    this.buffers.scrollTop = vtop;
+                if (top > this._pauseLimit)
+                    this._pauseLimit = top;
+                this._downContinue(-1, paging);
+                return;
+            }
         }
         for (;;) {
             --iline;
