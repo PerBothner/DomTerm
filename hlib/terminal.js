@@ -6808,7 +6808,7 @@ Terminal.prototype.insertBytes = function(bytes) {
         }
         if (urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin)) {
             if (urgent_begin > startIndex) {
-                this.parser._deferredByte = this.parser.withDeferredBytes(bytes, startIndex, urgent_begin);
+                this.parser._deferredBytes = this.parser.withDeferredBytes(bytes, startIndex, urgent_begin);
             }
             this.pushControlState();
             startIndex = urgent_begin + 1;
