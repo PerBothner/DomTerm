@@ -8841,7 +8841,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-B": "backward-char",
     "Ctrl-D": "forward-delete-char-or-eof",
     "Ctrl-E": "end-of-line",
-    "Ctrl-F": "forward-char",
+    //"Ctrl-F": "forward-char",
     "Ctrl-K": "kill-line",
     "Ctrl-N": "down-line-or-history",
     "Ctrl-P": "up-line-or-history",
@@ -10826,13 +10826,15 @@ Terminal.prototype.editorRestrictedRange = function(restrictToInputLine) {
 /** Do an edit operation, such as move, extend selection, or delete.
  * unit: "char", "word"
  * action: one of "move" (move caret), "move-focus" (move selection's focus),
- * "extend", "delete", or "kill" (cut to clipboard).
+ * "extend", "extend-focus", "delete", or "kill" (cut to clipboard).
  * stopAt: one of "", "line" (stop before moving to different hard line),
  * or "visible-line" (stop before moving to different screen line),
  * "input" (line-edit input area), or "buffer".
  */
 Terminal.prototype.editMove = function(count, action, unit,
-                                              stopAt/*??*/=this._pagingMode?"buffer":"") {
+                                       stopAt=undefined) {
+    if (stopAt === undefined)
+        stopAt = this.shouldMoveFocus() ? "buffer" : "input";
     this.sstate.goalColumn = undefined;
     let doDelete = action == "delete" || action == "kill";
     let backwards = count > 0;
@@ -10852,16 +10854,11 @@ Terminal.prototype.editMove = function(count, action, unit,
         if (this._pagingMode == 0)
             sel.removeAllRanges();
     } else {
-        if (useSelection) {
-            if (action == "move-extend")
-                sel.collapse(sel.focusNode, sel.focusOffset);
-            else if (action == "move")
-                this._clearSelection();
-        }
+        if (useSelection && action == "move")
+            this._clearSelection();
         this._removeCaret();
         range = this.editorRestrictedRange(stopAt!=="buffer"
-                                           && this._inputLine
-                                           && this._pagingMode == 0);
+                                           && this._inputLine);
         let anchorNode, anchorOffset;
         if (action == "move" || sel.anchorNode === null || this._miniBuffer
             || sel.anchorNode === this.focusArea) {
@@ -10912,15 +10909,19 @@ Terminal.prototype.editMove = function(count, action, unit,
     return todo;
 }
 
+Terminal.prototype.shouldMoveFocus = function() {
+    return this._pagingMode > 0 && ! this._miniBuffer;
+}
+
 // Move caret or focus-caret depending on context.
-Terminal.prototype.editMovePosition = function(count, unit, stopAt=this._pagingMode?"buffer":"input") {
-    let action = this._pagingMode == 0 ? "move" : "move-focus";
+Terminal.prototype.editMovePosition = function(count, unit, stopAt=undefined) {
+    let action = this.shouldMoveFocus() ? "move-focus" : "move";
     this.editMove(count, action, unit, stopAt);
 }
 
-Terminal.prototype.extendSelection = function(count, unit, stopAt="buffer") {
+Terminal.prototype.extendSelection = function(count, unit, stopAt=undefined) {
     this._didExtend = true;
-    return this.editMove(count, this._pagingMode > 0 ? "extend-focus" : "extend", unit, stopAt);
+    return this.editMove(count,  this.shouldMoveFocus() ? "extend-focus" : "extend", unit, stopAt);
 }
 
 Terminal.prototype._lastDigit = function(str) {

@@ -225,12 +225,14 @@ cmd('find-select-pattern',
 
 cmd('find-next-match',
     function(dt, key) {
-        return FindText.doNext(dt, true);
+        FindText.doNext(dt, true);
+        return true;
     });
 
 cmd('find-previous-match',
     function(dt, key) {
-        return FindText.doNext(dt, false);
+        FindText.doNext(dt, false);
+        return true;
     });
 
 cmd('find-exit',
@@ -280,6 +282,14 @@ FindText.keymap = new window.browserKeymap({
     "Shift-Enter": "find-previous-match",
     "Down": "find-next-match",
     "Up": "find-previous-match",
+    "Home": "beginning-of-line",
+    "End": "end-of-line",
+    //"Shift-Left": "backward-char-extend",
+    //"Shift-Mod-Left": "backward-word-extend",
+    //"Shift-Right": "forward-char-extend",
+    //"Shift-Mod-Right": "forward-word-extend",
+    //"Shift-Home": "beginning-of-line-extend",
+    //"Shift-End": "end-of-line-extend",
     "Ctrl-C": "copy-text",
     "Mod-V": "paste-text",
     "Ctrl-F": "find-select-pattern",
