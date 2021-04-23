@@ -1716,6 +1716,13 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                 current = parent;
                 parent = current.parentNode;
             }
+        } else if (typeof current === 'number') {
+            // Wasteful (should just scan forwards) but simple.
+            let val = parent instanceof Text ? parent.data
+                : parent.getAttribute("content-value");
+            column -= this.strWidthInContext(val.substring(0, current), parent);
+            current = parent;
+            parent = current.parentNode;
         }
     } else {
         var homeLine = this.homeLine;
