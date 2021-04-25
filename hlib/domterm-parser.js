@@ -386,6 +386,7 @@ class DTParser {
                     term._currentStyleSpan = null;
                     var savedStyleMap = term._currentStyleMap;
                     term._currentStyleMap = new Map();
+                    term._currentStyleSpan = null;
                     for (var r = 0; ; ) {
                         term.insertSimpleOutput(Es, 0, term.numColumns);
                         if (++r >= term.numRows)
@@ -393,6 +394,7 @@ class DTParser {
                         term.cursorLineStart(1);
                     }
                     term._currentStyleMap = savedStyleMap;
+                    term._currentStyleSpan = null;
                     term.moveToAbs(term.homeLine, 0, true);
                     break;
                 }
