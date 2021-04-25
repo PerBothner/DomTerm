@@ -420,31 +420,29 @@ class DTParser {
                     var oldContainer = term.outputContainer;
                     if (oldContainer instanceof Text)
                         oldContainer = oldContainer.parentNode;
+                    this.saveOutputBefore = term.outputBefore;
+                    this.saveOutputContainer = term.outputContainer;
                     // FIXME adjust for _regionLeft
                     if (term._currentPprintGroup !== null) {
                         this.controlSequenceState = DTParser.SEEN_CR;
-                    } else if (i+1 < endIndex && bytes[i+1] == 10 /*'\n'*/
-                               && ! term.usingAlternateScreenBuffer
-                               && (term._regionBottom == term.numRows
-                                   || term.getCursorLine() != term._regionBottom-1)) {
-                        if (term._pauseNeeded()) {
-                            i--;
-                            this.controlSequenceState = DTParser.PAUSE_REQUESTED;
-                            continue;
+                        break;
+                    }
+                    if (! term.usingAlternateScreenBuffer
+                        && (term._regionBottom == term.numRows
+                            || term.getCursorLine() != term._regionBottom-1)) {
+                        if (i+1 < endIndex && bytes[i+1] == 10 /*'\n'*/) {
+                            if (term._pauseNeeded()) {
+                                i--;
+                                this.controlSequenceState = DTParser.PAUSE_REQUESTED;
+                                continue;
+                            }
+                            term.cursorLineStart(1);
+                            i++;
+                            break;
                         }
-                        term.cursorLineStart(1);
-                        if (term.outputBefore instanceof Element
-                            && term.outputBefore.getAttribute("expecting-echo")) {
-                            term.outputBefore.removeAttribute("expecting-echo");
-                            term.outputBefore = term.outputBefore.nextSibling;
-                            term.resetCursorCache();
-                        }
-                        i++;
-                    } else {
-                        term._breakDeferredLines();
-                        term.cursorLineStart(0);
                         this.controlSequenceState = DTParser.SEEN_CR;
                     }
+                    term.cursorLineStart(0);
                     break;
                 case 10: // '\n' newline
                 case 11: // vertical tab
@@ -452,17 +450,21 @@ class DTParser {
                     if (term._currentPprintGroup !== null
                         && this.controlSequenceState == DTParser.SEEN_CR) {
                         this.handleOperatingSystemControl(118, "");
+                        this.controlSequenceState = DTParser.INITIAL_STATE;
                     } else {
-                        term._breakDeferredLines();
                         if (term._pauseNeeded()) {
                             i--;
                             this.controlSequenceState = DTParser.PAUSE_REQUESTED;
                             continue;
                         }
-                        term.cursorNewLine((term.sstate.automaticNewlineMode & 1) != 0);
-                    }
-                    if (this.controlSequenceState == DTParser.SEEN_CR) {
-                        this.controlSequenceState =  DTParser.INITIAL_STATE;
+                        if (this.controlSequenceState == DTParser.SEEN_CR) {
+                            term.outputBefore = this.saveOutputBefore;
+                            term.outputContainer = this.saveOutputContainer;
+                            term.resetCursorCache();
+                            term.cursorLineStart(1);
+                            this.controlSequenceState = DTParser.INITIAL_STATE;
+                        } else
+                            term.cursorNewLine((term.sstate.automaticNewlineMode & 1) != 0);
                     }
                     break;
                 case 27 /* Escape */:

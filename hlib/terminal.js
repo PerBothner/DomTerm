@@ -1685,6 +1685,42 @@ Terminal.prototype._maybeGoDeeper = function(current) {
     return parent;
 }
 
+/** Append new line.
+ * 'mode' is "hard", "soft", or "block"
+ */
+Terminal.prototype._appendLine = function(mode, lastParent, parent, before=null) {
+    let next = this._createLineNode(mode == "soft" ? "soft" : "hard");
+    let lineCount = this.lineStarts.length;
+    let prevLineEnd = this.lineEnds[lineCount-1];
+    let lineStart;
+    if (mode == "block") {
+        let preNode = this._createPreNode();
+        preNode.appendChild(next);
+        parent.appendChild(preNode);
+        this._setBackgroundColor(preNode,
+                                 this._getBackgroundColor(this._vspacer));
+        lineStart = preNode;
+        this.lineEnds[lineCount] = next;
+    } else {
+        lastParent.insertBefore(next, before);
+        lineStart = next;
+        this.lineEnds[lineCount] = prevLineEnd;
+        this.lineEnds[lineCount-1] = next;
+    }
+    lineStart._widthMode = Terminal._WIDTH_MODE_NORMAL;
+    lineStart._widthColumns = 0;
+    this.lineStarts[lineCount] = lineStart;
+    let nextLine = lineCount;
+    lineCount++;
+    let homeLine = this.homeLine;
+    if (lineCount > homeLine + this.numRows) {
+        homeLine = lineCount - this.numRows;
+        this.homeLine = homeLine;
+        this._adjustSpacer(-1);
+    }
+    return parent;
+}
+
 /** Move to the request position.
  * @param goalAbsLine number of lines (non-negative) to down topNode start
  * @param goalColumn number of columns to move right from the start of the goalLine
@@ -1730,6 +1766,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         // FIXME this doesn't handle currentCommandGroup() != null
         // and goalAbsLine < lineCount
         const currentGroup = this.currentCommandGroup();
+        let before = null;
         while (goalAbsLine >= lineCount) {
             if (! addSpaceAsNeeded)
                 return;
@@ -1754,6 +1791,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     if (lastParent.classList.contains("input-line")
                         && this.sstate.stayInInputMode) {
                         parent = lastParent;
+                        before = lastParent.lastChild;
                         newPre = false;
                     } else {
                         // FIXME use startOutput
@@ -1766,31 +1804,9 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     parent = lastParent.parentNode;
                 }
             }
-            var next = this._createLineNode("hard", "\n");
-            let prevLineEnd = this.lineEnds[lineCount-1];
-            let lineStart;
-            if (newPre) {
-                var preNode = this._createPreNode();
-                preNode.appendChild(next);
-                parent.appendChild(preNode);
-                this._setBackgroundColor(preNode,
-                                         this._getBackgroundColor(this._vspacer));
-                lineStart = preNode;
-            } else {
-                lastParent.appendChild(next);
-                lineStart = prevLineEnd;
-            }
-            lineStart._widthMode = Terminal._WIDTH_MODE_NORMAL;
-            lineStart._widthColumns = 0;
-            this.lineStarts[lineCount] = lineStart;
-            this.lineEnds[lineCount] = next;
-            var nextLine = lineCount;
+            parent = this._appendLine(newPre?"block":"hard", lastParent,
+                                      parent, before);
             lineCount++;
-            if (lineCount > homeLine + this.numRows) {
-                homeLine = lineCount - this.numRows;
-                this.homeLine = homeLine;
-                this._adjustSpacer(-1);
-            }
         }
         var lineStart = this.lineStarts[goalAbsLine];
         //this.log("- lineStart:"+lineStart+" homeL:"+homeLine+" goalL:"+goalAbsLine+" lines.len:"+this.lineStarts.length);
@@ -2353,7 +2369,41 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
  * @param deltaLines line number to move to, relative to current line.
  */
 Terminal.prototype.cursorLineStart = function(deltaLines) {
-    this.moveToAbs(this.getAbsCursorLine()+deltaLines, 0, true);
+    let curLine = this.getAbsCursorLine();
+    if (deltaLines == 1 && curLine == this.lineStarts.length-1) {
+        if (this._currentStyleMap.size == 0)
+            this._adjustStyle();
+        let next = this.outputBefore;
+        let parent = this.outputContainer;
+        // If output position inside an inline element *and* at end of line,
+        // then we prefer to insert a nested newline element (to avoid
+        // breaking up semantically-meaningful spans).
+        // Otherwise, create a new line block (domterm-pre, usually).
+        let newBlock = Terminal.isBlockNode(parent);
+        if (! newBlock) {
+            let endLine = this.lineEnds[curLine];
+            for (; parent  ;) {
+                if (next != null && next != endLine) {
+                    newBlock = true;
+                    break;
+                }
+                if (Terminal.isBlockNode(parent))
+                    break;
+                next = parent.nextSibling;
+                parent = parent.parentNode;
+            }
+        }
+        if (! newBlock) {
+            this._appendLine("hard", this.outputContainer, null, this.outputBefore);
+            let newLine = this.lineEnds[curLine];
+            this.outputContainer = newLine.parentNode;
+            this.outputBefore = newLine.nextSibling;
+            this.currentAbsLine = curLine + 1;
+            this.currentCursorColumn = 0;
+            return;
+        }
+    }
+    this.moveToAbs(curLine+deltaLines, 0, true);
 };
 
 Terminal.prototype.cursorDown = function(count) {
@@ -3016,10 +3066,12 @@ Terminal.prototype.makeId = function(local) {
     return this.name + "__" + local;
 };
 
-Terminal.prototype._createLineNode = function(kind, text="") {
+Terminal.prototype._createLineNode = function(kind, text=kind=="hard"?"\n":"") {
     var el = document.createElement("span");
     // the following is for debugging
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
+    if (kind=="soft")
+        el.setAttribute("breaking", "yes");
     el.setAttribute("line", kind);
     el.stayOut = true;
     el.outerPprintGroup = this._currentPprintGroup;
@@ -3258,7 +3310,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     topNode.contentEditable = true;
 
     var wrapDummy = this._createLineNode("soft");
-    wrapDummy.setAttribute("breaking", "yes");
     helperNode.appendChild(wrapDummy);
     this._wrapDummy = wrapDummy;
     DomTerm.setFocus(this, "N");
@@ -6910,11 +6961,10 @@ Terminal.prototype.parseBytes = function(bytes, beginIndex = 0, endIndex = bytes
     let rlen = endIndex - beginIndex;
     if (this.parser._deferredBytes)
         rlen += this.parser._deferredBytes.length;
-    /*
-    //DEBUGGING of partial sequences
-    if (true) {
+
+    if (false) { // DEBUGGING of partial sequences
         // number of trailing bytes to do one-by-one; -1 is all of them.
-        let do_one_by_one = 0;
+        let do_one_by_one = -1;
         if (do_one_by_one >= 0 && endIndex > beginIndex + do_one_by_one) {
             let next = endIndex - do_one_by_one;
             this.parser.parseBytes(bytes, beginIndex, next);
@@ -6922,10 +6972,8 @@ Terminal.prototype.parseBytes = function(bytes, beginIndex = 0, endIndex = bytes
         }
         for (let i = beginIndex; i < endIndex; i++)
             this.parser.parseBytes(bytes, i, i+1);
-        return;
-    }
-    */
-    this.parser.parseBytes(bytes, beginIndex, endIndex);
+    } else
+        this.parser.parseBytes(bytes, beginIndex, endIndex);
     if (this.parser._deferredBytes)
         rlen -= this.parser._deferredBytes.length;
     this._receivedCount = (this._receivedCount + rlen) & Terminal._mask28;
@@ -7915,11 +7963,10 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             }
             //current is after inserted textNode;
             var oldContainer = this.outputContainer;
-            var oldLine = this.lineEnds[absLine];
+            let oldLine = this.lineEnds[absLine];
             if (this.outputBefore != null
                 || oldContainer.nextSibling != oldLine)
                 oldLine = null;
-            var oldContainerNext = oldContainer.nextSibling;
             this.cursorLineStart(1);
             this._forceWrap(absLine);
             // Move newly-softened line inside oldContainer.
@@ -9227,11 +9274,17 @@ Terminal.prototype._checkTree = function() {
            && this.currentAbsLine >= nlines))
         error("bad currentAbsLine");
     var isSavedSession = this.isSavedSession();
+    let value;
     if (this.outputContainer == null
         || (this.outputContainer instanceof Text
             ? (typeof this.outputBefore != "number"
                || this.outputBefore < 0
                || this.outputBefore > this.outputContainer.length)
+            : typeof this.outputBefore === "number"
+            ? (this.outputContainer.nodeName !== "SPAN"
+               || (value = this.outputContainer.getAttribute('content-value')) == null
+               || this.outputBefore < 0
+               || this.outputBefore > value.length)
             : (this.outputBefore
                && this.outputBefore.parentNode != this.outputContainer))
         || (! isSavedSession && this.outputContainer.parentNode == null))
