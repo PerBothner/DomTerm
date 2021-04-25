@@ -5392,7 +5392,7 @@ Terminal.prototype._eraseLineEnd = function() {
             // FIXME avoid this if also doing eraseLineRight
             var end = this.lineEnds[this.getAbsCursorLine()];
             if (oldbg == null)
-                oldbg = "var(-dt-bgcolor)";
+                oldbg = "var(--background-color)";
             // ... but existing text must keep existing color.
             for (var ch = line.firstChild;
                  ch != null && ch != end; ) {
