@@ -176,8 +176,8 @@ span[caret][std="caret"][value]:after {
           background-color: var(--input-line-color); color: inherit; text-decoration: inherit }
     100% {}
 }
-div.domterm a.subtle:not(:hover) { text-decoration: inherit; }
-div.domterm a.plain:not(:hover) { color: inherit; text-decoration: inherit; }
+div.domterm a.subtle { color: inherit; }
+div.domterm a.subtle:not(:hover), div.domterm a.plain:not(:hover) { text-decoration: inherit; }
 div.domterm h2,
 div.domterm h3,
 div.domterm p,
@@ -196,3 +196,4 @@ div.interaction[buffer~="main"] div.command-group {
 
 span.pending { background-color: lightgrey }
 span.pending span[std="prompt"] { color: green, background-color: lightgrey }
+span.url { font-family: sans-serif }
