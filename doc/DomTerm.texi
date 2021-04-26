@@ -3698,7 +3698,8 @@ Internally, a subtle link is distinguished by its @code{class} attributes contai
 Links created implicitly using pattern-matching are subtle.
 Programs that emit explicit links (using HTML escape sequences)
 can specify the class as @code{subtle} to indicate links that should be
-more subdued than default link styling.
+more subdued than default link styling or
+the @code{plain} styling mentioned above.
 @end itemize
 
 @anchor{linkification}
