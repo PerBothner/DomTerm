@@ -3684,6 +3684,8 @@ Two styles of links are supported:
 @itemize @bullet
 @item
 A @dfn{regular link} displays (by default) in the ``normal'' link style (typically blue text with underline).
+(If the @code{class} attribute includes the word @code{plain}
+then no underline is added, but normal link styling applies otherwise.)
 A click opens a window or application, as described below,
 as does right-click (context menu) and then selecting @code{Open Link}.
 @item
