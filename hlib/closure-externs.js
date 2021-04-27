@@ -13,5 +13,4 @@ DomTerm.prototype['setInputMode'] = DomTerm.prototype.setInputMode;
 //DomTerm.prototype['doPaste'] = DomTerm.prototype.doPaste;
 //DomTerm.prototype['doCopy'] = DomTerm.prototype.doCopy;
 DomTerm.prototype['doSaveAs'] = DomTerm.prototype.doSaveAs;
-DomTerm.prototype['setCaretStyle'] = DomTerm.prototype.setCaretStyle;
 DomTerm.prototype['processInputCharacters'] = DomTerm.prototype.processInputCharacters;

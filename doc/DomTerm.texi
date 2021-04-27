@@ -1703,6 +1703,7 @@ lighter background and a darker foreground colors.
 Currently @code{auto} is only known to work on Firefox running on Gnome.
 
 @item @code{@b{style.caret} =} @var{value}
+@itemx @code{@b{style.edit-caret} =} @var{value}
 Change the style of the caret (text input cursor).
 See @ref{caret styling}.
 @end table
@@ -3378,20 +3379,27 @@ is a feature you want.
 @subheading Text caret (input cursor)
 
 You can change the look of the caret (text input cursor)
-using the @code{style.caret} setting in @ref{Settings,@code{settings.ini}}.
+using the @code{style.caret} and @code{style.edit-caret}
+settings in @ref{Settings,@code{settings.ini}}.
 @example
 @code{@b{style.caret} =} @var{value}
+@code{@b{style.edit-caret} =} @var{value}
 @end example
+The @code{style.caret} setting is used for normal terminal ``character'' mode,
+while @code{style.edit-caret} is used when the terminal is in line-edit mode
+or the minibuffer.
 
 The @var{value} can be one of these (unquoted) words:
 @code{block}, @code{blinking-block},
 @code{underline}, @code{blinking-underline},
 @code{bar}, or @code{blinking-bar}.
-If can also be @code{native}, which uses the native
+(The experimental value @code{native} uses the native
 text caret (a vertical bar, typically),
-but that is not recommended as it interacts awkwardly with the selection.
+but does not work properly and it interacts awkwardly with the selection.)
 
-The default is @code{blinking-block}. Note that
+The default is @code{blinking-block} for @code{style.caret},
+and @code{blinking-bar} for @code{style.edit-caret}
+Note that
 @code{blinking-block}, @code{blinking-underline}, and @code{blinking-bar}
 only blink 20 times after each change or focus.
 To change the number of blinks set the CSS variable @code{--caret-blink-count}.
@@ -3400,13 +3408,13 @@ For example to blink indefinitely, add this to @code{settings.ini}:
 style.user= div.domterm @{ --caret-blink-count: infinite @}
 @end example
 
-You can also change the caret style with an
+You can also change the character-mode caret style with an
 escape sequence (DECSCUSR).  For example this shell command:
 @example
 echo -en "\e[3 q"
 @end example
 changes the style to @code{blinking-underline}.
-Instead of 3, you can use 0 (default - reset to @code{settings.ini} value, if any), 1 (blinking-block), 2 (steady block),
+Instead of 3, you can use 0 (default - reset to the @code{style.caret} value), 1 (blinking-block), 2 (steady block),
 3 (blinking-underline), 4 (steady underline), 5 (blinking-bar), 6 (steady bar), or 7 (native),
 
 @subheading Example: A ``solarized'' theme

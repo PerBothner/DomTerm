@@ -182,9 +182,15 @@ class Terminal {
     this._confirmedCount = 0;
     this._replayMode = false;
 
-    this.caretStyle = Terminal.DEFAULT_CARET_STYLE;
-    this.caretStyleFromSettings = -1; // style.caret from settings.ini
+    /** Style for char mode caret, based on caret.style in settings.ini. */
+    this.caretStyleFromSettings = Terminal.DEFAULT_CARET_STYLE;
+    /** Style for char mode caret, based on received escape sequence. */
     sstate.caretStyleFromCharSeq = -1; // caret from escape sequence
+    /** Style to use for caret in char mode.
+     * Based on caretStyleFromSettings and caretStyleFromCharSeq. */
+    this.caretCharStyle = this.caretStyleFromSettings;
+    /** Style to use caret in line-edit and mini-buffer modes. */
+    this.caretEditStyle = Terminal.DEFAULT_EDIT_CARET_STYLE;
     sstate.showCaret = true;
 
     // Use the doLineEdit function when isLineEditing().
@@ -472,6 +478,10 @@ class Terminal {
 
     unconfirmedMax() {
         return this.getOption("flow-confirm-every", 500);
+    }
+
+    caretStyle(editStyle = this._caretNode.useEditCaretStyle) {
+        return editStyle ? this.caretEditStyle : this.caretCharStyle;
     }
 
     // state can be true, false or "toggle"
@@ -797,6 +807,7 @@ Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
                         "blinking-underline", "underline",
                         "blinking-bar", "bar", "native" ];
 Terminal.DEFAULT_CARET_STYLE = 1; // blinking-block
+Terminal.DEFAULT_EDIT_CARET_STYLE = 5; // blinking-bar
 Terminal.NATIVE_CARET_STYLE = Terminal.caretStyles.indexOf("native");
 Terminal.BELL_TIMEOUT = 400;
 /** On receiving BEL (ctrl-G) display this text in info widget. */
@@ -2175,32 +2186,12 @@ Terminal.prototype._removeInputLine = function() {
     }
 };
 
-Terminal.prototype.setCaretStyle = function(style) {
-    if (style == 0) {
-        style = this.caretStyleFromSettings >= 0
-            ? this.caretStyleFromSettings
-            : Terminal.DEFAULT_CARET_STYLE;
-    }
-    if (style != Terminal.NATIVE_CARET_STYLE
-        && this.caretStyle == Terminal.NATIVE_CARET_STYLE) {
-        let sel = document.getSelection();
-        if (sel.focusNode == this._caretNode
-            && sel.anchorNode == this._caretNode
-            && sel.focusOffset == 0 && sel.anchorOffset == 0) {
-            sel.removeAllRanges();
-        }
-    }
-    this._caretNode.removeAttribute("caret");
-    this._caretNode.removeAttribute("value");
-    this.caretStyle = style;
-};
-
-Terminal.prototype.useStyledCaret = function() {
-    return this.caretStyle !== Terminal.NATIVE_CARET_STYLE
+Terminal.prototype.useStyledCaret = function(caretStyle = this.caretStyle()) {
+    return caretStyle !== Terminal.NATIVE_CARET_STYLE
         && this.sstate.showCaret;
 };
 /* True if caret element needs a "value" character. */
-Terminal.prototype._caretNeedsValue = function(caretStyle = this.caretStyle) {
+Terminal.prototype._caretNeedsValue = function(caretStyle = this.caretStyle()) {
     return caretStyle <= 4;
 }
 
@@ -2252,11 +2243,12 @@ Terminal.prototype._restoreCaret = function() {
     let cparent = this._caretNode.parentNode;
     if (! this._suppressHidePassword)
         this._hidePassword();
-    if (this.useStyledCaret()) {
+    const cstyle = this.caretStyle();
+    if (this.useStyledCaret(cstyle)) {
         if (! this._caretNode.getAttribute("caret")
             && (! (this._caretNode.firstChild instanceof Text)
                 || this._caretNode.firstChild.data.length == 0)) {
-            if (this._caretNeedsValue()) {
+            if (this._caretNeedsValue(cstyle)) {
                 let text = this._followingText(this._caretNode);
                 let tdata = text instanceof Text ? text.data
                     : text instanceof Element ? text.getAttribute("content-value")
@@ -2306,11 +2298,12 @@ Terminal.prototype._restoreCaret = function() {
                     */
                 } else
                     this._caretNode.setAttribute("value", " ");
-            }
+            } else
+                this._caretNode.removeAttribute("value");
         }
-        const cstyle = Terminal.caretStyles[this.caretStyle];
-        if (cstyle)
-            this._caretNode.setAttribute("caret", cstyle);
+        const cstyleStr = Terminal.caretStyles[cstyle];
+        if (cstyleStr)
+            this._caretNode.setAttribute("caret", cstyleStr);
     }
     else {
         let sel = document.getSelection();
@@ -3719,6 +3712,7 @@ Terminal.prototype.showMiniBuffer = function(options) {
     miniBuffer.saveCaretNode = this._caretNode;
     let caretNode = this._createSpanNode();
     caretNode.setAttribute("std", "caret");
+    caretNode.useEditCaretStyle = true;
     caretNode.stayOut = true;
     this._inputLine = miniBuffer;
     this._caretNode = caretNode;
@@ -4271,7 +4265,7 @@ Terminal.prototype._updateSelected = function() {
         //&& this._pagingMode == 0
         && DomTerm.focusedTerm==this
         && this._mouseSelectionState < 0
-        && this.caretStyle !== Terminal.NATIVE_CARET_STYLE) {
+        && this.caretStyle() !== Terminal.NATIVE_CARET_STYLE) {
         this._clearSelection(true);
     }
 }
@@ -4314,7 +4308,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         if (this.sstate.mouseMode == 0 && ev.button == 0) {
             let sel = document.getSelection();
             if (sel.isCollapsed) {
-                // we don't want a visible caret FIXME handle caretStyle >= 5
+                // we don't want a visible caret FIXME handle caretStyle() >= 5
                 //sel.removeAllRanges();
             }
         }
@@ -5817,24 +5811,29 @@ Terminal.prototype.updateSettings = function() {
         this.setReverseVideo(this._asBoolean(style_dark));
     }
 
-    let cstyle = getOption("style.caret");
-    if (cstyle) {
-        cstyle = String(cstyle).trim();
-        let nstyle = Terminal.caretStyles.indexOf(cstyle);
-        if (nstyle < 0) {
-            nstyle = Number(cstyle);
-            if (! nstyle)
-                nstyle = Terminal.DEFAULT_CARET_STYLE;
+    for (let c = 0; c <= 1; c++) {
+        let cstyle = getOption(c ? "style.edit-caret" : "style.caret");
+        let nstyle = -1;
+        if (cstyle) {
+            cstyle = String(cstyle).trim();
+            nstyle = Terminal.caretStyles.indexOf(cstyle);
+            if (nstyle < 0) {
+                nstyle = Number(cstyle);
+                if (! nstyle)
+                    nstyle = -1;
+            }
         }
-        cstyle = nstyle;
-    }
-    if (cstyle >= 0 && cstyle < Terminal.caretStyles.length) {
-        if (this.sstate.caretStyleFromCharSeq < 0)
-            this.setCaretStyle(cstyle);
-        this.caretStyleFromSettings = cstyle;
-    } else {
-        this.caretStyleFromSettings = -1;
-        this.setCaretStyle(Terminal.DEFAULT_CARET_STYLE);
+        if (nstyle < 0 || nstyle >= Terminal.caretStyles.length) {
+            nstyle = c ? Terminal.DEFAULT_EDIT_CARET_STYLE
+                : Terminal.DEFAULT_CARET_STYLE;
+        }
+        if (c)
+            this.caretEditStyle = nstyle;
+        else {
+            this.caretStyleFromSettings = nstyle;
+            if (this.sstate.caretStyleFromCharSeq < 0)
+                this.caretCharStyle = nstyle;
+        }
     }
 
    // if (DomTerm._settingsCounter != settingsCounter) {
@@ -8750,6 +8749,7 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
         }
     }
     this._inputLine = null;
+    this._caretNode.useEditCaretStyle = false;
     if (suppressEcho) {
         if (oldInputLine != null)
             this._createPendingSpan(oldInputLine);
@@ -10290,6 +10290,7 @@ Terminal.prototype.editorAddLine = function() {
             this.outputBefore = this.outputBefore.nextSibling;
         inputNode.appendChild(this._caretNode);
         this.insertNode(inputNode);
+        this._caretNode.useEditCaretStyle = true;
         this._restoreCaret();
         this.maybeFocus();
         this.outputBefore = inputNode;

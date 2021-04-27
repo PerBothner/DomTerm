@@ -1127,8 +1127,13 @@ class DTParser {
             if (this._flagChars.indexOf(' ') >= 0) {
                 // Set cursor style (DECSCUSR, VT520).
                 let style = this.getParameter(0, 1);
-                term.setCaretStyle(style);
-                term.sstate.caretStyleFromCharSeq = style || -1;
+                if (style > 0 && style < Terminal.caretStyles.length) {
+                    term.sstate.caretStyleFromCharSeq = style;
+                    this.caretCharStyle = style;
+                } else {
+                    term.sstate.caretStyleFromCharSeq = -1;
+                    this.caretCharStyle = this.caretStyleFromSettings;
+                }
             }
             break;
         case 114 /*'r'*/:
