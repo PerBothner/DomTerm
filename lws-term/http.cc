@@ -69,36 +69,33 @@ get_resource_path()
 }
 #endif
 
+struct mimetype {
+    const char *extension;
+    const char *mimetype;
+} mimetypes[] = {
+    { ".ico", "image/x-icon" },
+    { ".png", "image/png" },
+    { ".svg", "image/svg+xml" },
+    { ".jpeg", "image/jpeg" },
+    { ".jpg", "image/jpeg" },
+    { ".html", "text/html" },
+    { ".css", "text/css" },
+    { ".js", "text/javascript" },
+    { ".mjs", "text/javascript" },
+    { nullptr, nullptr }
+};
+
 const char * get_mimetype(const char *file)
 {
         int n = strlen(file);
-
-        if (n < 5)
-                return NULL;
-
-        if (!strcmp(&file[n - 4], ".ico"))
-                return "image/x-icon";
-
-        if (!strcmp(&file[n - 4], ".png"))
-                return "image/png";
-
-        if (!strcmp(&file[n - 4], ".svg"))
-                return "image/svg+xml";
-
-        if (!strcmp(&file[n - 5], ".jpeg")
-            ||!strcmp(&file[n - 4], ".jpg"))
-            return "image/jpeg";
-
-        if (!strcmp(&file[n - 5], ".html"))
-                return "text/html";
-
-        if (!strcmp(&file[n - 4], ".css"))
-                return "text/css";
-
-        if (!strcmp(&file[n - 3], ".js"))
-                return "text/javascript";
-
-        return NULL;
+        const char *end = file+n;
+        struct mimetype *m = mimetypes;
+        for (; m->extension; m++) {
+            size_t extlen = strlen(m->extension);
+            if (n > extlen && strcmp(end-extlen, m->extension) == 0)
+                return m->mimetype;
+        }
+        return nullptr;
 }
 
 int
