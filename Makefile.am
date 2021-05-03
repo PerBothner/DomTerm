@@ -391,7 +391,11 @@ doc/DomTerm.xml: doc/DomTerm.texi
 	-e '/Suspends additional output/s|><listitem>| continuation="continues"><listitem>|' \
 	> doc/DomTerm.xml
 
+if WITH_DOCBOOK
 $(HTML_DIR)/index.html: doc/DomTerm.xml Makefile
+else
+$(HTML_DIR)/index.html: doc/DomTerm.texi Makefile
+endif
 	$(MKDIR_P) $(HTML_DIR)/images $(HTML_DIR)/tools
 if WITH_DOCBOOK
 	$(XSLT) --path $(DOCBOOK_XSL_DIR)/html \
