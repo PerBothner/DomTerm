@@ -663,12 +663,12 @@ Managing docking (draggable panes and tabes) using a native
 library has some advantages (compared to GoldenLayout).
 Specifically, you can drag panes between top-level windows.
 There are two candidate Qt libraries that are being considered:
- @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System} (slightly smaller, more liberal license, nicer defaults) and
-@uref{https://www.kdab.com/development-resources/qt-tools/kddockwidgets/,KDDockWidgets} (seems slightly more solid, better Wayland support).
+ @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System} (slightly smaller, more liberal license, nicer defaults - but needs to use a fork for now) and
+@uref{https://www.kdab.com/development-resources/qt-tools/kddockwidgets/,KDDockWidgets} (seems slightly more solid, better Wayland support, can be used unpatched).
 Both are supported in a proof-of-concept way;
 both need more polishing and testing, which may determine a preference.
 
-To use @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,@strong{Qt Advanced Docking System}}:
+To use (my fork of) @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,@strong{Qt Advanced Docking System}}:
 @example
 git clone https://github.com/PerBothner/Qt-Advanced-Docking-System.git
 git checkout multi-main
@@ -1830,7 +1830,7 @@ if specified the @code{-d @var{mask}} must have 4 set in the @var{mask}.
 (If you divide @var{mask} by 4, the result must be an odd integer.)
 
 @item @code{@b{log.js-string-max} =} @var{length}
-If positive, maximum length of strings to string to the JavaScript console.
+If positive, maximum length of strings to print to the JavaScript console.
 
 @item @code{@b{debug.input.extra-delay} = } @var{delay}
 Delay an extra @var{delay} seconds before sending keyboard
@@ -2265,17 +2265,19 @@ as a sub-window:
 @example
 domterm --below @@192.168.1.55
 @end example
-The if you run the @code{domterm status} it tells you about the local session
-(session 1) and the remote session (session 2 on @code{192.168.1.55}):
+If you run the @code{domterm status} you see what the
+local server knows about:
 @example
 Window 1:  qtwebengine: 5.6.1, chrome: 45.0.2454.101
   session#1: pid: 5287, tty: /dev/pts/2
-  session#2: ssh to remote @@192.168.1.55
+  session#2: ssh to remote @@192.168.1.55#1
 @end example
-You can also see the status of the remote server
-using @code{domterm @@192.168.1.55 status}.
+Session 1 is a local session,
+while session 2 is a remote session.
 Note that what the local server thinks of
 as session 2 is a proxy for session 1 on the remote server:
+You can also see the status of the remote server
+using @code{domterm @@192.168.1.55 status}.
 @example
 Connection 1 via ssh from 192.168.1.58
   session#1: pid: 6464, tty: /dev/pts/1
@@ -2472,30 +2474,34 @@ If the session is not displayed in any window,
 we say it is @dfn{detached}.
 It is possible to display the same session in multiple windows.
 
-A @dfn{top-level window} is window or tab in a web browser
-(or embedded browser, like Electron).
+Every session has a unique integer session number.
+These numbers are unique with a domterm server:
+If you connect to a @ref{Remote serving,remote domterm server}
+the session numbers may be different on the local and remote end.
+
+@subheading Windows and connections
+
+A @dfn{window} is an area of the screen
+where you can display or interact with a session:
+Either a @dfn{top-level window} (a window or tab
+managed by a window manager or a web browser),
+or a @dfn{sub-window} (managed by DomTerm),
+which can be a @dfn{pane} or a @dfn{tab}.
 A top-level window may be split vertically and/or horizontally
-into one or more @dfn{tile}s (or panes).
-Each tile has one or more @dfn{tabs}, where each
-tab is a (sub-)window.  Only one of the tabs in a tile can be displayed
-at a time.  These tabs are managed by domterm, and are
-distinct from any tabs managed by a web browser or window manager
-(though they have similar purpose).
+into one or more panes (or tiles),
+which can each have multiple tabs, only one of which is visible at a time,
 
 A @dfn{non-session window} displays something other than
 a DomTerm session.  The @code{domterm browse} command creates
 a non-session window that displays a specified web page.
 One use of this for is viewing documentation.
 
-Every session has a unique integer session number.
-Every window has a unique window (or connection) number.
+Every window has a unique window number.
 Normally, when a new terminal session is created a window will
 be created with the same window number as the session number.
 However, there may be detached sessions without windows,
 and (rarely) there may be sessions that use multiple windows.
-These numbers are unique with a domterm server:
-If you connect to a @ref{Remote serving,remote domterm server}
-the session numbers may be different on the local and remote end.
+
 Also the remote server will use a proxy connection with
 a connection number that is similar to a window number.
 
@@ -2575,7 +2581,7 @@ and then deletes the restricted selection.
 the appropriate number of Delete/Backspace characters to the application.)
 @item @kbd{Ctrl-Shift-@key{S}} (@code{save-as-html})
 Save the display to a file.
-@item @kbd{Ctrl-Shift-@key{L}} (@code{cycle-input-mode})
+@item @kbd{Ctrl-Shift-@key{L}} (@code{input-mode-cycle})
 Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
 @item @kbd{Ctrl-Shift-@key{M}}
@@ -4584,8 +4590,6 @@ Some toolkits to explore for integrated browser/application:
 @item
 @uref{http://lwn.net/Articles/647921/,Mozilla Servo}
 @item
-@uref{http://atom.io,Atom/Electon}
-A possible start is @uref{https://atom.io/packages/term2,term2}.
 @item
 @uref{https://tauri.studio/en/Tauri} aims to similar to Electron
 but ligher-weight.
@@ -4915,7 +4919,7 @@ a top-level @code{div} element, and assume that element
 has a certain well-behaved form.
 
 @table @asis
-@item @var{domtern-element} ::= @code{<div class="domterm">} @var{domterm-toplevel} @code{</div>}
+@item @var{domterm-element} ::= @code{<div class="domterm">} @var{domterm-toplevel} @code{</div>}
 A top-level ``DomTerm window'' is a @code{<div>} element
 whose @code{class} is @code{domterm}.
 
@@ -6233,7 +6237,7 @@ override the highlighting appearance with a custom style sheet.
 @node Remote connection over ssh
 @subsection Remote connection over ssh
 
-The support for remote connections is relatively thin
+The support for remote connections is a relatively thin
 layering on top of @uref{https://www.ssh.com/ssh/,ssh}.
 When you type:
 @example
@@ -6470,3 +6474,5 @@ which was a big inspiration).
 Building of the @code{qtdomterm} directory makes use of
 @uref{https://github.com/tsuna/autotroll,AutoTroll} by
 Benoit Sigoure and Werner Lemberg.
+
+The find-text facility uses Julian Kühnel's @uref{https://markjs.io/,mark.j}.
