@@ -1,4 +1,4 @@
-/** @license Copyright (c) 2015, 2016, 2017, 2018, 2019, 2020 Per Bothner.
+/** @license Copyright (c) 2015, 2016, 2017, 2018, 2019, 2020, 2021 Per Bothner.
  *
  * Converted to JavaScript from WebTerminal.java, which has the license:
  *
@@ -8715,7 +8715,7 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
         && oldInputLine.classList.contains("noecho")
         && this.sstate.hiddenText;
     if (sendEnter && oldInputLine)
-        this.editorMoveHomeOrEnd(true);
+        this.editorMoveStartOrEndInput(true);
     let enterToSend = ! sendEnter ? ""
         : passwordField && this._clientPtyExtProc ? "\n"
         : this.keyEnterToString();
@@ -8811,6 +8811,7 @@ Terminal.prototype._popFromCaret = function(saved) {
 DomTerm.masterKeymapDefault =
     new window.browserKeymap(
         Object.assign({
+            "F7": "toggle-paging-mode",
             "F11": "toggle-fullscreen",
             "Shift-F11": "toggle-fullscreen-current-window",
             "Ctrl-Insert": "copy-text",
@@ -8824,12 +8825,12 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Shift-T": "new-tab",
             "Ctrl-Shift-X": "cut-text",
             //"Ctrl-@": "toggle-mark-mode",
-            "Alt-Shift-Home": "scroll-top",
-            "Alt-Shift-End": "scroll-bottom",
-            "Alt-Shift-Up": "scroll-line-up",
-            "Alt-Shift-Down": "scroll-line-down",
-            "Alt-Shift-PageUp": "scroll-page-up",
-            "Alt-Shift-PageDown": "scroll-page-down"
+            "Ctrl-Shift-Home": "scroll-top",
+            "Ctrl-Shift-End": "scroll-bottom",
+            "Ctrl-Shift-Up": "scroll-line-up",
+            "Ctrl-Shift-Down": "scroll-line-down",
+            "Ctrl-Shift-PageUp": "scroll-page-up",
+            "Ctrl-Shift-PageDown": "scroll-page-down"
         }, DomTerm.isMac ? {
             "Mod-V": "paste-text",
             "Mod-C": "copy-text"
@@ -8863,20 +8864,18 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Shift-Down": "down-line-extend",
     "Shift-End": "end-of-line-extend",
     "Shift-Home": "beginning-of-line-extend",
-    //"Alt-Down": "scroll-line-down",
-    //"Alt-Up": "scroll-line-up",
-    //"Alt-PageUp": "scroll-page-up",
-    //"Alt-PageDown": "scroll-page-down",
-    //"PageUp": "scroll-page-up", // ??
-    //"PageDown": "scroll-page-down", // ??
-    //"Shift-Mod-Home": "beginning-of-input-extend",
-    //"Shift-Mod-End": "end-of-input-extend",
+    "Ctrl-Down": "scroll-line-down",
+    "Ctrl-Up": "scroll-line-up",
+    "Ctrl-PageUp": "scroll-page-up",
+    "Ctrl-PageDown": "scroll-page-down",
+    "Shift-Alt-Home": "beginning-of-input-extend",
+    "Shift-Alt-End": "end-of-input-extend",
     "Backspace": "backward-delete-char",
     "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
     "Mod-Delete": "forward-delete-word",
-    //"Ctrl-Home": "scroll-top",
-    //"Ctrl-End": "scroll-bottom",
+    "Ctrl-Home": "scroll-top",
+    "Ctrl-End": "scroll-bottom",
     "Alt-Home": "beginning-of-input",
     "Alt-End": "end-of-input",
     "Home": "beginning-of-line",
@@ -8964,20 +8963,22 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-Up": "up-line-extend",
     "Shift-Down": "down-line-extend",
     "Mod-Right": 'forward-word',
-    //"Alt-Down": "scroll-line-down",
-    //"Alt-Up": "scroll-line-up",
-    //"Alt-PageUp": "scroll-page-up",
-    //"Alt-PageDown": "scroll-page-down",
+    "Ctrl-Down": "scroll-line-down",
+    "Ctrl-Up": "scroll-line-up",
+    "Ctrl-PageUp": "scroll-page-up",
+    "Ctrl-PageDown": "scroll-page-down",
+    "Ctrl-Home": "scroll-top",
+    "Ctrl-End": "scroll-bottom",
     "PageUp": "up-page",
     "PageDown": "down-page-or-unpause",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Shift-Home": "beginning-of-line-extend",
     "Shift-End": "end-of-line-extend",
-    "Ctrl-Home": "beginning-of-buffer",
-    "Ctrl-End": "end-of-buffer",
-    "Ctrl-Shift-Home": "beginning-of-buffer-extend",
-    "Ctrl-Shift-End": "end-of-buffer-extend",
+    "Alt-Home": "beginning-of-buffer",
+    "Alt-End": "end-of-buffer",
+    "Alt-Shift-Home": "beginning-of-buffer-extend",
+    "Alt-Shift-End": "end-of-buffer-extend",
     "Shift-Enter": "up-line",
     "Enter": "down-line-or-continue",
     "Shift-Space": "up-page",
@@ -10482,13 +10483,12 @@ Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, extend=false) {
     this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
-Terminal.prototype.editorMoveHomeOrEnd = function(toEnd) {
-    this._removeCaret();
-    let r = new Range();
-    r.selectNodeContents(this._inputLine);
-    if (toEnd)
-        r.setStart(r.endContainer, r.endOffset);
-    this.editorMoveToRangeStart(r);
+Terminal.prototype.editorMoveStartOrEndInput = function(toEnd, action="move") {
+    let count = toEnd ? -Infinity : Infinity;
+    if (action==="extend")
+        this.extendSelection(count, "char", "input");
+    else
+        this.editMovePosition(count, "char", "input");
     this.sstate.goalColumn = undefined; // FIXME add other places
 }
 
@@ -10582,7 +10582,7 @@ Terminal.prototype.editorContinueInput = function() {
     prompt.setAttribute("std", "prompt");
     prompt.stayOut = true;
     editSpan.appendChild(prompt);
-    this.editorMoveHomeOrEnd(true);
+    this.editorMoveStartOrEndInput(true);
     this.outputContainer=editSpan.parentNode;
     this.outputBefore=editSpan;
     this.resetCursorCache()

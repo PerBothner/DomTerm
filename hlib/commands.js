@@ -368,11 +368,19 @@ cmd('end-of-buffer-extend',
         return true; });
 cmd('beginning-of-input',
     function(dt, key) {
-        dt.editorMoveHomeOrEnd(false); dt._numericArgument = null;
+        dt.editorMoveStartOrEndInput(false); dt._numericArgument = null;
         return true; });
 cmd('end-of-input',
     function(dt, key) {
-        dt.editorMoveHomeOrEnd(true); dt._numericArgument = null;
+        dt.editorMoveStartOrEndInput(true); dt._numericArgument = null;
+        return true; });
+cmd('beginning-of-input-extend',
+    function(dt, key) {
+        dt.editorMoveStartOrEndInput(false, "extend"); dt._numericArgument = null;
+        return true; });
+cmd('end-of-input-extend',
+    function(dt, key) {
+        dt.editorMoveStartOrEndInput(true, "extend"); dt._numericArgument = null;
         return true; });
 cmd('up-line-or-history',
     function(dt, key) {
@@ -443,7 +451,7 @@ cmd('client-action',
             return false;
         let str = dt.keyNameToChars(key);
         if (str) {
-            dt.editorMoveHomeOrEnd(true);
+            dt.editorMoveStartOrEndInput(true);
             dt.editorInsertString(str);
             dt._sendInputContents(false);
             dt._inputLine = null;
