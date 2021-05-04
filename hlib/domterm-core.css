@@ -78,16 +78,16 @@ div.domterm span.focus-caret {
     position: relative;
     z-index: 1;
     --focus-color: #a0522d; /* sienna */
+    pointer-events: none;
 }
 div.domterm span.focus-caret span {
     position: absolute;
     top: 0px; bottom: 0px;
-    user-select: all
 }
 
 /* Doesn't seem to work on Chrome */
 div.domterm span[std="caret"] {
-    user-select: all
+    user-select: all;
 }
 
 .hide-selection *::selection {
