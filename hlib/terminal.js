@@ -1857,7 +1857,25 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         while (column < goalColumn) {
             var handled = false; // if column has been updated for current
             if (current instanceof Element && current.nodeName == "SPAN") {
-                if (current.getAttribute("class") == "wc-node") {
+                let valueAttr = current.getAttribute("content-value");
+                if (valueAttr) {
+                    let c = this.strColumnToIndex(valueAttr,
+                                                  goalColumn - column,
+                                                  current);
+                    if (c < 0) {
+                        column = goalColumn + c;
+                        handled = true;
+                    } else {
+                        column = goalColumn;
+                        if (c == valueAttr.length) {
+                            handled = true;
+                        } else {
+                            parent = current;
+                            current = c;
+                            break mainLoop;
+                        }
+                    }
+                } else if (current.getAttribute("class") == "wc-node") {
                     if (column + 2 <= goalColumn) {
                         column += 2;
                     } else { //if (column + 1 == goalColumn) {
@@ -1987,15 +2005,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     let valueAttr = current.getAttribute("content-value");
                     if (this.isObjectElement(current))
                         column += 1;
-                    else if (valueAttr && current.nodeName == "SPAN") {
-                        let w = this.strWidthInContext(valueAttr, current);
-                        column += w;
-                        if (column > goalColumn) {
-                            parent = current;
-                            current = goalColumn - (column - w);
-                            break mainLoop;
-                        }
-                    } else {
+                    else {
                         ch = current.firstChild;
                         if (ch != null) {
                             parent = current;
