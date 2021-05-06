@@ -740,23 +740,34 @@ class Terminal {
         if (group && group.lastChild instanceof Element
             && group.lastChild.classList.contains("input-line")
             && this._isAnAncestor(this.outputContainer, group.lastChild)) {
-            let cur = this._splitParents(group.lastChild);
+            const lineNo = this.getAbsCursorLine();
+            let cur = this._splitParents(group);
+            cur.classList.remove("input-line");
+            cur.removeAttribute("click-move");
             let commandOutput = document.createElement("div");
             commandOutput.setAttribute("class", "command-output");
-            group.insertBefore(commandOutput, group.lastChild.nextSibling);
-
-            const lineNo = this.getAbsCursorLine();
-            const preNode = this._createPreNode();
-            this._moveNodes(cur, preNode, null);
-            commandOutput.appendChild(preNode);
-            this.outputContainer = preNode;
-            this.outputBefore = cur;
-            if (cur instanceof Element &&
-                cur.getAttribute("line")) {
-                preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
-                preNode._widthColumns = 0;
+            group.insertBefore(commandOutput, cur);
+            commandOutput.appendChild(cur);
+            Terminal._forEachElementIn(cur,
+                                       (el) => {
+                                           if (el.getAttribute("std")==="input") {
+                                               this._moveNodes(el.firstChild, el.parentNode, el);
+                                               el.parentNode.removeChild(el);
+                                               return false;
+                                           }
+                                           return true;
+                                       });
+            cur.normalize();
+            this.lineStarts[lineNo] = cur;
+            this.moveToAbs(lineNo, 0, true);
+            while (this.lineStarts.length > lineNo
+                   && this.lineEnds[this.lineStarts.length-1]===cur.lastChild
+                   && this.lineStarts[this.lineStarts.length-1]===cur.lastChild.previousSibling
+                   && this.lineEnds[this.lineStarts.length-2]===cur.lastChild.previousSibling) {
+                this.lineStarts.pop();
+                this.lineEnds.pop();
+                cur.removeChild(cur.lastChild);
             }
-            this.lineStarts[lineNo] = preNode;
         }
     }
 
