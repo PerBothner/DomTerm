@@ -1288,6 +1288,19 @@ main(int argc, char **argv)
 
     lwsl_notice("domterm terminal server %s (git describe: %s)\n",
                 LDOMTERM_VERSION, git_describe);
+    if ((debug_level & LLL_NOTICE) != 0) {
+        struct sbuf sb;
+        sbuf_init(&sb);
+        for (int i = 0; i < argc; i++) {
+            char *arg = argv[i];
+            const char *qarg = maybe_quote_arg(arg);
+            sbuf_printf(&sb, " %s", qarg);
+            if (arg != qarg)
+                free((void*) qarg);
+        }
+        lwsl_notice("invoked as:%.*s\n", sb.len, sb.buffer);
+        sbuf_free(&sb);
+    }
     lwsl_notice("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
 #ifdef LWS_LIBRARY_VERSION
     lwsl_notice("Using Libwebsockets " LWS_LIBRARY_VERSION "\n");
