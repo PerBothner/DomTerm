@@ -324,31 +324,27 @@ maybe_quote_arg(const char *in)
                     *q++ = '\"';
                     *q++ = '\'';
                 }
-            } else if ((ch >= 'a' && ch <= 'z')
-                       || (ch >= 'A' && ch <= 'Z')
-                       || (ch >= '0' && ch <= '9')
-                       || ch == '/' || ch == '_' || ch == '-' || ch == '.'
-                       || ch >= 128) {
-                if (pass > 0)
-                    *q++ = ch;
-            } else {
-                if (pass == 0)
-                    bad_count++;
-                else
-                    *q++ = ch;
+            } else if (pass > 0)
+                *q++ = ch;
+            else if (! (ch >= 'a' && ch <= 'z')
+                       && ! (ch >= 'A' && ch <= 'Z')
+                       && ! (ch >= '0' && ch <= '9')
+                       && ch != '/' && ch != '_' && ch != '-' && ch != '.'
+                       && ch != '=' && ch < 128) {
+                bad_count++;
             }
+        }
+        if (pass == 0) {
             if (apos_count + bad_count == 0)
                 return in;
-            if (pass == 0) {
-                size_t in_size = (char*) p - in;
-                out = challoc(in_size + 5 * apos_count + 3);
-                q = out;
-                *q++ = '\'';
-            } else {
-                *q++ = '\'';
-                *q = 0;
-                break;
-            }
+            size_t in_size = (char*) p - in;
+            out = challoc(in_size + 5 * apos_count + 3);
+            q = out;
+            *q++ = '\'';
+        } else {
+            *q++ = '\'';
+            *q = 0;
+            break;
         }
     }
     return out;
