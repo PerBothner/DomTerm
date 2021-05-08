@@ -579,7 +579,6 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     pclient->session_name_unique = false;
     pclient->is_ssh_pclient = false;
     pclient->has_primary_window = false;
-    pclient->uses_packet_mode = false;
     pclient->pty_wsi = outwsi;
     pclient->cmd = cmd;
     pclient->argv = copy_strings(argv);
