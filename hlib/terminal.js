@@ -2203,6 +2203,9 @@ Terminal.prototype._removeInputLine = function() {
             } else
                 r = this._positionToRange();
             let before = this._caretNode.previousSibling;
+            let sel = window.getSelection();
+            if (sel.focusNode == this._caretNode)
+                sel.removeAllRanges();
             caretParent.removeChild(this._caretNode);
             if (before instanceof Text && before.nextSibling instanceof Text)
                 before.parentNode.normalize();
@@ -2265,6 +2268,9 @@ Terminal.prototype._restoreCaret = function() {
     if (this._caretNode == null)
         return;
     this._restoreCaretNode();
+    let sel = window.getSelection();
+    if (sel.focusNode == null)
+        sel.collapse(this._caretNode, 0);
     let cparent = this._caretNode.parentNode;
     if (! this._suppressHidePassword)
         this._hidePassword();
@@ -3291,50 +3297,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     this._rulerNode = rulerNode;
     helperNode.appendChild(rulerNode);
 
-    // The 'focusArea' is used as the default focus/input field:
-    // when we logically clear the selection, we instead select the focusArea.
-    // It is normally hidden (negative z-index) and empty.
-    // However, when an Input Method Editor (IME) is active,
-    // the input goes to the focusArea, and the position of the focusArea
-    // is moved to overlap the caret position.
-    // Unfortunately, the area must be focused and selected *before* typing
-    // starts - otherwise the IME doesn't get activated properly.
-    // That is why the focusArea element is a top-level (just under the
-    // topNode) permanent (but normally invisible) helper span.
-    // When composing starts, we don't have to do DOM tree changes (which
-    // could break selection and IME), instead we just bring the focusArea
-    // to the foreground and adjust the position to the caret position.
-    let focusArea = document.createElement("span");
-    this.focusArea = focusArea;
-    focusArea.setAttribute("class", "focus-area");
-    focusArea.setAttribute("type", "text");
-    focusArea.setAttribute('autocorrect', 'off');
-    focusArea.setAttribute('autocapitalize', 'off');
-    focusArea.setAttribute('spellcheck', 'false');
-    focusArea.style.position = 'absolute';
-    focusArea.style.left = '0px';
-    focusArea.style.width = "auto";
-    focusArea.style.top = '0px';
-    focusArea.style.bottom = '0px';
-    focusArea.style['z-index'] = -1;
-    topNode.insertBefore(focusArea, helperNode.nextSibling);
-    focusArea.contentEditable = true;
-
-    // The 'focusBackground' is only in the DOM when composing (IME) is active.
-    // It is provides an "underlay" (background) for the focusArea,
-    // and as partial input arrives it is re-positioned and re-sized
-    // to match the focusArea.  It's main purpose is when composing when
-    // there is following input (text right of the cursor, assuming ltr):
-    // Since the focusBackground (unlike the focusArea) is in the "logical"
-    // place in the DOM tree (just before the caretNode), it serves to
-    // push the following text right while composing is active.
-    // The focusBackground also helps in styling the focusArea.
-    let focusBackground = document.createElement("span");
-    focusBackground.setAttribute("class", "composition-background");
-    focusBackground.setAttribute("std", "input");
-    focusBackground.style.display = "inline-block";
-    this.focusBackground = focusBackground;
-
     topNode.contentEditable = true;
 
     var wrapDummy = this._createLineNode("soft");
@@ -3415,13 +3377,16 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
                     sel.extend(sel.anchorNode, sel.anchorOffset);
             }
         }
-        let wasFocus = dt._focusinLastEvent;
-        dt._focusinLastEvent = false;
-        if (point && wasFocus && sel.focusOffset === 0
-            && dt.lineStarts[0] === dt._getOuterPre(sel.focusNode)) {
-            // Chrome emits a selectionchange event if focusing back
-            // to this window.  It selects the very first text location.
-            return; //  Ignore it.
+        if (dt._focusinLastEvent) {
+            dt._focusinLastEvent = false;
+            if (point && sel.focusOffset === 0
+                && dt.lineStarts[0] === dt._getOuterPre(sel.focusNode)) {
+                // Chrome emits a selectionchange event if focusing back
+                // to this window.  It selects the very first text location.
+                // (Seems to no longer be an issue in Electron 12/Chrome 89.)
+                console.log("ignore Chrome extra click");
+                return; //  Ignore it.
+            }
         }
         if (dt._mouseSelectionState < 0)
             dt._updateSelected();
@@ -3805,6 +3770,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     let caretNode = this._createSpanNode();
     this._caretNode = caretNode;
     caretNode.setAttribute("std", "caret");
+    caretNode.contentEditable = true; // FIXME also minibuffer
     caretNode.stayOut = true;
     this.insertNode(caretNode);
     this.outputBefore = caretNode;
@@ -3828,26 +3794,6 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         if (DomTerm.verbosity >= 1)
             dt.log("compositionStart "+JSON.stringify(ev.data)+" was-c:"+dt._composing);
         dt._composing = 1;
-        dt.focusArea.style['z-index'] = 8;
-        let left = 0;
-        let top = 0;
-        for (let n = dt._caretNode; n && n != dt.topNode; n = n.offsetParent) {
-            left += n.offsetLeft;
-            top += n.offsetTop;
-        }
-        dt.focusArea.style.left = `${left}px`;
-        dt.focusArea.style.top = `${top}px`;
-        dt.focusArea.style.bottom = '';
-        dt.focusArea.style.height = `${dt.charHeight}px`;
-        dt.focusBackground.style.left = `${left}px`;
-        dt.focusBackground.style.width = `0px`; // FIXME
-        dt.focusBackground.style.top = `${top}px`;
-        let pre = dt._getOuterPre(dt._caretNode);
-        if (pre)
-            pre.classList.add("input-line");
-        dt._caretNode.parentNode.insertBefore(dt.focusBackground, dt._caretNode);
-        let caretStyle = window.getComputedStyle(dt._caretNode.parentNode);
-        dt.focusArea.style['font-family'] = caretStyle['font-family'];
         dt._removeCaret();
     }
     function compositionEnd(ev) {
@@ -3855,15 +3801,11 @@ Terminal.prototype.initializeTerminal = function(topNode) {
             dt.log("compositionEnd "+JSON.stringify(ev.data));
         dt._composing = 0;
         let data = ev.data;
-        const caret = dt._caretNode;
-        dt.focusArea.style.left = '0px';
-
-        dt.focusArea.style.bottom = '0px';
-        dt.focusArea.style['z-index'] = -1;
         if (data) {
+            const caret = dt._caretNode;
             if (dt.isLineEditing()) {
                 dt.editorAddLine();
-                dt._moveNodes(dt.focusArea.firstChild, caret.parentNode, caret);
+                dt._moveNodes(caret.firstChild, caret.parentNode, caret);
             } else {
                 if (dt.sstate.bracketedPasteMode || dt._lineEditingMode != 0)
                     dt.reportText(data, null);
@@ -3871,11 +3813,9 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                     dt.reportKeyEvent("ime", data);
                 let pending = dt._createPendingSpan();
                 caret.parentNode.insertBefore(pending, caret);
-                dt._moveNodes(dt.focusArea.firstChild, pending, null);
+                dt._moveNodes(caret.firstChild, pending, null);
             }
         }
-        if (dt.focusBackground.parentNode)
-            dt.focusBackground.parentNode.removeChild(dt.focusBackground);
     }
     topNode.addEventListener("compositionstart", compositionStart, true);
     topNode.addEventListener("compositionupdate",
@@ -4081,15 +4021,31 @@ Terminal.prototype._updateMiscOptions = function() {
 
 DomTerm.showContextMenu = null;
 
+// Logically "clear" the selection.
+// This could be done using removeAllRanges, but then IME doesn't get activated.
+// (IME needs an element that is focused and selected *before* typing starts.)
+// Hence we make an empty selection on the caret.
+// When composing starts, we have to be careful to not make DOM
+// changes that might break the selection.
 Terminal.prototype._clearSelection = function(keepViewCaret = false) {
-    document.getSelection().collapse(this.focusArea, 0);
+    let sel = document.getSelection();
     let viewCaretNode = this.viewCaretNode;
-    if (! keepViewCaret && viewCaretNode && viewCaretNode.parentNode) {
-        let viewCaretPrevious = viewCaretNode.previousSibling;
-        viewCaretNode.parentNode.removeChild(viewCaretNode);
-        if (viewCaretPrevious instanceof Text)
-            this._normalize1(viewCaretPrevious);
+    if (viewCaretNode && viewCaretNode.parentNode) {
+        if (! keepViewCaret) {
+            let viewCaretPrevious = viewCaretNode.previousSibling;
+            viewCaretNode.parentNode.removeChild(viewCaretNode);
+            if (viewCaretPrevious instanceof Text)
+                this._normalize1(viewCaretPrevious);
+        } else {
+            sel.collapse(viewCaretNode, 0);
+            return;
+        }
     }
+    let caretNode = this._caretNode;
+    if (caretNode && caretNode.parentNode) {
+        sel.collapse(caretNode, 0);
+    } else
+        sel.sel.removeAllRanges();
 }
 
 /** Do after selection has changed, but "stabilized".
@@ -4105,8 +4061,6 @@ Terminal.prototype._updateSelected = function() {
     }
 
     let sel = document.getSelection();
-    if (sel.focusNode === this.focusArea)
-        return;
     let point =
         ! dt._didExtend
         && (sel.focusNode === sel.anchorNode
@@ -8382,8 +8336,6 @@ DomTerm.doContextCopy = function() {
 
 DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     let sel = document.getSelection();
-    if (sel.rangeCount == 0)
-        sel.collapse(dt.focusArea, 0);
     dt.maybeFocus();
     document.execCommand("paste", false) ||
         dt.reportEvent("REQUEST-CLIPBOARD-TEXT", "");
@@ -9283,8 +9235,6 @@ Terminal.prototype.keyPressHandler = function(event) {
 };
 
 Terminal.prototype.inputHandler = function(event) {
-    if (this._composing > 0)
-        this.focusBackground.style.width = `${this.focusArea.offsetWidth}px`;
     if (DomTerm.verbosity >= 2)
         this.log("input "+event+" which:"+event.which+" data:"+JSON.stringify(event.data));
     if (event.target == this._inputLine && ! this.isLineEditing()
@@ -10254,7 +10204,7 @@ Terminal.prototype._enterPaging = function(pause) {
     this._displayInputModeWithTimeout(this._modeInfo("P"));
 
     let sel = document.getSelection();
-    if (sel.focusNode == null || sel.focusNode == this.focusArea) {
+    if (sel.focusNode == null) {
         let before = this._caretNode;
         let parent = before.parentNode;
         if (! parent) {
@@ -10407,7 +10357,7 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
         // Same logic as editorMoveStartOrEndBuffer
         if (extend) {
             let anchorNode, anchorOffset;
-            if (sel.anchorNode == null || sel.anchorNode == this.focusArea) {
+            if (sel.anchorNode == null) {
                 let ra = posToRangeEnd(startBefore, startContainer);
                 anchorNode = ra.endContainer;
                 anchorOffset = ra.endOffset;
@@ -10497,6 +10447,7 @@ Terminal.prototype.editorMoveToRangeStart = function(range) {
     }
     if (this._inputLine && this._inputLine.parentNode)
         this._inputLine.normalize();
+    window.getSelection().collapse(this._caretNode, 0);
     this._restoreCaret();
 }
 
@@ -10509,7 +10460,7 @@ Terminal.prototype.editorMoveStartOrEndBuffer = function(toEnd, action="move") {
     let sel = window.getSelection();
     if (action == "move") {
         sel.collapse(r.endContainer, r.endOffset);
-    } else if (sel.anchorNode !== null && sel.anchorNode !== this.focusArea) {
+    } else if (sel.anchorNode !== null) {
         sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset,
                              r.endContainer, r.endOffset);
     } else {
@@ -10599,7 +10550,8 @@ Terminal.prototype._newlineInInputLine = function(i) {
     // let start = this.lineStarts[i];
     // return start.nodeName == "SPAN" &&  start != this._inputLine.nextSibling
     return i > 0 && i < this.lineStarts.length
-        && this.lineStarts[i] == this.lineEnds[i-1];
+        && this.lineStarts[i] == this.lineEnds[i-1]
+        && this._isAnAncestor(this.lineStarts[i], this._inputLine);
 }
 
 Terminal.prototype.editorContinueInput = function() {
@@ -10990,8 +10942,7 @@ Terminal.prototype.editMove = function(count, action, unit,
         range = this.editorRestrictedRange(stopAt!=="buffer"
                                            && this._inputLine);
         let anchorNode, anchorOffset;
-        if (action == "move" || sel.anchorNode === null || this._miniBuffer
-            || sel.anchorNode === this.focusArea) {
+        if (action == "move" || sel.anchorNode === null || this._miniBuffer) {
             let caret = (this.viewCaretNode && this.viewCaretNode.parentNode
                          && (action == "move-focus" || action == "extend-focus"))
                 ? this.viewCaretNode
