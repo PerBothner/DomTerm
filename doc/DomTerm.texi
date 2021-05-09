@@ -6174,7 +6174,7 @@ the @uref{https://en.wikipedia.org/wiki/STREAMS,System V Streams} packet mode.
 This adds an extra indicator byte to the terminal input stream.
 This mode is enabled by the @code{domterm} @code{--tty-packet-mode=extproc}
 command-line option.
-This is not the default (even on Linux).
+This is the default when available.
 
 @item
 DomTerm can lazily check.
