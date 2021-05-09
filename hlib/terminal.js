@@ -8873,6 +8873,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-X": "cut-text",
     "Ctrl-Shift-X": "cut-text",
     "Ctrl-Z": "client-action",
+    "Ctrl-\\": "client-action",
     "Left": 'backward-char',
     "Mod-Left": 'backward-word',
     "Right": 'forward-char',

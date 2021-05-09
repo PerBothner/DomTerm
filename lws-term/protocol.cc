@@ -1010,6 +1010,23 @@ reconnect(struct lws *wsi, struct tty_client *client,
     lws_callback_on_writable(client->out_wsi);
 }
 
+#if defined(TIOCSIG)
+static void
+maybe_signal (struct pty_client *pclient, int sig, int ch)
+{
+    ioctl(pclient->pty, TIOCSIG, (char *)(size_t)sig);
+    char cbuf[12];
+    if (ch >= ' ' && ch != 127)
+        sprintf(cbuf, "%c", ch);
+    else
+        sprintf(cbuf, "^%c", ch == 127 ? '?' : ch + 64);
+    FOREACH_WSCLIENT(tclient, pclient) {
+        sbuf_append(&tclient->ob, cbuf, -1);
+        lws_callback_on_writable(tclient->out_wsi);
+    }
+}
+#endif
+
 /** Handle an "event" encoded in the stream from the browser.
  * Return true if handled.  Return false if proxyMode==proxy_local
  * and the event should be sent to the remote end.
@@ -1100,38 +1117,60 @@ reportEvent(const char *name, char *data, size_t dlen,
         char *q2;
         if (q1 == NULL || (q2 = strchr(q1+1, '\t')) == NULL)
             return true; // ERROR
-        bool isCanon = true, isEchoing = true;
+        bool isCanon = true, isEchoing = true, isExtproc = false;
+        struct termios trmios;
         if (pclient) {
-            struct termios termios;
             int pty = pclient->pty;
             if (pclient->cur_pclient && pclient->cur_pclient->cmd_socket >= 0)
                 pty = pclient->cur_pclient->pty;
-            if (tcgetattr(pty, &termios) < 0)
+            if (tcgetattr(pty, &trmios) < 0)
                 ; //return -1;
-            isCanon = (termios.c_lflag & ICANON) != 0;
-            isEchoing = (termios.c_lflag & ECHO) != 0;
+            isCanon = (trmios.c_lflag & ICANON) != 0;
+            isEchoing = (trmios.c_lflag & ECHO) != 0;
+#if EXTPROC
+            isExtproc = (trmios.c_lflag & EXTPROC) != 0;
+#endif
+        } else {
+            trmios.c_cc[VINTR] = 3;
+            trmios.c_cc[VEOF] = 4;
+            trmios.c_cc[VSUSP] = 032;
+            trmios.c_cc[VQUIT] = 034;
         }
         json_object *obj = json_tokener_parse(q2+1);
         const char *kstr = json_object_get_string(obj);
         int klen = json_object_get_string_len(obj);
         int kstr0 = klen != 1 ? -1 : kstr[0];
-        if (isCanon && kstr0 != 3 && kstr0 != 4 && kstr0 != 26) {
+        if (isCanon
+            && kstr0 != trmios.c_cc[VINTR]
+            && kstr0 != trmios.c_cc[VEOF]
+            && kstr0 != trmios.c_cc[VSUSP]
+            && kstr0 != trmios.c_cc[VQUIT]) {
             printf_to_browser(client, OUT_OF_BAND_WRAP("\033]%d;%.*s\007"),
                               isEchoing ? 74 : 73, (int) dlen, data);
             lws_callback_on_writable(wsi);
         } else {
             int to_drain = 0;
             if (pclient->paused) {
-                struct termios term;
                 // If we see INTR, we want to drain already-buffered data.
                 // But we don't want to drain data that written after the INTR.
-                if (tcgetattr(pclient->pty, &term) == 0
-                    && term.c_cc[VINTR] == kstr0
+                if ((trmios.c_cc[VINTR] == kstr0
+                     || trmios.c_cc[VQUIT] == kstr0)
                     && ioctl (pclient->pty, FIONREAD, &to_drain) != 0)
                     to_drain = 0;
             }
             lwsl_info("report KEY pty:%d canon:%d echo:%d klen:%d\n",
                       pclient->pty, isCanon, isEchoing, klen);
+#if defined(TIOCSIG)
+            bool packet_mode = isExtproc && (trmios.c_lflag & ISIG) != 0;
+            if (packet_mode && kstr0 == trmios.c_cc[VINTR])
+                // kill(- pclient->pid, SIGINT);
+                maybe_signal(pclient, SIGINT, kstr0);
+            else if (packet_mode && kstr0 == trmios.c_cc[VSUSP])
+                maybe_signal(pclient, SIGTSTP, kstr0);
+            else if (packet_mode && kstr0 == trmios.c_cc[VQUIT])
+                maybe_signal(pclient, SIGQUIT, kstr0);
+            else
+#endif
             if (write(pclient->pty, kstr, klen) < klen)
                 lwsl_err("write INPUT to pty\n");
             while (to_drain > 0) {

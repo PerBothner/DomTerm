@@ -451,10 +451,13 @@ cmd('client-action',
             return false;
         let str = dt.keyNameToChars(key);
         if (str) {
-            dt.editorMoveStartOrEndInput(true);
-            dt.editorInsertString(str);
-            dt._sendInputContents(false);
-            dt._inputLine = null;
+            if (dt.grabInput(dt._inputLine).length > 0) {
+                dt.editorMoveStartOrEndInput(true);
+                dt.editorInsertString(str);
+                dt._sendInputContents(false);
+                dt._inputLine = null;
+            }
+            dt.reportKeyEvent(key, str);
             dt.maybeResetWantsEditing();
             return true;
         }
