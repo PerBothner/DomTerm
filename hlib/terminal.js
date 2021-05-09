@@ -207,6 +207,10 @@ class Terminal {
     this._clientPtyEcho = true;
     // True if EXTPROC tty flag is set. (Linux-only)
     this._clientPtyExtProc = false;
+
+    // Editing actions that have been done locally (and tentatively echoed)
+    // but have not been confirmed by remote echo.
+    // It's a mix of insertions (plain characters) and PENDING_XXX opcodes.
     this._pendingEcho = "";
 
     this._displayInfoWidget = null;
@@ -2390,6 +2394,13 @@ Terminal.prototype.cursorLineStart = function(deltaLines) {
     if (deltaLines == 1 && curLine == this.lineStarts.length-1) {
         if (this._currentStyleMap.size == 0)
             this._adjustStyle();
+        if (this._pendingEchoNewlines
+            && --this._pendingEchoNewlines == 0
+            && this.outputBefore === null
+            && this.outputContainer.nodeName === "SPAN") {
+            this.outputBefore = this.outputContainer.nextSibling;
+            this.outputContainer = this.outputContainer.parentNode;
+        }
         let next = this.outputBefore;
         let parent = this.outputContainer;
         // If output position inside an inline element *and* at end of line,
@@ -8772,8 +8783,14 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
     this._inputLine = null;
     this._caretNode.useEditCaretStyle = false;
     if (suppressEcho) {
-        if (oldInputLine != null)
+        if (oldInputLine != null) {
             this._createPendingSpan(oldInputLine);
+            this._pendingEchoNewlines = 1;
+            let txt = oldInputLine.textContent;
+            for (let i = txt.length; --i >= 0; )
+                if (txt.charCodeAt(i) === 10)
+                    ++this._pendingEchoNewlines;
+        }
         this._removeInputFromLineTable();
         this.resetCursorCache();
     } else if (passwordField) {
@@ -8793,6 +8810,11 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
                     this.outputContainer = inputParent;
             }
             this.resetCursorCache();
+        }
+        while (this.outputBefore === null
+               && this.outputContainer.nodeName === "SPAN") {
+            this.outputBefore = this.outputContainer.nextSibling;
+            this.outputContainer = this.outputContainer.parentNode;
         }
         this.cursorLineStart(1);
     }
