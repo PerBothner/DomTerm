@@ -91,6 +91,8 @@ class DTParser {
             if (pendingEchoString.length > 1
                 && pendingEchoBlock) {
                 term._removeCaret();
+                // Set pendingEchoOldBefore/pendingEchoOldAfter to string value
+                // of text in pendingEchoBlock before/after current position
                 let r = document.createRange();
                 r.selectNode(pendingEchoBlock);
                 pendingEchoOld = r.toString();
