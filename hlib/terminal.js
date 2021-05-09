@@ -4067,7 +4067,7 @@ Terminal.prototype._updateSelected = function() {
             ? sel.focusOffset === sel.anchorOffset
             // toString is probably wasteful - but isCollapsed can be wrong.
             : sel.toString().length == 0);
-    if (this._pagingMode > 0 || (! point && this.isLineEditing())) {
+    if (this._pagingMode > 0) {
         if (sel.focusNode !== this.viewCaretNode
             && sel.focusNode !== null) {
             let r = document.createRange();
