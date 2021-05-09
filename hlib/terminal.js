@@ -8166,7 +8166,7 @@ Terminal.prototype.keyEnterToString  = function() {
     if ((this.sstate.automaticNewlineMode & 2) != 0)
         return "\r\n";
     else
-        return "\r";
+        return "\n";
 }
 
 Terminal._keyCodeToValue = function(ecode) {
