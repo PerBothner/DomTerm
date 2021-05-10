@@ -4045,7 +4045,7 @@ Terminal.prototype._clearSelection = function(keepViewCaret = false) {
     if (caretNode && caretNode.parentNode) {
         sel.collapse(caretNode, 0);
     } else
-        sel.sel.removeAllRanges();
+        sel.removeAllRanges();
 }
 
 /** Do after selection has changed, but "stabilized".
@@ -6756,7 +6756,7 @@ Terminal.prototype._downLinesOrContinue = function(count, paging) {
     }
 }
 
-Terminal.prototype._pauseContinue = function(paging, skip = false) {
+Terminal.prototype._pauseContinue = function(paging = false, skip = false) {
     if (this.sstate.disconnected) {
         this._reconnect();
     }
@@ -10197,7 +10197,7 @@ Terminal.prototype._pageBottom = function() {
     this.buffers.scrollTop = target;
 }
 
-Terminal.prototype._enterPaging = function(pause) {
+Terminal.prototype._enterPaging = function(pause = true) {
     this.topNode.classList.add("focusmode");
     this._numericArgument = null;
     this._pagingMode = pause ? 2 : 1;
