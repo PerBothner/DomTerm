@@ -3742,6 +3742,7 @@ Terminal.prototype.showMiniBuffer = function(options) {
 }
 
 Terminal.prototype.removeMiniBuffer = function(miniBuffer = this._miniBuffer) {
+    this.maybeFocus(); // otherwise focus may be lost when caret is removed
     DomTerm.removeInfoDisplay(miniBuffer.infoDiv, this);
 }
 
