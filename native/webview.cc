@@ -4,7 +4,6 @@ webview::webview w(true, nullptr);
 
 void close_main_window(const char *seq, const char *req, void *arg)
 {
-    webview_destroy(&w);
     exit(0);
 }
 
