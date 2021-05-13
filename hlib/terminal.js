@@ -3353,7 +3353,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         if (DomTerm.verbosity >= 3)
-            dt.log("selectionchange col:"+point+" str:'"+sel.toString()+"'"+" anchorN:"+sel.anchorNode+" aOff:"+sel.anchorOffset+" focusN:"+sel.focusNode+" fOff:"+sel.focusOffset+" alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
+            dt.log("selectionchange col:"+point+" sel:"+DomTerm.displaySelection(sel)+" str:'"+sel.toString()+"' alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
         if (dt._composing > 0)
             return;
         if (! point && dt._displayInfoWidget) {

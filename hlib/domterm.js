@@ -30,6 +30,40 @@ DomTerm.log = function(str, dt=null) {
     }
 }
 
+// For DEBUGGING
+DomTerm.toDisplayString = function(datum, offset = -1) {
+    if (datum instanceof Text && offset < 0)
+        return "Text:" + DomTerm.JsonLimited(datum.data);
+    if (datum instanceof Text && offset <= datum.length)
+        return "Text:" + DomTerm.JsonLimited(datum.data.substring(0, offset)) + '^' + DomTerm.JsonLimited(datum.data.substring(offset));
+    if (offset >= 0 && datum !== null) {
+        return DomTerm.toDisplayString(datum, -1) + '^' + offset;
+    }
+    if (datum instanceof Element) {
+        let r = '<' + datum.tagName.toLowerCase();
+        let attrs = datum.attributes;
+        for(var i = attrs.length - 1; i >= 0; i--) {
+            r += ' ' + attrs[i].name + '=' + DomTerm.JsonLimited(attrs[i].value);
+        }
+        return r + '>';
+    }
+    if (datum instanceof String || typeof datum === "string")
+        return DomTerm.JsonLimited(datum);
+    return datum;
+}
+// For DEBUGGING
+DomTerm.displaySelection = function(sel = document.getSelection()) {
+    let r = sel.isCollapsed ? '' : 'anc:';
+    r += DomTerm.toDisplayString(sel.anchorNode, sel.anchorOffset);
+    if (sel.isCollapsed)
+        r += ',collapsed';
+    else if (sel.anchorNode === sel.focusNode)
+        r += ',foc:^' + sel.focusOffset;
+    else
+        r += ',foc:' + DomTerm.toDisplayString(sel.focusNode, sel.focusOffset);
+    return r;
+}
+
 DomTerm.JsonLimited = function(val) {
     let maxLog = DomTerm.logStringMax;
     if (maxLog > 0) {
