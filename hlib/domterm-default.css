@@ -132,14 +132,16 @@ div.domterm span[caret="bar"][std="caret"], div.domterm span[caret="blinking-bar
 }
 
 div.domterm span.focus-caret-line {
-    border-style: solid solid solid none;
+    border-style: dashed dashed dashed none;
     border-color: var(--focus-color);
     border-width: 1px;
     left: -4px;
     width: 8px;
     box-sizing: border-box
 }
-
+div.domterm.paused span.focus-caret-line {
+    border-style: solid solid solid none;
+}
 div.domterm span.focus-caret-mark {
     left: -1px;
     width: 2px;

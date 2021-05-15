@@ -10199,7 +10199,13 @@ Terminal.prototype._pageBottom = function() {
 }
 
 Terminal.prototype._enterPaging = function(pause = true) {
-    this.topNode.classList.add("focusmode");
+    let cl = this.topNode.classList;
+    cl.add("focusmode");
+    if (pause) {
+        cl.add("paused");
+    } else {
+        cl.remove("paused");
+    }
     this._numericArgument = null;
     this._pagingMode = pause ? 2 : 1;
     this._displayInputModeWithTimeout(this._modeInfo("P"));
@@ -10221,8 +10227,11 @@ Terminal.prototype._enterPaging = function(pause = true) {
     }
 }
 
+
 Terminal.prototype._exitPaging = function() {
-    this.topNode.classList.remove("focusmode");
+    let cl = this.topNode.classList;
+    cl.remove("focusmode");
+    cl.remove("paused");
     if (! this.isLineEditing())
         this.setMarkMode(false);
     let focusCaret = this.viewCaretNode;
