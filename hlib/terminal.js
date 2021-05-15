@@ -10124,7 +10124,7 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
     } else {
         let top;
         if (count === 'limit') {
-            top = this._pauseLimit;
+            top = this._pauseLimit + 0.8;
         } else {
             let cursor =
                 this.viewCaretNode && this.viewCaretNode.parentNode ? this.viewCaretNode
