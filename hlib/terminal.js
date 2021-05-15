@@ -2203,6 +2203,8 @@ Terminal.prototype._removeInputLine = function() {
             } else
                 r = this._positionToRange();
             let before = this._caretNode.previousSibling;
+            if (document.activeElement === this._caretNode)
+                this.maybeFocus();
             let sel = window.getSelection();
             if (sel.focusNode == this._caretNode)
                 sel.removeAllRanges();
@@ -3380,11 +3382,10 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         if (dt._focusinLastEvent) {
             dt._focusinLastEvent = false;
             if (point && sel.focusOffset === 0
-                && dt.lineStarts[0] === dt._getOuterPre(sel.focusNode)) {
-                // Chrome emits a selectionchange event if focusing back
-                // to this window.  It selects the very first text location.
-                // (Seems to no longer be an issue in Electron 12/Chrome 89.)
-                console.log("ignore Chrome extra click");
+                && sel.focusNode == dt._vspacer) {
+                // Chrome sometimes emits this extra selectionchange event.
+                // It used to be to the very first text location, but
+                // now hits the _vspacer element.
                 return; //  Ignore it.
             }
         }
@@ -4045,7 +4046,7 @@ Terminal.prototype._clearSelection = function(keepViewCaret = false) {
     let caretNode = this._caretNode;
     if (caretNode && caretNode.parentNode) {
         sel.collapse(caretNode, 0);
-    } else
+    } else if (sel.anchorNode !== null)
         sel.removeAllRanges();
 }
 
@@ -6761,7 +6762,8 @@ Terminal.prototype._pauseContinue = function(paging = false, skip = false) {
     if (this.sstate.disconnected) {
         this._reconnect();
     }
-    this._clearSelection();
+    if (! paging)
+        this._clearSelection();
     var wasMode = this._pagingMode;
     this._pagingMode = paging ? 1 : 0;
     if (wasMode != 0)
@@ -8807,7 +8809,8 @@ Terminal.prototype._popFromCaret = function(saved) {
 DomTerm.masterKeymapDefault =
     new window.browserKeymap(
         Object.assign({
-            "F7": "toggle-paging-mode",
+            "F7": "toggle-paging-mode", // actually toogle view-paused-mode
+            "Shift-F7": "enter-paging-mode",
             "F11": "toggle-fullscreen",
             "Shift-F11": "toggle-fullscreen-current-window",
             "Ctrl-Insert": "copy-text",
@@ -8981,8 +8984,8 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-Space": "up-page",
     "Space": "down-page-or-continue",
     "'c'": "exit-pager-disable-auto",
-    "'m'": "toggle-pause-mode",
     "'p'": "scroll-percentage",
+    "'r'": "toggle-pause-mode",
     "'%'": "scroll-percentage",
     "(keypress)": "paging-keypress"
 });
@@ -9994,7 +9997,7 @@ Terminal.prototype._modeInfo = function(emphasize="") {
     if (emphPaging)
         mode += "<b>";
     if (this._pagingMode > 0) {
-        mode += " paging";
+        mode += this._pagingMode > 1 ? " view-paused" : " view-running";
         if (emphExtend && ! emphPaging)
             mode += "<b>";
         if (this._markMode)
@@ -10265,7 +10268,7 @@ Terminal.prototype._togglePaging = function() {
 */
 
 Terminal.prototype._pauseNeeded = function() {
-    return (this._pagingMode > 0 || this._autoPaging || this._autoPagingTemporary)
+    return (this._pagingMode > 1 || this._autoPaging || this._autoPagingTemporary)
         && this._pauseLimit >= 0
         && this._vspacer.offsetTop + this.charHeight > this._pauseLimit;
 };

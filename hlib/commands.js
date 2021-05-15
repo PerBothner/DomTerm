@@ -172,7 +172,8 @@ cmd('paging-keypress',
         dt._displayInputModeWithTimeout(dt._modeInfo("P"));
         return true;
     });
-cmd('toggle-paging-mode',
+// should rename but note existing toogle-pause-mode
+cmd('toggle-paging-mode', // toggle view-paused
     function(dt, key) {
         if (dt._currentlyPagingOrPaused()) {
             dt._pauseContinue();
@@ -181,14 +182,22 @@ cmd('toggle-paging-mode',
             dt._enterPaging(true);
         return true;
     });
+cmd('enter-paging-mode',
+    function(dt, key) {
+        if (! dt._currentlyPagingOrPaused())
+            dt._enterPaging(false);
+        return true;
+    });
 cmd('exit-paging-mode',
     function(dt, key) {
         if (dt._currentlyPagingOrPaused()) {
             if (dt._markMode) {
                 dt.setMarkMode(false);
             } else {
+                DomTerm.setAutoPaging("false", dt);
                 dt._pauseContinue();
                 dt._exitPaging();
+                dt._enableScroll();
             }
         }
         return true;
@@ -207,6 +216,7 @@ cmd('exit-pager-disable-auto',
         if (dt._currentlyPagingOrPaused()) {
             dt._pauseContinue();
             dt._exitPaging();
+            dt._enableScroll();
         };
         return true;
     });
@@ -225,7 +235,7 @@ cmd('toggle-pause-mode',
     function(dt, key) {
         let oldMode = dt._pagingMode;
         if (oldMode==2)
-            dt._pauseContinue();
+            dt._pauseContinue(true);
         dt._enterPaging(oldMode==1);
         return true;
     });
