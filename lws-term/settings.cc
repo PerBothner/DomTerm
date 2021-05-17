@@ -31,6 +31,18 @@ static struct optinfo options[] = {
 { NO_opt, NULL, -1 },
 };
 
+void print_settings_prefixed(const char *prefix,
+                             const char *before, const char *after,
+                             FILE *out)
+{
+    struct optinfo *p = options;
+    size_t plen = strlen(prefix);
+    for (; p->str; p++) {
+        if (strncmp(prefix, p->str, plen) == 0)
+            fprintf(out, "%s%s%s", before, p->str, after);
+    }
+}
+
 struct optinfo*
 lookup_optinfo(const char *name)
 {
@@ -107,6 +119,9 @@ get_setting_d(struct json_object *settings, const char *key, double dfault)
 bool
 check_option_arg(const char *arg, struct options *opts)
 {
+    // Allow =OPTNAME=OPTVALUE for command-completion.
+    if (arg[0] == '=')
+        arg++;
     const char *eq = strchr(arg, '=');
     if (eq == NULL)
         return false;

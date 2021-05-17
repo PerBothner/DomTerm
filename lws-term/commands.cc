@@ -8,8 +8,11 @@
 #include <sys/stat.h>
 
 #define DO_HTML_ACTION_IN_SERVER PASS_STDFILES_UNIX_SOCKET
+#define COMPLETE_FOR_BASH_CMD "#complete-for-bash"
 
 struct lws;
+
+extern struct command commands[];
 
 int is_domterm_action(int argc, arglist_t argv, struct lws *wsi,
                       struct options *opts)
@@ -787,6 +790,15 @@ int freshline_action(int argc, arglist_t argv, struct lws *wsi,
 int settings_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
+    if (opts->doing_complete) {
+        if (argc > 1) {
+            const char *last_arg = argv[argc-1];
+            if (last_arg[0] == '=')
+                last_arg++;
+            print_settings_prefixed(last_arg, "", "=\n", stdout);
+        }
+        return EXIT_SUCCESS;
+    }
     check_domterm(opts);
     struct json_object *settings = opts->cmd_settings;
     if (settings) {
@@ -834,6 +846,67 @@ int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
     const char *cmd = on ? "\033[?5h" : "\033[?5l";
     if (write(get_tty_out(), cmd, strlen(cmd)) <= 0)
         return EXIT_FAILURE;
+    return EXIT_SUCCESS;
+}
+
+int complete_action(int argc, arglist_t argv, struct lws *wsi,
+                    struct options *opts)
+{
+    if (argc != 6)
+        return EXIT_FAILURE;
+    const char* cline = argv[1]; // COMP_LINE - complete input line
+    const char* cpoint = argv[2]; // COMP_POINT - index in cline
+    const char *ccmd = argv[3]; // invoke command
+    const char *cword = argv[4]; // word to complete - unused
+    const char *cprevious = argv[5]; // previous work - unused
+    char *line_before = new char[strlen(cline)+5];
+    strcpy(line_before, cline);
+    long cindex = strtol(cpoint, NULL, 10);
+    if (cindex >= 0 && cindex <= strlen(cline))
+        line_before[cindex] = '\0';
+    if (cindex == 0 || line_before[cindex-1] == ' ')
+        strcat(line_before, " ''");
+
+    argblob_t before_argv = parse_args(line_before, false);
+    int before_argc = count_args(before_argv) - 1;
+    const char *last_arg = before_argv[before_argc];
+    struct options copts;
+    prescan_options(before_argc, before_argv, &copts);
+    const char *cmd = optind < before_argc ? before_argv[optind] : NULL;
+    if (cmd == NULL && last_arg[0] == '/') {
+        const char *fmt = "/bin/bash -c \"compgen -c '%s'\"";
+        char* sysb = new char[strlen(fmt)+strlen(last_arg)];
+        sprintf(sysb, fmt, last_arg);
+        system(sysb);
+        delete[] sysb;
+        return EXIT_SUCCESS;
+    }
+    if (cmd != NULL) {
+        struct command *command = find_command(cmd);
+        if (command && (command->options & COMMAND_HANDLES_COMPLETION) != 0) {
+            copts.doing_complete = true;
+            return (command->action)(before_argc+1-optind, before_argv+optind,
+                                     NULL, &copts);
+        }
+    }
+
+    if (last_arg[0] == '=') {
+        print_settings_prefixed(last_arg+1, "", "=\n", stdout);
+    } else if (last_arg[0] == '-') {
+        if (last_arg[1] == '-')
+            print_options_prefixed(last_arg+2, "--", stdout);
+        else if (last_arg[1] == '0')
+            print_options_prefixed(last_arg+1, "--", stdout);
+    } else if (cmd == NULL) {
+        struct command *p = commands;
+        size_t plen = strlen(last_arg);
+        for (; p->name; p++) {
+            if (strncmp(last_arg, p->name, plen) == 0
+                && (p->name[0] != '#' || last_arg[0] == '#')) {
+                fprintf(stdout, "%s%s", p->name, " \n");
+            }
+        }
+    }
     return EXIT_SUCCESS;
 }
 
@@ -1040,8 +1113,10 @@ struct command commands[] = {
     .action = new_action},
   { .name = "window", .options = COMMAND_IN_SERVER,
     .action = window_action},
-  { .name = "settings", .options = COMMAND_IN_CLIENT,
+  { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
     .action = settings_action },
+  { .name = COMPLETE_FOR_BASH_CMD, .options = COMMAND_IN_CLIENT,
+    .action = complete_action },
   { .name = "kill-server",
     .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
     .action = kill_server_action },

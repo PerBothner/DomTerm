@@ -317,7 +317,6 @@ static const struct option options[] = {
         {"chrome",       no_argument,       NULL, CHROME_OPTION},
         {"chrome-app",   no_argument,       NULL, CHROME_APP_OPTION},
         {"google-chrome",no_argument,       NULL, CHROME_OPTION},
-        {"google-chrome",no_argument,       NULL, CHROME_OPTION},
         {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
         // TODO:  "--chrome-window" --> --new-window '%U'
         // "--chrome-tab" --> --new-tab '%U'
@@ -373,6 +372,20 @@ static const struct option options[] = {
         {NULL, 0, 0,                              0}
 };
 static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
+
+void print_options_prefixed(const char *prefix, const char *before, FILE *out)
+{
+    const struct option *p = options;
+    size_t plen = strlen(prefix);
+    for (; p->name; p++) {
+        if (strncmp(prefix, p->name, plen) == 0) {
+            const char *after = p->has_arg == required_argument ? "="
+                : p->has_arg == no_argument ? " "
+                : "";
+            fprintf(out, "%s%s%s\n", before, p->name, after);
+        }
+    }
+}
 
 static struct tty_server *
 tty_server_new() {

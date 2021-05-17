@@ -298,6 +298,7 @@ public:
     bool check_origin;                        // whether allow websocket connection from different origin
     bool once;                                // whether accept only one client and exit on disconnection
     bool qt_frontend = false;
+    bool doing_complete = false;
     char *credential;                         // encoded basic auth credential
     int reconnect;                            // reconnect timeout
     int sig_code;                             // close signal
@@ -332,6 +333,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 extern void initialize_resource_map(struct lws_context *, const char*);
 extern void maybe_daemonize(void);
 extern void do_exit(int, bool);
+extern void print_options_prefixed(const char *, const char *, FILE *);
 
 extern int
 callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
@@ -375,6 +377,7 @@ extern void read_settings_emit_notice();
 extern struct json_object *merged_settings(struct json_object *cmd_settings);
 extern void set_settings(struct options *options);
 extern enum option_name lookup_option(const char *name);
+extern void print_settings_prefixed(const char *, const char *, const char*, FILE *);
 extern const char *get_setting(json_object *opts, const char *key);
 extern void set_setting(struct json_object **, const char *key, const char *val);
 extern bool check_option_arg(const char *arg, struct options *opts);
@@ -385,6 +388,7 @@ extern bool check_option_arg(const char *arg, struct options *opts);
 #define REMOTE_SESSIONNUMBER_KEY "`remote-session-number"
 #define SERVER_FOR_CLIPBOARD "`server-for-clipboard"
 
+extern void prescan_options(int argc, arglist_t argv, struct options *opts);
 extern void watch_settings_file(void);
 extern int probe_domterm(bool);
 extern void check_domterm(struct options *);
@@ -441,7 +445,8 @@ extern struct resource resources[];
 #define COMMAND_IN_CLIENT_IF_NO_SERVER 4
 #define COMMAND_IN_SERVER 8
 #define COMMAND_CHECK_DOMTERM 16
-#define REATTACH_COMMAND "INTERNAL-re-attach"
+#define COMMAND_HANDLES_COMPLETION 32
+#define REATTACH_COMMAND "#internal-re-attach"
 
 // 0xFD cannot appear in a UTF-8 sequence
 #define REPORT_EVENT_PREFIX 0xFD

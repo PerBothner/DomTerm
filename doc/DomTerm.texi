@@ -1437,10 +1437,10 @@ A @dfn{setting} is named value that controls how
 DomTerm works, depending on user preference or environment.
 
 Settings can be global settings, or local settings.
-@dfn{Global settings} are specified in a @code{setings.ini} configuration file,
+@dfn{Global settings} are specified in a @code{settings.ini} configuration file,
 and apply to all sessions and windows managed by a server.
 @dfn{Local settings} are specified on the command line
-(or in the future a GUI) and apply to the current command, session or window.
+(or in the future a GUI) and apply to the current command, session, or window.
 
 The settings that are active is the merge of the
 global and local settings, with the latter taking precedence.
@@ -1504,6 +1504,12 @@ domterm style.dark=yes new bash
 
 Command-line settings are used for the current command,
 including creating a new session or window.
+
+For convenience in @ref{command completion, command-completion}, you may
+optionally prefix the setting with an initial @samp{=}:
+@example
+domterm =style.dark=yes new bash
+@end example
 
 To change local settings for a current window, you can use the
 @code{domterm settings} command.  This modifies the local settings
@@ -4018,6 +4024,28 @@ if test -n "$DOMTERM"
   source $__fish_config_dir/shell-integration.fish
 end
 @end example
+
+@anchor{command completion}
+@subheading Command-completion (tab completion) for Bash
+
+Command completion enables you to type
+an initial part of a command, and have the computer ``fill in''
+the next part.  Completion is also called tab completion,
+because it its commonly requested by typing @kbd{@key{Tab}}.
+
+To set up tab-completion in @code{bash} for the @code{domterm} command
+execute the following command (perhaps in your @code{~/.bashrc}):
+@example
+complete -o nospace -C  'domterm "#complete-for-bash" "$COMP_LINE" "$COMP_POINT"' domterm
+@end example
+This instructs @code{bash} when completing the @code{domterm} command
+it should invoke the @code{domterm} executable with certain options that
+cause a list of candidate completions to be printed.
+(Delegating command-completion to the @code{domterm} command itself
+makes it easier to keep completion consistent with the command.)
+
+There is currently no completion support for other shells
+such as @code{fish} or @code{zsh}.
 
 @anchor{tracking-cwd}
 @subheading Tracking current working directory
