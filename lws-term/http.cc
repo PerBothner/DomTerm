@@ -263,17 +263,15 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     && (buf = (char*) realloc(buf, slen)) != NULL
                     && (sfile = fdopen(fd, "r")) != NULL
                     && fread(buf, 1, slen, sfile) == slen) {
-                    struct sbuf sb[1];
-                    sbuf_init(sb);
+                    sbuf sb;
                     // FIXME: We should encrypt the response (perhaps just a
                     // simple encryption using the kerver_key).  It is probably
                     // not an issue for local requests, and for non-local
                     // requests (where one should use tls or ssh).
-                    make_html_text(sb, http_port, LIB_WHEN_SIMPLE, buf, slen);
-                    char *data = sb->buffer;
-                    int dlen = sb->len;
-                    sb->buffer = NULL;
-                    sbuf_free(sb);
+                    make_html_text(&sb, http_port, LIB_WHEN_SIMPLE, buf, slen);
+                    char *data = sb.buffer;
+                    int dlen = sb.len;
+                    sb.buffer = NULL;
                     ret = write_simple_response(wsi, hclient, "text/html",
                                                 data, dlen,
                                                 true, buffer);
@@ -322,17 +320,15 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             if ((is_simple = strcmp(fname, "/simple.html") == 0)
                 || (is_main = strcmp(fname, "/main.html") == 0)
                 || (is_no_frames = strcmp(fname, "/no-frames.html") == 0)) {
-                struct sbuf sb[1];
-                sbuf_init(sb);
-                make_html_text(sb, http_port,
+                sbuf sb;
+                make_html_text(&sb, http_port,
                                is_simple ? LIB_WHEN_SIMPLE
                                : is_main ? LIB_WHEN_OUTER
                                : LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_NOFRAMES,
                                NULL, 0);
-                char *data = sb->buffer;
-                int dlen = sb->len;
-                sb->buffer = NULL;
-                sbuf_free(sb);
+                char *data = sb.buffer;
+                int dlen = sb.len;
+                sb.buffer = NULL;
                 return write_simple_response(wsi, hclient, content_type,
                                              data, dlen,
                                              true, buffer);

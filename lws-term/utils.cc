@@ -739,126 +739,130 @@ getenv_from_array(const char* key, arglist_t envarray)
     return NULL;
 }
 
-void sbuf_init(struct sbuf *buf)
+sbuf::sbuf()
 {
-    buf->buffer = NULL;
-    buf->len = 0;
-    buf->size = 0;
+    buffer = NULL;
+    len = 0;
+    size = 0;
 }
 
-void sbuf_free(struct sbuf *buf)
+sbuf::~sbuf()
 {
-    if (buf->buffer != NULL)
-        free(buf->buffer);
-    sbuf_init(buf);
+    reset();
 }
 
-char *sbuf_strdup(struct sbuf *buf)
+char *sbuf::strdup()
 {
-    size_t len = buf->len;
-    char *r = challoc(len + 1);
-    memcpy(r, buf->buffer, len);
-    r[len] = '\0';
+    size_t slen = len;
+    char *r = challoc(slen + 1);
+    memcpy(r, buffer, slen);
+    r[slen] = '\0';
     return r;
 }
 
 void
-sbuf_extend(struct sbuf *buf, int needed)
+sbuf::extend(int needed)
 {
-    int min_size = buf->len + needed;
-    if (min_size > buf->size) {
-        int xsize = (3 * buf->size) >> 1;
+    int min_size = len + needed;
+    if (min_size > size) {
+        int xsize = (3 * size) >> 1;
         if (min_size < xsize)
             min_size = xsize;
-        buf->size = min_size;
-        buf->buffer = (char*) realloc(buf->buffer, min_size);
+        size = min_size;
+        buffer = (char*) realloc(buffer, min_size);
     }
 }
-void *
-sbuf_blank(struct sbuf *buf, int space)
+
+void* sbuf::blank(int space)
 {
-    sbuf_extend(buf, space);
-    char *p = buf->buffer + buf->len;
-    buf->len += space;
+    extend(space);
+    char *p = buffer + len;
+    len += space;
     return p;
 }
 
-void
-sbuf_append(struct sbuf *buf, const char *bytes, ssize_t length)
+void sbuf::append(const char *bytes, ssize_t length)
 {
     if (length < 0)
         length = strlen(bytes);
-    sbuf_extend(buf, length);
-    memcpy(buf->buffer + buf->len, bytes, length);
-    buf->len += length;
+    extend(length);
+    memcpy(buffer + len, bytes, length);
+    len += length;
+}
+
+void sbuf::reset()
+{
+    if (buffer != NULL)
+        free(buffer);
+    buffer = NULL;
+    len = 0;
+    size = 0;
 }
 
 void
-sbuf_vprintf(struct sbuf *buf, const char *format, va_list ap)
+sbuf::vprintf(const char *format, va_list ap)
 {
-    sbuf_extend(buf, 80);
-    int avail = buf->size - buf->len;
+    extend(80);
+    int avail = size - len;
     va_list ap2;
     va_copy(ap2, ap);
-    int len = vsnprintf(buf->buffer + buf->len, avail, format, ap2);
+    int plen = vsnprintf(buffer + len, avail, format, ap2);
     va_end(ap2);
-    if (len >= avail) {
+    if (plen >= avail) {
         va_copy(ap2, ap);
-        sbuf_extend(buf, len+1);
-        avail = buf->size - buf->len;
-        len = vsnprintf(buf->buffer + buf->len, avail, format, ap2);
+        extend(plen+1);
+        avail = size - len;
+        plen = vsnprintf(buffer + len, avail, format, ap2);
         va_end(ap2);
     }
-    buf->len += len;
+    len += plen;
 }
 
 void
-sbuf_printf(struct sbuf *buf, const char *format, ...)
+sbuf::printf(const char *format, ...)
 {
     va_list ap;
     va_start(ap, format);
-    sbuf_vprintf(buf, format, ap);
+    vprintf(format, ap);
     va_end(ap);
 }
 
 void
-sbuf_copy_file(struct sbuf *buf, FILE*in)
+sbuf::copy_file(FILE*in)
 {
     for (;;) {
-        sbuf_extend(buf, 2048);
-        int r = fread(buf->buffer + buf->len, 1,  buf->size - buf->len, in);
+        extend(2048);
+        int r = fread(buffer + len, 1,  size - len, in);
         if (r <= 0)
             break;
-        sbuf_blank(buf, r);
+        blank(r);
     }
 }
 
 void
 printf_error(struct options *opts, const char *format, ...)
 {
-    struct sbuf buf[1];
+    sbuf sb;
     bool in_domterm = false;  // TODO - needs some work to get right
-    sbuf_init(buf);
 #if ! PASS_STDFILES_UNIX_SOCKET
     bool from_client = opts != main_options;
     char out_code = PASS_STDFILES_SWITCH_TO_STDERR;
     if (from_client)
-        sbuf_append(buf, &out_code, 1);
+        sb.append(&out_code);
 #endif
     if (in_domterm)
-        sbuf_append(buf, "\033[12u", -1);
+        sb.append("\033[12u");
     va_list ap;
     va_start(ap, format);
-    sbuf_vprintf(buf, format, ap);
+    sb.vprintf(format, ap);
     va_end(ap);
     if (in_domterm)
-        sbuf_append(buf, "\033[11u", -1);
-    sbuf_append(buf, "\n", -1);
+        sb.append("\033[11u");
+    sb.append("\n");
  #if ! PASS_STDFILES_UNIX_SOCKET
     out_code = PASS_STDFILES_SWITCH_TO_STDOUT;
     if (from_client)
-        sbuf_append(buf, &out_code, 1);
+        sb.append(&out_code, 1);
 #endif
-    write(opts->fd_err, buf->buffer, buf->len);
-    sbuf_free(buf);
+    write(opts->fd_err, sb.buffer, sb.len);
 }

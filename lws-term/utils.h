@@ -51,29 +51,39 @@ base64_encode(const unsigned char *buffer, size_t length);
 
 argblob_t copy_strings(const char*const* strs);
 
-struct sbuf {
+class sbuf {
+public:
+    sbuf();
+    ~sbuf();
+    void reset();
+    void extend(int needed);
+    void append(const char *bytes, ssize_t length);
+    void append(const char *bytes) {
+        append(bytes, -1);
+    }
+    void append(const sbuf& sb) {
+        append(sb.buffer, sb.len);
+    }
+    void* blank(int space);
+    void copy_file(FILE* in);
+    void vprintf(const char *format, va_list ap)
+#ifdef __GNUC__
+        __attribute__((format(printf, 2, 0)))
+#endif
+        ;
+    void printf(const char *format, ...)
+#ifdef __GNUC__
+        __attribute__((format(printf, 2, 3)))
+#endif
+        ;
+    char *strdup();
+#if 0
+    operator basic_string_view() const { return basic_string_view(buffer, len); }
+#endif
     char *buffer;
     size_t len;
     size_t size;
 };
-
-extern void sbuf_init(struct sbuf *buf);
-extern void sbuf_free(struct sbuf *buf);
-extern char *sbuf_strdup(struct sbuf *buf);
-extern void sbuf_extend(struct sbuf *buf, int needed);
-extern void *sbuf_blank(struct sbuf *buf, int space);
-extern void sbuf_append(struct sbuf *buf, const char *bytes, ssize_t length);
-extern void sbuf_printf(struct sbuf *buf, const char *format, ...)
-#ifdef __GNUC__
-    __attribute__((format(printf, 2, 3)))
-#endif
-    ;
-extern void sbuf_vprintf(struct sbuf *buf, const char *format, va_list ap)
-#ifdef __GNUC__
-    __attribute__((format(printf, 2, 0)))
-#endif
-    ;
-extern void sbuf_copy_file(struct sbuf *buf, FILE*in);
 
 extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);

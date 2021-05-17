@@ -4,6 +4,7 @@
 #include <termios.h>
 #include <utmp.h>
 #include <time.h>
+#include <new>
 
 #if HAVE_LIBCLIPBOARD
 #include <libclipboard.h>
@@ -277,16 +278,15 @@ printf_to_browser(struct tty_client *tclient, const char *format, ...)
 {
     va_list ap;
     va_start(ap, format);
-    sbuf_vprintf(&tclient->ob, format, ap);
+    tclient->ob.vprintf(format, ap);
     va_end(ap);
 }
 
 // Unlink wsi from pclient's list of client_wsi-s.
 static void
-unlink_tty_from_pty(struct pty_client *pclient,
-                    struct lws *wsi, struct tty_client *tclient)
+unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
 {
-    lwsl_notice("unlink_tty_from_pty_only p:%p w:%p t:%p\n", pclient, wsi, tclient);
+    lwsl_notice("unlink_tty_from_pty_only p:%p t:%p\n", pclient, tclient);
     for (struct tty_client **pt = &pclient->first_tclient; *pt != NULL; ) {
         struct tty_client **nt = &(*pt)->next_tclient;
         if (tclient == *pt) {
@@ -334,13 +334,12 @@ clear_connection_number(struct tty_client *tclient)
     tclient->connection_number = -1;
 }
 
-void
-tty_client_destroy(struct lws *wsi, struct tty_client *tclient,
-                   bool keep_client) {
+tty_client::~tty_client()
+{
+    struct tty_client *tclient = this;
+    bool keep_client = false;
     // remove from clients list
     lwsl_notice("tty_client_destroy %p conn#%d keep:%d\n", tclient, tclient->connection_number, keep_client);
-    sbuf_free(&tclient->inb);
-    sbuf_free(&tclient->ob);
     if (tclient->version_info != NULL && !keep_client) {
         free(tclient->version_info);
         tclient->version_info = NULL;
@@ -352,7 +351,7 @@ tty_client_destroy(struct lws *wsi, struct tty_client *tclient,
         free(tclient->ssh_connection_info);
         tclient->ssh_connection_info = NULL;
         if (pclient != NULL)
-            unlink_tty_from_pty(pclient, wsi, tclient);
+            unlink_tty_from_pty(pclient, tclient);
         tclient->pclient = NULL;
     }
     if (tclient->options && !keep_client) {
@@ -1021,7 +1020,7 @@ maybe_signal (struct pty_client *pclient, int sig, int ch)
     else
         sprintf(cbuf, "^%c", ch == 127 ? '?' : ch + 64);
     FOREACH_WSCLIENT(tclient, pclient) {
-        sbuf_append(&tclient->ob, cbuf, -1);
+        tclient->ob.append(cbuf);
         lws_callback_on_writable(tclient->out_wsi);
     }
 }
@@ -1258,7 +1257,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient != NULL) {
-            unlink_tty_from_pty(pclient, wsi, client);
+            unlink_tty_from_pty(pclient, client);
             client->pclient = NULL;
         }
     } else if (strcmp(name, "FOCUSED") == 0) {
@@ -1340,37 +1339,35 @@ reportEvent(const char *name, char *data, size_t dlen,
     return true;
 }
 
-void init_tclient_struct(struct tty_client *client)
+tty_client::tty_client()
 {
-    client->initialized = 0;
-    client->options = NULL;
-    client->is_headless = false;
-    client->is_tclient_proxy = false;
-    client->is_primary_window = false;
-    client->close_requested = false;
-    client->close_expected = false;
-    client->detach_on_disconnect = true;
-    client->detachSaveSend = false;
-    client->uploadSettingsNeeded = true;
-    client->requesting_contents = 0;
-    client->wsi = NULL;
-    client->out_wsi = NULL;
-    client->version_info = NULL;
-    client->main_window = -1;
-    client->pclient = NULL;
-    client->sent_count = 0;
-    client->confirmed_count = 0;
-    sbuf_init(&client->ob);
-    sbuf_init(&client->inb);
-    sbuf_extend(&client->ob, 2048);
-    client->ocount = 0;
-    client->proxyMode = no_proxy; // FIXME
-    client->connection_number = -1;
-    client->pty_window_number = -1;
-    client->pty_window_update_needed = false;
-    client->ssh_connection_info = NULL;
-    client->next_tclient = NULL;
-    lwsl_notice("init_tclient_struct conn#%d\n",  client->connection_number);
+    this->initialized = 0;
+    this->options = NULL;
+    this->is_headless = false;
+    this->is_tclient_proxy = false;
+    this->is_primary_window = false;
+    this->close_requested = false;
+    this->close_expected = false;
+    this->detach_on_disconnect = true;
+    this->detachSaveSend = false;
+    this->uploadSettingsNeeded = true;
+    this->requesting_contents = 0;
+    this->wsi = NULL;
+    this->out_wsi = NULL;
+    this->version_info = NULL;
+    this->main_window = -1;
+    this->pclient = NULL;
+    this->sent_count = 0;
+    this->confirmed_count = 0;
+    this->ob.extend(2048);
+    this->ocount = 0;
+    this->proxyMode = no_proxy; // FIXME
+    this->connection_number = -1;
+    this->pty_window_number = -1;
+    this->pty_window_update_needed = false;
+    this->ssh_connection_info = NULL;
+    this->next_tclient = NULL;
+    lwsl_notice("init_tclient_struct conn#%d\n",  this->connection_number);
 }
 
 bool
@@ -1459,7 +1456,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
         client->inb.len = clen - start;
     }
     else if (client->inb.size > 2048)
-        sbuf_free(&client->inb);
+        client->inb.reset();
     else
         client->inb.len = 0;
     return 0;
@@ -1514,40 +1511,34 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
 
     lwsl_info("handle_output conn#%d initialized:%d pmode:%d len0:%zu pty_up_n:%d\n", client->connection_number, client->initialized, proxyMode, client->ob.len, client->pty_window_update_needed);
     bool nonProxy = proxyMode != proxy_command_local && proxyMode != proxy_display_local;
-    struct sbuf buf;
-    struct sbuf *bufp = &buf;
-    sbuf_init(bufp);
+    sbuf sb;
     if (! to_proxy)
-        sbuf_blank(bufp, LWS_PRE);
+        sb.blank(LWS_PRE);
     if (client->uploadSettingsNeeded) { // proxyMode != proxy_local ???
         client->uploadSettingsNeeded = false;
         if (settings_as_json != NULL) {
-            sbuf_printf(bufp, URGENT_WRAP("\033]89;%s\007"),
-                        settings_as_json);
+            sb.printf(URGENT_WRAP("\033]89;%s\007"), settings_as_json);
         }
     }
     if (client->initialized == 0 && proxyMode != proxy_command_local) {
         if (client->options && client->options->cmd_settings) {
             //json_object_put(client->cmd_settings);
-            sbuf_printf(bufp, URGENT_WRAP("\033]88;%s\007"),
-                        json_object_to_json_string_ext(client->options->cmd_settings, JSON_C_TO_STRING_PLAIN));
+            sb.printf(URGENT_WRAP("\033]88;%s\007"),
+                      json_object_to_json_string_ext(client->options->cmd_settings, JSON_C_TO_STRING_PLAIN));
         } else {
-            sbuf_printf(bufp, URGENT_WRAP("\033]88;{}\007"));
+            sb.printf(URGENT_WRAP("\033]88;{}\007"));
         }
 #define FORMAT_PID_SNUMBER "\033]31;%d\007"
 #define FORMAT_SNAME "\033]30;%s\007"
-        sbuf_printf(bufp,
-                    pclient->session_name
-                    ? URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME)
-                    : URGENT_WRAP(FORMAT_PID_SNUMBER),
-                    pclient->pid,
-                    pclient->session_name);
+        sb.printf(pclient->session_name
+                  ? URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME)
+                  : URGENT_WRAP(FORMAT_PID_SNUMBER),
+                  pclient->pid,
+                  pclient->session_name);
         if (pclient->saved_window_contents != NULL) {
             int rcount = pclient->saved_window_sent_count;
-            sbuf_printf(bufp,
-                        URGENT_WRAP("\033]103;%ld,%s\007"),
-                        (long) rcount,
-                        (char *) pclient->saved_window_contents);
+            sb.printf(URGENT_WRAP("\033]103;%ld,%s\007"),
+                      (long) rcount, (char *) pclient->saved_window_contents);
             client->sent_count = rcount;
             if (pclient->preserve_mode < 2) {
                 free(pclient->saved_window_contents);
@@ -1564,30 +1555,28 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         long unconfirmed = (read_count - rcount - client->ocount) & MASK28;
         if (unconfirmed > 0 && pend - pstart >= unconfirmed) {
             pstart = pend - unconfirmed;
-            sbuf_append(bufp, start_replay_mode, -1);
-            sbuf_append(bufp, pclient->preserved_output+pstart,
-                        (int) unconfirmed);
-            sbuf_append(bufp, end_replay_mode, -1);
+            sb.append(start_replay_mode);
+            sb.append(pclient->preserved_output+pstart,
+                       (int) unconfirmed);
+            sb.append(end_replay_mode);
             rcount += unconfirmed;
         }
         rcount = rcount & MASK28;
         client->sent_count = rcount;
         client->confirmed_count = rcount;
-        sbuf_printf(bufp,
-                    OUT_OF_BAND_START_STRING "\033[96;%ld"
-                    URGENT_END_STRING,
-                    rcount);
+        sb.printf(OUT_OF_BAND_START_STRING "\033[96;%ld"
+                  URGENT_END_STRING, rcount);
     }
     if (client->pty_window_update_needed && proxyMode != proxy_command_local) {
         client->pty_window_update_needed = false;
         int kind = proxyMode == proxy_display_local ? 2
             : (int) pclient->session_name_unique;
         lwsl_info("- send session info %d\n", pclient->session_number);
-        sbuf_printf(bufp, URGENT_WRAP("\033[91;%d;%d;%d;%du"),
-                    kind,
-                    pclient->session_number,
-                    client->pty_window_number+1,
-                    client->connection_number);
+        sb.printf(URGENT_WRAP("\033[91;%d;%d;%d;%du"),
+                  kind,
+                  pclient->session_number,
+                  client->pty_window_number+1,
+                  client->connection_number);
     }
     if (client->detachSaveSend) { // proxyMode != proxy_local ???
         int tcount = 0;
@@ -1595,22 +1584,22 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
             if (++tcount >= 2) break;
         }
         int code = tcount >= 2 ? 0 : pclient->detach_count != 0 ? 2 : 1;
-        sbuf_printf(bufp, URGENT_WRAP("\033[82;%du"), code);
+        sb.printf(URGENT_WRAP("\033[82;%du"), code);
         client->detachSaveSend = false;
     }
     if (client->ob.len > 0) {
         //  // proxyMode != proxy_local ??? for count?
         client->sent_count = (client->sent_count + client->ocount) & MASK28;
-        sbuf_append(bufp, client->ob.buffer, client->ob.len);
+        sb.append(client->ob);
         client->ocount = 0;
         if (client->ob.size > 4000) {
-            sbuf_free(&client->ob);
-            sbuf_extend(&client->ob, 2048);
+            client->ob.reset();
+            client->ob.extend(2048);
         }
         client->ob.len = 0;
     }
     if (client->requesting_contents == 1) { // proxyMode != proxy_local ???
-        sbuf_printf(bufp, "%s", request_contents_message);
+        sb.printf("%s", request_contents_message);
         client->requesting_contents = 2;
     }
     if (pclient==NULL)
@@ -1619,35 +1608,34 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         && proxyMode != proxy_command_local) {
         if (proxyMode != proxy_display_local) {
             client->close_expected = true;
-            sbuf_printf(bufp, "%s", eof_message);
+            sb.printf("%s", eof_message);
         }
-        sbuf_free(&client->ob);
+        client->ob.reset();
     }
     client->initialized = 2;
 
     if (to_proxy) {
-        if (bufp->len > 0 && proxyMode == proxy_remote && client->options) {
+        if (sb.len > 0 && proxyMode == proxy_remote && client->options) {
             long output_timeout = client->options->remote_output_interval;
             if (output_timeout)
                 lws_set_timer_usecs(client->out_wsi, output_timeout * (LWS_USEC_PER_SEC / 1000));
         }
         if (client->pclient == NULL) {
-            lwsl_notice("proxy WRITABLE/close blen:%zu\n", bufp->len);
+            lwsl_notice("proxy WRITABLE/close blen:%zu\n", sb.len);
         }
         // data in tclient->ob.
-        size_t n = write(client->proxy_fd_out, bufp->buffer, bufp->len);
+        size_t n = write(client->proxy_fd_out, sb.buffer, sb.len);
         lwsl_notice("proxy RAW_WRITEABLE %d len:%zu written:%zu pclient:%p\n",
-                    client->proxy_fd_out, bufp->len, n, client->pclient);
+                    client->proxy_fd_out, sb.len, n, client->pclient);
     } else {
         struct lws *wsi = client->wsi;
-        int written = bufp->len - LWS_PRE;
+        int written = sb.len - LWS_PRE;
         lwsl_info("tty SERVER_WRITEABLE conn#%d written:%d sent: %ld to %p\n", client->connection_number, written, (long) client->sent_count, wsi);
         if (written > 0
-            && lws_write(wsi, (unsigned char*) bufp->buffer+LWS_PRE,
+            && lws_write(wsi, (unsigned char*) sb.buffer+LWS_PRE,
                          written, LWS_WRITE_BINARY) != written)
             lwsl_err("lws_write\n");
     }
-    sbuf_free(bufp);
     return to_proxy && client->pclient == NULL ? -1 : 0;
 }
 
@@ -1701,7 +1689,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         lwsl_notice("proxy RAW_CLOSE_FILE\n");
         if (tclient->wsi == wsi)
-            tty_client_destroy(wsi, tclient, false);
+            tclient->~tty_client();
         return 0;
     case LWS_CALLBACK_TIMER:
         lwsl_notice("proxy CALLBACK_TIMER\n");
@@ -1731,7 +1719,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                 lws_set_timer_usecs(tclient->wsi, input_timeout * (LWS_USEC_PER_SEC / 1000));
         }
         // read data, send to
-        sbuf_extend(&tclient->inb, 1024);
+        tclient->inb.extend(1024);
         n = read(tclient->proxy_fd_in,
                          tclient->inb.buffer + tclient->inb.len,
                          tclient->inb.size - tclient->inb.len);
@@ -1805,8 +1793,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             }
         }
         if (client == NULL) {
-            client = (struct tty_client*) xmalloc(sizeof(struct tty_client));
-            init_tclient_struct(client);
+            client = new tty_client();
         }
         WSI_SET_TCLIENT(wsi, client);
         pclient = client->pclient;
@@ -1905,8 +1892,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         }
          // receive data from websockets client (browser)
          //fprintf(stderr, "callback_tty CALLBACK_RECEIVE len:%d\n", (int) len);
-        sbuf_extend(&client->inb, len < 1024 ? 1024 : len + 1);
-        sbuf_append(&client->inb, (char *) in, len);
+        client->inb.extend(len < 1024 ? 1024 : len + 1);
+        client->inb.append((char *) in, len);
         //((unsigned char*)client->inb.buffer)[client->inb.len] = '\0'; // ??
         // check if there are more fragmented messages
         if (lws_remaining_packet_payload(wsi) <= 0
@@ -1928,8 +1915,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
              client->wsi = NULL;
              client->out_wsi = NULL;
          } else {
-             tty_client_destroy(wsi, client, false);
-             free(client);
+             delete client;
          }
          lwsl_notice("client #:%d disconnected\n", client->connection_number);
          maybe_exit(0);
@@ -1965,8 +1951,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
         lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd,
                                    "proxy", NULL);
     struct tty_client *tclient =
-        ((struct tty_client *) lws_wsi_user(pin_lws));
-    init_tclient_struct(tclient);
+        new (lws_wsi_user(pin_lws)) tty_client();
     tclient->is_tclient_proxy = true;
     set_connection_number(tclient, pclient ? pclient->session_number : -1);
     tclient->proxy_fd_in = fd_in;
@@ -2049,9 +2034,7 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     int wnum = -1;
     if (port != -104 && port != -105 && url == NULL) {
-        struct tty_client *tclient =
-            (struct tty_client *) xmalloc(sizeof(struct tty_client));
-        init_tclient_struct(tclient);
+        struct tty_client *tclient = new tty_client();
         tclient->options = link_options(options);
         set_connection_number(tclient, pclient ? pclient->session_number : -1);
         if (pclient)
@@ -2090,50 +2073,48 @@ display_session(struct options *options, struct pty_client *pclient,
             : NULL;
         if (encoded)
             url = encoded;
-        struct sbuf sb;
-        sbuf_init(&sb);
+        sbuf sb;
         if (wnum >= 0) {
             const char *main_url = url ? url : main_html_url;
-            sbuf_append(&sb, main_url, -1);
+            sb.append(main_url);
             if (strchr(main_url, '#') == NULL)
-                sbuf_append(&sb, "#", 1);
+                sb.append("#", 1);
             // Note we use ';' rather than the traditional '&' to separate parts
             // of the fragment.  Using '&' causes a mysterious bug (at
             // least on Electron, Qt, and Webview) when added "&js-verbosity=N".
             if (pclient != NULL) {
-                sbuf_printf(&sb, ";session-number=%d", pclient->session_number);
+                sb.printf(";session-number=%d", pclient->session_number);
             }
-            sbuf_printf(&sb, ";window=%d", wnum);
+            sb.printf(";window=%d", wnum);
             if (options->headless)
-                sbuf_printf(&sb, ";headless=true");
+                sb.printf(";headless=true");
             const char *verbosity = get_setting(options->settings, "log.js-verbosity");
             if (verbosity) // as OPTION_NUMBER_TYPE does not need encoding
-                sbuf_printf(&sb, ";js-verbosity=%s", verbosity);
+                sb.printf(";js-verbosity=%s", verbosity);
             const char *js_string_max = get_setting(options->settings, "log.js-string-max");
             if (js_string_max) // as OPTION_NUMBER_TYPE does not need encoding
-                sbuf_printf(&sb, ";log-string-max=%s", js_string_max);
+                sb.printf(";log-string-max=%s", js_string_max);
             const char *log_to_server = get_setting(options->settings, "log.js-to-server");
             if (log_to_server && (strcmp(log_to_server, "yes") == 0
                                   || strcmp(log_to_server, "true") == 0
                                   || strcmp(log_to_server, "both") == 0)) {
-                sbuf_printf(&sb, ";log-to-server=%s", log_to_server);
+                sb.printf(";log-to-server=%s", log_to_server);
             }
         } else if (port == -105) // view saved file
-            sbuf_printf(&sb, "%s#view-saved=%s",  main_html_url, url);
+            sb.printf("%s#view-saved=%s",  main_html_url, url);
         else if (port == -104) // browse url
-            sbuf_printf(&sb, "%s#browse=%s",  main_html_url, url);
+            sb.printf("%s#browse=%s",  main_html_url, url);
         else
-            sbuf_printf(&sb, "%s", url);
+            sb.printf("%s", url);
         if (encoded)
             free(encoded);
         if (browser_specifier
             && strcmp(browser_specifier, "--print-url") == 0) {
-            sbuf_append(&sb, "\n", 1);
+            sb.append("\n", 1);
             if (write(options->fd_out, sb.buffer, sb.len) <= 0)
                 lwsl_err("write failed - display_session\n");
         } else
             r = do_run_browser(options, sb.buffer, port);
-        sbuf_free(&sb);
     }
     return r;
 }
@@ -2508,7 +2489,7 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                   min_unconfirmed = unconfirmed;
                 int tavail = tclient->ob.size - tclient->ob.len;
                 if (tavail < 1000) {
-                    sbuf_extend(&tclient->ob, 1000);
+                    tclient->ob.extend(1000);
                     tavail = tclient->ob.size - tclient->ob.len;
                 }
                 if (tavail < avail)

@@ -525,17 +525,14 @@ chrome_command(bool app_mode, struct options *options)
     if (chrome_cmd == NULL)
         return NULL;
     struct sbuf sb;
-    sbuf_init(&sb);
-    sbuf_append(&sb, chrome_cmd, -1);
+    sb.append(chrome_cmd);
     if (free_needed)
         free((void*) chrome_cmd);
     if (options->headless)
-        sbuf_append(&sb, " --headless --remote-debugging-port=0 '%U'", -1);
+        sb.append(" --headless --remote-debugging-port=0 '%U'");
     else if (app_mode)
-        sbuf_append(&sb, " --app='%U%g'", -1);
-    char *buf = sbuf_strdup(&sb);
-    sbuf_free(&sb);
-    return buf;
+        sb.append(" --app='%U%g'");
+    return sb.strdup();
 }
 
 const char *
@@ -573,20 +570,17 @@ qtwebengine_command(struct options *options)
         return NULL;
     }
     struct sbuf sb;
-    sbuf_init(&sb);
     const char *geometry = geometry_option(options);
-    sbuf_append(&sb, cmd, -1);
+    sb.append(cmd);
     free(cmd);
     if (geometry)
-        sbuf_printf(&sb, " --geometry %s", geometry);
+        sb.printf(" --geometry %s", geometry);
     if (options->qt_remote_debugging)
-        sbuf_printf(&sb, " --remote-debugging-port=%s", options->qt_remote_debugging);
+        sb.printf(" --remote-debugging-port=%s", options->qt_remote_debugging);
     if (options->headless)
-        sbuf_append(&sb, " --headless", -1);
-    sbuf_append(&sb, " --connect '%U'", -1);
-    char *buf = sbuf_strdup(&sb);
-    sbuf_free(&sb);
-    return buf;
+        sb.append(" --headless");
+    sb.append(" --connect '%U'");
+    return sb.strdup();
 }
 
 /** Return freshly allocated command string or NULL */
@@ -634,26 +628,23 @@ electron_command(struct options *options)
     char *app = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/electron");
     char *app_fixed = fix_for_windows(app);
     struct sbuf sb;
-    sbuf_init(&sb);
 #ifdef __APPLE__
-    sbuf_printf(&sb, "/usr/bin/open -a %s --args", epath);
+    sb.printf("/usr/bin/open -a %s --args", epath);
 #else
-    sbuf_printf(&sb, "%s", epath);
+    sb.printf("%s", epath);
 #endif
-    sbuf_printf(&sb, " %s", app_fixed);
+    sb.printf(" %s", app_fixed);
     const char *geometry = geometry_option(options);
     if (geometry)
-        sbuf_printf(&sb, " --geometry %s", geometry);
+        sb.printf(" --geometry %s", geometry);
     if (options->headless)
-        sbuf_printf(&sb, " --headless");
-    sbuf_append(&sb, " --url '%U'", -1);
+        sb.printf(" --headless");
+    sb.append(" --url '%U'");
     if (app_fixed != app)
         free(app_fixed);
     if (epath_free_needed)
         free(epath_free_needed);
-    char *buf = sbuf_strdup(&sb);
-    sbuf_free(&sb);
-    return buf;
+    return sb.strdup();
 }
 
 int
@@ -1281,25 +1272,23 @@ main(int argc, char **argv)
         lws_set_log_level(debug_level, lwsl_emit_stderr_notimestamp);
     else {
         struct sbuf sb;
-        sbuf_init(&sb);
         const char *p = logfilefmt;
         for (; *p; p++) {
             const char *pc = strchr(p, '%');
             if (pc == NULL) {
-                sbuf_append(&sb, p, strlen(p));
+                sb.append(p);
                 break;
             }
-            sbuf_append(&sb, p, pc-p);
+            sb.append(p, pc-p);
             p = pc+1;
             if (pc[1] == 'P') {
-                sbuf_printf(&sb, "%d", getpid());
+                sb.printf("%d", getpid());
             } else if (pc[1] == '%') {
-                sbuf_append(&sb, "%", 1);
+                sb.append("%", 1);
             }
         }
-        sbuf_append(&sb, "", 1);
+        sb.append("", 1);
         _logfile = fopen((const char *) sb.buffer, "a");
-        sbuf_free(&sb);
         lws_set_log_level(debug_level, lwsl_emit_stderr_with_flush);
     }
 
@@ -1307,16 +1296,14 @@ main(int argc, char **argv)
                 LDOMTERM_VERSION, git_describe);
     if ((debug_level & LLL_NOTICE) != 0) {
         struct sbuf sb;
-        sbuf_init(&sb);
         for (int i = 0; i < argc; i++) {
             char *arg = argv[i];
             const char *qarg = maybe_quote_arg(arg);
-            sbuf_printf(&sb, " %s", qarg);
+            sb.printf(" %s", qarg);
             if (arg != qarg)
                 free((void*) qarg);
         }
         lwsl_notice("invoked as:%.*s\n", sb.len, sb.buffer);
-        sbuf_free(&sb);
     }
     lwsl_notice("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
 #ifdef LWS_LIBRARY_VERSION
@@ -1723,11 +1710,10 @@ static struct lib_info standard_jslibs[] = {
  */
 
 static void
-make_main_html_text(struct sbuf *obuf, int port)
+make_main_html_text(struct sbuf *obf, int port)
 {
     const char *start_html = "no-frames.html";
-    sbuf_printf(obuf,
-                "<!DOCTYPE html>\n"
+    obf->printf("<!DOCTYPE html>\n"
                 "<html><head>\n"
                 "<meta http-equiv='Content-Type' content='text/html;"
                 " charset=UTF-8'>\n"
@@ -1751,39 +1737,32 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
     char base[40];
     bool simple = (hoptions & LIB_WHEN_OUTER) == 0;
     sprintf(base, "http://%s:%d/", "localhost", port);
-    sbuf_printf(obuf,
-                "<!DOCTYPE html>\n"
-                "<html><head>\n"
-                "<base href='%s'/>\n"
-                "<meta http-equiv='Content-Type' content='text/html;"
-                " charset=UTF-8'>\n"
-                "<title>DomTerm</title>\n",
-                base);
+    obuf->printf("<!DOCTYPE html>\n"
+                 "<html><head>\n"
+                 "<base href='%s'/>\n"
+                 "<meta http-equiv='Content-Type' content='text/html;"
+                 " charset=UTF-8'>\n"
+                 "<title>DomTerm</title>\n",
+                 base);
     const char **p;
     for (p = simple ? standard_stylesheets_simple : standard_stylesheets; *p; p++) {
-        sbuf_printf(obuf,
-                    "<link type='text/css' rel='stylesheet' href='%s'>\n",
-                    *p);
+        obuf->printf("<link type='text/css' rel='stylesheet' href='%s'>\n", *p);
     }
     struct lib_info *lib;
     for (lib = standard_jslibs; lib->file != NULL; lib++) {
         const char *jstype = (lib->options & LIB_AS_MODULE) ? "module" : "text/javascript";
         if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER)) != 0)
-            sbuf_printf(obuf,
-                        "<script type='%s' src='%s'> </script>\n",
-                        jstype, lib->file);
+            obuf->printf("<script type='%s' src='%s'> </script>\n",
+                         jstype, lib->file);
     }
     if ((hoptions & LIB_WHEN_OUTER) != 0)
-        sbuf_printf(obuf,
-                    "<script type='text/javascript'>\n"
-                    "DomTerm.server_port = %d;\n"
-                    "DomTerm.server_key = '%.*s';\n"
-                    "</script>\n",
-                    port, SERVER_KEY_LENGTH, server_key);
-    sbuf_printf(obuf,
-                "</head>\n"
-                "<body>%.*s</body>\n"
-                "</html>\n", body_length, body_text);
+        obuf->printf("<script type='text/javascript'>\n"
+                     "DomTerm.server_port = %d;\n"
+                     "DomTerm.server_key = '%.*s';\n"
+                     "</script>\n",
+                     port, SERVER_KEY_LENGTH, server_key);
+    obuf->printf("</head>\n<body>%.*s</body>\n</html>\n",
+                 body_length, body_text);
 }
 
 static void
@@ -1801,16 +1780,14 @@ make_html_file(int port)
     if (server_key[0] == 0)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
     lwsl_notice("initial html file: '%s'\n", main_html_path);
-    struct sbuf obuf[1];
-    sbuf_init(obuf);
-    make_main_html_text(obuf, port);
+    sbuf obuf;
+    make_main_html_text(&obuf, port);
 
     int hfile = open(main_html_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
     if (hfile < 0
-        || write(hfile, obuf->buffer, obuf->len) != obuf->len
+        || write(hfile, obuf.buffer, obuf.len) != obuf.len
         || close(hfile) != 0)
         lwsl_err("writing %s failed\n", main_html_path);
-    sbuf_free(obuf);
 }
 
 void

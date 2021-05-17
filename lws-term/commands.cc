@@ -34,25 +34,25 @@ static void print_base_element(const char*base_url, struct sbuf *sbuf)
     const char *colon = strchr(base_url, ':');
     const char *sl = colon ? strchr(base_url, '/') : NULL;
     if (colon && (! sl || colon < sl))
-        sbuf_printf(sbuf, "<base href='%s'/>", base_url);
+        sbuf->printf("<base href='%s'/>", base_url);
     else {
         struct stat stbuf;
         size_t baselen = strlen(base_url);
-        sbuf_printf(sbuf, "<base href='http://localhost:%d/RESOURCE/%.*s/",
+        sbuf->printf("<base href='http://localhost:%d/RESOURCE/%.*s/",
                     http_port, SERVER_KEY_LENGTH, server_key);
         for (const char *p = base_url; *p; ) {
             char ch = *p++;
             if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
                 || (ch >= '0' && ch <= '9') || ch == '/'
                 || ch == '-' || ch == '_' || ch == '.' || ch == '~')
-                sbuf_append(sbuf, p-1, 1);
+                sbuf->append(p-1, 1);
             else
-                sbuf_printf(sbuf, "%%%02x", ch & 0xFF);
+                sbuf->printf("%%%02x", ch & 0xFF);
         }
         if (baselen > 0 && base_url[baselen-1] != '/'
             && stat(base_url, &stbuf) == 0 && S_ISDIR(stbuf.st_mode))
-            sbuf_printf(sbuf, "/");
-        sbuf_printf(sbuf, "'/>");
+            sbuf->printf("/");
+        sbuf->printf("'/>");
     }
 }
 
@@ -82,9 +82,8 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
             break;
     }
 
-    struct sbuf sb;
-    sbuf_init(&sb);
-    sbuf_printf(&sb, "\033]72;");
+    sbuf sb;
+    sb.printf("\033]72;");
 
     if (is_hcat && i < argc) {
         while (i < argc)  {
@@ -109,7 +108,7 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
                 print_base_element(rpath, &sb);
                 free(rpath);
             }
-            sbuf_copy_file(&sb, fin);
+            sb.copy_file(fin);
             fclose(fin);
         }
     } else {
@@ -120,16 +119,16 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
         }
         if (i == argc) {
             FILE *in = fdopen(dup(opts->fd_in), "r");
-            sbuf_copy_file(&sb, in);
+            sb.copy_file(in);
             fclose(in);
         } else {
             while (i < argc)  {
-                sbuf_append(&sb, argv[i++], -1);
+                sb.append(argv[i++]);
             }
         }
     }
     int ret = EXIT_SUCCESS;
-    sbuf_append(&sb, "\007", 1);
+    sb.append("\007", 1);
 #if DO_HTML_ACTION_IN_SERVER
     char **ee = env;
     while (*ee && strncmp(*ee, "DOMTERM=", 8) != 0)
@@ -145,14 +144,13 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
         FOREACH_PCLIENT(pclient) {
             if (strcmp(pclient->ttyname, tname) == 0) {
                 FOREACH_WSCLIENT(tclient, pclient) {
-                    sbuf_extend(&tclient->ob, sb.len);
+                    tclient->ob.extend(sb.len);
                     memcpy(tclient->ob.buffer+tclient->ob.len,
                            sb.buffer, sb.len);
                     tclient->ob.len += sb.len;
                     tclient->ocount += sb.len;
                     lws_callback_on_writable(tclient->out_wsi);
                 }
-                sbuf_free(&sb);
                 return EXIT_SUCCESS;
             }
         }
@@ -163,7 +161,6 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
         ret = EXIT_FAILURE;
     }
 #endif
-    sbuf_free(&sb);
     return ret;
 }
 

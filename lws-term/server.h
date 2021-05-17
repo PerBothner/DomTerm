@@ -194,7 +194,10 @@ struct stderr_client {
  * The user structure for the libwebsockets "domterm" and "proxy" protocols.
  * The backback handler moves data to/from a paired pty_client pclient.
  */
-struct tty_client {
+class tty_client {
+public:
+    tty_client();
+    ~tty_client();
     int index() { return connection_number; }
     static bool avoid_index(int i);
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
