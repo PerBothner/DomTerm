@@ -2538,17 +2538,35 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                                 tcgetattr(fd_in, &tio);
                                 const char* icanon_str = (tio.c_lflag & ICANON) != 0 ? "icanon" :  "-icanon";
                                 const char* echo_str = (tio.c_lflag & ECHO) != 0 ? "echo" :  "-echo";
-                                const char* extproc_str = "";
+                                int data_old_length = tclient->ob.len;
+                                tclient->ob.printf(
+                                    URGENT_START_STRING "\033]71; %s %s",
+                                    icanon_str, echo_str);
 #if EXTPROC
                                 if ((tio.c_lflag & EXTPROC) != 0)
-                                    extproc_str = " extproc";
+                                    tclient->ob.append(" extproc");
 #endif
-                                n = sprintf(data_start,
-                                            URGENT_WRAP("\033]71; %s %s%s lflag:%lx\007"),
-                                            icanon_str, echo_str,
-                                            extproc_str,
-                                            (unsigned long) tio.c_lflag);
+                                if ((tio.c_lflag & ISIG) != 0) {
+                                    int v = tio.c_cc[VINTR];
+                                    if (v != _POSIX_VDISABLE)
+                                        tclient->ob.printf(" intr=%d", v);
+                                    v = tio.c_cc[VEOF];
+                                    if (v != _POSIX_VDISABLE)
+                                        tclient->ob.printf(" eof=%d", v);
+                                    v = tio.c_cc[VSUSP];
+                                    if (v != _POSIX_VDISABLE)
+                                        tclient->ob.printf(" susp=%d", v);
+                                    v = tio.c_cc[VQUIT];
+                                    if (v != _POSIX_VDISABLE)
+                                        tclient->ob.printf(" quit=%d", v);
+                                }
+                                tclient->ob.printf(
+                                    " lflag:%lx\007" URGENT_END_STRING,
+                                    (unsigned long) tio.c_lflag);
+                                data_start = tclient->ob.buffer+data_old_length;
+                                n = tclient->ob.len - data_old_length;
                                 data_length = n;
+                                tclient->ob.len -= n; // added back below
                             }
                             else
 #endif
