@@ -66,7 +66,6 @@ int help_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     int ecode = EXIT_SUCCESS;
     const char *topic = NULL;
-    const char *pager_option = "";
     for (int argi = 1; argi < argc; argi++) {
         topic = argv[argi];
         if (strcmp(topic, "--html") == 0)
@@ -75,10 +74,12 @@ int help_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
             man_option_seen = true;
         else if (strcmp(topic, "--text") == 0)
             text_option_seen = true;
+#if 0
         else if (strcmp(topic, "--pager") == 0)
             pager_option = ""; // FUTURE maybe allow --pager=xxx
         else if (strcmp(topic, "--no-pager") == 0)
             pager_option = NULL;
+#endif
         else if (topic[0] == '-' && topic[1] == '-') {
             printf_error(opts, "unknown help option '%s'", topic);
             return EXIT_FAILURE;

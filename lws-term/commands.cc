@@ -156,7 +156,7 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
         }
     }
 #else
-    if (write(get_tty_out(), sb.buffer, sb.len) != sb.len) {
+    if (write(get_tty_out(), sb.buffer, sb.len) != (ssize_t) sb.len) {
         lwsl_err("write failed\n");
         ret = EXIT_FAILURE;
     }
@@ -378,7 +378,7 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     }
     size_t bsize = 2048;
-    int off = 0;
+    size_t off = 0;
     char *buf = challoc(bsize);
     for (;;) {
         if (bsize == off) {
@@ -561,13 +561,13 @@ static void show_connection_info(struct tty_client *tclient,
         size_t clen = strlen(cinfo);
         if (verbosity > 0 && sp2)
             fprintf(out, " from %.*s:%.*s to %.*s:%.*s",
-                    sp1 - cinfo, cinfo,
-                    sp2 - sp1 - 1, sp1 + 1,
-                    sp3 - sp2 - 1, sp2 + 1,
-                    cinfo + clen - sp3 - 1, sp3 + 1);
+                    (int) (sp1 - cinfo), cinfo,
+                    (int) (sp2 - sp1 - 1), sp1 + 1,
+                    (int) (sp3 - sp2 - 1), sp2 + 1,
+                    (int) (cinfo + clen - sp3 - 1), sp3 + 1);
         else
             fprintf(out, " from %.*s",
-                    sp1 ? sp1 - cinfo : clen, cinfo);
+                    (int) (sp1 ? sp1 - cinfo : clen), cinfo);
     }
 }
 
@@ -853,13 +853,13 @@ int complete_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     const char* cline = argv[1]; // COMP_LINE - complete input line
     const char* cpoint = argv[2]; // COMP_POINT - index in cline
-    const char *ccmd = argv[3]; // invoke command
-    const char *cword = argv[4]; // word to complete - unused
-    const char *cprevious = argv[5]; // previous work - unused
+    //const char *ccmd = argv[3]; // invoke command
+    //const char *cword = argv[4]; // word to complete - unused
+    //const char *cprevious = argv[5]; // previous word - unused
     char *line_before = new char[strlen(cline)+5];
     strcpy(line_before, cline);
     long cindex = strtol(cpoint, NULL, 10);
-    if (cindex >= 0 && cindex <= strlen(cline))
+    if (cindex >= 0 && cindex <= (long) strlen(cline))
         line_before[cindex] = '\0';
     if (cindex == 0 || line_before[cindex-1] == ' ')
         strcat(line_before, " ''");
@@ -921,7 +921,6 @@ enum window_op_kind {
 int window_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
-    struct tty_client *wclient;
     int first_window_number = 1;
     int i = first_window_number;
     for (; i < argc; i++) {
@@ -937,7 +936,7 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
         if (arg[0] == '\0' || *endptr)
             break;
         if (! tty_clients.valid_index(num)) {
-            printf_error(opts, "domterm window: invalid window number %d",
+            printf_error(opts, "domterm window: invalid window number %ld",
                          num);
             return EXIT_FAILURE;
         }

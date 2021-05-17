@@ -203,7 +203,6 @@ callback_cmd_stdin(struct lws *wsi, enum lws_callback_reasons reason,
     switch (reason) {
     case LWS_CALLBACK_RAW_RX_FILE: {
         unsigned char *rbuf = client->rbuffer;
-        int cur_out = STDOUT_FILENO;
         int nr = read(STDIN_FILENO, rbuf, client->rsize);
         if (nr <= 0)
             return -1;
