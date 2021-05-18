@@ -1801,19 +1801,28 @@ class DTParser {
             }
             break;
         }
-        case 71:
+        case 71: {
             // handle tcsetattr
-            var canon = text.indexOf(" icanon ") >= 0;
-            var echo = text.indexOf(" echo ") >= 0;
-            var extproc = text.indexOf(" extproc ") >= 0;
+            let canon = text.indexOf(" icanon ") >= 0;
+            let echo = text.indexOf(" echo ") >= 0;
+            let extproc = text.indexOf(" extproc ") >= 0;
             if (canon == 0 && term.isLineEditing() && term._inputLine) {
                 term._sendInputContents(false);
             }
+            let specialKeys = "";
+            for (const keyName of ["intr", "susp", "eof", "quit"]) {
+                let m = text.match(new RegExp(" " + keyName + "=([0-9]+)"));
+                if (m) {
+                    specialKeys += String.fromCharCode(Number(m[1]));
+                }
+            }
+            term._specialKeys = specialKeys;
             term._clientWantsEditing = canon ? 1 : 0;
             term._clientPtyEcho = echo;
             term._clientPtyExtProc = extproc ? 1 : 0;
             term.autoLazyCheckInferior = extproc ? 0 : 1;
             break;
+        }
         case 72:
             term._scrubAndInsertHTML(text);
             break;

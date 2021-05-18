@@ -1013,14 +1013,16 @@ static void
 maybe_signal (struct pty_client *pclient, int sig, int ch)
 {
     ioctl(pclient->pty, TIOCSIG, (char *)(size_t)sig);
-    char cbuf[12];
-    if (ch >= ' ' && ch != 127)
-        sprintf(cbuf, "%c", ch);
-    else
-        sprintf(cbuf, "^%c", ch == 127 ? '?' : ch + 64);
-    FOREACH_WSCLIENT(tclient, pclient) {
-        tclient->ob.append(cbuf);
-        lws_callback_on_writable(tclient->out_wsi);
+    if (ch >= 0) {
+        char cbuf[12];
+        if (ch >= ' ' && ch != 127)
+            sprintf(cbuf, "%c", ch);
+        else
+            sprintf(cbuf, "^%c", ch == 127 ? '?' : ch + 64);
+        FOREACH_WSCLIENT(tclient, pclient) {
+            tclient->ob.append(cbuf);
+            lws_callback_on_writable(tclient->out_wsi);
+        }
     }
 }
 #endif
@@ -1160,13 +1162,14 @@ reportEvent(const char *name, char *data, size_t dlen,
                       pclient->pty, isCanon, isEchoing, klen);
 #if defined(TIOCSIG)
             bool packet_mode = isExtproc && (trmios.c_lflag & ISIG) != 0;
+            int ch0 = isCanon ? kstr0 : -1;
             if (packet_mode && kstr0 == trmios.c_cc[VINTR])
                 // kill(- pclient->pid, SIGINT);
-                maybe_signal(pclient, SIGINT, kstr0);
+                maybe_signal(pclient, SIGINT, ch0);
             else if (packet_mode && kstr0 == trmios.c_cc[VSUSP])
-                maybe_signal(pclient, SIGTSTP, kstr0);
+                maybe_signal(pclient, SIGTSTP, ch0);
             else if (packet_mode && kstr0 == trmios.c_cc[VQUIT])
-                maybe_signal(pclient, SIGQUIT, kstr0);
+                maybe_signal(pclient, SIGQUIT, ch0);
             else
 #endif
             if (write(pclient->pty, kstr, klen) < klen)
@@ -1758,7 +1761,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         break;
 
     case LWS_CALLBACK_ESTABLISHED: {
-        lwsl_notice("tty/CALLBACK_ESTABLISHED %s client:%p\n", in, client);
+        lwsl_notice("tty/CALLBACK_ESTABLISHED client:%p\n", client);
         char arg[100]; // FIXME
         long wnum = -1;
         if (! check_server_key(wsi, arg, sizeof(arg) - 1))
@@ -1828,7 +1831,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (client->pclient != pclient)
                     link_clients(client, pclient);
                 link_command(wsi, client, pclient);
-                lwsl_info("connection to existing session %ld established\n", pclient->session_number);
+                lwsl_info("connection to existing session %d established\n", pclient->session_number);
             } else {
                 const char*rsession = lws_get_urlarg_by_name(wsi, "rsession=", arg, sizeof(arg) - 1);
                 long rsess;
@@ -2189,7 +2192,7 @@ int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
         requesting->requesting_contents = 1;
         lws_callback_on_writable(requesting->out_wsi);
     }
-    lwsl_notice("reattach sess:%ld rcoud:%ld\n", pclient->session_number, rcount);
+    lwsl_notice("reattach sess:%d rcount:%ld\n", pclient->session_number, rcount);
     if (is_reattach) {
         struct tty_client *tclient = display_pipe_session(opts, pclient);
         tclient->confirmed_count = rcount;
@@ -2394,7 +2397,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         // Create pipe for stderr from ssh.
         // This so we can separate ssh error messages from session output.
         int stderr_pipe[2];
-        int p = pipe(stderr_pipe);
+        (void) pipe(stderr_pipe);
         lws_sock_file_fd_type lfd;
         lfd.filefd = stderr_pipe[0];
         struct lws *stderr_lws =
@@ -2469,7 +2472,7 @@ int
 handle_process_output(struct lws *wsi, struct pty_client *pclient,
                       int fd_in, struct stderr_client *stderr_client) {
             long min_unconfirmed = LONG_MAX;
-            int avail = INT_MAX;
+            size_t avail = INT_MAX;
             int tclients_seen = 0;
             long last_sent_count = -1, last_confirmed_count = -1;
             FOREACH_WSCLIENT(tclient, pclient) {
@@ -2483,7 +2486,7 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                   + tclient->ocount;
                 if (unconfirmed < min_unconfirmed)
                   min_unconfirmed = unconfirmed;
-                int tavail = tclient->ob.size - tclient->ob.len;
+                size_t tavail = tclient->ob.size - tclient->ob.len;
                 if (tavail < 1000) {
                     tclient->ob.extend(1000);
                     tavail = tclient->ob.size - tclient->ob.len;

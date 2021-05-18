@@ -4681,7 +4681,8 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
 }
 
 Terminal.prototype._respondSimpleInput = function(str, keyName) {
-    if (this._lineEditingMode == 0 && this.autoLazyCheckInferior)
+    if ((this._lineEditingMode == 0 && this.autoLazyCheckInferior)
+        || (this._specialKeys && this._specialKeys.indexOf(str) >= 0))
         this.reportKeyEvent(keyName, str);
     else
         this.processInputCharacters(str);
