@@ -72,7 +72,7 @@ set_setting_ex(struct json_object **settings,
     if (opt && (opt->flags & OPTION_NUMBER_TYPE) != 0) {
         double d; int len;
         sscanf(value, " %lg %n", &d, &len);
-        if (len != strlen(value))
+        if ((size_t) len != strlen(value))
             printf_error(options, "value for option '%s' is not a number", key);
         else
             jval = json_object_new_double(d);
@@ -136,7 +136,7 @@ check_option_arg(const char *arg, struct options *opts)
         const char *val = eq+1;
         double d; int len;
         sscanf(val, " %lg %n", &d, &len);
-        if (len != strlen(val))
+        if ((size_t) len != strlen(val))
             printf_error(opts, "value for option '%s' is not a number", key);
     }
     set_setting_ex(&opts->cmd_settings, key, eq+1, opt, opts);

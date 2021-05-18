@@ -474,7 +474,7 @@ void tty_restore(int tty_in)
     if (tty_in < 0)
         tty_in = tty_raw_fd;
     if (tty_in >= 0) {
-        int r = tcsetattr(tty_in, TCSANOW, &save_term);
+        (void) tcsetattr(tty_in, TCSANOW, &save_term);
     }
     tty_raw_fd = -1;
 }
@@ -689,7 +689,6 @@ extract_command_from_list(const char *list, const char **startp,
 const char *
 check_conditional(const char *tmplate, test_function_t tester, void* data)
 {
-    int size = 0;
     while (tmplate[0] == '{') {
         // a disjunction of clauses, separated by '|'
         bool ok = false; // true when a previous clause was true
@@ -763,9 +762,9 @@ char *sbuf::strdup()
 void
 sbuf::extend(int needed)
 {
-    int min_size = len + needed;
+    size_t min_size = len + needed;
     if (min_size > size) {
-        int xsize = (3 * size) >> 1;
+        size_t xsize = (3 * size) >> 1;
         if (min_size < xsize)
             min_size = xsize;
         size = min_size;

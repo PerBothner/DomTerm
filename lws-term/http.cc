@@ -87,15 +87,15 @@ struct mimetype {
 
 const char * get_mimetype(const char *file)
 {
-        int n = strlen(file);
-        const char *end = file+n;
-        struct mimetype *m = mimetypes;
-        for (; m->extension; m++) {
-            size_t extlen = strlen(m->extension);
-            if (n > extlen && strcmp(end-extlen, m->extension) == 0)
-                return m->mimetype;
-        }
-        return nullptr;
+    size_t n = strlen(file);
+    const char *end = file+n;
+    struct mimetype *m = mimetypes;
+    for (; m->extension; m++) {
+        size_t extlen = strlen(m->extension);
+        if (n > extlen && strcmp(end-extlen, m->extension) == 0)
+            return m->mimetype;
+    }
+    return nullptr;
 }
 
 int
@@ -262,7 +262,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     && (slen = stbuf.st_size) > 0
                     && (buf = (char*) realloc(buf, slen)) != NULL
                     && (sfile = fdopen(fd, "r")) != NULL
-                    && fread(buf, 1, slen, sfile) == slen) {
+                    && (off_t) fread(buf, 1, slen, sfile) == slen) {
                     sbuf sb;
                     // FIXME: We should encrypt the response (perhaps just a
                     // simple encryption using the kerver_key).  It is probably

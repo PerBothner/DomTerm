@@ -387,7 +387,6 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
 {
     if (tclient->pclient == NULL)
         link_clients(tclient, pclient);
-    struct tty_client *first_tclient = pclient->first_tclient;
 
     if (! pclient->has_primary_window) {
         tclient->is_primary_window = true;
@@ -1243,7 +1242,6 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "DETACH") == 0) {
         if (proxyMode == proxy_display_local)
             return false;
-        bool val = strcmp(data,"0")!=0;
         if (pclient != NULL) {
             if (pclient->detach_count >= 0)
                 pclient->detach_count++;
@@ -1510,7 +1508,6 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     }
 
     lwsl_info("handle_output conn#%d initialized:%d pmode:%d len0:%zu pty_up_n:%d\n", client->connection_number, client->initialized, proxyMode, client->ob.len, client->pty_window_update_needed);
-    bool nonProxy = proxyMode != proxy_command_local && proxyMode != proxy_display_local;
     sbuf sb;
     if (! to_proxy)
         sb.blank(LWS_PRE);
@@ -1679,7 +1676,6 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
                void *user, void *in, size_t len)
 {
     struct tty_client *tclient = (struct tty_client *) user;
-    struct pty_client *pclient = tclient == NULL ? NULL : tclient->pclient;
     ssize_t n;
     if (tclient==NULL)
         lwsl_info("callback_proxy wsi:%p reason:%d - no client\n", wsi, reason);
