@@ -10477,9 +10477,14 @@ Terminal.prototype.editorMoveToRangeStart = function(range) {
 
 Terminal.prototype.editorMoveStartOrEndBuffer = function(toEnd, action="move") {
     let r = new Range();
-    if (toEnd)
-        r.selectNodeContents(this.initial);
-    else
+    if (toEnd) {
+        const nlines = this.lineEnds.length;
+        const last = this.lineEnds[nlines-1];
+        if (last)
+            r.setEndBefore(last);
+        else
+            r.selectNodeContents(this.lineStarts[nlines-1]);
+    } else
         r.setEnd(this.lineStarts[0], 0);
     let sel = window.getSelection();
     if (action == "move") {
