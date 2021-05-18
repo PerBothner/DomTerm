@@ -234,8 +234,10 @@ cmd('toggle-auto-pager',
 cmd('toggle-pause-mode',
     function(dt, key) {
         let oldMode = dt._pagingMode;
-        if (oldMode==2)
+        if (oldMode==2) {
+            DomTerm.setAutoPaging("false", dt);
             dt._pauseContinue(true);
+        }
         dt._enterPaging(oldMode==1);
         return true;
     });
