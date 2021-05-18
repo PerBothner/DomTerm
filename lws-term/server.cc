@@ -196,7 +196,7 @@ int start_command(struct options *opts, char *cmd) {
 static int port_specified = -1;
 volatile bool force_exit = false;
 struct lws_context *context;
-struct tty_server *server;
+struct tty_server tserver;
 int http_port;
 struct lws_vhost *vhost;
 struct lws *focused_wsi = NULL;
@@ -387,32 +387,20 @@ void print_options_prefixed(const char *prefix, const char *before, FILE *out)
     }
 }
 
-static struct tty_server *
-tty_server_new() {
-    struct tty_server *ts = (struct tty_server *) xmalloc(sizeof(struct tty_server));
-
-    memset(ts, 0, sizeof(struct tty_server));
-    ts->session_count = 0;
-
-    return ts;
+tty_server::tty_server()
+{
+    session_count = 0;
 }
 
-void
-tty_server_free(struct tty_server *ts) {
-    if (ts == NULL)
-        return;
-    if (ts->options.credential != NULL)
-        free(ts->options.credential);
-    if (ts->options.sig_name)
-        free(ts->options.sig_name);
-    if (ts->socket_path != NULL) {
+tty_server::~tty_server()
+{
+    if (socket_path != NULL) {
         struct stat st;
-        if (!stat(ts->socket_path, &st)) {
-            unlink(ts->socket_path);
+        if (!stat(socket_path, &st)) {
+            unlink(socket_path);
         }
-        free(ts->socket_path);
+        free(socket_path);
     }
-    free(ts);
 }
 
 void
@@ -916,6 +904,10 @@ options::~options()
     // FIXME implement to fix memory leaks
     free((void*) env);
     free((void*) cwd);
+    if (credential != NULL)
+        free(credential);
+    if (sig_name)
+        free(sig_name);
     if (cmd_settings)
         json_object_put(cmd_settings);
 }
@@ -1000,7 +992,6 @@ int process_options(int argc, arglist_t argv, struct options *opts)
 {
     // parse command line options
     optind = 1;
-    int c;
     for (;;) {
         int c = getopt_long(argc, (char * const*)argv, opt_string, options, NULL);
         if (c == -1) {
@@ -1303,7 +1294,7 @@ main(int argc, char **argv)
             if (arg != qarg)
                 free((void*) qarg);
         }
-        lwsl_notice("invoked as:%.*s\n", sb.len, sb.buffer);
+        lwsl_notice("invoked as:%.*s\n", (int) sb.len, sb.buffer);
     }
     lwsl_notice("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
 #ifdef LWS_LIBRARY_VERSION
@@ -1350,11 +1341,8 @@ main(int argc, char **argv)
         exit(client_send_command(socket, argc, argv, environ));
     }
 
-    server = tty_server_new();
-    server->options = opts;
-
     if (port_specified < 0)
-        server->client_can_close = true;
+        tserver.client_can_close = true;
 
 #if LWS_LIBRARY_VERSION_MAJOR >= 2
     char server_hdr[128] = "";
@@ -1440,7 +1428,7 @@ main(int argc, char **argv)
     if (opts.once)
         lwsl_info("  once: true\n");
     int ret;
-    if (port_specified >= 0 && server->options.browser_command == NULL) {
+    if (port_specified >= 0 && opts.browser_command == NULL) {
         fprintf(stderr, "Server start on port %d. You can browse %s://localhost:%d/\n",
                 http_port, opts.ssl ? "https" : "http", http_port);
         opts.http_server = true;
@@ -1463,9 +1451,6 @@ main(int argc, char **argv)
     }
 
     lws_context_destroy(context);
-
-    // cleanup
-    tty_server_free(server);
 
     return ret;
 }
@@ -1785,7 +1770,7 @@ make_html_file(int port)
 
     int hfile = open(main_html_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
     if (hfile < 0
-        || write(hfile, obuf.buffer, obuf.len) != obuf.len
+        || write(hfile, obuf.buffer, obuf.len) != (ssize_t) obuf.len
         || close(hfile) != 0)
         lwsl_err("writing %s failed\n", main_html_path);
 }

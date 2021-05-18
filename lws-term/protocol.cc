@@ -52,12 +52,12 @@ send_initial_message(struct lws *wsi) {
     gethostname(hostname, sizeof(hostname) - 1);
 
     // window title
-    n = sprintf((char *) p, "%c%s (%s)", SET_WINDOW_TITLE, server->command, hostname);
+    n = sprintf((char *) p, "%c%s (%s)", SET_WINDOW_TITLE, tserver.command, hostname);
     if (lws_write(wsi, p, (size_t) n, LWS_WRITE_TEXT) < n) {
         return -1;
     }
     // reconnect time
-    n = sprintf((char *) p, "%c%d", SET_RECONNECT, server->reconnect);
+    n = sprintf((char *) p, "%c%d", SET_RECONNECT, tserver.reconnect);
     if (lws_write(wsi, p, (size_t) n, LWS_WRITE_TEXT) < n) {
         return -1;
     }
@@ -178,8 +178,8 @@ do_exit(int exit_code, bool kill_clients)
 void
 maybe_exit(int exit_code)
 {
-    lwsl_notice("maybe_exit %d sess:%d cl:%s\n", exit_code, server->session_count, NO_TCLIENTS?"none":"some");
-    if (server->session_count == 0 && NO_TCLIENTS)
+    lwsl_notice("maybe_exit %d sess:%d cl:%s\n", exit_code, tserver.session_count, NO_TCLIENTS?"none":"some");
+    if (tserver.session_count == 0 && NO_TCLIENTS)
         do_exit(exit_code, false);
 }
 
@@ -213,8 +213,8 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
     if (pclient->pid > 0) {
         // kill process and free resource
         lwsl_notice("sending signal %d to process %d\n",
-                    server->options.sig_code, pclient->pid);
-        if (kill(pclient->pid, server->options.sig_code) != 0) {
+                    main_options->sig_code, pclient->pid);
+        if (kill(pclient->pid, main_options->sig_code) != 0) {
             lwsl_err("kill: pid: %d, errno: %d (%s)\n", pclient->pid, errno, strerror(errno));
         }
         while (waitpid(pclient->pid, &status, 0) == -1 && errno == EINTR)
@@ -263,7 +263,7 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
     pty_clients.remove(pclient);
 
 // remove from sessions list
-    server->session_count--;
+    tserver.session_count--;
     lwsl_notice("before maybe_exit status:%d exited:%d statis:%d\n",
                 status, WIFEXITED(status), WEXITSTATUS(status));
     maybe_exit(status == -1 || ! WIFEXITED(status) ? 0
@@ -547,7 +547,7 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
     pclient->ttyname = tname;
     pclient->uses_packet_mode = packet_mode;
-    server->session_count++;
+    tserver.session_count++;
 
     int hint = t_hint ? t_hint->connection_number : -1;
     if (hint > 0 &&
@@ -1393,7 +1393,7 @@ static int
 handle_input(struct lws *wsi, struct tty_client *client,
              enum proxy_mode proxyMode)
 {
-    if (server->options.readonly)
+    if (main_options->readonly)
         return 0;
     size_t clen = client->inb.len;
     unsigned char *msg = (unsigned char*) client->inb.buffer;
@@ -1754,7 +1754,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     switch (reason) {
     case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
         lwsl_notice("callback_tty FILTER_PROTOCOL_CONNECTION\n");
-        if (server->options.once && ! NO_TCLIENTS) {
+        if (main_options->once && ! NO_TCLIENTS) {
             lwsl_notice("refuse to serve new client due to the --once option.\n");
             return -1;
         }

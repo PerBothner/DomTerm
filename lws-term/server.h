@@ -60,7 +60,7 @@ extern struct json_object *settings_json_object;
 extern volatile bool force_exit;
 extern struct lws *cmdwsi;
 extern struct lws_context *context;
-extern struct tty_server *server;
+extern struct tty_server tserver;
 extern struct lws_vhost *vhost;
 
 // Assume each T has an index()  method that returns a unique positive integer.
@@ -322,12 +322,14 @@ public:
 };
 
 struct tty_server {
+    tty_server();
+    ~tty_server();
     int session_count;                        // session count
     int connection_count;                     // clients requested (ever)
     bool client_can_close;
     char *socket_path;                        // UNIX domain socket path
     pthread_mutex_t lock;
-    struct options options;
+    //struct options options;
 };
 
 extern int
