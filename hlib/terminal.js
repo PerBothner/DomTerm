@@ -383,6 +383,7 @@ class Terminal {
         this.buffers.classList.add("domterm-buffers");
         this.buffers.contentEditable = false;
         topNode.appendChild(this.buffers);
+        this._topOffset = 0; // placeholder - set in measureWindow
         if (no_session=='view-saved') {
             let buffers = document.getElementsByClassName("interaction");
             this.initial = buffers[buffers.length-1];
@@ -816,6 +817,13 @@ class Terminal {
         else if (this.sstate.mouseMode !== 1003 && value === 1003)
             this.topNode.addEventListener("mousemove", handler);
         this.sstate.mouseMode = value;
+    }
+
+    // Height of data in buffers.
+    // Same as _vspacer.offsetTop but more precise (and slower)
+    _dataHeight() {
+        return this._vspacer.getBoundingClientRect().top
+            + this.buffers.scrollTop - this._topOffset;
     }
 }
 Terminal.caretStyles = [null/*default*/, "blinking-block", "block",
@@ -3917,7 +3925,9 @@ Terminal.prototype.measureWindow = function()  {
     let lcaret = this.viewCaretLineNode;
     lcaret.style.width = "";
     lcaret.style.left = "";
-    this.actualHeight = this.topNode.getBoundingClientRect().height;
+    let topRect = this.topNode.getBoundingClientRect();
+    this.actualHeight = topRect.height;
+    this._topOffset = topRect.y;
     if (DomTerm.verbosity >= 2)
         this.log("measureWindow "+this.name+" h:"+this.actualHeight);
     var rbox = ruler.getBoundingClientRect();
@@ -6742,7 +6752,7 @@ Terminal.prototype._doDeferredDeletion = function() {
 }
 
 Terminal.prototype._downContinue = function(height, paging) {
-    let end = this._vspacer.offsetTop;
+    let end = this._dataHeight();
     let limit = end + height;
     if (limit > this._pauseLimit)
         this._pauseLimit = limit;
@@ -6754,7 +6764,7 @@ Terminal.prototype._downContinue = function(height, paging) {
 Terminal.prototype._downLinesOrContinue = function(count, paging) {
     let todo = this.editorMoveLines(false, count, false);
     if (todo > 0) {
-        this._pauseLimit = this._vspacer.offsetTop;
+        this._pauseLimit =  this._dataHeight();
         this._downContinue(todo * this.charHeight, paging);
     }
 }
@@ -7018,7 +7028,7 @@ Terminal.prototype.scrollToCaret = function(caret = null, force = null) {
     if (caret.parentNode == null)
         return;
     let rect = caret.getBoundingClientRect();
-    let top = rect.y + this.buffers.scrollTop - this.topNode.offsetTop;
+    let top = rect.y + this.buffers.scrollTop - this._topOffset;
     let bottom = top + rect.height;
     if (force === "bottom" || bottom > this.buffers.scrollTop + this.availHeight) {
         this.buffers.scrollTop = Math.max(0, bottom - this.availHeight + 1);
@@ -10158,7 +10168,7 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
             let lineEnd = this.lineEnds[iline];
             if (lineEnd == null)
                 lineEnd = line;
-            let lineBot = this.buffers.scrollTop
+            let lineBot = this.buffers.scrollTop - this._topOffset
                 + lineEnd.getBoundingClientRect().bottom;
             if (lineBot <= top)
                 break;
