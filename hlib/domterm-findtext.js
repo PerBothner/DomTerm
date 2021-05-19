@@ -35,21 +35,21 @@ class FindText {
             label: "Match Case",
             type: "checkbox",
             checked: term._findMatchCase,
-            accelerator: "Alt-C",
+            accelerator: "Alt+C",
             clickClientAction: "find-toggle-match-case"
         };
         this.matchWordTemplate = {
             label: "Match Whole Word",
             type: "checkbox",
             checked: term._findMatchWord,
-            accelerator: "Alt-W",
+            accelerator: "Alt+W",
             clickClientAction: "find-toggle-match-word"
         };
         this.matchRegExpTemplate = {
             label: "Regular Expression",
             type: "checkbox",
             checked: term._findRegExp,
-            accelerator: "Alt-R",
+            accelerator: "Alt+R",
             clickClientAction: "find-toggle-regexp"
         };
         this.kindPopupTemplate = [
