@@ -8351,8 +8351,14 @@ DomTerm.doContextCopy = function() {
 DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     let sel = document.getSelection();
     dt.maybeFocus();
-    document.execCommand("paste", false) ||
-        dt.reportEvent("REQUEST-CLIPBOARD-TEXT", "");
+    let useClipboardApi = DomTerm.isElectron();
+    if (useClipboardApi) {
+        navigator.clipboard.readText().then(clipText =>
+            dt.pasteText(clipText));
+    } else {
+        document.execCommand("paste", false) ||
+            dt.reportEvent("REQUEST-CLIPBOARD-TEXT", "");
+    }
     return true;
 };
 
