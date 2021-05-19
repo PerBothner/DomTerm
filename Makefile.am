@@ -250,6 +250,7 @@ clean-am:
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm bin/dt-webview
+	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage
 
 websocket_sources = org/domterm/websocket/DomServer.java
 pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
@@ -552,3 +553,20 @@ wcwidth-list.txt: $(EAST_ASIAN_WIDTH_TXT)
 IMAGEMAGICK_CONVERT = convert
 doc/domterm2.ico: # doc/domterm2.svg
 	$(IMAGEMAGICK_CONVERT) -background none -density 384 doc/domterm2.svg -define icon:auto-resize=64,32,16 doc/domterm2.ico
+
+APPIMAGETOOL=/home/bothner/Software/appimagetool-x86_64.AppImage
+APPRUN=appimage/DomTerm.AppDir/AppRun
+appimage/DomTerm.AppImage: bin/domterm
+	mkdir -p appimage appimage/DomTerm.AppDir
+	make install prefix=`pwd`/appimage/DomTerm.AppDir/usr
+	cp $(srcdir)/domterm.desktop appimage/DomTerm.AppDir/domterm.desktop
+	cp $(srcdir)/doc/domterm1.svg appimage/DomTerm.AppDir/domterm.svg
+	strip appimage/DomTerm.AppDir/usr/bin/domterm
+	test -x appimage/DomTerm.AppDir/usr/bin/qtdomterm && strip appimage/DomTerm.AppDir/usr/bin/qtdomterm
+	test -x appimage/DomTerm.AppDir/usr/bin/dt-webview && strip appimage/DomTerm.AppDir/usr/bin/dt-webview
+#	echo '#!/bin/bash' > $(APPRUN)
+#	echo 'HERE="$$(dirname "$$(readlink -f "$${0}")")"' >>$(APPRUN)
+#	echo 'exec "$$HERE/usr/bin/domterm" "$$@"' >>$(APPRUN)
+#	chmod +x $(APPRUN)
+	cd appimage/DomTerm.AppDir && ln -s usr/bin/domterm AppRun
+	cd appimage && $(APPIMAGETOOL) DomTerm.AppDir DomTerm.AppImage

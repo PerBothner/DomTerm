@@ -7,4 +7,4 @@ Type=Application
 Encoding=UTF-8
 Categories=System;TerminalEmulator;
 Keywords=shell;prompt;command;commandline;cmd;
-Icon=utilities-terminal
+Icon=domterm
