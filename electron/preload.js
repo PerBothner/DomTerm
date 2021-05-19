@@ -6,7 +6,6 @@
     const _electronAccess = {
         clipboard: _electron.clipboard,
         fs: _fs,
-        getCurrentWindow: remote.getCurrentWindow,
         ipcRenderer: _electron.ipcRenderer,
         Menu: remote.Menu,
         MenuItem: remote.MenuItem,
