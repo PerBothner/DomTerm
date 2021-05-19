@@ -652,8 +652,7 @@ is recommended when not using Electron, as it makes Paste work better.
 git clone https://github.com/jtanx/libclipboard.git
 cd libclipboard
 LIBCLIPBOARD_DIR=`pwd`
-mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=$LIBCLIPBOARD_DIR/dist ..
+cmake .
 make install
 @end example
 
@@ -802,7 +801,7 @@ menu items work better.
 
 If you followed the
 @ref{installing-libclipboard,installation instructions above}
-then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR/dist}.
+then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR}.
 
 @item --without-docbook
 Don't use DocBook for generating HTML documentation.
