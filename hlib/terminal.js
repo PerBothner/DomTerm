@@ -8355,9 +8355,11 @@ DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     if (useClipboardApi) {
         navigator.clipboard.readText().then(clipText =>
             dt.pasteText(clipText));
+    } else if ((","+dt.getOption("`server-for-clipboard", "")+",")
+               .indexOf(",paste,") >= 0) {
+        dt.reportEvent("REQUEST-CLIPBOARD-TEXT", "");
     } else {
-        document.execCommand("paste", false) ||
-            dt.reportEvent("REQUEST-CLIPBOARD-TEXT", "");
+        document.execCommand("paste", false);
     }
     return true;
 };
