@@ -48,6 +48,12 @@ int main(int argc, char **argv) {
         }
     }
     w.set_title("DomTerm");
+#ifdef WEBVIEW_GTK
+    char gtk_version_str[80];
+    sprintf(gtk_version_str, "window.gtk_version = '%d.%d.%d';",
+            gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
+    webview_init(&w, gtk_version_str);
+#endif
     webview_bind(&w, "setWindowTitle", set_w_t, NULL);
     webview_bind(&w, "closeMainWindow", close_main_window, NULL);
     w.set_size(width, height, WEBVIEW_HINT_NONE);

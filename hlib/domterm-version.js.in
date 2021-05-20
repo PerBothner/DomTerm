@@ -24,6 +24,8 @@ if (typeof navigator !== 'undefined' && navigator.userAgent) {
         DomTerm.versions.atom = m[1];
     if ((m = navigator.userAgent.match(/JavaFX[/]([^ ]+)/)))
         DomTerm.versions.javaFX = m[1];
+    if (window.gtk_version)
+        DomTerm.versions.gtk = window.gtk_version;
     if ((m = navigator.userAgent.match(/AppleWebKit[/]([^ ]+)/))
        && ! DomTerm.versions.chrome)
         DomTerm.versions.appleWebKit = m[1];
