@@ -6602,6 +6602,10 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     || cls == "domterm-spacer"
                     || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
+                if (cls == "domterm-buffers") {
+                    formatList(node.childNodes, false);
+                    break;
+                }
             } else if (tagName == "span") {
                 if (cls == "focus-area" || cls == "focus-caret")
                     break;
