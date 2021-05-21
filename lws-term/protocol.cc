@@ -2590,7 +2590,7 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                     lws_callback_on_writable(tclient->out_wsi);
                 }
                 if (should_backup_output(pclient)) {
-                    backup_output(pclient, data_start, data_length);
+                    backup_output(pclient, data_start, read_length);
                 }
             }
             return 0;
