@@ -110,16 +110,16 @@ void trim_preserved(struct pty_client *pclient)
     if (pclient->preserve_mode == 2 && pclient->saved_window_contents == NULL)
         return;
 
-    long old_length = pclient->preserved_end - pclient->preserved_start;
+    size_t old_length = pclient->preserved_end - pclient->preserved_start;
     long read_count = pclient->preserved_sent_count + old_length;
-    long max_unconfirmed = 0;
+    size_t max_unconfirmed = 0;
     FOREACH_WSCLIENT(tclient, pclient) {
-         long unconfirmed = (read_count - tclient->confirmed_count) & MASK28;
+         size_t unconfirmed = (read_count - tclient->confirmed_count) & MASK28;
          if (unconfirmed > max_unconfirmed)
              max_unconfirmed = unconfirmed;
      };
      if (pclient->saved_window_contents) {
-         long unconfirmed =
+         size_t unconfirmed =
              (read_count - pclient->saved_window_sent_count) & MASK28;
          if (unconfirmed > max_unconfirmed)
              max_unconfirmed = unconfirmed;
@@ -339,7 +339,7 @@ tty_client::~tty_client()
     struct tty_client *tclient = this;
     bool keep_client = false;
     // remove from clients list
-    lwsl_notice("tty_client_destroy %p conn#%d keep:%d\n", tclient, tclient->connection_number, keep_client);
+    lwsl_notice("tty_client destroy %p conn#%d keep:%d\n", tclient, tclient->connection_number, keep_client);
     if (tclient->version_info != NULL && !keep_client) {
         free(tclient->version_info);
         tclient->version_info = NULL;
@@ -794,7 +794,7 @@ check_template(const char *tmplate, json_object *obj)
             const char *colon = strchr(filename+2, '/');
             if (colon == NULL)
                 return NULL;
-            int fhlen = colon - (filename + 2);
+            size_t fhlen = colon - (filename + 2);
             if (fhlen == sizeof(localhost_localdomain)-1
                 && strncmp(filename+2, localhost_localdomain, fhlen) == 0)
                 filename = filename + 2 + fhlen;
@@ -1149,7 +1149,7 @@ reportEvent(const char *name, char *data, size_t dlen,
                               isEchoing ? 74 : 73, (int) dlen, data);
             lws_callback_on_writable(wsi);
         } else {
-            int to_drain = 0;
+            size_t to_drain = 0;
             if (pclient->paused) {
                 // If we see INTR, we want to drain already-buffered data.
                 // But we don't want to drain data that written after the INTR.
@@ -1401,15 +1401,15 @@ handle_input(struct lws *wsi, struct tty_client *client,
     if (pclient)
         pclient->recent_tclient = client;
     // FIXME handle PENDING
-    int start = 0;
+    size_t start = 0;
     lwsl_info("handle_input len:%zu conn#%d pmode:%d pty:%d\n", clen, client->connection_number, proxyMode, pclient==NULL? -99 : pclient->pty);
-    for (int i = 0; ; i++) {
+    for (size_t i = 0; ; i++) {
         if (i+1 == clen && msg[i] >= 128)
             break;
         if (i == clen || msg[i] == REPORT_EVENT_PREFIX) {
             int w = i - start;
             if (w > 0)
-                lwsl_notice(" -handle_input write start:%d w:%d\n", start, w);
+                lwsl_notice(" -handle_input write start:%zu w:%d\n", start, w);
             if (w > 0 && pclient && write(pclient->pty, msg+start, w) < w) {
                 lwsl_err("write INPUT to pty\n");
                 return -1;
@@ -1552,7 +1552,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         size_t pend = pclient->preserved_end;
         long read_count = pclient->preserved_sent_count + (pend - pstart);
         long rcount = client->sent_count;
-        long unconfirmed = (read_count - rcount - client->ocount) & MASK28;
+        size_t unconfirmed = (read_count - rcount - client->ocount) & MASK28;
         if (unconfirmed > 0 && pend - pstart >= unconfirmed) {
             pstart = pend - unconfirmed;
             sb.append(start_replay_mode);
