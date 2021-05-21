@@ -1456,6 +1456,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
     this.lineEnds.length = startLine;
     var start = null;
     var startBlock = null;
+    let seenDataThisLine = false;
     var dt = this;
     dt._currentPprintGroup = null;
 
@@ -1464,6 +1465,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
             break;
         var descend = false;
         if (cur instanceof Text && ! skipText) {
+            seenDataThisLine = true;
             var data = cur.data;
             var dlen = data.length;
             for (var i = 0; i < dlen; i++) {
@@ -1546,7 +1548,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     }
                     this.lineStarts[startLine] = start;
                     this.lineEnds[startLine] = null;
-                    startLine++;
+                    seenDataThisLine = false;
                 }
             } else if (tag == "span") {
                 var line = cur.getAttribute("line");
@@ -1557,25 +1559,26 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     //this.currentCursorLine = startLine;
                     //this.currentCursorColumn = -1;
                     if (line == "hard" || line == "br") {
-                        if (startBlock != null && cur.parentNode == startBlock
-                            && cur.nextSibling == null) { // normal case
-                            this.lineEnds[startLine-1] = cur;
-                            start = null;
-                        } else if (startLine > 0) {
-                            this.lineEnds[startLine-1] = cur;
-                            this.lineStarts[startLine] = cur;
-                            startLine++;
-                            start = cur;
-                        }
+                        if (startLine > 0 && this.lineStarts[startLine] == null)
+                            this.lineStarts[startLine] = this.lineEnds[startLine-1];
+                        this.lineEnds[startLine] = cur;
+                        startLine++;
+                        start = cur;
+                        seenDataThisLine = false;
                     } else {
                         start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
                     }
-                } else if (cls == "wc-node" || cls == "focus-area") {
-                    descend = false;
-                } else if (cls == "pprint-group") {
-                    start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
-                    this._pushPprintGroup(cur);
+                } else {
+                    if (cls == "wc-node" || cls == "focus-area") {
+                        descend = false;
+                    } else if (cls == "pprint-group") {
+                        start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
+                        this._pushPprintGroup(cur);
+                    }
+                    seenDataThisLine = true;
                 }
+            } else {
+                seenDataThisLine = true;
             }
         }
 
@@ -1586,12 +1589,18 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                 if (cur.nodeName == "SPAN"
                     && cur.classList.contains("pprint-group"))
                     this._popPprintGroup();
-                if (cur == startBlock && this.lineEnds[startLine-1] === null) {
-                    // This simplifies traversal logic various places.
-                    // (Ideally should use a distinct "line"-type.)
-                    let end = this._createLineNode("hard", "\n");
-                    startBlock.appendChild(end);
-                    this.lineEnds[startLine-1] = end;
+                if (cur == startBlock) {
+                    if (seenDataThisLine || this.lineStarts[startLine]) {
+                        if (startLine > 0 && this.lineStarts[startLine] == null)
+                            this.lineStarts[startLine] = this.lineEnds[startLine-1];
+                        // This simplifies traversal logic various places.
+                        // (Ideally should use a distinct "line"-type.)
+                        let end = this._createLineNode("hard", "\n");
+                        startBlock.appendChild(end);
+                        this.lineEnds[startLine] = end;
+                        seenDataThisLine = false;
+                        startLine++;
+                    }
                 }
                 var next = cur.nextSibling;
                 if (next != null) {
@@ -1637,7 +1646,7 @@ Terminal.prototype.saveCursor = function() {
 Terminal.prototype._restoreSaveLastLine = function() {
     let line = 0;
     const findAltBuffer = (node) => {
-        if (node.parentNode == this.topNode
+        if (node.parentNode == this.buffers
             && node.classList.contains("interaction")) {
             node.saveLastLine = line;
         }
