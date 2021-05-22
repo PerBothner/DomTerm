@@ -708,10 +708,15 @@ int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
     print_version(out);
     if (settings_fname)
         fprintf(out, "Reading settings from: %s\n", settings_fname);
-    fprintf(out, "Backend pid:%d", getpid());
-    if (backend_socket_name != NULL)
-        fprintf(out, " command-socket:%s", backend_socket_name);
-    fprintf(out, "\n");
+    bool in_server = opts != main_options;
+    if (in_server || verbosity > 0) {
+        if (in_server)
+            fprintf(out, "Backend pid:%d, command-socket:", getpid());
+        else
+            fprintf(out, "Failed to find server listening at :");
+        fprintf(out, "%s", backend_socket_name);
+        fprintf(out, "\n");
+    }
     if (by_session)
         status_by_session(out, verbosity);
     else

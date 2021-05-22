@@ -1328,8 +1328,10 @@ main(int argc, char **argv)
     int socket = -1;
     if ((command == NULL ||
          (command->options &
-          (COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER)) != 0))
-      socket = client_connect(make_socket_name(false));
+          (COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER)) != 0)) {
+        backend_socket_name = make_socket_name(false);
+        socket = client_connect(backend_socket_name);
+    }
     if (command != NULL
         && ((command->options & COMMAND_IN_CLIENT) != 0
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
@@ -1402,11 +1404,9 @@ main(int argc, char **argv)
     http_port = info.port;
 #endif
 
-    char *cname = make_socket_name(false);
-    backend_socket_name = cname;
-    lwsl_notice("creating server socket: '%s'\n", cname);
+    lwsl_notice("creating server socket: '%s'\n",  backend_socket_name);
     lws_sock_file_fd_type csocket;
-    csocket.filefd = create_command_socket(cname);
+    csocket.filefd = create_command_socket(backend_socket_name);
     cmdwsi = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC,
                                         csocket, "cmd", NULL);
     cclient = (struct cmd_client *) lws_wsi_user(cmdwsi);
