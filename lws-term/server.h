@@ -226,7 +226,7 @@ public:
     bool is_tclient_proxy : 1;
     bool is_primary_window : 1;
     bool close_requested : 1;
-    bool close_expected : 1;
+    bool keep_after_unexpected_close : 1;
     bool detach_on_disconnect : 1;
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client

@@ -244,7 +244,7 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
                                   ? URGENT_WRAP("\033[99;98u")
                                   : eof_message);
                 if (! timed_out)
-                    tclient->close_expected = true;
+                    tclient->keep_after_unexpected_close = false;
                 connection_failure = true;
             } else {
 #if !PASS_STDFILES_UNIX_SOCKET
@@ -311,6 +311,7 @@ unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
     struct tty_client *first_tclient = pclient->first_tclient;
     if ((tclient->proxyMode != proxy_command_local && first_tclient == NULL && pclient->detach_count == 0
          && (tclient->close_requested
+             || ! tclient->keep_after_unexpected_close
              || ! tclient->detach_on_disconnect))
         || tclient->proxyMode == proxy_display_local) {
         lwsl_notice("- close pty pmode:%d\n", tclient->proxyMode);
@@ -1254,7 +1255,6 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
     } else if (strcmp(name, "CLOSE-SESSION") == 0) {
         client->close_requested = true;
-        client->close_expected = true;
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient != NULL) {
@@ -1348,7 +1348,7 @@ tty_client::tty_client()
     this->is_tclient_proxy = false;
     this->is_primary_window = false;
     this->close_requested = false;
-    this->close_expected = false;
+    this->keep_after_unexpected_close = false;
     this->detach_on_disconnect = true;
     this->detachSaveSend = false;
     this->uploadSettingsNeeded = true;
@@ -1488,7 +1488,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
                 display_session(client->options, pclient, NULL, http_port);
                 if (client->out_wsi && client->out_wsi != client->wsi) {
                     lwsl_notice("set_timeout clear tc:%p\n", client->wsi);
-                    client->close_expected = true;
+                    client->keep_after_unexpected_close = false;
                     lws_set_timeout(client->wsi,
                                     PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
                 }
@@ -1607,7 +1607,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     if (! pclient && client->ob.buffer != NULL
         && proxyMode != proxy_command_local) {
         if (proxyMode != proxy_display_local) {
-            client->close_expected = true;
+            client->keep_after_unexpected_close = false;
             sb.printf("%s", eof_message);
         }
         client->ob.reset();
@@ -1909,7 +1909,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 #if ! BROKEN_LWS_SET_WSI_USER
          lws_set_wsi_user(wsi, NULL);
 #endif
-         bool keep_client = ! client->close_expected;
+         bool keep_client = client->keep_after_unexpected_close && ! client->close_requested;
          if (keep_client) {
              client->wsi = NULL;
              client->out_wsi = NULL;
