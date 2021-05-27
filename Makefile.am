@@ -555,18 +555,20 @@ doc/domterm2.ico: # doc/domterm2.svg
 	$(IMAGEMAGICK_CONVERT) -background none -density 384 doc/domterm2.svg -define icon:auto-resize=64,32,16 doc/domterm2.ico
 
 APPIMAGETOOL=/home/bothner/Software/appimagetool-x86_64.AppImage
-APPRUN=appimage/DomTerm.AppDir/AppRun
+APP_RUN=appimage/DomTerm.AppDir/AppRun
+APP_DESKTOP=appimage/DomTerm.AppDir/domterm.desktop
 appimage/DomTerm.AppImage: bin/domterm
 	mkdir -p appimage appimage/DomTerm.AppDir
 	make install prefix=`pwd`/appimage/DomTerm.AppDir/usr
-	cp $(srcdir)/domterm.desktop appimage/DomTerm.AppDir/domterm.desktop
+	cp $(srcdir)/domterm.desktop $(APP_DESKTOP)
+	echo "X-AppImage-Version=$(DOMTERM_VERSION)" >>$(APP_DESKTOP)
 	cp $(srcdir)/doc/domterm1.svg appimage/DomTerm.AppDir/domterm.svg
 	strip appimage/DomTerm.AppDir/usr/bin/domterm
-	test -x appimage/DomTerm.AppDir/usr/bin/qtdomterm && strip appimage/DomTerm.AppDir/usr/bin/qtdomterm
-	test -x appimage/DomTerm.AppDir/usr/bin/dt-webview && strip appimage/DomTerm.AppDir/usr/bin/dt-webview
-#	echo '#!/bin/bash' > $(APPRUN)
-#	echo 'HERE="$$(dirname "$$(readlink -f "$${0}")")"' >>$(APPRUN)
-#	echo 'exec "$$HERE/usr/bin/domterm" "$$@"' >>$(APPRUN)
-#	chmod +x $(APPRUN)
+	-test -x appimage/DomTerm.AppDir/usr/bin/qtdomterm && strip appimage/DomTerm.AppDir/usr/bin/qtdomterm
+	-test -x appimage/DomTerm.AppDir/usr/bin/dt-webview && strip appimage/DomTerm.AppDir/usr/bin/dt-webview
+#	echo '#!/bin/bash' > $(APP_RUN)
+#	echo 'HERE="$$(dirname "$$(readlink -f "$${0}")")"' >>$(APP_RUN)
+#	echo 'exec "$$HERE/usr/bin/domterm" "$$@"' >>$(APP_RUN)
+#	chmod +x $(APP_RUN)
 	cd appimage/DomTerm.AppDir && ln -s usr/bin/domterm AppRun
 	cd appimage && $(APPIMAGETOOL) DomTerm.AppDir DomTerm.AppImage
