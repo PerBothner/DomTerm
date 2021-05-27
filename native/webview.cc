@@ -19,6 +19,19 @@ void set_w_t(const char *seq, const char *req, void *arg)
     delete[] tmp;
 }
 
+#ifdef WEBVIEW_GTK
+void toggle_inspector(const char *seq, const char *req, void *arg)
+{
+    WebKitWebInspector *inspector = webkit_web_view_get_inspector (WEBKIT_WEB_VIEW(w.window()));
+    if (true) { // FIXME
+        // haven't gotten this working FIXME
+        webkit_web_inspector_show (WEBKIT_WEB_INSPECTOR(inspector));
+    } else {
+        webkit_web_inspector_close (WEBKIT_WEB_INSPECTOR(inspector));
+    }
+}
+#endif
+
 #ifdef WIN32
 int WINAPI WinMain(HINSTANCE hInt, HINSTANCE hPrevInst, LPSTR lpCmdLine,
                    int nCmdShow) {
@@ -53,6 +66,9 @@ int main(int argc, char **argv) {
     sprintf(gtk_version_str, "window.gtk_version = '%d.%d.%d';",
             gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
     webview_init(&w, gtk_version_str);
+#if 0
+    webview_bind(&w, "_dt_toggleDeveloperTools", toggle_inspector, NULL);
+#endif
 #endif
     webview_bind(&w, "setWindowTitle", set_w_t, NULL);
     webview_bind(&w, "closeMainWindow", close_main_window, NULL);

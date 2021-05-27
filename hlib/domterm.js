@@ -1,7 +1,5 @@
-/** @license Copyright (c) 2015, 2016, 2017, 2018, 2019 Per Bothner.
+/** @license Copyright (c) 2015, 2016, 2017, 2018, 2019, 2021 Per Bothner.
  */
-
-const DomTerm = new Object(); //maybe use Terminal - FIXME
 
 class DomTermLayout {
 };
@@ -258,6 +256,12 @@ DomTerm.addLocationParams = function(url) {
     }
     return url;
 }
+console.log("set window._dt_toggleDeveloperTools el:"+DomTerm.isElectron());
+if (DomTerm.isElectron()) {
+    window._dt_toggleDeveloperTools = function() {
+        electronAccess.ipcRenderer.send('window-ops', 'toggle-devtools', null);
+    }
+};
 
 window.DomTerm = DomTerm;
 window.DomTermLayout = DomTermLayout;

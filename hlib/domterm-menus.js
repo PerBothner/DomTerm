@@ -168,14 +168,10 @@ DomTerm.createMenus = function(options) {
     contextLinkMenu.append(autoPagingItem);
     contextLinkMenu.append(newTerminalMenuItem);
     contextLinkMenu.append(detachMenuItem);
-    const showInspectorItem = ! isElectron ? null
+    const showInspectorItem = ! window._dt_toggleDeveloperTools ? null
           : menuItem({label: 'Toggle Developer Tools',
                       accelerator: 'Ctrl+Shift+I',
-                      click: function(item, focusedWindow) {
-                          if (focusedWindow)
-                              focusedWindow.toggleDevTools();
-                      }});
-
+                      clickClientAction: 'toggle-developer-tools'});
     let fileMenu = new Menu();
     fileMenu.append(newWindowItem);
     fileMenu.append(newTabItem);
@@ -236,15 +232,16 @@ DomTerm.createMenus = function(options) {
         contextMenu.append(fullscreenExitItem);
     }
 
-    if (isElectron) {
+    if (electronMenus) {
         viewMenu.append(menuItem({type: 'separator'}));
         viewMenu.append(menuItem({role: 'resetzoom'}));
         viewMenu.append(menuItem({role: 'zoomin'}));
         viewMenu.append(menuItem({role: 'zoomout'}));
-        viewMenu.append(menuItem({type: 'separator'}));
     }
-    if (showInspectorItem != null)
+    if (showInspectorItem != null) {
+        viewMenu.append(menuItem({type: 'separator'}));
         viewMenu.append(showInspectorItem);
+    }
     let terminalMenu = new Menu();
     terminalMenu.append(cycleInputModesItem);
     terminalMenu.append(newTerminalMenuItem);

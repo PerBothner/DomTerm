@@ -1,4 +1,7 @@
 // @configure_input@
+
+const DomTerm = new Object(); //maybe use Terminal - FIXME
+
 DomTerm.versionString = "@DOMTERM_VERSION@";
 DomTerm.copyrightYear = "@DOMTERM_YEAR@";
 DomTerm.inAtomFlag = false;

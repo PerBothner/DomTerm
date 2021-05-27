@@ -8862,6 +8862,9 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Shift-Down": "scroll-line-down",
             "Ctrl-Shift-PageUp": "scroll-page-up",
             "Ctrl-Shift-PageDown": "scroll-page-down"
+        }, window._dt_toggleDeveloperTools ? {
+            "Ctrl-Shift-I": "toggle-developer-tools"
+        } : {
         }, DomTerm.isMac ? {
             "Mod-V": "paste-text",
             "Mod-C": "copy-text"
@@ -11241,8 +11244,8 @@ Terminal.prototype._muxKeyHandler = function(event, key, press) {
         }
         break;
     case 68:
-        if (event.ctrlKey && DomTerm.isElectron()) {
-            electronAccess.ipcRenderer.send('window-ops', 'toggle-devtools', null);
+        if (event.ctrlKey && window._dt_toggleDeveloperTools) {
+            window._dt_toggleDeveloperTools();
             this.exitMuxMode();
             event.preventDefault();
         }

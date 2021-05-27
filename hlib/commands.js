@@ -589,3 +589,10 @@ cmd('show-about-message',
         DomTerm.showAboutMessage();
         return true;
     });
+if (window._dt_toggleDeveloperTools) {
+    cmd('toggle-developer-tools',
+        function(dt, keyName) {
+            window._dt_toggleDeveloperTools();
+            return true;
+        });
+}

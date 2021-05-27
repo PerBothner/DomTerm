@@ -1649,8 +1649,8 @@ struct lib_info {
 };
 
 static struct lib_info standard_jslibs[] = {
-    {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
 #if COMBINE_RESOURCES
     {"hlib/dt-combined.js", LIB_WHEN_SIMPLE},
 #else
