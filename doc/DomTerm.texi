@@ -13,7 +13,7 @@
 @codequotebacktick on
 
 @macro mux-prefix
-Ctrl-Shift-A
+Ctrl+Shift+A
 @end macro
 
 
@@ -329,7 +329,7 @@ and recommended.
 A DomTerm window can be sub-divided into panes, each of which
 can have multiple tabs.  You can create new panes with a domterm sub-command
 (like @code{domterm --below new}), a menu button, or a
-keyboard shortcut (like @kbd{@mux-prefix Ctrl-@key{Down}}).
+keyboard shortcut (like @kbd{@mux-prefix Ctrl+@key{Down}}).
 
 If using @code{atom-domterm} the above commands create a new
 Atom pane instead.
@@ -2096,14 +2096,14 @@ CSS property, so on that browser tab characters are always converted to spaces.
 Paste should work on all front-ends
 if domterm makes use of @ref{installing-libclipboard,libclipboard}.
 Otherwise, only Electron and WebView work as they should,
-though the keyboard shortcut Ctrl-Shift-V works on all tested platforms,
+though the keyboard shortcut Ctrl+Shift+V works on all tested platforms,
 (On Qt the Paste menu-item is unreliable if the previous Copy
 was from a different application.
 On a desktop browsers like Firefox, custom menus can't do Paste though system manus can, because of security concerns.)
 
 The Copy menu-items work on Electron or Qt,
 but there are issues on other front-ends.
-The keyboard shortcut Ctrl-Shift-C works on all tested platforms.
+The keyboard shortcut Ctrl+Shift+C works on all tested platforms.
 
 Middle-button paste seems to work on most frontends (on Linux).
 An exception is WebKit-based browsers (Webview, Epiphany aka Gnome Web),
@@ -2146,11 +2146,11 @@ Both of these may change if we implement smarter lazy line-breaking.
 Some known issues:
 @itemize
 @item
-Windows zoom (with @kbd{Ctrl-@key{Minus}} or @kbd{Ctrl-Shift-@key{Plus}})
+Windows zoom (with @kbd{Ctrl+@key{Minus}} or @kbd{Ctrl+Shift+@key{Plus}})
 doesn't work.  You can work around it with CSS styling:
 @code{body @{zoom: 120%@}}
 @item
-Copy from menu doesn't work.  Ctrl-Shift-C works.
+Copy from menu doesn't work.  Ctrl+Shift+C works.
 @item
 Clicking the window close button doesn't shut down cleanly.
 Using the @code{File}->@code{Quit} menu item works,
@@ -2562,33 +2562,33 @@ while the read-only @ref{Paging,Paging mode} mode has short-cuts
 useful for navigating around in the buffer, including making selections.
 
 @table @asis
-@c FUTURE @item Ctrl-Shift-P
+@c FUTURE @item Ctrl+Shift+P
 @c Enter/exit pager mode
 @c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
-@item @kbd{Ctrl-Shift-@key{C}} (@code{copy-text})
-@itemx @kbd{Ctrl-@key{Insert}}
+@item @kbd{Ctrl+Shift+@key{C}} (@code{copy-text})
+@itemx @kbd{Ctrl+@key{Insert}}
 Copy the selection to the clipboard.
 It is copied as both plain text (@code{text/plain})
 and formatted HTML (@code{text/html}) in case the receiving
 application can paste the latter.
-(@kbd{Ctrl-@key{C}} also works in line-editing mode.)
-@item @kbd{Ctrl-Shift-@key{V}} (@code{paste-text})
-@itemx @kbd{Shift-@key{Insert}}  @emph{(Electron and Qt only)}
+(@kbd{Ctrl+@key{C}} also works in line-editing mode.)
+@item @kbd{Ctrl+Shift+@key{V}} (@code{paste-text})
+@itemx @kbd{Shift+@key{Insert}}  @emph{(Electron and Qt only)}
 Paste text from the clipboard.
-(@kbd{Ctrl-@key{V}} also works in line-editing mode.)
-@item @kbd{Ctrl-Shift-@key{X}} (@code{cut-text})
+(@kbd{Ctrl+@key{V}} also works in line-editing mode.)
+@item @kbd{Ctrl+Shift+@key{X}} (@code{cut-text})
 ``Cut'': Restricts the selection to the current input area,
 copies that restricted selection to the clipboard,
 and then deletes the restricted selection.
 (In character mode, the deletion is implemented by sending
 the appropriate number of Delete/Backspace characters to the application.)
-@item @kbd{Ctrl-Shift-@key{S}} (@code{save-as-html})
+@item @kbd{Ctrl+Shift+@key{S}} (@code{save-as-html})
 Save the display to a file.
-@item @kbd{Ctrl-Shift-@key{L}} (@code{input-mode-cycle})
+@item @kbd{Ctrl+Shift+@key{L}} (@code{input-mode-cycle})
 Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
-@item @kbd{Ctrl-Shift-@key{M}}
+@item @kbd{Ctrl+Shift+@key{M}}
 Enter @ref{Paging,Paging mode}.
 @item @kbd{@key{Ctrl}}
 Show a popup with useful information about version, mode, size,
@@ -2601,21 +2601,21 @@ Easiest way to make the popup go away is to press @key{Ctrl} again.
 The following are implemented by most browsers, rather than DomTerm,
 so it may not work on all browsers.
 @table @asis
-@item @kbd{Ctrl-Shift-@key{Plus}}
+@item @kbd{Ctrl+Shift+@key{Plus}}
 Zoom in (makes text bigger).
 (Does not work in atom-domterm.)
-@item @kbd{Ctrl-Shift-@key{Minus}}
-@itemx @kbd{Ctrl-@key{Minus}}
+@item @kbd{Ctrl+Shift+@key{Minus}}
+@itemx @kbd{Ctrl+@key{Minus}}
 Zoom out (makes text smaller).
 (Does not work in atom-domterm.)
-@item @kbd{Ctrl-@key{0}}
+@item @kbd{Ctrl+@key{0}}
 ``Un-zoom'' to normal size.
 @item @kbd{@key{F11}} (@code{toggle-fullscreen})
 Toggle full-screen mode.
-@item @kbd{Shift-@key{F11}} (@code{toggle-fullscreen-current-window})
+@item @kbd{Shift+@key{F11}} (@code{toggle-fullscreen-current-window})
 (Not for Electron or Qt.)
 Toggle full-screen mode for the current sub-window.
-@item @kbd{Ctrl-Shift-@key{I}}
+@item @kbd{Ctrl+Shift+@key{I}}
 Toogle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
 @end table
@@ -2627,16 +2627,16 @@ In paging and edit modes, these may be modified by a repeat @var{count}.
 Otherwise, @var{count} defaults to 1.
 
 @table @asis
-@item @kbd{Ctrl-Shift-@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{Ctrl-Shift-@key{PageDown}} (@code{scroll-page-down})
+@item @kbd{Ctrl+Shift+@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Ctrl+Shift+@key{PageDown}} (@code{scroll-page-down})
 Scroll @var{count} ``pages'' up or down, respectively.
 (Specifically, the viewport height times @var{count} minus a height of one line.)
-@item @kbd{Ctrl-Shift-@key{Up}} (@code{scroll-line-up})
-@itemx @kbd{Ctrl-Shift-@key{Down}} (@code{scroll-line-down})
+@item @kbd{Ctrl+Shift+@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Ctrl+Shift+@key{Down}} (@code{scroll-line-down})
 Scroll @var{count} lines up or down, respectively.
-@item @kbd{Ctrl-Shift-@key{Home}} (@code{scroll-top})
+@item @kbd{Ctrl+Shift+@key{Home}} (@code{scroll-top})
 Scroll to top.
-@item @kbd{Ctrl-Shift-@key{End}} (@code{scroll-bottom})
+@item @kbd{Ctrl+Shift+@key{End}} (@code{scroll-bottom})
 Scroll to bottom.
 @end table
 
@@ -2647,19 +2647,19 @@ The prefix key @kbd{@mux-prefix} when followed by some other key
 controls sessions and windows.
 
 @table @asis
-@item @kbd{Ctrl-Shift-@key{T}}
+@item @kbd{Ctrl+Shift+@key{T}}
 Create a new terminal in a new tab.
-@item @kbd{Ctrl-Shift-@key{N}}
+@item @kbd{Ctrl+Shift+@key{N}}
 Create a new terminal in a new pane (sub-window).
 The new pane is create to the right or below the current pane,
 depending on space.
-@item @kbd{@mux-prefix Ctrl-@key{Left}}
+@item @kbd{@mux-prefix Ctrl+@key{Left}}
 Create a new terminal pane to the left of the current one.
-@item @kbd{@mux-prefix Ctrl-@key{Right}}
+@item @kbd{@mux-prefix Ctrl+@key{Right}}
 Create a new terminal pane to the right of the current one.
-@item @kbd{@mux-prefix Ctrl-@key{Up}}
+@item @kbd{@mux-prefix Ctrl+@key{Up}}
 Create a new terminal pane above the current one.
-@item @kbd{@mux-prefix Ctrl-@key{Down}}
+@item @kbd{@mux-prefix Ctrl+@key{Down}}
 Create a new terminal pane below the current one.
 @item @kbd{@mux-prefix @key{Left}}
 Select the previous pane or tab.
@@ -2677,12 +2677,12 @@ where each item is a quoted keystroke string, followed by a colon,
 followed by an action name. An action name is a string,
 but quotes are optional.
 
-To enable ``standard'' handling of Ctrl-V for Paste and Ctrl-C for Copy
+To enable ``standard'' handling of Ctrl+V for Paste and Ctrl+C for Copy
 (while still signalling interrupt when there is no selection) do:
 @example
 keymap.master =
- | "Ctrl-C": copy-text-or-interrupt
- | "Ctrl-V": paste-text
+ | "Ctrl+C": copy-text-or-interrupt
+ | "Ctrl+V": paste-text
 @end example
 
 @node Edit and View modes
@@ -2729,10 +2729,10 @@ See @ref{Automatic input mode,here for technical details}.
 You can switch between character mode, line mode,
 or automatic mode using the @code{Terminal} menu in the menubar;
 the @code{Input mode} entry in context (popup) menu;
-or the @kbd{Ctrl-Shift-@key{L}} shortcut:
+or the @kbd{Ctrl+Shift+@key{L}} shortcut:
 
 @table @asis
-@item @kbd{Ctrl-Shift-@key{L}}
+@item @kbd{Ctrl+Shift+@key{L}}
 Cycle between input modes: character (character-at-a-time),
 line (line-edit), or automatic.
 @end table
@@ -2779,11 +2779,11 @@ Also, if the input area is non-empty, add it to the history list.
 
 If you want to send the contents of the input area without
 a final newline, you can switch the input mode to character mode
-(using either the menu or one-or-more @kbd{Ctrl-Shift-@key{L}} commands).
+(using either the menu or one-or-more @kbd{Ctrl+Shift+@key{L}} commands).
 This removes the text of the input area, but echo from
 the application will normally replace it.
 You can then optionally switch back to line mode.
-@item @kbd{Alt-@key{Enter}} (@code{insert-newline})
+@item @kbd{Alt+@key{Enter}} (@code{insert-newline})
 Insert a literal newline.  Splits the current line at the current position,
 creating two new lines out of one old line, with the caret after the new break.
 @end table
@@ -2824,15 +2824,15 @@ Many of the following keyboard commands can be modified
 by previously-typed @dfn{repeat count}.
 
 @table @asis
-@item @kbd{Alt-@var{digit}}
-@itemx @kbd{Alt-@key{Minus}}
-@itemx @kbd{Alt-@key{.}}
+@item @kbd{Alt+@var{digit}}
+@itemx @kbd{Alt+@key{Minus}}
+@itemx @kbd{Alt+@key{.}}
 Set or extend a repeat count.
-For example @kbd{Alt-1 Alt-2 Left} moves 12 characters left, while
-@kbd{Alt-Minus Alt-2 Ctrl-Left} moves 2 words right (because of the minus).
+For example @kbd{Alt+1 Alt+2 Left} moves 12 characters left, while
+@kbd{Alt+Minus Alt+2 Ctrl+Left} moves 2 words right (because of the minus).
 
 You can also repeat self-inserting characters:
-@kbd{Alt-2 Alt-0 *} inserts 20 asterisks.
+@kbd{Alt+2 Alt+0 *} inserts 20 asterisks.
 @end table
 
 Commands that are affected by a repeat count
@@ -2845,14 +2845,14 @@ By default the @var{count} is one, and it is reset after each command.
 @item @kbd{@key{Left}} (@code{backward-char})
 @itemx @kbd{@key{Right}} (@code{forward-char})
 Move caret @var{count} characters left or right.
-@item @kbd{Ctrl-@key{Left}} (@code{backward-word})
-@itemx @kbd{Ctrl-@key{Right}} (@code{forward-word})
+@item @kbd{Ctrl+@key{Left}} (@code{backward-word})
+@itemx @kbd{Ctrl+@key{Right}} (@code{forward-word})
 Move caret @var{count} words left or right.
 @item @kbd{@key{Home}} (@code{beginning-of-line})
 @itemx @kbd{@key{End}} (@code{end-of-line})
 Move caret to start/end of line.
-@item @kbd{Alt-@key{Home}} (@code{beginning-of-input})
-@itemx @kbd{Alt-@key{End}} (@code{end-of-input})
+@item @kbd{Alt+@key{Home}} (@code{beginning-of-input})
+@itemx @kbd{Alt+@key{End}} (@code{end-of-input})
 Move caret to start/end of the input area.
 (Different from start/end of line if there are multiple lines in
 the input area.)
@@ -2866,32 +2866,32 @@ You can also delete using the selection; see later.
 @item @kbd{@key{Backspace}} (@code{backward-delete-char})
 @itemx @kbd{@key{Delete}} (@code{forward-delete-char})
 Delete @var{count} characters to the left or right of the caret.
-@item @kbd{Ctrl-@key{Backspace}} (@code{backward-delete-word})
-@itemx @kbd{Ctrl-@key{Delete}} (@code{forward-delete-word})
+@item @kbd{Ctrl+@key{Backspace}} (@code{backward-delete-word})
+@itemx @kbd{Ctrl+@key{Delete}} (@code{forward-delete-word})
 Delete @var{count} words to the left or right of the caret.
 @end table
 
 @subsubheading Special characters
 
-The keystrokes @kbd{Ctrl-@key{C}}, @kbd{Ctrl-@key{Z}}, @kbd{Ctrl-@key{Z}}
+The keystrokes @kbd{Ctrl+@key{C}}, @kbd{Ctrl+@key{Z}}, @kbd{Ctrl+@key{Z}}
 are handled specially, because of traditional Unix shell functionality.
 They are passed to the process - but only under
 certain conditions, because of other compatibility issues.
 @table @asis
-@item @kbd{Ctrl-@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
-@itemx @kbd{Ctrl-@key{C}} (@code{client-action}) @emph{(MacOS only)}
+@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
+@itemx @kbd{Ctrl+@key{C}} (@code{client-action}) @emph{(MacOS only)}
 If there is a non-empty selection @emph{and} this is not MacOS.
 copy the selection to the clipboard.
-Otherwise, send @kbd{Ctrl-@key{C}} literally to the process
+Otherwise, send @kbd{Ctrl+@key{C}} literally to the process
 (which traditionally interrupts it).
-@item @kbd{Ctrl-@key{D}} (@code{delete-char-or-eof})
-Send @kbd{Ctrl-@key{D}} literally to the process (which
+@item @kbd{Ctrl+@key{D}} (@code{delete-char-or-eof})
+Send @kbd{Ctrl+@key{D}} literally to the process (which
 on Unix system traditionally treats it as end-of-file),
 but only if the input area is empty.
 Otherwise (for Emacs/readline compatibility), delete the character following
 the caret.
-@item @kbd{Ctrl-@key{Z}} (@code{client-action})
-Send a literal @kbd{Ctrl-@key{Z}} (traditionally used in Unix
+@item @kbd{Ctrl+@key{Z}} (@code{client-action})
+Send a literal @kbd{Ctrl+@key{Z}} (traditionally used in Unix
 to suspend the current job) to the process (following any existing
 text in the input area).
 @end table
@@ -2903,30 +2903,30 @@ available in all modes, but in line-edit mode you don't
 need to press @kbd{@key{Shift}}, and you can use a repeat count.
 
 @table @asis
-@item @kbd{Ctrl-@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{Ctrl-@key{PageDown}} (@code{scroll-page-down})
+@item @kbd{Ctrl+@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Ctrl+@key{PageDown}} (@code{scroll-page-down})
 Scroll @var{count} pages up or down, respectively.
-@item @kbd{Ctrl-@key{Up}} (@code{scroll-line-up})
-@itemx @kbd{Ctrl-@key{Down}} (@code{scroll-line-down})
+@item @kbd{Ctrl+@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Ctrl+@key{Down}} (@code{scroll-line-down})
 Scroll @var{count} lines up or down, respectively.
-@item @kbd{Ctrl-@key{Home}} (@code{scroll-top})
-@itemx @kbd{Ctrl-@key{End}} (@code{scroll-bottom})
+@item @kbd{Ctrl+@key{Home}} (@code{scroll-top})
+@itemx @kbd{Ctrl+@key{End}} (@code{scroll-bottom})
 Scroll to top or bottom, respectively.
 @end table
 
 @subsubheading Emacs-style keybindings
 
 @table @asis
-@item @kbd{Ctrl-@key{A}} (@code{beginning-of-line})
-@itemx @kbd{Ctrl-@key{B}} (@code{backward-char})
-@itemx @kbd{Ctrl-@key{E}} (@code{end-of-line})
-@itemx @kbd{Ctrl-@key{F}} (@code{forward-char})
-@itemx @kbd{Ctrl-@key{N}} (@code{down-line-or-history})
-@itemx @kbd{Ctrl-@key{P}} (@code{up-line-or-history})
-@itemx @kbd{Alt-@key{B}} (@code{backward-word})
-@itemx @kbd{Alt-@key{F}} (@code{forward-word})
+@item @kbd{Ctrl+@key{A}} (@code{beginning-of-line})
+@itemx @kbd{Ctrl+@key{B}} (@code{backward-char})
+@itemx @kbd{Ctrl+@key{E}} (@code{end-of-line})
+@itemx @kbd{Ctrl+@key{F}} (@code{forward-char})
+@itemx @kbd{Ctrl+@key{N}} (@code{down-line-or-history})
+@itemx @kbd{Ctrl+@key{P}} (@code{up-line-or-history})
+@itemx @kbd{Alt+@key{B}} (@code{backward-word})
+@itemx @kbd{Alt+@key{F}} (@code{forward-word})
 Emacs-style alternate keybindings.
-@item @kbd{Ctrl-@key{D}} (@code{delete-char-or-eof})
+@item @kbd{Ctrl+@key{D}} (@code{delete-char-or-eof})
 If the input area is empty, send the character literally
 (usually interpreted as end-of-file on Unix-like system).
 Otherwise, delete the character following.
@@ -2934,7 +2934,7 @@ Otherwise, delete the character following.
 
 @emph{Not implemented yet, but planned:}
 Emacs-style key-bindings should be controlled by a separate option;
-some bindings are missing, such as @kbd{Ctrl-@key{T}},
+some bindings are missing, such as @kbd{Ctrl+@key{T}},
 and the ones prefixed by @kbd{Esc}.
 Command-completion, using some protocol to be defined.
 A plug-in replacement for GNU @code{readline} using @code{LD_PRELOAD}
@@ -2954,14 +2954,14 @@ The ``history'' is the list of previously entered input lines.
 Move up/down in history.
 If the current command is multi-line, first moves within the current
 command before moving to commands in the history.
-@item @kbd{Ctrl-@key{R}} (@code{backward-search-history})
+@item @kbd{Ctrl+@key{R}} (@code{backward-search-history})
 Enter @ref{history-search-mode}.
 @end table
 
 @anchor{history-search-mode}
 @subsubheading Searching in history
 
-The @kbd{Ctrl-@key{R}} key enters history-search mode.
+The @kbd{Ctrl+@key{R}} key enters history-search mode.
 As you type characters, a search string is created, which
 is matched against the items in the history list.
 
@@ -2975,11 +2975,11 @@ Move caret within search string.
 @item @kbd{@key{Backspace}}
 @itemx  @kbd{@key{Delete}}
 Delete character from search string. This may change the selected history item.
-@item @kbd{Ctrl-@key{R}}
-@itemx @kbd{Ctrl-@key{S}}
+@item @kbd{Ctrl+@key{R}}
+@itemx @kbd{Ctrl+@key{S}}
 Search for previous/next history item matching the current search string.
 If the search string is empty, use previous search string.
-For example @kbd{Ctrl-@key{R} Ctrl-@key{R}} repeats previous search.
+For example @kbd{Ctrl+@key{R} Ctrl+@key{R}} repeats previous search.
 @item @kbd{@key{Enter}}
 Exit search mode, accept current item, and send it to the application.
 @item @kbd{@key{Up}}
@@ -3015,13 +3015,13 @@ The @code{keymap.line-edit} is a list (separated by commas or newlines),
 where each item is a quoted keystroke string, followed by a colon,
 followed by an action name. An action name is a string,
 but quotes are optional.  The following example disables
-the binding for @kbd{Ctrl-A} and adds a binding that
-maps @kbd{Ctrl-H} to the @code{beginning-of-line} action.
+the binding for @kbd{Ctrl+A} and adds a binding that
+maps @kbd{Ctrl+H} to the @code{beginning-of-line} action.
 
 @example
 keymap.line-edit =
- | "Ctrl-A": ignore-action
- | 'Ctrl-H': beginning-of-line
+ | "Ctrl+A": ignore-action
+ | 'Ctrl+H': beginning-of-line
 @end example
 
 @node Paging
@@ -3080,7 +3080,7 @@ then @code{a} (to enable auto-pause and also exit pause mode).
 @subsection Entering and exiting view mode
 
 @table @asis
-@item @kbd{Ctrl-Shift-@key{M}} (@code{toggle-paging-mode})
+@item @kbd{Ctrl+Shift+@key{M}} (@code{toggle-paging-mode})
 @itemx @kbd{@key{F7}}
 Enter or exit view-paused mode:
 If not in view mode (in character or line-edit mode),
@@ -3091,7 +3091,7 @@ end of the selection.
 Otherwise, the focus position is initialized to the caret position.
 
 If in view mode, return to character or line-edit mode.
-@item @kbd{Shift-@key{F7}}
+@item @kbd{Shift+@key{F7}}
 Enter or exit view-running mode:
 If not in view mode (in character or line-edit mode),
 enter view-running mode.
@@ -3108,11 +3108,11 @@ Exit view mode, returning to character or line-edit mode.
 Toggling @ref{auto pause, auto-pausing} and then Exit view mode.
 @item @kbd{@key{r}}
 Toggle between running and paused modes.
-@item @kbd{Ctrl-@key{C}}
-Interrupt output by sending @kbd{Ctrl-@key{C}} to the application,
+@item @kbd{Ctrl+@key{C}}
+Interrupt output by sending @kbd{Ctrl+@key{C}} to the application,
 and then exit paging mode after scrolling to the end.
-@item @kbd{Ctrl-@key{F}}
-@itemx @kbd{Ctrl-Shift-@key{F}}
+@item @kbd{Ctrl+@key{F}}
+@itemx @kbd{Ctrl+Shift+@key{F}}
 Enter @ref{Find text,find-text} mode.
 @end table
 
@@ -3124,15 +3124,15 @@ This is similar to line-edit mode,
 but it is optional whether you press the @kbd{@key{Alt}} modifier.
 
 @table @asis
-@item @kbd{Alt-@var{digit}}
-@itemx @kbd{Alt-@key{Minus}}
-@itemx @kbd{Alt-@key{.}}
+@item @kbd{Alt+@var{digit}}
+@itemx @kbd{Alt+@key{Minus}}
+@itemx @kbd{Alt+@key{.}}
 @itemx @kbd{@var{digit}}
 @itemx @kbd{@key{Minus}}
 @itemx @kbd{@key{.}}
 Set or extend a repeat count.
 For example @kbd{1 2 Left} moves 12 characters left, while
-@kbd{Minus 2 Ctrl-Left} moves 2 words right (because of the minus).
+@kbd{Minus 2 Ctrl+Left} moves 2 words right (because of the minus).
 @end table
 
 Commands that are affected by a repeat count
@@ -3158,14 +3158,14 @@ commands move the input caret, but in view mode they move the view position,
 @item @kbd{@key{Left}} (@code{backward-char})
 @itemx @kbd{@key{Right}} (@code{forward-char})
 Move the view position @var{count} characters left or right.
-@item @kbd{Ctrl-@key{Left}} (@kbd{Cmd-@key{Left}} on Mac) (@code{backward-word})
-@itemx @kbd{Ctrl-@key{Right}} (@kbd{Cmd-@key{Right}} on Mac) (@code{forward-word})
+@item @kbd{Ctrl+@key{Left}} (@kbd{Cmd+@key{Left}} on Mac) (@code{backward-word})
+@itemx @kbd{Ctrl+@key{Right}} (@kbd{Cmd+@key{Right}} on Mac) (@code{forward-word})
 Move the view position @var{count} words left or right.
 @item @kbd{@key{Home}} (@code{beginning-of-line})
 @itemx @kbd{@key{End}} (@code{end-of-line})
 Move the view position to start/end of line.
-@item @kbd{Alt-@key{Home}} (@code{beginning-of-buffer})
-@itemx @kbd{Alt-@key{End}} (@code{end-of-buffer})
+@item @kbd{Alt+@key{Home}} (@code{beginning-of-buffer})
+@itemx @kbd{Alt+@key{End}} (@code{end-of-buffer})
 Move the view position to start/end of the buffer.
 @item @kbd{@key{Up}}
 Move the view position @var{count} lines up.
@@ -3211,14 +3211,14 @@ available in all modes, but in paging mode you don't
 need to press @kbd{@key{Shift}}, and you can use a repeat count.
 
 @table @asis
-@item @kbd{Ctrl-@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{Ctrl-@key{PageDown}} (@code{scroll-page-down})
+@item @kbd{Ctrl+@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Ctrl+@key{PageDown}} (@code{scroll-page-down})
 Scroll @var{count} pages up or down, respectively.
-@item @kbd{Ctrl-@key{Up}} (@code{scroll-line-up})
-@itemx @kbd{Ctrl-@key{Down}} (@code{scroll-line-down})
+@item @kbd{Ctrl+@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Ctrl+@key{Down}} (@code{scroll-line-down})
 Scroll @var{count} lines up or down, respectively.
-@item @kbd{Ctrl-@key{Home}} (@code{scroll-top})
-@itemx @kbd{Ctrl-@key{End}} (@code{scroll-bottom})
+@item @kbd{Ctrl+@key{Home}} (@code{scroll-top})
+@itemx @kbd{Ctrl+@key{End}} (@code{scroll-bottom})
 Scroll to top or bottom, respectively.
 @end table
 
@@ -3245,18 +3245,18 @@ Commands that move the focus will scroll the view so
 the focus remains in the view.
 
 @table @asis
-@item @kbd{Ctrl-Shift-@key{C}}  (@code{copy-text})
-@itemx @kbd{Ctrl-@key{Insert}}
-@itemx @kbd{Cmd-@key{C}} @emph{(Only MacOS)}
+@item @kbd{Ctrl+Shift+@key{C}}  (@code{copy-text})
+@itemx @kbd{Ctrl+@key{Insert}}
+@itemx @kbd{Cmd+@key{C}} @emph{(Only MacOS)}
 Copy selection to clipboard.
 (Selection can be partly or fully outside input area.)
-@item @kbd{Ctrl-@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
-If there is no selection send Ctrl-C to the process - which
+@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
+If there is no selection send Ctrl+C to the process - which
 normally interrupts it.
-If the previous keycommand was also a Ctrl-C, do as the no-selection case,
-so typing Ctrl-C twice will always interrupt.
+If the previous keycommand was also a Ctrl+C, do as the no-selection case,
+so typing Ctrl+C twice will always interrupt.
 If there is a selection, copy it to the clipboard.
-@item @kbd{Ctrl-@key{!}}  (@code{swap-focus-anchor})
+@item @kbd{Ctrl+@key{!}}  (@code{swap-focus-anchor})
 If there is a non-collapsed selection, swap focus and anchor (selection ends).
 @end table
 
@@ -3265,12 +3265,12 @@ If there is a non-collapsed selection, swap focus and anchor (selection ends).
 The following commands modify the buffer, so are only available
 in line-edit mode, not view mode:
 @table @asis
-@item @kbd{Ctrl-@key{V}} (@code{paste-text})
-@itemx @kbd{Ctrl-Shift-@key{V}}
-@itemx @kbd{Shift-@key{Insert}}  @emph{(Only Electron, Qt, Webview)}
+@item @kbd{Ctrl+@key{V}} (@code{paste-text})
+@itemx @kbd{Ctrl+Shift+@key{V}}
+@itemx @kbd{Shift+@key{Insert}}  @emph{(Only Electron, Qt, Webview)}
 Paste selection from clipboard.
-@item @kbd{Ctrl-@key{X}} (@code{cut-text})
-@itemx @kbd{Ctrl-Shift-@key{X}}
+@item @kbd{Ctrl+@key{X}} (@code{cut-text})
+@itemx @kbd{Ctrl+Shift+@key{X}}
 Cut (delete) the selection and copy the contents to clipboard.
 Only removes text within the input area.
 @end table
@@ -3291,25 +3291,25 @@ A mouse click (button-1) with @kbd{@key{Shift}} held will extend
 the selection by moving the focus position leaving the anchor position in place.
 
 @table @asis
-@item @kbd{Shift-@key{Left}} (@code{backward-char-extend})
-@itemx @kbd{Shift-@key{Right}} (@code{forward-char-extend})
+@item @kbd{Shift+@key{Left}} (@code{backward-char-extend})
+@itemx @kbd{Shift+@key{Right}} (@code{forward-char-extend})
 Extends the current selection by @var{count} characters
 (If there is no selection, the caret position is treated as
 a zero-size selection.)
-@item @kbd{Ctrl-Shift-@key{Left}} (@kbd{Cmd-Shift-@key{Left}} on Mac) (@code{backward-word-extend})
-@itemx @kbd{Ctrl-Shift-@key{Right}} (@kbd{Cmd-Shift-@key{Righy}} on Mac) (@code{forward-word-extend})
+@item @kbd{Ctrl+Shift+@key{Left}} (@kbd{Cmd+Shift+@key{Left}} on Mac) (@code{backward-word-extend})
+@itemx @kbd{Ctrl+Shift+@key{Right}} (@kbd{Cmd+Shift+@key{Righy}} on Mac) (@code{forward-word-extend})
 Extend(or reduce) the current selection by @var{count} words
-@item @kbd{Shift-@key{Home}} (@code{beginning-of-line-extend})
-@itemx @kbd{Shift-@key{End}} (@code{end-of-line-extend})
+@item @kbd{Shift+@key{Home}} (@code{beginning-of-line-extend})
+@itemx @kbd{Shift+@key{End}} (@code{end-of-line-extend})
 Extend selection to start/end of line.
-@item @kbd{Shift-@key{Up}} (@code{up-line-extend})
-@itemx @kbd{Shift-@key{Down}} (@code{down-line-extend})
+@item @kbd{Shift+@key{Up}} (@code{up-line-extend})
+@itemx @kbd{Shift+@key{Down}} (@code{down-line-extend})
 Extend selection by moving focus up/down @var{count} lines.
-@item @kbd{Alt-Shift-@key{Home}} @emph{(paging mode only)} (@code{beginning-of-buffer-extend})
-@itemx @kbd{Alt-Shift-@key{End}} @emph{(paging mode only)} (@code{end-of-buffer-extend})
+@item @kbd{Alt+Shift+@key{Home}} @emph{(paging mode only)} (@code{beginning-of-buffer-extend})
+@itemx @kbd{Alt+Shift+@key{End}} @emph{(paging mode only)} (@code{end-of-buffer-extend})
 Extend selection by moving focus position to start/end of the buffer.
-@item @kbd{Alt-Shift-@key{Home}}  @emph{(line-edit mode only)} (@code{beginning-of-input-extend})
-@itemx @kbd{Alt-Shift-@key{End}} @emph{(line-edit mode only)} (@code{end-of-input-extend})
+@item @kbd{Alt+Shift+@key{Home}}  @emph{(line-edit mode only)} (@code{beginning-of-input-extend})
+@itemx @kbd{Alt+Shift+@key{End}} @emph{(line-edit mode only)} (@code{end-of-input-extend})
 Extend selection by moving focus position to start/end of the input area.
 @end table
 
@@ -3321,10 +3321,10 @@ The effect is similar to setting @dfn{the mark} in the Emacs editor.
 For example when extend mode is active,
 pressing the @kbd{@key{Right}} key extends the selection by one character
 (executing @code{forward-char-extend}),
-as if @kbd{Shift-@key{Right}} was pressed.
+as if @kbd{Shift+@key{Right}} was pressed.
 
 @table @asis
-@item @kbd{Ctrl-@@}
+@item @kbd{Ctrl+@@}
 Toggle extend mode.
 
 A visual indication of extend mode is that the focus caret changes
@@ -3332,22 +3332,22 @@ color from purple to orange, and the color of the selection changes.
 @end table
 
 Generally, if some key @var{X} is pressed in extend mode
-and @code{Shift-@var{X}} is bound to a command
+and @code{Shift+@var{X}} is bound to a command
 whose name ends with @code{-extend}, that command is executed instead.
 
 @table @asis
 @item @kbd{@key{Left}} (@code{backward-char-extend})
 @itemx @kbd{@key{Right}} (@code{forward-char-extend})
-@itemx @kbd{Ctrl-@key{Left}}  (@kbd{Cmd-@key{Left}} on Mac) (@code{backward-word-extend})
-@itemx @kbd{Ctrl-@key{Right}}  (@kbd{Cmd-@key{Right}} on Mac) (@code{forward-word-extend})
+@itemx @kbd{Ctrl+@key{Left}}  (@kbd{Cmd+@key{Left}} on Mac) (@code{backward-word-extend})
+@itemx @kbd{Ctrl+@key{Right}}  (@kbd{Cmd+@key{Right}} on Mac) (@code{forward-word-extend})
 @itemx @kbd{@key{Up}} (@code{up-line-extend})
 @itemx @kbd{@key{Down}} (@code{down-line-extend})
 @itemx @kbd{@key{Home}} (@code{beginning-of-line-extend})
 @itemx @kbd{@key{End}} (@code{end-of-line-extend})
-@itemx @kbd{Alt-@key{Home}} @emph{(paging mode only)} ((@code{beginning-of-buffer-extend})
-@itemx @kbd{Alt-@key{End}} @emph{(paging mode only)} ((@code{end-of-buffer-extend})
-@itemx @kbd{Alt-@key{Home}} @emph{(line-edit mode only)} (@code{beginning-of-input-extend})
-@itemx @kbd{Alt-@key{End}} @emph{(line-edit mode only)} (@code{end-of-input-extend})
+@itemx @kbd{Alt+@key{Home}} @emph{(paging mode only)} ((@code{beginning-of-buffer-extend})
+@itemx @kbd{Alt+@key{End}} @emph{(paging mode only)} ((@code{end-of-buffer-extend})
+@itemx @kbd{Alt+@key{Home}} @emph{(line-edit mode only)} (@code{beginning-of-input-extend})
+@itemx @kbd{Alt+@key{End}} @emph{(line-edit mode only)} (@code{end-of-input-extend})
 Extends the selection, as if @kbd{@key{Shift}} was pressed.
 @item @kbd{@key{Esc}}
 Exit extend mode, returning to plain view or line-edit mode.
@@ -3358,8 +3358,8 @@ Exit extend mode, returning to plain view or line-edit mode.
 
 To search for text in the buffer, use the @dfn{find} command.
 @table @asis
-@item @kbd{Ctrl-Shift-@key{F}} (@code{find-text}) @emph{(except find-text mode)}
-@itemx @kbd{Ctrl-@key{F}} @emph{(View or line-edit modes only)}
+@item @kbd{Ctrl+Shift+@key{F}} (@code{find-text}) @emph{(except find-text mode)}
+@itemx @kbd{Ctrl+@key{F}} @emph{(View or line-edit modes only)}
 Enter find-text mode.
 @end table
 
@@ -3386,21 +3386,21 @@ in forward direction.
 Sets the search direction to forwards: Editing the search
 will select the first match @emph{after} the base position.
 @item @kbd{@key{Up}} (@code{find-previous-match})
-@itemx @kbd{Shift-@key{Enter}}
+@itemx @kbd{Shift+@key{Enter}}
 Select the previous match.
 Sets the search direction to backwards: Editing the search
 will select the first match @emph{before} the base position.
-@item @kbd{Alt-@key{C}} (@code{find-toggle-match-case})
+@item @kbd{Alt+@key{C}} (@code{find-toggle-match-case})
 Enable or disable case-matching.
-@item @kbd{Alt-@key{W}} (@code{find-toggle-match-word})
+@item @kbd{Alt+@key{W}} (@code{find-toggle-match-word})
 Enable or disable matching of whole words (match must start and end
 on a word boundary).
-@item @kbd{Alt-@key{R}} (@code{find-toggle-match-case})
+@item @kbd{Alt+@key{R}} (@code{find-toggle-match-case})
 Enable or disable searching using @uref{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions,regular expressions}.
 @item @kbd{@key{Escape}} (@code{find-exit})
 Exit find mode, setting the selection to the current match.
-@item @kbd{Shift-@key{F}} (@code{find-select-pattern})
-@itemx @kbd{Ctrl-Shift-@key{F}} (@code{find-select-pattern})
+@item @kbd{Shift+@key{F}} (@code{find-select-pattern})
+@itemx @kbd{Ctrl+Shift+@key{F}} (@code{find-select-pattern})
 Select the entire pattern minibuffer.
 @end table
 
@@ -4372,7 +4372,7 @@ After @uref{https://www.autohotkey.com/docs/Tutorial.htm#s11,downloading and ins
 you need to @uref{https://www.autohotkey.com/docs/Tutorial.htm#s12,create a script} (in a file with extension @code{.ahk}).
 
 The following @code{.ahk} script file will toggle domterm
-when you type @kbd{Ctrl-Alt-@key{t}}, specified by the @code{^!t} pattern:
+when you type @kbd{Ctrl+Alt+@key{t}}, specified by the @code{^!t} pattern:
 
 @example
 ^!t::
@@ -5004,14 +5004,14 @@ should be bundled as an event objects sent back to the inferior.
 Zsh editor (zle) supports Emacs-like mark and region.
 Emacs has a ``shift-selection'' state, which we would like to emulate.
 
-On mouse selection, or a shift-motion command (such as Shift-Right),
+On mouse selection, or a shift-motion command (such as Shift+Right),
 should set the region in shift-selection mode:
-We send Ctrl-Space to the client (setting the mark) at the ``anchor''
+We send Ctrl+Space to the client (setting the mark) at the ``anchor''
 and move the cursor as needed.  We also (locally to DomTerm) set the
 ``shift-selection'' mode.
 If when in shift-selection mode any (special) key is pressed @emph{without} the shift
 modfier, then shift-selection mode is turned off, the selection is collapsed,
-and Escape - Ctrl-Space is sent to decativate the region.
+and Escape - Ctrl+Space is sent to decativate the region.
 
 Can do this lazily, so we only get the selection highlighting:
 On mouse selection or shift-motion command
@@ -6305,7 +6305,7 @@ Handles a @code{paste} operation.
 May be called by client code.
 May also be overridden if needed; the default uses @code{execCommand},
 which triggers a @code{paste} event.
-It is called by DomTerm if the user types Ctrl-Shift-V.
+It is called by DomTerm if the user types Ctrl+Shift+V.
 @end defun
 
 @defun pasteText (text)
@@ -6317,7 +6317,7 @@ Actually handle a paste event.
 Handles a @code{copy} operation.
 May be called by client code.
 May also be overridden if needed; the default uses @code{execCommand}.
-It is called by DomTerm if the user types Ctrl-Shift-C.
+It is called by DomTerm if the user types Ctrl+Shift+C.
 @end defun
 
 @defun setInputMode (mode)
