@@ -100,8 +100,7 @@ Double-width characters now really are two columns wide.
 * Remote serving::
 * Sessions and Windows::
 * Keyboard shortcuts::
-* Input line editing::
-* Paging:: Paging and Pausing
+* Edit and View modes::
 * Styling::
 * Tips and solutions::
 * Java tools::
@@ -446,7 +445,7 @@ sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebso
 @end example
 If configuring @code{--with-qt} (recommended), also do:
 @example
-sudo dnf install gcc-c++ qt5-qtbase-devel qt5-qtwebengine-devel qt5-qtwebchannel-devel
+sudo dnf install gcc-c++ qt5-qtbase-devel qt5-qtwebengine-devel qt5-qtwebchannel-devel qt5-qtx11extras-devel
 @end example
 If configuring with @code{--enable-compiled-in-resources} (for @code{xxd} - only needed at build time):
 @example
@@ -568,7 +567,7 @@ git clone https://github.com/warmcat/libwebsockets
 cd libwebsockets
 mkdir build
 cd build
-cmake -DLWS_WITH_SSL=0 -DLWS_WITH_ZIP_FOPS=1 ..
+cmake -DLWS_WITH_SSL=0 -DLWS_WITHOUT_EXTENSIONS=0 DLWS_WITH_ZIP_FOPS=1 ..
 @end example
 The @code{-D} options are suggested but not required:
 @code{-DLWS_WITH_SSL=0} avoids a dependency on OpenSSL;
@@ -2624,17 +2623,20 @@ the state of the Document Object Model.
 @anchor{scrolling shortcuts}
 @subsubheading Scrolling
 
+In paging and edit modes, these may be modified by a repeat @var{count}.
+Otherwise, @var{count} defaults to 1.
+
 @table @asis
-@item @kbd{Alt-Shift-@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{Alt-Shift-@key{PageDown}} (@code{scroll-page-down})
-Scroll one ``page'' up or down, respectively.
-(Specifically, the viewport height minus a height of one line.)
-@item @kbd{Alt-Shift-@key{Up}} (@code{scroll-line-up})
-@itemx @kbd{Alt-Shift-@key{Down}} (@code{scroll-line-down})
-Scroll one line up or down, respectively.
-@item @kbd{Alt-Shift-@key{Home}} (@code{scroll-top})
+@item @kbd{Ctrl-Shift-@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Ctrl-Shift-@key{PageDown}} (@code{scroll-page-down})
+Scroll @var{count} ``pages'' up or down, respectively.
+(Specifically, the viewport height times @var{count} minus a height of one line.)
+@item @kbd{Ctrl-Shift-@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Ctrl-Shift-@key{Down}} (@code{scroll-line-down})
+Scroll @var{count} lines up or down, respectively.
+@item @kbd{Ctrl-Shift-@key{Home}} (@code{scroll-top})
 Scroll to top.
-@item @kbd{Alt-Shift-@key{End}} (@code{scroll-bottom})
+@item @kbd{Ctrl-Shift-@key{End}} (@code{scroll-bottom})
 Scroll to bottom.
 @end table
 
@@ -2675,29 +2677,22 @@ where each item is a quoted keystroke string, followed by a colon,
 followed by an action name. An action name is a string,
 but quotes are optional.
 
-To enable ``standard'' handling of Ctrl-V for Paste and
-Ctrl-C for Copy (while still ignalling interrup when there is no selection) do:
+To enable ``standard'' handling of Ctrl-V for Paste and Ctrl-C for Copy
+(while still signalling interrupt when there is no selection) do:
 @example
 keymap.master =
  | "Ctrl-C": copy-text-or-interrupt
  | "Ctrl-V": paste-text
 @end example
 
-@node Input line editing
-@chapter Input line editing
+@node Edit and View modes
+@chapter Edit and View modes
 
-In ``line-editing mode'' most keystrokes add to or modify
-an editing area in the DomTerm window, but are not sent to
-the application until you type Enter.
-This enables editing of input lines similar to
-Emacs shell mode or GNU readline.
+Keyboard bindings vary between these 3 main modes:
 
-@subheading Line vs character input mode
-
-DomTerm lets you switch between these modes:
 @itemize
 @item
-In @strong{character-at-a-time mode}
+In @strong{character input mode}
 most keystrokes become characters sent directly to the application.
 @item
 In @strong{line-edit mode} most keystrokes update a local ``input area''.
@@ -2705,10 +2700,18 @@ Plain characters are inserted; other keystrokes are editing commands.
 The contents of the input area are only sent to the application
 when you press @kbd{@key{Enter}} (normally).
 (This mode is similar to @dfn{shell mode} in Emacs.)
+@item
+@strong{View mode} is designed for read-only movement in the
+buffer, as well as selecting text.
+The output may also be @strong{paused}, in which case output
+from the application is queued up instead of updating the buffer.
+@end itemize
 
+On addition:
+@itemize
 @item
 @strong{Automatic input mode} automatically
-switches between character-at-a-time mode and line-edit mode.
+switches between character mode and line-edit mode.
 This is the default.
 It is done based on the @uref{https://en.wikipedia.org/wiki/Terminal_mode,terminal mode} of
 the application's @uref{https://en.wikipedia.org/wiki/Pseudoterminal,PTY}:
@@ -2734,6 +2737,22 @@ Cycle between input modes: character (character-at-a-time),
 line (line-edit), or automatic.
 @end table
 
+@menu
+* Input line editing::
+* Paging:: View mode - Paging and Pausing
+* The Selection:: Working with the Selection
+* Find text::
+@end menu
+
+@node Input line editing
+@section Input line editing
+
+In ``line-editing mode'' most keystrokes add to or modify
+an editing area in the DomTerm window, but are not sent to
+the application until you type Enter.
+This enables editing of input lines similar to
+Emacs shell mode or GNU readline.
+
 @subheading The input area and input lines
 
 The area affected by insertions and edits during line-edit mode
@@ -2746,6 +2765,11 @@ If output arrives while the input area is active the output buffer is
 updated as if the input area is not there: The input area is removed,
 the output with escape sequence is processed, and then the
 input area is re-inserted at the position of the output caret.
+
+A mouse click on a match move the base position to the start of the match,
+and selects the match.  A click not on a match sets the base position
+to the clicked location, and selects the first following match.
+(Id the search direction is backwards ....)
 
 @table @asis
 @item @kbd{@key{Enter}} (@code{accept-line})
@@ -2881,8 +2905,6 @@ need to press @kbd{@key{Shift}}, and you can use a repeat count.
 @table @asis
 @item @kbd{Ctrl-@key{PageUp}} (@code{scroll-page-up})
 @itemx @kbd{Ctrl-@key{PageDown}} (@code{scroll-page-down})
-@itemx @kbd{@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{@key{PageDown}} (@code{scroll-page-down})
 Scroll @var{count} pages up or down, respectively.
 @item @kbd{Ctrl-@key{Up}} (@code{scroll-line-up})
 @itemx @kbd{Ctrl-@key{Down}} (@code{scroll-line-down})
@@ -2921,103 +2943,6 @@ under DomTerm, in which case it would delegate most editing to DomTerm.
 This would allow using bash completion logic.)
 Auto-completion (completion as you type).
 
-@subheading Working with the selection
-
-Line mode has extra shortcuts and other conveniences for working
-with the selection.
-
-The ``initial'' end of the selection is called the @dfn{anchor position},
-and the ``final end'' is called the @dfn{focus position}.
-The latter is indicated by a special @dfn{focus caret},
-by default a brown I-beam caret.
-
-The commands in this section do not move the edit caret, only the focus position.
-These shortcuts are the same as line-edit mode, unless otherwise noted.
-
-@table @asis
-@item @kbd{Ctrl-Shift-@key{C}}  (@code{copy-text})
-@itemx @kbd{Ctrl-@key{Insert}}
-@itemx @kbd{Cmd-@key{C}} @emph{(Only MacOS)}
-Copy selection to clipboard.
-(Selection can be partly or fully outside input area.)
-@item @kbd{Ctrl-@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
-If there is no selection send Ctrl-C to the process - which
-normally interrupts it.
-If the previous keycommand was also a Ctrl-C, do as the no-selection case,
-so typing Ctrl-C twice will always interrupt.
-If there is a selection, copy it to the clipboard.
-@item @kbd{Ctrl-@key{V}} (@code{paste-text})
-@itemx @kbd{Ctrl-Shift-@key{V}}
-@itemx @kbd{Shift-@key{Insert}}  @emph{(Only Electron, Qt, Webview)}
-Paste selection from clipboard.
-@item @kbd{Ctrl-@key{X}} (@code{cut-text})
-@itemx @kbd{Ctrl-Shift-@key{X}}
-Cut (delete) the selection and copy the contents to clipboard.
-Only removes text within the input area.
-@item @kbd{Ctrl-@key{!}}  (@code{swap-focus-anchor})
-If there is a non-collapsed selection, swap focus and anchor (selection ends).
-@end table
-
-@subsubheading Extending the selection
-
-Pressing @kbd{@key{Shift}} during a mouse click
-also extends the selection.
-
-@table @asis
-@item @kbd{Shift-Left} (@code{backward-char-extend})
-@itemx @kbd{Shift-Right} (@code{forward-char-extend})
-Extends the current selection by @var{count} characters
-(If there is no selection, the caret position is treated as
-a zero-size selection.)
-@item @kbd{Ctrl-Shift-Left} (@code{backward-word-extend})
-@itemx @kbd{Ctrl-Shift-Right} (@code{forward-word-extend})
-Extends the current selection by @var{count} words
-@item @kbd{Shift-@key{Home}} (@code{beginning-of-line-extend})
-@itemx @kbd{Shift-@key{End}} (@code{end-of-line-extend})
-Extend selection to start/end of line.
-@item @kbd{Shift-@key{Up}} (@code{up-line-extend})
-@itemx @kbd{Shift-@key{Down}} (@code{down-line-extend})
-Extend selection by moving focus up/down @var{count} lines.
-@item @kbd{Shift-Alt-@key{Home}} (@code{beginning-of-buffer-extend})
-@itemx @kbd{Shift-Alt-@key{End}} (@code{end-of-buffer-extend})
-Extend selection by moving focus position to start/end of the buffer.
-@end table
-
-@subsubheading Extend mode
-
-@dfn{Extend mode} allows extending (or shrinking) the
-selection using keyboard commands without pressing @kbd{@key{Shift}}.
-The effect is similar to setting @dfn{the mark} in the Emacs editor.
-For example when extend mode is active,
-pressing the @kbd{@key{Right}} key extends the selection by one character
-(executing @code{forward-char-extend}),
-as if @kbd{Shift-@key{Right}} was pressed.
-
-@table @asis
-@item @kbd{Ctrl-@@}
-Toggle extend mode.
-
-A visual indication of extend mode is that the focus caret changes
-color from brown to orange, and the color of the selection changes.
-@end table
-
-Generally, if some key @var{X} is pressed in extend mode
-and @code{Shift-@var{X}} is bound to a command
-whose name ends with @code{-extend}, that command is executed instead.
-
-@table @asis
-@item @kbd{@key{Left}} (@code{backward-char-extend})
-@itemx @kbd{@key{Right}} (@code{forward-char-extend})
-@itemx @kbd{Ctrl-@key{Left}}  (@kbd{Cmd-@key{Left}} on Mac) (@code{backward-word-extend})
-@itemx @kbd{Ctrl-@key{Right}}  (@kbd{Cmd-@key{Right}} on Mac) (@code{forward-word-extend})
-@itemx @kbd{@key{Up}} (@code{up-line-extend})
-@itemx @kbd{@key{Down}} (@code{down-line-extend})
-@itemx @kbd{@key{Home}} (@code{beginning-of-line-extend})
-@itemx @kbd{@key{End}} (@code{end-of-line-extend})
-@itemx @kbd{Alt-@key{Home}} (@code{beginning-of-buffer-extend})
-@itemx @kbd{Alt-@key{End}} (@code{end-of-buffer-extend})
-Extends the selection, as if @kbd{@key{Shift}} was pressed.
-@end table
 
 @subheading History
 
@@ -3100,103 +3025,383 @@ keymap.line-edit =
 @end example
 
 @node Paging
-@chapter Paging and Pausing
+@section View mode -  Paging and Pausing
 
-DomTerm includes a builtin ``pager'' that gives you
-functionality similar to programs like @code{less}.
-You can set ``auto-pause'' which enters the pager each time
-a full screen has been displayed.
+@c @emph{Naming issue: Which is better: caret mode (like caret browsing), focus mode, or view mode, or pause mode,
+@c or paging mode, or select mode, or read mode, or read-only mode [too long]?}
+@c Leaning towards ``paging mode'' (paused or non-paused), but ``focus position'' and ``focus caret''
 
-We will discuss two related modes.
-@dfn{Pager mode} does the following:
-@enumerate
-@item
-The key-bindings are changed to be more
-like the @code{less} program or Emacs ``view mode''.
-@item
-Automatically scrolling (on output) is turned off.
-@end enumerate
+View mode makes the buffer read-only.
+It uses a @dfn{focus position} (indicated by a @dfn{focus cursor}),
+which is independent of the output cursor and the line-editing cursor.
+The key-bindings move the focus cursor around in the buffer,
+scrolling as needed to keep the focus cursor visible.
+Other key-bindings define or extend @ref{The Selection,the selection}
+(which can be copied as needed to the clipboard),
+or enable @ref{Find text,find-text mode} for searching the buffer.
+No keystrokes or other events are sent to the application,
+nor do they modify the input area.
 
-@dfn{Pause mode}  additionally does the following:
-@c NOTE The following lines are kludged in the Makefile.
-@enumerate 3
-@item
-Suspends additional output from updating the display.
-Any not-yet-displayed output is queued up,
-and the sending (client process) will suspend too.
-@end enumerate
+If there is a selection, the focus position is one end (the most ``recent'')
+of the selection.  The other end is called the @dfn{anchor position}.
 
-You enter pause mode in two basic ways
-@itemize
+There are two variants of view mode:
+@itemize @bullet
 @item
-You manually enter pause mode by typing Ctrl-Shift-M.
+In @dfn{view-paused mode} output from the application is suspended.
+The line containing the focus caret is shown with a solid outline.
 @item
-You automatically enter pause mode if automatic pausing is
-enabled, and a ``full screen'' is displayed since last user interaction:
-Any further output would cause part of the visible screen to scroll off.
+In @dfn{view-running mode} output updates the display,
+but it does not automatically scroll.
+The line containing the focus caret is shown with a dashed outline.
 @end itemize
+
+Key-bindings are similar to @ref{Input line editing,line-edit mode}.
+
+View mode has similar functionality as @code{tmux}'s copy-mode,
+the @dfn{caret browsing} modes of common web browsers
+(typically entered with F7), emacs's view mode,
+or using an external pager like @code{less} or the older @code{more}.
+
+@anchor{auto pause}
+@subsection Auto-pause
+
+When @dfn{auto-pause} is enabled, the terminal automatically enters
+view-paused mode when there is a screenful of fresh output.
+Specifically, if there is output that would require the display to scroll
+below the @dfn{pause limit}.  The pause limit is automatically adjusted
+as appropriate - typically one screenful past the most recentg interaction.
 
 To enable automatic-pause mode you can
 check the @code{Automatic Pager} option in the right-click (context) menu.
-(You can also type @code{ctrl-shift-M} (to enter pause mode);
+You can also type @code{ctrl-shift-M} (to enter pause mode);
 then @code{a} (to enable auto-pause and also exit pause mode).
 
-To enter pager mode, you first have to enter pause mode,
-and then type @code{P}.
+@subsection Entering and exiting view mode
 
-The following key-bindings are in effect in pager or paused mode.
-Some other these may be prefixed by a numeric @var{count}.
 @table @asis
-@item @kbd{A}
-Toggle automatic-pause mode on and off,
-and then exit pager mode.
-@item @kbd{p}
-@item @kbd{%}
-Move to @var{count} percent of the way between start
-and end positions.
+@item @kbd{Ctrl-Shift-@key{M}} (@code{toggle-paging-mode})
+@itemx @kbd{@key{F7}}
+Enter or exit view-paused mode:
+If not in view mode (in character or line-edit mode),
+enter view-paused mode.
+Otherwise, return to normal mode.
+If there is a selection, the focus position is set to the ``most recent''
+end of the selection.
+Otherwise, the focus position is initialized to the caret position.
+
+If in view mode, return to character or line-edit mode.
+@item @kbd{Shift-@key{F7}}
+Enter or exit view-running mode:
+If not in view mode (in character or line-edit mode),
+enter view-running mode.
+Otherwise, return to normal mode.
+@item @kbd{@key{Space}}
+@itemx @kbd{@key{Enter}}
+As mentioned @ref{view mode space key,below}: If there isn't
+room to move down respectively a page or a line,
+exits view mode, after adjusting the pause-limit and enabling auto-pause.
+@item @kbd{@key{Esc}}
+Exit view mode, returning to character or line-edit mode.
+
+@item @kbd{@key{a}}
+Toggling @ref{auto pause, auto-pausing} and then Exit view mode.
+@item @kbd{@key{r}}
+Toggle between running and paused modes.
 @item @kbd{Ctrl-@key{C}}
 Interrupt output by sending @kbd{Ctrl-@key{C}} to the application,
 and then exit paging mode after scrolling to the end.
-@item @kbd{@key{m}}
-Toggle between pager and paused modes.
-@item @kbd{Ctrl-Shift-@key{M}}
-Return to normal mode.
-If paused, allow further output.
-@item @kbd{Space}
-Scroll @var{count} screenfuls down.
-If we go past the bottom of the current output,
-leave pause or pager mode, and allow further output.
-Temporarily set automatic-pause mode, so that we pause again
-if the screen fills up again.
-@item @kbd{Enter}
-Scroll @var{count} lines down.
-Otherwise similar to Space.
-@item @kbd{PageUp}
-@itemx @kbd{PageDown}
-Scroll @var{count} screenfuls up/down.
-@item @kbd{Home}
-Scroll to the current ``pager home''.  (Details needed ...)
-@item @kbd{End}
-Scroll the end of the buffer.
-If paused and already at the end, un-pause.
-I.e. continue displaying output until the next action.
+@item @kbd{Ctrl-@key{F}}
+@itemx @kbd{Ctrl-Shift-@key{F}}
+Enter @ref{Find text,find-text} mode.
 @end table
 
-DomTerm does not yet implement a search command,
-but most browsers have a find-in-page command,
-commonly bound to Ctrl-F.
+@subsection Repeat count
 
-In addition the following work as in all other modes:
+Many of the following keyboard commands can be modified
+by previously-typed @dfn{repeat count}.
+This is similar to line-edit mode,
+but it is optional whether you press the @kbd{@key{Alt}} modifier.
+
 @table @asis
-@item @kbd{Alt-Shift-Home}
-@itemx @kbd{Alt-Shift-End}
-Scroll to top/bottom.
-@item @kbd{Alt-Shift-PageUp}
-@itemx @kbd{Alt-Shift-PageDown}
-Scroll one ``page'' up or down.
-@item @kbd{Alt-Shift-Up}
-@itemx @kbd{Alt-Shift-Down}
-Scroll one line up or down.
+@item @kbd{Alt-@var{digit}}
+@itemx @kbd{Alt-@key{Minus}}
+@itemx @kbd{Alt-@key{.}}
+@itemx @kbd{@var{digit}}
+@itemx @kbd{@key{Minus}}
+@itemx @kbd{@key{.}}
+Set or extend a repeat count.
+For example @kbd{1 2 Left} moves 12 characters left, while
+@kbd{Minus 2 Ctrl-Left} moves 2 words right (because of the minus).
+@end table
+
+Commands that are affected by a repeat count
+contain @var{count} in the description.
+By default the @var{count} is one, and it is reset after each command.
+
+@subsection Moving the view position
+
+The following commands move the focus position.
+If the view caret is not active, it is first set to the position of the
+output cursor.
+
+A mouse click (button-1 with no modifiers) will also move the view position.
+
+All of these clear the selection if there is one.
+These operations will scroll as needed so the view position remains visible.
+
+Many of the key-binding in view mode are the
+same as in line-edit mode.  However, in line-edit mode most
+commands move the input caret, but in view mode they move the view position,
+
+@table @asis
+@item @kbd{@key{Left}} (@code{backward-char})
+@itemx @kbd{@key{Right}} (@code{forward-char})
+Move the view position @var{count} characters left or right.
+@item @kbd{Ctrl-@key{Left}} (@kbd{Cmd-@key{Left}} on Mac) (@code{backward-word})
+@itemx @kbd{Ctrl-@key{Right}} (@kbd{Cmd-@key{Right}} on Mac) (@code{forward-word})
+Move the view position @var{count} words left or right.
+@item @kbd{@key{Home}} (@code{beginning-of-line})
+@itemx @kbd{@key{End}} (@code{end-of-line})
+Move the view position to start/end of line.
+@item @kbd{Alt-@key{Home}} (@code{beginning-of-buffer})
+@itemx @kbd{Alt-@key{End}} (@code{end-of-buffer})
+Move the view position to start/end of the buffer.
+@item @kbd{@key{Up}}
+Move the view position @var{count} lines up.
+@item @kbd{@key{Down}}
+Move the view position @var{count} lines down.
+If that would extend past the end of the buffer
+and we are paused, unpause (while keeping
+view-mode keybindings) until there is enough output.
+@item @kbd{@key{PageUp}}
+Move the view position @var{count} pages (screenfuls) up.
+@item @kbd{@key{PageDown}}
+Move the view position @var{count} pages down.
+If that would extend past the end of the buffer
+and we are paused, unpause until there is enough output.
+(Stay in view-mode, though.)
+@anchor{view mode space key}
+@item @kbd{@key{Space}}
+Move the view position @var{count} pages down.
+If that would extend past the end of the buffer
+and we are paused, unpause until there is enough output.
+(Temporarily set automatic-pause mode, so that we pause again
+if the screen fills up again.)
+Similar to @kbd{@key{PgDown}}, but @kbd{@key{Space}} exits
+view mode and its keybindings.
+@item @kbd{@key{Enter}}
+Move the view position @var{count} lines down.
+Similar to @kbd{@key{Space}}, but only moves the focus position and/or the
+pause limit @var{count} lines rather than @var{count} pages.
+Similar to @kbd{@key{Down}}, but @kbd{@key{Enter}} exits
+view mode and its keybindings.
+@item @kbd{@key{p}}
+@itemx @kbd{@key{%}}
+Move to @var{count} percent of the way between start
+and end positions.
+@end table
+
+@subsection Scrolling
+
+Scrolling moves the visible view @emph{without} moving
+the focus position.
+You can use the @ref{scrolling shortcuts,general scrolling shortcuts}
+available in all modes, but in paging mode you don't
+need to press @kbd{@key{Shift}}, and you can use a repeat count.
+
+@table @asis
+@item @kbd{Ctrl-@key{PageUp}} (@code{scroll-page-up})
+@itemx @kbd{Ctrl-@key{PageDown}} (@code{scroll-page-down})
+Scroll @var{count} pages up or down, respectively.
+@item @kbd{Ctrl-@key{Up}} (@code{scroll-line-up})
+@itemx @kbd{Ctrl-@key{Down}} (@code{scroll-line-down})
+Scroll @var{count} lines up or down, respectively.
+@item @kbd{Ctrl-@key{Home}} (@code{scroll-top})
+@itemx @kbd{Ctrl-@key{End}} (@code{scroll-bottom})
+Scroll to top or bottom, respectively.
+@end table
+
+@node The Selection
+@section Working with the Selection
+
+The selection is the highlighted region (by default blue) of the buffer.
+A Copy operation copies the contents of the selection to the clipboard.
+View and line-edit modes have extra shortcuts and other conveniences for working
+with the selection.
+Unless otherwise noted, this section applies to both.
+
+The two end-points of the selection
+are called the @dfn{anchor} and the @dfn{focus} points.
+The anchor is where you start the selection (typically on mouse-down),
+while the focus is current/active end of the selection:
+As you drag the mouse the focus follow the mouse, until mouse-up.
+In paging and line-edit modes the focus end is indicated
+with a vertical bar, by default purple.
+
+The commands in this section do not move the edit caret, only the focus position.
+
+Commands that move the focus will scroll the view so
+the focus remains in the view.
+
+@table @asis
+@item @kbd{Ctrl-Shift-@key{C}}  (@code{copy-text})
+@itemx @kbd{Ctrl-@key{Insert}}
+@itemx @kbd{Cmd-@key{C}} @emph{(Only MacOS)}
+Copy selection to clipboard.
+(Selection can be partly or fully outside input area.)
+@item @kbd{Ctrl-@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
+If there is no selection send Ctrl-C to the process - which
+normally interrupts it.
+If the previous keycommand was also a Ctrl-C, do as the no-selection case,
+so typing Ctrl-C twice will always interrupt.
+If there is a selection, copy it to the clipboard.
+@item @kbd{Ctrl-@key{!}}  (@code{swap-focus-anchor})
+If there is a non-collapsed selection, swap focus and anchor (selection ends).
+@end table
+
+@subsubheading Cut and paste (line-edit mode only)
+
+The following commands modify the buffer, so are only available
+in line-edit mode, not view mode:
+@table @asis
+@item @kbd{Ctrl-@key{V}} (@code{paste-text})
+@itemx @kbd{Ctrl-Shift-@key{V}}
+@itemx @kbd{Shift-@key{Insert}}  @emph{(Only Electron, Qt, Webview)}
+Paste selection from clipboard.
+@item @kbd{Ctrl-@key{X}} (@code{cut-text})
+@itemx @kbd{Ctrl-Shift-@key{X}}
+Cut (delete) the selection and copy the contents to clipboard.
+Only removes text within the input area.
+@end table
+
+@subsubheading Extending the selection
+
+Pressing @key{Shift} while executing a movement command (such as @key{Left})
+will @dfn{extend} the selection:
+The focus is moved as specified by the unshifted command (such as @key{Left} to
+move one character left), but the anchor stays where it was.
+The selected area expands or shrinks, depending on the movement.
+If there was no selection, the anchor is set to the initial
+location of the focus (in view mode) or the edit caret (in line-edit mode).
+
+These operations will scroll as needed so the focus remains visible.
+
+A mouse click (button-1) with @kbd{@key{Shift}} held will extend
+the selection by moving the focus position leaving the anchor position in place.
+
+@table @asis
+@item @kbd{Shift-@key{Left}} (@code{backward-char-extend})
+@itemx @kbd{Shift-@key{Right}} (@code{forward-char-extend})
+Extends the current selection by @var{count} characters
+(If there is no selection, the caret position is treated as
+a zero-size selection.)
+@item @kbd{Ctrl-Shift-@key{Left}} (@kbd{Cmd-Shift-@key{Left}} on Mac) (@code{backward-word-extend})
+@itemx @kbd{Ctrl-Shift-@key{Right}} (@kbd{Cmd-Shift-@key{Righy}} on Mac) (@code{forward-word-extend})
+Extend(or reduce) the current selection by @var{count} words
+@item @kbd{Shift-@key{Home}} (@code{beginning-of-line-extend})
+@itemx @kbd{Shift-@key{End}} (@code{end-of-line-extend})
+Extend selection to start/end of line.
+@item @kbd{Shift-@key{Up}} (@code{up-line-extend})
+@itemx @kbd{Shift-@key{Down}} (@code{down-line-extend})
+Extend selection by moving focus up/down @var{count} lines.
+@item @kbd{Alt-Shift-@key{Home}} @emph{(paging mode only)} (@code{beginning-of-buffer-extend})
+@itemx @kbd{Alt-Shift-@key{End}} @emph{(paging mode only)} (@code{end-of-buffer-extend})
+Extend selection by moving focus position to start/end of the buffer.
+@item @kbd{Alt-Shift-@key{Home}}  @emph{(line-edit mode only)} (@code{beginning-of-input-extend})
+@itemx @kbd{Alt-Shift-@key{End}} @emph{(line-edit mode only)} (@code{end-of-input-extend})
+Extend selection by moving focus position to start/end of the input area.
+@end table
+
+@subsubheading Extend mode
+
+@dfn{Extend mode} allows extending (or shrinking) the
+selection using keyboard commands without pressing @kbd{@key{Shift}}.
+The effect is similar to setting @dfn{the mark} in the Emacs editor.
+For example when extend mode is active,
+pressing the @kbd{@key{Right}} key extends the selection by one character
+(executing @code{forward-char-extend}),
+as if @kbd{Shift-@key{Right}} was pressed.
+
+@table @asis
+@item @kbd{Ctrl-@@}
+Toggle extend mode.
+
+A visual indication of extend mode is that the focus caret changes
+color from purple to orange, and the color of the selection changes.
+@end table
+
+Generally, if some key @var{X} is pressed in extend mode
+and @code{Shift-@var{X}} is bound to a command
+whose name ends with @code{-extend}, that command is executed instead.
+
+@table @asis
+@item @kbd{@key{Left}} (@code{backward-char-extend})
+@itemx @kbd{@key{Right}} (@code{forward-char-extend})
+@itemx @kbd{Ctrl-@key{Left}}  (@kbd{Cmd-@key{Left}} on Mac) (@code{backward-word-extend})
+@itemx @kbd{Ctrl-@key{Right}}  (@kbd{Cmd-@key{Right}} on Mac) (@code{forward-word-extend})
+@itemx @kbd{@key{Up}} (@code{up-line-extend})
+@itemx @kbd{@key{Down}} (@code{down-line-extend})
+@itemx @kbd{@key{Home}} (@code{beginning-of-line-extend})
+@itemx @kbd{@key{End}} (@code{end-of-line-extend})
+@itemx @kbd{Alt-@key{Home}} @emph{(paging mode only)} ((@code{beginning-of-buffer-extend})
+@itemx @kbd{Alt-@key{End}} @emph{(paging mode only)} ((@code{end-of-buffer-extend})
+@itemx @kbd{Alt-@key{Home}} @emph{(line-edit mode only)} (@code{beginning-of-input-extend})
+@itemx @kbd{Alt-@key{End}} @emph{(line-edit mode only)} (@code{end-of-input-extend})
+Extends the selection, as if @kbd{@key{Shift}} was pressed.
+@item @kbd{@key{Esc}}
+Exit extend mode, returning to plain view or line-edit mode.
+@end table
+
+@node Find text
+@section Find text
+
+To search for text in the buffer, use the @dfn{find} command.
+@table @asis
+@item @kbd{Ctrl-Shift-@key{F}} (@code{find-text}) @emph{(except find-text mode)}
+@itemx @kbd{Ctrl-@key{F}} @emph{(View or line-edit modes only)}
+Enter find-text mode.
+@end table
+
+The find command highlights text that matches a search string or regular expression.
+Keypresses and standard editing keys (such as @key{Left} or @key{Delete})
+update a search string displayed in a ``mini-buffer''.
+Matching text is highlighted, by default using a yellow background.
+(Specifically, matched text is temporarily wrapped in a @code{<mark>} element.)
+
+Assuming we're searching forwards,
+the first match that starts at or after the ``base position'' is selected,
+with the focus position set to the end of the match.
+The base position is initially the caret (focus position if defined,
+otherwise the output position).
+Each ``selection-next'' sets the base position to the focus position,
+and redoes the search.
+
+@table @asis
+@item @kbd{@key{Down}} (@code{find-next-match})
+@itemx @kbd{@key{Enter}}
+Select the next match:
+Sets the base position to focus position and redoes the search
+in forward direction.
+Sets the search direction to forwards: Editing the search
+will select the first match @emph{after} the base position.
+@item @kbd{@key{Up}} (@code{find-previous-match})
+@itemx @kbd{Shift-@key{Enter}}
+Select the previous match.
+Sets the search direction to backwards: Editing the search
+will select the first match @emph{before} the base position.
+@item @kbd{Alt-@key{C}} (@code{find-toggle-match-case})
+Enable or disable case-matching.
+@item @kbd{Alt-@key{W}} (@code{find-toggle-match-word})
+Enable or disable matching of whole words (match must start and end
+on a word boundary).
+@item @kbd{Alt-@key{R}} (@code{find-toggle-match-case})
+Enable or disable searching using @uref{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions,regular expressions}.
+@item @kbd{@key{Escape}} (@code{find-exit})
+Exit find mode, setting the selection to the current match.
+@item @kbd{Shift-@key{F}} (@code{find-select-pattern})
+@itemx @kbd{Ctrl-Shift-@key{F}} (@code{find-select-pattern})
+Select the entire pattern minibuffer.
 @end table
 
 @node Styling
@@ -4529,8 +4734,6 @@ Polish paging/pausing and update documentation.
 Polish and finish remote-ssh facility.
 Get auto-backup implemented.
 @item
-Find-in-page (search) facility.
-@item
 Continue converting lws-term to make better use of C++.
 @item
 Do line-breaking lazily.
@@ -4546,12 +4749,87 @@ probably @uref{https://rapidjson.org/,RapidJSON} or @uref{nlohmann's,https://git
 Bundle documentation and add command to browse it.
 Use a zip file, with compressed images (with link to full images on website).
 @item
+Port backend to native MS-Windows (without WSL).
+@item
 Allow loading JavaScript extension code.
 @item
 Improve integration for selected applications: fish and other shells.
 Nushell.
 Mutt email client (handle html).  Info reader replacement supporting html.
+@item
+Open a text editor in a pane.  Probably either Monaco or CodeMirror 6.
 @end itemize
+
+@subheading New line structure
+
+@subsubheading Goals
+Better support for one session with multiple windows with differing widths.
+Support ``logical line'' (infitinely wide) terminal model.
+Lazy line-breaking (on a per-line basis) for better performance
+(at least faster re-size).
+
+@subsubheading Terminology
+The @dfn{controlling window} (or @dfn{primary window}?) has the controlling window size (width and height).
+The @dfn{window width} (or height) is the width (or height)
+(in characters unless specified) of a given window.
+The @dfn{terminal width} (or height) is the width (or height)
+of the controlling window.
+
+A @dfn{line} is logical line (represented as a block element),
+ignoring soft line-breaks.
+Line-breaking splits a line into one or more @dfn{rows}.
+A given line may be split in two different ways (at the same time):
+A @dfn{terminal row} is the result of splitting a line based on
+terminal width; standard xterm commands work in therms of terminal rows.
+A @dfn{window row} is the result of splitting a line based on
+window width; this is how the line is displayed in a given window.
+
+@subsubheading Line properties
+These are properties of line object.  We use the DOM block element.
+
+@table @asis
+@item endTRows
+If this line contains N terminal rows, then @code{endTRows}
+is an array of length N, pointng to @code{line} elements that
+mark the end of the N'th terminal row.
+(The last element of the array may be null if the line is
+terminated by an implicted end-of-block.)
+@item endWRows
+Similar to endTRows, but an array of ends of window rows.
+If this is the controlling windows, same as @code{endTRows},
+unless @code{noTBreak}.
+@item endTValid
+True if endTRows is valid.  Cleared if controlling window is re-sized.
+@item endWValid
+True if endTRows is valid.  Cleared if current window is re-sized.
+@item measured
+True @code{breakLine1} has been run on the line (since it was last modified).
+@item noTBreak
+No terminal breaks, only visual breaks:
+Treat this line as if the terminal width is infinite,
+thus it always has a single terminal row.
+In this case, @code{endTRows} has size 1.
+Cursor motion ignores soft line breaks (in this line).
+@end table
+
+@subsubheading Shorting line-break changes
+
+New property @code{outputAtEnd}: If output cursor at end of logical line
+(possibly nested in style-span or pprint-group).
+In @code{insertSimpleOutput} if @code{outputAtEnd} just append the current line.
+(Note a deferred line-break may overwrite following lines.)
+
+Window resize:
+Set @code{rebreakNeeded} on all lines.
+On all likes that might becomes visible,
+if @code{measureNeeded} call unbreakLines, then breakLine1 (to measure).
+
+@subsubheading custom heading / titlebar
+
+Custom window decoration (including possible ``hamburger menu'')
+could reduce some wasted vertical space.
+Consider how it works with panes and tabbars.
+Here is @uref{https://www.qt.io/blog/custom-window-decorations,how it can be done with Qt}.
 
 @subheading Terminal emulator functionality
 
@@ -4620,6 +4898,9 @@ Some toolkits to explore for integrated browser/application:
 @item
 @uref{https://tauri.studio/en/Tauri} aims to similar to Electron
 but ligher-weight.
+@uref{https://github.com/tauri-apps/wry,WRY} is wrapper
+similar to (based on) WebView, written for Tauri but
+can use it by itself.
 @item
 @uref{http://nwjs.io/,NW.js} (formerly node-webkit).
 Seems to have slightly lower resouce usage than Electron,
@@ -5419,9 +5700,9 @@ from the local settings, so the global settings (or default) will apply.
 Update user @ref{Settings,settings}.
 
 @item @code{"\e[92;" @var{op} "u"}
-Temporarily enable auto-paging if @var{op} is 1.
+Temporarily enable auto-pause if @var{op} is 1.
 Disables it if @var{op} is 2 (- only if temporarily enabled).
-A simplified @code{more} program could temporarily enable auto-paging,
+A simplified @code{more} program could temporarily enable auto-pause,
 print some amount of output, and then revert the state.
 This used by the @code{domterm help} command.
 
@@ -6196,7 +6477,7 @@ when the terminal switches between cooked and raw.
 
 Unfortunately, few modern operating systems provide a good way
 to request such notication.
-Linux has a seldom-used @code{EXTPROC} flag which is inspired by
+Linux has the @code{EXTPROC} flag which is inspired by
 the @uref{https://en.wikipedia.org/wiki/STREAMS,System V Streams} packet mode.
 This adds an extra indicator byte to the terminal input stream.
 This mode is enabled by the @code{domterm} @code{--tty-packet-mode=extproc}
