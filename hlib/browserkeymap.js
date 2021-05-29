@@ -1,3 +1,4 @@
+// Changed to use use modifier+key rather than modifier-key [Per Bothner 2021]
 /* From https://github.com/marijnh/browserkeymap
 Copyright (C) 2016 by Marijn Haverbeke <marijnh@gmail.com> and others
 
@@ -57,7 +58,7 @@ THE SOFTWARE.
   // :: (KeyboardEvent) → ?string
   // Find a name for the given keydown event. If the keycode in the
   // event is not known, this will return `null`. Otherwise, it will
-  // return a string like `"Shift-Cmd-Ctrl-Alt-Home"`. The parts before
+  // return a string like `"Shift+Cmd+Ctrl+Alt+Home"`. The parts before
   // the dashes give the modifiers (always in that order, if present),
   // and the last word gives the key name, which one of the names in
   // `keyNames`.
@@ -71,17 +72,17 @@ THE SOFTWARE.
     var base = keyNames[event.keyCode], name = base
     if (name == null || event.altGraphKey) return null
 
-    if (event.altKey && base != "Alt") name = "Alt-" + name
-    if (event.ctrlKey && base != "Ctrl") name = "Ctrl-" + name
-    if (event.metaKey && base != "Cmd") name = "Cmd-" + name
-    if (event.shiftKey && base != "Shift") name = "Shift-" + name
+    if (event.altKey && base != "Alt") name = "Alt+" + name
+    if (event.ctrlKey && base != "Ctrl") name = "Ctrl+" + name
+    if (event.metaKey && base != "Cmd") name = "Cmd+" + name
+    if (event.shiftKey && base != "Shift") name = "Shift+" + name
     return name
   }
 
   // :: (string) → bool
   // Test whether the given key name refers to a modifier key.
   function isModifierKey(name) {
-    name = /[^-]*$/.exec(name)[0]
+    name = /[^+]*$/.exec(name)[0]
     return name == "Ctrl" || name == "Alt" || name == "Shift" || name == "Mod"
   }
 
@@ -93,7 +94,15 @@ THE SOFTWARE.
   // Note that the modifier `mod` is a shorthand for `Cmd` on Mac, and
   // `Ctrl` on other platforms.
   function normalizeKeyName(name) {
-    var parts = name.split(/-(?!'?$)/), result = parts[parts.length - 1]
+    // Normalize modifier-key old-style) to modifier+key (new-style) */
+    let nprefix = "", m;
+    while ((m = name.match(/^([a-zA-Z]+)[-](.+)$/)) != null) {
+        nprefix += m[1] + '+';
+        name = m[2];
+    }
+    name = nprefix + name;
+
+    var parts = name.split(/[+](?!'?$)/), result = parts[parts.length - 1]
     var alt, ctrl, shift, cmd
     for (var i = 0; i < parts.length - 1; i++) {
       var mod = parts[i]
@@ -104,10 +113,10 @@ THE SOFTWARE.
       else if (/^mod$/i.test(mod)) { if (mac) cmd = true; else ctrl = true }
       else throw new Error("Unrecognized modifier name: " + mod)
     }
-    if (alt) result = "Alt-" + result
-    if (ctrl) result = "Ctrl-" + result
-    if (cmd) result = "Cmd-" + result
-    if (shift) result = "Shift-" + result
+    if (alt) result = "Alt+" + result
+    if (ctrl) result = "Ctrl+" + result
+    if (cmd) result = "Cmd+" + result
+    if (shift) result = "Shift+" + result
     return result
   }
 

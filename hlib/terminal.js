@@ -8206,10 +8206,10 @@ Terminal.prototype.eventToKeyName = function(event) {
             shift = false;
     }
     if (name == null || event.altGraphKey) return null
-    if (event.altKey && base != "Alt") name = "Alt-" + name
-    if (event.ctrlKey && base != "Ctrl") name = "Ctrl-" + name
-    if (event.metaKey && base != "Cmd") name = "Cmd-" + name
-    if (shift) name = "Shift-" + name
+    if (event.altKey && base != "Alt") name = "Alt+" + name
+    if (event.ctrlKey && base != "Ctrl") name = "Ctrl+" + name
+    if (event.metaKey && base != "Cmd") name = "Cmd+" + name
+    if (shift) name = "Shift+" + name
     return name;
 }
 
@@ -8845,13 +8845,13 @@ DomTerm.masterKeymapDefault =
             "Shift-F7": "enter-paging-mode",
             "F11": "toggle-fullscreen",
             "Shift-F11": "toggle-fullscreen-current-window",
-            "Ctrl-Insert": "copy-text",
+            "Ctrl+Insert": "copy-text",
             "Shift-Insert": "paste-text",
             "Ctrl-Shift-A": "enter-mux-mode",
             "Ctrl-Shift-F": "find-text",
-            "Ctrl-Shift-L": "input-mode-cycle",
-            "Ctrl-Shift-M": "toggle-paging-mode",
-            "Ctrl-Shift-N": "new-window",
+            "Ctrl+Shift+L": "input-mode-cycle",
+            "Ctrl+Shift+M": "toggle-paging-mode",
+            "Ctrl+Shift+N": "new-window",
             "Ctrl-Shift-S": "save-as-html",
             "Ctrl-Shift-T": "new-tab",
             "Ctrl-Shift-X": "cut-text",
@@ -8880,7 +8880,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     //"Ctrl-T": 'client-action',
     "Ctrl-@": "toggle-mark-mode",
     "Ctrl-C": DomTerm.isMac ? "client-action" : "copy-text-or-interrupt",
-    "Ctrl-F": "find-text",
+    "Ctrl+F": "find-text",
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
     "Ctrl-X": "cut-text",
@@ -8899,7 +8899,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Shift-Down": "down-line-extend",
     "Shift-End": "end-of-line-extend",
     "Shift-Home": "beginning-of-line-extend",
-    "Ctrl-Down": "scroll-line-down",
+    "Ctrl+Down": "scroll-line-down",
     "Ctrl-Up": "scroll-line-up",
     "Ctrl-PageUp": "scroll-page-up",
     "Ctrl-PageDown": "scroll-page-down",
@@ -8957,7 +8957,7 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Ctrl-F": "find-text",
     "Ctrl-Shift-C": "copy-text",
     "Esc": "exit-paging-mode",
-    "Ctrl-Shift-M": "toggle-paging-mode",
+    "Ctrl+Shift+M": "toggle-paging-mode",
     "'a'": "toggle-auto-pager",
     "'0'": "numeric-argument",
     "'1'": "numeric-argument",
