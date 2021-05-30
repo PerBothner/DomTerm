@@ -256,7 +256,7 @@ DomTerm.addLocationParams = function(url) {
     }
     return url;
 }
-console.log("set window._dt_toggleDeveloperTools el:"+DomTerm.isElectron());
+
 if (DomTerm.isElectron()) {
     window._dt_toggleDeveloperTools = function() {
         electronAccess.ipcRenderer.send('window-ops', 'toggle-devtools', null);
