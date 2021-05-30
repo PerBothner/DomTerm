@@ -114,6 +114,7 @@ div.domterm-info-widget {
     width: auto;
     padding: 2px;
     margin-top: 1px;
+    font-size: small;
     background-color: var(--background-color)
 }
 
@@ -198,4 +199,4 @@ div.interaction[buffer~="main"] div.command-group {
 
 span.pending { background-color: lightgrey }
 span.pending span[std="prompt"] { color: green, background-color: lightgrey }
-span.url { font-family: sans-serif }
+span.url { font-family: sans-serif; font-size: inherit }
