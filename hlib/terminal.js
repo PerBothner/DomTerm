@@ -8222,10 +8222,10 @@ Terminal.prototype.eventToKeyName = function(event) {
 }
 
 Terminal.prototype.keyNameToChars = function(keyName) {
-    const isShift = (mods) => mods.indexOf("Shift-") >= 0;
-    const isCtrl = (mods) => mods.indexOf("Ctrl-") >= 0;
-    const isAlt = (mods) => mods.indexOf("Alt-") >= 0;
-    const isCmd = (mods) => mods.indexOf("Cmd-") >= 0;
+    const isShift = (mods) => mods.indexOf("Shift+") >= 0;
+    const isCtrl = (mods) => mods.indexOf("Ctrl+") >= 0;
+    const isAlt = (mods) => mods.indexOf("Alt+") >= 0;
+    const isCmd = (mods) => mods.indexOf("Cmd+") >= 0;
     const specialKeySequence = (param, last, modStr) => {
         // param is either a numerical code, as as string (e.g. "15" for F5);
         // or "O" for ones that use SS3 (F1 to F4);
@@ -8248,7 +8248,7 @@ Terminal.prototype.keyNameToChars = function(keyName) {
             return csi+param+last;
     }
 
-    const dash = keyName.lastIndexOf("-");
+    const dash = keyName.lastIndexOf("+");
     const mods = dash > 0 ? keyName.substring(0, dash+1) : "";
     let baseName = dash > 0 ? keyName.substring(dash+1) : keyName;
     switch (baseName) {
@@ -8298,16 +8298,16 @@ Terminal.prototype.keyNameToChars = function(keyName) {
     case "Mod":
         return null;
     default:
-        if ((mods == "Ctrl-" || mods == "Shift-Ctrl-")
+        if ((mods == "Ctrl+" || mods == "Shift+Ctrl+")
             && baseName.length == 1) {
             let ch = baseName.charCodeAt(0);
-            if ((ch >= 65 && ch <= 90 && mods == "Ctrl-")
+            if ((ch >= 65 && ch <= 90 && mods == "Ctrl+")
                 || ch == 32 || ch == 64 || (ch >= 91 && ch <= 95))
                 return String.fromCharCode(ch & 31);
         }
         if (baseName.length == 1
-            && (mods == "Alt-" || mods == "Shift-Alt-")) {
-            if (baseName >= "A" && baseName <= "Z" && mods == "Alt-")
+            && (mods == "Alt+" || mods == "Shift+Alt+")) {
+            if (baseName >= "A" && baseName <= "Z" && mods == "Alt+")
                 baseName = baseName.toLowerCase();
             return "\x1B" + baseName;
         }
@@ -8917,10 +8917,10 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Mod-Backspace": "backward-delete-word",
     "Delete": "forward-delete-char",
     "Mod-Delete": "forward-delete-word",
-    "Ctrl-Home": "scroll-top",
-    "Ctrl-End": "scroll-bottom",
-    "Alt-Home": "beginning-of-input",
-    "Alt-End": "end-of-input",
+    "Ctrl+Home": "scroll-top",
+    "Ctrl+End": "scroll-bottom",
+    "Alt+Home": "beginning-of-input",
+    "Alt+End": "end-of-input",
     "Home": "beginning-of-line",
     "End": "end-of-line",
     "Down": "down-line-or-history",
@@ -9055,8 +9055,8 @@ DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
 
 DomTerm.handleKey = function(map, dt, keyName) {
     let maps = typeof map == "object" && map instanceof Array ? map : [map];
-    if (dt._markMode && keyName.indexOf("Shift-") < 0) {
-        let skeyName = "Shift-" + keyName;
+    if (dt._markMode && keyName.indexOf("Shift+") < 0) {
+        let skeyName = "Shift+" + keyName;
         for (let map of maps) {
             let cmd = map.lookup(skeyName);
             if (typeof cmd === "string" && cmd.endsWith("-extend")) {
@@ -9173,8 +9173,8 @@ Terminal.prototype.keyDownHandler = function(event) {
         if (! this.useStyledCaret())
             this.maybeFocus();
         if (this._searchInHistoryMode) {
-            if (keyName == "Ctrl-R" || keyName == "Ctrl-S") {
-                this.historySearchForwards = keyName == "Ctrl-S";
+            if (keyName == "Ctrl+R" || keyName == "Ctrl+S") {
+                this.historySearchForwards = keyName == "Ctrl+S";
                 this.historySearchStart =
                     this.historyCursor >= 0 ? this.historyCursor
                     : this.history.length;
