@@ -8113,7 +8113,7 @@ Terminal.prototype.processInputCharacters = function(str) {
 };
 
 Terminal.prototype.processEnter = function() {
-    this._restoreInputLine();
+    this._restoreInputLine(false);
     this.editorUpdateRemote();
     this._sendInputContents(true);
     this._restoreCaret();
@@ -8790,6 +8790,8 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
         this.resetCursorCache();
     } else if (passwordField) {
         this.sstate.hiddenText = undefined;
+        if (this._caretNode.parentNode)
+            this._caretNode.parentNode(this._caretNode);
         oldInputLine.parentNode.removeChild(oldInputLine);
         if (this.outputContainer == oldInputLine)
             this.outputBefore = null;
