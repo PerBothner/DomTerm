@@ -438,8 +438,14 @@ class Terminal {
                     let infoHtml = '<span class="url">' + DomTerm.escapeText(ref) + '</span>'
                     if (curTarget.classList.contains("subtle"))
                         infoHtml += "<br/><i>(Ctrl-Click to open)</i>";
-                    dt._linkInfoDiv =
-                        dt._displayInfoWithTimeout(infoHtml, dt._linkInfoDiv);
+                    dt._linkInfoDiv = DomTerm.addInfoDisplay(infoHtml, dt._linkInfoDiv, dt);
+                    let leaveHandler = (e) => {
+                        DomTerm.removeInfoDisplay(dt._linkInfoDiv, dt);
+                        curTarget.removeEventListener("mouseleave",
+                                                      leaveHandler, false);
+                    };
+                    curTarget.addEventListener("mouseleave",
+                                                  leaveHandler, false);
                 } else {
                     curTarget.setAttribute("title", ref);
                     //curTarget.addEventListener, remove, false);
@@ -3529,13 +3535,15 @@ Terminal.prototype._displayInfoWithTimeout = function(text, div = null, timeout 
     if (div == null)
         div = document.createElement("div");
     div = DomTerm.addInfoDisplay(text, div, dt);
-    function clear() {
-        div.timeoutId = undefined;
-        DomTerm.removeInfoDisplay(div, dt);
-    };
-    if (div.timeoutId)
-        clearTimeout(div.timeoutId);
-    div.timeoutId = setTimeout(clear, timeout);
+    if (timeout >= 0) {
+        function clear() {
+            div.timeoutId = undefined;
+            DomTerm.removeInfoDisplay(div, dt);
+        };
+        if (div.timeoutId)
+            clearTimeout(div.timeoutId);
+        div.timeoutId = setTimeout(clear, timeout);
+    }
     return div;
 };
 
