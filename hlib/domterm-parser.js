@@ -1697,7 +1697,7 @@ class DTParser {
                 if (url) {
                     let newLink = document.createElement("A");
                     newLink.setAttribute("href", url);
-                    newLink.setAttribute("class", "plain");
+                    newLink.setAttribute("class", "subtle plain");
                     term._pushIntoElement(newLink);
                     DomTerm._addMouseEnterHandlers(term, newLink.parentNode);
                 }

@@ -425,6 +425,10 @@ class Terminal {
             window.removeEventListener("resize",
                                        dt._unforceWidthInColumns, true);
         };
+    this._linkNeedsCtrlClick = (node) => {
+        let cl = node.classList;
+        return cl.contains("subtle");
+    };
     this._mouseEventHandler =
         function(evt) { dt._mouseHandler(evt); };
     this._mouseEnterHandler =
@@ -435,9 +439,9 @@ class Terminal {
                 && (ref = curTarget.getAttribute("href"))) {
                 // Consider: https://github.com/mdings/electron-tooltip
                 if (true) {
-                    let infoHtml = '<span class="url">' + DomTerm.escapeText(ref) + '</span>'
-                    if (curTarget.classList.contains("subtle"))
-                        infoHtml += "<br/><i>(Ctrl-Click to open)</i>";
+                    let infoHtml = '<span class="url">' + DomTerm.escapeText(ref) + '</span>';
+                    if (dt._linkNeedsCtrlClick(curTarget))
+                        infoHtml += "<br/><i>(Ctrl+Click to open link)</i>";
                     dt._linkInfoDiv = DomTerm.addInfoDisplay(infoHtml, dt._linkInfoDiv, dt);
                     let leaveHandler = (e) => {
                         DomTerm.removeInfoDisplay(dt._linkInfoDiv, dt);
@@ -3864,7 +3868,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                                       n = n.parentNode) {
                                      let ntag = n.nodeName;
                                      if (ntag == "A") {
-                                         if (e.ctrlKey || ! n.classList.contains("subtle")) {
+                                         if (e.ctrlKey || ! dt._linkNeedsCtrlClick(n)) {
                                              DomTerm.handleLinkRef(n.getAttribute("href"),
                                                                    n.textContent, dt);
 
@@ -9982,7 +9986,7 @@ Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
         start = fstart;
     }
     let alink = document.createElement("a");
-    alink.setAttribute("class", "matched subtle");
+    alink.setAttribute("class", "matched subtle plain");
     alink.setAttribute("href", href);
     this._pushIntoElement(alink);
     if (end-afterLen > start)

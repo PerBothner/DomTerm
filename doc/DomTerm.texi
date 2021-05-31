@@ -3904,26 +3904,21 @@ These can be created implicitly, by recognizing a URL or other pattern in the bu
 Links can also be created explicitly, using a special escape sequence,
 or by emitting HTML.
 
-Two styles of links are supported:
+There are two kinds of links:
 @itemize @bullet
 @item
-A @dfn{regular link} displays (by default) in the ``normal'' link style (typically blue text with underline).
+A @dfn{regular link} displays in the ``normal'' link style (typically blue text with underline).
 (If the @code{class} attribute includes the word @code{plain}
 then no underline is added, but normal link styling applies otherwise.)
-A click opens a window or application, as described below,
+A click opens a browser window/tab or an application, as described below,
 as does right-click (context menu) and then selecting @code{Open Link}.
 @item
-A @dfn{subtle link} does not show a special style except when the mouse is hovering over it,
-when it is underlined.
-To reduce accidental clicks, subtle links are only active
+A @dfn{subtle link} is only active
 if you also hold the the @key{Ctrl} key; you can also use the context menu.
-
+This is to reduce accidental clicks.
+Links created implicitly using pattern-matching are subtle,
+and additionally have no special styling except when mouse hovered.
 Internally, a subtle link is distinguished by its @code{class} attributes containing @code{subtle}.
-Links created implicitly using pattern-matching are subtle.
-Programs that emit explicit links (using HTML escape sequences)
-can specify the class as @code{subtle} to indicate links that should be
-more subdued than default link styling or
-the @code{plain} styling mentioned above.
 @end itemize
 
 @anchor{linkification}
@@ -5614,7 +5609,7 @@ On Fedora this is done by the script @code{/etc/profile.d/vte.sh}.)
 
 Create a link with the given @var{url} and
 display @var{text} (which can contain other escape sequences for styling).
-The @var{options} are ignored.  The link has @code{class="plain"}.
+The @var{options} are ignored.  The link has @code{class="subtle plain"}.
 See @uref{https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda,this link}.
 
 @item @code{"\e]30;" @var{name} "\a"}
