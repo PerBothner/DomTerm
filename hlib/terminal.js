@@ -1008,6 +1008,7 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
         const lineno = this.getAbsCursorLine();
         if (lineno > 0)
             this._clearWrap(lineno-1);
+        this._fixOutputPosition();
         let cur = this.outputBefore;
         let parent = this.outputContainer;
         this.lineStarts[lineno] = preNode;
