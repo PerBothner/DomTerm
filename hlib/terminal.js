@@ -3727,6 +3727,14 @@ DomTerm.displayMiscInfo = function(dt, show) {
     }
 }
 
+Terminal.prototype._clearPendingDisplayMiscInfo = function() {
+    let wasPending = this._keyupDisplayInfo;
+    if (wasPending)
+        this.topNode.removeEventListener("keyup", wasPending, false);
+    this._keyupDisplayInfo = undefined;
+    return wasPending;
+};
+
 Terminal.prototype.showMiniBuffer = function(options) {
     let prefix = options.prefix || "";
     let postfix = options.postfix || "";
@@ -4343,6 +4351,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
         this.maybeFocus();
+        this._clearPendingDisplayMiscInfo()
     }
     /*
     if (ev.type == "mouseup" && this.sstate.mouseMode == 0
@@ -9151,9 +9160,7 @@ Terminal.prototype.keyDownHandler = function(event) {
     if (this._composing == 0)
         this._composing = -1;
 
-    if (this._keyupDisplayInfo) {
-        this.topNode.removeEventListener("keyup", this._keyupDisplayInfo, false);
-        this._keyupDisplayInfo = undefined;
+    if (this._clearPendingDisplayMiscInfo()) {
     } else if (this._showingMiscInfo) {
         DomTerm.displayMiscInfo(this, false);
     } else if (keyName == "Ctrl") {
