@@ -2746,7 +2746,7 @@ Terminal.prototype._adjustStyle = function() {
             if (p instanceof Element && p.getAttribute("std") == "input") {
                 this.outputContainer = p;
                 this.outputBefore = p.firstChild;
-            } else if (p.previousSibling instanceof Element
+            } else if (p !== null && p.previousSibling instanceof Element
                        && p.previousSibling.getAttribute("std") == "input") {
                 this.outputContainer = p.previousSibling; // ????
                 this.outputBefore = null;
