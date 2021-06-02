@@ -2371,7 +2371,7 @@ Terminal.prototype._restoreCaret = function() {
         if (sel.isCollapsed) {
             if (this.sstate.showCaret)
                 sel.collapse(this._caretNode, 0);
-            else if (this._mouseSelectionState < 0)
+            else if (! this._mouseButtonPressed)
                 this._clearSelection();
         }
     }
@@ -3337,9 +3337,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     // Should be zero - support for topNode.offsetLeft!=0 is broken
     this._topLeft = dt.topNode.offsetLeft;
 
-    // -1: mouse not pressed; >= 0: mouse pressed; 1: selectionchange called
-    // (We want to not update selection while a mouse button mouse is pressed.)
-    this._mouseSelectionState = -1;
+    this._mouseButtonPressed = false;
     this._didExtend = false;
 
     topNode.addEventListener('wheel',
@@ -3350,9 +3348,9 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     topNode.addEventListener("mouseleave",
                              function(e) {
                                  dt._altPresssed = false;
-                                 if (dt._mouseSelectionState >= 0)
+                                 if (dt._mouseButtonPressed)
                                      dt._updateSelected();
-                                 dt._mouseSelectionState = -1;
+                                 dt._mouseButtonPressed = false;
                              }, false);
     function handleContextMenu(e) {
         if (dt.sstate.mouseMode != 0)
@@ -3383,7 +3381,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         let sel = document.getSelection();
         let point = sel.isCollapsed;
         if (DomTerm.verbosity >= 3)
-            dt.log("selectionchange col:"+point+" sel:"+DomTerm.displaySelection(sel)+" str:'"+sel.toString()+"' alt:"+dt._altPressed+" mousesel:"+dt._mouseSelectionState);
+            dt.log("selectionchange col:"+point+" sel:"+DomTerm.displaySelection(sel)+" str:'"+sel.toString()+"' alt:"+dt._altPressed);
         if (dt._composing > 0)
             return;
         if (! point && dt._displayInfoWidget) {
@@ -3417,13 +3415,9 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
                 return; //  Ignore it.
             }
         }
-        if (dt._mouseSelectionState < 0)
+        // (We want to not update selection while a mouse button mouse is pressed.)
+        if (! dt._mouseButtonPressed)
             dt._updateSelected();
-        else {
-            if (dt._mouseSelectionState > 0)
-                dt._didExtend = true;
-            dt._mouseSelectionState = 1;
-        }
 
         dt._restoreCaret();
     }
@@ -4159,7 +4153,7 @@ Terminal.prototype._updateSelected = function() {
     if (dt._caretNode && dt._caretNode.parentNode !== null
         && sel.focusNode !== null
         // only moveCaret if (single non-drag) mouse-click and not in paging-mode
-        && this._pagingMode == 0 && ! this._didExtend) {
+        && this._pagingMode == 0 && point) {
         if (readlineForced) {
             targetPreNode = dt._getOuterBlock(sel.focusNode);
             moveCaret = targetPreNode != null;
@@ -4292,7 +4286,7 @@ Terminal.prototype._updateSelected = function() {
         && this._composing <= 0
         //&& this._pagingMode == 0
         && DomTerm.focusedTerm==this
-        && this._mouseSelectionState < 0
+        && ! this._mouseButtonPresse
         && this.caretStyle() !== Terminal.NATIVE_CARET_STYLE) {
         this._clearSelection(true);
     }
@@ -4317,8 +4311,8 @@ Terminal.prototype._mouseHandler = function(ev) {
     }
     this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
-    let selState = this._mouseSelectionState;
-    this._mouseSelectionState = ev.type == "mouseup" ? -1 : 0
+    let wasPressed = this._mouseButtonPressed;
+    this._mouseButtonPressed = ev.type !== "mouseup";
 
     // Get mouse coordinates relative to buffers.
     let xdelta = ev.pageX / this._computedZoom;
@@ -4329,7 +4323,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     }
 
     if (ev.type == "mouseup") {
-        if (selState > 0)
+        if (wasPressed)
             this._updateSelected();
         this._usingScrollBar = false;
         /*
