@@ -467,8 +467,8 @@ cmd('client-action',
                 dt.editorMoveStartOrEndInput(true);
                 dt.editorInsertString(str);
                 dt._sendInputContents(false);
-                dt._inputLine = null;
             }
+            dt._inputLine = null;
             dt.reportKeyEvent(key, str);
             dt.maybeResetWantsEditing();
             return true;
