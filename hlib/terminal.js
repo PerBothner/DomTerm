@@ -11012,7 +11012,7 @@ Terminal.prototype.editMove = function(count, action, unit,
         range = this.editorRestrictedRange(stopAt!=="buffer"
                                            && this._inputLine);
         let anchorNode, anchorOffset;
-        if (action == "move" || sel.anchorNode === null || this._miniBuffer) {
+        if (action == "move" || doDelete || sel.anchorNode === null || this._miniBuffer) {
             let caret = (this.viewCaretNode && this.viewCaretNode.parentNode
                          && (action == "move-focus" || action == "extend-focus"))
                 ? this.viewCaretNode
