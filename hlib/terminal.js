@@ -7941,6 +7941,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         }
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
+        this._clearWrap(absLine);
         this._breakDeferredLines();
         absLine = this.getAbsCursorLine();
     }
