@@ -4105,7 +4105,8 @@ Terminal.prototype._updateSelected = function() {
             : sel.toString().length == 0);
     if (this._pagingMode > 0) {
         if (sel.focusNode !== this.viewCaretNode
-            && sel.focusNode !== null) {
+            && sel.focusNode !== null
+            && this._isAnAncestor(sel.focusNode, this.buffers)) {
             let r = document.createRange();
             let focusNode = sel.focusNode;
             let focusOffset = sel.focusOffset;
