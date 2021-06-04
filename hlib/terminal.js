@@ -3837,7 +3837,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
         let data = ev.data;
         if (data) {
             const caret = dt._caretNode;
-            if (dt.isLineEditing()) {
+            if (dt.isLineEditingOrMinibuffer()) {
                 dt.editorAddLine();
                 dt._moveNodes(caret.firstChild, caret.parentNode, caret);
             } else {
