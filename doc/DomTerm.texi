@@ -2755,6 +2755,8 @@ Emacs shell mode or GNU readline.
 
 @subheading The input area and input lines
 
+@image{images/dt-lineedit1}
+
 The area affected by insertions and edits during line-edit mode
 is called the @dfn{input} area, and it is by default
 high-lighted using a dashed brown border.
@@ -3031,6 +3033,8 @@ keymap.line-edit =
 @c or paging mode, or select mode, or read mode, or read-only mode [too long]?}
 @c Leaning towards ``paging mode'' (paused or non-paused), but ``focus position'' and ``focus caret''
 
+@image{images/dt-viewmode1}
+
 View mode makes the buffer read-only.
 It uses a @dfn{focus position} (indicated by a @dfn{focus cursor}),
 which is independent of the output cursor and the line-editing cursor.
@@ -3230,6 +3234,8 @@ A Copy operation copies the contents of the selection to the clipboard.
 View and line-edit modes have extra shortcuts and other conveniences for working
 with the selection.
 Unless otherwise noted, this section applies to both.
+
+@image{images/dt-viewselect1}
 
 The two end-points of the selection
 are called the @dfn{anchor} and the @dfn{focus} points.

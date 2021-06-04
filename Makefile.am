@@ -365,8 +365,11 @@ DOC_IMAGES = \
   doc/images/dt-help1.png \
   doc/images/dt-gnuplot1.png \
   doc/images/dt-fish1.png \
+  doc/images/dt-lineedit1.png \
   doc/images/dt-pretty1.png \
   doc/images/dt-sixel.png \
+  doc/images/dt-viewmode1.png \
+  doc/images/dt-viewselect1.png \
   doc/images/emacs-in-firefox-1.png \
   doc/images/dropdown-gnome.png \
   doc/images/pyplot.png \
