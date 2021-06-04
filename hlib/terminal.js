@@ -3759,7 +3759,7 @@ Terminal.prototype.showMiniBuffer = function(options) {
     if (options.mutationCallback) {
         let observer = new MutationObserver(options.mutationCallback);
         observer.observe(miniBuffer,
-                         { attributes: false, childList: false, characterData: true, subtree: true });
+                         { attributes: false, childList: true, characterData: true, subtree: true });
         miniBuffer.observer = observer;
     }
     div.closeHandler = (d) => {
