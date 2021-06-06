@@ -200,3 +200,14 @@ div.interaction[buffer~="main"] div.command-group {
 span.pending { background-color: lightgrey }
 span.pending span[std="prompt"] { color: green, background-color: lightgrey }
 span.url { font-family: sans-serif; font-size: inherit }
+
+div.domterm-context-popup {
+    font-size: small;
+    padding: 4px;
+    max-width: 80%;
+    border: thin solid green;
+    border-radius: 6px;
+    background: #ececec;
+    /*position: relative;*/
+    position: fixed;
+}

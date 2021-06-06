@@ -3563,14 +3563,49 @@ Terminal.prototype.hoverHandler = function(event, dt, element, setInfoAction) {
     };
 
     const hoverEnter = (element, setInfoAction) => {
-        // FUTURE; Place popup near element.
-        // Maybe use toolkit https://popper.js.org/ or NanoPop (overkill?)
-        // Style with arrow - see https://stackoverflow.com/questions/30299093/speech-bubble-with-arrow
-        // Also consider: https://github.com/mdings/electron-tooltip
-
         let popup = document.createElement("div");
+        popup.classList.add("domterm-context-popup");
         setInfoAction(popup, element);
-        element._popup = DomTerm.addInfoDisplay(null, popup, this);
+        this.topNode.appendChild(popup);
+        element._popup = popup;
+        popup.style.left = '0px';
+        popup.style.top = '0px';
+        const popBox = popup.getBoundingClientRect();
+        const elBox = element.getBoundingClientRect();
+        const elBoxes = element.getClientRects();
+        const nBoxes = elBoxes.length;
+        if (nBoxes > 0) {
+            let margin = 2;
+            let closest = elBoxes[0];
+            let top = closest.top - popBox.height;
+            // Position popup above element, if there is room.
+            if (top >= margin)
+                popup.style.top = (top - margin) + "px";
+            else {
+                closest = elBoxes[nBoxes-1];
+                popup.style.top = (elBox.bottom + margin) + "px";
+            }
+            let elLeft = closest.left;
+            let elRight = closest.right;
+            let hGoal = 0.5 * (elLeft + elRight);
+            let left = hGoal - 0.5 * popBox.width;
+            if (left < 0)
+                left = 0;
+            else if (left + popBox.width > this.topNode.offsetWidth)
+                left = this.topNode.offsetWidth - popBox.width;
+            popup.style.left = left + 'px';
+        }
+        if (! element.style.outline) {
+            element._added_outline = true;
+            element.style.outline = "thin solid green";
+            popup.remove = (popup) => {
+                this.topNode.removeChild(popup);
+                if (element._added_outline) {
+                    element.style.outline = "";
+                    element._added_outline = undefined;
+                };
+            }
+        }
         popup.addEventListener("mouseenter",
                                () => {
                                    if (leaveTimer)
@@ -3585,9 +3620,6 @@ Terminal.prototype.hoverHandler = function(event, dt, element, setInfoAction) {
                                    leaveTimer = setTimeout(remove, leaveDelay);
                                    mouseInPopup = false;
                                }, false);
-        popup.remove = (popup) => {
-            DomTerm.removeInfoDisplay(popup, this);
-        };
         element._hoverPending = undefined;
     }
 
