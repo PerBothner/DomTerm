@@ -437,23 +437,13 @@ class Terminal {
             let curTarget = event.currentTarget;
             if (dt.sstate.mouseMode == 0
                 && (ref = curTarget.getAttribute("href"))) {
-                // Consider: https://github.com/mdings/electron-tooltip
-                if (true) {
-                    let infoHtml = '<span class="url">' + DomTerm.escapeText(ref) + '</span>';
-                    if (dt._linkNeedsCtrlClick(curTarget))
-                        infoHtml += "<br/><i>(Ctrl+Click to open link)</i>";
-                    dt._linkInfoDiv = DomTerm.addInfoDisplay(infoHtml, dt._linkInfoDiv, dt);
-                    let leaveHandler = (e) => {
-                        DomTerm.removeInfoDisplay(dt._linkInfoDiv, dt);
-                        curTarget.removeEventListener("mouseleave",
-                                                      leaveHandler, false);
-                    };
-                    curTarget.addEventListener("mouseleave",
-                                                  leaveHandler, false);
-                } else {
-                    curTarget.setAttribute("title", ref);
-                    //curTarget.addEventListener, remove, false);
-                }
+                let infoHtml = '<span class="url">' + DomTerm.escapeText(ref) + '</span>';
+                if (dt._linkNeedsCtrlClick(curTarget))
+                    infoHtml += "<br/><i>(Ctrl+Click to open link)</i>";
+                dt.hoverHandler(event, dt, curTarget,
+                                (popDiv, element) => {
+                                    popDiv.innerHTML = infoHtml;
+                                });
             }
         };
     this.wcwidth = new WcWidth();
@@ -3546,6 +3536,71 @@ Terminal.prototype._displayInfoWithTimeout = function(text, div = null, timeout 
     return div;
 };
 
+/** Generic handler for bringing up a popup panel on "hover".
+ * Call this by "mouseenter" handler.
+ */
+Terminal.prototype.hoverHandler = function(event, dt, element, setInfoAction) {
+    let enterDelay = 400;
+    let leaveDelay = 200;
+    let leaveTimer = null;
+    let mouseInPopup = false;
+    if (element._hoverPending)
+        return;
+    if (element._popup) {
+        if (leaveTimer)
+            clearTimeout(leaveTimer);
+        leaveTimer = null;
+        return;
+    }
+
+    const remove = () => {
+        if (element._popup && element._popup.remove)
+            element._popup.remove(element._popup);
+        element._popup = undefined;
+        element.removeEventListener("mouseleave",
+                                      leaveHandler, false);
+        element._hoverPending = undefined;
+    };
+
+    const hoverEnter = (element, setInfoAction) => {
+        // FUTURE; Place popup near element.
+        // Maybe use toolkit https://popper.js.org/ or NanoPop (overkill?)
+        // Style with arrow - see https://stackoverflow.com/questions/30299093/speech-bubble-with-arrow
+        // Also consider: https://github.com/mdings/electron-tooltip
+
+        let popup = document.createElement("div");
+        setInfoAction(popup, element);
+        element._popup = DomTerm.addInfoDisplay(null, popup, this);
+        popup.addEventListener("mouseenter",
+                               () => {
+                                   if (leaveTimer)
+                                       clearTimeout(leaveTimer);
+                                   leaveTimer = null;
+                                   mouseInPopup = true;
+                               }, false);
+        popup.addEventListener("mouseleave",
+                               () => {
+                                   if (leaveTimer)
+                                       clearTimeout(leaveTimer);
+                                   leaveTimer = setTimeout(remove, leaveDelay);
+                                   mouseInPopup = false;
+                               }, false);
+        popup.remove = (popup) => {
+            DomTerm.removeInfoDisplay(popup, this);
+        };
+        element._hoverPending = undefined;
+    }
+
+    let enterTimer = setTimeout(hoverEnter, enterDelay, element, setInfoAction);
+    element._hoverPending = 1;
+    let leaveHandler = (e) => {
+        clearTimeout(enterTimer);
+        leaveTimer = setTimeout(remove, leaveDelay);
+    };
+    element.addEventListener("mouseleave",
+                             leaveHandler, false);
+}
+
 Terminal.prototype._sizeInfoText = function() {
     // Might be nicer to keep displaying the size-info while
     // button-1 is pressed. However, that seems a bit tricky.
@@ -3684,9 +3739,11 @@ DomTerm.addInfoDisplay = function(contents, div, dt) {
     div.contentEditable = false;
     if (div.parentNode !== widget)
         widget.appendChild(div);
-    if (contents.indexOf('<') < 0)
-        contents = "<span>" + contents + "</span>";
-    div.innerHTML = contents;
+    if (contents) {
+        if (contents.indexOf('<') < 0)
+            contents = "<span>" + contents + "</span>";
+        div.innerHTML = contents;
+    }
     DomTerm._positionInfoWidget(widget, dt);
     return div;
 };
