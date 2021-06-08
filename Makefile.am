@@ -364,6 +364,8 @@ DOC_IMAGES = \
   doc/images/dt-atom1.png \
   doc/images/dt-help1.png \
   doc/images/dt-gnuplot1.png \
+  doc/images/dt-findtext1.png \
+  doc/images/dt-findtext2.png \
   doc/images/dt-fish1.png \
   doc/images/dt-lineedit1.png \
   doc/images/dt-linkhover.png \

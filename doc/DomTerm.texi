@@ -3362,7 +3362,10 @@ Exit extend mode, returning to plain view or line-edit mode.
 @node Find text
 @section Find text
 
-To search for text in the buffer, use the @dfn{find} command.
+To search for text in the buffer, use the @dfn{find-text} mode.
+
+@image{images/dt-findtext1}
+
 @table @asis
 @item @kbd{Ctrl+Shift+@key{F}} (@code{find-text}) @emph{(except find-text mode)}
 @itemx @kbd{Ctrl+@key{F}} @emph{(View or line-edit modes only)}
@@ -3375,6 +3378,15 @@ update a search string displayed in a ``mini-buffer''.
 Matching text is highlighted, by default using a yellow background.
 (Specifically, matched text is temporarily wrapped in a @code{<mark>} element.)
 
+@table @asis
+@item @kbd{@key{Escape}} (@code{find-exit})
+Exit find mode, setting the selection to the current match.
+@item @kbd{Shift+@key{F}} (@code{find-select-pattern})
+@itemx @kbd{Ctrl+Shift+@key{F}} (@code{find-select-pattern})
+If already in find-text-mode, these keystrokes
+select the entire pattern minibuffer.
+@end table
+
 Assuming we're searching forwards,
 the first match that starts at or after the ``base position'' is selected,
 with the focus position set to the end of the match.
@@ -3382,6 +3394,7 @@ The base position is initially the caret (focus position if defined,
 otherwise the output position).
 Each ``selection-next'' sets the base position to the focus position,
 and redoes the search.
+You can click on either arrow button or use the following keystrokes.
 
 @table @asis
 @item @kbd{@key{Down}} (@code{find-next-match})
@@ -3396,6 +3409,14 @@ will select the first match @emph{after} the base position.
 Select the previous match.
 Sets the search direction to backwards: Editing the search
 will select the first match @emph{before} the base position.
+@end table
+
+You can control the search mode either using the shortcus shown below,
+or by clicking on the gray mode button, and selecting from the dropdown button.
+
+@image{images/dt-findtext2}
+
+@table @asis
 @item @kbd{Alt+@key{C}} (@code{find-toggle-match-case})
 Enable or disable case-matching.
 @item @kbd{Alt+@key{W}} (@code{find-toggle-match-word})
@@ -3403,11 +3424,6 @@ Enable or disable matching of whole words (match must start and end
 on a word boundary).
 @item @kbd{Alt+@key{R}} (@code{find-toggle-match-case})
 Enable or disable searching using @uref{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions,regular expressions}.
-@item @kbd{@key{Escape}} (@code{find-exit})
-Exit find mode, setting the selection to the current match.
-@item @kbd{Shift+@key{F}} (@code{find-select-pattern})
-@itemx @kbd{Ctrl+Shift+@key{F}} (@code{find-select-pattern})
-Select the entire pattern minibuffer.
 @end table
 
 @node Styling
