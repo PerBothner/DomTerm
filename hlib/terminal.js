@@ -436,7 +436,8 @@ class Terminal {
             var ref;
             let curTarget = event.currentTarget;
             if (dt.sstate.mouseMode == 0
-                && (ref = curTarget.getAttribute("href"))) {
+                && (ref = (curTarget.getAttribute("domterm-href")
+                           || curTarget.getAttribute("href")))) {
                 let infoHtml = '<span class="url">' + DomTerm.escapeText(ref) + '</span>';
                 if (dt._linkNeedsCtrlClick(curTarget))
                     infoHtml += "<br/><i>(Ctrl+Click to open link)</i>";
@@ -3353,7 +3354,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
             let link = DomTerm._isInElement(e.target, "A");
             if (link) {
                 opts.contextType = "A";
-                opts.href = link.getAttribute("href");
+                opts.href = link.getAttribute("domterm-href") || link.getAttribute("href");
                 let range = document.createRange();
                 range.selectNodeContents(link);
                 opts.contentValue = {
@@ -3960,8 +3961,11 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                                       n = n.parentNode) {
                                      let ntag = n.nodeName;
                                      if (ntag == "A") {
-                                         if (e.ctrlKey || ! dt._linkNeedsCtrlClick(n)) {
-                                             DomTerm.handleLinkRef(n.getAttribute("href"),
+                                         let href = (n.getAttribute("domterm-href")
+                                                     || n.getAttribute("href"));
+                                         if (href
+                                             && (e.ctrlKey || ! dt._linkNeedsCtrlClick(n))) {
+                                             DomTerm.handleLinkRef(href,
                                                                    n.textContent, dt);
 
                                          }
@@ -6057,10 +6061,23 @@ DomTerm.charset_8859_1 = function(ch, bytes, nextIndex, endIndex) {
 }
 
 DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
+    // Should we convert 'ref' attribute to 'domterm-href'?
+    // Desirable if using a desktop browser to avoid duplicate URL hover.
+    // Not needed (but harmless) on embedded browsers
+    // (at least Electron, Qt, WebView/Gtk).
+    let renameLinkHref = true;
     var links = node.getElementsByTagName("a");
     for (var i = links.length; --i >= 0; ) {
         var link = links[i];
         if (! link.hasMouseEnter) {
+            if (renameLinkHref
+                && link.getAttribute("domterm-href") == null) {
+                let href = link.getAttribute("href");
+                if (href) {
+                    link.setAttribute("domterm-href", href);
+                    link.removeAttribute("href");
+                }
+            }
             link.addEventListener("mouseenter", dt._mouseEnterHandler, false);
             link.hasMouseEnter = true;
         }
@@ -6125,7 +6142,7 @@ Terminal.prototype.allowAttribute = function(name, value, einfo, parents) {
     if (name.startsWith("on"))
         return false;
     if ((einfo & DomTerm._ELEMENT_KIND_CHECK_JS_TAG) != 0) {
-        if (name=="href" || name=="src") {
+        if (name=="href" || name=="domterm-href" || name=="src") {
             // scrub for "javascript:"
             var amp = value.indexOf("&");
             var colon = value.indexOf(":");
@@ -6568,7 +6585,8 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
                                               einfo, activeTags))
                         break loop;
                     if ((einfo & DomTerm._ELEMENT_KIND_CHECK_JS_TAG) != 0
-                        && (attrname=="href" || attrname=="src")) {
+                        && (attrname=="href" || attrname=="domterm-href"
+                            || attrname=="src")) {
                         if (tag == "base" && attrname == "href") {
                             baseUrl = attrvalue;
                         } else if (baseUrl != null
@@ -6761,6 +6779,8 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                             s += ' saved-version="'+DomTerm.versionString+'"';
                         }
                     }
+                    else if (aname === "domterm-href")
+                        aname = "href";
                     else if (aname=="breaking" && tagName=="span"
                              && node.getAttribute("line")) {
                         isBreakingLine = true;

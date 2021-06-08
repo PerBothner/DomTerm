@@ -211,3 +211,8 @@ div.domterm-context-popup {
     /*position: relative;*/
     position: fixed;
 }
+a[domterm-href], a[href] {
+    color: blue;
+    cursor: pointer;
+    text-decoration: underline;
+}
