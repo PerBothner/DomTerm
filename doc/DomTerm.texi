@@ -3910,6 +3910,8 @@ These can be created implicitly, by recognizing a URL or other pattern in the bu
 Links can also be created explicitly, using a special escape sequence,
 or by emitting HTML.
 
+@image{images/dt-linkhover}
+
 There are two kinds of links:
 @itemize @bullet
 @item
