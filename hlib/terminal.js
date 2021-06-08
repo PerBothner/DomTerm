@@ -3599,7 +3599,8 @@ Terminal.prototype.hoverHandler = function(event, dt, element, setInfoAction) {
         }
         if (! element.style.outline) {
             element._added_outline = true;
-            element.style.outline = "thin solid green";
+            let bcolor = window.getComputedStyle(popup)['border-color'];
+            element.style.outline = "thin solid "+bcolor;
             popup.remove = (popup) => {
                 this.topNode.removeChild(popup);
                 if (element._added_outline) {
