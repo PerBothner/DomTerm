@@ -3590,10 +3590,11 @@ Terminal.prototype.hoverHandler = function(event, dt, element, setInfoAction) {
             let elRight = closest.right;
             let hGoal = 0.5 * (elLeft + elRight);
             let left = hGoal - 0.5 * popBox.width;
+            let wwidth = this.buffers.offsetWidth - 2;
             if (left < 0)
                 left = 0;
-            else if (left + popBox.width > this.topNode.offsetWidth)
-                left = this.topNode.offsetWidth - popBox.width;
+            else if (left + popBox.width > wwidth)
+                left = wwidth - popBox.width;
             popup.style.left = left + 'px';
         }
         if (! element.style.outline) {
