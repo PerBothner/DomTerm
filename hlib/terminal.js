@@ -2645,11 +2645,16 @@ Terminal.prototype._pushStdMode = function(styleValue) {
     }
     if (styleValue != null) {
         let nxt = this.outputBefore;
+        let prev = nxt ? nxt.previousSibling : this.outputContainer.lastChild;
         if (nxt instanceof Element && nxt.getAttribute("std") === styleValue) {
             // This can happen after implicit startPrompt (OSC 133 A)
             // followed by explicit startPrompt (PSC 133 P).
             this.outputContainer = nxt;
             this.outputBefore = nxt.firstChild;
+        } else if (prev instanceof Element
+                   && prev.getAttribute("std") === styleValue) {
+            this.outputContainer = prev;
+            this.outputBefore = null;
         } else {
             stdElement = this._createSpanNode();
             stdElement.setAttribute("std", styleValue);

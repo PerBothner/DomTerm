@@ -414,7 +414,6 @@ class DTParser {
                     this.controlSequenceState = DTParser.INITIAL_STATE;
                 /* falls through */
             case DTParser.INITIAL_STATE:
-            case DTParser.SEEN_ERROUT_END_STATE:
                 if (term.sstate.doLinkify && Terminal.isDelimiter(ch)
                     && term.linkify("", 0, 0, ch)) {
                 }
@@ -473,19 +472,6 @@ class DTParser {
                     break;
                 case 27 /* Escape */:
                     var nextState = DTParser.SEEN_ESC_STATE;
-                    if (state == DTParser.SEEN_ERROUT_END_STATE) {
-                        // cancelled by an immediate start-of-error-output
-                        if (i + 5 <= endIndex
-                            && bytes[i+1] == 91/*'['*/
-                            && bytes[i+2] == 49/*'1'*/
-                            && bytes[i+3] == 50/*'2'*/
-                            && bytes[i+4] == 117/*'u'*/
-                            && term._getStdMode() == "error") {
-                            i += 4;
-                            nextState = DTParser.INITIAL_STATE;
-                        } else
-                            term._pushStdMode(null);
-                    }
                     //term.currentCursorColumn = column;
                     this.controlSequenceState = nextState;
                     continue;
@@ -1266,7 +1252,7 @@ class DTParser {
                 term.restoreCursor();
                 break;
             case 11:
-                this.controlSequenceState = DTParser.SEEN_ERROUT_END_STATE;
+                term._pushStdMode(null);
                 break;
             case 12:
                 term._pushStdMode("error");
@@ -2298,8 +2284,6 @@ DTParser.SEEN_ESC_SHARP_STATE = 9;
 DTParser.SEEN_ESC_SS2 = 14;
 DTParser.SEEN_ESC_SS3 = 15;
 DTParser.SEEN_CR = 17;
-/** Seen but deferred a request to exit std="error" mode. */
-DTParser.SEEN_ERROUT_END_STATE = 18;
 DTParser.SEEN_DCS_STATE = 19;
 DTParser.SEEN_DCS_TEXT_STATE = 20;
 DTParser.SEEN_PM_STATE = 21;
