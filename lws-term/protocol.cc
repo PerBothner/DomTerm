@@ -2500,6 +2500,8 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
 #if USE_RXFLOW
                     lwsl_info(tclients_seen == 1
                               ? "session %d paused (flow control) %ld bytes ahead sent:%ld confirmed:%ld\n"
+                              : tclients_seen == 0
+                              ? "session %d paused (flow control) - awaiting clients\n"
                               : "session %d paused (flow control) %ld bytes ahead\n",
                               pclient->session_number, min_unconfirmed,
                               last_sent_count,
