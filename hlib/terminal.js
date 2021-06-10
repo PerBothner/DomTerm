@@ -7088,7 +7088,7 @@ Terminal.prototype.popControlState = function() {
         // receivedCount. (They are typically window-specific and
         // should not be replayed when another window is attached.)
         if (saved.counted)
-            this._receivedCount = (this._receivedCount + 2) & Terminal._mask28;
+            this._receivedCount = (this._receivedCount + 3) & Terminal._mask28;
         else
             this._receivedCount = saved.receivedCount;
     }
