@@ -21,6 +21,8 @@ if (typeof navigator !== 'undefined' && navigator.userAgent) {
         DomTerm.versions.electron = m[1];
     if ((m = navigator.userAgent.match(/Chrome[/]([^ ]+)/)))
         DomTerm.versions.chrome = m[1];
+    if ((m = navigator.userAgent.match(/Edg[/]([^ ]+)/)))
+        DomTerm.versions.edge = m[1];
     if ((m = navigator.userAgent.match(/Firefox[/]([^ ]+)/)))
         DomTerm.versions.firefox = m[1];
     if ((m = navigator.userAgent.match(/Atom[/]([^ ]+)/)))

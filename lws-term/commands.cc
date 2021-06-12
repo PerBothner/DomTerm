@@ -518,6 +518,8 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
             prefix = ", ";
         if (json_print_property(out, vobj, "javaFX", prefix, NULL))
             prefix = ", ";
+        if (json_print_property(out, vobj, "edge", prefix, NULL))
+            prefix = ", ";
         if (json_print_property(out, vobj, "chrome", prefix, NULL))
             prefix = ", ";
         if (json_print_property(out, vobj, "gtk", prefix, NULL))
