@@ -1269,16 +1269,19 @@ reportEvent(const char *name, char *data, size_t dlen,
         json_object_put(obj);
     } else if (strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0
         || strcmp(name, "REQUEST-SELECTION-TEXT") == 0) {
+        char *clipText = NULL;
+      // WSL: popen("powershell.exe Get-Clipboard")
 #if HAVE_LIBCLIPBOARD
         if (clipboard_manager == NULL) {
             clipboard_manager = clipboard_new(NULL);
         }
-        char *clipText;
         clipboard_mode cmode =
             strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0 ? LCB_CLIPBOARD
             : LCB_PRIMARY;
-        if (clipboard_manager
-            && (clipText = clipboard_text_ex(clipboard_manager, NULL, cmode)) != NULL) {
+        if (clipboard_manager)
+            clipText = clipboard_text_ex(clipboard_manager, NULL, cmode);
+#endif
+	if (clipText != NULL) {
             struct json_object *jobj = json_object_new_string(clipText);
             printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
                               json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN));
@@ -1286,7 +1289,6 @@ reportEvent(const char *name, char *data, size_t dlen,
             json_object_put(jobj);
             lws_callback_on_writable(wsi);
         }
-#endif
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
         if (proxyMode == proxy_display_local)
             return false;
@@ -2387,7 +2389,6 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
                 }
             }
         }
-        //char *tn = strstr(
         int tin = STDIN_FILENO;
         if (isatty(tin)) {
             tty_save_set_raw(tin);

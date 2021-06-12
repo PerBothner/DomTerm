@@ -523,17 +523,48 @@ chrome_command(bool app_mode, struct options *options)
     return sb.strdup();
 }
 
+/** Return freshly allocated command string or NULL */
+const char *
+edge_browser_command(bool app_mode, struct options *options)
+{
+    bool free_needed = false;
+    const char *edge_cmd = get_setting(options->settings, "command.edge");
+    if (edge_cmd == NULL && is_WindowsSubsystemForLinux()) {
+#define EDGE_EXE "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+	if (access(EDGE_EXE, X_OK) == 0) {
+            edge_cmd = "\"" EDGE_EXE "\"";
+        }
+    }
+    if (edge_cmd == NULL)
+        return NULL;
+    struct sbuf sb;
+    sb.append(edge_cmd);
+    if (free_needed)
+        free((void*) edge_cmd);
+    if (options->headless)
+        sb.append(" --headless '%U'");
+    else if (app_mode)
+        sb.append(" --app='%U%g'");
+    return sb.strdup();
+}
+
 const char *
 firefox_browser_command(struct options *options)
 {
     const char *firefox_cmd = get_setting(options->settings, "command.firefox");
     if (firefox_cmd != NULL)
         return firefox_cmd;
-    if (is_WindowsSubsystemForLinux())
-        return "'/mnt/c/Program Files (x86)/Mozilla Firefox/firefox.exe'";
     char *firefoxCommand = find_in_path("firefox");
     if (firefoxCommand != NULL)
         return firefoxCommand;
+    if (is_WindowsSubsystemForLinux()) {
+#define firefoxWSL "/mnt/c/Program Files/Mozilla Firefox/firefox.exe"
+#define firefoxWSL86 "/mnt/c/Program Files (x86)/Mozilla Firefox/firefox.exe"
+      if (access(firefoxWSL, X_OK) == 0)
+	return "\"" firefoxWSL "\"";
+      if (access(firefoxWSL86, X_OK) == 0)
+	return "\"" firefoxWSL86 "\"";
+    }
 #define firefoxMac "/Applications/Firefox.app"
     if (access(firefoxMac, X_OK) == 0)
       return "/usr/bin/open -a " firefoxMac;
@@ -707,8 +738,12 @@ do_run_browser(struct options *options, const char *url, int port)
     bool do_electron = false, do_Qt = false;
     if (browser_specifier == NULL && port_specified < 0) {
         const char *default_frontend = get_setting(options->settings, "frontend.default");
-        if (default_frontend == NULL)
-            default_frontend = "electron;qt;chrome-app;firefox;browser";
+        if (default_frontend == NULL) {
+            if (is_WindowsSubsystemForLinux())
+                default_frontend = "edge-app;electron;qt;chrome-app;firefox;browser";
+            else
+                default_frontend = "electron;qt;chrome-app;firefox;browser";
+	}
         const char *p = default_frontend;
         for (;;) {
             const char *argv0_end = NULL;
@@ -752,6 +787,11 @@ do_run_browser(struct options *options, const char *url, int port)
                            || ! strcmp(cmd, "chrome")
                            || ! strcmp(cmd, "google-chrome")) {
                     browser_specifier = chrome_command(app_mode, options);
+                    if (browser_specifier != NULL)
+                        break;
+                } else if ((app_mode = ! strcmp(cmd, "edge-app"))
+                           || ! strcmp(cmd, "edge")) {
+                    browser_specifier = edge_browser_command(app_mode, options);
                     if (browser_specifier != NULL)
                         break;
                 } else {
@@ -1477,7 +1517,9 @@ is_WindowsSubsystemForLinux()
             i += n;
         }
         buf[i] = '\0';
-        r = strstr(buf, "Microsoft") != NULL;
+	// In WSL1 the version contains upper-case "Microsoft"
+	// In WSL2 the version contains "microsoft-standard-WSL2"
+        r = strstr(buf, "icrosoft") != NULL;
         close(f);
     }
     is_WSL_cache = r ? 1 : -1;
