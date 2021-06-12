@@ -250,7 +250,7 @@ clean-am:
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm bin/dt-webview
-	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage
+	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage appimage/bad-dyn-libs
 
 websocket_sources = org/domterm/websocket/DomServer.java
 pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
@@ -563,6 +563,7 @@ doc/domterm2.ico: # doc/domterm2.svg
 APPIMAGETOOL=/home/bothner/Software/appimagetool-x86_64.AppImage
 APP_RUN=appimage/DomTerm.AppDir/AppRun
 APP_DESKTOP=appimage/DomTerm.AppDir/domterm.desktop
+#if echo "@LIBWEBSOCKETS_LIBS@"|grep '[-]lwebsockets' >&/dev/null; then echo Must link libsockets staticaly for AppImage; false; fi
 appimage/DomTerm.AppImage: bin/domterm
 	mkdir -p appimage appimage/DomTerm.AppDir
 	make install prefix=`pwd`/appimage/DomTerm.AppDir/usr
@@ -572,9 +573,11 @@ appimage/DomTerm.AppImage: bin/domterm
 	strip appimage/DomTerm.AppDir/usr/bin/domterm
 	-test -x appimage/DomTerm.AppDir/usr/bin/qtdomterm && strip appimage/DomTerm.AppDir/usr/bin/qtdomterm
 	-test -x appimage/DomTerm.AppDir/usr/bin/dt-webview && strip appimage/DomTerm.AppDir/usr/bin/dt-webview
+	-ldd ./appimage/DomTerm.AppDir/usr/bin/domterm|(grep 'libwebsockets[.]so\|libjson-c[.]so'||true) >appimage/bad-dyn-libs
+	-if test -s appimage/bad-dyn-libs; then echo WARNING: These libraries should have static linking for AppImage:; cat appimage/bad-dyn-libs; fi
 #	echo '#!/bin/bash' > $(APP_RUN)
 #	echo 'HERE="$$(dirname "$$(readlink -f "$${0}")")"' >>$(APP_RUN)
 #	echo 'exec "$$HERE/usr/bin/domterm" "$$@"' >>$(APP_RUN)
 #	chmod +x $(APP_RUN)
-	cd appimage/DomTerm.AppDir && ln -s usr/bin/domterm AppRun
+	cd appimage/DomTerm.AppDir && ln -fs usr/bin/domterm AppRun
 	cd appimage && $(APPIMAGETOOL) DomTerm.AppDir DomTerm.AppImage
