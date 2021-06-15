@@ -44,6 +44,10 @@ AC_ARG_WITH(libwebsockets,
 
 AC_ARG_WITH(json-c,
   AS_HELP_STRING(--with-json-c,Build server using json-c library))
+if test -n "${with_json_c}"
+then
+  echo WARNING: --with-json-c option ignored - json-c library is no longer used
+fi
 
 AC_ARG_WITH(libclipboard,
   AS_HELP_STRING(--with-libclipboard=/path/to/libclipboard/build))
@@ -201,14 +205,6 @@ AC_SUBST(QT_DOCKING_LIBDIR)
 HAVE_OPENSSL=0
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
-  case "${with_json_c}" in
-    "yes" | "")
-      PKG_CHECK_MODULES(JSON_C, json-c)
-      ;;
-    *)
-      JSON_C_LIBS="${with_json_c}/lib/libjson-c.a"
-      JSON_C_CFLAGS="-I${with_json_c}/include/json-c"
-  esac
   dnl kludge around broken OpenSSL config in MacOS:
   OPENSSL_CONFIG=/usr/local/opt/openssl/lib/pkgconfig
   test -d "$OPENSSL_CONFIG" && \

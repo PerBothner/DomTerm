@@ -19,12 +19,12 @@ bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.cc utils.cc protocol.cc http.cc whereami.c \
   commands.cc command-connect.cc help.cc junzip.c settings.cc
 nodist_ldomterm_SOURCES = git-describe.c
-ldomterm_CFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
-ldomterm_CXXFLAGS = $(OPENSSL_CFLAGS) $(JSON_C_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
+ldomterm_CFLAGS = $(OPENSSL_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
+ldomterm_CXXFLAGS = $(OPENSSL_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
 if ENABLE_LD_PRELOAD
 ldomterm_CFLAGS += -DENABLE_LD_PRELOAD
 endif
-ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) $(OPENSSL_LIBS) $(JSON_C_LIBS) $(LIBCAP_LIBS) -lpthread -lutil -lz $(LIBMAGIC_LIBS)
+ldomterm_LDADD = $(LIBWEBSOCKETS_LIBARG) $(OPENSSL_LIBS) $(LIBCAP_LIBS) -lpthread -lutil -lz $(LIBMAGIC_LIBS)
 #CLIENT_DATA_DIR = @DOMTERM_DIR_RELATIVE@
 CLIENT_DATA_DIR = .
 if COMBINE_RESOURCES

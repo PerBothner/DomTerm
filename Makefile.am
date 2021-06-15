@@ -573,7 +573,7 @@ appimage/DomTerm.AppImage: bin/domterm
 	strip appimage/DomTerm.AppDir/usr/bin/domterm
 	-test -x appimage/DomTerm.AppDir/usr/bin/qtdomterm && strip appimage/DomTerm.AppDir/usr/bin/qtdomterm
 	-test -x appimage/DomTerm.AppDir/usr/bin/dt-webview && strip appimage/DomTerm.AppDir/usr/bin/dt-webview
-	-ldd ./appimage/DomTerm.AppDir/usr/bin/domterm|(grep 'libwebsockets[.]so\|libjson-c[.]so'||true) >appimage/bad-dyn-libs
+	-ldd ./appimage/DomTerm.AppDir/usr/bin/domterm|(grep 'libwebsockets[.]so|true) >appimage/bad-dyn-libs
 	-if test -s appimage/bad-dyn-libs; then echo WARNING: These libraries should have static linking for AppImage:; cat appimage/bad-dyn-libs; fi
 #	echo '#!/bin/bash' > $(APP_RUN)
 #	echo 'HERE="$$(dirname "$$(readlink -f "$${0}")")"' >>$(APP_RUN)
