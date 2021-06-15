@@ -78,30 +78,27 @@ create_command_socket(const char *socket_path)
     return (fd);
 }
 
-static struct json_object *
-state_to_json(int argc, char *const*argv, char *const *env)
+void
+state_to_json(json& jobj, int argc, char *const*argv, char *const *env)
 {
-    struct json_object *jobj = json_object_new_object();
-    struct json_object *jargv = json_object_new_array();
-    struct json_object *jenv = json_object_new_array();
-    char *cwd = getcwd(NULL, 0); /* FIXME used GNU extension */
+    json jargv;
+    json jenv;
     int i;
     for (i = 0; i < argc; i++)
-        json_object_array_add(jargv, json_object_new_string(argv[i]));
+        jargv.push_back(argv[i]);
     for (i = 0; ; i++) {
         const char *e = env[i];
         if (e == NULL)
             break;
-        json_object_array_add(jenv, json_object_new_string(e));
+        jenv.push_back(e);
     }
-    json_object_object_add(jobj, "cwd", json_object_new_string(cwd));
+    char *cwd = getcwd(NULL, 0); /* FIXME used GNU extension */
+    jobj["cwd"] = cwd;
     free(cwd);
-    json_object_object_add(jobj, "argv", jargv);
-    json_object_object_add(jobj, "env", jenv);
-    if (main_options->cmd_settings)
-        json_object_object_add(jobj, "options",
-                               json_object_get(main_options->cmd_settings));
-    return jobj;
+    jobj["argv"] = jargv;
+    jobj["env"] = jenv;
+    if (main_options->cmd_settings.is_object())
+        jobj["options"] = main_options->cmd_settings;
 }
 
 /* Try to connect to server.
@@ -237,14 +234,13 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     if (isatty(tin)) {
         tty_save_set_raw(tin);
     }
-    json_object *jobj = state_to_json(argc, argv, env);
-    const char *state_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
-
-    size_t jlen = strlen(state_as_json);
+    json jobj;
+    state_to_json(jobj, argc, argv, env);
+    std::string state_as_json = jobj.dump();
 
     struct iovec iov[2];
-    iov[0].iov_base = (char*) state_as_json;
-    iov[0].iov_len = jlen;
+    iov[0].iov_base = (char*) state_as_json.c_str();
+    iov[0].iov_len = state_as_json.length();
     iov[1].iov_base = (void*) "\f";
     iov[1].iov_len = 1;
 
@@ -299,7 +295,6 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     int r  = writev(socket, iov, 2);
     lwsl_notice("client cmd write %d\n", r);
 #endif
-    json_object_put(jobj);
     char ret = 0;
     while (!force_exit) {
         lws_service(context, 100);
@@ -329,7 +324,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
 #else
             int sockfd = accept(socket, &sa, &slen);
 #endif
-            size_t jblen = 512;
+            size_t jblen = 5000;
             char *jbuf = challoc(jblen);
             int jpos = 0;
             struct options *opts = link_options(NULL);
@@ -370,7 +365,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
 		struct pollfd pfd = { sockfd, POLLIN, 0 };
 		poll(&pfd, 1, 3000); // FIXME needed?
 #endif
-		ssize_t n = read(sockfd, jbuf+jpos, jblen-jpos);
+		ssize_t n = read(sockfd, jbuf+jpos, jblen-jpos-1);
 		opts->fd_in = sockfd;
 		opts->fd_out = sockfd;
 		opts->fd_err = sockfd;
@@ -386,49 +381,44 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             }
             jbuf[jpos] = 0;
             //fprintf(stderr, "from-client: %d bytes '%.*s'\n", jpos, jpos, jbuf);
-            struct json_object *jobj
-              = json_tokener_parse(jbuf);
-            if (jobj == NULL)
+            json jobj = json::parse(jbuf, nullptr, false);
+            if (jobj.is_discarded())
               fatal("json parse fail");
-            struct json_object *jcwd = NULL;
-            struct json_object *jargv = NULL;
-            struct json_object *jenv = NULL;
-            struct json_object *joptions = NULL;
             const char *cwd = NULL;
             // if (!json_object_object_get_ex(jobj, "cwd", &jcwd))
             //   fatal("jswon no cwd");
             int argc = -1;
             const char **argv = NULL;
             const char**env = NULL;
-            if (json_object_object_get_ex(jobj, "cwd", &jcwd)
-                && (cwd = strdup(json_object_get_string(jcwd))) != NULL) {
-            }
-            if (json_object_object_get_ex(jobj, "argv", &jargv)) {
-                argc = json_object_array_length(jargv);
+            auto jcwd = jobj.find("cwd");
+            if (jcwd != jobj.end() && jcwd->is_string())
+                cwd = strdup(std::string(*jcwd).c_str());
+            auto jargv = jobj.find("argv");
+            if (jargv != jobj.end() && jargv->is_array()) {
+                argc = jargv->size();
                 argv = (const char**) xmalloc(sizeof(const char*) * (argc+1));
-                for (int i = 0; i <argc; i++) {
-                  argv[i] = strdup(json_object_get_string(json_object_array_get_idx(jargv, i)));
+                for (int i = 0; i < argc; i++) {
+                    argv[i] = strdup(std::string((*jargv)[i]).c_str());
                 }
                 argv[argc] = NULL;
             }
-            if (json_object_object_get_ex(jobj, "env", &jenv)) {
-                int nenv = json_object_array_length(jenv);
+            auto jenv = jobj.find("env");
+            if (jenv != jobj.end() && jenv->is_array()) {
+                int nenv = jenv->size();
                 env = (const char**) xmalloc(sizeof(const char*) * (nenv+1));
-                for (int i = 0; i <nenv; i++) {
-                  env[i] = json_object_get_string(json_object_array_get_idx(jenv, i));
+                for (int i = 0; i < nenv; i++) {
+                    env[i] = strdup(std::string((*jenv)[i]).c_str());
                 }
                 env[nenv] = NULL;
             }
-            if (json_object_object_get_ex(jobj, "options", &joptions)) {
-                if (opts->cmd_settings)
-                    json_object_put(opts->cmd_settings);
-                opts->cmd_settings = json_object_get(joptions);
+            auto jopts = jobj.find("options");
+            if (jopts != jobj.end() && jopts->is_object()) {
+                opts->cmd_settings = *jopts;
             }
             optind = 1;
             set_settings(opts);
-            opts->env = copy_strings(env);
+            opts->env = env == nullptr ? nullptr : copy_strings(env);
             opts->cwd = cwd;
-            json_object_put(jobj);
             free(env);
             process_options(argc, argv, opts);
             int ret = handle_command(argc-optind, argv+optind, wsi, opts);

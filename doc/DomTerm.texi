@@ -441,7 +441,7 @@ MacOS, *BSD, and native (non-WSL) Windows.
 
 On Fedora, you need to first:
 @example
-sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebsockets-devel json-c json-c-devel openssl-devel file-devel libcap-devel asciidoctor zlib-devel
+sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebsockets-devel openssl-devel file-devel libcap-devel asciidoctor zlib-devel
 @end example
 If configuring @code{--with-qt} (recommended), also do:
 @example
@@ -478,7 +478,7 @@ sudo dnf install gtk3-devel webkit2gtk3-devel
 
 You need to install the following prerequisites:
 @example
-sudo apt-get install git gcc make automake libjson-c-dev pkg-config asciidoctor libmagic-dev zlib1g-dev
+sudo apt-get install git gcc make automake pkg-config asciidoctor libmagic-dev zlib1g-dev
 @end example
 If configuring @code{--with-qt} (recommended), also do:
 @example
@@ -514,7 +514,7 @@ unzip /mnt/c/User/wuser/Downloads/domterm-@var{version}-wsl.zip
 
 These library dependencies are needed:
 @example
-apt-get install libjson-c2 libmagic1 zlib1g
+apt-get install libmagic1 zlib1g
 @end example
 
 Optionally you can create a symlink for @code{domterm}:
@@ -528,7 +528,7 @@ ln -s /mnt/c/@var{wuser}/DomTerm/bin/domterm domterm
 @subsubheading  MacOS (using Homebrew)
 
 @example
-brew install automake json-c libwebsockets asciidoctor pkg-config
+brew install automake libwebsockets asciidoctor pkg-config
 @end example
 
 If you want to use the Electron front-end:
@@ -581,22 +581,6 @@ make
 
 When running @code{./configure} in the @code{DomTerm} sources,
 specify @code{--with-libwebsockets=$WORKDIR/libwebsockets/build}.
-
-@subsubheading Building json-c library (if not installed)
-
-The json-c library is needed by the @code{domterm} C application.
-If it is not installed in the system location or you
-want to link it as a static library, do the following:
-
-@example
-git clone https://github.com/json-c/json-c.git
-cd json-c
-JSON_C_DIR=`pwd`
-mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=$JSON_C_DIR/dist ..
-make install
-@end example
-Then add @code{--with-json-c=$JSON_C_DIR/dist} to the @code{configure} command.
 
 @anchor{installing-electron}
 @subsubheading Optional: Electron
@@ -737,11 +721,6 @@ Libwebsockets version 2.2 or newer is required,
 as older versions do not support flow control or paging.
 
 This is the recommended ``backend'' and the default.
-
-@item --with-json-c[=$JSON_C_DIR/dist]
-If the json-c library (needed by the C ldomterm application)
-is not in the default system location, or you
-want to link it as a static library.
 
 @item --with-java_websocket
 @itemx --with-java_websocket=/path/to/java_websocket.jar
@@ -2406,11 +2385,11 @@ set to different widths.
 
 If the @code{domterm} command is not installed on your remote server,
 build DomTerm as shown (on a compatible platform).
-(The @code{--with-libwebsockets} and @code{--with-json-c} options
-cause those libraries to be linked statically, which is recommended
-if they are not installed on the remote server.)
+(The @code{--with-libwebsockets} option
+cause that library to be linked statically, which is recommended
+if they might not be installed on the remote server.)
 @example
-./configure --prefix=/tmp/DT --without-java --with-libwebsockets=@var{lws_dir} --with-json-c=@var{json_c_dir}
+./configure --prefix=/tmp/DT --without-java --with-libwebsockets=@var{lws_dir}
 make install
 cd /tmp
 zip -r DT.zip DT
@@ -4762,9 +4741,6 @@ Implement ``infinite lines'': Escape sequences or mode so application
 soft line-breaks, and window resize.  This will also allow
 variable width-fonts.
 @item
-Replace JSON library(in lws-term)  with a nicer C++ library,
-probably @uref{https://rapidjson.org/,RapidJSON} or @uref{nlohmann's,https://github.com/nlohmann/json}.
-@item
 Bundle documentation and add command to browse it.
 Use a zip file, with compressed images (with link to full images on website).
 @item
@@ -4888,7 +4864,6 @@ and other highlighting.
 If the DomTerm element is not the only element in the @code{<document>}'s
 @code{<body>} then the selection may be lost to another ``widget''
 unless we simulate the selection as a highlighted range.
-The @uref{https://markjs.io/,mark.js} package may be useful.
 
 @subsubheading Improve copy and paste
 
@@ -6750,6 +6725,9 @@ for its http and websockets server and event polling library.
 
 The C back-end was based on Shuanglei Tao's @uref{https://github.com/tsl0922/ttyd,ttyd}.
 
+JSON in the backend is handled by @uref{https://json.nlohmann.me/,Niels Lohmann's json library}.
+(In the past the @uref{https://github.com/json-c/json-c,json-c library} was used.)
+
 An older version of the back-end was Java-based.
 It made use of @uref{https://github.com/TooTallNate/Java-WebSocket/,Java WebSockets}.
 This is no longer supported, but a simplified Java server is still supported.
@@ -6802,4 +6780,4 @@ Building of the @code{qtdomterm} directory makes use of
 @uref{https://github.com/tsuna/autotroll,AutoTroll} by
 Benoit Sigoure and Werner Lemberg.
 
-The find-text facility uses Julian Kühnel's @uref{https://markjs.io/,mark.j}.
+The find-text facility uses Julian Kühnel's @uref{https://markjs.io/,mark.js}.

@@ -711,6 +711,18 @@ void
 browser_run_browser(struct options *options, const char *url,
                     struct tty_client *tclient)
 {
+#if 1
+    json jobj;
+    jobj["url"] = url;
+    const char *geometry = geometry_option(options);
+    if (geometry)
+        jobj["geometry"] = geometry;
+    if (options->headless)
+        jobj["headless"] = true;
+    printf_to_browser(tclient,
+                      URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
+                      jobj.dump().c_str());
+#else
     struct json_object *jobj = json_object_new_object();
     json_object_object_add(jobj, "url",  json_object_new_string(url));
     const char *geometry = geometry_option(options);
@@ -723,6 +735,7 @@ browser_run_browser(struct options *options, const char *url,
                       URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
                       json_data);
     json_object_put(jobj);
+#endif
 }
 
 int
@@ -948,8 +961,6 @@ options::~options()
         free(credential);
     if (sig_name)
         free(sig_name);
-    if (cmd_settings)
-        json_object_put(cmd_settings);
 }
 
 struct options *link_options(struct options *opts)
@@ -1134,7 +1145,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
                 }
                 regfree(&rx);
                 //opts->geometry = optarg;
-                set_setting(&opts->cmd_settings, "geometry", optarg);
+                set_setting(opts->cmd_settings, "geometry", optarg);
 
                 free(default_size);
                 char *p = optarg;

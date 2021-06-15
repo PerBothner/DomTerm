@@ -17,7 +17,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <assert.h>
-#include <json.h>
+#include <string>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 // True when enabling future proxy support
 #define REMOTE_SSH 1
@@ -56,7 +58,7 @@ extern char *main_html_url;
 extern char *main_html_path;
 extern char *backend_socket_name;
 extern const char *settings_fname;
-extern struct json_object *settings_json_object;
+extern json settings_json_object;
 extern volatile bool force_exit;
 extern struct lws *cmdwsi;
 extern struct lws_context *context;
@@ -92,7 +94,7 @@ extern struct lws_context_creation_info info; // FIXME rename
 extern struct lws *focused_wsi;
 extern struct cmd_client *cclient;
 extern struct options *main_options;
-extern const char *settings_as_json; // FIXME
+extern std::string settings_as_json;
 extern char git_describe[];
 #if REMOTE_SSH
 extern int
@@ -285,8 +287,8 @@ public:
     int do_daemonize;
     int verbosity;
     int debug_level;
-    struct json_object *cmd_settings = nullptr;
-    struct json_object *settings = nullptr; // merge of cmd_settings and global settings
+    json cmd_settings;
+    json settings; // merge of cmd_settings and global settings
     // Possible memory leak if we start reclaiming options objects.
     const char *browser_command;
     const char *tty_packet_mode;
@@ -379,12 +381,14 @@ extern arglist_t default_command(struct options *opts);
 extern void request_upload_settings();
 extern void read_settings_file(struct options*, bool);
 extern void read_settings_emit_notice();
-extern struct json_object *merged_settings(struct json_object *cmd_settings);
-extern void set_settings(struct options *options);
+extern void merge_settings(json& merged, const json &cmd_settings);
+extern void set_settings(struct options *options); // DEPRECATED
+extern void set_settings(json& options);
 extern enum option_name lookup_option(const char *name);
 extern void print_settings_prefixed(const char *, const char *, const char*, FILE *);
-extern const char *get_setting(json_object *opts, const char *key);
-extern void set_setting(struct json_object **, const char *key, const char *val);
+extern const char *get_setting(const json& opts, const char *key); // DEPRECATED
+extern std::string get_setting_s(const json& opts, const char *key);
+extern void set_setting(json&, const char *key, const char *val);
 extern bool check_option_arg(const char *arg, struct options *opts);
 
 // A "setting" that starts with "`" is an internal setting.

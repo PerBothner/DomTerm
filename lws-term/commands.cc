@@ -6,6 +6,7 @@
 #endif
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <string>
 
 #define DO_HTML_ACTION_IN_SERVER PASS_STDFILES_UNIX_SOCKET
 #define COMPLETE_FOR_BASH_CMD "#complete-for-bash"
@@ -130,19 +131,17 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
     int ret = EXIT_SUCCESS;
     sb.append("\007", 1);
 #if DO_HTML_ACTION_IN_SERVER
-    char **ee = env;
+    argblob_t ee = opts->env;
     while (*ee && strncmp(*ee, "DOMTERM=", 8) != 0)
         ee++;
-    char *t1;
+    const char *t1;
     if (*ee && (t1 = strstr(*ee, ";tty="))) {
         t1 += 5;
-        char *t2 = strchr(t1, ';');
+        const char *t2 = strchr(t1, ';');
         size_t tlen = t2 == NULL ? strlen(t1) : t2 - t1;
-        char *tname = xmalloc(tlen+1);
-        strncpy(tname, t1, tlen);
-        tname[tlen] = 0;
+        std::string tname(t1, tlen);
         FOREACH_PCLIENT(pclient) {
-            if (strcmp(pclient->ttyname, tname) == 0) {
+            if (strcmp(pclient->ttyname, tname.c_str()) == 0) {
                 FOREACH_WSCLIENT(tclient, pclient) {
                     tclient->ob.extend(sb.len);
                     memcpy(tclient->ob.buffer+tclient->ob.len,
@@ -325,13 +324,14 @@ int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
     char *response = read_response(opts);
     if (! response)
         return EXIT_FAILURE;
-    json_object *jobj = json_tokener_parse(response);
-    int nlines = json_object_array_length(jobj);
-    for (int i = 0; i < nlines; i++)
-        fprintf(stdout, "%s\n",
-                json_object_get_string(json_object_array_get_idx(jobj, i)));
+    json jobj = json::parse(response, nullptr, false);
+    if (! jobj.is_array()) {
+        return EXIT_FAILURE;
+    }
+    for (auto& element : jobj) {
+        fprintf(stdout, "%s\n", std::string(element).c_str());
+    }
     free(response);
-    json_object_put(jobj);
     return EXIT_SUCCESS;
 }
 
@@ -394,14 +394,9 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
         off += n;
     }
     FILE *tout = fdopen(get_tty_out(), "w");
-    struct json_object *jname = json_object_new_string(name);
-    struct json_object *jvalue = json_object_new_string_len(buf, off);
-    fprintf(tout, "\033]95;%s,%s\007",
-            json_object_to_json_string_ext(jname, JSON_C_TO_STRING_PLAIN),
-            json_object_to_json_string_ext(jvalue, JSON_C_TO_STRING_PLAIN));
-    json_object_put(jname);
-    json_object_put(jvalue);
-
+    json jname = name;
+    json jvalue = std::string(buf, off);
+    fprintf(tout, "\033]95;%s,%s\007", jname.dump().c_str(), jvalue.dump().c_str());
     fflush(tout);
     char *str = read_response(opts);
     if (str != NULL && str[0]) {
@@ -451,10 +446,8 @@ int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
     check_domterm(opts);
     FILE *out = fdopen(dup(get_tty_out()), "w");
     for (int i = 1; i < argc; i++) {
-        struct json_object *jobj = json_object_new_string(argv[i]);
-        fprintf(out, "\033]94;%s\007",
-                json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN));
-        json_object_put(jobj);
+        json jobj = argv[i];
+        fprintf(out, "\033]94;%s\007", jobj.dump().c_str());
     }
     fclose(out);
     return EXIT_SUCCESS;
@@ -481,30 +474,22 @@ int list_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
     return EXIT_SUCCESS;
 }
 
-const char *
-json_get_property(struct json_object *jobj, const char *fname)
-{
-    struct json_object *jval = NULL;
-    if (json_object_object_get_ex(jobj, fname, &jval)) {
-        return json_object_get_string(jval);
-    }
-    return NULL;
-}
 bool
-json_print_property(FILE *out, struct json_object *jobj, const char *fname,
+json_print_property(FILE *out, const json &jobj, const char *fname,
                     const char *prefix, char *label)
 {
-    const char *val = json_get_property(jobj, fname);
-    if (val)
-        fprintf(out, "%s%s: %s", prefix, label == NULL? fname : label, val);
-    return val != NULL;
+    auto jit = jobj.find(fname);
+    if (jit == jobj.end() || ! jit->is_string())
+        return false;
+    std::string val = *jit;
+    fprintf(out, "%s%s: %s", prefix, label == NULL? fname : label, val.c_str());
+    return true;
 }
 
 static void tclient_status_info(struct tty_client *tclient, FILE *out)
 {
     if (tclient->version_info) {
-        struct json_object *vobj =
-            json_tokener_parse(tclient->version_info);
+        json vobj = json::parse(tclient->version_info, nullptr, false);
         const char *prefix = " ";
         if (tclient->is_headless) {
             fprintf(out, "headless");
@@ -529,7 +514,6 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
         if (json_print_property(out, vobj, "firefox", prefix, NULL))
             prefix = ", ";
         //fprintf(out, " %s\n", tclient->version_info);
-        json_object_put(vobj);
     }
 }
 
@@ -537,15 +521,15 @@ static void pclient_status_info(struct pty_client *pclient, FILE *out)
 {
     struct tty_client *tclient = pclient->first_tclient;
     if (pclient->is_ssh_pclient && tclient && tclient->options) {
-        const char* remote =
-            get_setting(tclient->options->cmd_settings,
+        std::string remote =
+            get_setting_s(tclient->options->cmd_settings,
                         REMOTE_HOSTUSER_KEY);
-        fprintf(out, "ssh to remote %s", remote);
+        fprintf(out, "ssh to remote %s", remote.c_str());
         remote =
-            get_setting(tclient->options->cmd_settings,
+            get_setting_s(tclient->options->cmd_settings,
                         REMOTE_SESSIONNUMBER_KEY);
-        if (remote)
-            fprintf(out, "#%s", remote);
+        if (! remote.empty())
+            fprintf(out, "#%s", remote.c_str());
     } else
         fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
     if (pclient->session_name != NULL)
@@ -806,24 +790,22 @@ int settings_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_SUCCESS;
     }
     check_domterm(opts);
-    struct json_object *settings = opts->cmd_settings;
-    if (settings) {
-        json_object_put(settings);
-        opts->cmd_settings = NULL;
-    }
+    opts->cmd_settings.clear();
+    int nsettings = 0;
     for (int i = 1; i < argc; i++) {
-        if (! check_option_arg(argv[i], opts))
+        if (check_option_arg(argv[i], opts))
+            nsettings++;
+        else
             printf_error(opts, "non-option argument '%s' to settings command",
                          argv[i]);
     }
-    settings = opts->cmd_settings;
-    if (settings == NULL) {
+    if (nsettings == 0) {
         printf_error(opts, "no options specified");
         return EXIT_FAILURE;
     }
     FILE *tout = fdopen(dup(get_tty_out()), "w");
     fprintf(tout, URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
-            json_object_to_json_string_ext(settings, JSON_C_TO_STRING_PLAIN));
+            opts->cmd_settings.dump().c_str());
     fclose(tout);
     return EXIT_SUCCESS;
 }

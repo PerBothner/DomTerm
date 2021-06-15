@@ -11,8 +11,8 @@
 #endif
 
 const char* settings_fname = NULL;
-struct json_object *settings_json_object = NULL;
-const char *settings_as_json; // JSON of settings_json_object
+json settings_json_object;
+std::string settings_as_json; // JSON of settings_json_object
 int64_t settings_counter = 0;
 
 struct optinfo { enum option_name name; const char *str; int flags; };
@@ -62,58 +62,56 @@ lookup_option(const char *name)
 }
 
 void
-set_setting_ex(struct json_object **settings,
+set_setting_ex(json& settings,
                const char *key, const char *value,
                struct optinfo *opt, struct options *options)
 {
-    if (*settings == NULL)
-        *settings = json_object_new_object();
-    struct json_object *jval = NULL;
+    //struct json_object *jval = NULL;
     if (opt && (opt->flags & OPTION_NUMBER_TYPE) != 0) {
         double d; int len;
         sscanf(value, " %lg %n", &d, &len);
         if ((size_t) len != strlen(value))
             printf_error(options, "value for option '%s' is not a number", key);
         else
-            jval = json_object_new_double(d);
+            settings[key] = d;
     } else if (opt && (opt->flags & OPTION_STRING_TYPE) != 0) {
-        char *str = parse_string(value, false);
-        jval = json_object_new_string(str);
+        settings[key] = parse_string(value, false);
     } else
-        jval = json_object_new_string(value);
-    if (jval)
-        json_object_object_add(*settings, key, jval);
+        settings[key] = value;
 }
 
 void
-set_setting(struct json_object **settings, const char *key, const char *value)
+set_setting(json& settings, const char *key, const char *value)
 {
-    if (*settings == NULL)
-        *settings = json_object_new_object();
-    json_object_object_add(*settings, key,
-                           json_object_new_string(value));
+    settings[key] = value;
 }
 
 const char *
-get_setting(struct json_object *settings, const char *key)
+get_setting(const json& settings, const char *key)
 {
-    struct json_object *value;
-    if (settings != NULL
-        && json_object_object_get_ex(settings, key, &value))
-        return json_object_get_string(value);
-    else
-        return NULL;
+    auto it = settings.find(key);
+    if (it == settings.end() || ! it->is_string())
+        return nullptr;
+    std::string str = *it;
+    return strdup(str.c_str()); // FIXME!!
+    //return std::string(*it).c_str();
+}
+std::string
+get_setting_s(const json& settings, const char *key)
+{
+    auto it = settings.find(key);
+    return it == settings.end() || ! it->is_string() ? ""
+        : *it;
 }
 
 double
-get_setting_d(struct json_object *settings, const char *key, double dfault)
+get_setting_d(const json& settings, const char *key, double dfault)
 {
     errno = 0;
-    struct json_object *value;
-    if (settings == NULL
-        || ! json_object_object_get_ex(settings, key, &value))
+    auto it = settings.find(key);
+    if (it == settings.end() || ! it->is_number())
         return dfault;
-    return json_object_get_double(value);
+    return double(*it);
 }
 
 bool
@@ -139,7 +137,7 @@ check_option_arg(const char *arg, struct options *opts)
         if ((size_t) len != strlen(val))
             printf_error(opts, "value for option '%s' is not a number", key);
     }
-    set_setting_ex(&opts->cmd_settings, key, eq+1, opt, opts);
+    set_setting_ex(opts->cmd_settings, key, eq+1, opt, opts);
     free(key);
     return true;
 }
@@ -179,10 +177,8 @@ read_settings_emit_notice()
 void
 read_settings_file(struct options *options, bool re_reading)
 {
-    if (settings_json_object != NULL)
-        json_object_put(settings_json_object);
-    struct json_object *jobj = json_object_new_object();
-    settings_json_object = jobj;
+    settings_json_object = nullptr;
+    json& jobj = settings_json_object;
     if (settings_fname == NULL) {
         if (options->settings_file != NULL)
             settings_fname = options->settings_file;
@@ -207,8 +203,7 @@ read_settings_file(struct options *options, bool re_reading)
         read_settings_emit_notice();
     if (bad)
         return;
-    json_object_object_add(jobj, "##",
-                           json_object_new_int(++settings_counter));
+    jobj["##"] = ++settings_counter;
 
     off_t slen = stbuf.st_size;
     // +1 in case we need to write '\0' at end-of-file
@@ -303,7 +298,7 @@ read_settings_file(struct options *options, bool re_reading)
         }
         *value_end = '\0';
 
-        set_setting_ex(&jobj, key_start, value_start, opt, options);
+        set_setting_ex(jobj, key_start, value_start, opt, options);
     }
  err:
     fprintf(stderr, "error in %s at byte offset %ld%s\n",
@@ -312,44 +307,36 @@ read_settings_file(struct options *options, bool re_reading)
 
     munmap(sbuf, slen);
     close(settings_fd);
-    settings_as_json = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
+    settings_as_json = jobj.dump();
     request_upload_settings();
 }
-
-struct json_object *
-merged_settings(struct json_object *cmd_settings)
+void
+merge_settings(json& merged, const json& cmd_settings)
 {
-    struct json_object *jsettings = settings_json_object;
-    if (cmd_settings) {
-        if (jsettings == NULL)
-            return json_object_get(cmd_settings);
-#if JSON_C_VERSION_NUM >= ((0 << 16) | (13 << 8))
-        jsettings = NULL;
-        json_object_deep_copy(settings_json_object, &jsettings, NULL);
-#else
-	jsettings = json_tokener_parse(json_object_get_string(settings_json_object));
-#endif
-        json_object_object_foreach(cmd_settings, key, val) {
-            json_object_object_add(jsettings, key, json_object_get(val));
+    if (settings_json_object.is_object()) {
+        for (auto& el : settings_json_object.items()) {
+            merged[el.key()] = el.value();
         }
-        return jsettings;
-    } else if (jsettings == NULL)
-        return json_object_new_object();
-    else
-        return json_object_get(jsettings);
+    }
+    if (cmd_settings.is_object()) {
+        for (auto& el : cmd_settings.items()) {
+            merged[el.key()] = el.value();
+        }
+    }
 }
 
 void
 set_settings(struct options *options)
 {
 #if HAVE_LIBCLIPBOARD
-    set_setting(&options->cmd_settings,
+    set_setting(options->cmd_settings,
                 SERVER_FOR_CLIPBOARD, "paste,selection-paste");
 #endif
-    if (options->settings != NULL)
-        json_object_put(options->settings);
-    struct json_object *msettings = merged_settings(options->cmd_settings);
-    options->settings = msettings;
+    //if (options->settings != NULL)
+    //json_object_put(options->settings);
+    //options->settings.clear();
+    options->settings = nullptr;
+    merge_settings(options->settings, options->cmd_settings);
 
     if (options->shell_argv)
         free((void*) options->shell_argv);

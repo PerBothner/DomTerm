@@ -183,6 +183,21 @@ maybe_exit(int exit_code)
         do_exit(exit_code, false);
 }
 
+#if REMOTE_SSH
+#if PASS_STDFILES_UNIX_SOCKET
+void close_local_proxy(struct pty_client *pclient, int exit_code)
+{
+    lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number, pclient->cmd_socket);
+    if (pclient->cmd_socket >= 0) {
+        char r = exit_code;
+        if (write(pclient->cmd_socket, &r, 1) != 1)
+            lwsl_err("write %d failed - callback_cmd %s\n", pclient->cmd_socket, strerror(errno));
+        close(pclient->cmd_socket);
+        pclient->cmd_socket = -1;
+    }
+}
+#endif
+
 static void
 pclient_close(struct pty_client *pclient, bool xxtimed_out)
 {
@@ -751,9 +766,9 @@ find_session(const char *specifier)
 static char localhost_localdomain[] = "localhost.localdomain";
 
 struct test_link_data {
-    const char *href;
-    const char *position;
-    json_object *obj;
+    const char* href;
+    const char* position;
+    const json *obj;
 };
 
 static bool test_link_clause(const char *clause, void* data)
@@ -772,9 +787,8 @@ static bool test_link_clause(const char *clause, void* data)
             && memcmp(dot, clause, clen) == 0;
     } else if (clen == 7
                && memcmp(clause, "in-atom", clen) == 0) {
-        struct json_object *jatom = NULL;
-        return  json_object_object_get_ex(test_data->obj, "isAtom", &jatom)
-            && json_object_get_boolean(jatom);
+        auto jatom = test_data->obj->find("isAtom");
+        return jatom != test_data->obj->end() && jatom->is_boolean() && *jatom;
     } else if (clen == 13
                && memcmp(clause, "with-position", clen) == 0) {
         return test_data->position != NULL;
@@ -783,11 +797,14 @@ static bool test_link_clause(const char *clause, void* data)
 }
 
 char *
-check_template(const char *tmplate, json_object *obj)
+check_template(const char *tmplate, const json& obj)
 {
-    const char *filename = get_setting(obj, "filename");
-    const char *position = get_setting(obj, "position");
-    const char *href = get_setting(obj, "href");
+    std::string sfilename = get_setting_s(obj, "filename");
+    std::string sposition = get_setting_s(obj, "position");
+    std::string shref = get_setting_s(obj, "href");
+    const char*filename = sfilename.empty() ? NULL : sfilename.c_str();
+    const char*position = sposition.empty() ? NULL : sposition.c_str();
+    const char*href = shref.empty() ? NULL : shref.c_str();
     if (filename != NULL && filename[0] == '/' && filename[1] == '/') {
         if (filename[2] == '/')
             filename = filename + 2;
@@ -819,7 +836,7 @@ check_template(const char *tmplate, json_object *obj)
     struct test_link_data test_data;
     test_data.href = href;
     test_data.position = position;
-    test_data.obj = obj;
+    test_data.obj = &obj;
     tmplate = check_conditional(tmplate, test_link_clause, &test_data);
     if (! tmplate)
         return NULL;
@@ -909,8 +926,8 @@ check_template(const char *tmplate, json_object *obj)
     return buffer;
 }
 
-bool
-handle_tlink(const char *tmplate, json_object *obj)
+static bool
+handle_tlink(const char *tmplate, const json& obj)
 {
     char *t = strdup(tmplate);
     char *p = t;
@@ -935,10 +952,10 @@ handle_tlink(const char *tmplate, json_object *obj)
     if (command == NULL)
         return false;
     if (strcmp(command, "browser")==0||strcmp(command, "default")==0) {
-        struct json_object *jhref;
         free(command);
-        if (json_object_object_get_ex(obj, "href", &jhref)) {
-            default_link_command(json_object_get_string(jhref));
+        auto jit = obj.find("href");
+        if (jit != obj.end() && jit->is_string()) {
+            default_link_command(std::string(*jit).c_str());
             return true;
         }
     }
@@ -972,23 +989,22 @@ backup_output(struct pty_client *pclient, char *data_start, int data_length)
     pclient->preserved_end += data_length;
 }
 
-void
-handle_link(json_object *obj)
+static void
+handle_link(const json& obj)
 {
-    if (json_object_object_get_ex(obj, "filename", NULL)) {
-        const char *tmplate = get_setting(main_options->settings, "open.file.application");
-        if (tmplate == NULL)
-            tmplate =
-              "{in-atom}{with-position|!.html}atom;"
+    if (obj.find("filename") != obj.end()) {
+        std::string stmplate = get_setting_s(main_options->settings, "open.file.application");
+        const char *tmplate = ! stmplate.empty() ? stmplate.c_str()
+            : "{in-atom}{with-position|!.html}atom;"
               "{with-position|!.html}emacsclient;"
               "{with-position|!.html}emacs;"
               "{with-position|!.html}atom";
         if (handle_tlink(tmplate, obj))
             return;
     }
-    const char *tmplate = get_setting(main_options->settings, "open.link.application");
-    if (tmplate == NULL)
-        tmplate = "{!mailto:}browser;{!mailto:}chrome;{!mailto:}firefox";
+    std::string stmplate = get_setting_s(main_options->settings, "open.link.application");
+    const char *tmplate = ! stmplate.empty() ? stmplate.c_str()
+        : "{!mailto:}browser;{!mailto:}chrome;{!mailto:}firefox";
     handle_tlink(tmplate, obj);
 }
 
@@ -1137,9 +1153,10 @@ reportEvent(const char *name, char *data, size_t dlen,
             trmios.c_cc[VSUSP] = 032;
             trmios.c_cc[VQUIT] = 034;
         }
-        json_object *obj = json_tokener_parse(q2+1);
-        const char *kstr = json_object_get_string(obj);
-        int klen = json_object_get_string_len(obj);
+        json obj = json::parse(q2+1, nullptr, false);
+        std::string str = obj.is_string() ? obj : "";
+        const char *kstr = str.c_str();
+        int klen = str.length();
         int kstr0 = klen != 1 ? -1 : kstr[0];
         if (isCanon
             && kstr0 != trmios.c_cc[VINTR]
@@ -1184,19 +1201,18 @@ reportEvent(const char *name, char *data, size_t dlen,
                 to_drain -= r;
             }
         }
-        json_object_put(obj);
     } else if (strcmp(name, "SESSION-NAME") == 0) {
         char *q = strchr(data, '"');
-        json_object *obj = json_tokener_parse(q);
-        const char *kstr = json_object_get_string(obj);
-        int klen = json_object_get_string_len(obj);
+        json obj = json::parse(q, nullptr, false);
+        std::string str = obj.is_string() ? obj : "";
+        const char *kstr = str.c_str();
+        int klen = str.length();
         char *session_name = challoc(klen+1);
         strcpy(session_name, kstr);
         if (pclient->session_name)
             free(pclient->session_name);
         pclient->session_name = session_name;
         pclient->session_name_unique = true;
-        json_object_put(obj);
         FOREACH_PCLIENT(p) {
             if (p != pclient && p->session_name != NULL
                 && strcmp(session_name, p->session_name) == 0) {
@@ -1217,7 +1233,7 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "SESSION-NUMBER-ECHO") == 0) {
         struct options *options = client->options;
         if (proxyMode == proxy_display_local && options) {
-            set_setting(&options->cmd_settings, REMOTE_SESSIONNUMBER_KEY, data);
+            set_setting(options->cmd_settings, REMOTE_SESSIONNUMBER_KEY, data);
         }
         return true;
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
@@ -1236,7 +1252,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             geom[glen] = 0;
             if (! options)
                 client->options = options = link_options(NULL);
-            set_setting(&options->cmd_settings, "geometry", geom);
+            set_setting(options->cmd_settings, "geometry", geom);
         }
         const char* url = !data[0] || (data[0] == '#' && g0 == data + 1) ? NULL
             : data;
@@ -1264,9 +1280,8 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_wsi = wsi;
     } else if (strcmp(name, "LINK") == 0) {
-        json_object *obj = json_tokener_parse(data);
+        json obj = json::parse(data, nullptr, false);
         handle_link(obj);
-        json_object_put(obj);
     } else if (strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0
         || strcmp(name, "REQUEST-SELECTION-TEXT") == 0) {
         char *clipText = NULL;
@@ -1282,11 +1297,10 @@ reportEvent(const char *name, char *data, size_t dlen,
             clipText = clipboard_text_ex(clipboard_manager, NULL, cmode);
 #endif
 	if (clipText != NULL) {
-            struct json_object *jobj = json_object_new_string(clipText);
+            json jobj = clipText;
             printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
-                              json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN));
+                              jobj.dump().c_str());
             free(clipText);
-            json_object_put(jobj);
             lws_callback_on_writable(wsi);
         }
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
@@ -1310,20 +1324,22 @@ reportEvent(const char *name, char *data, size_t dlen,
         static bool note_written = false;
         if (! note_written)
             lwsl_notice("(lines starting with '#NN:' (like the following) are from browser at connection NN)\n");
-        json_object *dobj = json_tokener_parse(data);
-        const char *dstr = json_object_get_string(dobj);
-        int dlen = json_object_get_string_len(dobj);
-        lwsl_notice("#%d: %.*s\n", client->connection_number, dlen, dstr);
-        json_object_put(dobj);
+        json dobj = json::parse(data, nullptr, false);
+        if (dobj.is_string()) {
+            std::string dstr = dobj;
+            lwsl_notice("#%d: %.*s\n", client->connection_number,
+                        dstr.length(), dstr.c_str());
+        }
         note_written = true;
     } else if (strcmp(name, "ECHO-URGENT") == 0) {
-        json_object *obj = json_tokener_parse(data);
-        const char *kstr = json_object_get_string(obj);
-        FOREACH_WSCLIENT(t, pclient) {
-            printf_to_browser(t, URGENT_WRAP("%s"), kstr);
-            lws_callback_on_writable(t->out_wsi);
+        json obj = json::parse(data, nullptr, false);
+        if (obj.is_string()) {
+            std::string str = obj;
+            FOREACH_WSCLIENT(t, pclient) {
+                printf_to_browser(t, URGENT_WRAP("%s"), str.c_str());
+                lws_callback_on_writable(t->out_wsi);
+            }
         }
-        json_object_put(obj);
     } else if (strcmp(name, "RECONNECT") == 0) {
         struct options *options = client->options;
         if (! options) {
@@ -1334,8 +1350,8 @@ reportEvent(const char *name, char *data, size_t dlen,
             lwsl_err("RECONNECT while already connected\n");
             return true;
         }
-        const char *host_arg = get_setting(options->cmd_settings, REMOTE_HOSTUSER_KEY);
-        reconnect(wsi, client, host_arg, data);
+        std::string host_arg = get_setting_s(options->cmd_settings, REMOTE_HOSTUSER_KEY);
+        reconnect(wsi, client, host_arg.c_str(), data);
         return true;
     } else {
     }
@@ -1518,15 +1534,14 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         sb.blank(LWS_PRE);
     if (client->uploadSettingsNeeded) { // proxyMode != proxy_local ???
         client->uploadSettingsNeeded = false;
-        if (settings_as_json != NULL) {
-            sb.printf(URGENT_WRAP("\033]89;%s\007"), settings_as_json);
+        if (! settings_as_json.empty()) {
+            sb.printf(URGENT_WRAP("\033]89;%s\007"), settings_as_json.c_str());
         }
     }
     if (client->initialized == 0 && proxyMode != proxy_command_local) {
-        if (client->options && client->options->cmd_settings) {
-            //json_object_put(client->cmd_settings);
+        if (client->options && client->options->cmd_settings.is_object()) {
             sb.printf(URGENT_WRAP("\033]88;%s\007"),
-                      json_object_to_json_string_ext(client->options->cmd_settings, JSON_C_TO_STRING_PLAIN));
+                      client->options->cmd_settings.dump().c_str());
         } else {
             sb.printf(URGENT_WRAP("\033]88;{}\007"));
         }
@@ -1640,21 +1655,6 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     }
     return to_proxy && client->pclient == NULL ? -1 : 0;
 }
-
-#if REMOTE_SSH
-#if PASS_STDFILES_UNIX_SOCKET
-void close_local_proxy(struct pty_client *pclient, int exit_code)
-{
-    lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number, pclient->cmd_socket);
-    if (pclient->cmd_socket >= 0) {
-        char r = exit_code;
-        if (write(pclient->cmd_socket, &r, 1) != 1)
-            lwsl_err("write %d failed - callback_cmd %s\n", pclient->cmd_socket, strerror(errno));
-        close(pclient->cmd_socket);
-        pclient->cmd_socket = -1;
-    }
-}
-#endif
 
 #if 0
 static long
@@ -2089,13 +2089,15 @@ display_session(struct options *options, struct pty_client *pclient,
             sb.printf(";window=%d", wnum);
             if (options->headless)
                 sb.printf(";headless=true");
-            const char *verbosity = get_setting(options->settings, "log.js-verbosity");
-            if (verbosity) // as OPTION_NUMBER_TYPE does not need encoding
-                sb.printf(";js-verbosity=%s", verbosity);
-            const char *js_string_max = get_setting(options->settings, "log.js-string-max");
-            if (js_string_max) // as OPTION_NUMBER_TYPE does not need encoding
-                sb.printf(";log-string-max=%s", js_string_max);
-            const char *log_to_server = get_setting(options->settings, "log.js-to-server");
+            std::string verbosity = get_setting_s(options->settings, "log.js-verbosity");
+            if (! verbosity.empty()) // as OPTION_NUMBER_TYPE does not need encoding
+                sb.printf(";js-verbosity=%s", verbosity.c_str());
+            std::string js_string_max = get_setting_s(options->settings, "log.js-string-max");
+            if (! js_string_max.empty()) // as OPTION_NUMBER_TYPE does not need encoding
+                sb.printf(";log-string-max=%s", js_string_max.c_str());
+            std::string slog_to_server = get_setting_s(options->settings, "log.js-to-server");
+            const char *log_to_server = slog_to_server.empty() ? NULL
+                : slog_to_server.c_str();
             if (log_to_server && (strcmp(log_to_server, "yes") == 0
                                   || strcmp(log_to_server, "true") == 0
                                   || strcmp(log_to_server, "both") == 0)) {
@@ -2337,8 +2339,8 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
     } else {
         host_spec = strdup(host_arg);
     }
-    const char *ssh_cmd = get_setting(opts->settings, "command.ssh");
-    char *ssh_expanded = expand_host_conditional(ssh_cmd, host_spec);
+    std::string ssh_cmd = get_setting_s(opts->settings, "command.ssh");
+    char *ssh_expanded = expand_host_conditional(ssh_cmd.c_str(), host_spec);
     static const char *ssh_default = "ssh";
     if (ssh_expanded == NULL)
         ssh_expanded = strdup(ssh_default);
@@ -2351,8 +2353,8 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         free((void*)ssh_args);
         return NULL;
     }
-    const char *domterm_cmd = get_setting(opts->settings, "command.remote-domterm");
-    char *dt_expanded = expand_host_conditional(domterm_cmd, host_spec);
+    std::string domterm_cmd = get_setting_s(opts->settings, "command.remote-domterm");
+    char *dt_expanded = expand_host_conditional(domterm_cmd.c_str(), host_spec);
     if (dt_expanded == NULL)
         dt_expanded = strdup("domterm");
     argblob_t domterm_args = parse_args(dt_expanded, false);
@@ -2422,8 +2424,8 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         pclient->preserve_mode = 0;
         char tbuf[20];
         sprintf(tbuf, "%d", pclient->session_number);
-        set_setting(&opts->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
-        set_setting(&opts->cmd_settings, REMOTE_HOSTUSER_KEY, host_spec);
+        set_setting(opts->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
+        set_setting(opts->cmd_settings, REMOTE_HOSTUSER_KEY, host_spec);
         lwsl_notice("handle_remote pcl:%p\n", pclient);
         if (tclient == NULL)
             make_proxy(opts, pclient, proxy_command_local);
@@ -2658,11 +2660,10 @@ callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *use
                 int nr = read(sclient->pipe_reader, buf, buf_len);
                 lwsl_notice("- read %d\n", nr);
                 if (nr > 0) {
-                    json_object *jstr = json_object_new_string_len(buf, nr);
+                    json jstr = std::string(buf, nr);
                     printf_to_browser(tclient, URGENT_WRAP("\033]232;%s\007"),
-                                      json_object_to_json_string(jstr));
+                                      jstr.dump().c_str());
                     lws_callback_on_writable(tclient->out_wsi);
-                    json_object_put(jstr);
                 }
                 free(buf);
                 return nr >= 0 ? 0 : -1;
