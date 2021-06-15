@@ -560,7 +560,7 @@ IMAGEMAGICK_CONVERT = convert
 doc/domterm2.ico: # doc/domterm2.svg
 	$(IMAGEMAGICK_CONVERT) -background none -density 384 doc/domterm2.svg -define icon:auto-resize=64,32,16 doc/domterm2.ico
 
-APPIMAGETOOL=/home/bothner/Software/appimagetool-x86_64.AppImage
+APPIMAGETOOL=appimagetool-x86_64.AppImage
 APP_RUN=appimage/DomTerm.AppDir/AppRun
 APP_DESKTOP=appimage/DomTerm.AppDir/domterm.desktop
 #if echo "@LIBWEBSOCKETS_LIBS@"|grep '[-]lwebsockets' >&/dev/null; then echo Must link libsockets staticaly for AppImage; false; fi
