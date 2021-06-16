@@ -780,6 +780,13 @@ void* sbuf::blank(int space)
     return p;
 }
 
+char* sbuf::null_terminated()
+{
+    extend(1);
+    buffer[len] = '\0';
+    return buffer;
+}
+
 void sbuf::append(const char *bytes, ssize_t length)
 {
     if (length < 0)
@@ -864,4 +871,14 @@ printf_error(struct options *opts, const char *format, ...)
         sb.append(&out_code, 1);
 #endif
     write(opts->fd_err, sb.buffer, sb.len);
+}
+
+bool
+popen_read(const char *command, sbuf& sb)
+{
+    FILE *f = popen(command, "r");
+    if (f == NULL)
+        return false;
+    sb.copy_file(f);
+    return pclose(f) == 0;
 }

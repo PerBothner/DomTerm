@@ -970,8 +970,6 @@ This is currently the nicest (and default) front-end.
 
 @item @code{--firefox}
 Same as @code{--browser=firefox}.
-(This used to start a @uref{https://en.wikipedia.org/wiki/XUL,XUL}
-application, but that is no longer supported.)
 
 @item @code{--chrome}
 Creates a new window/tab in the Google Chrome browser.
@@ -1651,6 +1649,15 @@ possibly with some platform-depending knowledge of default locations.
 @item @code{@b{command.headless} =} @var{command}
 Command used when the @code{--headless} option requests
 an ``invisible'' @ref{Headless mode,headless} window.
+
+@item @code{@b{command.get-clipboard} =} @var{command}
+@itemx @code{@b{command.get-selection} =} @var{command}
+Command that prints the string contents of the clipsboard (or the selection)
+to standard output.  When the user requests a Paste operation,
+the request is (in most cases - except for Electron) forwarded to the server,
+which runs the named @var{command}.
+The is done because browser security restrictions may limit when
+JavaScript can read the clipboard.
 
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size and/or of new top-level windows

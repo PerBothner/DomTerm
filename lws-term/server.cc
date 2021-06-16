@@ -1542,22 +1542,10 @@ static char *userprofile_cache;
 char *get_WSL_userprofile()
 {
     if (userprofile_cache == NULL) {
-        FILE *f = popen("/mnt/c/Windows/System32/cmd.exe /c \"<nul set /p=%UserProfile%\" 2>/dev/null", "r");
-        if (f == NULL)
+        sbuf sb;
+        if (! popen_read("/mnt/c/Windows/System32/cmd.exe /c \"<nul set /p=%UserProfile%\" 2>/dev/null", sb))
             return NULL;
-        char buf[512];
-        int i = 0;
-        for (;;) {
-            size_t avail = sizeof(buf) - 1 - i;
-            if (avail <= 0)
-                return NULL;
-            size_t n = fread(buf+i, 1, avail, f);
-            if (n == 0)
-                break;
-            i += n;
-        }
-        fclose(f);
-        buf[i] = '\0';
+        char *buf = sb.null_terminated();
         char *nl = strchr(buf, '\n');
         if (nl)
             *nl = '\0';

@@ -1054,6 +1054,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             struct lws *wsi, struct tty_client *client,
             enum proxy_mode proxyMode)
 {
+    struct options *options = client->options;
     struct pty_client *pclient = client->pclient;
     if (pclient)
         lwsl_info("reportEvent :%d %s '%s' mode:%d\n",
@@ -1098,7 +1099,6 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (pclient == NULL)
             return true;
         if (pclient->cmd) {
-            struct options *options = client->options;
             run_command(pclient->cmd, pclient->argv,
                         options ? options->cwd : NULL,
                         options ? options->env : NULL,
@@ -1231,13 +1231,11 @@ reportEvent(const char *name, char *data, size_t dlen,
             }
         }
     } else if (strcmp(name, "SESSION-NUMBER-ECHO") == 0) {
-        struct options *options = client->options;
         if (proxyMode == proxy_display_local && options) {
             set_setting(options->cmd_settings, REMOTE_SESSIONNUMBER_KEY, data);
         }
         return true;
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
-        struct options *options = client->options;
         static char gopt[] =  "geometry=";
         char *g0 = strstr(data, gopt);
         char *geom = NULL;
@@ -1284,17 +1282,37 @@ reportEvent(const char *name, char *data, size_t dlen,
         handle_link(obj);
     } else if (strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0
         || strcmp(name, "REQUEST-SELECTION-TEXT") == 0) {
-        char *clipText = NULL;
-      // WSL: popen("powershell.exe Get-Clipboard")
-#if HAVE_LIBCLIPBOARD
-        if (clipboard_manager == NULL) {
-            clipboard_manager = clipboard_new(NULL);
+        bool getting_clipboard = strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0;
+        if (options == NULL)
+            options = main_options;
+        std::string get_clipboard_cmd =
+            get_setting_s(options->settings,
+                          getting_clipboard ? "command.get-clipboard"
+                          : "command.get-selection");
+        if (get_clipboard_cmd.empty()) {
+            if (getting_clipboard && is_WindowsSubsystemForLinux())
+                get_clipboard_cmd = "powershell.exe Get-Clipboard";
+#if __APPLE__
+            if (getting_clipboard)
+                get_clipboard_cmd = "pbpaste";
+#endif
         }
-        clipboard_mode cmode =
-            strcmp(name, "REQUEST-CLIPBOARD-TEXT") == 0 ? LCB_CLIPBOARD
-            : LCB_PRIMARY;
-        if (clipboard_manager)
-            clipText = clipboard_text_ex(clipboard_manager, NULL, cmode);
+        char *clipText = NULL;
+        struct sbuf sb;
+        if (! get_clipboard_cmd.empty()) {
+            if (popen_read(get_clipboard_cmd.c_str(), sb)) {
+                clipText= sb.null_terminated();
+            }
+        } else {
+#if HAVE_LIBCLIPBOARD
+            if (clipboard_manager == NULL) {
+                clipboard_manager = clipboard_new(NULL);
+            }
+            clipboard_mode cmode = getting_clipboard ? LCB_CLIPBOARD : LCB_PRIMARY;
+
+            if (clipboard_manager)
+                clipText = clipboard_text_ex(clipboard_manager, NULL, cmode);
+        }
 #endif
 	if (clipText != NULL) {
             json jobj = clipText;
@@ -1341,7 +1359,6 @@ reportEvent(const char *name, char *data, size_t dlen,
             }
         }
     } else if (strcmp(name, "RECONNECT") == 0) {
-        struct options *options = client->options;
         if (! options) {
             lwsl_err("RECONNECT with NULL options field\n");
             return true;

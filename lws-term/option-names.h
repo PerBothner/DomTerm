@@ -8,6 +8,8 @@ OPTION_S(command_electron, "command.electron", OPTION_MISC_TYPE)
 OPTION_S(command_headless, "command.headless", OPTION_MISC_TYPE)
 OPTION_S(command_ssh, "command.ssh", OPTION_MISC_TYPE)
 OPTION_S(command_remote_domterm, "command.remote-domterm", OPTION_MISC_TYPE)
+OPTION_S(command_get_clipboard, "command.get-clipboard", OPTION_MISC_TYPE)
+OPTION_S(command_get_selection, "command.get-selection", OPTION_MISC_TYPE)
 /*OPTION_S(window_geometry, "geometry", OPTION_MISC_TYPE)*/
 OPTION_S(geometry, "geometry", OPTION_MISC_TYPE)
 OPTION_S(openfile_application, "open.file.application", OPTION_MISC_TYPE)

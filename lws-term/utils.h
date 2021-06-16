@@ -65,6 +65,7 @@ public:
         append(sb.buffer, sb.len);
     }
     void* blank(int space);
+    char *null_terminated();
     void copy_file(FILE* in);
     void vprintf(const char *format, va_list ap)
 #ifdef __GNUC__
@@ -89,4 +90,5 @@ extern const char *extract_command_from_list(const char *, const char **,
                                              const char**, const char **);
 typedef bool (*test_function_t)(const char *clause, void* data);
 extern const char *check_conditional(const char *, test_function_t, void*);
+extern bool popen_read(const char *command, sbuf& sb);
 #endif //TTYD_UTIL_H
