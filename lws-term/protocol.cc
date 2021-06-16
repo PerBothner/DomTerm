@@ -1312,8 +1312,8 @@ reportEvent(const char *name, char *data, size_t dlen,
 
             if (clipboard_manager)
                 clipText = clipboard_text_ex(clipboard_manager, NULL, cmode);
-        }
 #endif
+        }
 	if (clipText != NULL) {
             json jobj = clipText;
             printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
