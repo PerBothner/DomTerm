@@ -567,7 +567,7 @@ git clone https://github.com/warmcat/libwebsockets
 cd libwebsockets
 mkdir build
 cd build
-cmake -DLWS_WITH_SSL=0 -DLWS_WITHOUT_EXTENSIONS=0 DLWS_WITH_ZIP_FOPS=1 ..
+cmake -DLWS_WITH_SSL=0 -DLWS_WITHOUT_EXTENSIONS=0 -DLWS_WITH_ZIP_FOPS=1 ..
 @end example
 The @code{-D} options are suggested but not required:
 @code{-DLWS_WITH_SSL=0} avoids a dependency on OpenSSL;
@@ -636,7 +636,7 @@ git clone https://github.com/jtanx/libclipboard.git
 cd libclipboard
 LIBCLIPBOARD_DIR=`pwd`
 cmake .
-make install
+make
 @end example
 
 @subsubheading Optional: Qt Docking (experimental)
