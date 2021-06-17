@@ -433,32 +433,6 @@ get_bin_relative_path(const char* app_path)
     return buf;
 }
 
-/* Returns freshly allocated string or NULL. */
-char *
-find_in_path(const char *name)
-{
-    if (index(name, '/') && access(name, X_OK) == 0)
-        return strdup(name);
-    // FIXME: if (strchr(name, '/') prepend working directory
-    char *path = getenv("PATH");
-    int plen = strlen(path);
-    char *end = path + plen;
-    char *buf = challoc(plen + strlen(name) + 2);
-    for (;;) {
-        char* colon = strchr(path, ':');
-        if (colon == NULL)
-            colon = end;
-        if (path != colon) {
-             sprintf(buf, "%.*s/%s", (int) (colon-path), path, name);
-            if (access(buf, X_OK) == 0)
-                return buf;
-        }
-        if (colon == end)
-            return NULL;
-        path = colon + 1;
-    }
-}
-
 char *
 fix_for_windows(char * fname)
 {

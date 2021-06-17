@@ -882,3 +882,116 @@ popen_read(const char *command, sbuf& sb)
     sb.copy_file(f);
     return pclose(f) == 0;
 }
+
+/* Returns freshly allocated string or NULL. */
+char *
+find_in_path(const char *name)
+{
+    if (index(name, '/') && access(name, X_OK) == 0)
+        return strdup(name);
+    // FIXME: if (strchr(name, '/') prepend working directory
+    char *path = getenv("PATH");
+    int plen = strlen(path);
+    char *end = path + plen;
+    char *buf = challoc(plen + strlen(name) + 2);
+    for (;;) {
+        char* colon = strchr(path, ':');
+        if (colon == NULL)
+            colon = end;
+        if (path != colon) {
+             sprintf(buf, "%.*s/%s", (int) (colon-path), path, name);
+            if (access(buf, X_OK) == 0)
+                return buf;
+        }
+        if (colon == end)
+            return NULL;
+        path = colon + 1;
+    }
+}
+
+bool
+have_in_path(const char *name)
+{
+    char *p = find_in_path(name);
+    if (! p)
+        return false;
+    free(p);
+    return true;
+}
+
+static const char *read_sel_cmd = NULL;
+static const char *read_clip_cmd = NULL;
+static const char *write_clip_cmd = NULL;
+static int clipboard_read_commands_set = 0; // 2 means free needed
+static int clipboard_write_commands_set = 0;
+
+/** OP is "copy", "paste", or "selection-paste" */
+const char *get_clipboard_command(const char *op, bool clear_cache)
+{
+    //Based on:
+    //https://github.com/neovim/neovim/blob/master/runtime/autoload/provider/clipboard.vim
+    //https://github.com/ohmyzsh/ohmyzsh/blob/master/lib/clipboard.zsh
+    if (strcmp(op, "copy") == 0) {
+        if (clear_cache) {
+            if (clipboard_write_commands_set == 2)
+                free((char*) write_clip_cmd);
+            clipboard_write_commands_set = 0;
+        }
+        if (clipboard_write_commands_set == 0) {
+            clipboard_write_commands_set = 1;
+            if (have_in_path("pbcopy")) {
+                write_clip_cmd = "pcopy";
+            } else if (getenv("WAYLAND_DISPLAY") && have_in_path("wl-copy")) {
+                write_clip_cmd = "wl-copy --foreground --type text/plain";
+            } else if (getenv("DISPLAY") && have_in_path("xclip")) {
+                write_clip_cmd = "xclip -quiet -i -selection clipboard";
+            } else if (getenv("DISPLAY") && have_in_path("xsel")) {
+                write_clip_cmd = "xsel --nodetach -i -b";
+            } else if (have_in_path("lemonade")) {
+                write_clip_cmd = "lemonade copy";
+            } else if (have_in_path("clip.exe")) {
+                write_clip_cmd = "clip.exe";
+            } else
+                write_clip_cmd = NULL;
+        }
+        return write_clip_cmd;
+    } else {
+        if (clear_cache) {
+            if (clipboard_read_commands_set == 2) {
+                free((char*) read_clip_cmd);
+                free((char*) read_sel_cmd);
+            }
+            clipboard_read_commands_set = 0;
+        }
+        if (clipboard_read_commands_set == 0) {
+            clipboard_read_commands_set = 1;
+            read_clip_cmd = read_sel_cmd = NULL;
+            char *dt_libclip_path = NULL;
+            if (have_in_path("pbpaste")) {
+                read_clip_cmd = "pbpaste";
+            } else if (getenv("WAYLAND_DISPLAY") && have_in_path("wl-paste")) {
+                read_clip_cmd = "wl-paste --no-newline";
+                read_sel_cmd = "wl-paste --no-newline --primary";
+            } else if (getenv("DISPLAY")) {
+                char *dt_libclip_path = get_bin_relative_path("/bin/dt-libclip");
+                if (have_in_path(dt_libclip_path)) {
+                    read_clip_cmd = get_bin_relative_path("/bin/dt-libclip --print-clipboard");
+                    read_sel_cmd = get_bin_relative_path("/bin/dt-libclip --print-selection");
+                    clipboard_read_commands_set = 2;
+                } else if (have_in_path("xclip")) {
+                    read_clip_cmd = "xclip -o -selection clipboard";
+                    read_sel_cmd = "xclip -o -selection primary";
+                } else if (have_in_path("xsel")) {
+                    read_clip_cmd = "xsel -o -b";
+                    read_sel_cmd = "xsel -o -p";
+                }
+                free(dt_libclip_path);
+            } else if (have_in_path("lemonade")) {
+                read_clip_cmd = "lemonade paste";
+            } else if (have_in_path("powershell.exe")) {
+                read_clip_cmd = "powershell.exe -noprofile -command Get-Clipboard";
+            }
+        }
+        return strcmp(op, "paste") == 0 ? read_clip_cmd : read_sel_cmd;
+    }
+}

@@ -6,11 +6,6 @@
 #include <time.h>
 #include <new>
 
-#if HAVE_LIBCLIPBOARD
-#include <libclipboard.h>
-clipboard_c* clipboard_manager = NULL;
-#endif
-
 #define BUF_SIZE 1024
 
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
@@ -1290,35 +1285,16 @@ reportEvent(const char *name, char *data, size_t dlen,
                           getting_clipboard ? "command.get-clipboard"
                           : "command.get-selection");
         if (get_clipboard_cmd.empty()) {
-            if (getting_clipboard && is_WindowsSubsystemForLinux())
-                get_clipboard_cmd = "powershell.exe Get-Clipboard";
-#if __APPLE__
-            if (getting_clipboard)
-                get_clipboard_cmd = "pbpaste";
-#endif
+            const char *cmd = get_clipboard_command(getting_clipboard ? "paste" : "selection-paste");
+            if (cmd)
+                get_clipboard_cmd = cmd;
         }
-        char *clipText = NULL;
         struct sbuf sb;
-        if (! get_clipboard_cmd.empty()) {
-            if (popen_read(get_clipboard_cmd.c_str(), sb)) {
-                clipText= sb.null_terminated();
-            }
-        } else {
-#if HAVE_LIBCLIPBOARD
-            if (clipboard_manager == NULL) {
-                clipboard_manager = clipboard_new(NULL);
-            }
-            clipboard_mode cmode = getting_clipboard ? LCB_CLIPBOARD : LCB_PRIMARY;
-
-            if (clipboard_manager)
-                clipText = clipboard_text_ex(clipboard_manager, NULL, cmode);
-#endif
-        }
-	if (clipText != NULL) {
-            json jobj = clipText;
+        if (! get_clipboard_cmd.empty()
+            && popen_read(get_clipboard_cmd.c_str(), sb)) {
+            json jobj = sb.null_terminated();
             printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
                               jobj.dump().c_str());
-            free(clipText);
             lws_callback_on_writable(wsi);
         }
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {

@@ -328,10 +328,13 @@ merge_settings(json& merged, const json& cmd_settings)
 void
 set_settings(struct options *options)
 {
-#if HAVE_LIBCLIPBOARD
-    set_setting(options->cmd_settings,
-                SERVER_FOR_CLIPBOARD, "paste,selection-paste");
-#endif
+    if (get_clipboard_command("paste")) {
+        std::string server_for_clipboard_option = "paste";
+        if (get_clipboard_command("selection-paste"))
+            server_for_clipboard_option += ",selection-paste";
+        set_setting(options->cmd_settings,
+                    SERVER_FOR_CLIPBOARD, server_for_clipboard_option.c_str());
+    }
     //if (options->settings != NULL)
     //json_object_put(options->settings);
     //options->settings.clear();

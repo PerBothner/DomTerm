@@ -230,8 +230,8 @@ if test "$with_libwebsockets" != "no"; then
   case "${with_libclipboard}" in
   "yes" | "" | "no") ;;
   *)
-    LIBWEBSOCKETS_LIBS="${LIBWEBSOCKETS_LIBS} ${with_libclipboard}/lib/libclipboard.a "'$(FRAMEWORK_ARG)'
-    LIBWEBSOCKETS_CFLAGS="${LIBWEBSOCKETS_CFLAGS} -DHAVE_LIBCLIPBOARD=1 -I${with_libclipboard}/include" ;;
+    LIBCLIPBOARD_LIBS="${with_libclipboard}/lib/libclipboard.a "'$(FRAMEWORK_ARG)'
+    LIBCLIPBOARD_CFLAGS="-I${with_libclipboard}/include" ;;
   esac
   if test -z "$enable_compiled_in_resources"; then
     AC_LANG(C)
@@ -335,6 +335,8 @@ AC_SUBST(JAVA_INCLUDE_SUBDIR)
 AC_SUBST(JAVAFX_MODULE_FLAGS)
 AC_SUBST(LIBWEBSOCKETS_LIBS)
 AC_SUBST(LIBWEBSOCKETS_CFLAGS)
+AC_SUBST(LIBCLIPBOARD_LIBS)
+AC_SUBST(LIBCLIPBOARD_CFLAGS)
 AC_SUBST(OPENSSL_LIBS)
 AC_SUBST(OPENSSL_CFLAGS)
 AC_SUBST(DOMTERM_VERSION)

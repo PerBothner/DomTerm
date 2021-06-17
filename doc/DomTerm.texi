@@ -1658,6 +1658,9 @@ the request is (in most cases - except for Electron) forwarded to the server,
 which runs the named @var{command}.
 The is done because browser security restrictions may limit when
 JavaScript can read the clipboard.
+If unspecified, the default depends on the platform and what
+helper programs are evailable. (See the @code{get_clipboard_command}
+function in the @code{lws-term/utils.cc} source file.)
 
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size and/or of new top-level windows

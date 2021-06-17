@@ -47,6 +47,9 @@ endif
 if WITH_WEBVIEW
 MISCBINS += bin/dt-webview$(EXEEXT)
 endif
+if WITH_LIBCLIPBOARD
+MISCBINS += bin/dt-libclip$(EXEEXT)
+endif
 domterm_jar_dir = share/domterm
 
 if WITH_JAVA
@@ -76,6 +79,12 @@ SUBDIRS += lws-term
 endif
 if WITH_QTWEBENGINE
 SUBDIRS += qtdomterm
+endif
+
+if MACOS
+FRAMEWORK_ARG = -framework Cocoa
+else
+FRAMEWORK_ARG = -lxcb
 endif
 
 if WITH_ASCIIDOCTOR
@@ -454,6 +463,9 @@ if MACOS
 else
 	$(CXX) $(CXXFLAGS) native/webview.cc `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0` -o bin/dt-webview
 endif
+
+bin/dt-libclip$(EXE): native/dt-libclip.cc
+	$(CXX) $(CXXFLAGS) native/dt-libclip.cc @LIBCLIPBOARD_CFLAGS@ @LIBCLIPBOARD_LIBS@ -lpthread -o bin/dt-libclip
 
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
