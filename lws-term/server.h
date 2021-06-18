@@ -480,7 +480,6 @@ extern int view_saved_action(int, arglist_t, struct lws *, struct options *);
 extern int help_action(int, arglist_t, struct lws *, struct options *);
 extern int new_action(int, arglist_t, struct lws *, struct options *);
 extern void print_version(FILE*);
-extern char*find_in_path(const char*);
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, char *arg, size_t alen);
 

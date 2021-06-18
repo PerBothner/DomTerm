@@ -92,5 +92,7 @@ typedef bool (*test_function_t)(const char *clause, void* data);
 extern const char *check_conditional(const char *, test_function_t, void*);
 extern bool popen_read(const char *command, sbuf& sb);
 extern const char *get_clipboard_command(const char *op, bool clear_cache=false);
+extern char*find_in_path(const char*);
+extern bool have_in_path(const char*);
 
 #endif //TTYD_UTIL_H
