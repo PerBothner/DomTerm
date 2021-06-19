@@ -340,6 +340,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 extern void initialize_resource_map(struct lws_context *, const char*);
 extern void maybe_daemonize(void);
 extern void do_exit(int, bool);
+extern void print_browsers_prefixed(const char *, const char *, FILE *);
 extern void print_options_prefixed(const char *, const char *, FILE *);
 
 extern int

@@ -373,6 +373,37 @@ static const struct option options[] = {
 };
 static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
+static const char* browser_specifiers[] = {
+    // first 2 are windows-specific
+    "edge",
+    "edge-app",
+    // following are generic
+    "firefox",
+    "browser",
+    "electron",
+    "chrome",
+    "chrome-app",
+    "google-chrome",
+    "qt", "qtdomterm", "qtwebengine",
+    "webview",
+    "/",
+    nullptr
+};
+
+void print_browsers_prefixed(const char *prefix, const char *before, FILE *out)
+{
+    size_t plen = strlen(prefix);
+    const char **p =
+        &browser_specifiers[is_WindowsSubsystemForLinux() ? 0 : 1];
+    for (; *p; p++) {
+        if (strncmp(prefix, *p, plen) == 0) {
+            fprintf(out, "%s%s\n", before, *p);
+        }
+    }
+    if (is_WindowsSubsystemForLinux()) {
+    }
+}
+
 void print_options_prefixed(const char *prefix, const char *before, FILE *out)
 {
     const struct option *p = options;
@@ -545,13 +576,6 @@ firefox_browser_command(struct options *options)
     return NULL;
 }
 
-const char *
-firefox_command(struct options *options)
-{
-    const char *firefox = firefox_browser_command(options);
-    return firefox ? firefox : "firefox";
-}
-
 /** Return freshly allocated command string or NULL */
 static char *
 qtwebengine_command(struct options *options)
@@ -715,6 +739,7 @@ browser_run_browser(struct options *options, const char *url,
 int
 do_run_browser(struct options *options, const char *url, int port)
 {
+    std::string browser_specifier_string; // placeholder for allocation
     const char *browser_specifier;
     if (options != NULL && options->browser_command != NULL) {
         browser_specifier = options->browser_command;
@@ -723,15 +748,20 @@ do_run_browser(struct options *options, const char *url, int port)
         browser_specifier = opts.browser_command;
     }
     bool do_electron = false, do_Qt = false;
-    if (browser_specifier == NULL && port_specified < 0) {
-        const char *default_frontend = get_setting(options->settings, "frontend.default");
-        if (default_frontend == NULL) {
-            if (is_WindowsSubsystemForLinux())
-                default_frontend = "edge-app;electron;qt;chrome-app;firefox;browser";
-            else
-                default_frontend = "electron;qt;chrome-app;firefox;browser";
-	}
-        const char *p = default_frontend;
+    if (port_specified < 0
+        && (browser_specifier == nullptr || browser_specifier[0] != '-')) {
+        const char *p = browser_specifier;
+        if (! p) {
+            p = get_setting(options->settings, "browser.default");
+            if (! p) {
+                if (is_WindowsSubsystemForLinux())
+                    p = "edge-app;electron;qt;chrome-app;firefox;browser";
+                else
+                    p = "electron;qt;chrome-app;firefox;browser";
+            }
+        }
+        std::string error_if_single;
+        int num_tries = 0;
         for (;;) {
             const char *argv0_end = NULL;
             const char *start = NULL;
@@ -739,95 +769,80 @@ do_run_browser(struct options *options, const char *url, int port)
             const char *semi = extract_command_from_list(p, &start, &end, &argv0_end);
             int cmd_length = end-start;
             if (cmd_length > 0) {
-                char *cmd = challoc(cmd_length + 1);
-                memcpy(cmd, start, cmd_length);
-                cmd[cmd_length] = '\0';
-                int argv0_length = argv0_end-start;
+                num_tries++;
+                std::string cmd(start, cmd_length);
                 bool app_mode;
-                if (strcmp(cmd, "electron") == 0) {
+                if (cmd == "browser")
+                    return default_browser_run(url, port, options);
+                if (cmd == "electron") {
                     browser_specifier = electron_command(options);
-                     if (browser_specifier != NULL) {
-                         free (cmd);
+                     if (browser_specifier == NULL)
+                         error_if_single = "'electron' not found in PATH";
+                     else {
                          do_electron = true;
                          break;
                      }
-                } else if (strcmp(cmd, "webview") == 0) {
+                } else if (cmd == "webview") {
                     browser_specifier = webview_command(options);
-                    if (browser_specifier != NULL) {
+                    if (browser_specifier == NULL)
+                        error_if_single = "cannot find dt-webview command";
+                    else
                         break;
-                    }
-                } else if (strcmp(cmd, "qt") == 0
-                           || strcmp(cmd, "qtdomterm") == 0
-                           || strcmp(cmd, "qtwebengine") == 0) {
+                } else if (cmd == "qt"
+                           || cmd == "qtdomterm"
+                           || cmd == "qtwebengine") {
                     browser_specifier = qtwebengine_command(options);
-                    if (browser_specifier != NULL) {
-                        free (cmd);
+                    if (browser_specifier == nullptr)
+                        error_if_single = "'qtdomterm' missing";
+                    else {
                         do_Qt = true;
                         options->qt_frontend = true;
                         break;
                     }
-                } else if (strcmp(cmd, "firefox") == 0) {
+                } else if (cmd == "firefox") {
                     browser_specifier = firefox_browser_command(options);
-                    if (browser_specifier != NULL)
+                    if (browser_specifier == NULL)
+                        error_if_single = "firefox not found";
+                    else
                         break;
-                } else if ((app_mode = ! strcmp(cmd, "chrome-app"))
-                           || ! strcmp(cmd, "chrome")
-                           || ! strcmp(cmd, "google-chrome")) {
+                } else if ((app_mode = (cmd == "chrome-app"))
+                           || cmd == "chrome"
+                           || cmd == "google-chrome") {
                     browser_specifier = chrome_command(app_mode, options);
-                    if (browser_specifier != NULL)
+                    if (browser_specifier == NULL)
+                        error_if_single = "neither chrome or google-chrome command found";
+                    else
                         break;
-                } else if ((app_mode = ! strcmp(cmd, "edge-app"))
-                           || ! strcmp(cmd, "edge")) {
+                } else if ((app_mode = (cmd == "edge-app"))
+                           || cmd == "edge") {
                     browser_specifier = edge_browser_command(app_mode, options);
-                    if (browser_specifier != NULL)
+                    if (browser_specifier == NULL)
+                        error_if_single = "edge browser not found";
+                    else
                         break;
-                } else {
-                    char save_argv0_end = cmd[argv0_length];
-                    cmd[argv0_length] = '\0';
-                    browser_specifier = find_in_path(cmd);
-                    cmd[argv0_length] = save_argv0_end;
-                    if (browser_specifier != NULL) {
-                        browser_specifier = cmd;
-                        break;
-                    }
                 }
-                free(cmd);
+                else {
+                    std::string cmd_arg0(cmd.c_str(), argv0_end - start);
+                    if (have_in_path(cmd_arg0.c_str())) {
+                        // since we need browser_specifie after cmd exits scope
+                        browser_specifier_string = cmd;
+                        browser_specifier = browser_specifier_string.c_str();
+                        break;
+                    } else
+                        error_if_single = "browser command '" + cmd_arg0 + "' not found";
+                }
             }
             if (*semi == 0) {
-                fprintf(stderr, "no front-end command found\n");
-                exit(-1);
+                printf_error(options, "%s",
+                             error_if_single.empty() || num_tries > 1
+                             ? "no front-end command found"
+                             : error_if_single.c_str());
+                return EXIT_FAILURE;
             }
             p = semi+1;
         }
     }
-    bool app_mode;
-    if (strcmp(browser_specifier, "--qtwebengine") == 0) {
-        browser_specifier = qtwebengine_command(options);
-        if (browser_specifier == NULL) {
-            printf_error(options, "'qtdomterm' missing");
-            return EXIT_FAILURE;
-        }
-        options->qt_frontend = true;
-        do_Qt = true;
-    }
-    else if (strcmp(browser_specifier, "--electron") == 0) {
-        browser_specifier = electron_command(options);
-        do_electron = true;
-        if (browser_specifier == NULL) {
-            printf_error(options, "'electron' not found in PATH");
-            return EXIT_FAILURE;
-        }
-    } else if ((app_mode = ! strcmp(browser_specifier, "--chrome-app"))
-             || ! strcmp(browser_specifier, "--chrome")
-             || ! strcmp(browser_specifier, "--google-chrome")) {
-        browser_specifier = chrome_command(app_mode, options);
-            if (browser_specifier == NULL) {
-                printf_error(options,
-                             "neither chrome or google-chrome command found");
-                return EXIT_FAILURE;
-            }
-    }
-    else if (options->headless) {
+    if (options->headless) {
         const char *hcmd = get_setting(options->settings, "command.headless");
         if (hcmd) {
             browser_specifier = hcmd;
@@ -838,16 +853,6 @@ do_run_browser(struct options *options, const char *url, int port)
              printf_error(options, "unspecified browser for --headless");
              return EXIT_FAILURE;
         }
-    }
-    if (strcmp(browser_specifier, "--firefox") == 0)
-        browser_specifier = firefox_command(options);
-    else if (strcmp(browser_specifier, "--webview") == 0) {
-        browser_specifier = webview_command(options);
-        if (browser_specifier == NULL) {
-                printf_error(options,
-                             "cannot find dt-webview command");
-                return EXIT_FAILURE;
-            }
     }
 
     const char *do_pattern = do_electron ? "\"electron\":\""
@@ -868,8 +873,6 @@ do_run_browser(struct options *options, const char *url, int port)
         }
     }
 
-    if (browser_specifier[0] == '\0')
-        return default_browser_run(url, port, options);
     int r = subst_run_command(options, browser_specifier, url, port);
     options->qt_frontend = false;
     // FIXME: free(browser_specifier)
@@ -905,8 +908,8 @@ options::options()
     cert_path = NULL;
     key_path = NULL;
     ca_path = NULL;
-    credential = NULL;
 #endif
+    credential = NULL;
     once = false;
     reconnect = 10;
     sig_code = SIGHUP;
@@ -931,8 +934,12 @@ options::~options()
     // FIXME implement to fix memory leaks
     free((void*) env);
     free((void*) cwd);
-    if (credential != NULL)
-        free(credential);
+#if HAVE_OPENSSL
+    free(cert_path);
+    free(key_path);
+    free(ca_path);
+#endif
+    free(credential);
     if (sig_name)
         free(sig_name);
 }
@@ -1054,7 +1061,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
                 }
                 break;
             case 'B':
-                opts->browser_command = optarg == NULL ? "" : optarg;
+                opts->browser_command = optarg == NULL ? "browser" : optarg;
                 break;
             case FORCE_OPTION:
                 opts->force_option = 1;
@@ -1099,9 +1106,11 @@ int process_options(int argc, arglist_t argv, struct options *opts)
                 opts->paneOp = c - PANE_OPTIONS_START;
                 /* ... fall through ... */
             case DETACHED_OPTION:
+                opts->browser_command = argv[optind-1];
+                break;
             case ELECTRON_OPTION:
             case FIREFOX_OPTION:
-                opts->browser_command = argv[optind-1];
+                opts->browser_command = argv[optind-1] + 2; // Skip '--'
                 break;
             case HEADLESS_OPTION:
                 opts->headless = true;
@@ -1138,16 +1147,16 @@ int process_options(int argc, arglist_t argv, struct options *opts)
             }
                 break;
             case CHROME_OPTION:
-                opts->browser_command = "--chrome";
+                opts->browser_command = "chrome";
                 break;
             case CHROME_APP_OPTION:
-                opts->browser_command = "--chrome-app";
+                opts->browser_command = "chrome-app";
                 break;
             case QTDOMTERM_OPTION:
-                opts->browser_command = "--qtwebengine";
+                opts->browser_command = "qtwebengine";
                 break;
             case WEBVIEW_OPTION:
-                opts->browser_command = "--webview";
+                opts->browser_command = "webview";
                 break;
             case QT_REMOTE_DEBUGGING_OPTION:
                 opts->qt_remote_debugging = strdup(optarg);

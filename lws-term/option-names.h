@@ -1,6 +1,6 @@
 /*#define OPTION_NUMBER_TYPE*/
 /*#define OPTION_MISC_TYPE*/
-OPTION_S(default_frontend, "frontend.default", OPTION_MISC_TYPE)
+OPTION_S(browser_default, "browser.default", OPTION_MISC_TYPE)
 OPTION_S(shell_command, "shell.default", OPTION_MISC_TYPE)
 OPTION_S(command_firefox, "command.firefox", OPTION_MISC_TYPE)
 OPTION_S(command_chrome, "command.chrome", OPTION_MISC_TYPE)

@@ -881,8 +881,12 @@ int complete_action(int argc, arglist_t argv, struct lws *wsi,
     if (last_arg[0] == '=') {
         print_settings_prefixed(last_arg+1, "", "=\n", stdout);
     } else if (last_arg[0] == '-') {
-        if (last_arg[1] == '-')
+        if (strncmp(last_arg, "--browser=", 10) == 0)
+            print_browsers_prefixed(last_arg+10, "", stdout);
+        else if (last_arg[1] == '-')
             print_options_prefixed(last_arg+2, "--", stdout);
+        else if (last_arg[1] == 'B')
+            print_browsers_prefixed(last_arg+2, "-B", stdout);
         else if (last_arg[1] == '0')
             print_options_prefixed(last_arg+1, "--", stdout);
     } else if (cmd == NULL) {
