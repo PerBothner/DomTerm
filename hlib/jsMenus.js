@@ -769,8 +769,12 @@ class MenuItem {
 		labelNode.appendChild(textLabelNode);
 		buttonNode.appendChild(labelNode);
 
-		modifierNode.appendChild(document.createTextNode(text));
-		buttonNode.appendChild(modifierNode);
+		if (text) {
+			if (! this.submenu && ! MenuItem.useModifierSymbols)
+				modifierNode.classList.add('keys');
+			modifierNode.appendChild(document.createTextNode(text));
+			buttonNode.appendChild(modifierNode);
+		}
 
 		node.title = this.tooltip;
 		this.node = node;

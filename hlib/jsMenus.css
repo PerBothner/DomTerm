@@ -114,6 +114,10 @@ li.menu-item.separator {
 	vertical-align: middle;
 }
 
+.menu-item .keys {
+    opacity: 0.4;
+}
+
 .menu-item .checkmark {
 	width: 22px;
 }
