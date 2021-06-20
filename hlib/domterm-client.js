@@ -467,8 +467,9 @@ function handleMessage(event) {
         let x = options.clientX;
         let y = options.clientY;
         if (iframe && x !== undefined && y !== undefined) {
-            x = x + iframe.offsetLeft + iframe.clientLeft;
-            y = y + iframe.offsetTop + iframe.clientTop;
+            let ibox = iframe.getBoundingClientRect();
+            x = x + iframe.clientLeft + ibox.x;
+            y = y + iframe.clientTop + ibox.y;
             options = Object.assign({}, options, { "clientX": x, "clientY": y});
         }
         DomTerm.showContextMenu(options);
