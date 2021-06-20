@@ -132,7 +132,9 @@ class Menu {
 
 		let wheight = top.offsetHeight;
 		if((y + height) > wheight) {
-			y = wheight - height;
+			y = y - height;
+			if (y < -0.5)
+				y = wheight - height;
 		}
 
 		if(!setRight) {
