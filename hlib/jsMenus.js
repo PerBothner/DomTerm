@@ -92,12 +92,20 @@ class Menu {
 
 		menubarSubmenu = menubarSubmenu || this.menubarSubmenu;
 		this.menubarSubmenu = menubarSubmenu;
+		let top = Menu.contextMenuParent || document.body;
+		if (! Menu._topSheet && Menu.topsheetZindex > 0) {
+			let topSheet = document.createElement("div");
+			topSheet.setAttribute("style",
+					      "position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: "+Menu.topsheetZindex);
+			top.appendChild(topSheet);
+			Menu._topSheet = topSheet;
+			top = topSheet;
+		}
 		if (! Menu._topmostMenu) {
 			Menu._topmostMenu = this;
-			let el = Menu.contextMenuParent || document.body;
-			Menu._listenerElement = el;
-			el.addEventListener('mouseup', Menu._mouseHandler, false);
-			el.addEventListener('mousedown', Menu._mouseHandler, false);
+			Menu._listenerElement = top;
+			top.addEventListener('mouseup', Menu._mouseHandler, false);
+			top.addEventListener('mousedown', Menu._mouseHandler, false);
 		}
 
 		let menuNode = this.buildMenu(submenu, menubarSubmenu);
@@ -105,12 +113,12 @@ class Menu {
 		this.node = menuNode;
 		Menu._currentMenuNode = menuNode;
 
-		let top = Menu.contextMenuParent || document.body;
 		if(this.node.parentNode) {
 			if(menuNode === this.node) return;
 			this.node.parentNode.replaceChild(menuNode, this.node);
 		} else {
-			(itemNode || top).appendChild(this.node);
+			((! (menubarSubmenu && Menu._topSheet) && itemNode)
+			 || top).appendChild(this.node);
 		}
 
 		let width = menuNode.clientWidth;
@@ -162,6 +170,10 @@ class Menu {
 			if (this.menubarSubmenu)
 				Menu.showSubmenuActive(this.node.menuItem, false);
 			this.node.parentNode.removeChild(this.node);
+			if (Menu._topSheet && Menu._topSheet.firstChild == null) {
+				Menu._topSheet.parentNode.removeChild(Menu._topSheet);
+				Menu._topSheet = undefined;
+			}
 			this.node = null;
 		}
 		if (this == Menu._topmostMenu) {
@@ -457,6 +469,11 @@ Menu._keydownListen = function(value) {
 Menu._isMac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
 			: typeof os != "undefined" ? os.platform() == "darwin" : false
 
+// If positive, create a "sheet" above the Menu.contextMenuParent
+// at the given z-index.
+// Used to capture mouse-clicks - needed if there are iframes involved.
+Menu.topsheetZindex = 5;
+
 class MenuItem {
 	constructor(settings = {}) {
 
@@ -744,12 +761,6 @@ class MenuItem {
 			node.classList.add('disabled');
 		}
 
-		if(!menuBarTopLevel && this.type != 'separator') {
-			node.addEventListener('mouseenter', () => {
-				this.select(node, true, true);
-			});
-		}
-
 		if(this.icon) labelNode.appendChild(iconWrapNode);
 
 		let buttonNode;
@@ -759,6 +770,11 @@ class MenuItem {
 			if (this.submenu)
 				buttonNode.setAttribute('aria-expanded',
 							'false');
+			if(!menuBarTopLevel) {
+				buttonNode.addEventListener('mouseenter', () => {
+					this.select(node, true, true);
+				});
+			}
 		} else
 			buttonNode = node;
 
