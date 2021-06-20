@@ -1212,7 +1212,16 @@ Terminal.prototype.doFocus = function() {
 Terminal.prototype.maybeFocus = function() {
     let goal = this.topNode;
     if (this.hasFocus() && document.activeElement !== goal) {
+        let sel = document.getSelection();
+        let fNode = sel.focusNode;
+        let fOffset = sel.focusOffset;
+        let aNode = sel.anchorNode;
+        let aOffset = sel.anchorOffset;
+        let collapsed = sel.isCollapsed;
+
         goal.focus({preventScroll: true});
+        if (sel.isCollapsed && ! collapsed)
+            sel.setBaseAndExtent(aNode, aOffset, fNode, fOffset);
     }
 }
 
