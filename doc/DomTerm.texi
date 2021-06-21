@@ -4968,7 +4968,7 @@ and using @code{nw} executable is better supported.
 Could use @uref{https://github.com/webview/webview/,webview} as a starting point.
 @end itemize
 
-@anchor{window-anager-notes}
+@anchor{window-manager-notes}
 @subsubheading Using alternate window managers
 
 DomTerm includes a ``window manager''
