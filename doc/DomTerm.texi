@@ -651,7 +651,9 @@ Both are supported in a proof-of-concept way;
 both need more polishing and testing, which may determine a preference.
 
 To use (my fork of) @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,@strong{Qt Advanced Docking System}}:
+
 @example
+sudo dnf install qt5-qtx11extras-devel  # @emph{(On Fedora)}
 git clone https://github.com/PerBothner/Qt-Advanced-Docking-System.git
 git checkout multi-main
 QT_ADS_DIR=`pwd`/+installed+ #for example
@@ -4966,11 +4968,7 @@ and using @code{nw} executable is better supported.
 Could use @uref{https://github.com/webview/webview/,webview} as a starting point.
 @end itemize
 
-In @code{qtdomterm} consider using @code{QDockWidget} so panes
-can be moved between windows.
-Better: Considering @uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System}.
-Requires @code{qt5-qtx11extras-devel} package on Fedora.
-
+@anchor{window-anager-notes}
 @subsubheading Using alternate window managers
 
 DomTerm includes a ``window manager''
@@ -4980,6 +4978,14 @@ that supports panes and tabs.
 If DomTerm is integrated in an application with its
 own window manager, such as Atom or Visual Studio Code,
 it would make sense to instead integrate with the latter manager.
+
+The @uref{https://neomjs.github.io/pages/,neo.mjs} project has
+@uref{https://medium.com/geekculture/web-based-multi-screen-apps-including-drag-drop-5e161da6507b,cross-window drag-and-drop}.
+
+For @code{qtdomterm} there is experimental support
+for more advanced Qt docking librariers:
+@uref{https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System,Qt Advanced Docking System} and
+@uref{https://www.kdab.com/development-resources/qt-tools/kddockwidgets/,KDDockWidgets}.
 
 Theia and Jupyter use @uref{https://phosphorjs.github.io/,PhosphorJS}, now archived.
 A newer version is part of @uref{https://jupyterlab.readthedocs.io/en/stable/,JupyterLab}.
@@ -5021,7 +5027,8 @@ Terminal emulators for Atom:
 
 Various Electron @uref{https://github.com/sindresorhus/awesome-electron,Awesome links}
 @uref{https://electron.atom.io/community/,Community links}.
-@subheading View/copy mode (enhanced pager mode)
+
+@subheading View/copy mode (enhanced pager mode) [OLD]
 
 Enhance the @ref{Paging} mode so it is a more general View/Copy mode.
 An important feature is being able to set and modify the selection
