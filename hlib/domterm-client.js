@@ -20,9 +20,6 @@ DomTerm.usingJsMenus = function() {
 //   has read access, but that file can't load modules from "http:")
 // Issues with useFrame:
 // - Performance (extra overhead).
-// - jsMenus has problems, especially when mouse leaves the menu.
-//   (A click should popdown menus, but doesn't. Keyboard navigation breaks.)
-//   Also keyboard event in an iframe go to the iframe
 // - When using jsMenus with most deskop browsers, menu Copy doesn't work;
 //   it does work when !useIFrame. (Menu Paste doesn't work either way.)
 // - Popout-window buttons don't work.
@@ -32,8 +29,7 @@ DomTerm.usingJsMenus = function() {
 // subsequent ones.  The value 2 means use an iframe for all windows.
 // Only using iframe for subsequent windows gives most of the benefits
 // with less of the cost, plus it makes no-layout modes more consistent.
-DomTerm.useIFrame = ! DomTerm.simpleLayout
-    && ! DomTerm.usingJsMenus() ? 1 : 0;
+DomTerm.useIFrame = ! DomTerm.simpleLayout ? 1 : 0;
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
