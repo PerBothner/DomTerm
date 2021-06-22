@@ -102,6 +102,8 @@ DomTermLayout.addPane = function(paneOp, newItemConfig,
 };
 
 DomTermLayout.showFocusedPane = function(item, lcontent = item.container._contentElement1) {
+    if (DomTerm.handlingJsMenu())
+        return;
     DomTermLayout.showFocusedPaneL(item, lcontent);
     DomTermLayout.showFocusedPaneF(lcontent);
 };

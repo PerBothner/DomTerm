@@ -257,6 +257,10 @@ DomTerm.addLocationParams = function(url) {
     return url;
 }
 
+DomTerm.handlingJsMenu = function() {
+    return typeof Menu !== "undefined" && Menu._topmostMenu;
+};
+
 if (DomTerm.isElectron()) {
     window._dt_toggleDeveloperTools = function() {
         electronAccess.ipcRenderer.send('window-ops', 'toggle-devtools', null);

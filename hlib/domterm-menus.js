@@ -379,6 +379,9 @@ DomTerm.setContextMenu = function() {
             if (cmenu.node)
                 cmenu.popdown();
             cmenu.popup(clientX, clientY);
+            let dt = DomTerm.focusedTerm;
+            if (dt)
+                dt.maybeFocus(true);
         }
         DomTerm.createMenus({platform: "generic",
                              popup: popup,

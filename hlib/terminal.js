@@ -1139,7 +1139,7 @@ DomTerm.focusedTerm = null; // used if !useIFrame
 // (if 2 - also request low-level focus)
 // Runs in terminal's frame
 Terminal.prototype.setFocused = function(focused) {
-    if (! this._rulerNode) // skip if _initializeDomTerm not called
+    if (! this._rulerNode || DomTerm.handlingJsMenu()) // skip if _initializeDomTerm not called
         return;
     if (focused > 0) {
         this.topNode.classList.add("domterm-active");
@@ -1209,9 +1209,9 @@ Terminal.prototype.doFocus = function() {
     this.maybeFocus();
 }
 
-Terminal.prototype.maybeFocus = function() {
+Terminal.prototype.maybeFocus = function(force = false) {
     let goal = this.topNode;
-    if (this.hasFocus() && document.activeElement !== goal) {
+    if ((force || this.hasFocus()) && document.activeElement !== goal) {
         let sel = document.getSelection();
         let fNode = sel.focusNode;
         let fOffset = sel.focusOffset;
@@ -4454,7 +4454,8 @@ Terminal.prototype._mouseHandler = function(ev) {
         this.sstate.goalColumn = undefined;
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
-        this.maybeFocus();
+        if (ev.button !== 2)
+            this.maybeFocus();
         this._clearPendingDisplayMiscInfo()
     }
     /*
