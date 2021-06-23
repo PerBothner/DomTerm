@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "whereami.h"
+#include <sys/wait.h>
 #if HAVE_GETRANDOM
 #include <sys/random.h>
 #else
@@ -873,14 +874,14 @@ printf_error(struct options *opts, const char *format, ...)
     write(opts->fd_err, sb.buffer, sb.len);
 }
 
-bool
+int
 popen_read(const char *command, sbuf& sb)
 {
     FILE *f = popen(command, "r");
     if (f == NULL)
-        return false;
+        return -1;
     sb.copy_file(f);
-    return pclose(f) == 0;
+    return pclose(f);
 }
 
 /* Returns freshly allocated string or NULL. */

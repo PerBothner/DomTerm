@@ -1526,7 +1526,8 @@ char *get_WSL_userprofile()
 {
     if (userprofile_cache == NULL) {
         sbuf sb;
-        if (! popen_read("/mnt/c/Windows/System32/cmd.exe /c \"<nul set /p=%UserProfile%\" 2>/dev/null", sb))
+        int px = popen_read("/mnt/c/Windows/System32/cmd.exe /c \"<nul set /p=%UserProfile%\" 2>/dev/null", sb);
+        if (! WIFEXITED(px))
             return NULL;
         char *buf = sb.null_terminated();
         char *nl = strchr(buf, '\n');

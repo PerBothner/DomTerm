@@ -1,6 +1,7 @@
 #include "server.h"
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <utmp.h>
 #include <time.h>
@@ -1290,8 +1291,9 @@ reportEvent(const char *name, char *data, size_t dlen,
                 get_clipboard_cmd = cmd;
         }
         struct sbuf sb;
+        int px;
         if (! get_clipboard_cmd.empty()
-            && popen_read(get_clipboard_cmd.c_str(), sb)) {
+            && ((px = popen_read(get_clipboard_cmd.c_str(), sb)), WIFEXITED(px) && WEXITSTATUS(px) == 0)) {
             json jobj = sb.null_terminated();
             printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
                               jobj.dump().c_str());
