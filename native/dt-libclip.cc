@@ -12,7 +12,9 @@ main(int argc, char **argv)
 
     int length;
     char *clipText = clipboard_text_ex(clipboard_manager, &length, cmode);
-    if (clipText && fwrite(clipText, 1, length, stdout) == length)
+    if (clipText
+        && fwrite(clipText, 1, length, stdout) == length
+        && fputc('\n', stdout) >= 0)
         return 0;
     return -1;
 }

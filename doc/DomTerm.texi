@@ -1702,7 +1702,11 @@ an ``invisible'' @ref{Headless mode,headless} window.
 @item @code{@b{command.get-clipboard} =} @var{command}
 @itemx @code{@b{command.get-selection} =} @var{command}
 Command that prints the string contents of the clipsboard (or the selection)
-to standard output.  When the user requests a Paste operation,
+to standard output.
+If the command's output ends with a newline, it is removed.
+(If your command doesn't write a newline at the end,
+you can add it, for example with @code{echo}.)
+When the user requests a Paste operation,
 the request is (in most cases - except for Electron) forwarded to the server,
 which runs the named @var{command}.
 The is done because browser security restrictions may limit when

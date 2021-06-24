@@ -969,10 +969,10 @@ const char *get_clipboard_command(const char *op, bool clear_cache)
             read_clip_cmd = read_sel_cmd = NULL;
             char *dt_libclip_path = NULL;
             if (have_in_path("pbpaste")) {
-                read_clip_cmd = "pbpaste";
+                read_clip_cmd = "pbpaste && echo";
             } else if (getenv("WAYLAND_DISPLAY") && have_in_path("wl-paste")) {
-                read_clip_cmd = "wl-paste --no-newline";
-                read_sel_cmd = "wl-paste --no-newline --primary";
+                read_clip_cmd = "wl-paste";
+                read_sel_cmd = "wl-paste --primary";
             } else if (getenv("DISPLAY")) {
                 char *dt_libclip_path = get_bin_relative_path("/bin/dt-libclip");
                 if (have_in_path(dt_libclip_path)) {
@@ -980,11 +980,11 @@ const char *get_clipboard_command(const char *op, bool clear_cache)
                     read_sel_cmd = get_bin_relative_path("/bin/dt-libclip --print-selection");
                     clipboard_read_commands_set = 2;
                 } else if (have_in_path("xclip")) {
-                    read_clip_cmd = "xclip -o -selection clipboard";
-                    read_sel_cmd = "xclip -o -selection primary";
+                    read_clip_cmd = "xclip -o -selection clipboard && echo";
+                    read_sel_cmd = "xclip -o -selection primary && echo";
                 } else if (have_in_path("xsel")) {
-                    read_clip_cmd = "xsel -o -b";
-                    read_sel_cmd = "xsel -o -p";
+                    read_clip_cmd = "xsel -o -b && echo";
+                    read_sel_cmd = "xsel -o -p && echo";
                 }
                 free(dt_libclip_path);
             } else if (have_in_path("lemonade")) {

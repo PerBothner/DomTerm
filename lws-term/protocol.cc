@@ -1294,6 +1294,11 @@ reportEvent(const char *name, char *data, size_t dlen,
         int px;
         if (! get_clipboard_cmd.empty()
             && ((px = popen_read(get_clipboard_cmd.c_str(), sb)), WIFEXITED(px) && WEXITSTATUS(px) == 0)) {
+            if (sb.len > 0 && sb.buffer[sb.len-1] == '\n') {
+                sb.len--;
+                if (sb.len > 0 && sb.buffer[sb.len-1] == '\r')
+                    sb.len--;
+            }
             json jobj = sb.null_terminated();
             printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
                               jobj.dump().c_str());
