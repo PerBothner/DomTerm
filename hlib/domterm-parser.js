@@ -1619,7 +1619,7 @@ class DTParser {
             term.setMouseMode(value ? param : 0);
             break;
         case 1004: // Send FocusIn/FocusOut events.
-            term.sstate.sendFocus = true;
+            term.sstate.sendFocus = value;
             break;
         case 1005: case 1006: case 1015:
             term.sstate.mouseCoordEncoding = value ? param : 0;
