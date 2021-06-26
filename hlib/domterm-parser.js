@@ -971,6 +971,16 @@ class DTParser {
             break;
         case 109 /*'m'*/:
             var numParameters = this.parameters.length;
+            if (this._flagChars.indexOf('>') >= 0) {
+                switch (this.getParameter(0, -1)) {
+                case 4: // modifyOtherKeys
+                    // Emacs sends "\e[>4;1m" to initialize; "\e[>4m" to reset
+                    let value = this.getParameter(1, -1);
+                    term.sstate.modifyOtherKeys = value < 0 ? undefined : value;
+                    break;
+                }
+                break;
+            }
             if (numParameters == 0)
                 term._clearStyle();
             for (var i = 0; i < numParameters; i++) {
@@ -1572,7 +1582,7 @@ class DTParser {
         case 9: case 1000: case 1001: case 1002: case 1003:
             return term.sstate.mouseMode == param;
         case 1004:
-            return term._sendMouse;
+            return term.sstate.sendFocus;
         case 1005: case 1006: case 1015:
             return term.sstate.mouseCoordEncoding == param;
         }

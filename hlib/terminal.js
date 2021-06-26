@@ -5848,6 +5848,8 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     this.resetCharsets();
     this.setMouseMode(0);
     this.sstate.mouseCoordEncoding = 0;
+    this.sstate.sendFocus = false;
+    this.sstate.modifyOtherKeys = undefined;
     this.resetTabs();
     this._setRegionTB(0, -1);
     this._setRegionLR(0, -1);
@@ -8310,6 +8312,7 @@ Terminal.prototype.keyEnterToString  = function() {
         return "\n";
 }
 
+/* (currently unused)
 Terminal._keyCodeToValue = function(ecode) {
     if (ecode.startsWith("Digit"))
         return ecode.substring(5);
@@ -8323,9 +8326,11 @@ Terminal._keyCodeToValue = function(ecode) {
     case "Semicolon": return ";";
     case "Comma": return ",";
     case "Period": return ".";
+    case "Backquote": return "`";
     }
     return "";
 }
+*/
 
 Terminal.prototype.eventToKeyName = function(event) {
     if (! event.key)
@@ -8348,22 +8353,24 @@ Terminal.prototype.eventToKeyName = function(event) {
     }
     if (base.length == 1 && base >= 'a' && base <= 'z')
         base = base.toUpperCase();
-    let name = base
-    if (shift && base.length == 1) {
-        let codeChar = Terminal._keyCodeToValue(event.code);
-        if (codeChar && codeChar != base)
-            shift = false;
-    }
+    let name = base;
     if (name == null || event.altGraphKey) return null
-    if (event.altKey && base != "Alt") name = "Alt+" + name
-    if (event.ctrlKey && base != "Ctrl") name = "Ctrl+" + name
-    if (event.metaKey && base != "Cmd") name = "Cmd+" + name
-    if (shift) name = "Shift+" + name
-    return name;
+    let mods = "";
+    if (event.altKey && base != "Alt") mods= "Alt+" + mods;
+    if (event.ctrlKey && base != "Ctrl") mods = "Ctrl+" + mods;
+    if (event.metaKey && base != "Cmd") mods = "Cmd+" + mods;
+    // Only add "Shift+" if there are other modifiers *or* it didn't change key.
+    // E.g. "Shift+A" should be plain "A", but we do want "Shift+Enter".
+    // "Shift" of "." on US keyboard should be plain ">",
+    // while Shift+Ctrl with "." (on US keyboard) should be "Shift+Ctrl+>".
+    if (shift && (mods !== "" || event.key===event.code))
+        mods = "Shift+" + mods;
+    return mods + name;
 }
 
-Terminal.prototype.keyNameToChars = function(keyName) {
-    const isShift = (mods) => mods.indexOf("Shift+") >= 0;
+Terminal.prototype.keyNameToChars = function(keyName, event=null) {
+    const isShift = (mods, e=event) =>
+          mods.indexOf("Shift+") >= 0 || (e && e.shiftKey);
     const isCtrl = (mods) => mods.indexOf("Ctrl+") >= 0;
     const isAlt = (mods) => mods.indexOf("Alt+") >= 0;
     const isCmd = (mods) => mods.indexOf("Cmd+") >= 0;
@@ -8388,14 +8395,27 @@ Terminal.prototype.keyNameToChars = function(keyName) {
         else
             return csi+param+last;
     }
-
-    const dash = keyName.lastIndexOf("+");
+    const otherKeys = (ch, mods) => {
+        if (true) // xterm modifyOtherKeys
+            return specialKeySequence("27", ";" + ch + "~", mods);
+        else // xterm formatOtherKeys
+            return specialKeySequence(ch, "u", mods);
+    };
+    if (DomTerm.isKeyPressName(keyName))
+        return keyName.charAt(1);
+    const dash = keyName.substring(0,keyName.length-1).lastIndexOf("+");
     const mods = dash > 0 ? keyName.substring(0, dash+1) : "";
     let baseName = dash > 0 ? keyName.substring(dash+1) : keyName;
     switch (baseName) {
     case "Backspace": return "\x7F";
-    case "Tab":  return isShift(mods) ? "\x1B[Z" :  "\t";
-    case "Enter": return isAlt(mods) ? "\x1B\r" : this.keyEnterToString();
+    case "Tab": return mods==="Shift+" ? "\x1B[Z" : mods==="" ? "\t"
+            : otherKeys(9, mods);
+    case "Enter": return mods==="Alt+" ? "\x1B\r"
+            : mods==="" ? this.keyEnterToString()
+            : otherKeys(13, mods);
+    case "Space": return mods==="" || mods=="Shift+" ? " "
+            : mods==="Ctrl+" ? "\0"
+            : otherKeys(0, mods);
     case "Esc": return "\x1B";
     case "PageUp": return specialKeySequence("5", "~", mods);
     case "PageDown": return specialKeySequence("6", "~", mods);
@@ -8439,20 +8459,22 @@ Terminal.prototype.keyNameToChars = function(keyName) {
     case "Mod":
         return null;
     default:
-        if ((mods == "Ctrl+" || mods == "Shift+Ctrl+")
-            && baseName.length == 1) {
-            let ch = baseName.charCodeAt(0);
-            if ((ch >= 65 && ch <= 90 && mods == "Ctrl+")
-                || ch == 32 || ch == 64 || (ch >= 91 && ch <= 95))
-                return String.fromCharCode(ch & 31);
+        let ch = baseName.codePointAt(0);
+        if (baseName.length == (ch <= 0xFFFF ? 1 : 2) && mods) {
+            if (mods == "Ctrl+" || mods == "Shift+Ctrl+") {
+                if ((ch >= 65 && ch <= 90 && mods == "Ctrl+")
+                    || ch == 32 || ch == 64 || (ch >= 91 && ch <= 95))
+                    return String.fromCharCode(ch & 31);
+            }
+            if (mods == "Alt+" || mods == "Shift+Alt+") {
+                if (ch >= 65 && ch <= 90 && mods == "Alt+")
+                    baseName = baseName.toLowerCase();
+                return "\x1B" + baseName;
+            }
+            if (this.sstate.modifyOtherKeys)
+                return otherKeys(ch, mods);
         }
-        if (baseName.length == 1
-            && (mods == "Alt+" || mods == "Shift+Alt+")) {
-            if (baseName >= "A" && baseName <= "Z" && mods == "Alt+")
-                baseName = baseName.toLowerCase();
-            return "\x1B" + baseName;
-        }
-        return DomTerm.keyNameChar(keyName);
+        return null;
     }
 }
 
@@ -9176,12 +9198,8 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
 });
 DomTerm.pagingKeymap = DomTerm.pagingKeymapDefault;
 
-/** If keyName is a key-press, return pressed key; otherwise null. */
-DomTerm.keyNameChar = function(keyName) {
-    if (keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/)
-        return keyName.charAt(1);
-    else
-        return null;
+DomTerm.isKeyPressName = function(keyName) {
+    return keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/;
 };
 
 /** May be overridden. */
@@ -9216,7 +9234,7 @@ DomTerm.handleKey = function(map, dt, keyName, event=null) {
             command = map(this, keyName);
         else {
             command = map.lookup(keyName);
-            if (! command && DomTerm.keyNameChar(keyName) != null)
+            if (! command && DomTerm.isKeyPressName(keyName))
                 command = map.lookup("(keypress)");
         }
         if (typeof command == "string" || command instanceof String)
@@ -9280,7 +9298,7 @@ Terminal.prototype.keyDownHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
     let keyName = this.eventToKeyName(event);
     if (DomTerm.verbosity >= 2)
-        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+keyName+" old:"+(this._inputLine != null)+" col:"+document.getSelection().isCollapsed);
+        this.log("key-down kc:"+key+" key:"+event.key+" code:"+event.code+" ctrl:"+event.ctrlKey+" sh:"+event.shiftKey+" alt:"+event.altKey+" meta:"+event.metaKey+" char:"+event.char+" event:"+event+" name:"+keyName+" old:"+(this._inputLine != null)+" col:"+document.getSelection().isCollapsed);
 
     if (! keyName && event.key)
         keyName = event.key;
@@ -9365,7 +9383,7 @@ Terminal.prototype.keyDownHandler = function(event) {
     }
 
     if (! editing) {
-        let str = this.keyNameToChars(keyName);
+        let str = this.keyNameToChars(keyName, event);
         if (str) {
             if (this.scrollOnKeystroke)
                 this._enableScroll();
