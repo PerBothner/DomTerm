@@ -4480,6 +4480,9 @@ Terminal.prototype._mouseHandler = function(ev) {
     var saveBefore = this.outputBefore;
     var saveContainer = this.outputContainer;
     var target = ev.target;
+    let buffer = this._getOuterPre(target, "interaction");
+    if (buffer == null || target == buffer)
+        return;
     this.outputContainer = ev.target;
     this.outputBefore = this.outputContainer.firstChild;
     this.resetCursorCache();
