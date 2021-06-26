@@ -456,7 +456,7 @@ cmd('ignore-action',
         return true; });
 cmd('default-action',
     function(dt, key) {
-        return false; });
+        return "do-default"; });
 cmd('client-action',
     function(dt, key) {
         if (! dt.isLineEditing())
@@ -589,10 +589,11 @@ cmd('show-about-message',
         DomTerm.showAboutMessage();
         return true;
     });
-if (window._dt_toggleDeveloperTools) {
-    cmd('toggle-developer-tools',
-        function(dt, keyName) {
-            window._dt_toggleDeveloperTools();
-            return true;
-        });
-}
+cmd('toggle-developer-tools',
+    function(dt, keyName) {
+        let toggleTools =  window._dt_toggleDeveloperTools;
+        if (!toggleTools)
+            return "do-default";
+        toggleTools();
+        return true;
+    });

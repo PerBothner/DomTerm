@@ -9000,9 +9000,11 @@ DomTerm.masterKeymapDefault =
             "Shift-Insert": "paste-text",
             "Ctrl-Shift-A": "enter-mux-mode",
             "Ctrl-Shift-F": "find-text",
+            "Ctrl+Shift+I": "toggle-developer-tools",
             "Ctrl+Shift+L": "input-mode-cycle",
             "Ctrl+Shift+M": "toggle-paging-mode",
             "Ctrl+Shift+N": "new-window",
+            // FUTURE: "Ctrl-Shift-P": "command-palette",
             "Ctrl-Shift-S": "save-as-html",
             "Ctrl-Shift-T": "new-tab",
             "Ctrl-Shift-X": "cut-text",
@@ -9013,9 +9015,6 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Shift-Down": "scroll-line-down",
             "Ctrl-Shift-PageUp": "scroll-page-up",
             "Ctrl-Shift-PageDown": "scroll-page-down"
-        }, window._dt_toggleDeveloperTools ? {
-            "Ctrl-Shift-I": "toggle-developer-tools"
-        } : {
         }, DomTerm.isMac ? {
             "Mod-V": "paste-text",
             "Mod-C": "copy-text"
@@ -9196,7 +9195,7 @@ DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
         commandMap[name](dt, null);
 }
 
-DomTerm.handleKey = function(map, dt, keyName) {
+DomTerm.handleKey = function(map, dt, keyName, event=null) {
     let maps = typeof map == "object" && map instanceof Array ? map : [map];
     if (dt._markMode && keyName.indexOf("Shift+") < 0) {
         let skeyName = "Shift+" + keyName;
@@ -9205,6 +9204,8 @@ DomTerm.handleKey = function(map, dt, keyName) {
             if (typeof cmd === "string" && cmd.endsWith("-extend")) {
                 let r = commandMap[cmd](dt, keyName);
                 dt.previousKeyName = keyName;
+            if (r === true && event)
+                event.preventDefault();
                 return r;
             }
         }
@@ -9225,6 +9226,9 @@ DomTerm.handleKey = function(map, dt, keyName) {
             let r = typeof command == "function" ? command(dt, keyName)
                 : command;
             dt.previousKeyName = keyName;
+            // Don't preventDefault if r is "do-default".
+            if (r === true && event)
+                event.preventDefault();
             return r;
         }
     }
@@ -9356,8 +9360,7 @@ Terminal.prototype.keyDownHandler = function(event) {
             return;
         }
     }
-    if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName)) {
-        event.preventDefault();
+    if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName, event)) {
         return;
     }
 
