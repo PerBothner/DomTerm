@@ -1141,8 +1141,10 @@ DomTerm.focusedTerm = null; // used if !useIFrame
 Terminal.prototype.setFocused = function(focused) {
     if (! this._rulerNode || DomTerm.handlingJsMenu()) // skip if _initializeDomTerm not called
         return;
+    let classList = this.topNode.classList;
+    let wasFocused = classList.contains("domterm-active");
     if (focused > 0) {
-        this.topNode.classList.add("domterm-active");
+        classList.add("domterm-active");
         DomTerm.setTitle(this.sstate.windowTitle);
         if (! this.isSavedSession()) {
             this.reportEvent("FOCUSED", ""); // to server
@@ -1151,9 +1153,9 @@ Terminal.prototype.setFocused = function(focused) {
         if (focused == 2)
             this.maybeFocus();
     } else if (this.topNode) {
-        this.topNode.classList.remove("domterm-active");
+        classList.remove("domterm-active");
     }
-    if (this.sstate.sendFocus)
+    if (this.sstate.sendFocus && (wasFocused !== (focused > 0)))
         this.processResponseCharacters(focused ? "\x1b[I" : "\x1b[O");
 }
 
