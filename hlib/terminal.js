@@ -7176,9 +7176,9 @@ Terminal.prototype.adjustFocusCaretStyle = function() {
     let caret = this.viewCaretNode;
     if (caret && caret.parentNode) {
         let lcaret = this.viewCaretLineNode;
-        let rect = caret.getBoundingClientRect();
         lcaret.style.width = this.initial.clientWidth + "px";
-        lcaret.style.left = (-rect.x) + "px";
+        lcaret.style.left = (this.topNode.getBoundingClientRect().x
+                             - caret.getBoundingClientRect().x) + "px";
     }
 };
 
