@@ -138,6 +138,7 @@ div.domterm span.focus-caret-line {
     border-width: 1px;
     left: -4px;
     width: 8px;
+    opacity: 0.4;
     box-sizing: border-box
 }
 div.domterm.paused span.focus-caret-line {
