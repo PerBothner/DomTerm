@@ -4976,6 +4976,10 @@ Terminal.prototype.updateCursorCache = function() {
     var col = 0;
     while (cur != goal || (goal == null && parent != goalParent)) {
         if (cur == null) {
+            if (parent == null) {
+                DomTerm.log("unexpected end in updateCursorCache");
+                break;
+            }
             cur = parent.nextSibling;
             parent = parent.parentNode;
         } else if (cur instanceof Element) {
