@@ -4426,13 +4426,9 @@ Terminal.prototype._mouseHandler = function(ev) {
     let wasPressed = this._mouseButtonPressed;
     this._mouseButtonPressed = ev.type !== "mouseup";
 
-    // Get mouse coordinates relative to buffers.
+    // Get mouse coordinates relative to viewport.
     let xdelta = ev.pageX / this._computedZoom;
-    let ydelta = ev.pageY / this._computedZoom + this.buffers.scrollTop;
-    for (var top = this.buffers; top != null; top = top.offsetParent) {
-        xdelta -= top.offsetLeft;
-        ydelta -= top.offsetTop;
-    }
+    let ydelta = ev.pageY / this._computedZoom;
 
     if (ev.type == "mouseup") {
         if (wasPressed)
@@ -4449,7 +4445,8 @@ Terminal.prototype._mouseHandler = function(ev) {
         */
     }
     if (ev.type == "mousedown") {
-        if (ev.button == 0 && xdelta >= this.buffers.clientWidth) // in scrollbar
+        if (ev.button == 0 // check if in scrollbar
+            && xdelta >= this.initial.getBoundingClientRect().right)
             this._usingScrollBar = true;
         this.setMarkMode(false);
         this._didExtend = ev.shiftKey;
@@ -4480,9 +4477,10 @@ Terminal.prototype._mouseHandler = function(ev) {
     var saveBefore = this.outputBefore;
     var saveContainer = this.outputContainer;
     var target = ev.target;
-    let buffer = this._getOuterPre(target, "interaction");
-    if (buffer == null || target == buffer)
+    let buffer = this._getOuterPre(target, "domterm-buffers");
+    if (buffer == null || target == buffer) {
         return;
+    }
     this.outputContainer = ev.target;
     this.outputBefore = this.outputContainer.firstChild;
     this.resetCursorCache();
@@ -4492,9 +4490,12 @@ Terminal.prototype._mouseHandler = function(ev) {
     this.currentAbsLine = saveLine;
     this.outputBefore = saveBefore;
     this.outputContainer = saveContainer;
-    xdelta -= target.offsetLeft;
-    ydelta -= target.offsetTop;
-    // (xdelta,ydelta) are relative to ev.target
+    let targetBounds = target.getClientRects();
+    if (targetBounds.length == 0)
+        return;
+    targetBounds = targetBounds[0];
+    xdelta -= targetBounds.left;
+    ydelta -= targetBounds.top;
     col += Math.floor(xdelta / this.charWidth);
     row += Math.floor(ydelta / this.charHeight);
 
