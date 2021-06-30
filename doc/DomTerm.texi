@@ -174,6 +174,9 @@ Handles @strong{Unicode}.
 Good @strong{CJK} (Chinese, Japanese, Korean) support:
 @strong{double-width characters (including Emoiji)} really are two columns wide.
 @item
+XTerm's @strong{modifyOtherKeys mode} allow applications
+such as Emacs to detect special key-combinations.
+@item
 Remembers @strong{tab characters} so copying selected output
 will contain the tab character.
 @item
@@ -820,6 +823,27 @@ into the configured @var{install-prefix} directory:
 make install
 @end example
 
+@subsubheading Building an AppImage
+
+After running @code{configure}, do:
+@example
+make appimage/DomTerm.AppImage
+chmod +x appimage/DomTerm.AppImage
+@end example
+You can run @code{appimage/DomTerm.AppImage}
+with the same options as the @code{domterm} command.
+It is a single file, which makes it easy to move and install.
+(It is reasonable to rename the @code{DomTerm.AppImage} to @code{domterm}.)
+
+For better portability of the resulting @code{DomTerm.AppImage}
+you should build it on a machine with a slightly older libraries,
+and libwebsockets should be linked statically.
+You might also consider configuring
+@code{--with-asciidoctor --with-webview --with-libclipboard=$LIBCLIPBOARD_DIR}.
+The functionality of @code{--with-webview} and @code{--with-libclipboard}
+are more likely to break if libraries are incompatible,
+but they're separate executables so shouldn't break core functionality.
+
 @anchor{building on WSL}
 @subsubheading Windows using Linux for Windows
 
@@ -832,7 +856,8 @@ including (currently) building libwebsockets from source.
 
 Other distributions should work but have not been tested.
 
-It is also recommended that you install electron, as described above.
+If you want to use the Electron front-end,
+install @code{electron} as described above.
 Electron is a Windows executable, and it needs to be able to read
 the ``electron application'' files in @code{share/domterm/electron}.
 Hence, if you run @code{domterm} in-place (without @code{make install}),
@@ -854,6 +879,9 @@ should work out-of-the-box.  Otherwise specify
 
 Domterm looks for the user settings file in
 @code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.
+
+The @code{DomTerm.AppImage} (see above) single-file application
+works well (at least on WSL2).
 
 @node domterm application
 @chapter The domterm command
