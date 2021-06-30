@@ -407,8 +407,10 @@ class Terminal {
         dt._restoreInputLine();
         if (dt.viewCaretNode.parentNode === null)
             dt._scrollIfNeeded();
-        else
+        else {
+            dt.scrollToCaret();
             dt.adjustFocusCaretStyle();
+        }
         /*
         if (dt._markMode > 0) {
             // update selection so focus follows caret
@@ -6950,6 +6952,7 @@ Terminal.prototype._downContinue = function(height, paging) {
     if (limit > this._pauseLimit)
         this._pauseLimit = limit;
     this._clearSelection();
+    this._disableScrollOnOutput = false;
     this._pauseContinue(paging);
     DomTerm.setAutoPaging("true", this);
 }
@@ -6957,7 +6960,7 @@ Terminal.prototype._downContinue = function(height, paging) {
 Terminal.prototype._downLinesOrContinue = function(count, paging) {
     let todo = this.editorMoveLines(false, count, false);
     if (todo > 0) {
-        this._pauseLimit =  this._dataHeight();
+        this._pauseLimit = this._dataHeight() + count * this.charHeight + 2;
         this._downContinue(todo * this.charHeight, paging);
     }
 }
