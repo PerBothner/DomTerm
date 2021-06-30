@@ -8263,11 +8263,32 @@ Terminal.prototype.processResponseCharacters = function(str) {
         this.processInputCharacters(str);
     }
 };
+
+// If needed, escape '\xFD' as '\xFD\n'.
+Terminal.escapeInputBytes = function(bytes) {
+    let len = bytes.length;
+    let scount = 0;
+    for (let i = len; --i >= 0; ) {
+        if (bytes[i] === 0xFD)
+            scount++;
+    }
+    if (scount == 0)
+        return bytes;
+    let nbytes = new Uint8Array(len+scount);
+    let j = 0;
+    for (let i = 0; i < len; i++) {
+        let v = bytes[i];
+        nbytes[j++] = v;
+        if (v === 0xFD)
+            nbytes[j++] = 10;
+    }
+    return nbytes;
+}
 Terminal.prototype.processResponseBytes = function(bytes) {
     if (! this._replayMode && ! this.isSecondaryWindow()) {
         if (DomTerm.verbosity >= 3)
             this.log("processResponse: "+bytes.length+" bytes");
-        this.processInputBytes(bytes);
+        this.processInputBytes(Terminal.escapeInputBytes(bytes));
     }
 };
 

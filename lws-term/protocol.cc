@@ -1435,7 +1435,12 @@ handle_input(struct lws *wsi, struct tty_client *client,
                 break;
             }
             unsigned char* eol = (unsigned char*) memchr(msg+i, '\n', clen-i);
-            if (eol) {
+            if (eol && eol == msg+i+1
+                && proxyMode != proxy_display_local) {
+                /// Saw 0xFD '\n'. Write 0xFD.
+                *eol = REPORT_EVENT_PREFIX;
+                i = eol - msg - 1; // Sets start to eol index.
+            } else if (eol) {
                 unsigned char *p = msg+i;
                 char* cname = (char*) ++p;
                 while (p < eol && *p != ' ')

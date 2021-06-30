@@ -6177,8 +6177,16 @@ Zu\e]115;"k-","k","ck"\aer
 The prefix byte 0xFD is used to report an event or other information
 from the browser to the server.  The value 0xFD is ``out-of-band''
 because it cannot appear when encoding a string to UTF-8.
+If the browser needs to send an actual 0xFD, send it as
+the two-byte sequence @code{"\xFD\n"}.
+(The only known way this can happen is for a large row number
+with the old X10 mouse reporting protocol.
+However, future extensions may need to send raw bytes.)
 
 @table @asis
+@item @code{0xFD "\n"}
+Escape sequence to send raw @code{0xFD} to application.
+
 @item @code{0xFD @var{name} " " @var{data} "\n"}
 General format for reporting events,
 where @var{name} is the name of the event (an identifier).
