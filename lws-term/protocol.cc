@@ -1422,8 +1422,6 @@ handle_input(struct lws *wsi, struct tty_client *client,
     size_t start = 0;
     lwsl_info("handle_input len:%zu conn#%d pmode:%d pty:%d\n", clen, client->connection_number, proxyMode, pclient==NULL? -99 : pclient->pty);
     for (size_t i = 0; ; i++) {
-        if (i+1 == clen && msg[i] >= 128)
-            break;
         if (i == clen || msg[i] == REPORT_EVENT_PREFIX) {
             int w = i - start;
             if (w > 0)

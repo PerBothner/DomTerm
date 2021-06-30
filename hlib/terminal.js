@@ -4500,8 +4500,9 @@ Terminal.prototype._mouseHandler = function(ev) {
     row += Math.floor(ydelta / this.charHeight);
 
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
-    var final = "M";
+    let bfinal = 77; // 'M'
     var button = Math.min(ev.which - 1, 2) | mod;
+    let encoding = this.sstate.mouseCoordEncoding;
     switch (ev.type) {
     case 'mousedown':
         if (this.sstate.mouseMode === 1002)
@@ -4512,9 +4513,9 @@ Terminal.prototype._mouseHandler = function(ev) {
         if (this.sstate.mouseMode === 1002)
             this.topNode.removeEventListener("mousemove",
                                              this._mouseEventHandler);
-        switch (this.sstate.mouseCoordEncoding) {
+        switch (encoding) {
         case 1006: case 1015:
-            final = "m";
+            bfinal = 109; // 'm'
             break;
         default:
             button = 3;
@@ -4534,52 +4535,76 @@ Terminal.prototype._mouseHandler = function(ev) {
     }
 
     if (DomTerm.verbosity >= 2)
-        this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" row:"+row+" col:"+col+" button:"+button+" mode:"+this.sstate.mouseMode+" ext_coord:"+this.sstate.mouseCoordEncoding);
+        this.log("mouse event "+ev+" type:"+ev.type+" cl:"+ev.clientX+"/"+ev.clientY+" p:"+ev.pageX+"/"+ev.pageY+" row:"+row+" col:"+col+" button:"+button+" mode:"+this.sstate.mouseMode+" ext_coord:"+encoding);
 
     if (button < 0 || col < 0 || col >= this.numColumns
         || row < 0 || row >= this.numRows)
         return;
 
-    function encodeButton(button, dt) {
+    let barray = new Uint8Array(50);
+    barray[0] = 0x1b; barray[1] = 91; // '\x1b[' CSI
+    let blen = 2;
+    function encodeInteger(i) { // Add non-negative integer to barray
+        if (i >= 10) {
+            encodeInteger(i / 10);
+            i %= 10;
+        }
+        barray[blen++] = 48+i;
+    }
+    function encodeButton(button) {
         var value = button;
-        switch (dt.sstate.mouseCoordEncoding) {
+        switch (encoding) {
         case 1005: // FIXME
         default:
-            return String.fromCharCode(value+32);
+            barray[blen++] = value+32;
+            return;
         case 1015:
             value += 32;
             // fall through
         case 1006: // SGR
-            return ""+value;
+            encodeInteger(value);
+            return;
         }
     }
-    function encodeCoordinate(val, prependSeparator, dt) {
+
+    function encodeCoordinate(val, prependSeparator) {
         // Note val is 0-origin, to match xterm's EmitMousePosition
-        switch (dt.sstate.mouseCoordEncoding) {
+        switch (encoding) {
         case 1005:
-            // FIXME UTF8 encoding
+            if (val >= 95) {
+                val += 33;
+                barray[blen++] = 0xC0 | ((val >> 6) & 0x1F);
+                barray[blen++] = 0x80 | (val & 0x3F);
+                return;
+            }
         default:
-            return String.fromCharCode(val == 255-32 ? 0 : val + 33);
+            barray[blen++] = val == 255-32 ? 0 : val + 33;
+            return;
         case 1006: case 1015:
-            return (prependSeparator?";":"")+(val+1);
+            if (prependSeparator)
+                barray[blen++] = 59; // ';'
+            encodeInteger(val+1);
+            return;
         }
     }
-    var result = "\x1b[";
-    switch (this.sstate.mouseCoordEncoding) {
-    case 1006: result += "<"; break;
+    switch (encoding) {
+    case 1006:
+        barray[blen++] = 60; // '<'
+        break;
     case 1015: break;
     default:
-        result += "M";
-        final = "";
+        barray[blen++] = 77;
+        bfinal = -1;
         break;
     }
     this.mouseRow = row;
     this.mouseCol = col;
-    result += encodeButton(button, this);
-    result += encodeCoordinate(col, true, this);
-    result += encodeCoordinate(row, true, this);
-    result += final;
-    this.processResponseCharacters(result);
+    encodeButton(button);
+    encodeCoordinate(col, true);
+    encodeCoordinate(row, true);
+    if (bfinal >= 0)
+        barray[blen++] = bfinal;
+    this.processResponseBytes(barray.subarray(0, blen));
 };
 
 Terminal.prototype.showHideMarkers = [
@@ -8236,6 +8261,13 @@ Terminal.prototype.processResponseCharacters = function(str) {
         if (DomTerm.verbosity >= 3)
             this.log("processResponse: "+JSON.stringify(str));
         this.processInputCharacters(str);
+    }
+};
+Terminal.prototype.processResponseBytes = function(bytes) {
+    if (! this._replayMode && ! this.isSecondaryWindow()) {
+        if (DomTerm.verbosity >= 3)
+            this.log("processResponse: "+bytes.length+" bytes");
+        this.processInputBytes(bytes);
     }
 };
 
