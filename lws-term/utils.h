@@ -94,5 +94,6 @@ extern int popen_read(const char *command, sbuf& sb);
 extern const char *get_clipboard_command(const char *op, bool clear_cache=false);
 extern char*find_in_path(const char*);
 extern bool have_in_path(const char*);
+extern int bool_value(const char*);
 
 #endif //TTYD_UTIL_H

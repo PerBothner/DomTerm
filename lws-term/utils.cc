@@ -996,3 +996,15 @@ const char *get_clipboard_command(const char *op, bool clear_cache)
         return strcmp(op, "paste") == 0 ? read_clip_cmd : read_sel_cmd;
     }
 }
+
+/** Return 0 or 1 for a valid boolean value; -1 otherwise. */
+int bool_value(const char *value)
+{
+    if (strcasecmp(value, "on") == 0 || strcasecmp(value, "yes") == 0
+        || strcasecmp(value, "true") == 0)
+        return 1;
+    if (strcasecmp(value, "off") == 0 || strcasecmp(value, "no") == 0
+        || strcasecmp(value, "false") == 0)
+        return 0;
+    return -1;
+}

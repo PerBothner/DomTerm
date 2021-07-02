@@ -123,6 +123,7 @@ function eventToWindow(event) {
 }
 
 ipcMain.on('window-ops', (event, command, arg) => {
+    let win;
     switch (command) {
     case 'new-window':
         if (! arg.width || ! arg.height) {
@@ -143,25 +144,45 @@ ipcMain.on('window-ops', (event, command, arg) => {
     case 'toggle-devtools':
         eventToWindow(event).toggleDevTools();
         break;
+    case 'fullscreen':
+        win = eventToWindow(event);
+        arg = arg === 'toggle' ? ! win.isFullScreen()
+            : arg && arg !== 'false' && arg !== 'off' && arg !== 'no';
+        win.setFullScreen(arg == 'toggle' ? ! win.isFullScreen() : arg);
+        break;
     case 'set-menubar-visibility':
         eventToWindow(event).setMenuBarVisibility(arg);
         break;
     }
 });
 
-ipcMain.on('show-context-menu', (event, items, options) => {
-    items = items.map((item) => {
+function fixMenuItems(items, win = null) {
+    return items.map((item) => {
         const clickClientAction = item.clickClientAction;
         if (clickClientAction) {
-            item.click = function() {
-                event.sender.send('do-named-command', clickClientAction);
+            item.click = function(menuItem, browserWindow, event) {
+                browserWindow.send('do-named-command', clickClientAction);
             };
             item.clickClientAction = undefined;
         }
+        if (win && item.visible === false && item.label == "Exit full screen")
+            item.visible = win.isFullScreen()
+        if (item.accelerator && item.accelerator.indexOf(' ') >= 0)
+            item.accelerator = undefined;
+        if (item.submenu)
+            item.submenu = fixMenuItems(item.submenu, win);
         return item;
     });
-    const menu = Menu.buildFromTemplate(items);
-    let oarg = {window: BrowserWindow.fromWebContents(event.sender)};
+}
+
+ipcMain.on('set-application-menu', (event, template) => {
+    Menu.setApplicationMenu(Menu.buildFromTemplate(fixMenuItems(template)));
+});
+
+ipcMain.on('show-context-menu', (event, items, options) => {
+    let win = BrowserWindow.fromWebContents(event.sender);
+    const menu = Menu.buildFromTemplate(fixMenuItems(items, win));
+    let oarg = {window: win };
     if (options.x !== undefined && options.y !== undefined) {
         oarg.x = Math.round(options.x);
         oarg.y = Math.round(options.y);

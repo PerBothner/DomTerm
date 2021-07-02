@@ -819,14 +819,8 @@ int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     }
     const char *opt = argc < 2 ? "on" : argv[1];
-    bool on;
-    if (strcasecmp(opt, "on") == 0 || strcasecmp(opt, "yes") == 0
-        || strcasecmp(opt, "true") == 0)
-      on = true;
-    else if (strcasecmp(opt, "off") == 0 || strcasecmp(opt, "no") == 0
-             || strcasecmp(opt, "false") == 0)
-      on = false;
-    else {
+    int on = bool_value(opt);
+    if (on < 0) {
         printf_error(opts,
                      "arguments to reverse-video is not on/off/yes/no/true/false");
         return EXIT_FAILURE;
@@ -972,6 +966,22 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
         w_op_kind = w_simple;
         //default_windows = "current";
         seq = URGENT_WRAP("\033]97;detach\007");
+    } else if (strcmp(subcommand, "fullscreen") == 0) {
+        const char *subarg = argc >= i+1 ? argv[i+1] : NULL;
+        w_op_kind = w_simple;
+        default_windows = "top";
+        int bval;
+        if (subarg == NULL || strcmp(subarg, "toggle") == 0)
+            seq = URGENT_WRAP("\033]97;fullscreen toggle\007");
+        else if ((bval = bool_value(subarg)) == 1)
+            seq = URGENT_WRAP("\033]97;fullscreen on\007");
+        else if (bval == 0)
+            seq = URGENT_WRAP("\033]97;fullscreen off\007");
+        else {
+            printf_error(opts, "invalid value '%s' to 'window fullscreen' command",
+                         subarg);
+            return EXIT_FAILURE;
+        }
     }
     if (w_op_kind == w_none) {
         printf_error(opts,

@@ -143,12 +143,20 @@ cmd('enter-mux-mode',
         dt.enterMuxMode();
         return true;
     });
+cmd('toggle-menubar',
+    function(dt, key) {
+        if (DomTerm.toggleMenubar)
+            DomTerm.toggleMenubar();
+        return true;
+    });
 cmd('toggle-fullscreen',
     function(dt, key) {
-        if (screenfull.isFullscreen)
-            screenfull.exit();
-        else
-            screenfull.request();
+        DomTerm.windowOp('fullscreen', 'toggle');
+        return true;
+    });
+cmd('exit-fullscreen',
+    function(dt, key) {
+        DomTerm.windowOp('fullscreen', 'off');
         return true;
     });
 cmd('toggle-fullscreen-current-window',

@@ -170,10 +170,24 @@ DomTerm.windowClose = function() {
         window.close();
 }
 
-// 'hide', 'show', 'minimize'
-DomTerm.windowOp = function(opname) {
+// 'hide', 'show', 'minimize', 'fullscreen'
+DomTerm.windowOp = function(opname, arg=null) {
+    if (opname === 'fullscreen') {
+        // arg must be 'on', 'off', 'toogle' (or null)
+        let current = screenfull.isFullscreen;
+        let goal = arg===null || arg === 'toggle' ? ! current
+            : arg && arg !== 'off';
+        if (goal !== current) {
+            if (! DomTerm.isElectron()) {
+                if (current)
+                    screenfull.exit();
+                else
+                    screenfull.request();
+            }
+        }
+    }
     if (DomTerm.isElectron()) {
-        electronAccess.ipcRenderer.send('window-ops', opname, null);
+        electronAccess.ipcRenderer.send('window-ops', opname, arg);
     }
 }
 

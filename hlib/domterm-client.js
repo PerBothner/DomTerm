@@ -319,8 +319,8 @@ function loadHandler(event) {
         */
     }
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
-        if (DomTerm.setContextMenu && ! DomTerm.simpleLayout)
-            DomTerm.setContextMenu();
+        if (DomTerm.createMenus && ! DomTerm.simpleLayout)
+            DomTerm.createMenus();
     m = location.hash.match(/open=([^&;]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {

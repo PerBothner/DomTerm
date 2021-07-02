@@ -1,8 +1,3 @@
-//var { Menu, MenuItem} = require("./mwjs-menu-browser.js");
-//import { Menu, MenuItem} from "./mwjs-menu-browser.js";
-
-DomTerm.savedMenuBar = null;
-
 DomTerm.aboutMessageVariant = function() {
     if (DomTerm.isElectron()) {
         return ' This variant of DomTerm uses Electron '
@@ -43,10 +38,14 @@ DomTerm.showAboutMessage = function() {
 }
 
 DomTerm.createMenus = function(options) {
-    let platform = options.platform;
-    let menuItem = options.menuItem; // DomTerm.makeMenuItem;
-    let popup = options.popup;
-    let Menu = options.Menu;
+    let platform;
+    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom())
+        platform = "electron";
+    else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine)
+        platform = "generic";
+    else
+        return;
+    let menuItem = DomTerm.makeMenuItem;
     let isElectron = DomTerm.isElectron();
     let electronMenus = platform == "electron";
 
@@ -54,7 +53,7 @@ DomTerm.createMenus = function(options) {
         if (electronMenus)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', show);
         else
-            Menu.setApplicationMenu(show ? DomTerm.savedMenuBar : null);
+            Menu.setApplicationMenu(show ? DomTerm._savedMenuBar : null);
     }
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
@@ -69,11 +68,12 @@ DomTerm.createMenus = function(options) {
     var showingMenuBar = true;
     const showMenuBarItem = menuItem({label: 'Show menubar',
                                       type: 'checkbox',
-                                      click: function() {
-                                          showingMenuBar = ! showingMenuBar;
-                                          showMenubar(showingMenuBar);
-                                      },
+                                      clickClientAction: 'toggle-menubar',
                                       checked: true});
+    DomTerm.toggleMenubar = function() {
+        showingMenuBar = ! showingMenuBar;
+        showMenubar(showingMenuBar);
+    }
     const autoPagingItem = menuItem({label: 'Automatic Pager',
                                      accelerator: "Ctrl+Shift+M A",
                                      type: 'checkbox',
@@ -90,10 +90,8 @@ DomTerm.createMenus = function(options) {
                                           accelerator: 'Ctrl+Shift+L',
                                           clickClientAction: 'input-mode-cycle'});
 
-    const inputMenu = new Menu();
-    inputMenu.append(charModeItem);
-    inputMenu.append(lineModeItem);
-    inputMenu.append(autoModeItem);
+    const inputMenu = DomTerm.makeMenu([
+        charModeItem, lineModeItem, autoModeItem ]);
     const inputModeMenu = menuItem({label: 'Input mode',
                                     submenu: inputMenu});
     const saveAsItem = menuItem({label: 'Save as HTML',
@@ -111,22 +109,23 @@ DomTerm.createMenus = function(options) {
     const newPaneItem = menuItem({label: 'New terminal (right/below)',
                                       accelerator: 'Ctrl+Shift+A Enter',
                                   clickClientAction: 'new-pane'});
-    const newTerminalMenu = new Menu();
-    newTerminalMenu.append(newWindowItem);
-    newTerminalMenu.append(newTabItem);
-    newTerminalMenu.append(newPaneItem);
-    newTerminalMenu.append(menuItem({label: 'New terminal above',
-                                     accelerator: 'Ctrl+Shift+A Ctrl+Up',
-                                     clickClientAction: 'new-pane-above'}));
-    newTerminalMenu.append(menuItem({label: 'New terminal below',
-                                     accelerator: 'Ctrl+Shift+A Ctrl+Down',
-                                     clickClientAction: 'new-pane-below'}));
-    newTerminalMenu.append(menuItem({label: 'New terminal left',
-                                     accelerator: 'Ctrl+Shift+A Ctrl+Left',
-                                     clickClientAction: 'new-pane-left'}));
-    newTerminalMenu.append(menuItem({label: 'New terminal right',
-                                     accelerator: 'Ctrl+Shift+A Ctrl+Right',
-                                     clickClientAction: 'new-pane-right'}));
+    const newTerminalMenu = DomTerm.makeMenu([
+        newWindowItem,
+        newTabItem,
+        newPaneItem,
+        menuItem({label: 'New terminal above',
+                  accelerator: 'Ctrl+Shift+A Ctrl+Up',
+                  clickClientAction: 'new-pane-above'}),
+        menuItem({label: 'New terminal below',
+                  accelerator: 'Ctrl+Shift+A Ctrl+Down',
+                  clickClientAction: 'new-pane-below'}),
+        menuItem({label: 'New terminal left',
+                  accelerator: 'Ctrl+Shift+A Ctrl+Left',
+                  clickClientAction: 'new-pane-left'}),
+        menuItem({label: 'New terminal right',
+                  accelerator: 'Ctrl+Shift+A Ctrl+Right',
+                  clickClientAction: 'new-pane-right'})
+    ]);
     const newTerminalMenuItem = menuItem({label: 'New Terminal',
                                           submenu: newTerminalMenu});
     const detachMenuItem =
@@ -148,52 +147,59 @@ DomTerm.createMenus = function(options) {
           menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Cmd+C' : 'Ctrl+Shift+C',
                     click() { DomTerm.doContextCopy(); }});
     const copyLinkSep = menuItem({type: 'separator'});
-
-    const contextMenu = new Menu();
-    contextMenu.append(showMenuBarItem);
-    contextMenu.append(copyItem);
-    contextMenu.append(pasteItem);
-    contextMenu.append(inputModeMenu);
-    contextMenu.append(autoPagingItem);
-    contextMenu.append(newTerminalMenuItem);
-    contextMenu.append(detachMenuItem);
-    const contextLinkMenu = new Menu();
-    contextLinkMenu.append(openLinkItem);
-    contextLinkMenu.append(copyLinkItem);
-    contextLinkMenu.append(copyLinkSep);
-    contextLinkMenu.append(showMenuBarItem);
-    contextLinkMenu.append(copyLinkTextItem); // not plain copyItem
-    contextLinkMenu.append(pasteItem);
-    contextLinkMenu.append(inputModeMenu);
-    contextLinkMenu.append(autoPagingItem);
-    contextLinkMenu.append(newTerminalMenuItem);
-    contextLinkMenu.append(detachMenuItem);
+    const fullscreenExitItem =
+        // Note that electron/main.js checks for this specific label.
+        menuItem({label: "Exit full screen",
+                  visible: false, // hidden unless fullscreen
+                  clickClientAction: 'exit-fullscreen'});
+    const contextMenu = DomTerm.makeMenu([
+        showMenuBarItem,
+        copyItem,
+        pasteItem,
+        inputModeMenu,
+        autoPagingItem,
+        newTerminalMenuItem,
+        detachMenuItem,
+        fullscreenExitItem
+    ]);
+    const contextLinkMenu = DomTerm.makeMenu([
+        openLinkItem,
+        copyLinkItem,
+        copyLinkSep,
+        showMenuBarItem,
+        copyLinkTextItem, // not plain copyItem
+        pasteItem,
+        inputModeMenu,
+        autoPagingItem,
+        newTerminalMenuItem,
+        detachMenuItem,
+        fullscreenExitItem
+    ]);
     const showInspectorItem = ! window._dt_toggleDeveloperTools ? null
           : menuItem({label: 'Toggle Developer Tools',
                       accelerator: 'Ctrl+Shift+I',
                       clickClientAction: 'toggle-developer-tools'});
-    let fileMenu = new Menu();
-    fileMenu.append(newWindowItem);
-    fileMenu.append(newTabItem);
-    fileMenu.append(saveAsItem);
-    fileMenu.append(quitItem);
-    //let fileMenuItem = menuItem({label: 'File', submenu: fileMenu});
-    let editMenu = new Menu();
-    editMenu.append(copyItem);
-    editMenu.append(copyAsHtmlItem);
-    editMenu.append(pasteItem);
-    editMenu.append(menuItem({label: 'Clear Buffer',
-                              clickClientAction: 'clear-buffer'}));
-    editMenu.append(menuItem({label: 'Find',
-                              accelerator: 'Ctrl+Shift+F',
-                              clickClientAction: 'find-text'}));
-    let viewMenu = new Menu();
-    viewMenu.append(showMenuBarItem);
-
+    let fileMenu = DomTerm.makeMenu([
+        newWindowItem,
+        newTabItem,
+        saveAsItem,
+        quitItem
+    ]);
+    let editMenu = DomTerm.makeMenu([
+        copyItem,
+        copyAsHtmlItem,
+        pasteItem,
+        menuItem({label: 'Clear Buffer',
+                  clickClientAction: 'clear-buffer'}),
+        menuItem({label: 'Find',
+                  accelerator: 'Ctrl+Shift+F',
+                  clickClientAction: 'find-text'})
+    ]);
+    let viewMenuItems = [];
+    viewMenuItems.push(showMenuBarItem);
     if (electronMenus) {
-        viewMenu.append(menuItem({role: 'togglefullscreen'}));
+        viewMenuItems.push(menuItem({role: 'togglefullscreen'}));
     } else if (typeof screenfull !== "undefined") {
-        let fullscreenExitItem;
         let fullscreenAllItem =
             menuItem({label: "Full screen (all)", type: 'checkbox',
                       accelerator: 'F11',
@@ -202,13 +208,6 @@ DomTerm.createMenus = function(options) {
             menuItem({label: "Full screen (current)", type: 'checkbox',
                       accelerator: 'Shift-F11',
                       clickClientAction: 'toggle-fullscreen-current-window'});
-        fullscreenExitItem = menuItem({label: "Exit full screen",
-                                       visible: false, // hidden unless fullscreen
-                                       click: function() {
-                                           if (screenfull.isFullscreen)
-                                               screenfull.exit();
-                                           fullscreenExitItem.visible = false;
-                                       }});
         if (screenfull.isEnabled) {
             screenfull.on('change', () => {
                 fullscreenAllItem.checked = false;
@@ -227,43 +226,45 @@ DomTerm.createMenus = function(options) {
                 showMenuBarItem.enabled = ! fullscreenCurrentItem.checked;
 	    });
         }
-        viewMenu.append(fullscreenAllItem);
-        viewMenu.append(fullscreenCurrentItem);
-        contextMenu.append(fullscreenExitItem);
+        viewMenuItems.push(fullscreenAllItem);
+        viewMenuItems.push(fullscreenCurrentItem);
     }
-
     if (electronMenus) {
-        viewMenu.append(menuItem({type: 'separator'}));
-        viewMenu.append(menuItem({role: 'resetzoom'}));
-        viewMenu.append(menuItem({role: 'zoomin'}));
-        viewMenu.append(menuItem({role: 'zoomout'}));
+        viewMenuItems.push(menuItem({type: 'separator'}));
+        viewMenuItems.push(menuItem({role: 'resetzoom'}));
+        viewMenuItems.push(menuItem({role: 'zoomin'}));
+        viewMenuItems.push(menuItem({role: 'zoomout'}));
     }
     if (showInspectorItem != null) {
-        viewMenu.append(menuItem({type: 'separator'}));
-        viewMenu.append(showInspectorItem);
+        viewMenuItems.push(menuItem({type: 'separator'}));
+        viewMenuItems.push(showInspectorItem);
     }
-    let terminalMenu = new Menu();
-    terminalMenu.append(cycleInputModesItem);
-    terminalMenu.append(newTerminalMenuItem);
-    terminalMenu.append(detachMenuItem);
-    terminalMenu.append(resetMenuItem);
-    let helpMenu = new Menu();
-    helpMenu.append(aboutItem);
-    if (homePageItem != null)
-        helpMenu.append(homePageItem);
-
-    let menuBar = new Menu({ type: 'menubar' });
-    menuBar.append(menuItem({label: 'File', submenu: fileMenu}));
-    menuBar.append(menuItem({label: 'Edit', submenu: editMenu}));
-    menuBar.append(menuItem({label: 'View', submenu: viewMenu}));
-    menuBar.append(menuItem({label: 'Terminal', submenu: terminalMenu}));
-    menuBar.append(menuItem({label: 'Help', submenu: helpMenu}));
-    if (electronMenus)
-        menuBar = Menu.buildFromTemplate(menuBar.items);
-    else if (isElectron)
-        electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
-    Menu.setApplicationMenu(menuBar);
-    DomTerm.savedMenuBar = menuBar;
+    let terminalMenu = DomTerm.makeMenu([
+        cycleInputModesItem,
+        newTerminalMenuItem,
+        detachMenuItem,
+        resetMenuItem
+    ]);
+    let helpMenu = DomTerm.makeMenu([
+        aboutItem, homePageItem
+    ]);
+    let menuBarItems = [
+        menuItem({label: 'File', submenu: fileMenu}),
+        menuItem({label: 'Edit', submenu: editMenu}),
+        menuItem({label: 'View', submenu: DomTerm.makeMenu(viewMenuItems)}),
+        menuItem({label: 'Terminal', submenu: terminalMenu}),
+        menuItem({label: 'Help', submenu: helpMenu})
+    ];
+    let menuBar;
+    if (electronMenus) {
+        electronAccess.ipcRenderer.send('set-application-menu', menuBarItems);
+    } else {
+        menuBar = new Menu({ type: 'menubar' }, menuBarItems);
+        if (isElectron)
+            electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
+        DomTerm._savedMenuBar = menuBar;
+        Menu.setApplicationMenu(menuBar);
+    }
 
     DomTerm.showContextMenu = function(options) {
         DomTerm._contextOptions = options;
@@ -273,11 +274,13 @@ DomTerm.createMenus = function(options) {
             lineModeItem.checked = mode == 108;
             autoModeItem.checked = mode == 97;
         }
+        showMenuBarItem.checked = showingMenuBar;
         autoModeItem.visible = DomTerm.supportsAutoInputMode;
+        fullscreenExitItem.visible = screenfull.isFullscreen;
         if (options.autoPaging !== undefined)
             autoPagingItem.checked = options.autoPaging;
         let cmenu = options.contextType=="A" ? contextLinkMenu : contextMenu;
-        popup(cmenu, options);
+        DomTerm.popupMenu(cmenu, options);
         return true;
     };
 }
@@ -288,28 +291,25 @@ if (DomTerm.isElectron() ) {
     });
 }
 
-DomTerm.popupMenu = function(items, options) {
+DomTerm.popupMenu = function(menu, options) {
     if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
-        electronAccess.ipcRenderer.send("show-context-menu", items, options);
+        electronAccess.ipcRenderer.send("show-context-menu", menu, options);
     } else if (false && DomTerm.usingQtWebEngine) {
         // TODO
     } else if (! DomTerm.isAtom()) {
-        let menu =  DomTerm.makeMenu(items);
         let x = options.x || options.clientX || 0;
         let y = options.y || options.clientY || 0;
-        //if (menu.node)
-        //    menu.popdown();
+        if (menu.node)
+            menu.popdown();
         menu.popup(x, y);
+        let dt = DomTerm.focusedTerm;
+        if (dt)
+            dt.maybeFocus(true);
     }
 }
 DomTerm.makeMenu = function(items) {
     if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
-        const {Menu, MenuItem} = electronAccess;
-        let menu = new Menu();
-        for (item of items) {
-            menu.append(DomTerm.makeMenuItem(item));
-        }
-        return menu;
+        return items;
     } else if (false && DomTerm.usingQtWebEngine) {
         // TODO
     } else if (! DomTerm.isAtom()) {
@@ -322,23 +322,13 @@ DomTerm.makeMenu = function(items) {
     return null;
 }
 DomTerm.makeMenuItem = function(options) {
+    if (options instanceof MenuItem)
+        return options;
     if (DomTerm._makeMenuItem)
         return DomTerm._makeMenuItem(options);
     if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
-        const {Menu, MenuItem} = electronAccess;
         function menuItem(options) {
-            if (options && options.accelerator
-                && options.accelerator.indexOf(' ') >= 0)
-                options.accelerator = undefined;
-            const clickClientAction = options && options.clickClientAction;
-            if (clickClientAction) {
-                // FIXME FUTURE Handle in main.js, to avoid need for "remote"
-                options.click = function() {
-                    DomTerm.doNamedCommand(clickClientAction);
-                };
-                options.clickClientAction = undefined;
-            }
-            return new MenuItem(options);
+            return options;
         }
         DomTerm._makeMenuItem = menuItem;
         return menuItem(options);
@@ -359,34 +349,4 @@ DomTerm.makeMenuItem = function(options) {
         return menuItem(options);
     }
     return null; // ERROR
-}
-
-DomTerm.setContextMenu = function() {
-    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
-        const {Menu, MenuItem} = electronAccess;
-        function popup(cmenu, options) {
-            cmenu.popup(options);
-        }
-        DomTerm.createMenus({platform: "electron",
-                             popup: popup,
-                             menuItem: DomTerm.makeMenuItem,
-                             Menu: Menu
-                            });
-    } else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine) {
-        function popup(cmenu, options) {
-            let clientX = options.x || options.clientX || 0;
-            let clientY = options.y || options.clientY || 0;
-            if (cmenu.node)
-                cmenu.popdown();
-            cmenu.popup(clientX, clientY);
-            let dt = DomTerm.focusedTerm;
-            if (dt)
-                dt.maybeFocus(true);
-        }
-        DomTerm.createMenus({platform: "generic",
-                             popup: popup,
-                             menuItem: DomTerm.makeMenuItem,
-                             Menu: Menu
-                            });
-    }
 }

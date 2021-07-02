@@ -1952,6 +1952,11 @@ class DTParser {
             case 'detach':
                 term.detachSession();
                 break;
+            case 'fullscreen on':
+            case 'fullscreen off':
+            case 'fullscreen toggle':
+                DomTerm.windowOp('fullscreen', text.substring(11));
+                break;
             }
             break;
         case 102:
