@@ -1,5 +1,5 @@
 class Menu {
-	constructor(settings = {}) {
+	constructor(settings = {}, itemArgs = []) {
 		const typeEnum = ['contextmenu', 'menubar'];
 		let items = [];
 		let type = isValidType(settings.type) ? settings.type : 'contextmenu';
@@ -66,6 +66,14 @@ class Menu {
 		};
 
 		this.node = null;
+		let nitems = itemArgs.length;
+		for(let i = 0; i < nitems; i++) {
+			let item = itemArgs[i];
+			if (item instanceof MenuItem)
+				items.push(item);
+			else
+				items.push(new MenuItem(item));
+		}
 
 		function isValidType(typeIn = '', debug = false) {
 			if(typeEnum.indexOf(typeIn) < 0) {
@@ -477,15 +485,15 @@ Menu.topsheetZindex = 5;
 class MenuItem {
 	constructor(settings = {}) {
 
-
 		const modifiersEnum = ['cmd', 'command', 'super', 'shift', 'ctrl', 'alt'];
 		const typeEnum = ['separator', 'checkbox', 'radio', 'normal'];
 		let type = isValidType(settings.type) ? settings.type : 'normal';
 		let submenu = settings.submenu || null;
+		if (submenu && ! (submenu instanceof Menu))
+			submenu = new Menu({}, submenu);
 		let click = settings.click || null;
 		let modifiers = validModifiers(settings.modifiers) ? settings.modifiers : null;
 		let label = settings.label || '';
-
 		let enabled = settings.enabled;
 		if(typeof settings.enabled === 'undefined') enabled = true;
 		let visible = settings.visible;
