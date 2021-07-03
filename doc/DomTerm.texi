@@ -485,7 +485,7 @@ If configuring with @code{--with-closure-compiler} do:
 sudo dnf install closure-compiler
 @end example
 
-If building the documentation and not condiguring @code{--without-docbook}:
+If building the documentation and configuring @code{--with-docbook}:
 @example
 sudo dnf install docbook-style-xsl libxslt
 @end example
@@ -806,9 +806,9 @@ If you followed the
 @ref{installing-libclipboard,installation instructions above}
 then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR}.
 
-@item --without-docbook
-Don't use DocBook for generating HTML documentation.
-The result is plain HTML without a navigation bar.
+@item --with-docbook
+Use DocBook for generating HTML documentation.
+This used to be the default but is no longer recommended with texinfo 6.8.
 
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm

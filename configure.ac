@@ -71,7 +71,7 @@ AC_ARG_WITH(closure_compiler,
   AS_HELP_STRING(["--with-closure-compiler=@<:@=compiler.jar@:>],[compress JavaScript with Closure]))
 
 AC_ARG_WITH(docbook,
-  AS_HELP_STRING(--without-docbook,Build manual using DocBook+xsltproc))
+  AS_HELP_STRING(--with-docbook,Build manual using DocBook+xsltproc))
 
 AC_ARG_ENABLE(compiled-in-resources)
 
@@ -113,8 +113,7 @@ AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
 AM_CONDITIONAL(WITH_LIBCLIPBOARD, test "$with_libclipboard" != "no" -a "$with_libclipboard" != "")
 
 AM_CONDITIONAL(WITH_JAVA, test "$with_java" == "yes")
-
-AM_CONDITIONAL(WITH_DOCBOOK, test "$with_docbook" != "no")
+AM_CONDITIONAL(WITH_DOCBOOK, test "$with_docbook" == "yes")
 
 if test "$with_java" = "no" && test -z "${with_java_websocket}"
 then
