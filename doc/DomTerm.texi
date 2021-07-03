@@ -413,6 +413,26 @@ Nicer @ref{password fields, @strong{password fields}}.
 @node Downloading and building
 @chapter Downloading and building
 
+@subheading Binary releases
+
+Binary releases may be available
+@uref{https://github.com/PerBothner/DomTerm/releases/latest,from GitHub}
+on an unpredictable schedule.
+
+A file with an @b{@code{AppImage}} extension
+(such as @code{DomTerm-@var{version}.AppImage})
+is a pre-compiled application, which can be treated
+as the @code{domterm} program with various resources bundled in a single file.
+Just download it; make it executable (@code{chmod +x DomTerm-@var{version}.AppImage}); and optionally rename it (maybe to @code{domterm})
+and put it on your @code{PATH}.
+You should be able to run it on most recent GNU/Linux operating systems,
+as well as compatible ones.
+Specifically, it runs fine on Windows Subsystem for Linux (WSL 2).
+The @code{AppImage} includes the @code{qt} and @code{webview}
+front-ends, but they do depend on GUI libraries that might not be
+on your platform.  On WSL 2, DomTerm defaults to using
+the @code{edge-app} front-end, which works pretty well.
+
 @subheading Getting the DomTerm source code
 
 The sources are in
