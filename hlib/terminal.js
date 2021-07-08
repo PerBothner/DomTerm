@@ -3496,8 +3496,10 @@ Terminal.prototype.resizeHandler = function() {
     dt.measureWindow();
     if (DomTerm.usingXtermJs()) return;
     let minColumns = dt.getOption("terminal.minimum-width", 5);
-    if (this.numColumns < minColumns)
-        this.forceWidthInColumns(minColumns);
+    let minRows = 2;
+    if (this.numColumns < minColumns || this.numRows < minRows)
+        this.forceWidthInColumns(Math.max(minColumns, this.numColumns),
+                                 Math.max(minRows, this.numRows));
     dt._displaySizeInfoWithTimeout();
 
     var home_offset = DomTerm._homeLineOffset(dt);
