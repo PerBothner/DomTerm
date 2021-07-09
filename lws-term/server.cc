@@ -258,7 +258,11 @@ static const struct lws_extension extensions[] = {
 };
 #endif
 
-#define ZIP_MOUNT "/" 
+#define ZIP_MOUNT "/"
+
+static struct lws_protocol_vhost_options extra_mimetypes = {
+    NULL, NULL, ".mjs", "text/javascript"
+};
 
 static struct lws_http_mount mount_domterm_zip = {
         NULL,                   /* linked-list pointer to next*/
@@ -267,7 +271,7 @@ static struct lws_http_mount mount_domterm_zip = {
         "repl-client.html",   /* default filename if none given */
         NULL,
         NULL,
-        NULL,
+        &extra_mimetypes,
         NULL,
         0,
         0,
@@ -1687,7 +1691,6 @@ static struct lib_info standard_jslibs[] = {
 #endif
     {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE},
     {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-    {"hlib/wcwidth.js", LIB_WHEN_SIMPLE},
     {"hlib/mark.es6.js", LIB_WHEN_SIMPLE},
     {"hlib/domterm-findtext.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/FileSaver.js", LIB_WHEN_SIMPLE},

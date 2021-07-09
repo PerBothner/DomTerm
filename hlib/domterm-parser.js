@@ -376,7 +376,7 @@ class DTParser {
                     // I.e. existing character on the current line are re-drawn.
                     // DECSWL undoes any previous DECDWL for that line.
                     // In lieu of stylesheet support, we can place each
-                    // character in its own <span class="wc-node">.
+                    // character in its own <span class="dt-cluster w2">.
                     // (ASCII characters should be replaced by full-width forms.)
                     // However, cursor motion treats each double-width
                     // character as a singe column.  FIXME

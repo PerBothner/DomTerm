@@ -29,7 +29,13 @@ div.domterm-show-info > div {
     justify-self: end;
     overflow-wrap: anywhere;
 }
-div.domterm-pre span.wc-node {
+div.domterm-pre span.dt-cluster.w1 {
+    display: inline-block;
+    text-align: center;
+    width: var(--char-width);
+    height: var(--char-height);
+}
+div.domterm-pre span.dt-cluster.w2 {
     display: inline-block;
     text-align: center;
     width: var(--wchar-width);

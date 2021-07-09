@@ -92,7 +92,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 export { Terminal };
 import { commandMap } from './commands.js';
-var WcWidth = window.WcWidth;
+import * as UnicodeProperties from './unicode/uc-properties.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -449,7 +449,6 @@ class Terminal {
                                 });
             }
         };
-    this.wcwidth = new WcWidth();
   }
 
     isLineEditing() {
@@ -1330,12 +1329,15 @@ Terminal.prototype.atLineEnd = function() {
 }
 */
 
-Terminal.prototype.wcwidthInContext = function(ucs, context) {
-    return this.wcwidth.wcwidthInContext(ucs, context);
+Terminal.prototype.wcwidthInContext = function(codePoint, context) {
+    let preferWide = false; // potentially depends on context
+    return UnicodeProperties.infoToWidth(UnicodeProperties.getInfo(codePoint),
+                                         preferWide);
 }
 
 Terminal.prototype.strWidthInContext = function(str, context) {
-    return this.wcwidth.strWidthInContext(str, context);
+    let preferWide = false; // potentially depends on context
+    return UnicodeProperties.strWidth(str, preferWide);
 }
 
 // Return char index in str corresponding to specified columns.
@@ -1497,11 +1499,12 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     cur = line; // continue with Element case below
                     break;
                 }
+                // FIXME doesn't handle extended grapheme clusters
                 var cwidth = this.wcwidthInContext(ch, cur.parentNode);
                 if (cwidth == 2) {
                     var i1 = ch > 0xffff ? i + 2 : i + 1;
                     const wcnode =
-                        this._createSpanNode("wc-node",
+                        this._createSpanNode("dt-cluster w2",
                                              String.fromCodePoint(ch));
                     cur.parentNode.insertBefore(wcnode, cur.nextSibling);
                     this._deleteData(cur, i, dlen-i);
@@ -1567,7 +1570,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                 }
             } else if (tag == "span") {
                 var line = cur.getAttribute("line");
-                var cls =  cur.getAttribute("class");
+                const cls =  cur.classList;
                 if (line) {
                     descend = false;
                     cur.outerPprintGroup = this._currentPprintGroup;
@@ -1584,9 +1587,10 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                         start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
                     }
                 } else {
-                    if (cls == "wc-node" || cls == "focus-area") {
+                    if (cls.contains("dt-cluster")
+                        || cls.contains("focus-area")) {
                         descend = false;
-                    } else if (cls == "pprint-group") {
+                    } else if (cls.contains("pprint-group")) {
                         start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
                         this._pushPprintGroup(cur);
                     }
@@ -1809,7 +1813,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         if (this.outputInWide) {
             column--;
             if (current instanceof Element && current.tagName == "SPAN"
-                && current.getAttribute("class") == "wc-node") {
+                && current.classList.contains("dt-cluster")) {
                 current = parent;
                 parent = current.parentNode;
             }
@@ -1894,6 +1898,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             var handled = false; // if column has been updated for current
             if (current instanceof Element && current.nodeName == "SPAN") {
                 let valueAttr = current.getAttribute("content-value");
+                let cls = current.classList;
                 if (valueAttr) {
                     let c = this.strColumnToIndex(valueAttr,
                                                   goalColumn - column,
@@ -1911,8 +1916,10 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                             break mainLoop;
                         }
                     }
-                } else if (current.getAttribute("class") == "wc-node") {
-                    if (column + 2 <= goalColumn) {
+                } else if (cls.contains("dt-cluster")) {
+                    if (cls.contains("w1")) {
+                        column += 1;
+                    } else if (column + 2 <= goalColumn) {
                         column += 2;
                     } else { //if (column + 1 == goalColumn) {
                         column += 1;
@@ -4166,6 +4173,7 @@ Terminal.prototype._updateMiscOptions = function() {
             topStyle.setProperty("--background-color", background);
     }
     */
+    topStyle.setProperty("--char-width", this.charWidth+"px");
     topStyle.setProperty("--wchar-width", (this.charWidth * 2)+"px");
     topStyle.setProperty("--char-height", this.charHeight+"px");
 };
@@ -6800,7 +6808,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
             } else if (tagName == "span") {
                 if (cls == "focus-area" || cls == "focus-caret")
                     break;
-                if (cls == "wc-node") {
+                if (cls == "dt-cluster") {
                     string += node.textContent;
                     break;
                 }
@@ -7484,6 +7492,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     el.measureWidth = el.offsetWidth;
                 }
             }
+            let cls;
             if (el instanceof Text) {
                 if (! countColumns)
                     skipChildren = true;
@@ -7491,9 +7500,9 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     beforeCol = dt.nextTabCol(beforeCol);
                 else
                     beforeCol += dt.strWidthInContext(el.data, el);
-            } else if (el.classList.contains("wc-node")) {
+            } else if ((cls = el.classList).contains("dt-cluster")) {
 	        if (countColumns)
-	            beforeCol += 2;
+	            beforeCol += cls.contains("w1") ? 1 : 2;
                 skipChildren = true;
 	    } else if (dt.isObjectElement(el)) {
                 skipChildren = true;
@@ -7596,7 +7605,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             const isText = el instanceof Text;
             check_fits:
             if (isText || dt.isObjectElement(el)
-                || el.classList.contains("wc-node")) {
+                || el.classList.contains("dt-cluster")
+               ) {
                 skipChildren = true;
                 if (isText)
                     dt._normalize1(el);
@@ -7643,7 +7653,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         el = lineNode;
                         el.parentNode.insertBefore(rest, el.nextSibling);
                         next = rest;
-                    } else { // dt.isObjectElement(el) or wc-node
+                    } else { // dt.isObjectElement(el) or dt-cluster
                         dt._insertIntoLines(lineNode, line);
                         el.parentNode.insertBefore(lineNode, el);
                         indentWidth = addIndentation(dt, lineNode, countColumns);
@@ -7893,8 +7903,8 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
     var badWidth = afterPos;
     if (countColumns) {
         var col = Math.floor((availWidth-beforePos) / dt.charWidth);
-        goodLength = this.wcwidth.columnToIndexInContext(textData, 0, col,
-                                                         textNode);
+        goodLength = UnicodeProperties.columnToIndexInContext(textData, 0, col,
+                                                              false);
         badLength = 0;
     }
     // Binary search for split point (only if !countColumns)
@@ -7961,35 +7971,73 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
     let segments = [];
     let widths = [];
     let numCols = 0;
+    let prevInfo = 0;
     const preferWide = false; //this.ambiguousCharsAreWide(context);
+    let inCluster = false; //FIXME
+    let clusterStart = 0;
+    let width = 0; // max of w (below) of characters from clusterStart..i.
     for (let i = beginIndex; ; ) {
-        let width;
-        let next_i;
+        let codePoint, codeInfo, joinState, shouldBreak;
+        let w; // 0 - normal; 1 - force 1-column; 2 - wide
         if (i >= endIndex) {
-            width = -1;
+            codePoint = -1;
+            codeInfo = -1; // ???
+            joinState = 0;
+            shouldBreak = true;
+            w = 0;
         } else {
-            var codePoint = str.codePointAt(i);
-            next_i = i + ((codePoint <= 0xffff) ? 1 : 2);
-            width = preferWide ? this.wcwidth.charWidthRegardAmbiguous(codePoint)
-                : this.wcwidth.charWidthDisregardAmbiguous(codePoint);
+            codePoint = str.codePointAt(i);
+            codeInfo = UnicodeProperties.getInfo(codePoint);
+            joinState = UnicodeProperties.shouldJoin(prevInfo, codeInfo);
+            shouldBreak = joinState <= 0;
+            w = UnicodeProperties.infoToWidthInfo(codeInfo);
+            if (w >= 2)
+                w = w == 3 || preferWide ? 2 : 0;
         }
-        if (i > beginIndex && width != 1) {
-            segments.push(str.substring(beginIndex, i));
-            widths.push(numCols);
+        // A <span class="cluster">...</span> contains one or more
+        // characters that should be treated an extended grapheme cluster.
+        // A "cluster w1" is 1 column wide; "cluster w2' is 2 columns.
+        // A single wide character should be a "cluster w2".
+        // A "cluster w1" may be used for a single narrow character
+        // to force it to the correct width - e.g. Braille characters.
+        // A "cluster pictographic" is "cluster w2" with Pict property.
+        if (shouldBreak) {
+            if (width == 0 &&
+                (i == clusterStart+1
+                 || (i == clusterStart+2
+                     && str.charCodeAt(clusterStart) > 0xffff)))
+                clusterStart = i;
+            if (clusterStart > beginIndex
+                && (w > 0 || width > 0 || prevInfo > 0 || codePoint < 0)) {
+                segments.push(str.substring(beginIndex, clusterStart));
+                widths.push(numCols);
+                widthInColumns += numCols;
+                beginIndex = clusterStart;
+                numCols = 0;
+            }
+            if (clusterStart < i && (width > 0 || prevInfo > 0 || codePoint < 0)) {
+                if (prevInfo == UnicodeProperties.GRAPHEME_BREAK_Regional_Indicator)
+                    width = 2;
+                const node = this._createSpanNode(
+                    width >= 2 ? "dt-cluster w2" : "dt-cluster w1",
+                    str.substring(clusterStart, i));
+                segments.push(node);
+                widths.push(width >= 2 ? 2 : 1);
+                widthInColumns += width >= 2 ? 2 : 1;
+                beginIndex = i;
+                width = 0;
+            }
+            clusterStart = i;
         }
-        if (width < 0)
+        if (i >= endIndex)
             break;
-        if (width == 2) {
-            const wcnode = this._createSpanNode("wc-node",
-                                                str.substring(i, next_i));
-            segments.push(wcnode);
-            widths.push(2);
-            beginIndex = next_i;
-            numCols = 0;
-        } else
-            numCols++;
-        widthInColumns += width;
-        i = next_i;
+        // next_w
+        prevInfo = joinState;
+        if (w > width)
+            width = w;
+        // update inCluster, width, numCols, widthInColumns
+        i = i + ((codePoint <= 0xffff) ? 1 : 2);
+        numCols += w == 2 ? 2 : 1;
     }
 
     let nsegments = segments.length;
@@ -8013,7 +8061,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         }
     }
     if (this.outputContainer.tagName == "SPAN"
-        && this.outputContainer.getAttribute("class") == "wc-node"
+        && this.outputContainer.classList.contains("dt-cluster")
         && this.outputBefore == this.outputContainer.firstChild) {
         this.outputBefore = this.outputContainer;
         this.outputContainer = this.outputBefore.parentNode;
@@ -8060,7 +8108,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             let oldChild;
             if (seg instanceof Element
                 && this.outBefore.tagName == "SPAN"
-                && this.outputBefore.getAttribute("class") == "wc-node"
+                && this.classList.contains("dt-cluster")
                 && (oldChild = this.outputBefore.firstChild) instanceof Text) {
                 if (oldChild.data !== seg.firstChild.data) {
                     oldChild.data = seg.firstChild.data;
@@ -9623,15 +9671,15 @@ Terminal.prototype._checkTree = function() {
             if (cur.getAttribute("std") == "prompt"
                 && ! parent.classList.contains("input-line"))
                 error("prompt not in input-line");
-            if (cur.getAttribute("class") == "wc-node") {
+            if (cur.classList.contains("dt-cluster")) {
                 let ch = cur.firstChild;
                 if (ch instanceof Element) {
                     if (ch !== this._caretNode)
-                        error("bad element child in wc-node");
+                        error("bad element child in dt-cluster");
                     ch = ch.nextSibling;
                 }
                 if (cur.firstChild == null || ! (ch instanceof Text))
-                    error("missing text in wc-node");
+                    error("missing text in dt-cluster");
             }
             if (istart < nlines && this.lineStarts[istart] == cur) {
                 if (iend == istart && this.lineEnds[iend] == null)
@@ -10111,9 +10159,9 @@ Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
             : this.outputContainer.lastChild;
         for (; previous != null; previous = previous.previousSibling) {
             if (previous instanceof Element) {
-                // Allow wc-node (wide characters) and soft line-breaks.
+                // Allow dt-cluster (wide characters) and soft line-breaks.
                 // Should we allow other Element types?
-                if (! (previous.class == "wc-node"
+                if (! (previous.classList.contains("dt-cluster")
                        || previous.getAttribute("line") == "soft"))
                     return false;
             }
@@ -11025,6 +11073,15 @@ Terminal.scanInRange = function(range, backwards, state) {
         if (! (node instanceof Text)) {
             if (node.nodeName == "SPAN" && node.getAttribute("std") == "caret")
                 return ! node.classList.contains("focus-caret");
+            if (node.nodeName == "SPAN"
+                && node.classList.contains('dt-cluster')) {
+                state.todo--;
+                if (state.wrapText && node.firstChild instanceof Text) {
+                    const d = node.firstChild.data;
+                    state.wrapText(node.firstChild, d, d.length);
+                }
+                return false;
+            }
             if (node.nodeName == "SPAN"
                 && node.getAttribute("line") != null) {
                 let stopped = false;

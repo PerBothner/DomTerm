@@ -294,7 +294,10 @@ HLIB_FIXED_FILES_INNER="\
   hlib/commands.js \
   hlib/FileSaver.js \
   hlib/ResizeSensor.js \
-  hlib/wcwidth.js"
+  hlib/unicode/uc-properties.js \
+  hlib/unicode/unicode-trie/index.mjs  \
+  hlib/unicode/unicode-trie/swap.mjs \
+  hlib/unicode/tiny-inflate/index.mjs"
 HLIB_FIXED_FILES_OUTER="\
   hlib/jquery.min.js \
   hlib/goldenlayout.js \
