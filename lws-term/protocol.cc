@@ -2533,7 +2533,7 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                             // it's safe to access data_start[-1].
                             char save_byte = data_start[-1];
                             n = read(fd_in, data_start-1, avail+1);
-                            lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d a\n",
+                            lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d\n",
                                       fd_in, pclient->session_number, (long) n, tclient->connection_number);
                             if (n == 0)
                                 return -1;
