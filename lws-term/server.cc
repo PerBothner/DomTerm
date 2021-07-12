@@ -282,8 +282,6 @@ static struct lws_http_mount mount_domterm_zip = {
         LWSMPRO_FILE,   /* origin points to a callback */
         sizeof(ZIP_MOUNT)-1,
         NULL,
-
-        { NULL, NULL } // sentinel
 };
 
 #define CHROME_OPTION 1000
