@@ -586,7 +586,7 @@ If you need to build libwebsockets from source, do the following:
 
 @example
 cd $WORKDIR
-git clone https://github.com/warmcat/libwebsockets
+git clone https://libwebsockets.org/repo/libwebsockets
 cd libwebsockets
 mkdir build
 cd build
