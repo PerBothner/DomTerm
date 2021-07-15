@@ -1144,10 +1144,11 @@ Terminal.prototype.setFocused = function(focused) {
         return;
     let classList = this.topNode.classList;
     let wasFocused = classList.contains("domterm-active");
+    const changeFocused = wasFocused !== (focused > 0);
     if (focused > 0) {
         classList.add("domterm-active");
         DomTerm.setTitle(this.sstate.windowTitle);
-        if (! this.isSavedSession()) {
+        if (changeFocused && ! this.isSavedSession()) {
             this.reportEvent("FOCUSED", ""); // to server
             DomTerm.inputModeChanged(this, this.getInputMode());
         }
@@ -1156,7 +1157,7 @@ Terminal.prototype.setFocused = function(focused) {
     } else if (this.topNode) {
         classList.remove("domterm-active");
     }
-    if (this.sstate.sendFocus && (wasFocused !== (focused > 0)))
+    if (this.sstate.sendFocus && changeFocused)
         this.processResponseCharacters(focused ? "\x1b[I" : "\x1b[O");
 }
 
