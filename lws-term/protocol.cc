@@ -1548,13 +1548,15 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         } else {
             sb.printf(URGENT_WRAP("\033]88;{}\007"));
         }
+        if (pclient->pid > 0) {
 #define FORMAT_PID_SNUMBER "\033]31;%d\007"
 #define FORMAT_SNAME "\033]30;%s\007"
-        sb.printf(pclient->session_name
-                  ? URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME)
-                  : URGENT_WRAP(FORMAT_PID_SNUMBER),
-                  pclient->pid,
-                  pclient->session_name);
+            sb.printf(pclient->session_name
+                      ? URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME)
+                      : URGENT_WRAP(FORMAT_PID_SNUMBER),
+                      pclient->pid,
+                      pclient->session_name);
+        }
         if (pclient->saved_window_contents != NULL) {
             int rcount = pclient->saved_window_sent_count;
             sb.printf(URGENT_WRAP("\033]103;%ld,%s\007"),
