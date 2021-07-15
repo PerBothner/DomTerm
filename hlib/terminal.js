@@ -10935,7 +10935,8 @@ Terminal.prototype.editorInsertString = function(str, inserting=true) {
                 this.insertRawOutput(str1);
                 if (! this._miniBuffer) {
                     let line = this.lineStarts[this.getAbsCursorLine()];
-                    line._widthColumns += this.strWidthInContext(str1, line);
+                    if (line._widthColumns !== undefined)
+                        line._widthColumns += this.strWidthInContext(str1, line);
                 }
             } else {
                 let saveInserting = this.sstate.insertMode;
