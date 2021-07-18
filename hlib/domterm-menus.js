@@ -145,7 +145,7 @@ DomTerm.createMenus = function(options) {
                                    clickClientAction: 'copy-link-address'});
     const copyLinkTextItem =
           menuItem({label: 'Copy', accelerator: DomTerm.isMac ? 'Cmd+C' : 'Ctrl+Shift+C',
-                    click() { DomTerm.doContextCopy(); }});
+                    clickClientAction: 'copy-in-context'});
     const copyLinkSep = menuItem({type: 'separator'});
     const fullscreenExitItem =
         // Note that electron/main.js checks for this specific label.
@@ -267,7 +267,6 @@ DomTerm.createMenus = function(options) {
     }
 
     DomTerm.showContextMenu = function(options) {
-        DomTerm._contextOptions = options;
         const mode = options.inputMode;
         if (mode) {
             charModeItem.checked = mode == 99;

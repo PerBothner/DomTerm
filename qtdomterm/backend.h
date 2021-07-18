@@ -45,7 +45,6 @@ signals:
     void layoutAddPane(int paneOp);
     void copyAsHTML();
     void pasteText(const QString& text);
-    void handleSimpleMessage(const QString& msg); // deprecated?
     void handleSimpleCommand(const QString& msg);
     void writeInputMode(int mode);
     void writeSetCaretStyle(int style);

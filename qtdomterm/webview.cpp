@@ -421,17 +421,16 @@ void WebView::displayContextMenu(const QString& contextType)
 
 void WebView::slotOpenLink()
 {
-    const QString command = "open-link";
-    emit backend()->handleSimpleMessage(command);
+    emit backend()->handleSimpleCommand("open-link");
 }
 
 void WebView::slotCopyLinkAddress()
 {
-    emit backend()->handleSimpleMessage("copy-link-address");
+    emit backend()->handleSimpleCommand("copy-link-address");
 }
 void WebView::slotCopyInContext()
 {
-    emit backend()->handleSimpleMessage("context-copy");
+    emit backend()->handleSimpleCommand("copy-in-context");
 }
 
 void WebView::wheelEvent(QWheelEvent *event)

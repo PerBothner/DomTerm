@@ -266,6 +266,14 @@ cmd('copy-html',
     function(dt, key) {
         return DomTerm.valueToClipboard(Terminal._selectionValue(true));
     });
+cmd('copy-in-context',
+    function(dt, key) {
+        let contentValue = DomTerm._contextOptions && DomTerm._contextOptions.contentValue;
+        if (contentValue && window.getSelection().isCollapsed)
+            DomTerm.valueToClipboard(contentValue);
+        else
+            DomTerm.doCopy();
+    });
 cmd('copy-text-or-interrupt',
     function(dt, key) {
         let cmd = document.getSelection().isCollapsed || key === dt.previousKeyName

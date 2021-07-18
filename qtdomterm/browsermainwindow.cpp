@@ -373,7 +373,7 @@ void BrowserMainWindow::slotClearBuffer()
 
 void BrowserMainWindow::slotCopy()
 {
-    emit webView()->backend()->handleSimpleMessage("copy");
+    emit webView()->backend()->handleSimpleCommand("copy-text");
 }
 
 void BrowserMainWindow::slotPaste()

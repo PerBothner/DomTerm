@@ -124,19 +124,6 @@ function connectAjax(name, prefix="", topNode=null)
     xhr.send("VERSION="+JSON.stringify(DomTerm.versionInfo));
 }
 
-DomTerm.handleSimpleMessage = function(command) {
-    if (command=="serialize")
-        DomTerm.saveWindowContents();  //or maybe DomTerm.detach();
-    else if (command=="destroy-window")
-        dt.reportEvent("destroy-window", "");
-    else if (command=="copy-link-address")
-        DomTerm.copyLink();
-    else if (command=="copy")
-        DomTerm.doCopy();
-    else if (command=="context-copy")
-        DomTerm.doContextCopy();
-}
-
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
     DomTerm.showContextMenu = function(options) {
@@ -196,7 +183,6 @@ function setupQWebChannel(channel) {
     backend.layoutAddPane.connect(function(paneOp) {
         DomTerm.newPane(paneOp);
     });
-    backend.handleSimpleMessage.connect(DomTerm.handleSimpleMessage);
     backend.handleSimpleCommand.connect(function(command) {
         DomTerm.doNamedCommand(command);
     });
@@ -447,9 +433,7 @@ function handleMessage(event) {
             break;
         }
     }
-    if (typeof data == "string" || data instanceof String)
-        DomTerm.handleSimpleMessage(data);
-    else if (data.command && data.args
+    if (data.command && data.args
              && DomTerm.handleCommand(iframe, data.command, data.args))
         return;
     else if (data.command=="handle-output")
@@ -468,6 +452,7 @@ function handleMessage(event) {
             y = y + iframe.clientTop + ibox.y;
             options = Object.assign({}, options, { "clientX": x, "clientY": y});
         }
+        DomTerm._contextOptions = options;
         DomTerm.showContextMenu(options);
     } else if (data.command=="domterm-add-pane") { // in parent from child
         DomTermLayout.addPane(data.args[0], data.args[1], iframe);
@@ -540,8 +525,6 @@ function handleMessage(event) {
         DomTerm.doCopy(data.args[0]);
     } else if (data.command=="open-link") { // message to child
         DomTerm.handleLink(data.args[0]);
-    } else if (data.args.length == 0) {
-        DomTerm.handleSimpleMessage(data.command);
     } else
         console.log("received message "+data+" command:"+data.command+" dt:"+ dt);
 }

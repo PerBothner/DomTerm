@@ -3388,6 +3388,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
                     html: Terminal._rangeAsHTML(range)
                 };
             }
+            DomTerm._contextOptions = opts;
             if (DomTerm.showContextMenu(opts))
                 e.preventDefault();
         }
@@ -4007,6 +4008,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                                  }
                              },
                              false);
+    /*
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
         chrome.contextMenus.onClicked.addListener(function(info) {
             switch (info.menuItemId) {
@@ -4020,6 +4022,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
             dt.log("context menu even info:"+info);
         });
     }
+    */
 };
 
 Terminal.prototype._createBuffer = function(idName, bufName) {
@@ -8634,14 +8637,6 @@ DomTerm.copyLink = function(options=DomTerm._contextOptions) {
 
 DomTerm.copyText = function(str) {
     return DomTerm.valueToClipboard({ text: str, html: "" });
-}
-
-DomTerm.doContextCopy = function() {
-    let contentValue = DomTerm._contextOptions && DomTerm._contextOptions.contentValue;
-    if (contentValue && window.getSelection().isCollapsed)
-        DomTerm.valueToClipboard(contentValue);
-    else
-        DomTerm.doCopy();
 }
 
 DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
