@@ -9061,7 +9061,7 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
     } else if (passwordField) {
         this.sstate.hiddenText = undefined;
         if (this._caretNode.parentNode)
-            this._caretNode.parentNode(this._caretNode);
+            this._caretNode.parentNode.removeChild(this._caretNode);
         oldInputLine.parentNode.removeChild(oldInputLine);
         if (this.outputContainer == oldInputLine)
             this.outputBefore = null;
