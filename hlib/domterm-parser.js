@@ -1149,7 +1149,7 @@ class DTParser {
                 }
             }
             // DECSTBM - set scrolling region
-            var top = this.getParameter(0, 1);
+            var top = Math.max(this.getParameter(0, 1), 1);
             var bot = this.getParameter(1, -1);
             if (bot > term.numRows || bot <= 0)
                 bot = term.numRows;
