@@ -1603,8 +1603,9 @@ class DTParser {
         case 5: // Reverse Video (DECSCNM)
             term.setReverseVideo(value);
             break;
-        case 6:
+        case 6: // DECOM
             term.sstate.originMode = value;
+            term.cursorSet(0, 0, value);
             break;
         case 7:
             if (value)
