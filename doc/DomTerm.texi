@@ -5080,13 +5080,6 @@ Terminal emulators for Atom:
 Various Electron @uref{https://github.com/sindresorhus/awesome-electron,Awesome links}
 @uref{https://electron.atom.io/community/,Community links}.
 
-@subheading View/copy mode (enhanced pager mode) [OLD]
-
-Enhance the @ref{Paging} mode so it is a more general View/Copy mode.
-An important feature is being able to set and modify the selection
-without using a mouse.
-See @uref{https://github.com/microsoft/terminal/issues/4993,Windows Terminal issue}; tmux copy mode; iTerm2 copy mode.
-
 @subheading Readline style hooks and improvements
 
 The idea is the line-editing mode would provide the
@@ -6893,10 +6886,6 @@ is used to get the absolute path for the current @code{domterm} executable.
 Eli Gray's @uref{https://github.com/eligrey/FileSaver.js/,FileSaver.js} is
 for the ``Save as HTML'' feature.
 
-The wcwidth library (used to determine which characers are ``double-width'')
-has a convoluted history - see the source code.  It has been re-factored
-somewhat for DomTerm.
-
 Reading Sixel images uses the @uref{https://github.com/jerch/node-sixel,@code{node-sixel}} library
 written by Jörg ``Jerch'' Breitbart.
 
@@ -6908,5 +6897,15 @@ which was a big inspiration).
 Building of the @code{qtdomterm} directory makes use of
 @uref{https://github.com/tsuna/autotroll,AutoTroll} by
 Benoit Sigoure and Werner Lemberg.
+
+Unicode Extended Grapheme breaking and determination of wide character
+uses @uref{https://github.com/PerBothner/unicode-properties,unicode-properties},
+which are based on code by Devon Govett
+(@uref{https://github.com/devongovett/unicode-trie,unicode-trie},
+@uref{https://github.com/foliojs/tiny-inflate,tiny-inflate},
+and @uref{https://github.com/foliojs/unicode-properties,unicode-properties}),
+and by Taisuke Fukuno
+(@uref{https://github.com/taisukef/grapheme-breaker-mjs,grapheme-breaker-mjs}).
+The @code{wcwidth} library is no longer used.
 
 The find-text facility uses Julian Kühnel's @uref{https://markjs.io/,mark.js}.
