@@ -16,7 +16,6 @@
 #if COMBINE_RESOURCES
 <script type='text/javascript' src='hlib/dt-combined.js'> </script>
 #endif
-<script type='text/javascript' src='hlib/ResizeSensor.js'> </script>
 #ifnot COMBINE_RESOURCES
 <script type='text/javascript' src='hlib/FileSaver.js'> </script>
 <script type='text/javascript' src='hlib/wcwidth.js'> </script>

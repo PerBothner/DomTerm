@@ -1692,7 +1692,6 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/mark.es6.js", LIB_WHEN_SIMPLE},
     {"hlib/domterm-findtext.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/FileSaver.js", LIB_WHEN_SIMPLE},
-    {"hlib/ResizeSensor.js", LIB_WHEN_SIMPLE},
 #endif
 #if COMBINE_RESOURCES
     {"hlib/dt-outer.js", LIB_WHEN_OUTER},
