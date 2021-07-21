@@ -293,7 +293,6 @@ HLIB_FIXED_FILES_INNER="\
   hlib/terminal.js \
   hlib/commands.js \
   hlib/FileSaver.js \
-  hlib/ResizeSensor.js \
   hlib/unicode/uc-properties.js \
   hlib/unicode/unicode-trie/index.mjs  \
   hlib/unicode/unicode-trie/swap.mjs \

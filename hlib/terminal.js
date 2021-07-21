@@ -3535,13 +3535,16 @@ Terminal.prototype.resizeHandler = function() {
 
 Terminal.prototype.attachResizeSensor = function() {
     var dt = this;
-    dt._resizeSensor = new ResizeSensor(dt.topNode, function() { dt.resizeHandler(); });
+    dt._resizeObserver = new ResizeObserver(entries => {
+        dt.resizeHandler();
+    });
+    dt._resizeObserver.observe(dt.topNode);
 }
 
 Terminal.prototype.detachResizeSensor = function() {
-    if (this._resizeSensor)
-        this._resizeSensor.detach();
-    this._resizeSensor = null;
+    if (this._resizeObserver)
+        this._resizeObserver.unobserve(this.topNode);
+    this._resizeObserver = undefined;
 };
 
 Terminal.prototype._displayInputModeWithTimeout = function(text) {
