@@ -242,8 +242,6 @@ class Terminal {
     // Edge 20+
     var isEdge = !isIE && !!window.StyleMedia;
 
-    this._useTabCharInDom = !isIE && !isEdge;
-
     // Number of vertical pixels available.
     this.availHeight = 0;
     // Number of horizontal pixels available.
@@ -1396,16 +1394,19 @@ Terminal.prototype.nextTabCol = function(col) {
     }
 };
 
-Terminal.prototype.tabToNextStop = function(isTabChar) {
-    function endsWithSpaces(str, w) {
-        var len = str.length;
-        if (len < w)
+Terminal._endsWithSpaces = function(str, w) {
+    var len = str.length;
+    if (w < 0)
+        w = len;
+    else if (len < w)
+        return false;
+    for (let i = w; i > 0; i--)
+        if (str.charCodeAt(len-i) != 32)
             return false;
-        for (let i = w; i > 0; i--)
-            if (str.charCodeAt(len-i) != 32)
-                return false;
-        return true;
-    }
+    return true;
+};
+
+Terminal.prototype.tabToNextStop = function(isTabChar) {
     var col = this.getCursorColumn();
     if (col == this.numColumns && (this.sstate.wraparoundMode & 2) != 0) {
         this.cursorLineStart(1);
@@ -1419,17 +1420,12 @@ Terminal.prototype.tabToNextStop = function(isTabChar) {
     var w = nextStop-col;
     this.cursorRight(w);
     var prev;
-    if (isTabChar && this._useTabCharInDom && this._fixOutputPosition()
+    if (isTabChar && this._fixOutputPosition()
         && (prev = this.outputBefore.previousSibling) instanceof Text
-        && endsWithSpaces(prev.data,  w)) {
-        var span = this._createSpanNode();
-        span.appendChild(document.createTextNode('\t'));
-        // For standard tabs, we prefer to set tab-size to 8, as that
-        // is preserved under re-flow.  However, with non-standard tab-stops,
-        // or if the nextCol is not divisible by 8 (because we're at the
-        // right column) use the actual next column.
-        var typical = this._tabsAdded == null && (nextStop & 7) == 0;
-        span.setAttribute('style', 'tab-size:'+(typical ? 8 : nextStop));
+        && Terminal._endsWithSpaces(prev.data,  w)) {
+        let span = this._createSpanNode(null,
+                                        prev.data.substring(prev.length-w));
+        span.setAttribute('dt-tab', nextStop);
         this.outputContainer.insertBefore(span, this.outputBefore);
         this._deleteData(prev, prev.length-w, w);
     }
@@ -8679,6 +8675,13 @@ Terminal._rangeAsText = function(range) {
         if (parent instanceof Element) {
             if (parent.getAttribute("std") === "caret")
                 parent = parent.parentNode;
+            if (parent.getAttribute('dt-tab')
+                && Terminal._endsWithSpaces(tnode.textContent, -1)
+                && parent.firstChild instanceof Text) {
+                if (tnode == parent.firstChild)
+                    t += '\t';
+                return;
+            }
             if (parent.classList.contains("input-line"))
                 return;
         }
