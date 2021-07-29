@@ -1028,12 +1028,11 @@ maybe_signal (struct pty_client *pclient, int sig, int ch)
     ioctl(pclient->pty, TIOCSIG, (char *)(size_t)sig);
     if (ch >= 0) {
         char cbuf[12];
-        if (ch >= ' ' && ch != 127)
-            sprintf(cbuf, "%c", ch);
-        else
-            sprintf(cbuf, "^%c", ch == 127 ? '?' : ch + 64);
+        int n = ch >= ' ' && ch != 127 ? sprintf(cbuf, "%c", ch)
+            : sprintf(cbuf, "^%c", ch == 127 ? '?' : ch + 64);
         FOREACH_WSCLIENT(tclient, pclient) {
             tclient->ob.append(cbuf);
+            tclient->ocount += n;
             lws_callback_on_writable(tclient->out_wsi);
         }
     }
