@@ -2433,7 +2433,7 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
 /** Move cursor to beginning of line, relative.
  * @param deltaLines line number to move to, relative to current line.
  */
-Terminal.prototype.cursorLineStart = function(deltaLines) {
+Terminal.prototype.cursorLineStart = function(deltaLines, kind=undefined) {
     let curLine = this.getAbsCursorLine();
     if (deltaLines == 1 && curLine == this.lineStarts.length-1) {
         if (this._currentStyleMap.size == 0)
@@ -2451,22 +2451,30 @@ Terminal.prototype.cursorLineStart = function(deltaLines) {
         // then we prefer to insert a nested newline element (to avoid
         // breaking up semantically-meaningful spans).
         // Otherwise, create a new line block (domterm-pre, usually).
-        let newBlock = Terminal.isBlockNode(parent);
-        if (! newBlock) {
-            let endLine = this.lineEnds[curLine];
-            for (; parent  ;) {
-                if (next != null && next != endLine) {
-                    newBlock = true;
-                    break;
+        let newBlock;
+        if (kind)
+            newBlock = false;
+        else {
+            newBlock = Terminal.isBlockNode(parent);
+            if (! newBlock) {
+                let endLine = this.lineEnds[curLine];
+                for (; parent  ;) {
+                    if (next === this._caretNode && next)
+                        next = next.nextSibling;
+                    if (next != null && next != endLine) {
+                        newBlock = true;
+                        break;
+                    }
+                    if (Terminal.isBlockNode(parent))
+                        break;
+                    next = parent.nextSibling;
+                    parent = parent.parentNode;
                 }
-                if (Terminal.isBlockNode(parent))
-                    break;
-                next = parent.nextSibling;
-                parent = parent.parentNode;
             }
         }
         if (! newBlock) {
-            this._appendLine("hard", this.outputContainer, null, this.outputBefore);
+            this._appendLine(kind || "hard",
+                             this.outputContainer, null, this.outputBefore);
             let newLine = this.lineEnds[curLine];
             this.outputContainer = newLine.parentNode;
             this.outputBefore = newLine.nextSibling;
@@ -8218,7 +8226,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             if (this.outputBefore != null
                 || oldContainer.nextSibling != oldLine)
                 oldLine = null;
-            this.cursorLineStart(1);
+            this.cursorLineStart(1, "soft");
             this._forceWrap(absLine);
             // Move newly-softened line inside oldContainer.
             if (oldLine
