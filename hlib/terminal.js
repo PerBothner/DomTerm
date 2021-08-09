@@ -2230,25 +2230,28 @@ Terminal.prototype._removeInputLine = function() {
             }
             return;
         }
-        var caretParent = this._caretNode.parentNode;
-        if (caretParent != null) {
-            let r;
-            if (this.isLineEditing()) {
-                r = new Range();
-                r.selectNode(this._caretNode);
-            } else
-                r = this._positionToRange();
-            let before = this._caretNode.previousSibling;
-            if (document.activeElement === this._caretNode)
-                this.maybeFocus();
-            let sel = window.getSelection();
-            if (sel.focusNode == this._caretNode)
-                sel.removeAllRanges();
-            caretParent.removeChild(this._caretNode);
-            if (before instanceof Text && before.nextSibling instanceof Text)
-                before.parentNode.normalize();
-            this._positionFromRange(r);
-        }
+        this._removeCaretNode();
+    }
+}
+Terminal.prototype._removeCaretNode = function() {
+    var caretParent = this._caretNode.parentNode;
+    if (caretParent != null) {
+        let r;
+        if (this.isLineEditing()) {
+            r = new Range();
+            r.selectNode(this._caretNode);
+        } else
+            r = this._positionToRange();
+        let before = this._caretNode.previousSibling;
+        if (document.activeElement === this._caretNode)
+            this.maybeFocus();
+        let sel = window.getSelection();
+        if (sel.focusNode == this._caretNode)
+            sel.removeAllRanges();
+        caretParent.removeChild(this._caretNode);
+        if (before instanceof Text && before.nextSibling instanceof Text)
+            before.parentNode.normalize();
+        this._positionFromRange(r);
     }
 };
 
@@ -3504,7 +3507,7 @@ Terminal.prototype.resizeHandler = function() {
     var dt = this;
     // FIXME we want the resize-sensor to be a child of helperNode
     if (DomTerm.verbosity > 0)
-        dt.log("ResizeSensor called "+dt.name); 
+        dt.log("resizeHandler called "+dt.name);
     var oldWidth = dt.availWidth;
     dt.measureWindow();
     if (DomTerm.usingXtermJs()) return;
@@ -7973,7 +7976,14 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
     return goodLength < textLength ? textData.substring(goodLength) : "";
 };
 
-Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
+/** Insert str.substr(beginIndex,endIndex) at current position.
+ * inserting: 0: overwrite mode;
+ * 1: insert in current line, drop characters shifted out of line;
+ * 2: true insert
+ */
+
+Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
+             inserting=this.sstate.insertMode ? 1 : 0) {
     var sslen = endIndex - beginIndex;
     if (sslen == 0)
         return;
@@ -8039,6 +8049,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
                 width = 0;
             }
             clusterStart = i;
+            numCols += w == 2 ? 2 : 1;
         }
         if (i >= endIndex)
             break;
@@ -8048,7 +8059,6 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             width = w;
         // update inCluster, width, numCols, widthInColumns
         i = i + ((codePoint <= 0xffff) ? 1 : 2);
-        numCols += w == 2 ? 2 : 1;
     }
 
     let nsegments = segments.length;
@@ -8081,34 +8091,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
         this.outputContainer = this.outputBefore;
         this.outputBefore = 0;
     }
-    if (this.sstate.insertMode) {
-        var line = this.getAbsCursorLine();
-        var col = this.getCursorColumn();
-        var trunccol = this.numColumns-widthInColumns;
-        // This would be simpler and faster if we had a generalization
-        // of eraseCharactersRight which erases after an initial skip. FIXME
-        // I.e. eraseCharactersAfterSkip(col < trunccol ? trunccol - col : 0);
-        var saveContainer = this.outputContainer;
-        var saveOutput = this.outputBefore;
-        var firstInParent = saveOutput == saveContainer.firstChild;
-        var prev = saveOutput ? saveOutput.previousSibling : null;
-        if (col < trunccol)
-            this.moveToAbs(line, trunccol, false);
-        this.deleteCharactersRight(-1);
-        if (col < trunccol) {
-            if (firstInParent || prev instanceof Element) {
-                this.outputContainer = saveContainer;
-                this.outputBefore =
-                    firstInParent ? saveContainer.firstChild
-                    : prev.nextSibling;
-                this.currentAbsLine = line;
-                this.currentCursorColumn = col;
-            } else {
-                this.moveToAbs(line, col, true);
-            }
-        }
-        this._adjustStyle();
-    } else {
+    if (inserting == 0) {
         if (this.outputContainer instanceof Text)
             this._adjustStyle();
         /*
@@ -8167,6 +8150,34 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex) {
             // FIXME optimize if end of line
             fits = this.deleteCharactersRight(widthInColumns, true);
         }
+    } else if (inserting == 1) {
+        var line = this.getAbsCursorLine();
+        var col = this.getCursorColumn();
+        var trunccol = this.numColumns-widthInColumns;
+        // This would be simpler and faster if we had a generalization
+        // of eraseCharactersRight which erases after an initial skip. FIXME
+        // I.e. eraseCharactersAfterSkip(col < trunccol ? trunccol - col : 0);
+        var saveContainer = this.outputContainer;
+        var saveOutput = this.outputBefore;
+        var firstInParent = saveOutput == saveContainer.firstChild;
+        var prev = saveOutput ? saveOutput.previousSibling : null;
+        if (col < trunccol)
+            this.moveToAbs(line, trunccol, false);
+        //this._clearWrap(line);
+        this.deleteCharactersRight(-1);
+        if (col < trunccol) {
+            if (true || firstInParent || prev instanceof Element) {
+                this.outputContainer = saveContainer;
+                this.outputBefore = saveOutput;
+                //firstInParent ? saveContainer.firstChild
+                //: prev.nextSibling;
+                this.currentAbsLine = line;
+                this.currentCursorColumn = col;
+            } else {
+                this.moveToAbs(line, col, true);
+            }
+        }
+        this._adjustStyle();
     }
     if (! fits && absLine < this.lineStarts.length - 1) {
         this._clearWrap(absLine);
@@ -10930,7 +10941,7 @@ Terminal.prototype.editorContinueInput = function() {
     this._updateAutomaticPrompts();
 }
 
-Terminal.prototype.editorInsertString = function(str, inserting=true) {
+Terminal.prototype.editorInsertString = function(str, inserting=2) {
     this.editorAddLine();
     this._showPassword();
     if (! this._miniBuffer)
@@ -10940,19 +10951,10 @@ Terminal.prototype.editorInsertString = function(str, inserting=true) {
         let str1 = nl < 0 ? str : str.substring(0, nl);
         if (str1 != "") {
             let saved = this._pushToCaret();
-            if (inserting) {
-                this.insertRawOutput(str1);
-                if (! this._miniBuffer) {
-                    let line = this.lineStarts[this.getAbsCursorLine()];
-                    if (line._widthColumns !== undefined)
-                        line._widthColumns += this.strWidthInContext(str1, line);
-                }
-            } else {
-                let saveInserting = this.sstate.insertMode;
-                this.sstate.insertMode = inserting;
-                this.insertSimpleOutput(str1, 0, str.length);
-                this.sstate.insertMode = saveInserting;
-            }
+            this._removeCaret();
+            this._removeCaretNode();
+            this.insertSimpleOutput(str1, 0, str1.length, inserting);
+            this._restoreCaretNode()
             this._popFromCaret(saved);
         }
         if (nl < 0)
