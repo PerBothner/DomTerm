@@ -374,9 +374,11 @@ DomTermLayout.initialize = function() {
         //container.on('resize', DomTerm.layoutResized, wrapped);
         container.on('destroy', DomTermLayout.layoutClosed, container);
 
-        if (top !== document.body)
-            new ResizeSensor(DomTermLayout.manager.container,
-                             function() { DomTermLayout.manager.updateSize(); });
+        if (top !== document.body) {
+            (new ResizeObserver(entries => {
+                DomTermLayout.manager.updateSize(); })
+            ).observe(top);
+        }
     });
 
     DomTermLayout.manager.registerComponent( 'view-saved', function( container, componentConfig ){
