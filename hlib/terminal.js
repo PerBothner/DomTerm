@@ -9045,6 +9045,8 @@ Terminal.prototype._sendInputContents = function(sendEnter) {
         this.reportText(passwordField, enterToSend);
     else if (oldInputLine)
         this._updateRemote(oldInputLine, enterToSend);
+    else if (enterToSend)
+        this.processInputCharacters(enterToSend);
     this._doDeferredDeletion();
     if (DomTerm.verbosity >= 2 && oldInputLine)
         this.log("sendInputContents "+this.toQuoted(this.grabInput(this._inputLine))+" sendEnter:"+sendEnter);
