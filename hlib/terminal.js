@@ -1965,10 +1965,20 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                         current = this.outputBefore;
                         parent = this.outputContainer;
                     }
-                    if (current && current.previousSibling instanceof Text)
+                    const oldbg = this._getBackgroundColor(lineEnd);
+                    if (current && current.previousSibling instanceof Text
+                       && ! oldbg)
                         current.previousSibling.appendData(str);
-                    else
-                        parent.insertBefore(document.createTextNode(str), current);
+                    else {
+                        let t = document.createTextNode(str);
+                        if (oldbg) {
+                            let w = this._createSpanNode();
+                            this._setBackgroundColor(w, oldbg);
+                            w.appendChild(t);
+                            t = w;
+                        }
+                        parent.insertBefore(t, current);
+                    }
                     column = goalColumn;
                 }
                 else
