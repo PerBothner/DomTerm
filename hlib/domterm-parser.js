@@ -385,12 +385,12 @@ class DTParser {
                     term._setRegionTB(0, -1);
                     term._setRegionLR(0, -1);
                     term.moveToAbs(term.homeLine, 0, true);
-                    term.eraseDisplay(0);
                     var Es = "E".repeat(term.numColumns);
                     term._currentStyleSpan = null;
                     var savedStyleMap = term._currentStyleMap;
                     term._currentStyleMap = new Map();
                     term._currentStyleSpan = null;
+                    term.eraseDisplay(0);
                     for (var r = 0; ; ) {
                         term.insertSimpleOutput(Es, 0, term.numColumns);
                         if (++r >= term.numRows)
