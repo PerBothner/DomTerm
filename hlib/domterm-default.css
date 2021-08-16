@@ -31,7 +31,7 @@ div.domterm {
       transparent 15px
   );
 }
-div.interaction {
+div.dt-buffer {
     background-color: var(--background-color);
     color: var(--foreground-color);
 }
@@ -191,9 +191,9 @@ div.domterm h1 {
     margin-top: 0.2ex;
     margin-bottom: 0.4ex; }
 /* Below match "main" but not "main only" */
-div.interaction + div.interaction {
+div.dt-buffer + div.dt-buffer {
     border-top: thick double green }
-div.interaction[buffer~="main"] div.command-group {
+div.dt-buffer[buffer~="main"] div.command-group {
     border-top: 1px solid #00C00080; margin-top: -1px;
     background-clip: padding-box
 }

@@ -1971,7 +1971,7 @@ class DTParser {
             var data = JSON.parse(text.substring(comma+1));
             let main = term.initial;
             if (main instanceof Element &&
-                main.getAttribute('class') == 'interaction') {
+                main.getAttribute('class') == 'dt-buffer') {
                 term._vspacer.insertAdjacentHTML('beforebegin', data.html);
                 var parent = main.parentNode;
                 parent.removeChild(main);

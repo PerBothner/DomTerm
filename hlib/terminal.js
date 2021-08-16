@@ -379,7 +379,7 @@ class Terminal {
         topNode.spellcheck = false;
         topNode.terminal = this;
         this.buffers = document.createElement("div");
-        this.buffers.classList.add("domterm-buffers");
+        this.buffers.classList.add("dt-buffers");
         this.buffers.contentEditable = false;
         topNode.appendChild(this.buffers);
         this.buffers.addEventListener('scroll',
@@ -387,7 +387,7 @@ class Terminal {
                                       false);
         this._topOffset = 0; // placeholder - set in measureWindow
         if (no_session=='view-saved') {
-            let buffers = document.getElementsByClassName("interaction");
+            let buffers = document.getElementsByClassName('dt-buffer');
             this.initial = buffers[buffers.length-1];
         } else {
             this.initial = this._createBuffer(this._mainBufferName, "main only");
@@ -544,7 +544,7 @@ class Terminal {
         this.outputBefore = null;
 
         // ??? FIXME do we want to get rid of this? at least rename it
-        // The <div class='interaction'> that is either the main or the
+        // The <div class='dt-buffer'> that is either the main or the
         // alternate screen buffer.  Same as _currentBufferNode(this, -1)
         this.initial = null;
 
@@ -3215,7 +3215,7 @@ DomTerm._currentBufferNode = function(dt, index)
     let todo = index >= 0 ? index : -1 - index;
     while (node) {
         if (node.nodeName == 'DIV'
-            && node.classList.contains('interaction')
+            && node.classList.contains('dt-buffer')
             && --todo < 0) {
             break;
         }
@@ -3229,7 +3229,7 @@ Terminal.prototype.getAllBuffers = function() {
     for (let bnode = this.buffers.firstChild; bnode;
          bnode = bnode.nextSibling) {
         if (bnode.nodeName == 'DIV'
-            && bnode.classList.contains('interaction'))
+            && bnode.classList.contains('dt-buffer'))
             buffers.push(bnode);
     }
     return buffers;
@@ -4072,7 +4072,7 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
     var bufNode = document.createElement("div");
     bufNode.setAttribute("id", idName);
     bufNode.setAttribute("buffer", bufName);
-    bufNode.setAttribute("class", "interaction");
+    bufNode.setAttribute("class", "dt-buffer");
     // Needed when composing (IME) on Chromium.
     // Otherwise the composition buffer may be displayed inside the
     // prompt string rather than the input area (specifically in _caretNode).
@@ -4137,7 +4137,7 @@ Terminal.prototype.measureWindow = function()  {
        styleWidth = "";
     }
     if (this._styleWidth != styleWidth) {
-        let buffers = document.getElementsByClassName("interaction");
+        let buffers = document.getElementsByClassName("dt-buffer");
         for (let i = buffers.length; --i >= 0; )
             buffers[i].style.width = styleWidth;
         this._vspacer.style.width = styleWidth;
@@ -4536,7 +4536,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     var saveBefore = this.outputBefore;
     var saveContainer = this.outputContainer;
     var target = ev.target;
-    let buffer = this._getOuterPre(target, "domterm-buffers");
+    let buffer = this._getOuterPre(target, "dt-buffers");
     if (buffer == null || target == buffer) {
         return;
     }
@@ -6857,7 +6857,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     || cls == "domterm-spacer"
                     || cls == "resize-sensor" || cls == "domterm-show-info")
                     break;
-                if (cls == "domterm-buffers") {
+                if (cls == "dt-buffers") {
                     formatList(node.childNodes, false);
                     break;
                 }

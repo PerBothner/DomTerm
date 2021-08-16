@@ -5344,7 +5344,7 @@ whose @code{class} is @code{domterm}.
 You don't need to create @var{domterm-toplevel} - it is created and managed by
 DomTerm, based on data from the back-end.
 
-@item @var{domterm-buffer} ::= @code{<div class="interaction" buffer="@var{name}">} @var{block-content}@sup{*} @code{</div>}
+@item @var{domterm-buffer} ::= @code{<div class="dt-buffer" buffer="@var{name}">} @var{block-content}@sup{*} @code{</div>}
 
 There are one or two @var{domterm-buffer} elements,
 for respectively the ``normal'' and ``alternative'' screen buffer.
@@ -5524,11 +5524,11 @@ Xterm supports an ``alternate screen buffer'' which is used
 by character-based programs like emacs.
 DomTerm allows an arbitrary number of buffers
 (not just two), with the most recent (bottom-most) being the active one.
-Each buffer is a @code{<div class="interaction">} element.
+Each buffer is a @code{<div class="dt-buffer">} element.
 An alternate buffer has a @code{buffer="alternate"} attribute.
 It is the sibling of the normal screen buffer,
 which has a @code{buffer} attribute valued @code{"main"}.
-The @code{"interaction"} element contains one or more @var{logical-line}s.
+The @code{"dt-buffer"} element contains one or more @var{logical-line}s.
 Returning to the normal screen deletes the @code{<div>} for the
 alternative screen, along with all of its contents,
 and changes the @code{buffer} attribute back to @code{"main only"}.
