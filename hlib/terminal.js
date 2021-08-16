@@ -373,6 +373,7 @@ class Terminal {
 
     this._mainBufferName = this.makeId("main")
     this._altBufferName = this.makeId("alternate")
+    const dt = this;
     if (topNode) {
         this.topNode = topNode;
         topNode.spellcheck = false;
@@ -381,25 +382,41 @@ class Terminal {
         this.buffers.classList.add("domterm-buffers");
         this.buffers.contentEditable = false;
         topNode.appendChild(this.buffers);
+        this.buffers.addEventListener('scroll',
+                                      (e) => { dt.requestUpdateDisplay(); },
+                                      false);
         this._topOffset = 0; // placeholder - set in measureWindow
         if (no_session=='view-saved') {
             let buffers = document.getElementsByClassName("interaction");
             this.initial = buffers[buffers.length-1];
         } else {
             this.initial = this._createBuffer(this._mainBufferName, "main only");
+            this.initial._saveLastLine = 0;
             this.buffers.appendChild(this.initial);
         }
     }
 
-    var dt = this;
     this._showHideEventHandler =
           function(evt) { dt._showHideHandler(evt); dt._clearSelection(); evt.preventDefault();};
-    this._updateDisplay = function() {
-        dt.cancelUpdateDisplay();
+
+    this.updateDeferLimit = 200;
+    this._updateDisplay = function(time) {
+        dt._lastUpdateDisplayTime = time;
+        if (dt._deferUpdate) {
+            if (dt._deferMax === undefined)
+                dt._deferMax = time + dt.updateDeferLimit;
+            if (time >= dt._deferMax)
+                dt._deferMax = undefined;
+            else {
+                dt._deferUpdate = undefined;
+                dt._updateTimer = requestAnimationFrame(dt._updateDisplay);
+                return;
+            }
+        }
         dt._updateTimer = null;
         if (! dt.topNode)
             return;
-        dt._breakDeferredLines();
+        dt._breakVisibleLines();
         dt._checkSpacer();
         // FIXME only if "scrollWanted"
         dt._restoreInputLine();
@@ -1022,6 +1039,7 @@ Terminal.prototype.popCommandGroup = function(oldGroup) {
             && preNode.firstChild.getAttribute("line")) {
             preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
             preNode._widthColumns = 0;
+            preNode._breakState = Terminal._BREAKS_UNMEASURED;
         }
         this.outputContainer = preNode;
         this.outputBefore = preNode.firstChild;
@@ -1239,6 +1257,11 @@ Terminal._WIDTH_MODE_NORMAL = 0;
 Terminal._WIDTH_MODE_TAB_SEEN = 1; // tab seen
 Terminal._WIDTH_MODE_PPRINT_SEEN = 2; // tab *or* pprint-node seen
 Terminal._WIDTH_MODE_VARIABLE_SEEN = 3; // HTML or variable-width font
+
+// Possible values for _breakState field of elements in lineStarts table.
+Terminal._BREAKS_UNMEASURED = 0;
+Terminal._BREAKS_MEASURED = 1;
+Terminal._BREAKS_VALID = 2;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -1555,6 +1578,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     start = cur;
                     startBlock = cur;
                     start._widthMode = Terminal._WIDTH_MODE_NORMAL;
+                    start._breakState = Terminal._BREAKS_UNMEASURED;
                     // FIXME calculate _widthColumns
                     if (! DomTerm.isLineBlock(cur)) {
                         cur.classList.add("domterm-opaque");
@@ -1582,12 +1606,14 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                         seenDataThisLine = false;
                     } else {
                         start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
+                        start._breakState = Terminal._BREAKS_UNMEASURED;
                     }
                 } else {
                     if (cls.contains("dt-cluster")
                         || cls.contains("focus-area")) {
                         descend = false;
                     } else if (cls.contains("pprint-group")) {
+                        start._breakState = Terminal._BREAKS_UNMEASURED;
                         start._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
                         this._pushPprintGroup(cur);
                     }
@@ -1658,21 +1684,21 @@ Terminal.prototype.saveCursor = function() {
     };
 };
 
-// Re-calculate alternate buffer's saveLastLine property.
-Terminal.prototype._restoreSaveLastLine = function() {
-    let line = 0;
-    const findAltBuffer = (node) => {
-        if (node.parentNode == this.buffers
-            && node.classList.contains("interaction")) {
-            node.saveLastLine = line;
-        }
-        if (node == this.lineStarts[line])
-            line++;
-        return true;
+Terminal.prototype.curBufferStartLine = function() {
+    if (this.initial._saveLastLine < 0) {
+        const nlines = this.lineStarts.length;
+        let line = nlines - 1;
+        const findLines = (node) => {
+            if (node === this.lineStarts[line])
+                line--;
+            return true;
+        };
+        Terminal._forEachElementIn(this.initial, findLines, false, true);
+        this.initial._saveLastLine = line + 1;
     }
-    Terminal._forEachElementIn(this.topNode, findAltBuffer);
-};
- 
+    return this.initial._saveLastLine;
+}
+
 Terminal.prototype.restoreCursor = function(restoreExtraState = false) {
     var saved = this.sstate.savedCursor;
     if (saved) {
@@ -1770,6 +1796,7 @@ Terminal.prototype._appendLine = function(mode, lastParent, parent, before=null)
         this.lineEnds[lineCount-1] = next;
     }
     lineStart._widthMode = Terminal._WIDTH_MODE_NORMAL;
+    lineStart._breakState = Terminal._BREAKS_UNMEASURED;
     lineStart._widthColumns = 0;
     this.lineStarts[lineCount] = lineStart;
     let nextLine = lineCount;
@@ -2946,6 +2973,7 @@ Terminal.prototype._addBlankLines = function(count, absLine, parent, oldStart) {
         preNode.appendChild(newLine);
         parent.insertBefore(preNode, oldStart);
         preNode._widthMode = Terminal._WIDTH_MODE_NORMAL;
+        preNode._breakState = Terminal._BREAKS_UNMEASURED;
         preNode._widthColumns = 0;
         this.lineStarts[absLine+i] = preNode;
         this.lineEnds[absLine+i] = newLine;
@@ -3231,7 +3259,7 @@ Terminal.prototype.pushScreenBuffer = function(alternate = true) {
     const homeOffset = DomTerm._homeLineOffset(this);
     const homeNode = this.lineStarts[this.homeLine - homeOffset];
     homeNode.setAttribute("home-line", homeOffset);
-    bufNode.saveLastLine = nextLine;
+    bufNode._saveLastLine = nextLine;
     this.sstate.savedCursorMain = this.sstate.savedCursor;
     this.sstate.savedCursor = undefined;
     this.sstate.savedPauseLimit = this._pauseLimit;
@@ -3254,9 +3282,10 @@ Terminal.prototype.popScreenBuffer = function()
     const bufPrev = DomTerm._currentBufferNode(this, -2);
     if (! bufPrev)
         return;
+    const lastLine = this.curBufferStartLine();
     this.initial = bufPrev;
-    this.lineStarts.length = bufNode.saveLastLine;
-    this.lineEnds.length = bufNode.saveLastLine;
+    this.lineStarts.length = lastLine;
+    this.lineEnds.length = lastLine;
     let homeNode = null;
     let homeOffset = -1;
     Terminal._forEachElementIn(this.initial,
@@ -3453,8 +3482,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         // (We want to not update selection while a mouse button mouse is pressed.)
         if (! dt._mouseButtonPressed)
             dt._updateSelected();
-
-        dt._restoreCaret();
     }
     document.addEventListener("selectionchange", dt._selectionchangeListener);
 
@@ -3504,7 +3531,7 @@ Terminal.prototype._computeHomeLine = function(home_node, home_offset,
         }
     }
     if (line < 0) {
-        line = this.initial.saveLastLine;
+        line = this.curBufferStartLine();
     }
     var minHome = this.lineStarts.length - this.numRows;
     return line <= minHome ? minHome
@@ -3528,26 +3555,22 @@ Terminal.prototype.resizeHandler = function() {
                                  Math.max(minRows, this.numRows));
     dt._displaySizeInfoWithTimeout();
 
-    var home_offset = DomTerm._homeLineOffset(dt);
-    var home_node = dt.lineStarts[dt.homeLine - home_offset];
     if (dt.availWidth != oldWidth && dt.availWidth > 0) {
         dt._removeCaret();
-        dt._breakAllLines(-2);
-        dt._restoreSaveLastLine();
-        dt.resetCursorCache();
+        for (let i = dt.lineStarts.length; --i >= 0; ) {
+            let line = dt.lineStarts[i];
+            if (line._breakState === Terminal._BREAKS_VALID)
+                line._breakState = Terminal._BREAKS_MEASURED;
+        }
+        const buffers = dt.getAllBuffers();
+        for (let i = buffers.length; --i > 0; ) {
+            buffers[i]._saveLastLine = -1;
+        }
         if (dt._displayInfoWidget) {
             DomTerm._positionInfoWidget(dt._displayInfoWidget, dt);
         }
+        dt.requestUpdateDisplay();
     }
-    if (dt.usingAlternateScreenBuffer)
-        dt.homeLine = dt._computeHomeLine(home_node, home_offset, true);
-    else {
-        const minHome = this.lineStarts.length - this.numRows;
-        const bufferFirstLine = this.initial.saveLastLine;
-        dt.homeLine = minHome >= bufferFirstLine ? minHome : bufferFirstLine;
-    }
-    dt._checkSpacer();
-    dt._scrollIfNeeded();
 }
 
 Terminal.prototype.attachResizeSensor = function() {
@@ -4054,7 +4077,7 @@ Terminal.prototype._createBuffer = function(idName, bufName) {
     // Otherwise the composition buffer may be displayed inside the
     // prompt string rather than the input area (specifically in _caretNode).
     this._addBlankLines(1, this.lineEnds.length, bufNode, null);
-    bufNode.saveLastLine = 0;
+    bufNode._saveLastLine = -1;
     return bufNode;
 };
 
@@ -5366,7 +5389,7 @@ Terminal.prototype.eraseDisplay = function(param) {
     case 3: // Delete saved scrolled-off lines - xterm extension
         this._pauseLimit = this.availHeight;
         var saveHome = this.homeLine;
-        this.homeLine = this.initial.saveLastLine;
+        this.homeLine = this.curBufferStartLine();
         var removed = saveHome - this.homeLine;
         if (removed > 0) {
             this.moveToAbs(this.homeLine, 0, false);
@@ -5386,7 +5409,7 @@ Terminal.prototype.eraseDisplay = function(param) {
         while (lineFirst > 0
                && this.lineStarts[lineFirst].getAttribute("line") != null)
             lineFirst--;
-        let dstart = this.initial.saveLastLine;
+        let dstart = this.curBufferStartLine();
         let dcount = lineFirst - dstart;
         this.deleteLinesIgnoreScroll(dcount, dstart);
         this.homeLine = lineFirst >= this.homeLine ? dstart
@@ -5395,14 +5418,16 @@ Terminal.prototype.eraseDisplay = function(param) {
         break;
     default:
         var startLine = param == 0 ? saveLine : this.homeLine;
-        if (param == 2 && this.usingAlternateScreenBuffer
-            && this.homeLine > this.initial.saveLastLine) {
-            var saveHome = this.homeLine;
-            this.homeLine = this.initial.saveLastLine;
-            var homeAdjust = saveHome - this.homeLine;
-            this.resetCursorCache();
-            saveLine -= homeAdjust;
-            startLine -= homeAdjust;
+        if (param == 2 && this.usingAlternateScreenBuffer) {
+            let bufferStart = this.curBufferStartLine();
+            if (this.homeLine > bufferStart) {
+                var saveHome = this.homeLine;
+                this.homeLine = bufferStart;
+                var homeAdjust = saveHome - this.homeLine;
+                this.resetCursorCache();
+                saveLine -= homeAdjust;
+                startLine -= homeAdjust;
+            }
         }
         var count = this.lineStarts.length-startLine;
         if (param == 0) {
@@ -5436,6 +5461,7 @@ Terminal.prototype._forceWrap = function(absLine) {
         nextLine.parentNode.removeChild(nextLine);
         this.lineStarts[absLine+1] = end;
         end._widthMode = nextLine._widthMode;
+        end._breakState = Terminal._BREAKS_UNMEASURED;
         end._widthColumns = nextLine._widthColumns;
     }
     if (end.getAttribute("line") != "soft") {
@@ -5468,8 +5494,10 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
             this.lineStarts[absLine+1] = newBlock;
             newBlock._widthColumns = oldNextLine._widthColumns;
             newBlock._widthMode = oldNextLine._widthMode;
+            newBlock._breakState = Terminal._BREAKS_UNMEASURED;
             oldNextLine._widthColumns = undefined;
             oldNextLine._widthMode = undefined;
+            oldNextLine._breakState = Terminal._BREAKS_UNMEASURED;
         }
         // otherwise we have a non-standard line
         // Regardless, do:
@@ -5605,10 +5633,12 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
     this._fixOutputPosition();
     this.outputBefore = previous != null ? previous.nextSibling
         : this.outputContainer.firstChild;
+    let lineStart = this.lineStarts[lineNo];
     if (count < 0)
-	this.lineStarts[lineNo]._widthColumns = colNo;
-    else if (this.lineStarts[lineNo]._widthColumns !== undefined)
-	this.lineStarts[lineNo]._widthColumns -= count - todo;
+        lineStart._widthColumns = colNo;
+    else if (lineStart._widthColumns !== undefined)
+	lineStart._widthColumns -= count - todo;
+    lineStart._breakState = Terminal._BREAKS_UNMEASURED;
     return todo <= 0;
 };
 
@@ -6464,6 +6494,7 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
     // FIXME could be smarter - we should avoid _WIDTH_MODE_VARIABLE_SEEN
     // until we actually see something that needs it.
     this.lineStarts[startLine]._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+    this.lineStarts[startLine]._breakState = Terminal._BREAKS_UNMEASURED;
     var activeTags = new Array();
     loop:
     for (;;) {
@@ -6479,8 +6510,9 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
             if (activeTags.length == 0) {
                 this._unsafeInsertHTML(str.substring(start, i-1));
                 this.cursorLineStart(1);
-                this.lineStarts[this.getAbsCursorLine()]._widthMode =
-                    Terminal._WIDTH_MODE_VARIABLE_SEEN;
+                let ln = this.lineStarts[this.getAbsCursorLine()];
+                ln._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+                ln._breakState = Terminal._BREAKS_UNMEASURED;
                 if (ch == 13 && i < len && str.charCodeAt(i) == 10)
                     i++;
                 start = i;
@@ -6981,10 +7013,12 @@ Terminal.prototype._doDeferredDeletion = function() {
 }
 
 Terminal.prototype._downContinue = function(height, paging) {
-    let end = this._dataHeight();
-    let limit = end + height;
-    if (limit > this._pauseLimit)
-        this._pauseLimit = limit;
+    if (height > 0) {
+        let end = this._dataHeight();
+        let limit = end + height;
+        if (limit > this._pauseLimit)
+            this._pauseLimit = limit;
+    }
     this._clearSelection();
     this._disableScrollOnOutput = false;
     this._pauseContinue(paging);
@@ -7025,21 +7059,11 @@ Terminal.prototype._pauseContinue = function(paging = false, skip = false) {
     }
 }
 
-Terminal.prototype.cancelUpdateDisplay = function() {
-    if (this._updateTimer) {
-        if (window.requestAnimationFrame)
-            cancelAnimationFrame(this._updateTimer);
-        else
-            clearTimeout(this._updateTimer);
-        this._updateTimer = null;
-    }
-}
 Terminal.prototype.requestUpdateDisplay = function() {
-    this.cancelUpdateDisplay();
-    if (window.requestAnimationFrame)
-        this._updateTimer = requestAnimationFrame(this._updateDisplay);
+    if (this._updateTimer)
+        this._deferUpdate = true;
     else
-        this._updateTimer = setTimeout(this._updateDisplay, 100);
+        this._updateTimer = requestAnimationFrame(this._updateDisplay);
 }
 
 Terminal.prototype._requestDeletePendingEcho = function() {
@@ -7335,6 +7359,10 @@ Terminal.prototype._adjustLines = function(startLine, action, single=false, stop
 // Remove existing soft line breaks.
 Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
     let action = (prevLine, lineStart, lineAttr, lineno) => {
+        if (prevLine._breakState === Terminal._BREAKS_VALID) {
+            lineStart._breakState = Terminal._BREAKS_VALID;
+            return false;
+        }
         if (lineStart.getAttribute("breaking")=="yes") {
             lineStart.removeAttribute("breaking");
             for (let child = lineStart.firstChild; child != null; ) {
@@ -7363,6 +7391,7 @@ Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
                     }
                     if (lineStart._widthMode > prevLine._widthMode)
                         prevLine._widthMode = lineStart._widthMode;
+                    //prevLine._breakState = Terminal._BREAKS_UNMEASURED;
                 }
             }
             // Remove "soft" "fill" "miser" "space" breaks from the line-table
@@ -7394,6 +7423,29 @@ Terminal.prototype._insertIntoLines = function(el, line) {
     }
 }
 
+Terminal.prototype._breakVisibleLines = function() {
+    // Find startLine (lowest index) where line top >= scrollTop.
+    let startLine = this.lineStarts.length - 1;
+    let scrollTop = this.buffers.scrollTop;
+    for (; startLine > 0; startLine--) {
+        let line = this.lineStarts[startLine];
+        if (line.getAttribute("line"))
+            continue;
+        let lineRect = line.getBoundingClientRect();
+        if (lineRect.top < 0)
+            break;
+    }
+    const home_offset = DomTerm._homeLineOffset(this);
+    const home_node = this.lineStarts[this.homeLine - home_offset];
+    this._unbreakLines(startLine, false, null/*??*/);
+    this._breakAllLines(startLine);
+    const changed = true; // FIXME
+    if (changed) {
+        this.resetCursorCache();
+        this.homeLine = this._computeHomeLine(home_node, home_offset, true);
+    }
+}
+
 /** Break lines starting with startLine.
  * startLine == -1 means break all lines.
  * startLine == -2 means break all lines until current input line.
@@ -7406,7 +7458,6 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     // - a <span> node containing pre-line prefixes; or
     // - an absolute x-position (in pixels)
     var indentation = new Array();
-    let line;
 
     function addIndentation(dt, el, countColumns) {
         var n = indentation.length;
@@ -7481,7 +7532,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     // Assumes soft line breaks have been removed.
     // Does not depend on current available width.
 
-    function breakLine1 (dt, start, countColumns) {
+    function _breakLine1 (dt, line, start, countColumns) {
         let pprintGroup = null; // FIXME if starting inside a group
         // A chain of "line" and "pprint-group" elements that need
         // sectionEnd to be set (to a later "line" at same or higher level).
@@ -7607,7 +7658,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         end.measureWidth = 0; // end.offsetWidth;
     }
 
-    function breakLine2 (dt, start, beforePos, availWidth, countColumns) {
+    function breakLine2 (dt, line, start, beforePos, availWidth, countColumns) {
         // second pass - edit DOM, but don't look at offsetLeft
         var pprintGroup = null; // FIXME if starting inside a group
         // beforePos is typically el.offsetLeft (if el is an element).
@@ -7826,6 +7877,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             }
         }
         indentation.length = 0;
+        return line;
     };
 
     function breakNeeded(dt, lineNo, lineStart) {
@@ -7849,24 +7901,25 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         if (startLine == -2)
             firstInputLine = this._getOuterPre(this.outputContainer, "input-line");
         startLine = 0;
-        if (this.initial && this.initial.saveLastLine >= 0) // paranoia
-            startLine = this.initial.saveLastLine;
+        if (this.initial && this.curBufferStartLine() >= 0) // paranoia
+            startLine = this.curBufferStartLine();
         else
             startLine = this.homeLine;
     }
 
     var changed = this._unbreakLines(startLine, false, firstInputLine);
 
-    for (line = startLine;  line < this.lineStarts.length;  line++) {
+    for (let line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
         if (start == firstInputLine)
             break;
         if (start.classList.contains("domterm-opaque"))
             continue;
+        if (start._breakState >= Terminal._BREAKS_MEASURED)
+            continue;
         var end = this.lineEnds[line];
         if (start.alwaysMeasureForBreak || breakNeeded(this, line, start)) {
             changed = true; // FIXME needlessly conservative
-            start.breakNeeded = true;
             var first;
             if (Terminal.isBlockNode(start))
                 first = start.firstChild;
@@ -7877,13 +7930,13 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             }
             var countColumns = ! Terminal._forceMeasureBreaks
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
-            breakLine1(this, first, countColumns);
+            _breakLine1(this, line, first, countColumns);
+            start._breakState = Terminal._BREAKS_MEASURED;
         }
     }
-    for (line = startLine;  line < this.lineStarts.length;  line++) {
+    for (let line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
-        if (start.breakNeeded) {
-            start.breakNeeded = false;
+        if (start._breakState === Terminal._BREAKS_MEASURED) {
             var first;
             if (Terminal.isBlockNode(start))
                 first = start.firstChild;
@@ -7894,7 +7947,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             }
             var countColumns = !Terminal._forceMeasureBreaks
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
-            breakLine2(this, first, 0, this.availWidth, countColumns);
+            line = breakLine2(this, line, first, 0, this.availWidth, countColumns);
+            start._breakState = Terminal._BREAKS_VALID;
         }
     }
 
@@ -7998,6 +8052,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     if (sslen == 0)
         return;
 
+    if (DomTerm.verbosity >= 3)
+        this.log("insertSimple '"+this.toQuoted(str.substring(beginIndex,endIndex))+"'");
     let widthInColumns = 0;
     let segments = [];
     let widths = [];
@@ -8075,9 +8131,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     if (nsegments == 0)
         return;
     let isegment = 0;
-    if (DomTerm.verbosity >= 3)
-        this.log("insertSimple '"+this.toQuoted(str.substring(beginIndex,endIndex))+"'");
     let absLine = this.getAbsCursorLine();
+    let atEnd = this.outputBefore==this.lineEnds[absLine];
     var fits = true;
     if (this.outputBefore instanceof Element
         && this.outputBefore.getAttribute("line")) {
@@ -8154,7 +8209,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                 }
             }
         }
-        if (str == null)
+        if (str == null || atEnd)
             fits = true;
         else {
             // FIXME optimize if end of line
@@ -8210,7 +8265,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         //let prevLine = absLine;
         let lineStart = this.lineStarts[absLine];
         let column = this.getCursorColumn();
-        if (column + cols > this.numColumns) {
+        if (!atEnd && column + cols > this.numColumns) {
             if (seg instanceof Element) {
                 if (this.getCursorColumn() <= this.numColumns) {
                     isegment--;
@@ -8268,7 +8323,10 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             this.currentCursorColumn = (column += cols);
             if (lineStart._widthColumns !== undefined)
                 lineStart._widthColumns += cols;
+            if (atEnd)
+                this._updateLinebreaksStart(absLine);
         }
+        lineStart._breakState = Terminal._BREAKS_UNMEASURED;
         widthInColumns -= cols;
         isegment++;
         this.currentAbsLine = absLine;
@@ -10902,6 +10960,7 @@ Terminal.prototype._updateAutomaticPrompts = function() {
                 w -= this.strWidthInContext(oldPrompt, start);
             if (start._widthColumns  !== undefined)
                 start._widthColumns += w;
+            start._breakState = Terminal._BREAKS_UNMEASURED;
             next.lineno = lineno; // MAYBE use attribute (better save/restore)
             next.defaultPattern = defaultPattern;
             next.setAttribute("content-value", newPrompt);
@@ -11007,6 +11066,7 @@ Terminal.prototype.editorDeleteRange = function(range, toClipboard,
     this._unbreakLines(lineNum, true, null);
     let line = this.lineStarts[lineNum];
     line._widthColumns -= this.strWidthInContext(str, line);
+    line._breakState = Terminal._BREAKS_UNMEASURED;
     if (linesCount != 0)
         this._restoreLineTables(line, lineNum, true);
     this._updateLinebreaksStart(lineNum, true);

@@ -486,6 +486,7 @@ class DTParser {
 		        let lineStart = term.lineStarts[term.getAbsCursorLine()];
 		        if (lineStart._widthMode < Terminal._WIDTH_MODE_TAB_SEEN)
 			    lineStart._widthMode = Terminal._WIDTH_MODE_TAB_SEEN;
+                        lineStart._breakState = Terminal._BREAKS_UNMEASURED;
                         let col = term.getCursorColumn();
 		        if (lineStart._widthColumns !== undefined
                             && col > lineStart._widthColumns)
@@ -1556,6 +1557,7 @@ class DTParser {
             if (term.currentCursorColumn >= 0)
                 term.currentCursorColumn += wcols;
             line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+            line._breakState = Terminal._BREAKS_UNMEASURED;
             term.moveToAbs(oldLine+hlines-1, oldColumn+wcols, true);
         } else
             console.log("handleDeviceControlString");
@@ -1996,7 +1998,6 @@ class DTParser {
                 term.outputContainer = term.outputBefore.parentNode;
                 term.resetCursorCache();
                 term._restoreLineTables(term.topNode, 0);
-                dt._restoreSaveLastLine();
                 DomTerm._addMouseEnterHandlers(term);
                 if (data.rows && data.columns)
                     dt.forceWidthInColumns(data.columns, data.rows, 8);
@@ -2038,6 +2039,7 @@ class DTParser {
                 let lineStart = term.lineStarts[term.getAbsCursorLine()];
                 if (lineStart._widthMode < Terminal._WIDTH_MODE_PPRINT_SEEN)
 	            lineStart._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
+                lineStart._breakState = Terminal._BREAKS_UNMEASURED;
             }
             var ppgroup = term._createSpanNode("pprint-group");
             text = text.trim();
@@ -2096,6 +2098,7 @@ class DTParser {
             let lineStart = term.lineStarts[term.getAbsCursorLine()];
             if (lineStart._widthMode < Terminal._WIDTH_MODE_PPRINT_SEEN)
                 lineStart._widthMode = Terminal._WIDTH_MODE_PPRINT_SEEN;
+            lineStart._breakState = Terminal._BREAKS_UNMEASURED;
             var line = term._createLineNode(kind);
             text = text.trim();
             if (text.length > 0) {
@@ -2116,6 +2119,7 @@ class DTParser {
                                                        term.outputContainer);
                         if (lineStart._widthColumns !== undefined)
                             lineStart._widthColumns += w;
+                        lineStart._breakState = Terminal._BREAKS_UNMEASURED;
                         if (term.currentCursorColumn >= 0)
                             term.currentCursorColumn += w;
                     }
