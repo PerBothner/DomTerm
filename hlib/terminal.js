@@ -3545,7 +3545,8 @@ Terminal.prototype.resizeHandler = function() {
     // FIXME we want the resize-sensor to be a child of helperNode
     if (DomTerm.verbosity > 0)
         dt.log("resizeHandler called "+dt.name);
-    var oldWidth = dt.availWidth;
+    let oldWidth = dt.availWidth;
+    let oldHeight = this.actualHeight;
     dt.measureWindow();
     if (DomTerm.usingXtermJs()) return;
     let minColumns = dt.getOption("terminal.minimum-width", 5);
@@ -3553,7 +3554,8 @@ Terminal.prototype.resizeHandler = function() {
     if (this.numColumns < minColumns || this.numRows < minRows)
         this.forceWidthInColumns(Math.max(minColumns, this.numColumns),
                                  Math.max(minRows, this.numRows));
-    dt._displaySizeInfoWithTimeout();
+    if (dt.availWidth !== oldWidth || this.actualHeight !== oldHeight)
+        dt._displaySizeInfoWithTimeout();
 
     if (dt.availWidth != oldWidth && dt.availWidth > 0) {
         dt._removeCaret();
@@ -4115,10 +4117,12 @@ Terminal.prototype.measureWindow = function()  {
     let ruler = this._rulerNode;
     if (! ruler)
         return;
+    let topRect = this.buffers.getBoundingClientRect();
+    if (topRect.width === 0 && topRect.height === 0)
+        return;
     let lcaret = this.viewCaretLineNode;
     lcaret.style.width = "";
     lcaret.style.left = "";
-    let topRect = this.buffers.getBoundingClientRect();
     this.actualHeight = topRect.height;
     this._topOffset = topRect.y;
     if (DomTerm.verbosity >= 2)
