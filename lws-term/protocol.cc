@@ -733,11 +733,20 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
 struct pty_client *
 find_session(const char *specifier)
 {
-    struct pty_client *session = NULL;
+    struct pty_client *session = nullptr;
     char *pend;
-    pid_t pid = strtol(specifier, &pend, 10);
-    if (*pend != '\0' || *specifier == '\0')
-        pid = -1;
+    pid_t pid = -1;
+    if (specifier[0] == '$' && specifier[1] != '\0') {
+        pid = strtol(specifier+1, &pend, 10);
+        if (*pend != '\0')
+            pid = -1;
+    }
+    int snum = -1;
+    if (specifier[0] >= '0' && specifier[1] <= '9') {
+        snum = strtol(specifier, &pend, 10);
+        if (*pend != '\0')
+            snum = -1;
+    }
 
     FOREACH_PCLIENT(pclient) {
         int match = 0;
@@ -749,12 +758,19 @@ find_session(const char *specifier)
         else if ((specifier[0] == '#' || specifier[0] == ':'/*DEPRECATED*/)
                  && strtol(specifier+1, NULL, 10) == pclient->session_number)
           match = 1;
+        else if (snum >= 0 && snum == pclient->session_number)
+          match = 1;
         if (match) {
           if (session != NULL)
             return NULL; // ambiguous
           else
             session = pclient;
         }
+    }
+    if (session == nullptr && snum >= 0) {
+        tty_client *tclient = tty_clients(snum);
+        if (tclient)
+            session = tclient->pclient;
     }
     return session;
 }

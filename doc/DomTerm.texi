@@ -2633,14 +2633,15 @@ network failure or a browser crash, but there are plans to implement that.
 
 A session specifier has one of the following forms:
 @table @asis
-@item @var{pid}
-The @var{pid} is the process ID (an integer) of the designed session.
-@item @code{:}@var{session-number}
-The session-number sequential number permanently associated with the session.
+@item @var{number}
+Normally a session number.
+Can also be a window (connection) number in which case the corresponding session is used.
 @item @var{session-name}
 The @var{session -name} is a user-friendly name associated with the session,
-and displaying in the tab-bar and title-bar of windows disdplay the session.
-The default @var{session -name} is @samp{DomTerm:@var{session-number}}.
+and displaying in the tab-bar and title-bar of windows displaying the session.
+The default @var{session-name} is @samp{DomTerm:@var{session-number}}.
+@item @code{$}@var{pid}
+The @var{pid} is the process ID (an integer) of the designed session.
 @end table
 
 @node Keyboard shortcuts
@@ -4941,7 +4942,7 @@ Custom window decoration (including possible ``hamburger menu'')
 could reduce some wasted vertical space.
 Consider how it works with panes and tabbars.
 Here is @uref{https://www.qt.io/blog/custom-window-decorations,how it can be done with Qt}.
-For Gtk one can use Gtk.HeaderBar}.
+For Gtk one can use Gtk.HeaderBar.
 The @uref{https://github.com/tauri-apps/wry,Wry library} has an example of
 a draggable custom titlebar.
 
