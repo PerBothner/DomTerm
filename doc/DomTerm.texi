@@ -4941,6 +4941,9 @@ Custom window decoration (including possible ``hamburger menu'')
 could reduce some wasted vertical space.
 Consider how it works with panes and tabbars.
 Here is @uref{https://www.qt.io/blog/custom-window-decorations,how it can be done with Qt}.
+For Gtk one can use Gtk.HeaderBar}.
+The @uref{https://github.com/tauri-apps/wry,Wry library} has an example of
+a draggable custom titlebar.
 
 @subheading Terminal emulator functionality
 
