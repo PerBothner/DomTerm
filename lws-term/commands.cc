@@ -615,16 +615,19 @@ static void status_by_connection(FILE *out, int verbosity)
         tclient_status_info(tclient, out);
         fprintf(out, "\n");
         FORALL_WSCLIENT(sub_client) {
-            if (sub_client->main_window != number
-                && sub_client->connection_number != number)
+            int cnumber =  sub_client->connection_number;
+            if (sub_client->main_window != number && cnumber != number)
                 continue;
 
             struct pty_client *pclient = sub_client->pclient;
             if (pclient == NULL) {
-                fprintf(out, "  disconnected .%d\n", sub_client->connection_number);
+                fprintf(out, "  disconnected .%d\n", cnumber);
                 continue;
             }
-            fprintf(out, "  session#%d", pclient->session_number);
+            int snumber = pclient->session_number;
+            fprintf(out, "  session#%d", snumber);
+            if (snumber != cnumber)
+                fprintf(out, ".%d", cnumber);
             fprintf(out, ": ");
             pclient_status_info(pclient, out);
             fprintf(out, "\n");
