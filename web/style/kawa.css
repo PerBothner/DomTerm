@@ -187,7 +187,7 @@ div.toc-sidebar li { margin: 0 ; }
 div.toc-sidebar ul ul { margin-left: 0.6em; }
 
 div.toc-sidebar div.toc li, body[show-sidebar="yes"] .sidebar-hider {
-    padding: 0px 0px 0px 4px;
+    padding: 0px 0px 0px 2px;
 }
 div.toc-sidebar div.toc a { display: block; }
 
@@ -226,13 +226,13 @@ div.toc-sidebar *.logo {
 div.logo {
     width: 100%; min-height: 120px;
 }
-div.toc-sidebar > a img {
-    float: none;
-    padding: 15px 0.1em;
-    width: 60%;
+div.toc-sidebar header > a img {
+    float: right;
+    padding: 4px 2px;
+    width: 45%;
 }
 div#slider div.toc-sidebar header {
-    padding: 0px 2px;
+    padding: 0px;
 }
 div#slider div.toc-sidebar div.toc {
     padding: 0px;

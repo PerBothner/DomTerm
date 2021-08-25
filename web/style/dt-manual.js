@@ -1,6 +1,6 @@
 // Hook used by info.js to set sidebar-header logo+text
 function sidebarLinkAppendContents(a, h1) {
-    a.innerHTML = "<div class='logo'><span>DomTerm terminal emulator</span><img src='images/domterm1.svg'/></div>"
+    a.innerHTML = "<div class='logo'><img src='images/domterm1.svg'/><span>DomTerm terminal emulator</span></div>"
 }
 
 function fixCategory() {
