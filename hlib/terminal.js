@@ -502,7 +502,7 @@ class Terminal {
         return this.getOption("flow-confirm-every", 500);
     }
 
-    caretStyle(editStyle = this._caretNode.useEditCaretStyle) {
+    caretStyle(editStyle = this._caretNode && this._caretNode.useEditCaretStyle) {
         return editStyle ? this.caretEditStyle : this.caretCharStyle;
     }
 
@@ -7110,6 +7110,11 @@ Terminal.prototype.insertBytes = function(bytes) {
     let endIndex = bytes.length;
     if (DomTerm.verbosity >= 2)
         this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+len+" received:"+this._receivedCount);
+    if (! this.parser) {
+        console.log("data received for non-terminal window (browse or view-saved)");
+        console.log("ignored for now");
+        return;
+    }
     while (startIndex < endIndex) {
         let urgent_begin = -1;
         let urgent_end = -1;

@@ -268,7 +268,7 @@ static struct lws_http_mount mount_domterm_zip = {
         NULL,                   /* linked-list pointer to next*/
         ZIP_MOUNT,              /* mountpoint in URL namespace on this vhost */
         "<change this>",      /* handler */
-        "repl-client.html",   /* default filename if none given */
+        "",   /* default filename if none given */
         NULL,
         NULL,
         &extra_mimetypes,
@@ -1637,7 +1637,7 @@ make_socket_name(bool html_filename)
             sprintf(r, "%.*s%s", socket_name_length, socket_name, ext);
         }
     } else {
-      const char *sname = html_filename ? "/default.html" : "/default.socket";
+      const char *sname = html_filename ? "/start.html" : "/default.socket";
         r = challoc(strlen(ddir)+strlen(sname)+1);
         sprintf(r, "%s%s", ddir, sname);
     }
@@ -1722,23 +1722,28 @@ static struct lib_info standard_jslibs[] = {
 static void
 make_main_html_text(struct sbuf *obf, int port)
 {
-    const char *start_html = "no-frames.html";
-    obf->printf("<!DOCTYPE html>\n"
-                "<html><head>\n"
-                "<meta http-equiv='Content-Type' content='text/html;"
-                " charset=UTF-8'>\n"
-                "<meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'unsafe-inline'\">\n"
-                "<script type='text/javascript'>\n"
-                "var DomTerm_server_key = '%.*s';\n"
-                "var newloc = 'http://localhost:%d/%s' + location.hash;\n"
-                "newloc += (newloc.includes('#') ? ';' : '#')+'server-key=' + DomTerm_server_key;\n"
-                "location.replace(newloc);\n"
-                "</script>\n"
-                "</head>\n"
-                "<body></body></html>\n",
-                SERVER_KEY_LENGTH, server_key, port, start_html
-        );
-    lwsl_notice("initial html redirects to: 'http://localhost:%d/%s'\n", port, start_html);
+    obf->printf(
+        "<!DOCTYPE html>\n"
+        "<html><head>\n"
+        "<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>\n"
+        "<meta http-equiv=\"Content-Security-Policy\""
+        " content=\"script-src 'unsafe-inline'\">\n"
+        "<script type='text/javascript'>\n"
+        "let DomTerm_server_key = '%.*s';\n"
+        "let h = location.hash;\n"
+        "let colon1 = h.indexOf(':');\n"
+        "let colon2 = h.indexOf(':', colon1+1);\n"
+        "let newloc = 'http://localhost:%d/' + h.substring(1, colon1) +"
+        " '?server-key=' + DomTerm_server_key;\n"
+        "if (colon2 < 0) colon2 = h.length;\n"
+        "if (colon2 > colon1+1) newloc += '&' + h.substring(colon1+1, colon2);\n"
+        "if (colon2 >= 1 && colon2 < h.length)"
+        " newloc += '#' + h.substring(colon2+1);\n"
+        "location.replace(newloc);\n"
+        "</script>\n"
+        "</head>\n"
+        "<body></body></html>\n",
+        SERVER_KEY_LENGTH, server_key, port);
 }
 void
 make_html_text(struct sbuf *obuf, int port, int hoptions,
@@ -1789,7 +1794,7 @@ make_html_file(int port)
     main_html_path = buf+strlen(prefix);
     if (server_key[0] == 0)
         generate_random_string(server_key, SERVER_KEY_LENGTH);
-    lwsl_notice("initial html file: '%s'\n", main_html_path);
+    lwsl_notice("initial html file: '%s#PATH:QUERY:FRAGMENT' - redirects to 'http://localhost:%d/PATH?server-key=KEY&QUERY#FRAGMENT\n", main_html_path, port);
     sbuf obuf;
     make_main_html_text(&obuf, port);
 

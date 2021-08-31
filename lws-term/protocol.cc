@@ -1511,7 +1511,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         if (fd && pclient) {
             client->ob.len = 0; // FIXME - simplified
             struct termios termios;
-            if (pclient && tcgetattr(pclient->pty, &termios) == 0) {
+            if (tcgetattr(pclient->pty, &termios) == 0) {
                 termios.c_lflag &= ~(ICANON|ECHO);
                 termios.c_oflag &= ~ONLCR;
                 tcsetattr(pclient->pty, TCSANOW, &termios);
@@ -1563,7 +1563,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         } else {
             sb.printf(URGENT_WRAP("\033]88;{}\007"));
         }
-        if (pclient->pid > 0) {
+        if (pclient && pclient->pid > 0) {
 #define FORMAT_PID_SNUMBER "\033]31;%d\007"
 #define FORMAT_SNAME "\033]30;%s\007"
             sb.printf(pclient->session_name
@@ -1572,7 +1572,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
                       pclient->pid,
                       pclient->session_name);
         }
-        if (pclient->saved_window_contents != NULL) {
+        if (pclient && pclient->saved_window_contents != NULL) {
             int rcount = pclient->saved_window_sent_count;
             sb.printf(URGENT_WRAP("\033]103;%ld,%s\007"),
                       (long) rcount, (char *) pclient->saved_window_contents);
@@ -1604,7 +1604,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         sb.printf(OUT_OF_BAND_START_STRING "\033[96;%ld"
                   URGENT_END_STRING, rcount);
     }
-    if (client->pty_window_update_needed && proxyMode != proxy_command_local) {
+    if (pclient && client->pty_window_update_needed && proxyMode != proxy_command_local) {
         client->pty_window_update_needed = false;
         int kind = proxyMode == proxy_display_local ? 2
             : (int) pclient->session_name_unique;
@@ -1786,7 +1786,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         lwsl_notice("tty/CALLBACK_ESTABLISHED client:%p\n", client);
         char arg[100]; // FIXME
         long wnum = -1;
-        if (! check_server_key(wsi, arg, sizeof(arg) - 1))
+        if (! check_server_key(wsi,
+                               lws_get_urlarg_by_name(wsi, "server-key=", arg, sizeof(arg) - 1)))
             return -1;
 
         const char *reconnect_arg = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
@@ -2098,7 +2099,9 @@ display_session(struct options *options, struct pty_client *pclient,
         if (wnum >= 0) {
             const char *main_url = url ? url : main_html_url;
             sb.append(main_url);
-            if (strchr(main_url, '#') == NULL)
+            if (! url)
+                sb.append("#no-frames.html:"); // FIXME rename
+            else if (strchr(main_url, '#') == NULL)
                 sb.append("#", 1);
             // Note we use ';' rather than the traditional '&' to separate parts
             // of the fragment.  Using '&' causes a mysterious bug (at
@@ -2124,9 +2127,10 @@ display_session(struct options *options, struct pty_client *pclient,
                 sb.printf(";log-to-server=%s", log_to_server);
             }
         } else if (port == -105) // view saved file
-            sb.printf("%s#view-saved=%s",  main_html_url, url);
-        else if (port == -104) // browse url
-            sb.printf("%s#browse=%s",  main_html_url, url);
+            sb.printf("%s#no-frames.html::view-saved=%s",  main_html_url, url);
+        else if (port == -104) {// browse url
+            sb.printf("%s#no-frames.html::browse=%s",  main_html_url, url);
+        }
         else
             sb.printf("%s", url);
         if (encoded)
@@ -2137,7 +2141,7 @@ display_session(struct options *options, struct pty_client *pclient,
             if (write(options->fd_out, sb.buffer, sb.len) <= 0)
                 lwsl_err("write failed - display_session\n");
         } else
-            r = do_run_browser(options, sb.buffer, port);
+            r = do_run_browser(options, sb.null_terminated(), port);
     }
     return r;
 }
@@ -2230,7 +2234,8 @@ int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
 int browse_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
 {
     optind = 1;
-    process_options(argc, argv, opts);
+    // FIXME - note process_options looks for 'foo=value' which can be in URLs
+    // process_options(argc, argv, opts);
     if (optind != argc-1) {
         FILE *err = fdopen(opts->fd_out, "w");
         fprintf(err, optind >= argc ? "domterm browse: missing url\n"

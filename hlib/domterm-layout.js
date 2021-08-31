@@ -107,6 +107,7 @@ DomTermLayout.showFocusedPane = function(item, lcontent = item.container._conten
     DomTermLayout.showFocusedPaneL(item, lcontent);
     DomTermLayout.showFocusedPaneF(lcontent);
 };
+
 DomTermLayout.showFocusedPaneL = function(item, lcontent = item.container._contentElement1) {
     if (DomTermLayout._oldFocusedItem != item) {
         var stackPane = item && item.parent.element ? item.parent.element[0] : null;
@@ -325,7 +326,7 @@ DomTermLayout._initTerminal = function(sessionNumber, container) {
     if (DomTerm.useIFrame) {
         let url = DomTerm.paneLocation;
         url += url.indexOf('#') >= 0 ? '&' : '#';
-        url += + "pane-number="+paneNumber; // ?? used for?
+        url += "pane-number="+paneNumber; // ?? used for?
         if (sessionNumber)
             url += "&session-number="+sessionNumber;
         wrapped = DomTermLayout.makeIFrameWrapper(url);
@@ -488,12 +489,15 @@ DomTermLayout.initSaved = function(data) {
 
 // mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)
 DomTermLayout.makeIFrameWrapper = function(location, mode='T',
-                                     parent=DomTerm.layoutTop) {
+                                           parent=DomTerm.layoutTop) {
     let ifr = document.createElement("iframe");
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
     if (mode == 'T') {
         location = DomTerm.addLocationParams(location);
+    } else if (location.startsWith('file:')) {
+        location = "http://localhost:"+DomTerm.server_port + '/get-file/'
+            + DomTerm.server_key + '/' + location.substring(5);
     }
     if (DomTermLayout._mainWindowNumber >= 0 && (mode == 'T' || mode == 'V')) {
          location = location

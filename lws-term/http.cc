@@ -144,9 +144,8 @@ check_auth(struct lws *wsi) {
     return -1;
 }
 
-bool check_server_key(struct lws *wsi, char *arg, size_t alen)
+bool check_server_key(struct lws *wsi, const char *server_key_arg)
 {
-    const char*server_key_arg = lws_get_urlarg_by_name(wsi, "server-key=", arg, alen);
     if (server_key_arg != NULL &&
         memcmp(server_key_arg, server_key, SERVER_KEY_LENGTH) == 0)
       return true;
@@ -155,6 +154,12 @@ bool check_server_key(struct lws *wsi, char *arg, size_t alen)
     lwsl_notice("missing or non-matching server-key!\n");
     lws_return_http_status(wsi, HTTP_STATUS_UNAUTHORIZED, NULL);
     return false;
+}
+
+bool check_server_key_arg(struct lws *wsi, char *arg, size_t alen)
+{
+    const char*server_key_arg = lws_get_urlarg_by_name(wsi, "server-key=", arg, alen);
+    return check_server_key(wsi, server_key_arg);
 }
 
 #define LBUFSIZE 4096
@@ -244,39 +249,64 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 goto try_to_reuse;
             }
 
+            const char* fname = (char*) in;
+            const char* content_type = get_mimetype(fname);
+            if (content_type == NULL)
+              content_type = "text/html";
+
             const char saved_prefix[] = "/saved-file/";
             size_t saved_prefix_len = sizeof(saved_prefix)-1;
-            if (!strncmp((const char *) in, saved_prefix, saved_prefix_len)) {
-                int blen = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_URI_ARGS);
-                char *buf = challoc(blen+1);
-                const char *filename = NULL;
+            const char get_prefix[] = "/get-file/";
+            size_t get_prefix_len = sizeof(get_prefix)-1;
+            bool is_saved_file =
+                !strncmp((const char *) in, saved_prefix, saved_prefix_len);
+            if (is_saved_file
+                || !strncmp((const char *) in, get_prefix, get_prefix_len)) {
+                const char *rest = (const char *) in
+                    + (is_saved_file ? saved_prefix_len : get_prefix_len);
+                size_t rlen = strlen(rest);
+                const char *filename = rlen <= SERVER_KEY_LENGTH ? NULL
+                    : rest + SERVER_KEY_LENGTH;
+                if (filename == NULL
+                    || ! check_server_key(wsi, rest)) {
+                    lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST,
+                                           "<b>missing or bad server key</b>");
+                    goto try_to_reuse;
+                }
                 FILE *sfile = NULL;
                 struct stat stbuf;
                 off_t slen;
-                int fd = -1;
+                int fd = fd = open(filename, O_RDONLY);
                 int ret = -1;
-                if (check_server_key(wsi, buf, blen)
-                    && (filename = lws_get_urlarg_by_name(wsi, "file=", buf, blen)) != NULL
-                    && (fd = open(filename, O_RDONLY)) >= 0
-                    && fstat(fd, &stbuf) == 0
-                    && (slen = stbuf.st_size) > 0
-                    && (buf = (char*) realloc(buf, slen)) != NULL
-                    && (sfile = fdopen(fd, "r")) != NULL
-                    && (off_t) fread(buf, 1, slen, sfile) == slen) {
+                char *buf = nullptr;
+                if (fd < 0 || fstat(fd, &stbuf) != 0)
+                    lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND,
+                                           "<b>requested file not found</b>");
+                else if ((slen = stbuf.st_size) > 0
+                         && (buf = (char*) xmalloc(slen)) != NULL
+                         && (sfile = fdopen(fd, "r")) != NULL
+                         && (off_t) fread(buf, 1, slen, sfile) == slen) {
                     sbuf sb;
-                    // FIXME: We should encrypt the response (perhaps just a
-                    // simple encryption using the kerver_key).  It is probably
-                    // not an issue for local requests, and for non-local
-                    // requests (where one should use tls or ssh).
-                    make_html_text(&sb, http_port, LIB_WHEN_SIMPLE, buf, slen);
-                    char *data = sb.buffer;
-                    int dlen = sb.len;
-                    sb.buffer = NULL;
-                    ret = write_simple_response(wsi, hclient, "text/html",
-                                                data, dlen,
+                    char *data;
+                    if (is_saved_file) {
+                        // FIXME: We should encrypt the response (perhaps just a
+                        // simple encryption using the kerver_key).  It is probably
+                        // not an issue for local requests, and for non-local
+                        // requests (where one should use tls or ssh).
+                        make_html_text(&sb, http_port, LIB_WHEN_SIMPLE, buf, slen);
+                        data = sb.buffer;
+                        slen = sb.len;
+                        sb.buffer = NULL; // ownership transferred
+                    } else { // get-file
+                        data = buf;
+                        buf = NULL;  // buf is now owned by write_simple_response
+                    }
+                    ret = write_simple_response(wsi, hclient, content_type,
+                                                data, slen,
                                                 true, buffer);
-                    buf = NULL; // buf is now owned by write_simple_response
-                }
+                } else
+                    lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST,
+                                           "<b>error reading requested file</b>");
                 if (buf != NULL)
                     free(buf);
                 if (sfile != NULL)
@@ -285,17 +315,10 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     close(fd);
                 return ret;
             }
-            const char* fname = (char*) in;
-            if (fname == NULL || strcmp(fname, "/") == 0) {
-                if (main_options->http_server)
-                    fname = main_html_path;
-                else
-                    fname = "/repl-client.html";
-            }
-            const char* content_type = get_mimetype(fname);
-            if (content_type == NULL)
-              content_type = "text/html";
 
+            if (fname == NULL || strcmp(fname, "/") == 0) {
+                fname = main_html_path;
+            }
             if (strcmp(fname, "/favicon.ico") == 0) {
                 char *icon = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm2.ico");
                 int n = lws_serve_http_file(wsi, icon, content_type, NULL, 0);

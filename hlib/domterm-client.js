@@ -208,8 +208,10 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
     let url = decodeURIComponent(urlEncoded);
     // Requesting the saved file using a file: URL runs into CORS
     // (Cross-Origin Resource Sharing) restrictions on desktop browsers.
-    if (url.startsWith("file:///")) {
-        url = "http://localhost:"+DomTerm.server_port+"/saved-file/?server-key="+DomTerm.server_key+"&file="+urlEncoded.substring(7);
+    if (url.startsWith("file:")) {
+        url = "http://localhost:"+DomTerm.server_port
+            +"/saved-file/"+DomTerm.server_key
+            +"/"+url.substring(5);
         return DomTermLayout.makeIFrameWrapper(url, 'V', contextNode);
     }
     let el = DomTerm.makeElement(DomTerm.freshName());
@@ -368,7 +370,7 @@ function loadHandler(event) {
                                         'B', DomTerm.layoutTop);
         no_session = "browse";
     }
-    if (location.pathname === "/saved-file/") {
+    if (location.pathname.startsWith("/saved-file/")) {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
         return;
     }
