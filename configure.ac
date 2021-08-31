@@ -55,6 +55,9 @@ AC_ARG_WITH(libclipboard,
 AC_ARG_WITH(asciidoctor,
   AS_HELP_STRING(--with-asciidoctor,Use AsciiDoctor to build help and man pages))
 
+AC_ARG_WITH(wry,
+  AS_HELP_STRING(--with-wry,Build Wry front-end))
+
 AC_ARG_WITH(webview,
   AS_HELP_STRING(--with-webview,Build WebView front-end))
 
@@ -108,6 +111,7 @@ AS_IF([test -z "$with_asciidoctor"],
 AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
+AM_CONDITIONAL(WITH_WRY, test "$with_wry" = "yes")
 
 AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
 AM_CONDITIONAL(WITH_LIBCLIPBOARD, test "$with_libclipboard" != "no" -a "$with_libclipboard" != "")

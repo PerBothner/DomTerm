@@ -47,6 +47,9 @@ endif
 if WITH_WEBVIEW
 MISCBINS += bin/dt-webview$(EXEEXT)
 endif
+if WITH_WRY
+MISCBINS += bin/dt-wry$(EXEEXT)
+endif
 if WITH_LIBCLIPBOARD
 MISCBINS += bin/dt-libclip$(EXEEXT)
 endif
@@ -258,7 +261,7 @@ clean-am:
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
-	rm -rf bin/qtdomterm bin/dt-webview
+	rm -rf bin/qtdomterm bin/dt-webview bin/dt-wry
 	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage appimage/bad-dyn-libs
 
 websocket_sources = org/domterm/websocket/DomServer.java
@@ -467,6 +470,11 @@ endif
 bin/dt-libclip$(EXE): native/dt-libclip.cc
 	$(CXX) $(CXXFLAGS) native/dt-libclip.cc @LIBCLIPBOARD_CFLAGS@ @LIBCLIPBOARD_LIBS@ -lpthread -o bin/dt-libclip
 
+bin/dt-wry: dt-wry/target/release/dt-wry
+	cp -p dt-wry/target/release/dt-wry bin
+dt-wry/target/release/dt-wry: dt-wry/src/main.rs
+	cd dt-wry && cargo build --release
+
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
 install-exec-local: $(MISCBINS)
@@ -476,6 +484,9 @@ if WITH_QTWEBENGINE
 endif
 if WITH_WEBVIEW
 	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-webview$(EXEEXT) "$(DESTDIR)$(bindir)/dt-webview$(EXEEXT)"
+endif
+if WITH_WRY
+	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-wry$(EXEEXT) "$(DESTDIR)$(bindir)/dt-wry$(EXEEXT)"
 endif
 
 install-data-local:
@@ -585,6 +596,7 @@ appimage/DomTerm.AppImage: bin/domterm
 	strip appimage/DomTerm.AppDir/usr/bin/domterm
 	-test -x appimage/DomTerm.AppDir/usr/bin/qtdomterm && strip appimage/DomTerm.AppDir/usr/bin/qtdomterm
 	-test -x appimage/DomTerm.AppDir/usr/bin/dt-webview && strip appimage/DomTerm.AppDir/usr/bin/dt-webview
+	-test -x appimage/DomTerm.AppDir/usr/bin/dt-wry && strip appimage/DomTerm.AppDir/usr/bin/dt-wry
 	ldd ./appimage/DomTerm.AppDir/usr/bin/domterm|(grep 'libwebsockets[.]so'||true) >appimage/bad-dyn-libs
 	@if test -s appimage/bad-dyn-libs; then echo WARNING: These libraries should have static linking for AppImage:; cat appimage/bad-dyn-libs; fi
 #	echo '#!/bin/bash' > $(APP_RUN)

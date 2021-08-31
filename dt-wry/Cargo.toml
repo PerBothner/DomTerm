@@ -1,0 +1,8 @@
+[package]
+name = "dt-wry"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+#wry = { git = "https://github.com/rust-lang-nursery/rand", branch = "next" }
+wry = "0.12.1"

@@ -629,6 +629,33 @@ webview_command(struct options *options)
 
 /** Return freshly allocated command string or NULL */
 static char *
+wry_command(struct options *options)
+{
+    char *cmd = get_bin_relative_path("/bin/dt-wry");
+    if (cmd == NULL || access(cmd, X_OK) != 0) {
+        if (cmd == NULL)
+            free(cmd);
+        return NULL;
+    }
+    int bsize = strlen(cmd)+100;
+    const char *geometry = geometry_option(options);
+    if (geometry)
+        bsize += strlen(geometry);
+    char *buf = challoc(bsize);
+    strcpy(buf, cmd);
+    free(cmd);
+#if 0
+    if (geometry) {
+        strcat(buf, " --geometry ");
+        strcat(buf, geometry);
+    }
+#endif
+    strcat(buf, " '%U'");
+    return buf;
+}
+
+/** Return freshly allocated command string or NULL */
+static char *
 electron_command(struct options *options)
 {
     char *epath_free_needed = NULL;
@@ -788,6 +815,12 @@ do_run_browser(struct options *options, const char *url, int port)
                     browser_specifier = webview_command(options);
                     if (browser_specifier == NULL)
                         error_if_single = "cannot find dt-webview command";
+                    else
+                        break;
+                } else if (cmd == "wry") {
+                    browser_specifier = wry_command(options);
+                    if (browser_specifier == NULL)
+                        error_if_single = "cannot find dt-wry command";
                     else
                         break;
                 } else if (cmd == "qt"
