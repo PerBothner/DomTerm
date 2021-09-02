@@ -36,6 +36,9 @@ doc/To-do.html
 doc/Wire-byte-protocol.html
 doc/DomTerm.xml
 doc/man/*.man
+dt-wry/Cargo.lock
+dt-wry/Cargo.toml
+dt-wry/target
 web/*.html
 web/images/*.png
 autom4te.cache/*
@@ -43,6 +46,7 @@ bin/domterm
 bin/ldomterm
 bin/qtdomterm
 bin/dt-webview
+bin/dt-wry
 share/domterm
 share/man
 lws-term/ldomterm
