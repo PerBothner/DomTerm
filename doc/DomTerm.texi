@@ -495,6 +495,11 @@ If configuring with @code{--with-webview} (experimental) do:
 sudo dnf install gtk3-devel webkit2gtk3-devel
 @end example
 
+If configuring with @code{--with-wry} (experimental) do:
+@example
+sudo dnf install rust cargo gtk3-devel webkit2gtk3-devel jq
+@end example
+
 @subsubheading Ubuntu/Debian
 
 (Tested on Ubuntu 17.10.1)

@@ -4,6 +4,7 @@
 
 
 use std::env;
+mod versions;
 
 fn main() -> wry::Result<()> {
   use wry::{
@@ -12,10 +13,11 @@ fn main() -> wry::Result<()> {
       event_loop::{ControlFlow, EventLoop},
       window::{Window, WindowBuilder},
     },
-    webview::{RpcRequest, WebViewBuilder},
+    webview::{RpcRequest, WebContext, WebViewBuilder},
   };
 
   let event_loop = EventLoop::new();
+  let mut web_context = WebContext::default();
   let mut webviews = std::collections::HashMap::new();
   let window = WindowBuilder::new()
 //    .with_decorations(false) remove titlebar
@@ -24,11 +26,22 @@ fn main() -> wry::Result<()> {
   let args: Vec<String> = env::args().collect();
   let url = &args[1];
 
-  let script = r#"
-  (function () {
-    window.wry_version = "x.x.x"; // TODO
-  })();
-  "#;
+  let wversion = wry::webview::webview_version();
+  let wversion_js = match wversion {
+     Ok(v) => format!("    window.webview_version = \"{}\";\n", v),
+     Err(_) => "".to_string()
+  };
+  let wry_version = versions::wry_version();
+  let _domterm_version = versions::domterm_version();
+  //let wversion = match wry::webview::webview_version() {
+  //  Ok(v) => v, Err(e) => "?" };
+  //wry::application
+  let script = format!(r#"
+  (function () {{
+{}    window.wry_version = "{}";
+}})();
+  "#, wversion_js, wry_version);
+println!("script: {}", script);
 
   let (window_tx, window_rx) = std::sync::mpsc::channel();
 
@@ -42,8 +55,9 @@ fn main() -> wry::Result<()> {
   let webview = WebViewBuilder::new(window)
     .unwrap()
     .with_url(url)?
-    .with_initialization_script(script)
+    .with_initialization_script(&script)
     .with_rpc_handler(handler)
+    .with_web_context(&mut web_context)
     .build()?;
   webviews.insert(webview.window().id(), webview);
 

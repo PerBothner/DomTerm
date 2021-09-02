@@ -34,6 +34,11 @@ if (typeof navigator !== 'undefined' && navigator.userAgent) {
     if ((m = navigator.userAgent.match(/AppleWebKit[/]([^ ]+)/))
        && ! DomTerm.versions.chrome)
         DomTerm.versions.appleWebKit = m[1];
+    if (window.wry_version) {
+        DomTerm.versions.wry = window.wry_version;
+        if (window.webview_version && DomTerm.versions.appleWebKit)
+            DomTerm.versions.webkitgtk = window.webview_version;
+    }
     DomTerm.versions.userAgent = navigator.userAgent;
 }
 
