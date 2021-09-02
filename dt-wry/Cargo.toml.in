@@ -2,7 +2,7 @@
 [package]
 name = "dt-wry"
 version = "@DOMTERM_VERSION@"
-edition = "@DOMTERM_YEAR@"
+edition = "2018"
 
 [dependencies]
 #wry = { git = "https://github.com/rust-lang-nursery/rand", branch = "next" }
