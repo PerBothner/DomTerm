@@ -317,6 +317,10 @@ HLIB_FIXED_FILES_MISC="\
   hlib/domterm-layout.css \
   hlib/domterm-standard.css \
   hlib/goldenlayout-base.css \
+  hlib/goldenlayout-dark-theme.css \
+  hlib/goldenlayout-light-theme.css \
+  hlib/goldenlayout-soda-theme.css \
+  hlib/goldenlayout-translucent-theme.css \
   hlib/jsMenus.css"
 case "$with_xterm_js" in
   ""|"no")

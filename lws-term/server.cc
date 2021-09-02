@@ -1686,6 +1686,8 @@ static const char * standard_stylesheets[] = {
     "hlib/domterm-core.css",
     "hlib/domterm-standard.css",
     "hlib/goldenlayout-base.css",
+    //"hlib/goldenlayout-dark-theme.css",
+    "hlib/goldenlayout-light-theme.css",
     "hlib/jsMenus.css",
     "hlib/domterm-layout.css",
     "hlib/domterm-default.css",
@@ -1729,9 +1731,6 @@ static struct lib_info standard_jslibs[] = {
 #if COMBINE_RESOURCES
     {"hlib/dt-outer.js", LIB_WHEN_OUTER},
 #else
-    {"hlib/jquery.min.js", LIB_WHEN_OUTER},
-    {"hlib/goldenlayout.js", LIB_WHEN_OUTER},
-    {"hlib/domterm-layout.js", LIB_WHEN_OUTER},
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
     {"hlib/qwebchannel.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/jsMenus.js", LIB_WHEN_OUTER},

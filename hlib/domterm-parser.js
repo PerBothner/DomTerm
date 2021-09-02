@@ -1360,6 +1360,7 @@ class DTParser {
                 var param = this.getParameter(1, 0);
                 switch (param) {
                 case 0:
+                    term.sstate.stayInInputMode = undefined;
                     term.popFromElement();
                     break;
                 }
@@ -1765,6 +1766,7 @@ class DTParser {
             } catch (e) { options = {}; }
             */
             term._pushIntoElement(span);
+            term.sstate.stayInInputMode = undefined;
             break;
         case 52: { // Manipulate Selection Data (subset)
             let semi = text.indexOf(';');
@@ -2023,7 +2025,7 @@ class DTParser {
                 var paneOp = Number(m[1]);
                 DomTerm.newPane(paneOp,
                                 {type: 'component',
-                                 componentName: code==104?'browser':'view-saved',
+                                 componentType: code==104?'browser':'view-saved',
                                  url: text.substring(m[1].length+1) });
             }
             break;

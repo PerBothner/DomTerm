@@ -29,7 +29,7 @@ DomTerm.usingJsMenus = function() {
 // subsequent ones.  The value 2 means use an iframe for all windows.
 // Only using iframe for subsequent windows gives most of the benefits
 // with less of the cost, plus it makes no-layout modes more consistent.
-DomTerm.useIFrame = ! DomTerm.simpleLayout ? 1 : 0;
+DomTerm.useIFrame = ! DomTerm.simpleLayout;
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
@@ -212,7 +212,7 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
         url = "http://localhost:"+DomTerm.server_port
             +"/saved-file/"+DomTerm.server_key
             +"/"+url.substring(5);
-        return DomTermLayout.makeIFrameWrapper(url, 'V', contextNode);
+        return DomTerm.makeIFrameWrapper(url, 'V', contextNode);
     }
     let el = DomTerm.makeElement(DomTerm.freshName());
     el.innerHTML = "<h2>waiting for file data ...</h2>";
@@ -253,6 +253,7 @@ function setupParentMessages2() {
 function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
+    const DomTermLayout = DomTerm._domtermLayout;
     let url = location.href;
     let hash = location.hash.replace(/^#[;]*/, '').replace(/;/g, '&');
     let params = new URLSearchParams(hash);
@@ -331,7 +332,7 @@ function loadHandler(event) {
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
-                const lcontent = DomTermLayout._oldFocusedContent;
+                const lcontent = DomTerm._oldFocusedContent;
                 if (lcontent && lcontent.contentWindow) {
                     lcontent.contentWindow.postMessage({"command": command,
                                                         "args": args}, "*");
@@ -366,8 +367,8 @@ function loadHandler(event) {
         viewSavedFile(m[1]);
         no_session = "view-saved";
     } else if ((m = location.hash.match(/browse=([^&;]*)/))) {
-        DomTermLayout.makeIFrameWrapper(decodeURIComponent(m[1]),
-                                        'B', DomTerm.layoutTop);
+        DomTerm.makeIFrameWrapper(decodeURIComponent(m[1]),
+                                  'B', DomTerm.layoutTop);
         no_session = "browse";
     }
     if (location.pathname.startsWith("/saved-file/")) {
@@ -385,7 +386,7 @@ function loadHandler(event) {
     }
     DomTerm.mainLocationParams = paneParams.toString();
     if (DomTerm.useIFrame == 2 && ! DomTerm.isInIFrame()) {
-        DomTermLayout.makeIFrameWrapper(DomTerm.paneLocation/*+location.hash*/);
+        DomTerm.makeIFrameWrapper(DomTerm.paneLocation/*+location.hash*/);
         return;
     }
     if (DomTerm.loadDomTerm) {
@@ -426,6 +427,7 @@ DomTerm.handleCommand = function(iframe, command, args) {
 
 /* Used by atom-domterm or if useIFrame. */
 function handleMessage(event) {
+    const DomTermLayout = DomTerm._domtermLayout;
     var data = event.data;
     var dt=DomTerm.focusedTerm;
     let iframe = null;
@@ -480,12 +482,14 @@ function handleMessage(event) {
     } else if (data.command=="focus-event") {
         if (iframe) {
             let originMode = data.args[0];
-            if (DomTermLayout.manager)
-                DomTermLayout._selectLayoutPane(DomTermLayout._elementToLayoutItem(iframe), originMode);
-            else {
-                DomTermLayout._focusChild(iframe, originMode);
-                DomTermLayout._oldFocusedContent = iframe;
-            }
+            DomTerm.withLayout((dl) => {
+                if (dl.manager)
+                    dl._selectLayoutPane(DomTermLayout._elementToLayoutItem(iframe), originMode);
+                else {
+                    dl._focusChild(iframe, originMode);
+                    DomTermLayout.showFocusedPaneF(iframe);
+                }
+            });
         }
     } else if (data.command=="domterm-set-title") {
         if (iframe)

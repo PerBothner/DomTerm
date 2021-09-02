@@ -20,6 +20,7 @@ pre { padding: 0px; margin: 0px; }
  *  be nested in a div with style="position: relative", so
  * .domterm-show-info's position: absolute works.  Setting position: relative
  * in the .domterm element doesn't work if we're scrolled. */
+div.below-menubar { position: relative }
 div.domterm-show-info {
     position: absolute;
     display: grid;

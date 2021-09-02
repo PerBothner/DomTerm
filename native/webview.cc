@@ -66,6 +66,7 @@ int main(int argc, char **argv) {
     sprintf(gtk_version_str, "window.gtk_version = '%d.%d.%d';",
             gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
     webview_init(&w, gtk_version_str);
+    gtk_window_set_decorated((GtkWindow*)(w.window()), 0);
 #if 0
     webview_bind(&w, "_dt_toggleDeveloperTools", toggle_inspector, NULL);
 #endif

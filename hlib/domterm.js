@@ -1,15 +1,11 @@
 /** @license Copyright (c) 2015, 2016, 2017, 2018, 2019, 2021 Per Bothner.
  */
 
-class DomTermLayout {
-};
-
-DomTermLayout.manager = null;
-
 DomTerm.verbosity = 0;
 DomTerm.logToServer = false;
 DomTerm.logStringMax = 200;
 DomTerm._savedLogEntries = null;
+DomTerm._mainWindowNumber = -1;
 
 DomTerm.log = function(str, dt=null) {
     if (dt && dt._socketOpen)
@@ -76,8 +72,22 @@ DomTerm.JsonLimited = function(val) {
 
 DomTerm._instanceCounter = 0;
 
+// The current domterm Terminal *or* domterm-wrapper iframe Element.
+DomTerm._oldFocusedContent = null;
+
 /** The <body>, or a node below the menubar if using jsMenus. */
 DomTerm.layoutTop = null; // document.body is null until loaded
+
+DomTerm.withLayout = function(callback, err = (e)=>{}) {
+    if (DomTerm._layout)
+        callback(DomTerm._layout);
+    else import('./domterm-layout.js')
+        .then(mod => {
+            const dl = mod.DomTermLayout;
+            DomTerm._layout = dl;
+            callback(dl);
+        }).catch(err);
+};
 
 DomTerm.supportsAutoInputMode = true;
 
@@ -145,12 +155,14 @@ DomTerm.forEachTerminal = function(func) {
     }
 }
 
-/* Can be called in either DomTerm sub-window or layout-manager context. */
+/* Can be called in either DomTerm sub-window or layout-manager context.
+   * Note this is in the DomTerm gloabl object, not DomTermLayout. FIXME?
+ */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("domterm-add-pane", paneOp, options);
-    else if (DomTermLayout.addPane)
-        DomTermLayout.addPane(paneOp, options);
+    else
+        DomTerm.withLayout((m) => m.addPane(paneOp, options));
     //DomTerm.newSessionPid = 0;
 }
 
@@ -271,6 +283,37 @@ DomTerm.addLocationParams = function(url) {
     return url;
 }
 
+// mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)
+DomTerm.makeIFrameWrapper = function(location, mode='T',
+                                           parent=DomTerm.layoutTop) {
+    let ifr = document.createElement("iframe");
+    let name = DomTerm.freshName();
+    ifr.setAttribute("name", name);
+    if (location) {
+        if (mode == 'T') {
+            location = DomTerm.addLocationParams(location);
+        } else if (location.startsWith('file:')) {
+            location = "http://localhost:"+DomTerm.server_port + '/get-file/'
+                + DomTerm.server_key + '/' + location.substring(5);
+        }
+        if (DomTerm._mainWindowNumber >= 0 && (mode == 'T' || mode == 'V')) {
+            location = location
+                + (location.indexOf('#') >= 0 ? '&' : '#')
+                + "main-window=" + DomTerm._mainWindowNumber;
+        }
+    }
+    ifr.setAttribute("src", location);
+    ifr.setAttribute("class", "domterm-wrapper");
+    if (DomTerm._oldFocusedContent == null)
+        DomTerm._oldFocusedContent = ifr;
+    for (let ch = parent.firstChild; ; ch = ch.nextSibling) {
+        if (ch == null || ch.tagName != "IFRAME") {
+            parent.insertBefore(ifr, ch);
+            break;
+        }
+    }
+    return ifr;
+}
 DomTerm.handlingJsMenu = function() {
     return typeof Menu !== "undefined" && Menu._topmostMenu;
 };
@@ -282,4 +325,3 @@ if (DomTerm.isElectron()) {
 };
 
 window.DomTerm = DomTerm;
-window.DomTermLayout = DomTermLayout;
