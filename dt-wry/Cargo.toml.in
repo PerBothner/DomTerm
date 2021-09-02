@@ -1,7 +1,8 @@
+# @configure_input@
 [package]
 name = "dt-wry"
-version = "0.1.0"
-edition = "2018"
+version = "@DOMTERM_VERSION@"
+edition = "@DOMTERM_YEAR@"
 
 [dependencies]
 #wry = { git = "https://github.com/rust-lang-nursery/rand", branch = "next" }

@@ -357,6 +357,7 @@ AC_SUBST(HAVE_OPENSSL)
 AC_SUBST(LIBMAGIC_LIBS)
 
 AC_CONFIG_FILES([Makefile hlib/domterm-version.js lws-term/Makefile
+                 dt-wry/Cargo.toml
                  qtdomterm/Makefile qtdomterm/dt_version.h lws-term/version.h]
                  share/domterm/electron/package.json:electron/package.json)
 AC_OUTPUT
