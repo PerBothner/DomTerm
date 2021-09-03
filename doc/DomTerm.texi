@@ -4820,6 +4820,9 @@ Printing lists and other structures does
 @uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,dynamic pretty-printing}.
 Debug printing of expressions includes folding and pretty-printing.
 
+@uref{https://github.com/jingyuewang/DtCalc.jl,@b{DtCalc.jr}} turns
+Julia's REPL into an advanced graphical calculator.
+
 The @uref{http://www.gnuplot.info/,@b{gnuplot}} graphing utility will print
 @uref{https://per.bothner.com/blog/2016/gnuplot-in-domterm/,graphical output}
 directly to the terminal if using DomTerm.
