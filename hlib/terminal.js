@@ -1239,7 +1239,6 @@ Terminal.prototype.maybeFocus = function(force = false) {
         let aNode = sel.anchorNode;
         let aOffset = sel.anchorOffset;
         let collapsed = sel.isCollapsed;
-    console.log("- before focus "+goal);
         goal.focus({preventScroll: true});
         if (sel.isCollapsed && ! collapsed)
             sel.setBaseAndExtent(aNode, aOffset, fNode, fOffset);
@@ -3991,7 +3990,6 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     if (! DomTerm.isAtom()) { // kludge for Atom
         topNode.addEventListener("focusin", function(e) {
             dt._focusinLastEvent = true;
-            console.log("focusin event handler "+dt.topNode.getAttribute("name"));
             DomTerm.setFocus(dt, "F");
         }, false);
     }
