@@ -92,6 +92,9 @@ div.domterm-show-info {
 div.domterm-show-info.domterm-moving {
     outline: thin dashed orange;
 }
+div.dt-moving {
+    cursor: move;
+}
 div.domterm-show-info div.domterm-show-info-header {
     visibility: hidden;
     outline: thin solid blue;
@@ -103,7 +106,6 @@ div.domterm-show-info:hover div.domterm-show-info-header {
 div.domterm-show-info-header {
     display: flex; flex-direction: row-reverse;
     line-height: 90%;
-    cursor: move;
 }
 div.domterm-show-info-header span {
     cursor: pointer }

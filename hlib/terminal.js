@@ -92,6 +92,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 export { Terminal };
 import { commandMap } from './commands.js';
+import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
 
 class Terminal {
@@ -3601,7 +3602,7 @@ Terminal.prototype._displayInfoWithTimeout = function(text, div = null, timeout 
     var dt = this;
     if (div == null)
         div = document.createElement("div");
-    div = DomTerm.addInfoDisplay(text, div, dt);
+    div = addInfoDisplay(text, div, dt);
     if (timeout >= 0) {
         function clear() {
             div.timeoutId = undefined;
@@ -3773,93 +3774,6 @@ DomTerm._positionInfoWidget = function(widget, dt) {
     widget.style["bottom"] = "auto";
 }
 
-DomTerm.addInfoDisplay = function(contents, div, dt) {
-    // FIXME inconsistent terminology 'widget'
-    // Maybe "domterm-show-info" should be "domterm-show-container".
-    // Maybe "domterm-info-widget" should be "domterm-info-panel" or "-popup".
-    let widget = dt._displayInfoWidget;
-    if (widget == null) {
-        widget = document.createElement("div");
-        widget.setAttribute("class", "domterm-show-info");
-        // Workaround for lack of browser support for 'user-select: contain'
-        widget.contentEditable = true;
-
-        let header = document.createElement("div");
-        header.setAttribute("class", "domterm-show-info-header");
-        let close = document.createElement("span");
-        header.appendChild(close);
-        widget.appendChild(header);
-
-        widget.style["box-sizing"] = "border-box";
-        dt._displayInfoWidget = widget;
-        let closeAllWidgets = (ev) => {
-            for (let panel = widget.firstChild; panel !== null;) {
-                let next = panel.nextSibling;
-                if (panel.classList.contains("domterm-info-widget"))
-                    DomTerm.removeInfoDisplay(panel, dt);
-                panel = next;
-            }
-        }
-        widget.mouseDownHandler = (edown) => {
-            widget.classList.add("domterm-moving");
-            let oldX = edown.pageX / dt._computedZoom;
-            let oldY = edown.pageY / dt._computedZoom;// + this.buffers.scrollTop;
-            widget.mouseHandler = (e) => {
-                let x = e.pageX / dt._computedZoom;
-                let y = e.pageY / dt._computedZoom;// + this.buffers.scrollTop;
-                if (e.type == "mouseup" || e.type == "mouseleave") {
-                    //widget.mouseDown = undefined;
-                    if (widget.mouseHandler) {
-                        dt.topNode.removeEventListener("mouseup", widget.mouseHandler, false);
-                        dt.topNode.removeEventListener("mouseleave", widget.mouseHandler, false);
-                        dt.topNode.removeEventListener("mousemove", widget.mouseHandler, false);
-                        widget.classList.remove("domterm-moving");
-                        widget.mouseHandler = undefined;
-                    }
-                }
-                let diffY = y - oldY;
-                if (e.type == "mousemove"
-                    && Math.abs(diffY) >= 0) {
-                    let diffY = y - oldY;
-                    dt._displayInfoYoffset += diffY;
-                    // if close to top/bottom edge, switch to relative to it
-                    if (dt._displayInfoYoffset >= 0
-                        && dt._displayInfoYoffset + widget.offsetHeight > 0.8 * dt.topNode.offsetHeight)
-                        dt._displayInfoYoffset =
-                        dt._displayInfoYoffset + widget.offsetHeight - dt.topNode.offsetHeight;
-                    else if (dt._displayInfoYoffset < 0
-                             && widget.offsetHeight - dt._displayInfoYoffset > 0.8 * dt.topNode.offsetHeight)
-                        dt._displayInfoYoffset =
-                        dt._displayInfoYoffset - widget.offsetHeight + dt.topNode.offsetHeight;
-                    DomTerm._positionInfoWidget(widget, dt);
-                    oldY = y;
-                }
-                e.preventDefault();
-            };
-            dt.topNode.addEventListener("mouseup", widget.mouseHandler, false);
-            dt.topNode.addEventListener("mouseleave", widget.mouseHandler, false);
-            dt.topNode.addEventListener("mousemove", widget.mouseHandler, false);
-            edown.preventDefault();
-        };
-        header.addEventListener("mousedown", widget.mouseDownHandler, false);
-        close.addEventListener("click", closeAllWidgets, false);
-    }
-    if (! div)
-        div = document.createElement("div");
-    div.classList.add("domterm-info-widget");
-    // Workaround for lack of browser support for 'user-select: contain'
-    div.contentEditable = false;
-    if (div.parentNode !== widget)
-        widget.appendChild(div);
-    if (contents) {
-        if (contents.indexOf('<') < 0)
-            contents = "<span>" + contents + "</span>";
-        div.innerHTML = contents;
-    }
-    DomTerm._positionInfoWidget(widget, dt);
-    return div;
-};
-
 DomTerm.displayMiscInfo = function(dt, show) {
     if (show) {
         let contents = "<span>DomTerm "+DomTerm.versionString;
@@ -3883,7 +3797,7 @@ DomTerm.displayMiscInfo = function(dt, show) {
         if (dt.sstate.lastWorkingPath)
             contents += "<br/>Last path: <code>"+DomTerm.escapeText(dt.sstate.lastWorkingPath)+"</code>";
         contents += "</span>";
-        dt._showingMiscInfo = DomTerm.addInfoDisplay(contents, dt._showingMiscInfo, dt);
+        dt._showingMiscInfo = addInfoDisplay(contents, dt._showingMiscInfo, dt);
     } else if (dt._showingMiscInfo) {
         DomTerm.removeInfoDisplay(dt._showingMiscInfo, dt);
         dt._showingMiscInfo = undefined;
@@ -3904,7 +3818,7 @@ Terminal.prototype.showMiniBuffer = function(options) {
     let contents = '<span>' + prefix
         + '<span class="editing" std="input"></span>'
         + postfix + '</span>';
-    let div = DomTerm.addInfoDisplay(contents, null, this);
+    let div = addInfoDisplay(contents, null, this);
     let miniBuffer = div.querySelector(".editing");
     this._miniBuffer = miniBuffer;
     miniBuffer.saveInputLine = this._inputLine;
@@ -10474,7 +10388,7 @@ Terminal.prototype._modeInfo = function(emphasize="") {
 Terminal.prototype._updateCountInfo = function() {
     if (this._numericArgument) {
         let info = "<span>count: "+this._numericArgument+"</span>";
-        this._countInfoDiv = DomTerm.addInfoDisplay(info, this._countInfoDiv, this);
+        this._countInfoDiv = addInfoDisplay(info, this._countInfoDiv, this);
     } else if (this._countInfoDiv) {
         DomTerm.removeInfoDisplay(this._countInfoDiv, this);
         this._countInfoDiv = undefined;
@@ -11598,7 +11512,7 @@ function _muxModeInfo(dt) {
 
 /** Runs in DomTerm sub-window. */
 Terminal.prototype.enterMuxMode = function() {
-    this._showingMuxInfo = DomTerm.addInfoDisplay("window (MUX) mode", this._showingMuxInfo, this);
+    this._showingMuxInfo = addInfoDisplay("window (MUX) mode", this._showingMuxInfo, this);
     this._muxMode = true;
     this._updatePagerInfo();
 }
