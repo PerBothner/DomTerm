@@ -202,9 +202,33 @@ span.pending { background-color: lightgrey }
 span.pending span[std="prompt"] { color: green, background-color: lightgrey }
 span.url { font-family: sans-serif; font-size: inherit }
 
-div.domterm-context-popup {
+div.dt-popup-panel {
+    width: 30em;
+    min-width: 15em;
+    max-width: 80%;
+    border: thin solid sienna;
+    border-radius: 6px;
+}
+
+div.dt-popup-panel > div {
+    padding: 4px;
+}
+
+div.dt-popup-panel span.dt-close-button {
+    float: right;
+    padding: 2px;
+}
+div.dt-popup-panel, div.dt-popup-panel span.dt-close-button:hover {
+    background-color:  #ececec;
+}
+
+div.dt-popup-panel div.dt-overlay-titlebar {background-color: lightgrey; }
+
+div.dt-context-popup {
     font-size: small;
     padding: 4px;
+    width: 30em;
+    min-width: 15em;
     max-width: 80%;
     border: thin solid sienna;
     border-radius: 6px;

@@ -108,6 +108,28 @@ DomTerm._escapeMap = {
     "'": '&#039;'
 };
 
+DomTerm.clickLink = function(e, dt = DomTerm.focuedTerm) {
+    let target = e.target;
+    for (let n = target; n instanceof Element; n = n.parentNode) {
+        let ntag = n.nodeName;
+        if (ntag == "A") {
+            let href = (n.getAttribute("domterm-href")
+                        || n.getAttribute("href"));
+            if (href
+                && (e.ctrlKey || !dt || ! dt._linkNeedsCtrlClick(n))) {
+                DomTerm.handleLinkRef(href,
+                                      n.textContent, dt);
+
+            }
+            e.preventDefault();
+            return true;
+        }
+        if (ntag == "DIV")
+            break;
+    }
+    return false;
+}
+
 DomTerm.escapeText = function(text) {
     // Assume single quote is not used in attributes
     return text.replace(/[&<>"]/g,

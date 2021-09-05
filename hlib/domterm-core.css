@@ -105,6 +105,11 @@ div.domterm span[std="caret"] {
     background-color: inherit;
 }
 
+div.dt-popup-panel {
+    position: fixed;
+    z-index: 2;
+}
+
 div.show-connection-failure {
     position: fixed;
     background: var(--background-color);

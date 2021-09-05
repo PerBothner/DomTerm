@@ -1,5 +1,6 @@
 export { commandMap, lookupCommand, cmd };
 import { Terminal } from './terminal.js';
+import { showAboutMessage } from './domterm-overlays.js';
 
 const commandMap = new Object();
 
@@ -602,7 +603,7 @@ cmd('open-domterm-homepage',
     });
 cmd('show-about-message',
     function(dt, keyName) {
-        DomTerm.showAboutMessage();
+        showAboutMessage();
         return true;
     });
 cmd('toggle-developer-tools',

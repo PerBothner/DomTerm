@@ -429,7 +429,6 @@ DomTermLayout.initialize = function() {
     DomTermLayout.manager.on('focus',
                              (e) => {
                                  let dt = e.target.component;
-                                 console.log("GL focus dt.target:"+dt+" id:"+dt.getAttribute("name")+" class:"+dt.getAttribute("class"));
                                  DomTermLayout._focusChild(dt, 'X')
                                  DomTermLayout.showFocusedPane(dt); // ??
                              });

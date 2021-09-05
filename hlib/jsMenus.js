@@ -260,6 +260,7 @@ class Menu {
 		return false;
 	}
 	static _mouseHandler(e) {
+		e.preventDefault(); // prevent focus change on mousedown
 		let inMenubar = Menu._inMenubar(e.target);
 		let menubarHandler = e.currentTarget == Menu._menubarNode;
 		let miNode = e.target;

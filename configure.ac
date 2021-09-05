@@ -292,6 +292,7 @@ HLIB_FIXED_FILES_INNER="\
   hlib/browserkeymap.js \
   hlib/mark.es6.js \
   hlib/domterm-findtext.js \
+  hlib/domterm-overlays.js \
   hlib/sixel/SixelDecoder.js \
   hlib/sixel/Colors.js \
   hlib/terminal.js \

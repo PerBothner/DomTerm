@@ -3642,7 +3642,7 @@ Terminal.prototype.hoverHandler = function(event, dt, element, setInfoAction) {
 
     const hoverEnter = (element, setInfoAction) => {
         let popup = document.createElement("div");
-        popup.classList.add("domterm-context-popup");
+        popup.classList.add("dt-context-popup");
         setInfoAction(popup, element);
         this.topNode.appendChild(popup);
         element._popup = popup;
@@ -4032,29 +4032,9 @@ Terminal.prototype.initializeTerminal = function(topNode) {
                              function(e) {
                                  dt.pasteText(e.clipboardData.getData("text"));
                                  e.preventDefault(); },
-                              false);
+                             false);
     topNode.addEventListener("click",
-                             function(e) {
-                                 var target = e.target;
-                                 for (let n = target; n instanceof Element;
-                                      n = n.parentNode) {
-                                     let ntag = n.nodeName;
-                                     if (ntag == "A") {
-                                         let href = (n.getAttribute("domterm-href")
-                                                     || n.getAttribute("href"));
-                                         if (href
-                                             && (e.ctrlKey || ! dt._linkNeedsCtrlClick(n))) {
-                                             DomTerm.handleLinkRef(href,
-                                                                   n.textContent, dt);
-
-                                         }
-                                         e.preventDefault();
-                                         return;
-                                     }
-                                     if (ntag == "DIV")
-                                         break;
-                                 }
-                             },
+                             function(e) { DomTerm.clickLink(e, dt); },
                              false);
     /*
     if (window.chrome && chrome.contextMenus && chrome.contextMenus.onClicked) {
@@ -5798,7 +5778,7 @@ DomTerm.handleLink = function(options=DomTerm._contextOptions) {
         DomTerm.handleLinkRef(options.href, contents, dt);
     }
 }
-DomTerm.handleLinkRef = function(href, textContent, dt) {
+DomTerm.handleLinkRef = function(href, textContent, dt=DomTerm.focusedTerm) {
     if (href.startsWith('#'))
         window.location.hash = href;
     else {
