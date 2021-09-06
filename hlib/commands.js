@@ -4,7 +4,9 @@ import { showAboutMessage } from './domterm-overlays.js';
 
 const commandMap = new Object();
 
-function cmd(name, action) {
+function cmd(name, action, properties=null) {
+    if (properties)
+        Object.assign(action, properties);
     commandMap[name] = action;
 }
 function lookupCommand(name) {
@@ -605,6 +607,8 @@ cmd('show-about-message',
     function(dt, keyName) {
         showAboutMessage();
         return true;
+    }, {
+        context: "parent"
     });
 cmd('toggle-developer-tools',
     function(dt, keyName) {

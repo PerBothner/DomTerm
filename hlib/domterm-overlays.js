@@ -73,6 +73,19 @@ function showMessage(title, message) {
     popup.addEventListener('keydown', keydownHandler, true);
 }
 
+/** Display "About DomTerm" popup.
+ *
+ * Currently creates panel as floating <div> child of DomTerm.layoutTop.
+ * Advantages (compared to new top-level window):
+ * - Portable - no permission issues.
+ * - Re-direct links to preferred browser (by sending LINK to backend).
+ * _ Moving main window moves "About" popup along with it.
+ * - Handle Escape key to close.
+ * Disadvantages:
+ * - Escape key not handled if active window is in an iframe.
+ * - Forced to stay with bounds of top-level window.
+ * - Close button style does not match main window.
+ */
 function showAboutMessage() {
     if (true) {
         showMessage('<h2 style="margin: 0.4ex 0px">About DomTerm</h2>',

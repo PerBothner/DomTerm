@@ -9351,8 +9351,10 @@ DomTerm.dispatchTerminalMessage = function(command, ...args) {
 
 // This is overridden in the layout-manager context if using useIFrame.
 DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
-    if (! DomTerm.dispatchTerminalMessage("do-command", name))
-        commandMap[name](dt, null);
+    let command = commandMap[name];
+    if ((command && command.context === "parent")
+        || ! DomTerm.dispatchTerminalMessage("do-command", name))
+        command(dt, null);
 }
 
 DomTerm.handleKey = function(map, dt, keyName, event=null) {
