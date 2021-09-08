@@ -796,11 +796,22 @@ size further, but causes some not-yet-resolved problems.)
 
 @item --with-webview
 Build @emph{experimental} support for the @uref{https://github.com/webview/webview,Webview cross-platform framework}.  This creates a binary @code{bin/dt-webview},
-which is used if you open a domterm window with the @code{--webview} option.
+which is used if you open a domterm window with the @code{-Bwebview} option.
 
 This has only been tested on Fedora and MacOS.
 
 This @ref{webview-frontend,works ok though with some rough edges}.
+
+@item --with-wry
+Build @emph{experimental} support for the @uref{https://github.com/taurri/wry,Wry cross-platform framework}.  This creates a binary @code{bin/dt-wry}.
+which is used if you open a domterm window with the @code{-Bwry} option.
+If @code{--enable-debug} is specified, does a debug build,
+which is needed to get a web instructore.
+(Shift-ClickRight then @code{Inspect element}.)
+
+Wry works similar to WebView, but is part of
+the @uref{https://tauri.studio/en/,Tauri} project and is written in Rust.
+A major advantage of Wry is that it is actively maintained.
 
 @item --with-libclipboard=@var{libclipboard_dir}
 Using the @uref{https://github.com/jtanx/libclipboard,libclipboard library}
@@ -814,6 +825,11 @@ then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR}.
 @item --with-docbook
 Use DocBook for generating HTML documentation.
 This used to be the default but is no longer recommended with texinfo 6.8.
+
+@item --enable-debug
+Build for development and better debugging.
+Sets @code{CFLAGS="-O0 -g"} @code{CXXFLAGS="-O0 -g"}.
+If @code{--with-wry}, build Wry with the @code{debug} profile.
 
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm

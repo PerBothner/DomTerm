@@ -77,6 +77,7 @@ AC_ARG_WITH(docbook,
   AS_HELP_STRING(--with-docbook,Build manual using DocBook+xsltproc))
 
 AC_ARG_ENABLE(compiled-in-resources)
+AC_ARG_ENABLE(debug)
 
 pathsep="$PATH_SEPARATOR"
 case ${host} in
@@ -281,6 +282,13 @@ AM_CONDITIONAL(COMBINE_RESOURCES, test "$COMBINE_RESOURCES" != "0")
 
 AM_CONDITIONAL(ENABLE_COMPILED_IN_RESOURCES,
     test "$enable_compiled_in_resources" = "yes")
+
+AM_CONDITIONAL(ENABLE_DEBUG, test "$enable_debug" = "yes")
+if test  "$enable_debug" = "yes"
+then
+CFLAGS='-g -O0'
+CXXFLAGS='-g -O0'
+fi
 
 AM_CONDITIONAL(WITH_XTERMJS,
     test "$with_xterm_js" != "" -a "$with_xterm_js" != "no")
