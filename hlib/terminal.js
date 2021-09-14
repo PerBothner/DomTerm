@@ -4620,8 +4620,11 @@ Terminal.prototype._showHideHandler = function(event) {
         // The start node is either the "hider" node itself,
         // or if the "hider" is nested in a "prompt", the latter.
         var start = target;
-        if (start.tagName == "SPAN" && start.classList.contains("tail-hider"))
+        if (start.tagName == "SPAN" && start.classList.contains("tail-hider")) {
             start = start.parentNode;
+            if (start.tagName == "SPAN" && start.getAttribute("line"))
+                start = start.parentNode;
+        }
         if (start.parentNode.getAttribute("std") == "prompt")
             start = start.parentNode;
         var node = start;
@@ -7298,9 +7301,30 @@ Terminal.prototype._adjustLines = function(startLine, action, single=false, stop
 
 // Remove existing soft line breaks.
 Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
+    // If a continuation line (following a soft line-break) is
+    // _BREAKS_UNMEASURED then the entire logical line needs to be measured.
+    // To do that,it needs to be unbroken. (Could be optimized in the
+    // countColumns case.)  Usually not an issue as long as line-breaking
+    // is deferred until we have a complete logical line.
+    let measureNeeded = false;
+    let lineNum = this.lineStarts.length;
+    while (--lineNum > startLine || (measureNeeded && lineNum >= 0)) {
+        let lineStart = this.lineStarts[lineNum];
+        let lineAttr = lineStart.getAttribute('line');
+        if (lineAttr) {
+            if (lineAttr !== "hard"
+                && lineStart._breakState == Terminal._BREAKS_UNMEASURED)
+                measureNeeded = true;
+        } else if (measureNeeded) {
+            lineStart._breakState = Terminal._BREAKS_UNMEASURED;
+            measureNeeded = false;
+        }
+    }
+    if (lineNum < startLine)
+        startLine = lineNum;
+
     let action = (prevLine, lineStart, lineAttr, lineno) => {
         if (prevLine._breakState === Terminal._BREAKS_VALID) {
-            lineStart._breakState = Terminal._BREAKS_VALID;
             return false;
         }
         if (lineStart.getAttribute("breaking")=="yes") {
@@ -7377,7 +7401,6 @@ Terminal.prototype._breakVisibleLines = function() {
     }
     const home_offset = DomTerm._homeLineOffset(this);
     const home_node = this.lineStarts[this.homeLine - home_offset];
-    this._unbreakLines(startLine, false, null/*??*/);
     this._breakAllLines(startLine);
     const changed = true; // FIXME
     if (changed) {
@@ -7461,16 +7484,15 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     // (This is not an issue when countColums is true.)
     //
     // First pass: measure offset and width but do not change DOM.
-    // For each Element, set the measureLeft/measureWidth properties to
-    // (roughly) offsetLeft/offsetWidth.  Pretty-printing elements
+    // For each Element, the measureLeft/measureWidth properties are
+    // (roughly) offsetLeft/offsetWidth, under the assemption of
+    // infine line width (no soft line breaks).  Pretty-printing elements
     // pprint-indent (with child text), pre-break, and post-break elements
     // are measured (measureWidth is set) but do not count for the width
     // of containing elements. (This happens automatically if !countColumnts.)
     // If countColumns, use characters counts to calculate widths instead
     // of accessing offsetLeft/offsetWidth properties; this is faster,
     // though less general.
-    // Assumes soft line breaks have been removed.
-    // Does not depend on current available width.
 
     function _breakLine1 (dt, line, start, countColumns) {
         let pprintGroup = null; // FIXME if starting inside a group
@@ -7540,13 +7562,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     el._needSectionEndNext = needSectionEndList;
                     needSectionEndList = el;
                 }
-                if (lineAttr == "required")
-                    pprintGroup.breakSeen = true;
             } else if (el.classList.contains("pprint-indent")) {
                 el.pprintGroup = pprintGroup;
             } else if (el.classList.contains("pprint-group")) {
                 pprintGroup = el;
-                pprintGroup.breakSeen = false;
                 el._needSectionEndNext = needSectionEndList;
                 needSectionEndList = el;
                 el._saveSectionEndFence = needSectionEndFence;
@@ -7564,8 +7583,6 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         break;
                     if (el == pprintGroup) { // pop pprint-group
                         let outerGroup = pprintGroup.outerPprintGroup;
-                        if (pprintGroup.breakSeen && outerGroup)
-                            outerGroup.breakSeen = true;
                         pprintGroup = outerGroup;
                         needSectionEndFence = el._saveSectionEndFence;
                         el._saveSectionEndFence = undefined;
@@ -7674,6 +7691,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
                     lineNode._widthMode = dt.lineStarts[line]._widthMode;
+                    lineNode._breakState = Terminal._BREAKS_VALID;
                     line++;
                     if (! countColumns)
                         beforeMeasure += lineNode.offsetLeft - beforePos;
@@ -7725,6 +7743,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         group.breakSeen = true;
                     startOffset = el.measureLeft + el.measureWidth;
                     var indentWidth = addIndentation(dt, el, countColumns);
+                    el._breakState = Terminal._BREAKS_VALID;
                     let lastChild = el.lastChild;
                     if (lastChild instanceof Element
                          && lastChild.classList.contains("post-break")) {
@@ -7755,6 +7774,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     indentation.push(el);
                 }
             } else if (el.classList.contains("pprint-group")) {
+                el.breakSeen = false;
                 previous = el.previousSibling;
                 el.indentLengthBeforeBlock = indentation.length;
                 el.saveSectionStartLine = sectionStartLine;
@@ -7868,7 +7888,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     start = start.parentNode;
                 first = start.nextSibling;
             }
+            if (start._widthMode === undefined)
+                console.log("undefined widmod");
             var countColumns = ! Terminal._forceMeasureBreaks
+                && start._widthMode !== undefined
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
             _breakLine1(this, line, first, countColumns);
             start._breakState = Terminal._BREAKS_MEASURED;
@@ -8072,7 +8095,13 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         return;
     let isegment = 0;
     let absLine = this.getAbsCursorLine();
-    let atEnd = this.outputBefore==this.lineEnds[absLine];
+    let following = this.outputBefore;
+    let parent = this.outputContainer;
+    while (following == null) {
+        following = parent.nextSibling;
+        parent = parent.parentNode;
+    }
+    let atEnd = following==this.lineEnds[absLine];
     var fits = true;
     if (this.outputBefore instanceof Element
         && this.outputBefore.getAttribute("line")) {

@@ -741,10 +741,10 @@ class DTParser {
 
     handleControlSequence(last) {
         const term = this.term;
-        var param;
+        var param, param1;
         var oldState = this.controlSequenceState;
         this.controlSequenceState = DTParser.INITIAL_STATE;
-        if (last != 109 /*'m'*/)
+        if (last !== 109 /*'m'*/ && last !== 117 /*'u'*/) // FIXME
             term._breakDeferredLines();
         switch (last) {
         case 64 /*'@'*/: { // ICH - insert character
@@ -1257,8 +1257,11 @@ class DTParser {
             };
             break;
         case 117 /*'u'*/:
-            let param1;
-            switch (this.getParameter(0, 0)) {
+            param = this.getParameter(0, 0);
+            if (param !== 11 && param !== 12 && param !== 16 && param !== 17
+               && param !== 83)
+                term._breakDeferredLines();
+            switch (param) {
             case 0: // Restore cursor (SCORC)
                 term.restoreCursor();
                 break;
