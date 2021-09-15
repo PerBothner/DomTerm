@@ -41,7 +41,6 @@ fn main() -> wry::Result<()> {
 {}    window.wry_version = "{}";
 }})();
   "#, wversion_js, wry_version);
-println!("script: {}", script);
 
   let (window_tx, window_rx) = std::sync::mpsc::channel();
 
