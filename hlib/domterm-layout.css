@@ -1,11 +1,12 @@
 /* Based on goldenlayout-light-theme.css from GoldenLayout distribution.
  * Various tweaks for DomTerm.
  */
-.lm_content, .domterm.lm_content, .domterm-wrapper.lm_content { border:2px solid #cccccc; position: absolute; z-index: 1; box-sizing: border-box }
+.lm_content, .domterm.lm_content, .domterm-wrapper.lm_content { border:2px solid #cccccc; box-sizing: border-box }
 .domterm-wrapper { width: 100%; height: 100% }
 .menubar { position: relative }
 body { --focused-pane-color: magenta}
-.lm_content.domterm-active {border:2px solid var(--focused-pane-color)}
+.lm_content.domterm-active { border:2px solid var(--focused-pane-color); }
+.lm_content.domterm { z-index: 1 }
 iframe.domterm-wrapper { border: none }
 /*
 .lm_stack{background:#e1e1e1;border:2px solid pink } / *#cccccc}* /
@@ -20,7 +21,7 @@ div.domterm-active div.lm_stack{background:#e1e1e1;border:2px solid magenta}
 .lm_header {cursor:pointer; background-color:#f0d8e8}
 .lm_header .lm_tab{font-family:Arial,sans-serif;font-size:12px;color:#888888;background:#fafafa;margin-right:2px;padding-bottom:4px;border-bottom:none}
 .lm_header .lm_tab{border:1px solid gray }
-.lm_header .lm_tab{border-radius: 5px 5px 0px 0px}
+.lm_header .lm_tabs .lm_tab{border-radius: 5px 5px 0px 0px}
 div.domterm-active section.lm_header li.lm_tab.lm_focused{border:1px solid var(--focused-pane-color)}
 section.lm_header div.lm_tab.lm_focused span.domterm-windowname {display: inline; font-style: italic; color: #777777}
 section.lm_header li.lm_tab span.domterm-windowname,
