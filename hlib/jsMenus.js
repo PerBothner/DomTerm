@@ -308,9 +308,9 @@ class Menu {
 		let oldNode = Menu._menubarNode;
 		Menu._keydownListen(true);
 		if (oldNode) {
-			let parent = oldNode.parentNode;
-			if (parent != null)
-				parent.removeChild(oldNode);
+			let oldParent = oldNode.parentNode;
+			if (oldParent != null)
+				oldParent.removeChild(oldNode);
 			oldNode.removeEventListener('mousedown', Menu._mouseHandler, false);
 			Menu._menubarNode = null;
 		}
@@ -774,7 +774,8 @@ class MenuItem {
 
 		let buttonNode;
 		if (this.type !== 'separator') {
-			buttonNode = document.createElement('button');
+			buttonNode = document.createElement('span');
+			buttonNode.setAttribute('role', 'button');
 			node.appendChild(buttonNode);
 			if (this.submenu)
 				buttonNode.setAttribute('aria-expanded',

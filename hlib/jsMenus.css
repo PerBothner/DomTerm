@@ -194,15 +194,15 @@ li.menu-item.separator {
     vertical-align: top;
 }
 .menubar > .menu-item {
-    margin: 0 1px;
+    margin: 0 4px 0 0;
 }
-.menubar > .menu-item.normal > button .checkmark,
-.menubar > .menu-item.normal > button .modifiers {
+.menubar > .menu-item.normal .checkmark,
+.menubar > .menu-item.normal .modifiers {
     display: none;
 }
 
 .menubar .menu-item.normal .label {
-    padding: 0 9px;
+    padding: 0 3px;
 }
 
 .contextmenu.menubar-submenu {
