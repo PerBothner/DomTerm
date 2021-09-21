@@ -47,6 +47,8 @@ cmd('close-window',
     function(dt, key) {
         DomTerm.windowClose();
         return true;
+    }, {
+        context: "parent"
     });
 cmd('new-window',
     function(dt, key) {
@@ -151,6 +153,8 @@ cmd('toggle-menubar',
         if (DomTerm.toggleMenubar)
             DomTerm.toggleMenubar();
         return true;
+    }, {
+        context: "parent"
     });
 cmd('toggle-fullscreen',
     function(dt, key) {
@@ -617,4 +621,6 @@ cmd('toggle-developer-tools',
             return "do-default";
         toggleTools();
         return true;
+    }, {
+        context: "parent"
     });
