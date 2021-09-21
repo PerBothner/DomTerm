@@ -289,8 +289,9 @@ class Menu {
 				if(item.submenu) {
 					if(! wasActive) {
 						miNode.jsMenu.node.activeItemNode = item.node;
+						let rect = item.node.getBoundingClientRect();
 
-						item.popupSubmenu(item.node.offsetLeft, item.node.offsetHeight, true);
+						item.popupSubmenu(rect.left, rect.bottom, true);
 					} else {
 						item.submenu.popdown();
 						miNode.jsMenu.node.currentSubmenu = null;
@@ -304,7 +305,7 @@ class Menu {
 		}
 	}
 
-	static setApplicationMenu(menubar, parent=null) {
+	static setApplicationMenu(menubar, parent=document.body, before=parent.firstChild) {
 		let oldNode = Menu._menubarNode;
 		Menu._keydownListen(true);
 		if (oldNode) {
@@ -315,12 +316,9 @@ class Menu {
 			Menu._menubarNode = null;
 		}
 		if (menubar != null) {
-			if (parent == null)
-				parent = Menu._menubarParent || document.body;
-			Menu._menubarParent = parent;
 			let newNode = menubar.buildMenu();
 			newNode.jsMenuItem = null;
-			parent.insertBefore(newNode, parent.firstChild);
+			parent.insertBefore(newNode, before);
 			newNode.addEventListener('mousedown', Menu._mouseHandler, false);
 			Menu._menubarNode = newNode;
 			menubar.node = newNode;
@@ -676,8 +674,9 @@ class MenuItem {
 		let parentNode = node.parentNode;
 		let x, y;
 		if (menubarSubmenu) {
-			x = node.offsetLeft;
-			y = node.clientHeight;
+			let rect = node.getBoundingClientRect();
+			x = rect.left;
+			y = rect.bottom;
 		} else {
 			x = parentNode.offsetWidth + parentNode.offsetLeft - 2;
 			y = parentNode.offsetTop + node.offsetTop - 4;
