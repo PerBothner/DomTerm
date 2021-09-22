@@ -410,6 +410,7 @@ extern int get_tty_out();
 extern bool write_to_tty(const char *str, ssize_t len);
 extern const char * get_mimetype(const char *file);
 extern char *url_encode(const char *in, int mode);
+extern std::string url_encode(const std::string& in, int mode=0);
 extern void copy_file(FILE*in, FILE*out);
 extern const char *getenv_from_array(const char* key, arglist_t envarray);
 extern void copy_html_file(FILE*in, FILE*out);

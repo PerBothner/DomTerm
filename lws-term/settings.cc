@@ -86,6 +86,7 @@ set_setting(json& settings, const char *key, const char *value)
     settings[key] = value;
 }
 
+// WARNING returns freshly malloc'd string
 const char *
 get_setting(const json& settings, const char *key)
 {

@@ -351,6 +351,18 @@ maybe_quote_arg(const char *in)
     return out;
 }
 
+std::string
+url_encode(const std::string& in, int mode)
+{
+    char *encoded = url_encode(in.c_str(), mode);
+    if (encoded) {
+        std::string enc(encoded);
+        free(encoded);
+        return enc;
+    } else
+        return in;
+}
+
 /* Returns either NULL or a freshly malloc'd urlencoding of 'in'. */
 char *
 url_encode(const char *in, int mode)

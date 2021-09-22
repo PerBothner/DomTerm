@@ -1,3 +1,4 @@
+// Copyright 2021 Per Bothner
 // Copyright 2019-2021 Tauri Programme within The Commons Conservancy
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
@@ -16,16 +17,28 @@ fn main() -> wry::Result<()> {
     webview::{RpcRequest, WebContext, WebViewBuilder},
   };
 
+  let args: Vec<String> = env::args().collect();
+  let mut url = "-missing-";
+  let mut iarg = 1;
+  let mut titlebar = true;
+  while iarg < args.len() {
+      let arg = &args[iarg];
+      if arg == "--no-titlebar" {
+         titlebar = false;
+      } else {
+          url = arg;
+      }
+      iarg += 1;
+  }
+
   let event_loop = EventLoop::new();
   let mut web_context = WebContext::default();
   let mut webviews = std::collections::HashMap::new();
+
   let window = WindowBuilder::new()
-//    .with_decorations(false) remove titlebar
+    .with_decorations(titlebar)
     .build(&event_loop)
     .unwrap();
-  let args: Vec<String> = env::args().collect();
-  let url = &args[1];
-
   let wversion = wry::webview::webview_version();
   let wversion_js = match wversion {
      Ok(v) => format!("    window.webview_version = \"{}\";\n", v),
@@ -47,6 +60,9 @@ fn main() -> wry::Result<()> {
   let handler = move |window: &Window, req: RpcRequest| {
     if req.method == "close" {
       let _ = window_tx.send(window.id());
+    }
+    if req.method == "drag_window" {
+      let _ = window.drag_window();
     }
     None
   };

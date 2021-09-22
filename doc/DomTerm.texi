@@ -1981,6 +1981,13 @@ before it is replaced by the @code{password-hide-char}.
 Mininum logical width (default 5, in columns/characters) of a terminal:
 If the available width is less, use this width for line-wrapping etc.
 (This avoids certain pathological behavior.)
+
+@item @code{@b{titlebar} =} @var{mode}
+Experimental option (only on Electron and Wry front-ends) to use
+a custom titlebar for main (top-level) windows.
+The @var{mode} can be @code{system} (the default) to use the system
+titlebar, or @code{domterm} to use a custom titlebar (in HTML).
+Further options and customization is planned for later.
 @end table
 
 @node Applications

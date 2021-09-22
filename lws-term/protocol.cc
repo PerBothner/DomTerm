@@ -2100,9 +2100,9 @@ display_session(struct options *options, struct pty_client *pclient,
             const char *main_url = url ? url : main_html_url;
             sb.append(main_url);
             if (! url)
-                sb.append("#no-frames.html:"); // FIXME rename
+                sb.append("#no-frames.html::"); // FIXME rename
             else if (strchr(main_url, '#') == NULL)
-                sb.append("#", 1);
+                sb.append("#::", 1);
             // Note we use ';' rather than the traditional '&' to separate parts
             // of the fragment.  Using '&' causes a mysterious bug (at
             // least on Electron, Qt, and Webview) when added "&js-verbosity=N".
@@ -2112,6 +2112,9 @@ display_session(struct options *options, struct pty_client *pclient,
             sb.printf(";window=%d", wnum);
             if (options->headless)
                 sb.printf(";headless=true");
+            std::string titlebar = get_setting_s(options->settings, "titlebar");
+            if (! titlebar.empty() && titlebar != "system")
+                sb.printf(";titlebar=%s", url_encode(titlebar).c_str());
             std::string verbosity = get_setting_s(options->settings, "log.js-verbosity");
             if (! verbosity.empty()) // as OPTION_NUMBER_TYPE does not need encoding
                 sb.printf(";js-verbosity=%s", verbosity.c_str());

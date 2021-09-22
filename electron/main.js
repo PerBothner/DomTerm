@@ -6,6 +6,8 @@ const url = require('url')
 // be closed automatically when the JavaScript object is garbage collected.
 let windowList = new Array();
 
+let frameWindows = true;
+
 function createInitialWindow (argv) {
     // options = yargs(process.argv[1..]).wrap(100)
     // and load the index.html of the app.
@@ -20,6 +22,8 @@ function createInitialWindow (argv) {
             openDevTools = true;
         else if (arg == "--headless")
             headless = true;
+        else if (arg == "--no-titlebar")
+            frameWindows = false;
         else if (arg == "--url" && i+1 < argc)
             url = argv[++i];
         else if (arg == "--geometry" && i+1 < argc)
@@ -73,7 +77,7 @@ function createNewWindow (url, options, headless) {
     let bwoptions = {
         width: w, height: h,
         webPreferences: {contextIsolation: false, worldSafeExecuteJavaScript: false, enableRemoteModule: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
-        useContentSize: true, show: false};
+        useContentSize: true, frame: frameWindows, show: false};
     if (options.x !== undefined && options.y !== undefined) {
         bwoptions.x = options.x;
         bwoptions.y = options.y;

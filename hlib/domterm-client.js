@@ -2,11 +2,13 @@ var maxAjaxInterval = 2000;
 
 DomTerm.simpleLayout = false;
 
+DomTerm.addTitlebar = false;
+
 DomTerm.usingJsMenus = function() {
     // It might make sense to use jsMenus even for Electron.
     // One reason is support multi-key keybindings
     return ! DomTerm.simpleLayout && typeof MenuItem !== "undefined"
-        && ! DomTerm.isElectron()
+        && ! (DomTerm.isElectron() && ! DomTerm.addTitlebar)
         && ! DomTerm.usingQtWebEngine;
 }
 
@@ -273,6 +275,10 @@ function loadHandler(event) {
     m = params.get('log-to-server');
     if (m)
         DomTerm.logToServer = m;
+    m = params.get('titlebar');
+    if (m) {
+        DomTerm.addTitlebar = true;
+    }
     DomTerm.layoutTop = document.body;
     if (DomTerm.verbosity > 0)
         DomTerm.log("loadHandler "+url);
@@ -307,22 +313,48 @@ function loadHandler(event) {
         }
         */
     }
-    if (! DomTerm.useIFrame || ! DomTerm.isInIFrame())
+    let bodyNode = document.getElementsByTagName("body")[0];
+    if (! DomTerm.useIFrame || ! DomTerm.isInIFrame()) {
+        if (DomTerm.addTitlebar) {
+            let titleBarNode = document.createElement('div');
+            titleBarNode.classList.add('dt-titlebar');
+            if (true) {
+                let iconNode = document.createElement('img');
+                iconNode.setAttribute('src', '/favicon.ico');
+                titleBarNode.appendChild(iconNode);
+            }
+            let titleNode = document.createElement('span');
+            titleNode.classList.add('dt-window-title');
+            titleBarNode.appendChild(titleNode);
+            titleNode.innerText = "DomTerm window";
+            DomTerm.setTitle = (title) => { titleNode.innerText = title; };
+            bodyNode.appendChild(titleBarNode);
+            if (DomTerm.versions.wry) {
+                titleBarNode.addEventListener('mousedown',
+                                              (e) => {
+                                                  window.rpc.notify('drag_window');
+                                              });
+                // Ditto for 'touchstart'
+            }
+        }
         if (DomTerm.createMenus && ! DomTerm.simpleLayout)
             DomTerm.createMenus();
+    }
     m = location.hash.match(/open=([^&;]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
         DomTermLayout.initSaved(JSON.parse(open_encoded));
         return;
     }
-    var bodyNode = document.getElementsByTagName("body")[0];
-    if (bodyNode.firstElementChild
-        && bodyNode.firstElementChild.classList.contains("nwjs-menu")) {
-        var wrapTopNode = document.createElement("div");
-        wrapTopNode.setAttribute("class", "below-menubar");
-        bodyNode.appendChild(wrapTopNode);
-        DomTerm.layoutTop = wrapTopNode;
+    let bodyChild = bodyNode.firstElementChild;
+    if (bodyChild) {
+        let bodyClassList = bodyChild.classList;
+        if (bodyClassList.contains('dt-titlebar') || bodyClassList.contains('nwjs-menu')) {
+            let wrapTopNode = document.createElement('div');
+            wrapTopNode.setAttribute("class", "below-menubar");
+            bodyNode.appendChild(wrapTopNode);
+            DomTerm.layoutTop = wrapTopNode;
+        }
     }
     var layoutInitAlways = false;
     if (layoutInitAlways && ! DomTerm.isInIFrame()) {

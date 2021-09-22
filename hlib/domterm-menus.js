@@ -14,7 +14,8 @@ DomTerm.createMenus = function(options) {
         if (electronMenus)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', show);
         else
-            Menu.setApplicationMenu(show ? DomTerm._savedMenuBar : null);
+            Menu.setApplicationMenu(show ? DomTerm._savedMenuBar : null,
+                                    document.body, DomTerm.layoutTop);
     }
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
@@ -224,7 +225,11 @@ DomTerm.createMenus = function(options) {
         if (isElectron)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
         DomTerm._savedMenuBar = menuBar;
-        Menu.setApplicationMenu(menuBar);
+        let body = document.body;
+        let bchild = body.firstElementChild;
+        if (bchild && bchild.classList.contains('dt-titlebar'))
+            bchild = bchild.nextSibling;
+        Menu.setApplicationMenu(menuBar, body, bchild);
     }
 
     DomTerm.showContextMenu = function(options) {

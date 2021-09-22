@@ -637,21 +637,18 @@ wry_command(struct options *options)
             free(cmd);
         return NULL;
     }
-    int bsize = strlen(cmd)+100;
-    const char *geometry = geometry_option(options);
-    if (geometry)
-        bsize += strlen(geometry);
-    char *buf = challoc(bsize);
-    strcpy(buf, cmd);
-    free(cmd);
+    struct sbuf sb;
+    sb.append(cmd);
 #if 0
     if (geometry) {
-        strcat(buf, " --geometry ");
-        strcat(buf, geometry);
+        sb.printf(" --geometry %s", geometry);
     }
 #endif
-    strcat(buf, " '%U'");
-    return buf;
+    const char *titlebar_setting = get_setting(options->settings, "titlebar");
+    if (titlebar_setting != nullptr && strcmp(titlebar_setting, "system") != 0)
+        sb.append(" --no-titlebar");
+    sb.append(" '%U'");
+    return sb.strdup();
 }
 
 /** Return freshly allocated command string or NULL */
@@ -685,6 +682,9 @@ electron_command(struct options *options)
         sb.printf(" --geometry %s", geometry);
     if (options->headless)
         sb.printf(" --headless");
+    const char *titlebar_setting = get_setting(options->settings, "titlebar");
+    if (titlebar_setting != nullptr && strcmp(titlebar_setting, "system") != 0)
+        sb.append(" --no-titlebar");
     sb.append(" --url '%U'");
     if (app_fixed != app)
         free(app_fixed);
