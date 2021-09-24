@@ -1292,17 +1292,17 @@ and (assuming there are no more windows attached to the session)
 make the session detached.
 
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{minimize}}
-@emph{(Electron and Qt only.)}
+@emph{(Electron, Qt, and Wry only.)}
 Minimize (iconify) the specified top-level windows.
 The minimized windows may be still visible in the task bar,
 as an icon on the desktop, or during an ``windows expose'' operation
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{hide}}
-@emph{(Electron and Qt only.)}
+@emph{(Electron, Qt, and Wry only.)}
 Hide the specified top-level windows.
 The hidden windows are @emph{not} visible in the task bar,
 as icons on the desktop, or during an ``windows expose'' operation
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{show}}
-@emph{(Electron and Qt only.)}
+@emph{(Electron, Qt, and Wry only.)}
 Show the specified minimized or hidden windows.
 If there are no windows, create one.
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-minimize}}
@@ -1312,7 +1312,7 @@ If a window is hidden or minimized, show it.
 If visible, minimize it.
 If there are no windows, create one.
 @item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-hide}}
-@emph{(Electron and Qt only.)}
+@emph{(Electron, Qt, and Wry only.)}
 Toggle between normal and hidden state:
 If a window is hidden or minimized, show it.
 If visible, hide it.

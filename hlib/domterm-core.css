@@ -119,5 +119,9 @@ div.show-connection-failure {
 }
 div.show-connection-failure div.domterm-pre { white-space: pre-wrap }
 
-div.dt-titlebar { -webkit-app-region: drag; background-color: #dcdcdc; padding-left: 2px }
+div.dt-titlebar {
+    -webkit-app-region: drag; background-color: #dcdcdc; padding-left: 2px;
+    display: flex; flex-direction: row; justify-content: space-between;
+    -webkit-user-select: none; user-select: none; }
 div.dt-titlebar img { height: 1rem }
+.dt-titlebar-button { -webkit-app-region: no-drag; padding: 0px 3px }

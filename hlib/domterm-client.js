@@ -252,6 +252,43 @@ function setupParentMessages2() {
     }
 }
 
+function createTitlebar(titlebarNode) {
+    if (true) {
+        let iconNode = document.createElement('img');
+        iconNode.setAttribute('src', '/favicon.ico');
+        titlebarNode.appendChild(iconNode);
+    }
+    let titleNode = document.createElement('span');
+    titleNode.classList.add('dt-window-title');
+    titlebarNode.appendChild(titleNode);
+    titleNode.innerText = "DomTerm window";
+    DomTerm.setTitle = (title) => { titleNode.innerText = title; };
+    if (DomTerm.versions.wry) {
+        function drag (e) {
+            if (e.target.matches('.dt-titlebar-buttons *'))
+                return;
+            window.rpc.notify('drag_window');
+        };
+        titlebarNode.addEventListener('mousedown', drag);
+        titlebarNode.addEventListener('touchstart', drag);
+    }
+    titlebarNode.insertAdjacentHTML('beforeend',
+                                    '<span class="dt-titlebar-buttons">'
+                                    + '<span title="Minimize" class="dt-titlebar-button" id="dt-titlebar-minimize">&#x25BD;</span>'
+                                    + '<span title="Maximize" class="dt-titlebar-button" id="dt-titlebar-maximize">&#x25B3;</span>'
+                                    + '<span title="Close" class="dt-titlebar-button" id="dt-titlebar-close">&#x2612;</span></span>');
+    titlebarNode.querySelector("#dt-titlebar-minimize")
+        .addEventListener('click', (e) => {
+            DomTerm.windowOp('minimize');
+        });
+    titlebarNode.querySelector("#dt-titlebar-maximize")
+        .addEventListener('click', (e) => {
+            DomTerm.doNamedCommand('toggle-fullscreen');
+        });
+    titlebarNode.querySelector("#dt-titlebar-close")
+        .addEventListener('click', (e) => DomTerm.doNamedCommand('close-window'));
+}
+
 function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
     //DomTerm.useIFrame = false;
@@ -316,26 +353,10 @@ function loadHandler(event) {
     let bodyNode = document.getElementsByTagName("body")[0];
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame()) {
         if (DomTerm.addTitlebar) {
-            let titleBarNode = document.createElement('div');
-            titleBarNode.classList.add('dt-titlebar');
-            if (true) {
-                let iconNode = document.createElement('img');
-                iconNode.setAttribute('src', '/favicon.ico');
-                titleBarNode.appendChild(iconNode);
-            }
-            let titleNode = document.createElement('span');
-            titleNode.classList.add('dt-window-title');
-            titleBarNode.appendChild(titleNode);
-            titleNode.innerText = "DomTerm window";
-            DomTerm.setTitle = (title) => { titleNode.innerText = title; };
-            bodyNode.appendChild(titleBarNode);
-            if (DomTerm.versions.wry) {
-                titleBarNode.addEventListener('mousedown',
-                                              (e) => {
-                                                  window.rpc.notify('drag_window');
-                                              });
-                // Ditto for 'touchstart'
-            }
+            let titlebarNode = document.createElement('div');
+            titlebarNode.classList.add('dt-titlebar');
+            bodyNode.appendChild(titlebarNode);
+            createTitlebar(titlebarNode);
         }
         if (DomTerm.createMenus && ! DomTerm.simpleLayout)
             DomTerm.createMenus();

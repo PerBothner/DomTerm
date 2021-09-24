@@ -220,7 +220,8 @@ div.dt-popup-panel span.dt-close-button {
     float: right;
     padding: 2px;
 }
-div.dt-popup-panel, div.dt-popup-panel span.dt-close-button:hover {
+div.dt-popup-panel, div.dt-popup-panel span.dt-close-button:hover,
+.dt-titlebar-button:hover {
     background-color:  #ececec;
 }
 

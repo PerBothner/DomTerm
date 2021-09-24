@@ -58,6 +58,17 @@ fn main() -> wry::Result<()> {
   let (window_tx, window_rx) = std::sync::mpsc::channel();
 
   let handler = move |window: &Window, req: RpcRequest| {
+    if req.method == "minimize" {
+      window.set_minimized(true);
+    }
+    if req.method == "hide" {
+      window.set_visible(false);
+    }
+    if req.method == "show" {
+      // See https://github.com/tauri-apps/wry/issues/417
+      window.set_visible(false); // needed if window is minimized
+      window.set_visible(true);
+    }
     if req.method == "close" {
       let _ = window_tx.send(window.id());
     }

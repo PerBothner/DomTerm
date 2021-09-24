@@ -223,6 +223,12 @@ DomTerm.windowOp = function(opname, arg=null) {
     if (DomTerm.isElectron()) {
         electronAccess.ipcRenderer.send('window-ops', opname, arg);
     }
+    if (DomTerm.versions.wry) {
+        if (opname === 'minimize' || opname === 'hide' || opname === 'show') {
+            window.rpc.notify(opname);
+        }
+    }
+
 }
 
 DomTerm._extractGeometryOptions = function(options={}) {
