@@ -432,7 +432,7 @@ void link_command(struct lws *wsi, struct tty_client *tclient,
     tclient->pty_window_update_needed = true;
     if (tclient->proxyMode != proxy_command_local
         && tclient->proxyMode != proxy_display_local)
-        focused_wsi = wsi;
+        focused_client = tclient;
     if (pclient->detach_count > 0)
         pclient->detach_count--;
     if (pclient->paused) {
@@ -1287,7 +1287,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             client->pclient = NULL;
         }
     } else if (strcmp(name, "FOCUSED") == 0) {
-        focused_wsi = wsi;
+        focused_client = client;
     } else if (strcmp(name, "LINK") == 0) {
         json obj = json::parse(data, nullptr, false);
         handle_link(obj);
@@ -1927,8 +1927,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_CLOSED: {
         if (client == NULL)
             break;
-         if (focused_wsi == wsi)
-              focused_wsi = NULL;
+         if (focused_client == client)
+              focused_client = NULL;
 #if ! BROKEN_LWS_SET_WSI_USER
          lws_set_wsi_user(wsi, NULL);
 #endif
@@ -2076,12 +2076,12 @@ display_session(struct options *options, struct pty_client *pclient,
                 return EXIT_FAILURE;
             }
             tclient = tty_clients(w);
-        } else if (focused_wsi == NULL) {
+        } else if (focused_client == NULL) {
             printf_error(options, "no current window for '%s' option",
                          browser_specifier);
             return EXIT_FAILURE;
         } else
-            tclient = (struct tty_client *) lws_wsi_user(focused_wsi);
+            tclient = focused_client;
         if (wnum >= 0)
              printf_to_browser(tclient, URGENT_WRAP("\033[90;%d;%du"),
                                paneOp, wnum);

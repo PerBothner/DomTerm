@@ -89,9 +89,8 @@ public:
 };
 
 extern int http_port;
-//extern struct tty_client *focused_client;
 extern struct lws_context_creation_info info; // FIXME rename
-extern struct lws *focused_wsi;
+extern struct tty_client *focused_client;
 extern struct cmd_client *cclient;
 extern struct options *main_options;
 extern std::string settings_as_json;

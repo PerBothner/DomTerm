@@ -199,7 +199,7 @@ struct lws_context *context;
 struct tty_server tserver;
 int http_port;
 struct lws_vhost *vhost;
-struct lws *focused_wsi = NULL;
+struct tty_client *focused_client = nullptr;
 struct lws_context_creation_info info;
 struct cmd_client *cclient;
 
