@@ -254,7 +254,6 @@ public:
     int connection_number; // unique number
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
-    int proxy_fd_in, proxy_fd_out;
     char *ssh_connection_info;
 };
 

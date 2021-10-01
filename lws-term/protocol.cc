@@ -241,7 +241,7 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
     bool connection_failure = false;
 
     FOREACH_WSCLIENT(tclient, pclient) {
-        lwsl_notice("- pty close %d conn#%d proxy_fd:%d mode:%d\n", status, tclient->connection_number, tclient->proxy_fd_in, tclient->proxyMode);
+        lwsl_notice("- pty close %d conn#%d proxy_fd:%d mode:%d\n", status, tclient->connection_number, tclient->options->fd_in, tclient->proxyMode);
         tclient->pclient = NULL;
         if (tclient->out_wsi == NULL)
             continue;
@@ -1523,8 +1523,8 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
 #if PASS_STDFILES_UNIX_SOCKET
                 close_local_proxy(pclient, 0);
 #endif
-                client->proxy_fd_in = -1;
-                client->proxy_fd_out = -1;
+                client->options->fd_in = -1;
+                client->options->fd_out = -1;
                 return -1;
             } else {
                 client->proxyMode = proxy_display_local;
@@ -1651,9 +1651,9 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
             lwsl_notice("proxy WRITABLE/close blen:%zu\n", sb.len);
         }
         // data in tclient->ob.
-        size_t n = write(client->proxy_fd_out, sb.buffer, sb.len);
+        size_t n = write(client->options->fd_out, sb.buffer, sb.len);
         lwsl_notice("proxy RAW_WRITEABLE %d len:%zu written:%zu pclient:%p\n",
-                    client->proxy_fd_out, sb.len, n, client->pclient);
+                    client->options->fd_out, sb.len, n, client->pclient);
     } else {
         struct lws *wsi = client->wsi;
         int written = sb.len - LWS_PRE;
@@ -1695,7 +1695,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
     if (tclient==NULL)
         lwsl_info("callback_proxy wsi:%p reason:%d - no client\n", wsi, reason);
     else
-        lwsl_info("callback_proxy wsi:%p reason:%d fd:%d conn#%d\n", wsi, reason, tclient==NULL? -99 : tclient->proxy_fd_in, tclient->connection_number);
+        lwsl_info("callback_proxy wsi:%p reason:%d fd:%d conn#%d\n", wsi, reason, tclient==NULL||tclient->options==NULL? -99 : tclient->options->fd_in, tclient->connection_number);
     switch (reason) {
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         lwsl_notice("proxy RAW_CLOSE_FILE\n");
@@ -1719,7 +1719,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         return 0;
 
     case LWS_CALLBACK_RAW_RX_FILE: ;
-        if (tclient->proxy_fd_in < 0) {
+        if (tclient->options->fd_in < 0) {
             lwsl_info("proxy RAW_RX_FILE - no fd cleanup\n");
             // cleanup? FIXME
             return 0;
@@ -1731,7 +1731,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         }
         // read data, send to
         tclient->inb.extend(1024);
-        n = read(tclient->proxy_fd_in,
+        n = read(tclient->options->fd_in,
                          tclient->inb.buffer + tclient->inb.len,
                          tclient->inb.size - tclient->inb.len);
         lwsl_info("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
@@ -1742,7 +1742,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         tclient->inb.len += n;
         return handle_input(wsi, tclient, tclient->proxyMode);
     case LWS_CALLBACK_RAW_WRITEABLE_FILE:
-        if (tclient->proxy_fd_out < 0) {
+        if (tclient->options->fd_out < 0) {
             lwsl_info("proxy RAW_WRITEABLE_FILE - no fd cleanup\n");
             return -1;
         }
@@ -1966,8 +1966,6 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
         new (lws_wsi_user(pin_lws)) tty_client();
     tclient->is_tclient_proxy = true;
     set_connection_number(tclient, pclient ? pclient->session_number : -1);
-    tclient->proxy_fd_in = fd_in;
-    tclient->proxy_fd_out = fd_out;
     lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws, ttyname(options->fd_in));
     tclient->proxyMode = proxyMode;
     link_clients(tclient, pclient);
