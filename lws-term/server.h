@@ -225,7 +225,6 @@ public:
     int initialized : 3;
 
     bool is_headless : 1;
-    bool is_tclient_proxy : 1;
     bool is_primary_window : 1;
     bool close_requested : 1;
     bool keep_after_unexpected_close : 1;
@@ -234,6 +233,7 @@ public:
     bool uploadSettingsNeeded; // need to upload settings to client
     int main_window; // 0 if top-level, or number of main window
     enum proxy_mode proxyMode;
+    bool is_tclient_proxy() { return proxyMode != no_proxy; }
 
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser

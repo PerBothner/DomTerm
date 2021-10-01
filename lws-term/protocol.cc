@@ -246,7 +246,7 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
         if (tclient->out_wsi == NULL)
             continue;
         if (pclient->is_ssh_pclient) {
-            if (! tclient->is_tclient_proxy) {
+            if (! tclient->is_tclient_proxy()) {
                 printf_to_browser(tclient,
                                   timed_out
                                   ? URGENT_WRAP("\033[99;97u")
@@ -1374,7 +1374,6 @@ tty_client::tty_client()
     this->initialized = 0;
     this->options = NULL;
     this->is_headless = false;
-    this->is_tclient_proxy = false;
     this->is_primary_window = false;
     this->close_requested = false;
     this->keep_after_unexpected_close = false;
@@ -1964,7 +1963,6 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
                                    "proxy", NULL);
     struct tty_client *tclient =
         new (lws_wsi_user(pin_lws)) tty_client();
-    tclient->is_tclient_proxy = true;
     set_connection_number(tclient, pclient ? pclient->session_number : -1);
     lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws, ttyname(options->fd_in));
     tclient->proxyMode = proxyMode;
@@ -2670,7 +2668,7 @@ callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *use
         if (pclient) {
             struct tty_client *tclient = pclient->first_tclient;
             lwsl_notice("callback_ssh_stdin LWS_CALLBACK_RAW_RX_FILE sclient:%p pclient:%p tclient:%p\n", sclient, pclient, tclient);
-            if (tclient && ! tclient->is_tclient_proxy) {
+            if (tclient && ! tclient->is_tclient_proxy()) {
                 size_t buf_len = 2000;
                 char *buf = challoc(buf_len);
                 int nr = read(sclient->pipe_reader, buf, buf_len);
