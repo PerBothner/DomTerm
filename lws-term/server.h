@@ -85,6 +85,7 @@ public:
         return i > 0 && i < sz && elements[i] != nullptr
             && elements[i]->index() == i;
     }
+    bool avoid_index(int i);
     T* operator()(int i) { return valid_index(i) ? elements[i] : nullptr; }
 };
 

@@ -465,10 +465,13 @@ void put_to_env_array(const char **arr, int max, const char* eval)
 }
 
 template<typename T>
+bool id_table<T>::avoid_index(int i) { return valid_index(i); }
+
+template<typename T>
 int id_table<T>::enter(T *entry, int hint)
 {
     int snum = 1;
-    if (hint > 0 && ! valid_index(hint) && ! T::avoid_index(hint))
+    if (hint > 0 && ! valid_index(hint) && ! avoid_index(hint))
         snum = hint;
     for (; ; snum++) {
         if (snum >= sz) {
@@ -482,8 +485,7 @@ int id_table<T>::enter(T *entry, int hint)
         }
         T*next = elements[snum];
         if (next == NULL || next->index() > snum) {
-            if ((hint < 0 || snum != hint)
-                && T::avoid_index(snum))
+            if ((hint < 0 || snum != hint) && avoid_index(snum))
                 continue;
             // Maintain invariant
             for (int iprev = snum;
@@ -508,12 +510,6 @@ void id_table<T>::remove(T* entry)
     T* next = elements[index+1];
     for (; index >= 0 && elements[index] == entry; index--)
             elements[index] = next;
-}
-
-bool
-pty_client::avoid_index(int i)
-{
-    return tty_clients.valid_index(i);
 }
 
 static struct pty_client *
@@ -1402,12 +1398,6 @@ tty_client::tty_client()
     this->ssh_connection_info = NULL;
     this->next_tclient = NULL;
     lwsl_notice("init_tclient_struct conn#%d\n",  this->connection_number);
-}
-
-bool
-tty_client::avoid_index(int i)
-{
-    return pty_clients.valid_index(i);
 }
 
 static void
