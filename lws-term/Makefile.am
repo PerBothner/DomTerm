@@ -56,6 +56,7 @@ endif
 	touch xterm.stamp
 
 resources.cc: ../client-data-links.stamp xterm.stamp
+	type $(XXD) >/dev/null
 	echo '#include "server.h"' >tmp-resources.c
 	for file in $(LWS_RESOURCES); do \
 	  (cd $(top_builddir)/$(CLIENT_DATA_DIR)  && $(XXD) -i $$file -) | \
