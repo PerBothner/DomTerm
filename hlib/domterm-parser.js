@@ -1041,7 +1041,7 @@ class DTParser {
                     case 48:
                         var property = param==38 ? "color" : "background-color";
                         if (this.getParameter(i+1,-1) == 2
-                            && numParameters >= i+5) {
+                            && numParameters > i+4) {
                             var color = 
                                 term._pushStyle(property,
                                                 term.rgb(this.getParameter(i+2,0),
@@ -1049,10 +1049,10 @@ class DTParser {
                                                          this.getParameter(i+4,0)));
                             i += 4;
                         } else if (this.getParameter(i+1,-1) == 5
-                                   && numParameters >= i+2) {
+                                   && numParameters > i+2) {
                             var c = this.getParameter(i+2,0);
                             term._pushStyle(property, term.color256(c));
-                            i += 1;
+                            i += 2;
                         }
                         break;
                     case 39: term._pushStyle("color", null/*defaultForegroundColor*/); break;
