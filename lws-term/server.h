@@ -233,7 +233,7 @@ public:
     bool uploadSettingsNeeded; // need to upload settings to client
     int main_window; // 0 if top-level, or number of main window
     enum proxy_mode proxyMode;
-    bool is_tclient_proxy() { return proxyMode != no_proxy; }
+    bool is_tclient_proxy() { return proxyMode == proxy_command_local; }
 
     // 1: attach requested - need to get contents from existing window
     // 2: sent window-contents request to browser
@@ -258,6 +258,8 @@ public:
 };
 
 extern id_table<tty_client> tty_clients;
+extern id_table<options> pending_requests;
+extern void request_enter(struct options *opts);
 
 struct http_client {
     bool owns_data;
@@ -276,6 +278,7 @@ public:
     options();
     ~options();
     static void release(struct options *);
+    int index() { return fd_cmd_socket; }
     int reference_count = 0;
     bool readonly;                            // whether not allow clients to write to the TTY
     bool headless;
@@ -338,6 +341,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 
 extern void initialize_resource_map(struct lws_context *, const char*);
 extern void maybe_daemonize(void);
+extern void finish_request(struct options *opts, int exit_code, bool close);
 extern void do_exit(int, bool);
 extern void print_browsers_prefixed(const char *, const char *, FILE *);
 extern void print_options_prefixed(const char *, const char *, FILE *);

@@ -1949,8 +1949,28 @@ class DTParser {
             if (code == 95)
                 term.processResponseCharacters("\x9D" + r + "\n");
             break;
-        case 97:
-            switch (text) {
+        case 97: {
+            let options, command;
+            if (text.charCodeAt(0) == 123/*'{'*/) {
+                try {
+                    options = JSON.parse(text);
+                } catch (ex) {
+                    options = { cmd: "unknown" };
+                }
+                command = options.cmd;
+            } else {
+                command = text;
+                options = { cmd: text };
+            }
+            switch (command) {
+            case 'capture': {
+                let range = new Range();
+                range.selectNode(term.initial);
+                term.reportEvent("RESPONSE", JSON.stringify({ id: options.id,
+                                                              out: Terminal._rangeAsText(range)
+                                                            }));
+                break;
+            }
             case 'close':
                 term.close();
                 break;
@@ -1963,10 +1983,11 @@ class DTParser {
             case 'fullscreen on':
             case 'fullscreen off':
             case 'fullscreen toggle':
-                DomTerm.windowOp('fullscreen', text.substring(11));
+                DomTerm.windowOp('fullscreen', rest);
                 break;
             }
             break;
+        }
         case 102:
             DTParser.sendSavedHtml(term, term.getAsHTML(true));
             break;

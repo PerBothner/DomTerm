@@ -8722,7 +8722,7 @@ Terminal._selectionAsHTML = function(sel = window.getSelection()) {
     return hstring;
 }
 
-Terminal._rangeAsText = function(range) {
+Terminal._rangeAsText = function(range, options={}) {
     let t = "";
     function wrapText(tnode, start, end) {
         let parent = tnode.parentNode;

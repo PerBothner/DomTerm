@@ -948,6 +948,7 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
     sbuf cmd;
     enum window_op_kind w_op_kind = w_none;
     const char *default_windows = NULL;
+    bool do_wait = false;
     if (subcommand == NULL) { }
     else if (strcmp(subcommand, "show") == 0) {
         w_op_kind = w_simple;
@@ -993,6 +994,10 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
                          subarg);
             return EXIT_FAILURE;
         }
+    } else if (strcmp(subcommand, "capture") == 0) {
+        w_op_kind = w_simple;
+        do_wait = true;
+        cmd.printf(URGENT_WRAP("\033]97;{\"cmd\": \"capture\",\"id\": %d}\007"), opts->index());
     }
     if (w_op_kind == w_none) {
         printf_error(opts,
@@ -1048,6 +1053,14 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
         }
     }
     if (seen) {
+        if (do_wait) {
+            if (seen > 1) {
+                printf_error(opts, "domterm window: multiple windows not allowed for '%s'", subcommand);
+                return EXIT_FAILURE;
+            }
+            request_enter(opts);
+            return EXIT_WAIT;
+        }
         return EXIT_SUCCESS;
     } else if (subcommand == 0
              || strcmp(subcommand, "toggle-hide") == 0

@@ -33,6 +33,7 @@ static char end_replay_mode[] = "\033[98u";
 
 id_table<pty_client> pty_clients;
 id_table<tty_client> tty_clients;
+id_table<options> pending_requests;
 
 static struct pty_client *
 handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client *tclient);
@@ -180,19 +181,35 @@ maybe_exit(int exit_code)
 }
 
 #if REMOTE_SSH
-#if PASS_STDFILES_UNIX_SOCKET
-void close_local_proxy(struct pty_client *pclient, int exit_code)
+void finish_request(struct options *opts, int exit_code, bool do_close)
 {
-    lwsl_notice("close_local_proxy sess:%d sock:%d\n", pclient->session_number, pclient->cmd_socket);
-    if (pclient->cmd_socket >= 0) {
-        char r = exit_code;
-        if (write(pclient->cmd_socket, &r, 1) != 1)
-            lwsl_err("write %d failed - callback_cmd %s\n", pclient->cmd_socket, strerror(errno));
-        close(pclient->cmd_socket);
-        pclient->cmd_socket = -1;
+    if (opts == main_options)
+        do_exit(exit_code, false);
+    lwsl_notice("finish_request in:"+opts->fd_in);
+#if PASS_STDFILES_UNIX_SOCKET
+    if (do_close) {
+        // fd_in and fs_out are closed by the wsl
+        if (opts->fd_err >= 0 && opts->fd_err != STDERR_FILENO) {
+            close(opts->fd_err);
+            opts->fd_err = -1;
+        }
+    }
+#endif
+    if (opts->fd_cmd_socket >= 0) {
+        char r[2];
+        int rcount = 0;
+#if !PASS_STDFILES_UNIX_SOCKET
+        r[rcount++] = PASS_STDFILES_EXIT_CODE;
+#endif
+        r[rcount++] = exit_code;
+        if (write(opts->fd_cmd_socket, r, rcount) != rcount)
+            lwsl_err("write %d failed - callback_cmd %s\n", opts->fd_cmd_socket, strerror(errno));
+        if (do_close) {
+            close(opts->fd_cmd_socket);
+            opts->fd_cmd_socket = -1;
+        }
     }
 }
-#endif
 
 static void
 pclient_close(struct pty_client *pclient, bool xxtimed_out)
@@ -240,13 +257,16 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
     // FIXME free client; set pclient to NULL in all matching tty_clients.
     bool connection_failure = false;
 
-    FOREACH_WSCLIENT(tclient, pclient) {
+    struct tty_client *tnext;
+    for (struct tty_client *tclient = pclient->first_tclient;
+         tclient != NULL; tclient = tnext) {
+        tnext = tclient->next_tclient;
         lwsl_notice("- pty close %d conn#%d proxy_fd:%d mode:%d\n", status, tclient->connection_number, tclient->options->fd_in, tclient->proxyMode);
         tclient->pclient = NULL;
         if (tclient->out_wsi == NULL)
             continue;
         if (pclient->is_ssh_pclient) {
-            if (! tclient->is_tclient_proxy()) {
+            if (! tclient->is_tclient_proxy()) { // proxy_display_local ?
                 printf_to_browser(tclient,
                                   timed_out
                                   ? URGENT_WRAP("\033[99;97u")
@@ -258,14 +278,16 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
                     tclient->keep_after_unexpected_close = false;
                 connection_failure = true;
             } else {
-#if !PASS_STDFILES_UNIX_SOCKET
-                printf_to_browser(tclient, "%c%c",
-                                  PASS_STDFILES_EXIT_CODE,
-                                  WEXITSTATUS(status));
-#endif
+                finish_request(tclient->options, WEXITSTATUS(status), true);
+                struct lws *wsi = tclient->wsi;
+                struct lws *out_wsi = tclient->out_wsi;
+                if (wsi != out_wsi)
+                    lws_set_timeout(out_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
+                lws_set_timeout(wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
             }
         }
-        lws_callback_on_writable(tclient->out_wsi);
+        if (tclient->out_wsi)
+            lws_callback_on_writable(tclient->out_wsi);
     }
 
     if (WEXITSTATUS(status) == 0xFF && connection_failure) {
@@ -279,9 +301,6 @@ pclient_close(struct pty_client *pclient, bool xxtimed_out)
                 status, WIFEXITED(status), WEXITSTATUS(status));
     maybe_exit(status == -1 || ! WIFEXITED(status) ? 0
                : WEXITSTATUS(status) == 0xFF ? 0xFE : WEXITSTATUS(status));
-#if REMOTE_SSH && PASS_STDFILES_UNIX_SOCKET
-    close_local_proxy(pclient, WEXITSTATUS(status));
-#endif
 }
 
 void
@@ -510,6 +529,12 @@ void id_table<T>::remove(T* entry)
     T* next = elements[index+1];
     for (; index >= 0 && elements[index] == entry; index--)
             elements[index] = next;
+}
+
+void
+request_enter(struct options *opts)
+{
+    pending_requests.enter(opts, opts->index());
 }
 
 static struct pty_client *
@@ -1242,6 +1267,27 @@ reportEvent(const char *name, char *data, size_t dlen,
             set_setting(options->cmd_settings, REMOTE_SESSIONNUMBER_KEY, data);
         }
         return true;
+    } else if (strcmp(name, "RESPONSE") == 0) {
+        json obj = json::parse(data, nullptr, false);
+        if (obj.is_object() && obj.contains("id")
+            && obj["id"].is_number()) {
+            int rid = obj["id"].get<int>();
+            lwsl_err("RESPONSE rid:%d\n", rid);
+            struct options *request = pending_requests(rid);
+            if (request) {
+                pending_requests.remove(request);
+                if (obj.contains("out") && obj["out"].is_string()) {
+                    std::string result = obj["out"].get<std::string>();
+                    const char *cresult = result.c_str();
+                    size_t clen = result.length();
+                    write(request->fd_out, cresult, clen); // FIXME check
+                }
+                finish_request(request, 0, true);
+                options::release(request);
+            }
+        } else {
+            lwsl_err("RESPONSE with bad object syntax or missing'id'\n");
+        }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
         static char gopt[] =  "geometry=";
         char *g0 = strstr(data, gopt);
@@ -1520,10 +1566,15 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
                 client->out_wsi = NULL;
                 maybe_daemonize();
 #if PASS_STDFILES_UNIX_SOCKET
-                close_local_proxy(pclient, 0);
+                if (pclient->cmd_socket >= 0) {
+                    close(pclient->cmd_socket);
+                    pclient->cmd_socket = -1;
+                }
 #endif
-                client->options->fd_in = -1;
-                client->options->fd_out = -1;
+                if (client->options) {
+                    client->options->fd_in = -1;
+                    client->options->fd_out = -1;
+                }
                 return -1;
             } else {
                 client->proxyMode = proxy_display_local;
@@ -2635,7 +2686,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
     }
     case LWS_CALLBACK_TIMER:
             // If we're the local (client) end of ssh.
-            lwsl_notice("callback_pty LWS_CALLBACK_TIMER cmd_sock:%d\n", pclient->cmd_socket);
+            lwsl_notice("callback_pty LWS_CALLBACK_TIMER\n");
             if (pclient->is_ssh_pclient) {
                 pclient->timed_out = true;
                 //pclient_close(pclient, true);
@@ -2644,7 +2695,7 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason,
             }
             break;
         case LWS_CALLBACK_RAW_CLOSE_FILE: {
-            lwsl_notice("callback_pty LWS_CALLBACK_RAW_CLOSE_FILE cmd_sock:%d\n", pclient->cmd_socket);
+            lwsl_notice("callback_pty LWS_CALLBACK_RAW_CLOSE_FILE\n");
             pclient_close(pclient, false);
         }
         break;
