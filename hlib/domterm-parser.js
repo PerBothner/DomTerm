@@ -1983,7 +1983,7 @@ class DTParser {
             case 'fullscreen on':
             case 'fullscreen off':
             case 'fullscreen toggle':
-                DomTerm.windowOp('fullscreen', rest);
+                DomTerm.windowOp('fullscreen', command.substring(11));
                 break;
             }
             break;

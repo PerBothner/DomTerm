@@ -986,23 +986,110 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_WAIT;
 }
 
-int close_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
+                         struct options *opts, const char *cmd,
+                         const char *seq, const char *default_window)
 {
+    const char *subarg = argc >= 2 ? argv[1] : NULL;
     std::vector<int> windows;
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
-    if (! check_window_option(option, windows, "close", opts))
+        option = default_window;
+    if (! check_window_option(option, windows, cmd, opts))
         return EXIT_FAILURE;
     for (int w : windows) {
         tty_client *tclient = tty_clients(w);
-        tclient->ob.printf(URGENT_WRAP("\033]97;close\007"));
+        tclient->ob.printf(seq);
         lws_callback_on_writable(tclient->wsi);
     }
     return EXIT_SUCCESS;
 }
 
+int close_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    return simple_window_action(argc, argv, wsi, opts,
+                                "close",
+                                URGENT_WRAP("\033]97;detach\007"),
+                                "current");
+}
+
+int detach_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    return simple_window_action(argc, argv, wsi, opts,
+                                "detach",
+                                URGENT_WRAP("\033]97;detach\007"),
+                                "current");
+}
+
+int fullscreen_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    const char *subarg = argc >= 2 ? argv[1] : NULL;
+    const char *seq;
+    int bval;
+    if (subarg == NULL || strcmp(subarg, "toggle") == 0)
+        seq = URGENT_WRAP("\033]97;fullscreen toggle\007");
+    else if ((bval = bool_value(subarg)) == 1)
+        seq = URGENT_WRAP("\033]97;fullscreen on\007");
+    else if (bval == 0)
+        seq = URGENT_WRAP("\033]97;fullscreen off\007");
+    else {
+        printf_error(opts, "invalid value '%s' to 'fullscreen' command",
+                     subarg);
+        return EXIT_FAILURE;
+    }
+    return simple_window_action(argc, argv, wsi, opts,
+                                "fullscreen", seq, "top");
+}
+
+int hide_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    return simple_window_action(argc, argv, wsi, opts,
+                                "hide",
+                                URGENT_WRAP("\033[2;72t"),
+                                "top");
+}
+
+int minimize_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    return simple_window_action(argc, argv, wsi, opts,
+                                "minimize",
+                                URGENT_WRAP("\033[2t"),
+                                "top");
+}
+
+int show_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    return simple_window_action(argc, argv, wsi, opts,
+                                "show",
+                                URGENT_WRAP("\033[1t"),
+                                "top");
+}
+
+int toggle_hide_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    return simple_window_action(argc, argv, wsi, opts,
+                                "toggle-hide",
+                                URGENT_WRAP("\033[2;74t"),
+                                "top");
+}
+
+int toggle_minimize_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    return simple_window_action(argc, argv, wsi, opts,
+                                "toggle-minimize",
+                                URGENT_WRAP("\033[2;73t"),
+                                "top");
+}
+
+// deprecated - used -w/--window option instead
 int window_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
@@ -1037,131 +1124,8 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
     arglist_t wspec_start = &argv[first_window_number];
     int wspec_count = i - first_window_number;
     const char *subcommand = argc >= i ? argv[i] : NULL;
-    if (strcmp(subcommand, "capture") == 0
-        || strcmp(subcommand, "close") == 0) {
-        opts->windows = woptions;
-        return handle_command(argc-i, argv+i,
-                              wsi, opts);
-    }
-    int seen = 0;
-    sbuf cmd;
-    enum window_op_kind w_op_kind = w_none;
-    const char *default_windows = NULL;
-    bool do_wait = false;
-    if (subcommand == NULL) { }
-    else if (strcmp(subcommand, "show") == 0) {
-        w_op_kind = w_simple;
-        default_windows = "top";
-        cmd.append(URGENT_WRAP("\033[1t"));
-    } else if (strcmp(subcommand, "minimize") == 0) {
-        w_op_kind = w_simple;
-        default_windows = "top";
-        cmd.append(URGENT_WRAP("\033[2t"));
-    } else if (strcmp(subcommand, "hide") == 0) {
-        w_op_kind = w_simple;
-        default_windows = "top";
-        cmd.append(URGENT_WRAP("\033[2;72t"));
-    } else if (strcmp(subcommand, "toggle-minimize") == 0) {
-        w_op_kind = w_simple;
-        default_windows = "top";
-        cmd.append(URGENT_WRAP("\033[2;73t"));
-    } else if (strcmp(subcommand, "toggle-hide") == 0) {
-        w_op_kind = w_simple;
-        default_windows = "top";
-        cmd.append(URGENT_WRAP("\033[2;74t"));
-    } else if (strcmp(subcommand, "detach") == 0) {
-        w_op_kind = w_simple;
-        default_windows = "current";
-        cmd.append(URGENT_WRAP("\033]97;detach\007"));
-    } else if (strcmp(subcommand, "fullscreen") == 0) {
-        const char *subarg = argc >= i+1 ? argv[i+1] : NULL;
-        w_op_kind = w_simple;
-        default_windows = "top";
-        int bval;
-        if (subarg == NULL || strcmp(subarg, "toggle") == 0)
-            cmd.append(URGENT_WRAP("\033]97;fullscreen toggle\007"));
-        else if ((bval = bool_value(subarg)) == 1)
-            cmd.append(URGENT_WRAP("\033]97;fullscreen on\007"));
-        else if (bval == 0)
-            cmd.append(URGENT_WRAP("\033]97;fullscreen off\007"));
-        else {
-            printf_error(opts, "invalid value '%s' to 'window fullscreen' command",
-                         subarg);
-            return EXIT_FAILURE;
-        }
-    }
-    if (w_op_kind == w_none) {
-        printf_error(opts,
-                     subcommand
-                     ? "domterm window: unknown sub-command '%s'"
-                     : "domterm window: missing sub-command",
-                subcommand);
-        return EXIT_FAILURE;
-    }
-    if (wspec_count == 0) {
-        if (default_windows == NULL) {
-            printf_error(opts, "missing window specifier - required for window %s",
-                         subcommand);
-             return EXIT_FAILURE;
-        }
-        wspec_start = &default_windows;
-        wspec_count = 1;
-    }
-    for (i = 0; i < wspec_count; i++) {
-        const char *arg = wspec_start[i];
-        enum window_spec_kind w_spec;
-        if (strcmp(arg, "top") == 0)
-            w_spec = w_top;
-        else if (strcmp(arg, "current") == 0)
-            w_spec = w_current;
-        else if (strcmp(arg, "current-top") == 0)
-            w_spec = w_current_top;
-        else {
-            w_spec = w_number;
-        }
-        struct tty_client *tclient =
-            // error checking of arg was done in initial pass
-            w_spec == w_number ? tty_clients[strtol(arg, NULL, 10)]
-            : w_spec == w_current ? focused_client
-            : w_spec == w_current_top
-            ? (focused_client ? (focused_client->main_window == 0 ? focused_client : tty_clients(focused_client->main_window)) : nullptr)
-            : TCLIENT_FIRST;
-        for (; tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
-            bool skip = false;
-            if (w_spec == w_top || w_spec == w_current_top)
-                skip = tclient->main_window != 0;
-            if (! skip) {
-                switch (w_op_kind) {
-                default:
-                    tclient->ob.append(cmd.null_terminated());
-                    lws_callback_on_writable(tclient->wsi);
-                }
-                ++seen;
-            }
-            if (w_spec == w_number || w_spec == w_current
-                || w_spec == w_current_top)
-                break;
-        }
-    }
-    if (seen) {
-        if (do_wait) {
-            if (seen > 1) {
-                printf_error(opts, "domterm window: multiple windows not allowed for '%s'", subcommand);
-                return EXIT_FAILURE;
-            }
-            request_enter(opts);
-            return EXIT_WAIT;
-        }
-        return EXIT_SUCCESS;
-    } else if (subcommand == 0
-             || strcmp(subcommand, "toggle-hide") == 0
-             || strcmp(subcommand, "toggle-minimize") == 0) {
-        static arglist_t no_args = { NULL };
-        return new_action(0, no_args, wsi, opts);
-    } else {
-        printf_error(opts, "domterm window: no window to '%s'", subcommand);
-        return EXIT_FAILURE;
-    }
+    opts->windows = woptions;
+    return handle_command(argc-i, argv+i, wsi, opts);
 }
 
 struct command commands[] = {
@@ -1235,6 +1199,20 @@ struct command commands[] = {
     .action = capture_action},
   { .name = "close", .options = COMMAND_IN_EXISTING_SERVER,
     .action = close_action},
+  { .name = "detach", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = detach_action},
+  { .name = "fullscreen", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = fullscreen_action},
+  { .name = "hide", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = hide_action},
+  { .name = "minimize", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = minimize_action},
+  { .name = "show", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = show_action},
+  { .name = "toggle-hide", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = toggle_hide_action},
+  { .name = "toggle-minimize", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = toggle_minimize_action},
   { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
     .action = settings_action },
   { .name = COMPLETE_FOR_BASH_CMD, .options = COMMAND_IN_CLIENT,
