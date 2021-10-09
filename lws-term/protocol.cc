@@ -1272,7 +1272,6 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (obj.is_object() && obj.contains("id")
             && obj["id"].is_number()) {
             int rid = obj["id"].get<int>();
-            lwsl_err("RESPONSE rid:%d\n", rid);
             struct options *request = pending_requests(rid);
             if (request) {
                 pending_requests.remove(request);
@@ -1648,7 +1647,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         client->pty_window_update_needed = false;
         int kind = proxyMode == proxy_display_local ? 2
             : (int) pclient->session_name_unique;
-        lwsl_info("- send session info %d\n", pclient->session_number);
+        lwsl_info("- send session info kind: %d session:%d\n", kind, pclient->session_number);
         sb.printf(URGENT_WRAP("\033[91;%d;%d;%d;%du"),
                   kind,
                   pclient->session_number,

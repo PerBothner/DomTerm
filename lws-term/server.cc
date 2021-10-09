@@ -316,6 +316,7 @@ static struct lws_http_mount mount_domterm_zip = {
 static const struct option options[] = {
         {"port",         required_argument, NULL, 'p'},
         {"browser",      optional_argument, NULL, 'B'},
+        {"window",       required_argument, NULL, 'w'},
         {"chrome",       no_argument,       NULL, CHROME_OPTION},
         {"chrome-app",   no_argument,       NULL, CHROME_APP_OPTION},
         {"google-chrome",no_argument,       NULL, CHROME_OPTION},
@@ -373,7 +374,7 @@ static const struct option options[] = {
         {"help",         no_argument,       NULL, 'h'},
         {NULL, 0, 0,                              0}
 };
-static const char *opt_string = "+p:B::i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
+static const char *opt_string = "+p:B::w:i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
 static const char* browser_specifiers[] = {
     // first 2 are windows-specific
@@ -1098,6 +1099,9 @@ int process_options(int argc, arglist_t argv, struct options *opts)
             case 'B':
                 opts->browser_command = optarg == NULL ? "browser" : optarg;
                 break;
+            case 'w':
+                opts->windows = optarg;
+                break;
             case FORCE_OPTION:
                 opts->force_option = 1;
                 break;
@@ -1406,6 +1410,12 @@ main(int argc, char **argv)
             || ((command->options & COMMAND_IN_CLIENT_IF_NO_SERVER) != 0
                 && socket < 0))) {
         lwsl_notice("handling command '%s' locally\n", command->name);
+        if (command->options == COMMAND_IN_EXISTING_SERVER) {
+            if (&opts == main_options) { // client mode
+                printf_error(&opts, "no current windows (no server running)");
+                return EXIT_FAILURE;
+            }
+        }
         exit((*command->action)(argc-optind, (arglist_t)argv+optind, NULL, &opts));
     }
     if (socket >= 0) {

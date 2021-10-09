@@ -315,6 +315,7 @@ public:
     int fd_out;
     int fd_err;
     int fd_cmd_socket;
+    std::string windows;
     char *session_name;
     char *settings_file;
     argblob_t shell_argv;               // parse_args("shell.default" setting);
@@ -460,6 +461,7 @@ extern struct resource resources[];
 #define COMMAND_IN_SERVER 8
 #define COMMAND_CHECK_DOMTERM 16
 #define COMMAND_HANDLES_COMPLETION 32
+#define COMMAND_IN_EXISTING_SERVER (COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER|64)
 #define REATTACH_COMMAND "#internal-re-attach"
 
 // 0xFD cannot appear in a UTF-8 sequence

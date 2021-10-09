@@ -914,36 +914,135 @@ enum window_op_kind {
     w_simple = 1
 };
 
+bool check_window_option(const std::string& option,
+                         std::vector<int>& windows,
+                         const char *cmd, struct options *opts)
+{
+    size_t start = 0;
+    size_t osize = option.size();
+    for (;;) {
+        size_t comma = option.find(',', start);
+        std::string s = option.substr(start, comma);
+        int w;
+        if (s == "all"|| s == "all-top") {
+            for (struct tty_client *tclient  = TCLIENT_FIRST;
+                 tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
+                if (tclient->main_window == 0 || s == "all") {
+                    windows.push_back(tclient->index());
+                }
+            }
+        } else {
+                if (s == "current" || s == "top" || s == "current-top") {
+                    if (focused_client == nullptr) {
+                        printf_error(opts, "domterm %s: no current window", cmd);
+                        return false;
+                    }
+                    struct tty_client *main;
+                    if (s == "current" || focused_client->main_window == 0
+                        || (main = tty_clients(focused_client->main_window)) == nullptr)
+                        w = focused_client->index();
+                    else
+                        w = main->index();
+                } else {
+                    std::size_t pos = -1;
+                    w = std::stoi(s, &pos);
+                    if (pos != s.size() || ! tty_clients.valid_index(w)) {
+                        printf_error(opts, "domterm %s: invalid window number '%s'",
+                                     cmd, s.c_str());
+                        return false;
+                    }
+                }
+                windows.push_back(w);
+        }
+        if (comma == std::string::npos)
+            break;
+        start = comma + 1;
+    }
+    if (windows.size() == 0) {
+        printf_error(opts, "domterm %s: no window specifiers", cmd);
+        return false;
+    }
+    if (windows.size() != 1
+        && cmd == "capture") {
+        printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
+        return false;
+    }
+    return true;
+}
+
+int capture_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, "capture", opts))
+        return EXIT_FAILURE;
+    tty_client *tclient = tty_clients(windows[0]);
+    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"capture\",\"id\": %d}\007"), opts->index());
+    lws_callback_on_writable(tclient->wsi);
+    request_enter(opts);
+    return EXIT_WAIT;
+}
+
+int close_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, "close", opts))
+        return EXIT_FAILURE;
+    for (int w : windows) {
+        tty_client *tclient = tty_clients(w);
+        tclient->ob.printf(URGENT_WRAP("\033]97;close\007"));
+        lws_callback_on_writable(tclient->wsi);
+    }
+    return EXIT_SUCCESS;
+}
+
 int window_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
-    if (opts == main_options) { // client mode
-        printf_error(opts, "no current windows (no server running)");
+    if (! opts->windows.empty()) {
+        printf_error(opts, "domterm window (deprecated): -w option specified");
         return EXIT_FAILURE;
     }
     int first_window_number = 1;
     int i = first_window_number;
+    std::string woptions;
     for (; i < argc; i++) {
         const char *arg = argv[i];
-        if (strcmp(arg, "top") == 0
-            || strcmp(arg, "current") == 0
-            || strcmp(arg, "current-top") == 0)
-            continue;
-        if (arg[0] == '\0')
-            break;
-        char *endptr;
-        long num = strtol(arg, &endptr, 10);
-        if (arg[0] == '\0' || *endptr)
-            break;
-        if (! tty_clients.valid_index(num)) {
-            printf_error(opts, "domterm window: invalid window number %ld",
-                         num);
-            return EXIT_FAILURE;
+        if (strcmp(arg, "top") != 0
+            && strcmp(arg, "current") != 0
+            && strcmp(arg, "current-top") != 0) {
+            if (arg[0] == '\0')
+                break;
+            char *endptr;
+            long num = strtol(arg, &endptr, 10);
+            if (arg[0] == '\0' || *endptr)
+                break;
+            if (! tty_clients.valid_index(num)) {
+                printf_error(opts, "domterm window: invalid window number %ld",
+                             num);
+                return EXIT_FAILURE;
+            }
         }
+        if (! woptions.empty())
+            woptions += ',';
+        woptions += arg;
     }
     arglist_t wspec_start = &argv[first_window_number];
     int wspec_count = i - first_window_number;
     const char *subcommand = argc >= i ? argv[i] : NULL;
+    if (strcmp(subcommand, "capture") == 0
+        || strcmp(subcommand, "close") == 0) {
+        opts->windows = woptions;
+        return handle_command(argc-i, argv+i,
+                              wsi, opts);
+    }
     int seen = 0;
     sbuf cmd;
     enum window_op_kind w_op_kind = w_none;
@@ -970,10 +1069,6 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
         w_op_kind = w_simple;
         default_windows = "top";
         cmd.append(URGENT_WRAP("\033[2;74t"));
-    } else if (strcmp(subcommand, "close") == 0) {
-        w_op_kind = w_simple;
-        default_windows = "current";
-        cmd.append(URGENT_WRAP("\033]97;close\007"));
     } else if (strcmp(subcommand, "detach") == 0) {
         w_op_kind = w_simple;
         default_windows = "current";
@@ -994,10 +1089,6 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
                          subarg);
             return EXIT_FAILURE;
         }
-    } else if (strcmp(subcommand, "capture") == 0) {
-        w_op_kind = w_simple;
-        do_wait = true;
-        cmd.printf(URGENT_WRAP("\033]97;{\"cmd\": \"capture\",\"id\": %d}\007"), opts->index());
     }
     if (w_op_kind == w_none) {
         printf_error(opts,
@@ -1138,8 +1229,12 @@ struct command commands[] = {
     .action = help_action },
   { .name = "new", .options = COMMAND_IN_SERVER,
     .action = new_action},
-  { .name = "window", .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
+  { .name = "window", .options = COMMAND_IN_EXISTING_SERVER,
     .action = window_action},
+  { .name = "capture", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = capture_action},
+  { .name = "close", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = close_action},
   { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
     .action = settings_action },
   { .name = COMPLETE_FOR_BASH_CMD, .options = COMMAND_IN_CLIENT,
