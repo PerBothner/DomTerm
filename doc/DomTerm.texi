@@ -998,24 +998,26 @@ as specified a @dfn{window specifier}.
 The following options control which front-end (usually a browser),
 if any, is started.
 
-@subheading Window specifier option
+@subheading Browser specifier option
+@anchor{browser specifier}
 
-Use a @var{window-specifier} option with certain commands,
-such as @code{new} or @code{attach}.
-This specifies a browser or similar program
-that can display the dynamic webpage generate by @code{domterm}.
+A @var{browser-specifier} option specifies how to
+display a new domterm window. This can be a window or tab in
+general-purpose web-browser, a specialized browser without
+locatonbar or similar distracting ``chhome'', or a sub-window.
+
+It is used for certain commands like @code{new} and @code{attach}.
 For example:
 
 @example
 domterm --Belectron new
-domterm --below attach '#4'
+domterm --below attach 4
 domterm --browser /bin/sh
 @end example
 
-If there is no @var{window-specifier} option,
+If there is no @var{browser-specifier} option,
 the value of the @code{browser.default} @ref{Settings,setting} is used.
 
-@anchor{browser specifier}
 @subsubheading Browser specifiers
 
 @table @asis
@@ -1085,7 +1087,13 @@ runs @code{qtdomterm}, a stripped-down browser based on the Qt toolkit
 (specifically QtWebEngine).
 
 @item @code{webview}
-Run the stripped-down @code{dt-webview} browser (built if
+@itemx @code{wry}
+Run the stripped-down @code{dt-webview} or @code{dt-wry} browser,
+respectively.
+(Available if
+configured @code{--with-webview} or @code{with-wry}, respectively.)
+
+Run the stripped-down @code{dt-wry} browser (built if
 configured @code{--with-webview}).
 
 @item @code{browser}
@@ -1136,9 +1144,50 @@ assuming the Chrome browser is available.
 @item @code{--detached}
 When creating a new session, it is detached, without a window.
 
+@item @code{--print-url}
+Only print out the URL that would be passed to a browser command,
+but don't actually run a browser.  You can copy the URL into the
+location bar of a browser.
+@c Roughly equivalent to @code{--browser="echo '%U'"}.
+
 @item @code{--browser-pipe}
 @emph{(Internal use.)} Proxy input and output,
 usually over an @code{ssh} connection.
+@end table
+
+@anchor{window-specifier-option}
+@subheading Window specifier option
+
+Certain commands affect an existing window.
+These take a @dfn{window-specifier} option
+that can specify which window(s) should be acted on.
+For example, to minimize windows 2 and 3 do:
+@example
+domterm -w 2,3 minimize
+@end example
+
+@table @asis
+@item @code{-w @var{window-specifier}}
+@itemx @code{--window @var{window-specifier}}
+@itemx @code{--window=@var{window-specifier}}
+Specify which windows are affected by the current command.
+@end table
+
+A @var{window-specifier} can be one of:
+@table @asis
+@item @code{@var{window-number}}
+The window with the specified @ref{window number,@var{window-number}}.
+
+@item @code{current}
+The ``current'' window, which is the one that most recently has received focus.
+@item @code{top}
+The top-level window containing the current window.
+@item @code{all}
+All windows, including sub-windows.
+@item @code{all-top}
+All top-level sub-windows.
+@item @var{window-specifier}@code{,}@var{window-specifier}@var{...}
+A comma-separated list of window specifiers.
 @end table
 
 @subheading Miscellaneous commands
@@ -1279,44 +1328,46 @@ including some information about each window.
 @subheading Windows operations
 
 @table @asis
-@item @b{@code{window}} @var{window-specifier} ... @var{subcommand} @var{options} ...
-Do the @var{subcommand} on the windows specified by the @var{window-specifier} list.
-A @var{window-specifier} can be a window (connection) number;
-or the @code{top} specifier (all top-level windows).
-If there is no @var{window-specifier} the default depends on the @var{subcommand}; if not specified it is @code{top}.
-@item @b{@code{window}} @var{window-specifier} ... @b{@code{close}}
+@item @b{@code{close}}
 Close specified window(s), as if you clicked on the ``close'' button.
-@item @b{@code{window}} @var{window-specifier} ... @b{@code{detach}}
-Close specified window(s),
+The default @var{windows-specifier} is @code{current}
+@item@b{@code{detach}}
+Close specified window(s) (the default is @code{current}),
 and (assuming there are no more windows attached to the session)
 make the session detached.
 
-@item @b{@code{window}} @var{window-specifier} ... @b{@code{minimize}}
+@item @b{@code{minimize}}
 @emph{(Electron, Qt, and Wry only.)}
-Minimize (iconify) the specified top-level windows.
+Minimize (iconify) the specified top-level windows,
+where the default window is @code{top}.
 The minimized windows may be still visible in the task bar,
 as an icon on the desktop, or during an ``windows expose'' operation
-@item @b{@code{window}} @var{window-specifier} ... @b{@code{hide}}
+@item @b{@code{hide}}
 @emph{(Electron, Qt, and Wry only.)}
 Hide the specified top-level windows.
 The hidden windows are @emph{not} visible in the task bar,
 as icons on the desktop, or during an ``windows expose'' operation
-@item @b{@code{window}} @var{window-specifier} ... @b{@code{show}}
+@item @b{@code{show}}
 @emph{(Electron, Qt, and Wry only.)}
 Show the specified minimized or hidden windows.
 If there are no windows, create one.
-@item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-minimize}}
+@item @b{@code{toggle-minimize}}
 @emph{(Electron and Qt only.)}
 Toggle between normal and minimized state:
 If a window is hidden or minimized, show it.
 If visible, minimize it.
 If there are no windows, create one.
-@item @b{@code{window}} @var{window-specifier} ... @b{@code{toggle-hide}}
+@item @b{@code{toggle-hide}}
 @emph{(Electron, Qt, and Wry only.)}
 Toggle between normal and hidden state:
 If a window is hidden or minimized, show it.
 If visible, hide it.
 If there are no windows, create one.
+
+@item @b{@code{window}} @var{window-specifier} ... @var{subcommand} @var{options} ...
+Do the @var{subcommand} on the windows specified by the @var{window-specifier} list.
+Older (deprecated) form equivalent to:
+@code{--window=}@var{window-specifier} ... @var{subcommand} @var{options} ...
 @end table
 
 @subheading Miscellaneous options
@@ -1434,6 +1485,9 @@ This option is the default unless @code{--port} is specified.
 
 @subheading Working with styles
 
+All of these work with a @ref{window-specifier-option, window-specifier option},
+defaulting to the @code{current window}.
+
 @table @asis
 @item @b{@code{reverse-video}} @code{on}|@code{off}
 @end table
@@ -1456,7 +1510,7 @@ You can also set the @code{background-color} style directly:
 @example
 $ domterm add-style "div.domterm @{ background-color: pink @}"
 @end example
-Howeverm it is better to set the @code{--background-color} CSS variable,
+However, it is better to set the @code{--background-color} CSS variable,
 as that is required for reverse video and ``Background Color Erase'' to work.
 
 Inverse video (using CSS variables):
@@ -1738,7 +1792,7 @@ if that is not set the default is @code{/bin/bash}.
 @item @code{@b{browser.default} = } @var{browser-specifier}
 
 The browser-like program used to create new top-level windows,
-unless overridden by a specific window-specifier command.
+unless overridden by a specific browser-specifier option.
 
 The @var{browser-specifier} is a kind of @var{command-candidates} value:
 a list of command front-end,
@@ -2623,6 +2677,7 @@ a DomTerm session.  The @code{domterm browse} command creates
 a non-session window that displays a specified web page.
 One use of this for is viewing documentation.
 
+@anchor{window number}
 Every window has a unique window number.
 Normally, when a new terminal session is created a window will
 be created with the same window number as the session number.
@@ -4487,7 +4542,7 @@ enter the system (desktop) @code{Settings} application,
 and select @code{Devices} and @code{Keyboard shortcurs}.
 Click the @code{+} at the bottom to add a new custom shortcut.
 You can then bind your preferred keybinding (@code{F5} in the screenshot)
-to the @code{domterm window toogle-minimizew} (or @code{toggle-hide}) command.
+to the @code{domterm toggle-minimizew} (or @code{toggle-hide}) command.
 (The screenshot uses a fully-qualifed path for @code{domterm},
 just in case.)
 
@@ -5252,7 +5307,7 @@ This can be implemented bying having the (local) backend do:
 ssh [@var{user}@@]@var{host} domterm --browser-pipe @var{command}
 @end example
 (A password may have to be requested.)
-The @code{--browser-pipe} option is a special kind of window-specifier:
+The @code{--browser-pipe} option is a special kind of browser-specifier:
 Instead of output being sent to the browser, it is written to stdout;
 input from stdin is (mostly) sent to the @var{command}.
 (``Mostly'' because the remote domterm processes certain
@@ -5862,7 +5917,10 @@ Paste the contents of the JSON-encoded string @var{jtext}.
 
 @item @code{"\e]97;"} @var{command} @code{"\a"}
 Execute the named @var{command}.
-Currently, @code{close} and @code{detach} are allowed.
+If @var{command} starts with a left-brace, it is a JSON object,
+whose preperties may include @code{cmd} (a command-name),
+@code{id} (a number to identify the requester, copied to a @code{RESPONSE}, if any),
+and possibly other properties, depending on the @code{cmd}.
 @end table
 
 @node Command parts
@@ -6083,6 +6141,15 @@ parts of a diagnostic.
 @subsubsection Stylesheet manipulation
 
 @table @asis
+@item @code{"\e]94;"} @var{rule} @code{"\a"}
+If necessary, create a new temporary stylesheet,
+and add the specified JSON-quoted rule to the end of it.
+@end table
+
+The following escape sequences are no longer used by the @code{domterm}
+command, and may be removed in the future.
+
+@table @asis
 @item @code{"\e]90;\a"}
 
 A request to return a list of the stylesheets in the document.
@@ -6109,10 +6176,6 @@ Return the contents of the specified stylesheet.
 On success the result is @code{"\x9D"} @var{rule}@sup{*} @code{"\x9D"}
 where each is a JSON-quoted string.
 On failure, the result is a (non-quoted) error message.
-
-@item @code{"\e]94;"} @var{rule} @code{"\a"}
-If necessary, create a new temporary stylesheet,
-and add the specified JSON-quoted rule to the end of it.
 
 @item @code{"\e]95;"} @var{name} @code{","} @var{styles} @code{"\a"}
 @itemx @code{"\e]96;"} @var{name} @code{","} @var{styles} @code{"\a"}
@@ -6323,6 +6386,18 @@ Sent by the front-end on a Paste request when the browser doesn't
 have access to clipboard.
 Requests the server to access the clipboard on its behalf,
 and send the contents using an OSC 231 sequence.
+
+@item @code{0xFD "RESPONSE" @var{response-data} "\n"}
+Response to a request from the server.
+For example, a @code{print-stylesheet} command will send a query
+to the browser, which sends a @code{RESPONSE} to the server,
+which prints the result.  The @var{response-data} is a JSON object,
+with at least an @code{id} property (an integer matching the request,
+used to send the response to the right file),
+along with either an @code{out} property (response text to print out),
+or an @code{err} property (error message to print on the request
+process's standard error).
+
 @end table
 
 @node electron nodepty

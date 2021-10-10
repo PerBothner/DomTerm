@@ -1281,6 +1281,10 @@ reportEvent(const char *name, char *data, size_t dlen,
                     size_t clen = result.length();
                     write(request->fd_out, cresult, clen); // FIXME check
                 }
+                if (obj.contains("err") && obj["err"].is_string()) {
+                    std::string result = obj["err"].get<std::string>();
+                    printf_error(request, "%s", result.c_str());
+                }
                 finish_request(request, 0, true);
                 options::release(request);
             }

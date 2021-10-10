@@ -1971,6 +1971,49 @@ class DTParser {
                                                             }));
                 break;
             }
+            case 'list-stylesheets': {
+                let sheets = term.listStylesheets();
+                let result = '';
+                for (let i = 0; i < sheets.length; i++) {
+                    result += i + ': ' + sheets[i] + '\n';
+                }
+                term.reportEvent("RESPONSE", JSON.stringify({ id: options.id,
+                                                              out: result
+                                                            }));
+                break;
+            }
+            case 'load-stylesheet': {
+                let r = term.loadStyleSheet(options.name, options.value);
+                term.reportEvent("RESPONSE",
+                                 JSON.stringify( { id: options.id, out: r }));
+                break;
+            }
+            case 'enable-stylesheet':
+            case 'disable-stylesheet': {
+                let disable = command === 'disable-stylesheet';
+                let r = term.maybeDisableStyleSheet(options.select, disable);
+                term.reportEvent("RESPONSE",
+                                 JSON.stringify( { id: options.id, err: r }));
+                break;
+            }
+            case 'print-stylesheet': {
+                let styleSheet = term.findStyleSheet(options.select);
+                if (! (typeof styleSheet == "string")
+                    && ! styleSheet.cssRules)
+                    styleSheet = "stylesheet rules not available";
+                let r;
+                if (typeof styleSheet == "string") {
+                    r = { id: options.id, err: styleSheet };
+                } else {
+                    r = "";
+                    for (const rule of styleSheet.cssRules) {
+                        r += rule.cssText + '\n';
+                    }
+                    r = { id: options.id, out: r };
+                }
+                term.reportEvent("RESPONSE", JSON.stringify(r));
+                break;
+            }
             case 'close':
                 term.close();
                 break;

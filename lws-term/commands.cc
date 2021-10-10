@@ -15,6 +15,64 @@ struct lws;
 
 extern struct command commands[];
 
+bool check_window_option(const std::string& option,
+                         std::vector<int>& windows,
+                         const char *cmd, struct options *opts)
+{
+    size_t start = 0;
+    size_t osize = option.size();
+    for (;;) {
+        size_t comma = option.find(',', start);
+        std::string s = option.substr(start, comma);
+        int w;
+        if (s == "all"|| s == "all-top") {
+            for (struct tty_client *tclient  = TCLIENT_FIRST;
+                 tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
+                if (tclient->main_window == 0 || s == "all") {
+                    windows.push_back(tclient->index());
+                }
+            }
+        } else {
+                if (s == "current" || s == "top" || s == "current-top") {
+                    if (focused_client == nullptr) {
+                        printf_error(opts, "domterm %s: no current window", cmd);
+                        return false;
+                    }
+                    struct tty_client *main;
+                    if (s == "current" || focused_client->main_window == 0
+                        || (main = tty_clients(focused_client->main_window)) == nullptr)
+                        w = focused_client->index();
+                    else
+                        w = main->index();
+                } else {
+                    std::size_t pos = -1;
+                    w = std::stoi(s, &pos);
+                    if (pos != s.size() || ! tty_clients.valid_index(w)) {
+                        printf_error(opts, "domterm %s: invalid window number '%s'",
+                                     cmd, s.c_str());
+                        return false;
+                    }
+                }
+                windows.push_back(w);
+        }
+        if (comma == std::string::npos)
+            break;
+        start = comma + 1;
+    }
+    if (windows.size() == 0) {
+        printf_error(opts, "domterm %s: no window specifiers", cmd);
+        return false;
+    }
+    if (windows.size() != 1
+        && (cmd == "capture" ||
+            cmd == "list-stylesheets" ||
+            cmd == "print-stylesheets")) {
+        printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
+        return false;
+    }
+    return true;
+}
+
 int is_domterm_action(int argc, arglist_t argv, struct lws *wsi,
                       struct options *opts)
 {
@@ -55,6 +113,25 @@ static void print_base_element(const char*base_url, struct sbuf *sbuf)
             sbuf->printf("/");
         sbuf->printf("'/>");
     }
+}
+
+int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
+                         struct options *opts, const char *cmd,
+                         const char *seq, const char *default_window)
+{
+    const char *subarg = argc >= 2 ? argv[1] : NULL;
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = default_window;
+    if (! check_window_option(option, windows, cmd, opts))
+        return EXIT_FAILURE;
+    for (int w : windows) {
+        tty_client *tclient = tty_clients(w);
+        tclient->ob.printf(seq);
+        lws_callback_on_writable(tclient->wsi);
+    }
+    return EXIT_SUCCESS;
 }
 
 int html_action(int argc, arglist_t argv, struct lws *wsi,
@@ -264,106 +341,47 @@ int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-static char *read_response(struct options *opts)
-{
-    int fin = get_tty_in();
-    size_t bsize = 2048;
-    char *buf = challoc(bsize);
-    tty_save_set_raw(fin);
-    int n = read(fin, buf, 2);
-    const char *msg = NULL;
-    if (n != 2 ||
-        (buf[0] != (char) 0x9D
-         && (buf[0] != (char) 0xc2 || buf[1] != (char) 0x9d))) {
-        msg = "(no response received)\n";
-    } else {
-        size_t old = 0;
-        if (buf[0] == (char) 0x9d) {
-            buf[0] = buf[1];
-            old = 1;
-        }
-        for (;;) {
-            ssize_t n = read(fin, buf+old, bsize-old);
-            if (n <= 0) {
-                msg = "(malformed response received)";
-                break;
-            }
-            char *end = (char*) memchr(buf+old, '\n', n);
-            if (end != NULL) {
-                *end = '\0';
-                break;
-            }
-            old += n;
-            bsize = (3 * bsize) >> 1;
-            buf = (char*) xrealloc(buf, bsize);
-        }
-    }
-    if (msg) {
-        printf_error(opts, "%s", msg);
-        free(buf);
-        buf = NULL;
-    }
-    tty_restore(fin);
-    return buf;
-}
-
 int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
-    check_domterm(opts);
-    close(0);
     if (argc != 2) {
         printf_error(opts, argc < 2
                      ? "(too few arguments to print-stylesheets)"
                      : "(too many arguments to print-stylesheets)");
         return EXIT_FAILURE;
     }
-    FILE *tout = fdopen(get_tty_out(), "w");
-    fprintf(tout, "\033]93;%s\007", argv[1]);
-    fflush(tout);
-    char *response = read_response(opts);
-    if (! response)
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, "print-stylesheet", opts))
         return EXIT_FAILURE;
-    json jobj = json::parse(response, nullptr, false);
-    if (! jobj.is_array()) {
-        return EXIT_FAILURE;
-    }
-    for (auto& element : jobj) {
-        fprintf(stdout, "%s\n", std::string(element).c_str());
-    }
-    free(response);
-    return EXIT_SUCCESS;
+    tty_client *tclient = tty_clients(windows[0]);
+    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"print-stylesheet\",\"id\": %d, \"select\": \"%s\"}\007"), opts->index(), argv[1]);
+    lws_callback_on_writable(tclient->wsi);
+    request_enter(opts);
+    return EXIT_WAIT;
 }
 
 int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
-    check_domterm(opts);
-    close(0);
-    if (! write_to_tty("\033]90;\007", -1))
-         return EXIT_FAILURE;
-    char *response = read_response(opts);
-    if (! response)
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, "list-stylesheets", opts))
         return EXIT_FAILURE;
-    FILE *out = fdopen(opts->fd_out, "w");
-    char *p = response;
-    int i = 0;
-    for (; *p != 0; ) {
-      fprintf(out, "%d: ", i++);
-      char *t = strchr(p, '\t');
-      char *end = t != NULL ? t : p + strlen(p);
-      fprintf(out, "%.*s\n", (int) (end-p), p);
-      if (t == NULL)
-        break;
-      p = t+1;
-    }
-    return EXIT_SUCCESS;
+    tty_client *tclient = tty_clients(windows[0]);
+    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"list-stylesheets\",\"id\": %d}\007"), opts->index());
+    lws_callback_on_writable(tclient->wsi);
+    request_enter(opts);
+    return EXIT_WAIT;
 }
 
 int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                            struct options *opts)
 {
-    check_domterm(opts);
     if (argc != 3) {
         printf_error(opts, argc < 3
                      ? "too few arguments to load-stylesheet"
@@ -393,39 +411,46 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
            break;
         off += n;
     }
-    FILE *tout = fdopen(get_tty_out(), "w");
     json jname = name;
     json jvalue = std::string(buf, off);
-    fprintf(tout, "\033]95;%s,%s\007", jname.dump().c_str(), jvalue.dump().c_str());
-    fflush(tout);
-    char *str = read_response(opts);
-    if (str != NULL && str[0]) {
-        printf_error(opts, "%s", str);
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, "load-stylesheet", opts))
         return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    tty_client *tclient = tty_clients(windows[0]);
+    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"load-stylesheet\",\"id\": %d, \"name\": %s, \"value\": %s}\007"),
+                       opts->index(),
+                       jname.dump().c_str(), jvalue.dump().c_str());
+    lws_callback_on_writable(tclient->wsi);
+    request_enter(opts);
+    return EXIT_WAIT;
 }
 
 int maybe_disable_stylesheet(bool disable, int argc, arglist_t argv,
                              struct options *opts)
 {
-    check_domterm(opts);
     if (argc != 2) {
         printf_error(opts, argc < 2
                      ? "(too few arguments to disable/enable-stylesheet)"
                      : "(too many arguments to disable/enable-stylesheet)");
         return EXIT_FAILURE;
     }
+    const char *command = argv[0];
     const char *specifier = argv[1];
-    FILE *tout = fdopen(get_tty_out(), "w");
-    fprintf(tout, "\033]%d;%s\007", disable?91:92, specifier);
-    fflush(tout);
-    char *str = read_response(opts);
-    if (str != NULL && str[0]) {
-        printf_error(opts, "%s", str);
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, command, opts))
         return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    tty_client *tclient = tty_clients(windows[0]);
+    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"%s\",\"id\": %d, \"select\": \"%s\"}\007"),
+                       command, opts->index(), specifier);
+    lws_callback_on_writable(tclient->wsi);
+    request_enter(opts);
+    return EXIT_WAIT;
 }
 
 int enable_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
@@ -443,13 +468,21 @@ int disable_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
 int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
-    check_domterm(opts);
-    FILE *out = fdopen(dup(get_tty_out()), "w");
-    for (int i = 1; i < argc; i++) {
-        json jobj = argv[i];
-        fprintf(out, "\033]94;%s\007", jobj.dump().c_str());
+    const char *subarg = argc >= 2 ? argv[1] : NULL;
+    std::vector<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, "add-style", opts))
+        return EXIT_FAILURE;
+    for (int w : windows) {
+        tty_client *tclient = tty_clients(w);
+        for (int i = 1; i < argc; i++) {
+            json jobj = argv[i];
+             tclient->ob.printf(URGENT_WRAP("\033]94;%s\007"), jobj.dump().c_str());
+        }
+        lws_callback_on_writable(tclient->wsi);
     }
-    fclose(out);
     return EXIT_SUCCESS;
 }
 
@@ -820,7 +853,6 @@ int settings_action(int argc, arglist_t argv, struct lws *wsi,
 int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts)
 {
-    check_domterm(opts);
     if (argc > 2) {
         printf_error(opts, "too many arguments to reverse-video");
         return EXIT_FAILURE;
@@ -832,10 +864,18 @@ int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
                      "arguments to reverse-video is not on/off/yes/no/true/false");
         return EXIT_FAILURE;
     }
-    const char *cmd = on ? "\033[?5h" : "\033[?5l";
+    const char *cmd = on ? URGENT_WRAP("\033[?5h") : URGENT_WRAP("\033[?5l");
+#if 1
+    return simple_window_action(argc, argv, wsi, opts,
+                                "reverse-video",
+                                cmd,
+                                "current");
+#else
+    check_domterm(opts);
     if (write(get_tty_out(), cmd, strlen(cmd)) <= 0)
         return EXIT_FAILURE;
     return EXIT_SUCCESS;
+#endif
 }
 
 int complete_action(int argc, arglist_t argv, struct lws *wsi,
@@ -903,73 +943,6 @@ int complete_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-enum window_spec_kind {
-    w_number = 0,
-    w_top = 1,
-    w_current = 2,
-    w_current_top = 3
-};
-enum window_op_kind {
-    w_none = 0,
-    w_simple = 1
-};
-
-bool check_window_option(const std::string& option,
-                         std::vector<int>& windows,
-                         const char *cmd, struct options *opts)
-{
-    size_t start = 0;
-    size_t osize = option.size();
-    for (;;) {
-        size_t comma = option.find(',', start);
-        std::string s = option.substr(start, comma);
-        int w;
-        if (s == "all"|| s == "all-top") {
-            for (struct tty_client *tclient  = TCLIENT_FIRST;
-                 tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
-                if (tclient->main_window == 0 || s == "all") {
-                    windows.push_back(tclient->index());
-                }
-            }
-        } else {
-                if (s == "current" || s == "top" || s == "current-top") {
-                    if (focused_client == nullptr) {
-                        printf_error(opts, "domterm %s: no current window", cmd);
-                        return false;
-                    }
-                    struct tty_client *main;
-                    if (s == "current" || focused_client->main_window == 0
-                        || (main = tty_clients(focused_client->main_window)) == nullptr)
-                        w = focused_client->index();
-                    else
-                        w = main->index();
-                } else {
-                    std::size_t pos = -1;
-                    w = std::stoi(s, &pos);
-                    if (pos != s.size() || ! tty_clients.valid_index(w)) {
-                        printf_error(opts, "domterm %s: invalid window number '%s'",
-                                     cmd, s.c_str());
-                        return false;
-                    }
-                }
-                windows.push_back(w);
-        }
-        if (comma == std::string::npos)
-            break;
-        start = comma + 1;
-    }
-    if (windows.size() == 0) {
-        printf_error(opts, "domterm %s: no window specifiers", cmd);
-        return false;
-    }
-    if (windows.size() != 1
-        && cmd == "capture") {
-        printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
-        return false;
-    }
-    return true;
-}
-
 int capture_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
@@ -984,25 +957,6 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
     lws_callback_on_writable(tclient->wsi);
     request_enter(opts);
     return EXIT_WAIT;
-}
-
-int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
-                         struct options *opts, const char *cmd,
-                         const char *seq, const char *default_window)
-{
-    const char *subarg = argc >= 2 ? argv[1] : NULL;
-    std::vector<int> windows;
-    std::string option = opts->windows;
-    if (option.empty())
-        option = default_window;
-    if (! check_window_option(option, windows, cmd, opts))
-        return EXIT_FAILURE;
-    for (int w : windows) {
-        tty_client *tclient = tty_clients(w);
-        tclient->ob.printf(seq);
-        lws_callback_on_writable(tclient->wsi);
-    }
-    return EXIT_SUCCESS;
 }
 
 int close_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1150,23 +1104,19 @@ struct command commands[] = {
     .action = imgcat_action },
   { .name ="image",
     .options = COMMAND_IN_CLIENT|COMMAND_ALIAS },
-  { .name ="add-style",
-    .options = COMMAND_IN_CLIENT,
+  { .name ="add-style", .options = COMMAND_IN_EXISTING_SERVER,
     .action = add_stylerule_action },
-  { .name ="enable-stylesheet",
-    .options = COMMAND_IN_CLIENT,
+  { .name ="enable-stylesheet", .options = COMMAND_IN_EXISTING_SERVER,
     .action = enable_stylesheet_action },
-  { .name ="disable-stylesheet",
-    .options = COMMAND_IN_CLIENT,
+  { .name ="disable-stylesheet", .options = COMMAND_IN_EXISTING_SERVER,
     .action = disable_stylesheet_action },
-  { .name ="load-stylesheet",
-    .options = COMMAND_IN_CLIENT,
+  { .name ="load-stylesheet", .options = COMMAND_IN_EXISTING_SERVER,
     .action = load_stylesheet_action },
   { .name ="list-stylesheets",
-    .options = COMMAND_IN_CLIENT,
+    .options = COMMAND_IN_EXISTING_SERVER,
     .action = list_stylesheets_action },
   { .name ="print-stylesheet",
-    .options = COMMAND_IN_CLIENT,
+    .options = COMMAND_IN_EXISTING_SERVER,
     .action = print_stylesheet_action },
   { .name ="fresh-line",
     .options = COMMAND_IN_CLIENT,
@@ -1185,8 +1135,7 @@ struct command commands[] = {
   { .name = "status",
     .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
     .action = status_action },
-  { .name = "reverse-video",
-    .options = COMMAND_IN_CLIENT,
+  { .name = "reverse-video", .options = COMMAND_IN_EXISTING_SERVER,
     .action = reverse_video_action },
   { .name = "help",
     .options = COMMAND_IN_CLIENT,
