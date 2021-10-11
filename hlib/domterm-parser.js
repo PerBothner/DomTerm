@@ -445,6 +445,7 @@ class DTParser {
                         }
                         this.controlSequenceState = DTParser.SEEN_CR;
                     }
+                    term._breakDeferredLines();
                     term.cursorLineStart(0);
                     break;
                 case 10: // '\n' newline
