@@ -1243,6 +1243,32 @@ Kill the @code{domterm} server.
 This also kills all local sessions.
 Also close any windows, unless @code{--only} is specified.
 (This may kill remote sessions if their only window is closed.)
+
+@item @b{@code{capture}} @var{capture-option}...
+Get the text contents of the @ref{window-specifier-option, specified window}
+(defaulting to the @code{current} window).
+The text is printed on standard output.
+This command is useful for testing.
+
+A @var{capture-options} can be:
+@table @asis
+@item @code{-B}
+Only capture the contents of the current buffer,
+as opposed to that of all buffers of the specified window.
+@item @code{-l}
+Include active soft newlines (i.e. from line-wrap or pretty-printing)
+as newlines in the output.
+@item @code{-e}
+Include ANSI escape sequences that encode color and style in the output.
+These escapes should work on almost all modern terminals.
+Currently, only explicit colors (of text or background) are included:
+No underlines or similar text emhasis, and no ``logical'' styles
+(such as prompt or input areas); these will be added later.
+@end table
+
+In the future some options make be extended to take optional arguments,
+so scripts should not combine options:
+instead of @code{-Ble} write @code{-B -l -e}.
 @end table
 
 @subheading ``Printing'' images or html
@@ -1486,7 +1512,7 @@ This option is the default unless @code{--port} is specified.
 @subheading Working with styles
 
 All of these work with a @ref{window-specifier-option, window-specifier option},
-defaulting to the @code{current window}.
+defaulting to the @code{current} window.
 
 @table @asis
 @item @b{@code{reverse-video}} @code{on}|@code{off}
