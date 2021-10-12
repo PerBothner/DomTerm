@@ -7888,8 +7888,6 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     start = start.parentNode;
                 first = start.nextSibling;
             }
-            if (start._widthMode === undefined)
-                console.log("undefined widmod");
             var countColumns = ! Terminal._forceMeasureBreaks
                 && start._widthMode !== undefined
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
@@ -8722,10 +8720,78 @@ Terminal._selectionAsHTML = function(sel = window.getSelection()) {
     return hstring;
 }
 
+Terminal.colorNames = [
+    'black', 'red', 'green', 'yellow',
+    'blue', 'magenta', 'cyan', 'lightgray',
+    'darkgray', 'lightred', 'lightgreen', 'lightyellow',
+    'lightblue', 'lightmagenta', 'lightcyan', 'white' ];
+
 Terminal._rangeAsText = function(range, options={}) {
     let t = "";
+    let addEscapes = options['escape'];
+    let softLinebreaks = options['soft-linebreaks'];
+    let prevBg = null, prevFg = null, lineFirst = true;
     function wrapText(tnode, start, end) {
         let parent = tnode.parentNode;
+        let lineColor = '';
+        if (parent.getAttribute('line'))
+            return;
+        if (addEscapes) {
+            let curBg = null, curFg = null;
+            for (let p = parent; ; p = p.parentNode) {
+                let isBlock = Terminal.isBlockNode(p);
+                let pstyle = p.style;
+                if (! curFg)
+                    curFg = pstyle['color'];
+                if (isBlock && lineFirst) {
+                    lineColor = pstyle['background-color'];
+                }
+                if (! curBg)
+                    curBg = pstyle['background-color'];
+                if (isBlock) {
+                    break;
+                }
+            }
+            function encodeColor(cssValue, isBackground) {
+                let m;
+                if (!cssValue)
+                    t += isBackground ? '\x1B[49m' : '\x1B[39m';
+                else if ((m = cssValue.match(/var\(--dt-(.*)\)/))) {
+                    let num = Terminal.colorNames.indexOf(m[1]);
+                    if (num >= 0 && num < 16) {
+                        let code = num < 8 ? num + 30 : num - 8 + 90;
+                        if (isBackground)
+                            code += 10;
+                        t += '\x1B[' + code + 'm';
+                    }
+                } else if ((m = cssValue.match(/#(..)(..)(..)/))) {
+                    t += '\x1B['
+                        + (isBackground ? 48 : 38) + ';2;'
+                        + parseInt(m[1], 16) + ';'
+                        + parseInt(m[2], 16) + ';'
+                        + parseInt(m[3], 16) + 'm';
+                } else if ((m = cssValue.match(/rgb\(([0-9]+), *([0-9]+), *([0-9]+)\)/))) {
+                    t += '\x1B['
+                        + (isBackground ? 48 : 38) + ';2;'
+                        + m[1] + ';'
+                        + m[2] + ';'
+                        + m[3] + 'm';
+                }
+            }
+            if (lineColor) {
+                encodeColor(lineColor, true);
+                prevBg = lineColor;
+                t += '\x1B[K'; // Erase in Line, for Background Color Erase
+            }
+            if (curFg !== prevFg) {
+                encodeColor(curFg, false);
+                prevFg = curFg;
+            }
+            if (curBg !== prevBg) {
+                encodeColor(curBg, true);
+                prevBg = curBg;
+            }
+        }
         // Skip text that is input-line but not actual input (std="input")
         // (for example "spacer" text before a right-prompt).
         if (parent instanceof Element) {
@@ -8749,17 +8815,42 @@ Terminal._rangeAsText = function(range, options={}) {
         if (stdElement && stdElement.getAttribute("prompt-kind") == "r")
             return;
         t += tnode.data.substring(start, end);
+        lineFirst = false;
     }
     function elementExit(node) {
+        let endOfLine = false;
         if (Terminal.isBlockNode(node)
-            && t.length > 0 && t.charCodeAt(t.length-1) != 10)
+            && t.length > 0 && t.charCodeAt(t.length-1) != 10) {
             t += '\n';
+            endOfLine = true;
+        }
+        let lineAttr = node.getAttribute('line');
+        if (lineAttr) {
+            endOfLine = true;
+        }
+        if (endOfLine) {
+            if (addEscapes && (prevFg || prevBg)) {
+                t += '\x1B[m';
+                prevFg = prevBg = '';
+            }
+            lineFirst = true;
+        }
+        if (lineAttr) {
+            let val = node.textContent;
+            if (! val && softLinebreaks
+                && node.getAttribute('breaking') === 'yes')
+                val = '\n';
+            t += val;
+        }
         return false;
     }
     function lineHandler(node) { return true; }
     let scanState = { linesCount: 0, todo: Infinity, unit: "char", stopAt: "",
                       wrapText: wrapText, elementExit, lineHandler };
     Terminal.scanInRange(range, false, scanState);
+    if (addEscapes && (prevFg || prevBg)) {
+        t += '\x1B[m';
+    }
     return t;
 }
 

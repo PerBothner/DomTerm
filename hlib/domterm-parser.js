@@ -1030,14 +1030,10 @@ class DTParser {
                     case 27:
                         term._pushStyle("reverse", null);
                         break;
-                    case 30: term._pushFgStdColor("black"); break;
-                    case 31: term._pushFgStdColor("red"); break;
-                    case 32: term._pushFgStdColor("green"); break;
-                    case 33: term._pushFgStdColor("yellow"); break;
-                    case 34: term._pushFgStdColor("blue"); break;
-                    case 35: term._pushFgStdColor("magenta"); break;
-                    case 36: term._pushFgStdColor("cyan"); break;
-                    case 37: term._pushFgStdColor("light-gray"); break;
+                    case 30: case 31: case 32: case 33:
+                    case 34: case 35: case 36: case 37:
+                        term._pushFgStdColor(Terminal.colorNames[param-30]);
+                        break;
                     case 38:
                     case 48:
                         var property = param==38 ? "color" : "background-color";
@@ -1057,31 +1053,21 @@ class DTParser {
                         }
                         break;
                     case 39: term._pushStyle("color", null/*defaultForegroundColor*/); break;
-                    case 40: term._pushBgStdColor("black"); break;
-                    case 41: term._pushBgStdColor("red"); break;
-                    case 42: term._pushBgStdColor("green"); break;
-                    case 43: term._pushBgStdColor("yellow"); break;
-                    case 44: term._pushBgStdColor("blue"); break;
-                    case 45: term._pushBgStdColor("magenta"); break;
-                    case 46: term._pushBgStdColor("cyan"); break;
-                    case 47: term._pushBgStdColor("light-gray"); break;
-                    case 49: term._pushStyle("background-color", null/*defaultBackgroundColor*/); break
-                    case 90: term._pushFgStdColor("dark-gray"); break;
-                    case 91: term._pushFgStdColor("light-red"); break;
-                    case 92: term._pushFgStdColor("light-green"); break;
-                    case 93: term._pushFgStdColor("light-yellow"); break;
-                    case 94: term._pushFgStdColor("light-blue"); break;
-                    case 95: term._pushFgStdColor("light-magenta"); break;
-                    case 96: term._pushFgStdColor("light-cyan"); break;
-                    case 97: term._pushFgStdColor("white"); break;
-                    case 100: term._pushBgStdColor("dark-gray"); break;
-                    case 101: term._pushBgStdColor("light-red"); break;
-                    case 102: term._pushBgStdColor("light-green"); break;
-                    case 103: term._pushBgStdColor("light-yellow"); break;
-                    case 104: term._pushBgStdColor("light-blue"); break;
-                    case 105: term._pushBgStdColor("light-magenta"); break;
-                    case 106: term._pushBgStdColor("light-cyan"); break;
-                    case 107: term._pushBgStdColor("white"); break;
+                    case 40: case 41: case 42: case 43:
+                    case 44: case 45: case 46: case 47:
+                        term._pushBgStdColor(Terminal.colorNames[param-40]);
+                        break;
+                    case 49:
+                        term._pushStyle("background-color", null/*defaultBackgroundColor*/);
+                        break;
+                    case 90: case 91: case 92: case 93:
+                    case 94: case 95: case 96: case 97:
+                        term._pushFgStdColor(Terminal.colorNames[param-90+8]);
+                        break;
+                    case 100: case 101: case 102: case 103:
+                    case 104: case 105: case 106: case 107:
+                        term._pushBgStdColor(Terminal.colorNames[param-100+8]);
+                        break;
                     }
                 }
             }
@@ -1968,7 +1954,7 @@ class DTParser {
                 let range = new Range();
                 range.selectNode(term.initial);
                 term.reportEvent("RESPONSE", JSON.stringify({ id: options.id,
-                                                              out: Terminal._rangeAsText(range)
+                                                              out: Terminal._rangeAsText(range, options)
                                                             }));
                 break;
             }

@@ -947,13 +947,40 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
     std::vector<int> windows;
+    json request;
+    request["id"] = opts->index();
+    request["cmd"] = "capture";
+    optind = 1;
+    opterr = 0;
+    for (;;) {
+        int c = getopt(argc, (char *const*) argv, "+:w:el");
+        if (c == -1)
+            break;
+        switch (c) {
+        case '?':
+            printf_error(opts, "domterm capture: unknown option character '%c'", optopt);
+            return EXIT_FAILURE;
+        case ':':
+            printf_error(opts, "domterm capture: missing argument to option '-%c'", optopt);
+            return EXIT_FAILURE;
+        case 'w':
+            opts->windows = optarg;
+            break;
+        case 'e':
+            request["escape"] = true;
+            break;
+        case 'l':
+            request["soft-linebreaks"] = true;
+            break;
+        }
+    }
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
     if (! check_window_option(option, windows, "capture", opts))
         return EXIT_FAILURE;
     tty_client *tclient = tty_clients(windows[0]);
-    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"capture\",\"id\": %d}\007"), opts->index());
+    tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
     lws_callback_on_writable(tclient->wsi);
     request_enter(opts);
     return EXIT_WAIT;
