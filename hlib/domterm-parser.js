@@ -1952,7 +1952,8 @@ class DTParser {
             switch (command) {
             case 'capture': {
                 let range = new Range();
-                range.selectNode(term.initial);
+                let rnode = options['current-buffer'] ? term.initial : term.buffers;
+                range.selectNode(rnode);
                 term.reportEvent("RESPONSE", JSON.stringify({ id: options.id,
                                                               out: Terminal._rangeAsText(range, options)
                                                             }));
