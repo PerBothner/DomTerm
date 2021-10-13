@@ -110,7 +110,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: client-data-links.stamp $(RESOURCE_DEPS) $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(RESOURCE_DEPS) resources.stamp $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -304,6 +304,9 @@ endif
 endif
 dist_java_sources = $(base_domterm_jar_sources) $(pty_sources) \
   $(javafx_sources) $(javafx_pty_sources)
+
+resources.stamp: $(HLIB_DATA_FILES)
+	touch resources.stamp
 
 classes.stamp: $(domterm_jar_sources)
 if WITH_JAVA

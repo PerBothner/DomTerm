@@ -55,7 +55,7 @@ if WITH_XTERMJS
 endif
 	touch xterm.stamp
 
-resources.cc: ../client-data-links.stamp xterm.stamp
+resources.cc: ../client-data-links.stamp xterm.stamp ../resources.stamp
 	type $(XXD) >/dev/null
 	echo '#include "server.h"' >tmp-resources.c
 	for file in $(LWS_RESOURCES); do \
