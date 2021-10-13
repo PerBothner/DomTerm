@@ -1954,9 +1954,8 @@ class DTParser {
                 let range = new Range();
                 let rnode = options['current-buffer'] ? term.initial : term.buffers;
                 range.selectNode(rnode);
-                term.reportEvent("RESPONSE", JSON.stringify({ id: options.id,
-                                                              out: Terminal._rangeAsText(range, options)
-                                                            }));
+                term.sendResponse({out: Terminal._rangeAsText(range, options)},
+                                 options);
                 break;
             }
             case 'list-stylesheets': {
@@ -1965,23 +1964,19 @@ class DTParser {
                 for (let i = 0; i < sheets.length; i++) {
                     result += i + ': ' + sheets[i] + '\n';
                 }
-                term.reportEvent("RESPONSE", JSON.stringify({ id: options.id,
-                                                              out: result
-                                                            }));
+                term.sendResponse({out: result}, options);
                 break;
             }
             case 'load-stylesheet': {
                 let r = term.loadStyleSheet(options.name, options.value);
-                term.reportEvent("RESPONSE",
-                                 JSON.stringify( { id: options.id, out: r }));
+                term.sendResponse({out: id}, options);
                 break;
             }
             case 'enable-stylesheet':
             case 'disable-stylesheet': {
                 let disable = command === 'disable-stylesheet';
                 let r = term.maybeDisableStyleSheet(options.select, disable);
-                term.reportEvent("RESPONSE",
-                                 JSON.stringify( { id: options.id, err: r }));
+                term.sendResponse({err: r}, options);
                 break;
             }
             case 'print-stylesheet': {
@@ -1991,15 +1986,15 @@ class DTParser {
                     styleSheet = "stylesheet rules not available";
                 let r;
                 if (typeof styleSheet == "string") {
-                    r = { id: options.id, err: styleSheet };
+                    r = { err: styleSheet };
                 } else {
                     r = "";
                     for (const rule of styleSheet.cssRules) {
                         r += rule.cssText + '\n';
                     }
-                    r = { id: options.id, out: r };
+                    r = { out: r };
                 }
-                term.reportEvent("RESPONSE", JSON.stringify(r));
+                term.sendResponse(r, options);
                 break;
             }
             case 'close':

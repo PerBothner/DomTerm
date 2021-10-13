@@ -4709,6 +4709,15 @@ Terminal.prototype.reportEvent = function(name, data = "") {
     this.processInputBytes(buf0);
 };
 
+Terminal.prototype.sendResponse = function(data, options) {
+    if (options.id)
+        data.id = options.id;
+    let from_remote = options['from-ssh-remote'];
+    if (from_remote)
+        data['from-ssh-remote'] = from_remote;
+    this.reportEvent("RESPONSE", JSON.stringify(data));
+}
+
 Terminal.prototype.reportKeyEvent = function(keyName, str) {
     let seqno = this._keyEventCounter;
     let data = ""+keyName+"\t"+seqno+"\t"+JSON.stringify(str);

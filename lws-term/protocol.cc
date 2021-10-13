@@ -1271,6 +1271,9 @@ reportEvent(const char *name, char *data, size_t dlen,
         json obj = json::parse(data, nullptr, false);
         if (obj.is_object() && obj.contains("id")
             && obj["id"].is_number()) {
+            if (obj.contains("from-ssh-remote")
+                && proxyMode == proxy_display_local)
+                return false;
             int rid = obj["id"].get<int>();
             struct options *request = pending_requests(rid);
             if (request) {

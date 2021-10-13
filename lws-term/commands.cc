@@ -134,6 +134,18 @@ int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
+void send_request(json& request, const char *cmd,
+                  struct options *opts, struct tty_client *tclient)
+{
+    request["id"] = opts->index();
+    request["cmd"] = cmd;
+    if (tclient->proxyMode == proxy_remote)
+        request["from-ssh-remote"] = true;
+    tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
+    lws_callback_on_writable(tclient->wsi);
+    request_enter(opts);
+}
+
 int html_action(int argc, arglist_t argv, struct lws *wsi,
                 struct options *opts)
 {
@@ -356,10 +368,9 @@ int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
         option = "current";
     if (! check_window_option(option, windows, "print-stylesheet", opts))
         return EXIT_FAILURE;
-    tty_client *tclient = tty_clients(windows[0]);
-    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"print-stylesheet\",\"id\": %d, \"select\": \"%s\"}\007"), opts->index(), argv[1]);
-    lws_callback_on_writable(tclient->wsi);
-    request_enter(opts);
+    json request;
+    request["select"] = argv[1];
+    send_request(request, "print-stylesheet", opts, tty_clients(windows[0]));
     return EXIT_WAIT;
 }
 
@@ -372,10 +383,8 @@ int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
         option = "current";
     if (! check_window_option(option, windows, "list-stylesheets", opts))
         return EXIT_FAILURE;
-    tty_client *tclient = tty_clients(windows[0]);
-    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"list-stylesheets\",\"id\": %d}\007"), opts->index());
-    lws_callback_on_writable(tclient->wsi);
-    request_enter(opts);
+    json request;
+    send_request(request, "list-stylesheets", opts, tty_clients(windows[0]));
     return EXIT_WAIT;
 }
 
@@ -411,20 +420,16 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
            break;
         off += n;
     }
-    json jname = name;
-    json jvalue = std::string(buf, off);
     std::vector<int> windows;
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
     if (! check_window_option(option, windows, "load-stylesheet", opts))
         return EXIT_FAILURE;
-    tty_client *tclient = tty_clients(windows[0]);
-    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"load-stylesheet\",\"id\": %d, \"name\": %s, \"value\": %s}\007"),
-                       opts->index(),
-                       jname.dump().c_str(), jvalue.dump().c_str());
-    lws_callback_on_writable(tclient->wsi);
-    request_enter(opts);
+    json request;
+    request["name"] = name;
+    request["value"] = std::string(buf, off);
+    send_request(request, "load-stylesheet", opts, tty_clients(windows[0]));
     return EXIT_WAIT;
 }
 
@@ -445,11 +450,9 @@ int maybe_disable_stylesheet(bool disable, int argc, arglist_t argv,
         option = "current";
     if (! check_window_option(option, windows, command, opts))
         return EXIT_FAILURE;
-    tty_client *tclient = tty_clients(windows[0]);
-    tclient->ob.printf(URGENT_WRAP("\033]97;{\"cmd\": \"%s\",\"id\": %d, \"select\": \"%s\"}\007"),
-                       command, opts->index(), specifier);
-    lws_callback_on_writable(tclient->wsi);
-    request_enter(opts);
+    json request;
+    request["select"] = specifier;
+    send_request(request, command, opts, tty_clients(windows[0]));
     return EXIT_WAIT;
 }
 
@@ -948,8 +951,6 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
 {
     std::vector<int> windows;
     json request;
-    request["id"] = opts->index();
-    request["cmd"] = "capture";
     optind = 1;
     opterr = 0;
     for (;;) {
@@ -982,10 +983,7 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
         option = "current";
     if (! check_window_option(option, windows, "capture", opts))
         return EXIT_FAILURE;
-    tty_client *tclient = tty_clients(windows[0]);
-    tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
-    lws_callback_on_writable(tclient->wsi);
-    request_enter(opts);
+    send_request(request, "capture", opts, tty_clients(windows[0]));
     return EXIT_WAIT;
 }
 
