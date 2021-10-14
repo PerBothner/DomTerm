@@ -220,7 +220,7 @@ public:
     struct lws *wsi;
     struct lws *out_wsi;
 
-    // 0: Not initialized; 2: initialized
+    // -1; start start; 0: Not initialized, VERSION received; 2: initialized
     // 1: reconnecting - client has state, but connection was dropped
     int initialized : 3;
 

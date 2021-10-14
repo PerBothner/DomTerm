@@ -1125,9 +1125,9 @@ reportEvent(const char *name, char *data, size_t dlen,
         char *version_info = challoc(dlen+1);
         strcpy(version_info, data);
         client->version_info = version_info;
+        client->initialized = 0;
         if (proxyMode == proxy_display_local)
             return false;
-        client->initialized = 0;
         if (pclient == NULL)
             return true;
         if (pclient->cmd) {
@@ -1423,7 +1423,7 @@ reportEvent(const char *name, char *data, size_t dlen,
 
 tty_client::tty_client()
 {
-    this->initialized = 0;
+    this->initialized = -1;
     this->options = NULL;
     this->is_headless = false;
     this->is_primary_window = false;
@@ -1629,7 +1629,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
             }
         }
     }
-    if (client->initialized < 2 && proxyMode != proxy_command_local
+    if ((client->initialized >> 1) == 0 && proxyMode != proxy_command_local
         && pclient && pclient->preserved_output != NULL) {
         size_t pstart = pclient->preserved_start;
         size_t pend = pclient->preserved_end;
@@ -1650,11 +1650,13 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         sb.printf(OUT_OF_BAND_START_STRING "\033[96;%ld"
                   URGENT_END_STRING, rcount);
     }
-    if (pclient && client->pty_window_update_needed && proxyMode != proxy_command_local) {
+    if (pclient && client->pty_window_update_needed
+        && client->initialized >= 0
+        && proxyMode != proxy_display_local
+        && proxyMode != proxy_command_local) {
         client->pty_window_update_needed = false;
         int kind = proxyMode == proxy_display_local ? 2
             : (int) pclient->session_name_unique;
-        lwsl_info("- send session info kind: %d session:%d\n", kind, pclient->session_number);
         sb.printf(URGENT_WRAP("\033[91;%d;%d;%d;%du"),
                   kind,
                   pclient->session_number,
@@ -1695,7 +1697,8 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         }
         client->ob.reset();
     }
-    client->initialized = 2;
+    if (client->initialized >= 0)
+        client->initialized = 2;
 
     if (to_proxy) {
         if (sb.len > 0 && proxyMode == proxy_remote && client->options) {
