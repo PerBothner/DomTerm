@@ -20,6 +20,7 @@ OPTION_S(titlebar, "titlebar", OPTION_STRING_TYPE)
 /* front-end options */
 OPTION_F(style_user, "style.user", OPTION_MISC_TYPE)
 OPTION_F(style_dark, "style.dark", OPTION_MISC_TYPE)
+OPTION_F(style_blink_rate, "style.blink-rate", OPTION_MISC_TYPE)
 OPTION_F(style_caret, "style.caret", OPTION_MISC_TYPE)
 OPTION_F(style_edit_caret, "style.edit-caret", OPTION_MISC_TYPE)
 OPTION_F(style_qt, "style.qt", OPTION_MISC_TYPE)

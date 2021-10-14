@@ -507,6 +507,57 @@ class Terminal {
         return editStyle ? this.caretEditStyle : this.caretCharStyle;
     }
 
+    startBlinkTimer() {
+        if (this._blinkHideTime == undefined)
+            setBlinkRate(); // initialize to defaults
+        // _blinkEnabled: undefined or 0 - no blinking elements;
+        // 1 - blinking elements but blinking disabled (hideTime is 0);
+        // 2 - active blinking
+        if (this._blinkHideTime === 0)
+            this._blinkEnabled = 1;
+        else if (this._blinkEnabled !== 2) {
+            let hiding = false;
+            let flip = () => {
+                let hideTime = this._blinkHideTime;
+                if (hiding) {
+                    this.topNode.classList.remove('blinking-hide');
+                    if (! this.buffers.querySelector('.term-style[text-decoration~="blink"]')) {
+                        this._blinkEnabled = 0;
+                        return;
+                    }
+                }
+                if (hideTime === 0) {
+                    this._blinkEnabled = 1;
+                } else if (hiding) {
+                    hiding = false;
+                    setTimeout(flip, this._blinkShowTime);
+                } else {
+                    this.topNode.classList.add('blinking-hide');
+                    hiding = true;
+                    setTimeout(flip, hideTime);
+                }
+            }
+            setTimeout(flip, this._blinkShowTimw);
+            this._blinkEnabled = 2;
+        }
+    }
+
+    setBlinkRate(str = "") {
+        let m;
+        if ((m = str.match(/^ *([.0-9]+) +([.0-9]+) *$/))
+            || (m = str.match(/^ *([.0-9]+) *, *([.0-9]+) *$/))) {
+            this._blinkHideTime = 1000 * m[1];
+            this._blinkShowTime = 1000 * m[2];
+        } else if ((m = str.match(/^ *([.0-9]+) *$/))) {
+            this._blinkHideTime = this._blinkShowTime = 1000 * m[1];
+        } else { // default values
+            this._blinkShowTime = 700;
+            this._blinkHideTime = 300;
+        }
+        if (this._blinkHideTime !== 0 && this._blinkEnabled == 1)
+            this.startBlinkTimer();
+    }
+
     // state can be true, false or "toggle"
     setMarkMode(state) {
         let oldState = this._markMode;
@@ -2882,6 +2933,7 @@ Terminal.prototype._adjustStyle = function() {
                 decoration = decoration ? decoration + " overline" : "overline";
                 break;
             case "text-blink":
+                this.startBlinkTimer();
                 decoration = decoration ? decoration + " blink" : "blink";
                 break;
             case "text-line-through":
@@ -5989,6 +6041,7 @@ Terminal.prototype.updateSettings = function() {
         }
         this.setReverseVideo(this._asBoolean(style_dark));
     }
+    this.setBlinkRate(getOption("style.blink-rate", ""));
 
     for (let c = 0; c <= 1; c++) {
         let cstyle = getOption(c ? "style.edit-caret" : "style.caret");

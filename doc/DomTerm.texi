@@ -1897,6 +1897,16 @@ if possible, or otherwise @code{off}, which selects
 lighter background and a darker foreground colors.
 Currently @code{auto} is only known to work on Firefox running on Gnome.
 
+@item @code{@b{style.blink-rate} =} [@var{hide-time} [@var{show-time}]]
+@itemx @code{@b{style.blink-rate} =} @var{hide-time}@code{,}@var{show-time}
+Control rate of blinking text.
+The text is invisible for @var{hide-time} seconds,
+and then visible for @var{show-time} seconds, and then repeats.
+Blinking is disabled if @var{hide-time} is zero.
+If only one value is specified,
+@var{show-time} defaults to @var{hide-time}.
+If neither is specified the default is @code{0.3,0.7}.
+
 @item @code{@b{style.caret} =} @var{value}
 @itemx @code{@b{style.edit-caret} =} @var{value}
 Change the style of the caret (text input cursor).

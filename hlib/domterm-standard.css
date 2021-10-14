@@ -38,4 +38,4 @@ span.term-style[font-weight="lighter"] { font-weight: lighter }
 span.term-style[text-decoration~="underline"] { text-decoration: underline }
 span.term-style[text-decoration~="overline"] { text-decoration: overline }
 span.term-style[text-decoration~="line-through"] { text-decoration: line-through }
-span.term-style[text-decoration~="blink"] { text-decoration: blink }
+div.domterm.blinking-hide span.term-style[text-decoration~="blink"] { color: #00000000   }
