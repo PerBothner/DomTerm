@@ -1261,9 +1261,8 @@ as newlines in the output.
 @item @code{-e}
 Include ANSI escape sequences that encode color and style in the output.
 These escapes should work on almost all modern terminals.
-Currently, only explicit colors (of text or background) are included:
-No underlines or similar text emhasis, and no ``logical'' styles
-(such as prompt or input areas); these will be added later.
+DomTerm-specific ``logical'' styles (such as prompt or input areas)
+are currently ignored.
 @end table
 
 In the future some options make be extended to take optional arguments,

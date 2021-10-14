@@ -2940,6 +2940,7 @@ Terminal.prototype._adjustStyle = function() {
                 decoration = decoration ? decoration + " line-through" : "line-through";
                 break;
             case "font-weight":
+            case "font-style":
                 styleSpan.setAttribute(key, value);
                 break;
             }
@@ -8792,14 +8793,21 @@ Terminal._rangeAsText = function(range, options={}) {
     let t = "";
     let addEscapes = options['escape'];
     let softLinebreaks = options['soft-linebreaks'];
-    let prevBg = null, prevFg = null, lineFirst = true;
+    let prevBg = null, prevFg = null, prevStyle = null, lineFirst = true;
+    const BOLD = 1 << 1; //font-weight=bold
+    const LIGHTER = 1 << 2; //font-weight=lighter
+    const ITALIC = 1 << 3; //font-style=italic
+    const UNDERLINE = 1 << 4; // text-underline=yes
+    const BLINK = 1 << 5; // text-blink=yes
+    const INVERSE = 1 << 7; // reverse=yes
+    const CROSSED_OUT = 1 << 9; // text-line-through=yes
     function wrapText(tnode, start, end) {
         let parent = tnode.parentNode;
         let lineColor = '';
         if (parent.getAttribute('line'))
             return;
         if (addEscapes) {
-            let curBg = null, curFg = null;
+            let curBg = null, curFg = null, curStyle = 0;
             for (let p = parent; ; p = p.parentNode) {
                 let isBlock = Terminal.isBlockNode(p);
                 let pstyle = p.style;
@@ -8810,6 +8818,22 @@ Terminal._rangeAsText = function(range, options={}) {
                 }
                 if (! curBg)
                     curBg = pstyle['background-color'];
+                let decoration = p.getAttribute('text-decoration');
+                if (decoration) {
+                    if (decoration.indexOf('underline') >= 0)
+                        curStyle |= UNDERLINE;
+                    if (decoration.indexOf('blink') >= 0)
+                        curStyle |= BLINK;
+                }
+                let weight = p.getAttribute('font-weight');
+                if (weight === 'bold')
+                    curStyle |= BOLD;
+                if (weight === 'lighter')
+                    curStyle |= LIGHTER;
+                if (p.getAttribute('reverse') === 'yes')
+                    curStyle |= INVERSE;
+                if (p.getAttribute('font-style') === 'italic')
+                    curStyle |= ITALIC;
                 if (isBlock) {
                     break;
                 }
@@ -8844,6 +8868,34 @@ Terminal._rangeAsText = function(range, options={}) {
                 encodeColor(lineColor, true);
                 prevBg = lineColor;
                 t += '\x1B[K'; // Erase in Line, for Background Color Erase
+            }
+            if (curStyle !== prevStyle) {
+                let m = '';
+                function ifAdded(mask, value) {
+                    if ((curStyle & mask) && ! (prevStyle & mask))
+                        m += ';'+value;
+                }
+                function ifRemoved(mask, value) {
+                    if (! (curStyle & mask) && (prevStyle & mask))
+                        m += ';'+value;
+                }
+                ifRemoved(BOLD, 22);
+                ifRemoved(LIGHTER, 22);
+                ifAdded(BOLD, 1);
+                ifAdded(LIGHTER, 2);
+                ifAdded(ITALIC, 3);
+                ifAdded(UNDERLINE, 4);
+                ifAdded(BLINK, 5);
+                ifAdded(INVERSE, 7);
+                ifAdded(CROSSED_OUT, 9);
+                ifRemoved(ITALIC, 23);
+                ifRemoved(UNDERLINE, 24);
+                ifRemoved(BLINK, 25);
+                ifRemoved(INVERSE, 27);
+                ifRemoved(CROSSED_OUT, 29);
+                if (m)
+                    t += '\x1B[' + m.substring(1) + 'm';
+                prevStyle = curStyle;
             }
             if (curFg !== prevFg) {
                 encodeColor(curFg, false);
@@ -8891,9 +8943,10 @@ Terminal._rangeAsText = function(range, options={}) {
             endOfLine = true;
         }
         if (endOfLine) {
-            if (addEscapes && (prevFg || prevBg)) {
+            if (addEscapes && (prevFg || prevBg || prevStyle)) {
                 t += '\x1B[m';
                 prevFg = prevBg = '';
+                prevStyle = 0;
             }
             lineFirst = true;
         }
