@@ -489,6 +489,7 @@ extern int new_action(int, arglist_t, struct lws *, struct options *);
 extern void print_version(FILE*);
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, const char *arg);
+extern struct pty_client *find_session(const char *specifier);
 
 #ifndef DOMTERM_DIR_RELATIVE
 /* Data directory, relative to binary's parent directory.

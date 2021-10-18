@@ -17,7 +17,8 @@ extern struct command commands[];
 
 bool check_window_option(const std::string& option,
                          std::vector<int>& windows,
-                         const char *cmd, struct options *opts)
+                         const char *cmd, struct options *opts,
+                         bool single_window = false)
 {
     size_t start = 0;
     size_t osize = option.size();
@@ -63,14 +64,20 @@ bool check_window_option(const std::string& option,
         printf_error(opts, "domterm %s: no window specifiers", cmd);
         return false;
     }
-    if (windows.size() != 1
-        && (cmd == "capture" ||
-            cmd == "list-stylesheets" ||
-            cmd == "print-stylesheets")) {
+    if (windows.size() != 1 && single_window) {
         printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
         return false;
     }
     return true;
+}
+
+int check_single_window_option(const std::string& woption,
+                               const char *cmd, struct options *opts)
+{
+    std::vector<int> windows;
+    if (! check_window_option(woption, windows, cmd, opts, true))
+        return -1;
+    return windows[0];
 }
 
 int is_domterm_action(int argc, arglist_t argv, struct lws *wsi,
@@ -362,15 +369,15 @@ int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                      : "(too many arguments to print-stylesheets)");
         return EXIT_FAILURE;
     }
-    std::vector<int> windows;
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "print-stylesheet", opts))
+    int window = check_single_window_option(option, "print-stylesheets", opts);
+    if (window < 0)
         return EXIT_FAILURE;
     json request;
     request["select"] = argv[1];
-    send_request(request, "print-stylesheet", opts, tty_clients(windows[0]));
+    send_request(request, "print-stylesheet", opts, tty_clients(window));
     return EXIT_WAIT;
 }
 
@@ -381,7 +388,7 @@ int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "list-stylesheets", opts))
+    if (! check_window_option(option, windows, "list-stylesheets", opts, true))
         return EXIT_FAILURE;
     json request;
     send_request(request, "list-stylesheets", opts, tty_clients(windows[0]));
@@ -424,7 +431,7 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "load-stylesheet", opts))
+    if (! check_window_option(option, windows, "load-stylesheet", opts, true))
         return EXIT_FAILURE;
     json request;
     request["name"] = name;
@@ -448,7 +455,7 @@ int maybe_disable_stylesheet(bool disable, int argc, arglist_t argv,
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, command, opts))
+    if (! check_window_option(option, windows, command, opts, true))
         return EXIT_FAILURE;
     json request;
     request["select"] = specifier;
@@ -476,7 +483,7 @@ int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "add-style", opts))
+    if (! check_window_option(option, windows, "add-style", opts, false))
         return EXIT_FAILURE;
     for (int w : windows) {
         tty_client *tclient = tty_clients(w);
@@ -981,7 +988,7 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "capture", opts))
+    if (! check_window_option(option, windows, "capture", opts, true))
         return EXIT_FAILURE;
     send_request(request, "capture", opts, tty_clients(windows[0]));
     return EXIT_WAIT;
@@ -1042,6 +1049,80 @@ int minimize_action(int argc, arglist_t argv, struct lws *wsi,
                                 "minimize",
                                 URGENT_WRAP("\033[2t"),
                                 "top");
+}
+
+int send_input_action(int argc, arglist_t argv, struct lws *wsi,
+                      struct options *opts)
+{
+    const char *session_specifier = nullptr;
+    const char *window_specifier = nullptr;
+    optind = 1;
+    opterr = 0;
+    for (;;) {
+        int c = getopt(argc, (char *const*) argv, "+:w:s:");
+        if (c == -1)
+            break;
+        switch (c) {
+        case '?':
+            printf_error(opts, "domterm send-input: unknown option character '%c'", optopt);
+            return EXIT_FAILURE;
+        case ':':
+            printf_error(opts, "domterm send-input: missing argument to option '-%c'", optopt);
+            return EXIT_FAILURE;
+        case 'w':
+            opts->windows = optarg;
+            break;
+        case 's':
+            session_specifier = optarg;
+            break;
+        }
+    }
+    struct pty_client *pclient = nullptr;
+    if (session_specifier) {
+        if (! opts->windows.empty()) {
+            printf_error(opts, "domterm send-input: both -w (window) and -s (session) options");
+            return EXIT_FAILURE;
+        }
+        pclient = find_session(session_specifier);
+        if (pclient == NULL) {
+            printf_error(opts, "domterm send-input: no session '%s' found", session_specifier);
+            return EXIT_FAILURE;
+        }
+    } else {
+        std::string woption = opts->windows;
+        if (woption.empty())
+            woption = "current";
+        int window = check_single_window_option(woption, "send-input", opts);
+        if (window < 0)
+            return EXIT_FAILURE;
+        pclient = tty_clients(window)->pclient;
+        if (pclient == NULL) {
+            printf_error(opts, "domterm send-input: no session for window '%s'",
+                         woption.c_str());
+            return EXIT_FAILURE;
+        }
+    }
+    if (optind == argc) {
+        printf_error(opts, "domterm send-input: no input string to send");
+        return EXIT_FAILURE;
+    }
+    bool write_error = false;
+    for (int i = optind; ; ) {
+        //lwsl_notice("wsend-input '%s'\n", argv[i]);
+        const char *str = argv[i]; // FIXME handle escapes
+        char *xstr = parse_string(str, false);
+        size_t slen = strlen(xstr);
+        write_error = write(pclient->pty, xstr, slen) < slen;
+        free(xstr);
+        if (write_error || ++i == argc)
+            break;
+        write_error = write(pclient->pty, " ", 1) != 1;
+    }
+    if (write_error) {
+        printf_error(opts, "domterm send-input: error while writing");
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
 
 int show_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1190,7 +1271,15 @@ struct command commands[] = {
     .action = toggle_hide_action},
   { .name = "toggle-minimize", .options = COMMAND_IN_EXISTING_SERVER,
     .action = toggle_minimize_action},
-  { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
+  // send to session
+  { .name = "send-input", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = send_input_action},
+#if 0
+  //send to front-end
+  { .name = "do-keys", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = do_keys_action},
+#endif
+ { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
     .action = settings_action },
   { .name = COMPLETE_FOR_BASH_CMD, .options = COMMAND_IN_CLIENT,
     .action = complete_action },
