@@ -1666,7 +1666,7 @@ make_socket_name(bool html_filename)
 	int socket_name_length = strlen(socket_name);
         const char *ext;
 	if (html_filename) {
-            ext = dot < 0 ? ".html" : "";
+            ext = ".html";
 	    if (dot >= 0)
                 socket_name_length = dot;
 	} else
