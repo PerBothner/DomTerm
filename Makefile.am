@@ -22,7 +22,7 @@ EXTRA_DIST = \
   native/pty/apue.h native/pty/error.c native/pty/pty.c \
   native/pty/pty_fork.c native/pty/pty_fork.h
 
-SUBDIRS = .
+SUBDIRS = . tests
 JAVA_HOME = @JAVA_HOME@
 SED = @SED@
 JAVA = java
