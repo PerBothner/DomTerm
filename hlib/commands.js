@@ -55,6 +55,16 @@ cmd('new-window',
         DomTerm.openNewWindow(dt);
         return true;
     });
+cmd('select-pane-previous',
+    function(dt, key) {
+        DomTerm.selectNextPane(false);
+        return true;
+    });
+cmd('select-pane-next',
+    function(dt, key) {
+        DomTerm.selectNextPane(true);
+        return true;
+    });
 cmd('new-tab',
     function(dt, key) {
         DomTerm.newPane(2, null, dt);
@@ -586,6 +596,30 @@ cmd('insert-char',
             dt._suppressHidePassword = true;
         }
         return true;
+    });
+
+function popoutTab(dt, wholeStack)
+{
+    if (! dt || ! DomTerm._layout)
+        return false;
+    let content = dt instanceof Terminal ? dt.topNode : dt;
+    let pane = DomTerm._layout._elementToLayoutItem(content);
+    if (! pane) return false;
+    DomTerm._layout.popoutWindow(wholeStack ? pane.parent : pane, null);
+    return true;
+}
+
+cmd('popout-tab',
+    function(dt, keyName) {
+        return popoutTab(dt, false);
+    }, {
+        context: "parent"
+    });
+cmd('popout-tabset',
+    function(dt, keyName) {
+        return popoutTab(dt, true);
+    }, {
+        context: "parent"
     });
 cmd('detach-session',
     function(dt, keyName) {

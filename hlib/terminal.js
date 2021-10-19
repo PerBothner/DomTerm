@@ -9575,6 +9575,22 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
 });
 DomTerm.pagingKeymap = DomTerm.pagingKeymapDefault;
 
+DomTerm.muxKeymap = new browserKeymap({
+    "D": "detach-session",
+    "W": "popout-tab",
+    "Ctrl-W": "popout-tabset",
+    "T": "new-tab",
+    "Enter": "new-pane",
+    "Esc": "ignore-action",
+    "Left": "select-pane-previous",
+    "Up": "select-pane-previous",
+    "Right": "select-pane-next",
+    "Down": "select-pane-next",
+    "Ctrl-Left": "new-pane-left",
+    "Ctrl-Right": "new-pane-right",
+    "Ctrl-Down": "new-pane-below",
+    "Ctrl-Up": "new-pane-above"
+});
 DomTerm.isKeyPressName = function(keyName) {
     return keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/;
 };
@@ -9584,7 +9600,6 @@ DomTerm.dispatchTerminalMessage = function(command, ...args) {
     return false;
 }
 
-// This is overridden in the layout-manager context if using useIFrame.
 DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
     let command = commandMap[name];
     if ((command && command.context === "parent")
@@ -9601,8 +9616,8 @@ DomTerm.handleKey = function(map, dt, keyName, event=null) {
             if (typeof cmd === "string" && cmd.endsWith("-extend")) {
                 let r = commandMap[cmd](dt, keyName);
                 dt.previousKeyName = keyName;
-            if (r === true && event)
-                event.preventDefault();
+                if (r === true && event)
+                    event.preventDefault();
                 return r;
             }
         }
@@ -9616,8 +9631,14 @@ DomTerm.handleKey = function(map, dt, keyName, event=null) {
             if (! command && DomTerm.isKeyPressName(keyName))
                 command = map.lookup("(keypress)");
         }
-        if (typeof command == "string" || command instanceof String)
-            command = commandMap[command];
+        if (typeof command == "string" || command instanceof String) {
+            let cmd = commandMap[command];
+            if (cmd && cmd.context === 'parent'
+                && DomTerm.isInIFrame()
+                && DomTerm.dispatchTerminalMessage("do-command", command))
+                return true;
+            command = cmd;
+        }
         if (command) {
             dt._didExtend = false;
             let r = typeof command == "function" ? command(dt, keyName)
@@ -9635,6 +9656,43 @@ DomTerm.handleKey = function(map, dt, keyName, event=null) {
 Terminal.prototype.doLineEdit = function(keyName) {
     if (DomTerm.verbosity >= 2)
         this.log("doLineEdit "+keyName);
+
+    if (this._searchInHistoryMode) {
+        if (keyName == "Ctrl+R" || keyName == "Ctrl+S") {
+            this.historySearchForwards = keyName == "Ctrl+S";
+            this.historySearchStart =
+                this.historyCursor >= 0 ? this.historyCursor
+                : this.history.length;
+            let str = this._miniBuffer.textContent;
+            if (str == "") {
+                str = this.historySearchSaved;
+                this._miniBuffer.innerText = str;
+            }
+            this.historySearch(str);
+            if (this._displayInfoWidget
+                && this._displayInfoWidget.firstChild instanceof Text) {
+                let prefix = this._displayInfoWidget.firstChild;
+                let dirstr = this.historySearchForwards ? "forward" : "backward";
+                let m = prefix.data.match(/^(.*)(forward|backward)(.*)$/);
+                if (m)
+                    prefix.data = m[1] + dirstr + m[3];
+            }
+            return true;
+        }
+        if (keyName == "Esc" || keyName == "Enter" || keyName == "Tab"
+            || keyName == "Down" || keyName == "Up"
+            /*|| event.ctrlKey || event.altKey*/) {
+            let miniBuffer = this._miniBuffer;
+            this.removeMiniBuffer(miniBuffer);
+            this.historySearchSaved = miniBuffer.textContent;
+            this.historyAdd(this._inputLine.textContent, false);
+            this._searchInHistoryMode = false;
+            if (keyName == "Tab") {
+                this.maybeFocus();
+                return true;
+            }
+        }
+    }
 
     let keymaps = (this._miniBuffer && this._miniBuffer.keymaps)
         || [ DomTerm.lineEditKeymap ];
@@ -9702,7 +9760,10 @@ Terminal.prototype.keyDownHandler = function(event) {
     }
 
     if (this._muxMode) {
-        this._muxKeyHandler(event, key, false);
+        if (DomTerm.handleKey(DomTerm.muxKeymap, this, keyName)) {
+            this.exitMuxMode();
+            event.preventDefault();
+        }
         return;
     }
     if (this._currentlyPagingOrPaused() && ! this._miniBuffer
@@ -9714,44 +9775,6 @@ Terminal.prototype.keyDownHandler = function(event) {
     if (editing) {
         if (! this.useStyledCaret())
             this.maybeFocus();
-        if (this._searchInHistoryMode) {
-            if (keyName == "Ctrl+R" || keyName == "Ctrl+S") {
-                this.historySearchForwards = keyName == "Ctrl+S";
-                this.historySearchStart =
-                    this.historyCursor >= 0 ? this.historyCursor
-                    : this.history.length;
-                let str = this._miniBuffer.textContent;
-                if (str == "") {
-                    str = this.historySearchSaved;
-                    this._miniBuffer.innerText = str;
-                }
-                this.historySearch(str);
-                event.preventDefault();
-                if (this._displayInfoWidget
-                    && this._displayInfoWidget.firstChild instanceof Text) {
-                    let prefix = this._displayInfoWidget.firstChild;
-                    let dirstr = this.historySearchForwards ? "forward" : "backward";
-                    let m = prefix.data.match(/^(.*)(forward|backward)(.*)$/);
-                    if (m)
-                        prefix.data = m[1] + dirstr + m[3];
-                }
-                return;
-            }
-            if (keyName == "Esc" || keyName == "Enter" || keyName == "Tab"
-                || keyName == "Down" || keyName == "Up"
-                || event.ctrlKey || event.altKey) {
-                let miniBuffer = this._miniBuffer;
-                this.removeMiniBuffer(miniBuffer);
-                this.historySearchSaved = miniBuffer.textContent;
-                this.historyAdd(this._inputLine.textContent, false);
-                this._searchInHistoryMode = false;
-                if (keyName == "Tab") {
-                    this.maybeFocus();
-                    event.preventDefault();
-                    return;
-                }
-            }
-        }
         if (this.doLineEdit(keyName)) {
             event.preventDefault();
             return;
@@ -9795,10 +9818,6 @@ Terminal.prototype.keyPressHandler = function(event) {
         return;
     if (this._composing > 0)
         return;
-    if (this._muxMode) {
-        this._muxKeyHandler(event, key, true);
-        return;
-    }
     if (this._currentlyPagingOrPaused() && ! this._miniBuffer) {
         this.pageKeyHandler(keyName);
         event.preventDefault();
@@ -11759,89 +11778,6 @@ Terminal.prototype.exitMuxMode = function() {
     DomTerm.removeInfoDisplay(this._showingMuxInfo, this);
     this._muxMode = false;
     this._updatePagerInfo();
-}
-
-/** Runs in DomTerm sub-window. */
-Terminal.prototype._muxKeyHandler = function(event, key, press) {
-    if (DomTerm.verbosity >= 2)
-        this.log("mux-key key:"+key+" event:"+event+" press:"+press);
-    let paneOp = 0;
-    switch (key) {
-    case 13: // Enter
-        DomTerm.newPane(1, null, this);
-        this.exitMuxMode();
-        event.preventDefault();
-        break;
-    case 16: /*Shift*/
-    case 17: /*Control*/
-    case 18: /*Alt*/
-        return;
-    case 37 /*Left*/:
-        if (paneOp == 0) paneOp = 10;
-        /* fall through */
-    case 38 /*Up*/:
-        if (paneOp == 0) paneOp = 12;
-        /* fall through */
-    case 39 /*Right*/:
-        if (paneOp == 0) paneOp = 11;
-        /* fall through */
-    case 40 /*Down*/:
-        if (paneOp == 0) paneOp = 13;
-        if (event.ctrlKey) {
-            DomTerm.newPane(paneOp);
-            this.exitMuxMode();
-            event.preventDefault();
-        } else {
-            DomTerm.selectNextPane(key==39||key==40);
-            this.exitMuxMode();
-            event.preventDefault();
-        }
-        break;
-    case 68:
-        if (event.ctrlKey && window._dt_toggleDeveloperTools) {
-            window._dt_toggleDeveloperTools();
-            this.exitMuxMode();
-            event.preventDefault();
-        }
-        break;
-    case 84: // T
-        if (! event.ctrlKey) {
-            DomTerm.newPane(2);
-            this.exitMuxMode();
-            event.preventDefault();
-        }
-        break;
-    case 87: // W
-        if (event.shiftKey) {
-            let wholeStack = event.ctrlKey;
-            if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-                DomTerm.sendParentMessage("popout-window", wholeStack);
-            } else {
-                DomTerm.withLayout((m) => {
-                    let pane = m.domTermToLayoutItem(this);
-                    m.popoutWindow(wholeStack ? pane.parent : pane, this);
-                });
-            }
-        } else {
-            // FIXME make new window
-        }
-        this.exitMuxMode();
-        event.preventDefault();
-        break;
-    case 100: // 'd'
-        if (! event.ctrlKey) {
-            this.detachSession();
-            this.exitMuxMode();
-            event.preventDefault();
-            event.stopImmediatePropagation();
-        }
-        break;
-    default:
-    case 27: // Escape
-        this.exitMuxMode();
-        event.preventDefault();
-        break;
-    }
 }
 
 window.DTerminal = Terminal;

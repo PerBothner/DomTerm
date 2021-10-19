@@ -516,7 +516,7 @@ function handleMessage(event) {
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="do-command") {
-        DomTerm.doNamedCommand(data.args[0]);
+        DomTerm.doNamedCommand(data.args[0], iframe);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
     } else if (data.command=="domterm-next-pane") {
