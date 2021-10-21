@@ -2006,6 +2006,20 @@ class DTParser {
             case 'detach':
                 term.detachSession();
                 break;
+            case 'do-key': {
+                let str = options.keyDown || options.text;
+                if (str) {
+                    let r = options.keyDown
+                        && term.processKeyDown(str.replace(/(Alt|Ctrl|Cmd|Shift)-/g, "$1+"));
+                    if (! r) {
+                        if (term.isLineEditingOrMinibuffer())
+                            term.editorInsertString(str, true);
+                        else
+                            term.processInputCharacters(str);
+                    }
+                }
+                break;
+            }
             case 'fullscreen on':
             case 'fullscreen off':
             case 'fullscreen toggle':

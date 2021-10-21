@@ -1244,6 +1244,34 @@ This also kills all local sessions.
 Also close any windows, unless @code{--only} is specified.
 (This may kill remote sessions if their only window is closed.)
 
+@item @b{@code{do-keys}} [@var{option}|@var{string}]...
+Simulate user keystrokes by sending them to the front-end for interpretation.
+
+@table @asis
+@item @code{-w} @var{window-specifier}
+If specified, must be the first argument.
+Same as if specified before the @code{do-keys} argument.
+
+@item @code{-N} @var{count}
+Repeat following actions @var{count} times, until the next @code{-N}.
+
+@item @code{-l} @var{text}
+@itemx @code{-e} @var{text}
+Send the @var{text} as plain characters, with no interpretation
+for special key-bindings.
+Acts like a key-press event for each character.
+If @code{-e} (``escape'') is used, @ref{string escapes} are processed;
+if @code{-l} (``literal'') is used, th @var{text} is used as-in.
+
+@item @var{key-stroke}
+The front-end simulates the specified @var{key-stroke},
+as a key-down event.
+However, if the @var{key-stroke} starts and ends with single-quote, the characters between
+the quotes are processed as if with the @code{-l} options.
+Also, if the @var{key-stroke} has no action in the current context,
+the front-end treats the @var{key-stroke} as if preceeded by @code{-l}
+@end table
+
 @item @b{@code{send-input}} @var{send-option}... @var{string}...
 Send the specified @var{string} directly to the standard input
 of a session.
@@ -1252,6 +1280,12 @@ with a single space in between.
 
 A @var{string} may have @ref{string escapes}.
 
+Usually @code{send-input "text"} has the same effect as @code{do-keys -e "text"}.
+However, @code{send-input} feeds the @code{text} directly to the
+application input, while @code{do-keys} sends it to the front-end
+for processing first.  If the browser is in line-edit mode, it inserts
+the @code{text} input the editing area instead of sendingit to teh application.
+
 A @var{send-option} can be:
 @table @asis
 @item @code{-s} @var{session-specifier}
@@ -1259,7 +1293,6 @@ Send to the session as specified by the @ref{session-specifier,@var{session-spec
 @item @code{-w} @var{window-specifier}
 Send to the session attached to the @ref{window-specifier-option, specified window}.
 @end table
-
 
 @item @b{@code{capture}} @var{capture-option}...
 Get the text contents of the @ref{window-specifier-option, specified window}

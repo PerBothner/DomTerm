@@ -9759,29 +9759,34 @@ Terminal.prototype.keyDownHandler = function(event) {
         this.topNode.addEventListener("keyup", keyup, false);
     }
 
+    this.processKeyDown(keyName);
+}
+
+Terminal.prototype.processKeyDown = function(keyName, event = null)
+{
     if (this._muxMode) {
         if (DomTerm.handleKey(DomTerm.muxKeymap, this, keyName)) {
             this.exitMuxMode();
-            event.preventDefault();
+            event && event.preventDefault();
         }
-        return;
+        return true;
     }
     if (this._currentlyPagingOrPaused() && ! this._miniBuffer
         && this.pageKeyHandler(keyName)) {
-        event.preventDefault();
-        return;
+        event && event.preventDefault();
+        return true;
     }
     let editing = this.isLineEditingOrMinibuffer();
     if (editing) {
         if (! this.useStyledCaret())
             this.maybeFocus();
         if (this.doLineEdit(keyName)) {
-            event.preventDefault();
-            return;
+            event && event.preventDefault();
+            return true;
         }
     }
     if (DomTerm.handleKey(DomTerm.masterKeymap, this, keyName, event)) {
-        return;
+        return true;
     }
 
     if (! editing) {
@@ -9789,7 +9794,7 @@ Terminal.prototype.keyDownHandler = function(event) {
         if (str) {
             if (this.scrollOnKeystroke)
                 this._enableScroll();
-            event.preventDefault();
+            event && event.preventDefault();
             if (! DomTerm.usingXtermJs()) {
                 if (keyName == "Left" || keyName == "Right") {
                     this._editPendingInput(keyName == "Right", false);
@@ -9805,8 +9810,10 @@ Terminal.prototype.keyDownHandler = function(event) {
             }
             this._adjustPauseLimit();
             this._respondSimpleInput(str, keyName);
+            return true;
         }
     }
+    return false;
 };
 
 Terminal.prototype.keyPressHandler = function(event) {
@@ -11208,7 +11215,7 @@ Terminal.prototype.editorContinueInput = function() {
     this._updateAutomaticPrompts();
 }
 
-Terminal.prototype.editorInsertString = function(str, inserting=2) {
+Terminal.prototype.editorInsertString = function(str, hidePassword = false, inserting=2) {
     this.editorAddLine();
     this._showPassword();
     if (! this._miniBuffer)
@@ -11223,6 +11230,33 @@ Terminal.prototype.editorInsertString = function(str, inserting=2) {
             this.insertSimpleOutput(str1, 0, str1.length, inserting);
             this._restoreCaretNode()
             this._popFromCaret(saved);
+            if (hidePassword) {
+                let pwtimeout;
+                if (this._inputLine.classList.contains("noecho")
+                    && ! this.sstate.hiddenText
+                    && (pwtimeout
+                        = this.getOption("password-show-char-timeout", 0.8))) {
+                    // Temporarily display inserted char(s), with dots for other chars.
+                    // After timeout all chars shown as dots.
+                    let r = new Range();
+                    r.selectNodeContents(this._inputLine);
+                    let wlength = DomTerm._countCodePoints(r.toString());
+                    r.setEndBefore(this._caretNode);
+                    let wbefore = DomTerm._countCodePoints(r.toString());
+                    let ctext = this._inputLine.textContent;
+                    let wstr = DomTerm._countCodePoints(str);
+                    let pwchar = this.passwordHideChar();
+                    let before = pwchar.repeat(wbefore-wstr);
+                    let after = pwchar.repeat(wlength-wbefore);
+                    DomTerm._replaceTextContents(this._inputLine, before + str + after);
+                    this.sstate.hiddenText = ctext;
+                    setTimeout(function() { this._suppressHidePassword = false;
+                                            this._hidePassword(); },
+                               pwtimeout * 1000);
+                    this._suppressHidePassword = true;
+                }
+
+            }
         }
         if (nl < 0)
             break;

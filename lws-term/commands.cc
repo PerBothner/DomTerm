@@ -17,8 +17,7 @@ extern struct command commands[];
 
 bool check_window_option(const std::string& option,
                          std::vector<int>& windows,
-                         const char *cmd, struct options *opts,
-                         bool single_window = false)
+                         const char *cmd, struct options *opts)
 {
     size_t start = 0;
     size_t osize = option.size();
@@ -64,10 +63,6 @@ bool check_window_option(const std::string& option,
         printf_error(opts, "domterm %s: no window specifiers", cmd);
         return false;
     }
-    if (windows.size() != 1 && single_window) {
-        printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
-        return false;
-    }
     return true;
 }
 
@@ -75,8 +70,12 @@ int check_single_window_option(const std::string& woption,
                                const char *cmd, struct options *opts)
 {
     std::vector<int> windows;
-    if (! check_window_option(woption, windows, cmd, opts, true))
+    if (! check_window_option(woption, windows, cmd, opts))
         return -1;
+    if (windows.size() != 1 ) {
+        printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
+        return -1;
+    }
     return windows[0];
 }
 
@@ -384,14 +383,14 @@ int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
 int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
-    std::vector<int> windows;
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "list-stylesheets", opts, true))
+    int window = check_single_window_option(option, "list-stylesheets", opts);
+    if (window < 0)
         return EXIT_FAILURE;
     json request;
-    send_request(request, "list-stylesheets", opts, tty_clients(windows[0]));
+    send_request(request, "list-stylesheets", opts, tty_clients(window));
     return EXIT_WAIT;
 }
 
@@ -427,16 +426,16 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
            break;
         off += n;
     }
-    std::vector<int> windows;
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "load-stylesheet", opts, true))
+    int window = check_single_window_option(option, "load-stylesheet", opts);
+    if (window < 0)
         return EXIT_FAILURE;
     json request;
     request["name"] = name;
     request["value"] = std::string(buf, off);
-    send_request(request, "load-stylesheet", opts, tty_clients(windows[0]));
+    send_request(request, "load-stylesheet", opts, tty_clients(window));
     return EXIT_WAIT;
 }
 
@@ -451,15 +450,15 @@ int maybe_disable_stylesheet(bool disable, int argc, arglist_t argv,
     }
     const char *command = argv[0];
     const char *specifier = argv[1];
-    std::vector<int> windows;
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, command, opts, true))
+    int window = check_single_window_option(option, command, opts);
+    if (window < 0)
         return EXIT_FAILURE;
     json request;
     request["select"] = specifier;
-    send_request(request, command, opts, tty_clients(windows[0]));
+    send_request(request, command, opts, tty_clients(window));
     return EXIT_WAIT;
 }
 
@@ -483,13 +482,95 @@ int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "add-style", opts, false))
+    if (! check_window_option(option, windows, "add-style", opts))
         return EXIT_FAILURE;
     for (int w : windows) {
         tty_client *tclient = tty_clients(w);
         for (int i = 1; i < argc; i++) {
             json jobj = argv[i];
-             tclient->ob.printf(URGENT_WRAP("\033]94;%s\007"), jobj.dump().c_str());
+            tclient->ob.printf(URGENT_WRAP("\033]94;%s\007"), jobj.dump().c_str());
+        }
+        lws_callback_on_writable(tclient->wsi);
+    }
+    return EXIT_SUCCESS;
+}
+
+int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
+                   struct options *opts)
+{
+    const char *subarg = argc >= 2 ? argv[1] : NULL;
+    std::vector<int> windows;
+    std::string woption = opts->windows;
+    int start = 1;
+    while (start < argc) {
+        const char *arg = argv[start];
+        if (strstr(arg, "-w")) {
+            if (strlen(arg) > 2) {
+                woption = arg + 2;
+                start++;
+            } else if (start+1 < argc) {
+                woption = argv[start+1];
+                start += 2;
+            } else {
+                printf_error(opts, "missing argument following -w");
+                return EXIT_FAILURE;
+            }
+        } else
+            break;
+    }
+    if (woption.empty())
+        woption = "current";
+    if (! check_window_option(woption, windows, "do-keys", opts))
+        return EXIT_FAILURE;
+    long repeat_count = 1;
+    for (int w : windows) {
+        tty_client *tclient = tty_clients(w);
+        optind = start;
+        for (;;) {
+            json request;
+            int c = getopt(argc, (char *const*) argv, "+:N:e:l:");
+            if (c < 0) {
+                if (optind < argc) {
+                    request["cmd"] = "do-key";
+                    request["keyDown"] = argv[optind];
+                    for (int j = 0; j < repeat_count; j++) {
+                        tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
+                    }
+                    optind++;
+                    continue;
+                }
+                break;
+            }
+            switch (c) {
+            case '?':
+                printf_error(opts, "domterm do-key: unknown option character '%c'", optopt);
+                return EXIT_FAILURE;
+            case ':':
+                printf_error(opts, "domterm do-key: missing argument to option '-%c'", optopt);
+                return EXIT_FAILURE;
+            case 'l':
+            case 'e': {
+                request["cmd"] = "do-key";
+                char *str = optarg;
+                if (c == 'e')
+                    str = parse_string(str, false);
+                request["text"] = str;
+                for (int j = 0; j < repeat_count; j++) {
+                    tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
+                }
+                if (c == 'e')
+                    free(str);
+                break;
+            }
+            case 'N':
+                char * endptr;
+                repeat_count = strtol(optarg, &endptr, 10);
+                if (*endptr != '\0') {
+                    printf_error(opts, "invalid repeat count");
+                    return EXIT_FAILURE;
+                }
+                break;
+            }
         }
         lws_callback_on_writable(tclient->wsi);
     }
@@ -956,7 +1037,6 @@ int complete_action(int argc, arglist_t argv, struct lws *wsi,
 int capture_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
-    std::vector<int> windows;
     json request;
     optind = 1;
     opterr = 0;
@@ -988,9 +1068,10 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
-    if (! check_window_option(option, windows, "capture", opts, true))
+    int window = check_single_window_option(option, "capture", opts);
+    if (window < 0)
         return EXIT_FAILURE;
-    send_request(request, "capture", opts, tty_clients(windows[0]));
+    send_request(request, "capture", opts, tty_clients(window));
     return EXIT_WAIT;
 }
 
@@ -1274,12 +1355,10 @@ struct command commands[] = {
   // send to session
   { .name = "send-input", .options = COMMAND_IN_EXISTING_SERVER,
     .action = send_input_action},
-#if 0
   //send to front-end
   { .name = "do-keys", .options = COMMAND_IN_EXISTING_SERVER,
     .action = do_keys_action},
-#endif
- { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
+  { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
     .action = settings_action },
   { .name = COMPLETE_FOR_BASH_CMD, .options = COMMAND_IN_CLIENT,
     .action = complete_action },
