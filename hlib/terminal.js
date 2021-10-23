@@ -9759,7 +9759,7 @@ Terminal.prototype.keyDownHandler = function(event) {
         this.topNode.addEventListener("keyup", keyup, false);
     }
 
-    this.processKeyDown(keyName);
+    this.processKeyDown(keyName, event);
 }
 
 Terminal.prototype.processKeyDown = function(keyName, event = null)
