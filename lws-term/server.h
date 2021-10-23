@@ -23,7 +23,11 @@ using json = nlohmann::json;
 
 // True when enabling future proxy support
 #define REMOTE_SSH 1
-#define EXIT_WAIT (-2)
+
+/* EXIT_SUCCESS and EXIT_FAILURE are defined in stdlib.h */
+#define EXIT_UNSPECIFIED (-999) /* exit code not set */
+#define EXIT_BAD_CMDARG 2 /* bad command-line arguments (Unix convention) */
+#define EXIT_WAIT (-2) /* don't exit - wait for response */
 
 #ifdef __APPLE__
 #include <util.h>
@@ -255,11 +259,11 @@ public:
     int pty_window_number; // Numbered within each pty_client; -1 if only one
     bool pty_window_update_needed;
     char *ssh_connection_info;
+    id_table<struct options> pending_requests;
 };
 
 extern id_table<tty_client> tty_clients;
-extern id_table<options> pending_requests;
-extern void request_enter(struct options *opts);
+extern void request_enter(struct options *opts, tty_client *tclient);
 
 struct http_client {
     bool owns_data;

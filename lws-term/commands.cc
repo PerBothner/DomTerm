@@ -149,7 +149,7 @@ void send_request(json& request, const char *cmd,
         request["from-ssh-remote"] = true;
     tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
     lws_callback_on_writable(tclient->wsi);
-    request_enter(opts);
+    request_enter(opts, tclient);
 }
 
 int html_action(int argc, arglist_t argv, struct lws *wsi,
@@ -366,7 +366,7 @@ int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
         printf_error(opts, argc < 2
                      ? "(too few arguments to print-stylesheets)"
                      : "(too many arguments to print-stylesheets)");
-        return EXIT_FAILURE;
+        return EXIT_BAD_CMDARG;
     }
     std::string option = opts->windows;
     if (option.empty())
@@ -401,7 +401,7 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
         printf_error(opts, argc < 3
                      ? "too few arguments to load-stylesheet"
                      : "too many arguments to load-stylesheet");
-        return EXIT_FAILURE;
+        return EXIT_BAD_CMDARG;
     }
     const char *name = argv[1];
     const char *fname = argv[2];
@@ -513,7 +513,7 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
                 start += 2;
             } else {
                 printf_error(opts, "missing argument following -w");
-                return EXIT_FAILURE;
+                return EXIT_BAD_CMDARG;
             }
         } else
             break;
@@ -544,10 +544,10 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
             switch (c) {
             case '?':
                 printf_error(opts, "domterm do-key: unknown option character '%c'", optopt);
-                return EXIT_FAILURE;
+                return EXIT_BAD_CMDARG;
             case ':':
                 printf_error(opts, "domterm do-key: missing argument to option '-%c'", optopt);
-                return EXIT_FAILURE;
+                return EXIT_BAD_CMDARG;
             case 'l':
             case 'e': {
                 request["cmd"] = "do-key";
@@ -567,7 +567,7 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
                 repeat_count = strtol(optarg, &endptr, 10);
                 if (*endptr != '\0') {
                     printf_error(opts, "invalid repeat count");
-                    return EXIT_FAILURE;
+                    return EXIT_BAD_CMDARG;
                 }
                 break;
             }

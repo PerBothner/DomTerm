@@ -141,15 +141,14 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
     lwsl_notice("callback_cmd_socket reason %d\n", reason);
     switch (reason) {
     case LWS_CALLBACK_RAW_CLOSE_FILE:
-        exit(client->exit_code);
-        break;
+        goto do_exit;
     case LWS_CALLBACK_RAW_RX_FILE: {
         unsigned char *rbuf = client->rbuffer;
         int cur_out = STDOUT_FILENO;
         int nr = read(client->socket, rbuf, client->rsize);
         if (nr <= 0) {
             lwsl_notice("- RAW_RX before exit:%d\n", client->exit_code);
-            exit(client->exit_code);
+            goto do_exit;
             /*
             close(client->socket);
             free(rbuf);
@@ -188,6 +187,13 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
     default:
         return 0;
     }
+do_exit:
+    if (client->exit_code == EXIT_UNSPECIFIED) {
+        const char*msg = "Unexpected disconnect from domterm server.\n";
+        write(2, msg, strlen(msg));
+        client->exit_code = EXIT_FAILURE;
+    }
+    exit(client->exit_code);
 }
 #endif
 #if REMOTE_SSH && !PASS_STDFILES_UNIX_SOCKET
@@ -253,7 +259,7 @@ client_send_command(int socket, int argc, char *const*argv, char *const *env)
     lwsl_notice("cmd-socket fd:%d wsi:%p\n", socket, cmdwsi);
     struct cmd_socket_client *cclient = (struct cmd_socket_client *) lws_wsi_user(cmdwsi);
     cclient->socket = socket;
-    cclient->exit_code = 0;
+    cclient->exit_code = EXIT_UNSPECIFIED;
     cclient->rsize = 5000;
     cclient->rbuffer = (unsigned char*) xmalloc(cclient->rsize);
 

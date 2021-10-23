@@ -33,7 +33,6 @@ static char end_replay_mode[] = "\033[98u";
 
 id_table<pty_client> pty_clients;
 id_table<tty_client> tty_clients;
-id_table<options> pending_requests;
 
 static struct pty_client *
 handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client *tclient);
@@ -391,6 +390,14 @@ tty_client::~tty_client()
     }
     tclient->wsi = NULL;
     tclient->out_wsi = NULL;
+
+    struct options *request;
+    while ((request = pending_requests.first()) != nullptr) {
+        pending_requests.remove(request);
+        printf_error(request, "Window %d closed before responding.", connection_number);
+        finish_request(request, EXIT_FAILURE, true);
+        options::release(request);
+    }
 }
 
 static void
@@ -532,9 +539,9 @@ void id_table<T>::remove(T* entry)
 }
 
 void
-request_enter(struct options *opts)
+request_enter(struct options *opts, tty_client* tclient)
 {
-    pending_requests.enter(opts, opts->index());
+    tclient->pending_requests.enter(opts, opts->index());
 }
 
 static struct pty_client *
@@ -1275,9 +1282,10 @@ reportEvent(const char *name, char *data, size_t dlen,
                 && proxyMode == proxy_display_local)
                 return false;
             int rid = obj["id"].get<int>();
-            struct options *request = pending_requests(rid);
+            struct options *request = client->pending_requests(rid);
             if (request) {
-                pending_requests.remove(request);
+                client->pending_requests.remove(request);
+                int exit_code = EXIT_SUCCESS;
                 if (obj.contains("out") && obj["out"].is_string()) {
                     std::string result = obj["out"].get<std::string>();
                     const char *cresult = result.c_str();
@@ -1287,8 +1295,9 @@ reportEvent(const char *name, char *data, size_t dlen,
                 if (obj.contains("err") && obj["err"].is_string()) {
                     std::string result = obj["err"].get<std::string>();
                     printf_error(request, "%s", result.c_str());
+                    exit_code = EXIT_FAILURE;
                 }
-                finish_request(request, 0, true);
+                finish_request(request, exit_code, true);
                 options::release(request);
             }
         } else {

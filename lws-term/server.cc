@@ -1377,9 +1377,9 @@ main(int argc, char **argv)
     read_settings_emit_notice();
 
     if (process_options(argc, (arglist_t) argv, &opts) != 0)
-        return -1;
+        return EXIT_BAD_CMDARG;
     if (opts.something_done && argv[optind] == NULL)
-        exit(0);
+        return EXIT_SUCCESS;
 
     signal(SIGINT, sig_handler);  // ^C
     signal(SIGTERM, sig_handler); // kill
