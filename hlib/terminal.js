@@ -7239,6 +7239,22 @@ Terminal.prototype.parseBytes = function(bytes, beginIndex = 0, endIndex = bytes
         rlen -= this.parser._deferredBytes.length;
     this._receivedCount = (this._receivedCount + rlen) & Terminal._mask28;
 
+    if (this._afterOutputHook) {
+        let n = this._afterOutputHook.length;
+        let j = 0;
+        for (let i = 0; i < n; i++) {
+            if (! this._afterOutputHook[i]()) {
+                this._afterOutputHook[j++] = this._afterOutputHook[i];
+            }
+        }
+        if (j !== n) {
+            if (j == 0)
+                this._afterOutputHook = undefined;
+            else
+                this._afterOutputHook.length = j;
+        }
+    }
+
 }
 
 Terminal.prototype._scrollNeeded = function() {

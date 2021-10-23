@@ -359,6 +359,76 @@ int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
+int await_action(int argc, arglist_t argv, struct lws *wsi,
+                 struct options *opts)
+{
+    std::string woption = opts->windows;
+    json request;
+    json matches;
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
+        if (strstr(arg, "-w")) {
+            if (strlen(arg) > 2) {
+                woption = arg + 2;
+            } else if (i+1 < argc) {
+                woption = argv[++i];
+            } else {
+                printf_error(opts, "missing argument following -w");
+                return EXIT_BAD_CMDARG;
+            }
+        } else if (strcmp(arg, "--match-output") == 0) {
+            if (i + 2 >= argc) {
+                printf_error(opts, "missing arguments following '%s'", arg);
+                return EXIT_BAD_CMDARG;
+            }
+            json match_spec;
+            match_spec["match"] = argv[i+1];
+            match_spec["out"] = argv[i+2];
+            i += 2;
+            if (i + 1 < argc && argv[i+1][0] != '-' && argv[i+1][0] != '\0') {
+                char *endptr;
+                long nlines = strtol(argv[i+1], &endptr, 10);
+                if (endptr[0] || nlines <= 0) {
+                    printf_error(opts, "bad line-count '%s' to '%s' option",
+                                 argv[i+1], argv[i-2]);
+                    return EXIT_BAD_CMDARG;
+                }
+                match_spec["nlines"] = nlines;
+                i++;
+            }
+            matches.push_back(match_spec);
+        } else if (strcmp(arg, "--timeout") == 0) {
+            if (i + 2 >= argc) {
+                printf_error(opts, "missing arguments following '%s'", arg);
+                return EXIT_BAD_CMDARG;
+            }
+            char *endptr;
+            double tm = strtod(argv[i+1], &endptr);
+            if (endptr[0] || tm <= 0) {
+                printf_error(opts, "bad timeout value '%s' to '%s' option",
+                             argv[i+1], argv[i]);
+                return EXIT_BAD_CMDARG;
+            }
+            request["timeout"] = tm;
+            request["timeoutmsg"] = argv[i+2];
+            i += 2;
+        } else {
+            printf_error(opts, "unrecogized option '%s'", arg);
+            return EXIT_BAD_CMDARG;
+        }
+    }
+    if (woption.empty())
+        woption = "current";
+    int window = check_single_window_option(woption, "await", opts);
+    if (window < 0)
+        return EXIT_FAILURE;
+    if (matches.size() > 0)
+        request["rules"] = matches;
+    send_request(request, "await", opts, tty_clients(window));
+    return EXIT_WAIT;
+}
+
+
 int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
@@ -1313,6 +1383,8 @@ struct command commands[] = {
     .action = freshline_action },
   { .name = "attach", .options = COMMAND_IN_SERVER,
     .action = attach_action},
+  { .name = "await", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = await_action},
   { .name = REATTACH_COMMAND,
     .options = COMMAND_IN_SERVER|COMMAND_ALIAS },
   { .name = "browse", .options = COMMAND_IN_SERVER,

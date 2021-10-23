@@ -1958,6 +1958,64 @@ class DTParser {
                                  options);
                 break;
             }
+            case 'await': {
+                let timer = null;
+                let rules = options.rules;
+                let fn = () => {
+                    let output = null;
+                    for (let i = 0; ; i++) {
+                        if (i >= rules.length)
+                            return false;
+                        let rule = rules[i];
+                        if (rule.match) {
+                            let rxflags = rule.rxflags || '';
+                            let rx = new RegExp(rule.match, rxflags);
+                            let nlines = rule.nlines || 1;
+                            let lines_checked = 0;
+                            let iline = term.lineStarts.length - 1;
+                            for (; output == null && iline >= 0; iline--) {
+                                let ln = term.lineStarts[iline];
+                                if (! Terminal.isBlockNode(ln))
+                                    continue;
+                                let text = ln.textContent;
+                                if (lines_checked == 0 && text.length == 0)
+                                    continue;
+                                lines_checked++;
+                                if (rx.test(text)) {
+                                    output = rule.out || '';
+                                    break;
+                                }
+                                if (lines_checked >= nlines)
+                                    break;
+                            }
+                            if (output !== null)
+                                break;
+                        }
+                    }
+                    if (timer)
+                        clearTimeout(timer);
+                    timer = null;
+                    if (output && output.length > 0
+                        && output.charCodeAt(output.length-1) != 10)
+                        output += '\n';
+                    term.sendResponse({out: output}, options);
+                    return true;
+                }
+                if (fn())
+                    return;
+                if (! term._afterOutputHook)
+                    term._afterOutputHook = [];
+                term._afterOutputHook.push(fn);
+                if (typeof options.timeout === "number") {
+                    timer = setTimeout(() => {
+                        let errmsg = options.timeoutmsg;
+                        if (errmsg === undefined)
+                            errmsg = 'timeout';
+                        term.sendResponse({err: errmsg}, options);
+                    }, options.timeout * 1000);
+                }
+                break;
+            }
             case 'list-stylesheets': {
                 let sheets = term.listStylesheets();
                 let result = '';
