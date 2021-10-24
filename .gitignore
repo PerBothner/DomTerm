@@ -49,6 +49,7 @@ bin/dt-webview
 bin/dt-wry
 share/domterm
 share/man
+tests/*.out
 lws-term/ldomterm
 lws-term/resources.c
 lws-term/version.h
