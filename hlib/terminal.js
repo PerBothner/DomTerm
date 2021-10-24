@@ -8982,6 +8982,10 @@ Terminal._rangeAsText = function(range, options={}) {
     if (addEscapes && (prevFg || prevBg)) {
         t += '\x1B[m';
     }
+    if (softLinebreaks) {
+        // Remove space/tab/cr at end of lines, and extra newlines at end
+        t = t.replace(/[ \t\r]+\n/g, '\n').replace(/\n+$/, '\n');
+    }
     return t;
 }
 
