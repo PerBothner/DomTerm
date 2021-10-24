@@ -2009,6 +2009,11 @@ class DTParser {
                 term._afterOutputHook.push(fn);
                 if (typeof options.timeout === "number") {
                     timer = setTimeout(() => {
+                        let hook = term._afterOutputHook;
+                        if (hook) {
+                            let i = hook.findIndex((e)=>(e===fn));
+                            if (i >= 0) hook.splice(i, 1);
+                        }
                         let errmsg = options.timeoutmsg;
                         if (errmsg === undefined)
                             errmsg = 'timeout';
