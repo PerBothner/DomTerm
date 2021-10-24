@@ -77,7 +77,7 @@ class id_table {
     // If SNUM is valid then elements[SNUM].index() == SNUM.
     // Otherwise (if SNUM is < sz): elements[SNUM] points
     // to nullptr or the next valid element in elements.
-    T** elements;
+    T** elements = nullptr;
     int sz = 0;
 public:
     T* first() { return elements == nullptr ? nullptr : elements[1]; }
