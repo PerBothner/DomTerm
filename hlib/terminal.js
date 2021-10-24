@@ -11270,8 +11270,8 @@ Terminal.prototype.editorInsertString = function(str, hidePassword = false, inse
                     let after = pwchar.repeat(wlength-wbefore);
                     DomTerm._replaceTextContents(this._inputLine, before + str + after);
                     this.sstate.hiddenText = ctext;
-                    setTimeout(function() { this._suppressHidePassword = false;
-                                            this._hidePassword(); },
+                    setTimeout(() => { this._suppressHidePassword = false;
+                                       this._hidePassword(); },
                                pwtimeout * 1000);
                     this._suppressHidePassword = true;
                 }
