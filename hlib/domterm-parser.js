@@ -1978,7 +1978,8 @@ class DTParser {
                                 if (! Terminal.isBlockNode(ln))
                                     continue;
                                 let text = ln.textContent;
-                                if (lines_checked == 0 && text.length == 0)
+                                if (lines_checked == 0
+                                    && text.trimEnd().length == 0)
                                     continue;
                                 lines_checked++;
                                 if (rx.test(text)) {
