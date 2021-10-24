@@ -147,8 +147,13 @@ void send_request(json& request, const char *cmd,
     request["cmd"] = cmd;
     if (tclient->proxyMode == proxy_remote)
         request["from-ssh-remote"] = true;
-    tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
-    lws_callback_on_writable(tclient->wsi);
+    if (tclient->initialized < 2) {
+        opts->unsent_request = request.dump();
+    } else {
+        tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"),
+                           request.dump().c_str());
+        lws_callback_on_writable(tclient->wsi);
+    }
     request_enter(opts, tclient);
 }
 

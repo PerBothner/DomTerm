@@ -328,6 +328,7 @@ public:
     long remote_input_timeout; // remote-input-timeout setting, as ms
     long remote_output_timeout; // remote-output-timeout setting, as ms
     long remote_output_interval; // remote-output-timeout setting, as ms
+    std::string unsent_request;
 };
 
 struct tty_server {

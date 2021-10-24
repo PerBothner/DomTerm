@@ -1145,7 +1145,8 @@ reportEvent(const char *name, char *data, size_t dlen,
             free((void*)pclient->cmd); pclient->cmd = NULL;
             free((void*)pclient->argv); pclient->argv = NULL;
         }
-        if (pclient->saved_window_contents != NULL)
+        if (pclient->saved_window_contents != NULL
+            || client->pending_requests.first())
             lws_callback_on_writable(wsi);
     } else if (strcmp(name, "RECEIVED") == 0) {
         if (proxyMode == proxy_display_local)
@@ -1692,6 +1693,15 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         }
         client->ob.len = 0;
     }
+    for (struct options *request = client->pending_requests.first();
+         request != nullptr;
+         request = client->pending_requests.next(request)) {
+        std::string& crequest = request->unsent_request;
+        if (! crequest.empty()) {
+            sb.printf(URGENT_WRAP("\033]97;%s\007"), crequest.c_str());
+            crequest = "";
+        }
+    }
     if (client->requesting_contents == 1) { // proxyMode != proxy_local ???
         sb.printf("%s", request_contents_message);
         client->requesting_contents = 2;
@@ -1706,6 +1716,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         }
         client->ob.reset();
     }
+
     if (client->initialized >= 0)
         client->initialized = 2;
 
