@@ -1243,83 +1243,6 @@ Kill the @code{domterm} server.
 This also kills all local sessions.
 Also close any windows, unless @code{--only} is specified.
 (This may kill remote sessions if their only window is closed.)
-
-@item @b{@code{do-keys}} [@var{option}|@var{string}]...
-Simulate user keystrokes by sending them to the front-end for interpretation.
-
-@table @asis
-@item @code{-w} @var{window-specifier}
-If specified, must be the first argument.
-Same as if specified before the @code{do-keys} argument.
-
-@item @code{-N} @var{count}
-Repeat following actions @var{count} times, until the next @code{-N}.
-
-@item @code{-l} @var{text}
-@itemx @code{-e} @var{text}
-Send the @var{text} as plain characters, with no interpretation
-for special key-bindings.
-Acts like a key-press event for each character.
-If @code{-e} (``escape'') is used, @ref{string escapes} are processed;
-if @code{-l} (``literal'') is used, th @var{text} is used as-in.
-
-@item @var{key-stroke}
-The front-end simulates the specified @var{key-stroke},
-as a key-down event.
-However, if the @var{key-stroke} starts and ends with single-quote, the characters between
-the quotes are processed as if with the @code{-l} options.
-Also, if the @var{key-stroke} has no action in the current context,
-the front-end treats the @var{key-stroke} as if preceeded by @code{-l}
-@end table
-
-@item @b{@code{send-input}} @var{send-option}... @var{string}...
-Send the specified @var{string} directly to the standard input
-of a session.
-If there is more than one @var{string}, send them in order,
-with a single space in between.
-
-A @var{string} may have @ref{string escapes}.
-
-Usually @code{send-input "text"} has the same effect as @code{do-keys -e "text"}.
-However, @code{send-input} feeds the @code{text} directly to the
-application input, while @code{do-keys} sends it to the front-end
-for processing first.  If the browser is in line-edit mode, it inserts
-the @code{text} input the editing area instead of sendingit to teh application.
-
-A @var{send-option} can be:
-@table @asis
-@item @code{-s} @var{session-specifier}
-Send to the session as specified by the @ref{session-specifier,@var{session-specifier}}.
-@item @code{-w} @var{window-specifier}
-Send to the session attached to the @ref{window-specifier-option, specified window}.
-@end table
-
-@item @b{@code{capture}} @var{capture-option}...
-Get the text contents of the @ref{window-specifier-option, specified window}
-(defaulting to the @code{current} window).
-The text is printed on standard output.
-This command is useful for testing.
-
-A @var{capture-options} can be:
-@table @asis
-@item @code{-B}
-Only capture the contents of the current buffer,
-as opposed to that of all buffers of the specified window.
-@item @code{-l}
-Include active soft newlines (i.e. from line-wrap or pretty-printing)
-as newlines in the output.
-@item @code{-e}
-Include ANSI escape sequences that encode color and style in the output.
-These escapes should work on almost all modern terminals.
-DomTerm-specific ``logical'' styles (such as prompt or input areas)
-are currently ignored.
-@item @code{-w} @var{window-specifier}
-Same as if specified before the @code{capture} command name.
-@end table
-
-In the future some options make be extended to take optional arguments,
-so scripts should not combine options:
-instead of @code{-Ble} write @code{-B -l -e}.
 @end table
 
 @subheading ``Printing'' images or html
@@ -1445,6 +1368,122 @@ If there are no windows, create one.
 Do the @var{subcommand} on the windows specified by the @var{window-specifier} list.
 Older (deprecated) form equivalent to:
 @code{--window=}@var{window-specifier} ... @var{subcommand} @var{options} ...
+@end table
+
+@subheading Automation
+
+The following are useful for automatically or remotely controlling DomTerm.
+For examples for doing automatic testing for DomTerm
+check the file @code{tests/Makefile.am} in the sources.
+
+@table @asis
+@item @b{@code{do-keys}} [@var{option}|@var{string}]...
+Simulate user keystrokes by sending them to the front-end for interpretation.
+
+@table @asis
+@item @code{-w} @var{window-specifier}
+If specified, must be the first argument.
+Same as if specified before the @code{do-keys} argument.
+
+@item @code{-N} @var{count}
+Repeat following actions @var{count} times, until the next @code{-N}.
+
+@item @code{-l} @var{text}
+@itemx @code{-e} @var{text}
+Send the @var{text} as plain characters, with no interpretation
+for special key-bindings.
+Acts like a key-press event for each character.
+If @code{-e} (``escape'') is used, @ref{string escapes} are processed;
+if @code{-l} (``literal'') is used, th @var{text} is used as-in.
+
+@item @var{key-stroke}
+The front-end simulates the specified @var{key-stroke},
+as a key-down event.
+Examples are @code{Enter} or @code{Ctrl+A}.
+(@code{Ctrl-A} is accepted in addition to the modern @code{Ctrl+A} style.)
+However, if the @var{key-stroke} starts and ends with single-quote, the characters between
+the quotes are processed as if with the @code{-l} options.
+Also, if the @var{key-stroke} has no action in the current context,
+the front-end treats the @var{key-stroke} as if preceeded by @code{-l}
+@end table
+
+@item @b{@code{send-input}} @var{send-option}... @var{string}...
+Send the specified @var{string} directly to the standard input
+of a session.
+If there is more than one @var{string}, send them in order,
+with a single space in between.
+
+A @var{string} may have @ref{string escapes}.
+
+Usually @code{send-input "text"} has the same effect as @code{do-keys -e "text"}.
+However, @code{send-input} feeds the @code{text} directly to the
+application input, while @code{do-keys} sends it to the front-end
+for processing first.  If the browser is in line-edit mode, it inserts
+the @code{text} input the editing area instead of sending it to the application.
+
+A @var{send-option} can be:
+@table @asis
+@item @code{-s} @var{session-specifier}
+Send to the session as specified by the @ref{session-specifier,@var{session-specifier}}.
+@item @code{-w} @var{window-specifier}
+Send to the session attached to the @ref{window-specifier-option, specified window}.
+@end table
+
+@item @b{@code{capture}} @var{capture-option}...
+Get the text contents of the @ref{window-specifier-option, specified window}
+(defaulting to the @code{current} window).
+The text is printed on standard output.
+This command is useful for testing.
+
+A @var{capture-options} can be:
+@table @asis
+@item @code{-B}
+Only capture the contents of the current buffer,
+as opposed to that of all buffers of the specified window.
+@item @code{-l}
+Include active soft newlines (i.e. from line-wrap or pretty-printing)
+as newlines in the output.
+Also skips extra whitespace (@code{" \t\r"}) at end of lines,
+and extra newlines at the end.
+@item @code{-e}
+Include ANSI escape sequences that encode color and style in the output.
+These escapes should work on almost all modern terminals.
+DomTerm-specific ``logical'' styles (such as prompt or input areas)
+are currently ignored.
+@item @code{-w} @var{window-specifier}
+Same as if specified before the @code{capture} command name.
+@end table
+
+In the future some options make be extended to take optional arguments,
+so scripts should not combine options:
+instead of @code{-Ble} write @code{-B -l -e}.
+
+@item @b{@code{await}} @var{options}... @var{event}...
+Wait until one of the specifed @var{events} happen.
+
+The following @var{options} and @var{events} are supported:
+@table @asis
+@item @code{--match-output} @var{pattern} @var{response} [@var{nlines}]
+After each ``block'' of output, try match @var{pattern} (a regular expression)
+against the last @var{nlines} (default 1)  lines of the buffers.
+(Trailing empty lines are not included in the @var{nlines} count.)
+If the match succeds, write @var{response} to standard output.
+(A newline is added if @var{response} is non-empty and does
+not end in a newline.)
+
+When this test is run depends on buffering (how the application and
+network/system break output into blocks), so this test is mainly
+intended to detect when output is ``done'' and the application
+is waiting for input.
+Typically, the @var{pattern} would look for a prompt string.
+@item @code{--timeout} @var{time} @var{response}
+If after @var{time} seconds none of the other @var{events} have occurred,
+return (with a non-zero exit code indicating failure).
+If @var{response} is non-empty, write it (plus a newline) to standard error.
+@item @code{-w} @var{window-specifier}
+A @ref{window-specifier-option,window specifier} for the affected window.
+@end table
+
 @end table
 
 @subheading Miscellaneous options
