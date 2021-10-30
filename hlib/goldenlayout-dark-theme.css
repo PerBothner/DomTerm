@@ -109,19 +109,6 @@
 .lm_controls .lm_close {
   background-image: url('../../img/lm_close_white.png');
 }
-.lm_controls .lm_dock {
-  background-image: url('../../img/lm_docked_white.png');
-  transform: rotate(-45deg);
-  transition: transform 300ms;
-}
-.lm_stack.lm_docked .lm_controls .lm_dock {
-  transform: rotate(0deg);
-}
-.lm_stack.lm_docked > .lm_items {
-  border-color: #555555;
-  border-image: linear-gradient(to right, #444444 1%, #999999 100%);
-  box-shadow: 0 2px 2px #000000;
-}
 .lm_maximised .lm_header {
   background-color: #000000;
 }

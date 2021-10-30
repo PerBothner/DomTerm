@@ -2,7 +2,7 @@
   background: #f4f4f4;
 }
 .lm_content {
-  background-color: #e1e1e1;
+  background: #e1e1e1;
   border: 1px solid #cccccc;
 }
 .lm_dragProxy .lm_content {
@@ -100,19 +100,6 @@
 }
 .lm_controls .lm_close {
   background-image: url('../../img/lm_close_black.png');
-}
-.lm_controls .lm_dock {
-  background-image: url('../../img/lm_docked_black.png');
-  transform: rotate(-45deg);
-  transition: transform 300ms;
-}
-.lm_stack.lm_docked .lm_controls .lm_dock {
-  transform: rotate(0deg);
-}
-.lm_stack.lm_docked > .lm_items {
-  border-color: #bbbbbb;
-  border-image: linear-gradient(to right, #bbbbbb 1%, #ffffff 100%);
-  box-shadow: 2px 2px 2px -2px rgba(0, 0, 0, 0.2);
 }
 .lm_maximised .lm_header {
   background-color: #ffffff;
