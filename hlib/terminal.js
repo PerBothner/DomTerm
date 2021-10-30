@@ -8555,8 +8555,10 @@ Terminal.prototype._updateRemote = function(input, extraText="") {
 Terminal.prototype.keyEnterToString  = function() {
     if ((this.sstate.automaticNewlineMode & 2) != 0)
         return "\r\n";
-    else
+    else if (this._clientWantsEditing) // actually should depend on icrnl
         return "\n";
+    else
+        return "\r";
 }
 
 /* (currently unused)
