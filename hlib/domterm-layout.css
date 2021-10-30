@@ -6,7 +6,6 @@
 .menubar { position: relative }
 body { --focused-pane-color: magenta}
 .lm_content.domterm-active { border:2px solid var(--focused-pane-color); }
-.lm_content.domterm { z-index: 1 }
 iframe.domterm-wrapper { border: none }
 /*
 .lm_stack{background:#e1e1e1;border:2px solid pink } / *#cccccc}* /
