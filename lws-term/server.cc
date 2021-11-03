@@ -1729,8 +1729,6 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #if ! WITH_XTERMJS
     {"hlib/domterm-parser.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-    {"hlib/sixel/Colors.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-    {"hlib/sixel/SixelDecoder.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #endif
     {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE},
     {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},

@@ -1,7 +1,5 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
-import { SixelDecoder } from './sixel/SixelDecoder.js';
-import { PALETTE_ANSI_256, DEFAULT_BACKGROUND } from './sixel/Colors.js';
 
 class DTParser {
     constructor(term) {
@@ -314,8 +312,31 @@ class DTParser {
                     this.parameters.length = 1;
                 }
                 continue;
-            case DTParser.SEEN_OSC_TEXT_STATE:
             case DTParser.SEEN_DCS_TEXT_STATE:
+                if (bytes[i] === 113 /*'q'*/ && ! window.SixelDecoder) {
+                    this._deferredBytes = this.withDeferredBytes(bytes, i, endIndex);
+                    if (window.SixelDecoder === undefined) {
+                        window.SixelDecoder = null;
+                        import('./sixel-decode.js')
+                            .then(mod => {
+                                mod.DecoderAsync().then(inst => {
+                                    window.SixelDecoder = inst;
+                                    let text = this._deferredBytes;
+                                    if (text) {
+                                        this._deferredBytes = undefined;
+                                        term.parseBytes(text);
+                                        term._maybeConfirmReceived();
+                                    }
+                                });
+                            }).catch((e) => {
+                                term.log("failed to import sixel-decode.js - "+e);
+                            });
+                    }
+                    term._updateDisplay();
+                    return;
+                }
+                // ... fall through ...
+            case DTParser.SEEN_OSC_TEXT_STATE:
             case DTParser.SEEN_PM_STATE:
             case DTParser.SEEN_APC_STATE:
                 for (let start = i; ; ) {
@@ -1477,6 +1498,62 @@ class DTParser {
         }
     };
 
+    handleSixel(bytes) {
+        const term = this.term;
+        const six = window.SixelDecoder;
+        six.init();
+        six.decode(bytes, 1);
+        let w = six.width, h = six.height;
+        let next = term.outputBefore;
+        if (next == term._caretNode)
+            next = next.nextSibling;
+        const reuseCanvas = next instanceof Element
+              && next.tagName == "CANVAS"
+              && next.width >= w && next.height >= h;
+        const canvas = reuseCanvas ? next
+              : document.createElement("canvas");
+        if (! reuseCanvas) {
+            canvas.setAttribute("width", w);
+            canvas.setAttribute("height", h);
+        }
+        const ctx = canvas.getContext('2d');
+        const idata = new ImageData(new Uint8ClampedArray(six.data32.buffer, 0, w * h * 4), w, h);
+        //six.toPixelData(idata.data, w, h);
+        ctx.putImageData(idata, 0, 0);
+        let wcols = Math.floor(w / term.charWidth + 0.9);
+        let hlines = Math.floor(h / term.charHeight + 0.9);
+        let oldLine = term.getAbsCursorLine();
+        let oldColumn = term.getCursorColumn();
+        if (reuseCanvas) {
+            this.outputBefore = canvas.nextSibling;
+        } else {
+            term.eraseCharactersRight(wcols, true);
+            if (false) {
+                // This works better with "Save as HTML"
+                // However, reuseCanvas is more complicated and inefficient.
+                let image = new Image(w, h);
+                image.src = canvas.toDataURL();
+                term.insertNode(image);
+            } else {
+                let span = term._createSpanNode();
+                span.setAttribute("content-value", DomTerm.makeSpaces(wcols));
+                span.appendChild(canvas);
+                span.style['position'] = "relative";
+                term.insertNode(span);
+                if (Math.floor(term.charHeight+0.2) == h)
+                    canvas.style['height'] = term.charHeight + "px";
+            }
+        }
+        let line = term.lineStarts[oldLine];
+        if (line._widthColumns !== undefined)
+            line._widthColumns += wcols;
+        if (term.currentCursorColumn >= 0)
+            term.currentCursorColumn += wcols;
+        line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+        line._breakState = Terminal._BREAKS_UNMEASURED;
+        term.moveToAbs(oldLine+hlines-1, oldColumn+wcols, true);
+    }
+
     handleDeviceControlString(params, bytes) {
         const term = this.term;
         if (bytes.length == 0)
@@ -1496,60 +1573,7 @@ class DTParser {
             return;
         }
         if (bytes[0] === 113) { // 'q'
-            let palette = this._sixelPalette;
-            if (! palette)
-                this._sixelPalette = palette = Object.assign([], PALETTE_ANSI_256);
-            let six = new SixelDecoder(DEFAULT_BACKGROUND, palette);
-            six.decode(bytes, 1);
-            let w = six.width, h = six.height;
-            let next = term.outputBefore;
-            if (next == term._caretNode)
-                next = next.nextSibling;
-            const reuseCanvas = next instanceof Element
-                  && next.tagName == "CANVAS"
-                  && next.width >= w && next.height >= h;
-            const canvas = reuseCanvas ? next
-                  : document.createElement("canvas");
-            if (! reuseCanvas) {
-                canvas.setAttribute("width", w);
-                canvas.setAttribute("height", h);
-            }
-            const ctx = canvas.getContext('2d');
-            const idata = ctx.createImageData(w, h);
-            six.toPixelData(idata.data, w, h);
-            ctx.putImageData(idata, 0, 0);
-            let wcols = Math.floor(w / term.charWidth + 0.9);
-            let hlines = Math.floor(h / term.charHeight + 0.9);
-            let oldLine = term.getAbsCursorLine();
-            let oldColumn = term.getCursorColumn();
-            if (reuseCanvas) {
-                this.outputBefore = canvas.nextSibling;
-            } else {
-                term.eraseCharactersRight(wcols, true);
-                if (false) {
-                    // This works better with "Save as HTML"
-                    // However, reuseCanvas is more complicated and inefficient.
-                    let image = new Image(w, h);
-                    image.src = canvas.toDataURL();
-                    term.insertNode(image);
-                } else {
-                    let span = term._createSpanNode();
-                    span.setAttribute("content-value", DomTerm.makeSpaces(wcols));
-                    span.appendChild(canvas);
-                    span.style['position'] = "relative";
-                    term.insertNode(span);
-                    if (Math.floor(term.charHeight+0.2) == h)
-                        canvas.style['height'] = term.charHeight + "px";
-                }
-            }
-            let line = term.lineStarts[oldLine];
-            if (line._widthColumns !== undefined)
-                line._widthColumns += wcols;
-            if (term.currentCursorColumn >= 0)
-                term.currentCursorColumn += wcols;
-            line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
-            line._breakState = Terminal._BREAKS_UNMEASURED;
-            term.moveToAbs(oldLine+hlines-1, oldColumn+wcols, true);
+            this.handleSixel(bytes);
         } else
             console.log("handleDeviceControlString");
     }
