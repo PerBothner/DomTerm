@@ -7,8 +7,6 @@
 #include <time.h>
 #include <new>
 
-#define BUF_SIZE 1024
-
 #define USE_RXFLOW (LWS_LIBRARY_VERSION_NUMBER >= (2*1000000+4*1000))
 // Maximum number of unconfirmed bytes before pausing
 // Must be at least as much as "flow-confirm-every" setting.
@@ -1450,7 +1448,7 @@ tty_client::tty_client()
     this->pclient = NULL;
     this->sent_count = 0;
     this->confirmed_count = 0;
-    this->ob.extend(2048);
+    this->ob.extend(20000);
     this->ocount = 0;
     this->proxyMode = no_proxy; // FIXME
     this->connection_number = -1;
@@ -1687,9 +1685,9 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         client->sent_count = (client->sent_count + client->ocount) & MASK28;
         sb.append(client->ob);
         client->ocount = 0;
-        if (client->ob.size > 4000) {
+        if (client->ob.size > 40000) {
             client->ob.reset();
-            client->ob.extend(2048);
+            client->ob.extend(20000);
         }
         client->ob.len = 0;
     }
@@ -2584,8 +2582,8 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                 if (unconfirmed < min_unconfirmed)
                   min_unconfirmed = unconfirmed;
                 size_t tavail = tclient->ob.size - tclient->ob.len;
-                if (tavail < 1000) {
-                    tclient->ob.extend(1000);
+                if (tavail < 5000) {
+                    tclient->ob.extend(5000);
                     tavail = tclient->ob.size - tclient->ob.len;
                 }
                 if (tavail < avail)
@@ -2624,8 +2622,8 @@ handle_process_output(struct lws *wsi, struct pty_client *pclient,
                             // it's safe to access data_start[-1].
                             char save_byte = data_start[-1];
                             n = read(fd_in, data_start-1, avail+1);
-                            lwsl_info("RAW_RX pty %d session %d read %ld tclient#%d\n",
-                                      fd_in, pclient->session_number, (long) n, tclient->connection_number);
+                            lwsl_info("RAW_RX pty %d session %d read %ld avail %ld tclient#%d\n",
+                                      fd_in, pclient->session_number, (long) n, (long) avail, tclient->connection_number);
                             if (n == 0)
                                 return -1;
                             char pcmd = data_start[-1];
