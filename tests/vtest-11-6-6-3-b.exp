@@ -1,0 +1,23 @@
+[44m[K[33mThis test deletes every third line from a list, marking cursor with '*'.[39m[m
+[44m[K[33mThe foreground and background should be yellow(orange) and blue, respectively.[39m[m
+[44m[K[33mPush <RETURN>[39m[m
+[44m[K[m
+[44m[K[33m   row   5: this is some text[39m[m
+[44m[K[33m   row   6: this is some text[39m[m
+[44m[K[33m*  row   8: this is some text[39m[m
+[44m[K[33m   row   9: this is some text[39m[m
+[44m[K[33m*  row  11: this is some text[39m[m
+[44m[K[33m   row  12: this is some text[39m[m
+[44m[K[33m*  row  14: this is some text[39m[m
+[44m[K[33m   row  15: this is some text[39m[m
+[44m[K[33m*  row  17: this is some text[39m[m
+[44m[K[33m   row  18: this is some text[39m[m
+[44m[K[33m*  row  20: this is some text[39m[m
+[44m[K[33m   row  21: this is some text[39m[m
+[44m[K[33m*  row  23: this is some text[39m[m
+[44m[K[33m   row  24: this is some text[39m[m
+[44m[K[33m*[39m[m
+[44m[K[m
+[44m[K[33m*[39m[m
+[44m[K[m
+[44m[K[33m*[39m[m
