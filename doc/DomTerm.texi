@@ -1064,7 +1064,7 @@ Open a new tab or window in the specified desktop browser, either Firefox,
 Google Chrome (@code{chrome} and @code{google-chrome} are synonymous),
 or Microsft Edge (on Windows only).
 DomTerm looks in common platform-specific locations for these browers,
-and know which options to pass.
+and knows which options to pass.
 
 @item @code{chrome-app}
 @itemx @code{edge-app} @emph{(Windows only)}
@@ -1092,9 +1092,6 @@ Run the stripped-down @code{dt-webview} or @code{dt-wry} browser,
 respectively.
 (Available if
 configured @code{--with-webview} or @code{with-wry}, respectively.)
-
-Run the stripped-down @code{dt-wry} browser (built if
-configured @code{--with-webview}).
 
 @item @code{browser}
 Run the default desktop browser.
