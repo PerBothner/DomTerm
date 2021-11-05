@@ -9392,14 +9392,17 @@ DomTerm.autoPagerChanged = function(dt, mode) {
 
 Terminal.prototype._pushToCaret = function(useFocus = false) {
     //this._fixOutputPosition();
+    const wasStyleSpan = this.outputContainer === this._currentStyleSpan;
     let saved = {
-        before: this.outputBefore, container: this.outputContainer };
+        before: this.outputBefore, container: this.outputContainer, wasStyleSpan };
     if (useFocus && this.viewCaretNode && this.viewCaretNode.parentNode) {
         this.outputBefore = this.viewCaretNode;
     } else {
         this.outputBefore = this._caretNode;
     }
     this.outputContainer = this.outputBefore.parentNode;
+    if (wasStyleSpan && this._isAnAncestor(this.outputBefore, this._currentStyleSpan))
+        this._currentStyleSpan = this.outputContainer;
     this.resetCursorCache();
     return saved;
 }
@@ -9407,6 +9410,8 @@ Terminal.prototype._pushToCaret = function(useFocus = false) {
 Terminal.prototype._popFromCaret = function(saved) {
     this.outputBefore = saved.before;
     this.outputContainer = saved.container;
+    if (saved.wasStyleSpan)
+        this._currentStyleSpan = saved.container;
     this.resetCursorCache();
 }
 
