@@ -8811,7 +8811,10 @@ Terminal._rangeAsText = function(range, options={}) {
     let t = "";
     let addEscapes = options['escape'];
     let softLinebreaks = options['soft-linebreaks'];
-    let prevBg = null, prevFg = null, prevStyle = null, lineFirst = true;
+    let useTabs = options['use-tabs'];
+    let prevBg = null, prevFg = null, prevStyle = null;
+    let lineNonEmpty = 0; // 0: empty; 1: only whitespace; 2: non-space seen
+    let lastEnd = 0;
     const BOLD = 1 << 1; //font-weight=bold
     const LIGHTER = 1 << 2; //font-weight=lighter
     const ITALIC = 1 << 3; //font-style=italic
@@ -8823,7 +8826,7 @@ Terminal._rangeAsText = function(range, options={}) {
         let parent = tnode.parentNode;
         let lineColor = '';
         if (parent.getAttribute('line'))
-            return;
+            end = start; // skip actual '\n' text, but handle escapes (lineColor)
         if (addEscapes) {
             let curBg = null, curFg = null, curStyle = 0;
             for (let p = parent; ; p = p.parentNode) {
@@ -8831,7 +8834,7 @@ Terminal._rangeAsText = function(range, options={}) {
                 let pstyle = p.style;
                 if (! curFg)
                     curFg = pstyle['color'];
-                if (isBlock && lineFirst) {
+                if (isBlock && lineNonEmpty == 0) {
                     lineColor = pstyle['background-color'];
                 }
                 if (! curBg)
@@ -8929,7 +8932,7 @@ Terminal._rangeAsText = function(range, options={}) {
         if (parent instanceof Element) {
             if (parent.getAttribute("std") === "caret")
                 parent = parent.parentNode;
-            if (parent.getAttribute('dt-tab')
+            if (useTabs && parent.getAttribute('dt-tab')
                 && Terminal._endsWithSpaces(tnode.textContent, -1)
                 && parent.firstChild instanceof Text) {
                 if (tnode == parent.firstChild)
@@ -8946,8 +8949,11 @@ Terminal._rangeAsText = function(range, options={}) {
         let stdElement = Terminal._getStdElement(tnode);
         if (stdElement && stdElement.getAttribute("prompt-kind") == "r")
             return;
-        t += tnode.data.substring(start, end);
-        lineFirst = false;
+        let str = tnode.data.substring(start, end);
+        t += str;
+        if (end > start && lineNonEmpty < 2) {
+            lineNonEmpty = str.trim() ? 2 : 1;
+        }
     }
     function elementExit(node) {
         let endOfLine = false;
@@ -8960,13 +8966,14 @@ Terminal._rangeAsText = function(range, options={}) {
         if (lineAttr) {
             endOfLine = true;
         }
+        const wasNonEmpty = lineNonEmpty;
         if (endOfLine) {
             if (addEscapes && (prevFg || prevBg || prevStyle)) {
                 t += '\x1B[m';
                 prevFg = prevBg = '';
                 prevStyle = 0;
             }
-            lineFirst = true;
+            lineNonEmpty = 0;
         }
         if (lineAttr) {
             let val = node.textContent;
@@ -8974,6 +8981,9 @@ Terminal._rangeAsText = function(range, options={}) {
                 && node.getAttribute('breaking') === 'yes')
                 val = '\n';
             t += val;
+        }
+        if (endOfLine && wasNonEmpty == 2) {
+            lastEnd = t.length;
         }
         return false;
     }
@@ -8986,7 +8996,7 @@ Terminal._rangeAsText = function(range, options={}) {
     }
     if (softLinebreaks) {
         // Remove space/tab/cr at end of lines, and extra newlines at end
-        t = t.replace(/[ \t\r]+\n/g, '\n').replace(/\n+$/, '\n');
+        t = t.substring(0, lastEnd).replace(/[ \t\r]+\n/g, '\n');
     }
     return t;
 }

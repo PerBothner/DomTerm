@@ -1442,6 +1442,12 @@ Include active soft newlines (i.e. from line-wrap or pretty-printing)
 as newlines in the output.
 Also skips extra whitespace (@code{" \t\r"}) at end of lines,
 and extra newlines at the end.
+@item @code{-T}
+Preserve tabs, if possible.
+When DomTerm receives a Tab character, it will remember that
+(assuming the columns moved past by the Tab contain just spaces).
+The @code{-T} flag will report a Tab character in the captured output;
+the default is to report the equivalent number of spaces.
 @item @code{-e}
 Include ANSI escape sequences that encode color and style in the output.
 These escapes should work on almost all modern terminals.

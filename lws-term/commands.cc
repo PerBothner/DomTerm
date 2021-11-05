@@ -1116,7 +1116,7 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
     optind = 1;
     opterr = 0;
     for (;;) {
-        int c = getopt(argc, (char *const*) argv, "+:w:elB");
+        int c = getopt(argc, (char *const*) argv, "+:w:elBT");
         if (c == -1)
             break;
         switch (c) {
@@ -1134,6 +1134,9 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
             break;
         case 'l':
             request["soft-linebreaks"] = true;
+            break;
+        case 'T':
+            request["use-tabs"] = true;
             break;
         case 'B':
             request["current-buffer"] = true;
