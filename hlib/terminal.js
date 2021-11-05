@@ -8825,7 +8825,8 @@ Terminal._rangeAsText = function(range, options={}) {
     function wrapText(tnode, start, end) {
         let parent = tnode.parentNode;
         let lineColor = '';
-        if (parent.getAttribute('line'))
+        const inLineEnd = parent.getAttribute('line');
+        if (inLineEnd)
             end = start; // skip actual '\n' text, but handle escapes (lineColor)
         if (addEscapes) {
             let curBg = null, curFg = null, curStyle = 0;
@@ -8890,41 +8891,43 @@ Terminal._rangeAsText = function(range, options={}) {
                 prevBg = lineColor;
                 t += '\x1B[K'; // Erase in Line, for Background Color Erase
             }
-            if (curStyle !== prevStyle) {
-                let m = '';
-                function ifAdded(mask, value) {
-                    if ((curStyle & mask) && ! (prevStyle & mask))
-                        m += ';'+value;
+            if (! inLineEnd) {
+                if (curStyle !== prevStyle) {
+                    let m = '';
+                    function ifAdded(mask, value) {
+                        if ((curStyle & mask) && ! (prevStyle & mask))
+                            m += ';'+value;
+                    }
+                    function ifRemoved(mask, value) {
+                        if (! (curStyle & mask) && (prevStyle & mask))
+                            m += ';'+value;
+                    }
+                    ifRemoved(BOLD, 22);
+                    ifRemoved(LIGHTER, 22);
+                    ifAdded(BOLD, 1);
+                    ifAdded(LIGHTER, 2);
+                    ifAdded(ITALIC, 3);
+                    ifAdded(UNDERLINE, 4);
+                    ifAdded(BLINK, 5);
+                    ifAdded(INVERSE, 7);
+                    ifAdded(CROSSED_OUT, 9);
+                    ifRemoved(ITALIC, 23);
+                    ifRemoved(UNDERLINE, 24);
+                    ifRemoved(BLINK, 25);
+                    ifRemoved(INVERSE, 27);
+                    ifRemoved(CROSSED_OUT, 29);
+                    if (m)
+                        t += '\x1B[' + m.substring(1) + 'm';
+                    prevStyle = curStyle;
                 }
-                function ifRemoved(mask, value) {
-                    if (! (curStyle & mask) && (prevStyle & mask))
-                        m += ';'+value;
+                if (curFg !== prevFg) {
+                    encodeColor(curFg, false);
+                    prevFg = curFg;
                 }
-                ifRemoved(BOLD, 22);
-                ifRemoved(LIGHTER, 22);
-                ifAdded(BOLD, 1);
-                ifAdded(LIGHTER, 2);
-                ifAdded(ITALIC, 3);
-                ifAdded(UNDERLINE, 4);
-                ifAdded(BLINK, 5);
-                ifAdded(INVERSE, 7);
-                ifAdded(CROSSED_OUT, 9);
-                ifRemoved(ITALIC, 23);
-                ifRemoved(UNDERLINE, 24);
-                ifRemoved(BLINK, 25);
-                ifRemoved(INVERSE, 27);
-                ifRemoved(CROSSED_OUT, 29);
-                if (m)
-                    t += '\x1B[' + m.substring(1) + 'm';
-                prevStyle = curStyle;
-            }
-            if (curFg !== prevFg) {
-                encodeColor(curFg, false);
-                prevFg = curFg;
-            }
-            if (curBg !== prevBg) {
-                encodeColor(curBg, true);
-                prevBg = curBg;
+                if (curBg !== prevBg) {
+                    encodeColor(curBg, true);
+                    prevBg = curBg;
+                }
             }
         }
         // Skip text that is input-line but not actual input (std="input")
@@ -8956,34 +8959,29 @@ Terminal._rangeAsText = function(range, options={}) {
         }
     }
     function elementExit(node) {
-        let endOfLine = false;
+        let endOfLine /* : string | false */ = false;
         if (Terminal.isBlockNode(node)
             && t.length > 0 && t.charCodeAt(t.length-1) != 10) {
-            t += '\n';
-            endOfLine = true;
+            endOfLine = '\n';
         }
         let lineAttr = node.getAttribute('line');
         if (lineAttr) {
-            endOfLine = true;
+            endOfLine = node.textContent
+                || ((softLinebreaks && node.getAttribute('breaking') === 'yes')
+                    ? '\n' : false);
         }
         const wasNonEmpty = lineNonEmpty;
-        if (endOfLine) {
+        if (endOfLine !== false) {
             if (addEscapes && (prevFg || prevBg || prevStyle)) {
                 t += '\x1B[m';
                 prevFg = prevBg = '';
                 prevStyle = 0;
             }
             lineNonEmpty = 0;
-        }
-        if (lineAttr) {
-            let val = node.textContent;
-            if (! val && softLinebreaks
-                && node.getAttribute('breaking') === 'yes')
-                val = '\n';
-            t += val;
-        }
-        if (endOfLine && wasNonEmpty == 2) {
-            lastEnd = t.length;
+            t += endOfLine;
+            if (wasNonEmpty == 2) {
+                lastEnd = t.length;
+            }
         }
         return false;
     }

@@ -1,10 +1,10 @@
-[44m[K[33mIf your terminal has the ANSI 'Insert Character' function[39m[m
-[44m[K[33m(the VT102 does not), then you should see a line like this[39m[m
-[44m[K[33m  A B C D E F G H I J K L M N O P Q R S T U V W X Y Z[39m[m
-[44m[K[33mbelow:[39m[m
+[44m[K[33mIf your terminal has the ANSI 'Insert Character' function[m
+[44m[K[33m(the VT102 does not), then you should see a line like this[m
+[44m[K[33m  A B C D E F G H I J K L M N O P Q R S T U V W X Y Z[m
+[44m[K[33mbelow:[m
 [44m[K[m
-[44m[K[33m  A B C D E F G H I J K L M N O P Q R S T U V W X Y Z[39m[m
+[44m[K[33m  A B C D E F G H I J K L M N O P Q R S T U V W X Y Z[m
 [44m[K[m
 [44m[K[m
 [44m[K[m
-[44m[K[33mPush <RETURN>[39m[m
+[44m[K[33mPush <RETURN>[m
