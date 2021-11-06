@@ -1,4 +1,5 @@
 check: test-24-bit-color \
+  test-UTF-8-width \
   test-vttest-1 \
   test-vttest-11-6-6-3
 
@@ -12,26 +13,40 @@ DOMTERM = ../bin/domterm
 TDOMTERM = $(DOMTERM) --socket-name=`pwd`/test-domterm
 TNEWOPTIONS =
 SEND_INPUT = $(TDOMTERM) send-input
+TSEND_INPUT = $(TDOMTERM) -w 1 send-input
 TDOKEYS = $(TDOMTERM) -w 1 do-keys
+TCAPTURE = $(TDOMTERM) -w 1 capture
 TEST_SHELL = /bin/bash --noprofile --rcfile ./test-bash-rc.sh
 VTTEST = vttest
 
 test-24-bit-color:
 	$(TDOMTERM) $(TNEWOPTIONS) $(TEST_SHELL)
-	@sleep 0.5
-	@$(SEND_INPUT) -w 1 './24-bit-color.sh\r'
-	@sleep 0.2
-	$(TDOMTERM) capture -w 1 -e >t24.out
+	$(TDOMTERM) -w 1 await --match-output '1[$$]' ''
+	@$(TSEND_INPUT) './24-bit-color.sh\r'
+	$(TDOMTERM) -w 1 await --match-output '2[$$]' ''
+	$(TCAPTURE) -e >t24.out
 	cmp t24.exp t24.out
 	$(SEND_INPUT) -w 1 'exit\r'
 	@echo test-24-bit-color OK
+
+test-UTF-8-width:
+	$(TDOMTERM) $(TNEWOPTIONS) $(TEST_SHELL)
+	$(TDOMTERM) -w 1 await --match-output '1[$$]' ''
+	$(TSEND_INPUT) "echo -e '\e[8;24;80t'\r"
+	$(TDOMTERM) -w 1 await --match-output '2[$$]' ''
+	$(TSEND_INPUT) "cat ./UTF-8.txt\r"
+	$(TDOMTERM) -w 1 await --match-output '3[$$]' ''
+	$(TCAPTURE) -l >UTF-8-width.out
+	cmp UTF-8-width.exp UTF-8-width.out
+	$(SEND_INPUT) -w 1 'exit\r'
+	@echo test-UTF-8-width OK
 
 test-vttest-1:
 	$(TDOMTERM) $(TNEWOPTIONS) new $(VTTEST)
 	$(TDOMTERM) -w 1 await --match-output 'Enter choice number' ''
 	$(TDOKEYS) 1 Enter
 	$(TDOMTERM) -w 1 await --match-output '[+]        E with.*free position around it.*Push <RETURN>' '' 20
-	$(TDOMTERM) capture -w 1 -e -l -B >vtest-1-a.out
+	$(TCAPTURE) -e -l -B >vtest-1-a.out
 	cmp vtest-1-a.exp vtest-1-a.out
 	$(TDOKEYS) Enter
 	$(TDOMTERM) -w 1 await --match-output '[+]                                  E with  one.*Push <RETURN>' '' 20
@@ -60,7 +75,7 @@ test-vttest-1:
 	$(TDOKEYS) Enter
 	$(TDOMTERM) -w 1 await --match-output 'Enter choice number' ''
 	$(TDOKEYS) 0 Enter
-	@echo vttest "[1: Test of cursor movements]" ok
+	@echo vttest "[1: Test of cursor movements]" OK
 
 test-vttest-11-6-6-3:
 	$(TDOMTERM) $(TNEWOPTIONS) new $(VTTEST)
@@ -148,7 +163,7 @@ test-vttest-11-6-6-3:
 	$(TDOKEYS) 0 Enter
 	$(TDOMTERM) -w 1 await --match-output 'Enter choice number' ''
 	$(TDOKEYS) 0 Enter
-	@echo vttest "[11.6.6.3: Insert/Delete Char/Line with BCE]" ok
+	@echo vttest "[11.6.6.3: Insert/Delete Char/Line with BCE]" OK
 
 clean:
 	-rm -f *.out

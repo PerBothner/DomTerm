@@ -1,3 +1,8 @@
+1$ echo -e ;24;80t
+
+bash: 24: command not found
+bash: 80t: command not found
+2$ cat ./UTF-8.txt
 (UTF-8.txt from https://github.com/poderosaproject/cjksample)
 (The box-drawing characters are Ambiguous width, so require
 an "East Asian Context" to line up properly.)
@@ -32,19 +37,23 @@ Right 'X' must be placed at right edge on 80 column console.
                                                                                X
 
 Right '字' must be placed at the top of the next line on 80 column console.
-                                                                             漢字
+                                                                             漢
+字
 
 UTF-8 kanji sample:
-哀公問社於宰我宰我對曰夏后氏以松殷人以柏周人以栗曰使人戰栗子聞之曰成事不說遂事不諫既往不咎
+哀公問社於宰我宰我對曰夏后氏以松殷人以柏周人以栗曰使人戰栗子聞之曰成事不說遂事不
+諫既往不咎
 
 On 80 column console, above line must be displayed like:
 哀公問社於宰我宰我對曰夏后氏以松殷人以柏周人以栗曰使人戰栗子聞之曰成事不說遂事不
 諫既往不咎
 
 UTF-8 kanji-ascii sample:
-ABC哀公問社於宰我DEF宰我對曰GHI夏后氏以松殷人以柏周人以栗JKL曰MNO使人戰栗PQR子聞之曰YZ成事不說遂事不諫既往不咎
+ABC哀公問社於宰我DEF宰我對曰GHI夏后氏以松殷人以柏周人以栗JKL曰MNO使人戰栗PQR子聞
+之曰YZ成事不說遂事不諫既往不咎
 
 On 80 column console, above line must be displayed like:
 ABC哀公問社於宰我DEF宰我對曰GHI夏后氏以松殷人以柏周人以栗JKL曰MNO使人戰栗PQR子聞
 之曰YZ成事不說遂事不諫既往不咎
 
+3$
