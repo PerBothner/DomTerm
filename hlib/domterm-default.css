@@ -55,7 +55,7 @@ div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family),mo
 div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
 span.editing[std="input"] { outline: 2px dashed #a0522d80 } /* sienna 50% */
 div.domterm-show-info span.editing {
-    font-family: var(--monospace-family);
+    white-space: pre-wrap;
     padding: 0px 2px;
     outline-width: 1px;
     outline-style: solid;}
