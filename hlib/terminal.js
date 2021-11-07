@@ -11251,10 +11251,15 @@ Terminal.prototype.editorContinueInput = function() {
 }
 
 Terminal.prototype.editorInsertString = function(str, hidePassword = false, inserting=2) {
+    if (this._miniBuffer) {
+        let saved = this._pushToCaret();
+        this.insertRawOutput(str);
+        this._popFromCaret(saved);
+        return;
+    }
     this.editorAddLine();
     this._showPassword();
-    if (! this._miniBuffer)
-        this._updateLinebreaksStart(this.getAbsCursorLine(), true);
+    this._updateLinebreaksStart(this.getAbsCursorLine(), true);
     for (;;) {
         let nl = str.indexOf('\n');
         let str1 = nl < 0 ? str : str.substring(0, nl);
