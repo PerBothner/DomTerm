@@ -41,6 +41,16 @@ test-UTF-8-width:
 	$(SEND_INPUT) -w 1 'exit\r'
 	@echo test-UTF-8-width OK
 
+test-grapheme-widths:
+	$(TDOMTERM) $(TNEWOPTIONS) $(TEST_SHELL)
+	$(TDOMTERM) -w 1 await --match-output '1[$$]' ''
+	@$(TSEND_INPUT) 'sh ./grapheme-widths.sh\r'
+	$(TDOMTERM) -w 1 await --match-output '2[$$]' ''
+	$(TCAPTURE) >grapheme-widths.out
+	cmp grapheme-widths.exp grapheme-widths.out
+	$(SEND_INPUT) -w 1 'exit\r'
+	@echo test-grapheme-widths OK
+
 test-vttest-1:
 	$(TDOMTERM) $(TNEWOPTIONS) new $(VTTEST)
 	$(TDOMTERM) -w 1 await --match-output 'Enter choice number' ''
