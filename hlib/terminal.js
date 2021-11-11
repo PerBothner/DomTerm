@@ -8097,15 +8097,21 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     let widthInColumns = 0;
     let segments = [];
     let widths = [];
-    let numCols = 0;
+    let colsToHere = 0; // columns in str.substring(beginIndex,i)
+    let colsToCluster = 0; // columns in str.substring(beginIndex,clusterStart)
     let prevInfo = 0;
     const preferWide = false; //this.ambiguousCharsAreWide(context);
     let inCluster = false; //FIXME
     let clusterStart = 0;
+    // Divide the string into grapheme clusters.  A string is used to represent
+    // one or more simple clusters (single-character, single-column).
+    // Other clusters are represented by <span class="cluster"> elements.
     let width = 0; // max of w (below) of characters from clusterStart..i.
     for (let i = beginIndex; ; ) {
+        // Text in str.substring.(beginIndex, i) is "simple" clusters.
         let codePoint, codeInfo, joinState, shouldBreak;
         let w; // 0 - normal; 1 - force 1-column; 2 - wide
+        // 'width' is max of 'w' since clusterStart
         if (i >= endIndex) {
             codePoint = -1;
             codeInfo = -1; // ???
@@ -8132,15 +8138,17 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             if (width == 0 &&
                 (i == clusterStart+1
                  || (i == clusterStart+2
-                     && str.charCodeAt(clusterStart) > 0xffff)))
+                     && str.charCodeAt(clusterStart) > 0xffff))) {
                 clusterStart = i;
+                colsToCluster = colsToHere;
+            }
             if (clusterStart > beginIndex
                 && (w > 0 || width > 0 || prevInfo > 0 || codePoint < 0)) {
                 segments.push(str.substring(beginIndex, clusterStart));
-                widths.push(numCols);
-                widthInColumns += numCols;
+                widths.push(colsToCluster);
+                widthInColumns += colsToCluster;
                 beginIndex = clusterStart;
-                numCols = 0;
+                colsToHere = 0;
             }
             if (clusterStart < i && (width > 0 || prevInfo > 0 || codePoint < 0)) {
                 if (prevInfo == UnicodeProperties.GRAPHEME_BREAK_Regional_Indicator)
@@ -8149,13 +8157,15 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                     width >= 2 ? "dt-cluster w2" : "dt-cluster w1",
                     str.substring(clusterStart, i));
                 segments.push(node);
-                widths.push(width >= 2 ? 2 : 1);
-                widthInColumns += width >= 2 ? 2 : 1;
+                width = width >= 2 ? 2 : 1;
+                widths.push(width);
+                widthInColumns += width;
                 beginIndex = i;
                 width = 0;
+                colsToHere = 0;
             }
             clusterStart = i;
-            numCols += w == 2 ? 2 : 1;
+            colsToCluster = colsToHere;
         }
         if (i >= endIndex)
             break;
@@ -8163,8 +8173,8 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         prevInfo = joinState;
         if (w > width)
             width = w;
-        // update inCluster, width, numCols, widthInColumns
         i = i + ((codePoint <= 0xffff) ? 1 : 2);
+        colsToHere += 1; // Only used for narrow simple chars
     }
 
     let nsegments = segments.length;

@@ -77,22 +77,23 @@ function columnToIndexInContext(str, startIndex, column, preferWide) {
 // the value 0 is start of string.
 // 'afterCode' is the GRAPHEME_BREAK_Xxx value for the following codepoint.
 function shouldJoin(beforeState, afterInfo) {
+    let beforeCode = beforeState >= 0 ? beforeState : -beforeState;
     let afterCode = (afterInfo & GRAPHEME_BREAK_MASK) >> GRAPHEME_BREAK_SHIFT;
-    if (beforeState >= GRAPHEME_BREAK_Hangul_L
-        && beforeState <= GRAPHEME_BREAK_Hangul_LVT) {
-        if (beforeState == GRAPHEME_BREAK_Hangul_L // GB6
+    if (beforeCode >= GRAPHEME_BREAK_Hangul_L
+        && beforeCode <= GRAPHEME_BREAK_Hangul_LVT) {
+        if (beforeCode == GRAPHEME_BREAK_Hangul_L // GB6
             && (afterCode == GRAPHEME_BREAK_Hangul_L
                 || afterCode == GRAPHEME_BREAK_Hangul_V
                 || afterCode == GRAPHEME_BREAK_Hangul_LV
                 || afterCode == GRAPHEME_BREAK_Hangul_LVT))
             return afterCode;
-        if ((beforeState == GRAPHEME_BREAK_Hangul_LV // GB7
-             || beforeState == GRAPHEME_BREAK_Hangul_V)
+        if ((beforeCode == GRAPHEME_BREAK_Hangul_LV // GB7
+             || beforeCode == GRAPHEME_BREAK_Hangul_V)
             && (afterCode == GRAPHEME_BREAK_Hangul_V
                 || afterCode == GRAPHEME_BREAK_Hangul_T))
             return afterCode;
-        if ((beforeState == GRAPHEME_BREAK_Hangul_LVT // GB8
-             || beforeState == GRAPHEME_BREAK_Hangul_T)
+        if ((beforeCode == GRAPHEME_BREAK_Hangul_LVT // GB8
+             || beforeCode == GRAPHEME_BREAK_Hangul_T)
             && afterCode == GRAPHEME_BREAK_Hangul_T)
             return afterCode;
     }
@@ -100,13 +101,13 @@ function shouldJoin(beforeState, afterInfo) {
         || afterCode == GRAPHEME_BREAK_ZWJ
         || afterCode == GRAPHEME_BREAK_SpacingMark) // GB9b
         return afterCode;
-    if (beforeState == GRAPHEME_BREAK_ZWJ // GB11
+    if (beforeCode == GRAPHEME_BREAK_ZWJ // GB11
         && afterCode == GRAPHEME_BREAK_ExtPic)
         return afterCode;
     if (afterCode == GRAPHEME_BREAK_Regional_Indicator) // GB12, GB13
         return beforeState == GRAPHEME_BREAK_SAW_Regional ? afterCode
         : GRAPHEME_BREAK_SAW_Regional;
-    return 0;
+    return -afterCode;
 }
 
 const getInfo = typeof trieData === "undefined" ? undefined
