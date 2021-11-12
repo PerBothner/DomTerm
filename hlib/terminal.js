@@ -8124,8 +8124,10 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
             joinState = UnicodeProperties.shouldJoin(prevInfo, codeInfo);
             shouldBreak = joinState <= 0;
             w = UnicodeProperties.infoToWidthInfo(codeInfo);
-            if (w >= 2)
-                w = w == 3 || preferWide ? 2 : 0;
+            if (w >= 2) {
+                // Treat emoji_presentation_selector as WIDE.
+                w = w == 3 || preferWide || codePoint === 0xfe0f ? 2 : 0;
+            }
         }
         // A <span class="cluster">...</span> contains one or more
         // characters that should be treated an extended grapheme cluster.
