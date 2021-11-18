@@ -2138,6 +2138,16 @@ Delay an extra @var{delay} seconds before sending keyboard
 and other events from client (browser) to server (application).
 Especially useful for testing @code{predicted-input-timeout},
 which should be higher than @code{debug.input.extra-delay}.
+
+@item @code{@b{output-byte-by-byte} = } @var{count}
+When a front-end receives @var{N} output bytes to process, it may handle
+multiple bytes (such as simple text) in one go.
+This option forces the last @var{count} bytes to be processed one at a time.
+(The first @var{N-count} bytes, if any, are processed first as a unit.)
+The default for @var{count} is 0 (normal processing).
+The value @code{-1} means handle each byte one-by-one; this
+is useful for testing that things work (albeit slowly)
+even if the output arrived in small chunks.
 @end table
 
 @subsubheading Miscellaneous settings

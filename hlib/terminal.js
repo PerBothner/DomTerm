@@ -6006,6 +6006,7 @@ Terminal.prototype.updateSettings = function() {
         this.linkAllowedUrlSchemes += m[2];
         a = m[1]+m[3];
     }
+    this._output_byte_by_byte = getOption("output-byte-by-byte", 0);
     if (this.isRemoteSession()) {
         this._remote_input_interval =
             1000 * getOption("remote-input-interval", 10);
@@ -7101,12 +7102,9 @@ Terminal.prototype._maybeConfirmReceived = function() {
 }
 
 /* 'bytes' should be an ArrayBufferView, typically a Uint8Array */
-Terminal.prototype.insertBytes = function(bytes) {
-    var len = bytes.length;
-    let startIndex = 0;
-    let endIndex = bytes.length;
+Terminal.prototype.insertBytes = function(bytes, startIndex = 0, endIndex = bytes.length) {
     if (DomTerm.verbosity >= 2)
-        this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+len+" received:"+this._receivedCount);
+        this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+(endIndex-startIndex)+" received:"+this._receivedCount);
     if (! this.parser) {
         console.log("data received for non-terminal window (browse or view-saved)");
         console.log("ignored for now");
@@ -7222,19 +7220,7 @@ Terminal.prototype.parseBytes = function(bytes, beginIndex = 0, endIndex = bytes
     let rlen = endIndex - beginIndex;
     if (this.parser._deferredBytes)
         rlen += this.parser._deferredBytes.length;
-
-    if (false) { // DEBUGGING of partial sequences
-        // number of trailing bytes to do one-by-one; -1 is all of them.
-        let do_one_by_one = -1;
-        if (do_one_by_one >= 0 && endIndex > beginIndex + do_one_by_one) {
-            let next = endIndex - do_one_by_one;
-            this.parser.parseBytes(bytes, beginIndex, next);
-            beginIndex = next;
-        }
-        for (let i = beginIndex; i < endIndex; i++)
-            this.parser.parseBytes(bytes, i, i+1);
-    } else
-        this.parser.parseBytes(bytes, beginIndex, endIndex);
+    this.parser.parseBytes(bytes, beginIndex, endIndex);
     if (this.parser._deferredBytes)
         rlen -= this.parser._deferredBytes.length;
     this._receivedCount = (this._receivedCount + rlen) & Terminal._mask28;
@@ -10119,7 +10105,20 @@ DomTerm._handleOutputData = function(dt, data) {
     }
     var dlen;
     if (data instanceof ArrayBuffer) {
-        dt.insertBytes(new Uint8Array(data));
+        let bytes = new Uint8Array(data);
+        let do_one_by_one = dt._output_byte_by_byte;
+        if (do_one_by_one) { // DEBUGGING of partial sequences
+            // number of trailing bytes to do one-by-one; -1 is all of them.
+            let endIndex = bytes.length;
+            let next = do_one_by_one < 0 ? 0 : endIndex - do_one_by_one;
+            if (next > 0)
+                dt.insertBytes(bytes, 0, next);
+            else
+                next = 0;
+            for (; next < endIndex; next++)
+                dt.insertBytes(bytes, next, next+1);
+        } else
+            dt.insertBytes(bytes);
         dlen = data.byteLength;
         // updating _receivedCount is handled by insertBytes
     } else {
