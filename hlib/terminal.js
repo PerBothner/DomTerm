@@ -4257,8 +4257,7 @@ Terminal.prototype._updateSelected = function() {
                 viewCaretPrevious.parentNode.removeChild(this.viewCaretNode);
                 this._normalize1(viewCaretPrevious);
             }
-            if (focusNode !== this.viewCaretNode.firstChild
-                && focusNode !== this.viewCaretNode.firstChild.firstChild)
+            if (! r.intersectsNode(this.viewCaretNode))
                 r.insertNode(this.viewCaretNode);
             // Kludge for HTML insertions using tables
             if (this.viewCaretNode.parentNode
