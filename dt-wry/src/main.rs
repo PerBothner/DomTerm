@@ -52,6 +52,7 @@ fn main() -> wry::Result<()> {
   let script = format!(r#"
   (function () {{
 {}    window.wry_version = "{}";
+    window.closeMainWindow = ()=>{{window.close();}};
 }})();
   "#, wversion_js, wry_version);
 
