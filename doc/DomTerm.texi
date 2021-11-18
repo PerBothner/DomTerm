@@ -803,6 +803,8 @@ This has only been tested on Fedora and MacOS.
 This @ref{webview-frontend,works ok though with some rough edges}.
 
 @item --with-wry
+@itemx --with-wry=@var{git-clone-path}@code{/wry}
+@itemx --with-wry=@code{@{}@var{dependency}@code{@}}
 Build @emph{experimental} support for the @uref{https://github.com/taurri/wry,Wry cross-platform framework}.  This creates a binary @code{bin/dt-wry}.
 which is used if you open a domterm window with the @code{-Bwry} option.
 If @code{--enable-debug} is specified, does a debug build,
@@ -5086,6 +5088,10 @@ Nushell.
 Mutt email client (handle html).  Info reader replacement supporting html.
 @item
 Open a text editor in a pane.  Probably either Monaco or CodeMirror 6.
+@item
+Consider alternative libraries or languages (Rust?) for the backend.
+@uref{https://github.com/uNetworking/uWebSockets,µWebSockets}
+is a C++ library that may be easier to use than libwebsockets.
 @end itemize
 
 @subheading New line structure
