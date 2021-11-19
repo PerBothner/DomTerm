@@ -4251,6 +4251,8 @@ Terminal.prototype._updateSelected = function() {
                 r.setStartAfter(focusNode);
             else
                 r.setStart(focusNode, focusOffset);
+            let rbase = new Range();
+            rbase.setStart(sel.anchorNode, sel.anchorOffset);
             // FIXME if after LINE node and end of DIV, move to start of next DIV.
             let viewCaretPrevious = this.viewCaretNode.previousSibling;
             if (viewCaretPrevious instanceof Text) {
@@ -4270,7 +4272,7 @@ Terminal.prototype._updateSelected = function() {
             if (point) {
                 sel.collapse(this.viewCaretNode, 0);
             } else {
-                sel.setBaseAndExtent(sel.anchorNode, sel.anchorOffset,
+                sel.setBaseAndExtent(rbase.startContainer, rbase.startOffset,
                                      this.viewCaretNode, 0);
             }
             this.scrollToCaret(this.viewCaretNode);
