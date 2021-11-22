@@ -108,7 +108,6 @@ class DTParser {
         }
         //if (term.isLineEditing())
             term._removeInputLine();
-        var pendingEchoNode = term._deferredForDeletion;
         let i = beginIndex;
         for (; ; i++) {
             //term.log("- insert char:"+ch+'="'+String.fromCharCode(ch)+'" state:'+this.controlSequenceState);
@@ -1984,7 +1983,7 @@ class DTParser {
             }
             case 'await': {
                 let timer = null;
-                let rules = options.rules;
+                let rules = options.rules || [];
                 let fn = () => {
                     let output = null;
                     for (let i = 0; ; i++) {
