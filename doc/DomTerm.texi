@@ -1481,6 +1481,9 @@ network/system break output into blocks), so this test is mainly
 intended to detect when output is ``done'' and the application
 is waiting for input.
 Typically, the @var{pattern} would look for a prompt string.
+@item @code{--close} [@var{response}]
+Wait until connection is closed.
+(This action is handled in the server, rather than the front-end.)
 @item @code{--timeout} @var{time} @var{response}
 If after @var{time} seconds none of the other @var{events} have occurred,
 return (with a non-zero exit code indicating failure).
