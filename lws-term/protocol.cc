@@ -374,6 +374,7 @@ tty_client::~tty_client()
     }
 
     struct pty_client *pclient = tclient->pclient;
+    int wnumber = tclient->connection_number;
     if (! keep_client) {
         clear_connection_number(tclient);
         free(tclient->ssh_connection_info);
@@ -392,8 +393,21 @@ tty_client::~tty_client()
     struct options *request;
     while ((request = pending_requests.first()) != nullptr) {
         pending_requests.remove(request);
-        printf_error(request, "Window %d closed before responding.", connection_number);
-        finish_request(request, EXIT_FAILURE, true);
+        char *close_response = request->close_response;
+        if (close_response) {
+            request->close_response = nullptr;
+            size_t len = strlen(close_response);
+            if (len > 0) {
+                close_response[len] = '\n';
+                write(request->fd_out, close_response, len+1);
+            }
+            free(close_response);
+            finish_request(request, EXIT_SUCCESS, true);
+        } else {
+            printf_error(request, "Window %d closed before responding.",
+                         wnumber);
+            finish_request(request, EXIT_FAILURE, true);
+        }
         options::release(request);
     }
 }

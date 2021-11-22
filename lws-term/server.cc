@@ -976,6 +976,7 @@ options::~options()
     free(ca_path);
 #endif
     free(credential);
+    free(close_response);
     if (sig_name)
         free(sig_name);
 }

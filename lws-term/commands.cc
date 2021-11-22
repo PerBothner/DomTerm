@@ -370,6 +370,8 @@ int await_action(int argc, arglist_t argv, struct lws *wsi,
     std::string woption = opts->windows;
     json request;
     json matches;
+    int actions = 0;
+    const char *close_response = nullptr;
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
         if (strstr(arg, "-w")) {
@@ -402,6 +404,7 @@ int await_action(int argc, arglist_t argv, struct lws *wsi,
                 i++;
             }
             matches.push_back(match_spec);
+            actions++;
         } else if (strcmp(arg, "--timeout") == 0) {
             if (i + 2 >= argc) {
                 printf_error(opts, "missing arguments following '%s'", arg);
@@ -417,6 +420,10 @@ int await_action(int argc, arglist_t argv, struct lws *wsi,
             request["timeout"] = tm;
             request["timeoutmsg"] = argv[i+2];
             i += 2;
+            actions++;
+        } else if (strcmp(arg, "--close") == 0) {
+            i++;
+            close_response = i >= argc ? "" : argv[i++];
         } else {
             printf_error(opts, "unrecogized option '%s'", arg);
             return EXIT_BAD_CMDARG;
@@ -429,7 +436,18 @@ int await_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     if (matches.size() > 0)
         request["rules"] = matches;
-    send_request(request, "await", opts, tty_clients(window));
+    tty_client* tclient = tty_clients(window);
+    if (close_response) {
+        request_enter(opts, tclient);
+        free(opts->close_response); // should never be non-null
+        opts->close_response = strdup(close_response);
+    } else if (actions == 0) {
+        printf_error(opts, "no await actions");
+        return EXIT_BAD_CMDARG;
+    }
+    if (actions > 0) {
+        send_request(request, "await", opts, tclient);
+    }
     return EXIT_WAIT;
 }
 
@@ -1031,17 +1049,10 @@ int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     }
     const char *cmd = on ? URGENT_WRAP("\033[?5h") : URGENT_WRAP("\033[?5l");
-#if 1
     return simple_window_action(argc, argv, wsi, opts,
                                 "reverse-video",
                                 cmd,
                                 "current");
-#else
-    check_domterm(opts);
-    if (write(get_tty_out(), cmd, strlen(cmd)) <= 0)
-        return EXIT_FAILURE;
-    return EXIT_SUCCESS;
-#endif
 }
 
 int complete_action(int argc, arglist_t argv, struct lws *wsi,
