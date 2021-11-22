@@ -154,6 +154,11 @@ static int count_hex_digits(const char *p, int max, int *valp)
   return i;
 }
 
+/* Internal function handling string escapes and quoting.
+ * If dim==1, split into words (like shell parsing), and return an array.
+ * If dim==0, return a single string, eliminating extra unquoted whitespace.
+ * If dim==-1, return single string, without eliminating whitespace or quotes.
+ */
 void*
 parse_arg_string(const char *args, bool check_shell_specials, int dim)
 {
@@ -169,7 +174,7 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
         const char *p = args;
         char *q = NULL;
         if (pass == 1) {
-            if (dim == 0) { // create single string result
+            if (dim <= 0) { // create single string result
                 str = challoc(lengths + (argc == 0 ? 1 :argc));
                 q = (char*) str;
             } else { // create array of strings
@@ -182,7 +187,7 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
         for (;;) {
             int ch = *p++;
             if (ch == 0) {
-                if (pass == 1 && (argc > 0 || dim == 0))
+                if (pass == 1 && (argc > 0 || dim <= 0))
                     *q = '\0';
                 break;
             }
@@ -193,7 +198,7 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
             if (context < 0) {
                 context = 0;
                 if (pass == 1) {
-                    if (dim != 0) {
+                    if (dim > 0) {
                         if (argc > 0)
                             *q++ = '\0';
                         argv[argc] = q;
@@ -202,7 +207,7 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
                 }
                 argc++;
             }
-            if ((ch == '\'' || ch == '"') && context <= 0) {
+            if ((ch == '\'' || ch == '"') && context <= 0 && dim >= 0) {
               context = ch;
               continue;
             } else if (ch == context && (ch == '\'' || ch == '"')) {
@@ -268,7 +273,7 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
             }
         }
     }
-    if (dim == 0)
+    if (dim <= 0)
         return str;
     else {
         argv[argc] = NULL;
@@ -295,6 +300,12 @@ char*
 parse_string(const char *args, bool check_shell_specials)
 {
     return (char*) parse_arg_string(args, check_shell_specials, 0);
+}
+
+char*
+parse_string_escapes(const char *args)
+{
+    return (char*) parse_arg_string(args, false, -1);
 }
 
 /** If 'in' has "special" characters, return 'in' surrounded by single-quotes.

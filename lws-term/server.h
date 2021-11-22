@@ -433,6 +433,7 @@ extern void make_html_text(struct sbuf *obuf, int port, int options,
 extern int count_args(arglist_t);
 extern argblob_t parse_args(const char*, bool);
 extern char* parse_string(const char*, bool);
+extern char* parse_string_escapes(const char*);
 extern const char * maybe_quote_arg(const char *in);
 
 #if COMPILED_IN_RESOURCES

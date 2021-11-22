@@ -646,7 +646,7 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
                 request["cmd"] = "do-key";
                 char *str = optarg;
                 if (c == 'e')
-                    str = parse_string(str, false);
+                    str = parse_string_escapes(str);
                 request["text"] = str;
                 for (int j = 0; j < repeat_count; j++) {
                     tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"), request.dump().c_str());
@@ -1279,8 +1279,7 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
     bool write_error = false;
     for (int i = optind; ; ) {
         //lwsl_notice("wsend-input '%s'\n", argv[i]);
-        const char *str = argv[i]; // FIXME handle escapes
-        char *xstr = parse_string(str, false);
+        char *xstr = parse_string_escapes(argv[i]);
         size_t slen = strlen(xstr);
         write_error = write(pclient->pty, xstr, slen) < slen;
         free(xstr);
