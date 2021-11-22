@@ -1,7 +1,4 @@
-1$ echo -e ;24;80t
 
-bash: 24: command not found
-bash: 80t: command not found
 2$ cat ./UTF-8.txt
 (UTF-8.txt from https://github.com/poderosaproject/cjksample)
 (The box-drawing characters are Ambiguous width, so require
