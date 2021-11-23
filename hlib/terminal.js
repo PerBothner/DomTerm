@@ -1314,6 +1314,7 @@ Terminal._WIDTH_MODE_VARIABLE_SEEN = 3; // HTML or variable-width font
 Terminal._BREAKS_UNMEASURED = 0;
 Terminal._BREAKS_MEASURED = 1;
 Terminal._BREAKS_VALID = 2;
+Terminal._BREAKS_MEASURED_VALID = 3;
 
 // On older JS implementations use implementation of repeat from:
 // http://stackoverflow.com/questions/202605/repeat-string-javascript
@@ -3617,9 +3618,7 @@ Terminal.prototype.resizeHandler = function() {
     if (dt.availWidth != oldWidth && dt.availWidth > 0) {
         dt._removeCaret();
         for (let i = dt.lineStarts.length; --i >= 0; ) {
-            let line = dt.lineStarts[i];
-            if (line._breakState === Terminal._BREAKS_VALID)
-                line._breakState = Terminal._BREAKS_MEASURED;
+            dt.lineStarts[i]._breakState &= ~Terminal._BREAKS_VALID;
         }
         const buffers = dt.getAllBuffers();
         for (let i = buffers.length; --i > 0; ) {
@@ -7366,7 +7365,7 @@ Terminal.prototype._adjustLines = function(startLine, action, single=false, stop
 }
 
 // Remove existing soft line breaks.
-Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
+Terminal.prototype._unbreakLines = function(startLine, single, stopLine, linesToRevertAfterMeasure=null) {
     // If a continuation line (following a soft line-break) is
     // _BREAKS_UNMEASURED then the entire logical line needs to be measured.
     // To do that,it needs to be unbroken. (Could be optimized in the
@@ -7381,19 +7380,36 @@ Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
             if (lineAttr !== "hard"
                 && lineStart._breakState == Terminal._BREAKS_UNMEASURED)
                 measureNeeded = true;
-        } else if (measureNeeded) {
-            lineStart._breakState = Terminal._BREAKS_UNMEASURED;
+        } else {
             measureNeeded = false;
         }
     }
     if (lineNum < startLine)
         startLine = lineNum;
-
+    let invalidBreakSeen = false;
+    let lineToRevertStartLength = linesToRevertAfterMeasure ? linesToRevertAfterMeasure.length : 0;
+    let afterLine = () => {
+        if (linesToRevertAfterMeasure) {
+            if (invalidBreakSeen)
+                lineToRevertStartLength = linesToRevertAfterMeasure.length;
+            else
+                linesToRevertAfterMeasure.length = lineToRevertStartLength;
+        }
+        invalidBreakSeen = false;
+    };
     let action = (prevLine, lineStart, lineAttr, lineno) => {
-        if (prevLine._breakState === Terminal._BREAKS_VALID) {
+        if (prevLine.getAttribute('line') == null) {
+            afterLine();
+        }
+        if (prevLine._breakState >= Terminal._BREAKS_VALID
+           && ! invalidBreakSeen) {
+            if (linesToRevertAfterMeasure
+                && (lineStart.getAttribute("breaking")=="yes"))
+                linesToRevertAfterMeasure.push(prevLine);
             return false;
         }
         if (lineStart.getAttribute("breaking")=="yes") {
+            invalidBreakSeen = true;
             lineStart.removeAttribute("breaking");
             for (let child = lineStart.firstChild; child != null; ) {
                 var next = child.nextSibling;
@@ -7429,7 +7445,9 @@ Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
         } else
             return false;
     };
-    return this._adjustLines(startLine, action, single, stopLine);
+    let changed = this._adjustLines(startLine, action, single, stopLine);
+    afterLine();
+    return changed;
 }
 
 Terminal.prototype._insertIntoLines = function(el, line) {
@@ -7760,7 +7778,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
                     lineNode._widthMode = dt.lineStarts[line]._widthMode;
-                    lineNode._breakState = Terminal._BREAKS_VALID;
+                    lineNode._breakState |= Terminal._BREAKS_VALID;
                     line++;
                     if (! countColumns)
                         beforeMeasure += lineNode.offsetLeft - beforePos;
@@ -7812,7 +7830,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         group.breakSeen = true;
                     startOffset = el.measureLeft + el.measureWidth;
                     var indentWidth = addIndentation(dt, el, countColumns);
-                    el._breakState = Terminal._BREAKS_VALID;
+                    el._breakState |= Terminal._BREAKS_VALID;
                     let lastChild = el.lastChild;
                     if (lastChild instanceof Element
                          && lastChild.classList.contains("post-break")) {
@@ -7936,8 +7954,14 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             startLine = this.homeLine;
     }
 
-    var changed = this._unbreakLines(startLine, false, firstInputLine);
-
+    let linesToRevertAfterMeasure = [];
+    let changed = this._unbreakLines(startLine, false, firstInputLine,
+                                    linesToRevertAfterMeasure);
+    for (let i = linesToRevertAfterMeasure.length; --i >= 0; ) {
+        let e = linesToRevertAfterMeasure[i];
+        if (e.getAttribute('breaking') === 'yes')
+            e.setAttribute('breaking', 'measuring');
+    }
     for (let line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
         if (start == firstInputLine)
@@ -7962,7 +7986,13 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
             _breakLine1(this, line, first, countColumns);
             start._breakState = Terminal._BREAKS_MEASURED;
-        }
+        } else
+            start._breakState |= Terminal._BREAKS_VALID;
+    }
+    for (let i = linesToRevertAfterMeasure.length; --i >= 0; ) {
+        let e = linesToRevertAfterMeasure[i];
+        if (e.getAttribute('breaking') === 'measuring')
+            e.setAttribute('breaking', 'yes');
     }
     for (let line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
@@ -7978,7 +8008,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             var countColumns = !Terminal._forceMeasureBreaks
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
             line = breakLine2(this, line, first, 0, this.availWidth, countColumns);
-            start._breakState = Terminal._BREAKS_VALID;
+            start._breakState |= Terminal._BREAKS_VALID;
         }
     }
 
