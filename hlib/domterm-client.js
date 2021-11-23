@@ -378,10 +378,6 @@ function loadHandler(event) {
         }
     }
     var layoutInitAlways = false;
-    if (layoutInitAlways && ! DomTerm.isInIFrame()) {
-        DomTermLayout.initialize(null);
-        return;
-    }
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
@@ -472,6 +468,10 @@ function loadHandler(event) {
     }
     if (!DomTerm.inAtomFlag)
         location.hash = "";
+    if (layoutInitAlways && ! DomTerm.isInIFrame()) {
+        DomTerm.withLayout((m) => m.initialize());
+    }
+
 }
 
 DomTerm.handleCommand = function(iframe, command, args) {
