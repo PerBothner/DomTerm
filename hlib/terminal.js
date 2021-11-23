@@ -11366,24 +11366,25 @@ Terminal.prototype.editorInsertString = function(str, hidePassword = false, inse
     }
 }
 
-Terminal.prototype.editorDeleteRange = function(range, toClipboard,
-                                               linesCount = -1) {
+Terminal.prototype.editorDeleteRange = function(range, toClipboard) {
     let str = range.toString();
     if (toClipboard)
         DomTerm.valueToClipboard({text: str,
                                   html: Terminal._rangeAsHTML(range)});
-    let hadCaret = this._caretNode && this._caretNode.parentNode;
+    let hadCaret = this._caretNode
+        && range.intersectsNode(this._caretNode);
     range.deleteContents();
-    if (hadCaret && ! this._caretNode.parentNode)
+    if (hadCaret)
         range.insertNode(this._caretNode);
     range.commonAncestorContainer.normalize();
+    this.resetCursorCache();
     let lineNum = this.getAbsCursorLine();
     this._unbreakLines(lineNum, true, null);
     let line = this.lineStarts[lineNum];
-    line._widthColumns -= this.strWidthInContext(str, line);
+    line._widthMode = undefined;
+    line._widthColumns = undefined;
     line._breakState = Terminal._BREAKS_UNMEASURED;
-    if (linesCount != 0)
-        this._restoreLineTables(line, lineNum, true);
+    this._restoreLineTables(line, lineNum, true);
     this._updateLinebreaksStart(lineNum, true);
 }
 
@@ -11404,7 +11405,7 @@ DomTerm.editorNonWordChar = function(ch) {
  * state.stopAt: one of "", "line" (stop before moving to different hard line),
  *   "visible-line" (stop before moving to different screen line),
  *   "input" (line-edit input area), or "buffer".
- * state.linesCount: increment for each newline
+ * state.linesCount: increment for each (non-soft) newline
  * state.wrapText: function called on each text node
  * state.lineHandler: handler for non-stopping lines.
  */
@@ -11712,7 +11713,7 @@ Terminal.prototype.editMove = function(count, action, unit,
         linesCount = scanState.linesCount;
         todo = scanState.todo;
         if (doDelete) {
-            this.editorDeleteRange(range, action == "kill", linesCount);
+            this.editorDeleteRange(range, action == "kill");
             if (linesCount > 0)
                 this._updateAutomaticPrompts();
             this._restoreCaret();
