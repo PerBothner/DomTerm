@@ -74,13 +74,14 @@ span[content-value] canvas { position: absolute; left: 0px }
 
 span[line][breaking="yes"] > span.pprint-pre-break,
 span[line][breaking="yes"] > span.pprint-post-break,
-span[line][breaking="yes"] > span.pprint-indent {
+span[line][breaking="yes"] > span.pprint-indentation {
     visibility: visible; position: static }
 span[line][breaking="yes"] > span.pprint-non-break,
 span[line] > span.pprint-pre-break,
 span[line] > span.pprint-post-break,
-span.pprint-indent {
-    visibility: hidden; position: absolute }
+span.pprint-indent,
+span.pprint-indentation {
+    visibility: hidden; position: absolute*/ }
 
 div.domterm span.focus-caret {
     caret-color: transparent;

@@ -1393,7 +1393,7 @@ Send the @var{text} as plain characters, with no interpretation
 for special key-bindings.
 Acts like a key-press event for each character.
 If @code{-e} (``escape'') is used, @ref{string escapes} are processed;
-if @code{-l} (``literal'') is used, th @var{text} is used as-in.
+if @code{-l} (``literal'') is used, the @var{text} is used as-is.
 
 @item @var{key-stroke}
 The front-end simulates the specified @var{key-stroke},
@@ -5816,7 +5816,7 @@ or @code{required}.
 @itemx @code{@var{pre-break-child} ::= <span class="pprint-pre-break">@var{contents}</span>}
 @itemx @code{@var{post-break-child} ::= <span class="pprint-post-break">@var{contents}</span>}
 @itemx @code{@var{non-break-child} ::= <span class="pprint-non-break">@var{contents}</span>}
-@itemx @var{indentation} ::= @code{<span class="pprint-indent">..</span>} | @var{text}
+@itemx @var{indentation} ::= @code{<span class="pprint-indentation">..</span>} | @var{text}
 A generalized optional line-break, where @code{kind}
 is one of @code{"linear"}, @code{"fill"}, @code{"miser"}
 (currently same as @code{"fill"}), or @code{"required"}.
@@ -5838,7 +5838,7 @@ elements and text that represent actual calculated indentatation.
 They automatically inserted before the post-break-content
 when the line is actually breaking,
 and removed if the line-break is removed.
-A @code{pprint-indent} element is a (visible) clone
+A @code{pprint-indentation} element is a (visible) clone
 of a (non-visible) outer @code{pprint-indent} element.
 @end table
 

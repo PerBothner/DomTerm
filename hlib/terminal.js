@@ -7398,7 +7398,7 @@ Terminal.prototype._unbreakLines = function(startLine, single=false, stopLine) {
             for (let child = lineStart.firstChild; child != null; ) {
                 var next = child.nextSibling;
                 if (child instanceof Text /* added '\n' */
-                    || child.classList.contains("pprint-indent"))
+                    || child.classList.contains("pprint-indentation"))
                     lineStart.removeChild(child);
                 child = next;
             }
@@ -7505,7 +7505,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             var indent = i == n ? null : indentation[i++];
             if ((indent == null || indent instanceof Element)
                 && goalPosition > curPosition) {
-                var span = dt._createSpanNode("pprint-indent");
+                var span = dt._createSpanNode("pprint-indentation");
                 var left = goalPosition-curPosition;
                 let numChars = Math.floor((left + 1) / dt.charWidth);
                 if (numChars > 0) {
@@ -7587,6 +7587,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         for (var el = start; el != null; ) {
             var lineAttr;
             var skipChildren = false;
+            let ecl; // el.classList, if defined
             if (el instanceof Element) {
                 if (countColumns) {
                     el.measureLeft = beforeCol * dt.charWidth;
@@ -7628,9 +7629,11 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     el._needSectionEndNext = needSectionEndList;
                     needSectionEndList = el;
                 }
-            } else if (el.classList.contains("pprint-indent")) {
+            } else if ((ecl = el.classList).contains('pprint-indentation')) {
+                skipChildren = true;
+            } else if (ecl.contains("pprint-indent")) {
                 el.pprintGroup = pprintGroup;
-            } else if (el.classList.contains("pprint-group")) {
+            } else if (ecl.contains("pprint-group")) {
                 pprintGroup = el;
                 el._needSectionEndNext = needSectionEndList;
                 needSectionEndList = el;
