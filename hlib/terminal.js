@@ -9953,20 +9953,24 @@ Terminal.prototype._checkTree = function() {
         error("bad currentAbsLine");
     var isSavedSession = this.isSavedSession();
     let value;
-    if (this.outputContainer == null
-        || (this.outputContainer instanceof Text
-            ? (typeof this.outputBefore != "number"
-               || this.outputBefore < 0
-               || this.outputBefore > this.outputContainer.length)
-            : typeof this.outputBefore === "number"
-            ? (this.outputContainer.nodeName !== "SPAN"
-               || (value = this.outputContainer.getAttribute('content-value')) == null
-               || this.outputBefore < 0
-               || this.outputBefore > value.length)
-            : (this.outputBefore
-               && this.outputBefore.parentNode != this.outputContainer))
-        || (! isSavedSession && this.outputContainer.parentNode == null))
-        error("bad outputContainer");
+    if (this.outputContainer == null)
+        error("bad outputContainer (null)");
+    else if (this.outputContainer instanceof Text) {
+        if (typeof this.outputBefore != "number"
+            || this.outputBefore < 0
+            || this.outputBefore > this.outputContainer.length)
+            error("bad outputContainer (null)");
+    } else if (typeof this.outputBefore === "number") {
+        if (this.outputContainer.nodeName !== "SPAN"
+            || (value = this.outputContainer.getAttribute('content-value')) == null
+            || this.outputBefore < 0
+            || this.outputBefore > value.length)
+            error("bad outputContainer (for numeric outputBefore)");
+    } else if (this.outputBefore
+               && this.outputBefore.parentNode != this.outputContainer)
+        error("bad outputContainer (not parent of outputBefore)")
+    else if (! isSavedSession && this.outputContainer.parentNode == null)
+        error("bad outputContainer (no parent)");
     else if (this._deferredForDeletion) {
         for (let deferred = this._deferredForDeletion;
              deferred != null; deferred = deferred.nextSibling) {
@@ -10030,7 +10034,7 @@ Terminal.prototype._checkTree = function() {
             }
             */
             if (cur.getAttribute("std") == "prompt"
-                && ! parent.classList.contains("input-line"))
+                && dt._getOuterPre(parent, 'input-line') === null)
                 error("prompt not in input-line");
             if (cur.classList.contains("dt-cluster")) {
                 let ch = cur.firstChild;
