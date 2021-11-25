@@ -4405,6 +4405,8 @@ Terminal.prototype._updateSelected = function() {
             let r = new Range();
             r.setStart(sel.focusNode, sel.focusOffset);
             r.insertNode(dt._caretNode);
+            if (dt.isLineEditing())
+                dt._restoreCaret();
             if (sel.focusNode == this.outputContainer
                 && this.outputContainer instanceof Text) {
                 let outlen = this.outputContainer.length;
@@ -11080,8 +11082,8 @@ Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) 
         this.sstate.goalColumn = column;
         return todo;
     }
-    this.editorAddLine();
     this._popFromCaret(save);
+    this.editorAddLine();
     this.editorMoveStartOrEndLine(false);
     save = this._pushToCaret();
     // start of (logical) line (after prompt)
