@@ -11205,8 +11205,15 @@ Terminal.prototype._updateAutomaticPrompts = function() {
     var pattern = this.sstate.continuationPromptPattern;
     var initialPrompt = "";
     var initialPromptNode = null;//this._currentPromptNode;
-    if (this._inputLine && this._inputLine.previousSibling instanceof Element
-        && this._inputLine.previousSibling.getAttribute("std") == "prompt")
+    let initialPromptWidth = -1;
+    if (! pattern && this._inputLine) {
+        initialPromptWidth = this._inputLine.offsetLeft
+            - this._inputLine.offsetParent.offsetLeft;
+        if (initialPromptWidth <= 1)
+            initialPromptWidth = 0;
+    } else if (this._inputLine
+               && this._inputLine.previousSibling instanceof Element
+               && this._inputLine.previousSibling.getAttribute("std") == "prompt")
         initialPromptNode = this._inputLine.previousSibling;
     else if (this._inputLine && this._inputLine.parentNode instanceof Element
              && this._inputLine.parentNode.getAttribute("std") == "input"
@@ -11226,10 +11233,6 @@ Terminal.prototype._updateAutomaticPrompts = function() {
         if (initialNumber > 0)
             lineno += initialNumber;
     }
-    let defaultPattern = ! pattern;
-    if (defaultPattern) {
-        pattern = this.promptPatternFromInitial(initialPrompt);
-    }
 
     let startNum = this._inputLine.startLineNumber + 1;
     for (let i = startNum; i < this.lineStarts.length; i++) {
@@ -11241,17 +11244,25 @@ Terminal.prototype._updateAutomaticPrompts = function() {
         let next = start.nextSibling;
         if (next && next.nodeName == "SPAN"
             && next.getAttribute("std") == "prompt") {
-            let newPrompt = this._continuationPrompt(pattern, ++lineno,
-                                                 initialPrompt.length);
+            let w, newPrompt;
+            if (initialPromptWidth >= 0) {
+                next.setAttribute("content-value", ' ');
+                next.style.width = initialPromptWidth + 'px';
+                w = (initialPromptWidth + 0.5) / this.charWidth;
+                newPrompt = DomTerm.makeSpaces(w);
+            } else {
+                newPrompt = this._continuationPrompt(pattern, ++lineno,
+                                                     initialPrompt.length);
+                w = this.strWidthInContext(newPrompt, start);
+            }
             let oldPrompt = next.getAttribute("content-value");
-            let w = this.strWidthInContext(newPrompt, start);
             if (oldPrompt)
                 w -= this.strWidthInContext(oldPrompt, start);
             if (start._widthColumns  !== undefined)
                 start._widthColumns += w;
             start._breakState = Terminal._BREAKS_UNMEASURED;
             next.lineno = lineno; // MAYBE use attribute (better save/restore)
-            next.defaultPattern = defaultPattern;
+            //next.defaultPattern = defaultPattern;
             next.setAttribute("content-value", newPrompt);
         }
     }
