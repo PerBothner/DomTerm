@@ -427,6 +427,9 @@ class Terminal {
             dt.scrollToCaret();
             dt.adjustFocusCaretStyle();
         }
+        dt.setEditingLine(dt.isLineEditingMode()
+                          ? dt._getOuterBlock(dt.outputContainer)
+                          : null);
         /*
         if (dt._markMode > 0) {
             // update selection so focus follows caret
@@ -467,15 +470,27 @@ class Terminal {
         };
   }
 
-    isLineEditing() {
+    setEditingLine(el) {
+        if (el !== this._currentEditingLine) {
+            if (this._currentEditingLine)
+                this._currentEditingLine.classList.remove('dt-editing-line');
+            if (el)
+                el.classList.add('dt-editing-line');
+            this._currentEditingLine = el;
+        }
+    }
+    isLineEditingMode() {
         return (this._lineEditingMode + this._clientWantsEditing > 0
                 // extproc turns off echo by the tty driver, which means we need
                 // to simulate echo if the applications requests icanon+echo mode.
                 // For simplicity in this case, ignore _lineEditingMode < 0..
                 || (this._clientPtyExtProc + this._clientPtyEcho
                     + this._clientWantsEditing == 3)
-                || this._composing > 0)
-            && ! this._currentlyPagingOrPaused();
+                || this._composing > 0);
+    }
+
+    isLineEditing() {
+        return this.isLineEditingMode() && ! this._currentlyPagingOrPaused();
     }
 
     isLineEditingOrMinibuffer() {
@@ -8539,6 +8554,12 @@ Terminal.prototype.processInputCharacters = function(str) {
 Terminal.prototype.processEnter = function() {
     this._restoreInputLine(false);
     this.editorUpdateRemote();
+    if (this._currentEditingLine
+        && this._isAnAncestor(this.outputContainer, this._currentEditingLine)) {
+        let cl = this._currentEditingLine.classList;
+        if (! cl.contains('input-line'))
+            cl.add('input-line');
+    }
     this._sendInputContents(true);
     this._restoreCaret();
 };
@@ -9339,6 +9360,7 @@ Terminal.prototype.nextInputMode = function() {
 }
 
 Terminal.prototype._sendInputContents = function(sendEnter) {
+    this.setEditingLine(null);
     let oldInputLine = this._inputLine;
     let passwordField = oldInputLine
         && oldInputLine.classList.contains("noecho")
@@ -11000,7 +11022,7 @@ Terminal.prototype.editorAddLine = function() {
         this.outputBefore = inputNode;
         let pre = this._getOuterPre(inputNode);
         if (pre)
-            pre.classList.add("input-line");
+            this.setEditingLine(pre);
         this._inputLine = inputNode;
         this._restoreInputLine();
         this._numericArgument = null;
