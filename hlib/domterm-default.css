@@ -133,7 +133,8 @@ div.domterm span[caret="underline"][std="caret"], div.domterm span[caret="blinki
     text-decoration: underline
 }
 div.domterm span[caret="bar"][std="caret"], div.domterm span[caret="blinking-bar"][std="caret"] {
-    border-right: 2px solid red; margin-right: -2px
+    border-right: 2px solid red; margin-right: -2px;
+    outline: none; /* disable browser's default focus style */
 }
 
 div.domterm span.focus-caret-line {
