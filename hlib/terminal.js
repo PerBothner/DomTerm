@@ -7787,6 +7787,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         }
                         el = lineNode;
                         el.parentNode.insertBefore(rest, el.nextSibling);
+                        if (lineNode.previousSibling === dt._caretNode)
+                            el.parentNode.insertBefore(el, dt._caretNode);
                         next = rest;
                     } else { // dt.isObjectElement(el) or dt-cluster
                         dt._insertIntoLines(lineNode, line);
@@ -11595,8 +11597,10 @@ Terminal.scanInRange = function(range, backwards, state) {
             if (state.todo == 0) {
                 if (backwards)
                     range.setStart(node, index);
-                //else if (index == dlen)
-                //    range.setEndAfter(node);
+                else if (index === dlen
+                         && node.nextSibling instanceof Element
+                         && node.nextSibling.getAttribute('line') === 'soft')
+                    range.setEndAfter(node.nextSibling);
                 else
                     range.setEnd(node, index);
                 return null;
