@@ -63,12 +63,14 @@ fn main() -> wry::Result<()> {
       window.set_minimized(true);
     }
     if req.method == "hide" {
+      window.set_minimized(true);
       window.set_visible(false);
     }
     if req.method == "show" {
-      // See https://github.com/tauri-apps/wry/issues/417
-      window.set_visible(false); // needed if window is minimized
+      window.set_visible(false);
       window.set_visible(true);
+      window.set_minimized(false);
+      window.set_focus();
     }
     if req.method == "close" {
       let _ = window_tx.send(window.id());
