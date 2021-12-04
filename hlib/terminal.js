@@ -831,7 +831,7 @@ class Terminal {
             && this._isAnAncestor(this.outputContainer, group.lastChild)) {
             const lineNo = this.getAbsCursorLine();
             let cur = this._splitParents(group);
-            cur.classList.remove("input-line");
+            cur.classList.remove("input-line", "dt-editing-line");
             cur.removeAttribute("click-move");
             let commandOutput = document.createElement("div");
             commandOutput.setAttribute("class", "command-output");
@@ -5504,7 +5504,7 @@ Terminal.prototype._copyAttributes = function(oldElement, newElement) {
     var attrs = oldElement.attributes;
     for (var i = attrs.length; --i >= 0; ) {
         var attr = attrs[i];
-        if (attr.specified && attr.name != "id")
+        if (attr.specified && attr.name !== "id")
             newElement.setAttribute(attr.name, attr.value);
     }
 };
