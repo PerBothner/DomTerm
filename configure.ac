@@ -317,7 +317,6 @@ HLIB_FIXED_FILES_INNER="\
   hlib/unicode/unicode-trie/swap.mjs \
   hlib/unicode/tiny-inflate/index.mjs"
 HLIB_FIXED_FILES_OUTER="\
-  hlib/jquery.min.js \
   hlib/goldenlayout.js \
   hlib/domterm-layout.js \
   hlib/domterm-menus.js \
