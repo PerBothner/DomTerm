@@ -3620,6 +3620,7 @@ Terminal.prototype.resizeHandler = function() {
         dt.log("resizeHandler called "+dt.name);
     let oldWidth = dt.availWidth;
     let oldHeight = this.actualHeight;
+    let oldCharWidth = this.charWidth;
     dt.measureWindow();
     if (DomTerm.usingXtermJs()) return;
     let minColumns = dt.getOption("terminal.minimum-width", 5);
@@ -3632,8 +3633,10 @@ Terminal.prototype.resizeHandler = function() {
 
     if (dt.availWidth != oldWidth && dt.availWidth > 0) {
         dt._removeCaret();
+        let mask = oldCharWidth !== this.charWidth ? 0
+            : ~Terminal._BREAKS_VALID;
         for (let i = dt.lineStarts.length; --i >= 0; ) {
-            dt.lineStarts[i]._breakState &= ~Terminal._BREAKS_VALID;
+            dt.lineStarts[i]._breakState &= mask;
         }
         const buffers = dt.getAllBuffers();
         for (let i = buffers.length; --i > 0; ) {
