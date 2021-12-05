@@ -11025,8 +11025,10 @@ Terminal.prototype.editorAddLine = function() {
         this.maybeFocus();
         this.outputBefore = inputNode;
         let pre = this._getOuterPre(inputNode);
-        if (pre)
+        if (pre) {
+            pre.classList.add("input-line");
             this.setEditingLine(pre);
+        }
         this._inputLine = inputNode;
         this._restoreInputLine();
         this._numericArgument = null;
