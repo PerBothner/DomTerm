@@ -417,10 +417,10 @@ class Terminal {
         dt._updateTimer = null;
         if (! dt.topNode)
             return;
+        dt._restoreInputLine();
         dt._breakVisibleLines();
         dt._checkSpacer();
         // FIXME only if "scrollWanted"
-        dt._restoreInputLine();
         if (dt.viewCaretNode.parentNode === null)
             dt._scrollIfNeeded();
         else {
@@ -1665,7 +1665,8 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     cur.outerPprintGroup = this._currentPprintGroup;
                     //this.currentCursorLine = startLine;
                     //this.currentCursorColumn = -1;
-                    if (line == "hard" || line == "br") {
+                    if (line == "hard" || line == "br"
+                        || cur.getAttribute('breaking') === 'yes') {
                         if (startLine > 0 && this.lineStarts[startLine] == null)
                             this.lineStarts[startLine] = this.lineEnds[startLine-1];
                         this.lineEnds[startLine] = cur;
@@ -2523,17 +2524,20 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
                 this.maybeFocus();
             if (this._inputLine) {
                 let dt = this;
+                this.lineStarts[lineno]._breakState = Terminal._BREAKS_UNMEASURED;
                 // Takes time proportional to the number of lines in _inputLine
                 // times lines below the input.  Both are likely to be small.
                 Terminal._forEachElementIn(inputLine,
-                                       function (el) {
-                                           if (el.nodeName == "SPAN"
-                                               && el.getAttribute("Line")=="hard") {
-                                               dt._insertIntoLines(el, lineno++);
+                                           (el) => {
+                                               let ln = el.nodeName === "SPAN"
+                                                   && el.getAttribute("line");
+                                               if (ln === 'hard'
+                                                   || (ln && el.getAttribute('breaking')==='yes')) {
+                                                   dt._insertIntoLines(el, lineno++);
                                                return false;
-                                           }
-                                           return true;
-                                       });
+                                               }
+                                               return true;
+                                           });
             }
         }
     }
@@ -8563,6 +8567,7 @@ Terminal.prototype.processEnter = function() {
         let cl = this._currentEditingLine.classList;
         if (! cl.contains('input-line'))
             cl.add('input-line');
+        this._currentEditingLine._breakState = Terminal._BREAKS_UNMEASURED;
     }
     this._sendInputContents(true);
     this._restoreCaret();
@@ -10078,6 +10083,9 @@ Terminal.prototype._checkTree = function() {
                 if (iend == istart && this.lineEnds[iend] == null)
                     iend++;
                 if (Terminal.isBlockNode(cur)) {
+                    if ((cur._breakState & Terminal._BREAKS_MEASURED)
+                        && cur.firstChild.measureWidth === undefined)
+                        error("missing measureWidth");
                     currentLineStart = cur;
                 } else {
                     if (! this._isAnAncestor(cur, currentLineStart))
