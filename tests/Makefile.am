@@ -74,16 +74,17 @@ test-vttest-1:
 	$(TDOMTERM) capture -w 1 -e -l -B -T >vtest-1-c.out
 	cmp vtest-1-c.exp vtest-1-c.out
 	$(TDOKEYS) Enter
-	$(TDOMTERM) -w 1 await --match-output 'Test of autowrap' '' 30
+	$(TDOMTERM) -w 1 await --match-output 'I {130}i' '' 30
 	$(TDOMTERM) -w 1 await --match-output 'Push <RETURN>' '' 1
 	$(TDOMTERM) capture -w 1 -e -l -B -T >vtest-1-d.out
 	cmp vtest-1-d.exp vtest-1-d.out
 	$(TDOKEYS) Enter
+	$(TDOMTERM) -w 1 await --match-output 'Test of cursor-control characters' '' 30
 	$(TDOMTERM) -w 1 await --match-output 'Push <RETURN>' '' 1
 	$(TDOMTERM) capture -w 1 -e -l -B >vtest-1-e.out
 	cmp vtest-1-e.exp vtest-1-e.out
 	$(TDOKEYS) Enter
-	$(TDOMTERM) -w 1 await --match-output 'Test of cursor-control characters' '' 30
+	$(TDOMTERM) -w 1 await --match-output 'Test of leading zeros' '' 30
 	$(TDOMTERM) -w 1 await --match-output 'Push <RETURN>' '' 1
 	$(TDOMTERM) capture -w 1 -e -l -B >vtest-1-f.out
 	cmp vtest-1-f.exp vtest-1-f.out
