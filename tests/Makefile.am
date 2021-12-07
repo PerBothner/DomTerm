@@ -1,6 +1,7 @@
 check: test-24-bit-color \
   test-UTF-8-width \
   test-grapheme-widths \
+  test-grapheme-widths-byte-by-byte \
   test-vttest-1 \
   test-vttest-11-6-6-3
 
@@ -55,6 +56,9 @@ test-grapheme-widths:
 	$(SEND_INPUT) -w 1 'exit\r'
 	$(TAWAIT_CLOSE)
 	@echo test-grapheme-widths OK
+
+test-grapheme-widths-byte-by-byte:
+	$(MAKE) test-grapheme-widths TNEWOPTIONS='output-byte-by-byte=-1'
 
 test-vttest-1:
 	$(TDOMTERM) $(TNEWOPTIONS) new $(VTTEST)

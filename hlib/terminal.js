@@ -5621,8 +5621,17 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
             }
             current = next;
         } else if (current instanceof Element) {
-            parent = current;
-            current = current.firstChild;
+            let cl = current.classList;
+            if (cl.contains("dt-cluster")) {
+                let next = current.nextSibling;
+                if (todo >= 0)
+                    todo -= cl.contains("w2") ? 2 : 1;
+                parent.removeChild(current);
+                current = next;
+            } else {
+                parent = current;
+                current = current.firstChild;
+            }
         } else { // XML comments? Processing instructions?
             current = current.nextSibling;
         }
@@ -8139,6 +8148,96 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
 
     if (DomTerm.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str.substring(beginIndex,endIndex))+"'");
+
+    let absLine = this.getAbsCursorLine();
+    let following = this.outputBefore;
+    let parent = this.outputContainer;
+    while (following == null) {
+        following = parent.nextSibling;
+        parent = parent.parentNode;
+    }
+    let atEnd = following==this.lineEnds[absLine];
+    var fits = true;
+    if (this.outputBefore instanceof Element
+        && this.outputBefore.getAttribute("line")) {
+        let prev = this.outputBefore.previousSibling;
+        if (prev instanceof Element
+            && prev.getAttribute("std")
+            && prev.getAttribute("std") != "prompt"
+            && prev.getAttribute("std") != "caret"
+            && prev.getAttribute("std") != "hider") {
+            this.outputContainer = this.outputBefore.previousSibling;
+            this.outputBefore = null;
+        }
+    }
+    if (this.outputContainer.tagName == "SPAN"
+        && this.outputContainer.classList.contains("dt-cluster")
+        && this.outputBefore == this.outputContainer.firstChild) {
+        this.outputBefore = this.outputContainer;
+        this.outputContainer = this.outputBefore.parentNode;
+    }
+    let outputPrevious = this.outputBefore === null ? this.outputContainer.lastChild
+        : this.outputBefore instanceof Node ? this.outputBefore.previousSibling : null;
+    if (outputPrevious instanceof Element
+        && outputPrevious.classList.contains("dt-cluster")) {
+        // Check for cluster that combines previous cluster with start of str.
+        let breakBefore =
+            str.length > 0
+            && outputPrevious._prevInfo !== undefined
+            && UnicodeProperties.shouldJoin(outputPrevious._prevInfo,
+                                            UnicodeProperties.getInfo(str.codePointAt(0))) <= 0;
+        if (! breakBefore) {
+            this.outputBefore = outputPrevious;
+            if (atEnd || inserting) {
+                this.outputBefore = outputPrevious.nextSibling;
+                this.outputContainer.removeChild(outputPrevious);
+            }
+            str = outputPrevious.textContent + str;
+            let w = outputPrevious.classList.contains("w2") ? 2 : 1;
+            if (this.currentCursorColumn >= w)
+                this.currentCursorColumn -= w;
+            sslen = str.length;
+            beginIndex = 0;
+            endIndex = sslen;
+        }
+    }
+    if (this.outputBefore && this.outputBefore.previousSibling instanceof Text) {
+        this.outputContainer = this.outputBefore.previousSibling;
+        this.outputBefore = this.outputContainer.length;
+    } else if (this.outputBefore instanceof Text) {
+        this.outputContainer = this.outputBefore;
+        this.outputBefore = 0;
+    }
+    if (this.outputContainer instanceof Text && this.outputBefore > 0) {
+        let data = this.outputContainer.data;
+        let lastLen = 1;
+        let lastChar = data.charCodeAt(this.outputBefore);
+        if (lastChar >= 0xDC00 && lastChar <= 0xDFFF
+            && this.outputBefore >= 2) { // low surrogate
+            lastChar = data.codePointAt(this.outputBefore-2);
+            lastLen = 2;
+        }
+        let join1 = UnicodeProperties.shouldJoin(0, UnicodeProperties.getInfo(lastChar));
+        let join2 = UnicodeProperties.shouldJoin(join1,
+                                                 UnicodeProperties.getInfo(str.codePointAt(0)));
+        if (join2 > 0) {
+            str = data.substring(this.outputBefore - lastLen, this.outputBefore)
+                + str;
+            this.outputBefore -= lastLen;
+            if (this.currentCursorColumn > 0)
+                this.currentCursorColumn--;
+            sslen = str.length;
+            beginIndex = 0;
+            endIndex = sslen;
+            if (atEnd || inserting) {
+                this.outputContainer.deleteData(this.outputBefore, lastLen);
+                let lineStart = this.lineStarts[absLine];
+                if (lineStart._widthColumns !== undefined)
+                    lineStart._widthColumns -= lastLen;
+            }
+        }
+    }
+
     let widthInColumns = 0;
     let segments = [];
     let widths = [];
@@ -8203,6 +8302,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                 const node = this._createSpanNode(
                     width >= 2 ? "dt-cluster w2" : "dt-cluster w1",
                     str.substring(clusterStart, i));
+                node._prevInfo = prevInfo;
                 segments.push(node);
                 width = width >= 2 ? 2 : 1;
                 widths.push(width);
@@ -8228,37 +8328,6 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
     if (nsegments == 0)
         return;
     let isegment = 0;
-    let absLine = this.getAbsCursorLine();
-    let following = this.outputBefore;
-    let parent = this.outputContainer;
-    while (following == null) {
-        following = parent.nextSibling;
-        parent = parent.parentNode;
-    }
-    let atEnd = following==this.lineEnds[absLine];
-    var fits = true;
-    if (this.outputBefore instanceof Element
-        && this.outputBefore.getAttribute("line")) {
-        let prev = this.outputBefore.previousSibling;
-        if (prev instanceof Element
-            && prev.getAttribute("std")
-            && prev.getAttribute("std") != "prompt"
-            && prev.getAttribute("std") != "caret"
-            && prev.getAttribute("std") != "hider") {
-            this.outputContainer = this.outputBefore.previousSibling;
-            this.outputBefore = null;
-        }
-    }
-    if (this.outputContainer.tagName == "SPAN"
-        && this.outputContainer.classList.contains("dt-cluster")
-        && this.outputBefore == this.outputContainer.firstChild) {
-        this.outputBefore = this.outputContainer;
-        this.outputContainer = this.outputBefore.parentNode;
-    }
-    if (this.outputBefore instanceof Text) {
-        this.outputContainer = this.outputBefore;
-        this.outputBefore = 0;
-    }
     if (inserting == 0) {
         if (this.outputContainer instanceof Text)
             this._adjustStyle();
