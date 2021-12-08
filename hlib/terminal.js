@@ -424,7 +424,6 @@ class Terminal {
         if (dt.viewCaretNode.parentNode === null)
             dt._scrollIfNeeded();
         else {
-            dt.scrollToCaret();
             dt.adjustFocusCaretStyle();
         }
         dt.setEditingLine(dt.isLineEditingMode()
