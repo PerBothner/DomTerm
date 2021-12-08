@@ -1593,6 +1593,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     const wcnode =
                         this._createSpanNode("dt-cluster w2",
                                              String.fromCodePoint(ch));
+                    wcnode.stayOut = true;
                     cur.parentNode.insertBefore(wcnode, cur.nextSibling);
                     this._deleteData(cur, i, dlen-i);
                     cur = wcnode;
@@ -5087,6 +5088,14 @@ Terminal.prototype.updateCursorCache = function() {
             } else if (tag == "P" || tag == "PRE" || tag == "DIV") {
                 // FIXME handle line specially
             } else if (tag == "SPAN") {
+                if (cur == goalParent)
+                    break;
+                let cl = cur.classList;
+                if (cl.contains("dt-cluster")) {
+                    col += cl.contains("w2") ? 2 : 1;
+                    cur = cur.nextSibling;
+                    continue;
+                }
                 var valueAttr = cur.getAttribute("content-value");
                 if (valueAttr)
                     col += this.strWidthInContext(valueAttr, cur);
@@ -8301,6 +8310,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
                 const node = this._createSpanNode(
                     width >= 2 ? "dt-cluster w2" : "dt-cluster w1",
                     str.substring(clusterStart, i));
+                node.stayOut = true;
                 node._prevInfo = prevInfo;
                 segments.push(node);
                 width = width >= 2 ? 2 : 1;
@@ -11578,6 +11588,24 @@ Terminal.scanInRange = function(range, backwards, state) {
                                            f, false, false, line);
         return n && range.isPointInRange(n, 0) ? n : null;
     }
+    function updateRangeWhenDone(node, stopped) {
+        if (backwards) {
+            if (stopped)
+                range.setStartAfter(node);
+            else
+                range.setStartBefore(node);
+        } else {
+            if (stopped)
+                range.setEndBefore(node);
+            else {
+                if (node.nextSibling instanceof Element
+                         && node.nextSibling.getAttribute('line') === 'soft')
+                    range.setEndAfter(node.nextSibling);
+                else
+                    range.setEndAfter(node);
+            }
+        }
+    }
     function fun(node) {
         if (skipFirst > 0) {
             skipFirst--;
@@ -11602,6 +11630,10 @@ Terminal.scanInRange = function(range, backwards, state) {
                     const d = node.firstChild.data;
                     state.wrapText(node.firstChild, d, d.length);
                 }
+                if (state.todo == 0) {
+                    updateRangeWhenDone(node, false);
+                    return null;
+                }
                 return false;
             }
             if (node.nodeName == "SPAN"
@@ -11623,34 +11655,21 @@ Terminal.scanInRange = function(range, backwards, state) {
                 } else
                     state.todo--;
                 if (state.todo == 0) {
+                    let next;
                     if (backwards == stopped) {
-                        let next = node.nextSibling;
+                        next = node.nextSibling;
                         if (next instanceof Element
                             && next.getAttribute("std") == "prompt")
                             node = next;
                     }
-                    if (backwards) {
-                        if (stopped) {
-                            let next = blockAfterLine(node);
-                            if (next)
-                                range.setStart(next, 0);
-                            else
-                                range.setStartAfter(node);
-                        }
+                    if (backwards == stopped
+                        && (next = blockAfterLine(node))) {
+                        if (backwards)
+                            range.setStart(next, 0);
                         else
-                            range.setStartBefore(node);
-                    } else {
-                        if (stopped)
-                            range.setEndBefore(node);
-                        else {
-                            let next = blockAfterLine(node);
-                            if (next)
-                                range.setEnd(next, 0);
-                            else
-                                range.setEndAfter(node);
-                            //return false;
-                        }
-                    }
+                            range.setEnd(next, 0);
+                    } else
+                        updateRangeWhenDone(node, stopped);
                     return null;
                 }
                 return state.lineHandler ? state.lineHandler(node) : false;
