@@ -265,7 +265,7 @@ class Terminal {
     this._regionLeft = 0;
     this._regionRight = this.numColumns;
 
-    /** True if in the middle of a wide character. */
+    /** True if requested to be in the middle of a wide character. */
     this.outputInWide = false;
 
     // this is a small (0 or 1 characters) span for the text caret.
@@ -1905,11 +1905,6 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         parent = this.outputContainer;
         if (this.outputInWide) {
             column--;
-            if (current instanceof Element && current.tagName == "SPAN"
-                && current.classList.contains("dt-cluster")) {
-                current = parent;
-                parent = current.parentNode;
-            }
         } else if (typeof current === 'number') {
             // Wasteful (should just scan forwards) but simple.
             let val = parent instanceof Text ? parent.data
@@ -2020,6 +2015,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     } else { //if (column + 1 == goalColumn) {
                         column += 1;
                         this.outputInWide = true;
+                        break;
                     }
                     handled = true;
                 } else {
@@ -9545,13 +9541,16 @@ Terminal.prototype._pushToCaret = function(useFocus = false) {
     //this._fixOutputPosition();
     const wasStyleSpan = this.outputContainer === this._currentStyleSpan;
     let saved = {
-        before: this.outputBefore, container: this.outputContainer, wasStyleSpan };
+        before: this.outputBefore, container: this.outputContainer,
+        outputInWide: this.outputInWide,
+        wasStyleSpan };
     if (useFocus && this.viewCaretNode && this.viewCaretNode.parentNode) {
         this.outputBefore = this.viewCaretNode;
     } else {
         this.outputBefore = this._caretNode;
     }
     this.outputContainer = this.outputBefore.parentNode;
+    this.outputInWide = false;
     if (wasStyleSpan && this._isAnAncestor(this.outputBefore, this._currentStyleSpan))
         this._currentStyleSpan = this.outputContainer;
     this.resetCursorCache();
@@ -9561,6 +9560,7 @@ Terminal.prototype._pushToCaret = function(useFocus = false) {
 Terminal.prototype._popFromCaret = function(saved) {
     this.outputBefore = saved.before;
     this.outputContainer = saved.container;
+    this.outputInWide = saved.outputInWide;
     if (saved.wasStyleSpan)
         this._currentStyleSpan = saved.container;
     this.resetCursorCache();
