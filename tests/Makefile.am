@@ -49,7 +49,7 @@ test-UTF-8-width:
 test-grapheme-widths:
 	$(TDOMTERM) $(TNEWOPTIONS) $(TEST_SHELL)
 	$(TDOMTERM) -w 1 await --match-output '1[$$]' ''
-	@$(TSEND_INPUT) 'sh ./grapheme-widths.sh\r'
+	@$(TSEND_INPUT) 'sh ./grapheme-widths.sh --tests\r'
 	$(TDOMTERM) -w 1 await --match-output '2[$$]' ''
 	$(TCAPTURE) >grapheme-widths.out
 	cmp grapheme-widths.exp grapheme-widths.out

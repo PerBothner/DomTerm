@@ -1,22 +1,39 @@
 # Some tests for Grapheme Clusters and Wide characters
+# With no options, in "demo" mode.
+# With "--tests" option, more extensive/tedious tests
+
+if test "$1" != "--tests"
+then
+show() {
+    echo -e "{$1} $2"
+}
+else
 # Tabs (followed by '#') are used to verify correct width.
 echo -e '12345678123456781234567812345678\r\t|\t|\t|'
-echo -e "{\U1F1F3\U1F1F4\U1F1E8\U0062}	|  ÷ [0.2] REGIONAL INDICATOR SYMBOL LETTER N (RI) × [12.0] REGIONAL INDICATOR SYMBOL LETTER O (RI) ÷ [999.0] REGIONAL INDICATOR SYMBOL LETTER C (RI) ÷ [999.0] LATIN SMALL LETTER B (Other) ÷ [0.3]"
-echo -e "1234567812345678\r{\U1F1F3\U1F1F4\U1F1E8\U0062}\t|"
-echo -e "1234567812345678\r{\U1F1F3\U1F1F4}\t|"
-echo -e "{\U1F476\U1F3FF\U1F476}\t|  ÷ [0.2] BABY (ExtPict) × [9.0] EMOJI MODIFIER FITZPATRICK TYPE-6 (Extend) ÷ [999.0] BABY (ExtPict) ÷ [0.3]"
-echo -e "1234567812345678\r{\U1F476\U1F476\U1F3FFX}\t|"
-echo -e '{\U0061\U0301}\t|  letter a × acute accent'
-echo -e 'oooooooooooooooo\r{\U0061\U0301}\t|'
-echo -e '{\U1100\U1161\U11A8}\t| Hangul syllables (correct on Firefox)'
-echo -e '1234567812345678\r{\U1100\U1161\U11A8}\t| Hangul syllables (correct on Firefox)'
-echo -e '{\U1F469\U200D\U1F469\U200D\U1F467\U200D\U1F466}\t| WOMAN+ZWJ+WOMAN+ZWJ+GIRL+ZWJ+BOY'
-echo -e '{\U1F469\U200D\U1F469\U200D\U1F466}\t| WOMAN+ZWJ+WOMAN+ZWJ+BOY'
-echo -e '{\U1F926\U1F3FC\U200D\U2642\UFE0F}\t|'
-echo -e '1234567812345678\r{\U1F926\U1F3FC\U200D\U2642\UFE0F}\t|'
-echo -e '{\U1F469}\t| WOMAN'
-echo -e '12345678123456781234\r{x哀公}\t|'
-echo -e '12345678123456781234\r{哀公xy問}\t|'
-echo -e '123456781234\r{\U26b0\U26b0}\t| COFFIN COFFIN'
-echo -e '123456781234\r{\U26b0\Ufe0E}\t| COFFIN TEXT_PRESENTATION'
-echo -e '123456781234\r{\U26b0\Ufe0f}\t| COFFIN EMOJI_PRESENTATION'
+show() {
+    # Test data at end of output:
+    echo -e "{$1}\t|$2"
+    # Test overwriting existing characters:
+    echo -e "12345678123456781234\r{$1}\t|$2"
+}
+fi
+
+show "\U1F1F3\U1F1F4" "REGIONAL INDICATOR SYMBOL LETTER N × RI O"
+show "\U1F476\U1F3FF\U1F476" "baby × emoji modifier fitzpatrick type-6 ÷ baby"
+show "\U1F476\U1F476\U1F3FFX" ''
+show '\U0061\U0301'  'letter a × acute accent'
+show '\U1100\U1161\U11A8' 'Hangul syllables (correct on Firefox)'
+show '\U1F469\U200D\U1F469\U200D\U1F466' 'woman+zwj+woman+zwj+boy'
+show '\U1F926\U1F3FC\U200D\U2642\UFE0F' 'face palm × fitzpatrick type-3 × zwj × male × emoji presentation'
+show '\U1F469' 'woman'
+show 'x哀公' ''
+show '哀公xy問' ''
+show '\U26b0\U26b0' 'coffin coffin'
+show '\U26b0\Ufe0E' 'coffin text_presentation'
+show '\U26b0\Ufe0f' 'coffin emoji_presentation'
+show 'E\u0301\ufe0fg\ufe0fa\ufe0fl\ufe0fi\ufe0f\ufe0fte\u0301\ufe0f' 'Égalité (using separate acute) emoij_presentation'
+if test "$1" == "--tests"
+then
+show "\U1F1F3\U1F1F4\U1F1E8\U0062" "regional indicator symbol letter N (RI) × RI O ÷ RI C ÷ latin small letter b)"
+show '\U1F469\U200D\U1F469\U200D\U1F467\U200D\U1F466' 'woman+zwj+woman+zwj+girl+zwj+boy'
+fi

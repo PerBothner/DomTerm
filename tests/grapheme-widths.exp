@@ -1,22 +1,35 @@
-1$ sh ./grapheme-widths.sh
+1$ sh ./grapheme-widths.sh --tests
 12345678|2345678|2345678|2345678
-{🇳🇴🇨b}  |  ÷ [0.2] REGIONAL INDICATOR SYMBOL LETTER N (RI) × [12.0] REGIONAL INDICATOR SYMBOL LETTER O (RI) ÷ [999.0] REGIONAL INDICATOR SYMBOL LETTER C (RI) ÷ [999.0] LATIN SMALL LETTER B (Other) ÷ [0.3]
-{🇳🇴🇨b}78|2345678
-{🇳🇴}5678|2345678
-{👶🏿👶}  |  ÷ [0.2] BABY (ExtPict) × [9.0] EMOJI MODIFIER FITZPATRICK TYPE-6 (Extend) ÷ [999.0] BABY (ExtPict) ÷ [0.3]
-{👶👶🏿X}8|2345678
-{á}     |  letter a × acute accent
-{á}ooooo|ooooooo
-{각}    | Hangul syllables (correct on Firefox)
-{각}5678| Hangul syllables (correct on Firefox)
-{👩‍👩‍👧‍👦}    | WOMAN+ZWJ+WOMAN+ZWJ+GIRL+ZWJ+BOY
-{👩‍👩‍👦}    | WOMAN+ZWJ+WOMAN+ZWJ+BOY
-{🤦🏼‍♂️}    |
-{🤦🏼‍♂️}5678|2345678
-{👩}    | WOMAN
+{🇳🇴}    |REGIONAL INDICATOR SYMBOL LETTER N × RI O
+{🇳🇴}5678|REGIONAL INDICATOR SYMBOL LETTER N × RI O
+{👶🏿👶}  |baby × emoji modifier fitzpatrick type-6 ÷ baby
+{👶🏿👶}78|baby × emoji modifier fitzpatrick type-6 ÷ baby
+{👶👶🏿X} |
+{👶👶🏿X}8|23456781234
+{á}     |letter a × acute accent
+{á}45678|letter a × acute accent
+{각}    |Hangul syllables (correct on Firefox)
+{각}5678|Hangul syllables (correct on Firefox)
+{👩‍👩‍👦}    |woman+zwj+woman+zwj+boy
+{👩‍👩‍👦}5678|woman+zwj+woman+zwj+boy
+{🤦🏼‍♂️}    |face palm × fitzpatrick type-3 × zwj × male × emoji presentation
+{🤦🏼‍♂️}5678|face palm × fitzpatrick type-3 × zwj × male × emoji presentation
+{👩}    |woman
+{👩}5678|woman781234
+{x哀公} |
 {x哀公}8|23456781234
+{哀公xy問}      |
 {哀公xy問}345678|234
-{⚰⚰}5678| COFFIN COFFIN
-{⚰︎}45678| COFFIN TEXT_PRESENTATION
-{⚰️}5678| COFFIN EMOJI_PRESENTATION
+{⚰⚰}    |coffin coffin
+{⚰⚰}5678|coffin coffin
+{⚰︎}     |coffin text_presentation
+{⚰︎}45678|coffin text_presentation
+{⚰️}    |coffin emoji_presentation
+{⚰️}5678|coffin emoji_presentation
+{É️g️a️l️i️️té️} |Égalité (using separate acute) emoij_presentation
+{É️g️a️l️i️️té️}8|Égalité (using separate acute) emoij_presentation
+{🇳🇴🇨b}  |regional indicator symbol letter N (RI) × RI O ÷ RI C ÷ latin small letter b)
+{🇳🇴🇨b}78|regional indicator symbol letter N (RI) × RI O ÷ RI C ÷ latin small letter b)
+{👩‍👩‍👧‍👦}    |woman+zwj+woman+zwj+girl+zwj+boy
+{👩‍👩‍👧‍👦}5678|woman+zwj+woman+zwj+girl+zwj+boy
 2$ 
