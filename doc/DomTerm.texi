@@ -150,10 +150,12 @@ This @uref{https://opensource.com/article/18/1/introduction-domterm-terminal-emu
 
 @subheading Full-featured terminal emulator
 
-@float
+@c @float
+@c @@image{images/domterm-2,,,DomTerm window running mc (Midnight Commander)}
+@c @@caption{@b{Figure 1:} Running Midnight Commander}
+@c @@end float
+
 @image{images/domterm-2,,,DomTerm window running mc (Midnight Commander)}
-@caption{@b{Figure 1:} Running Midnight Commander}
-@end float
 
 DomTerm includes the functionality what you'd expect from modern
 terminal-emulator.
@@ -169,10 +171,6 @@ including handling Background Color Erase.
 Standard @strong{mouse event handling}.
 @item
 Supports @strong{24-bit color} (truecolor).
-@item
-Handles @strong{Unicode}.
-Good @strong{CJK} (Chinese, Japanese, Korean) support:
-@strong{double-width characters (including Emoiji)} really are two columns wide.
 @item
 XTerm's @strong{modifyOtherKeys mode} allow applications
 such as Emacs to detect special key-combinations.
@@ -191,6 +189,13 @@ Also supports an explicit hyperlink escape sequence.
 Here you see the @code{mc} (Midnight Commander) file browser
 running in the stand-alone DomTerm application.
 Emacs (shown later) and GNU readline also work well.
+
+@image{images/dt-graphemes}
+Handles @strong{Unicode}.
+Good @strong{CJK} (Chinese, Japanese, Korean) support:
+@strong{double-width characters (including Emoiji)} really are two columns wide.
+Handles extended Grapheme Clusters, including Emoji composition and modifiers,
+depending on browser support.
 
 @subheading Rich output and images
 
@@ -1000,13 +1005,13 @@ as specified a @dfn{window specifier}.
 The following options control which front-end (usually a browser),
 if any, is started.
 
-@subheading Browser specifier option
 @anchor{browser specifier}
+@subheading Browser specifier option
 
 A @var{browser-specifier} option specifies how to
 display a new domterm window. This can be a window or tab in
 general-purpose web-browser, a specialized browser without
-locatonbar or similar distracting ``chhome'', or a sub-window.
+locationbar or similar distracting ``chrome'', or a sub-window.
 
 It is used for certain commands like @code{new} and @code{attach}.
 For example:
