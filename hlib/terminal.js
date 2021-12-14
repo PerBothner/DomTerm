@@ -811,10 +811,15 @@ class Terminal {
         var cur = this.outputBefore;
         var parent = this.outputContainer;
         while (parent !== stop) {
+            let prev = cur === null ? parent.lastChild : cur.previousSibling;
             cur = cur == null ? parent.nextSibling
                 : cur.previousSibling == null ? parent
                 : this._splitNode(parent, cur);
             parent = parent.parentNode;
+            if (prev instanceof Element && prev.getAttribute("line") !== null
+                && ! Terminal.isBlockNode(prev.parentNode)) {
+                parent.insertBefore(prev, cur);
+            }
         }
         this.outputBefore = cur;
         this.outputContainer = parent;
@@ -5047,9 +5052,8 @@ Terminal.prototype.updateCursorCache = function() {
     }
     let cur = this.lineStarts[line];
     let parent = cur.parentNode;
-    if (line > 0 && parent == this.lineEnds[line-1]) {
-        cur = parent.nextSibling;
-        parent = parent.parentNode;
+    if (line > 0 && cur == this.lineEnds[line-1]) {
+        cur = cur.nextSibling;
     }
     var col = 0;
     while (cur != goal || (goal == null && parent != goalParent)) {
@@ -5084,8 +5088,6 @@ Terminal.prototype.updateCursorCache = function() {
             } else if (tag == "P" || tag == "PRE" || tag == "DIV") {
                 // FIXME handle line specially
             } else if (tag == "SPAN") {
-                if (cur == goalParent)
-                    break;
                 let cl = cur.classList;
                 if (cl.contains("dt-cluster")) {
                     col += cl.contains("w2") ? 2 : 1;
@@ -10162,7 +10164,8 @@ Terminal.prototype._checkTree = function() {
                     iend++;
                 if (Terminal.isBlockNode(cur)) {
                     if ((cur._breakState & Terminal._BREAKS_MEASURED)
-                        && cur.firstChild.measureWidth === undefined)
+                        && cur.firstElementChild
+                        && cur.firstElementChild.measureWidth === undefined)
                         error("missing measureWidth");
                     currentLineStart = cur;
                 } else {
