@@ -31,7 +31,7 @@ show '哀公xy問' ''
 show '\U26b0\U26b0' 'coffin coffin'
 show '\U26b0\Ufe0E' 'coffin text_presentation'
 show '\U26b0\Ufe0f' 'coffin emoji_presentation'
-show 'E\u0301\ufe0fg\ufe0fa\ufe0fl\ufe0fi\ufe0f\ufe0fte\u0301\ufe0f' 'Égalité (using separate acute) emoij_presentation'
+show 'E\u0301\ufe0fg\ufe0fa\ufe0fl\ufe0fi\ufe0f\ufe0ft\ufe0fe\u0301\ufe0f' 'Égalité (using separate acute) emoij_presentation'
 if test "$1" == "--tests"
 then
 show "\U1F1F3\U1F1F4\U1F1E8\U0062" "regional indicator symbol letter N (RI) × RI O ÷ RI C ÷ latin small letter b)"
