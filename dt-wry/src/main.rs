@@ -8,6 +8,8 @@ use std::env;
 mod versions;
 
 fn main() -> wry::Result<()> {
+  // See https://wiki.archlinux.org/index.php/GTK#Disable_overlay_scrollbars
+  env::set_var("GTK_OVERLAY_SCROLLING", "0");
   use wry::{
     application::{
       event::{Event, WindowEvent},
