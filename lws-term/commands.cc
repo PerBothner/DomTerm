@@ -1306,19 +1306,15 @@ int show_action(int argc, arglist_t argv, struct lws *wsi,
 int toggle_hide_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
-    return simple_window_action(argc, argv, wsi, opts,
-                                "toggle-hide",
-                                URGENT_WRAP("\033[2;74t"),
-                                "top");
-}
-
-int toggle_minimize_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
-{
-    return simple_window_action(argc, argv, wsi, opts,
-                                "toggle-minimize",
-                                URGENT_WRAP("\033[2;73t"),
-                                "top");
+    if (NO_TCLIENTS) {
+        static char** no_args = { NULL };
+        return new_action(0, no_args, wsi, opts);
+    }
+    const char *cmd = argv[0];
+    bool minimize = strcmp(cmd, "toggle-minimize") == 0;
+    const char *seq = minimize ? URGENT_WRAP("\033[2;73t")
+        : URGENT_WRAP("\033[2;74t");
+    return simple_window_action(argc, argv, wsi, opts, cmd, seq, "top");
 }
 
 // deprecated - used -w/--window option instead
@@ -1438,10 +1434,12 @@ struct command commands[] = {
     .action = minimize_action},
   { .name = "show", .options = COMMAND_IN_EXISTING_SERVER,
     .action = show_action},
-  { .name = "toggle-hide", .options = COMMAND_IN_EXISTING_SERVER,
+  { .name = "toggle-hide",
+    .options = COMMAND_IN_SERVER,
     .action = toggle_hide_action},
-  { .name = "toggle-minimize", .options = COMMAND_IN_EXISTING_SERVER,
-    .action = toggle_minimize_action},
+  { .name = "toggle-minimize",
+    .options = COMMAND_IN_SERVER,
+    .action = toggle_hide_action},
   // send to session
   { .name = "send-input", .options = COMMAND_IN_EXISTING_SERVER,
     .action = send_input_action},
