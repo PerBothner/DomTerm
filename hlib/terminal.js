@@ -7638,7 +7638,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 }
             }
         }
-        var beforeCol = dt._topLeft;
+        let lineStart = dt.lineStarts[line];
+        var beforeCol = lineStart && lineStart._beforeColumns !== undefined
+            ? lineStart._beforeColumns
+            : dt._topLeft;
         let value;
         for (var el = start; el != null; ) {
             var lineAttr;
@@ -7677,6 +7680,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 }
                 needSectionEndList = needSectionEndFence;
                 if (lineAttr == "hard" || lineAttr == "soft") {
+                    el._beforeColumns = beforeCol;
+                    el.measureWidth = 0;
                     if (el.outerPprintGroup == null) {
                         skipChildren = true;
                         break;
@@ -7744,7 +7749,6 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         // second pass - edit DOM, but don't look at offsetLeft
         var pprintGroup = null; // FIXME if starting inside a group
         // beforePos is typically el.offsetLeft (if el is an element).
-        var beforePos = 0;
         // startOffset is the difference (beforePos - beforeMeasure),
         // where beforeMeasure is typically el.measureLeft (if an element).
         // If el is a Text, beforePos and beforeMeasure are calculated.
@@ -7824,6 +7828,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         beforeMeasure += lineNode.offsetLeft - beforePos;
                     else if (isText) {
                         let beforeColumns = oldel.parentNode == null ? 0
+                            : oldel.previousSibling==lineNode ? 0
                             : dt.strWidthInContext(oldel.data, el);
                         beforeMeasure += dt.charWidth * beforeColumns;
                         let oldWidthCols = dt.lineStarts[line-1]._widthColumns;
@@ -7842,8 +7847,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                        && (lineAttr = el.getAttribute("line")) != null) {
                 skipChildren = true;
                 if ((lineAttr == "hard" || lineAttr == "soft")
-                    && el.outerPprintGroup == null)
+                    && el.outerPprintGroup == null) {
+                    el._beforePosition = beforePos;
                     break;
+                }
                 var group = el.outerPprintGroup;
                 if (lineAttr == "linear") {
                     var sectionEnd = group ? group.sectionEnd : null;
@@ -8038,6 +8045,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         var start = this.lineStarts[line];
         if (start._breakState === Terminal._BREAKS_MEASURED) {
             var first;
+            let beforePos = start._beforePosition || 0;
             if (Terminal.isBlockNode(start))
                 first = start.firstChild;
             else {
@@ -8047,7 +8055,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             }
             var countColumns = !Terminal._forceMeasureBreaks
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
-            line = breakLine2(this, line, first, 0, this.availWidth, countColumns);
+            line = breakLine2(this, line, first, beforePos, this.availWidth, countColumns);
             start._breakState |= Terminal._BREAKS_VALID;
         }
     }
@@ -8083,6 +8091,7 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
         var col = Math.floor((availWidth-beforePos) / dt.charWidth);
         goodLength = UnicodeProperties.columnToIndexInContext(textData, 0, col,
                                                               false);
+        goodWidth += col * dt.charWidth;
         badLength = 0;
     }
     // Binary search for split point (only if !countColumns)
@@ -8123,20 +8132,19 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
         }
         goodLength = ch0len;
     }
+    if ((this.sstate.wraparoundMode & 2) === 0) {
+        // FIXME handle surrogates
+        textData = (textData.substring(0, goodLength-1)
+                    + textData.substring(textLength-1));
+        textNode.data = textData;
+        return "";
+    }
     if (goodLength == 0)
         textNode.parentNode.removeChild(textNode);
-    else if (textNode.data.length != goodLength) {
-        if ((this.sstate.wraparoundMode & 2) != 0) {
-            textNode.data = textData.substring(0, goodLength);
-        } else {
-            // FIXME handle surrogates
-            textData = (textData.substring(0, goodLength-1)
-                        + textData.substring(textLength-1));
-            textNode.data = textData;
-            return "";
-        }
-    }
-
+    else
+        textNode.data = textData.substring(0, goodLength);
+    lineNode.measureLeft = goodWidth;
+    lineNode.measureWidth = 0;
     return goodLength < textLength ? textData.substring(goodLength) : "";
 };
 
@@ -8154,7 +8162,7 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
 
     if (DomTerm.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str.substring(beginIndex,endIndex))+"'");
-
+    this._checkTree();
     let absLine = this.getAbsCursorLine();
     let following = this.outputBefore;
     let parent = this.outputContainer;
@@ -10123,6 +10131,8 @@ Terminal.prototype._checkTree = function() {
     for (let i = nlines; --i >= this.homeLine; )
         if (! this._isAnAncestor(this.lineStarts[i], this.initial))
             error("line "+i+" not in initial");
+    if (this._caretNode && this._caretNode.firstElementChild)
+        error("element in caret");
     let currentLineStart = null;
     for (;;) {
         if (cur == this.outputBefore && parent == this.outputContainer) {
@@ -10163,10 +10173,6 @@ Terminal.prototype._checkTree = function() {
                 if (iend == istart && this.lineEnds[iend] == null)
                     iend++;
                 if (Terminal.isBlockNode(cur)) {
-                    if ((cur._breakState & Terminal._BREAKS_MEASURED)
-                        && cur.firstElementChild
-                        && cur.firstElementChild.measureWidth === undefined)
-                        error("missing measureWidth");
                     currentLineStart = cur;
                 } else {
                     if (! this._isAnAncestor(cur, currentLineStart))
