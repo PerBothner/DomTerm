@@ -38,6 +38,7 @@ fn main() -> wry::Result<()> {
   let mut webviews = std::collections::HashMap::new();
 
   let window = WindowBuilder::new()
+    .with_title("DomTerm")
     .with_decorations(titlebar)
     .build(&event_loop)
     .unwrap();
@@ -53,14 +54,28 @@ fn main() -> wry::Result<()> {
   //wry::application
   let script = format!(r#"
   (function () {{
-{}    window.wry_version = "{}";
+{}{}    window.wry_version = "{}";
     window.closeMainWindow = ()=>{{window.close();}};
 }})();
-  "#, wversion_js, wry_version);
+  "#,
+  wversion_js,
+  if titlebar {
+    "window.setWindowTitle = (str)=>{window.rpc.notify('set-title', str);}\n"
+  } else {
+    ""
+  },
+  wry_version);
 
   let (window_tx, window_rx) = std::sync::mpsc::channel();
 
   let handler = move |window: &Window, req: RpcRequest| {
+    if req.method == "set-title" {
+      if let Some(params) = req.params {
+        if let serde_json::Value::String(title) = &params[0] {
+          window.set_title(title);
+        }
+      }
+    }
     if req.method == "minimize" {
       window.set_minimized(true);
     }
