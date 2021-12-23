@@ -8162,7 +8162,6 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
 
     if (DomTerm.verbosity >= 3)
         this.log("insertSimple '"+this.toQuoted(str.substring(beginIndex,endIndex))+"'");
-    this._checkTree();
     let absLine = this.getAbsCursorLine();
     let following = this.outputBefore;
     let parent = this.outputContainer;
