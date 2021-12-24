@@ -5497,15 +5497,27 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
             this.lineStarts[absLine+1] = newBlock;
             newBlock._widthColumns = oldNextLine._widthColumns;
             newBlock._widthMode = oldNextLine._widthMode;
-            newBlock._breakState = Terminal._BREAKS_UNMEASURED;
             oldNextLine._widthColumns = undefined;
             oldNextLine._widthMode = undefined;
-            oldNextLine._breakState = Terminal._BREAKS_UNMEASURED;
+            if (oldNextLine._breakState !== undefined) {
+                oldNextLine._breakState &= ~Terminal._BREAKS_MEASURED;
+                newBlock._breakState = oldNextLine._breakState;
+            }
         }
         // otherwise we have a non-standard line
         // Regardless, do:
         lineEnd.setAttribute("line", "hard");
         lineEnd.removeAttribute("breaking");
+        let oldMeasure = lineEnd.measureLeft;
+        if (oldMeasure) {
+            Terminal._forEachElementIn(this._getOuterBlock(lineEnd),
+                                       (el)=> {
+                                           if (el.measureLeft
+                                               && el.measureLeft >= oldMeasure)
+                                               el.measureLeft -= oldMeasure;
+                                       },
+                                       false, false, lineEnd);
+        }
         var child = lineEnd.firstChild;
         if (child)
             lineEnd.removeChild(child);
@@ -5650,7 +5662,7 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
         lineStart._widthColumns = colNo;
     else if (lineStart._widthColumns !== undefined)
 	lineStart._widthColumns -= count - todo;
-    lineStart._breakState = Terminal._BREAKS_UNMEASURED;
+    lineStart._breakState &= ~Terminal._BREAKS_MEASURED;
     return todo <= 0;
 };
 
@@ -7639,8 +7651,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             }
         }
         let lineStart = dt.lineStarts[line];
-        var beforeCol = lineStart && lineStart._beforeColumns !== undefined
-            ? lineStart._beforeColumns
+        let beforePos = lineStart && lineStart.measureLeft !== undefined
+            ? lineStart.measureLeft
             : dt._topLeft;
         let value;
         for (var el = start; el != null; ) {
@@ -7649,7 +7661,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             let ecl; // el.classList, if defined
             if (el instanceof Element) {
                 if (countColumns) {
-                    el.measureLeft = beforeCol * dt.charWidth;
+                    el.measureLeft = beforePos;
                 } else {
                     el.measureLeft = el.offsetLeft;
                     el.measureWidth = el.offsetWidth;
@@ -7660,12 +7672,12 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 if (! countColumns)
                     skipChildren = true;
                 else if (el.data == '\t')
-                    beforeCol = dt.nextTabCol(beforeCol);
+                    beforePos = dt.charWidth * dt.nextTabCol(beforeCol);
                 else
-                    beforeCol += dt.strWidthInContext(el.data, el);
+                    beforePos += dt.charWidth * dt.strWidthInContext(el.data, el);
             } else if ((cls = el.classList).contains("dt-cluster")) {
 	        if (countColumns)
-	            beforeCol += cls.contains("w1") ? 1 : 2;
+	            beforePos += (cls.contains("w1") ? 1 : 2) * dt.charWidth;
                 skipChildren = true;
 	    } else if (dt.isObjectElement(el)) {
                 skipChildren = true;
@@ -7680,7 +7692,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 }
                 needSectionEndList = needSectionEndFence;
                 if (lineAttr == "hard" || lineAttr == "soft") {
-                    el._beforeColumns = beforeCol;
+                    el.measureLeft = beforePos;
                     el.measureWidth = 0;
                     if (el.outerPprintGroup == null) {
                         skipChildren = true;
@@ -7703,7 +7715,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             } else if ((value = el.getAttribute("content-value")) != null
                        && el.nodeName == "SPAN") {
                 if (countColumns)
-                    beforeCol += dt.strWidthInContext(value, el);
+                    beforePos += dt.charWidth * dt.strWidthInContext(value, el);
             }
             if (el.firstChild != null && ! skipChildren)
                 el = el.firstChild;
@@ -7719,8 +7731,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     }
                     var next = el.nextSibling;
                     if (countColumns && el instanceof Element) {
-                        el.measureWidth =
-                            beforeCol * dt.charWidth - el.measureLeft;
+                        el.measureWidth = beforePos - el.measureLeft;
                         let cls = el.classList;
                         if (cls.contains("pprint-indent")
                             || cls.contains("pre-break")
@@ -7728,7 +7739,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                             // These are not visible (when not breaking),
                             // so we want to measure their width, but they are
                             // "out-of-band" - not part of the cumulative width.
-                            beforeCol = el.measureLeft / dt.charWidth;
+                            beforePos = el.measureLeft;
                         }
                     }
                     if (next != null) {
@@ -7741,18 +7752,21 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         }
         var end = dt.lineEnds[line];
         end.measureLeft =
-            countColumns ?  beforeCol * dt.charWidth : end.offsetLeft;
+            countColumns ?  beforePos : end.offsetLeft;
+        //countColumns ?  beforeCol * dt.charWidth : end.offsetLeft;
         end.measureWidth = 0; // end.offsetWidth;
     }
 
     function breakLine2 (dt, line, start, beforePos, availWidth, countColumns) {
         // second pass - edit DOM, but don't look at offsetLeft
         var pprintGroup = null; // FIXME if starting inside a group
-        // beforePos is typically el.offsetLeft (if el is an element).
-        // startOffset is the difference (beforePos - beforeMeasure),
-        // where beforeMeasure is typically el.measureLeft (if an element).
+        // beforePos is typically el.offsetLeft (if el is an element)
+        // - i.e. relative to the start of the current (physical) line.
+        // startOffset is the difference (beforeMeasure - beforePos),
+        // where beforeMeasure is typically el.measureLeft (if an element)
+        // - i.e. relative to the start of the logical unbroken line.
         // If el is a Text, beforePos and beforeMeasure are calculated.
-        var startOffset = 0;
+        let startOffset = (start.measureLeft || 0) - beforePos;
         var sectionStartLine = line;
         var didbreak = true;
         for (var el = start; el != null; ) {
@@ -7789,9 +7803,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     var oldel = el;
                     if (isText) {
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
-                        var rest = dt._breakString(el, lineNode, beforePos,
-                                                   right, availWidth, didbreak,
-                                                   countColumns);
+                        var rest = dt._breakString(el, lineNode,
+                                                   beforeMeasure, afterMeasure,
+                                                   availWidth+startOffset,
+                                                   didbreak, countColumns);
                         if (rest == "") {
                             // It all "fits", after all.  Can happen in
                             // pathological cases when there isn't room for
@@ -7833,7 +7848,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         beforeMeasure += dt.charWidth * beforeColumns;
                         let oldWidthCols = dt.lineStarts[line-1]._widthColumns;
                         if (oldWidthCols) {
-                            let beforeCols = beforeMeasure / dt.charWidth;
+                            let startMeasure =
+                                dt.lineStarts[line-1].measureLeft || 0;
+                            let beforeCols =
+                                (beforeMeasure - startMeasure) / dt.charWidth;
                             dt.lineStarts[line-1]._widthColumns = beforeCols;
                             lineNode._widthColumns = oldWidthCols - beforeCols;
                         }
@@ -7848,7 +7866,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 skipChildren = true;
                 if ((lineAttr == "hard" || lineAttr == "soft")
                     && el.outerPprintGroup == null) {
-                    el._beforePosition = beforePos;
+                    el.measureLeft = beforePos + startOffset;
                     break;
                 }
                 var group = el.outerPprintGroup;
@@ -8045,7 +8063,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         var start = this.lineStarts[line];
         if (start._breakState === Terminal._BREAKS_MEASURED) {
             var first;
-            let beforePos = start._beforePosition || 0;
+            let beforePos = /*start.measureLeft ||*/ 0;
             if (Terminal.isBlockNode(start))
                 first = start.firstChild;
             else {
@@ -8075,6 +8093,13 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     }
 }
 
+/** Break textNode's string so as much as possible fits on current line.
+ * The 'beforePos' is position at start of string;
+ * 'afterPos' is position at end of string;
+ * 'availWidth' is position at end of current line (afterPos > availWidth).
+ * All of these are 'measureLeft' positions - i.e. relative to start of logical
+ * line, assuming no optional line-breaks.
+*/
 Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterPos, availWidth, forceSomething, countColumns) {
     var dt = this;
     var textData = textNode.data;
@@ -8123,7 +8148,7 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
     if (forceSomething && goodLength == 0) {
         var ch0len = 1;
         if (textLength >= 2) {
-            // check for surrogates (FIXME better to handle grapheme clusters)
+            // check for surrogates
             var ch0 = textData.charCodeAt(0);
             var ch1 = textData.charCodeAt(1);
             if (ch0 >= 0xD800 && ch0 <= 0xDBFF
@@ -8133,7 +8158,9 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
         goodLength = ch0len;
     }
     if ((this.sstate.wraparoundMode & 2) === 0) {
-        // FIXME handle surrogates
+        // If no wraparound, drop excess characters - but keep last character.
+        // Pretty useless, but that's the standard.
+        // No surrogate handling, since this is only used for tests.
         textData = (textData.substring(0, goodLength-1)
                     + textData.substring(textLength-1));
         textNode.data = textData;
