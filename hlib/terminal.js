@@ -7757,8 +7757,20 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         end.measureWidth = 0; // end.offsetWidth;
     }
 
-    function breakLine2 (dt, line, start, beforePos, availWidth, countColumns) {
+    function breakLine2 (dt, line, lineStart, availWidth, countColumns) {
         // second pass - edit DOM, but don't look at offsetLeft
+        let start, startOffset;
+        if (Terminal.isBlockNode(lineStart)) {
+            start = lineStart.firstChild;
+            startOffset = 0;
+        } else {
+            for (let p = lineStart; ; p = p.parentNode) {
+                start = p.nextSibling;
+                if (start !== null)
+                    break;
+            }
+            startOffset = lineStart.measureLeft || 0;
+        }
         var pprintGroup = null; // FIXME if starting inside a group
         // beforePos is typically el.offsetLeft (if el is an element)
         // - i.e. relative to the start of the current (physical) line.
@@ -7766,7 +7778,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         // where beforeMeasure is typically el.measureLeft (if an element)
         // - i.e. relative to the start of the logical unbroken line.
         // If el is a Text, beforePos and beforeMeasure are calculated.
-        let startOffset = (start.measureLeft || 0) - beforePos;
+        let beforePos = 0;
         var sectionStartLine = line;
         var didbreak = true;
         for (var el = start; el != null; ) {
@@ -7837,7 +7849,9 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
                     lineNode._widthMode = dt.lineStarts[line]._widthMode;
-                    lineNode._breakState |= Terminal._BREAKS_VALID;
+                    let prevLine = dt.lineStarts[line];
+                    lineNode._breakState = prevLine._breakState;
+                    prevLine._breakState |= Terminal._BREAKS_VALID;
                     line++;
                     if (! countColumns)
                         beforeMeasure += lineNode.offsetLeft - beforePos;
@@ -8062,18 +8076,9 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     for (let line = startLine;  line < this.lineStarts.length;  line++) {
         var start = this.lineStarts[line];
         if (start._breakState === Terminal._BREAKS_MEASURED) {
-            var first;
-            let beforePos = /*start.measureLeft ||*/ 0;
-            if (Terminal.isBlockNode(start))
-                first = start.firstChild;
-            else {
-                while (start.nextSibling == null)
-                    start = start.parentNode;
-                first = start.nextSibling;
-            }
             var countColumns = !Terminal._forceMeasureBreaks
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
-            line = breakLine2(this, line, first, beforePos, this.availWidth, countColumns);
+            line = breakLine2(this, line, start, this.availWidth, countColumns);
             start._breakState |= Terminal._BREAKS_VALID;
         }
     }
