@@ -134,7 +134,7 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
     //flags |= KDDockWidgets::Config::Flag_AlwaysTitleBarWhenFloating;
     KDDockWidgets::Config::self().setFlags(flags);
 #endif
-#if USE_DOCK_MANAGER
+#if USE_DOCK_MANAGER && ADS_MULTI_MAIN_WINDOW
     m_DockManager = new ads::CDockManager();
 #endif
 }

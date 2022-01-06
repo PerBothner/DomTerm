@@ -218,7 +218,11 @@ void Backend::newPane(int paneOp, const QString& url)
     auto dockw = webv->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
     auto curDock = webView()->dockWidget();
 #if USE_DOCK_MANAGER
+#if ADS_MULTI_MAIN_WINDOW
     auto manager = BrowserApplication::instance()->dockManager();
+#else
+    auto manager = webView()->mainWindow()->dockManager();
+#endif
     ads::DockWidgetArea location = ads::NoDockWidgetArea;
     switch (paneOp) {
     case 2:
@@ -250,10 +254,18 @@ void Backend::newPane(int paneOp, const QString& url)
 void Backend::openNewWindow(int width, int height, const QString& position,
                             const QString& url, bool headless)
 {
+#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
+    auto manager = webView()->mainWindow()->dockManager();
+    auto webv = new WebView(webView()->m_processOptions, nullptr);
+    webv->newPage(url);
+    auto dockw = webv->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
+    manager->addDockWidgetFloating(dockw);
+#else
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     QString xurl = url + (url.indexOf('#') < 0 ? "#" : "&") + "qtwebengine";
     BrowserApplication::instance()->newMainWindow(xurl, width, height,
                                                   position, headless, options);
+#endif
 }
 
 void Backend::showContextMenu(const QString& contextType)

@@ -68,6 +68,10 @@ class BrowserApplication;
 #include <kddockwidgets/DockWidget.h>
 #include <kddockwidgets/MainWindow.h>
 #endif
+#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
+#include "DockManager.h"
+#endif
+
 /*!
     The MainWindow of the Browser Application.
 
@@ -92,7 +96,9 @@ public:
     WebView *webView() const { return currentTab(); }
     WebView *currentTab() const;
     BrowserApplication* application() { return m_application; }
-
+#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
+    ads::CDockManager* dockManager() { return m_DockManager; }
+#endif
 public slots:
     void loadPage(const QString &url);
     void changeInputMode(QAction*);
@@ -177,6 +183,9 @@ private:
     QActionGroup* inputModeGroup;
     QAction *selectedInputMode;
     QMenu *inputModeMenu;
+#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
+    ads::CDockManager* m_DockManager;
+#endif
 };
 
 #endif // BROWSERMAINWINDOW_H

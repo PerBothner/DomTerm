@@ -92,7 +92,7 @@ public:
     QList<BrowserMainWindow*> mainWindows();
     QIcon icon(const QUrl &url) const;
     QIcon defaultIcon() const;
-#if USE_DOCK_MANAGER
+#if USE_DOCK_MANAGER && ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* dockManager() { return m_DockManager; }
     void dockManager(ads::CDockManager* dm) { m_DockManager = dm; }
 #endif
@@ -134,7 +134,7 @@ private:
     int nextSessionNameIndex;
     int saveFileCounter;
     bool headlessOption;
-#if USE_DOCK_MANAGER
+#if USE_DOCK_MANAGER && ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* m_DockManager = nullptr;
 #endif
 };

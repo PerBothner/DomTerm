@@ -111,6 +111,10 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
     , m_width(-1)
     , m_height(-1)
 {
+#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
+    ads::CDockManager::setConfigFlags(ads::CDockManager::AlwaysShowTabs);
+    m_DockManager = new ads::CDockManager(this);
+#endif
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
     setupMenu();
@@ -121,8 +125,12 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
     this->addDockWidget(dockw, KDDockWidgets::Location_OnLeft);
 #endif
 #if USE_DOCK_MANAGER
+#if ADS_MULTI_MAIN_WINDOW
     ads::CDockContainerWidget* container = BrowserApplication::instance()->dockManager()->addContainer(this);
     container->addDockWidget(ads::TopDockWidgetArea, dockw, nullptr);
+#else
+    m_DockManager->addDockWidget(ads::TopDockWidgetArea, dockw, nullptr);
+#endif
 #endif
 #else /* neither USE_KDDockWidgets or USE_DOCK_MANAGER */
     QWidget *centralWidget = new QWidget(this);
