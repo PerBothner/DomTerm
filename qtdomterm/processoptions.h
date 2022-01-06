@@ -11,7 +11,8 @@ class ProcessOptions : public QSharedData
  public:
      ProcessOptions();
      bool frontendOnly;
-     bool headless;
+     bool headless = false;
+     bool titlebar = true;
      QString url;
      QString wsconnect;
      QString geometry;

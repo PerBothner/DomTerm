@@ -599,6 +599,8 @@ qtwebengine_command(struct options *options)
         sb.printf(" --remote-debugging-port=%s", options->qt_remote_debugging);
     if (options->headless)
         sb.append(" --headless");
+    if (get_setting_s(options->settings, "titlebar", "system") != "system")
+        sb.append(" --no-titlebar");
     sb.append(" --connect '%U'");
     return sb.strdup();
 }
@@ -645,8 +647,7 @@ wry_command(struct options *options)
         sb.printf(" --geometry %s", geometry);
     }
 #endif
-    const char *titlebar_setting = get_setting(options->settings, "titlebar");
-    if (titlebar_setting != nullptr && strcmp(titlebar_setting, "system") != 0)
+    if (get_setting_s(options->settings, "titlebar", "system") != "system")
         sb.append(" --no-titlebar");
     sb.append(" '%U'");
     return sb.strdup();
@@ -683,8 +684,7 @@ electron_command(struct options *options)
         sb.printf(" --geometry %s", geometry);
     if (options->headless)
         sb.printf(" --headless");
-    const char *titlebar_setting = get_setting(options->settings, "titlebar");
-    if (titlebar_setting != nullptr && strcmp(titlebar_setting, "system") != 0)
+    if (get_setting_s(options->settings, "titlebar", "system") != "system")
         sb.append(" --no-titlebar");
     sb.append(" --url '%U'");
     if (app_fixed != app)
@@ -739,7 +739,6 @@ void
 browser_run_browser(struct options *options, const char *url,
                     struct tty_client *tclient)
 {
-#if 1
     json jobj;
     jobj["url"] = url;
     const char *geometry = geometry_option(options);
@@ -750,20 +749,6 @@ browser_run_browser(struct options *options, const char *url,
     printf_to_browser(tclient,
                       URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
                       jobj.dump().c_str());
-#else
-    struct json_object *jobj = json_object_new_object();
-    json_object_object_add(jobj, "url",  json_object_new_string(url));
-    const char *geometry = geometry_option(options);
-    if (geometry)
-        json_object_object_add(jobj, "geometry", json_object_new_string(geometry));
-    if (options->headless)
-        json_object_object_add(jobj, "headless", json_object_new_boolean(1));
-    const char *json_data = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
-    printf_to_browser(tclient,
-                      URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
-                      json_data);
-    json_object_put(jobj);
-#endif
 }
 
 int

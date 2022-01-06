@@ -2187,8 +2187,10 @@ If the available width is less, use this width for line-wrapping etc.
 (This avoids certain pathological behavior.)
 
 @item @code{@b{titlebar} =} @var{mode}
-Experimental option (only on Electron and Wry front-ends) to use
-a custom titlebar for main (top-level) windows.
+Experimental option to use a custom titlebar for main (top-level) windows.
+Only the Electron, Wry, and Qt front-ends support disabling the system
+titlebar (on other platforms the custom titlebar is additional);
+only Electron and Wry support window move and resize.
 The @var{mode} can be @code{system} (the default) to use the system
 titlebar, or @code{domterm} to use a custom titlebar (in HTML).
 Further options and customization is planned for later.
@@ -5183,8 +5185,6 @@ could reduce some wasted vertical space.
 Consider how it works with panes and tabbars.
 Here is @uref{https://www.qt.io/blog/custom-window-decorations,how it can be done with Qt}.
 For Gtk one can use Gtk.HeaderBar.
-The @uref{https://github.com/tauri-apps/wry,Wry library} has an example of
-a draggable custom titlebar.
 
 @subheading Terminal emulator functionality
 

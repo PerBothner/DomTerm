@@ -98,10 +98,10 @@ get_setting(const json& settings, const char *key)
     //return std::string(*it).c_str();
 }
 std::string
-get_setting_s(const json& settings, const char *key)
+get_setting_s(const json& settings, const char *key, const char *dfault)
 {
     auto it = settings.find(key);
-    return it == settings.end() || ! it->is_string() ? ""
+    return it == settings.end() || ! it->is_string() ? dfault
         : *it;
 }
 

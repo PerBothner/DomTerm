@@ -299,9 +299,12 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
 #endif
     xurl.setFragment(fragment.isEmpty() ? QString()
                         : fragment.toString());
+    Qt::WindowFlags wflags = Qt::Window;
+    if (! processOptions->titlebar)
+        wflags |= Qt::FramelessWindowHint;
     BrowserMainWindow *browser =
         new BrowserMainWindow(this, xurl.toString(),
-                              processOptions, nullptr, Qt::WindowFlags());
+                              processOptions, nullptr, wflags);
     int x = -1, y = -1;
     if (! position.isEmpty()) {
         QRegularExpression re("^([-+])([0-9]+)([-+])([0-9]+)$");

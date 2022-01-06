@@ -398,7 +398,7 @@ extern void set_settings(json& options);
 extern enum option_name lookup_option(const char *name);
 extern void print_settings_prefixed(const char *, const char *, const char*, FILE *);
 extern const char *get_setting(const json& opts, const char *key); // DEPRECATED
-extern std::string get_setting_s(const json& opts, const char *key);
+extern std::string get_setting_s(const json& opts, const char *key, const char *dfault="");
 extern void set_setting(json&, const char *key, const char *val);
 extern bool check_option_arg(const char *arg, struct options *opts);
 
