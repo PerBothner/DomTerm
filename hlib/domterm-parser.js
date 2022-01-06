@@ -658,7 +658,8 @@ class DTParser {
                         for (let ti = 1; ; ti++) {
                             let tch = ti < tend ? tstr.charCodeAt(ti)
                                 : i < endIndex ? bytes[i] : 'X';
-                            if (Terminal.isDelimiter(tch)
+                            if (term.sstate.doLinkify
+                                && Terminal.isDelimiter(tch)
                                 && term.linkify(tstr, tstart, ti, tch)) {
                                 tstart = ti;
                             }
