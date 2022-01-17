@@ -1414,11 +1414,18 @@ class DTParser {
                     break;
                 }
                 break;
-            case 90:
-                DomTerm.newPane(this.getParameter(1, 0),
-                                this.getParameter(2, 0),
+            case 90: {
+                let wnum = this.getParameter(2, -1);
+                let snum = this.getParameter(3, -1);
+                let options = {};
+                if (wnum >= 0)
+                    options.windowNumber = wnum;
+                if (snum >= 0)
+                    options.sessionNumber = snum;
+                DomTerm.newPane(this.getParameter(1, 0), options,
                                 term);
                 break;
+            }
             case 91:
                 term.setSessionNumber(this.getParameter(1, 0),
                                       this.getParameter(2, 0),

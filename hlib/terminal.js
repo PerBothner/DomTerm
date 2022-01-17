@@ -10357,9 +10357,17 @@ DomTerm.initXtermJs = function(dt, topNode) {
     xterm.addCsiHandler("u",
                                function(params,collect) {
                                    switch (params[0]) {
-                                   case 90:
-                                       DomTerm.newPane(params[1], params[2], dt);
+                                   case 90: {
+                                       let wnum = this.getParameter(2, -1);
+                                       let snum = this.getParameter(3, -1);
+                                       let options = {};
+                                       if (wnum >= 0)
+                                           options.windowNumber = wnum;
+                                       if (snum >= 0)
+                                           options.sessionNumber = snum;
+                                       DomTerm.newPane(params[1], options, dt);
                                        return true;
+                                   }
                                    case 91:
                                        dt.setSessionNumber(params[1],
                                                            params[2],

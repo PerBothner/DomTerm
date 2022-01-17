@@ -71,19 +71,10 @@ DomTermLayout.addPane = function(paneOp, newItemConfig,
                                                      oldItem.container.height)
             ? 13 : 11;
     }
-    let state =
-        typeof newItemConfig == "number"
-        // FIXME newItemConfig is actually window/connection-number
-        ? { windowNumber: newItemConfig, sessionNumber: newItemConfig }
-        : {};
 
     let config = { type: 'component', componentType: 'domterm' };
-
     let extraConfig;
-    if (typeof newItemConfig == "number")
-        // FIXME newItemConfig is actually window/connection-number
-        extraConfig = { windowNumber: newItemConfig, sessionNumber: newItemConfig };
-    else if (newItemConfig) {
+    if (newItemConfig) {
         extraConfig = newItemConfig;
         if (newItemConfig.componentType)
             config.componentType = newItemConfig.componentType;

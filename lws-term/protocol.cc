@@ -2160,10 +2160,14 @@ display_session(struct options *options, struct pty_client *pclient,
             return EXIT_FAILURE;
         } else
             tclient = focused_client;
-        if (wnum >= 0)
-             printf_to_browser(tclient, URGENT_WRAP("\033[90;%d;%du"),
-                               paneOp, wnum);
-        else
+        if (wnum >= 0) {
+            int pnum = pclient ? pclient->session_number : -1;
+            printf_to_browser(tclient,
+                              pnum >= 0
+                              ? URGENT_WRAP("\033[90;%d;%d;%du")
+                              : URGENT_WRAP("\033[90;%d;%du"),
+                              paneOp, wnum, pnum);
+        } else
             printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
                                -port, paneOp, url);
         lws_callback_on_writable(tclient->out_wsi);
