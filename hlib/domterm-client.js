@@ -151,12 +151,17 @@ function setupQWebChannel(channel) {
     }
     if (DomTerm.mainSearchParams.get('qtdocking')) {
         DomTerm.newPane = function(paneOp, options=null, dt=DomTerm.focusedTerm) {
-            let url = DomTerm.paneLocation;
-            if (typeof options == "number") {
-                url += url.indexOf('#') >= 0 ? '&' : '#';
-                url += "session-number="+options;
+            if (options && options.componentType === "browser"
+                && options.url) {
+                backend.newPane(paneOp, options.url);
+            } else {
+                let url = DomTerm.paneLocation;
+                if (options && options.sessionNumber) {
+                    url += url.indexOf('#') >= 0 ? '&' : '#';
+                    url += "session-number="+options.sessionNumber;
+                }
+                backend.newPane(paneOp, DomTerm.addLocationParams(url));
             }
-            backend.newPane(paneOp, DomTerm.addLocationParams(url));
         };
     }
     const oldAutoPagerChanged = DomTerm.autoPagerChanged;
