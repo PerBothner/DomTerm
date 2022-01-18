@@ -9819,11 +9819,12 @@ DomTerm.dispatchTerminalMessage = function(command, ...args) {
     return false;
 }
 
-DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm) {
+DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm, keyName=null) {
     let command = commandMap[name];
-    if ((command && command.context === "parent")
-        || ! DomTerm.dispatchTerminalMessage("do-command", name))
-        command(dt, null);
+    if (command && command.context === "parent" && DomTerm.isInIFrame())
+        DomTerm.sendParentMessage("do-command", name, keyName);
+    else
+        command(dt, keyName);
 }
 
 DomTerm.handleKey = function(map, dt, keyName, event=null) {
@@ -9853,9 +9854,10 @@ DomTerm.handleKey = function(map, dt, keyName, event=null) {
         if (typeof command == "string" || command instanceof String) {
             let cmd = commandMap[command];
             if (cmd && cmd.context === 'parent'
-                && DomTerm.isInIFrame()
-                && DomTerm.dispatchTerminalMessage("do-command", command))
+                && DomTerm.isInIFrame()) {
+                DomTerm.sendParentMessage("do-command", command, keyName);
                 return true;
+            }
             command = cmd;
         }
         if (command) {
