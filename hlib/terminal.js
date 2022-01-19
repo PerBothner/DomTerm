@@ -852,6 +852,8 @@ class Terminal {
                                        });
             cur.normalize();
             this.lineStarts[lineNo] = cur;
+            cur._widthMode = Terminal._WIDTH_MODE_NORMAL;
+            cur._widthColumns = 0;
             this.moveToAbs(lineNo, 0, true);
             while (this.lineStarts.length > lineNo
                    && this.lineEnds[this.lineStarts.length-1]===cur.lastChild
