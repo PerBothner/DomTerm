@@ -126,10 +126,13 @@ DomTermLayout._focusChild = function(iframe, originMode) {
     if (iframe !== oldContent || originMode=="C") {
         if (oldContent != null) {
             let terminal = oldContent.terminal;
-            if (oldContent.tagName == "IFRAME")
-                DomTerm.sendChildMessage(oldContent, "set-focused", 0);
-            else if (terminal)
-                terminal.setFocused(0);
+            if (oldContent.tagName == "IFRAME") {
+                if (oldContent.contentWindow)
+                    DomTerm.sendChildMessage(oldContent, "set-focused", 0);
+            } else if (terminal) {
+                if (terminal.topNode)
+                    terminal.setFocused(0);
+            }
         }
         if (originMode != "F") {
             let terminal = iframe.terminal;
@@ -291,7 +294,7 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
 
 DomTermLayout.onLayoutClosed = function(container) {
     return (event) => {
-        const el = container.getElement();
+        const el = container.component;
         const dt = el.terminal;
         if (el.tagName !== "IFRAME" && dt) {
             // We don't call closeConnection() because we might need the WebSocket
@@ -376,9 +379,7 @@ DomTermLayout.initialize = function() {
         wrapped.classList.add("lm_content");
         wrapped._layoutItem = container.parent;
         container.setTitle(name);
-        /*
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
-        */
         if (top !== document.body) {
             (new ResizeObserver(entries => {
                 DomTermLayout.manager.updateSize(); })

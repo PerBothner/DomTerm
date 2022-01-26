@@ -591,6 +591,7 @@ class Terminal {
     // This is called both when constructing a new Terminal, and
     // when closing the session (while preserving the WebSocket).
     clearVisibleState() {
+        this.detachResizeSensor();
         if (this.topNode && this.topNode.parentNode)
             this.topNode.parentNode.removeChild(this.topNode);
         this.topNode = null;
@@ -629,7 +630,6 @@ class Terminal {
         this._currentStyleMap = new Map();
         // A span whose style is "correct" for _currentStyleMap.
         this._currentStyleSpan = null;
-        this.detachResizeSensor();
         // Used to implement clientDoesEcho handling.
         this._deferredForDeletion = null;
 
