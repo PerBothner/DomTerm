@@ -843,8 +843,7 @@ static void status_by_connection(FILE *out, int verbosity)
             struct pty_client *pclient = sub_client->pclient;
             if (pclient == NULL) {
                 if (verbosity > 0 || cnumber != number)
-                    fprintf(out, "  disconnected .%d", cnumber);
-                fprintf(out, "\n", cnumber);
+                    fprintf(out, "  disconnected .%d\n", cnumber);
                 continue;
             }
             int snumber = pclient->session_number;
