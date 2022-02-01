@@ -2170,13 +2170,17 @@ class DTParser {
                 if (data.rows && data.columns)
                     dt.forceWidthInColumns(data.columns, data.rows, 8);
                 dt._breakAllLines();
-                var home_node; // FIXME
-                var home_offset = -1;
-                dt.homeLine = dt._computeHomeLine(home_node, home_offset,
-                                                  dt.usingAlternateScreenBuffer);
+                const home_node = main.querySelector("*[home-line]");
+                if (home_node) {
+                    const home_line = home_node.getAttribute("home-line");
+                    const home_offset = parseInt(home_line) || 0;
+                    dt.homeLine = dt._computeHomeLine(home_node, home_offset,
+                                                      dt.usingAlternateScreenBuffer);
+                    home_node.removeAttribute("home-line");
+                }
                 term.updateWindowTitle();
                 let saved = term._savedControlState;
-                if (saved && ! saved.urgent)
+                if (saved && ! saved.counted)
                     saved.receivedCount = rcount;
                 else
                     term._receivedCount = rcount;
