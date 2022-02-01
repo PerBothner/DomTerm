@@ -1230,6 +1230,11 @@ class DTParser {
                     term.processResponseCharacters("\x1B[4;"+Math.trunc(h)
                                                    +";"+Math.trunc(w)+"t");
                     break;
+                case 16: // Report (rounded) character cell size in pixels
+                    term.processResponseCharacters(
+                        "\x1B[6;"+Math.round(term.charHeight)
+                            +";"+Math.round(term.charWidth)+"t");
+                    break;
                 case 18: // Report the size of the text area in characters.
                     term.processResponseCharacters("\x1B[8;"+term.numRows
                                                    +";"+term.numColumns+"t");
