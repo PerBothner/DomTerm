@@ -1532,8 +1532,10 @@ class DTParser {
         const idata = new ImageData(new Uint8ClampedArray(six.data32.buffer, 0, w * h * 4), w, h);
         //six.toPixelData(idata.data, w, h);
         ctx.putImageData(idata, 0, 0);
-        let wcols = Math.floor(w / term.charWidth + 0.9);
-        let hlines = Math.floor(h / term.charHeight + 0.9);
+        const charWidthI = Math.round(term.charWidth);
+        const charHeightI = Math.round(term.charHeight);
+        let wcols = Math.floor(w / charWidthI + 0.9);
+        let hlines = Math.floor(h / charHeightI + 0.9);
         let oldLine = term.getAbsCursorLine();
         let oldColumn = term.getCursorColumn();
         if (reuseCanvas) {
@@ -1552,9 +1554,9 @@ class DTParser {
                 span.appendChild(canvas);
                 span.style['position'] = "relative";
                 term.insertNode(span);
-                if (Math.floor(term.charHeight+0.2) == h)
-                    canvas.style['height'] = term.charHeight + "px";
             }
+            canvas.style.height = hlines * term.charHeight;
+            canvas.style.width = wcols * term.charWidth;
         }
         let line = term.lineStarts[oldLine];
         if (line._widthColumns !== undefined)
