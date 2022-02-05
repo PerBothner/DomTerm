@@ -178,7 +178,7 @@ DomTerm.forEachTerminal = function(func) {
 }
 
 /* Can be called in either DomTerm sub-window or layout-manager context.
-   * Note this is in the DomTerm gloabl object, not DomTermLayout. FIXME?
+   * Note this is in the DomTerm global object, not DomTermLayout. FIXME?
  */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
@@ -225,7 +225,7 @@ DomTerm.windowOp = function(opname, arg=null) {
     }
     if (DomTerm.versions.wry) {
         if (opname === 'minimize' || opname === 'hide' || opname === 'show') {
-            window.rpc.notify(opname);
+            ipc.postMessage(opname);
         }
     }
 

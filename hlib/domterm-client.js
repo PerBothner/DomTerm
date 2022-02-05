@@ -272,7 +272,7 @@ function createTitlebar(titlebarNode) {
         function drag (e) {
             if (e.target.matches('.dt-titlebar-buttons *'))
                 return;
-            window.rpc.notify('drag_window');
+            ipc.postMessage('drag_window');
         };
         titlebarNode.addEventListener('mousedown', drag);
         titlebarNode.addEventListener('touchstart', drag);
