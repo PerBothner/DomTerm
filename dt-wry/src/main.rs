@@ -2,148 +2,193 @@
 // Copyright 2019-2021 Tauri Programme within The Commons Conservancy
 // SPDX-License-Identifier: MIT
 
-use std::env;
+use serde_json::Value;
 use std::collections::HashMap;
+use std::env;
 mod versions;
 
 fn main() -> wry::Result<()> {
-  // See https://wiki.archlinux.org/index.php/GTK#Disable_overlay_scrollbars
-  env::set_var("GTK_OVERLAY_SCROLLING", "0");
-  use wry::{
-    application::{
-      event::{Event, WindowEvent},
-      event_loop::{ControlFlow, EventLoop},
-      window::{Window, WindowId, WindowBuilder},
-    },
-    webview::{WebContext, WebViewBuilder},
-  };
+    // See https://wiki.archlinux.org/index.php/GTK#Disable_overlay_scrollbars
+    env::set_var("GTK_OVERLAY_SCROLLING", "0");
+    use wry::{
+        application::{
+            dpi::LogicalSize,
+            event::{Event, WindowEvent},
+            event_loop::{ControlFlow, EventLoop, EventLoopProxy, EventLoopWindowTarget},
+            window::{Window, WindowBuilder, WindowId},
+        },
+        webview::{WebView, WebViewBuilder},
+    };
+    use regex::Regex;
 
-  enum UserEvents {
-    CloseWindow(WindowId),
-    NewWindow()
-  }
+    enum UserEvents {
+        CloseWindow(WindowId),
+        NewWindow(serde_json::Map<String, Value>),
+    }
 
-  let args: Vec<String> = env::args().collect();
-  let mut url:&str = "-missing-";
-  let mut iarg = 1;
-  let mut titlebar = true;
-  while iarg < args.len() {
-      let arg = &args[iarg];
-      if arg == "--no-titlebar" {
-         titlebar = false;
-      } else {
-          url = arg;
-      }
-      iarg += 1;
-  }
+    let args: Vec<String> = env::args().collect();
+    let mut joptions = serde_json::json!({});
+    let options = joptions.as_object_mut().unwrap();
+    let mut iarg = 1;
+    let mut titlebar = true;
+    while iarg < args.len() {
+        let arg = &args[iarg];
+        if arg == "--no-titlebar" {
+            titlebar = false;
+        } else if arg == "--geometry" && iarg + 1 < args.len() {
+            iarg += 1;
+            let re = Regex::new(r"^([0-9]+)x([0-9]+)$").unwrap();
+            if let Some(caps) = re.captures(&args[iarg]) {
+                options.insert("width".to_string(),
+                               serde_json::to_value(caps.get(1).unwrap().as_str().parse::<f64>().unwrap()).unwrap());
+                options.insert("height".to_string(),
+                               serde_json::to_value(caps.get(2).unwrap().as_str().parse::<f64>().unwrap()).unwrap());
+            }
+        } else {
+            options.insert("url".to_string(), serde_json::to_value(arg).unwrap());
+        }
+        iarg += 1;
+    }
 
-  let event_loop = EventLoop::<UserEvents>::with_user_event();
-  let mut web_context = WebContext::default();
-  let mut webviews = HashMap::new();
+    let event_loop = EventLoop::<UserEvents>::with_user_event();
+    let mut webviews = HashMap::new();
+    let proxy = event_loop.create_proxy();
 
-  let wversion = wry::webview::webview_version();
-  let wversion_js = match wversion {
-     Ok(v) => format!("    window.webview_version = \"{}\";\n", v),
-     Err(_) => "".to_string()
-  };
-  let wry_version = versions::wry_version();
-  let _domterm_version = versions::domterm_version();
+    fn create_new_window(
+        title: String,
+        titlebar: bool,
+        options: &serde_json::Map<String, Value>,
+        event_loop: &EventLoopWindowTarget<UserEvents>,
+        proxy: EventLoopProxy<UserEvents>,
+    ) -> (WindowId, WebView) {
+        let url = options["url"].as_str().unwrap();
+        let wversion = wry::webview::webview_version();
+        let wversion_js = match wversion {
+            Ok(v) => format!("    window.webview_version = \"{}\";\n", v),
+            Err(_) => "".to_string(),
+        };
 
-  let script = format!(r#"
+        let wry_version = versions::wry_version();
+        let _domterm_version = versions::domterm_version();
+        let script = format!(
+            r#"
   (function () {{
 {}{}    window.wry_version = "{}";
-    window.openNewWindow = (options)=>{{ipc.postMessage("new-window", options);}}
+    window.openNewWindow = (options)=>{{ipc.postMessage("new-window ", JSON.stringify(options));}}
     window.closeMainWindow = ()=>{{window.close();}};
 }})();
   "#,
-  wversion_js,
-  if titlebar {
-    "window.setWindowTitle = (str)=>{ipc.postMessage('set-title '+str);}\n"
-  } else {
-    ""
-  },
-  wry_version);
+            wversion_js,
+            if titlebar {
+                "window.setWindowTitle = (str)=>{ipc.postMessage('set-title '+str);}\n"
+            } else {
+                ""
+            },
+            wry_version
+        );
 
-  let mut new_window = |url: &str| -> wry::Result<()> {
-    let window = WindowBuilder::new()
-      .with_title("DomTerm")
-      .with_decorations(titlebar)
-      .build(&event_loop)
-      .unwrap();
+        let window = WindowBuilder::new()
+            .with_title(title)
+            .with_decorations(titlebar)
+            .build(event_loop)
+            .unwrap();
 
-    let proxy = event_loop.create_proxy();
-
-    let handler = move |window: &Window, req: String| {
-      if let Some((cmd,rest)) = req.split_once(' ') {
-        if cmd == "set-title" {
-          window.set_title(rest);
+        if let (Some(width),Some(height)) = (options.get("width"),options.get("height")) {
+            if let (Some(w),Some(h)) = (width.as_f64(),height.as_f64()) {
+                window.set_inner_size(LogicalSize::new(w, h));
+            }
         }
-      }
-      if req == "new-window" {
-        let _ = proxy.send_event(UserEvents::NewWindow());
-      }
-      if req == "minimize" {
-        window.set_minimized(true);
-      }
-      if req == "hide" {
-        window.set_minimized(true);
-        window.set_visible(false);
-      }
-      if req == "show" {
-        window.set_visible(false);
-        window.set_visible(true);
-        window.set_minimized(false);
-        window.set_focus();
-      }
-      if req == "close" {
-        let _ = proxy.send_event(UserEvents::CloseWindow(window.id()));
-      }
-      if req == "drag_window" {
-        let _ = window.drag_window();
-      }
-    };
 
-    let webview = WebViewBuilder::new(window)
-      .unwrap()
-      .with_url(&url)?
-      .with_initialization_script(&script)
-      .with_ipc_handler(handler)
-      .with_web_context(&mut web_context)
-      .build()?;
-    webviews.insert(webview.window().id(), webview);
-    Ok(())
-  };
-  let _ = new_window(url);
+        let window_id = window.id();
+        let handler = move |window: &Window, req: String| {
+            if let Some((cmd, data)) = req.split_once(' ') {
+                if cmd == "set-title" {
+                    window.set_title(data);
+                }
+                if cmd == "new-window" {
+                    if let Ok(Value::Object(options)) = serde_json::from_str(data) {
+                        let _ = proxy.send_event(UserEvents::NewWindow(options));
+                    } // else handle error FIXME
+                }
+            }
 
-  event_loop.run(move |event, _, control_flow| {
-    *control_flow = ControlFlow::Wait;
+            if req == "minimize" {
+                window.set_minimized(true);
+            }
+            if req == "hide" {
+                window.set_minimized(true);
+                window.set_visible(false);
+            }
+            if req == "show" {
+                window.set_visible(false);
+                window.set_visible(true);
+                window.set_minimized(false);
+                window.set_focus();
+            }
+            if req == "close" {
+                let _ = proxy.send_event(UserEvents::CloseWindow(window.id()));
+            }
+            if req == "drag_window" {
+                let _ = window.drag_window();
+            }
+        };
 
-   match event {
-      Event::WindowEvent {
-        event, window_id, ..
-      } => match event {
-        WindowEvent::CloseRequested => {
-          webviews.remove(&window_id);
-          if webviews.is_empty() {
-            *control_flow = ControlFlow::Exit
-          }
-        }
-        WindowEvent::Resized(_) => {
-          let _ = webviews[&window_id].resize();
-        }
-        _ => (),
-      },
-      Event::UserEvent(UserEvents::NewWindow()) => {
-        // FIXME - fails to compile
-        // new_window("http://example.com");
-      },
-      Event::UserEvent(UserEvents::CloseWindow(id)) => {
-        webviews.remove(&id);
-        if webviews.is_empty() {
-          *control_flow = ControlFlow::Exit
-        }
-      }
-      _ => (),
+        let webview = WebViewBuilder::new(window)
+            .unwrap()
+            .with_url(&url)
+            .unwrap()
+            .with_initialization_script(&script)
+            .with_ipc_handler(handler)
+            .build()
+            .unwrap();
+        (window_id, webview)
     }
-  });
+
+    let window_pair = create_new_window(
+        "DomTerm".to_string(),
+        titlebar,
+        &options,
+        // &script,
+        &event_loop,
+        proxy.clone(),
+    );
+    webviews.insert(window_pair.0, window_pair.1);
+
+    event_loop.run(move |event, event_loop, control_flow| {
+        *control_flow = ControlFlow::Wait;
+
+        match event {
+            Event::WindowEvent {
+                event, window_id, ..
+            } => match event {
+                WindowEvent::CloseRequested => {
+                    webviews.remove(&window_id);
+                    if webviews.is_empty() {
+                        *control_flow = ControlFlow::Exit
+                    }
+                }
+                WindowEvent::Resized(_) => {
+                    let _ = webviews[&window_id].resize();
+                }
+                _ => (),
+            },
+            Event::UserEvent(UserEvents::NewWindow(options)) => {
+                let window_pair = create_new_window(
+                    format!("DomTerm {}", webviews.len() + 1).to_string(),
+                    titlebar,
+                    &options,
+                    //          script,
+                    &event_loop,
+                    proxy.clone());
+                webviews.insert(window_pair.0, window_pair.1);
+            }
+            Event::UserEvent(UserEvents::CloseWindow(id)) => {
+                webviews.remove(&id);
+                if webviews.is_empty() {
+                    *control_flow = ControlFlow::Exit
+                }
+            }
+            _ => (),
+        }
+    });
 }

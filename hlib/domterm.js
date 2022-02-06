@@ -273,13 +273,16 @@ DomTerm._extractGeometryOptions = function(options={}) {
 DomTerm.openNewWindow = function(dt, options={}) {
     options = DomTerm._extractGeometryOptions(options);
     let url = options.url;
-    if (DomTerm.isElectron() && (url || ! dt)) {
+    if ((DomTerm.isElectron() || DomTerm.versions.wry) && (url || ! dt)) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("domterm-new-window", options);
         } else {
             if (! url)
                 options.url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
-            electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
+            if (DomTerm.isElectron())
+                electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
+            else // DomTerm.versions.wry
+                ipc.postMessage("new-window "+JSON.stringify(options));
         }
     } else {
         let width = options.width;

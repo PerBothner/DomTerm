@@ -642,11 +642,10 @@ wry_command(struct options *options)
     }
     struct sbuf sb;
     sb.append(cmd);
-#if 0
+    const char *geometry = geometry_option(options);
     if (geometry) {
         sb.printf(" --geometry %s", geometry);
     }
-#endif
     if (get_setting_s(options->settings, "titlebar", "system") != "system")
         sb.append(" --no-titlebar");
     sb.append(" '%U'");
@@ -762,7 +761,7 @@ do_run_browser(struct options *options, const char *url, int port)
     } else {
         browser_specifier = opts.browser_command;
     }
-    bool do_electron = false, do_Qt = false;
+    bool do_electron = false, do_Qt = false, do_wry = false;
     if (port_specified < 0
         && (browser_specifier == nullptr || browser_specifier[0] != '-')) {
         const char *p = browser_specifier;
@@ -807,8 +806,10 @@ do_run_browser(struct options *options, const char *url, int port)
                     browser_specifier = wry_command(options);
                     if (browser_specifier == NULL)
                         error_if_single = "cannot find dt-wry command";
-                    else
+                    else {
+                        do_wry = true;
                         break;
+                    }
                 } else if (cmd == "qt"
                            || cmd == "qtdomterm"
                            || cmd == "qtwebengine") {
@@ -878,6 +879,7 @@ do_run_browser(struct options *options, const char *url, int port)
 
     const char *do_pattern = do_electron ? "\"electron\":\""
         : do_Qt ? "\"qtwebengine\":\""
+        : do_wry ? "\"wry\":\""
         : NULL;
     // If there is an existing Electron or Qt instance, we want to re-use it.
     // Otherwise, on Qt we get a multi-second delay on startup.
