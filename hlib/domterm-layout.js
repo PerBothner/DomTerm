@@ -3,7 +3,7 @@
 
 export { DomTermLayout };
 
-import { GoldenLayout, ItemConfig, ResolvedItemConfig } from './goldenlayout.js';
+import { GoldenLayout, ItemConfig, ResolvedItemConfig, Tab } from './goldenlayout.js';
 
 class DomTermLayout {
 };
@@ -169,6 +169,25 @@ DomTermLayout._elementToLayoutItem = function(goal, item = DomTermLayout.manager
     return null;
 }
 
+DomTermLayout.setLayoutTitle = function(item, title, wname) {
+    const r = DomTermLayout._elementToLayoutItem(item);
+    if (! r)
+        return; // ERROR?
+    r.setTitle(title);
+    r.setTitleRenderer((container, el, width, flags) => {
+        // Redundant if we use innerHTML/innerText:
+        //while (el.lastChild) el.removeChild(el.lastChild);
+        if (wname &&
+            ((flags & Tab.RenderFlags.InDropdownMenu) ||
+             ! (flags & Tab.RenderFlags.DropdownActive))) {
+            el.innerHTML =
+                DomTerm.escapeText(title)+'<span class="domterm-windowname"> '+DomTerm.escapeText(wname)+'</span>';
+        } else {
+            el.innerText = title;
+        }
+    });
+}
+
 DomTermLayout._selectLayoutPane = function(component, originMode) {
     if (! DomTerm.useIFrame && ! DomTerm.usingXtermJs()) {
         let element = component.container.getElement().firstChild;
@@ -247,6 +266,7 @@ DomTermLayout.newItemConfig = {
 
 DomTermLayout.config = {
     settings:  { showMaximiseIcon: false,
+                 reorderOnTabMenuClick: false,
                  popoutWholeStack: function(e) { return e.ctrlKey; },
                  onPopoutClick: function(item, event) {
                      var aitem = item.type != 'stack' ? item
@@ -358,14 +378,16 @@ DomTermLayout.initialize = function() {
 
     DomTermLayout.manager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
-        var name;
+        let name, windowTitle;
         let wrapped;
         if (lcontent != null) {
             wrapped = lcontent;
             let e = DomTerm._oldFocusedContent;
             name = (e && (e.layoutTitle || e.getAttribute("name")))
                 || DomTerm.freshName();
+            windowTitle = e.layoutWindowTitle;
             lcontent.layoutTitle = undefined;
+            lcontent.layoutWindowTitle = undefined;
             lcontent = null;
         } else {
             var config = container._config;
@@ -378,7 +400,7 @@ DomTermLayout.initialize = function() {
         DomTermLayout.showFocusedPane(wrapped);
         wrapped.classList.add("lm_content");
         wrapped._layoutItem = container.parent;
-        container.setTitle(name);
+        DomTerm.setLayoutTitle(wrapped, name, windowTitle);
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
         if (top !== document.body) {
             (new ResizeObserver(entries => {

@@ -5936,19 +5936,11 @@ Terminal.prototype.formatWindowTitle = function() {
 
 // item is a domterm element or an iframe domterm-wrapper (if useIFrame)
 DomTerm.setLayoutTitle = function(item, title, wname) {
-    title = DomTerm.escapeText(title);
-    if (wname) {
-        wname = DomTerm.escapeText(wname);
-        //FIXME
-        //title = title+'<span class="domterm-windowname"> '+wname+'</span>';
-    }
-    if (DomTerm._layout) {
-        const r = DomTerm._layout._elementToLayoutItem(item);
-        if (r) {
-            r.setTitle(title);
-        }
-    } else {
+    if (title !== item.layoutTitle || wname !== item.layoutWindowTitle) {
         item.layoutTitle = title;
+        item.layoutWindowTitle = wname;
+        if (DomTerm._layout)
+            DomTerm._layout.setLayoutTitle(item, title, wname);
     }
 }
 

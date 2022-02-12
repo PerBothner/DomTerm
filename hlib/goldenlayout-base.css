@@ -60,6 +60,7 @@
 }
 .lm_header .lm_controls {
   position: absolute;
+  top: 0px;
   right: 3px;
   display: flex;
 }
@@ -71,15 +72,21 @@
   text-align: center;
 }
 .lm_header .lm_tabs {
-  position: absolute;
   display: flex;
+  overflow: hidden;
+}
+.lm_header .lm_title {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
 }
 .lm_header .lm_tab {
   cursor: pointer;
   float: left;
   height: 14px;
   margin-top: 1px;
-  padding: 0px 10px 5px;
+  padding: 0px 6px 5px;
   padding-right: 25px;
   position: relative;
   touch-action: none;
@@ -97,11 +104,6 @@
   top: 0;
   right: -2px;
 }
-.lm_header .lm_tab .lm_title {
-  display: inline-block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .lm_header .lm_tab .lm_close_tab {
   width: 14px;
   height: 14px;
@@ -109,6 +111,24 @@
   top: 0;
   right: 0;
   text-align: center;
+}
+.lm_header.lm_tight_mode .lm_tabs .lm_tab {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+.lm_header.lm_tight_mode .lm_tabs .lm_tab .lm_close_tab {
+  display: none;
+}
+.lm_header.lm_tight_mode .lm_tabs .lm_tab.lm_active {
+  display: inherit;
+  padding-right: 22px;
+}
+.lm_header.lm_tight_mode .lm_tabs .lm_tab.lm_active .lm_close_tab {
+  display: inherit;
+}
+.lm_header.lm_tight_mode .lm_drop_tab_placeholder {
+  padding-right: 70px;
+  margin-right: 0px;
 }
 .lm_stack {
   position: relative;
@@ -226,7 +246,7 @@
 }
 .lm_drop_tab_placeholder {
   float: left;
-  width: 100px;
+  padding-right: 100px;
   height: 10px;
   visibility: hidden;
 }
@@ -247,6 +267,10 @@
   right: 0;
   z-index: 5;
   overflow: hidden;
+}
+.lm_header .lm_tabdropdown_list .lm_title {
+  display: block;
+  padding: 1px;
 }
 .lm_header .lm_tabdropdown_list .lm_tab {
   clear: both;
