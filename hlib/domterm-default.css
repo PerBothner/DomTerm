@@ -49,6 +49,10 @@ div.domterm-spacer {
 /* Tufte CSS suggests: Consolas, "Liberation Mono", Menlo, Courier, monospace
    However, the first four in that list cause some vertical spacing issues,
    including background-color not being full-height.
+   Also worth consideration:
+   - source code pro (https://github.com/adobe-fonts/source-code-pro) [not actively worked on?]
+   - 'Noto Sans Mono'
+   - 'IBM Plex Mono' (needs download and @font-face]
    Check with tests/256-colors.sh. */
 div.domterm { --monospace-family: Terminal, monospace, DejaVu Sans Mono; }
 div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family) }
