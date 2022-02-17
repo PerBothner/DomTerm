@@ -525,6 +525,20 @@ If you need to build libwebsockets from source:
 @example
 sudo apt-get install cmake
 @end example
+Otherwise:
+@example
+sudo apt-get install libwebsockets-dev
+@end example
+
+If configuring with @code{--with-webview} (experimental) do:
+@example
+sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev
+@end example
+
+If configuring with @code{--with-wry} (experimental) do:
+@example
+sudo apt install rustc cargo libgtk-3-dev libwebkit2gtk-4.0-dev
+@end example
 
 @subsubheading Windows using WSL (Linux for Windows)
 
