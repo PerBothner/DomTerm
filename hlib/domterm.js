@@ -188,6 +188,14 @@ DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
     //DomTerm.newSessionPid = 0;
 }
 
+DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
+                                detach = false, fromLayoutEvent = false) {
+    if (content && content.terminal)
+        content.terminal.close(detach, fromLayoutEvent);
+    else if (content.tagName == "IFRAME")
+        DomTerm.sendChildMessage(content, "domterm-close", detach, fromLayoutEvent);
+}
+
 DomTerm.closeAll = function(event) {
     DomTerm.forEachTerminal(dt => {
         dt.historySave();

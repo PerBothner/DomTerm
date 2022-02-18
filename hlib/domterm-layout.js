@@ -302,27 +302,16 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
             && p.parent.type == 'ground'
             && p.parent.contentItems.length == 1) {
             DomTerm.windowClose();
-        } else {
+        } else if (! from_handler) {
             DomTermLayout.selectNextPane(true, lcontent);
-            if (lcontent && lcontent.parentNode)
-                lcontent.parentNode.removeChild(lcontent);
-            if (! from_handler)
-                r.remove();
+            r.remove();
         }
     }
 }
 
 DomTermLayout.onLayoutClosed = function(container) {
     return (event) => {
-        const el = container.component;
-        const dt = el.terminal;
-        if (el.tagName !== "IFRAME" && dt) {
-            // We don't call closeConnection() because we might need the WebSocket
-            // connection for window-level operations, such as show/minimize.
-            dt.reportEvent("CLOSE-SESSION");
-            dt.clearVisibleState();
-        }
-        DomTermLayout.layoutClose(el, container.parent, true);
+        DomTerm.closeSession(container.component, false, true);
     };
 }
 

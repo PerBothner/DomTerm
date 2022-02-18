@@ -387,19 +387,19 @@ function loadHandler(event) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
                 const lcontent = DomTerm._oldFocusedContent;
-                if (lcontent && lcontent.contentWindow) {
-                    lcontent.contentWindow.postMessage({"command": command,
-                                                        "args": args}, "*");
+                const w = lcontent && lcontent.contentWindow;
+                if (w) {
+                    w.postMessage({"command": command, "args": args}, "*");
                     return true;
                 }
                 return false;
             }
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
-                if (lcontent)
-                    lcontent.contentWindow.postMessage({"command": command,
-                                                        "args": args}, "*");
+                const w = lcontent && lcontent.contentWindow;
+                if (w)
+                    w.postMessage({"command": command, "args": args}, "*");
                 else
-                    console.log("sending "+command+" to unknow child - ignored");
+                    console.log("sending "+command+" to unknown or closed child - ignored");
             }
         } else {
             setupParentMessages1();
@@ -518,6 +518,12 @@ function handleMessage(event) {
         DomTerm.showContextMenu(options);
     } else if (data.command=="domterm-add-pane") { // in parent from child
         DomTermLayout.addPane(data.args[0], data.args[1], iframe);
+    } else if (data.command=="domterm-remove-content") { // in parent from child
+        if (iframe && iframe.parentNode) {
+            iframe.remove();
+            if (iframe.parentNode.classList.contains("lm_component"))
+                iframe.parentNode.remove();
+        }
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="do-command") {
@@ -579,6 +585,10 @@ function handleMessage(event) {
         let dt = DomTerm.focusedTerm;
         if (dt)
             dt.closeConnection();
+    } else if (data.command=="domterm-close") { // parent to child
+        let dt = DomTerm.focusedTerm;
+        if (dt)
+            dt.close(data.args[0], data.args[1]);
     } else if (data.command=="request-selection") { // parent to child
         // FIXME rename to doNamedCommand("copy"/"copy-as-html");
         DomTerm.sendParentMessage("value-to-clipboard",

@@ -599,7 +599,7 @@ cmd('popout-tabset',
     });
 cmd('detach-session',
     function(dt, keyName) {
-        dt.detachSession();
+        DomTerm.closeSession(DomTerm._oldFocusedContent, true, false);
         return true;
     });
 cmd('open-link',

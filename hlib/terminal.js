@@ -651,10 +651,7 @@ class Terminal {
     }
 
     detachSession() {
-        this.reportEvent("DETACH", "");
-        if (this._detachSaveNeeded == 1)
-            this._detachSaveNeeded = 2;
-        this.close();
+        this.close(true, false);
     }
 
     //maybeExtendInput() { }
@@ -1012,17 +1009,38 @@ DomTerm.closeFromEof = function(dt) {
     dt.close();
 }
 
-Terminal.prototype.close = function() {
+Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
+    if (detach) {
+        this.reportEvent("DETACH", "");
+        if (this._detachSaveNeeded == 1) {
+            this._detachSaveNeeded = 2;
+        }
+    }
     if (this._detachSaveNeeded == 2) {
         DomTerm.saveWindowContents(this);
+        this._detachSaveNeeded = 1;
     }
+    this.reportEvent("CLOSE-SESSION");
+
+    if (! fromLayoutEvent) {
+        if (DomTerm.useIFrame && DomTerm.isInIFrame())
+            DomTerm.sendParentMessage("layout-close");
+        else if (DomTerm._layout) {
+            DomTerm._layout.layoutClose(this.topNode,
+                                        DomTerm._layout.domTermToLayoutItem(this),
+                                        fromLayoutEvent);
+        } else
+            DomTerm.windowClose();
+    }
+
+    let topParent = this.topNode && this.topNode.parentNode;
+    this.clearVisibleState();
+    this.inputFollowsOutput = false;
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
-        DomTerm.sendParentMessage("layout-close");
-    else if (DomTerm._layout) {
-        DomTerm._layout.layoutClose(this.topNode,
-                                  DomTerm._layout.domTermToLayoutItem(this));
-    } else
-        DomTerm.windowClose();
+        DomTerm.sendParentMessage("domterm-remove-content");
+    else if (topParent
+             && topParent.classList.contains("lm_component"))
+        topParent.remove();
 };
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]) {
@@ -4100,7 +4118,7 @@ Terminal.prototype.measureWindow = function()  {
     this.actualHeight = topRect.height;
     this._topOffset = topRect.y;
     if (DomTerm.verbosity >= 2)
-        this.log("measureWindow "+this.name+" h:"+this.actualHeight);
+        this.log("measureWindow "+this.name+" h:"+this.actualHeight+" forced:"+this.sstate.forcedSize);
     var rbox = ruler.getBoundingClientRect();
     this.charWidth = rbox.width/26.0;
     this.charHeight = rbox.height;
