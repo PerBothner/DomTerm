@@ -89,7 +89,7 @@ public:
         return i > 0 && i < sz && elements[i] != nullptr
             && elements[i]->index() == i;
     }
-    bool avoid_index(int i);
+    bool avoid_index(int i, int hint);
     T* operator()(int i) { return valid_index(i) ? elements[i] : nullptr; }
 };
 
@@ -137,7 +137,6 @@ enum option_name {
 class pty_client {
 public:
     int index() { return session_number; }
-    static bool avoid_index(int i);
     int pid;
     int pty; // pty master
     int pty_slave;
@@ -205,7 +204,6 @@ public:
     tty_client();
     ~tty_client();
     int index() { return connection_number; }
-    static bool avoid_index(int i);
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
     struct options *options;

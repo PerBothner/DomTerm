@@ -5866,24 +5866,28 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
     if (kind == 2) {
         this.windowNumber = windowNumber;
     } else {
-        this.sstate.sessionNumber = snumber;
-        this.topNode.setAttribute("session-number", snumber);
-        if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-            DomTerm.sendParentMessage("set-session-number", snumber);
-        }
-        this.reportEvent("SESSION-NUMBER-ECHO", snumber);
-        this.sstate.sessionNameUnique = unique;
-        if (this.windowNumber < 0)
+        const mainWindowForce = this.topNode == null;
+        this.sstate.sessionNumber = snumber || -1;
+        if (this.windowNumber < 0 || mainWindowForce)
             this.windowNumber = windowNumber;
         this.connectionNumber = windowNumber;
-        if (DomTerm._mainWindowNumber < 0)
+        if (DomTerm._mainWindowNumber < 0 || mainWindowForce)
             DomTerm._mainWindowNumber = windowNumber;
         this.windowForSessionNumber = windowForSession;
-        if (this.sstate.forcedSize == "secondary"
-            && !this.isSecondaryWindow())
-            this.forceWidthInColumns(-1);
+        if (this.topNode) {
+            this.topNode.setAttribute("session-number", snumber);
+            if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+                DomTerm.sendParentMessage("set-session-number", snumber);
+            }
+            this.reportEvent("SESSION-NUMBER-ECHO", snumber);
+            this.sstate.sessionNameUnique = unique;
+            if (this.sstate.forcedSize && !this.isSecondaryWindow())
+                this.forceWidthInColumns(-1);
+        }
     }
-    this.updateWindowTitle();
+    if (this.topNode) {
+        this.updateWindowTitle();
+    }
 }
 
 // FIXME misleading function name - this is not just the session name

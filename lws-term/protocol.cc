@@ -309,11 +309,26 @@ printf_to_browser(struct tty_client *tclient, const char *format, ...)
     va_end(ap);
 }
 
+static void
+set_connection_number(struct tty_client *tclient, int hint)
+{
+    int snum = tty_clients.enter(tclient, hint);
+    tclient->connection_number = snum;
+    lwsl_notice("set_connection_number %p to %d\n", tclient, tclient->connection_number);
+}
+
+static void
+clear_connection_number(struct tty_client *tclient)
+{
+    tty_clients.remove(tclient);
+    tclient->connection_number = -1;
+}
+
 // Unlink wsi from pclient's list of client_wsi-s.
 static void
 unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
 {
-    lwsl_notice("unlink_tty_from_pty_only p:%p t:%p\n", pclient, tclient);
+    lwsl_notice("unlink_tty_from_pty p:%p t:%p\n", pclient, tclient);
     for (struct tty_client **pt = &pclient->first_tclient; *pt != NULL; ) {
         struct tty_client **nt = &(*pt)->next_tclient;
         if (tclient == *pt) {
@@ -343,6 +358,24 @@ unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
         || tclient->proxyMode == proxy_display_local) {
         lwsl_notice("- close pty pmode:%d\n", tclient->proxyMode);
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
+    } else if (tclient->main_window == 0
+        && tclient->connection_number == pclient->session_number) {
+        // The session correspding to the main window was detached.
+        // The connection is kept around to handle window-level operations.
+        // Re-number that connection so the old window number is
+        // available when we attach a new window to the session.
+        // (We prefer to have window/connection numbers match session numbers.)
+        int old_number = tclient->connection_number;
+        clear_connection_number(tclient);
+        set_connection_number(tclient, -1);
+        int new_number = tclient->connection_number;
+        struct tty_client *tother;
+        FORALL_WSCLIENT(tother) {
+            if (tother->main_window == old_number)
+                tother->main_window = new_number;
+        }
+        tclient->pty_window_update_needed = true;
+        lws_callback_on_writable(tclient->wsi);
     }
 
     // If only one client left, do detachSaveSend
@@ -353,13 +386,6 @@ unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
             first_tclient->detachSaveSend = true;
         }
     }
-}
-
-static void
-clear_connection_number(struct tty_client *tclient)
-{
-    tty_clients.remove(tclient);
-    tclient->connection_number = -1;
 }
 
 tty_client::~tty_client()
@@ -503,13 +529,25 @@ void put_to_env_array(const char **arr, int max, const char* eval)
 }
 
 template<typename T>
-bool id_table<T>::avoid_index(int i) { return valid_index(i); }
+bool id_table<T>::avoid_index(int i, int hint) {
+    return valid_index(i);
+}
+
+template<>
+bool id_table<pty_client>::avoid_index(int i, int hint) {
+    return valid_index(i) || (i != hint && tty_clients.valid_index(i));
+}
+
+template<>
+bool id_table<tty_client>::avoid_index(int i, int hint) {
+    return valid_index(i) || (i != hint && pty_clients.valid_index(i));
+}
 
 template<typename T>
 int id_table<T>::enter(T *entry, int hint)
 {
     int snum = 1;
-    if (hint > 0 && ! valid_index(hint) && ! avoid_index(hint))
+    if (hint > 0 && ! valid_index(hint) && ! avoid_index(hint, -1))
         snum = hint;
     for (; ; snum++) {
         if (snum >= sz) {
@@ -523,7 +561,7 @@ int id_table<T>::enter(T *entry, int hint)
         }
         T*next = elements[snum];
         if (next == NULL || next->index() > snum) {
-            if ((hint < 0 || snum != hint) && avoid_index(snum))
+            if ((hint < 0 || snum != hint) && avoid_index(snum, hint))
                 continue;
             // Maintain invariant
             for (int iprev = snum;
@@ -1473,14 +1511,6 @@ tty_client::tty_client()
     lwsl_notice("init_tclient_struct conn#%d\n",  this->connection_number);
 }
 
-static void
-set_connection_number(struct tty_client *tclient, int hint)
-{
-    int snum = tty_clients.enter(tclient, hint);
-    tclient->connection_number = snum;
-    lwsl_notice("set_connection_number %p to %d\n", tclient, tclient->connection_number);
-}
-
 /** Copy input (keyboard and events) from browser to pty/application.
  * The proxyMode specifies if the input is proxied through ssh.
  */
@@ -1672,16 +1702,17 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         sb.printf(OUT_OF_BAND_START_STRING "\033[96;%ld"
                   URGENT_END_STRING, rcount);
     }
-    if (pclient && client->pty_window_update_needed
+    if (client->pty_window_update_needed
         && client->initialized >= 0
         && proxyMode != proxy_display_local
         && proxyMode != proxy_command_local) {
         client->pty_window_update_needed = false;
         int kind = proxyMode == proxy_display_local ? 2
+            : ! pclient ? 0
             : (int) pclient->session_name_unique;
         sb.printf(URGENT_WRAP("\033[91;%d;%d;%d;%du"),
                   kind,
-                  pclient->session_number,
+                  pclient ? pclient->session_number : 0,
                   client->pty_window_number+1,
                   client->connection_number);
     }
