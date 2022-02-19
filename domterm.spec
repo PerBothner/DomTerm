@@ -1,5 +1,5 @@
 Name:           domterm
-Version:        2.9.4
+Version:        2.9.5
 Release:        1%{?dist}
 Summary:        A terminal emulator based on web technologies
 
