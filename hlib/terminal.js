@@ -10104,11 +10104,13 @@ Terminal.prototype.inputHandler = function(event) {
 
 // For debugging: Checks a bunch of invariants
 Terminal.prototype._checkTree = function() {
-    var node = DomTerm._currentBufferNode(this, 0);
     var dt = this;
     function error(str) {
         dt.log("ERROR: "+str);
     };
+    if (! this.topNode)
+        return;
+    var node = DomTerm._currentBufferNode(this, 0);
     if (this.outputContainer instanceof Text
         && this.outputBefore > this.outputContainer.length)
         error("bad outputContainer");
