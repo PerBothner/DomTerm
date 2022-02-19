@@ -228,9 +228,10 @@ div.dt-popup-panel span.dt-close-button {
     padding: 2px;
 }
 div.dt-popup-panel, div.dt-popup-panel span.dt-close-button:hover,
-.dt-titlebar-button:hover {
+.dt-titlebar-button:hover, .dt-titlebar .menu-item:hover {
     background-color:  #ececec;
 }
+.dt-titlebar .menubar { background-color: inherit }
 
 div.dt-popup-panel div.dt-overlay-titlebar {background-color: lightgrey; }
 

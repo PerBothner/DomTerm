@@ -8,14 +8,17 @@ DomTerm.createMenus = function(options) {
         return;
     let menuItem = DomTerm.makeMenuItem;
     let isElectron = DomTerm.isElectron();
-    let electronMenus = platform == "electron";
+    let menubarInTitlebar =
+        document.body.querySelector(".dt-titlebar .dt-menubar");
+    let electronMenus = platform == "electron" && ! menubarInTitlebar;
 
     function showMenubar(show) {
         if (electronMenus)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', show);
         else
             Menu.setApplicationMenu(show ? DomTerm._savedMenuBar : null,
-                                    document.body, DomTerm.layoutTop);
+                                    DomTerm._savedMenubarParent,
+                                    DomTerm._savedMenubarBefore);
     }
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
@@ -225,11 +228,15 @@ DomTerm.createMenus = function(options) {
         if (isElectron)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
         DomTerm._savedMenuBar = menuBar;
-        let body = document.body;
-        let bchild = body.firstElementChild;
-        if (bchild && bchild.classList.contains('dt-titlebar'))
-            bchild = bchild.nextSibling;
-        Menu.setApplicationMenu(menuBar, body, bchild);
+        if (menubarInTitlebar) {
+            DomTerm._savedMenubarParent = menubarInTitlebar;
+            DomTerm._savedMenubarBefore = null;
+        } else {
+            const parent = document.body;
+            DomTerm._savedMenubarParent = parent;
+            DomTerm._savedMenubarBefore = parent.firstElementChild;
+        }
+        showMenubar(true);
     }
 
     DomTerm.showContextMenu = function(options) {

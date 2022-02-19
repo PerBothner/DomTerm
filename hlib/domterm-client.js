@@ -258,10 +258,18 @@ function setupParentMessages2() {
 }
 
 function createTitlebar(titlebarNode) {
+    let iconParent = titlebarNode;
+    const menubarInTitlebar = ! DomTerm.isMac;
+    if (menubarInTitlebar) {
+        let menubarNode = document.createElement("span");
+        menubarNode.classList.add("dt-menubar");
+        titlebarNode.appendChild(menubarNode);
+        iconParent = menubarNode;
+    }
     if (true) {
         let iconNode = document.createElement('img');
         iconNode.setAttribute('src', '/favicon.ico');
-        titlebarNode.appendChild(iconNode);
+        iconParent.appendChild(iconNode);
     }
     let titleNode = document.createElement('span');
     titleNode.classList.add('dt-window-title');
@@ -379,6 +387,9 @@ function loadHandler(event) {
             let wrapTopNode = document.createElement('div');
             wrapTopNode.setAttribute("class", "below-menubar");
             bodyNode.appendChild(wrapTopNode);
+            if (DomTerm._savedMenubarParent === bodyNode
+                && DomTerm._savedMenubarBefore === null)
+                DomTerm._savedMenubarBefore = wrapTopNode;
             DomTerm.layoutTop = wrapTopNode;
         }
     }
