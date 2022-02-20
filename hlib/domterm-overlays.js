@@ -34,7 +34,10 @@ function showMessage(title, message) {
     let popup = document.createElement("div");
     popup.classList.add("dt-popup-panel");
     popup.innerHTML = msg;
-    let parent = DomTerm.layoutTop || document.body;
+    //For some unknown reason, selections work if we use topNode,
+    //not not if we use layoutTop or body.
+    //let parent = DomTerm.layoutTop || document.body;
+    let parent = DomTerm.focusedTerm.topNode;
     parent.appendChild(popup);
     let oldX = 50, oldY = 50;
     popup.style.left = oldX + 'px';
@@ -87,9 +90,10 @@ function showMessage(title, message) {
  * - Close button style does not match main window.
  */
 function showAboutMessage() {
+    let msg = aboutMessage();
     if (true) {
         showMessage('<h2 style="margin: 0.4ex 0px">About DomTerm</h2>',
-                    aboutMessage());
+                    msg);
     } else if (DomTerm.isElectron()) {
         electronAccess.ipcRenderer
             .send('open-simple-window',
