@@ -33,6 +33,8 @@ div.domterm-show-info > div {
 }
 div.domterm-pre span.dt-cluster.w1 {
     display: inline-block;
+}
+div.domterm-pre span.dt-cluster.w1, span[breaking="yes"][line="soft"] {
     text-align: center;
     width: var(--char-width);
     height: var(--char-height);
