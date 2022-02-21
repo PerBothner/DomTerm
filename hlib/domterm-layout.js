@@ -3,7 +3,7 @@
 
 export { DomTermLayout };
 
-import { GoldenLayout, ItemConfig, ResolvedItemConfig, Tab } from './goldenlayout.js';
+import { GoldenLayout, LayoutConfig, ResolvedLayoutConfig, ItemConfig, ResolvedItemConfig, Tab } from './goldenlayout.js';
 
 class DomTermLayout {
 };
@@ -204,26 +204,23 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
 DomTermLayout.popoutWindow = function(item, dt = null) {
     var wholeStack = item.type == 'stack';
     var sizeElement = item.element;
-    if (! wholeStack)
-        sizeElement = item.container.element;
     var w = sizeElement.offsetWidth;
     var h = sizeElement.offsetHeight;
+    if (! wholeStack) {
+        DomTerm.closeSession(item.component, true, false);
+    }
     // FIXME adjust for menu bar height
     function encode(item) {
         if (item.componentType == "domterm") {
-            // FIXME item.container._contentElement is <iframe>
-            let topNode = item.container.element;
-            return '{"sessionNumber":'+topNode.getAttribute("session-number")+'}';
+            const node = item.component;
+            return '{"sessionNumber":'+node.getAttribute("session-number")+'}';
         } else if (item.componentType == "browser")
             return '{"url":'+JSON.stringify(item.config.url)+'}';
         else
             return "{}";
     }
     function remove(item) {
-        if (item.componentType == "domterm") {
-            DomTerm.doNamedCommand('detach-session');
-            //DomTerm.detach(item.container.element.firstChild.terminal);
-        } else {
+        if (item.componentType !== "domterm") {
             let lcontent = item.container.element;
             if (lcontent && lcontent.parentNode)
                 lcontent.parentNode.removeChild(lcontent);
@@ -247,38 +244,35 @@ DomTermLayout.popoutWindow = function(item, dt = null) {
 
     let newurl = DomTerm.topLocation+"#open="+encodeURIComponent(e);
     DomTerm.openNewWindow(dt, { width: w, height: h, url: newurl });
-    let savedContent = DomTerm._oldFocusedContent;
-    for (var i = 0; i < toRemove.length; i++) {
-        let item = toRemove[i];
-        DomTerm._oldFocusedContent = item.container.element;
-        if (DomTerm._oldFocusedContent == savedContent)
-            savedContent = null;
-        remove(item);
-    }
-    DomTerm._oldFocusedContent = savedContent;
 }
+
+/*
+DomTermLayout.popinWindow = function(minifiedWindowConfig) {
+    const resolvedConfig = ResolvedLayoutConfig.unminifyConfig(minifiedWindowConfig);
+    const config = LayoutConfig.fromResolved(resolvedConfig);
+    DomTermLayout.initialize([config.root]);
+};
+*/
 
 DomTermLayout.newItemConfig = {
     type: 'component',
     componentType: 'domterm',
-    componentState: 'X'
+    componentState: {}
 };
 
 DomTermLayout.config = {
     settings:  { showMaximiseIcon: false,
                  reorderOnTabMenuClick: false,
-                 popoutWholeStack: function(e) { return e.ctrlKey; },
-                 onPopoutClick: function(item, event) {
-                     var aitem = item.type != 'stack' ? item
-                         : item._activeContentItem;
-                     DomTermLayout.popoutWindow(aitem);
-                 }},
+                 useDragAndDrop: true,
+                 checkGlWindowKey: false,
+               },
     content: [{
         type: 'component',
         componentType: 'domterm',
         componentState: 'A'
     }],
     dimensions: {
+        contentInset: 0,
 	borderWidth: 1
     }
 };
@@ -304,6 +298,8 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
             DomTerm.windowClose();
         } else if (! from_handler) {
             DomTermLayout.selectNextPane(true, lcontent);
+            if (lcontent && lcontent.parentNode)
+                lcontent.parentNode.removeChild(lcontent);
             r.remove();
         }
     }
@@ -323,7 +319,7 @@ DomTerm._newPaneNumber = function() {
 
 DomTerm.newPaneHook = null;
 
-DomTermLayout._initTerminal = function(config, container) {
+DomTermLayout._initTerminal = function(config, parent = DomTerm.layoutTop) {
     let cstate = config.componentState;
     let wrapped;
     let sessionNumber = cstate.sessionNumber;
@@ -337,10 +333,10 @@ DomTermLayout._initTerminal = function(config, container) {
             if (sessionNumber)
                 url += "&session-number="+sessionNumber;
         }
-        wrapped = DomTerm.makeIFrameWrapper(url);
+        wrapped = DomTerm.makeIFrameWrapper(url, 'T', parent);
     } else {
         let name = DomTerm.freshName();
-        let el = DomTerm.makeElement(name);
+        let el = DomTerm.makeElement(name, parent);
         wrapped = el;
         wrapped.name = name;
         let query = sessionNumber ? "session-number="+sessionNumber : null;
@@ -352,7 +348,7 @@ DomTermLayout._initTerminal = function(config, container) {
     return wrapped;
 }
 
-DomTermLayout.initialize = function() {
+DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfig]) {
     function activeContentItemHandler(item) {
         //if (item.componentName == "browser")
         //    DomTerm.setTitle(item.config.url);
@@ -363,7 +359,28 @@ DomTermLayout.initialize = function() {
     let top = DomTerm.layoutTop || document.body;
     let lcontent = DomTerm._oldFocusedContent;
 
-    DomTermLayout.manager = new GoldenLayout(DomTermLayout.config, top);
+    let lparent = lcontent && lcontent.parentElement;
+    const config = Object.assign({}, DomTermLayout.config, { content: initialContent });
+    DomTermLayout.manager = new GoldenLayout(config, top);
+
+    DomTermLayout.manager.createContainerElement = (manager, config) => {
+        if (lparent && lparent.classList.contains("lm_component")) {
+            const element = lparent;
+            lparent = null;
+            return element;
+        }
+        const element = document.createElement('div');
+        DomTerm.layoutTop.appendChild(element);
+        return element;
+    };
+    DomTermLayout.manager.popoutClickHandler = (stack, event) => {
+        if (event.ctrlKey) {
+            DomTermLayout.popoutWindow(stack);
+        } else {
+            DomTermLayout.popoutWindow(stack.getActiveComponentItem());
+        }
+        return true;
+    }
 
     DomTermLayout.manager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
@@ -380,7 +397,7 @@ DomTermLayout.initialize = function() {
             lcontent = null;
         } else {
             var config = container._config;
-            wrapped = DomTermLayout._initTerminal(config, container);
+            wrapped = DomTermLayout._initTerminal(config, container.element);
             name = wrapped.name;
             if (! DomTerm.useIFrame) {
                 DTerminal.connectHttp(wrapped, wrapped.query);
@@ -390,16 +407,28 @@ DomTermLayout.initialize = function() {
         wrapped.classList.add("lm_content");
         wrapped._layoutItem = container.parent;
         DomTerm.setLayoutTitle(wrapped, name, windowTitle);
+        container.stateRequestEvent = () => {
+            const state = {};
+            // FIXME make work for iframe
+            let sessionNumber = wrapped.getAttribute("session-number");
+            if (sessionNumber)
+                state.sessionNumber = sessionNumber;
+            return state;
+        };
+
+        container.on("dragExported", (component) => {
+            DomTerm.closeSession(component.component, true, true);
+        });
+
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
         if (top !== document.body) {
             (new ResizeObserver(entries => {
                 DomTermLayout.manager.updateSize(); })
             ).observe(top);
         }
-        wrapped.style.position = "absolute";
         wrapped.rootHtmlElement = wrapped;
         return wrapped;
-    }, true /*virtual*/);
+    }, false /*not virtual*/);
 
     DomTermLayout.manager.registerComponent( 'view-saved', function( container, componentConfig ){
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
@@ -413,7 +442,7 @@ DomTermLayout.initialize = function() {
         let el = DomTerm.makeIFrameWrapper(componentConfig.url, 'B');
         el.rootHtmlElement = el;
         return el;
-    }, true /*virtual*/);
+    }, true /* virtual*/);
 
     function checkClick(event) {
         for (var t = event.target; t instanceof Element; t = t.parentNode) {
@@ -425,7 +454,9 @@ DomTermLayout.initialize = function() {
         }
     }
 
+    console.log("before GL init");
     DomTermLayout.manager.init(); // ??
+    console.log("after GL init");
     DomTermLayout.manager.on('activeContentItemChanged',
                              activeContentItemHandler);
     let root = DomTermLayout.manager.container;
@@ -439,8 +470,10 @@ DomTermLayout.initialize = function() {
 
 DomTermLayout.initSaved = function(data) {
     if (data.sessionNumber) {
-        DomTermLayout._initTerminal(data, null);
-        } else if (data instanceof Array) {
+        DomTermLayout.initialize([{ type: 'component',
+                                    componentType: 'domterm',
+                                    componentState: {sessionNumber: data.sessionNumber}}]);
+    } else if (data instanceof Array) {
             var n = data.length;
             DomTermLayout._pendingTerminals = new Array();
             for (var i = 0; i < n; i++) {

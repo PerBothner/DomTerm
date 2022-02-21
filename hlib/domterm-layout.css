@@ -22,7 +22,7 @@ div.domterm-active div.lm_stack{background:#e1e1e1;border:2px solid magenta}
 .lm_header .lm_tab,
   .lm_header .lm_tabdropdown_list > .lm_title{border:1px solid gray }
 .lm_header .lm_tabs .lm_tab{border-radius: 5px 5px 0px 0px}
-div.domterm-active section.lm_header li.lm_tab.lm_focused{border:1px solid var(--focused-pane-color)}
+section.lm_header .lm_tab.lm_focused{border:1px solid var(--focused-pane-color)}
 section.lm_header span.domterm-windowname {display: inline; font-style: italic; color: #777777}
 section.lm_header li.lm_tab span.domterm-windowname,
 div.lm_row section.lm_header li.lm_tab.lm_active span.domterm-windowname {

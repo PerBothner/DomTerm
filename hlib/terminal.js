@@ -945,6 +945,7 @@ DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
         topNode.xterm = xterm;
     } else {
         topNode = document.createElement("div");
+        topNode.classList.add("lm_content");
         parent.appendChild(topNode);
     }
     topNode.classList.add("domterm");

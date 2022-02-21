@@ -309,6 +309,7 @@ function loadHandler(event) {
     let url = location.href;
     let hash = location.hash.replace(/^#[;]*/, '').replace(/;/g, '&');
     let params = new URLSearchParams(hash);
+    let sparams = new URLSearchParams(location.search);
     DomTerm.mainSearchParams = params;
     let m = params.get('js-verbosity');
     if (m) {
@@ -377,7 +378,8 @@ function loadHandler(event) {
     m = location.hash.match(/open=([^&;]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
-        DomTermLayout.initSaved(JSON.parse(open_encoded));
+    console.log("open_encoded:"+open_encoded);
+        DomTerm.withLayout((m) => m.initSaved(JSON.parse(open_encoded)));
         return;
     }
     let bodyChild = bodyNode.firstElementChild;
@@ -393,7 +395,7 @@ function loadHandler(event) {
             DomTerm.layoutTop = wrapTopNode;
         }
     }
-    var layoutInitAlways = false;
+    var layoutInitAlways = true;
     if (DomTerm.useIFrame) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
@@ -450,6 +452,21 @@ function loadHandler(event) {
             paneParams.set(pname, pvalue);
     }
     DomTerm.mainLocationParams = paneParams.toString();
+    /*
+    const windowConfigKey = sparams.get("gl-window");
+    if (windowConfigKey) {
+        const windowConfigStr = localStorage.getItem(windowConfigKey);
+        if (windowConfigStr === null) {
+            throw new Error('Null gl-window Config');
+        }
+        localStorage.removeItem(windowConfigKey);
+        const minifiedWindowConfig = JSON.parse(windowConfigStr);
+        DomTerm.withLayout((m) => {
+            m.popinWindow(minifiedWindowConfig);
+        });
+        return;
+    }
+    */
     if (DomTerm.useIFrame == 2 && ! DomTerm.isInIFrame()) {
         DomTerm.makeIFrameWrapper(DomTerm.paneLocation/*+location.hash*/);
         return;
@@ -464,7 +481,17 @@ function loadHandler(event) {
         topNodes = document.getElementsByClassName("domterm-wrapper");
     if (topNodes.length == 0) {
         let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
-        topNodes = [ DomTerm.makeElement(name) ];
+        let parent = DomTerm.layoutTop;
+        if (! DomTerm.isInIFrame()) {
+            const wrapper = document.createElement("div");
+            wrapper.classList.add("lm_component");
+            wrapper.style.width = "100%";
+            wrapper.style.height = "100%";
+            parent.appendChild(wrapper);
+            parent = wrapper;
+        }
+        console.log("before makeElement simple:"+DomTerm.simpleLayout);
+        topNodes = [ DomTerm.makeElement(name, parent) ];
     }
     let query = hash; // location.hash ? location.hash.substring(1).replace(/;/g, '&') : null;
     if (location.search.search(/wait/) >= 0) {
@@ -501,8 +528,11 @@ function handleMessage(event) {
     var dt=DomTerm.focusedTerm;
     let iframe = null;
     for (let ch = DomTerm.layoutTop.firstChild; ch != null; ch = ch.nextSibling) {
-        if (ch.tagName == "IFRAME" && ch.contentWindow == event.source) {
-            iframe = ch;
+        let fr = ch.tagName == "DIV" && ch.classList.contains("lm_component")
+            ? ch.lastChild
+            : ch;
+        if (fr && fr.tagName == "IFRAME" && fr.contentWindow == event.source) {
+            iframe = fr;
             break;
         }
     }
@@ -531,9 +561,10 @@ function handleMessage(event) {
         DomTermLayout.addPane(data.args[0], data.args[1], iframe);
     } else if (data.command=="domterm-remove-content") { // in parent from child
         if (iframe && iframe.parentNode) {
-            iframe.remove();
             if (iframe.parentNode.classList.contains("lm_component"))
                 iframe.parentNode.remove();
+            else
+                iframe.remove();
         }
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
