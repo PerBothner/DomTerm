@@ -1,5 +1,6 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
+import { fromJson } from './domterm-utils.js';
 
 class DTParser {
     constructor(term) {
@@ -407,8 +408,8 @@ class DTParser {
                     term.moveToAbs(term.homeLine, 0, true);
                     var Es = "E".repeat(term.numColumns);
                     term._currentStyleSpan = null;
-                    var savedStyleMap = term._currentStyleMap;
-                    term._currentStyleMap = new Map();
+                    var savedStyleMap = term.sstate.styleMap;
+                    term.sstate.styleMap = new Map();
                     term._currentStyleSpan = null;
                     term.eraseDisplay(0);
                     for (var r = 0; ; ) {
@@ -417,7 +418,7 @@ class DTParser {
                             break;
                         term.cursorLineStart(1);
                     }
-                    term._currentStyleMap = savedStyleMap;
+                    term.sstate.styleMap = savedStyleMap;
                     term._currentStyleSpan = null;
                     term.moveToAbs(term.homeLine, 0, true);
                     break;
@@ -2136,7 +2137,7 @@ class DTParser {
         case 103: // restore saved snapshot
             var comma = text.indexOf(",");
             var rcount = Number(text.substring(0,comma));
-            var data = JSON.parse(text.substring(comma+1));
+            var data = fromJson(text.substring(comma+1));
             let main = term.initial;
             if (main instanceof Element &&
                 main.getAttribute('class') == 'dt-buffer') {

@@ -308,6 +308,7 @@ HLIB_FIXED_FILES_INNER="\
   hlib/mark.es6.js \
   hlib/domterm-findtext.js \
   hlib/domterm-overlays.js \
+  hlib/domterm-utils.js \
   hlib/sixel-decode.js \
   hlib/terminal.js \
   hlib/commands.js \

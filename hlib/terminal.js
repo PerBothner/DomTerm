@@ -94,6 +94,7 @@ export { Terminal };
 import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
+import { toJson } from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -627,8 +628,8 @@ class Terminal {
         this.lineStarts = null;
         this.lineEnds = null;
         // A stack of currently active "style" strings.
-        this._currentStyleMap = new Map();
-        // A span whose style is "correct" for _currentStyleMap.
+        this.sstate.styleMap = new Map();
+        // A span whose style is "correct" for sstate.styleMap.
         this._currentStyleSpan = null;
         // Used to implement clientDoesEcho handling.
         this._deferredForDeletion = null;
@@ -997,7 +998,7 @@ DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
         : dt._receivedCount;
     var data =
         rcount
-        + ',{"sstate":'+JSON.stringify(dt.sstate);
+        + ',{"sstate":'+toJson(dt.sstate);
     data += ',"rows":'+dt.numRows+',"columns":'+dt.numColumns;
     data += ', "html":'
         + JSON.stringify(dt.getAsHTML(false))
@@ -1754,7 +1755,7 @@ Terminal.prototype.saveCursor = function() {
     this.sstate.savedCursor = {
         line: this.getCursorLine(),
         column: this.getCursorColumn(),
-        currentStyleMap: new Map(this._currentStyleMap),
+        styleMap: new Map(this.sstate.styleMap),
         origin: this.sstate.originMode,
         wraparound: this.sstate.wraparoundMode,
         bracketedPasteMode: this.sstate.bracketedPasteMode,
@@ -1805,7 +1806,7 @@ Terminal.prototype.restoreCursor = function(restoreExtraState = false) {
         this._GlevelR = saved.glevelR;
         this._Gshift = saved.gshift;
         this.charMapper = saved.charMapper;
-        this._currentStyleMap = saved.currentStyleMap;
+        this.sstate.styleMap = saved.styleMap;
         this.sstate.originMode = saved.origin;
         this.sstate.wraparoundMode = saved.wraparound;
         if (restoreExtraState) {
@@ -2572,7 +2573,7 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
 Terminal.prototype.cursorLineStart = function(deltaLines, kind=undefined) {
     let curLine = this.getAbsCursorLine();
     if (deltaLines == 1 && curLine == this.lineStarts.length-1) {
-        if (this._currentStyleMap.size == 0)
+        if (this.sstate.styleMap.size == 0)
             this._adjustStyle();
         if (this._pendingEchoNewlines
             && --this._pendingEchoNewlines == 0
@@ -2755,7 +2756,7 @@ Terminal.prototype.cursorLeft = function(count, maybeWrap) {
     }
 };
 
-/** Add a style property specifier to the _currentStyleMap.
+/** Add a style property specifier to the sstate.styleMap.
  * However, if the new specifier "cancels" an existing specifier,
  * just remove the old one.
  * @param styleName style property name (for example "text-decoration").
@@ -2764,9 +2765,9 @@ Terminal.prototype.cursorLeft = function(count, maybeWrap) {
  */
 Terminal.prototype._pushStyle = function(styleName, styleValue) {
     if (styleValue)
-        this._currentStyleMap.set(styleName, styleValue);
+        this.sstate.styleMap.set(styleName, styleValue);
     else
-        this._currentStyleMap.delete(styleName);
+        this.sstate.styleMap.delete(styleName);
     this._currentStyleSpan = null;
 };
 Terminal.prototype.mapColorName = function(name) {
@@ -2825,7 +2826,7 @@ Terminal.prototype._pushStdMode = function(styleValue) {
 };
 
 Terminal.prototype._clearStyle = function() {
-    this._currentStyleMap.clear();
+    this.sstate.styleMap.clear();
     this._currentStyleSpan = null;
 };
 
@@ -2876,7 +2877,7 @@ Terminal.prototype.isSavedSession = function() {
 }
 
 /** Adjust style at current position to match desired style.
- * The desired style is a specified by the _currentStyleMap.
+ * The desired style is a specified by the sstate.styleMap.
  * This usually means adding {@code <span style=...>} nodes around the
  * current position.  If the current position is already inside
  * a {@code <span style=...>} node that doesn't match the desired style,
@@ -2930,13 +2931,13 @@ Terminal.prototype._adjustStyle = function() {
         return;
     var inStyleSpan = parentSpan.classList.contains("term-style");
     var needBackground = false;
-    if (! inStyleSpan && this._currentStyleMap.get("background-color") == null) {
+    if (! inStyleSpan && this.sstate.styleMap.get("background-color") == null) {
         var block = this._getOuterBlock(parentSpan);
         if (block && this._getBackgroundColor(block) != null) {
             needBackground = true;
         }
     }
-    if (this._currentStyleMap.size == 0 && ! inStyleSpan && ! needBackground) {
+    if (this.sstate.styleMap.size == 0 && ! inStyleSpan && ! needBackground) {
         this._currentStyleSpan = parentSpan;
         return;
     }
@@ -2944,7 +2945,7 @@ Terminal.prototype._adjustStyle = function() {
     if (inStyleSpan) {
         this._popStyleSpan();
     }
-    if (this._currentStyleMap.size != 0 || needBackground) {
+    if (this.sstate.styleMap.size != 0 || needBackground) {
         let styleSpan = this._createSpanNode("term-style");
         var styleAttr = null;
         var decoration = null;
@@ -2952,8 +2953,8 @@ Terminal.prototype._adjustStyle = function() {
         var reverse = false;
         var fgcolor = null;
         var bgcolor = null;
-        for (var key of this._currentStyleMap.keys()) {
-            var value = this._currentStyleMap.get(key);
+        for (var key of this.sstate.styleMap.keys()) {
+            var value = this.sstate.styleMap.get(key);
             switch (key) {
             case "std":
                 stdKind = value;
@@ -3238,7 +3239,7 @@ Terminal.prototype.scrollReverse = function(count) {
 };
 
 Terminal.prototype._currentStyleBackground = function() {
-    return this._currentStyleMap.get("background-color");
+    return this.sstate.styleMap.get("background-color");
 }
 
 Terminal.prototype._getBackgroundColor = function(element) {
@@ -6000,7 +6001,7 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     this.sstate.originMode = false;
     this.sstate.bracketedPasteMode = false;
     this.sstate.wraparoundMode = 2;
-    this._currentStyleMap = new Map();
+    this.sstate.styleMap = new Map();
     this.resetCharsets();
     this.setMouseMode(0);
     this.sstate.mouseCoordEncoding = 0;
