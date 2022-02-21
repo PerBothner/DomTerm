@@ -760,7 +760,7 @@ class DTParser {
             term.log("deferred by parseBytes "+jstr);
         }
         term.requestUpdateDisplay();
-    };
+    }
 
     handleControlSequence(last) {
         const term = this.term;
