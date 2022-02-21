@@ -478,7 +478,6 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                 DomTermLayout.manager.updateSize(); })
             ).observe(top);
         }
-        wrapped.style.position = "absolute";
         wrapped.rootHtmlElement = wrapped;
         return wrapped;
     }, false /*not virtual*/);
