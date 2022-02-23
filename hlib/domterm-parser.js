@@ -1267,6 +1267,12 @@ class DTParser {
                         term.updateWindowTitle();
                     }
                     break;
+                case 106: {
+                    const op = this.getParameter(1, 0);
+                    DomTerm.withLayout((m) =>
+                        m.manager.draggingInOtherWindow(op==2));
+                    break;
+                    }
                 }
             };
             break;

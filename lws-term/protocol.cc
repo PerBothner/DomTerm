@@ -1464,6 +1464,22 @@ reportEvent(const char *name, char *data, size_t dlen,
                 lws_callback_on_writable(t->out_wsi);
             }
         }
+    } else if (strcmp(name, "DRAG") == 0) {
+        bool dstart = false, dend = false;
+        if (strcmp(data, "start") == 0)
+            dstart = true;
+        else if (strcmp(data, "end") == 0)
+            dend = true;
+        if (dstart || dend) {
+            struct tty_client *tother;
+            FORALL_WSCLIENT(tother) {
+                if (tother->main_window == 0 && tother != client) {
+                    printf_to_browser(tother, URGENT_WRAP("\033[106;%dt"),
+                                      dstart ? 1 : 2);
+                    lws_callback_on_writable(tother->out_wsi);
+                }
+            }
+        }
     } else if (strcmp(name, "RECONNECT") == 0) {
         if (! options) {
             lwsl_err("RECONNECT with NULL options field\n");

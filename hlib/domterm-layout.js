@@ -459,6 +459,20 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     console.log("after GL init");
     DomTermLayout.manager.on('activeContentItemChanged',
                              activeContentItemHandler);
+
+    DomTermLayout.manager.on('dragstart',
+                             (e) => {
+                                 const dt = DomTerm.focusedTerm;
+                                 if (dt)
+                                     dt.reportEvent("DRAG", "start");
+                             });
+    DomTermLayout.manager.on('dragend',
+                             (e) => {
+                                 const dt = DomTerm.focusedTerm;
+                                 if (dt)
+                                     dt.reportEvent("DRAG", "end");
+                             });
+
     let root = DomTermLayout.manager.container;
     DomTermLayout.manager.on('focus',
                              (e) => {
