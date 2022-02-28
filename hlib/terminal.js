@@ -120,7 +120,6 @@ class Terminal {
     sstate.sessionNumber = -1;
     sstate.sessionNameUnique = false;
     sstate.paneNumber = -1;
-    sstate.doLinkify = true;
 
     // the local window number.
     // Normally same as connectionNumber, except when remoting over ssh.
@@ -1022,7 +1021,7 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
         DomTerm.saveWindowContents(this);
         this._detachSaveNeeded = 1;
     }
-    this.reportEvent("CLOSE-SESSION");
+    this.reportEvent("CLOSE-WINDOW");
 
     if (! fromLayoutEvent) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame())
@@ -1217,13 +1216,7 @@ Terminal.prototype.log = function(str) {
     if (report) {
         let saveVerbosity = DomTerm.verbosity;
         if (this._socketOpen) {
-            DomTerm.verbosity = 0;
-            try {
-                this.reportEvent("LOG", JSON.stringify(str));
-            } catch (e) {
-                console.log("couldn't log-to-server: "+str);
-            }
-            DomTerm.verbosity = saveVerbosity;
+            this.reportEvent("LOG", JSON.stringify(str), false);
         } else
             DomTerm.log(str, this);
     }
@@ -3976,6 +3969,7 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     this.topNode = topNode;
     topNode.spellcheck = false;
     topNode.terminal = this;
+    this.sstate.doLinkify = true;
 
     var preNode = this.initial.firstChild;
     this.outputContainer = preNode;
@@ -4778,13 +4772,14 @@ Terminal.prototype.freshLine = function() {
     this.cursorLineStart(1);
 };
 
-Terminal.prototype.reportEvent = function(name, data = "") {
+Terminal.prototype.reportEvent = function(name, data = "",
+                                          logIt = DomTerm.verbosity >= 2) {
     // Send 0xFD + name + ' ' + data + '\n'
     // where 0xFD is sent as a raw unencoded byte.
     // 0xFD cannot appear in a UTF-8 sequence
     let str = name + ' ' + data;
     let slen = str.length;
-    if (DomTerm.verbosity >= 2)
+    if (logIt)
         this.log("reportEvent "+this.name+": "+str);
     // Max 3 bytes per UTF-16 character
     let buffer = new ArrayBuffer(2 + 3 * slen);
@@ -10432,17 +10427,20 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
     let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
     wsocket.onopen = function(e) {
         wt._reconnectCount = 0;
-        if (topNode == null)
-            return;
-        if (DomTerm.usingXtermJs() && window.Terminal != undefined) {
-            DomTerm.initXtermJs(wt, topNode);
-            DomTerm.setFocus(wt, "N");
-        } else {
-            wt._socketOpen = true;
-            wt._handleSavedLog();
-            if (topNode.classList.contains("domterm-wrapper"))
-                topNode = DomTerm.makeElement(name, topNode);
-            wt.initializeTerminal(topNode);
+        wt._socketOpen = true;
+        if (topNode !== null) {
+            if (DomTerm.usingXtermJs() && window.Terminal != undefined) {
+                DomTerm.initXtermJs(wt, topNode);
+                DomTerm.setFocus(wt, "N");
+            } else {
+                wt._handleSavedLog();
+                if (topNode.classList.contains("domterm-wrapper"))
+                    topNode = DomTerm.makeElement(name, topNode);
+                wt.initializeTerminal(topNode);
+            }
+        } else if (! DomTerm.isInIFrame()) {
+            wt.parser = new window.DTParser(wt);
+            wt.inputFollowsOutput = false;
         }
         wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
     };

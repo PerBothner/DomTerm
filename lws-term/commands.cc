@@ -842,17 +842,21 @@ static void status_by_connection(FILE *out, int verbosity)
 
             struct pty_client *pclient = sub_client->pclient;
             if (pclient == NULL) {
-                if (verbosity > 0 || cnumber != number)
+                if (sub_client->wkind == browser_window)
+                    fprintf(out, "  browse .%d %s\n", cnumber, sub_client->description.c_str());
+                else if (sub_client->wkind == saved_window)
+                   fprintf(out, "  view-saved .%d %s\n", cnumber, sub_client->description.c_str());
+                else if (verbosity > 0 || cnumber != number)
                     fprintf(out, "  disconnected .%d\n", cnumber);
-                continue;
+            } else {
+                int snumber = pclient->session_number;
+                fprintf(out, "  session#%d", snumber);
+                if (snumber != cnumber)
+                    fprintf(out, ".%d", cnumber);
+                fprintf(out, ": ");
+                pclient_status_info(pclient, out);
+                fprintf(out, "\n");
             }
-            int snumber = pclient->session_number;
-            fprintf(out, "  session#%d", snumber);
-            if (snumber != cnumber)
-                fprintf(out, ".%d", cnumber);
-            fprintf(out, ": ");
-            pclient_status_info(pclient, out);
-            fprintf(out, "\n");
         }
     }
     FOREACH_PCLIENT(pclient) {
@@ -987,7 +991,7 @@ int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
     char *url = challoc(strlen(main_html_url) + strlen(file) + 40);
     sprintf(url, "%s%s", fscheme, file);
     free(fencoded);
-    display_session(opts, NULL, url, -105);
+    display_session(opts, NULL, url, saved_window);
     free(url);
     return EXIT_SUCCESS;
 }

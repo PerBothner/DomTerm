@@ -194,6 +194,15 @@ struct stderr_client {
     struct pty_client *pclient;
 };
 
+enum window_kind {
+    unknown_window = 0, // also used for "open URL in browser"
+    main_only_window = 1, // connection to main top-level window
+    dterminal_window = 2,
+    //xterminal_window = 3, possible FUTURE xterm.js window
+    saved_window  = 4,
+    browser_window = 5,
+};
+
 /**
  * Data specific to a WebSocket (browser) client connection or a proxy stream.
  * The user structure for the libwebsockets "domterm" and "proxy" protocols.
@@ -235,6 +244,7 @@ public:
     bool uploadSettingsNeeded; // need to upload settings to client
     int main_window; // 0 if top-level, or number of main window
     enum proxy_mode proxyMode;
+    enum window_kind wkind : 4;
     bool is_tclient_proxy() { return proxyMode == proxy_command_local; }
 
     // 1: attach requested - need to get contents from existing window
@@ -258,6 +268,7 @@ public:
     bool pty_window_update_needed;
     char *ssh_connection_info;
     id_table<struct options> pending_requests;
+    std::string description;
 };
 
 extern id_table<tty_client> tty_clients;
@@ -374,8 +385,8 @@ extern bool is_WindowsSubsystemForLinux(void);
 extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
-                           const char *, int);
-extern int do_run_browser(struct options *, const char *url, int port);
+                           const char *, enum window_kind);
+extern int do_run_browser(struct options *, const char *url);
 extern int start_command(struct options *, char *cmd);
 extern char* check_browser_specifier(const char *specifier);
 extern void printf_to_browser(struct tty_client *, const char *, ...);
