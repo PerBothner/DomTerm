@@ -134,7 +134,7 @@ int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     for (int w : windows) {
         tty_client *tclient = tty_clients(w);
-        tclient->ob.printf(seq);
+        tclient->ob.append(seq);
         lws_callback_on_writable(tclient->wsi);
     }
     return EXIT_SUCCESS;
