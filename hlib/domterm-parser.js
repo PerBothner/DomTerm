@@ -2191,13 +2191,22 @@ class DTParser {
             break;
         case 104:
         case 105:
-            var m = text.match(/^([0-9]+),/);
-            if (m) {
-                var paneOp = Number(m[1]);
-                DomTerm.newPane(paneOp,
-                                {type: 'component',
-                                 componentType: code==104?'browser':'view-saved',
-                                 url: text.substring(m[1].length+1) });
+            try {
+                const wargs = JSON.parse("[" + text + "]");
+                const paneOp = wargs[0];
+                const options = wargs[wargs.length-1];
+                if (wargs.length === 3) {
+                    const wnum = wargs[1];
+                    DomTerm.withLayout((m) => {
+                        let oldItem = m._numberToLayoutItem(wnum);
+                        if (oldItem)
+                            m.addPaneRelative(oldItem, paneOp, options);
+                    });
+                } else {
+                    DomTerm.newPane(paneOp, options);
+                }
+            } catch (e) {
+                term.log("bad new-pane request (" + e + "): " +JSON.stringify(text));
             }
             break;
         case 108:

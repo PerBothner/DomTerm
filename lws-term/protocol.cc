@@ -456,6 +456,7 @@ link_clients(struct tty_client *tclient, struct pty_client *pclient)
     tclient->pclient = pclient; // sometimes redundant
     *pclient->last_tclient_ptr = tclient;
     pclient->last_tclient_ptr = &tclient->next_tclient;
+    tclient->wkind = dterminal_window;
 }
 
 void link_command(struct lws *wsi, struct tty_client *tclient,
@@ -1185,8 +1186,11 @@ reportEvent(const char *name, char *data, size_t dlen,
         client->initialized = 0;
         if (proxyMode == proxy_display_local)
             return false;
-        if (pclient == NULL)
+        if (pclient == NULL) {
+            client->pty_window_update_needed = true;
+            lws_callback_on_writable(client->out_wsi);
             return true;
+        }
         if (pclient->cmd) {
             run_command(pclient->cmd, pclient->argv,
                         options ? options->cwd : NULL,
@@ -1373,7 +1377,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
         const char* url = !data[0] || (data[0] == '#' && g0 == data + 1) ? NULL
             : data;
-        display_session(options, NULL, url, -1);
+        display_session(options, NULL, url, unknown_window);
         if (geom != NULL)
             free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
@@ -1386,13 +1390,25 @@ reportEvent(const char *name, char *data, size_t dlen,
                 && client->requesting_contents == 0)
                 client->requesting_contents = 1;
         }
-    } else if (strcmp(name, "CLOSE-SESSION") == 0) {
-        client->close_requested = true;
+    } else if (strcmp(name, "CLOSE-WINDOW") == 0) {
+        char *end;
+        struct tty_client *wclient = NULL;
+        long wnum = strtol(data, &end, 10);
+        if (data[0] && ! end[0])
+            wclient = tty_clients(wnum);
+        if (wclient == nullptr)
+            wclient = client;
+        else
+            pclient = wclient->pclient;
+        wclient->close_requested = true;
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient != NULL) {
-            unlink_tty_from_pty(pclient, client);
-            client->pclient = NULL;
+            unlink_tty_from_pty(pclient, wclient);
+            wclient->pclient = NULL;
+        } else {
+            clear_connection_number(wclient);
+            delete wclient;
         }
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_client = client;
@@ -1503,6 +1519,7 @@ tty_client::tty_client()
     this->ob.extend(20000);
     this->ocount = 0;
     this->proxyMode = no_proxy; // FIXME
+    this->wkind = unknown_window;
     this->connection_number = -1;
     this->pty_window_number = -1;
     this->pty_window_update_needed = false;
@@ -1573,7 +1590,7 @@ handle_input(struct lws *wsi, struct tty_client *client,
                     *eol = save_data_end;
                     continue;
                 } else if (proxyMode == proxy_remote
-                           && strcmp(cname, "CLOSE-SESSION") == 0)
+                           && strcmp(cname, "CLOSE-WINDOW") == 0)
                     return -1;
             } else {
                 break;
@@ -1614,7 +1631,8 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
 
             if (to_proxy) {
                 clear_connection_number(client);
-                display_session(client->options, pclient, NULL, http_port);
+                display_session(client->options, pclient,
+                                nullptr, dterminal_window);
                 if (client->out_wsi && client->out_wsi != client->wsi) {
                     lwsl_notice("set_timeout clear tc:%p\n", client->wsi);
                     client->keep_after_unexpected_close = false;
@@ -1751,7 +1769,8 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     }
     if (pclient==NULL)
         lwsl_notice("- empty pclient buf:%d for %p\n", client->ob.buffer != NULL, client);
-    if (! pclient && client->ob.buffer != NULL
+    if (! pclient && client->wkind == dterminal_window
+        && client->ob.buffer != NULL
         && proxyMode != proxy_command_local) {
         if (proxyMode != proxy_display_local) {
             client->keep_after_unexpected_close = false;
@@ -2142,7 +2161,7 @@ display_pipe_session(struct options *options, struct pty_client *pclient)
 
 int
 display_session(struct options *options, struct pty_client *pclient,
-                const char *url, int port)
+                const char *url, enum window_kind wkind)
 {
     int session_number = pclient == NULL ? -1 : pclient->session_number;
     const char *browser_specifier = options->browser_command;
@@ -2163,19 +2182,26 @@ display_session(struct options *options, struct pty_client *pclient,
       if (paneOp < 1 || paneOp > 13)
           paneOp = 0;
     }
+    struct tty_client *tclient = nullptr;
     int wnum = -1;
-    if (port != -104 && port != -105 && url == NULL) {
-        struct tty_client *tclient = new tty_client();
+    if (wkind != unknown_window) {
+        tclient = new tty_client();
         tclient->options = link_options(options);
         set_connection_number(tclient, pclient ? pclient->session_number : -1);
-        if (pclient)
+        tclient->wkind = wkind;
+        if (wkind != browser_window && wkind != saved_window
+            && url == NULL && pclient) {
             link_clients(tclient, pclient);
+        } else if (wkind == browser_window) {
+            if (url)
+                tclient->description = url;
+        }
         wnum = tclient->connection_number;
     }
     int r = EXIT_SUCCESS;
     if (paneOp > 0) {
         const char *eq = strchr(browser_specifier, '=');
-        struct tty_client *tclient;
+        struct tty_client *wclient;
         if (eq) {
             char *endp;
             long w = strtol(eq+1, &endp, 10);
@@ -2184,38 +2210,51 @@ display_session(struct options *options, struct pty_client *pclient,
                              browser_specifier);
                 return EXIT_FAILURE;
             }
-            tclient = tty_clients(w);
+            wclient = tty_clients(w);
         } else if (focused_client == NULL) {
             printf_error(options, "no current window for '%s' option",
                          browser_specifier);
             return EXIT_FAILURE;
         } else
-            tclient = focused_client;
-        if (wnum >= 0) {
-            int pnum = pclient ? pclient->session_number : -1;
-            printf_to_browser(tclient,
-                              pnum >= 0
-                              ? URGENT_WRAP("\033[90;%d;%d;%du")
-                              : URGENT_WRAP("\033[90;%d;%du"),
-                              paneOp, wnum, pnum);
-        } else
-            printf_to_browser(tclient, URGENT_WRAP("\033]%d;%d,%s\007"),
-                               -port, paneOp, url);
-        lws_callback_on_writable(tclient->out_wsi);
+            wclient = focused_client;
+        tclient->main_window =
+            wclient->main_window || wclient->connection_number;
+        json pane_options;
+        if (wnum >= 0)
+            pane_options["windowNumber"] = wnum;
+        if (pclient && pclient->session_number >= 0)
+            pane_options["sessionNumber"] = pclient->session_number;
+        if (wkind == saved_window || wkind == browser_window) {
+            pane_options["componentType"] =
+                wkind == browser_window ? "browser" : "view-saved";
+            pane_options["url"] = url;
+        }
+        char oldnum_buffer[12];
+        oldnum_buffer[0] = 0;
+        if (wclient->out_wsi == NULL) {
+            int oldnum = wclient->connection_number;
+            if (wclient->main_window == 0 || oldnum <= 0 || oldnum > 999999)
+                return EXIT_FAILURE;
+            wclient = tty_clients(wclient->main_window);
+            if (wclient == NULL || wclient->out_wsi == NULL)
+                return EXIT_FAILURE;
+            sprintf(oldnum_buffer, ",%d",oldnum);
+        }
+        printf_to_browser(wclient, URGENT_WRAP("\033]%d;%d%s,%s\007"),
+                          104, paneOp, oldnum_buffer,
+                          pane_options.dump().c_str());
+        lws_callback_on_writable(wclient->out_wsi);
     } else {
-        char *encoded = port == -104 || port == -105
+        char *encoded = wkind == browser_window || wkind == saved_window
             ? url_encode(url, 0)
             : NULL;
         if (encoded)
             url = encoded;
         sbuf sb;
         if (wnum >= 0) {
-            const char *main_url = url ? url : main_html_url;
+            const char *main_url = main_html_url;
             sb.append(main_url);
-            if (! url)
-                sb.append("#no-frames.html::"); // FIXME rename
-            else if (strchr(main_url, '#') == NULL)
-                sb.append("#::", 1);
+            sb.append("#no-frames.html::"); // FIXME rename
             // Note we use ';' rather than the traditional '&' to separate parts
             // of the fragment.  Using '&' causes a mysterious bug (at
             // least on Electron, Qt, and Webview) when added "&js-verbosity=N".
@@ -2242,10 +2281,10 @@ display_session(struct options *options, struct pty_client *pclient,
                                   || strcmp(log_to_server, "both") == 0)) {
                 sb.printf(";log-to-server=%s", log_to_server);
             }
-        } else if (port == -105) // view saved file
-            sb.printf("%s#no-frames.html::view-saved=%s",  main_html_url, url);
-        else if (port == -104) {// browse url
-            sb.printf("%s#no-frames.html::browse=%s",  main_html_url, url);
+            if (wkind == saved_window)
+                sb.printf(";view-saved=%s", url);
+            else if (wkind == browser_window)
+                sb.printf(";browse=%s", url);
         }
         else
             sb.printf("%s", url);
@@ -2257,7 +2296,7 @@ display_session(struct options *options, struct pty_client *pclient,
             if (write(options->fd_out, sb.buffer, sb.len) <= 0)
                 lwsl_err("write failed - display_session\n");
         } else
-            r = do_run_browser(options, sb.null_terminated(), port);
+            r = do_run_browser(options, sb.null_terminated());
     }
     return r;
 }
@@ -2282,7 +2321,7 @@ int new_action(int argc, arglist_t argv,
         return EXIT_FAILURE;
     }
     struct pty_client *pclient = create_pclient(cmd, args, opts, false, NULL);
-    int r = display_session(opts, pclient, NULL, http_port);
+    int r = display_session(opts, pclient, nullptr, dterminal_window);
     if (r == EXIT_FAILURE) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
@@ -2344,7 +2383,7 @@ int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
         tclient->initialized = 1;
         return EXIT_WAIT;
     }
-    return display_session(opts, pclient, NULL, http_port);
+    return display_session(opts, pclient, nullptr, dterminal_window);
 }
 
 int browse_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
@@ -2360,7 +2399,7 @@ int browse_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
         return EXIT_FAILURE;
     }
     const char *url = argv[optind];
-    display_session(opts, NULL, url, -104);
+    display_session(opts, NULL, url, browser_window);
     return EXIT_SUCCESS;
 }
 

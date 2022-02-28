@@ -200,7 +200,7 @@ DomTerm.closeAll = function(event) {
     DomTerm.forEachTerminal(dt => {
         dt.historySave();
         if (dt.processInputBytes)
-            dt.reportEvent("CLOSE-SESSION");
+            dt.reportEvent("CLOSE-WINDOW");
     })
 }
 

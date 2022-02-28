@@ -61,9 +61,9 @@ maybe_daemonize()
     }
 }
 
-int
+static int
 subst_run_command(struct options *opts, const char *browser_command,
-                  const char *url, int port)
+                  const char *url)
 {
     size_t clen = strlen(browser_command);
     const char *upos = strstr(browser_command, "%U");
@@ -122,12 +122,6 @@ subst_run_command(struct options *opts, const char *browser_command,
               (int) beforeU, browser_command,
               url_fixed,
               (int) (clen - beforeU - skip), upos+skip);
-    } else if ((wpos = strstr(browser_command, "%W")) != NULL) {
-        size_t beforeW = wpos - browser_command;
-        sprintf(cmd, "%.*s%d%.*s",
-                (int) beforeW, browser_command,
-                port,
-                (int) (clen - beforeW - 2), wpos+2);
     } else
         sprintf(cmd, "%s '%s'", browser_command, url_fixed);
     free(url_tmp);
@@ -693,8 +687,8 @@ electron_command(struct options *options)
     return sb.strdup();
 }
 
-int
-default_browser_run(const char *url, int port, struct options *options)
+static int
+default_browser_run(const char *url, struct options *options)
 {
     const char *pattern;
     char *mpattern = NULL; // malloc'd pattern
@@ -718,7 +712,7 @@ default_browser_run(const char *url, int port, struct options *options)
             pattern = mpattern;
     }
 #endif
-    int r = subst_run_command(options, pattern, url, 0);
+    int r = subst_run_command(options, pattern, url);
     free(mpattern);
     return r;
 }
@@ -729,7 +723,7 @@ default_link_command(const char *url)
 #if !defined(DEFAULT_BROWSER_COMMAND) && (defined(_WIN32)||defined(__CYGWIN__))
     ShellExecute(0, 0, url, 0, 0 , SW_SHOW) > 32 ? 0 : 1;
 #else
-    default_browser_run(url, 0, main_options);
+    default_browser_run(url, main_options);
 #endif
 }
 
@@ -751,7 +745,7 @@ browser_run_browser(struct options *options, const char *url,
 }
 
 int
-do_run_browser(struct options *options, const char *url, int port)
+do_run_browser(struct options *options, const char *url)
 {
     std::string browser_specifier_string; // placeholder for allocation
     const char *browser_specifier;
@@ -787,7 +781,7 @@ do_run_browser(struct options *options, const char *url, int port)
                 std::string cmd(start, cmd_length);
                 bool app_mode;
                 if (cmd == "browser")
-                    return default_browser_run(url, port, options);
+                    return default_browser_run(url, options);
                 if (cmd == "electron") {
                     browser_specifier = electron_command(options);
                      if (browser_specifier == NULL)
@@ -896,7 +890,7 @@ do_run_browser(struct options *options, const char *url, int port)
         }
     }
 
-    int r = subst_run_command(options, browser_specifier, url, port);
+    int r = subst_run_command(options, browser_specifier, url);
     options->qt_frontend = false;
     // FIXME: free(browser_specifier)
     return r;

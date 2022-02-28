@@ -64,8 +64,12 @@ DomTermLayout.addPane = function(paneOp, newItemConfig,
     if (! DomTermLayout.manager)
         DomTermLayout.initialize();
     let oldItem = DomTermLayout._elementToLayoutItem(wrapper);
-    if (! oldItem)
-        return;
+    if (oldItem)
+        DomTermLayout.addPaneRelative(oldItem, paneOp, newItemConfig);
+}
+
+DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
+{
     if (paneOp == 1) { // convert to --right or --below
         paneOp = DomTermLayout.shouldSplitVertically(oldItem.container.width,
                                                      oldItem.container.height)
@@ -163,6 +167,19 @@ DomTermLayout._elementToLayoutItem = function(goal, item = DomTermLayout.manager
     var citems = item.contentItems;
     for (var i = 0; i < citems.length; i++) {
         var r = DomTermLayout._elementToLayoutItem(goal, citems[i]);
+        if (r)
+            return r;
+    }
+    return null;
+}
+
+DomTermLayout._numberToLayoutItem = function(wnum, item = DomTermLayout.manager.root) {
+    if ((item.component && item.component.windowNumber === wnum)
+        || (item.container && item.container.getElement().windowNumber == wnum))
+        return item;
+    var citems = item.contentItems;
+    for (var i = 0; i < citems.length; i++) {
+        var r = DomTermLayout._numberToLayoutItem(wnum, citems[i]);
         if (r)
             return r;
     }
@@ -311,6 +328,16 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
 
 DomTermLayout.onLayoutClosed = function(container) {
     return (event) => {
+        const config = container.parent.toConfig();
+        if (config.componentType === "browser"
+            || config.componentType === "view-saved") {
+            const dt = DomTerm.focusedTerm;
+            const wnum = container.component.windowNumber;
+            if (dt && wnum) {
+                dt.reportEvent("CLOSE-WINDOW", wnum);
+            }
+            return;
+        }
         DomTerm.closeSession(container.component, false, true);
     };
 }
@@ -397,6 +424,8 @@ DomTermLayout.initialize = function() {
             ).observe(top);
         }
         wrapped.style.position = "absolute";
+        if (typeof componentConfig.windowNumber === "number")
+            wrapped.windowNumber = componentConfig.windowNumber;
         wrapped.rootHtmlElement = wrapped;
         return wrapped;
     }, true /*virtual*/);
@@ -404,6 +433,8 @@ DomTermLayout.initialize = function() {
     DomTermLayout.manager.registerComponent( 'view-saved', function( container, componentConfig ){
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
         let el = viewSavedFile(componentConfig.url);
+        if (typeof componentConfig.windowNumber === "number")
+            el.windowNumber = componentConfig.windowNumber;
         el.rootHtmlElement = el;
         return el;
     }, true /*virtual*/);
@@ -411,6 +442,8 @@ DomTermLayout.initialize = function() {
     DomTermLayout.manager.registerComponent( 'browser', function( container, componentConfig ){
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
         let el = DomTerm.makeIFrameWrapper(componentConfig.url, 'B');
+        if (typeof componentConfig.windowNumber === "number")
+            el.windowNumber = componentConfig.windowNumber;
         el.rootHtmlElement = el;
         return el;
     }, true /*virtual*/);
