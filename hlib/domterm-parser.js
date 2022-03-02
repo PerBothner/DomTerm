@@ -1244,12 +1244,12 @@ class DTParser {
                     {
                         const kind = this.getParameter(1, 0);
                         const old = term.sstate.save_title;
-                        let wName = kind == 1 && old ? old.windowName
-                            : term.sstate.windowName;
+                        let wName = kind == 1 && old ? old.windowTitle
+                            : term.sstate.windowTitle;
                         let iName = kind == 2 && old ? old.iconName
                             : term.sstate.iconName;
                         term.sstate.save_title = {
-                            windowName: term.sstate.windowName,
+                            windowTitle: term.sstate.windowTitle,
                             iconName: term.sstate.iconName,
                             next: old
                         };
@@ -1260,7 +1260,7 @@ class DTParser {
                     if (stitle) {
                         const kind = this.getParameter(1, 0);
                         if (kind == 0 || kind == 2)
-                            term.sstate.windowName = stitle.windowName;
+                            term.sstate.windowTitle = stitle.windowTitle;
                         if (kind == 0 || kind == 1)
                             term.sstate.iconName = stitle.iconName;
                         term.sstate.save_title = stitle.next;
