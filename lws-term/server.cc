@@ -383,6 +383,7 @@ static const char* browser_specifiers[] = {
     "google-chrome",
     "qt", "qtdomterm", "qtwebengine",
     "webview",
+    "wry",
     "/",
     nullptr
 };
