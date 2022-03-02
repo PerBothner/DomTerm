@@ -113,8 +113,7 @@ class Terminal {
 
     this._updateTimer = null;
 
-    sstate.windowName = null;
-    sstate.windowTitle = null;
+    sstate.windowTitle = null; // As set by xterm escape sequence
     sstate.iconName = null;
     sstate.lastWorkingPath = null;
     sstate.sessionNumber = -1;
@@ -1247,7 +1246,7 @@ Terminal.prototype.setFocused = function(focused) {
     const changeFocused = wasFocused !== (focused > 0);
     if (focused > 0) {
         classList.add("domterm-active");
-        DomTerm.setTitle(this.sstate.windowTitle);
+        DomTerm.setTitle(this.formatWindowTitle());
         if (! this.isSavedSession()) {
             this.reportEvent("FOCUSED", ""); // to server
             if (changeFocused)
@@ -5918,14 +5917,14 @@ Terminal.prototype.sessionName = function() {
 Terminal.prototype.setWindowTitle = function(title, option) {
     switch (option) {
     case 0:
-        this.sstate.windowName = title;
+        this.sstate.windowTitle = title;
         this.sstate.iconName = title;
         break;
     case 1:
         this.sstate.iconName = title;
         break;
     case 2:
-        this.sstate.windowName = title;
+        this.sstate.windowTitle = title;
         break;
     case 30:
         this.name = title;
@@ -5938,7 +5937,7 @@ Terminal.prototype.setWindowTitle = function(title, option) {
 };
 
 Terminal.prototype.formatWindowTitle = function() {
-    var str = this.sstate.windowName ? this.sstate.windowName
+    var str = this.sstate.windowTitle ? this.sstate.windowTitle
         : this.sstate.iconName ? this.sstate.iconName
         : "";
     var sessionName = this.sessionName();
@@ -5964,13 +5963,11 @@ DomTerm.setLayoutTitle = function(item, title, wname) {
 
 Terminal.prototype.updateWindowTitle = function() {
     let sname = this.sessionName();
-    let wname = this.sstate.windowName;
+    let wname = this.sstate.windowTitle;
     if (DomTerm.setLayoutTitle)
         DomTerm.setLayoutTitle(this.topNode, sname, wname);
-    var str = this.formatWindowTitle()
-    this.sstate.windowTitle = str;
     if (this.hasFocus())
-        DomTerm.setTitle(str);
+        DomTerm.setTitle(this.formatWindowTitle());
 }
 
 Terminal.prototype.resetCharsets = function() {
@@ -10631,7 +10628,7 @@ DomTerm.initSavedFile = function(topNode) {
     var dt = new Terminal(name, topNode, 'view-saved');
     dt.initial = document.getElementById(dt.makeId("main"));
     dt._initializeDomTerm(topNode);
-    dt.sstate.windowName = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
+    dt.sstate.windowTitle = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
     dt.topNode.classList.remove("domterm-noscript");
     dt.measureWindow();
     dt._restoreLineTables(topNode, 0);
