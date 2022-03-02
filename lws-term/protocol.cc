@@ -377,6 +377,8 @@ unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
         tclient->pty_window_update_needed = true;
         lws_callback_on_writable(tclient->wsi);
     }
+    tclient->wkind =
+        tclient->main_window == 0 ?  main_only_window : unknown_window;
 
     // If only one client left, do detachSaveSend
     if (first_tclient != NULL) {
@@ -1408,7 +1410,8 @@ reportEvent(const char *name, char *data, size_t dlen,
             wclient->pclient = NULL;
         } else {
             clear_connection_number(wclient);
-            delete wclient;
+            if (wclient != client)
+                delete wclient;
         }
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_client = client;
