@@ -211,6 +211,22 @@ function setupQWebChannel(channel) {
     }
 };
 
+function maybeWindowName(el, params = DomTerm.mainSearchParams) {
+    if (params && el) {
+        const wparam = params.get("window");
+        const wnum = wparam ? Number(wparam) : -1;
+        if (wnum >= 0)
+            el.windowNumber = wnum;
+        let wname_unique = params.get("wname-unique");
+        let name = wname_unique || params.get("wname");
+        if (name) {
+            el.setAttribute("window-name", name);
+            el.windowNameUnique = !!wname_unique;
+        }
+    }
+    return el;
+}
+
 function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
     let url = decodeURIComponent(urlEncoded);
     // Requesting the saved file using a file: URL runs into CORS
@@ -425,17 +441,18 @@ function loadHandler(event) {
         // handled by handleMessage (for iframe pane)
         // *or* handled by atom-domterm.
         DomTerm.setLayoutTitle = function(dt, title, wname) {
-            DomTerm.sendParentMessage("domterm-set-title", title, wname);
+            DomTerm.sendParentMessage("domterm-set-title", title, wname); // FIXME
         };
     }
     // non-null if we need to create a websocket but we have no Terminal
     let no_session = null;
     if ((m = location.hash.match(/view-saved=([^&;]*)/))) {
-        viewSavedFile(m[1]);
+        maybeWindowName(viewSavedFile(m[1]));
         no_session = "view-saved";
     } else if ((m = location.hash.match(/browse=([^&;]*)/))) {
-        DomTerm.makeIFrameWrapper(decodeURIComponent(m[1]),
-                                  'B', DomTerm.layoutTop);
+        const el = DomTerm.makeIFrameWrapper(decodeURIComponent(m[1]),
+                                             'B', DomTerm.layoutTop);
+        maybeWindowName(el);
         no_session = "browse";
     }
     if (location.pathname.startsWith("/saved-file/")) {
@@ -468,7 +485,9 @@ function loadHandler(event) {
     }
     */
     if (DomTerm.useIFrame == 2 && ! DomTerm.isInIFrame()) {
-        DomTerm.makeIFrameWrapper(DomTerm.paneLocation/*+location.hash*/);
+        const el = DomTerm.makeIFrameWrapper(DomTerm.paneLocation/*+location.hash*/,
+                                             'T');
+        maybeWindowName(el);
         return;
     }
     if (DomTerm.loadDomTerm) {
@@ -504,9 +523,9 @@ function loadHandler(event) {
             query = (query ? query + "&" : "") + "no-session=" + no_session;
         var wsurl = DTerminal._makeWsUrl(query);
         for (var i = 0; i < topNodes.length; i++) {
-            DTerminal.connectWS(null, wsurl, "domterm",
-                                no_session ? null : topNodes[i],
-                                no_session);
+            const top = no_session ? null : topNodes[i];
+            DTerminal.connectWS(null, wsurl, "domterm", top, no_session);
+            maybeWindowName(top);
         }
     }
     if (!DomTerm.inAtomFlag)
@@ -597,16 +616,22 @@ function handleMessage(event) {
                 }
             });
         }
-    } else if (data.command=="domterm-set-title") {
+    } else if (data.command=="domterm-update-title") {
+        DomTerm.updateTitle(iframe, data.args[0]);
+    } else if (data.command=="domterm-set-title") { // FIXME
         if (iframe)
             DomTerm.setLayoutTitle(iframe,
                                          data.args[0], data.args[1]);
     } else if (data.command=="set-pid") {
         if (iframe)
             iframe.setAttribute("pid", data.args[0]);
-    } else if (data.command=="set-session-number") {
-        if (iframe)
-            iframe.setAttribute("session-number", data.args[0]);
+    } else if (data.command=="domterm-numbers") {
+        if (iframe) {
+            if (data.args[0] > 0)
+                iframe.setAttribute("session-number", data.args[0]);
+            if (typeof data.args[1] === "number" && data.args[1] > 0)
+                iframe.windowNumber = data.args[1];
+        }
     } else if (data.command=="set-input-mode") { // message to child
         DomTerm.setInputMode(data.args[0]);
     } else if (data.command=="request-save-file") { // message to child

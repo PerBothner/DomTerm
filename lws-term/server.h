@@ -142,11 +142,11 @@ public:
     int pty_slave;
     struct stderr_client *stderr_client;
     int session_number;
-    char *session_name;
+    char *session_name;  // DEPRECATED
     int nrows, ncols;
     float pixh, pixw;
     bool timed_out : 1;
-    bool session_name_unique :1;
+    bool session_name_unique :1; // DEPRECATED
     bool is_ssh_pclient :1;
     bool has_primary_window :1;
     bool uses_packet_mode :1;
@@ -176,6 +176,7 @@ public:
     // (Should be minumum of saved_window_sent_count (if saved_window_contents)
     // and miniumum of confirmed_count for each tclient.)
 
+    std::string saved_window_name; // used for detached windows
     const char *cmd;
     argblob_t argv;
 #if REMOTE_SSH
@@ -213,6 +214,7 @@ public:
     tty_client();
     ~tty_client();
     int index() { return connection_number; }
+    void set_window_name(const std::string& name);
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
     struct options *options;
@@ -240,6 +242,9 @@ public:
     bool close_requested : 1;
     bool keep_after_unexpected_close : 1;
     bool detach_on_disconnect : 1;
+    bool window_name_unique : 1;
+    bool pty_window_update_needed;
+    bool name_update_needed;
     bool detachSaveSend; // need to send a detachSaveNeeded command
     bool uploadSettingsNeeded; // need to upload settings to client
     int main_window; // 0 if top-level, or number of main window
@@ -265,9 +270,9 @@ public:
 
     int connection_number; // unique number
     int pty_window_number; // Numbered within each pty_client; -1 if only one
-    bool pty_window_update_needed;
     char *ssh_connection_info;
     id_table<struct options> pending_requests;
+    std::string window_name;
     std::string description;
 };
 
@@ -329,7 +334,7 @@ public:
     int fd_err;
     int fd_cmd_socket;
     std::string windows;
-    char *session_name;
+    std::string name_option;
     char *settings_file;
     argblob_t shell_argv;               // parse_args("shell.default" setting);
     const char*cwd; // use as current current dir; NULL means that of process
@@ -506,6 +511,8 @@ extern void print_version(FILE*);
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, const char *arg);
 extern struct pty_client *find_session(const char *specifier);
+extern int check_single_window_option(const std::string& woption,
+                                      const char *cmd, struct options *opts);
 
 #ifndef DOMTERM_DIR_RELATIVE
 /* Data directory, relative to binary's parent directory.

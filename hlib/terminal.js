@@ -98,9 +98,9 @@ import { toJson } from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
-    // A unique name (the "session-name") for this DomTerm instance.
+    // A unique name for this DomTerm instance. NOT USED?
     // Generated names have the format:  name + "__" + something.
-    this.name = name;
+    this.name = name; // deprecated
 
     // Options/state that should be saved/restored on detach/attach.
     // Restricted to properties that are JSON-serializable,
@@ -117,7 +117,6 @@ class Terminal {
     sstate.iconName = null;
     sstate.lastWorkingPath = null;
     sstate.sessionNumber = -1;
-    sstate.sessionNameUnique = false;
     sstate.paneNumber = -1;
 
     // the local window number.
@@ -5850,7 +5849,7 @@ DomTerm.handleLinkRef = function(href, textContent, dt=DomTerm.focusedTerm) {
     }
 };
 
-// Set the "session name" which is the "session-name" attribute of the toplevel div.
+// Set the "session name" which is the "session-name" attribute of the toplevel div. FIXME
 // It can be used in stylesheets as well as the window title.
 Terminal.prototype.setSessionName = function(title) {
     this.setWindowTitle(title, 30);
@@ -5860,12 +5859,12 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
                                                windowForSession, windowNumber) {
     let unique = kind != 0;
     if (kind == 2) {
-        this.windowNumber = windowNumber;
+        this.windowNumber = windowNumber; // UNUSED?
     } else {
         const mainWindowForce = this.topNode == null;
         this.sstate.sessionNumber = snumber || -1;
         if (this.windowNumber < 0 || mainWindowForce)
-            this.windowNumber = windowNumber;
+            this.windowNumber = windowNumber; // UNUSED?
         this.connectionNumber = windowNumber;
         if (DomTerm._mainWindowNumber < 0 || mainWindowForce)
             DomTerm._mainWindowNumber = windowNumber;
@@ -5873,30 +5872,30 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
         if (this.topNode) {
             this.topNode.setAttribute("session-number", snumber);
             if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-                DomTerm.sendParentMessage("set-session-number", snumber);
+                DomTerm.sendParentMessage("domterm-numbers", snumber, windowNumber);
             }
             this.reportEvent("SESSION-NUMBER-ECHO", snumber);
-            this.sstate.sessionNameUnique = unique;
             if (this.sstate.forcedSize && !this.isSecondaryWindow())
                 this.forceWidthInColumns(-1);
         }
     }
     if (this.topNode) {
+        this.topNode.windowNumber = windowNumber;
         this.updateWindowTitle();
     }
 }
 
 // FIXME misleading function name - this is not just the session name
 Terminal.prototype.sessionName = function() {
-    var sname = this.topNode.getAttribute("session-name");
+    var sname = this.topNode.getAttribute("window-name");
     let snumber = this.sstate.sessionNumber;
+    let wnumber = this.windowNumber;
     if (! sname) {
         let rhost = this.getRemoteHostUser();
         sname  = "DomTerm";
-        let wnumber = this.windowNumber;
         if (rhost) {
             if (wnumber)
-                sname += ":"+wnumber;
+                sname += "-"+wnumber;
             let at = rhost.indexOf('@');
             if (at >= 0)
                 rhost = rhost.substring(at+1);
@@ -5905,13 +5904,13 @@ Terminal.prototype.sessionName = function() {
             sname += "=" + rhost + "#" + snumber;
         } else {
             if (snumber)
-                sname += ":"+snumber;
-            if (wnumber && snumber != wnumber)
-                sname += "."+wnumber;
+                sname += "#"+snumber;
         }
+        if (wnumber && snumber != wnumber)
+            sname += "-"+wnumber;
     }
-    else if (! this.sstate.sessionNameUnique)
-        sname = sname + "#" + snumber;
+    else if (! this.topNode.windowNameUnique)
+        sname = sname + ":" + wnumber;
     return sname;
 };
 
@@ -5929,9 +5928,9 @@ Terminal.prototype.setWindowTitle = function(title, option) {
         break;
     case 30:
         this.name = title;
-        this.topNode.setAttribute("session-name", title);
-        this.sstate.sessionNameUnique = true;
-        this.reportEvent("SESSION-NAME", JSON.stringify(title));
+        this.topNode.setAttribute("window-name", title);
+        this.topNode.windowNameUnique = true;
+        this.reportEvent("WINDOW-NAME", JSON.stringify(title));
         break;
     }
     this.updateWindowTitle();
@@ -6080,7 +6079,7 @@ Terminal.prototype.updateSettings = function() {
     }
 
     var style_dark = getOption("style.dark", "auto");
-    if (style_dark !== this._style_dark_old) {
+    if (style_dark !== this._style_dark_old && this.topNode) {
         this._style_dark_old = style_dark;
         let dark_query = this._style_dark_query;
         if (style_dark === "auto" && ! dark_query && window.matchMedia) {

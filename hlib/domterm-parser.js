@@ -1426,18 +1426,6 @@ class DTParser {
                     break;
                 }
                 break;
-            case 90: {
-                let wnum = this.getParameter(2, -1);
-                let snum = this.getParameter(3, -1);
-                let options = {};
-                if (wnum >= 0)
-                    options.windowNumber = wnum;
-                if (snum >= 0)
-                    options.sessionNumber = snum;
-                DomTerm.newPane(this.getParameter(1, 0), options,
-                                term);
-                break;
-            }
             case 91:
                 term.setSessionNumber(this.getParameter(1, 0),
                                       this.getParameter(2, 0),
@@ -2106,6 +2094,18 @@ class DTParser {
                 term.sendResponse(r, options);
                 break;
             }
+            case 'set-window-name':
+                if (typeof options.windowName === "string"
+                    && typeof options.windowNumber == "number") {
+                    const content = term.topNode || DomTerm._oldFocusedContent;
+                    term.sstate.windowName = options.windowName; // redundant?
+                    DomTerm.updateTitle(content, options);
+                    if (options.windowNumber === term.topNode.windowNumber) {
+                        content.setAttribute("window-name", options.windowName);
+                        term.topNode.windowNameUnique = options.windowNameUnique;
+                    }
+                }
+                break;
             case 'close':
                 term.close();
                 break;
@@ -2196,7 +2196,6 @@ class DTParser {
             }
             break;
         case 104:
-        case 105:
             try {
                 const wargs = JSON.parse("[" + text + "]");
                 const paneOp = wargs[0];
@@ -2209,7 +2208,7 @@ class DTParser {
                             m.addPaneRelative(oldItem, paneOp, options);
                     });
                 } else {
-                    DomTerm.newPane(paneOp, options);
+                    DomTerm.newPane(paneOp, options, term);
                 }
             } catch (e) {
                 term.log("bad new-pane request (" + e + "): " +JSON.stringify(text));
