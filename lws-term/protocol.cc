@@ -35,30 +35,6 @@ id_table<tty_client> tty_clients;
 static struct pty_client *
 handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client *tclient);
 
-int
-send_initial_message(struct lws *wsi) {
-#if 0
-    unsigned char message[LWS_PRE + 256];
-    unsigned char *p = &message[LWS_PRE];
-    int n;
-
-    char hostname[128];
-    gethostname(hostname, sizeof(hostname) - 1);
-
-    // window title
-    n = sprintf((char *) p, "%c%s (%s)", SET_WINDOW_TITLE, tserver.command, hostname);
-    if (lws_write(wsi, p, (size_t) n, LWS_WRITE_TEXT) < n) {
-        return -1;
-    }
-    // reconnect time
-    n = sprintf((char *) p, "%c%d", SET_RECONNECT, tserver.reconnect);
-    if (lws_write(wsi, p, (size_t) n, LWS_WRITE_TEXT) < n) {
-        return -1;
-    }
-#endif
-    return 0;
-}
-
 #if 0
 void logerr(char*prefix, char* str, int n) {
     fprintf(stderr, "write%s %d bytes: \"", prefix, n);
@@ -437,6 +413,58 @@ tty_client::~tty_client()
             finish_request(request, EXIT_FAILURE, true);
         }
         options::release(request);
+    }
+}
+
+void
+tty_client::set_window_name(const std::string& name)
+{
+    bool old_unique = this->window_name_unique;
+    bool unique = true;
+    bool same_name = window_name == name;
+    struct tty_client *oclient;
+    FORALL_WSCLIENT(oclient) {
+        if (oclient != this && oclient->window_name == name) {
+            unique = false;
+        }
+    }
+    if (same_name && unique == old_unique)
+        return;
+    std::string old_name = this->window_name;
+    this->window_name_unique = unique;
+    if (! same_name) {
+        this->window_name = name;
+        if (pclient)
+            pclient->saved_window_name = name;
+    }
+
+    if (! unique || ! old_unique) {
+        FORALL_WSCLIENT(oclient) {
+            if (oclient != this
+                && (oclient->window_name == old_name
+                    || oclient->window_name == name)) {
+                std::string oname = oclient->window_name;
+                // update oclient->window_name_unique.
+                oclient->set_window_name(oname);
+            }
+        }
+    }
+
+    json request;
+    request["cmd"] = "set-window-name";
+    request["windowName"] = name;
+    request["windowNumber"] = index();
+    request["windowNameUnique"] = unique;
+    struct tty_client *tclient = this;
+    tclient->name_update_needed = true;
+    if (out_wsi == nullptr && main_window != 0) {
+        tclient = tty_clients(main_window);
+    }
+    if (tclient) {
+        tclient->ob.printf(URGENT_WRAP("\033]97;%s\007"),
+                           request.dump().c_str());
+        if (tclient->out_wsi != nullptr)
+            lws_callback_on_writable(tclient->wsi);
     }
 }
 
@@ -1297,10 +1325,12 @@ reportEvent(const char *name, char *data, size_t dlen,
                 to_drain -= r;
             }
         }
-    } else if (strcmp(name, "SESSION-NAME") == 0) {
+    } else if (strcmp(name, "WINDOW-NAME") == 0) {
         char *q = strchr(data, '"');
         json obj = json::parse(q, nullptr, false);
         std::string str = obj.is_string() ? obj : "";
+        client->set_window_name(str);
+#if 0
         const char *kstr = str.c_str();
         int klen = str.length();
         char *session_name = challoc(klen+1);
@@ -1326,6 +1356,7 @@ reportEvent(const char *name, char *data, size_t dlen,
                 pclient->session_name_unique = false;
             }
         }
+#endif
     } else if (strcmp(name, "SESSION-NUMBER-ECHO") == 0) {
         if (proxyMode == proxy_display_local && options) {
             set_setting(options->cmd_settings, REMOTE_SESSIONNUMBER_KEY, data);
@@ -1737,6 +1768,14 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
                   client->pty_window_number+1,
                   client->connection_number);
     }
+#if 0
+    if (client->name_update_needed
+        && client->initialized >= 0
+        && proxyMode != proxy_display_local
+        && proxyMode != proxy_command_local) {
+        client->name_update_needed = false;
+    }
+#endif
     if (client->detachSaveSend) { // proxyMode != proxy_local ???
         int tcount = 0;
         FOREACH_WSCLIENT(tclient, pclient) {
@@ -2187,6 +2226,27 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     struct tty_client *tclient = nullptr;
     int wnum = -1;
+    bool has_name = ! options->name_option.empty();
+    struct tty_client *wclient = nullptr;
+    if (paneOp > 0) {
+        const char *eq = strchr(browser_specifier, '=');
+        if (eq) {
+            std::string wopt = eq + 1;
+            int w = check_single_window_option(wopt, "(display)", options);
+            if (w < 0) {
+                printf_error(options, "invalid window specifier '%s' in '%s' option",
+                             wopt.c_str(),
+                             browser_specifier);
+                return EXIT_FAILURE;
+            }
+            wclient = tty_clients(w);
+        } else if (focused_client == NULL) {
+            printf_error(options, "no current window for '%s' option",
+                         browser_specifier);
+            return EXIT_FAILURE;
+        } else
+            wclient = focused_client;
+    }
     if (wkind != unknown_window) {
         tclient = new tty_client();
         tclient->options = link_options(options);
@@ -2199,27 +2259,16 @@ display_session(struct options *options, struct pty_client *pclient,
             if (url)
                 tclient->description = url;
         }
+        if (has_name) {
+            tclient->set_window_name(options->name_option);
+        } else if (pclient && ! pclient->saved_window_name.empty()) {
+            has_name = true;
+            tclient->set_window_name(pclient->saved_window_name);
+        }
         wnum = tclient->connection_number;
     }
     int r = EXIT_SUCCESS;
     if (paneOp > 0) {
-        const char *eq = strchr(browser_specifier, '=');
-        struct tty_client *wclient;
-        if (eq) {
-            char *endp;
-            long w = strtol(eq+1, &endp, 10);
-            if (w <= 0 || *endp || ! tty_clients.valid_index(w)) {
-                printf_error(options, "invalid window number in '%s' option",
-                             browser_specifier);
-                return EXIT_FAILURE;
-            }
-            wclient = tty_clients(w);
-        } else if (focused_client == NULL) {
-            printf_error(options, "no current window for '%s' option",
-                         browser_specifier);
-            return EXIT_FAILURE;
-        } else
-            wclient = focused_client;
         tclient->main_window =
             wclient->main_window || wclient->connection_number;
         json pane_options;
@@ -2232,15 +2281,21 @@ display_session(struct options *options, struct pty_client *pclient,
                 wkind == browser_window ? "browser" : "view-saved";
             pane_options["url"] = url;
         }
+        if (has_name) {
+            pane_options["windowName"] = tclient->window_name;
+            pane_options["windowNameUnique"] =
+                (bool) tclient->window_name_unique;
+        }
         char oldnum_buffer[12];
         oldnum_buffer[0] = 0;
         if (wclient->out_wsi == NULL) {
             int oldnum = wclient->connection_number;
-            if (wclient->main_window == 0 || oldnum <= 0 || oldnum > 999999)
+            if (wclient->main_window == 0 || oldnum <= 0 || oldnum > 999999
+                || (wclient = tty_clients(wclient->main_window)) == nullptr
+                || wclient->out_wsi == nullptr) {
+                printf_error(options, "No existing window %d", oldnum);
                 return EXIT_FAILURE;
-            wclient = tty_clients(wclient->main_window);
-            if (wclient == NULL || wclient->out_wsi == NULL)
-                return EXIT_FAILURE;
+            }
             sprintf(oldnum_buffer, ",%d",oldnum);
         }
         printf_to_browser(wclient, URGENT_WRAP("\033]%d;%d%s,%s\007"),
@@ -2283,6 +2338,11 @@ display_session(struct options *options, struct pty_client *pclient,
                                   || strcmp(log_to_server, "true") == 0
                                   || strcmp(log_to_server, "both") == 0)) {
                 sb.printf(";log-to-server=%s", log_to_server);
+            }
+            if (has_name) {
+                sb.printf(tclient->window_name_unique ? ";wname-unique=%s"
+                          : ";wname=%s",
+                          url_encode(tclient->window_name).c_str());
             }
             if (wkind == saved_window)
                 sb.printf(";view-saved=%s", url);
@@ -2328,10 +2388,12 @@ int new_action(int argc, arglist_t argv,
     if (r == EXIT_FAILURE) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
+#if 0
     else if (opts->session_name) {
         pclient->session_name = strdup(opts->session_name);
         opts->session_name = NULL;
     }
+#endif
     return r;
 }
 

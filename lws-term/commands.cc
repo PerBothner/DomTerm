@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <string>
+#include <set>
 
 #define DO_HTML_ACTION_IN_SERVER PASS_STDFILES_UNIX_SOCKET
 #define COMPLETE_FOR_BASH_CMD "#complete-for-bash"
@@ -16,50 +17,66 @@ struct lws;
 extern struct command commands[];
 
 bool check_window_option(const std::string& option,
-                         std::vector<int>& windows,
+                         std::set<int>& windows,
                          const char *cmd, struct options *opts)
 {
     size_t start = 0;
     size_t osize = option.size();
+    const char* sep_chars = ", \t\n\r\f\v";
     for (;;) {
-        size_t comma = option.find(',', start);
-        std::string s = option.substr(start, comma);
+        size_t sep = option.find_first_of(sep_chars, start);
+        std::string s = option.substr(start, sep);
         int w;
-        if (s == "all"|| s == "all-top") {
+        bool matched = false;
+        if (s != "") {
             for (struct tty_client *tclient  = TCLIENT_FIRST;
                  tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
-                if (tclient->main_window == 0 || s == "all") {
-                    windows.push_back(tclient->index());
+                if (tclient->window_name == s) {
+                    windows.insert(tclient->index());
+                    matched = true;
                 }
             }
-        } else {
-                if (s == "current" || s == "top" || s == "current-top") {
-                    if (focused_client == nullptr) {
-                        printf_error(opts, "domterm %s: no current window", cmd);
-                        return false;
-                    }
-                    struct tty_client *main;
-                    if (s == "current" || focused_client->main_window == 0
-                        || (main = tty_clients(focused_client->main_window)) == nullptr)
-                        w = focused_client->index();
-                    else
-                        w = main->index();
-                } else {
-                    std::size_t pos = -1;
-                    w = std::stoi(s, &pos);
-                    if (pos != s.size() || ! tty_clients.valid_index(w)) {
-                        printf_error(opts, "domterm %s: invalid window number '%s'",
-                                     cmd, s.c_str());
-                        return false;
+        }
+        if (! matched && s != "") {
+            if (s == "all" || s == "all-top" || s == "*" || s == "*^") {
+                for (struct tty_client *tclient  = TCLIENT_FIRST;
+                     tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
+                    if (tclient->main_window == 0 || s == "all" || s == "*") {
+                        windows.insert(tclient->index());
                     }
                 }
-                windows.push_back(w);
+            } else if (s == "current" || s == "top" || s == "current-top"
+                       || s == "." || s == "^" || s == ".^") {
+                if (focused_client == nullptr) {
+                    printf_error(opts, "domterm %s: no current window", cmd);
+                    return false;
+                }
+                struct tty_client *main;
+                if (s == "current" || s == "."
+                    || focused_client->main_window == 0
+                    || (main = tty_clients(focused_client->main_window)) == nullptr)
+                    w = focused_client->index();
+                else
+                    w = main->index();
+                windows.insert(w);
+            } else {
+                char *endptr;
+                const char *s_c = s.c_str();
+                long w = strtol(s_c, &endptr, 10);
+                if (endptr[0] || (int) w != w ||
+                    ! tty_clients.valid_index((int) w)) {
+                    printf_error(opts, "domterm %s: invalid window number '%s'",
+                                 cmd, s_c);
+                    return false;
+                }
+                windows.insert((int) w);
+            }
         }
-        if (comma == std::string::npos)
+        if (sep == std::string::npos)
             break;
-        start = comma + 1;
+        start = sep + 1;
     }
-    if (windows.size() == 0) {
+    if (windows.empty()) {
         printf_error(opts, "domterm %s: no window specifiers", cmd);
         return false;
     }
@@ -69,14 +86,14 @@ bool check_window_option(const std::string& option,
 int check_single_window_option(const std::string& woption,
                                const char *cmd, struct options *opts)
 {
-    std::vector<int> windows;
+    std::set<int> windows;
     if (! check_window_option(woption, windows, cmd, opts))
         return -1;
     if (windows.size() != 1 ) {
         printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
         return -1;
     }
-    return windows[0];
+    return *windows.begin();
 }
 
 int is_domterm_action(int argc, arglist_t argv, struct lws *wsi,
@@ -126,7 +143,7 @@ int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
                          const char *seq, const char *default_window)
 {
     const char *subarg = argc >= 2 ? argv[1] : NULL;
-    std::vector<int> windows;
+    std::set<int> windows;
     std::string option = opts->windows;
     if (option.empty())
         option = default_window;
@@ -571,7 +588,7 @@ int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
     const char *subarg = argc >= 2 ? argv[1] : NULL;
-    std::vector<int> windows;
+    std::set<int> windows;
     std::string option = opts->windows;
     if (option.empty())
         option = "current";
@@ -592,7 +609,7 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
                    struct options *opts)
 {
     const char *subarg = argc >= 2 ? argv[1] : NULL;
-    std::vector<int> windows;
+    std::set<int> windows;
     std::string woption = opts->windows;
     int start = 1;
     while (start < argc) {
@@ -841,22 +858,35 @@ static void status_by_connection(FILE *out, int verbosity)
                 continue;
 
             struct pty_client *pclient = sub_client->pclient;
-            if (pclient == NULL) {
-                if (sub_client->wkind == browser_window)
-                    fprintf(out, "  browse .%d %s\n", cnumber, sub_client->description.c_str());
-                else if (sub_client->wkind == saved_window)
-                   fprintf(out, "  view-saved .%d %s\n", cnumber, sub_client->description.c_str());
-                else if (verbosity > 0 || cnumber != number)
-                    fprintf(out, "  disconnected .%d\n", cnumber);
-            } else {
+            const char* indent = "  ";
+            bool has_name = ! sub_client->window_name.empty();
+            if (pclient) {
                 int snumber = pclient->session_number;
-                fprintf(out, "  session#%d", snumber);
+                fprintf(out, "%sTerminal#%d", indent, snumber);
                 if (snumber != cnumber)
-                    fprintf(out, ".%d", cnumber);
+                    fprintf(out, ":%d", cnumber);
+            } else if (sub_client->wkind == browser_window)
+                fprintf(out, "%sBrowser:%d", indent, cnumber);
+            else if (sub_client->wkind == saved_window)
+                fprintf(out, "%sSaved:%d", indent, cnumber);
+            else if (verbosity > 0 || cnumber != number || has_name)
+                fprintf(out,
+                        sub_client->wkind == main_only_window
+                        ? "%smain-only:%d"
+                        : "%sdisconnected:%d",
+                        indent, cnumber);
+            if (has_name) {
+                fprintf(out, "=\"%s\"",
+                        sub_client->window_name.c_str());
+            }
+            if (pclient) {
                 fprintf(out, ": ");
                 pclient_status_info(pclient, out);
                 fprintf(out, "\n");
-            }
+            } else if (sub_client->wkind == browser_window
+                       || sub_client->wkind == saved_window
+                       || verbosity > 0 || cnumber != number || has_name)
+                fprintf(out, ": %s\n", sub_client->description.c_str());
         }
     }
     FOREACH_PCLIENT(pclient) {
@@ -899,7 +929,12 @@ static void status_by_connection(FILE *out, int verbosity)
             if (! seen_detached)
                 fprintf(out, "Detached sessions:\n");
             seen_detached = true;
-            fprintf(out, "  session#: %d, ", pclient->session_number);
+            fprintf(out, "  Terminal#%d", pclient->session_number);
+            if (! pclient->saved_window_name.empty()) {
+                fprintf(out, "=\"%s\"",
+                        pclient->saved_window_name.c_str());
+            }
+            fprintf(out, ": ");
             pclient_status_info(pclient, out);
             fprintf(out, "\n");
         }
@@ -1187,6 +1222,30 @@ int detach_action(int argc, arglist_t argv, struct lws *wsi,
                                 "current");
 }
 
+int set_window_name_action(int argc, arglist_t argv, struct lws *wsi,
+                  struct options *opts)
+{
+    const char *cmd = argc > 0 ? argv[0] : "set-window-name";
+    if (argc != 2) {
+        printf_error(opts,
+                     argc > 2 ? "too many arguments to %s"
+                     : "too few arguments to %s",
+                     cmd);
+        return EXIT_FAILURE;
+    }
+    std::string wname = argv[1];
+    std::set<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = "current";
+    if (! check_window_option(option, windows, cmd, opts))
+        return EXIT_FAILURE;
+    for (int w : windows) {
+        tty_clients(w)->set_window_name(wname);
+    }
+    return EXIT_SUCCESS;
+}
+
 int fullscreen_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
@@ -1431,6 +1490,8 @@ struct command commands[] = {
     .action = close_action},
   { .name = "detach", .options = COMMAND_IN_EXISTING_SERVER,
     .action = detach_action},
+  { .name = "set-window-name", .options = COMMAND_IN_EXISTING_SERVER,
+    .action = set_window_name_action},
   { .name = "fullscreen", .options = COMMAND_IN_EXISTING_SERVER,
     .action = fullscreen_action},
   { .name = "hide", .options = COMMAND_IN_EXISTING_SERVER,

@@ -1195,14 +1195,25 @@ A @var{window-specifier} can be one of:
 @table @asis
 @item @code{@var{window-number}}
 The window with the specified @ref{window number,@var{window-number}}.
-
-@item @code{current}
+@item @code{@var{window-name}}
+A window-name, as specified by a @code{--name} option
+or a @code{set-window-name} command.
+The @var{window-name} is a user-friendly name associated with the window,
+and displaying in the tab-bar and title-bar.
+(If the @var{window-name} is not unique,
+it is displayed as @samp{@var{window-name}:@var{window-number}}.)
+The default @var{window-name} is @samp{DomTerm:@var{window-number}}.
+@item @code{.}
+@itemx @code{current}
 The ``current'' window, which is the one that most recently has received focus.
-@item @code{top}
+@item @code{^}
+@itemx @code{top}
 The top-level window containing the current window.
-@item @code{all}
+@item @code{*}
+@itemx @code{all}
 All windows, including sub-windows.
-@item @code{all-top}
+@item @code{*^}
+@itemx @code{all-top}
 All top-level sub-windows.
 @item @var{window-specifier}@code{,}@var{window-specifier}@var{...}
 A comma-separated list of window specifiers.
@@ -1381,7 +1392,8 @@ Toggle between normal and hidden state:
 If a window is hidden or minimized, show it.
 If visible, hide it.
 If there are no windows, create one.
-
+@item @b{@code{set-window-name}} @var{name}
+Set @var{name} as the window-name of the specified window(s).
 @item @b{@code{window}} @var{window-specifier} ... @var{subcommand} @var{options} ...
 Do the @var{subcommand} on the windows specified by the @var{window-specifier} list.
 Older (deprecated) form equivalent to:
@@ -1525,6 +1537,10 @@ a @ref{Settings,@dfn{settings option}}.
 Specify the initial @var{size} and/or @var{position}
 of a new top-level window.
 See @ref{geometry specifier}.
+
+@item @code{--name} @var{window-name}
+If this command creates a new window,
+set @var{window-name} as its name.
 
 @item @code{--version}
 Print version information and copyright, and then exit.
@@ -6200,16 +6216,11 @@ a fresh empty line added.
 @subsubsection Window operations
 
 @table @asis
-@item @code{"\e[90;" @var{op} "u"}
-Create a new sub-window (pane), based on the @var{op}.
-
-@item @code{"\e]104;" @var{op} @code{,} @var{url} "a\n"}
-Create a new sub-window (pane), based on the @var{op}.
-This displays the @var{url} webpage in an @code{<iframe>}.
-
-@item @code{"\e]105;" @var{op} @code{,} @var{saved-url} "a\n"}
-Create a new sub-window (pane), based on the @var{op}.
-This displays the @var{saved-url}, a previously saved terminal session.
+@item @code{"\e]104;" @var{op} [@code{,} @var{oldwin}] @code{,} @var{options} "a\n"}
+Create a new sub-window (pane).
+The new window is placed relative to @var{oldwin} (default: current window),
+based on the @var{op}. The @var{options} specify the kind of window
+and various options. (Internal.)
 
 @item @code{"\e[1t"}
 @emph{(Electron and Qt only.)} Un-minimize (de-iconify) current window.
@@ -6527,8 +6538,8 @@ This is used for flow-control.
 The @var{count} is the number of bytes received and processed
 by the front-end.
 
-@item @code{0xFD "SESSION-NAME " @var{session-name} "\n"}
-Set @var{session-name} (a JSON-quoted string)
+@item @code{0xFD "WINDOW-NAME " @var{window-name} "\n"}
+Set @var{window-name} (a JSON-quoted string)
 as the name for this session.
 
 @item @code{0xFD "DETACH\n"}

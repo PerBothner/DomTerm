@@ -86,19 +86,17 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
         extraConfig = {};
     config.title = "(DomTerm)"+DomTermLayout._count; // FIXME
     config.componentState = extraConfig;
-    if (paneOp == 2)
-        oldItem = oldItem.parent;
+    let addAfter = paneOp == 2 || paneOp==11 || paneOp==13;
+    let p = oldItem.parent;
     if (paneOp == 2) { // new tab
-        let newItem = oldItem.layoutManager.createContentItem(ItemConfig.resolve(config), oldItem);
-        oldItem.addChild(newItem); // FIXME index after oldItem
+        const i = DomTermLayout._indexInParent(oldItem);
+        p.addItem(ItemConfig.resolve(config), addAfter ? i+1: i);
     } else {
         let isColumn = paneOp==12||paneOp==13;
-        let addAfter = paneOp==11||paneOp==13;
         var type = isColumn ? 'column' : 'row';
-        var p = oldItem.parent;
         if (p && p.type == "stack") {
             var pp = p.parent;
-            if (pp.type != type) {
+            if (pp.type != type && paneOp != 2) {
                 const rowOrColumn = p.layoutManager.createContentItem(ResolvedItemConfig.createDefault(type), p);
                 pp.replaceChild(p, rowOrColumn);
                 rowOrColumn.addChild(p, 0, true);
@@ -186,19 +184,36 @@ DomTermLayout._numberToLayoutItem = function(wnum, item = DomTermLayout.manager.
     return null;
 }
 
-DomTermLayout.setLayoutTitle = function(item, title, wname) {
-    const r = DomTermLayout._elementToLayoutItem(item);
-    if (! r)
-        return; // ERROR?
-    r.setTitle(title);
-    r.setTitleRenderer((container, el, width, flags) => {
+DomTermLayout.setLayoutTitle = function(content, title, wname) {
+    const item = DomTermLayout._elementToLayoutItem(content);
+    if (item)
+        DomTermLayout.setContainerTitle(item, title, wname);
+}
+
+DomTermLayout.updateLayoutTitle = function(item, content) {
+    let title = content.getAttribute("window-name");
+    if (title) {
+        if (! content.windowNameUnique
+            && content.windowNumber !== undefined)
+            title += ":" + content.windowNumber;
+    } else {
+        title = "DomTerm"; // FIXME
+        if (content.windowNumber !== undefined)
+            title += ":" + content.windowNumber;
+    }
+    DomTermLayout.setContainerTitle(item, title, content.layoutWindowTitle);
+}
+
+DomTermLayout.setContainerTitle = function(item, title, wname) {
+    item.setTitle(title);
+    item.setTitleRenderer((container, el, width, flags) => {
         // Redundant if we use innerHTML/innerText:
         //while (el.lastChild) el.removeChild(el.lastChild);
         if (wname &&
             ((flags & Tab.RenderFlags.InDropdownMenu) ||
              ! (flags & Tab.RenderFlags.DropdownActive))) {
             el.innerHTML =
-                DomTerm.escapeText(title)+'<span class="domterm-windowname"> '+DomTerm.escapeText(wname)+'</span>';
+                DomTerm.escapeText(title)+' <span class="domterm-windowname">('+DomTerm.escapeText(wname)+')</span>';
         } else {
             el.innerText = title;
         }
@@ -336,6 +351,7 @@ DomTermLayout.onLayoutClosed = function(container) {
             if (dt && wnum) {
                 dt.reportEvent("CLOSE-WINDOW", wnum);
             }
+            DomTermLayout.layoutClose(container.component, container.parent, true);
             return;
         }
         DomTerm.closeSession(container.component, false, true);
@@ -363,6 +379,14 @@ DomTermLayout._initTerminal = function(config, container) {
             url += "pane-number="+paneNumber; // ?? used for?
             if (sessionNumber)
                 url += "&session-number="+sessionNumber;
+            if (cstate) {
+                if (cstate.windowNumber)
+                    url += "&window="+cstate.windowNumber;
+                if (cstate.windowName)
+                    url += (cstate.windowNameUnique ? "&wname-unique="
+                            : "&wname=")
+                        + cstate.windowName;
+            }
         }
         wrapped = DomTerm.makeIFrameWrapper(url);
     } else {
@@ -394,16 +418,14 @@ DomTermLayout.initialize = function() {
 
     DomTermLayout.manager.registerComponent( 'domterm', function( container, componentConfig ){
         var el;
-        let name, windowTitle;
+        let name;
         let wrapped;
         if (lcontent != null) {
             wrapped = lcontent;
             let e = DomTerm._oldFocusedContent;
             name = (e && (e.layoutTitle || e.getAttribute("name")))
                 || DomTerm.freshName();
-            windowTitle = e.layoutWindowTitle;
             lcontent.layoutTitle = undefined;
-            lcontent.layoutWindowTitle = undefined;
             lcontent = null;
         } else {
             var config = container._config;
@@ -416,7 +438,10 @@ DomTermLayout.initialize = function() {
         DomTermLayout.showFocusedPane(wrapped);
         wrapped.classList.add("lm_content");
         wrapped._layoutItem = container.parent;
-        DomTerm.setLayoutTitle(wrapped, name, windowTitle);
+        if (typeof componentConfig.windowNumber === "number")
+            wrapped.windowNumber = componentConfig.windowNumber;
+        DomTerm.updateContentTitle(wrapped, componentConfig);
+        DomTermLayout.updateLayoutTitle(container.parent, wrapped);
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
         if (top !== document.body) {
             (new ResizeObserver(entries => {
@@ -424,8 +449,6 @@ DomTermLayout.initialize = function() {
             ).observe(top);
         }
         wrapped.style.position = "absolute";
-        if (typeof componentConfig.windowNumber === "number")
-            wrapped.windowNumber = componentConfig.windowNumber;
         wrapped.rootHtmlElement = wrapped;
         return wrapped;
     }, true /*virtual*/);
@@ -441,9 +464,16 @@ DomTermLayout.initialize = function() {
 
     DomTermLayout.manager.registerComponent( 'browser', function( container, componentConfig ){
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
-        let el = DomTerm.makeIFrameWrapper(componentConfig.url, 'B');
-        if (typeof componentConfig.windowNumber === "number")
-            el.windowNumber = componentConfig.windowNumber;
+        const url = componentConfig.url;
+        let el = DomTerm.makeIFrameWrapper(url, 'B');
+        let title = "B";
+        const wnum = componentConfig.windowNumber;
+        if (typeof wnum === "number") {
+            el.windowNumber = wnum;
+            title = "B-" + wnum ;
+        }
+        DomTerm.updateContentTitle(el, componentConfig);
+        DomTermLayout.updateLayoutTitle(container.parent, el);
         el.rootHtmlElement = el;
         return el;
     }, true /*virtual*/);

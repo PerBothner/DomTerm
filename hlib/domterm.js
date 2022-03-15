@@ -78,15 +78,16 @@ DomTerm._oldFocusedContent = null;
 /** The <body>, or a node below the menubar if using jsMenus. */
 DomTerm.layoutTop = null; // document.body is null until loaded
 
-DomTerm.withLayout = function(callback, err = (e)=>{}) {
+DomTerm.withLayout = function(callback, err = undefined) {
+    const path = './domterm-layout.js';
     if (DomTerm._layout)
         callback(DomTerm._layout);
-    else import('./domterm-layout.js')
+    else import(path)
         .then(mod => {
             const dl = mod.DomTermLayout;
             DomTerm._layout = dl;
             callback(dl);
-        }).catch(err);
+        }, err || ((e)=>console.log(`import '${path}' failed: ${e}`)));
 };
 
 DomTerm.supportsAutoInputMode = true;
@@ -183,9 +184,43 @@ DomTerm.forEachTerminal = function(func) {
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("domterm-add-pane", paneOp, options);
-    else
-        DomTerm.withLayout((m) => m.addPane(paneOp, options));
+    else if (dt)
+        DomTerm.withLayout((m) => m.addPane(paneOp, options,
+                                            dt.topNode || DomTerm._oldFocusedContent));
     //DomTerm.newSessionPid = 0;
+}
+
+DomTerm.updateContentTitle = function(content, options) {
+    if (options.windowName !== undefined) {
+        if (options.windowName)
+            content.setAttribute("window-name", options.windowName);
+        else
+            content.removeAttribute("window-name");
+    }
+    if (options.windowNameUnique !== undefined)
+        content.windowNameUnique = options.windowNameUnique;
+}
+
+DomTerm.updateTitle = function(content, options) {
+    if (DomTerm.useIFrame && DomTerm.isInIFrame())
+        DomTerm.sendParentMessage("domterm-update-title", options);
+    else {
+        const dl = DomTerm._layout;
+        let item;
+        if (dl) {
+            if (typeof options.windowNumber == "number") {
+                item = dl._numberToLayoutItem(options.windowNumber);
+                if (item)
+                    content = item.component;
+            } else if (content) {
+                item = dl._elementToLayoutItem(content);
+            }
+        };
+        DomTerm.updateContentTitle(content, options);
+        if (dl && item) {
+            dl.updateLayoutTitle(item, content);
+        };
+    }
 }
 
 DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
@@ -324,7 +359,7 @@ DomTerm.addLocationParams = function(url) {
 
 // mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)
 DomTerm.makeIFrameWrapper = function(location, mode='T',
-                                           parent=DomTerm.layoutTop) {
+                                     parent=DomTerm.layoutTop) {
     let ifr = document.createElement("iframe");
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
@@ -341,6 +376,8 @@ DomTerm.makeIFrameWrapper = function(location, mode='T',
                 + "main-window=" + DomTerm._mainWindowNumber;
         }
     }
+    if (mode == 'B')
+        ifr.layoutWindowTitle = location;
     ifr.setAttribute("src", location);
     ifr.setAttribute("class", "domterm-wrapper");
     if (DomTerm._oldFocusedContent == null)

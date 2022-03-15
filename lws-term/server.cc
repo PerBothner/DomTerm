@@ -292,7 +292,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define DETACHED_OPTION 2004
 #define GEOMETRY_OPTION 2005
 #define QT_REMOTE_DEBUGGING_OPTION 2006
-#define SESSION_NAME_OPTION 2007
+#define NAME_OPTION 2007
 #define SETTINGS_FILE_OPTION 2008
 #define TTY_PACKET_MODE_OPTION 2009
 #define PANE_OPTIONS_START 2100
@@ -327,8 +327,7 @@ static const struct option options[] = {
         {"force",        no_argument,       NULL, FORCE_OPTION},
         {"daemonize",    no_argument,       NULL, DAEMONIZE_OPTION},
         {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
-        {"session-name", required_argument, NULL, SESSION_NAME_OPTION},
-        {"sn",           required_argument, NULL, SESSION_NAME_OPTION},
+        {"name",         required_argument, NULL, NAME_OPTION},
         {"settings",     required_argument, NULL, SETTINGS_FILE_OPTION},
         {"tty-packet-mode",optional_argument,NULL,TTY_PACKET_MODE_OPTION},
         {"detached",     no_argument,       NULL, DETACHED_OPTION},
@@ -937,7 +936,6 @@ options::options()
     fd_out = STDOUT_FILENO;
     fd_err = STDERR_FILENO;
     fd_cmd_socket = -1;
-    session_name = NULL;
     settings_file = NULL;
     shell_argv = NULL;
     env = NULL;
@@ -1092,8 +1090,8 @@ int process_options(int argc, arglist_t argv, struct options *opts)
             case DAEMONIZE_OPTION:
                 opts->do_daemonize = (c == DAEMONIZE_OPTION);
                 break;
-            case SESSION_NAME_OPTION:
-                opts->session_name = optarg;
+            case NAME_OPTION:
+                opts->name_option = optarg;
                 break;
             case TTY_PACKET_MODE_OPTION:
                 if (optarg != NULL) {
