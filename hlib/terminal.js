@@ -10408,6 +10408,8 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
             name = "domterm";
     }
     var wt = new Terminal(name, topNode, no_session);
+    if (! DomTerm.mainTerm)
+        DomTerm.mainTerm = wt;
     if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
         // Have atom-domterm's DomTermView create the WebSocket.  This avoids
         // the WebSocket being closed when the iframe is moved around.
