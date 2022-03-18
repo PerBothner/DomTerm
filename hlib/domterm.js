@@ -75,6 +75,8 @@ DomTerm._instanceCounter = 0;
 // The current domterm Terminal *or* domterm-wrapper iframe Element.
 DomTerm._oldFocusedContent = null;
 
+DomTerm.mainTerm = null;
+
 /** The <body>, or a node below the menubar if using jsMenus. */
 DomTerm.layoutTop = null; // document.body is null until loaded
 
@@ -184,9 +186,10 @@ DomTerm.forEachTerminal = function(func) {
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("domterm-add-pane", paneOp, options);
-    else if (dt)
+    else
         DomTerm.withLayout((m) => m.addPane(paneOp, options,
-                                            dt.topNode || DomTerm._oldFocusedContent));
+                                            (dt && dt.topNode)
+                                            || DomTerm._oldFocusedContent));
     //DomTerm.newSessionPid = 0;
 }
 
@@ -330,6 +333,8 @@ DomTerm.openNewWindow = function(dt, options={}) {
     } else {
         let width = options.width;
         let height = options.height;
+        if (! dt)
+            dt = DomTerm.mainTerm;
         if (dt) {
             if (! url)
                 url = "";
