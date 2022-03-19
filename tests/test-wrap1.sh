@@ -22,6 +22,5 @@ LxtbMW0bWzMxbWRvbXRlcm0bWzIybRtbMzltIC0tc29ja2V0LW5hbWU9YmluLWRlZmF1bHQgLS1z
 ZXR0aW5ncz0vaG9tZS9ib3Robgplci8uY29uZmlnLxtbMW0bWzMxbWRvbXRlcm0bWzIybRtbMzlt
 L2Jpbi1zZXR0aW5ncy5pbmkgLUJjaHJvbWUtYXBwCjMkCg==
 EOF
-${SEND_INPUT} -w 1 'exit\r'
-${TAWAIT_CLOSE}
+${SEND_INPUT} -w 1 -C 'exit\r'
 echo test-wrap1 OK
