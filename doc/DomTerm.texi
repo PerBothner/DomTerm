@@ -1426,6 +1426,12 @@ Acts like a key-press event for each character.
 If @code{-e} (``escape'') is used, @ref{string escapes} are processed;
 if @code{-l} (``literal'') is used, the @var{text} is used as-is.
 
+@item @code{-C}@var{[response]}
+Wait until connection is closed.
+Only a single window is allowed in this case.
+Similar to a separate @code{domterm await --close @var{[response]}}
+command, but avoids a race condition.
+
 @item @var{key-stroke}
 The front-end simulates the specified @var{key-stroke},
 as a key-down event.
@@ -1457,6 +1463,11 @@ A @var{send-option} can be:
 Send to the session as specified by the @ref{session-specifier,@var{session-specifier}}.
 @item @code{-w} @var{window-specifier}
 Send to the session attached to the @ref{window-specifier-option, specified window}.
+@item @code{-C}@var{[response]}
+Wait until connection is closed.
+Only a single window is allowed in this case.
+Similar to a separate @code{domterm await --close @var{[response]}}
+command, but avoids a race condition.
 @end table
 
 @item @b{@code{capture}} @var{capture-option}...
@@ -1486,6 +1497,7 @@ Include ANSI escape sequences that encode color and style in the output.
 These escapes should work on almost all modern terminals.
 DomTerm-specific ``logical'' styles (such as prompt or input areas)
 are currently ignored.
+
 @item @code{-w} @var{window-specifier}
 Same as if specified before the @code{capture} command name.
 @end table

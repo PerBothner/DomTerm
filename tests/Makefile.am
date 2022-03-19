@@ -18,7 +18,6 @@ TNEWOPTIONS =
 SEND_INPUT = $(TDOMTERM) send-input
 TSEND_INPUT = $(TDOMTERM) -w 1 send-input
 TDOKEYS = $(TDOMTERM) -w 1 do-keys
-TAWAIT_CLOSE = $(TDOMTERM) -w 1 await --close
 TCAPTURE = $(TDOMTERM) -w 1 capture
 TEST_SHELL = /bin/bash --noprofile --rcfile ./test-bash-rc.sh
 VTTEST = vttest
@@ -33,8 +32,7 @@ test-24-bit-color:
 	$(TDOMTERM) -w 1 await --match-output '2[$$]' ''
 	$(TCAPTURE) -e >t24.out
 	cmp t24.exp t24.out
-	$(SEND_INPUT) -w 1 'exit\r'
-	$(TAWAIT_CLOSE)
+	$(SEND_INPUT) -w 1 -C 'exit\r'
 	@echo test-24-bit-color OK
 
 test-UTF-8-width:
@@ -46,8 +44,7 @@ test-UTF-8-width:
 	$(TDOMTERM) -w 1 await --match-output '3[$$]' ''
 	$(TCAPTURE) -l >UTF-8-width.out
 	cmp UTF-8-width.exp UTF-8-width.out
-	$(SEND_INPUT) -w 1 'exit\r'
-	$(TAWAIT_CLOSE)
+	$(SEND_INPUT) -w 1 -C 'exit\r'
 	@echo test-UTF-8-width OK
 
 test-grapheme-widths:
@@ -57,8 +54,7 @@ test-grapheme-widths:
 	$(TDOMTERM) -w 1 await --match-output '2[$$]' ''
 	$(TCAPTURE) >grapheme-widths.out
 	cmp grapheme-widths.exp grapheme-widths.out
-	$(SEND_INPUT) -w 1 'exit\r'
-	$(TAWAIT_CLOSE)
+	$(SEND_INPUT) -w 1 -C 'exit\r'
 	@echo test-grapheme-widths OK
 
 test-grapheme-widths-byte-by-byte:
@@ -98,8 +94,7 @@ test-vttest-1:
 	cmp vtest-1-f.exp vtest-1-f.out
 	$(TDOKEYS) Enter
 	$(TDOMTERM) -w 1 await --match-output 'Enter choice number' ''
-	$(TDOKEYS) 0 Enter
-	$(TAWAIT_CLOSE)
+	$(TDOKEYS) -C 0 Enter
 	@echo vttest "[1: Test of cursor movements]" OK
 
 test-vttest-11-6-6-3:
@@ -187,8 +182,7 @@ test-vttest-11-6-6-3:
 	$(TDOMTERM) -w 1 await --match-output 'Enter choice number' ''
 	$(TDOKEYS) 0 Enter
 	$(TDOMTERM) -w 1 await --match-output 'Enter choice number' ''
-	$(TDOKEYS) 0 Enter
-	$(TAWAIT_CLOSE)
+	$(TDOKEYS) -C 0 Enter
 	@echo vttest "[11.6.6.3: Insert/Delete Char/Line with BCE]" OK
 
 clean:

@@ -381,6 +381,15 @@ int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
+static void
+await_close(const char *close_response, struct tty_client *tclient,
+            struct options *opts)
+{
+    request_enter(opts, tclient);
+    free(opts->close_response); // should never be non-null
+    opts->close_response = strdup(close_response);
+}
+
 int await_action(int argc, arglist_t argv, struct lws *wsi,
                  struct options *opts)
 {
@@ -455,9 +464,7 @@ int await_action(int argc, arglist_t argv, struct lws *wsi,
         request["rules"] = matches;
     tty_client* tclient = tty_clients(window);
     if (close_response) {
-        request_enter(opts, tclient);
-        free(opts->close_response); // should never be non-null
-        opts->close_response = strdup(close_response);
+        await_close(close_response, tclient, opts);
     } else if (actions == 0) {
         printf_error(opts, "no await actions");
         return EXIT_BAD_CMDARG;
@@ -635,10 +642,11 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
     long repeat_count = 1;
     for (int w : windows) {
         tty_client *tclient = tty_clients(w);
+        const char *close_response = nullptr;
         optind = start;
         for (;;) {
             json request;
-            int c = getopt(argc, (char *const*) argv, "+:N:e:l:");
+            int c = getopt(argc, (char *const*) argv, "+:N:e:l:C::");
             if (c < 0) {
                 if (optind < argc) {
                     request["cmd"] = "do-key";
@@ -672,6 +680,13 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
                     free(str);
                 break;
             }
+            case 'C':
+                close_response = optarg == NULL ? "" : optarg;
+                if (windows.size() != 1) {
+                    printf_error(opts, "domterm do-key: multiple windows not allowed with -C option");
+                    return EXIT_BAD_CMDARG;
+                }
+                break;
             case 'N':
                 char * endptr;
                 repeat_count = strtol(optarg, &endptr, 10);
@@ -683,6 +698,10 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
             }
         }
         lws_callback_on_writable(tclient->wsi);
+        if (close_response) {
+            await_close(close_response, tclient, opts);
+            return EXIT_WAIT;
+        }
     }
     return EXIT_SUCCESS;
 }
@@ -1290,10 +1309,11 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
 {
     const char *session_specifier = nullptr;
     const char *window_specifier = nullptr;
+    const char *close_response = nullptr;
     optind = 1;
     opterr = 0;
     for (;;) {
-        int c = getopt(argc, (char *const*) argv, "+:w:s:");
+        int c = getopt(argc, (char *const*) argv, "+:w:s:C::");
         if (c == -1)
             break;
         switch (c) {
@@ -1306,12 +1326,16 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
         case 'w':
             opts->windows = optarg;
             break;
+        case 'C':
+            close_response = optarg == NULL ? "" : optarg;
+            break;
         case 's':
             session_specifier = optarg;
             break;
         }
     }
     struct pty_client *pclient = nullptr;
+    struct tty_client *tclient = nullptr;
     if (session_specifier) {
         if (! opts->windows.empty()) {
             printf_error(opts, "domterm send-input: both -w (window) and -s (session) options");
@@ -1322,6 +1346,13 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
             printf_error(opts, "domterm send-input: no session '%s' found", session_specifier);
             return EXIT_FAILURE;
         }
+        if (close_response) {
+            tclient = pclient->first_tclient;
+            if (tclient == nullptr || tclient->next_tclient != nullptr) {
+                printf_error(opts, "domterm send-input: -C option requires session with a single window");
+                return EXIT_FAILURE;
+            }
+        }
     } else {
         std::string woption = opts->windows;
         if (woption.empty())
@@ -1329,7 +1360,8 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
         int window = check_single_window_option(woption, "send-input", opts);
         if (window < 0)
             return EXIT_FAILURE;
-        pclient = tty_clients(window)->pclient;
+        tclient = tty_clients(window);
+        pclient = tclient->pclient;
         if (pclient == NULL) {
             printf_error(opts, "domterm send-input: no session for window '%s'",
                          woption.c_str());
@@ -1354,6 +1386,10 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
     if (write_error) {
         printf_error(opts, "domterm send-input: error while writing");
         return EXIT_FAILURE;
+    }
+    if (close_response) {
+        await_close(close_response, tclient, opts);
+        return EXIT_WAIT;
     }
     return EXIT_SUCCESS;
 }
