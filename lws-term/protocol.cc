@@ -1412,7 +1412,8 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
         const char* url = !data[0] || (data[0] == '#' && g0 == data + 1) ? NULL
             : data;
-        display_session(options, NULL, url, unknown_window);
+        display_session(options, NULL, url,
+                        url ? unknown_window : dterminal_window);
         if (geom != NULL)
             free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
