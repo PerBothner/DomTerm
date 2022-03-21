@@ -343,7 +343,7 @@ function loadHandler(event) {
     if (m)
         DomTerm.logToServer = m;
     m = params.get('titlebar');
-    if (m) {
+    if (m !== "system" && (m || DomTerm.versions.wry)) {
         DomTerm.addTitlebar = true;
     }
     DomTerm.layoutTop = document.body;

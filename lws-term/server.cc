@@ -640,7 +640,8 @@ wry_command(struct options *options)
     if (geometry) {
         sb.printf(" --geometry %s", geometry);
     }
-    if (get_setting_s(options->settings, "titlebar", "system") != "system")
+    std::string titlebar = get_setting_s(options->settings, "titlebar");
+    if (titlebar.empty() || titlebar != "system")
         sb.append(" --no-titlebar");
     sb.append(" '%U'");
     return sb.strdup();

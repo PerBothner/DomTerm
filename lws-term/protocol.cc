@@ -2360,7 +2360,7 @@ display_session(struct options *options, struct pty_client *pclient,
             if (options->headless)
                 sb.printf(";headless=true");
             std::string titlebar = get_setting_s(options->settings, "titlebar");
-            if (! titlebar.empty() && titlebar != "system")
+            if (! titlebar.empty())
                 sb.printf(";titlebar=%s", url_encode(titlebar).c_str());
             std::string verbosity = get_setting_s(options->settings, "log.js-verbosity");
             if (! verbosity.empty()) // as OPTION_NUMBER_TYPE does not need encoding

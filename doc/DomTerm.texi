@@ -2233,8 +2233,9 @@ Experimental option to use a custom titlebar for main (top-level) windows.
 Only the Electron, Wry, and Qt front-ends support disabling the system
 titlebar (on other platforms the custom titlebar is additional);
 only Electron and Wry support window move and resize.
-The @var{mode} can be @code{system} (the default) to use the system
+The @var{mode} can be @code{system} to use the system
 titlebar, or @code{domterm} to use a custom titlebar (in HTML).
+The default is @code{system}, except on Wry where it is @code{domterm}.
 Further options and customization is planned for later.
 @end table
 
