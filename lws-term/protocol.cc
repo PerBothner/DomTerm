@@ -31,6 +31,8 @@ static char end_replay_mode[] = "\033[98u";
 
 id_table<pty_client> pty_clients;
 id_table<tty_client> tty_clients;
+int current_dragover_window = -1;
+int drag_start_window = -1;
 
 static struct pty_client *
 handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client *tclient);
@@ -1516,10 +1518,16 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
     } else if (strcmp(name, "DRAG") == 0) {
         bool dstart = false, dend = false;
+        int enter_or_leave = -1;
+        int wnum = client->connection_number;
         if (strcmp(data, "start") == 0)
             dstart = true;
         else if (strcmp(data, "end") == 0)
             dend = true;
+        else if (strcmp(data, "enter-window") == 0)
+            enter_or_leave = 0;
+        else if (strcmp(data, "leave-window") == 0)
+            enter_or_leave = 1;
         if (dstart || dend) {
             struct tty_client *tother;
             FORALL_WSCLIENT(tother) {
@@ -1528,6 +1536,18 @@ reportEvent(const char *name, char *data, size_t dlen,
                                       dstart ? 1 : 2);
                     lws_callback_on_writable(tother->out_wsi);
                 }
+            }
+            drag_start_window = dstart ? wnum : -1;
+        }
+        if (enter_or_leave >= 0) {
+            current_dragover_window =
+                enter_or_leave == 0 ? client->connection_number : -1;
+            struct tty_client *dclient = tty_clients(drag_start_window);
+            if (dclient && dclient->out_wsi) {
+                 printf_to_browser(dclient, URGENT_WRAP("\033[106;%dt"),
+                                   // enter: 4; leave: 5
+                                   4 + enter_or_leave);
+                lws_callback_on_writable(dclient->out_wsi);
             }
         }
     } else if (strcmp(name, "RECONNECT") == 0) {

@@ -1269,8 +1269,14 @@ class DTParser {
                     break;
                 case 106: {
                     const op = this.getParameter(1, 0);
-                    DomTerm.withLayout((m) =>
-                        m.manager.draggingInOtherWindow(op==2));
+                    DomTerm.withLayout((m) => {
+                        console.log("DRAG-NOTIFICATION/106 "+op);
+                        if (op == 1 || op == 2)
+                            m.manager.draggingInOtherWindow(op==2);
+                        else if (op == 4 /*enter*/ || op == 5 /*leave*/)
+                            m.dragNotificationFromServer(op==4);
+                        console.log(" - inSomeWindow:"+m.inSomeWindow);
+                    });
                     break;
                     }
                 }

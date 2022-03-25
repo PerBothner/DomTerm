@@ -48,6 +48,14 @@
   -webkit-user-select: none;
           user-select: none;
 }
+.lm_headers {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+.lm_component {
+  position: absolute;
+}
 .lm_header {
   overflow: visible;
   position: relative;
@@ -70,16 +78,6 @@
   width: 18px;
   height: 18px;
   text-align: center;
-}
-.lm_header .lm_tabs {
-  display: flex;
-  overflow: hidden;
-}
-.lm_header .lm_title {
-  display: inline-block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: pre;
 }
 .lm_header .lm_tab {
   cursor: pointer;
@@ -111,6 +109,16 @@
   top: 0;
   right: 0;
   text-align: center;
+}
+.lm_tabs {
+  display: flex;
+  overflow: hidden;
+}
+.lm_tab .lm_title {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
 }
 .lm_header.lm_tight_mode .lm_tabs .lm_tab {
   padding-left: 2px;

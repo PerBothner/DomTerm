@@ -233,13 +233,13 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
     DomTermLayout.manager.focusComponent(component);
 }
 
-DomTermLayout.popoutWindow = function(item, dt = null) {
+DomTermLayout.popoutWindow = function(item, dt = null, fromLayoutEvent = false) {
     var wholeStack = item.type == 'stack';
     var sizeElement = item.element;
     var w = sizeElement.offsetWidth;
     var h = sizeElement.offsetHeight;
     if (! wholeStack) {
-        DomTerm.closeSession(item.component, true, false);
+        DomTerm.closeSession(item.component, true, fromLayoutEvent);
     }
     // FIXME adjust for menu bar height
     function encode(item) {
@@ -247,10 +247,11 @@ DomTermLayout.popoutWindow = function(item, dt = null) {
             const node = item.component;
             return '{"sessionNumber":'+node.getAttribute("session-number")+'}';
         } else if (item.componentType == "browser")
-            return '{"url":'+JSON.stringify(item.config.url)+'}';
+            return '{"url":'+JSON.stringify(item.toConfig().componentState.url)+'}';
         else
             return "{}";
     }
+    /*
     function remove(item) {
         if (item.componentType !== "domterm") {
             let lcontent = item.container.element;
@@ -259,18 +260,19 @@ DomTermLayout.popoutWindow = function(item, dt = null) {
             item.remove(item);
         }
     }
+    */
     var e;
-    var toRemove = new Array();
+    //var toRemove = new Array();
     if (wholeStack) {
         e = "[";
         var items = item.contentItems;
         for (var i = 0; i < items.length; i++) {
             e = e + (i > 0 ? "," : "") + encode(items[i]);
-            toRemove[i] = items[i];
+            //toRemove[i] = items[i];
         }
         e = e + ']';
     } else {
-        toRemove[0] = item;
+        //toRemove[0] = item;
         e = encode(item);
     }
 
@@ -326,7 +328,7 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
         if (p && p.type == 'stack'
             && p.contentItems.length == 1
             && p.parent.type == 'ground'
-            && p.parent.contentItems.length == 1) {
+            && p.parent.contentItems.length <= 1) {
             DomTerm.windowClose();
         } else if (! from_handler) {
             DomTermLayout.selectNextPane(true, lcontent);
@@ -353,6 +355,10 @@ DomTermLayout.onLayoutClosed = function(container) {
         DomTerm.closeSession(container.component, false, true);
     };
 }
+DomTermLayout.inSomeWindow = false;
+DomTermLayout.dragNotificationFromServer = function(entering) {
+    DomTermLayout.inSomeWindow = entering;
+};
 
 DomTerm._lastPaneNumber = 0;
 
@@ -469,7 +475,11 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
         };
 
         container.on("dragExported", (component) => {
-            DomTerm.closeSession(component.component, true, true);
+            if (DomTermLayout.inSomeWindow) {
+                DomTerm.closeSession(component.component, true, true);
+            } else {
+                DomTermLayout.popoutWindow(component, null, true);
+            }
         });
 
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
@@ -494,7 +504,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     DomTermLayout.manager.registerComponent( 'browser', function( container, componentConfig ){
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
         const url = componentConfig.url;
-        let el = DomTerm.makeIFrameWrapper(url, 'B');
+        let el = DomTerm.makeIFrameWrapper(url, 'B', container.element);
         let title = "B";
         const wnum = componentConfig.windowNumber;
         if (typeof wnum === "number") {
@@ -505,7 +515,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
         DomTermLayout.updateLayoutTitle(container.parent, el);
         el.rootHtmlElement = el;
         return el;
-    }, true /* virtual*/);
+    }, false /* not virtual*/);
 
     function checkClick(event) {
         for (var t = event.target; t instanceof Element; t = t.parentNode) {
@@ -524,16 +534,30 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                              activeContentItemHandler);
 
     DomTermLayout.manager.on('dragstart',
-                             (e) => {
-                                 const dt = DomTerm.focusedTerm;
+                             (e, item) => {
+                                 const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
                                  if (dt)
                                      dt.reportEvent("DRAG", "start");
                              });
     DomTermLayout.manager.on('dragend',
                              (e) => {
-                                 const dt = DomTerm.focusedTerm;
+                                 const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
                                  if (dt)
                                      dt.reportEvent("DRAG", "end");
+                             });
+
+    DomTermLayout.manager.on('drag-enter-window',
+                             (e) => {
+                                 const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
+                                 if (dt)
+                                     dt.reportEvent("DRAG", "enter-window");
+                             });
+
+    DomTermLayout.manager.on('drag-leave-window',
+                             (e) => {
+                                 const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
+                                 if (dt)
+                                     dt.reportEvent("DRAG", "leave-window");
                              });
 
     let root = DomTermLayout.manager.container;
