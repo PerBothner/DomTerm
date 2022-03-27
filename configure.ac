@@ -113,10 +113,10 @@ AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
 case "${with_wry}" in
-  "yes" | "") WRY_DEPENDENCY='"0.13.3"' ;;
+  "yes" | "") WRY_DEPENDENCY=' version = "0.13.3"' ;;
   "no") WRY_DEPENDENCY='' ;;
-  "{"*) WRY_DEPENDENCY="${with_wry}" ;;
-  *) WRY_DEPENDENCY="{ path = \"${with_wry}\" }" ;;
+  "/"* | [.]*) WRY_DEPENDENCY=" path = \"${with_wry}\"" ;;
+  *) WRY_DEPENDENCY="${with_wry}" ;;
 esac
 AM_CONDITIONAL(WITH_WRY, test -n "$WRY_DEPENDENCY")
 AC_SUBST(WRY_DEPENDENCY)
