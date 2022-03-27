@@ -117,7 +117,15 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
 #endif
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
-    setupMenu();
+    bool useQtMenu = (
+#if defined(Q_OS_OSX)
+        true
+#else
+        processOptions->titlebar
+#endif
+        );
+    if (useQtMenu)
+        setupMenu();
     m_webView->newPage(url);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     auto dockw = m_webView->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));

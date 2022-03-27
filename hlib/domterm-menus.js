@@ -1,9 +1,11 @@
 DomTerm.createMenus = function(options) {
     let platform;
-    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom())
-        platform = "electron";
-    else if (! DomTerm.isAtom() && ! DomTerm.usingQtWebEngine)
+    if (DomTerm.isAtom())
+        return;
+    else if (DomTerm.usingJsMenus())
         platform = "generic";
+    else if (DomTerm.isElectron())
+        platform = "electron";
     else
         return;
     let menuItem = DomTerm.makeMenuItem;

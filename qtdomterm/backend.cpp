@@ -34,6 +34,7 @@
 #include <QTimer>
 #include <QFileDialog>
 #include <QMimeData>
+#include <QWindow>
 #include <QtGui/QClipboard>
 
 #include "backend.h"
@@ -306,6 +307,11 @@ void Backend::log(const QString& message)
         fprintf(stderr, "log called %s\n", message.toUtf8().constData());
         fflush(stderr);
     }
+}
+
+void Backend::startSystemMove()
+{
+    webView()->mainWindow()->windowHandle()->startSystemMove();
 }
 
 void Backend::addDomtermVersion(const QString &info)

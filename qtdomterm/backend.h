@@ -68,6 +68,7 @@ public slots:
     void inputModeChanged(int mode);
     void autoPagerChanged(bool mode);
     void log(const QString& message);
+    void startSystemMove();
 
     void close();
 

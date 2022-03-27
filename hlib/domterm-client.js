@@ -8,8 +8,8 @@ DomTerm.usingJsMenus = function() {
     // It might make sense to use jsMenus even for Electron.
     // One reason is support multi-key keybindings
     return ! DomTerm.simpleLayout && typeof MenuItem !== "undefined"
-        && ! (DomTerm.isElectron() && ! DomTerm.addTitlebar)
-        && ! DomTerm.usingQtWebEngine;
+        && (! (DomTerm.isElectron() || DomTerm.usingQtWebEngine)
+            || (DomTerm.addTitlebar && ! DomTerm.isMac));
 }
 
 // Non-zero if we should create each domterm terminal in a separate <iframe>.
@@ -128,9 +128,14 @@ function connectAjax(name, prefix="", topNode=null)
 
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
-    DomTerm.showContextMenu = function(options) {
-        backend.showContextMenu(options.contextType);
-        return false;
+    if (! DomTerm.usingJsMenus()) {
+        DomTerm.showContextMenu = function(options) {
+            backend.showContextMenu(options.contextType);
+            return false;
+        }
+    }
+    DomTerm.startSystemMove = function() {
+        backend.startSystemMove();
     }
 
     DomTerm.doCopy = function(asHTML=false) {
@@ -199,8 +204,10 @@ function setupQWebChannel(channel) {
     DomTerm.saveFile = function(data) { backend.saveFile(data); }
     DomTerm.windowClose = function() { backend.windowOp('close'); }
     DomTerm.windowOp = function(opname) { backend.windowOp(opname); }
-    DomTerm.setTitle = function(title) {
-        backend.setWindowTitle(title == null ? "" : title); };
+    if (! DomTerm.addTitlebar) {
+        DomTerm.setTitle = function(title) {
+            backend.setWindowTitle(title == null ? "" : title); };
+    }
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
     DomTerm.openNewWindow = function(dt, options={}) {
         let opts = DomTerm._extractGeometryOptions(options);
@@ -292,11 +299,24 @@ function createTitlebar(titlebarNode) {
     titlebarNode.appendChild(titleNode);
     titleNode.innerText = "DomTerm window";
     DomTerm.setTitle = (title) => { titleNode.innerText = title; };
-    if (DomTerm.versions.wry) {
+    function dragWindowTarget(target) {
+        for (let p = target; p instanceof Element; p = p.parentNode) {
+            const cl = p.classList;
+            if (cl.contains("dt-titlebar")) return true;
+            if (cl.contains("menubar")) return false;
+            if (cl.contains("dt-titlebar-button")) return false;
+        }
+        return false;
+    }
+    if (DomTerm.versions.wry || DomTerm.usingQtWebEngine) {
         function drag (e) {
-            if (e.target.matches('.dt-titlebar-buttons *'))
+            if (! dragWindowTarget(e.target))
                 return;
-            ipc.postMessage('drag_window');
+            if (DomTerm.versions.wry)
+                ipc.postMessage('drag_window');
+            if (DomTerm.startSystemMove) {
+                DomTerm.startSystemMove();
+            }
         };
         titlebarNode.addEventListener('mousedown', drag);
         titlebarNode.addEventListener('touchstart', drag);
