@@ -314,6 +314,20 @@ void Backend::startSystemMove()
     webView()->mainWindow()->windowHandle()->startSystemMove();
 }
 
+void Backend::startSystemResize(const QString &edges)
+{
+    Qt::Edges e;
+    if (edges.contains('s'))
+        e |= Qt::BottomEdge;
+    if (edges.contains('n'))
+        e |= Qt::TopEdge;
+    if (edges.contains('w'))
+        e |= Qt::LeftEdge;
+    if (edges.contains('e'))
+        e |= Qt::RightEdge;
+    webView()->mainWindow()->windowHandle()->startSystemResize(e);
+}
+
 void Backend::addDomtermVersion(const QString &info)
 {
     if (_domtermVersion.isEmpty())

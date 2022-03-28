@@ -2231,8 +2231,7 @@ If the available width is less, use this width for line-wrapping etc.
 @item @code{@b{titlebar} =} @var{mode}
 Experimental option to use a custom titlebar for main (top-level) windows.
 Only the Electron, Wry, and Qt front-ends support disabling the system
-titlebar (on other platforms the custom titlebar is additional);
-only Electron and Wry support window move and resize.
+titlebar (on other platforms the custom titlebar is additional).
 The @var{mode} can be @code{system} to use the system
 titlebar, or @code{domterm} to use a custom titlebar (in HTML).
 The default is @code{system}, except on Wry where it is @code{domterm}.
@@ -5220,14 +5219,6 @@ Window resize:
 Set @code{rebreakNeeded} on all lines.
 On all likes that might becomes visible,
 if @code{measureNeeded} call unbreakLines, then breakLine1 (to measure).
-
-@subsubheading custom heading / titlebar
-
-Custom window decoration (including possible ``hamburger menu'')
-could reduce some wasted vertical space.
-Consider how it works with panes and tabbars.
-Here is @uref{https://www.qt.io/blog/custom-window-decorations,how it can be done with Qt}.
-For Gtk one can use Gtk.HeaderBar.
 
 @subheading Terminal emulator functionality
 
