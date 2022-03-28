@@ -137,6 +137,9 @@ function setupQWebChannel(channel) {
     DomTerm.startSystemMove = function() {
         backend.startSystemMove();
     }
+    DomTerm.startSystemResize = function(edges) {
+        backend.startSystemResize(edges);
+    }
 
     DomTerm.doCopy = function(asHTML=false) {
         if (DomTerm.dispatchTerminalMessage("request-selection", asHTML))
@@ -320,6 +323,30 @@ function createTitlebar(titlebarNode) {
         };
         titlebarNode.addEventListener('mousedown', drag);
         titlebarNode.addEventListener('touchstart', drag);
+    }
+    if (DomTerm.usingQtWebEngine) {
+        const resizeAreas = document.createElement('div');
+        resizeAreas.classList.add("dt-resize-areas");
+        function resizeHandler(ev) {
+            const edges = ev.target.getAttribute("edges");
+            DomTerm.startSystemResize(edges);
+        }
+        function subarea(edges) {
+            const resizeArea = document.createElement('div');
+            resizeArea.classList.add("dt-resize-area");
+            resizeArea.setAttribute("edges", edges);
+            document.body.appendChild(resizeAreas);
+            resizeAreas.appendChild(resizeArea);
+            resizeArea.addEventListener('mousedown', resizeHandler);
+        }
+        subarea("n");
+        subarea("s");
+        subarea("e");
+        subarea("w");
+        subarea("s w");
+        subarea("s e");
+        subarea("n w");
+        subarea("n e");
     }
     titlebarNode.insertAdjacentHTML('beforeend',
                                     '<span class="dt-titlebar-buttons">'

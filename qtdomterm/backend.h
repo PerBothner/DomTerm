@@ -69,6 +69,7 @@ public slots:
     void autoPagerChanged(bool mode);
     void log(const QString& message);
     void startSystemMove();
+    void startSystemResize(const QString& edges);
 
     void close();
 

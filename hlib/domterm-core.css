@@ -123,10 +123,52 @@ div.show-connection-failure {
 div.show-connection-failure div.domterm-pre { white-space: pre-wrap }
 
 div.dt-titlebar {
-    -webkit-app-region: drag; background-color: #dcdcdc; padding-left: 2px;
+    -webkit-app-region: drag; background-color: #dcdcdc;
+    padding-left: 2px; padding-top: 2px;
     display: flex; flex-direction: row; justify-content: space-between;
     -webkit-user-select: none; user-select: none; cursor: default; }
 div.dt-titlebar img { height: 1rem; position: relative; top: 0.2rem; }
 .dt-titlebar .menubar { display: inline }
 .dt-titlebar-button { -webkit-app-region: no-drag; padding: 0px 3px }
 .dt-titlebar .menubar { -webkit-app-region: no-drag; }
+
+/* dt-resize-areas/dt-resize-areas are currently only used for Qt with custom titlebar. */
+div.dt-resize-areas {
+    z-index: 10;
+    --resize-width: 5px;
+}
+div.dt-resize-area {
+    position: absolute;
+}
+div.dt-resize-area[edges="n"], div.dt-resize-area[edges="s"] {
+    left: var(--resize-width);
+    right: var(--resize-width);
+    cursor: ns-resize;
+}
+div.dt-resize-area[edges="e"], div.dt-resize-area[edges="w"] {
+    top: var(--resize-width);
+    bottom: var(--resize-width);
+    cursor: ew-resize;
+}
+div.dt-resize-area[edges~="n"] {
+    height: var(--resize-width);
+    top: 0px;
+}
+div.dt-resize-area[edges~="s"] {
+    height: var(--resize-width);
+    bottom: 0px;
+}
+div.dt-resize-area[edges~="e"] {
+    width: var(--resize-width);
+    right: 0px;
+}
+div.dt-resize-area[edges~="w"] {
+    width: var(--resize-width);
+    left: 0px;
+}
+div.dt-resize-area[edges="n e"], div.dt-resize-area[edges="s w"] {
+    cursor: nesw-resize;
+}
+div.dt-resize-area[edges="n w"], div.dt-resize-area[edges="s e"] {
+    cursor: nwse-resize;
+}
