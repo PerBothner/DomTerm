@@ -23,6 +23,7 @@ fn main() -> wry::Result<()> {
 
     enum UserEvents {
         CloseWindow(WindowId),
+        Devtools(WindowId, String),
         NewWindow(serde_json::Map<String, Value>),
     }
 
@@ -75,6 +76,7 @@ fn main() -> wry::Result<()> {
   (function () {{
 {}{}    window.wry_version = "{}";
     window.openNewWindow = (options)=>{{ipc.postMessage("new-window ", JSON.stringify(options));}}
+    window._dt_toggleDeveloperTools = () => {{ipc.postMessage("devtools toggle");}};
     window.closeMainWindow = ()=>{{window.close();}};
 }})();
   "#,
@@ -110,6 +112,9 @@ fn main() -> wry::Result<()> {
                         let _ = proxy.send_event(UserEvents::NewWindow(options));
                     } // else handle error FIXME
                 }
+                if cmd == "devtools" {
+                    let _ = proxy.send_event(UserEvents::Devtools(window.id(), data.to_string()));
+                }
             }
 
             if req == "minimize" {
@@ -138,9 +143,13 @@ fn main() -> wry::Result<()> {
             .with_url(&url)
             .unwrap()
             .with_initialization_script(&script)
-            .with_ipc_handler(handler)
+            .with_ipc_handler(handler);
+        #[cfg(debug_assertions)]
+        let webview = webview.with_devtools(true);
+        let webview = webview
             .build()
             .unwrap();
+
         (window_id, webview)
     }
 
@@ -186,6 +195,16 @@ fn main() -> wry::Result<()> {
                 webviews.remove(&id);
                 if webviews.is_empty() {
                     *control_flow = ControlFlow::Exit
+                }
+            }
+            Event::UserEvent(UserEvents::Devtools(id, _op)) => {
+                #[cfg(debug_assertions)] {
+                    let webview = &webviews[&id];
+                    if webview.is_devtools_open() {
+                        webview.close_devtools();
+                    } else {
+                        webview.open_devtools();
+                    }
                 }
             }
             _ => (),
