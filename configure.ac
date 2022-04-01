@@ -113,7 +113,7 @@ AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
 case "${with_wry}" in
-  "yes" | "") WRY_DEPENDENCY=' version = "0.13.3"' ;;
+  "yes" | "") WRY_DEPENDENCY=' version = "0.14.0"' ;;
   "no") WRY_DEPENDENCY='' ;;
   "/"* | [.]*) WRY_DEPENDENCY=" path = \"${with_wry}\"" ;;
   *) WRY_DEPENDENCY="${with_wry}" ;;
