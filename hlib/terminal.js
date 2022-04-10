@@ -1303,7 +1303,7 @@ DomTerm.showFocusedTerm = function(term) {
     let m = DomTerm._layout;
     if (m) {
         let item = term ? m.domTermToLayoutItem(term) : null;
-        m.showFocusedPane(term ? term.topNode : null);
+        DomTerm.showFocusedPane(term ? term.topNode : null);
         m.manager.focusComponent(item);
     }
 }

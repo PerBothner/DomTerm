@@ -111,41 +111,6 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
     }
 };
 
-DomTermLayout.showFocusedPane = function(lcontent) {
-    //if (DomTerm.handlingJsMenu())
-    //    return;
-    if (DomTerm._oldFocusedContent != lcontent) {
-        if (DomTerm._oldFocusedContent != null)
-            DomTerm._oldFocusedContent.classList.remove("domterm-active");
-        if (lcontent != null)
-            lcontent.classList.add("domterm-active");
-
-        DomTerm._oldFocusedContent = lcontent;
-    }
-};
-DomTermLayout._focusChild = function(iframe, originMode) {
-    let oldContent = DomTerm._oldFocusedContent;
-    if (iframe !== oldContent || originMode=="C") {
-        if (oldContent != null) {
-            let terminal = oldContent.terminal;
-            if (oldContent.tagName == "IFRAME") {
-                if (oldContent.contentWindow)
-                    DomTerm.sendChildMessage(oldContent, "set-focused", 0);
-            } else if (terminal) {
-                if (terminal.topNode)
-                    terminal.setFocused(0);
-            }
-        }
-        if (originMode != "F") {
-            let terminal = iframe.terminal;
-            if (iframe.tagName == "IFRAME")
-                DomTerm.sendChildMessage(iframe, "set-focused", 2);
-            else if (terminal)
-                terminal.setFocused(2);
-        }
-    }
-}
-
 DomTermLayout.domTermToLayoutItem = function(dt) { // FIXME
     //if (! DomTermLayout.manager)
     //    return null;
@@ -185,7 +150,8 @@ DomTermLayout._numberToLayoutItem = function(wnum, item = DomTermLayout.manager.
 }
 
 DomTermLayout.setLayoutTitle = function(content, title, wname) {
-    const item = DomTermLayout._elementToLayoutItem(content);
+    const item = DomTermLayout.manager
+          && DomTermLayout._elementToLayoutItem(content);
     if (item)
         DomTermLayout.setContainerTitle(item, title, wname);
 }
@@ -409,8 +375,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     function activeContentItemHandler(item) {
         //if (item.componentName == "browser")
         //    DomTerm.setTitle(item.config.url);
-        DomTermLayout._focusChild(item.container.element, "A");
-        DomTermLayout.showFocusedPane(item.container.element);
+        DomTerm.focusChild(item.container.element, "A");
     }
 
     let top = DomTerm.layoutTop || document.body;
@@ -458,7 +423,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                 DTerminal.connectHttp(wrapped, wrapped.query);
             }
         }
-        DomTermLayout.showFocusedPane(wrapped);
+        DomTerm.showFocusedPane(wrapped);
         wrapped.classList.add("lm_content");
         wrapped._layoutItem = container.parent;
         if (typeof componentConfig.windowNumber === "number")
@@ -564,8 +529,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     DomTermLayout.manager.on('focus',
                              (e) => {
                                  let dt = e.target.component;
-                                 DomTermLayout._focusChild(dt, 'X')
-                                 DomTermLayout.showFocusedPane(dt); // ??
+                                 DomTerm.focusChild(dt, 'X')
                              });
 }
 
