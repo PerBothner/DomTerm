@@ -362,6 +362,42 @@ DomTerm.addLocationParams = function(url) {
     return url;
 }
 
+DomTerm.showFocusedPane = function(lcontent) {
+    //if (DomTerm.handlingJsMenu())
+    //    return;
+    if (DomTerm._oldFocusedContent != lcontent) {
+        if (DomTerm._oldFocusedContent != null)
+            DomTerm._oldFocusedContent.classList.remove("domterm-active");
+        if (lcontent != null)
+            lcontent.classList.add("domterm-active");
+
+        DomTerm._oldFocusedContent = lcontent;
+    }
+};
+DomTerm.focusChild = function(iframe, originMode) {
+    let oldContent = DomTerm._oldFocusedContent;
+    if (iframe !== oldContent || originMode=="C") {
+        if (oldContent != null) {
+            let terminal = oldContent.terminal;
+            if (oldContent.tagName == "IFRAME") {
+                if (oldContent.contentWindow)
+                    DomTerm.sendChildMessage(oldContent, "set-focused", 0);
+            } else if (terminal) {
+                if (terminal.topNode)
+                    terminal.setFocused(0);
+            }
+        }
+        if (originMode != "F") {
+            let terminal = iframe.terminal;
+            if (iframe.tagName == "IFRAME")
+                DomTerm.sendChildMessage(iframe, "set-focused", 2);
+            else if (terminal)
+                terminal.setFocused(2);
+        }
+    }
+    DomTerm.showFocusedPane(iframe);
+}
+
 // mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)
 DomTerm.makeIFrameWrapper = function(location, mode='T',
                                      parent=DomTerm.layoutTop) {

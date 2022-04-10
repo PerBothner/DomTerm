@@ -276,7 +276,8 @@ public:
     std::string description;
 };
 
-extern id_table<tty_client> tty_clients;
+extern id_table<tty_client> tty_clients; // maybe rename to "connections" or "windows"
+extern id_table<tty_client> main_windows;
 extern void request_enter(struct options *opts, tty_client *tclient);
 
 struct http_client {

@@ -857,12 +857,13 @@ static void status_by_connection(FILE *out, int verbosity)
 {
     struct tty_client *tclient, *sub_client;
     int nclients = 0, nsessions = 0;
-    FORALL_WSCLIENT(tclient) {
+    for (tclient = main_windows.first(); tclient != nullptr;
+         tclient = main_windows.next(tclient)) {
         nclients++;
         if (tclient->proxyMode == proxy_remote) {
             continue;
         }
-        if (tclient->main_window > 0)
+        if (tclient->main_window > 0) // redundant
             continue;
         int number = tclient->connection_number;
         if (number >= 0)

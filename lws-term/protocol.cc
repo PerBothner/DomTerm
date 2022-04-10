@@ -31,6 +31,7 @@ static char end_replay_mode[] = "\033[98u";
 
 id_table<pty_client> pty_clients;
 id_table<tty_client> tty_clients;
+id_table<tty_client> main_windows;
 
 static struct pty_client *
 handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client *tclient);
@@ -561,17 +562,10 @@ void put_to_env_array(const char **arr, int max, const char* eval)
 
 template<typename T>
 bool id_table<T>::avoid_index(int i, int hint) {
-    return valid_index(i);
-}
-
-template<>
-bool id_table<pty_client>::avoid_index(int i, int hint) {
-    return valid_index(i) || (i != hint && tty_clients.valid_index(i));
-}
-
-template<>
-bool id_table<tty_client>::avoid_index(int i, int hint) {
-    return valid_index(i) || (i != hint && pty_clients.valid_index(i));
+    return valid_index(i) ||
+        (i != hint && (tty_clients.valid_index(i) ||
+                       main_windows.valid_index(i) ||
+                       pty_clients.valid_index(i)));
 }
 
 template<typename T>
@@ -1959,21 +1953,46 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_ESTABLISHED: {
         lwsl_notice("tty/CALLBACK_ESTABLISHED client:%p\n", client);
         char arg[100]; // FIXME
-        long wnum = -1;
         if (! check_server_key(wsi,
                                lws_get_urlarg_by_name(wsi, "server-key=", arg, sizeof(arg) - 1)))
             return -1;
 
+        int main_window = -1;
+        const char*main_window_arg = lws_get_urlarg_by_name(wsi, "main-window=", arg, sizeof(arg) - 1);
+        if (main_window_arg != nullptr) {
+            long snum;
+            if (strcmp(main_window_arg, "true") == 0)
+                main_window = 0;
+             else if ((snum = strtol(main_window_arg, NULL, 10)) > 0) {
+                 main_window = (int) snum;
+             }
+        }
         const char *reconnect_arg = lws_get_urlarg_by_name(wsi, "reconnect=", arg, sizeof(arg) - 1);
         long reconnect_value = reconnect_arg == NULL ? -1
             : strtol(reconnect_arg, NULL, 10);
-        const char *no_session = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
         const char*window = lws_get_urlarg_by_name(wsi, "window=", arg, sizeof(arg) - 1);
-        if (window != NULL) {
-            wnum = strtol(window, NULL, 10);
+        long wnum = window != nullptr ? strtol(window, nullptr, 10) : -1;
+        const char *no_session = lws_get_urlarg_by_name(wsi, "no-session=", arg, sizeof(arg) - 1);
+        if (no_session && strcmp(no_session, "top") == 0
+            && main_window == 0 && main_windows.valid_index(wnum) ) {
+            client = main_windows[wnum];
+            if (tty_clients(wnum) == client)
+                tty_clients.remove(client);
+        } else if (wnum >= 0) {
             if (tty_clients.valid_index(wnum))
                 client = tty_clients[wnum];
-            else if (reconnect_value < 0) {
+            else if (main_windows.valid_index(main_window)) {
+                client = main_windows[main_window];
+                main_windows.remove(client);
+                struct tty_client *mclient = new tty_client();
+                mclient->wkind = main_only_window;
+                mclient->wsi = client->wsi;
+                mclient->out_wsi = client->out_wsi;
+                mclient->main_window = 0;
+                mclient->options = link_options(client->options);
+                mclient->connection_number = main_windows.enter(mclient, main_window);
+                tty_clients.enter(client, wnum);
+            } else if (reconnect_value < 0) {
                 lwsl_err("connection with invalid connection number %s - error\n", window);
                 break;
             }
@@ -2000,23 +2019,15 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         client->wsi = wsi;
         client->out_wsi = wsi;
-        const char*main_window = lws_get_urlarg_by_name(wsi, "main-window=", arg, sizeof(arg) - 1);
-        client->main_window = -1;
-        if (main_window != NULL) {
-            long snum;
-            if (strcmp(main_window, "true") == 0)
-                client->main_window = 0;
-            else if ((snum = strtol(main_window, NULL, 10)) > 0) {
-                client->main_window = (int) snum;
-                if (client->options == NULL) {
-                    struct tty_client *main_client = tty_clients(snum);
-                    if (main_client != NULL && main_client->options)
-                        client->options = link_options(main_client->options);
-                }
+        client->main_window = main_window;
+        if (main_window = 0 && client->options == NULL) {
+            struct tty_client *main_client = main_windows(main_window);
+            if (main_client != NULL && main_client->options) {
+                client->options = link_options(main_client->options);
             }
         }
-        const char*headless = lws_get_urlarg_by_name(wsi, "headless=", arg, sizeof(arg) - 1);
-        if (headless && strcmp(headless, "true") == 0)
+        const char*headless_arg = lws_get_urlarg_by_name(wsi, "headless=", arg, sizeof(arg) - 1);
+        if (headless_arg && strcmp(headless_arg, "true") == 0)
             client->is_headless = true;
 
         if (no_session != NULL) {
@@ -2252,6 +2263,8 @@ display_session(struct options *options, struct pty_client *pclient,
         tclient = new tty_client();
         tclient->options = link_options(options);
         set_connection_number(tclient, pclient ? pclient->session_number : -1);
+        if (paneOp <= 0)
+            main_windows.enter(tclient, tclient->connection_number);
         tclient->wkind = wkind;
         if (wkind != browser_window && wkind != saved_window
             && url == NULL && pclient) {
