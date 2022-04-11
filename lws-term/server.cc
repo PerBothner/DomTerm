@@ -752,7 +752,8 @@ do_run_browser(struct options *options, const char *url)
     const char *browser_specifier;
     if (options != NULL && ! options->browser_command.empty()) {
         browser_specifier = options->browser_command.c_str();
-        main_options->browser_command = browser_specifier;
+        if (options->paneOp < 0)
+            main_options->browser_command = browser_specifier;
     } else if (main_options->browser_command.empty()) {
         browser_specifier = nullptr;
     } else {
