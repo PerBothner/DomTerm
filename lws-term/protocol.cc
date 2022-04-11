@@ -2271,6 +2271,10 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     if (wkind != unknown_window) {
         tclient = new tty_client();
+        if (paneOp > 0) {
+            options->paneOp = -1;
+            options->browser_command = "";
+        }
         tclient->options = link_options(options);
         set_connection_number(tclient, pclient ? pclient->session_number : -1);
         if (paneOp <= 0)
