@@ -500,7 +500,7 @@ function loadHandler(event) {
         return;
     }
     if (! DomTerm.isInIFrame()) {
-        if (DomTerm.useIFrame == 2)
+        if (no_session === null && DomTerm.useIFrame == 2)
             no_session = "top";
         if (no_session) {
             const wparams = new URLSearchParams(hash);

@@ -881,8 +881,8 @@ do_run_browser(struct options *options, const char *url)
     // This is no longer needed on Electron, but is a slight optimization.
     // Other browsers seem to "combine" user commands better.
     if (do_pattern) {
-        struct tty_client *t;
-        FORALL_WSCLIENT(t) {
+        for (struct tty_client *t = main_windows.first(); t != nullptr;
+             t = main_windows.next(t)) {
             if (t->version_info && strstr(t->version_info, do_pattern)) {
                 browser_run_browser(options, url, t);
                 lws_callback_on_writable(t->wsi);
