@@ -311,7 +311,7 @@ public:
     json cmd_settings;
     json settings; // merge of cmd_settings and global settings
     // Possible memory leak if we start reclaiming options objects.
-    const char *browser_command;
+    std::string browser_command;
     const char *tty_packet_mode;
     int paneOp;
     char *iface;
