@@ -2228,7 +2228,7 @@ display_session(struct options *options, struct pty_client *pclient,
                 const char *url, enum window_kind wkind)
 {
     int session_number = pclient == NULL ? -1 : pclient->session_number;
-    const char *browser_specifier = options->browser_command;
+    const char *browser_specifier = options->browser_command.c_str();
     lwsl_notice("display_session %d browser:%s\n", session_number, browser_specifier);
 #if REMOTE_SSH
     if (browser_specifier != NULL

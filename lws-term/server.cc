@@ -750,11 +750,13 @@ do_run_browser(struct options *options, const char *url)
 {
     std::string browser_specifier_string; // placeholder for allocation
     const char *browser_specifier;
-    if (options != NULL && options->browser_command != NULL) {
-        browser_specifier = options->browser_command;
-        opts.browser_command = browser_specifier;
+    if (options != NULL && ! options->browser_command.empty()) {
+        browser_specifier = options->browser_command.c_str();
+        main_options->browser_command = browser_specifier;
+    } else if (main_options->browser_command.empty()) {
+        browser_specifier = nullptr;
     } else {
-        browser_specifier = opts.browser_command;
+        browser_specifier = main_options->browser_command.c_str();
     }
     bool do_electron = false, do_Qt = false, do_wry = false;
     if (port_specified < 0
@@ -905,7 +907,6 @@ get_domterm_jar_path()
 
 options::options()
 {
-    browser_command = NULL;
     headless = false;
     http_server = false;
     something_done = false;
@@ -1489,7 +1490,7 @@ main(int argc, char **argv)
     if (opts.once)
         lwsl_info("  once: true\n");
     int ret;
-    if (port_specified >= 0 && opts.browser_command == NULL) {
+    if (port_specified >= 0 && opts.browser_command.empty()) {
         fprintf(stderr, "Server start on port %d. You can browse %s://localhost:%d/\n",
                 http_port, opts.ssl ? "https" : "http", http_port);
         opts.http_server = true;
