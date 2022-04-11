@@ -317,6 +317,8 @@ DomTerm._extractGeometryOptions = function(options={}) {
 }
 
 DomTerm.openNewWindow = function(dt, options={}) {
+    if (! dt)
+        dt = DomTerm.mainTerm;
     options = DomTerm._extractGeometryOptions(options);
     let url = options.url;
     if ((DomTerm.isElectron() || DomTerm.versions.wry) && (url || ! dt)) {
@@ -333,19 +335,20 @@ DomTerm.openNewWindow = function(dt, options={}) {
     } else {
         let width = options.width;
         let height = options.height;
-        if (! dt)
-            dt = DomTerm.mainTerm;
         if (dt) {
             if (! url)
                 url = "";
-            if (width && height)
+            if (width > 0 && height > 0)
                 url += (url.indexOf('#') < 0 ? '#' : '&')
                     + "geometry="+width+"x"+height;
             dt.reportEvent("OPEN-WINDOW", url);
         } else {
             if (! url)
                 url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
-            window.open(url, "_blank", "width="+width+",height="+height);
+            let wopt = "";
+            if (width > 0 && height > 0)
+                wopt = "width="+width+",height="+height;
+            window.open(url, "_blank", wopt);
         }
     }
 }

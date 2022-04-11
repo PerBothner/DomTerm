@@ -1403,11 +1403,18 @@ reportEvent(const char *name, char *data, size_t dlen,
             geom[glen] = 0;
             if (! options)
                 client->options = options = link_options(NULL);
-            set_setting(options->cmd_settings, "geometry", geom);
+            set_setting(options->settings, "geometry", geom);
         }
         const char* url = !data[0] || (data[0] == '#' && g0 == data + 1) ? NULL
             : data;
-        display_session(options, NULL, url,
+        struct pty_client *npclient = nullptr;
+        if (! url) {
+            arglist_t argv = default_command(options);
+            char *cmd = find_in_path(argv[0]);
+            if (cmd != NULL)
+                npclient = create_pclient(cmd, argv, options, false, nullptr);
+        }
+        display_session(options, npclient, url,
                         url ? unknown_window : dterminal_window);
         if (geom != NULL)
             free(geom);
@@ -2025,6 +2032,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 mclient->wkind = main_only_window;
                 mclient->wsi = client->wsi;
                 mclient->out_wsi = client->out_wsi;
+                WSI_SET_TCLIENT(client->wsi, mclient);
+                if (client->version_info)
+                    mclient->version_info = strdup(client->version_info);
                 mclient->main_window = 0;
                 mclient->options = link_options(client->options);
                 mclient->connection_number = main_windows.enter(mclient, main_window);
