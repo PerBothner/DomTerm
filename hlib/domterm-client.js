@@ -130,6 +130,7 @@ function connectAjax(name, prefix="", topNode=null)
 
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
+    DomTerm._qtBackend = backend;
     if (! DomTerm.usingJsMenus()) {
         DomTerm.showContextMenu = function(options) {
             backend.showContextMenu(options.contextType);
@@ -214,13 +215,6 @@ function setupQWebChannel(channel) {
             backend.setWindowTitle(title == null ? "" : title); };
     }
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
-    DomTerm.openNewWindow = function(dt, options={}) {
-        let opts = DomTerm._extractGeometryOptions(options);
-        let headless = options['headless'];
-        backend.openNewWindow(opts.width, opts.height,
-                              opts.position || "",
-                              opts.url, !!headless);
-    }
 };
 
 function maybeWindowName(el, params = DomTerm.mainSearchParams) {

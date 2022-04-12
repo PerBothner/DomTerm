@@ -421,6 +421,11 @@ void BrowserMainWindow::slotAboutApplication()
 
 void BrowserMainWindow::slotFileNew()
 {
+    // Calling newMainWindow directly is more efficient, but
+    // using handleSimpleCommand makes it easier to do things consistently.
+#if 1
+    emit webView()->backend()->handleSimpleCommand("new-window");
+#else
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     QUrl url = options->url;
     if (url.hasFragment()) {
@@ -431,6 +436,7 @@ void BrowserMainWindow::slotFileNew()
                         : fragment.toString());
     }
     BrowserApplication::instance()->newMainWindow(url.toString(), options);
+#endif
 }
 
 void BrowserMainWindow::closeEvent(QCloseEvent *event)
