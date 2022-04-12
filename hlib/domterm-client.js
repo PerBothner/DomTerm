@@ -591,7 +591,7 @@ function loadHandler(event) {
     if (!DomTerm.inAtomFlag)
         location.hash = "";
     if (layoutInitAlways && ! DomTerm.isInIFrame()) {
-        DomTerm.withLayout((m) => m.initialize());
+        DomTerm.withLayout((m) => { if (! m.manager) m.initialize(); });;
     }
 
 }

@@ -242,7 +242,7 @@ DomTermLayout.popoutWindow = function(item, dt = null, fromLayoutEvent = false) 
         e = encode(item);
     }
 
-    let newurl = DomTerm.topLocation+"#open="+encodeURIComponent(e);
+    let newurl = DomTerm.mainLocation+"#open="+encodeURIComponent(e);
     DomTerm.openNewWindow(dt, { width: w, height: h, url: newurl });
 }
 
@@ -492,9 +492,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
         }
     }
 
-    console.log("before GL init");
     DomTermLayout.manager.init(); // ??
-    console.log("after GL init");
     DomTermLayout.manager.on('activeContentItemChanged',
                              activeContentItemHandler);
 
