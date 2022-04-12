@@ -2067,7 +2067,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         client->wsi = wsi;
         client->out_wsi = wsi;
         client->main_window = main_window;
-        if (main_window = 0 && client->options == NULL) {
+        if (main_window > 0 && client->options == NULL) {
             struct tty_client *main_client = main_windows(main_window);
             if (main_client != NULL && main_client->options) {
                 client->options = link_options(main_client->options);
