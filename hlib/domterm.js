@@ -321,7 +321,9 @@ DomTerm.openNewWindow = function(dt, options={}) {
         dt = DomTerm.mainTerm;
     options = DomTerm._extractGeometryOptions(options);
     let url = options.url;
-    if ((DomTerm.isElectron() || DomTerm.versions.wry) && (url || ! dt)) {
+    if ((DomTerm.isElectron() || DomTerm.versions.wry
+         || DomTerm._qtBackend)
+        && (url || ! dt)) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("domterm-new-window", options);
         } else {
@@ -329,6 +331,10 @@ DomTerm.openNewWindow = function(dt, options={}) {
                 options.url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
             if (DomTerm.isElectron())
                 electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
+            else if (DomTerm._qtBackend)
+                DomTerm._qtBackend.openNewWindow(options.width, options.height,
+                                                 options.position || "",
+                                                 url, !!options['headless']);
             else // DomTerm.versions.wry
                 ipc.postMessage("new-window "+JSON.stringify(options));
         }
@@ -338,9 +344,12 @@ DomTerm.openNewWindow = function(dt, options={}) {
         if (dt) {
             if (! url)
                 url = "";
-            if (width > 0 && height > 0)
+            if (width > 0 && height > 0) {
                 url += (url.indexOf('#') < 0 ? '#' : '&')
                     + "geometry="+width+"x"+height;
+                if (options.position)
+                    url += options.position;
+            }
             dt.reportEvent("OPEN-WINDOW", url);
         } else {
             if (! url)
