@@ -303,9 +303,7 @@ DomTerm._extractGeometryOptions = function(options={}) {
         }
     }
     if (! width || ! height) {
-        if (DomTerm.isElectron() && ! DomTerm.isInIFrame()) {
-            return options;
-        } else if (! DomTerm.isInIFrame()) {
+        if (! DomTerm.isInIFrame()) {
             width = window.outerWidth;
             height = window.outerHeight;
         } else {

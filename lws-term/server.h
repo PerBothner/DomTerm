@@ -336,6 +336,7 @@ public:
     int fd_cmd_socket;
     std::string windows;
     std::string name_option;
+    std::string geometry_option;
     char *settings_file;
     argblob_t shell_argv;               // parse_args("shell.default" setting);
     const char*cwd; // use as current current dir; NULL means that of process
