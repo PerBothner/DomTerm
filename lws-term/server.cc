@@ -11,18 +11,31 @@ extern char **environ;
 
 static struct options opts;
 struct options *main_options = &opts;
-static char *default_size = NULL;
 struct lws *cmdwsi = NULL;
 
 static void make_html_file(int);
 static char *make_socket_name(bool);
 
+static std::string current_geometry;
 /** Returns a fresh copy of the (non-empty) geometry string, or NULL. */
 static const char *
 geometry_option(struct options *options)
 {
-    const char *geometry = get_setting(options->settings, "geometry");
-    return geometry && geometry[0] ? geometry : default_size;
+    if (! main_options->geometry_option.empty())
+        current_geometry = main_options->geometry_option;
+    else {
+        current_geometry = get_setting_s(options->settings, "window.geometry");
+        tty_client *first_window = main_windows.first();
+        // If there is a previous window (in addition to the one
+        // currently being created), ignore position part.
+        if (first_window && main_windows.next(first_window)) {
+            int window_pos = current_geometry.find_first_of("+-");
+            if (window_pos != std::string::npos) {
+                current_geometry.erase(window_pos);
+            }
+        }
+    }
+    return current_geometry.c_str();
 }
 
 static FILE *_logfile = NULL;
@@ -1150,23 +1163,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
                     exit(-1);
                 }
                 regfree(&rx);
-                //opts->geometry = optarg;
-                set_setting(opts->cmd_settings, "geometry", optarg);
-
-                free(default_size);
-                char *p = optarg;
-                char ch;
-                while ((ch = *p) != 0 && ch != '-' && ch != '+')
-                    p++;
-                ptrdiff_t len = p - optarg;
-                if (len == 0)
-                    default_size = NULL;
-                else {
-                    char *r = challoc(len + 1);
-                    memcpy(r, optarg, len);
-                    r[len] = 0;
-                    default_size = r;
-                }
+                opts->geometry_option = optarg;
             }
                 break;
             case CHROME_OPTION:

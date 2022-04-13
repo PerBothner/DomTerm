@@ -1403,7 +1403,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             geom[glen] = 0;
             if (! options)
                 client->options = options = link_options(NULL);
-            set_setting(options->settings, "geometry", geom);
+            options->geometry_option = geom;
         }
         const char* url = !data[0] || (data[0] == '#' && g0 == data + 1) ? NULL
             : data;
@@ -2762,23 +2762,33 @@ handle_command(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
                 argc == 0 ? "(default-new)" :argv[0],
                 opts == main_options ? "locally"
                 : "received from command socket");
+    if (opts != main_options && ! opts->geometry_option.empty()) {
+        main_options->geometry_option = opts->geometry_option;
+        opts->geometry_option.clear();
+    }
     const char *argv0 = argc > 0 ? argv[0] : "";
     struct command *command = argc == 0 ? NULL : find_command(argv0);
+    int ret = 0;
     if (command != NULL) {
         lwsl_notice("handle command '%s'\n", command->name);
-        return (*command->action)(argc, argv, wsi, opts);
-    }
-    if (strchr(argv0, '@') != NULL || strncmp(argv0, "ssh://", 6) == 0) {
+        ret = (*command->action)(argc, argv, wsi, opts);
+    } else if (strchr(argv0, '@') != NULL || strncmp(argv0, "ssh://", 6) == 0) {
         handle_remote(argc, argv, opts, NULL);
-        return EXIT_WAIT;
+        ret = EXIT_WAIT;
     } else if (argc == 0 || strchr(argv0, '/') != NULL) {
-        return new_action(argc, argv, wsi, opts);
+        ret = new_action(argc, argv, wsi, opts);
     } else {
         // normally caught earlier
         printf_error(opts, "domterm: unknown command '%s'", argv[0]);
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
     }
-    return 0;
+    // If --geometry specified position, make it one-time.
+    int window_pos = main_options->geometry_option.find_first_of("+-");
+    if (window_pos != std::string::npos) {
+        main_options->geometry_option.erase(window_pos);
+    }
+    return ret;
+
 }
 
 int

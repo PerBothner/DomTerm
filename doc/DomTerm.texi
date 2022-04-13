@@ -2011,8 +2011,9 @@ helper programs are evailable. (See the @code{get_clipboard_command}
 function in the @code{lws-term/utils.cc} source file.)
 
 @item @code{@b{window.geometry} =} @var{geometry}
-Control the size and/or of new top-level windows
+Control the size and/or position of new top-level windows
 using the syntax of a @ref{geometry specifier}.
+A specified @var{position} is ignored if there are other windows.
 
 The default is @code{800x600}.
 @end table
@@ -2432,7 +2433,7 @@ or otherwise currently @code{800x600}.
 the default size is that of the current window.)
 
 A @var{position} requests an initial position of the window,
-in the form @code{[-+]@var{X}[-+]@var{Y}}.
+in the form [@code{-+}]@var{X}[@code{-+}]@var{Y}.
 The @var{X} specifies how far (in pixels) the left edge of the
 window is from the left edge of the screen, or (if preceded by @code{-})
 how far the right edge of the window is from the right edge of the screen.
