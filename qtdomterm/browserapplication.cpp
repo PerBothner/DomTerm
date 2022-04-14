@@ -64,6 +64,9 @@
 #include <QtCore/QTextStream>
 #include <QtCore/QTranslator>
 #include <QtCore/QTimer>
+#include <QWindow>
+#include <QScreen>
+#include <QSize>
 
 #include <QtGui/QDesktopServices>
 #include <QtGui/QFileOpenEvent>
@@ -315,7 +318,11 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
             bool xneg = match.captured(1) == "-";
             bool yneg = match.captured(3) == "-";
             if (xneg || yneg) {
-                // FIXME
+                QSize screenSize = primaryScreen()->size();
+                if (xneg)
+                    x = screenSize.width() + x - width;
+                if (yneg)
+                    y = screenSize.height() + y - height;
             }
         }
     }
