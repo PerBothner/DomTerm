@@ -8,4 +8,4 @@ edition = "2018"
 regex = "1.5"
 serde_json = "1.0"
 #wry = { git = "https://github.com/rust-lang-nursery/rand", branch = "next" }
-wry = { @WRY_DEPENDENCY@ }
+wry = { @WRY_DEPENDENCY@, default-features = false }
