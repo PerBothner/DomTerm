@@ -1,4 +1,4 @@
-// Copyright 2021 Per Bothner
+// Copyright 2021, 2022 Per Bothner
 // Copyright 2019-2021 Tauri Programme within The Commons Conservancy
 // SPDX-License-Identifier: MIT
 
@@ -12,7 +12,7 @@ fn main() -> wry::Result<()> {
     env::set_var("GTK_OVERLAY_SCROLLING", "0");
     use wry::{
         application::{
-            dpi::LogicalSize,
+            dpi::{LogicalSize, LogicalPosition},
             event::{Event, WindowEvent},
             event_loop::{ControlFlow, EventLoop, EventLoopProxy, EventLoopWindowTarget},
             window::{Window, WindowBuilder, WindowId},
@@ -38,12 +38,17 @@ fn main() -> wry::Result<()> {
             titlebar = false;
         } else if arg == "--geometry" && iarg + 1 < args.len() {
             iarg += 1;
-            let re = Regex::new(r"^([0-9]+)x([0-9]+)$").unwrap();
+            let re = Regex::new(r"^(([0-9]+)x([0-9]+))?([-+][0-9]+[-+][0-9]+)?$").unwrap();
             if let Some(caps) = re.captures(&args[iarg]) {
-                options.insert("width".to_string(),
-                               serde_json::to_value(caps.get(1).unwrap().as_str().parse::<f64>().unwrap()).unwrap());
-                options.insert("height".to_string(),
-                               serde_json::to_value(caps.get(2).unwrap().as_str().parse::<f64>().unwrap()).unwrap());
+                if let (Some(w),Some(h)) = (caps.get(2),caps.get(3)) {
+                    options.insert("width".to_string(),
+                                   serde_json::to_value(w.as_str().parse::<f64>().unwrap()).unwrap());
+                    options.insert("height".to_string(),
+                                   serde_json::to_value(h.as_str().parse::<f64>().unwrap()).unwrap());
+                }
+                if let Some(position) = caps.get(4) {
+                    options.insert("position".to_string(), serde_json::to_value(position.as_str()).unwrap());
+                }
             }
         } else {
             options.insert("url".to_string(), serde_json::to_value(arg).unwrap());
@@ -75,7 +80,6 @@ fn main() -> wry::Result<()> {
             r#"
   (function () {{
 {}{}    window.wry_version = "{}";
-    window.openNewWindow = (options)=>{{ipc.postMessage("new-window ", JSON.stringify(options));}}
     window._dt_toggleDeveloperTools = () => {{ipc.postMessage("devtools toggle");}};
     window.closeMainWindow = ()=>{{window.close();}};
 }})();
@@ -98,6 +102,15 @@ fn main() -> wry::Result<()> {
         if let (Some(width),Some(height)) = (options.get("width"),options.get("height")) {
             if let (Some(w),Some(h)) = (width.as_f64(),height.as_f64()) {
                 window.set_inner_size(LogicalSize::new(w, h));
+            }
+        }
+        if let Some(Value::String(position)) = options.get("position") {
+            let re = Regex::new(r"^([-+][0-9]+)([-+][0-9]+)$").unwrap();
+            if let Some(caps) = re.captures(position.as_str()) {
+                let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
+                let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
+                // This doesn't seem to do anything, at least on Gtk/Wayland.
+                window.set_outer_position(LogicalPosition::new(x, y));
             }
         }
 
