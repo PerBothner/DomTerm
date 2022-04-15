@@ -337,19 +337,11 @@ DomTerm.openNewWindow = function(dt, options={}) {
                 ipc.postMessage("new-window "+JSON.stringify(options));
         }
     } else {
-        let width = options.width;
-        let height = options.height;
         if (dt) {
-            if (! url)
-                url = "";
-            if (width > 0 && height > 0) {
-                url += (url.indexOf('#') < 0 ? '#' : '&')
-                    + "geometry="+width+"x"+height;
-                if (options.position)
-                    url += options.position;
-            }
-            dt.reportEvent("OPEN-WINDOW", url);
+            dt.reportEvent("OPEN-WINDOW", options);
         } else {
+            let width = options.width;
+            let height = options.height;
             if (! url)
                 url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
             let wopt = "";
