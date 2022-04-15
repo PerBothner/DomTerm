@@ -1386,24 +1386,31 @@ reportEvent(const char *name, char *data, size_t dlen,
             lwsl_err("RESPONSE with bad object syntax or missing'id'\n");
         }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
-        static char gopt[] =  "geometry=";
-        char *g0 = strstr(data, gopt);
-        char *geom = NULL;
-        if (g0 != NULL) {
-            char *g = g0 + sizeof(gopt)-1;
-            char *gend = strstr(g, "&");
-            if (gend == NULL)
-                gend = g + strlen(g);
-            int glen = gend-g;
-            geom = challoc(glen+1);
-            memcpy(geom, g, glen);
-            geom[glen] = 0;
+        json obj = json::parse(data, nullptr, false);
+        if (! obj.is_object()) {
+            lwsl_err("bad JSON in OPEN-WINDOW request\n");
+            return true;
+        }
+        bool has_size = obj.contains("width") && obj.contains("height")
+            && obj["height"].is_number() && obj["width"].is_number();
+        bool has_position = obj.contains("position")
+            && obj["position"].is_string();
+        if (has_size || has_position) {
+            sbuf sb;
+            if (has_size) {
+                sb.printf("%dx%d",
+                          obj["width"].get<int>(),
+                          obj["height"].get<int>());
+            }
+            if (has_position) {
+                sb.append(obj["position"].get<std::string>().c_str());
+            }
             if (! options)
                 client->options = options = link_options(NULL);
-            options->geometry_option = geom;
+            options->geometry_option = sb.null_terminated();
         }
-        const char* url = !data[0] || (data[0] == '#' && g0 == data + 1) ? NULL
-            : data;
+        const char* url = obj.contains("url") && obj["url"].is_string()
+            ?  obj["url"].get<std::string>().c_str() : nullptr;
         struct pty_client *npclient = nullptr;
         if (! url) {
             arglist_t argv = default_command(options);
@@ -1413,8 +1420,6 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
         display_session(options, npclient, url,
                         url ? unknown_window : dterminal_window);
-        if (geom != NULL)
-            free(geom);
     } else if (strcmp(name, "DETACH") == 0) {
         if (proxyMode == proxy_display_local)
             return false;
