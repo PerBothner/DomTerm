@@ -35,7 +35,7 @@ geometry_option(struct options *options)
             }
         }
     }
-    return current_geometry.c_str();
+    return current_geometry.empty() ? nullptr : current_geometry.c_str();
 }
 
 static FILE *_logfile = NULL;
