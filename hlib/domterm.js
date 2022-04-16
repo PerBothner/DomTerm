@@ -311,7 +311,10 @@ DomTerm._extractGeometryOptions = function(options={}) {
             height = DomTerm.defaultHeight;
         }
     }
-    return Object.assign({ width: width, height: height }, options);
+    if (width > 0 && height > 0)
+        return Object.assign({ width: width, height: height }, options);
+    else
+        return options;
 }
 
 DomTerm.openNewWindow = function(dt, options={}) {
@@ -338,7 +341,7 @@ DomTerm.openNewWindow = function(dt, options={}) {
         }
     } else {
         if (dt) {
-            dt.reportEvent("OPEN-WINDOW", options);
+            dt.reportEvent("OPEN-WINDOW", JSON.stringify(options));
         } else {
             let width = options.width;
             let height = options.height;
