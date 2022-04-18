@@ -131,6 +131,11 @@ div.dt-titlebar img { height: 1rem; position: relative; top: 0.2rem; }
 .dt-titlebar .menubar { display: inline }
 .dt-titlebar-button { -webkit-app-region: no-drag; padding: 0px 3px }
 .dt-titlebar .menubar { -webkit-app-region: no-drag; }
+.dt-titlebar .dt-window-title {
+    white-space: pre;
+    overflow: hidden;
+}
+.dt-titlebar .dt-menubar { white-space: pre }
 
 /* dt-resize-areas/dt-resize-areas are currently only used for Qt with custom titlebar. */
 div.dt-resize-areas {
