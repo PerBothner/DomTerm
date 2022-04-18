@@ -89,7 +89,9 @@ DomTerm.withLayout = function(callback, err = undefined) {
             const dl = mod.DomTermLayout;
             DomTerm._layout = dl;
             callback(dl);
-        }, err || ((e)=>console.log(`import '${path}' failed: ${e}`)));
+        }, err || ((e)=> {
+            console.log(`import '${path}'${e.lineNumber ? ` (line:${e.lineNumber})` : ""} failed: ${e}`);
+        }));
 };
 
 DomTerm.supportsAutoInputMode = true;
@@ -163,7 +165,7 @@ DomTerm.isLineBlock = function(node) {
 
 DomTerm.setTitle = function(title) {
     if (window.setWindowTitle)
-        window.setWindowTitle(title); // hook used by --webview
+        window.setWindowTitle(title); // hook used by -Bwebview and -Bwry
     else
        document.title = title;
 }
