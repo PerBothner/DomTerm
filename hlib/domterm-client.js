@@ -33,7 +33,7 @@ DomTerm.usingJsMenus = function() {
 // with less of the cost, plus it makes no-layout modes more consistent.
 // (Value 2 requires a separate WebSocket for the top-level window,
 // like we do for broser windows, but that requires various changes.)
-DomTerm.useIFrame = ! DomTerm.simpleLayout ? 1 : 0;
+DomTerm.useIFrame = ! DomTerm.simpleLayout ? 2 : 0;
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
@@ -640,12 +640,9 @@ function handleMessage(event) {
         DomTerm.withLayout((m) =>
             m.addPane(data.args[0], data.args[1], iframe));
     } else if (data.command=="domterm-remove-content") { // in parent from child
-        if (iframe && iframe.parentNode) {
-            if (iframe.parentNode.classList.contains("lm_component"))
-                iframe.parentNode.remove();
-            else
-                iframe.remove();
-        }
+        console.log("received domterm-remove-content from "+iframe);
+        if (iframe)
+            DomTerm.removeContent(iframe);
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="do-command") {

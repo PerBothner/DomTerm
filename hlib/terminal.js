@@ -1032,15 +1032,34 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
             DomTerm.windowClose();
     }
 
-    let topParent = this.topNode && this.topNode.parentNode;
     this.clearVisibleState();
     this.inputFollowsOutput = false;
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("domterm-remove-content");
-    else if (topParent
-             && topParent.classList.contains("lm_component"))
-        topParent.remove();
+    else
+        DomTerm.removeContent(this.topNode);
 };
+
+DomTerm.removeContent = function(wrapper) {
+    const parent = wrapper.parentNode;
+    DomTerm.withLayout((m) => {
+        if (m._pendingPopoutComponents) {
+            const itemIndex = m._pendingPopoutComponents.indexOf(wrapper);
+            if (itemIndex >= 0)
+                m._pendingPopoutComponents.splice(itemIndex, 1);
+        }
+        if (m._pendingPopoutOptions && DomTerm.mainTerm
+            && (! m._pendingPopoutComponents
+                || m._pendingPopoutComponents.length === 0)) {
+            DomTerm.mainTerm.reportEvent("OPEN-WINDOW", JSON.stringify(m._pendingPopoutOptions));
+            m._pendingPopoutOptions = undefined;
+        }
+    });
+    if (parent && parent.classList.contains("lm_component"))
+        parent.remove();
+    else
+        wrapper.remove();
+}
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]) {
     this.sstate.inInputMode = false;
@@ -10440,7 +10459,8 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
             wt.parser = new window.DTParser(wt);
             wt.inputFollowsOutput = false;
         }
-        wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
+        wt.reportEvent(topNode ? "CONNECT" : "VERSION",
+                       JSON.stringify(DomTerm.versions));
     };
 }
 

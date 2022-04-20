@@ -1206,11 +1206,14 @@ reportEvent(const char *name, char *data, size_t dlen,
               }
           }
         }
-    } else if (strcmp(name, "VERSION") == 0) {
+    } else if (strcmp(name, "VERSION") == 0
+               || strcmp(name, "CONNECT") == 0) {
         char *version_info = challoc(dlen+1);
         strcpy(version_info, data);
         client->version_info = version_info;
         client->initialized = 0;
+        if (strcmp(name, "VERSION") == 0)
+            return true;
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient == NULL) {
@@ -1415,7 +1418,13 @@ reportEvent(const char *name, char *data, size_t dlen,
         const char* url = obj.contains("url") && obj["url"].is_string()
             ?  obj["url"].get<std::string>().c_str() : nullptr;
         struct pty_client *npclient = nullptr;
-        if (! url) {
+        int snum = obj.contains("sessionNumber")
+            && obj["sessionNumber"].is_number()
+            ? obj["sessionNumber"].get<int>()
+            : -1;
+        if (pty_clients.valid_index(snum))
+            npclient = pty_clients(snum);
+        else if (! url) {
             arglist_t argv = default_command(options);
             char *cmd = find_in_path(argv[0]);
             if (cmd != NULL)
@@ -1537,8 +1546,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         else if (strcmp(data, "leave-window") == 0)
             enter_or_leave = 1;
         if (dstart || dend) {
-            struct tty_client *tother;
-            FORALL_WSCLIENT(tother) {
+            FOREACH_MAIN_WINDOW(tother) {
                 if (tother->main_window == 0 && tother != client) {
                     printf_to_browser(tother, URGENT_WRAP("\033[106;%dt"),
                                       dstart ? 1 : 2);
@@ -1550,7 +1558,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (enter_or_leave >= 0) {
             current_dragover_window =
                 enter_or_leave == 0 ? client->connection_number : -1;
-            struct tty_client *dclient = tty_clients(drag_start_window);
+            struct tty_client *dclient = main_windows(drag_start_window);
             if (dclient && dclient->out_wsi) {
                  printf_to_browser(dclient, URGENT_WRAP("\033[106;%dt"),
                                    // enter: 4; leave: 5

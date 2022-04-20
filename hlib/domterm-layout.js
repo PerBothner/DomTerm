@@ -200,50 +200,57 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
 }
 
 DomTermLayout.popoutWindow = function(item, dt = null, fromLayoutEvent = false) {
-    var wholeStack = item.type == 'stack';
+    const wholeStack = item.type == 'stack';
+    if (! wholeStack) {
+        DomTerm.closeSession(item.component, true, fromLayoutEvent);
+    } else {
+        // FIXME needs work - wholeStack
+    }
+    DomTermLayout._pendingPopoutOptions = DomTermLayout.popoutEncode(item, dt);
+    // FIXME call from removeContent
+    dt = dt || DomTerm.mainTerm;
+
+    setTimeout(() => {
+        if (DomTermLayout._pendingPopoutOptions)
+            dt.reportEvent("OPEN-WINDOW", JSON.stringify(DomTermLayout._pendingPopoutOptions));
+    }, DomTermLayout._pendingPopoutComponents.length === 0 ? 0 : 2000);
+}
+DomTermLayout.popoutEncode = function(item, dt ) {
+    const wholeStack = item.type == 'stack';
     var sizeElement = item.element;
     var w = sizeElement.offsetWidth;
     var h = sizeElement.offsetHeight;
-    if (! wholeStack) {
-        DomTerm.closeSession(item.component, true, fromLayoutEvent);
-    }
+    DomTermLayout._pendingPopoutComponents = [];
     // FIXME adjust for menu bar height
     function encode(item) {
         if (item.componentType == "domterm") {
             const node = item.component;
-            return '{"sessionNumber":'+node.getAttribute("session-number")+'}';
+            DomTermLayout._pendingPopoutComponents.push(node);
+            return {sessionNumber: Number(node.getAttribute("session-number"))};
         } else if (item.componentType == "browser")
-            return '{"url":'+JSON.stringify(item.toConfig().componentState.url)+'}';
+            return {url: item.toConfig().componentState.url };
         else
-            return "{}";
+            return {};
     }
-    /*
-    function remove(item) {
-        if (item.componentType !== "domterm") {
-            let lcontent = item.container.element;
-            if (lcontent && lcontent.parentNode)
-                lcontent.parentNode.removeChild(lcontent);
-            item.remove(item);
-        }
-    }
-    */
     var e;
-    //var toRemove = new Array();
     if (wholeStack) {
         e = "[";
         var items = item.contentItems;
         for (var i = 0; i < items.length; i++) {
             e = e + (i > 0 ? "," : "") + encode(items[i]);
-            //toRemove[i] = items[i];
         }
         e = e + ']';
     } else {
-        //toRemove[0] = item;
         e = encode(item);
     }
-
-    let newurl = DomTerm.mainLocation+"#open="+encodeURIComponent(e);
-    DomTerm.openNewWindow(dt, { width: w, height: h, url: newurl });
+    const options = {};
+    options.width = w;
+    options.height = h;
+    if (wholeStack)
+        options.tab = e;
+    else
+        options.sessionNumber = e.sessionNumber;
+    return options;
 }
 
 /*
@@ -321,9 +328,9 @@ DomTermLayout.onLayoutClosed = function(container) {
         DomTerm.closeSession(container.component, false, true);
     };
 }
-DomTermLayout.inSomeWindow = false;
+//DomTermLayout.inSomeWindow = false;
 DomTermLayout.dragNotificationFromServer = function(entering) {
-    DomTermLayout.inSomeWindow = entering;
+    DomTermLayout.manager.inSomeWindow = entering;
 };
 
 DomTerm._lastPaneNumber = 0;
@@ -440,7 +447,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
         };
 
         container.on("dragExported", (component) => {
-            if (DomTermLayout.inSomeWindow) {
+            if (DomTermLayout.manager.inSomeWindow) {
                 DomTerm.closeSession(component.component, true, true);
             } else {
                 DomTermLayout.popoutWindow(component, null, true);

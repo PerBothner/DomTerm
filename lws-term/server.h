@@ -465,6 +465,9 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (struct tty_client *VAR = (PCLIENT)->first_tclient; VAR != NULL; \
        VAR = (VAR)->next_tclient)
+#define FOREACH_MAIN_WINDOW(VAR)      \
+    for (struct tty_client *VAR = main_windows.first(); VAR != nullptr; \
+         VAR = main_windows.next(VAR))
 #define TCLIENT_FIRST tty_clients.first()
 #define TCLIENT_NEXT(VAR) tty_clients.next(VAR)
 #define FORALL_WSCLIENT(VAR) \

@@ -1275,7 +1275,7 @@ class DTParser {
                             m.manager.draggingInOtherWindow(op==2);
                         else if (op == 4 /*enter*/ || op == 5 /*leave*/)
                             m.dragNotificationFromServer(op==4);
-                        console.log(" - inSomeWindow:"+m.inSomeWindow);
+                        console.log(" - inSomeWindow:"+m.manager.inSomeWindow);
                     });
                     break;
                     }

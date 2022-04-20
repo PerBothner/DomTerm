@@ -232,8 +232,11 @@ DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
                                 detach = false, fromLayoutEvent = false) {
     if (content && content.terminal)
         content.terminal.close(detach, fromLayoutEvent);
-    else if (content.tagName == "IFRAME")
+    else if (content.tagName == "IFRAME") {
+        // if a domterm terminal window
         DomTerm.sendChildMessage(content, "domterm-close", detach, fromLayoutEvent);
+        // otherwise send CLOSE-WINDOW and remove content. FIXME
+    }
 }
 
 DomTerm.closeAll = function(event) {
