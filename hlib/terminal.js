@@ -4332,7 +4332,7 @@ Terminal.prototype._updateSelected = function() {
             targetPreNode = dt._getOuterPre(sel.focusNode);
             currentPreNode = this._getOuterPre(this.outputContainer);
             if (targetPreNode != null && currentPreNode != null) {
-                moveCaret = targetPreNode.classList.contains('dt-editing-line')
+                moveCaret = targetPreNode.classList.contains("input-line")
                     && targetPreNode == currentPreNode
                     && (moveOption = this.isLineEditing() ? "v"
                         : currentPreNode.getAttribute("click-move"))
