@@ -76,8 +76,14 @@ set_setting_ex(json& settings,
             settings[key] = d;
     } else if (opt && (opt->flags & OPTION_STRING_TYPE) != 0) {
         settings[key] = parse_string(value, false);
-    } else
+    } else {
+        if (strcmp(key, "window-session-type") == 0) {
+            if (strcmp(value, "wayland") != 0 && strcmp(value, "x11") != 0) {
+                printf_error(options, "value for option '%s' must be 'wayland' or 'x11'", key);
+            }
+        }
         settings[key] = value;
+    }
 }
 
 void

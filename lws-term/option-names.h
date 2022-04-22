@@ -11,6 +11,7 @@ OPTION_S(command_remote_domterm, "command.remote-domterm", OPTION_MISC_TYPE)
 OPTION_S(command_get_clipboard, "command.get-clipboard", OPTION_MISC_TYPE)
 OPTION_S(command_get_selection, "command.get-selection", OPTION_MISC_TYPE)
 OPTION_S(window_geometry, "window.geometry", OPTION_MISC_TYPE)
+OPTION_S(window_session_type, "window-session-type", OPTION_MISC_TYPE) // "x11" or "wayland"
 OPTION_S(openfile_application, "open.file.application", OPTION_MISC_TYPE)
 OPTION_S(openlink_application, "open.link.application", OPTION_MISC_TYPE)
 OPTION_S(log_file, "log.file", OPTION_STRING_TYPE)
