@@ -179,6 +179,14 @@ int start_command(struct options *opts, char *cmd) {
     }
     pid_t pid = fork();
     if (pid == 0) {
+        std::string window_session_type =
+            get_setting_s(opts->settings, "window-session-type");
+        if (window_session_type.empty()) {
+            if (opts->qt_frontend)
+                window_session_type = "x11";
+        }
+        if (! window_session_type.empty())
+            setenv("XDG_SESSION_TYPE", window_session_type.c_str(), 1);
         putenv((char*) "ELECTRON_DISABLE_SECURITY_WARNINGS=true");
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
         if (opts->qt_frontend) {
@@ -186,7 +194,6 @@ int start_command(struct options *opts, char *cmd) {
             // FIXME - should append, not override
             setenv("LD_LIBRARY_PATH", QT_DOCKING_LIBDIR, 1);
 #endif
-            putenv((char*) "XDG_SESSION_TYPE=x11");
         }
 #endif
         daemonize();
