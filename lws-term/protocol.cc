@@ -338,24 +338,6 @@ unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
         || tclient->proxyMode == proxy_display_local) {
         lwsl_notice("- close pty pmode:%d\n", tclient->proxyMode);
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
-    } else if (tclient->main_window == 0
-        && tclient->connection_number == pclient->session_number) {
-        // The session correspding to the main window was detached.
-        // The connection is kept around to handle window-level operations.
-        // Re-number that connection so the old window number is
-        // available when we attach a new window to the session.
-        // (We prefer to have window/connection numbers match session numbers.)
-        int old_number = tclient->connection_number;
-        clear_connection_number(tclient);
-        set_connection_number(tclient, -1);
-        int new_number = tclient->connection_number;
-        struct tty_client *tother;
-        FORALL_WSCLIENT(tother) {
-            if (tother->main_window == old_number)
-                tother->main_window = new_number;
-        }
-        tclient->pty_window_update_needed = true;
-        lws_callback_on_writable(tclient->wsi);
     }
     tclient->wkind =
         tclient->main_window == 0 ?  main_only_window : unknown_window;
@@ -575,7 +557,7 @@ template<typename T>
 int id_table<T>::enter(T *entry, int hint)
 {
     int snum = 1;
-    if (hint > 0 && ! valid_index(hint) && ! avoid_index(hint, -1))
+    if (hint > 0 && ! valid_index(hint))
         snum = hint;
     for (; ; snum++) {
         if (snum >= sz) {
@@ -598,10 +580,9 @@ int id_table<T>::enter(T *entry, int hint)
             }
             elements[snum] = entry;
             //pclient->session_number = snum;
-            break;
+            return snum;
         }
     }
-    return snum;
 }
 template<typename T>
 void id_table<T>::remove(T* entry)
@@ -1458,10 +1439,38 @@ reportEvent(const char *name, char *data, size_t dlen,
         if (pclient != NULL) {
             unlink_tty_from_pty(pclient, wclient);
             wclient->pclient = NULL;
-        } else {
-            clear_connection_number(wclient);
-            if (wclient != client)
-                delete wclient;
+        }
+        int wnumber = client->connection_number;
+        tty_client *main_window = client->main_window == 0 ? client
+            : main_windows(client->main_window);
+        if (main_window
+            // && main_window != client
+            && main_window->connection_number == wnumber) {
+            // The number of a system window should be one of its sub-windows.
+            // So if we close a sub-window with the same number as the top
+            // window, try to re-number the latter to a remaining sub-window.
+            tty_client *oclient, *xclient;
+            FORALL_WSCLIENT(oclient) {
+                int onumber = oclient->connection_number;
+                if (oclient->main_window == wnumber
+                    && ! main_windows.valid_index(onumber)) {
+                    main_windows.remove(main_window);
+                    if (client == main_window) {
+                        clear_connection_number(client);
+                    }
+                    main_window->connection_number = -1;
+                    onumber = main_windows.enter(main_window, onumber);
+                    main_window->connection_number = onumber;
+                    main_window->wkind = main_only_window;
+                    main_window->pty_window_update_needed = 1; // BAD NAME
+                    lws_callback_on_writable(main_window->out_wsi);
+                    FORALL_WSCLIENT(xclient) {
+                        if (xclient->main_window == wnumber)
+                            xclient->main_window = onumber;
+                    }
+                    break;
+                }
+            }
         }
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_client = client;
