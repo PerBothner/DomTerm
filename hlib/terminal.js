@@ -1394,7 +1394,7 @@ Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
 Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
         let needed;
-        if (this._vspacer.dtHeight < 0)
+        if (this.sstate.bottomHeight < 0)
             needed = -1;
         else {
             needed = this.actualHeight - this._vspacer.offsetTop
@@ -1411,15 +1411,13 @@ Terminal.prototype._checkSpacer = function() {
  */
 Terminal.prototype._adjustSpacer = function(needed) {
     var vspacer = this._vspacer;
-    if (needed === NaN)
-        console.log("needed NAN!");
-    if (vspacer.dtHeight != needed) {
+    if (this.sstate.bottomHeight !== needed) {
         if (needed > 0) {
             vspacer.style.height = needed + "px";
-        } else if (vspacer.dtHeight > 0) {
+        } else if (this.sstate.bottomHeight > 0) {
             vspacer.style.height = "";
         }
-        vspacer.dtHeight = needed;
+        this.sstate.bottomHeight = needed;
     }
 };
 
@@ -3592,7 +3590,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
 
     var vspacer = document.createElement("div");
     vspacer.setAttribute("class", "domterm-spacer");
-    vspacer.dtHeight = 0;
+    this.sstate.bottomHeight = 0;
     this.buffers.appendChild(vspacer);
     this._vspacer = vspacer;
 };
@@ -5461,8 +5459,8 @@ Terminal.prototype.eraseDisplay = function(param) {
     }
     if ((param == 0 || param == 2) && this._vspacer != null) {
         this._setBackgroundColor(this._vspacer, this._currentStyleBackground());
-        if (this._vspacer.dtHeight < 0)
-            this._vspacer.dtHeight = 0;
+        if (this.sstate.bottomHeight < 0)
+            this.sstate.bottomHeight = 0;
     }
     this.moveToAbs(saveLine, saveCol, true);
 };
