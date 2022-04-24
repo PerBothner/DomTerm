@@ -1428,11 +1428,12 @@ reportEvent(const char *name, char *data, size_t dlen,
             unlink_tty_from_pty(pclient, wclient);
             wclient->pclient = NULL;
         }
-        int wnumber = client->connection_number;
-        tty_client *main_window = client->main_window == 0 ? client
-            : main_windows(client->main_window);
+        int wnumber = wclient->connection_number;
+        if (tty_clients(wnumber) == wclient)
+            tty_clients.remove(wclient);
+        tty_client *main_window = wclient->main_window == 0 ? wclient
+            : main_windows(wclient->main_window);
         if (main_window
-            // && main_window != client
             && main_window->connection_number == wnumber) {
             // The number of a system window should be one of its sub-windows.
             // So if we close a sub-window with the same number as the top
@@ -1443,9 +1444,6 @@ reportEvent(const char *name, char *data, size_t dlen,
                 if (oclient->main_window == wnumber
                     && ! main_windows.valid_index(onumber)) {
                     main_windows.remove(main_window);
-                    if (client == main_window) {
-                        clear_connection_number(client);
-                    }
                     main_window->connection_number = -1;
                     onumber = main_windows.enter(main_window, onumber);
                     main_window->connection_number = onumber;
@@ -2290,7 +2288,7 @@ display_session(struct options *options, struct pty_client *pclient,
             options->browser_command = "";
         }
         tclient->options = link_options(options);
-        set_connection_number(tclient, pclient ? pclient->session_number : -1);
+        set_connection_number(tclient, session_number);
         if (paneOp <= 0)
             main_windows.enter(tclient, tclient->connection_number);
         tclient->wkind = wkind;
