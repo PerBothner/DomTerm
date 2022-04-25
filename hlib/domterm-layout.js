@@ -202,11 +202,19 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
 DomTermLayout.popoutWindow = function(item, dt = null, fromLayoutEvent = false) {
     const wholeStack = item.type == 'stack';
     if (! wholeStack) {
-        DomTerm.closeSession(item.component, true, fromLayoutEvent);
+        DomTerm.closeSession(item.component, true, !!fromLayoutEvent);
     } else {
         // FIXME needs work - wholeStack
     }
-    DomTermLayout._pendingPopoutOptions = DomTermLayout.popoutEncode(item, dt);
+    const options = DomTermLayout.popoutEncode(item, dt);
+    if (fromLayoutEvent instanceof DragEvent
+        && fromLayoutEvent.screenX >= 0
+        && fromLayoutEvent.screenY >= 0) {
+        const wX = fromLayoutEvent.screenX - DomTermLayout.dragStartOffsetX;
+        const wY = fromLayoutEvent.screenY - DomTermLayout.dragStartOffsetY;
+        options.position = `+${Math.round(wX)}+${Math.round(wY)}`;
+    }
+    DomTermLayout._pendingPopoutOptions = options;
     // FIXME call from removeContent
     dt = dt || DomTerm.mainTerm;
 
@@ -446,11 +454,11 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             return state;
         };
 
-        container.on("dragExported", (component) => {
+        container.on("dragExported", (event, component) => {
             if (DomTermLayout.manager.inSomeWindow) {
                 DomTerm.closeSession(component.component, true, true);
             } else {
-                DomTermLayout.popoutWindow(component, null, true);
+                DomTermLayout.popoutWindow(component, null, event);
             }
         });
 
@@ -504,8 +512,11 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                              activeContentItemHandler);
 
     DomTermLayout.manager.on('dragstart',
-                             (e, item) => {
+                             (ev, item) => {
                                  const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
+                                 const clientRect = item.element.getBoundingClientRect();
+                                 DomTermLayout.dragStartOffsetX = ev.clientX - clientRect.left;
+                                 DomTermLayout.dragStartOffsetY = ev.clientY - clientRect.top;
                                  if (dt)
                                      dt.reportEvent("DRAG", "start");
                              });
