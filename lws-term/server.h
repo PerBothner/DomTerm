@@ -204,6 +204,19 @@ enum window_kind {
     browser_window = 5,
 };
 
+enum pane_specifier {
+    pane_best = 1,
+    pane_tab = 2,
+    pane_left = 10,
+    pane_right = 11,
+    pane_above = 12,
+    pane_below = 13,
+    pane_main_left = 18,
+    pane_main_right = 19,
+    pane_main_above = 20,
+    pane_main_below = 21
+};
+
 /**
  * Data specific to a WebSocket (browser) client connection or a proxy stream.
  * The user structure for the libwebsockets "domterm" and "proxy" protocols.
