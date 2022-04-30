@@ -2262,6 +2262,7 @@ display_session(struct options *options, struct pty_client *pclient,
     int wnum = -1;
     bool has_name = ! options->name_option.empty();
     struct tty_client *wclient = nullptr;
+    bool top_marker = false;
     if (paneOp > 0) {
         const char *eq = strchr(browser_specifier, '=');
         if (eq) {
@@ -2273,6 +2274,8 @@ display_session(struct options *options, struct pty_client *pclient,
                              browser_specifier);
                 return EXIT_FAILURE;
             }
+            size_t wlen = wopt.length();
+            top_marker = wlen > 0 && wopt[wlen-1] == '^';
             wclient = tty_clients(w);
         } else if (focused_client == NULL) {
             printf_error(options, "no current window for '%s' option",
@@ -2338,6 +2341,8 @@ display_session(struct options *options, struct pty_client *pclient,
             }
             sprintf(oldnum_buffer, ",%d",oldnum);
         }
+        if (top_marker && paneOp >= pane_left && paneOp <= pane_below)
+            paneOp = pane_main_left + (paneOp - pane_left);
         printf_to_browser(wclient, URGENT_WRAP("\033]%d;%d%s,%s\007"),
                           104, paneOp, oldnum_buffer,
                           pane_options.dump().c_str());

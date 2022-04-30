@@ -16,6 +16,15 @@ struct lws;
 
 extern struct command commands[];
 
+static void insert_window(std::set<int>& windows,
+                     tty_client *mclient, bool top_marker)
+{
+    if (top_marker && mclient->main_window > 0
+        && main_windows.valid_index(mclient->main_window))
+        mclient = main_windows[mclient->main_window];
+    windows.insert(mclient->index());
+}
+
 bool check_window_option(const std::string& option,
                          std::set<int>& windows,
                          const char *cmd, struct options *opts)
@@ -26,23 +35,27 @@ bool check_window_option(const std::string& option,
     for (;;) {
         size_t sep = option.find_first_of(sep_chars, start);
         std::string s = option.substr(start, sep);
-        int w;
+        size_t slen = s.length();
+        bool top_marker = slen > 0 && s[slen-1] == '^';
+        if (top_marker && slen > 1)
+            s.pop_back();
         bool matched = false;
         if (s != "") {
             for (struct tty_client *tclient  = TCLIENT_FIRST;
                  tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
                 if (tclient->window_name == s) {
-                    windows.insert(tclient->index());
+                    insert_window(windows, tclient, top_marker);
                     matched = true;
                 }
             }
         }
         if (! matched && s != "") {
-            if (s == "all" || s == "all-top" || s == "*" || s == "*^") {
+            tty_client *mclient = nullptr;
+            if (s == "all" || s == "all-top" || s == "*" || s == "*") {
                 for (struct tty_client *tclient  = TCLIENT_FIRST;
                      tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
                     if (tclient->main_window == 0 || s == "all" || s == "*") {
-                        windows.insert(tclient->index());
+                        insert_window(windows, tclient, top_marker);
                     }
                 }
             } else if (s == "current" || s == "top" || s == "current-top"
@@ -55,22 +68,24 @@ bool check_window_option(const std::string& option,
                 if (s == "current" || s == "."
                     || focused_client->main_window == 0
                     || (main = tty_clients(focused_client->main_window)) == nullptr)
-                    w = focused_client->index();
+                    mclient = focused_client;
                 else
-                    w = main->index();
-                windows.insert(w);
+                    mclient = main;
             } else {
                 char *endptr;
                 const char *s_c = s.c_str();
-                long w = strtol(s_c, &endptr, 10);
-                if (endptr[0] || (int) w != w ||
-                    ! tty_clients.valid_index((int) w)) {
+                long wl = strtol(s_c, &endptr, 10);
+                int w = (int) wl;
+                if (endptr[0] || w != wl ||
+                    ! tty_clients.valid_index(w)) {
                     printf_error(opts, "domterm %s: invalid window number '%s'",
                                  cmd, s_c);
                     return false;
                 }
-                windows.insert((int) w);
+                mclient = tty_clients[w];
             }
+            if (mclient)
+                insert_window(windows, mclient, top_marker);
         }
         if (sep == std::string::npos)
             break;

@@ -3,7 +3,7 @@
 
 export { DomTermLayout };
 
-import { GoldenLayout, ItemConfig, ResolvedItemConfig, Tab } from './goldenlayout.js';
+import { GoldenLayout, ItemConfig, ResolvedItemConfig, RowOrColumn, Tab } from './goldenlayout.js';
 
 class DomTermLayout {
 };
@@ -68,6 +68,9 @@ DomTermLayout.addPane = function(paneOp, newItemConfig,
         DomTermLayout.addPaneRelative(oldItem, paneOp, newItemConfig);
 }
 
+/*
+  * paneOp - see enum pane_specifer in server.h.
+ */
 DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
 {
     if (paneOp == 1) { // convert to --right or --below
@@ -86,6 +89,10 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
         extraConfig = {};
     config.title = "(DomTerm)"+DomTermLayout._count; // FIXME
     config.componentState = extraConfig;
+    let top_relative = paneOp >= 18 && paneOp < 21;
+    if (top_relative) {
+        paneOp -= 8;
+    }
     let addAfter = paneOp == 2 || paneOp==11 || paneOp==13;
     let p = oldItem.parent;
     if (paneOp == 2) { // new tab
@@ -94,6 +101,20 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
     } else {
         let isColumn = paneOp==12||paneOp==13;
         var type = isColumn ? 'column' : 'row';
+        let ground = p.layoutManager.groundItem;
+        let column = ground.contentItems.length !== 1 ? null
+            : ground.contentItems[0];
+        if (top_relative && column instanceof RowOrColumn) {
+            if (column.type !== type) {
+                const rowOrColumn = p.layoutManager.createContentItem(ResolvedItemConfig.createDefault(type), ground);
+                ground.replaceChild(column, rowOrColumn);
+                rowOrColumn.addChild(column, 0, true);
+                rowOrColumn.updateSize();
+                column = rowOrColumn;
+            }
+            column.addItem(ItemConfig.resolve(config), addAfter ? column.contentItems.length : 0);
+            return;
+        }
         if (p && p.type == "stack") {
             var pp = p.parent;
             if (pp.type != type && paneOp != 2) {

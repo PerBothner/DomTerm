@@ -1130,9 +1130,16 @@ or have other special uses.
 @itemx @code{--right}[@code{=}@var{window}]
 @itemx @code{--above}[@code{=}@var{window}]
 @itemx @code{--below}[@code{=}@var{window}]
-Split @var{window} (a window number) in two,
+Split @var{window} (a @ref{window-specifier-option, window specifier}) in two,
 and create a new pane (sub-window) to the left/right/above/below the old one.
 If @var{window} is not specified, use the current window.
+
+If @var{window} ends in @code{^}, split the specified top-level window.
+For example, if window 1 is above window 2,
+then @code{--left=2} will will put the new window side-by-side with 2,
+and both below window 1 (which is full-width).
+In contrast, @code{--left=2^} will create a new full-height window
+on the left, while on the right window 1 will be above window 2.
 @item @code{--pane}[@code{=}@var{window}]
 Equivalent to either @code{--right} or @code{--below} depending
 on the current window's width/height ratio.
@@ -1215,6 +1222,8 @@ All windows, including sub-windows.
 @item @code{*^}
 @itemx @code{all-top}
 All top-level sub-windows.
+@item @var{window-specifier}@code{^}
+The top-level window(s) containing the specified windows.
 @item @var{window-specifier}@code{,}@var{window-specifier}@var{...}
 A comma-separated list of window specifiers.
 @end table
