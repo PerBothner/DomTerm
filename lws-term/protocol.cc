@@ -2329,22 +2329,19 @@ display_session(struct options *options, struct pty_client *pclient,
             pane_options["windowNameUnique"] =
                 (bool) tclient->window_name_unique;
         }
-        char oldnum_buffer[12];
-        oldnum_buffer[0] = 0;
-        if (wclient->out_wsi == NULL) {
-            int oldnum = wclient->connection_number;
-            if (wclient->main_window == 0 || oldnum <= 0 || oldnum > 999999
-                || (wclient = tty_clients(wclient->main_window)) == nullptr
-                || wclient->out_wsi == nullptr) {
+        int oldnum = wclient->connection_number;
+        if (wclient->main_window != 0) {
+            wclient = tty_clients(wclient->main_window);
+            if (oldnum <= 0 || oldnum > 999999
+                || wclient == nullptr || wclient->out_wsi == nullptr) {
                 printf_error(options, "No existing window %d", oldnum);
                 return EXIT_FAILURE;
             }
-            sprintf(oldnum_buffer, ",%d",oldnum);
         }
         if (top_marker && paneOp >= pane_left && paneOp <= pane_below)
             paneOp = pane_main_left + (paneOp - pane_left);
-        printf_to_browser(wclient, URGENT_WRAP("\033]%d;%d%s,%s\007"),
-                          104, paneOp, oldnum_buffer,
+        printf_to_browser(wclient, URGENT_WRAP("\033]%d;%d,%d,%s\007"),
+                          104, paneOp, oldnum,
                           pane_options.dump().c_str());
         lws_callback_on_writable(wclient->out_wsi);
     } else {
