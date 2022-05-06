@@ -186,6 +186,8 @@ DomTerm.forEachTerminal = function(func) {
    * Note this is in the DomTerm global object, not DomTermLayout. FIXME?
  */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
+    if (! dt)
+        dt = DomTerm.mainTerm;
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("domterm-add-pane", paneOp, options);
     else
@@ -337,7 +339,8 @@ DomTerm.openNewWindow = function(dt, options={}) {
             else if (DomTerm._qtBackend)
                 DomTerm._qtBackend.openNewWindow(options.width, options.height,
                                                  options.position || "",
-                                                 url, !!options['headless']);
+                                                 url, !!options['headless'],
+                                                 options.titlebar || "");
             else // DomTerm.versions.wry
                 ipc.postMessage("new-window "+JSON.stringify(options));
         }

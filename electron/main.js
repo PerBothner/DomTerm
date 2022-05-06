@@ -6,14 +6,13 @@ const url = require('url')
 // be closed automatically when the JavaScript object is garbage collected.
 let windowList = new Array();
 
-let frameWindows = true;
-
 function createInitialWindow (argv) {
     // options = yargs(process.argv[1..]).wrap(100)
     // and load the index.html of the app.
     let argc = argv.length;
     let openDevTools = false;
     let headless = false;
+    let titlebar = "";
     var url = "http://localhost:7033/#ws=same";
     var geometry = null;
     for (let i = 2; i < argc; i++) {
@@ -22,8 +21,8 @@ function createInitialWindow (argv) {
             openDevTools = true;
         else if (arg == "--headless")
             headless = true;
-        else if (arg == "--no-titlebar")
-            frameWindows = false;
+        else if (arg == "--titlebar" && i+1 < argc)
+            titlebar = argv[++i];
         else if (arg == "--url" && i+1 < argc)
             url = argv[++i];
         else if (arg == "--geometry" && i+1 < argc)
@@ -53,6 +52,8 @@ function createInitialWindow (argv) {
             options.position = m[hasPos+1];
         }
     }
+    if (titlebar)
+        options.titlebar = titlebar;
     createNewWindow(url, options, headless);
 }
 var previousUrl = null;
@@ -77,7 +78,9 @@ function createNewWindow (url, options, headless) {
     let bwoptions = {
         width: w, height: h,
         webPreferences: {contextIsolation: false, worldSafeExecuteJavaScript: false, enableRemoteModule: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
-        useContentSize: true, frame: frameWindows, show: false};
+        useContentSize: true,
+        frame: ! options.titlebar || options.titlebar === "system",
+        show: false};
     if (options.x !== undefined && options.y !== undefined) {
         bwoptions.x = options.x;
         bwoptions.y = options.y;

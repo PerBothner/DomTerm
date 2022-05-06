@@ -286,7 +286,7 @@ void BrowserApplication::openUrl(const QUrl &url)
     mainWindow()->loadPage(url.toString());
 }
 
-BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, bool headless, QSharedDataPointer<ProcessOptions> processOptions)
+BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, bool headless, bool titlebar, QSharedDataPointer<ProcessOptions> processOptions)
 {
     QUrl xurl = url;
     QUrlQuery fragment = QUrlQuery(xurl.fragment().replace(";", "&"));
@@ -303,7 +303,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
     xurl.setFragment(fragment.isEmpty() ? QString()
                         : fragment.toString());
     Qt::WindowFlags wflags = Qt::Window;
-    if (! processOptions->titlebar)
+    if (! titlebar)
         wflags |= Qt::FramelessWindowHint;
     BrowserMainWindow *browser =
         new BrowserMainWindow(this, xurl.toString(),
@@ -362,7 +362,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QShared
     return newMainWindow(url,
                          w.isEmpty() ? -1 : w.toInt(),
                          h.isEmpty() ? -1 : h.toInt(),
-                         pos, headlessOption,
+                         pos, headlessOption, processOptions->titlebar,
                          processOptions);
 }
 

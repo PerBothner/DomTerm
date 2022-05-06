@@ -253,7 +253,8 @@ void Backend::newPane(int paneOp, const QString& url)
 #endif
 
 void Backend::openNewWindow(int width, int height, const QString& position,
-                            const QString& url, bool headless)
+                            const QString& url, bool headless,
+                            const QString& titlebar)
 {
 #if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
     auto manager = webView()->mainWindow()->dockManager();
@@ -264,8 +265,11 @@ void Backend::openNewWindow(int width, int height, const QString& position,
 #else
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     QString xurl = url + (url.indexOf('#') < 0 ? "#" : "&") + "qtwebengine";
+    // if default changes to "domterm": titlebar=="system"
+    bool use_titlebar = titlebar=="" || titlebar=="system";
     BrowserApplication::instance()->newMainWindow(xurl, width, height,
-                                                  position, headless, options);
+                                                  position, headless,
+                                                  use_titlebar, options);
 #endif
 }
 

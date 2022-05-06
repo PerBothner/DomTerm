@@ -317,8 +317,8 @@ static struct lws_http_mount mount_domterm_zip = {
 #define TTY_PACKET_MODE_OPTION 2009
 #define PANE_OPTIONS_START 2100
 /* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
-#define PANE_OPTION (PANE_OPTIONS_START+1)
-#define TAB_OPTION (PANE_OPTIONS_START+2)
+#define PANE_OPTION (PANE_OPTIONS_START+pane_best)
+#define TAB_OPTION (PANE_OPTIONS_START+pane_tab)
 #define LEFT_OPTION (PANE_OPTIONS_START+pane_left)
 #define RIGHT_OPTION (PANE_OPTIONS_START+pane_right)
 #define ABOVE_OPTION (PANE_OPTIONS_START+pane_above)
@@ -613,8 +613,10 @@ qtwebengine_command(struct options *options)
         sb.printf(" --remote-debugging-port=%s", options->qt_remote_debugging);
     if (options->headless)
         sb.append(" --headless");
-    if (get_setting_s(options->settings, "titlebar", "system") != "system")
-        sb.append(" --no-titlebar");
+    std::string titlebar = get_setting_s(options->settings, "titlebar");
+    if (! titlebar.empty())
+        sb.printf(" --titlebar='%s'",
+                  titlebar == "system" ? "system" : "domterm");
     sb.append(" --connect '%U'");
     return sb.strdup();
 }
@@ -661,8 +663,9 @@ wry_command(struct options *options)
         sb.printf(" --geometry %s", geometry);
     }
     std::string titlebar = get_setting_s(options->settings, "titlebar");
-    if (titlebar.empty() || titlebar != "system")
-        sb.append(" --no-titlebar");
+    if (! titlebar.empty())
+        sb.printf(" --titlebar '%s'",
+                  titlebar == "system" ? "system" : "domterm");
     sb.append(" '%U'");
     return sb.strdup();
 }
@@ -698,8 +701,10 @@ electron_command(struct options *options)
         sb.printf(" --geometry %s", geometry);
     if (options->headless)
         sb.printf(" --headless");
-    if (get_setting_s(options->settings, "titlebar", "system") != "system")
-        sb.append(" --no-titlebar");
+    std::string titlebar = get_setting_s(options->settings, "titlebar");
+    if (! titlebar.empty())
+        sb.printf(" --titlebar '%s'",
+                  titlebar == "system" ? "system" : "domterm");
     sb.append(" --url '%U'");
     if (app_fixed != app)
         free(app_fixed);
@@ -760,6 +765,9 @@ browser_run_browser(struct options *options, const char *url,
         jobj["geometry"] = geometry;
     if (options->headless)
         jobj["headless"] = true;
+    std::string titlebar = get_setting_s(options->settings, "titlebar");
+    if (! titlebar.empty())
+        jobj["titlebar"] = titlebar;
     printf_to_browser(tclient,
                       URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
                       jobj.dump().c_str());

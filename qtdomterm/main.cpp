@@ -61,7 +61,7 @@ const char* const short_options = "+:vhw:e:c:S:";
 #define QT_OPTION 1000
 #define GEOMETRY_OPTION 1001
 #define HEADLESS_OPTION 1002
-#define NO_TITLEBAR_OPTION 1003
+#define TITLEBAR_OPTION 1003
 
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
@@ -72,7 +72,7 @@ const struct option long_options[] = {
     {"remote-debugging-port", 1, NULL, QT_OPTION},
     {"geometry", 1, NULL, GEOMETRY_OPTION},
     {"headless", 0, NULL, HEADLESS_OPTION},
-    {"no-titlebar", 0, NULL, NO_TITLEBAR_OPTION},
+    {"titlebar", 1, NULL, TITLEBAR_OPTION},
     {NULL,      0, NULL,  0}
 };
 
@@ -112,8 +112,10 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
             case 'v':
                 print_version_and_exit();
                 break;
-            case NO_TITLEBAR_OPTION:
-                processOptions->titlebar = false;
+            case TITLEBAR_OPTION:
+                // if changing default to "domterm": strcmp(optarg, "system") == 0
+                processOptions->titlebar =
+                    !optarg[0] || strcmp(optarg, "system") == 0;
                 break;
             case HEADLESS_OPTION:
                 processOptions->headless = true;

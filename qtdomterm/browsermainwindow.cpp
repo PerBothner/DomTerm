@@ -91,16 +91,12 @@ InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
 
 BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
                                      const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent,
-#if USE_KDDockWidgets
-                                     Qt::WindowFlags
-#else
-                                     Qt::WindowFlags flags
-#endif
+                                     Qt::WindowFlags wflags
     )
 #if USE_KDDockWidgets
-    : KDDockWidgets::MainWindow(BrowserApplication::uniqueNameFromUrl(url), KDDockWidgets::MainWindowOption_None, parent) // flags ingnored?
+    : KDDockWidgets::MainWindow(BrowserApplication::uniqueNameFromUrl(url), KDDockWidgets::MainWindowOption_None, parent)
 #else
-    : QMainWindow(parent, flags)
+    : QMainWindow(parent, wflags)
 #endif
     , m_application(application)
 #if USE_KDDockWidgets
@@ -121,7 +117,7 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
 #if defined(Q_OS_OSX)
         true
 #else
-        processOptions->titlebar
+        (wflags & Qt::FramelessWindowHint) == 0
 #endif
         );
     if (useQtMenu)
