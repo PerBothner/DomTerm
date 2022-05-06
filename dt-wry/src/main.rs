@@ -31,11 +31,12 @@ fn main() -> wry::Result<()> {
     let mut joptions = serde_json::json!({});
     let options = joptions.as_object_mut().unwrap();
     let mut iarg = 1;
-    let mut titlebar = true;
     while iarg < args.len() {
         let arg = &args[iarg];
-        if arg == "--no-titlebar" {
-            titlebar = false;
+        if arg == "--titlebar" && iarg + 1 < args.len() {
+            iarg += 1;
+            options.insert("titlebar".to_string(),
+                           serde_json::to_value(&args[iarg]).unwrap());
         } else if arg == "--geometry" && iarg + 1 < args.len() {
             iarg += 1;
             let re = Regex::new(r"^(([0-9]+)x([0-9]+))?([-+][0-9]+[-+][0-9]+)?$").unwrap();
@@ -62,13 +63,16 @@ fn main() -> wry::Result<()> {
 
     fn create_new_window(
         title: String,
-        titlebar: bool,
         options: &serde_json::Map<String, Value>,
         event_loop: &EventLoopWindowTarget<UserEvents>,
         proxy: EventLoopProxy<UserEvents>,
     ) -> (WindowId, WebView) {
         let url = options["url"].as_str().unwrap();
         let wversion = wry::webview::webview_version();
+        let titlebar = match options.get("titlebar") {
+            Some(t) => t.as_str().unwrap_or("") == "system",
+            None => false // default to "domterm" titlebar
+        };
         let wversion_js = match wversion {
             Ok(v) => format!("    window.webview_version = \"{}\";\n", v),
             Err(_) => "".to_string(),
@@ -168,7 +172,6 @@ fn main() -> wry::Result<()> {
 
     let window_pair = create_new_window(
         "DomTerm".to_string(),
-        titlebar,
         &options,
         // &script,
         &event_loop,
@@ -197,7 +200,6 @@ fn main() -> wry::Result<()> {
             Event::UserEvent(UserEvents::NewWindow(options)) => {
                 let window_pair = create_new_window(
                     format!("DomTerm {}", webviews.len() + 1).to_string(),
-                    titlebar,
                     &options,
                     //          script,
                     &event_loop,
