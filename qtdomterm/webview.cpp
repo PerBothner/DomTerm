@@ -376,9 +376,11 @@ void WebView::showContextMenu(const QString& contextType)
 
 void WebView::contextMenuEvent(QContextMenuEvent *event)
 {
-    contextMenuPosition = event->globalPos();
-    // Ideally, this should be done in showContextMenu.
-    displayContextMenu(contextTypeForMenu);
+    if (mainWindow()->usingQtMenus()) {
+        contextMenuPosition = event->globalPos();
+        // Ideally, this should be done in showContextMenu.
+        displayContextMenu(contextTypeForMenu);
+    }
 }
 void WebView::displayContextMenu(const QString& contextType)
 {

@@ -104,6 +104,7 @@ public slots:
     void changeInputMode(QAction*);
     void inputModeChanged(char mode);
     void autoPagerChanged(bool mode);
+    bool usingQtMenus() { return _usingQtMenus; }
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -177,6 +178,7 @@ private:
     friend class BrowserApplication;
     friend class WebView;
 
+    bool _usingQtMenus;
     QAction *charInputMode;
     QAction *lineInputMode;
     QAction *autoInputMode;

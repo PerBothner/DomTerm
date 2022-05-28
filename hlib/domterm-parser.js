@@ -2213,8 +2213,6 @@ class DTParser {
                         if (oldItem)
                             m.addPaneRelative(oldItem, paneOp, options);
                     });
-                } else {
-                    DomTerm.newPane(paneOp, options, term);
                 }
             } catch (e) {
                 term.log("bad new-pane request (" + e + "): " +JSON.stringify(text));

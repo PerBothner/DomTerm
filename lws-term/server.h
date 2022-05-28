@@ -254,6 +254,7 @@ public:
     bool is_primary_window : 1;
     bool close_requested : 1;
     bool keep_after_unexpected_close : 1;
+    bool keep_after_detach : 1;
     bool detach_on_disconnect : 1;
     bool window_name_unique : 1;
     bool pty_window_update_needed;

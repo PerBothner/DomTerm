@@ -289,18 +289,23 @@ printf_to_browser(struct tty_client *tclient, const char *format, ...)
     va_end(ap);
 }
 
-static void
+static int
 set_connection_number(struct tty_client *tclient, int hint)
 {
-    int snum = tty_clients.enter(tclient, hint);
-    tclient->connection_number = snum;
-    lwsl_notice("set_connection_number %p to %d\n", tclient, tclient->connection_number);
+    int wnum = tty_clients.enter(tclient, hint);
+    tclient->connection_number = wnum;
+    lwsl_notice("set_connection_number %p to %d\n", tclient, wnum);
+    return wnum;
 }
 
 static void
 clear_connection_number(struct tty_client *tclient)
 {
-    tty_clients.remove(tclient);
+    int num = tclient->index();
+    if (tty_clients(num) == tclient)
+        tty_clients.remove(tclient);
+    if (main_windows(num) == tclient)
+        main_windows.remove(tclient);
     tclient->connection_number = -1;
 }
 
@@ -1142,6 +1147,100 @@ maybe_signal (struct pty_client *pclient, int sig, int ch)
 }
 #endif
 
+void
+open_window(const char *data, struct tty_client *client)
+{
+    struct options *options = client->options;
+    json obj = json::parse(data, nullptr, false);
+    if (! obj.is_object()) {
+        lwsl_err("bad JSON in OPEN-WINDOW request\n");
+        return;
+    }
+    bool has_size = obj.contains("width") && obj.contains("height")
+        && obj["height"].is_number() && obj["width"].is_number();
+    bool has_position = obj.contains("position")
+        && obj["position"].is_string();
+    if (has_size || has_position) {
+        sbuf sb;
+        if (has_size) {
+            sb.printf("%dx%d",
+                      obj["width"].get<int>(),
+                      obj["height"].get<int>());
+        }
+        if (has_position) {
+            sb.append(obj["position"].get<std::string>().c_str());
+        }
+        if (! options)
+            client->options = options = link_options(NULL);
+        options->geometry_option = sb.null_terminated();
+    }
+    const char* url = obj.contains("url") && obj["url"].is_string()
+        ?  obj["url"].get<std::string>().c_str() : nullptr;
+    struct pty_client *npclient = nullptr;
+    int snum = obj.contains("sessionNumber")
+        && obj["sessionNumber"].is_number()
+        ? obj["sessionNumber"].get<int>()
+        : -1;
+    //std::string save_command = options->browser_command;
+    enum window_kind wkind = url ? unknown_window : dterminal_window;
+    sbuf sb_contents;
+    if (! url && obj.contains("content")) {
+        //&& obj["content"].is_obj()) {
+        if (obj.contains("windowNumber")
+            && obj["windowNumber"].is_number()) {
+            int wnum = obj["windowNumber"].get<int>();
+            if (wnum > 0) {
+                options->paneOp = wnum;
+            }
+        }
+        auto content = obj["content"];
+        std::string jcontent = content.dump();
+        sb_contents.printf("open=%s",
+                           url_encode(jcontent).c_str());
+        url = sb_contents.null_terminated();
+        wkind = main_only_window;
+    } else if (pty_clients.valid_index(snum))
+        npclient = pty_clients(snum);
+    else if (! url) {
+        arglist_t argv = default_command(options);
+        char *cmd = find_in_path(argv[0]);
+        if (cmd != NULL)
+            npclient = create_pclient(cmd, argv, options, false, nullptr);
+    }
+    display_session(options, npclient, url, wkind);
+    //if (wkind == main_only_window)
+    //options->browser_command = save_command; // kludge
+}
+
+/* The number of a system window should be one of its sub-windows.
+ * So if we close a sub-window with the same number as the top
+ * window, try to re-number the latter to a remaining sub-window.
+ */
+void
+renumber_main_window(tty_client *main_window)
+{
+    int wnumber = main_window->connection_number;
+    tty_client *oclient, *xclient;
+    FORALL_WSCLIENT(oclient) {
+        int onumber = oclient->connection_number;
+        if (oclient->main_window == wnumber
+            && ! main_windows.valid_index(onumber)) {
+            main_windows.remove(main_window);
+            main_window->connection_number = -1;
+            onumber = main_windows.enter(main_window, onumber);
+            main_window->connection_number = onumber;
+            main_window->wkind = main_only_window;
+            main_window->pty_window_update_needed = 1; // BAD NAME
+            lws_callback_on_writable(main_window->out_wsi);
+            FORALL_WSCLIENT(xclient) {
+                if (xclient->main_window == wnumber)
+                    xclient->main_window = onumber;
+            }
+            break;
+        }
+    }
+}
+
 /** Handle an "event" encoded in the stream from the browser.
  * Return true if handled.  Return false if proxyMode==proxy_local
  * and the event should be sent to the remote end.
@@ -1372,56 +1471,44 @@ reportEvent(const char *name, char *data, size_t dlen,
         } else {
             lwsl_err("RESPONSE with bad object syntax or missing'id'\n");
         }
+    } else if (strcmp(name, "OPEN-PANE") == 0) {
+        int paneOp = -1, oldWindowNum = -1, start_options = -1;
+        sscanf(data, "%d,%d,%n", &paneOp, &oldWindowNum, &start_options);
+        if (paneOp >= 0 && oldWindowNum > 0 && start_options > 0) {
+            options->paneOp = paneOp;
+            char wbuf[20];
+            sprintf(wbuf, "=%d", oldWindowNum);
+            std::string save_command = options->browser_command;
+            options->browser_command = wbuf;
+            open_window(data+start_options, client);
+            options->browser_command = save_command;
+        }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
-        json obj = json::parse(data, nullptr, false);
-        if (! obj.is_object()) {
-            lwsl_err("bad JSON in OPEN-WINDOW request\n");
-            return true;
-        }
-        bool has_size = obj.contains("width") && obj.contains("height")
-            && obj["height"].is_number() && obj["width"].is_number();
-        bool has_position = obj.contains("position")
-            && obj["position"].is_string();
-        if (has_size || has_position) {
-            sbuf sb;
-            if (has_size) {
-                sb.printf("%dx%d",
-                          obj["width"].get<int>(),
-                          obj["height"].get<int>());
-            }
-            if (has_position) {
-                sb.append(obj["position"].get<std::string>().c_str());
-            }
-            if (! options)
-                client->options = options = link_options(NULL);
-            options->geometry_option = sb.null_terminated();
-        }
-        const char* url = obj.contains("url") && obj["url"].is_string()
-            ?  obj["url"].get<std::string>().c_str() : nullptr;
-        struct pty_client *npclient = nullptr;
-        int snum = obj.contains("sessionNumber")
-            && obj["sessionNumber"].is_number()
-            ? obj["sessionNumber"].get<int>()
-            : -1;
-        if (pty_clients.valid_index(snum))
-            npclient = pty_clients(snum);
-        else if (! url) {
-            arglist_t argv = default_command(options);
-            char *cmd = find_in_path(argv[0]);
-            if (cmd != NULL)
-                npclient = create_pclient(cmd, argv, options, false, nullptr);
-        }
-        display_session(options, npclient, url,
-                        url ? unknown_window : dterminal_window);
-    } else if (strcmp(name, "DETACH") == 0) {
+        open_window(data, client);
+    } else if (strcmp(name, "DETACH") == 0
+        || strcmp(name, "DETACH-WINDOW") == 0) {
         if (proxyMode == proxy_display_local)
             return false;
+        bool detach_window = strcmp(name, "DETACH-WINDOW") == 0;
+        tty_client *wclient = client;
+        if (data[0]) {
+            json obj = json::parse(data, nullptr, false);
+            if (obj.is_number()) {
+                int wnum = obj.get<int>();
+                wclient = tty_clients(wnum);
+                if (! wclient)
+                    return true;
+                pclient = wclient->pclient;
+            }
+        }
+        if (detach_window)
+            wclient->keep_after_detach = true;
         if (pclient != NULL) {
             if (pclient->detach_count >= 0)
                 pclient->detach_count++;
             if (pclient->preserved_output == NULL
-                && client->requesting_contents == 0)
-                client->requesting_contents = 1;
+                && wclient->requesting_contents == 0)
+                wclient->requesting_contents = 1;
         }
     } else if (strcmp(name, "CLOSE-WINDOW") == 0) {
         char *end;
@@ -1436,39 +1523,27 @@ reportEvent(const char *name, char *data, size_t dlen,
         wclient->close_requested = true;
         if (proxyMode == proxy_display_local)
             return false;
-        if (pclient != NULL) {
+        int wnumber = wclient->connection_number;
+        if (pclient != NULL && ! wclient->keep_after_detach) {
             unlink_tty_from_pty(pclient, wclient);
             wclient->pclient = NULL;
         }
-        int wnumber = wclient->connection_number;
-        if (tty_clients(wnumber) == wclient)
+        if (tty_clients(wnumber) == wclient && ! wclient->keep_after_detach)
             tty_clients.remove(wclient);
         tty_client *main_window = wclient->main_window == 0 ? wclient
             : main_windows(wclient->main_window);
         if (main_window
             && main_window->connection_number == wnumber) {
-            // The number of a system window should be one of its sub-windows.
-            // So if we close a sub-window with the same number as the top
-            // window, try to re-number the latter to a remaining sub-window.
-            tty_client *oclient, *xclient;
-            FORALL_WSCLIENT(oclient) {
-                int onumber = oclient->connection_number;
-                if (oclient->main_window == wnumber
-                    && ! main_windows.valid_index(onumber)) {
-                    main_windows.remove(main_window);
-                    main_window->connection_number = -1;
-                    onumber = main_windows.enter(main_window, onumber);
-                    main_window->connection_number = onumber;
-                    main_window->wkind = main_only_window;
-                    main_window->pty_window_update_needed = 1; // BAD NAME
-                    lws_callback_on_writable(main_window->out_wsi);
-                    FORALL_WSCLIENT(xclient) {
-                        if (xclient->main_window == wnumber)
-                            xclient->main_window = onumber;
-                    }
-                    break;
-                }
-            }
+            renumber_main_window(main_window);
+        }
+        wclient->main_window = -1;
+    } else if (strcmp(name, "WINDOW-MOVED") == 0) {
+        int wnum = -1;
+        if (sscanf(data, "%d", &wnum) == 1 && tty_clients.valid_index(wnum)) {
+            tty_client *wclient = tty_clients[wnum];
+            tty_client *main_window = main_windows(wclient->main_window);
+            if (main_window && wnum == main_window->connection_number)
+                renumber_main_window(main_window);
         }
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_client = client;
@@ -1523,11 +1598,13 @@ reportEvent(const char *name, char *data, size_t dlen,
     } else if (strcmp(name, "LOG") == 0) {
         static bool note_written = false;
         if (! note_written)
-            lwsl_notice("(lines starting with '#NN:' (like the following) are from browser at connection NN)\n");
+            lwsl_notice("(lines starting with '#NN:' or '#NN^' (like the following) are from browser at connection NN)\n");
         json dobj = json::parse(data, nullptr, false);
         if (dobj.is_string()) {
             std::string dstr = dobj;
-            lwsl_notice("#%d: %.*s\n", client->connection_number,
+            bool top = client->main_window == 0;
+            lwsl_notice("#%d%s %.*s\n",
+                        client->connection_number, top ? "^" : ":",
                         dstr.length(), dstr.c_str());
         }
         note_written = true;
@@ -2063,6 +2140,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 lwsl_err("connection with invalid connection number %s - error\n", window);
                 break;
             }
+            client->keep_after_detach = false;
         } else {
             if (! no_session) {
                 // Needed on Apple when using /usr/bin/open as it
@@ -2184,7 +2262,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 #if ! BROKEN_LWS_SET_WSI_USER
          lws_set_wsi_user(wsi, NULL);
 #endif
-         bool keep_client = client->keep_after_unexpected_close && ! client->close_requested;
+         bool keep_client = client->keep_after_detach
+             || (client->keep_after_unexpected_close && ! client->close_requested);
          if (keep_client) {
              client->wsi = NULL;
              client->out_wsi = NULL;
@@ -2308,6 +2387,43 @@ display_session(struct options *options, struct pty_client *pclient,
     bool has_name = ! options->name_option.empty();
     struct tty_client *wclient = nullptr;
     bool top_marker = false;
+    if (wkind != unknown_window) {
+        tclient = new tty_client();
+        wnum = session_number;
+        if (paneOp > 0) {
+            options->paneOp = -1;
+            if (wkind == main_only_window) {
+                wnum = paneOp;
+                paneOp = -1;
+            }
+            else
+                options->browser_command = "";
+        }
+        tclient->options = link_options(options);
+        if (wkind != main_only_window)
+            wnum = set_connection_number(tclient, wnum);
+        if (paneOp <= 0) {
+            main_windows.enter(tclient, wnum);
+            tclient->connection_number = wnum;
+        }
+        tclient->wkind = wkind;
+        if (wkind != browser_window && wkind != saved_window
+            && url == NULL && pclient) {
+            link_clients(tclient, pclient);
+        } else if (wkind == browser_window) {
+            if (url)
+                tclient->description = url;
+        }
+        if (has_name) {
+            tclient->set_window_name(options->name_option);
+        } else if (pclient && ! pclient->saved_window_name.empty()) {
+            has_name = true;
+            tclient->set_window_name(pclient->saved_window_name);
+        }
+        wnum = tclient->connection_number;
+    }
+    options->name_option.clear();
+    int r = EXIT_SUCCESS;
     if (paneOp > 0) {
         const char *eq = strchr(browser_specifier, '=');
         if (eq) {
@@ -2328,35 +2444,7 @@ display_session(struct options *options, struct pty_client *pclient,
             return EXIT_FAILURE;
         } else
             wclient = focused_client;
-    }
-    if (wkind != unknown_window) {
-        tclient = new tty_client();
-        if (paneOp > 0) {
-            options->paneOp = -1;
-            options->browser_command = "";
-        }
-        tclient->options = link_options(options);
-        set_connection_number(tclient, session_number);
-        if (paneOp <= 0)
-            main_windows.enter(tclient, tclient->connection_number);
-        tclient->wkind = wkind;
-        if (wkind != browser_window && wkind != saved_window
-            && url == NULL && pclient) {
-            link_clients(tclient, pclient);
-        } else if (wkind == browser_window) {
-            if (url)
-                tclient->description = url;
-        }
-        if (has_name) {
-            tclient->set_window_name(options->name_option);
-        } else if (pclient && ! pclient->saved_window_name.empty()) {
-            has_name = true;
-            tclient->set_window_name(pclient->saved_window_name);
-        }
-        wnum = tclient->connection_number;
-    }
-    int r = EXIT_SUCCESS;
-    if (paneOp > 0) {
+
         tclient->main_window =
             wclient->main_window || wclient->connection_number;
         json pane_options;
@@ -2376,7 +2464,7 @@ display_session(struct options *options, struct pty_client *pclient,
         }
         int oldnum = wclient->connection_number;
         if (wclient->main_window != 0) {
-            wclient = tty_clients(wclient->main_window);
+            wclient = main_windows(wclient->main_window);
             if (oldnum <= 0 || oldnum > 999999
                 || wclient == nullptr || wclient->out_wsi == nullptr) {
                 printf_error(options, "No existing window %d", oldnum);
@@ -2409,6 +2497,9 @@ display_session(struct options *options, struct pty_client *pclient,
             sb.printf(";window=%d", wnum);
             if (options->headless)
                 sb.printf(";headless=true");
+            if (strcmp(browser_specifier, "qtwidgets") == 0) {
+                sb.printf(";subwindows=qt");
+            }
             std::string titlebar = get_setting_s(options->settings, "titlebar");
             if (! titlebar.empty())
                 sb.printf(";titlebar=%s", url_encode(titlebar).c_str());
@@ -2435,6 +2526,9 @@ display_session(struct options *options, struct pty_client *pclient,
                 sb.printf(";view-saved=%s", url);
             else if (wkind == browser_window)
                 sb.printf(";browse=%s", url);
+            else if (wkind == main_only_window && url
+                     && strncmp(url, "open=", 5) == 0)
+                sb.printf(";%s", url);
         }
         else
             sb.printf("%s", url);

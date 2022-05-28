@@ -29,6 +29,7 @@ public:
 
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
+    int windowNumber() const { return _windowNumber; }
 
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
@@ -51,6 +52,8 @@ signals:
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
     void reportEventToServer(const QString& name, const QString& data);
+    void forwardToParentWindow(int windowNumber, const QString& command, const QString& args_json);
+    void forwardToChildWindow(const QString& command, const QString& args_json);
 
 public slots:
     void saveFile(const QString& html);
@@ -62,7 +65,16 @@ public slots:
                        bool headless, const QString& titlebar);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     void newPane(int paneOp, const QString& url);
+#else
+    void newPane(int windowNumber, const QString& url);
 #endif
+    void adoptPane(int windowNumber);
+    void setGeometry(int windowNumber, int x, int y, int width, int height);
+    void closePane(int windowNumber);
+    void sendParentMessage(const QString& command, const QString& args_json);
+    void sendChildMessage(int windowNumber, const QString& command, const QString& args_json);
+    void lowerOrRaisePanes(bool raise, bool allWindows);
+    void showPane(int windowNumber, bool visibility);
     void showContextMenu(const QString& contextType);
     void setSetting(const QString& key, const QString& value);
     void setClipboard(const QString& plain, const QString& html);
@@ -79,7 +91,7 @@ private slots:
     void onReceiveBlock( const char * buffer, int len );
 private:
     QSharedDataPointer<ProcessOptions> _processOptions;
-
+    int            _windowNumber;
     bool           _wantedClose;
     int            _sessionId;
 

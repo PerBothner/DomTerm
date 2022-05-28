@@ -117,7 +117,7 @@ class Terminal {
     sstate.iconName = null;
     sstate.lastWorkingPath = null;
     sstate.sessionNumber = -1;
-    sstate.paneNumber = -1;
+    //sstate.paneNumber = -1;
 
     // the local window number.
     // Normally same as connectionNumber, except when remoting over ssh.
@@ -1008,9 +1008,11 @@ DomTerm.closeFromEof = function(dt) {
     dt.close();
 }
 
+// detach is true, false, or "export"
 Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
     if (detach) {
-        this.reportEvent("DETACH", "");
+        if (detach !== "export") // handled by "dragExported" handler
+            this.reportEvent("DETACH", "");
         if (this._detachSaveNeeded == 1) {
             this._detachSaveNeeded = 2;
         }
@@ -1020,34 +1022,30 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
         this._detachSaveNeeded = 1;
     }
     this.reportEvent("CLOSE-WINDOW");
-
-    if (! fromLayoutEvent) {
-        if (DomTerm.useIFrame && DomTerm.isInIFrame())
-            DomTerm.sendParentMessage("layout-close");
-        else if (DomTerm._layout) {
-            DomTerm._layout.layoutClose(this.topNode,
-                                        DomTerm._layout.domTermToLayoutItem(this),
-                                        fromLayoutEvent);
-        } else
-            DomTerm.windowClose();
-    }
-
     this.clearVisibleState();
     this.inputFollowsOutput = false;
+
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
-        DomTerm.sendParentMessage("domterm-remove-content");
-    else
-        DomTerm.removeContent(this.topNode);
+        DomTerm.sendParentMessage("layout-close", fromLayoutEvent);
+    else if (DomTerm._layout) {
+        DomTerm._layout.layoutClose(this.topNode,
+                                    DomTerm._layout.domTermToLayoutItem(this),
+                                    fromLayoutEvent);
+    } else if (! fromLayoutEvent)
+        DomTerm.windowClose();
 };
 
 DomTerm.removeContent = function(wrapper) {
     const parent = wrapper.parentNode;
+    console.log("removeContent");
     DomTerm.withLayout((m) => {
         if (m._pendingPopoutComponents) {
             const itemIndex = m._pendingPopoutComponents.indexOf(wrapper);
             if (itemIndex >= 0)
                 m._pendingPopoutComponents.splice(itemIndex, 1);
         }
+        if (m._pendingPopoutComponents)
+            console.log("pending-comps:"+m._pendingPopoutComponents.length);
         if (m._pendingPopoutOptions && DomTerm.mainTerm
             && (! m._pendingPopoutComponents
                 || m._pendingPopoutComponents.length === 0)) {
@@ -1281,11 +1279,11 @@ Terminal.prototype.setFocused = function(focused) {
 }
 
 DomTerm.selectNextPane = function(forwards) {
-    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+    if (DomTerm.useIFrame && DomTerm.isSubWindow()) {
         DomTerm.sendParentMessage("domterm-next-pane", forwards);
     }
-    else
-        DomTerm.withLayout((m) => m.selectNextPane(forwards));
+    else if (this.windowNumber >= 0)
+        DomTerm.withLayout((m) => m.selectNextPane(forwards, this.windowNumber));
 };
 
 // originMode can be one of (should simplify):
@@ -5888,7 +5886,7 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
         this.windowForSessionNumber = windowForSession;
         if (this.topNode) {
             this.topNode.setAttribute("session-number", snumber);
-            if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+            if (DomTerm.useIFrame && DomTerm.isSubWindow()) {
                 DomTerm.sendParentMessage("domterm-numbers", snumber, windowNumber);
             }
             this.reportEvent("SESSION-NUMBER-ECHO", snumber);
@@ -10535,7 +10533,7 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
     try {
         wsocket = new WebSocket(wspath, wsprotocol);
         if (DomTerm.verbosity > 0)
-            DomTerm.log("created WebSocket on  "+wspath);
+            console.log("created WebSocket on  "+wspath);
     } catch (e) {
         DomTerm.log("caught "+e.toString());
     }
@@ -10620,7 +10618,7 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
 }
 
 Terminal._makeWsUrl = function(query=null) {
-    var ws = location.hash.match(/ws=([^,&]*)/);
+    var ws = ("#"+location.hash).match(/[#&;]ws=([^,&]*)/);
     var url;
     let protocol = location.protocol == "https:" ? "wss:" : "ws:";
     if (DomTerm.server_port==undefined || (ws && ws[1]=="same"))

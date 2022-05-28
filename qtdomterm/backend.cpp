@@ -250,7 +250,50 @@ void Backend::newPane(int paneOp, const QString& url)
     curDock->addDockWidgetToContainingWindow(dockw, location, curDock);
 #endif
 }
+#else
+void Backend::newPane(int windowNumber, const QString& url)
+{
+    auto parent = webView();
+    auto webv = new WebView(webView()->m_processOptions, parent);
+    webv->newPage(url);
+    webv->resize(300, 300);
+    webv->show();
+//   webv->lower();
+    webView()->mainWindow()->application()->registerPane(windowNumber, webv);
+    webv->backend()->_windowNumber = windowNumber;
+    webv->setFocus(Qt::OtherFocusReason); // FIXME
+}
 #endif
+void Backend::adoptPane(int windowNumber)
+{
+    webView()->mainWindow()->application()->adoptPane(windowNumber, webView());
+}
+void Backend::setGeometry(int windowNumber, int x, int y, int width, int height)
+{
+    webView()->mainWindow()->application()->setGeometry(windowNumber, x, y, width, height);
+}
+void Backend::closePane(int windowNumber)
+{
+    webView()->mainWindow()->application()->closePane(windowNumber);
+}
+void Backend::showPane(int windowNumber, bool visible)
+{
+    webView()->mainWindow()->application()->showPane(windowNumber, visible);
+}
+void Backend::lowerOrRaisePanes(bool raise, bool allWindows)
+{
+    auto mainWindow = webView()->mainWindow();
+    mainWindow->application()->lowerOrRaisePanes(raise, allWindows, mainWindow);
+}
+
+void Backend::sendChildMessage(int windowNumber, const QString& command, const QString& args_json)
+{
+    webView()->mainWindow()->application()->sendChildMessage(windowNumber, command, args_json);
+}
+void Backend::sendParentMessage(const QString& command, const QString& args_json)
+{
+    emit webView()->mainWindow()->webView()->backend()->forwardToParentWindow(windowNumber(), command, args_json);
+}
 
 void Backend::openNewWindow(int width, int height, const QString& position,
                             const QString& url, bool headless,

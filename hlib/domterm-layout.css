@@ -2,6 +2,7 @@
  * Various tweaks for DomTerm.
  */
 .lm_content, .domterm.lm_content, .domterm-wrapper.lm_content { border:1px solid #cccccc; box-sizing: border-box }
+div.lm_goldenlayout.lm_root { background: transparent }
 /*
 .lm_content { border-width: 1px; border-style: solid; }
 .lm_content, div.domterm.lm_content, iframe.domterm-wrapper.lm_content { border-color: #cccccc; box-sizing: border-box }

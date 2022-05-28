@@ -2842,6 +2842,9 @@ so this is only suitable for testing.
 DomTerm can ``multiplex'' multiple terminal emulators
 (similar to tmux or GNU Screen).
 
+@strong{This needs to be updated.}
+We now use window names, not session names.
+
 @subheading Sessions
 
 A @dfn{session} is an emulated terminal with a process running under it.
@@ -4984,6 +4987,8 @@ call to @code{show} and @code{True} for subsequent calls.
 @section Names and titles
 
 Some notes on how sessions and windows are named and identified.
+@strong{This needs to be updated.}
+Merge with @ref{Sessions and Windows} section.
 
 @subsubheading Session name
 
@@ -5165,6 +5170,32 @@ Consider alternative libraries or languages (Rust?) for the backend.
 @uref{https://github.com/uNetworking/uWebSockets,µWebSockets}
 is a C++ library that may be easier to use than libwebsockets.
 @end itemize
+
+@subheading Conditional Values/Formats
+
+Some values can be defined as formats, where a @samp{%} percent
+character indicates a places where values and expressions are substituted.
+(Somewhat like tmux but using @samp{%} instead of @samp{#}.)
+
+Special characters are percent,
+double quotes, curly barces, and semicolon.
+
+Conditional: @code{@{A1?A2?A3?X1|B1?Y|Z@}}
+is like C's @code{A1||A2||A3 ? X1 : B1 ? Y : Z}.
+
+Usually an unescaped semi-colon is equivalent to a line-break.
+Both are usually used to separate items in a list.
+
+Text inside double quotes is literal, except that string escapes
+are processed.  For example to include a literal semi-colon
+instead of having it be processed as a separator write @code{";"};
+to write double quotes write @code{"\""}.
+
+A simple substiution looks like @code{%@{@var{variable}@}}.
+That text is replaced by the value of the @var{variable}.
+Some single-letter forms such as @code{%M} (???)
+are context-dependent shortcurs for variables or expressions.
+aa
 
 @subheading New line structure
 

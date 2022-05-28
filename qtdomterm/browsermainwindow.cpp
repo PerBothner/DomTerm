@@ -113,14 +113,14 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
 #endif
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
-    bool useQtMenu = (
+    _usingQtMenus = (
 #if defined(Q_OS_OSX)
         true
 #else
         (wflags & Qt::FramelessWindowHint) == 0
 #endif
         );
-    if (useQtMenu)
+    if (usingQtMenus())
         setupMenu();
     m_webView->newPage(url);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
@@ -147,6 +147,7 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
 #endif
     slotUpdateWindowTitle();
     loadDefaultState();
+    m_webView->page()->setBackgroundColor(Qt::transparent);
 }
 
 BrowserMainWindow::~BrowserMainWindow()
@@ -310,6 +311,8 @@ void BrowserMainWindow::changeInputMode(QAction* action)
 
 void BrowserMainWindow::inputModeChanged(char mode)
 {
+    if (! usingQtMenus())
+        return;
   QAction* action = mode == 'a' ? autoInputMode
     : mode == 'l' ? lineInputMode
     : charInputMode;

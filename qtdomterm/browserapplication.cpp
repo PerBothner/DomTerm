@@ -67,6 +67,7 @@
 #include <QWindow>
 #include <QScreen>
 #include <QSize>
+#include <QVector>
 
 #include <QtGui/QDesktopServices>
 #include <QtGui/QFileOpenEvent>
@@ -85,7 +86,9 @@
 #if USE_KDDockWidgets
 #include <kddockwidgets/Config.h>
 #endif
+#include <backend.h>
 QNetworkAccessManager *BrowserApplication::s_networkAccessManager = 0;
+QVector<QWidget*> paneMap;
 
 BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer<ProcessOptions> processOptions)
     : QApplication(argc, argv)
@@ -432,3 +435,74 @@ QDataStream& operator>>(QDataStream& stream, ProcessOptions& state)
     return stream;
 }
 
+void
+BrowserApplication::registerPane(int windowNumber, WebView*pane)
+{
+    if (windowNumber >= paneMap.size()) {
+        paneMap.resize(windowNumber+10);
+    }
+    paneMap[windowNumber] = pane;
+}
+void
+BrowserApplication::adoptPane(int windowNumber, WebView*parentView)
+{
+    if (windowNumber < paneMap.size()) {
+        auto webv = paneMap[windowNumber];
+        if (webv)
+            webv->setParent(parentView);
+    }
+}
+void
+BrowserApplication::setGeometry(int windowNumber, int x, int y, int width, int height)
+{
+    if (windowNumber < paneMap.size()) {
+        auto webv = paneMap[windowNumber];
+        if (webv)
+            webv->setGeometry(x, y, width, height);
+    }
+}
+
+void
+BrowserApplication::closePane(int windowNumber)
+{
+    if (windowNumber < paneMap.size()) {
+        auto webv = paneMap[windowNumber];
+        if (webv) {
+            delete webv;
+            paneMap[windowNumber] = nullptr;
+        }
+    }
+}
+void
+BrowserApplication::showPane(int windowNumber, bool visible)
+{
+    if (windowNumber < paneMap.size()) {
+        auto webv = paneMap[windowNumber];
+        if (webv) {
+            webv->setVisible(visible);
+        }
+    }
+}
+
+void BrowserApplication::sendChildMessage(int windowNumber, const QString& command, const QString& args_json)
+{
+    if (windowNumber < paneMap.size()) {
+        auto webv = dynamic_cast<WebView*>(paneMap[windowNumber]);
+        if (webv) {
+            emit webv->backend()->forwardToChildWindow(command, args_json);
+        }
+    }
+}
+
+void BrowserApplication::lowerOrRaisePanes(bool raise, bool allWindows, BrowserMainWindow *mainWindow)
+{
+    for (int windowNum = paneMap.size(); --windowNum >= 0; ) {
+        auto pane = paneMap[windowNum];
+        if (pane && (allWindows || pane->parent() == mainWindow)) {
+            if (raise)
+                pane->raise();
+            else
+                pane->lower();
+        }
+    }
+}

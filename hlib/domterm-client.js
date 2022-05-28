@@ -12,6 +12,8 @@ DomTerm.usingJsMenus = function() {
             || (DomTerm.addTitlebar && ! DomTerm.isMac));
 }
 
+DomTerm.useToolkitSubwindows = false;
+
 // Non-zero if we should create each domterm terminal in a separate <iframe>.
 // Only relevant when using a layout manager like GoldenLayout.
 // Issues with !useIFrame:
@@ -188,6 +190,12 @@ function setupQWebChannel(channel) {
     backend.writeInputMode.connect(function(mode) {
         DomTerm.setInputMode(mode);
     });
+    backend.forwardToParentWindow.connect((wnum, command, jargs) => {
+        handleMessageFromChild(wnum, command, JSON.parse(jargs));
+    });
+    backend.forwardToChildWindow.connect((command, jargs) => {
+        handleMessageFromParent(command, JSON.parse(jargs));
+    });
     backend.reportEventToServer.connect(function(name, data) {
         let dt = DomTerm.focusedTerm;
         if (dt)
@@ -264,8 +272,15 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
 }
 
 function setupParentMessages1() {
-    DomTerm.sendParentMessage = function(command, ...args) {
-        window.parent.postMessage({"command": command, "args": args}, "*");
+    if (DomTerm.useToolkitSubwindows) {
+        DomTerm.sendParentMessage = function(command, ...args) {
+            console.log("sendParentMessage "+command+" "+JSON.stringify(args));
+            DomTerm._qtBackend.sendParentMessage(command, JSON.stringify(args));
+        }
+    } else {
+        DomTerm.sendParentMessage = function(command, ...args) {
+            window.parent.postMessage({"command": command, "args": args}, "*");
+        }
     }
     DomTerm.showFocusedTerm = function(dt) {
         DomTerm.sendParentMessage("domterm-focused"); }
@@ -389,6 +404,9 @@ function loadHandler(event) {
     if (m !== "system" && (m || DomTerm.versions.wry)) {
         DomTerm.addTitlebar = true;
     }
+    m = params.get("subwindows");
+    if (m === "qt")
+        DomTerm.useToolkitSubwindows = true;
     DomTerm.layoutTop = document.body;
     if (DomTerm.verbosity > 0)
         DomTerm.log("loadHandler "+url);
@@ -401,7 +419,8 @@ function loadHandler(event) {
     if (! DomTerm.server_key && (m = params.get('server-key')) != null) {
         DomTerm.server_key = m;
     }
-    if (DomTerm.usingQtWebEngine && ! DomTerm.isInIFrame()) {
+    if (DomTerm.usingQtWebEngine
+        && (DomTerm.useToolkitSubwindows || ! DomTerm.isInIFrame())) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
     m = location.hash.match(/atom([^&;]*)/);
@@ -460,7 +479,19 @@ function loadHandler(event) {
                 return false;
             }
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
-                const w = lcontent && lcontent.contentWindow;
+                if (typeof lcontent === "number") {
+                    if (DomTerm.useToolkitSubwindows) {
+                        DomTerm._qtBackend.sendChildMessage(lcontent, command, JSON.stringify(args));
+                        return;
+                    } else {
+                        const item = DomTerm._layout._numberToLayoutItem(lcontent);
+                        if (! item || ! item.component)
+                            return;
+                        lcontent = item.component;
+                        // ... else fall through ...
+                    }
+                }
+                let w = lcontent && lcontent.contentWindow;
                 if (w)
                     w.postMessage({"command": command, "args": args}, "*");
                 else
@@ -473,7 +504,7 @@ function loadHandler(event) {
                 DomTerm.sendParentMessage("set-window-title", title); }
         }
     }
-    if (top !== window && DomTerm.sendParentMessage) {
+    if (DomTerm.isSubWindow() && DomTerm.sendParentMessage) {
         // handled by handleMessage (for iframe pane)
         // *or* handled by atom-domterm.
         DomTerm.setLayoutTitle = function(dt, title, wname) {
@@ -494,20 +525,25 @@ function loadHandler(event) {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
         return;
     }
-    if (! DomTerm.isInIFrame()) {
+    const mwin = params.get('window');
+    const snum = params.get('session-number');
+    if (! DomTerm.isSubWindow()) {
         if (no_session === null && DomTerm.useIFrame == 2)
             no_session = "top";
         if (no_session) {
             const wparams = new URLSearchParams(hash);
             wparams.append("no-session", no_session);
+            wparams.delete("open");
             wparams.delete("session-number");
             DTerminal.connectWS(null, DTerminal._makeWsUrl(wparams.toString()),
                                 "domterm", null, no_session);
+            DomTerm._mainWindowNumber = mwin;
         }
     }
     let paneParams = new URLSearchParams();
     let copyParams = ['server-key', 'js-verbosity', 'log-string-max',
-                      'log-to-server', 'headless', 'qtdocking'];
+                      'log-to-server', 'headless', 'titlebar',
+                      'qtdocking', 'subwindows'];
     for (let i = copyParams.length;  --i >= 0; ) {
         let pname = copyParams[i];
         let pvalue = params.get(pname);
@@ -530,20 +566,35 @@ function loadHandler(event) {
         return;
     }
     */
+    let topNodes = [];
     m = location.hash.match(/open=([^&;]*)/);
     var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
         DomTerm.withLayout((m) => m.initSaved(JSON.parse(open_encoded)));
-    } else if (DomTerm.loadDomTerm) {
+    } else if (layoutInitAlways && DomTerm.useIFrame
+               && ! DomTerm.isSubWindow()) {
+        const cstate = {sessionNumber: snum, windowNumber: mwin };
+        const wnameUnique = params.get("wname-unique");
+        const wname = params.get("wname") || wnameUnique;
+        if (wname) {
+            cstate.windowName = wname;
+            cstate.windowNameUnique = !!wnameUnique;
+        }
+        cstate.windowName = wname;
+        const config = { type: 'component',
+                         componentType: 'domterm',
+                         componentState: cstate };
+        DomTerm.withLayout((m) => { m.initialize([config]); });
+    } else if (DomTerm.loadDomTerm) { // used by electron-nodepty
         DomTerm.loadDomTerm();
     } else {
-        var topNodes = document.getElementsByClassName("domterm");
+        topNodes = document.getElementsByClassName("domterm");
         if (topNodes.length == 0)
             topNodes = document.getElementsByClassName("domterm-wrapper");
         if (topNodes.length == 0) {
             let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
             let parent = DomTerm.layoutTop;
-            if (! DomTerm.isInIFrame()) {
+            if (! DomTerm.isSubWindow() && ! DomTerm.useToolkitSubwindow) {
                 const wrapper = document.createElement("div");
                 wrapper.classList.add("lm_component");
                 wrapper.style.width = "100%";
@@ -552,11 +603,9 @@ function loadHandler(event) {
                 parent = wrapper;
             }
             let el;
-            if (DomTerm.useIFrame == 2 && ! DomTerm.isInIFrame()) {
-                const snum = params.get('session-number');
+            if (DomTerm.useIFrame == 2 && ! DomTerm.isSubWindow()) {
                 if (snum)
                     paneParams.set('session-number', snum);
-                const mwin = params.get('window');
                 if (mwin) {
                     paneParams.set('window', mwin);
                     paneParams.set('main-window', mwin);
@@ -590,14 +639,53 @@ function loadHandler(event) {
     }
     if (!DomTerm.inAtomFlag)
         location.hash = "";
-    if (layoutInitAlways && ! DomTerm.isInIFrame()) {
-        DomTerm.withLayout((m) => { if (! m.manager) m.initialize(); });;
-    }
-
 }
 
 DomTerm.handleCommand = function(iframe, command, args) {
     return false;
+}
+
+function handleMessageFromParent(command, args)
+{
+    let dt = DomTerm.focusedTerm;
+    switch (command) {
+    case "set-focused":
+        if (dt)
+            dt.setFocused(args[0]);
+        break;
+    }
+}
+
+function handleMessageFromChild(windowNum, command, args) {
+    let dlayout = DomTerm._layout;
+    if (! (windowNum >= 0)) {
+        console.log(`bad window number ${windowNum} to '${command}' command`);
+    }
+    switch (command) {
+    case "focus-event":
+        if (dlayout && dlayout.manager) {
+            dlayout._selectLayoutPane(dlayout._numberToLayoutItem(windowNum),
+                                      args[0]);
+        }
+        break;
+    case "domterm-next-pane":
+        if (dlayout && dlayout.manager) {
+            dlayout.selectNextPane(args[0], windowNum);
+        }
+        break;
+    case "domterm-set-title":
+        if (dlayout && dlayout.manager) {
+            const item = dlayout._numberToLayoutItem(windowNum);
+            if (item)
+                dlayout.setContainerTitle(item, args[0], args[1]);
+        }
+        break;
+    case "set-window-title":
+        DomTerm.setTitle(args[0]);
+        break;
+    default:
+        console.log("unhandled command '"+command+"' in handleMessageFromChild");
+    }
 }
 
 /* Used by atom-domterm or if useIFrame. */
@@ -615,6 +703,7 @@ function handleMessage(event) {
             break;
         }
     }
+    let windowNum = iframe && iframe.windowNumber;
     if (data.command && data.args
              && DomTerm.handleCommand(iframe, data.command, data.args))
         return;
@@ -639,44 +728,24 @@ function handleMessage(event) {
     } else if (data.command=="domterm-add-pane") { // in parent from child
         DomTerm.withLayout((m) =>
             m.addPane(data.args[0], data.args[1], iframe));
-    } else if (data.command=="domterm-remove-content") { // in parent from child
-        console.log("received domterm-remove-content from "+iframe);
-        if (iframe)
-            DomTerm.removeContent(iframe);
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="do-command") {
         DomTerm.doNamedCommand(data.args[0], iframe, data.args[1]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
-    } else if (data.command=="domterm-next-pane") {
-        if (DomTermLayout.manager)
-            DomTermLayout.selectNextPane(data.args[0], iframe);
-    } else if (data.command=="set-window-title") {
-        DomTerm.setTitle(data.args[0]);
+    //} else if (data.command=="set-window-title") {
+        //DomTerm.setTitle(data.args[0]);
     } else if (data.command=="layout-close") {
         if (DomTermLayout.manager)
             DomTermLayout.layoutClose(iframe,
-                                      DomTermLayout._elementToLayoutItem(iframe));
+                                      DomTermLayout._elementToLayoutItem(iframe), data.args[0]);
         else
             DomTerm.windowClose();
     } else if(data.command=="save-file") {
         DomTerm.saveFile(data.args[0]);
-    } else if (data.command=="focus-event") {
-        if (iframe) {
-            let originMode = data.args[0];
-            let dlayout = DomTerm._layout;
-            if (dlayout && dlayout.manager)
-                dlayout._selectLayoutPane(dlayout._elementToLayoutItem(iframe), originMode);
-            else
-                DomTerm.focusChild(iframe, originMode);
-        }
     } else if (data.command=="domterm-update-title") {
         DomTerm.updateTitle(iframe, data.args[0]);
-    } else if (data.command=="domterm-set-title") { // FIXME
-        if (iframe)
-            DomTerm.setLayoutTitle(iframe,
-                                         data.args[0], data.args[1]);
     } else if (data.command=="set-pid") {
         if (iframe)
             iframe.setAttribute("pid", data.args[0]);
@@ -692,11 +761,7 @@ function handleMessage(event) {
     } else if (data.command=="request-save-file") { // message to child
         DomTerm.doSaveAs();
     } else if (data.command=="set-focused") { // message to child
-        let op = data.args[0];
-        let dt = DomTerm.focusedTerm;
-        if (dt) {
-            dt.setFocused(op);
-        }
+        handleMessageFromParent(data.command, data.args);
     } else if (data.command=="popout-window") {
         let wholeStack = data.args[0];
         if (iframe) {
@@ -721,6 +786,8 @@ function handleMessage(event) {
         DomTerm.doCopy(data.args[0]);
     } else if (data.command=="open-link") { // message to child
         DomTerm.handleLink(data.args[0]);
+    } else if (data.command && data.args) {
+        handleMessageFromChild(windowNum, data.command, data.args);
     } else
         console.log("received message "+data+" command:"+data.command+" dt:"+ dt);
 }

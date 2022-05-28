@@ -400,7 +400,7 @@ static const char* browser_specifiers[] = {
     "chrome",
     "chrome-app",
     "google-chrome",
-    "qt", "qtdomterm", "qtwebengine",
+    "qt", "qtdomterm", "qtwebengine", "qtwidgets",
     "webview",
     "wry",
     "/",
@@ -838,6 +838,7 @@ do_run_browser(struct options *options, const char *url)
                     }
                 } else if (cmd == "qt"
                            || cmd == "qtdomterm"
+                           || cmd == "qtwidgets"
                            || cmd == "qtwebengine") {
                     browser_specifier = qtwebengine_command(options);
                     if (browser_specifier == nullptr)

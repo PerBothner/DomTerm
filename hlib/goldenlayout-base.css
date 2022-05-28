@@ -1,4 +1,15 @@
-.lm_root {
+.lm_dragImage {
+    position: absolute;
+}
+.lm_dragImage section {
+   background-color: transparent;
+}
+.lm_dragImageInner {
+    border: solid thin red;
+    background-color: transparent;
+    position: relative;
+}
+lm_root {
   position: relative;
 }
 .lm_row > .lm_item {

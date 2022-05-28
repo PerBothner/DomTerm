@@ -222,10 +222,16 @@ DomTerm.createMenus = function(options) {
         menuItem({label: 'Terminal', submenu: terminalMenu}),
         menuItem({label: 'Help', submenu: helpMenu})
     ];
+    //let hamburgerChar = "\u2261";
+    let hamburgerChar = "\u2630";
+    let hamburgerMenuItems = [
+        menuItem({label: hamburgerChar, submenu: menuBarItems})
+    ];
     let menuBar;
     if (electronMenus) {
         electronAccess.ipcRenderer.send('set-application-menu', menuBarItems);
     } else {
+        //menuBar = new Menu({ type: 'menubar' }, hamburgerMenuItems);
         menuBar = new Menu({ type: 'menubar' }, menuBarItems);
         if (isElectron)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
