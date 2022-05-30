@@ -133,7 +133,7 @@ function connectAjax(name, prefix="", topNode=null)
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
     DomTerm._qtBackend = backend;
-    if (! DomTerm.usingJsMenus()) {
+    if (! DomTerm.usingJsMenus() && ! DomTerm.addTitlebar) {
         DomTerm.showContextMenu = function(options) {
             backend.showContextMenu(options.contextType);
             return false;
@@ -658,14 +658,16 @@ function handleMessageFromParent(command, args)
 
 function handleMessageFromChild(windowNum, command, args) {
     let dlayout = DomTerm._layout;
-    if (! (windowNum >= 0)) {
+    let item;
+    if (windowNum >= 0) {
+        item = dlayout?._numberToLayoutItem(windowNum);
+    } else {
         console.log(`bad window number ${windowNum} to '${command}' command`);
     }
     switch (command) {
     case "focus-event":
-        if (dlayout && dlayout.manager) {
-            dlayout._selectLayoutPane(dlayout._numberToLayoutItem(windowNum),
-                                      args[0]);
+        if (item) {
+            dlayout._selectLayoutPane(item, args[0]);
         }
         break;
     case "domterm-next-pane":
@@ -674,14 +676,25 @@ function handleMessageFromChild(windowNum, command, args) {
         }
         break;
     case "domterm-set-title":
-        if (dlayout && dlayout.manager) {
-            const item = dlayout._numberToLayoutItem(windowNum);
-            if (item)
+        if (item)
                 dlayout.setContainerTitle(item, args[0], args[1]);
-        }
         break;
     case "set-window-title":
         DomTerm.setTitle(args[0]);
+        break;
+    case "domterm-context-menu":
+        let options = args[0];
+        let x = options.clientX;
+        let y = options.clientY;
+        let element = item?.parent?.childElementContainer;
+        if (element && x !== undefined && y !== undefined) {
+            let ibox = element.getBoundingClientRect();
+            x = x + element.clientLeft + ibox.x;
+            y = y + element.clientTop + ibox.y;
+            options = Object.assign({}, options, { "clientX": x, "clientY": y});
+        }
+        DomTerm._contextOptions = options;
+        DomTerm.showContextMenu(options);
         break;
     default:
         console.log("unhandled command '"+command+"' in handleMessageFromChild");
@@ -713,18 +726,6 @@ function handleMessage(event) {
         dt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
         dt.reportEvent("DETACH", "");
         dt.initializeTerminal(dt.topNode);
-    } else if (data.command=="domterm-context-menu") {
-        let options = data.args[0];
-        let x = options.clientX;
-        let y = options.clientY;
-        if (iframe && x !== undefined && y !== undefined) {
-            let ibox = iframe.getBoundingClientRect();
-            x = x + iframe.clientLeft + ibox.x;
-            y = y + iframe.clientTop + ibox.y;
-            options = Object.assign({}, options, { "clientX": x, "clientY": y});
-        }
-        DomTerm._contextOptions = options;
-        DomTerm.showContextMenu(options);
     } else if (data.command=="domterm-add-pane") { // in parent from child
         DomTerm.withLayout((m) =>
             m.addPane(data.args[0], data.args[1], iframe));
