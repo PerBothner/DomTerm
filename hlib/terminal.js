@@ -655,7 +655,6 @@ class Terminal {
     //maybeExtendInput() { }
 
     startPrompt(options = []) {
-        this.sstate.stayInInputMode = true;
         let ln = this.outputContainer;
         if (Terminal.isNormalBlock(ln))
             ln.classList.add("input-line");
