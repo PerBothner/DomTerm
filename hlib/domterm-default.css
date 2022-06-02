@@ -252,3 +252,16 @@ a[domterm-href], a[href] {
     cursor: pointer;
     text-decoration: underline;
 }
+
+table {
+    border-collapse: collapse
+}
+/* Use 'outline' rather than border because border are still visible
+  if you set "visibility: hidden" on the tbody.
+  At least Chrome and Firefox, though not WebKit.  */
+thead > tr > th {
+    outline: solid thin lightslategray;
+}
+tbody > tr > td  {
+    outline: solid thin #CCC;
+}
