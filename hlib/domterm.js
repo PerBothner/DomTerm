@@ -65,7 +65,7 @@ DomTerm.JsonLimited = function(val) {
             return JSON.stringify(val.substring(0,maxLog))+"...";
         let jstr = JSON.stringify(val);
         if (jstr.length > maxLog)
-             return jstr.substring(0,maxLog)+"...";
+             return jstr.substring(0,maxLog)+"\"...";
     }
     return JSON.stringify(val);
 };
