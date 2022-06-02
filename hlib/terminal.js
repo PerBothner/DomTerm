@@ -5609,16 +5609,38 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
         : current.previousSibling;
     var curColumn = -1;
     let tvalue;
-    while (current != lineEnd && todo > 0) {
-        if (current == null) {
-            if (parent == null)
-                break; // Shouldn't happen
-            current = parent.nextSibling;
+    let next;
+    for (; current != lineEnd; current = next) {
+        if (! parent)
+            break; // Shouldn't happen
+        next = current?.nextSibling;
+        if (parent.firstChild == null && parent != this.initial) {
+            if (parent != this._currentStyleSpan)
+                this._currentStyleSpan = null;
+            current = parent;
+            parent = parent.parentNode;
+            next = current.nextSibling;
+            // Alternatively, let the "prompt" span be deleted, but
+            // re-create it in _adjustStyle - as done for inInputMode.
+            if (this.sstate.inPromptMode
+                && current.tagName == "SPAN"
+                && current.getAttribute("std") == "prompt")
+                continue;
+            if (current == this._currentStyleSpan)
+                this._currentStyleSpan = null;
+            if (current == this.outputContainer) {
+                this.outputContainer = parent;
+                previous = current.previousSibling;
+            }
+            parent.removeChild(current);
+        }
+        else if (todo <= 0)
+            break;
+        else if (current == null) {
+            next = parent.nextSibling;
             parent = parent.parentNode;
         } else if (this.isObjectElement(current)) {
-            let next = current.nextSibling;
             parent.removeChild(current);
-            current = next;
             todo--;
         } else if (current instanceof Text
                    || (current instanceof Element
@@ -5627,9 +5649,9 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
             if (current instanceof Text) {
                 tvalue = current.textContent;
             }
-            var length = tvalue.length;
+            const length = tvalue.length;
 
-            var i = 0;
+            let i = 0;
             if (count < 0) {
                 i = length;
             } else {
@@ -5638,50 +5660,25 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
                 i = i < 0 ? length : i;
             }
 
-            var next = current.nextSibling;
             if (i < length) {
                 if (current instanceof Text)
                     current.deleteData(0, i);
                 else
                     current.setAttribute("content-value", tvalue.substring(i));
+                break;
             } else  {
                 parent.removeChild(current);
-                while (parent.firstChild == null && parent != this.initial) {
-                    if (parent != this._currentStyleSpan)
-                        this._currentStyleSpan = null;
-                    current = parent;
-                    parent = parent.parentNode;
-                    // Alternatively, let the "prompt" span be deleted, but
-                    // re-create it in _adjustStyle - as done for inInputMode.
-                    if (this.sstate.inPromptMode
-                        && current.tagName == "SPAN"
-                        && current.getAttribute("std") == "prompt")
-                        break;
-                    if (current == this._currentStyleSpan)
-                        this._currentStyleSpan = null;
-                    if (current == this.outputContainer) {
-                        this.outputContainer = parent;
-                        previous = current.previousSibling;
-                    }
-                    next = current.nextSibling;
-                    parent.removeChild(current);
-                }
             }
-            current = next;
         } else if (current instanceof Element) {
             let cl = current.classList;
             if (cl.contains("dt-cluster")) {
-                let next = current.nextSibling;
                 if (todo >= 0)
                     todo -= cl.contains("w2") ? 2 : 1;
                 parent.removeChild(current);
-                current = next;
             } else {
                 parent = current;
-                current = current.firstChild;
+                next = current.firstChild;
             }
-        } else { // XML comments? Processing instructions?
-            current = current.nextSibling;
         }
     }
     this._fixOutputPosition();
