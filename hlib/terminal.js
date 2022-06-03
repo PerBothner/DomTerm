@@ -1882,15 +1882,17 @@ Terminal.prototype._appendLine = function(mode, lastParent, parent, before=null)
     lineStart._breakState = Terminal._BREAKS_UNMEASURED;
     lineStart._widthColumns = 0;
     this.lineStarts[lineCount] = lineStart;
-    let nextLine = lineCount;
-    lineCount++;
+    this._updateHomeLine();
+    return parent;
+}
+Terminal.prototype._updateHomeLine = function() {
     let homeLine = this.homeLine;
+    let lineCount = this.lineStarts.length;
     if (lineCount > homeLine + this.numRows) {
         homeLine = lineCount - this.numRows;
         this.homeLine = homeLine;
         this._adjustSpacer(-1);
     }
-    return parent;
 }
 
 /** Move to the request position.
@@ -6833,6 +6835,7 @@ Terminal.prototype._scrubAndInsertHTML = function(str) {
         this.resetCursorCache();
         this._updateLinebreaksStart(startLine);
     }
+    this._updateHomeLine();
     //this.cursorColumn = -1;
 };
 
@@ -7513,14 +7516,7 @@ Terminal.prototype._insertIntoLines = function(el, line) {
     this.lineEnds[line+1] = lineEnd;
     this.lineStarts[line+1] = el;
     this.lineEnds[line] = el;
-    // FIXME following lines are duplicated with moveToAbs
-    lineCount++;
-    var homeLine = this.homeLine;
-    if (lineCount > homeLine + this.numRows) {
-        homeLine = lineCount - this.numRows;
-        //goalLine -= homeLine - this.homeLine;
-        this.homeLine = homeLine;
-    }
+    this._updateHomeLine();
 }
 
 Terminal.prototype._breakVisibleLines = function() {
