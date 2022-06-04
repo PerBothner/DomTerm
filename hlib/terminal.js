@@ -6248,6 +6248,31 @@ DomTerm.charset_8859_1 = function(ch, bytes, nextIndex, endIndex) {
     return ch | (1 << 21);
 }
 
+function tableIntersectionCallback(entries, observer) {
+    entries.forEach(entry => {
+        const table = entry.target.parentNode;
+        if (table && table.tagName == "TABLE") {
+            const rect = table.getBoundingClientRect();
+            const needHeaderClone = rect.top < 1
+                  && rect.bottom > 1;
+            let clone = table.headerClone;
+            if (clone && ! needHeaderClone) {
+                clone.remove();
+                table.headerClone = undefined;
+                table.classList.remove("dt-has-floating-thead");
+            } else if (needHeaderClone && ! clone) {
+                const buffers = observer.root;
+                clone = table.cloneNode(true);
+                clone.style.top = `${buffers.getBoundingClientRect().top}px`;
+                table.headerClone = clone;
+                clone.classList.add("dt-floating-thead");
+                table.classList.add("dt-has-floating-thead");
+                table.parentNode.insertBefore(clone, table.nextSibling);
+            }
+        }
+    });
+}
+
 DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
     // Should we convert 'ref' attribute to 'domterm-href'?
     // Desirable if using a desktop browser to avoid duplicate URL hover.
@@ -6255,7 +6280,7 @@ DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
     // (at least Electron, Qt, WebView/Gtk).
     let renameLinkHref = true;
     var links = node.getElementsByTagName("a");
-    for (var i = links.length; --i >= 0; ) {
+    for (let i = links.length; --i >= 0; ) {
         var link = links[i];
         if (! link.hasMouseEnter) {
             if (renameLinkHref
@@ -6268,6 +6293,29 @@ DomTerm._addMouseEnterHandlers = function(dt, node=dt.topNode) {
             }
             link.addEventListener("mouseenter", dt._mouseEnterHandler, false);
             link.hasMouseEnter = true;
+        }
+    }
+
+    const tables = node.getElementsByTagName("table");
+    for (let i = tables.length; --i >= 0; ) {
+        const table = tables[i];
+        const thead = table.firstElementChild;
+        const tbody = table.lastElementChild;
+        if (! table.hasIntersectionObserver && thead && tbody
+            && thead.tagName === "THEAD" && tbody.tagName === "TBODY") {
+            table.hasIntersectionObserver = true;
+            let observer = dt._intersectionObserver;
+            if (! observer) {
+                let options = {
+                    root: dt.buffers,
+                    threshold: [0.01, 0.99]
+                };
+                observer = new IntersectionObserver(tableIntersectionCallback,
+                                                    options);
+                dt._intersectionObserver = observer;
+            }
+            observer.observe(tbody);
+            observer.observe(thead);
         }
     }
 }

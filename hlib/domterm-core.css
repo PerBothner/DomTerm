@@ -177,3 +177,14 @@ div.dt-resize-area[edges="n e"], div.dt-resize-area[edges="s w"] {
 div.dt-resize-area[edges="n w"], div.dt-resize-area[edges="s e"] {
     cursor: nwse-resize;
 }
+
+table.dt-floating-thead {
+    position: fixed;
+    top: 0px;
+}
+table.dt-floating-thead > tbody {
+    visibility: hidden;
+}
+table.dt-floating-thead > thead {
+    background-color: white
+}
