@@ -232,7 +232,7 @@ DomTerm.updateTitle = function(content, options) {
 // detach is true, false, or "export"
 DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
                                 detach = false, fromLayoutEvent = false) {
-    if (content && content.terminal)
+    if (content && content.terminal && content.terminal.topNode)
         content.terminal.close(detach, fromLayoutEvent);
     else if (content.tagName == "IFRAME") {
         // if a domterm terminal window
@@ -253,8 +253,9 @@ DomTerm.windowClose = function() {
     if (window.closeMainWindow) {
         DomTerm.closeAll(null);
         window.closeMainWindow(); // hook used by --webview
-    } else
+    } else {
         window.close();
+    }
 }
 
 // 'hide', 'show', 'minimize', 'fullscreen'

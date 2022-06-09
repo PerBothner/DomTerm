@@ -22,7 +22,7 @@
 
 extern char **environ;
 
-static char eof_message[] = URGENT_START_STRING "\033[99;99u" URGENT_END_STRING;
+static char eof_message[] = OUT_OF_BAND_START_STRING "\033[99;99u" URGENT_END_STRING;
 #define eof_len (sizeof(eof_message)-1)
 static char request_contents_message[] = URGENT_WRAP("\033[81u");
 
@@ -1290,6 +1290,7 @@ reportEvent(const char *name, char *data, size_t dlen,
                || strcmp(name, "CONNECT") == 0) {
         char *version_info = challoc(dlen+1);
         strcpy(version_info, data);
+        free(client->version_info);
         client->version_info = version_info;
         client->initialized = 0;
         if (strcmp(name, "VERSION") == 0)
@@ -1534,6 +1535,22 @@ reportEvent(const char *name, char *data, size_t dlen,
             : main_windows(wclient->main_window);
         if (main_window
             && main_window->connection_number == wnumber) {
+            if (main_window == wclient && wclient->keep_after_detach
+                && wclient->wkind != main_only_window) {
+                main_window = new tty_client();
+                main_window->initialized = 1;
+                main_window->uploadSettingsNeeded = false;
+                main_window->wkind = main_only_window;
+                main_window->wsi = wclient->wsi;
+                main_window->out_wsi = wclient->out_wsi;
+                WSI_SET_TCLIENT(main_window->wsi, main_window);
+                if (wclient->version_info)
+                    main_window->version_info = strdup(wclient->version_info);
+                main_window->main_window = 0;
+                main_window->options = link_options(wclient->options);
+                main_windows.remove(wclient);
+                main_window->connection_number = main_windows.enter(main_window, wnumber);
+            }
             renumber_main_window(main_window);
         }
         wclient->main_window = -1;
@@ -2403,7 +2420,7 @@ display_session(struct options *options, struct pty_client *pclient,
         if (wkind != main_only_window)
             wnum = set_connection_number(tclient, wnum);
         if (paneOp <= 0) {
-            main_windows.enter(tclient, wnum);
+            wnum = main_windows.enter(tclient, wnum);
             tclient->connection_number = wnum;
         }
         tclient->wkind = wkind;

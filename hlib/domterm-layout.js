@@ -222,7 +222,7 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
         var h = sizeElement.offsetHeight;
         const e = [];
         const options = { width: w, height: h, content: e };
-        DomTermLayout._pendingPopoutComponents = [];
+        DomTermLayout._pendingPopoutComponents = 0;
         // FIXME adjust for menu bar height
         function encode(item) {
             DomTerm.mainTerm.reportEvent("DETACH-WINDOW", item.id);
@@ -234,9 +234,9 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
             const wnum = itemConfig?.componentState?.windowNumber;
             if (wnum && ! options.windowNumber)
                 options.windowNumber = wnum;
-            if (! DomTerm.useToolkitSubwindows
+            if (! DomTerm.useToolkitSubwindows && wnum
                 && item.componentType == "domterm") {
-                DomTermLayout._pendingPopoutComponents.push(item.component);
+                DomTermLayout._pendingPopoutComponents++;
             }
             return itemConfig;
         }
@@ -267,7 +267,7 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
             const soptions = JSON.stringify(DomTermLayout._pendingPopoutOptions);
             dt.reportEvent("OPEN-WINDOW", soptions);
         }
-    }, DomTermLayout._pendingPopoutComponents.length === 0 ? 0 : 2000);
+    }, DomTermLayout._pendingPopoutComponents === 0 ? 0 : 2000);
 }
 
 /*
@@ -313,8 +313,9 @@ DomTermLayout._containerHandleResize = function(container, wrapped) { // unused 
 }
 
 DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
-    if (r) {
-        const windowNum = r.component.windowNumber;
+    const component = r?.element;
+    const windowNum = r?.component.windowNumber; // FIXME use id?
+    if (r && ! from_handler) {
         if (DomTerm.useToolkitSubwindows) {
             DomTerm._qtBackend.closePane(windowNum);
         }
@@ -324,19 +325,28 @@ DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
             && p.parent.type == 'ground'
             && p.parent.contentItems.length <= 1) {
             DomTerm.windowClose();
-        } else if (! from_handler) {
+        } else {
             DomTermLayout.selectNextPane(true, windowNum);
-            if (lcontent && lcontent.parentNode)
-                lcontent.parentNode.removeChild(lcontent);
             r.remove();
         }
     }
-    if (lcontent)
-        DomTerm.removeContent(lcontent);
+    DomTermLayout._pendingPopoutComponents--;
+    if (DomTermLayout._pendingPopoutOptions && DomTerm.mainTerm
+        && ! DomTermLayout._pendingPopoutComponents) {
+        DomTerm.mainTerm.reportEvent("OPEN-WINDOW", JSON.stringify(DomTermLayout._pendingPopoutOptions));
+        DomTermLayout._pendingPopoutOptions = undefined;
+    }
+    if (lcontent) {
+        if (lcontent.parentNode instanceof Element
+            && lcontent.parentNode.classList.contains("lm_component"))
+            lcontent = lcontent.parentNode;
+        lcontent.remove();
+    }
 }
 
 DomTermLayout.onLayoutClosed = function(container) {
-    return (event) => {
+    const handler = (event) => {
+        container.off('destroy', handler);
         const config = container.parent.toConfig();
         if (config.componentType === "browser"
             || config.componentType === "view-saved") {
@@ -349,7 +359,13 @@ DomTermLayout.onLayoutClosed = function(container) {
             return;
         }
         DomTerm.closeSession(container.component, false, true);
+        if (container.parent.parent.type === "stack"
+            && container.parent.parent.contentItems.length==1
+            && container.parent.parent.parent.type === "ground") {
+            DomTerm.windowClose();
+        }
     };
+    return handler;
 }
 //DomTermLayout.inSomeWindow = false;
 DomTermLayout.dragNotificationFromServer = function(entering) {
@@ -367,23 +383,26 @@ DomTerm.newPaneHook = null; // is this ever set ???
 DomTermLayout._initTerminal = function(cstate, parent = DomTerm.layoutTop) {
     let wrapped;
     let sessionNumber = cstate.sessionNumber;
+    let windowNumber = cstate.windowNumber;
     let paneNumber = DomTermLayout._newPaneNumber();
-    if (DomTerm.useIFrame || (cstate && cstate.componentType === 'browser')) {
+    let query = "pane-number="+paneNumber; // ?? used for?
+    if (sessionNumber)
+        query += `&session-number=${sessionNumber}`;
+    if (cstate) {
+        if (windowNumber)
+            query += `&window=${windowNumber}`;
+        if (cstate.windowName)
+            query += (cstate.windowNameUnique ? "&wname-unique="
+                      : "&wname=")
+            + cstate.windowName;
+    }
+    if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 :2)
+        || (cstate && cstate.componentType === 'browser')) {
         let url = cstate && cstate.url; //cstate.componentType === 'browser' ? cstate.urlconfig.url;
         if (! url) {
             url = DomTerm.paneLocation;
-            url += url.indexOf('#') >= 0 ? '&' : '#';
-            url += "pane-number="+paneNumber; // ?? used for?
-            if (sessionNumber)
-                url += "&session-number="+sessionNumber;
-            if (cstate) {
-                if (cstate.windowNumber)
-                    url += "&window="+cstate.windowNumber;
-                if (cstate.windowName)
-                    url += (cstate.windowNameUnique ? "&wname-unique="
-                            : "&wname=")
-                        + cstate.windowName;
-            }
+            if (query)
+                url += url.indexOf('#') >= 0 ? '&' : '#' + query;
         }
         if (DomTerm.useToolkitSubwindows && cstate.windowNumber >= 0 /*&& cstate.componentType === 'browser'*/) {
             url = DomTerm.addSubWindowParams(url, cstate.componentType === 'browser'?'B':'T'/*FIXME*/);
@@ -396,8 +415,12 @@ DomTermLayout._initTerminal = function(cstate, parent = DomTerm.layoutTop) {
         let el = DomTerm.makeElement(name, parent);
         wrapped = el;
         wrapped.name = name;
-        let query = sessionNumber ? "session-number="+sessionNumber : null;
+        if (DomTerm.mainTerm && DomTerm._mainWindowNumber >= 0)
+            query += `&main-window=${DomTerm._mainWindowNumber}`;
+        else
+            query += "&main-window=true";
         el.query = query;
+        DTerminal.connectWS(null, query, el, null);
     }
     if (wrapped) {
         wrapped.paneNumber = paneNumber;
@@ -472,7 +495,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
         let name;
         let wrapped;
         if (DomTerm.useToolkitSubwindows && componentConfig.initialized
-           && wnum) { // dropped
+           && wnum) { // dropped from elsewhere
             DomTerm._qtBackend.adoptPane(Number(wnum));
             DomTerm.mainTerm.reportEvent("WINDOW-MOVED", wnum);
             wrapped = undefined;
@@ -488,9 +511,6 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             wrapped = DomTermLayout._initTerminal(config.componentState, container.element);
             if (wrapped)
                 name = wrapped.name;
-            if (! DomTerm.useIFrame) {
-                DTerminal.connectHttp(wrapped, wrapped.query);
-            }
         }
         componentConfig.initialized = true;
         if (wrapped) {

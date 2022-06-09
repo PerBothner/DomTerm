@@ -33,9 +33,8 @@ DomTerm.useToolkitSubwindows = false;
 // subsequent ones.  The value 2 means use an iframe for all windows.
 // Only using iframe for subsequent windows gives most of the benefits
 // with less of the cost, plus it makes no-layout modes more consistent.
-// (Value 2 requires a separate WebSocket for the top-level window,
-// like we do for broser windows, but that requires various changes.)
-DomTerm.useIFrame = ! DomTerm.simpleLayout ? 2 : 0;
+// It also makes debugging a bit simpler.
+DomTerm.useIFrame = ! DomTerm.simpleLayout ? 1 : 0;
 
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
@@ -405,8 +404,10 @@ function loadHandler(event) {
         DomTerm.addTitlebar = true;
     }
     m = params.get("subwindows");
-    if (m === "qt")
+    if (m === "qt") {
         DomTerm.useToolkitSubwindows = true;
+        DomTerm.useIFrame = 2;
+    }
     DomTerm.layoutTop = document.body;
     if (DomTerm.verbosity > 0)
         DomTerm.log("loadHandler "+url);
@@ -466,8 +467,13 @@ function loadHandler(event) {
             DomTerm.layoutTop = wrapTopNode;
         }
     }
+    m = location.hash.match(/open=([^&;]*)/);
+    const open_encoded = m ? decodeURIComponent(m[1]) : null;
+    if (open_encoded)
+        DomTerm.useIFrame = 2;
+
     let layoutInitAlways = true; //DomTerm.useIFrame == 2;
-    if (DomTerm.useIFrame) {
+    if (DomTerm.useIFrame || layoutInitAlways) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
                 const lcontent = DomTerm._oldFocusedContent;
@@ -526,6 +532,7 @@ function loadHandler(event) {
         return;
     }
     const mwin = params.get('window');
+    const mwinnum = mwin && Number(mwin) >= 0 ? Number(mwin) : -1;
     const snum = params.get('session-number');
     if (! DomTerm.isSubWindow()) {
         if (no_session === null && DomTerm.useIFrame == 2)
@@ -535,10 +542,12 @@ function loadHandler(event) {
             wparams.append("no-session", no_session);
             wparams.delete("open");
             wparams.delete("session-number");
-            DTerminal.connectWS(null, DTerminal._makeWsUrl(wparams.toString()),
-                                "domterm", null, no_session);
-            DomTerm._mainWindowNumber = mwin;
+            wparams.set("main-window", "true");
+            DTerminal.connectWS(null, wparams.toString(), null, no_session);
+            wparams.delete("main-window");
         }
+        if (mwinnum >= 0)
+            DomTerm._mainWindowNumber = mwinnum;
     }
     let paneParams = new URLSearchParams();
     let copyParams = ['server-key', 'js-verbosity', 'log-string-max',
@@ -567,13 +576,10 @@ function loadHandler(event) {
     }
     */
     let topNodes = [];
-    m = location.hash.match(/open=([^&;]*)/);
-    var open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded) {
         DomTerm.withLayout((m) => m.initSaved(JSON.parse(open_encoded)));
-    } else if (layoutInitAlways && DomTerm.useIFrame
-               && ! DomTerm.isSubWindow()) {
-        const cstate = {sessionNumber: snum, windowNumber: mwin };
+    } else if (layoutInitAlways && ! DomTerm.isSubWindow()) {
+        const cstate = {sessionNumber: snum, windowNumber: mwinnum };
         const wnameUnique = params.get("wname-unique");
         const wname = params.get("wname") || wnameUnique;
         if (wname) {
@@ -629,10 +635,9 @@ function loadHandler(event) {
             for (var i = 0; i < topNodes.length; i++)
                 connectAjax("domterm", "", topNodes[i]);
         } else if (! no_session) {
-            var wsurl = DTerminal._makeWsUrl(query);
             for (var i = 0; i < topNodes.length; i++) {
                 const top = topNodes[i];
-                DTerminal.connectWS(null, wsurl, "domterm", top, no_session);
+                DTerminal.connectWS(null, query, top, no_session);
                 maybeWindowName(top);
             }
         }

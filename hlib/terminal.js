@@ -634,6 +634,9 @@ class Terminal {
         document.removeEventListener("selectionchange",
                                      this._selectionchangeListener);
         this._selectionchangeListener = null;
+        if (DomTerm.focusedTerm == this)
+            DomTerm.focusedTerm = null;
+
     }
 
     /// Are we reporting mouse events?
@@ -1024,39 +1027,19 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
     this.clearVisibleState();
     this.inputFollowsOutput = false;
 
+    const wnumber = this.windowNumber;
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("layout-close", fromLayoutEvent);
-    else if (DomTerm._layout) {
-        DomTerm._layout.layoutClose(this.topNode,
-                                    DomTerm._layout.domTermToLayoutItem(this),
-                                    fromLayoutEvent);
+    else if (DomTerm._layout && wnumber >= 0) {
+       setTimeout(() => {
+            // Note this.windowNumber might have changed from wnumber
+            DomTerm._layout.layoutClose(this.topNode,
+                                        DomTerm._layout._numberToLayoutItem(wnumber),
+                                        fromLayoutEvent);
+       }, 1);
     } else if (! fromLayoutEvent)
         DomTerm.windowClose();
 };
-
-DomTerm.removeContent = function(wrapper) {
-    const parent = wrapper.parentNode;
-    console.log("removeContent");
-    DomTerm.withLayout((m) => {
-        if (m._pendingPopoutComponents) {
-            const itemIndex = m._pendingPopoutComponents.indexOf(wrapper);
-            if (itemIndex >= 0)
-                m._pendingPopoutComponents.splice(itemIndex, 1);
-        }
-        if (m._pendingPopoutComponents)
-            console.log("pending-comps:"+m._pendingPopoutComponents.length);
-        if (m._pendingPopoutOptions && DomTerm.mainTerm
-            && (! m._pendingPopoutComponents
-                || m._pendingPopoutComponents.length === 0)) {
-            DomTerm.mainTerm.reportEvent("OPEN-WINDOW", JSON.stringify(m._pendingPopoutOptions));
-            m._pendingPopoutOptions = undefined;
-        }
-    });
-    if (parent && parent.classList.contains("lm_component"))
-        parent.remove();
-    else
-        wrapper.remove();
-}
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]) {
     this.sstate.inInputMode = false;
@@ -10457,7 +10440,9 @@ DomTerm.initXtermJs = function(dt, topNode) {
 }
 
 /** Connect using WebSockets */
-Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session=null) {
+Terminal.connectWS = function(name, query, topNode=null, no_session=null) {
+    const wsprotocol = "domterm";
+    const wspath = Terminal._makeWsUrl(query);
     if (name == null) {
         name = topNode == null ? null : topNode.getAttribute("id");
         if (name == null)
@@ -10621,6 +10606,8 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
             DomTerm.log("unexpected WebSocket error code:"+e.code+" e:"+e);
     }
     wsocket.onclose = function(e) {
+        if (wt == DomTerm.mainTerm && wt != DomTerm.focusedTerm)
+            return;
         if (DomTerm.verbosity > 0)
             DomTerm.log("unexpected WebSocket (connection:"+wt.windowNumber+") close code:"+e.code+" e:"+e);
         wt._socketOpen = false;
@@ -10672,10 +10659,6 @@ Terminal._makeWsUrl = function(query=null) {
         query = (query ? (query + '&') : '')
             + 'server-key=' + DomTerm.server_key;
     }
-    if (! DomTerm.isInIFrame()) {
-        query = (query ? (query + '&') : '')
-            + 'main-window=true';
-    }
     if (query)
         url = url + '?' + query;
     return url;
@@ -10708,11 +10691,6 @@ DomTerm.initSavedFile = function(topNode) {
     dt.setWindowSize = function(numRows, numColumns,
                                 availHeight, availWidth) {
     };
-}
-
-Terminal.connectHttp = function(node, query=null) {
-    var url = Terminal._makeWsUrl(query);
-    Terminal.connectWS(null, url, "domterm", node);
 }
 
 Terminal.isDelimiter = (function() {
