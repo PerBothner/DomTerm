@@ -432,26 +432,6 @@ DomTermLayout._initTerminal = function(cstate, parent = DomTerm.layoutTop) {
     return wrapped;
 }
 
-DomTermLayout.initSubWindow = function(container, config) {
-    const wnum = config.windowNumber;
-    container.parent.id = `${wnum}`;
-    container.stateRequestEvent = () => { return config; }
-
-    if (! (DomTerm.useToolkitSubwindows && wnum >= 0))
-        return;
-
-    container.virtualVisibilityChangeRequiredEvent = (container, visible) => {
-        if (DomTerm.useToolkitSubwindows) {
-            DomTerm._qtBackend.showPane(wnum, visible);
-        }
-    };
-    container.notifyResize = (container, x, y, width, height) => {
-        if (DomTerm.useToolkitSubwindows) {
-            DomTerm._qtBackend.setGeometry(wnum, x, y, width, height);
-        }
-    };
-}
-
 DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfig]) {
     function activeContentItemHandler(item) {
         //if (item.componentName == "browser")
@@ -489,7 +469,8 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
         return true;
     }
 
-    DomTermLayout.manager.registerComponent( 'domterm', function( container, componentConfig ){
+    function registerComponent(container, componentConfig) {
+        const type = container.componentType;
         let wnum = componentConfig.windowNumber;
         var el;
         let name;
@@ -499,7 +480,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             DomTerm._qtBackend.adoptPane(Number(wnum));
             DomTerm.mainTerm.reportEvent("WINDOW-MOVED", wnum);
             wrapped = undefined;
-        } else if (lcontent != null) {
+        } else if (lcontent != null && type === "domterm") { // UNUSED?
             wrapped = lcontent;
             let e = DomTerm._oldFocusedContent;
             name = (e && (e.layoutTitle || e.getAttribute("name")))
@@ -507,13 +488,11 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             lcontent.layoutTitle = undefined;
             lcontent = null;
         } else {
-            var config = container._config;
-            wrapped = DomTermLayout._initTerminal(config.componentState, container.element);
-            if (wrapped)
-                name = wrapped.name;
+            wrapped = DomTermLayout._initTerminal(componentConfig, container.element);
         }
         componentConfig.initialized = true;
         if (wrapped) {
+            name = wrapped.name;
             DomTerm.showFocusedPane(wrapped);
             wrapped.classList.add("lm_content");
             wrapped._layoutItem = container.parent;
@@ -522,54 +501,28 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             DomTerm.updateContentTitle(wrapped, componentConfig);
             DomTermLayout.updateLayoutTitle(container.parent, wrapped);
         }
-        /*
-    if (options.windowName !== undefined) {
-        if (options.windowName)
-            content.setAttribute("window-name", options.windowName);
-        else
-            content.removeAttribute("window-name");
-    }
-    if (options.windowNameUnique !== undefined)
-        content.windowNameUnique = options.windowNameUnique;
-          let title = content.getAttribute("window-name");
-          if (title) {
-          if (! content.windowNameUnique
-          && content.windowNumber !== undefined)
-          title += ":" + content.windowNumber;
-          } else {
-          title = "DomTerm"; // FIXME
-          if (content.windowNumber !== undefined)
-          title += ":" + content.windowNumber;
-          }
-        */
-        //
-        //DomTermLayout.setContainerTitle(container.parent, componentConfig);
-        /*
-        container.stateRequestEvent = () => {
-            const state = {};
-            // FIXME make work for iframe
-            / *
-            let sessionNumber = wrapped.getAttribute("session-number");
-            if (sessionNumber)
-                state.sessionNumber = sessionNumber;
-            * /
-            return state;
-        };
-        */
 
-        DomTermLayout.initSubWindow(container, componentConfig);
+        container.parent.id = `${wnum}`;
+        container.stateRequestEvent = () => { return componentConfig; }
+
+        if (DomTerm.useToolkitSubwindows && wnum >= 0) {
+            container.virtualVisibilityChangeRequiredEvent = (container, visible) => {
+                if (DomTerm.useToolkitSubwindows) {
+                    DomTerm._qtBackend.showPane(wnum, visible);
+                }
+            };
+            container.notifyResize = (container, x, y, width, height) => {
+                if (DomTerm.useToolkitSubwindows) {
+                    DomTerm._qtBackend.setGeometry(wnum, x, y, width, height);
+                }
+            };
+        }
         componentConfig.initialized = true;
 
         container.on("dragExported", (event, component) => {
             if (DomTermLayout.manager.inSomeWindow) {
                 DomTerm.mainTerm.reportEvent("DETACH-WINDOW", component.id);
-                if (DomTerm.useToolkitSubwindows) {
-                    //const doptions = {};
-                    //doptions.popout = ! DomTermLayout.manager.inSomeWindow;
-                    //DomTerm.mainTerm.reportEvent, "DETACH-WINDOWS", doptions);
-                    //DomTermLayout.layoutClose(....);
-                    //request child to close?
-                } else
+                if (! DomTerm.useToolkitSubwindows)
                     DomTerm.closeSession(component.component, "export", true);
             } else {
                 DomTermLayout.popoutWindow(component, event);
@@ -582,35 +535,16 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                 DomTermLayout.manager.updateSize(); })
             ).observe(top);
         }
-        // wrapped.rootHtmlElement = wrapped;
         return wrapped;
-    });
+    }
 
-    DomTermLayout.manager.registerComponent( 'view-saved', function( container, componentConfig ){
+    DomTermLayout.manager.registerComponent( 'domterm', registerComponent);
+    DomTermLayout.manager.registerComponent("browser", registerComponent);
+    DomTermLayout.manager.registerComponent( 'view-saved', function( container, componentConfig ){ // FIXME - old
         container.on('destroy', DomTermLayout.onLayoutClosed(container));
         let el = viewSavedFile(componentConfig.url);
         if (typeof componentConfig.windowNumber === "number")
             el.windowNumber = componentConfig.windowNumber;
-        //el.rootHtmlElement = el;
-        return el;
-    });
-
-    DomTermLayout.manager.registerComponent( 'browser', function( container, componentConfig ){
-        container.on('destroy', DomTermLayout.onLayoutClosed(container));
-        const url = componentConfig.url;
-        let el = DomTermLayout._initTerminal(componentConfig, container.element);
-        let title = "B";
-        const wnum = componentConfig.windowNumber;
-        if (el && typeof wnum === "number") {
-            el.windowNumber = wnum;
-            title = "B-" + wnum ;
-        }
-        DomTermLayout.initSubWindow(container, componentConfig);
-        if (el) {
-            DomTerm.updateContentTitle(el, componentConfig);
-            DomTermLayout.updateLayoutTitle(container.parent, el);
-            //el.rootHtmlElement = el;
-        }
         return el;
     });
 
