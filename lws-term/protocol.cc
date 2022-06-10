@@ -1561,6 +1561,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             tty_client *main_window = main_windows(wclient->main_window);
             if (main_window && wnum == main_window->connection_number)
                 renumber_main_window(main_window);
+            wclient->main_window = client->connection_number;
         }
     } else if (strcmp(name, "FOCUSED") == 0) {
         focused_client = client;
