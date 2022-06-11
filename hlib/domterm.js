@@ -166,11 +166,18 @@ DomTerm.isLineBlock = function(node) {
         || (tag == "DIV" && node.classList.contains("domterm-pre"));
 }
 
-DomTerm.setTitle = function(title) {
+DomTerm.displayWindowTitle = function(name, title) {
+    let str = name || "";
+    if (title) {
+        if (str)
+            str += " ";
+        str += "(" + title +")";
+    }
+
     if (window.setWindowTitle)
-        window.setWindowTitle(title); // hook used by -Bwebview and -Bwry
+        window.setWindowTitle(str); // hook used by -Bwebview, -Bwry, -Bqt
     else
-       document.title = title;
+       document.title = str;
 }
 
 DomTerm.forEachTerminal = function(func) {
@@ -216,16 +223,32 @@ DomTerm.updateTitle = function(content, options) {
         if (dl) {
             if (typeof options.windowNumber == "number") {
                 item = dl._numberToLayoutItem(options.windowNumber);
-                if (item)
+                if (item && !DomTerm.useToolkitSubwindows)
                     content = item.component;
             } else if (content) {
                 item = dl._elementToLayoutItem(content);
             }
         };
-        DomTerm.updateContentTitle(content, options); // FIXME
-        if (dl && item) {
-            dl.updateLayoutTitle(item, content);
-        };
+        const cstate = item?.toConfig().componentState;
+        if (cstate) {
+            if (options.windowName !== undefined) {
+                if (options.windowName)
+                    cstate.windowName = options.windowName;
+                else
+                    delete cstate.windowName;
+            }
+            if (options.windowNameUnique !== undefined)
+                cstate.windowNameUnique = options.windowNameUnique;
+            if (dl && item) {
+                dl.updateLayoutTitle(item, null);
+            };
+        }
+        if (content) {
+            DomTerm.updateContentTitle(content, options); // FIXME
+            if (dl && item) {
+                dl.updateLayoutTitle(item, content);
+            };
+        }
     }
 }
 
@@ -415,6 +438,16 @@ DomTerm.focusChild = function(iframe, originMode) { // OBSOLETE?
     DomTerm.showFocusedPane(iframe);
 }
 
+DomTerm.createSpanNode = function(cls=null, txt=null) {
+    let el = document.createElement("span");
+    if (cls)
+        el.setAttribute("class", cls);
+    if (txt)
+        el.appendChild(document.createTextNode(txt));
+    return el;
+};
+
+
 DomTerm.addSubWindowParams = function(location, mode) {
     if (mode == 'T') {
         location = DomTerm.addLocationParams(location);
@@ -439,8 +472,8 @@ DomTerm.makeIFrameWrapper = function(location, mode='T',
     if (location) {
         location = DomTerm.addSubWindowParams(location, mode);
     }
-    if (mode == 'B')
-        ifr.layoutWindowTitle = location;
+    //if (mode == 'B')
+    //ifr.layoutWindowTitle = location;
     ifr.setAttribute("src", location);
     ifr.setAttribute("class", "domterm-wrapper");
     if (DomTerm._oldFocusedContent == null)

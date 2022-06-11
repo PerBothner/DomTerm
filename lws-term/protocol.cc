@@ -2409,6 +2409,26 @@ display_session(struct options *options, struct pty_client *pclient,
         tclient = new tty_client();
         wnum = session_number;
         if (paneOp > 0) {
+            const char *eq = strchr(browser_specifier, '=');
+            if (eq) {
+                std::string wopt = eq + 1;
+                int w = check_single_window_option(wopt, "(display)", options);
+                if (w < 0) {
+                    printf_error(options, "invalid window specifier '%s' in '%s' option",
+                                 wopt.c_str(),
+                                 browser_specifier);
+                    return EXIT_FAILURE;
+                }
+                size_t wlen = wopt.length();
+                top_marker = wlen > 0 && wopt[wlen-1] == '^';
+                wclient = tty_clients(w);
+            } else if (focused_client == NULL) {
+                printf_error(options, "no current window for '%s' option",
+                             browser_specifier);
+                return EXIT_FAILURE;
+            } else
+                wclient = focused_client;
+
             options->paneOp = -1;
             if (wkind == main_only_window) {
                 wnum = paneOp;
@@ -2443,26 +2463,6 @@ display_session(struct options *options, struct pty_client *pclient,
     options->name_option.clear();
     int r = EXIT_SUCCESS;
     if (paneOp > 0) {
-        const char *eq = strchr(browser_specifier, '=');
-        if (eq) {
-            std::string wopt = eq + 1;
-            int w = check_single_window_option(wopt, "(display)", options);
-            if (w < 0) {
-                printf_error(options, "invalid window specifier '%s' in '%s' option",
-                             wopt.c_str(),
-                             browser_specifier);
-                return EXIT_FAILURE;
-            }
-            size_t wlen = wopt.length();
-            top_marker = wlen > 0 && wopt[wlen-1] == '^';
-            wclient = tty_clients(w);
-        } else if (focused_client == NULL) {
-            printf_error(options, "no current window for '%s' option",
-                         browser_specifier);
-            return EXIT_FAILURE;
-        } else
-            wclient = focused_client;
-
         tclient->main_window =
             wclient->main_window || wclient->connection_number;
         json pane_options;

@@ -1245,7 +1245,7 @@ Terminal.prototype.setFocused = function(focused) {
     const changeFocused = wasFocused !== (focused > 0);
     if (focused > 0) {
         classList.add("domterm-active");
-        DomTerm.setTitle(this.formatWindowTitle());
+        DomTerm.displayWindowTitle(this.getWindowName(), this.getWindowTitle());
         if (! this.isSavedSession()) {
             this.reportEvent("FOCUSED", ""); // to server
             if (changeFocused)
@@ -3269,13 +3269,8 @@ Terminal.prototype._getOuterInputArea = function(node = this._caretNode) {
     return null;
 }
 
-Terminal.prototype._createSpanNode = function(cls=null, txt=null) {
-    let el = document.createElement("span");
-    if (cls)
-        el.setAttribute("class", cls);
-    if (txt)
-        el.appendChild(document.createTextNode(txt));
-    return el;
+Terminal.prototype._createSpanNode = function(cls=null, txt=null) { // DEPRECATED
+    return DomTerm.createSpanNode(cls, txt);
 };
 
 Terminal.prototype.makeId = function(local) {
@@ -5881,8 +5876,13 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
     }
 }
 
-// FIXME misleading function name - this is not just the session name
-Terminal.prototype.sessionName = function() {
+Terminal.prototype.getWindowTitle = function() {
+    return this.sstate.windowTitle ? this.sstate.windowTitle
+        : this.sstate.iconName ? this.sstate.iconName
+        : "";
+}
+
+Terminal.prototype.getWindowName = function() {
     var sname = this.topNode.getAttribute("window-name");
     let snumber = this.sstate.sessionNumber;
     let wnumber = this.windowNumber;
@@ -5932,38 +5932,16 @@ Terminal.prototype.setWindowTitle = function(title, option) {
     this.updateWindowTitle();
 };
 
-Terminal.prototype.formatWindowTitle = function() {
-    var str = this.sstate.windowTitle ? this.sstate.windowTitle
-        : this.sstate.iconName ? this.sstate.iconName
-        : "";
-    var sessionName = this.sessionName();
-    //if (! sessionName)
-    //    sessionName = this.name;
-    if (sessionName) {
-        if (str)
-            str += " ";
-        str += "[" + sessionName + "]";
-    }
-    return str;
-}
-
-// item is a domterm element or an iframe domterm-wrapper (if useIFrame)
-DomTerm.setLayoutTitle = function(item, title, wname) {
-    if (title !== item.layoutTitle || wname !== item.layoutWindowTitle) {
-        item.layoutTitle = title;
-        item.layoutWindowTitle = wname;
-        if (DomTerm._layout)
-            DomTerm._layout.setLayoutTitle(item, title, wname);
-    }
-}
-
 Terminal.prototype.updateWindowTitle = function() {
-    let sname = this.sessionName();
-    let wname = this.sstate.windowTitle;
-    if (DomTerm.setLayoutTitle)
-        DomTerm.setLayoutTitle(this.topNode, sname, wname);
+    let sname = this.getWindowName();
+    let wname = this.getWindowTitle();
+    const layout = DomTerm._layout;
+    if (DomTerm.isSubWindow())
+        DomTerm.sendParentMessage("domterm-set-title", sname, wname);
+    else if (layout && layout.manager)
+        layout.setLayoutTitle(layout._elementToLayoutItem(this.topNode), sname, wname);
     if (this.hasFocus())
-        DomTerm.setTitle(this.formatWindowTitle());
+        DomTerm.displayWindowTitle(sname, wname);
 }
 
 Terminal.prototype.resetCharsets = function() {

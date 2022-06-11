@@ -218,7 +218,7 @@ function setupQWebChannel(channel) {
     DomTerm.windowClose = function() { backend.windowOp('close'); }
     DomTerm.windowOp = function(opname) { backend.windowOp(opname); }
     if (! DomTerm.addTitlebar) {
-        DomTerm.setTitle = function(title) {
+        window.setWindowTitle = function(title) {
             backend.setWindowTitle(title == null ? "" : title); };
     }
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
@@ -311,7 +311,14 @@ function createTitlebar(titlebarNode) {
     titleNode.classList.add('dt-window-title');
     titlebarNode.appendChild(titleNode);
     titleNode.innerText = "DomTerm window";
-    DomTerm.setTitle = (title) => { titleNode.innerText = title; };
+    DomTerm.displayWindowTitle = (wname, wtitle) => {
+        // optimize if (partially) unchanged - FIXME
+        titleNode.innerText = wname + (wtitle ? " " : "");
+        if (wtitle) {
+            const tnode = DomTerm.createSpanNode("domterm-windowname", "(" + wtitle +")");
+            titleNode.appendChild(tnode);
+        }
+    };
     function dragWindowTarget(target) {
         for (let p = target; p instanceof Element; p = p.parentNode) {
             const cl = p.classList;
@@ -506,27 +513,19 @@ function loadHandler(event) {
         } else {
             setupParentMessages1();
             setupParentMessages2();
-            DomTerm.setTitle = function(title) {
-                DomTerm.sendParentMessage("set-window-title", title); }
+            DomTerm.displayWindowTitle = function(wname, wtitle) {
+                DomTerm.sendParentMessage("set-window-title", wname, wtitle); }
         }
-    }
-    if (DomTerm.isSubWindow() && DomTerm.sendParentMessage) {
-        // handled by handleMessage (for iframe pane)
-        // *or* handled by atom-domterm.
-        DomTerm.setLayoutTitle = function(dt, title, wname) {
-            DomTerm.sendParentMessage("domterm-set-title", title, wname); // FIXME
-        };
     }
     // non-null if we need to create a websocket but we have no Terminal
     let no_session = null;
     if ((m = location.hash.match(/view-saved=([^&;]*)/))) {
         maybeWindowName(viewSavedFile(m[1]));
         no_session = "view-saved";
-    } else if ((m = params.get("browse"))) {
-        const el = DomTerm.makeIFrameWrapper(m, 'B', DomTerm.layoutTop);
-        maybeWindowName(el);
-        no_session = "browse";
     }
+    const browse_param = params.get("browse");
+    if (browse_param)
+        no_session = "browse";
     if (location.pathname.startsWith("/saved-file/")) {
         DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
         return;
@@ -579,7 +578,9 @@ function loadHandler(event) {
     if (open_encoded) {
         DomTerm.withLayout((m) => m.initSaved(JSON.parse(open_encoded)));
     } else if (layoutInitAlways && ! DomTerm.isSubWindow()) {
-        const cstate = {sessionNumber: snum, windowNumber: mwinnum };
+        const cstate = { windowNumber: mwinnum };
+        if (snum)
+            cstate.sessionNumber = snum;
         const wnameUnique = params.get("wname-unique");
         const wname = params.get("wname") || wnameUnique;
         if (wname) {
@@ -587,8 +588,13 @@ function loadHandler(event) {
             cstate.windowNameUnique = !!wnameUnique;
         }
         cstate.windowName = wname;
+        let ctype = 'domterm';
+        if (browse_param) {
+            cstate.url = browse_param;
+            ctype = "browser";
+        }
         const config = { type: 'component',
-                         componentType: 'domterm',
+                         componentType: ctype,
                          componentState: cstate };
         DomTerm.withLayout((m) => { m.initialize([config]); });
     } else if (DomTerm.loadDomTerm) { // used by electron-nodepty
@@ -681,11 +687,15 @@ function handleMessageFromChild(windowNum, command, args) {
         }
         break;
     case "domterm-set-title":
-        if (item)
-                dlayout.setContainerTitle(item, args[0], args[1]);
+        if (item) {
+            dlayout.setLayoutTitle(item, args[0], args[1]);
+        }
+        break;
+    case "domterm-update-title":
+        DomTerm.updateTitle(null, args[0]);
         break;
     case "set-window-title":
-        DomTerm.setTitle(args[0]);
+        DomTerm.displayWindowTitle(args[0], args[1]);
         break;
     case "domterm-context-menu":
         let options = args[0];
@@ -740,8 +750,6 @@ function handleMessage(event) {
         DomTerm.doNamedCommand(data.args[0], iframe, data.args[1]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
-    //} else if (data.command=="set-window-title") {
-        //DomTerm.setTitle(data.args[0]);
     } else if (data.command=="layout-close") {
         if (DomTermLayout.manager)
             DomTermLayout.layoutClose(iframe,
@@ -750,8 +758,6 @@ function handleMessage(event) {
             DomTerm.windowClose();
     } else if(data.command=="save-file") {
         DomTerm.saveFile(data.args[0]);
-    } else if (data.command=="domterm-update-title") {
-        DomTerm.updateTitle(iframe, data.args[0]);
     } else if (data.command=="set-pid") {
         if (iframe)
             iframe.setAttribute("pid", data.args[0]);

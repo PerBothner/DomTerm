@@ -162,25 +162,29 @@ DomTermLayout._numberToLayoutItem = function(wnum) {
     return DomTermLayout.manager.findFirstComponentItemById(`${wnum}`);
 }
 
-DomTermLayout.setLayoutTitle = function(content, title, wname) {
-    const item = DomTermLayout.manager
-          && DomTermLayout._elementToLayoutItem(content);
-    if (item)
-        DomTermLayout.setContainerTitle(item, title, wname);
+DomTermLayout.setLayoutTitle = function(item, title, wtitle) {
+    const cstate = item.toConfig().componentState;
+    if (cstate) {
+        if (wtitle !== undefined)
+            cstate.windowTitle = wtitle;
+        //if (title)
+    }
+    DomTermLayout.updateLayoutTitle(item, null, cstate);
 }
 
-DomTermLayout.updateLayoutTitle = function(item, content) {
-    let title = content.getAttribute("window-name");
+DomTermLayout.updateLayoutTitle = function(item, content,
+                                           cstate = item?.toConfig().componentState) {
+    let title = cstate.windowName;
     if (title) {
-        if (! content.windowNameUnique
-            && content.windowNumber !== undefined)
-            title += ":" + content.windowNumber;
+        if (! cstate.windowNameUnique
+            && ctstate.windowNumber !== undefined)
+            title += ":" + cstate.windowNumber;
     } else {
         title = "DomTerm"; // FIXME
-        if (content.windowNumber !== undefined)
-            title += ":" + content.windowNumber;
+        if (cstate.windowNumber !== undefined)
+            title += ":" + cstate.windowNumber;
     }
-    DomTermLayout.setContainerTitle(item, title, content.layoutWindowTitle);
+    DomTermLayout.setContainerTitle(item, title, cstate.windowTitle);
 }
 
 DomTermLayout.setContainerTitle = function(item, title, wname) {
@@ -380,7 +384,7 @@ DomTermLayout._newPaneNumber = function() {
 
 DomTerm.newPaneHook = null; // is this ever set ???
 
-DomTermLayout._initTerminal = function(cstate, parent = DomTerm.layoutTop) {
+DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop) {
     let wrapped;
     let sessionNumber = cstate.sessionNumber;
     let windowNumber = cstate.windowNumber;
@@ -397,7 +401,7 @@ DomTermLayout._initTerminal = function(cstate, parent = DomTerm.layoutTop) {
             + cstate.windowName;
     }
     if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 :2)
-        || (cstate && cstate.componentType === 'browser')) {
+        || ctype === 'browser') {
         let url = cstate && cstate.url; //cstate.componentType === 'browser' ? cstate.urlconfig.url;
         if (! url) {
             url = DomTerm.paneLocation;
@@ -408,9 +412,14 @@ DomTermLayout._initTerminal = function(cstate, parent = DomTerm.layoutTop) {
             url = DomTerm.addSubWindowParams(url, cstate.componentType === 'browser'?'B':'T'/*FIXME*/);
             DomTerm._qtBackend.newPane(cstate.windowNumber, url);
             wrapped = undefined; // FIXME
-        } else
-            wrapped = DomTerm.makeIFrameWrapper(url, 'T', parent);
+        } else {
+            const mode = ctype === 'browser' ? 'B'
+                  : ctype === 'view-saved' ? 'V'
+                  : 'T';
+            wrapped = DomTerm.makeIFrameWrapper(url, mode, parent);
+        }
     } else {
+        console.log("initTerm/el parent:"+parent+" ctype:"+ctype);
         let name = DomTerm.freshName();
         let el = DomTerm.makeElement(name, parent);
         wrapped = el;
@@ -445,6 +454,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     let lparent = lcontent && lcontent.parentElement;
     const config = Object.assign({}, DomTermLayout.config, { content: initialContent });
     DomTermLayout.manager = new GoldenLayout(config, top);
+    let lastContainer = null;
 
     DomTermLayout.manager.createContainerElement = (manager, config) => {
         if (DomTerm.useToolkitSubwindows) {
@@ -472,6 +482,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     function registerComponent(container, componentConfig) {
         const type = container.componentType;
         let wnum = componentConfig.windowNumber;
+        lastContainer = container;
         var el;
         let name;
         let wrapped;
@@ -488,7 +499,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             lcontent.layoutTitle = undefined;
             lcontent = null;
         } else {
-            wrapped = DomTermLayout._initTerminal(componentConfig, container.element);
+            wrapped = DomTermLayout._initTerminal(componentConfig, type, container.element);
         }
         componentConfig.initialized = true;
         if (wrapped) {
@@ -498,9 +509,8 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             wrapped._layoutItem = container.parent;
             if (typeof wnum === "number")
                 wrapped.windowNumber = wnum;
-            DomTerm.updateContentTitle(wrapped, componentConfig);
-            DomTermLayout.updateLayoutTitle(container.parent, wrapped);
         }
+        DomTermLayout.updateLayoutTitle(container.parent, null, componentConfig);
 
         container.parent.id = `${wnum}`;
         container.stateRequestEvent = () => { return componentConfig; }
@@ -615,6 +625,8 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                                  let dt = e.target.component;
 // FIXME                                 DomTerm.focusChild(dt, 'X')
                              });
+    if (lastContainer)
+        DomTermLayout._selectLayoutPane(lastContainer.parent, "X");
 }
 
 DomTermLayout.initSaved = function(data) {
