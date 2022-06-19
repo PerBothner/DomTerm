@@ -449,7 +449,7 @@ BrowserApplication::adoptPane(int windowNumber, WebView*parentView)
     if (windowNumber < paneMap.size()) {
         auto webv = paneMap[windowNumber];
         if (webv)
-            webv->setParent(parentView);
+            webv->setParent((QWidget*) parentView->parent());
     }
 }
 void
@@ -497,7 +497,7 @@ void BrowserApplication::sendChildMessage(int windowNumber, const QString& comma
 void BrowserApplication::lowerOrRaisePanes(bool raise, bool allWindows, BrowserMainWindow *mainWindow)
 {
     for (int windowNum = paneMap.size(); --windowNum >= 0; ) {
-        auto pane = paneMap[windowNum];
+        QWidget *pane = paneMap[windowNum];
         if (pane && (allWindows || pane->parent() == mainWindow)) {
             if (raise)
                 pane->raise();

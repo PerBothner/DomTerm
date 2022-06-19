@@ -113,6 +113,8 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
 #endif
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setAttribute(Qt::WA_DeleteOnClose, true);
+    if ((wflags & Qt::FramelessWindowHint) != 0)
+        setAttribute(Qt::WA_TranslucentBackground);
     _usingQtMenus = (
 #if defined(Q_OS_OSX)
         true

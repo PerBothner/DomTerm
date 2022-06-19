@@ -10,6 +10,7 @@
 #include <QSharedDataPointer>
 
 class ProcessOptions;
+class BrowserMainWindow;
 class WebView;
 
 class Backend : public QObject
@@ -29,6 +30,7 @@ public:
 
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
+    BrowserMainWindow *mainWindow() const;
     int windowNumber() const { return _windowNumber; }
 
     QString domtermVersion() { return _domtermVersion; }

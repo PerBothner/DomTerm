@@ -56,6 +56,12 @@ Backend::~Backend()
 {
 }
 
+BrowserMainWindow *
+Backend::mainWindow() const
+{
+    return webView()->mainWindow();
+}
+
 /** Encode an arbitrary sequence of bytes as an ASCII string.
  * This is used because QWebChannel doesn't have a way to transmit
  * data except as strings or JSON-encoded strings.
@@ -253,8 +259,8 @@ void Backend::newPane(int paneOp, const QString& url)
 #else
 void Backend::newPane(int windowNumber, const QString& url)
 {
-    auto parent = webView();
-    auto webv = new WebView(webView()->m_processOptions, parent);
+    QWidget* parent = mainWindow();
+    auto webv = new WebView(webView()->m_processOptions,  mainWindow());
     webv->newPage(url);
     webv->resize(300, 300);
     webv->show();
@@ -266,24 +272,24 @@ void Backend::newPane(int windowNumber, const QString& url)
 #endif
 void Backend::adoptPane(int windowNumber)
 {
-    webView()->mainWindow()->application()->adoptPane(windowNumber, webView());
+    mainWindow()->application()->adoptPane(windowNumber, webView());
 }
 void Backend::setGeometry(int windowNumber, int x, int y, int width, int height)
 {
-    webView()->mainWindow()->application()->setGeometry(windowNumber, x, y, width, height);
+    mainWindow()->application()->setGeometry(windowNumber, x, y, width, height);
 }
 void Backend::closePane(int windowNumber)
 {
-    webView()->mainWindow()->application()->closePane(windowNumber);
+    mainWindow()->application()->closePane(windowNumber);
 }
 void Backend::showPane(int windowNumber, bool visible)
 {
-    webView()->mainWindow()->application()->showPane(windowNumber, visible);
+    mainWindow()->application()->showPane(windowNumber, visible);
 }
 void Backend::lowerOrRaisePanes(bool raise, bool allWindows)
 {
-    auto mainWindow = webView()->mainWindow();
-    mainWindow->application()->lowerOrRaisePanes(raise, allWindows, mainWindow);
+    auto mainWin = mainWindow();
+    mainWin->application()->lowerOrRaisePanes(raise, allWindows, mainWin);
 }
 
 void Backend::sendChildMessage(int windowNumber, const QString& command, const QString& args_json)
