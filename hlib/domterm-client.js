@@ -293,37 +293,45 @@ function setupParentMessages2() {
     }
 }
 
-function createTitlebar(titlebarNode) {
-    let iconParent = titlebarNode;
+function createTitlebar(titlebarNode, tabs) {
     const menubarInTitlebar = ! DomTerm.isMac;
-    if (menubarInTitlebar) {
-        let menubarNode = document.createElement("span");
-        menubarNode.classList.add("dt-menubar");
-        titlebarNode.appendChild(menubarNode);
-        iconParent = menubarNode;
-    }
-    if (true) {
-        let iconNode = document.createElement('img');
-        iconNode.setAttribute('src', '/favicon.ico');
-        iconParent.appendChild(iconNode);
-    }
-    let titleNode = document.createElement('span');
-    titleNode.classList.add('dt-window-title');
-    titlebarNode.appendChild(titleNode);
-    titleNode.innerText = "DomTerm window";
-    DomTerm.displayWindowTitle = (wname, wtitle) => {
-        // optimize if (partially) unchanged - FIXME
-        titleNode.innerText = wname + (wtitle ? " " : "");
-        if (wtitle) {
-            const tnode = DomTerm.createSpanNode("domterm-windowname", "(" + wtitle +")");
-            titleNode.appendChild(tnode);
+    let titlebarInitial = DomTerm.titlebarInitial;
+    if (! titlebarInitial) {
+        titlebarInitial = document.createElement("span");
+        if (menubarInTitlebar)
+            titlebarInitial.classList.add("dt-menubar");
+        DomTerm.titlebarInitial = titlebarInitial;
+        if (true) {
+            let iconNode = document.createElement('img');
+            iconNode.setAttribute('src', '/favicon.ico');
+            iconNode.setAttribute("title", "DomTerm");
+            titlebarInitial.appendChild(iconNode);
         }
-    };
+    }
+    titlebarNode.appendChild(titlebarInitial);
+    if (tabs) {
+        if (menubarInTitlebar && DomTerm._savedMenubarParent)
+            titlebarNode.appendChild(tabs);
+    } else {
+        let titleNode = document.createElement('span');
+        titleNode.classList.add('dt-window-title');
+        titlebarNode.appendChild(titleNode);
+        titleNode.innerText = "DomTerm window";
+        DomTerm.displayWindowTitle = (wname, wtitle) => {
+            // optimize if (partially) unchanged - FIXME
+            titleNode.innerText = wname + (wtitle ? " " : "");
+            if (wtitle) {
+                const tnode = DomTerm.createSpanNode("domterm-windowname", "(" + wtitle +")");
+                titleNode.appendChild(tnode);
+            }
+        };
+    }
     function dragWindowTarget(target) {
         for (let p = target; p instanceof Element; p = p.parentNode) {
             const cl = p.classList;
             if (cl.contains("dt-titlebar")) return true;
             if (cl.contains("menubar")) return false;
+            if (cl.contains("lm_tab")) return false;
             if (cl.contains("dt-titlebar-button")) return false;
         }
         return false;
@@ -380,6 +388,12 @@ function createTitlebar(titlebarNode) {
         });
     titlebarNode.querySelector("#dt-titlebar-close")
         .addEventListener('click', (e) => DomTerm.doNamedCommand('close-window'));
+}
+
+function resizeTitlebar(titlebarElement = DomTerm.titlebarCurrent) {
+    if (! DomTerm.addTitlebar)
+        return;
+    console.log("resizeTitlebar");
 }
 
 function loadHandler(event) {
@@ -456,10 +470,13 @@ function loadHandler(event) {
             let titlebarNode = document.createElement('div');
             titlebarNode.classList.add('dt-titlebar');
             bodyNode.appendChild(titlebarNode);
-            createTitlebar(titlebarNode);
+            DomTerm.titlebarElement = titlebarNode;
+            DomTerm.titlebarCurrent = titlebarNode;
+            createTitlebar(titlebarNode, null);
         }
         if (DomTerm.createMenus && ! DomTerm.simpleLayout)
             DomTerm.createMenus();
+        resizeTitlebar(DomTerm.titlebarElement);
     }
     let bodyChild = bodyNode.firstElementChild;
     if (bodyChild) {

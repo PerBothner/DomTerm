@@ -1190,7 +1190,7 @@ open_window(const char *data, struct tty_client *client)
             && obj["windowNumber"].is_number()) {
             int wnum = obj["windowNumber"].get<int>();
             if (wnum > 0) {
-                options->paneOp = wnum;
+                options->paneOp = wnum; // kludge - overload paneOp
             }
         }
         auto content = obj["content"];
@@ -2408,7 +2408,11 @@ display_session(struct options *options, struct pty_client *pclient,
     if (wkind != unknown_window) {
         tclient = new tty_client();
         wnum = session_number;
-        if (paneOp > 0) {
+        if (wkind == main_only_window && paneOp > 0) {
+            wnum = paneOp;
+            paneOp = -1;
+            options->paneOp = -1;
+        } else if (paneOp > 0) {
             const char *eq = strchr(browser_specifier, '=');
             if (eq) {
                 std::string wopt = eq + 1;
@@ -2430,12 +2434,7 @@ display_session(struct options *options, struct pty_client *pclient,
                 wclient = focused_client;
 
             options->paneOp = -1;
-            if (wkind == main_only_window) {
-                wnum = paneOp;
-                paneOp = -1;
-            }
-            else
-                options->browser_command = "";
+            options->browser_command = "";
         }
         tclient->options = link_options(options);
         if (wkind != main_only_window)

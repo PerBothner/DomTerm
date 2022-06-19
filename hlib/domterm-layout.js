@@ -18,7 +18,6 @@ DomTermLayout.selectNextPane = function(forwards, oldWindowNum) {
     const item = DomTermLayout._numberToLayoutItem(oldWindowNum);
     if (! item)
         return;
-   // let item = DomTermLayout._elementToLayoutItem(wrapper);
     var r = item;
     for (;;) {
         var p = r.parent;
@@ -219,9 +218,14 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
 
 DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
     const wholeStack = item.type == 'stack';
+    // True if dropped to desktop; false if poout-btoon clicked
+    const dragged = !!fromLayoutEvent;
     function popoutEncode(item) {
         const wholeStack = item.type == 'stack';
-        var sizeElement = item.element;
+        const sizeElement =
+              DomTerm.useToolkitSubwindows
+              ? item.parent.childElementContainer
+              : item.element;
         var w = sizeElement.offsetWidth;
         var h = sizeElement.offsetHeight;
         const e = [];
@@ -229,13 +233,18 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
         DomTermLayout._pendingPopoutComponents = 0;
         // FIXME adjust for menu bar height
         function encode(item) {
-            DomTerm.mainTerm.reportEvent("DETACH-WINDOW", item.id);
-            if (DomTerm.useToolkitSubwindows)
-                DomTermLayout.layoutClose(null, item, !!fromLayoutEvent)
-            else
-                DomTerm.closeSession(item.component, "export", !!fromLayoutEvent);
             const itemConfig = item.toConfig();
             const wnum = itemConfig?.componentState?.windowNumber;
+            DomTerm.mainTerm.reportEvent("DETACH-WINDOW", item.id);
+            if (DomTerm.useToolkitSubwindows) {
+                if (! dragged) {
+                    DomTermLayout.selectNextPane(true, wnum);
+                    item.remove();
+                    if (DomTermLayout.manager.root.contentItems.length == 0)
+                        DomTerm.windowClose();
+                }
+            } else
+                DomTerm.closeSession(item.component, "export", dragged);
             if (wnum && ! options.windowNumber)
                 options.windowNumber = wnum;
             if (! DomTerm.useToolkitSubwindows && wnum
@@ -263,7 +272,6 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
         options.position = `+${Math.round(wX)}+${Math.round(wY)}`;
     }
     DomTermLayout._pendingPopoutOptions = options;
-    // FIXME call from removeContent
     let dt = DomTerm.mainTerm;
 
     setTimeout(() => {
@@ -318,22 +326,16 @@ DomTermLayout._containerHandleResize = function(container, wrapped) { // unused 
 
 DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
     const component = r?.element;
-    const windowNum = r?.component.windowNumber; // FIXME use id?
     if (r && ! from_handler) {
+        const windowNum = Number(r.id);
         if (DomTerm.useToolkitSubwindows) {
             DomTerm._qtBackend.closePane(windowNum);
         }
-        var p = r.parent;
-        if (p && p.type == 'stack'
-            && p.contentItems.length == 1
-            && p.parent.type == 'ground'
-            && p.parent.contentItems.length <= 1) {
-            DomTerm.windowClose();
-        } else {
-            DomTermLayout.selectNextPane(true, windowNum);
-            r.remove();
-        }
+        DomTermLayout.selectNextPane(true, windowNum);
+        r.remove();
     }
+    if (DomTermLayout.manager.root.contentItems.length == 0)
+        DomTerm.windowClose();
     DomTermLayout._pendingPopoutComponents--;
     if (DomTermLayout._pendingPopoutOptions && DomTerm.mainTerm
         && ! DomTermLayout._pendingPopoutComponents) {
@@ -419,7 +421,6 @@ DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop
             wrapped = DomTerm.makeIFrameWrapper(url, mode, parent);
         }
     } else {
-        console.log("initTerm/el parent:"+parent+" ctype:"+ctype);
         let name = DomTerm.freshName();
         let el = DomTerm.makeElement(name, parent);
         wrapped = el;
@@ -571,7 +572,43 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     DomTermLayout.manager.init(); // ??
     DomTermLayout.manager.on('activeContentItemChanged',
                              activeContentItemHandler);
-
+    DomTermLayout.manager.on('stateChanged',
+                             () => {
+                                 const rootChildren = DomTermLayout.manager.root.contentItems;
+                                 const singleStack = rootChildren.length === 1
+                                       && rootChildren[0].type == "stack"
+                                       ? rootChildren[0]
+                                       : null;
+                                 const singleComponent = singleStack
+                                       && singleStack.contentItems.length === 1;
+                                 if (! DomTerm.addTitlebar)
+                                     return;
+                                 if (singleStack !== DomTermLayout.singleStack) {
+                                     if (DomTermLayout.singleStack) {
+                                         if (DomTerm.titlebarInitial && DomTerm.titlebarElement) {
+                                             DomTerm.titlebarElement.insertBefore(DomTerm.titlebarInitial, DomTerm.titlebarElement.firstChild);
+                                         }
+                                         const header = DomTermLayout.singleStack.header;
+                                         header.element.classList.remove("dt-titlebar");
+                                         header.layoutDefault();
+                                         DomTerm.titlebarCurrent = DomTerm.titlebarElement;
+                                     }
+                                     if (singleStack) {
+                                         const header = singleStack.header;
+                                         const hel = header.element;
+                                         hel.classList.add("dt-titlebar");
+                                         while (hel.firstChild)
+                                             hel.removeChild(hel.firstChild);
+                                         DomTerm.titlebarCurrent = hel;
+                                         createTitlebar(hel, header.tabsContainerElement);
+                                         DomTerm.titlebarElement.style.display = "none";
+                                         // change to merged header
+                                     } else {
+                                         DomTerm.titlebarElement.style.display = "flex";
+                                     }
+                                     DomTermLayout.singleStack = singleStack;
+                                 }
+                             });
     DomTermLayout.manager.on('dragstart',
                              (ev, item) => {
                                  const dt = DomTerm.focusedTerm||DomTerm.mainTerm;

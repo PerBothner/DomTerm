@@ -75,11 +75,12 @@ function createNewWindow (url, options, headless) {
         url = previousUrl;
     else
         previousUrl = url;
+    let frame = ! options.titlebar || options.titlebar === "system";
     let bwoptions = {
         width: w, height: h,
         webPreferences: {contextIsolation: false, worldSafeExecuteJavaScript: false, enableRemoteModule: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
         useContentSize: true,
-        frame: ! options.titlebar || options.titlebar === "system",
+        frame: frame, transparent: !frame,
         show: false};
     if (options.x !== undefined && options.y !== undefined) {
         bwoptions.x = options.x;
