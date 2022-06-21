@@ -79,7 +79,6 @@ class WebPage : public QWebEnginePage {
     Q_OBJECT
 public:
     WebPage(QWebEngineProfile *profile, QObject *parent = 0);
-    BrowserMainWindow *mainWindow();
 
 protected:
 #if !defined(QT_NO_UITOOLS)
@@ -110,7 +109,7 @@ public:
     void newPage(const QString& url);
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
-    BrowserMainWindow *mainWindow() { return m_page->mainWindow(); }
+    BrowserMainWindow *mainWindow();
     void setPage(WebPage *page);
     bool blockCaret() { return m_blockCaret; }
     void setBlockCaret(bool set) { m_blockCaret = set; }

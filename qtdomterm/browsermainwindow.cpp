@@ -156,6 +156,15 @@ BrowserMainWindow::~BrowserMainWindow()
 {
 }
 
+BrowserMainWindow* BrowserMainWindow::containingMainWindow(QWidget *widget)
+{
+    for (QObject *w = widget; w; w = w->parent()) {
+        if (BrowserMainWindow *mw = qobject_cast<BrowserMainWindow*>(w))
+            return mw;
+    }
+    return nullptr;
+}
+
 void BrowserMainWindow::loadDefaultState()
 {
     QSettings settings;
