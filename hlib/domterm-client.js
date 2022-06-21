@@ -214,6 +214,9 @@ function setupQWebChannel(channel) {
     backend.copyAsHTML.connect(function() {
         DomTerm.doCopy(true);
     });
+    backend.logToBrowserConsole.connect(function(str) {
+        DomTerm.log(str);
+    });
     DomTerm.saveFile = function(data) { backend.saveFile(data); }
     DomTerm.windowClose = function() { backend.windowOp('close'); }
     DomTerm.windowOp = function(opname) { backend.windowOp(opname); }

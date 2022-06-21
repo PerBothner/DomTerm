@@ -47,6 +47,7 @@ signals:
     void finished();
     void layoutAddPane(int paneOp);
     void copyAsHTML();
+    void logToBrowserConsole(const QString& text);
     void pasteText(const QString& text);
     void handleSimpleCommand(const QString& msg);
     void writeInputMode(int mode);
