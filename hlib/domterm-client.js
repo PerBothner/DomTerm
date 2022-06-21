@@ -706,6 +706,12 @@ function handleMessageFromChild(windowNum, command, args) {
             dlayout.selectNextPane(args[0], windowNum);
         }
         break;
+    case "layout-close":
+        if (dlayout && dlayout.manager && item)
+            dlayout.layoutClose(item.container.element, item);
+        else
+            DomTerm.windowClose();
+        break;
     case "domterm-set-title":
         if (item) {
             dlayout.setLayoutTitle(item, args[0], args[1]);
@@ -770,12 +776,6 @@ function handleMessage(event) {
         DomTerm.doNamedCommand(data.args[0], iframe, data.args[1]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
-    } else if (data.command=="layout-close") {
-        if (DomTermLayout.manager)
-            DomTermLayout.layoutClose(iframe,
-                                      DomTermLayout._elementToLayoutItem(iframe), data.args[0]);
-        else
-            DomTerm.windowClose();
     } else if(data.command=="save-file") {
         DomTerm.saveFile(data.args[0]);
     } else if (data.command=="set-pid") {
