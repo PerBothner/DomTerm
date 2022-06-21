@@ -259,8 +259,7 @@ void Backend::newPane(int paneOp, const QString& url)
 #else
 void Backend::newPane(int windowNumber, const QString& url)
 {
-    QWidget* parent = mainWindow();
-    auto webv = new WebView(webView()->m_processOptions,  mainWindow());
+    auto webv = new WebView(webView()->m_processOptions,   webView());
     webv->newPage(url);
     webv->resize(300, 300);
     webv->show();

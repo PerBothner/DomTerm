@@ -449,7 +449,7 @@ BrowserApplication::adoptPane(int windowNumber, WebView*parentView)
     if (windowNumber < paneMap.size()) {
         auto webv = paneMap[windowNumber];
         if (webv)
-            webv->setParent((QWidget*) parentView->parent());
+            webv->setParent((QWidget*) parentView);
     }
 }
 void
