@@ -273,7 +273,6 @@ function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
 function setupParentMessages1() {
     if (DomTerm.useToolkitSubwindows) {
         DomTerm.sendParentMessage = function(command, ...args) {
-            console.log("sendParentMessage "+command+" "+JSON.stringify(args));
             DomTerm._qtBackend.sendParentMessage(command, JSON.stringify(args));
         }
     } else {
