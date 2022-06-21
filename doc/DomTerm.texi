@@ -4582,8 +4582,8 @@ then
 
   if [ -n "$DOMTERM" ]
   then
-    source /path/to/bash-preexec.sh
     source /path/to/shell-integration.bash
+    source /path/to/bash-preexec.sh
   fi
 fi
 @end example
