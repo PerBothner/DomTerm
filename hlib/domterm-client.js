@@ -420,7 +420,8 @@ function loadHandler(event) {
     if (m)
         DomTerm.logToServer = m;
     m = params.get('titlebar');
-    if (m !== "system" && (m || DomTerm.versions.wry)) {
+    if (m !== "system"
+        && (m || DomTerm.isElectron() || DomTerm.usingQtWebEngine || DomTerm.versions.wry)) {
         DomTerm.addTitlebar = true;
     }
     m = params.get("subwindows");

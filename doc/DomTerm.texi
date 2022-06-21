@@ -2239,12 +2239,13 @@ If the available width is less, use this width for line-wrapping etc.
 (This avoids certain pathological behavior.)
 
 @item @code{@b{titlebar} =} @var{mode}
-Experimental option to use a custom titlebar for main (top-level) windows.
+Use a custom titlebar for main (top-level) windows.
 Only the Electron, Wry, and Qt front-ends support disabling the system
 titlebar (on other platforms the custom titlebar is additional).
 The @var{mode} can be @code{system} to use the system
 titlebar, or @code{domterm} to use a custom titlebar (in HTML).
-The default is @code{system}, except on Wry where it is @code{domterm}.
+The default on Electron, Wry, and Qt is @code{domterm},
+and @code{system} otherwise.
 Further options and customization is planned for later.
 @end table
 
