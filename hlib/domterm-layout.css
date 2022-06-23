@@ -19,8 +19,6 @@ div.domterm-active div.lm_stack{background:#e1e1e1;border:2px solid magenta}
 .lm_dragProxy .lm_content{box-shadow:2px 2px 4px rgba(0,0,0,0.2);box-sizing:border-box}
 .lm_dropTargetIndicator{box-shadow:inset 0 0 30px rgba(0,0,0,0.4);outline:1px dashed #cccccc;margin:1px;transition:all 200ms ease}
 .lm_dropTargetIndicator .lm_inner{background:#000000;opacity:.1}
-.lm_splitter{background:#999999;opacity:.001;transition:opacity 200ms ease}
-.lm_splitter:hover,.lm_splitter.lm_dragging{background:#bbbbbb;opacity:1}
 .lm_header{height:20px}
 .lm_header { display: flex; background-color:#d8d0d0}
 .lm_tab {cursor:pointer; }
