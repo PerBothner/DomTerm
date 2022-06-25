@@ -107,6 +107,8 @@ case ${host} in
     ;;
 esac
 
+AS_IF([test -z "$with_wry"],
+    [AC_CHECK_PROG(with_wry, cargo, "yes", "no")])
 AS_IF([test -z "$with_asciidoctor"],
     [AC_CHECK_PROG(with_asciidoctor, asciidoctor, "yes", "no")])
 AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
