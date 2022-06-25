@@ -90,15 +90,9 @@ WebPage::WebPage(QWebEngineProfile *profile, QObject *parent)
 #endif
 }
 
-BrowserMainWindow *WebPage::mainWindow()
+BrowserMainWindow *WebView::mainWindow()
 {
-    QObject *w = this->parent();
-    while (w) {
-        if (BrowserMainWindow *mw = qobject_cast<BrowserMainWindow*>(w))
-            return mw;
-        w = w->parent();
-    }
-    return BrowserApplication::instance()->mainWindow();
+    return BrowserMainWindow::containingMainWindow(this);
 }
 
 bool WebPage::certificateError(const QWebEngineCertificateError &error)
@@ -349,7 +343,7 @@ QString WebView::generateSaveFileName() // FIXME
 {
     //return backend->sessionName() + ".html";
     char buf[100];
-    sprintf(buf, "domterm-saved-%d.html", webPage()->mainWindow()->application()->getSaveFileCount());
+    sprintf(buf, "domterm-saved-%d.html", mainWindow()->application()->getSaveFileCount());
     return QString(buf);
 }
 
@@ -376,9 +370,11 @@ void WebView::showContextMenu(const QString& contextType)
 
 void WebView::contextMenuEvent(QContextMenuEvent *event)
 {
-    contextMenuPosition = event->globalPos();
-    // Ideally, this should be done in showContextMenu.
-    displayContextMenu(contextTypeForMenu);
+    if (mainWindow()->usingQtMenus()) {
+        contextMenuPosition = event->globalPos();
+        // Ideally, this should be done in showContextMenu.
+        displayContextMenu(contextTypeForMenu);
+    }
 }
 void WebView::displayContextMenu(const QString& contextType)
 {

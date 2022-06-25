@@ -11,7 +11,7 @@ div.input-line, div.command-group, div.domterm { position: relative }
 html, body { width: 100%; height: 100%; margin: 0px; overflow: hidden }
 div.domterm { -webkit-user-select: text; overflow: hidden }
 div.dt-buffer { overflow-x: hidden }
-div.domterm { width: 100%; height: 100%; margin: 0px; padding: 0px; border: 0px }
+div.domterm { width: 100%; height: 100%; box-sizing: border-box; margin: 0px; padding: 0px; border: 0px }
 div.dt-buffers { overflow-y: scroll;  width: 100%; height: 100%; }
 div.domterm.xterm { overflow-y: hidden }
 div.domterm.domterm-noscript { word-break: break-all }
@@ -122,20 +122,22 @@ div.show-connection-failure {
 }
 div.show-connection-failure div.domterm-pre { white-space: pre-wrap }
 
-div.dt-titlebar {
+.dt-titlebar {
     -webkit-app-region: drag; background-color: #dcdcdc;
-    padding-left: 2px; padding-top: 2px;
     display: flex; flex-direction: row; justify-content: space-between;
     -webkit-user-select: none; user-select: none; cursor: default; }
-div.dt-titlebar img { height: 1rem; position: relative; top: 0.2rem; }
+.dt-titlebar img { height: 1rem; position: relative; top: 0.2rem; }
 .dt-titlebar .menubar { display: inline }
 .dt-titlebar-button { -webkit-app-region: no-drag; padding: 0px 3px }
-.dt-titlebar .menubar { -webkit-app-region: no-drag; }
+.dt-titlebar .menubar,
+.dt-titlebar .lm_tab { -webkit-app-region: no-drag; }
 .dt-titlebar .dt-window-title {
     white-space: pre;
     overflow: hidden;
 }
-.dt-titlebar .dt-menubar { white-space: pre }
+.dt-titlebar { border-radius: 10px 10px 0px 0px; box-sizing: border-box;
+               padding-left: 4px; padding-right: 2px;}
+.dt-titlebar .dt-menubar { white-space: pre; padding-left: 2px }
 
 /* dt-resize-areas/dt-resize-areas are currently only used for Qt with custom titlebar. */
 div.dt-resize-areas {

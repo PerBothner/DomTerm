@@ -132,7 +132,7 @@ class Menu {
 		let width = menuNode.clientWidth;
 		let height = menuNode.clientHeight;
 		let wwidth = top.offsetWidth;
-
+		const base_x = x, base_y = y;
 		if ((x + width) > wwidth) {
 			setRight = true;
 			if(submenu && ! menubarSubmenu) {
@@ -162,7 +162,10 @@ class Menu {
 		}
 
 		menuNode.style.top = y + 'px';
-		menuNode.classList.add('show');
+		if (! Menu.showMenuNode
+		    || ! Menu.showMenuNode(this, menuNode, width, height, base_x, base_y, x, y)) {
+			menuNode.classList.add('show');
+		}
 	}
 
 	popdown() {
@@ -177,6 +180,8 @@ class Menu {
 			Menu._currentMenuNode = this.node.parentMenuNode;
 			if (this.menubarSubmenu)
 				Menu.showSubmenuActive(this.node.menuItem, false);
+			if (Menu.hideMenuNode)
+				Menu.hideMenuNode(this, this.node);
 			this.node.parentNode.removeChild(this.node);
 			if (Menu._topSheet && Menu._topSheet.firstChild == null) {
 				Menu._topSheet.parentNode.removeChild(Menu._topSheet);

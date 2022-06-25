@@ -25,28 +25,44 @@
 }
 .lm_splitter {
   position: relative;
+  z-index: auto;
+  touch-action: none;
+  background: transparent;
+}
+.lm_splitter .lm_bg {
+  opacity: 1;
+  z-index: -2;
+  position: absolute;
+}
+.lm_splitter .lm_drag_handle {
+  position: absolute;
+  background-clip: content-box;
   z-index: 2;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  box-sizing: content-box;
+}
+.lm_splitter.lm_vertical .lm_bg {
+  width: 100%;
 }
 .lm_splitter.lm_vertical .lm_drag_handle {
   width: 100%;
-  position: absolute;
   cursor: ns-resize;
-  touch-action: none;
-  -webkit-user-select: none;
-          user-select: none;
 }
 .lm_splitter.lm_horizontal {
   float: left;
   height: 100%;
 }
+.lm_splitter.lm_horizontal .lm_bg {
+  height: 100%;
+}
 .lm_splitter.lm_horizontal .lm_drag_handle {
   height: 100%;
-  position: absolute;
   cursor: ew-resize;
-  touch-action: none;
-  -webkit-user-select: none;
-          user-select: none;
+}
+.lm_component {
+  position: absolute;
 }
 .lm_header {
   overflow: visible;
@@ -54,6 +70,7 @@
   z-index: 1;
   -webkit-user-select: none;
           user-select: none;
+  width: 100%;
 }
 .lm_header [class^=lm_] {
   box-sizing: content-box !important;
@@ -70,16 +87,6 @@
   width: 18px;
   height: 18px;
   text-align: center;
-}
-.lm_header .lm_tabs {
-  display: flex;
-  overflow: hidden;
-}
-.lm_header .lm_title {
-  display: inline-block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: pre;
 }
 .lm_header .lm_tab {
   cursor: pointer;
@@ -112,12 +119,19 @@
   right: 0;
   text-align: center;
 }
+.lm_tabs {
+  display: flex;
+  overflow: hidden;
+}
+.lm_tab .lm_title {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
 .lm_header.lm_tight_mode .lm_tabs .lm_tab {
   padding-left: 2px;
   padding-right: 2px;
-}
-.lm_header.lm_tight_mode .lm_tabs .lm_tab .lm_close_tab {
-  display: none;
 }
 .lm_header.lm_tight_mode .lm_tabs .lm_tab.lm_active {
   display: inherit;
@@ -130,11 +144,31 @@
   padding-right: 70px;
   margin-right: 0px;
 }
+.lm_header.lm_tight_mode .lm_tabs .lm_tab .lm_close_tab,
+.lm_header .lm_tabs.lm_single .lm_tab.lm_active .lm_close_tab {
+  display: none;
+}
+.lm_header .lm_tabs.lm_single .lm_tab,
+.lm_header .lm_tabs.lm_single .lm_tab.lm_active {
+  padding-left: 6px;
+  padding-right: 6px;
+}
 .lm_stack {
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 .lm_stack > .lm_items {
   overflow: hidden;
+  flex-grow: 1;
+  position: relative;
+}
+.lm_stack > .lm_items .lm_item {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 0px;
 }
 .lm_stack.lm_left > .lm_items {
   position: absolute;
@@ -150,6 +184,7 @@
   position: absolute;
   right: 0;
   top: 0;
+  flex-grow: 0;
 }
 .lm_stack.lm_bottom > .lm_items {
   position: absolute;
@@ -341,4 +376,16 @@
 }
 .lm_popin > .lm_icon {
   z-index: 20;
+}
+.lm_dragImage {
+  position: absolute;
+  opacity: 0.8;
+}
+.lm_dragImage section {
+  background-color: transparent;
+}
+.lm_dragImage .lm_dragImageInner {
+  border: solid 2px red;
+  background-color: transparent;
+  position: relative;
 }

@@ -222,10 +222,16 @@ DomTerm.createMenus = function(options) {
         menuItem({label: 'Terminal', submenu: terminalMenu}),
         menuItem({label: 'Help', submenu: helpMenu})
     ];
+    //let hamburgerChar = "\u2261";
+    let hamburgerChar = "\u2630";
+    let hamburgerMenuItems = [
+        menuItem({label: hamburgerChar, submenu: menuBarItems})
+    ];
     let menuBar;
     if (electronMenus) {
         electronAccess.ipcRenderer.send('set-application-menu', menuBarItems);
     } else {
+        //menuBar = new Menu({ type: 'menubar' }, hamburgerMenuItems);
         menuBar = new Menu({ type: 'menubar' }, menuBarItems);
         if (isElectron)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
@@ -238,6 +244,34 @@ DomTerm.createMenus = function(options) {
             DomTerm._savedMenubarParent = parent;
             DomTerm._savedMenubarBefore = parent.firstElementChild;
         }
+        let menuCount = 0;
+        Menu.showMenuNode = function(menu, menuNode, width, height, base_x, base_y, x, y) {
+            /* // FUTURE (requires being able to position popup windows,
+            // which is an issue on Wayland - plus more work)
+            const moptions = {};
+            let mtext = menuNode.outerHTML;
+            moptions.url = `data:text/html,<html><head>
+<base href="${location.origin}/"/>
+<link type="text/css" rel="stylesheet" href="hlib/jsMenus.css"/>
+<script type="text/javascript" src="hlib/jsMenus.js"></script>
+</head>
+<body><hr/>${mtext}</body></head>`;
+            moptions.width = width;
+            moptions.height = height;
+            moptions.titlebar = "none";
+            moptions.position = `+${base_x}+${base_y}`;
+            DomTerm.openNewWindow(null, moptions);
+            */
+            if (DomTerm.useToolkitSubwindows && menuCount++ == 0) {
+                DomTerm._qtBackend.lowerOrRaisePanes(false, true);
+            }
+            return false;
+        };
+        Menu.hideMenuNode = function(menu, menuNode) {
+            if (DomTerm.useToolkitSubwindows && --menuCount <= 0) {
+                DomTerm._qtBackend.lowerOrRaisePanes(true, true);
+            }
+        };
         showMenubar(true);
     }
 

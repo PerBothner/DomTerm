@@ -70,7 +70,7 @@ QT_END_NAMESPACE
 #include "dt_version.h"
 
 class BrowserMainWindow;
-class CookieJar;
+class WebView;
 
 #if USE_DOCK_MANAGER
 #include "DockManager.h"
@@ -96,13 +96,19 @@ public:
     ads::CDockManager* dockManager() { return m_DockManager; }
     void dockManager(ads::CDockManager* dm) { m_DockManager = dm; }
 #endif
+    void registerPane(int windowNumber, WebView*pane);
+    void adoptPane(int windowNumber, WebView*parentView);
+    void setGeometry(int windowNumber, int x, int y, int width, int height);
+    void closePane(int windowNumber);
+    void showPane(int windowNumber, bool visible);
+    void sendChildMessage(int windowNumber, const QString& command, const QString& args_json);
+    void lowerOrRaisePanes(bool raise, bool allWindows, BrowserMainWindow *mainWindow);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     static QString uniqueNameFromUrl(const QString& url);
 #endif
     QString generateSessionName();
     int getSaveFileCount() { return ++saveFileCounter; }
 
-    static CookieJar *cookieJar();
     static QNetworkAccessManager *networkAccessManager();
 
 #if defined(Q_OS_OSX)

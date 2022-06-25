@@ -56,6 +56,12 @@ Backend::~Backend()
 {
 }
 
+BrowserMainWindow *
+Backend::mainWindow() const
+{
+    return webView()->mainWindow();
+}
+
 /** Encode an arbitrary sequence of bytes as an ASCII string.
  * This is used because QWebChannel doesn't have a way to transmit
  * data except as strings or JSON-encoded strings.
@@ -250,7 +256,49 @@ void Backend::newPane(int paneOp, const QString& url)
     curDock->addDockWidgetToContainingWindow(dockw, location, curDock);
 #endif
 }
+#else
+void Backend::newPane(int windowNumber, const QString& url)
+{
+    auto webv = new WebView(webView()->m_processOptions,   webView());
+    webv->newPage(url);
+    webv->resize(300, 300);
+    webv->show();
+//   webv->lower();
+    webView()->mainWindow()->application()->registerPane(windowNumber, webv);
+    webv->backend()->_windowNumber = windowNumber;
+    webv->setFocus(Qt::OtherFocusReason); // FIXME
+}
 #endif
+void Backend::adoptPane(int windowNumber)
+{
+    mainWindow()->application()->adoptPane(windowNumber, webView());
+}
+void Backend::setGeometry(int windowNumber, int x, int y, int width, int height)
+{
+    mainWindow()->application()->setGeometry(windowNumber, x, y, width, height);
+}
+void Backend::closePane(int windowNumber)
+{
+    mainWindow()->application()->closePane(windowNumber);
+}
+void Backend::showPane(int windowNumber, bool visible)
+{
+    mainWindow()->application()->showPane(windowNumber, visible);
+}
+void Backend::lowerOrRaisePanes(bool raise, bool allWindows)
+{
+    auto mainWin = mainWindow();
+    mainWin->application()->lowerOrRaisePanes(raise, allWindows, mainWin);
+}
+
+void Backend::sendChildMessage(int windowNumber, const QString& command, const QString& args_json)
+{
+    webView()->mainWindow()->application()->sendChildMessage(windowNumber, command, args_json);
+}
+void Backend::sendParentMessage(const QString& command, const QString& args_json)
+{
+    emit webView()->mainWindow()->webView()->backend()->forwardToParentWindow(windowNumber(), command, args_json);
+}
 
 void Backend::openNewWindow(int width, int height, const QString& position,
                             const QString& url, bool headless,
@@ -265,8 +313,7 @@ void Backend::openNewWindow(int width, int height, const QString& position,
 #else
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     QString xurl = url + (url.indexOf('#') < 0 ? "#" : "&") + "qtwebengine";
-    // if default changes to "domterm": titlebar=="system"
-    bool use_titlebar = titlebar=="" || titlebar=="system";
+    bool use_titlebar = titlebar=="system";
     BrowserApplication::instance()->newMainWindow(xurl, width, height,
                                                   position, headless,
                                                   use_titlebar, options);

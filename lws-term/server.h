@@ -254,6 +254,7 @@ public:
     bool is_primary_window : 1;
     bool close_requested : 1;
     bool keep_after_unexpected_close : 1;
+    bool keep_after_detach : 1;
     bool detach_on_disconnect : 1;
     bool window_name_unique : 1;
     bool pty_window_update_needed;
@@ -478,6 +479,9 @@ extern struct resource resources[];
 #define FOREACH_WSCLIENT(VAR, PCLIENT)      \
   for (struct tty_client *VAR = (PCLIENT)->first_tclient; VAR != NULL; \
        VAR = (VAR)->next_tclient)
+#define FOREACH_MAIN_WINDOW(VAR)      \
+    for (struct tty_client *VAR = main_windows.first(); VAR != nullptr; \
+         VAR = main_windows.next(VAR))
 #define TCLIENT_FIRST tty_clients.first()
 #define TCLIENT_NEXT(VAR) tty_clients.next(VAR)
 #define FORALL_WSCLIENT(VAR) \

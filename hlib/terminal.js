@@ -117,7 +117,7 @@ class Terminal {
     sstate.iconName = null;
     sstate.lastWorkingPath = null;
     sstate.sessionNumber = -1;
-    sstate.paneNumber = -1;
+    //sstate.paneNumber = -1;
 
     // the local window number.
     // Normally same as connectionNumber, except when remoting over ssh.
@@ -634,6 +634,9 @@ class Terminal {
         document.removeEventListener("selectionchange",
                                      this._selectionchangeListener);
         this._selectionchangeListener = null;
+        if (DomTerm.focusedTerm == this)
+            DomTerm.focusedTerm = null;
+
     }
 
     /// Are we reporting mouse events?
@@ -941,6 +944,7 @@ DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
         topNode.xterm = xterm;
     } else {
         topNode = document.createElement("div");
+        topNode.classList.add("lm_content");
         parent.appendChild(topNode);
     }
     topNode.classList.add("domterm");
@@ -1006,9 +1010,11 @@ DomTerm.closeFromEof = function(dt) {
     dt.close();
 }
 
+// detach is true, false, or "export"
 Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
     if (detach) {
-        this.reportEvent("DETACH", "");
+        if (detach !== "export") // handled by "dragExported" handler
+            this.reportEvent("DETACH", "");
         if (this._detachSaveNeeded == 1) {
             this._detachSaveNeeded = 2;
         }
@@ -1018,26 +1024,21 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
         this._detachSaveNeeded = 1;
     }
     this.reportEvent("CLOSE-WINDOW");
-
-    if (! fromLayoutEvent) {
-        if (DomTerm.useIFrame && DomTerm.isInIFrame())
-            DomTerm.sendParentMessage("layout-close");
-        else if (DomTerm._layout) {
-            DomTerm._layout.layoutClose(this.topNode,
-                                        DomTerm._layout.domTermToLayoutItem(this),
-                                        fromLayoutEvent);
-        } else
-            DomTerm.windowClose();
-    }
-
-    let topParent = this.topNode && this.topNode.parentNode;
     this.clearVisibleState();
     this.inputFollowsOutput = false;
+
+    const wnumber = this.windowNumber;
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
-        DomTerm.sendParentMessage("domterm-remove-content");
-    else if (topParent
-             && topParent.classList.contains("lm_component"))
-        topParent.remove();
+        DomTerm.sendParentMessage("layout-close", fromLayoutEvent);
+    else if (DomTerm._layout && wnumber >= 0) {
+       setTimeout(() => {
+            // Note this.windowNumber might have changed from wnumber
+            DomTerm._layout.layoutClose(this.topNode,
+                                        DomTerm._layout._numberToLayoutItem(wnumber),
+                                        fromLayoutEvent);
+       }, 1);
+    } else if (! fromLayoutEvent)
+        DomTerm.windowClose();
 };
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]) {
@@ -1244,7 +1245,7 @@ Terminal.prototype.setFocused = function(focused) {
     const changeFocused = wasFocused !== (focused > 0);
     if (focused > 0) {
         classList.add("domterm-active");
-        DomTerm.setTitle(this.formatWindowTitle());
+        DomTerm.displayWindowTitle(this.getWindowName(), this.getWindowTitle());
         if (! this.isSavedSession()) {
             this.reportEvent("FOCUSED", ""); // to server
             if (changeFocused)
@@ -1260,11 +1261,11 @@ Terminal.prototype.setFocused = function(focused) {
 }
 
 DomTerm.selectNextPane = function(forwards) {
-    if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+    if (DomTerm.useIFrame && DomTerm.isSubWindow()) {
         DomTerm.sendParentMessage("domterm-next-pane", forwards);
     }
-    else
-        DomTerm.withLayout((m) => m.selectNextPane(forwards));
+    else if (this.windowNumber >= 0)
+        DomTerm.withLayout((m) => m.selectNextPane(forwards, this.windowNumber));
 };
 
 // originMode can be one of (should simplify):
@@ -3268,13 +3269,8 @@ Terminal.prototype._getOuterInputArea = function(node = this._caretNode) {
     return null;
 }
 
-Terminal.prototype._createSpanNode = function(cls=null, txt=null) {
-    let el = document.createElement("span");
-    if (cls)
-        el.setAttribute("class", cls);
-    if (txt)
-        el.appendChild(document.createTextNode(txt));
-    return el;
+Terminal.prototype._createSpanNode = function(cls=null, txt=null) { // DEPRECATED
+    return DomTerm.createSpanNode(cls, txt);
 };
 
 Terminal.prototype.makeId = function(local) {
@@ -3661,6 +3657,7 @@ Terminal.prototype.resizeHandler = function() {
         if (dt._displayInfoWidget) {
             DomTerm._positionInfoWidget(dt._displayInfoWidget, dt);
         }
+        resizeTitlebar();
         dt.requestUpdateDisplay();
     }
 }
@@ -4168,7 +4165,8 @@ Terminal.prototype.measureWindow = function()  {
 
     this.adjustFocusCaretStyle();
     this._updateMiscOptions();
-    let computedZoom = window.getComputedStyle(document.body)['zoom'];
+    const zoomTop = this.topNode || document.body;
+    let computedZoom = window.getComputedStyle(zoomTop)['zoom'];
     this._computedZoom = Number(computedZoom);
     if (! this._computedZoom)
         this._computedZoom = 1.0;
@@ -5866,7 +5864,7 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
         this.windowForSessionNumber = windowForSession;
         if (this.topNode) {
             this.topNode.setAttribute("session-number", snumber);
-            if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
+            if (DomTerm.useIFrame && DomTerm.isSubWindow()) {
                 DomTerm.sendParentMessage("domterm-numbers", snumber, windowNumber);
             }
             this.reportEvent("SESSION-NUMBER-ECHO", snumber);
@@ -5880,8 +5878,13 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
     }
 }
 
-// FIXME misleading function name - this is not just the session name
-Terminal.prototype.sessionName = function() {
+Terminal.prototype.getWindowTitle = function() {
+    return this.sstate.windowTitle ? this.sstate.windowTitle
+        : this.sstate.iconName ? this.sstate.iconName
+        : "";
+}
+
+Terminal.prototype.getWindowName = function() {
     var sname = this.topNode.getAttribute("window-name");
     let snumber = this.sstate.sessionNumber;
     let wnumber = this.windowNumber;
@@ -5931,38 +5934,16 @@ Terminal.prototype.setWindowTitle = function(title, option) {
     this.updateWindowTitle();
 };
 
-Terminal.prototype.formatWindowTitle = function() {
-    var str = this.sstate.windowTitle ? this.sstate.windowTitle
-        : this.sstate.iconName ? this.sstate.iconName
-        : "";
-    var sessionName = this.sessionName();
-    //if (! sessionName)
-    //    sessionName = this.name;
-    if (sessionName) {
-        if (str)
-            str += " ";
-        str += "[" + sessionName + "]";
-    }
-    return str;
-}
-
-// item is a domterm element or an iframe domterm-wrapper (if useIFrame)
-DomTerm.setLayoutTitle = function(item, title, wname) {
-    if (title !== item.layoutTitle || wname !== item.layoutWindowTitle) {
-        item.layoutTitle = title;
-        item.layoutWindowTitle = wname;
-        if (DomTerm._layout)
-            DomTerm._layout.setLayoutTitle(item, title, wname);
-    }
-}
-
 Terminal.prototype.updateWindowTitle = function() {
-    let sname = this.sessionName();
-    let wname = this.sstate.windowTitle;
-    if (DomTerm.setLayoutTitle)
-        DomTerm.setLayoutTitle(this.topNode, sname, wname);
+    let sname = this.getWindowName();
+    let wname = this.getWindowTitle();
+    const layout = DomTerm._layout;
+    if (DomTerm.isSubWindow())
+        DomTerm.sendParentMessage("domterm-set-title", sname, wname);
+    else if (layout && layout.manager)
+        layout.setLayoutTitle(layout._elementToLayoutItem(this.topNode), sname, wname);
     if (this.hasFocus())
-        DomTerm.setTitle(this.formatWindowTitle());
+        DomTerm.displayWindowTitle(sname, wname);
 }
 
 Terminal.prototype.resetCharsets = function() {
@@ -10439,7 +10420,9 @@ DomTerm.initXtermJs = function(dt, topNode) {
 }
 
 /** Connect using WebSockets */
-Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session=null) {
+Terminal.connectWS = function(name, query, topNode=null, no_session=null) {
+    const wsprotocol = "domterm";
+    const wspath = Terminal._makeWsUrl(query);
     if (name == null) {
         name = topNode == null ? null : topNode.getAttribute("id");
         if (name == null)
@@ -10477,7 +10460,8 @@ Terminal.connectWS = function(name, wspath, wsprotocol, topNode=null, no_session
             wt.parser = new window.DTParser(wt);
             wt.inputFollowsOutput = false;
         }
-        wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
+        wt.reportEvent(topNode ? "CONNECT" : "VERSION",
+                       JSON.stringify(DomTerm.versions));
     };
 }
 
@@ -10554,7 +10538,7 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
     try {
         wsocket = new WebSocket(wspath, wsprotocol);
         if (DomTerm.verbosity > 0)
-            DomTerm.log("created WebSocket on  "+wspath);
+            console.log("created WebSocket on  "+wspath);
     } catch (e) {
         DomTerm.log("caught "+e.toString());
     }
@@ -10602,6 +10586,8 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
             DomTerm.log("unexpected WebSocket error code:"+e.code+" e:"+e);
     }
     wsocket.onclose = function(e) {
+        if (wt == DomTerm.mainTerm && wt != DomTerm.focusedTerm)
+            return;
         if (DomTerm.verbosity > 0)
             DomTerm.log("unexpected WebSocket (connection:"+wt.windowNumber+") close code:"+e.code+" e:"+e);
         wt._socketOpen = false;
@@ -10639,7 +10625,7 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
 }
 
 Terminal._makeWsUrl = function(query=null) {
-    var ws = location.hash.match(/ws=([^,&]*)/);
+    var ws = ("#"+location.hash).match(/[#&;]ws=([^,&]*)/);
     var url;
     let protocol = location.protocol == "https:" ? "wss:" : "ws:";
     if (DomTerm.server_port==undefined || (ws && ws[1]=="same"))
@@ -10652,10 +10638,6 @@ Terminal._makeWsUrl = function(query=null) {
     if (DomTerm.server_key && ('&'+query).indexOf('&server-key=') < 0) {
         query = (query ? (query + '&') : '')
             + 'server-key=' + DomTerm.server_key;
-    }
-    if (! DomTerm.isInIFrame()) {
-        query = (query ? (query + '&') : '')
-            + 'main-window=true';
     }
     if (query)
         url = url + '?' + query;
@@ -10689,11 +10671,6 @@ DomTerm.initSavedFile = function(topNode) {
     dt.setWindowSize = function(numRows, numColumns,
                                 availHeight, availWidth) {
     };
-}
-
-Terminal.connectHttp = function(node, query=null) {
-    var url = Terminal._makeWsUrl(query);
-    Terminal.connectWS(null, url, "domterm", node);
 }
 
 Terminal.isDelimiter = (function() {

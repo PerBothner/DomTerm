@@ -1267,6 +1267,16 @@ class DTParser {
                         term.updateWindowTitle();
                     }
                     break;
+                case 106: {
+                    const op = this.getParameter(1, 0);
+                    DomTerm.withLayout((m) => {
+                        if (op == 1 || op == 2)
+                            m.manager.draggingInOtherWindow(op==2);
+                        else if (op == 4 /*enter*/ || op == 5 /*leave*/)
+                            m.dragNotificationFromServer(op==4);
+                    });
+                    break;
+                    }
                 }
             };
             break;
@@ -2201,8 +2211,6 @@ class DTParser {
                         if (oldItem)
                             m.addPaneRelative(oldItem, paneOp, options);
                     });
-                } else {
-                    DomTerm.newPane(paneOp, options, term);
                 }
             } catch (e) {
                 term.log("bad new-pane request (" + e + "): " +JSON.stringify(text));

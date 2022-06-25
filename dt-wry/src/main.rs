@@ -100,6 +100,7 @@ fn main() -> wry::Result<()> {
         let window = WindowBuilder::new()
             .with_title(title)
             .with_decorations(titlebar)
+            .with_transparent(! titlebar)
             .build(event_loop)
             .unwrap();
 

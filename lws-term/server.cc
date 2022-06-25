@@ -340,8 +340,6 @@ static const struct option options[] = {
         // "--firefox-window" --> --new-window '%U'
         // "--firefox-tab" --> --new-tab '%U'
         {"qt",           no_argument,       NULL, QTDOMTERM_OPTION},
-        {"qtdomterm",    no_argument,       NULL, QTDOMTERM_OPTION},
-        {"qtwebengine",  no_argument,       NULL, QTDOMTERM_OPTION},
         {"electron",     no_argument,       NULL, ELECTRON_OPTION},
         {"webview",      no_argument,       NULL, WEBVIEW_OPTION},
         {"force",        no_argument,       NULL, FORCE_OPTION},
@@ -400,7 +398,7 @@ static const char* browser_specifiers[] = {
     "chrome",
     "chrome-app",
     "google-chrome",
-    "qt", "qtdomterm", "qtwebengine",
+    "qt", "qt-frames", "qt-widgets",
     "webview",
     "wry",
     "/",
@@ -838,10 +836,12 @@ do_run_browser(struct options *options, const char *url)
                     }
                 } else if (cmd == "qt"
                            || cmd == "qtdomterm"
+                           || cmd == "qt-frames"
+                           || cmd == "qt-widgets"
                            || cmd == "qtwebengine") {
                     browser_specifier = qtwebengine_command(options);
                     if (browser_specifier == nullptr)
-                        error_if_single = "'qtdomterm' missing";
+                        error_if_single = "'qtdomterm' front-end missing";
                     else {
                         do_Qt = true;
                         options->qt_frontend = true;
@@ -1188,7 +1188,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
                 opts->browser_command = "chrome-app";
                 break;
             case QTDOMTERM_OPTION:
-                opts->browser_command = "qtwebengine";
+                opts->browser_command = "qt";
                 break;
             case WEBVIEW_OPTION:
                 opts->browser_command = "webview";

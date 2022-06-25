@@ -3,6 +3,8 @@
 }
 .lm_content {
   background: #e1e1e1;
+}
+.lm_items {
   border: 1px solid #cccccc;
 }
 .lm_dragProxy .lm_content {
@@ -16,15 +18,12 @@
   background: #000000;
   opacity: 0.1;
 }
-.lm_splitter {
-  background: #999999;
-  opacity: 0.001;
-  transition: opacity 200ms ease;
+.lm_splitter .lm_bg {
+  background-color: #f4f4f4;
 }
-.lm_splitter:hover,
-.lm_splitter.lm_dragging {
-  background: #bbbbbb;
-  opacity: 1;
+.lm_splitter:hover .lm_drag_handle,
+.lm_splitter.lm_dragging .lm_drag_handle {
+  background-color: #bbbbbb;
 }
 .lm_header {
   height: 20px;

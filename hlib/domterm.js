@@ -74,6 +74,7 @@ DomTerm._instanceCounter = 0;
 
 // The current domterm Terminal *or* domterm-wrapper iframe Element.
 DomTerm._oldFocusedContent = null;
+DomTerm.focusedWindowNum = -1;
 
 DomTerm.mainTerm = null;
 
@@ -100,7 +101,9 @@ DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
 }
 
-DomTerm.isInIFrame = function() { return window.parent != window; }
+//DomTerm.isInIFrame = function() { return window.parent != window; }
+DomTerm.isInIFrame = function() { return DomTerm.isSubWindow(); }
+DomTerm.isSubWindow = function() { return location.pathname == "/simple.html"; }
 
 DomTerm.usingAjax = false;
 DomTerm.usingQtWebEngine = !!navigator.userAgent.match(/QtWebEngine[/]([^ ]+)/);
@@ -163,11 +166,18 @@ DomTerm.isLineBlock = function(node) {
         || (tag == "DIV" && node.classList.contains("domterm-pre"));
 }
 
-DomTerm.setTitle = function(title) {
+DomTerm.displayWindowTitle = function(name, title) {
+    let str = name || "";
+    if (title) {
+        if (str)
+            str += " ";
+        str += "(" + title +")";
+    }
+
     if (window.setWindowTitle)
-        window.setWindowTitle(title); // hook used by -Bwebview and -Bwry
+        window.setWindowTitle(str); // hook used by -Bwebview, -Bwry, -Bqt
     else
-       document.title = title;
+       document.title = str;
 }
 
 DomTerm.forEachTerminal = function(func) {
@@ -186,15 +196,11 @@ DomTerm.forEachTerminal = function(func) {
    * Note this is in the DomTerm global object, not DomTermLayout. FIXME?
  */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
+    let oldWindowNum = dt ? dt.windowNumber : DomTerm.focusedWindowNum;
     if (! dt)
         dt = DomTerm.mainTerm;
-    if (DomTerm.useIFrame && DomTerm.isInIFrame())
-        DomTerm.sendParentMessage("domterm-add-pane", paneOp, options);
-    else
-        DomTerm.withLayout((m) => m.addPane(paneOp, options,
-                                            (dt && dt.topNode)
-                                            || DomTerm._oldFocusedContent));
-    //DomTerm.newSessionPid = 0;
+    dt.reportEvent("OPEN-PANE",
+                   `${paneOp},${oldWindowNum},${options ? JSON.stringify(options) : "{}"}`);
 }
 
 DomTerm.updateContentTitle = function(content, options) {
@@ -217,25 +223,45 @@ DomTerm.updateTitle = function(content, options) {
         if (dl) {
             if (typeof options.windowNumber == "number") {
                 item = dl._numberToLayoutItem(options.windowNumber);
-                if (item)
+                if (item && !DomTerm.useToolkitSubwindows)
                     content = item.component;
             } else if (content) {
                 item = dl._elementToLayoutItem(content);
             }
         };
-        DomTerm.updateContentTitle(content, options);
-        if (dl && item) {
-            dl.updateLayoutTitle(item, content);
-        };
+        const cstate = item?.toConfig().componentState;
+        if (cstate) {
+            if (options.windowName !== undefined) {
+                if (options.windowName)
+                    cstate.windowName = options.windowName;
+                else
+                    delete cstate.windowName;
+            }
+            if (options.windowNameUnique !== undefined)
+                cstate.windowNameUnique = options.windowNameUnique;
+            if (dl && item) {
+                dl.updateLayoutTitle(item, null);
+            };
+        }
+        if (content) {
+            DomTerm.updateContentTitle(content, options); // FIXME
+            if (dl && item) {
+                dl.updateLayoutTitle(item, content);
+            };
+        }
     }
 }
 
+// detach is true, false, or "export"
 DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
                                 detach = false, fromLayoutEvent = false) {
-    if (content && content.terminal)
+    if (content && content.terminal && content.terminal.topNode)
         content.terminal.close(detach, fromLayoutEvent);
-    else if (content.tagName == "IFRAME")
+    else if (content.tagName == "IFRAME") {
+        // if a domterm terminal window
         DomTerm.sendChildMessage(content, "domterm-close", detach, fromLayoutEvent);
+        // otherwise handled by onLayoutCloser ??? FIXME
+    }
 }
 
 DomTerm.closeAll = function(event) {
@@ -250,8 +276,9 @@ DomTerm.windowClose = function() {
     if (window.closeMainWindow) {
         DomTerm.closeAll(null);
         window.closeMainWindow(); // hook used by --webview
-    } else
+    } else {
         window.close();
+    }
 }
 
 // 'hide', 'show', 'minimize', 'fullscreen'
@@ -378,13 +405,13 @@ DomTerm.showFocusedPane = function(lcontent) {
     if (DomTerm._oldFocusedContent != lcontent) {
         if (DomTerm._oldFocusedContent != null)
             DomTerm._oldFocusedContent.classList.remove("domterm-active");
-        if (lcontent != null)
+        if (lcontent)
             lcontent.classList.add("domterm-active");
 
         DomTerm._oldFocusedContent = lcontent;
     }
 };
-DomTerm.focusChild = function(iframe, originMode) {
+DomTerm.focusChild = function(iframe, originMode) { // OBSOLETE?
     let oldContent = DomTerm._oldFocusedContent;
     if (iframe !== oldContent || originMode=="C") {
         if (oldContent != null) {
@@ -398,6 +425,9 @@ DomTerm.focusChild = function(iframe, originMode) {
             }
         }
         if (originMode != "F") {
+            if (! iframe) {
+                return;
+            }
             let terminal = iframe.terminal;
             if (iframe.tagName == "IFRAME")
                 DomTerm.sendChildMessage(iframe, "set-focused", 2);
@@ -408,6 +438,31 @@ DomTerm.focusChild = function(iframe, originMode) {
     DomTerm.showFocusedPane(iframe);
 }
 
+DomTerm.createSpanNode = function(cls=null, txt=null) {
+    let el = document.createElement("span");
+    if (cls)
+        el.setAttribute("class", cls);
+    if (txt)
+        el.appendChild(document.createTextNode(txt));
+    return el;
+};
+
+
+DomTerm.addSubWindowParams = function(location, mode) {
+    if (mode == 'T') {
+        location = DomTerm.addLocationParams(location);
+    } else if (location.startsWith('file:')) {
+        location = "http://localhost:"+DomTerm.server_port + '/get-file/'
+            + DomTerm.server_key + '/' + location.substring(5);
+    }
+    if (DomTerm._mainWindowNumber >= 0 && (mode == 'T' || mode == 'V')) {
+        location = location
+            + (location.indexOf('#') >= 0 ? '&' : '#')
+            + "main-window=" + DomTerm._mainWindowNumber;
+    }
+    return location;
+};
+
 // mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)
 DomTerm.makeIFrameWrapper = function(location, mode='T',
                                      parent=DomTerm.layoutTop) {
@@ -415,20 +470,10 @@ DomTerm.makeIFrameWrapper = function(location, mode='T',
     let name = DomTerm.freshName();
     ifr.setAttribute("name", name);
     if (location) {
-        if (mode == 'T') {
-            location = DomTerm.addLocationParams(location);
-        } else if (location.startsWith('file:')) {
-            location = "http://localhost:"+DomTerm.server_port + '/get-file/'
-                + DomTerm.server_key + '/' + location.substring(5);
-        }
-        if (DomTerm._mainWindowNumber >= 0 && (mode == 'T' || mode == 'V')) {
-            location = location
-                + (location.indexOf('#') >= 0 ? '&' : '#')
-                + "main-window=" + DomTerm._mainWindowNumber;
-        }
+        location = DomTerm.addSubWindowParams(location, mode);
     }
-    if (mode == 'B')
-        ifr.layoutWindowTitle = location;
+    //if (mode == 'B')
+    //ifr.layoutWindowTitle = location;
     ifr.setAttribute("src", location);
     ifr.setAttribute("class", "domterm-wrapper");
     if (DomTerm._oldFocusedContent == null)
