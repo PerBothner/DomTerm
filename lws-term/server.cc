@@ -527,7 +527,7 @@ chrome_command(bool app_mode, struct options *options)
     // FIXME - better to open -a "Google Chrome" OR open -b com.google.Chrome
 #define CHROME_MAC "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
     if (chrome_cmd == NULL && access(CHROME_MAC, X_OK) == 0) {
-        chrome_cmd = "/usr/bin/open -a '" CHROME_MAC "'";
+        chrome_cmd = "'" CHROME_MAC "'";
     }
 #endif
     if (chrome_cmd == NULL)
@@ -587,7 +587,8 @@ firefox_browser_command(struct options *options)
     }
 #define firefoxMac "/Applications/Firefox.app"
     if (access(firefoxMac, X_OK) == 0)
-      return "/usr/bin/open -a " firefoxMac;
+        //return "/usr/bin/open -a " firefoxMac " '%U'";
+      return firefoxMac "/Contents/MacOS/firefox '%U'";
     return NULL;
 }
 
