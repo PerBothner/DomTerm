@@ -130,6 +130,10 @@ function eventToWindow(event) {
     return BrowserWindow.fromWebContents(event.sender);
 }
 
+function logToBrowserConsole(window, message) { // FOR DEBUGGING
+    window.send('log-to-browser-console', message);
+}
+
 ipcMain.on('window-ops', (event, command, arg) => {
     let win;
     switch (command) {

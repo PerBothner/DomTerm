@@ -448,6 +448,11 @@ function loadHandler(event) {
         && (DomTerm.useToolkitSubwindows || ! DomTerm.isInIFrame())) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
+    if (DomTerm.isElectron() && ! DomTerm.isSubWindow()) {
+        window.electronAccess.ipcRenderer
+            .on("log-to-browser-console",
+                (_e, str) => DomTerm.log(str));
+    }
     m = location.hash.match(/atom([^&;]*)/);
     if (m) {
         DomTerm.inAtomFlag = true;
