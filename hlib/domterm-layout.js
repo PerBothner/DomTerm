@@ -220,50 +220,48 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
     const wholeStack = item.type == 'stack';
     // True if dropped to desktop; false if poout-btoon clicked
     const dragged = !!fromLayoutEvent;
-    function popoutEncode(item) {
-        const wholeStack = item.type == 'stack';
-        const sizeElement =
-              DomTerm.useToolkitSubwindows
-              ? item.parent.childElementContainer
-              : item.element;
-        var w = sizeElement.offsetWidth;
-        var h = sizeElement.offsetHeight;
-        const e = [];
-        const options = { width: w, height: h, content: e };
-        DomTermLayout._pendingPopoutComponents = 0;
-        // FIXME adjust for menu bar height
-        function encode(item) {
-            const itemConfig = item.toConfig();
-            const wnum = itemConfig?.componentState?.windowNumber;
-            DomTerm.mainTerm.reportEvent("DETACH-WINDOW", item.id);
-            if (DomTerm.useToolkitSubwindows) {
-                if (! dragged) {
-                    DomTermLayout.selectNextPane(true, wnum);
-                    item.remove();
-                    if (DomTermLayout.manager.root.contentItems.length == 0)
-                        DomTerm.windowClose();
-                }
-            } else
-                DomTerm.closeSession(item.component, "export", dragged);
-            if (wnum && ! options.windowNumber)
-                options.windowNumber = wnum;
-            if (! DomTerm.useToolkitSubwindows && wnum
-                && item.componentType == "domterm") {
-                DomTermLayout._pendingPopoutComponents++;
+    let bodyZoom = Number(window.getComputedStyle(document.body)['zoom']);
+    const zoom = (window.devicePixelRatio || 1.0)
+          * (bodyZoom || 1.0);
+
+    const sizeElement = item.element;
+    var w = sizeElement?.offsetWidth * zoom;
+    var h = sizeElement?.offsetHeight * zoom;
+    const e = [];
+    const options = { width: w, height: h, content: e };
+    DomTermLayout._pendingPopoutComponents = 0;
+
+    function encode(item) {
+        const itemConfig = item.toConfig();
+        const wnum = itemConfig?.componentState?.windowNumber;
+        DomTerm.mainTerm.reportEvent("DETACH-WINDOW", item.id);
+        if (DomTerm.useToolkitSubwindows) {
+            if (! dragged) {
+                DomTermLayout.selectNextPane(true, wnum);
+                item.remove();
+                if (DomTermLayout.manager.root.contentItems.length == 0)
+                    DomTerm.windowClose();
             }
-            return itemConfig;
+        } else
+            DomTerm.closeSession(item.component, "export", dragged);
+        if (wnum && ! options.windowNumber)
+            options.windowNumber = wnum;
+        if (! DomTerm.useToolkitSubwindows && wnum
+            && item.componentType == "domterm") {
+            DomTermLayout._pendingPopoutComponents++;
         }
-        if (wholeStack) {
-            var items = item.contentItems;
-            for (var i = 0; i < items.length; i++) {
-                e.push(encode(items[i]));
-            }
-        } else {
-            e.push(encode(item));
-        }
-        return options;
+        return itemConfig;
     }
-    const options = popoutEncode(item);
+
+    if (wholeStack) {
+        var items = item.contentItems;
+        for (var i = 0; i < items.length; i++) {
+            e.push(encode(items[i]));
+        }
+    } else {
+        e.push(encode(item));
+    }
+
     if (fromLayoutEvent instanceof DragEvent
         && fromLayoutEvent.screenX >= 0
         && fromLayoutEvent.screenY >= 0) {

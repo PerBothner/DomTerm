@@ -4165,7 +4165,8 @@ Terminal.prototype.measureWindow = function()  {
 
     this.adjustFocusCaretStyle();
     this._updateMiscOptions();
-    let computedZoom = window.getComputedStyle(document.body)['zoom'];
+    const zoomTop = this.topNode || document.body;
+    let computedZoom = window.getComputedStyle(zoomTop)['zoom'];
     this._computedZoom = Number(computedZoom);
     if (! this._computedZoom)
         this._computedZoom = 1.0;

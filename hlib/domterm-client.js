@@ -695,8 +695,19 @@ function handleMessageFromParent(command, args)
 function handleMessageFromChild(windowNum, command, args) {
     let dlayout = DomTerm._layout;
     let item;
+    let lcontent = null;
     if (windowNum >= 0) {
         item = dlayout?._numberToLayoutItem(windowNum);
+        for (let ch = DomTerm.layoutTop.firstElementChild; ch != null;
+             ch = ch.nextElementSibling) {
+            const ch2 = ch.classList.contains("lm_content") ? ch
+                  : ch.firstElementChild;
+            if ((ch === ch2 || (ch2 && ch2.classList.contains("lm_content")))
+                && ch2.windowNumber == windowNum) {
+                lcontent = ch2;
+                break;
+            }
+        }
     } else {
         console.log(`bad window number ${windowNum} to '${command}' command`);
     }
@@ -712,9 +723,9 @@ function handleMessageFromChild(windowNum, command, args) {
         }
         break;
     case "layout-close":
-        if (dlayout && dlayout.manager && item)
-            dlayout.layoutClose(item.container.element, item);
-        else
+        if (dlayout && dlayout.manager) {
+            dlayout.layoutClose(lcontent/*item && item.container.element*/, item, args[0]);
+        } else
             DomTerm.windowClose();
         break;
     case "domterm-set-title":
