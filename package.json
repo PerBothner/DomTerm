@@ -1,6 +1,6 @@
 {
   "name": "DomTerm",
-  "version": "2.9.5",
+  "version": "3.0.0",
   "description": "DomTerm is a combined terminal emulator and REPL console using web technlogies.",
   "repository": {
     "type": "git",
