@@ -1622,7 +1622,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             bool top = client->main_window == 0;
             lwsl_notice("#%d%s %.*s\n",
                         client->connection_number, top ? "^" : ":",
-                        dstr.length(), dstr.c_str());
+                        (int) dstr.length(), dstr.c_str());
         }
         note_written = true;
     } else if (strcmp(name, "ECHO-URGENT") == 0) {
