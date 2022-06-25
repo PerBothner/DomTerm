@@ -1101,11 +1101,21 @@ Use a front-end based on @uref{https://electron.atom.io/,Electron}.
 This is currently the nicest (and default) front-end.
 
 @item @code{qt}
+@itemx @code{qt-widgets}
+@item @code{qt-frames}
 @itemx @code{qtdomterm}
 @itemx @code{qtwebengine}
-Either option (they do the same thing)
-runs @code{qtdomterm}, a stripped-down browser based on the Qt toolkit
-(specifically QtWebEngine).
+These all run the @code{qtdomterm} front-end, a stripped-down browser
+based on the Qt toolkit (specifically QtWebEngine,
+which is based on the Chrome browser).
+
+Except for @code{-Bqt-frames}, these are all equivalent, and
+each sub-window has a separate browser instance.
+This has the benefit that a sub-window can be moved from one top-level
+window to another without reloading.
+In contrast, @code{-Bqt-frames} uses a shared browser instance for each
+top-level window and uses interior frames for sub-windows
+(like other front-ends).
 
 @item @code{webview}
 @itemx @code{wry}
@@ -2244,9 +2254,9 @@ Only the Electron, Wry, and Qt front-ends support disabling the system
 titlebar (on other platforms the custom titlebar is additional).
 The @var{mode} can be @code{system} to use the system
 titlebar, or @code{domterm} to use a custom titlebar (in HTML).
+Further options and customization is planned for later.
 The default on Electron, Wry, and Qt is @code{domterm},
 and @code{system} otherwise.
-Further options and customization is planned for later.
 @end table
 
 @node Applications

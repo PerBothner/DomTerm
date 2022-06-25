@@ -2514,7 +2514,8 @@ display_session(struct options *options, struct pty_client *pclient,
             sb.printf(";window=%d", wnum);
             if (options->headless)
                 sb.printf(";headless=true");
-            if (strcmp(browser_specifier, "qtwidgets") == 0) {
+            if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
+                && strcmp(browser_specifier, "qt-frames") != 0) {
                 sb.printf(";subwindows=qt");
             }
             std::string titlebar = get_setting_s(options->settings, "titlebar");
