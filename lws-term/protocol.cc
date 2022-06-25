@@ -162,7 +162,6 @@ void finish_request(struct options *opts, int exit_code, bool do_close)
 {
     if (opts == main_options)
         do_exit(exit_code, false);
-    lwsl_notice("finish_request in:"+opts->fd_in);
 #if PASS_STDFILES_UNIX_SOCKET
     if (do_close) {
         // fd_in and fs_out are closed by the wsl
