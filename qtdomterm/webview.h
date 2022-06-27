@@ -80,12 +80,6 @@ class WebPage : public QWebEnginePage {
 public:
     WebPage(QWebEngineProfile *profile, QObject *parent = 0);
 
-protected:
-#if !defined(QT_NO_UITOOLS)
-    QObject *createPlugin(const QString &classId, const QUrl &url, const QStringList &paramNames, const QStringList &paramValues);
-#endif
-    virtual bool certificateError(const QWebEngineCertificateError &error) Q_DECL_OVERRIDE;
-
 private slots:
 #if defined(QWEBENGINEPAGE_UNSUPPORTEDCONTENT)
     void handleUnsupportedContent(QNetworkReply *reply);

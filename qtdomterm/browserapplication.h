@@ -128,7 +128,6 @@ private slots:
 
 private:
     void clean();
-    void installTranslator(const QString &name);
     static QNetworkAccessManager *s_networkAccessManager;
 
     QList<QPointer<BrowserMainWindow> > m_mainWindows;

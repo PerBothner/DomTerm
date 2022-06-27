@@ -2,7 +2,6 @@
 #define PROCESS_OPTIONS_H
 
 class QString;
-class QStringList;
 class QDataStream;
 class QSharedData;
 

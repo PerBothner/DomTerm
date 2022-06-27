@@ -52,7 +52,6 @@
 #define SAVEPAGEDIALOG_H
 
 #include <QtWidgets/QDialog>
-#include <QtWebEngineWidgets/QWebEngineDownloadItem>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {

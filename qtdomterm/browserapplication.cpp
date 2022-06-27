@@ -62,12 +62,13 @@
 #include <QtCore/QLibraryInfo>
 #include <QtCore/QSettings>
 #include <QtCore/QTextStream>
-#include <QtCore/QTranslator>
 #include <QtCore/QTimer>
 #include <QWindow>
 #include <QScreen>
 #include <QSize>
 #include <QVector>
+#include <QNetworkAccessManager>
+#include <QStandardPaths>
 
 #include <QtGui/QDesktopServices>
 #include <QtGui/QFileOpenEvent>
@@ -126,10 +127,6 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
     }
 #endif
 
-    QString localSysName = QLocale::system().name();
-
-    installTranslator(QLatin1String("qt_") + localSysName);
-
     QTimer::singleShot(0, this, SLOT(postLaunch()));
 
 #if USE_KDDockWidgets
@@ -168,7 +165,7 @@ void BrowserApplication::quitBrowser()
  */
 void BrowserApplication::postLaunch()
 {
-    QString directory = QStandardPaths::writableLocation(QStandardPaths::DataLocation);
+    QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (directory.isEmpty())
         directory = QDir::homePath() + QLatin1String("/.") + QCoreApplication::applicationName();
 #if defined(QWEBENGINESETTINGS_PATHS)
@@ -181,6 +178,8 @@ void BrowserApplication::postLaunch()
 
 void BrowserApplication::loadSettings()
 {
+#if 0
+    // Doesn't work on Qt6. Probably not useful anyway.
     QSettings settings;
     settings.beginGroup(QLatin1String("websettings"));
 
@@ -227,6 +226,7 @@ void BrowserApplication::loadSettings()
     }
     QNetworkProxy::setApplicationProxy(proxy);
     settings.endGroup();
+#endif
 }
 
 QList<BrowserMainWindow*> BrowserApplication::mainWindows()
@@ -249,13 +249,6 @@ void BrowserApplication::clean()
 QString BrowserApplication::generateSessionName()
 {
     return nameTemplate.arg(nextSessionNameIndex++);
-}
-
-void BrowserApplication::installTranslator(const QString &name)
-{
-    QTranslator *translator = new QTranslator(this);
-    translator->load(name, QLibraryInfo::location(QLibraryInfo::TranslationsPath));
-    QApplication::installTranslator(translator);
 }
 
 #if defined(Q_OS_OSX)

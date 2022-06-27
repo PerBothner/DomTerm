@@ -57,8 +57,6 @@
 
 #include <QtCore/QSettings>
 #include <QtGui/QDesktopServices>
-#include <QtWidgets/QShortcut>
-#include <QtWidgets/QDesktopWidget>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QMenuBar>
@@ -71,6 +69,9 @@
 #include <QVBoxLayout>
 #include <QUrl>
 #include <QUrlQuery>
+#include <QShortcut>
+#include <QAction>
+#include <QActionGroup>
 #include <QtCore/QDebug>
 
 template<typename Arg, typename R, typename C>
@@ -142,7 +143,7 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout;
     layout->setSpacing(0);
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(m_webView);
     centralWidget->setLayout(layout);
     setCentralWidget(centralWidget);

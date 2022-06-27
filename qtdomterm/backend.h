@@ -91,7 +91,6 @@ public slots:
 
 private slots:
     QString toJsonQuoted(QString str);
-    void onReceiveBlock( const char * buffer, int len );
 private:
     QSharedDataPointer<ProcessOptions> _processOptions;
     int            _windowNumber;

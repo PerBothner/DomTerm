@@ -62,7 +62,6 @@
 #include <QtGui/QMouseEvent>
 #include <QWebChannel>
 #include <QWebEngineProfile>
-#include <QWebEngineCertificateError>
 
 //#include <QWebEngineContextMenuData>
 
@@ -93,24 +92,6 @@ WebPage::WebPage(QWebEngineProfile *profile, QObject *parent)
 BrowserMainWindow *WebView::mainWindow()
 {
     return BrowserMainWindow::containingMainWindow(this);
-}
-
-bool WebPage::certificateError(const QWebEngineCertificateError &error)
-{
-    if (error.isOverridable()) {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(error.errorDescription());
-        msgBox.setInformativeText(tr("If you wish so, you may continue with an unverified certificate. "
-                                     "Accepting an unverified certificate means "
-                                     "you may not be connected with the host you tried to connect to.\n"
-                                     "Do you wish to override the security check and continue?"));
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        return msgBox.exec() == QMessageBox::Yes;
-    }
-    QMessageBox::critical(view(), tr("Certificate Error"), error.errorDescription(), QMessageBox::Ok, QMessageBox::NoButton);
-    return false;
 }
 
 void WebView::newPage(const QString& url)
@@ -188,17 +169,6 @@ private:
 
 };
 #endif
-
-#if !defined(QT_NO_UITOOLS)
-QObject *WebPage::createPlugin(const QString &classId, const QUrl &url, const QStringList &paramNames, const QStringList &paramValues)
-{
-    Q_UNUSED(url);
-    Q_UNUSED(paramNames);
-    Q_UNUSED(paramValues);
-    QUiLoader loader;
-    return loader.createWidget(classId, view());
-}
-#endif // !defined(QT_NO_UITOOLS)
 
 #if defined(QWEBENGINEPAGE_UNSUPPORTEDCONTENT)
 void WebPage::handleUnsupportedContent(QNetworkReply *reply)
@@ -378,37 +348,31 @@ void WebView::contextMenuEvent(QContextMenuEvent *event)
 }
 void WebView::displayContextMenu(const QString& contextType)
 {
-    QMenu *menu;
-    // if (page()->contextMenuData().linkUrl().isValid()) {
-    if (1) {
-        menu = new QMenu(this);
-        /*
-        QAction *m_copy = menu->addAction(tr("&Copy"));
-        m_copy->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
-        this->addAction(m_copy, QWebEnginePage::Copy);
-        QAction *m_paste = menu->addAction(tr("&Paste"));
-        m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
-        this->addAction(m_paste, QWebEnginePage::Paste);
-        */
-	if (contextType.contains("A")) {
-            menu->addAction(m_openAction);
-	    menu->addAction(m_copyLinkAddress);
-            menu->addSeparator();
-            menu->addAction(m_copyInContext);
-	} else {
-            menu->addAction(mainWindow()->m_copy);
-        }
-        //menu->addAction(page()->action(QWebEnginePage::Paste));
-        menu->addAction(mainWindow()->m_paste);
-
-        menu->addAction(mainWindow()->m_viewMenubar);
-        menu->addMenu(mainWindow()->inputModeMenu);
-        menu->addAction(mainWindow()->togglePagingAction);
-        menu->addMenu(mainWindow()->newTerminalMenu);
-        menu->addAction(mainWindow()->detachAction);
+    QMenu *menu = new QMenu(this);
+    /*
+      QAction *m_copy = menu->addAction(tr("&Copy"));
+      m_copy->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
+      this->addAction(m_copy, QWebEnginePage::Copy);
+      QAction *m_paste = menu->addAction(tr("&Paste"));
+      m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
+      this->addAction(m_paste, QWebEnginePage::Paste);
+    */
+    if (contextType.contains("A")) {
+        menu->addAction(m_openAction);
+        menu->addAction(m_copyLinkAddress);
+        menu->addSeparator();
+        menu->addAction(m_copyInContext);
     } else {
-        menu = page()->createStandardContextMenu();
+        menu->addAction(mainWindow()->m_copy);
     }
+    //menu->addAction(page()->action(QWebEnginePage::Paste));
+    menu->addAction(mainWindow()->m_paste);
+
+    menu->addAction(mainWindow()->m_viewMenubar);
+    menu->addMenu(mainWindow()->inputModeMenu);
+    menu->addAction(mainWindow()->togglePagingAction);
+    menu->addMenu(mainWindow()->newTerminalMenu);
+    menu->addAction(mainWindow()->detachAction);
     //if (page()->contextMenuData().selectedText().isEmpty())
     //menu->addAction(page()->action(QWebEnginePage::SavePage));
     connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
