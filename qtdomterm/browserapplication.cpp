@@ -69,6 +69,7 @@
 #include <QVector>
 #include <QNetworkAccessManager>
 #include <QStandardPaths>
+#include <QRegularExpression>
 
 #include <QtGui/QDesktopServices>
 #include <QtGui/QFileOpenEvent>
@@ -285,6 +286,52 @@ void BrowserApplication::openUrl(const QUrl &url)
 BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, bool headless, bool titlebar, QSharedDataPointer<ProcessOptions> processOptions)
 {
     QUrl xurl = url;
+
+
+    // Check if this is a 'file://.../start.html' bridge URL from DomTerm
+    // (used to make sure browser has read permission to user's files).
+    // If so, read and process it to the read real.
+    // This avoids issues with file URLs - and might be slightly fast.
+    QRegularExpression filePattern("^file://([^&#]*start.html[^&#]*)#([^:]*):([^:]*):([^:]*)$");
+    QRegularExpressionMatch fileMatch = filePattern.match(url);
+    if (fileMatch.hasMatch()) {
+        QString fileName = fileMatch.captured(1);
+        QString pathPart = fileMatch.captured(2);
+        QString searchPart = fileMatch.captured(3);
+        QString hashPart = fileMatch.captured(4);
+        QFile fileFile(fileName);
+        if (fileFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream fileStream(&fileFile);
+            QRegularExpression keyPattern("DomTerm_server_key = '([^']*)'");
+            QRegularExpression hostPattern("newloc = '([^']*)'");
+            QString keyString, hostString;
+            for (;;) {
+                QString line = fileStream.readLine();
+                if (line.isNull())
+                    break;
+                QRegularExpressionMatch hostMatch = hostPattern.match(line);
+                QRegularExpressionMatch keyMatch = keyPattern.match(line);
+                if (hostMatch.hasMatch())
+                    hostString = hostMatch.captured(1);
+                if (keyMatch.hasMatch())
+                    keyString = keyMatch.captured(1);
+            }
+            if (! keyString.isEmpty() && ! hostString.isEmpty()) {
+                QString u = hostString;
+                u += pathPart;
+                if (! searchPart.isEmpty()) {
+                    u += '?';
+                    u += searchPart;
+                }
+                if (! hashPart.isEmpty()) {
+                    u += '#';
+                    u += hashPart;
+                }
+                xurl = u;
+            }
+        }
+    }
+
     QUrlQuery fragment = QUrlQuery(xurl.fragment().replace(";", "&"));
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     if (! fragment.hasQueryItem("qtdocking")) {
