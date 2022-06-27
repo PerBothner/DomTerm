@@ -1,6 +1,7 @@
 const {app, ipcMain, BrowserWindow, screen, dialog, Menu} = require('electron')
 const path = require('path')
 const url = require('url')
+const fs = require('fs')
 
 // Keep a global reference of the window objects, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -54,13 +55,45 @@ function createInitialWindow (argv) {
     }
     if (titlebar)
         options.titlebar = titlebar;
-    createNewWindow(url, options, headless);
+    openNewWindow(url, options, headless);
 }
 var previousUrl = null;
 var previousWidth = 800;
 var previousHeight = 600;
 
-function createNewWindow (url, options, headless) {
+function openNewWindow (url, options, headless) {
+    if (! url)
+        url = previousUrl;
+    else
+        previousUrl = url;
+
+    // Check if this is a 'file://.../start.html' bridge URL from DomTerm
+    // (used to make sure browser has read permission to user's files).
+    // If so, read and process the file to construct the real url.
+    // This avoids issues with file URLs - and might be slightly faster.
+    let m = url.match("^file://([^&#]*start.html[^&#]*)#([^:]*):([^:]*):([^:]*)$");
+    if (m) {
+        // m == [fileName, pathPart, searchPart, hashPath]
+        fs.readFile(m[1], "utf-8", (err, data) => {
+            let mkey, mhost;
+            if (! err
+                && !!(mkey = data.match(/DomTerm_server_key = '([^']*)/))
+                && !!(mhost = data.match(/newloc = '([^']*)'/))) {
+                url = mhost[1] + m[2];
+                if (m[3])
+                    url += '?' + m[3]
+                if (m[4])
+                    url += '#' + m[4]
+            }
+            createNewWindow(url, options, headless);
+        });
+    } else {
+        createNewWindow(url, options, headless);
+    }
+}
+
+function createNewWindow (url, options, headless)
+{
     let w = options.width;
     let h = options.height;
     if (w <= 0)
@@ -71,10 +104,6 @@ function createNewWindow (url, options, headless) {
         h = previousHeight;
     else
         previousHeight = h;
-    if (! url)
-        url = previousUrl;
-    else
-        previousUrl = url;
     let frame = options.titlebar && options.titlebar === "system";
     let bwoptions = {
         width: w, height: h,
@@ -142,7 +171,7 @@ ipcMain.on('window-ops', (event, command, arg) => {
             let sz = eventToWindow(event).getContentSize();
             arg = Object.assign({ width: sz[0], height: sz[1] }, arg);
         }
-        createNewWindow(arg.url, arg, false);
+        openNewWindow(arg.url, arg, false);
         break;
     case 'hide':
         eventToWindow(event).hide();
