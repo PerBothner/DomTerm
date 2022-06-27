@@ -446,7 +446,11 @@ void WebView::mousePressEvent(QMouseEvent *event)
     m_page->m_keyboardModifiers = event->modifiers();
     // This method doesn't seem to be called,
     // so we can't use it to set contextMenuPosition.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    contextMenuPosition = event->globalPosition();
+#else
     contextMenuPosition = event->globalPos();
+#endif
     QWebEngineView::mousePressEvent(event);
 }
 

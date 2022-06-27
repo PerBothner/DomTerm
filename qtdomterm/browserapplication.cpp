@@ -290,8 +290,8 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
 
     // Check if this is a 'file://.../start.html' bridge URL from DomTerm
     // (used to make sure browser has read permission to user's files).
-    // If so, read and process it to the read real.
-    // This avoids issues with file URLs - and might be slightly fast.
+    // If so, read and process the file to construct the real url.
+    // This avoids issues with file URLs - and might be slightly faster.
     QRegularExpression filePattern("^file://([^&#]*start.html[^&#]*)#([^:]*):([^:]*):([^:]*)$");
     QRegularExpressionMatch fileMatch = filePattern.match(url);
     if (fileMatch.hasMatch()) {
