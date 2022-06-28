@@ -7,12 +7,7 @@ LN_H = ln
 ../bin/qtdomterm$(EXEEXT): qtdomterm$(EXEEXT)
 	$(MKDIR_P) ../bin
 	@rm -f ../bin/qtdomterm$(EXEEXT)
-if MACOS
-
-	cd bin && ln -s ../qtdomterm/QtDomTerm.app/Contents/MacOS/QtDomTerm qtdomterm
-else
 	cd ../bin && $(LN_H) ../qtdomterm/qtdomterm$(EXEEXT) qtdomterm$(EXEEXT)
-endif
 
 .h.moc.cpp:
 	$(MOC) \
