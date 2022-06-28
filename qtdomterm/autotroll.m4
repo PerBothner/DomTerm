@@ -223,6 +223,8 @@ AC_DEFUN([AT_WITH_QT],
      # Find Qt.
      AC_ARG_VAR([QT_PATH],
        [path to Qt binaries])
+     # HomeBrew installs into /usr/local/share/qt/libexec
+     QT_TOOL_PATH=$QT_PATH:$PATH:/usr/local/share/qt/libexec
 
      # Find qmake.
      AC_ARG_VAR([QMAKE],
@@ -230,7 +232,7 @@ AC_DEFUN([AT_WITH_QT],
      AX_PATH_TOOLS([QMAKE],
        [qmake qmake-qt5 qmake-qt4 qmake-qt3],
        [missing],
-       [$QT_PATH:$PATH])
+       [$QT_TOOL_PATH])
      if test x"$QMAKE" = xmissing; then
        AX_INSTEAD_IF([$4],
          [Cannot find qmake.  Try --with-qt=PATH.])
@@ -243,7 +245,7 @@ AC_DEFUN([AT_WITH_QT],
      AX_PATH_TOOLS([MOC],
        [moc moc-qt5 moc-qt4 moc-qt3],
        [missing],
-       [$QT_PATH:$PATH])
+       [$QT_TOOL_PATH])
      if test x"$MOC" = xmissing; then
        AX_INSTEAD_IF([$4],
          [Cannot find moc (Meta Object Compiler).  Try --with-qt=PATH.])
@@ -256,7 +258,7 @@ AC_DEFUN([AT_WITH_QT],
      AX_PATH_TOOLS([UIC],
        [uic uic-qt5 uic-qt4 uic-qt3 uic3],
        [missing],
-       [$QT_PATH:$PATH])
+       [$QT_TOOL_PATH])
      if test x"$UIC" = xmissing; then
        AX_INSTEAD_IF([$4],
          [Cannot find uic (User Interface Compiler).  Try --with-qt=PATH.])
@@ -269,7 +271,7 @@ AC_DEFUN([AT_WITH_QT],
      AX_PATH_TOOLS([RCC],
        [rcc rcc-qt5],
        [missing],
-       [$QT_PATH:$PATH])
+       [$QT_TOOL_PATH])
      if test x"$RCC" = xmissing; then
        AC_MSG_WARN(
          [Cannot find rcc (Qt Resource Compiler).  Try --with-qt=PATH.])
