@@ -447,7 +447,7 @@ void WebView::mousePressEvent(QMouseEvent *event)
     // This method doesn't seem to be called,
     // so we can't use it to set contextMenuPosition.
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    contextMenuPosition = event->globalPosition();
+    contextMenuPosition = event->globalPosition().toPoint();
 #else
     contextMenuPosition = event->globalPos();
 #endif
