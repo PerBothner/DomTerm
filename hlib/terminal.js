@@ -709,6 +709,7 @@ class Terminal {
         }
         this._fixOutputPosition();
         this._pushStdMode("prompt");
+        this.outputContainer.keep_if_empty;
         if (promptKind)
             this.outputContainer.setAttribute("prompt-kind", promptKind);
         let prev = this.outputContainer.previousSibling;
@@ -735,13 +736,20 @@ class Terminal {
         }
     }
 
+    _clearPromptMode() {
+        this.sstate.inPromptMode = false;
+        const stdElement = Terminal._getStdElement(this.outputContainer);
+        if (stdElement && stdElement.getAttribute("std") == "prompt")
+            delete stdElement.keep_if_empty;
+    }
+
     /* Start of user input, following any prompt.
      */
     startInput(stayInInputMode, options=[]) {
         this.sstate.stayInInputMode = stayInInputMode;
-        this._pushStdMode(null);
+        this._clearPromptMode();
         this.sstate.inInputMode = true;
-        this.sstate.inPromptMode = false;
+        this._pushStdMode(null);
         this._fixOutputPosition();
         let ln = this.outputContainer;
         if (Terminal.isNormalBlock(ln))
@@ -825,7 +833,7 @@ class Terminal {
 
     startOutput() {
         this.sstate.inInputMode = false;
-        this.sstate.inPromptMode = false;
+        this._clearPromptMode();
         const group = this.currentCommandGroup();
         if (group && group.lastChild instanceof Element
             && group.lastChild.classList.contains("input-line")
@@ -5601,11 +5609,7 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
             current = parent;
             parent = parent.parentNode;
             next = current.nextSibling;
-            // Alternatively, let the "prompt" span be deleted, but
-            // re-create it in _adjustStyle - as done for inInputMode.
-            if (this.sstate.inPromptMode
-                && current.tagName == "SPAN"
-                && current.getAttribute("std") == "prompt")
+            if (current.keep_if_empty)
                 continue;
             if (current == this._currentStyleSpan)
                 this._currentStyleSpan = null;
@@ -10828,8 +10832,11 @@ Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
     alink.setAttribute("class", "matched subtle plain");
     alink.setAttribute("href", href);
     this._pushIntoElement(alink);
-    if (end-afterLen > start)
+    if (end-afterLen > start) {
+        alink.keep_if_empty = true;
         this.insertSimpleOutput(str, start, end-afterLen);
+        delete alink.keep_if_empty;
+    }
     let old = alink.firstChild;
     for (let n = firstToMove; n && n != alink; ) {
         let next = n.nextSibling;
