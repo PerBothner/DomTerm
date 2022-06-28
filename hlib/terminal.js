@@ -988,11 +988,6 @@ Terminal.prototype._deleteData = function(text, start, count) {
     }
 }
 
-Terminal.prototype.eofSeen = function() {
-    this.historySave();
-    DomTerm.closeFromEof(this);
-};
-
 DomTerm.isFrameParent = function() {
     return DomTerm.useIFrame && ! DomTerm.isInIFrame()
         && DomTerm._oldFocusedContent;
@@ -1020,6 +1015,7 @@ DomTerm.closeFromEof = function(dt) {
 
 // detach is true, false, or "export"
 Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
+    this.historySave();
     if (detach) {
         if (detach !== "export") // handled by "dragExported" handler
             this.reportEvent("DETACH", "");
@@ -1039,7 +1035,7 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("layout-close", fromLayoutEvent);
     else if (DomTerm._layout && wnumber >= 0) {
-       setTimeout(() => {
+        setTimeout(() => {
             // Note this.windowNumber might have changed from wnumber
             DomTerm._layout.layoutClose(this.topNode,
                                         DomTerm._layout._numberToLayoutItem(wnumber),
@@ -10410,7 +10406,7 @@ DomTerm.initXtermJs = function(dt, topNode) {
                                        return true;
                                    case 99:
                                        if (params[1]==99) {
-                                           dt.eofSeen();
+                                           DomTerm.closeFromEof(dt);
                                            return true;
                                        }
                                        break;

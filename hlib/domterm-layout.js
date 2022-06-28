@@ -352,17 +352,22 @@ DomTermLayout.onLayoutClosed = function(container) {
     const handler = (event) => {
         container.off('destroy', handler);
         const config = container.parent.toConfig();
+        const wnum = config.componentState?.windowNumber;
+        const content = !DomTerm.useToolkitSubwindows && container.parent.component;;
         if (config.componentType === "browser"
             || config.componentType === "view-saved") {
-            const dt = DomTerm.focusedTerm;
-            const wnum = container.component.windowNumber;
+            const dt = DomTerm.mainTerm;
             if (dt && wnum) {
                 dt.reportEvent("CLOSE-WINDOW", wnum);
             }
-            DomTermLayout.layoutClose(container.component, container.parent, true);
+            DomTermLayout.layoutClose(content, container.parent, true);
             return;
         }
-        DomTerm.closeSession(container.component, false, true);
+        // Like DomTerm.closeSession(container.component, false, true)
+        if (content && content.terminal && content.terminal.topNode)
+            content.terminal.close(false, true);
+        else
+            DomTerm.sendChildMessage(wnum, "domterm-close", false, true);
         if (container.parent.parent.type === "stack"
             && container.parent.parent.contentItems.length==1
             && container.parent.parent.parent.type === "ground") {

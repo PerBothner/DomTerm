@@ -1691,7 +1691,7 @@ tty_client::tty_client()
     this->is_headless = false;
     this->is_primary_window = false;
     this->close_requested = false;
-    this->keep_after_unexpected_close = false;
+    this->keep_after_unexpected_close = true;
     this->detach_on_disconnect = true;
     this->detachSaveSend = false;
     this->uploadSettingsNeeded = true;

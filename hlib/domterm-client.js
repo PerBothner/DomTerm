@@ -285,9 +285,8 @@ function setupParentMessages1() {
     }
     DomTerm.showFocusedTerm = function(dt) {
         DomTerm.sendParentMessage("domterm-focused"); }
-    DomTerm.windowClose = function() {
-        DomTerm.sendParentMessage("domterm-close"); }
 }
+
 function setupParentMessages2() {
     DomTerm.showContextMenu = function(options) {
         DomTerm.sendParentMessage("domterm-context-menu", options);
@@ -689,6 +688,10 @@ function handleMessageFromParent(command, args)
         if (dt)
             dt.setFocused(args[0]);
         break;
+    case "domterm-close":
+        if (dt)
+            dt.close(args[0], args[1]);
+        break;
     }
 }
 
@@ -808,8 +811,6 @@ function handleMessage(event) {
         DomTerm.setInputMode(data.args[0]);
     } else if (data.command=="request-save-file") { // message to child
         DomTerm.doSaveAs();
-    } else if (data.command=="set-focused") { // message to child
-        handleMessageFromParent(data.command, data.args);
     } else if (data.command=="popout-window") {
         let wholeStack = data.args[0];
         if (iframe) {
@@ -820,10 +821,6 @@ function handleMessage(event) {
         let dt = DomTerm.focusedTerm;
         if (dt)
             dt.closeConnection();
-    } else if (data.command=="domterm-close") { // parent to child
-        let dt = DomTerm.focusedTerm;
-        if (dt)
-            dt.close(data.args[0], data.args[1]);
     } else if (data.command=="request-selection") { // parent to child
         // FIXME rename to doNamedCommand("copy"/"copy-as-html");
         DomTerm.sendParentMessage("value-to-clipboard",
@@ -835,7 +832,10 @@ function handleMessage(event) {
     } else if (data.command=="open-link") { // message to child
         DomTerm.handleLink(data.args[0]);
     } else if (data.command && data.args) {
-        handleMessageFromChild(windowNum, data.command, data.args);
+        if (! iframe)
+            handleMessageFromParent(data.command, data.args);
+        else
+            handleMessageFromChild(windowNum, data.command, data.args);
     } else
         console.log("received message "+data+" command:"+data.command+" dt:"+ dt);
 }

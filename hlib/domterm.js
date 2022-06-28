@@ -257,24 +257,17 @@ DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
                                 detach = false, fromLayoutEvent = false) {
     if (content && content.terminal && content.terminal.topNode)
         content.terminal.close(detach, fromLayoutEvent);
-    else if (content.tagName == "IFRAME") {
-        // if a domterm terminal window
+    else if (content) {
         DomTerm.sendChildMessage(content, "domterm-close", detach, fromLayoutEvent);
-        // otherwise handled by onLayoutCloser ??? FIXME
     }
 }
 
 DomTerm.closeAll = function(event) {
-    DomTerm.forEachTerminal(dt => {
-        dt.historySave();
-        if (dt.processInputBytes)
-            dt.reportEvent("CLOSE-WINDOW");
-    })
+    DomTerm._layout.manager.root.destroy();
 }
 
 DomTerm.windowClose = function() {
     if (window.closeMainWindow) {
-        DomTerm.closeAll(null);
         window.closeMainWindow(); // hook used by --webview
     } else {
         window.close();

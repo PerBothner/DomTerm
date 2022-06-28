@@ -45,7 +45,7 @@ cmd('reset-terminal-soft',
     });
 cmd('close-window',
     function(dt, key) {
-        DomTerm.windowClose();
+        DomTerm.closeAll(null);
         return true;
     }, {
         context: "parent"

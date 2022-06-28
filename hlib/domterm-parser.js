@@ -1486,7 +1486,7 @@ class DTParser {
                     term.showConnectFailure(-1);
                     break;
                 case 99:
-                    term.eofSeen();
+                    DomTerm.closeFromEof(term);
                     break;
                 }
                 break;
