@@ -311,8 +311,7 @@ function createTitlebar(titlebarNode, tabs) {
     }
     titlebarNode.appendChild(titlebarInitial);
     if (tabs) {
-        if (menubarInTitlebar && DomTerm._savedMenubarParent)
-            titlebarNode.appendChild(tabs);
+        titlebarNode.appendChild(tabs);
     } else {
         let titleNode = document.createElement('span');
         titleNode.classList.add('dt-window-title');
