@@ -213,9 +213,9 @@ fn main() -> wry::Result<()> {
                     *control_flow = ControlFlow::Exit
                 }
             }
-            Event::UserEvent(UserEvents::Devtools(id, _op)) => {
+            Event::UserEvent(UserEvents::Devtools(_id, _op)) => {
                 #[cfg(debug_assertions)] {
-                    let webview = &webviews[&id];
+                    let webview = &webviews[&_id];
                     if webview.is_devtools_open() {
                         webview.close_devtools();
                     } else {
