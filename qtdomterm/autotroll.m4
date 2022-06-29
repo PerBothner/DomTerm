@@ -59,7 +59,8 @@
 #
 #  - Add option `--without-qt', which is equivalent to `--with-qt=no'.
 #
-#  - On MacOS, add `-spec macx-g++' to qmake.  This can be overridden
+#  - On MacOS, add `-spec macx-g++' or 'spec macx-lang' (if $CXX --version
+#    output contains "clang").  This can be overridden
 #    with the QMAKESPEC environment variable, for example
 #
 #      QMAKESPEC='macx-clang' ./configure ...
@@ -291,7 +292,11 @@ AC_DEFUN([AT_WITH_QT],
      AC_MSG_CHECKING([whether QMAKESPEC environment variable is set])
      if test x"$QMAKESPEC" = x; then
        if test x"$at_darwin" = xyes; then
-         at_qmake_args='-spec macx-g++'
+         if $CXX --version | grep -q -i clang; then
+           at_qmake_args='-spec macx-clang'
+         else
+           at_qmake_args='-spec macx-g++'
+         fi
          AC_MSG_RESULT([no, using $at_qmake_args])
        else
          AC_MSG_RESULT([no])
@@ -519,7 +524,7 @@ EOF
         : ${MAKE=make}
 
         if $MAKE >& AS_MESSAGE_LOG_FD 2>&1; then
-          at_cv_qt_build='ok, looks like Qt 4 or Qt 5'
+          at_cv_qt_build='ok, looks like Qt 4 or Qt 5 or Qt 6'
         else
           echo "$as_me:$LINENO: Build failed, trying to #include <qobject.h> instead" \
             >& AS_MESSAGE_LOG_FD
