@@ -137,7 +137,7 @@ div.show-connection-failure div.domterm-pre { white-space: pre-wrap }
 }
 .dt-titlebar { border-radius: 10px 10px 0px 0px; box-sizing: border-box;
                padding-left: 4px; padding-right: 2px;}
-.dt-titlebar .dt-menubar { white-space: pre; padding-left: 2px }
+.dt-titlebar .dt-titlebar-prefix { white-space: pre; padding-left: 2px }
 
 /* dt-resize-areas/dt-resize-areas are currently only used for Qt with custom titlebar. */
 div.dt-resize-areas {

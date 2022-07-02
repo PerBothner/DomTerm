@@ -10,9 +10,7 @@ DomTerm.createMenus = function(options) {
         return;
     let menuItem = DomTerm.makeMenuItem;
     let isElectron = DomTerm.isElectron();
-    let menubarInTitlebar =
-        document.body.querySelector(".dt-titlebar .dt-menubar");
-    let electronMenus = platform == "electron" && ! menubarInTitlebar;
+    let electronMenus = platform == "electron" && ! DomTerm._savedMenuBar;
 
     function showMenubar(show) {
         if (electronMenus)
@@ -236,10 +234,7 @@ DomTerm.createMenus = function(options) {
         if (isElectron)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', false);
         DomTerm._savedMenuBar = menuBar;
-        if (menubarInTitlebar) {
-            DomTerm._savedMenubarParent = menubarInTitlebar;
-            DomTerm._savedMenubarBefore = null;
-        } else {
+        if (! DomTerm._savedMenubarParent) {
             const parent = document.body;
             DomTerm._savedMenubarParent = parent;
             DomTerm._savedMenubarBefore = parent.firstElementChild;

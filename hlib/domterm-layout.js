@@ -600,14 +600,13 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                                          const header = singleStack.header;
                                          const hel = header.element;
                                          hel.classList.add("dt-titlebar");
-                                         while (hel.firstChild)
-                                             hel.removeChild(hel.firstChild);
                                          DomTerm.titlebarCurrent = hel;
                                          createTitlebar(hel, header.tabsContainerElement);
                                          DomTerm.titlebarElement.style.display = "none";
                                          // change to merged header
                                      } else {
                                          DomTerm.titlebarElement.style.display = "flex";
+                                         createTitlebar(DomTerm.titlebarElement, null);
                                      }
                                      DomTermLayout.singleStack = singleStack;
                                  }

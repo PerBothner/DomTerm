@@ -295,19 +295,51 @@ function setupParentMessages2() {
 }
 
 function createTitlebar(titlebarNode, tabs) {
-    const menubarInTitlebar = ! DomTerm.isMac;
+    while (titlebarNode.firstChild)
+        titlebarNode.removeChild(titlebarNode.firstChild);
+    let titleButtons = DomTerm.titlebarButtons;
+    if (! titleButtons) {
+        titleButtons = DomTerm.createSpanNode("dt-titlebar-buttons");
+        DomTerm.titlebarButtons = titleButtons;
+        if (DomTerm.isMac) {
+            if (DomTerm.isElectron()) {
+                titleButtons.style.paddingRight = "68px";
+            } else {
+                titleButtons.insertAdjacentHTML('beforeend',
+                                                '<span title="Close" class="dt-titlebar-button" id="dt-titlebar-close" style="color: red">&#x2612;</span></span>'
+                                                + '<span title="Minimize" class="dt-titlebar-button" id="dt-titlebar-minimize" style="color: orange">&#x25BD;</span>'
+                                                + '<span title="Maximize" class="dt-titlebar-button" id="dt-titlebar-maximize" style="color: green">&#x25B3;</span></span>');
+            }
+        } else {
+            titleButtons.insertAdjacentHTML('beforeend',
+                                            '<span title="Minimize" class="dt-titlebar-button" id="dt-titlebar-minimize">&#x25BD;</span>'
+                                            + '<span title="Maximize" class="dt-titlebar-button" id="dt-titlebar-maximize">&#x25B3;</span>'
+                                            + '<span title="Close" class="dt-titlebar-button" id="dt-titlebar-close">&#x2612;</span>');
+        }
+    }
+
     let titlebarInitial = DomTerm.titlebarInitial;
     if (! titlebarInitial) {
-        titlebarInitial = document.createElement("span");
-        if (menubarInTitlebar)
-            titlebarInitial.classList.add("dt-menubar");
-        DomTerm.titlebarInitial = titlebarInitial;
+        titlebarInitial = DomTerm.createSpanNode("dt-titlebar-prefix");
+        DomTerm.titlebarButtons = titleButtons;
+        if (DomTerm.isMac) {
+            titlebarInitial.appendChild(titleButtons);
+        }
         if (true) {
             let iconNode = document.createElement('img');
             iconNode.setAttribute('src', '/favicon.ico');
             iconNode.setAttribute("title", "DomTerm");
             titlebarInitial.appendChild(iconNode);
         }
+        if (! DomTerm.isMac || DomTerm.versions.wry) {
+            DomTerm._savedMenubarParent = titlebarInitial;
+            DomTerm._savedMenubarBefore = null;
+        }
+    }
+    if (DomTerm._savedMenuBar && DomTerm._savedMenubarParent) {
+        Menu.setApplicationMenu(DomTerm._savedMenuBar,
+                                DomTerm._savedMenubarParent,
+                                DomTerm._savedMenubarBefore);
     }
     titlebarNode.appendChild(titlebarInitial);
     if (tabs) {
@@ -373,21 +405,21 @@ function createTitlebar(titlebarNode, tabs) {
         subarea("n w");
         subarea("n e");
     }
-    titlebarNode.insertAdjacentHTML('beforeend',
-                                    '<span class="dt-titlebar-buttons">'
-                                    + '<span title="Minimize" class="dt-titlebar-button" id="dt-titlebar-minimize">&#x25BD;</span>'
-                                    + '<span title="Maximize" class="dt-titlebar-button" id="dt-titlebar-maximize">&#x25B3;</span>'
-                                    + '<span title="Close" class="dt-titlebar-button" id="dt-titlebar-close">&#x2612;</span></span>');
-    titlebarNode.querySelector("#dt-titlebar-minimize")
-        .addEventListener('click', (e) => {
-            DomTerm.windowOp('minimize');
+    if (! DomTerm.isMac) {
+        titlebarNode.appendChild(titleButtons);
+    }
+    if (! DomTerm.isMac || ! DomTerm.isElectron()) {
+        titlebarNode.querySelector("#dt-titlebar-minimize")
+            .addEventListener('click', (e) => {
+                DomTerm.windowOp('minimize');
         });
-    titlebarNode.querySelector("#dt-titlebar-maximize")
-        .addEventListener('click', (e) => {
-            DomTerm.doNamedCommand('toggle-fullscreen');
-        });
-    titlebarNode.querySelector("#dt-titlebar-close")
-        .addEventListener('click', (e) => DomTerm.doNamedCommand('close-window'));
+        titlebarNode.querySelector("#dt-titlebar-maximize")
+            .addEventListener('click', (e) => {
+                DomTerm.doNamedCommand('toggle-fullscreen');
+            });
+        titlebarNode.querySelector("#dt-titlebar-close")
+            .addEventListener('click', (e) => DomTerm.doNamedCommand('close-window'));
+    }
 }
 
 function resizeTitlebar(titlebarElement = DomTerm.titlebarCurrent) {
