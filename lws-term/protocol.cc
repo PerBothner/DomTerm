@@ -31,7 +31,7 @@ static char end_replay_mode[] = "\033[98u";
 
 id_table<pty_client> pty_clients;
 id_table<tty_client> tty_clients;
-id_table<tty_client> main_windows;
+main_id_table main_windows;
 
 int current_dragover_window = -1;
 int drag_start_window = -1;
@@ -356,6 +356,16 @@ unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
     }
 }
 
+void
+tty_client::unlink_main_html_filename()
+{
+    if (main_html_filename) {
+        unlink(main_html_filename);
+        free((void*) main_html_filename);
+        main_html_filename = nullptr;
+    }
+}
+
 tty_client::~tty_client()
 {
     struct tty_client *tclient = this;
@@ -404,6 +414,7 @@ tty_client::~tty_client()
         }
         options::release(request);
     }
+    unlink_main_html_filename();
 }
 
 void
@@ -599,6 +610,13 @@ void id_table<T>::remove(T* entry)
     T* next = elements[index+1];
     for (; index >= 0 && elements[index] == entry; index--)
             elements[index] = next;
+}
+
+main_id_table::~main_id_table()
+{
+    FOREACH_MAIN_WINDOW(tmain)  {
+        tmain->unlink_main_html_filename();
+    }
 }
 
 void
@@ -1173,8 +1191,9 @@ open_window(const char *data, struct tty_client *client)
             client->options = options = link_options(NULL);
         options->geometry_option = sb.null_terminated();
     }
-    const char* url = obj.contains("url") && obj["url"].is_string()
-        ?  obj["url"].get<std::string>().c_str() : nullptr;
+    std::string turl = obj.contains("url") && obj["url"].is_string()
+        ?  obj["url"].get<std::string>() : "";
+    const char* url = turl.empty() ? nullptr : turl.c_str();
     struct pty_client *npclient = nullptr;
     int snum = obj.contains("sessionNumber")
         && obj["sessionNumber"].is_number()
@@ -1292,6 +1311,10 @@ reportEvent(const char *name, char *data, size_t dlen,
         free(client->version_info);
         client->version_info = version_info;
         client->initialized = 0;
+        if (! options->print_browser_only)
+            client->unlink_main_html_filename();
+        else
+            options->print_browser_only = false;
         if (strcmp(name, "VERSION") == 0)
             return true;
         if (proxyMode == proxy_display_local)
@@ -2501,63 +2524,51 @@ display_session(struct options *options, struct pty_client *pclient,
             url = encoded;
         sbuf sb;
         if (wnum >= 0) {
-            const char *main_url = main_html_url;
-            sb.append(main_url);
-            sb.append("#no-frames.html::"); // FIXME rename
-            // Note we use ';' rather than the traditional '&' to separate parts
-            // of the fragment.  Using '&' causes a mysterious bug (at
-            // least on Electron, Qt, and Webview) when added "&js-verbosity=N".
+            sb.printf("#window=%d", wnum);
             if (pclient != NULL) {
-                sb.printf(";session-number=%d", pclient->session_number);
+                sb.printf("&session-number=%d", pclient->session_number);
             }
-            sb.printf(";window=%d", wnum);
             if (options->headless)
-                sb.printf(";headless=true");
+                sb.printf("&headless=true");
             if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
                 && strcmp(browser_specifier, "qt-frames") != 0) {
-                sb.printf(";subwindows=qt");
+                sb.printf("&subwindows=qt");
             }
             std::string titlebar = get_setting_s(options->settings, "titlebar");
             if (! titlebar.empty())
-                sb.printf(";titlebar=%s", url_encode(titlebar).c_str());
-            std::string verbosity = get_setting_s(options->settings, "log.js-verbosity");
-            if (! verbosity.empty()) // as OPTION_NUMBER_TYPE does not need encoding
-                sb.printf(";js-verbosity=%s", verbosity.c_str());
-            std::string js_string_max = get_setting_s(options->settings, "log.js-string-max");
-            if (! js_string_max.empty()) // as OPTION_NUMBER_TYPE does not need encoding
-                sb.printf(";log-string-max=%s", js_string_max.c_str());
+                sb.printf("&titlebar=%s", url_encode(titlebar).c_str());
+            double verbosity = get_setting_d(options->settings, "log.js-verbosity", -1);
+            if (verbosity >= 0)
+                sb.printf("&js-verbosity=%g", verbosity);
+            double js_string_max = get_setting_d(options->settings, "log.js-string-max", -1);
+            if (js_string_max >= 0)
+                sb.printf("&log-string-max=%g", js_string_max);
             std::string slog_to_server = get_setting_s(options->settings, "log.js-to-server");
             const char *log_to_server = slog_to_server.empty() ? NULL
                 : slog_to_server.c_str();
             if (log_to_server && (strcmp(log_to_server, "yes") == 0
                                   || strcmp(log_to_server, "true") == 0
                                   || strcmp(log_to_server, "both") == 0)) {
-                sb.printf(";log-to-server=%s", log_to_server);
+                sb.printf("&log-to-server=%s", log_to_server);
             }
             if (has_name) {
                 sb.printf(tclient->window_name_unique ? ";wname-unique=%s"
-                          : ";wname=%s",
+                          : "&wname=%s",
                           url_encode(tclient->window_name).c_str());
             }
             if (wkind == saved_window)
-                sb.printf(";view-saved=%s", url);
+                sb.printf("&view-saved=%s", url);
             else if (wkind == browser_window)
-                sb.printf(";browse=%s", url);
+                sb.printf("&browse=%s", url);
             else if (wkind == main_only_window && url
                      && strncmp(url, "open=", 5) == 0)
-                sb.printf(";%s", url);
+                sb.printf("&%s", url);
         }
         else
             sb.printf("%s", url);
         if (encoded)
             free(encoded);
-        if (browser_specifier
-            && strcmp(browser_specifier, "--print-url") == 0) {
-            sb.append("\n", 1);
-            if (write(options->fd_out, sb.buffer, sb.len) <= 0)
-                lwsl_err("write failed - display_session\n");
-        } else
-            r = do_run_browser(options, sb.null_terminated());
+        r = do_run_browser(options, tclient, sb.null_terminated());
     }
     return r;
 }

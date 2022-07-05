@@ -58,8 +58,6 @@ using json = nlohmann::json;
 
 #define SERVER_KEY_LENGTH 20
 extern char server_key[SERVER_KEY_LENGTH];
-extern char *main_html_url;
-extern char *main_html_path;
 extern char *backend_socket_name;
 extern const char *settings_fname;
 extern json settings_json_object;
@@ -228,6 +226,7 @@ public:
     ~tty_client();
     int index() { return connection_number; }
     void set_window_name(const std::string& name);
+    void unlink_main_html_filename();
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
     struct options *options;
@@ -288,10 +287,16 @@ public:
     id_table<struct options> pending_requests;
     std::string window_name;
     std::string description;
+    const char *main_html_filename;
+};
+
+class main_id_table : public id_table<tty_client> {
+public:
+    ~main_id_table();
 };
 
 extern id_table<tty_client> tty_clients; // maybe rename to "connections" or "windows"
-extern id_table<tty_client> main_windows;
+extern main_id_table main_windows;
 extern void request_enter(struct options *opts, tty_client *tclient);
 
 struct http_client {
@@ -338,6 +343,7 @@ public:
     bool check_origin;                        // whether allow websocket connection from different origin
     bool once;                                // whether accept only one client and exit on disconnection
     bool qt_frontend = false;
+    bool print_browser_only = false;
     bool doing_complete = false;
     char *credential;                         // encoded basic auth credential
     int reconnect;                            // reconnect timeout
@@ -407,8 +413,8 @@ extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
                            const char *, enum window_kind);
-extern int do_run_browser(struct options *, const char *url);
-extern int start_command(struct options *, char *cmd);
+extern int do_run_browser(struct options *, struct tty_client*, const char *url);
+extern int start_command(struct options *, const char *cmd);
 extern char* check_browser_specifier(const char *specifier);
 extern void printf_to_browser(struct tty_client *, const char *, ...);
 extern void fatal(const char *format, ...);
@@ -429,6 +435,7 @@ extern enum option_name lookup_option(const char *name);
 extern void print_settings_prefixed(const char *, const char *, const char*, FILE *);
 extern const char *get_setting(const json& opts, const char *key); // DEPRECATED
 extern std::string get_setting_s(const json& opts, const char *key, const char *dfault="");
+extern double get_setting_d(const json&, const char *key, double dfault);
 extern void set_setting(json&, const char *key, const char *val);
 extern bool check_option_arg(const char *arg, struct options *opts);
 

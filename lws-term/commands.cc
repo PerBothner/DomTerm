@@ -1058,7 +1058,7 @@ int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
             return EXIT_FAILURE;
         }
     }
-    char *url = challoc(strlen(main_html_url) + strlen(file) + 40);
+    char *url = challoc(strlen(file) + 40);
     sprintf(url, "%s%s", fscheme, file);
     free(fencoded);
     display_session(opts, NULL, url, saved_window);

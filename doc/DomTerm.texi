@@ -1125,11 +1125,12 @@ The following aliases are available.
 @item @code{firefox}
 @itemx @code{chrome}
 @itemx @code{google-chrome}
+@itemx @code{safari} @emph{(macOS only)}
 @itemx @code{edge} @emph{(Windows only)}
 
 Open a new tab or window in the specified desktop browser, either Firefox,
 Google Chrome (@code{chrome} and @code{google-chrome} are synonymous),
-or Microsft Edge (on Windows only).
+Safari (on macOS only), or Microsoft Edge (on Windows only).
 DomTerm looks in common platform-specific locations for these browers,
 and knows which options to pass.
 
@@ -1225,11 +1226,18 @@ assuming the Chrome browser is available.
 @item @code{--detached}
 When creating a new session, it is detached, without a window.
 
-@item @code{--print-url}
-Only print out the URL that would be passed to a browser command,
-but don't actually run a browser.  You can copy the URL into the
-location bar of a browser.
-@c Roughly equivalent to @code{--browser="echo '%U'"}.
+@item @code{--print-browser-command}
+@emph{(Debugging use.)}
+This option can be used with another window specifier.
+Print out the command that would start a new top-level browser window,
+but don't actually execute that command.
+You can use that command to start the browser from a debugger or
+change the command line.
+The browser will first open a local file (with a @code{file:} URL)
+and a filename ending with @code{start-@var{windownumber}.html}.
+This file will redirect to an @code{http:} URL
+(served by the @code{domterm} backend)
+with various parameters that are interpreted by JavaScript in the browser.
 
 @item @code{--browser-pipe}
 @emph{(Internal use.)} Proxy input and output,

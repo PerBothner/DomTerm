@@ -13,7 +13,8 @@ static struct options opts;
 struct options *main_options = &opts;
 struct lws *cmdwsi = NULL;
 
-static void make_html_file(int);
+char *main_html_prefix;
+
 static char *make_socket_name(bool);
 
 static std::string current_geometry;
@@ -74,8 +75,8 @@ maybe_daemonize()
     }
 }
 
-static int
-subst_run_command(struct options *opts, const char *browser_command,
+static std::string
+subst_command(struct options *opts, const char *browser_command,
                   const char *url)
 {
     size_t clen = strlen(browser_command);
@@ -97,7 +98,7 @@ subst_run_command(struct options *opts, const char *browser_command,
             ulen = strlen(url_fixed);
         }
     }
-    char *cmd = challoc(clen + ulen + 40);
+    sbuf cmd;
     const char *wpos;
     if (is_WindowsSubsystemForLinux() && strstr(browser_command, ".exe") != NULL) {
         const char *wsl_prefix = "file:///mnt/c/";
@@ -131,18 +132,26 @@ subst_run_command(struct options *opts, const char *browser_command,
     }
     if (upos) {
       size_t beforeU = upos - browser_command;
-      sprintf(cmd, "%.*s%s%.*s",
-              (int) beforeU, browser_command,
-              url_fixed,
-              (int) (clen - beforeU - skip), upos+skip);
+      cmd.printf("%.*s%s%.*s",
+                 (int) beforeU, browser_command,
+                 url_fixed,
+                 (int) (clen - beforeU - skip), upos+skip);
     } else
-        sprintf(cmd, "%s '%s'", browser_command, url_fixed);
+        cmd.printf("%s '%s'", browser_command, url_fixed);
     free(url_tmp);
-    lwsl_notice("starting frontend command: %s\n", cmd);
-    return start_command(opts, cmd);
+    return cmd.null_terminated();
+}
+static int
+subst_run_command(struct options *opts, const char *browser_command,
+                  const char *url)
+{
+    std::string cmd = subst_command(opts, browser_command, url);
+    const char *ccmd = cmd.c_str();
+    lwsl_notice("starting frontend command: %s\n", ccmd);
+    return start_command(opts, ccmd);
 }
 
-int start_command(struct options *opts, char *cmd) {
+int start_command(struct options *opts, const char *cmd) {
     arglist_t args = parse_args(cmd, true);
     const char *arg0;
     if (args != NULL) {
@@ -315,6 +324,7 @@ static struct lws_http_mount mount_domterm_zip = {
 #define NAME_OPTION 2007
 #define SETTINGS_FILE_OPTION 2008
 #define TTY_PACKET_MODE_OPTION 2009
+#define PRINT_BROWSER_OPTION 2010
 #define PANE_OPTIONS_START 2100
 /* offsets from PANE_OPTIONS_START match 'N' in '\e[90;Nu' command */
 #define PANE_OPTION (PANE_OPTIONS_START+pane_best)
@@ -323,7 +333,6 @@ static struct lws_http_mount mount_domterm_zip = {
 #define RIGHT_OPTION (PANE_OPTIONS_START+pane_right)
 #define ABOVE_OPTION (PANE_OPTIONS_START+pane_above)
 #define BELOW_OPTION (PANE_OPTIONS_START+pane_below)
-#define PRINT_URL_OPTION (PANE_OPTIONS_START+14)
 #define BROWSER_PIPE_OPTION (PANE_OPTIONS_START+15)
 
 // command line options
@@ -357,7 +366,7 @@ static const struct option options[] = {
         {"right",        optional_argument, NULL, RIGHT_OPTION},
         {"above",        optional_argument, NULL, ABOVE_OPTION},
         {"below",        optional_argument, NULL, BELOW_OPTION},
-        {"print-url",    no_argument,       NULL, PRINT_URL_OPTION},
+        {"print-browser-command", no_argument,  NULL, PRINT_BROWSER_OPTION},
 #if REMOTE_SSH
         {"browser-pipe", no_argument,       NULL, BROWSER_PIPE_OPTION},
 #endif
@@ -391,6 +400,8 @@ static const char* browser_specifiers[] = {
     // first 2 are windows-specific
     "edge",
     "edge-app",
+    // macOS-specific
+    "safari",
     // following are generic
     "firefox",
     "browser",
@@ -712,34 +723,36 @@ electron_command(struct options *options)
     return sb.strdup();
 }
 
-static int
-default_browser_run(const char *url, struct options *options)
+std::string default_browser_command()
 {
-    const char *pattern;
-    char *mpattern = NULL; // malloc'd pattern
 #ifdef DEFAULT_BROWSER_COMMAND
-    pattern = DEFAULT_BROWSER_COMMAND;
+    return DEFAULT_BROWSER_COMMAND;
 #elif __APPLE__
-    pattern = "open";
+    return "/usr/bin/open '%U'";
 #else
     // Prefer gnome-open or kde-open over xdg-open because xdg-open
     // under Gnome defaults to using 'gio open', which does drops the "hash"
     // part of a "file:" URL, and may also use a non-preferred browser.
     if (is_WindowsSubsystemForLinux()) {
-        pattern = "/mnt/c/Windows/System32/cmd.exe /c start '%U'";
+        return "/mnt/c/Windows/System32/cmd.exe /c start '%U'";
     } else {
-        mpattern = find_in_path("xdg-open");
+        char *mpattern = find_in_path("xdg-open");
         if (mpattern == NULL)
             mpattern = find_in_path("kde-open");
-        if (mpattern == NULL) {
-            pattern = "firefox";
-        } else
-            pattern = mpattern;
+        if (mpattern == NULL)
+            return "firefox";
+        std::string tmp(mpattern);
+        free(mpattern);
+        return tmp;
     }
 #endif
-    int r = subst_run_command(options, pattern, url);
-    free(mpattern);
-    return r;
+}
+
+static int
+default_browser_run(const char *url, struct options *options)
+{
+    std::string cmd = default_browser_command();
+    return subst_run_command(options, cmd.c_str(), url);
 }
 
 void
@@ -773,7 +786,7 @@ browser_run_browser(struct options *options, const char *url,
 }
 
 int
-do_run_browser(struct options *options, const char *url)
+do_run_browser(struct options *options, struct tty_client *tclient, const char *url)
 {
     std::string browser_specifier_string; // placeholder for allocation
     const char *browser_specifier;
@@ -796,7 +809,11 @@ do_run_browser(struct options *options, const char *url)
                 if (is_WindowsSubsystemForLinux())
                     p = "edge-app;electron;qt;chrome-app;firefox;browser";
                 else
+#if __APPLE__
                     p = "electron;qt;chrome-app;firefox;browser";
+#else
+                    p = "electron;qt;chrome-app;safari;firefox;browser";
+#endif
             }
         }
         std::string error_if_single;
@@ -811,8 +828,11 @@ do_run_browser(struct options *options, const char *url)
                 num_tries++;
                 std::string cmd(start, cmd_length);
                 bool app_mode;
-                if (cmd == "browser")
-                    return default_browser_run(url, options);
+                if (cmd == "browser") {
+                    browser_specifier_string = default_browser_command();
+                    browser_specifier = browser_specifier_string.c_str();
+                    break;
+                }
                 if (cmd == "electron") {
                     browser_specifier = electron_command(options);
                      if (browser_specifier == NULL)
@@ -869,6 +889,11 @@ do_run_browser(struct options *options, const char *url)
                         error_if_single = "edge browser not found";
                     else
                         break;
+#if __APPLE__
+                } else if (cmd == "safari") {
+                    browser_specifier = "/usr/bin/open -a Safari '%U'";
+                    break;
+#endif
                 }
                 else {
                     std::string cmd_arg0(cmd.c_str(), argv0_end - start);
@@ -923,9 +948,61 @@ do_run_browser(struct options *options, const char *url)
         }
     }
 
-    int r = subst_run_command(options, browser_specifier, url);
+    // The initial URL passed to the browser is a file: URL to a user-read-only
+    // file. This verifies that the browser is running as the current user.
+    // It is just a stub file that redirects to a http URL with the real
+    // resources.  The loading of JavaScript and CSS is deferred to
+    // the redircted http file because CORS (Cross-Origin Resource Sharing)
+    // restricts what we can do from file URLs.
+
+    const char *hash_only =
+        url && url[0] == '#' && tclient && tclient->connection_number >= 0
+        ? url+1
+        : nullptr;
+    sbuf obuf, nbuf;
+    if (hash_only) {
+        nbuf.printf("%s-%d.html", main_html_prefix, tclient->connection_number);
+        tclient->main_html_filename = nbuf.strdup();
+        nbuf.reset();
+        nbuf.printf("file://%s", tclient->main_html_filename);
+        url = nbuf.null_terminated();
+    }
+    std::string cmd = subst_command(options, browser_specifier, url);
+    browser_specifier = cmd.c_str();
+    if (hash_only) {
+        obuf.printf(
+            "<!DOCTYPE html>\n"
+            "<html><head>\n"
+            "<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>\n"
+            "<meta http-equiv=\"Content-Security-Policy\""
+            " content=\"script-src 'unsafe-inline'\">\n"
+            "<!--command used to start front-end: %s-->\n"
+            "<script type='text/javascript'>\n"
+            "location.replace('http://localhost:%d/no-frames.html#server-key=%.*s&%s');\n"
+            "</script>\n"
+            "</head>\n"
+            "<body></body></html>\n",
+            browser_specifier, http_port, SERVER_KEY_LENGTH, server_key,
+            hash_only);
+        int hfile = open(tclient->main_html_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
+        if (hfile < 0
+            || write(hfile, obuf.buffer, obuf.len) != (ssize_t) obuf.len
+            || close(hfile) != 0)
+            lwsl_err("writing %s failed\n", tclient->main_html_filename);
+
+    }
+
+    if (options->print_browser_only) {
+        lwsl_notice("not starting (--print-browser-command) frontend command: %s\n", cmd.c_str());
+        obuf.reset();
+        obuf.printf("%s\n", browser_specifier);
+        if (write(options->fd_out, obuf.buffer, obuf.len) <= 0)
+            lwsl_err("write failed - do_run_browser\n");
+        return 0;
+    }
+    lwsl_notice("starting frontend command: %s\n", cmd.c_str());
+    int r = start_command(options, cmd.c_str());
     options->qt_frontend = false;
-    // FIXME: free(browser_specifier)
     return r;
 }
 
@@ -1150,8 +1227,10 @@ int process_options(int argc, arglist_t argv, struct options *opts)
                 opts->paneOp = c - PANE_OPTIONS_START;
                 opts->browser_command = argv[optind-1];
                 break;
+            case PRINT_BROWSER_OPTION:
+                opts->print_browser_only = true;
+                break;
             case PANE_OPTION:
-            case PRINT_URL_OPTION:
 #if REMOTE_SSH
             case BROWSER_PIPE_OPTION:
 #endif
@@ -1487,7 +1566,8 @@ main(int argc, char **argv)
                                         csocket, "cmd", NULL);
     cclient = (struct cmd_client *) lws_wsi_user(cmdwsi);
     cclient->socket = csocket.filefd;
-    make_html_file(http_port);
+    main_html_prefix = make_socket_name(true);
+    generate_random_string(server_key, SERVER_KEY_LENGTH);
 
     lwsl_info("TTY configuration:\n");
     if (opts.credential != NULL)
@@ -1663,7 +1743,7 @@ make_socket_name(bool html_filename)
 	int socket_name_length = strlen(socket_name);
         const char *ext;
 	if (html_filename) {
-            ext = ".html";
+            ext = ""; //.html";
 	    if (dot >= 0)
                 socket_name_length = dot;
 	} else
@@ -1677,7 +1757,7 @@ make_socket_name(bool html_filename)
             sprintf(r, "%.*s%s", socket_name_length, socket_name, ext);
         }
     } else {
-      const char *sname = html_filename ? "/start.html" : "/default.socket";
+      const char *sname = html_filename ? "/start" : "/default.socket";
         r = challoc(strlen(ddir)+strlen(sname)+1);
         sprintf(r, "%s%s", ddir, sname);
     }
@@ -1685,9 +1765,6 @@ make_socket_name(bool html_filename)
 }
 
 char server_key[SERVER_KEY_LENGTH];
-
-char *main_html_url;
-char *main_html_path;
 
 static const char * standard_stylesheets[] = {
     "hlib/domterm-core.css",
@@ -1749,39 +1826,6 @@ static struct lib_info standard_jslibs[] = {
     {NULL, 0},
 };
 
-/* The iniial URL passed to the browser is a file: URL to a user-read-only file.
- * This verifies that the browser is running as the current user.
- * It is just a stub file that redirects to a http URL with the real resources.
- * We do this because CORS (Cross-Origin Resource Sharing) restrictions
- * are incompatible with file URLs, at least when using a desktop browser.
- */
-
-static void
-make_main_html_text(struct sbuf *obf, int port)
-{
-    obf->printf(
-        "<!DOCTYPE html>\n"
-        "<html><head>\n"
-        "<meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>\n"
-        "<meta http-equiv=\"Content-Security-Policy\""
-        " content=\"script-src 'unsafe-inline'\">\n"
-        "<script type='text/javascript'>\n"
-        "let DomTerm_server_key = '%.*s';\n"
-        "let h = location.hash;\n"
-        "let colon1 = h.indexOf(':');\n"
-        "let colon2 = h.indexOf(':', colon1+1);\n"
-        "let newloc = 'http://localhost:%d/' + h.substring(1, colon1) +"
-        " '?server-key=' + DomTerm_server_key;\n"
-        "if (colon2 < 0) colon2 = h.length;\n"
-        "if (colon2 > colon1+1) newloc += '&' + h.substring(colon1+1, colon2);\n"
-        "if (colon2 >= 1 && colon2 < h.length)"
-        " newloc += '#' + h.substring(colon2+1);\n"
-        "location.replace(newloc);\n"
-        "</script>\n"
-        "</head>\n"
-        "<body></body></html>\n",
-        SERVER_KEY_LENGTH, server_key, port);
-}
 void
 make_html_text(struct sbuf *obuf, int port, int hoptions,
                const char *body_text, int body_length)
@@ -1815,31 +1859,6 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
                      port, SERVER_KEY_LENGTH, server_key);
     obuf->printf("</head>\n<body>%.*s</body>\n</html>\n",
                  body_length, body_text);
-}
-
-static void
-make_html_file(int port)
-{
-    //uid_t uid = getuid();
-    char *sname = make_socket_name(true);
-    char *sext = strrchr(sname, '.');
-    const char*prefix = "file://";
-    const char *ext = ".html";
-    char *buf = challoc(strlen(prefix)+(sext-sname)+strlen(ext)+1);
-    sprintf(buf, "%s%.*s%s", prefix, (int) (sext-sname), sname, ext);
-    main_html_url = buf;
-    main_html_path = buf+strlen(prefix);
-    if (server_key[0] == 0)
-        generate_random_string(server_key, SERVER_KEY_LENGTH);
-    lwsl_notice("initial html file: '%s#PATH:QUERY:FRAGMENT' - redirects to 'http://localhost:%d/PATH?server-key=KEY&QUERY#FRAGMENT\n", main_html_path, port);
-    sbuf obuf;
-    make_main_html_text(&obuf, port);
-
-    int hfile = open(main_html_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
-    if (hfile < 0
-        || write(hfile, obuf.buffer, obuf.len) != (ssize_t) obuf.len
-        || close(hfile) != 0)
-        lwsl_err("writing %s failed\n", main_html_path);
 }
 
 void

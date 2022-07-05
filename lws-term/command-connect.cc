@@ -19,11 +19,6 @@ static void server_atexit_handler(void) {
         unlink(server_socket_path);
         server_socket_path = NULL;
     }
-    if (main_html_url != NULL) {
-        unlink(main_html_path);
-        main_html_path = NULL;
-        main_html_url = NULL;
-    }
 }
 
 void

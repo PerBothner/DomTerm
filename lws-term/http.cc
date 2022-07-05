@@ -316,9 +316,6 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 return ret;
             }
 
-            if (fname == NULL || strcmp(fname, "/") == 0) {
-                fname = main_html_path;
-            }
             if (strcmp(fname, "/favicon.ico") == 0) {
                 char *icon = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/domterm2.ico");
                 int n = lws_serve_http_file(wsi, icon, content_type, NULL, 0);

@@ -354,6 +354,8 @@ DomTerm.openNewWindow = function(dt, options={}) {
         } else {
             if (! url)
                 options.url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
+            else if (url.charAt(0) == '#')
+                options.url = DomTerm.mainLocation + url + "&server-key=" + DomTerm.server_key;
             if (DomTerm.isElectron())
                 electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
             else if (DomTerm._qtBackend)
