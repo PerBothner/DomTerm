@@ -509,7 +509,7 @@ bin/domterm -Bqt
 @subheading Prerequisites
 
 Please help out with instructions for other platforms, especially
-MacOS, *BSD, and native (non-WSL) Windows.
+macOS, *BSD, and native (non-WSL) Windows.
 
 @subsubheading Fedora
 
@@ -863,7 +863,7 @@ size further, but causes some not-yet-resolved problems.)
 Build @emph{experimental} support for the @uref{https://github.com/webview/webview,Webview cross-platform framework}.  This creates a binary @code{bin/dt-webview},
 which is used if you open a domterm window with the @code{-Bwebview} option.
 
-This has only been tested on Fedora and MacOS.
+This has only been tested on Fedora and macOS.
 
 This @ref{webview-frontend,works ok though with some rough edges}.
 
@@ -2440,7 +2440,7 @@ Specifically:
 @table @asis
 @item @code{-e} [@var{command} @var{arg}...]
 @itemx @code{--pty} [@var{command} @var{arg}...]
-This is the default on Unix-like systems (MacOs, GNU/Linux, BSD).
+This is the default on Unix-like systems (macOS, GNU/Linux, BSD).
 It runs @var{command} under a PTY.
 Communication is by default character-by-character, but
 can also be line-based.
@@ -3331,9 +3331,9 @@ are handled specially, because of traditional Unix shell functionality.
 They are passed to the process - but only under
 certain conditions, because of other compatibility issues.
 @table @asis
-@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
-@itemx @kbd{Ctrl+@key{C}} (@code{client-action}) @emph{(MacOS only)}
-If there is a non-empty selection @emph{and} this is not MacOS.
+@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not macOS)}
+@itemx @kbd{Ctrl+@key{C}} (@code{client-action}) @emph{(macOS only)}
+If there is a non-empty selection @emph{and} this is not macOS.
 copy the selection to the clipboard.
 Otherwise, send @kbd{Ctrl+@key{C}} literally to the process
 (which traditionally interrupts it).
@@ -3704,10 +3704,10 @@ the focus remains in the view.
 @table @asis
 @item @kbd{Ctrl+Shift+@key{C}}  (@code{copy-text})
 @itemx @kbd{Ctrl+@key{Insert}}
-@itemx @kbd{Cmd+@key{C}} @emph{(Only MacOS)}
+@itemx @kbd{Cmd+@key{C}} @emph{(Only macOS)}
 Copy selection to clipboard.
 (Selection can be partly or fully outside input area.)
-@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not MacOS)}
+@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not macOS)}
 If there is no selection send Ctrl+C to the process - which
 normally interrupts it.
 If the previous keycommand was also a Ctrl+C, do as the no-selection case,
