@@ -142,7 +142,7 @@ DomTerm.createMenus = function(options) {
     ]);
     const showInspectorItem = ! window._dt_toggleDeveloperTools ? null
           : menuItem({label: 'Toggle Developer Tools',
-                      accelerator: 'Ctrl+Shift+I',
+                      accelerator: DomTerm.isMac ? 'Alt+Cmd+I' : 'Ctrl+Shift+I',
                       clickClientAction: 'toggle-developer-tools'});
     let fileMenu = DomTerm.makeMenu([
         newWindowItem,

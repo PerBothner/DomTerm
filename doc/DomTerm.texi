@@ -497,7 +497,7 @@ Choose a @var{frontend} and start Domterm:
 bin/domterm -B@var{frontend}
 @end example
 Suggested values of @code{-B@var{frontend}} include
-@code{-Bqt} (Qt frontend - recommended); @code{-Belectron} (Electron);
+@code{-Belectron} (Electron - currently recommended); @code{-Bqt};
 @code{-Bwry} (Rust-based Tauri/Wry);
 @code{-Bfirefox} (in Firefox browser);
 or @code{-Bchrome-app} (Chrome browser with reduced clutter).
@@ -2583,7 +2583,7 @@ Start the Qt frontend (if available) with the @code{--qt} option.
 Start the Webview frontend (if available) with the @code{--webview} option.
 
 This is quite usable - nicer than using a web-browser.
-It uses JavaScript menus, which is OK except on Mac.
+It uses JavaScript menus, which is OK except on macOS.
 
 Cat'ing large files is much faster than other browsers, probably due to
 deferred re-display.  Window re-sizing is slower.
@@ -3017,18 +3017,21 @@ useful for navigating around in the buffer, including making selections.
 @c Enter/exit pager mode
 @c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
-@item @kbd{Ctrl+Shift+@key{C}} (@code{copy-text})
+@item @kbd{Ctrl+Shift+@key{C}} @emph{(except macOS)} (@code{copy-text})
+@item @kbd{Cmd+@key{C}} @emph{(only macOS)}
 @itemx @kbd{Ctrl+@key{Insert}}
 Copy the selection to the clipboard.
 It is copied as both plain text (@code{text/plain})
 and formatted HTML (@code{text/html}) in case the receiving
 application can paste the latter.
 (@kbd{Ctrl+@key{C}} also works in line-editing mode.)
-@item @kbd{Ctrl+Shift+@key{V}} (@code{paste-text})
-@itemx @kbd{Shift+@key{Insert}}  @emph{(Electron and Qt only)}
+@item @kbd{Ctrl+Shift+@key{V}} @emph{(except macOS)} (@code{paste-text})
+@item @kbd{Cmd+@key{V}} @emph{(only macOS)}
+@itemx @kbd{Shift+@key{Insert}}
 Paste text from the clipboard.
 (@kbd{Ctrl+@key{V}} also works in line-editing mode.)
-@item @kbd{Ctrl+Shift+@key{X}} (@code{cut-text})
+@item @kbd{Ctrl+Shift+@key{X}} @emph{(except macOS)} (@code{cut-text})
+@item @kbd{Cmd+@key{X}} @emph{(only macOS)}
 ``Cut'': Restricts the selection to the current input area,
 copies that restricted selection to the clipboard,
 and then deletes the restricted selection.
@@ -3041,6 +3044,9 @@ Cycle between the input modes: automatic, to line, to character, and back.
 The resulting mode is displayed temporarily.
 @item @kbd{Ctrl+Shift+@key{M}}
 Enter @ref{Paging,Paging mode}.
+@item @kbd{Ctrl+Shift+@key{F}} (@code{find-text)}
+@itemx @kbd{Cmdt+@key{F}} @emph{(only macOS)}
+Search for text in the buffer, entering @ref{Find text,find-text mode}.
 @item @kbd{@key{Ctrl}}
 Show a popup with useful information about version, mode, size,
 or other data.
@@ -3066,7 +3072,8 @@ Toggle full-screen mode.
 @item @kbd{Shift+@key{F11}} (@code{toggle-fullscreen-current-window})
 (Not for Electron or Qt.)
 Toggle full-screen mode for the current sub-window.
-@item @kbd{Ctrl+Shift+@key{I}}
+@item @kbd{Ctrl+Shift+@key{I}} @emph{(except macOS)} (@code{toggle-developer-tools})
+@itemx @kbd{Alt+Cmd+@key{I}} @emph{(only macOS)}
 Toogle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
 @end table
@@ -3078,12 +3085,20 @@ In paging and edit modes, these may be modified by a repeat @var{count}.
 Otherwise, @var{count} defaults to 1.
 
 @table @asis
-@item @kbd{Ctrl+Shift+@key{PageUp}} (@code{scroll-page-up})
-@itemx @kbd{Ctrl+Shift+@key{PageDown}} (@code{scroll-page-down})
+@item @kbd{Ctrl+Shift+@key{PageUp}} @emph{(except macOS)} (@code{scroll-page-up})
+@itemx @kbd{Shift+@key{PageUp}} @emph{(only macOS)}
+@itemx @kbd{Cmd+@key{PageUp}} @emph{(only macOS)}
+@itemx @kbd{Ctrl+Shift+@key{PageDown}} @emph{(except macOS)} (@code{scroll-page-down})
+@itemx @kbd{Shift+@key{PageDown}} @emph{(only macOS)}
+@itemx @kbd{Cmd+@key{PageDown}} @emph{(only macOS)}
 Scroll @var{count} ``pages'' up or down, respectively.
 (Specifically, the viewport height times @var{count} minus a height of one line.)
-@item @kbd{Ctrl+Shift+@key{Up}} (@code{scroll-line-up})
-@itemx @kbd{Ctrl+Shift+@key{Down}} (@code{scroll-line-down})
+(On Mac keyboards without @kbd{@key{PageUp}} or @kbd{@key{PageDown}}
+use @kbd{Fn+@key{Up}} or @kbd{Fn+@key{Down}} instead.)
+@item @kbd{Ctrl+Shift+@key{Up}} @emph{(except macOS)} (@code{scroll-line-up})
+@item @kbd{Cmd+@key{Up}} @emph{(only macOS)}
+@itemx @kbd{Ctrl+Shift+@key{Down}} @emph{(except macOS)} (@code{scroll-line-down})
+@item @kbd{Cmd+@key{Down}} @emph{(only macOS)}
 Scroll @var{count} lines up or down, respectively.
 @item @kbd{Ctrl+Shift+@key{Home}} (@code{scroll-top})
 Scroll to top.
@@ -3298,8 +3313,10 @@ By default the @var{count} is one, and it is reset after each command.
 @item @kbd{@key{Left}} (@code{backward-char})
 @itemx @kbd{@key{Right}} (@code{forward-char})
 Move caret @var{count} characters left or right.
-@item @kbd{Ctrl+@key{Left}} (@code{backward-word})
-@itemx @kbd{Ctrl+@key{Right}} (@code{forward-word})
+@item @kbd{Ctrl+@key{Left}} @emph{(except macOS)} (@code{backward-word})
+@itemx @kbd{Alt+@key{Left}} @emph{(only macOS)}
+@itemx @kbd{Ctrl+@key{Right}} @emph{(except macOS)} (@code{forward-word})
+@itemx @kbd{Alt+@key{Right}} @emph{(only macOS)}
 Move caret @var{count} words left or right.
 @item @kbd{@key{Home}} (@code{beginning-of-line})
 @itemx @kbd{@key{End}} (@code{end-of-line})
@@ -3331,8 +3348,8 @@ are handled specially, because of traditional Unix shell functionality.
 They are passed to the process - but only under
 certain conditions, because of other compatibility issues.
 @table @asis
-@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not macOS)}
-@itemx @kbd{Ctrl+@key{C}} (@code{client-action}) @emph{(macOS only)}
+@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(except macOS)}
+@itemx @kbd{Ctrl+@key{C}} (@code{client-action}) @emph{(only macOS)}
 If there is a non-empty selection @emph{and} this is not macOS.
 copy the selection to the clipboard.
 Otherwise, send @kbd{Ctrl+@key{C}} literally to the process
@@ -3568,6 +3585,7 @@ Interrupt output by sending @kbd{Ctrl+@key{C}} to the application,
 and then exit paging mode after scrolling to the end.
 @item @kbd{Ctrl+@key{F}}
 @itemx @kbd{Ctrl+Shift+@key{F}}
+@itemx @kbd{Cmd+@key{F}} @emph{(only macOS)}
 Enter @ref{Find text,find-text} mode.
 @end table
 
@@ -3613,8 +3631,8 @@ commands move the input caret, but in view mode they move the view position,
 @item @kbd{@key{Left}} (@code{backward-char})
 @itemx @kbd{@key{Right}} (@code{forward-char})
 Move the view position @var{count} characters left or right.
-@item @kbd{Ctrl+@key{Left}} (@kbd{Cmd+@key{Left}} on Mac) (@code{backward-word})
-@itemx @kbd{Ctrl+@key{Right}} (@kbd{Cmd+@key{Right}} on Mac) (@code{forward-word})
+@item @kbd{Ctrl+@key{Left}} (@kbd{Alt+@key{Left}} on macOS) (@code{backward-word})
+@itemx @kbd{Ctrl+@key{Right}} (@kbd{Alt+@key{Right}} on macOS) (@code{forward-word})
 Move the view position @var{count} words left or right.
 @item @kbd{@key{Home}} (@code{beginning-of-line})
 @itemx @kbd{@key{End}} (@code{end-of-line})
@@ -3704,10 +3722,10 @@ the focus remains in the view.
 @table @asis
 @item @kbd{Ctrl+Shift+@key{C}}  (@code{copy-text})
 @itemx @kbd{Ctrl+@key{Insert}}
-@itemx @kbd{Cmd+@key{C}} @emph{(Only macOS)}
+@itemx @kbd{Cmd+@key{C}} @emph{(only macOS)}
 Copy selection to clipboard.
 (Selection can be partly or fully outside input area.)
-@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(Not macOS)}
+@item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(except macOS)}
 If there is no selection send Ctrl+C to the process - which
 normally interrupts it.
 If the previous keycommand was also a Ctrl+C, do as the no-selection case,
@@ -3753,8 +3771,8 @@ the selection by moving the focus position leaving the anchor position in place.
 Extends the current selection by @var{count} characters
 (If there is no selection, the caret position is treated as
 a zero-size selection.)
-@item @kbd{Ctrl+Shift+@key{Left}} (@kbd{Cmd+Shift+@key{Left}} on Mac) (@code{backward-word-extend})
-@itemx @kbd{Ctrl+Shift+@key{Right}} (@kbd{Cmd+Shift+@key{Righy}} on Mac) (@code{forward-word-extend})
+@item @kbd{Ctrl+Shift+@key{Left}} (@kbd{Alt+Shift+@key{Left}} on macOS) (@code{backward-word-extend})
+@itemx @kbd{Ctrl+Shift+@key{Right}} (@kbd{Alt+Shift+@key{Right}} on macOS) (@code{forward-word-extend})
 Extend(or reduce) the current selection by @var{count} words
 @item @kbd{Shift+@key{Home}} (@code{beginning-of-line-extend})
 @itemx @kbd{Shift+@key{End}} (@code{end-of-line-extend})
@@ -3795,8 +3813,8 @@ whose name ends with @code{-extend}, that command is executed instead.
 @table @asis
 @item @kbd{@key{Left}} (@code{backward-char-extend})
 @itemx @kbd{@key{Right}} (@code{forward-char-extend})
-@itemx @kbd{Ctrl+@key{Left}}  (@kbd{Cmd+@key{Left}} on Mac) (@code{backward-word-extend})
-@itemx @kbd{Ctrl+@key{Right}}  (@kbd{Cmd+@key{Right}} on Mac) (@code{forward-word-extend})
+@itemx @kbd{Ctrl+@key{Left}}  (@kbd{Alt+@key{Left}} on macOS) (@code{backward-word-extend})
+@itemx @kbd{Ctrl+@key{Right}}  (@kbd{Alt+@key{Right}} on macOS) (@code{forward-word-extend})
 @itemx @kbd{@key{Up}} (@code{up-line-extend})
 @itemx @kbd{@key{Down}} (@code{down-line-extend})
 @itemx @kbd{@key{Home}} (@code{beginning-of-line-extend})
@@ -3819,6 +3837,7 @@ To search for text in the buffer, use the @dfn{find-text} mode.
 
 @table @asis
 @item @kbd{Ctrl+Shift+@key{F}} (@code{find-text}) @emph{(except find-text mode)}
+@itemx @kbd{Cmd+@key{F}} @emph{(only macOS)}
 @itemx @kbd{Ctrl+@key{F}} @emph{(View or line-edit modes only)}
 Enter find-text mode.
 @end table

@@ -9645,51 +9645,56 @@ DomTerm.masterKeymapDefault =
             "Shift-Insert": "paste-text",
             "Ctrl-Shift-A": "enter-mux-mode",
             "Ctrl-Shift-F": "find-text",
-            "Ctrl+Shift+I": "toggle-developer-tools",
             "Ctrl+Shift+L": "input-mode-cycle",
             "Ctrl+Shift+M": "toggle-paging-mode",
             "Ctrl+Shift+N": "new-window",
             // FUTURE: "Ctrl-Shift-P": "command-palette",
             "Ctrl-Shift-S": "save-as-html",
             "Ctrl-Shift-T": "new-tab",
-            "Ctrl-Shift-X": "cut-text",
             //"Ctrl-@": "toggle-mark-mode",
             "Ctrl-Shift-Home": "scroll-top",
             "Ctrl-Shift-End": "scroll-bottom",
-            "Ctrl-Shift-Up": "scroll-line-up",
-            "Ctrl-Shift-Down": "scroll-line-down",
             "Ctrl-Shift-PageUp": "scroll-page-up",
             "Ctrl-Shift-PageDown": "scroll-page-down"
         }, DomTerm.isMac ? {
+            "Alt+Cmd+I": "toggle-developer-tools",
+            "Ctrl-F2": "default-action", /* focus menubar */
+            "Cmd+Up": "scroll-line-up", // iterm2 - Terminal: previous command
+            "Cmd-Down": "scroll-line-down", // iterm2 - Terminal: next command
+            "Shift+PageUp": "scroll-page-up", // iterm2
+            "Shift+PageDown": "scroll-page-down", // iterm2
+            "Cmd+PageUp": "scroll-page-up", // iterm2
+            "Cmd+PageDown": "scroll-page-down", // iterm2
+            "Mod-F": "find-text",
             "Mod-V": "paste-text",
-            "Mod-C": "copy-text"
+            "Mod-C": "copy-text",
+            "Mod-X": "cut-text"
         } : {
+            "Ctrl-Shift-Up": "scroll-line-up",
+            "Ctrl-Shift-Down": "scroll-line-down",
+            "Ctrl+Shift+I": "toggle-developer-tools",
             "Ctrl-Shift-V": "paste-text",
-            "Ctrl-Shift-C": "copy-text"
+            "Ctrl-Shift-C": "copy-text",
+            "Ctrl-Shift-X": "cut-text"
         }));
 DomTerm.masterKeymap = DomTerm.masterKeymapDefault;
 
 // "Mod-" is Cmd on Mac and Ctrl otherwise.
-DomTerm.lineEditKeymapDefault = new browserKeymap({
+DomTerm.lineEditKeymapDefault = new browserKeymap( Object.assign({
     //"Tab": 'client-action',
     //"Ctrl-T": 'client-action',
     "Ctrl-@": "toggle-mark-mode",
     "Ctrl-C": DomTerm.isMac ? "client-action" : "copy-text-or-interrupt",
-    "Ctrl+F": "find-text",
+    "Mod+F": "find-text",
     "Ctrl-R": "backward-search-history",
     "Mod-V": "paste-text",
     "Ctrl-X": "cut-text",
-    "Ctrl-Shift-X": "cut-text",
     "Ctrl-Z": "client-action",
     "Ctrl-\\": "client-action",
     "Left": 'backward-char',
-    "Mod-Left": 'backward-word',
     "Right": 'forward-char',
-    "Mod-Right": 'forward-word',
     "Shift-Left": "backward-char-extend",
-    "Shift-Mod-Left": "backward-word-extend",
     "Shift-Right": "forward-char-extend",
-    "Shift-Mod-Right": "forward-word-extend",
     "Shift-Up": "up-line-extend",
     "Shift-Down": "down-line-extend",
     "Shift-End": "end-of-line-extend",
@@ -9742,7 +9747,19 @@ DomTerm.lineEditKeymapDefault = new browserKeymap({
     "Ctrl-N": "down-line-or-history",
     "Ctrl-P": "up-line-or-history",
     "(keypress)": "insert-char"
-});
+}, DomTerm.isMac ? {
+    "Alt+Left": 'backward-word',
+    "Alt+Right": 'forward-word',
+    "Alt+Shift+Left": "backward-word-extend",
+    "Alt+Shift+Right": "forward-word-extend",
+    "Mod+X": "cut-text",
+} : {
+    "Ctrl+Left": 'backward-word',
+    "Ctrl+Right": 'forward-word',
+    "Ctrl+Shift+Left": "backward-word-extend",
+    "Ctrl+Shift+Right": "forward-word-extend",
+    "Ctrl-Shift+X": "cut-text",
+}));
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
 DomTerm.pagingKeymapDefault = new browserKeymap({
@@ -9832,10 +9849,10 @@ DomTerm.muxKeymap = new browserKeymap({
     "Up": "select-pane-previous",
     "Right": "select-pane-next",
     "Down": "select-pane-next",
-    "Ctrl-Left": "new-pane-left",
-    "Ctrl-Right": "new-pane-right",
-    "Ctrl-Down": "new-pane-below",
-    "Ctrl-Up": "new-pane-above"
+    "Mod-Left": "new-pane-left",
+    "Mod-Right": "new-pane-right",
+    "Mod-Down": "new-pane-below",
+    "Mod-Up": "new-pane-above"
 });
 DomTerm.isKeyPressName = function(keyName) {
     return keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/;
@@ -9972,9 +9989,6 @@ Terminal.sendSavedHtml = function(dt, html) {
 }
 
 Terminal.prototype._isOurEvent = function(event) {
-    if(DomTerm.isMac && event.metaKey)
-        // All Command keys should be handled by OSX itself.
-        return false;
     //return this._isAnAncestor(event.target, this.topNode);
     return this.hasFocus();
 }
