@@ -132,8 +132,6 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
     const QString ws = processOptions->wsconnect;
     if (! ws.isEmpty()) {
         QString url = ws;
-        url += url.indexOf('#') < 0 ? "#" : "&";
-        url += "qtwebengine";
         processOptions->frontendOnly = true;
         processOptions->url = url;
     } else {

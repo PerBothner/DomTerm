@@ -288,51 +288,31 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
     QUrl xurl = url;
 
 
-    // Check if this is a 'file://.../start.html' bridge URL from DomTerm
+    // Check if this is a 'file://.../start-WNUM.html' bridge URL from DomTerm
     // (used to make sure browser has read permission to user's files).
-    // If so, read and process the file to construct the real url.
+    // If so, read the file to extract the real url.
     // This avoids issues with file URLs - and might be slightly faster.
-    QRegularExpression filePattern("^file://([^&#]*start.html[^&#]*)#([^:]*):([^:]*):([^:]*)$");
+    QRegularExpression filePattern("^file://(.*/start[^/]*.html)$");
     QRegularExpressionMatch fileMatch = filePattern.match(url);
     if (fileMatch.hasMatch()) {
         QString fileName = fileMatch.captured(1);
-        QString pathPart = fileMatch.captured(2);
-        QString searchPart = fileMatch.captured(3);
-        QString hashPart = fileMatch.captured(4);
         QFile fileFile(fileName);
         if (fileFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream fileStream(&fileFile);
-            QRegularExpression keyPattern("DomTerm_server_key = '([^']*)'");
-            QRegularExpression hostPattern("newloc = '([^']*)'");
-            QString keyString, hostString;
+            QRegularExpression urlPattern("location.replace.'([^']*)'.;$");
             for (;;) {
                 QString line = fileStream.readLine();
                 if (line.isNull())
                     break;
-                QRegularExpressionMatch hostMatch = hostPattern.match(line);
-                QRegularExpressionMatch keyMatch = keyPattern.match(line);
-                if (hostMatch.hasMatch())
-                    hostString = hostMatch.captured(1);
-                if (keyMatch.hasMatch())
-                    keyString = keyMatch.captured(1);
-            }
-            if (! keyString.isEmpty() && ! hostString.isEmpty()) {
-                QString u = hostString;
-                u += pathPart;
-                if (! searchPart.isEmpty()) {
-                    u += '?';
-                    u += searchPart;
+                QRegularExpressionMatch urlMatch = urlPattern.match(line);
+                if (urlMatch.hasMatch()) {
+                    xurl = urlMatch.captured(1);
                 }
-                if (! hashPart.isEmpty()) {
-                    u += '#';
-                    u += hashPart;
-                }
-                xurl = u;
             }
         }
     }
 
-    QUrlQuery fragment = QUrlQuery(xurl.fragment().replace(";", "&"));
+    QUrlQuery fragment = QUrlQuery(xurl.fragment());
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     if (! fragment.hasQueryItem("qtdocking")) {
 #if USE_KDDockWidgets

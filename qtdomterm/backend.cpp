@@ -241,9 +241,8 @@ void Backend::openNewWindow(int width, int height, const QString& position,
     manager->addDockWidgetFloating(dockw);
 #else
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
-    QString xurl = url + (url.indexOf('#') < 0 ? "#" : "&") + "qtwebengine";
     bool use_titlebar = titlebar=="system";
-    BrowserApplication::instance()->newMainWindow(xurl, width, height,
+    BrowserApplication::instance()->newMainWindow(url, width, height,
                                                   position, headless,
                                                   use_titlebar, options);
 #endif
