@@ -361,7 +361,8 @@ DomTerm.openNewWindow = function(dt, options={}) {
             else if (DomTerm._qtBackend)
                 DomTerm._qtBackend.openNewWindow(options.width, options.height,
                                                  options.position || "",
-                                                 url, !!options['headless'],
+                                                 options.url,
+                                                 !!options['headless'],
                                                  options.titlebar || "");
             else // DomTerm.versions.wry
                 ipc.postMessage("new-window "+JSON.stringify(options));
