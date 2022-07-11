@@ -67,23 +67,17 @@ function openNewWindow (url, options, headless) {
     else
         previousUrl = url;
 
-    // Check if this is a 'file://.../start.html' bridge URL from DomTerm
+    // Check if this is a 'file://.../start-WNUM.html' bridge URL from DomTerm
     // (used to make sure browser has read permission to user's files).
-    // If so, read and process the file to construct the real url.
+    // If so, read the file to extract the real url.
     // This avoids issues with file URLs - and might be slightly faster.
-    let m = url.match("^file://([^&#]*start.html[^&#]*)#([^:]*):([^:]*):([^:]*)$");
+    let m = url.match("^file://(.*/start[^/]*.html)$");
     if (m) {
-        // m == [fileName, pathPart, searchPart, hashPath]
         fs.readFile(m[1], "utf-8", (err, data) => {
-            let mkey, mhost;
-            if (! err
-                && !!(mkey = data.match(/DomTerm_server_key = '([^']*)/))
-                && !!(mhost = data.match(/newloc = '([^']*)'/))) {
-                url = mhost[1] + m[2];
-                if (m[3])
-                    url += '?' + m[3]
-                if (m[4])
-                    url += '#' + m[4]
+            if (! err) {
+                let mloc = data.match(/location.replace.'([^']*)'.;/);
+                if (mloc)
+                    url = mloc[1];
             }
             createNewWindow(url, options, headless);
         });
