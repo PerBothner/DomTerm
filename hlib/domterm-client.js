@@ -305,10 +305,11 @@ function createTitlebar(titlebarNode, tabs) {
             if (DomTerm.isElectron()) {
                 titleButtons.style.paddingRight = "68px";
             } else {
+                titleButtons.classList.add("traffic-lights");
                 titleButtons.insertAdjacentHTML('beforeend',
-                                                '<span title="Close" class="dt-titlebar-button" id="dt-titlebar-close" style="color: red">&#x2612;</span></span>'
-                                                + '<span title="Minimize" class="dt-titlebar-button" id="dt-titlebar-minimize" style="color: orange">&#x25BD;</span>'
-                                                + '<span title="Maximize" class="dt-titlebar-button" id="dt-titlebar-maximize" style="color: green">&#x25B3;</span></span>');
+                                                '<button title="Close" class="dt-titlebar-button traffic-light traffic-light-close" id="dt-titlebar-close"></button>'
+                                                + '<button title="Minimize" class="dt-titlebar-button traffic-light traffic-light-minimize" id="dt-titlebar-minimize"></button>'
+                                                + '<button title="Maximize" class="dt-titlebar-button traffic-light traffic-light-maximize" id="dt-titlebar-maximize"></button>');
             }
         } else {
             titleButtons.insertAdjacentHTML('beforeend',
@@ -433,6 +434,7 @@ function loadHandler(event) {
     //DomTerm.useIFrame = false;
     const DomTermLayout = DomTerm._domtermLayout;
     let url = location.href;
+
     let hash = location.hash.replace(/^#[;]*/, '').replace(/;/g, '&');
     let params = new URLSearchParams(hash);
     let sparams = new URLSearchParams(location.search);
@@ -502,6 +504,7 @@ function loadHandler(event) {
         }
         */
     }
+
     let bodyNode = document.getElementsByTagName("body")[0];
     if (! DomTerm.useIFrame || ! DomTerm.isInIFrame()) {
         if (DomTerm.addTitlebar) {
@@ -511,6 +514,13 @@ function loadHandler(event) {
             DomTerm.titlebarElement = titlebarNode;
             DomTerm.titlebarCurrent = titlebarNode;
             createTitlebar(titlebarNode, null);
+            if (DomTerm.isMac && ! DomTerm.isElectron()) {
+                const slink = document.createElement("link");
+                slink.rel = "stylesheet";
+                slink.text = "text/css";
+                slink.href = "hlib/macos-traffic-lights.css";
+                document.getElementsByTagName("head")[0].appendChild(slink);
+            }
         }
         if (DomTerm.createMenus && ! DomTerm.simpleLayout)
             DomTerm.createMenus();
@@ -556,6 +566,11 @@ function loadHandler(event) {
                         if (! item || ! item.component)
                             return;
                         lcontent = item.component;
+                        if (lcontent && lcontent.terminal) {
+                            handleMessageFromParent(command, args,
+                                                    lcontent.terminal);
+                            return;
+                        }
                         // ... else fall through ...
                     }
                 }
@@ -572,6 +587,18 @@ function loadHandler(event) {
                 DomTerm.sendParentMessage("set-window-title", wname, wtitle); }
         }
     }
+
+    function focusHandler(e) {
+        const focused = e.type === "focus";
+        if (window == top)
+            DomTerm.setWindowFocused(focused, false);
+        else if (DomTerm.sendParentMessage)
+            DomTerm.sendParentMessage("domterm-focus-window", focused);
+    }
+    window.addEventListener("focus", focusHandler);
+    window.addEventListener("blur", focusHandler);
+    DomTerm.setWindowFocused(true, DomTerm.isSubWindow());
+
     // non-null if we need to create a websocket but we have no Terminal
     let no_session = null;
     if ((m = location.hash.match(/view-saved=([^&;]*)/))) {
@@ -711,9 +738,8 @@ DomTerm.handleCommand = function(iframe, command, args) {
     return false;
 }
 
-function handleMessageFromParent(command, args)
+function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
 {
-    let dt = DomTerm.focusedTerm;
     switch (command) {
     case "set-focused":
         if (dt)
@@ -746,6 +772,9 @@ function handleMessageFromChild(windowNum, command, args) {
         console.log(`bad window number ${windowNum} to '${command}' command`);
     }
     switch (command) {
+    case "domterm-focus-window":
+        DomTerm.setWindowFocused(args[0], true);
+        break;
     case "focus-event":
         if (item) {
             dlayout._selectLayoutPane(item, args[0]);

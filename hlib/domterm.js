@@ -395,6 +395,23 @@ DomTerm.addLocationParams = function(url) {
     return url;
 }
 
+DomTerm.focusedTop = undefined;
+DomTerm.focusedChild = undefined;
+DomTerm.setWindowFocused = function(focused, fromChild) {
+    const oldFocused = DomTerm.focusedTop || DomTerm.focusedChild;
+    if (fromChild)
+        DomTerm.focusedChild = focused;
+    else
+        DomTerm.focusedTop = focused;
+    const newFocused = DomTerm.focusedTop || DomTerm.focusedChild;
+    if (newFocused !== oldFocused) {
+        if (DomTerm.focusedTop || DomTerm.focusedChild)
+            document.body.classList.add("focused");
+        else
+            document.body.classList.remove("focused");
+    }
+}
+
 DomTerm.showFocusedPane = function(lcontent) {
     //if (DomTerm.handlingJsMenu())
     //    return;

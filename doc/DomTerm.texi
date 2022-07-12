@@ -7327,3 +7327,6 @@ and by Taisuke Fukuno
 The @code{wcwidth} library is no longer used.
 
 The find-text facility uses Julian Kühnel's @uref{https://markjs.io/,mark.js}.
+
+Simulated ``traffic light'' window buttons for macOS are based on a
+@uref{https://gist.github.com/merqurio/4e17987b8515d44141e5952c55591869,CSS stylesheet by Gabi Maeztu}.

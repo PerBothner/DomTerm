@@ -123,10 +123,15 @@ div.show-connection-failure {
 div.show-connection-failure div.domterm-pre { white-space: pre-wrap }
 
 .dt-titlebar {
-    -webkit-app-region: drag; background-color: #dcdcdc;
+    -webkit-app-region: drag;
     display: flex; flex-direction: row; justify-content: space-between;
     -webkit-user-select: none; user-select: none; cursor: default; }
-.dt-titlebar img { height: 1rem; position: relative; top: 0.2rem; }
+.dt-titlebar,
+.dt-titlebar .dt-titlebar-prefix,
+.dt-titlebar .dt-titlebar-buttons {
+    background-color: #dcdcdc;
+}
+.dt-titlebar img { height: 16px; position: relative; top: 4px; }
 .dt-titlebar .menubar { display: inline }
 .dt-titlebar-button { -webkit-app-region: no-drag; padding: 0px 3px }
 .dt-titlebar .menubar,
@@ -137,7 +142,8 @@ div.show-connection-failure div.domterm-pre { white-space: pre-wrap }
 }
 .dt-titlebar { border-radius: 10px 10px 0px 0px; box-sizing: border-box;
                padding-left: 4px; padding-right: 2px;}
-.dt-titlebar .dt-titlebar-prefix { white-space: pre; padding-left: 2px }
+.dt-titlebar .dt-titlebar-prefix { white-space: pre; padding-left: 2px;
+                                 margin-top: -2px; }
 
 /* dt-resize-areas/dt-resize-areas are currently only used for Qt with custom titlebar. */
 div.dt-resize-areas {

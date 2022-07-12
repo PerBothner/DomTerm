@@ -1,0 +1,146 @@
+// Based on "Mac OS X Traffic Lights"
+// https://gist.github.com/merqurio/4e17987b8515d44141e5952c55591869
+
+.traffic-lights {
+    // position: absolute;
+    top: 1px;
+    left: 8px;
+}
+.traffic-lights > .traffic-light:before,
+.traffic-lights > .traffic-light:after {
+    visibility: hidden;
+}
+.traffic-lights:hover > .traffic-light:before,
+.traffic-lights:active  > .traffic-light:before,
+.traffic-lights:hover > .traffic-light:after,
+.traffic-lights:active  > .traffic-light:after {
+    visibility: visible;
+}
+
+.traffic-light {
+    border-radius: 100%;
+    padding: 0;
+    height: 12px;
+    width: 12px;
+    border: 1px solid #c0c0c0;
+    box-sizing: border-box;
+    margin-right: 3.5px;
+    background-color: #e4e4e4;
+    position: relative;
+    bottom: 5px;
+    outline: none;
+}
+.traffic-light:before, .traffic-light:after {
+    content: '';
+    position: absolute;
+    border-radius: 1px;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+}
+
+.traffic-light-close:before, .traffic-light-close:after {
+    width: 8px;
+    height: 1px;
+}
+.traffic-light-close:before {
+    transform: rotate(45deg);// translate(-0.5px, -0.5px);
+}
+.traffic-light-close:after {
+    transform: rotate(-45deg);// translate(0.5px, -0.5px);
+}
+
+body.focused .traffic-lights > .traffic-light-close,
+.traffic-lights:hover > .traffic-light-close,
+.traffic-lights:active > .traffic-light-close {
+    background-color: #ff6159; // $close-red
+}
+
+body.focused .traffic-lights > .traffic-light-close:active:hover,
+.traffic-lights:hover > .traffic-light-close:active:hover,
+.traffic-lights:active > .traffic-light-close:active:hover {
+    background-color: #bf4942; // $close-red-active
+}
+
+.traffic-light-close:before,
+.traffic-light-close:after {
+    background-color: #4d0000; // $close-red-icon
+}
+
+.traffic-light-close:active:hover:before, &:active:hover:after {
+    background-color: #190000; // $close-red-icon-active
+}
+
+body.focused .traffic-lights > .traffic-light-minimize,
+.traffic-lights:hover > .traffic-light-minimize,
+.traffic-lights:active > .traffic-light-minimize {
+    background-color: #ffbd2e; // $minimize-yellow;
+}
+body.focused .traffic-lights > .traffic-light-minimize:active:hover,
+.traffic-lights:hover > .traffic-light-minimize:active:hover,
+.traffic-lights:active > .traffic-light-minimize:active:hover {
+    background-color: #bf8e22; // $minimize-yellow-active
+}
+
+.traffic-light-minimize:before {
+    background-color: #995700; // $minimize-yellow-icon
+    width: 8px;
+    height: 1px;
+    //transform: translateY(-0.5px);
+}
+.traffic-light-minimize:active:hover:before {
+    background-color: #592800; // $minimize-yellow-icon-active
+}
+
+body.focused .traffic-lights > .traffic-light-maximize,
+.traffic-lights:hover > .traffic-light-maximize,
+.traffic-lights:active > .traffic-light-maximize,
+.traffic-light-maximize:after {
+    background-color: #28c941; // $maximize-green;
+}
+body.focused .traffic-lights > .traffic-light-maximize:active:hover,
+.traffic-lights:hover > .traffic-light-maximize:active:hover,
+.traffic-lights:active > .traffic-light-maximize:active:hover,
+.traffic-light-maximize:active:hover:after  {
+    background-color: #1d9730; // $maximize-green-active
+}
+.traffic-light-maximize:before {
+    background-color: #006500; // $maximize-green-icon;
+    width: 6px;
+    height: 6px;
+}
+.traffic-light-maximize:after {
+    width: 10px;
+    height: 2px;
+    transform: rotate(45deg);
+}
+.traffic-light-maximize:active:hover:before {
+    background-color: #003200; // $maximize-green-icon-active
+}
+/*
+// Example Styles
+body {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 100;
+}
+
+h1, h2 {
+  font-weight: 100;
+}
+
+h2 {
+  margin: 0 0 10px;
+}
+
+.example {
+  margin: 0 0 30px;
+}
+
+.container {
+  width: 300px;
+  margin: 0 auto;
+}
+
+*/

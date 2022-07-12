@@ -338,6 +338,7 @@ HLIB_FIXED_FILES_MISC="\
   hlib/goldenlayout-light-theme.css \
   hlib/goldenlayout-soda-theme.css \
   hlib/goldenlayout-translucent-theme.css \
+  hlib/macos-traffic-lights.css \
   hlib/jsMenus.css"
 case "$with_xterm_js" in
   ""|"no")
