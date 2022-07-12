@@ -287,7 +287,7 @@ public:
     id_table<struct options> pending_requests;
     std::string window_name;
     std::string description;
-    const char *main_html_filename;
+    const char *main_html_filename = nullptr;
 };
 
 class main_id_table : public id_table<tty_client> {
