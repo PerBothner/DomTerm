@@ -368,11 +368,6 @@ DomTermLayout.onLayoutClosed = function(container) {
             content.terminal.close(false, true);
         else
             DomTerm.sendChildMessage(wnum, "domterm-close", false, true);
-        if (container.parent.parent.type === "stack"
-            && container.parent.parent.contentItems.length==1
-            && container.parent.parent.parent.type === "ground") {
-            DomTerm.windowClose();
-        }
     };
     return handler;
 }

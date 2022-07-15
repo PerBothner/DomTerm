@@ -1671,7 +1671,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             enter_or_leave = 1;
         if (dstart || dend) {
             FOREACH_MAIN_WINDOW(tother) {
-                if (tother->main_window == 0 && tother != client) {
+                if (tother->main_window == 0 && tother != client && tother->out_wsi) {
                     printf_to_browser(tother, URGENT_WRAP("\033[106;%dt"),
                                       dstart ? 1 : 2);
                     lws_callback_on_writable(tother->out_wsi);

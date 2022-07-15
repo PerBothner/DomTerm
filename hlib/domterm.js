@@ -267,6 +267,9 @@ DomTerm.closeAll = function(event) {
 }
 
 DomTerm.windowClose = function() {
+    const mainTerm = DomTerm.mainTerm;
+    if (mainTerm && mainTerm._socketOpen && ! mainTerm._closeSent)
+        mainTerm.reportEvent("CLOSE-WINDOW");
     if (window.closeMainWindow) {
         window.closeMainWindow(); // hook used by --webview
     } else {

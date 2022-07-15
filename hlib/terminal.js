@@ -113,6 +113,13 @@ class Terminal {
 
     this._updateTimer = null;
 
+    // It might make sense to only allocate sstate if no_session !== "top".
+    // However, that seems likely to might break something.
+    // Instead !sstyle.styleMap can be used to detect a "top" pseudo-Terminal.
+    if (no_session !== "top") {
+        // A stack of currently active "style" strings.
+        sstate.styleMap = new Map();
+    }
     sstate.windowTitle = null; // As set by xterm escape sequence
     sstate.iconName = null;
     sstate.lastWorkingPath = null;
@@ -624,8 +631,7 @@ class Terminal {
 
         this.lineStarts = null;
         this.lineEnds = null;
-        // A stack of currently active "style" strings.
-        this.sstate.styleMap = new Map();
+        this.sstate.styleMap = null;
         // A span whose style is "correct" for sstate.styleMap.
         this._currentStyleSpan = null;
         // Used to implement clientDoesEcho handling.
@@ -1028,6 +1034,7 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
         this._detachSaveNeeded = 1;
     }
     this.reportEvent("CLOSE-WINDOW");
+    this._closeSent = true;
     this.clearVisibleState();
     this.inputFollowsOutput = false;
 
