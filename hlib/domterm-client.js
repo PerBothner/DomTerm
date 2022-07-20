@@ -854,16 +854,6 @@ function handleMessage(event) {
             DomTerm.setAutoPaging(data.args[0]);
     } else if(data.command=="save-file") {
         DomTerm.saveFile(data.args[0]);
-    } else if (data.command=="set-pid") {
-        if (iframe)
-            iframe.setAttribute("pid", data.args[0]);
-    } else if (data.command=="domterm-numbers") {
-        if (iframe) {
-            if (data.args[0] > 0)
-                iframe.setAttribute("session-number", data.args[0]);
-            if (typeof data.args[1] === "number" && data.args[1] > 0)
-                iframe.windowNumber = data.args[1];
-        }
     } else if (data.command=="set-input-mode") { // message to child
         DomTerm.setInputMode(data.args[0]);
     } else if (data.command=="request-save-file") { // message to child

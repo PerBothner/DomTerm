@@ -1270,7 +1270,7 @@ class DTParser {
                 case 106: {
                     const op = this.getParameter(1, 0);
                     DomTerm.withLayout((m) => {
-                        if (op == 1 || op == 2)
+                        if (op == 1 /*start*/ || op == 2 /*end*/)
                             m.manager.draggingInOtherWindow(op==2);
                         else if (op == 4 /*enter*/ || op == 5 /*leave*/)
                             m.dragNotificationFromServer(op==4);
@@ -1706,9 +1706,6 @@ class DTParser {
             break;
         case 31:
             term.topNode.setAttribute("pid", text);
-            if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-                DomTerm.sendParentMessage("set-pid", text);
-            }
             break;
         case 8:
             semi = text.indexOf(';');

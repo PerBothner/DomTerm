@@ -5871,9 +5871,6 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
         this.windowForSessionNumber = windowForSession;
         if (this.topNode) {
             this.topNode.setAttribute("session-number", snumber);
-            if (DomTerm.useIFrame && DomTerm.isSubWindow()) {
-                DomTerm.sendParentMessage("domterm-numbers", snumber, windowNumber);
-            }
             this.reportEvent("SESSION-NUMBER-ECHO", snumber);
             if (this.sstate.forcedSize && !this.isSecondaryWindow())
                 this.forceWidthInColumns(-1);
