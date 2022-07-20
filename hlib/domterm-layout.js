@@ -58,16 +58,6 @@ DomTermLayout.shouldSplitVertically = function(w, h) {
     return 2*w < 3*h && (h > 800 || w < 900)
 }
 
-DomTermLayout.addPane = function(paneOp, newItemConfig,
-                                 wrapper = DomTerm._oldFocusedContent)
-{
-    if (! DomTermLayout.manager)
-        DomTermLayout.initialize();
-    let oldItem = DomTermLayout._elementToLayoutItem(wrapper);
-    if (oldItem)
-        DomTermLayout.addPaneRelative(oldItem, paneOp, newItemConfig);
-}
-
 /*
   * paneOp - see enum pane_specifer in server.h.
  */

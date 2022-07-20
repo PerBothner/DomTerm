@@ -846,9 +846,6 @@ function handleMessage(event) {
         dt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
         dt.reportEvent("DETACH", "");
         dt.initializeTerminal(dt.topNode);
-    } else if (data.command=="domterm-add-pane") { // in parent from child
-        DomTerm.withLayout((m) =>
-            m.addPane(data.args[0], data.args[1], iframe));
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="do-command") {
