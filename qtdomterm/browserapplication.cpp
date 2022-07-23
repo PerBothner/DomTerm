@@ -493,6 +493,18 @@ BrowserApplication::closePane(int windowNumber)
         }
     }
 }
+
+void
+BrowserApplication::focusPane(int windowNumber)
+{
+    if (windowNumber < paneMap.size()) {
+        auto webv = paneMap[windowNumber];
+        if (webv) {
+            webv->setFocus();
+        }
+    }
+}
+
 void
 BrowserApplication::showPane(int windowNumber, bool visible)
 {

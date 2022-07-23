@@ -100,6 +100,7 @@ public:
     void adoptPane(int windowNumber, WebView*parentView);
     void setGeometry(int windowNumber, int x, int y, int width, int height);
     void closePane(int windowNumber);
+    void focusPane(int windowNumber);
     void showPane(int windowNumber, bool visible);
     void sendChildMessage(int windowNumber, const QString& command, const QString& args_json);
     void lowerOrRaisePanes(bool raise, bool allWindows, BrowserMainWindow *mainWindow);

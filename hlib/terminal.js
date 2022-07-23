@@ -1325,7 +1325,9 @@ Terminal.prototype.doFocus = function() {
 
 Terminal.prototype.maybeFocus = function(force = false) {
     let goal = this.topNode;
-    if ((force || this.hasFocus()) && document.activeElement !== goal) {
+    const active = document.activeElement;
+    if ((force || this.hasFocus())
+        && active !== goal && active != this._caretNode) {
         let sel = document.getSelection();
         let fNode = sel.focusNode;
         let fOffset = sel.focusOffset;
@@ -9660,6 +9662,7 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Shift-PageUp": "scroll-page-up",
             "Ctrl-Shift-PageDown": "scroll-page-down"
         }, DomTerm.isMac ? {
+            // FUTURE/FIXME: "Ctrl-F2": "focus-menubar",
             "Alt+Cmd+I": "toggle-developer-tools",
             "Ctrl-F2": "default-action", /* focus menubar */
             "Cmd+Up": "scroll-line-up", // iterm2 - Terminal: previous command
@@ -9673,6 +9676,7 @@ DomTerm.masterKeymapDefault =
             "Mod-C": "copy-text",
             "Mod-X": "cut-text"
         } : {
+            // FUTURE/FIXME: "Ctrl-Shift-F10": "focus-menubar", // Used by Konsole
             "Ctrl-Shift-Up": "scroll-line-up",
             "Ctrl-Shift-Down": "scroll-line-down",
             "Ctrl+Shift+I": "toggle-developer-tools",
@@ -9757,6 +9761,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap( Object.assign({
     "Alt+Shift+Right": "forward-word-extend",
     "Mod+X": "cut-text",
 } : {
+    // FUTURE/FIXME: "F10": "focus-menubar",
     "Ctrl+Left": 'backward-word',
     "Ctrl+Right": 'forward-word',
     "Ctrl+Shift+Left": "backward-word-extend",
@@ -9766,6 +9771,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap( Object.assign({
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
 DomTerm.pagingKeymapDefault = new browserKeymap({
+    // FUTURE/FIXME: "F10": "focus-menubar",
     "F11": "toggle-fullscreen",
     "Shift-F11": "toggle-fullscreen-current-window",
     "Ctrl-C": DomTerm.isMac ? "paging-interrupt" : "paging-copy-or-interrupt",

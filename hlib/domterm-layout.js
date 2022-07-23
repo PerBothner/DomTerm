@@ -192,6 +192,19 @@ DomTermLayout.setContainerTitle = function(item, title, wname) {
     });
 }
 
+DomTermLayout.focusItem = function(item, focused) {
+    let element = item?.container?.element;
+    if (element && element.firstElementChild
+        && element.firstElementChild.classList.contains("lm_content"))
+        element = element.firstElementChild;
+    let wnum;
+    if (element && element.terminal)
+        element.terminal.setFocused(focused);
+    else if ((wnum = Number(item.id)) >= 0) {
+        DomTerm.sendChildMessage(wnum, "set-focused", focused);
+    }
+};
+
 DomTermLayout._selectLayoutPane = function(component, originMode) {
     if (! DomTerm.useIFrame && ! DomTerm.usingXtermJs()) {
         let element = component.container.getElement().firstChild;
@@ -202,13 +215,13 @@ DomTermLayout._selectLayoutPane = function(component, originMode) {
         if (dt != null)
             dt.maybeFocus();
     }
-    DomTerm.focusedWindowNum = Number(component.id);
     DomTermLayout.manager.focusComponent(component);
+    DomTerm.focusedWindowItem = component;
 }
 
 DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
     const wholeStack = item.type == 'stack';
-    // True if dropped to desktop; false if poout-btoon clicked
+    // True if dropped to desktop; false if popout-button clicked
     const dragged = !!fromLayoutEvent;
     let bodyZoom = Number(window.getComputedStyle(document.body)['zoom']);
     const zoom = (window.devicePixelRatio || 1.0)
@@ -430,6 +443,27 @@ DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop
     return wrapped;
 }
 
+// This is actually called during the capture phase of a mousedown,
+// so we can clear old focus early in the process.
+function _handleLayoutClick(ev) {
+    for (let el = ev.target; el; el = el.parentElement) {
+        const cl = el.classList;
+        if (cl.contains("lm_content"))
+            return;
+        if (cl.contains("lm_header")) {
+            DomTermLayout.manager.clearComponentFocus(true);
+            return;
+        } else if (cl.contains("dt-titlebar")) {
+            if (DomTerm.focusedWindowItem) {
+                // to force focus to be updated
+                DomTermLayout.manager.clearComponentFocus(true);
+                DomTermLayout.manager.focusComponent(DomTerm.focusedWindowItem);
+            }
+            return;
+        }
+    }
+}
+
 DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfig]) {
     function activeContentItemHandler(item) {
         //if (item.componentName == "browser")
@@ -632,20 +666,31 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                                      dt.reportEvent("DRAG", "leave-window");
                              });
 
+    document.body.addEventListener("mousedown", _handleLayoutClick, true);
     let root = DomTermLayout.manager.container;
     DomTermLayout.manager.on('focus',
                              (e) => {
                                  const item = e.target;
-                                 const oldWindow = DomTerm.focusedWindowNum;
+                                 const oldItem = DomTerm.focusedWindowItem;
+                                 const newItem = item;
                                  const newWindow = Number(item.id);
-                                 if (newWindow !== oldWindow) {
-                                     if (oldWindow > 0)
-                                         DomTerm.sendChildMessage(oldWindow, "set-focused", 0);
-                                     if (newWindow > 0)
-                                         DomTerm.sendChildMessage(newWindow, "set-focused", 2);
-                                     DomTerm.focusedWindowNum = newWindow;
+                                 const widowFocused = DomTerm.focusedTop || DomTerm.focusedChild;
+                                 if (DomTerm.focusedChanged || newItem !== oldItem) {
+                                     DomTerm.focusedWindowItem = item;
+                                     DomTerm.focusedChanged = false;
+                                     if (newItem !== oldItem && oldItem)
+                                         DomTermLayout.focusItem(oldItem, 0);
+
+                                     if (newItem)
+                                         DomTermLayout.focusItem(newItem, 2);
                                  }
-                                 //DomTerm.sendChildMessage(DomTerm.focusedWindowNum, "set-focused", op);
+                                 if (newItem) {
+                                     if (DomTerm.useToolkitSubwindows)
+                                         DomTerm._qtBackend.focusPane(newWindow);
+                                     else if (item.component instanceof HTMLIFrameElement)
+                                         item.component.focus({preventScroll: true});
+                                 }
+
                                  let dt = e.target.component;
 // FIXME                                 DomTerm.focusChild(dt, 'X')
                              });

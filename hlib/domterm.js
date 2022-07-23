@@ -74,7 +74,7 @@ DomTerm._instanceCounter = 0;
 
 // The current domterm Terminal *or* domterm-wrapper iframe Element.
 DomTerm._oldFocusedContent = null;
-DomTerm.focusedWindowNum = -1;
+DomTerm.focusedWindowItem = null;
 
 DomTerm.mainTerm = null;
 
@@ -196,7 +196,8 @@ DomTerm.forEachTerminal = function(func) {
    * Note this is in the DomTerm global object, not DomTermLayout. FIXME?
  */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
-    let oldWindowNum = dt ? dt.windowNumber : DomTerm.focusedWindowNum;
+    let oldWindowNum = dt ? dt.windowNumber
+        : Number(DomTerm.focusedWindowItem?.id);
     if (! dt)
         dt = DomTerm.mainTerm;
     dt.reportEvent("OPEN-PANE",
@@ -400,7 +401,8 @@ DomTerm.addLocationParams = function(url) {
 
 DomTerm.focusedTop = undefined;
 DomTerm.focusedChild = undefined;
-DomTerm.setWindowFocused = function(focused, fromChild) {
+DomTerm.focusedChanged = true;
+DomTerm.setWindowFocused = function(focused, fromChild, windowNumber) {
     const oldFocused = DomTerm.focusedTop || DomTerm.focusedChild;
     if (fromChild)
         DomTerm.focusedChild = focused;
@@ -408,10 +410,14 @@ DomTerm.setWindowFocused = function(focused, fromChild) {
         DomTerm.focusedTop = focused;
     const newFocused = DomTerm.focusedTop || DomTerm.focusedChild;
     if (newFocused !== oldFocused) {
-        if (DomTerm.focusedTop || DomTerm.focusedChild)
+        if (newFocused) {
             document.body.classList.add("focused");
-        else
+        } else {
             document.body.classList.remove("focused");
+            if (DomTerm._layout && DomTerm._layout.manager)
+                DomTerm._layout.manager.clearComponentFocus(true);
+        }
+        DomTerm.focusedChanged = true;
     }
 }
 

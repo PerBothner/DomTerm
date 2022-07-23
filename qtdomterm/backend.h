@@ -77,6 +77,7 @@ public slots:
     void sendParentMessage(const QString& command, const QString& args_json);
     void sendChildMessage(int windowNumber, const QString& command, const QString& args_json);
     void lowerOrRaisePanes(bool raise, bool allWindows);
+    void focusPane(int windowNumber);
     void showPane(int windowNumber, bool visibility);
     void showContextMenu(const QString& contextType);
     void setSetting(const QString& key, const QString& value);

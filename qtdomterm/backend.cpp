@@ -210,6 +210,10 @@ void Backend::closePane(int windowNumber)
 {
     mainWindow()->application()->closePane(windowNumber);
 }
+void Backend::focusPane(int windowNumber)
+{
+    mainWindow()->application()->focusPane(windowNumber);
+}
 void Backend::showPane(int windowNumber, bool visible)
 {
     mainWindow()->application()->showPane(windowNumber, visible);

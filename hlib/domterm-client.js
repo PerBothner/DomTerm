@@ -514,6 +514,8 @@ function loadHandler(event) {
             DomTerm.titlebarElement = titlebarNode;
             DomTerm.titlebarCurrent = titlebarNode;
             createTitlebar(titlebarNode, null);
+            titlebarNode.addEventListener('click',
+                                          (e) => { console.log("clicked titlebar"); }, true);
             if (DomTerm.isMac && ! DomTerm.isElectron()) {
                 const slink = document.createElement("link");
                 slink.rel = "stylesheet";
@@ -590,10 +592,11 @@ function loadHandler(event) {
 
     function focusHandler(e) {
         const focused = e.type === "focus";
-        if (window == top)
-            DomTerm.setWindowFocused(focused, false);
+        const wnum = DomTerm.mainTerm.windowNumber;
+        if (! DomTerm.isSubWindow())
+            DomTerm.setWindowFocused(focused, false, wnum);
         else if (DomTerm.sendParentMessage)
-            DomTerm.sendParentMessage("domterm-focus-window", focused);
+            DomTerm.sendParentMessage("domterm-focus-window", focused, wnum);
     }
     window.addEventListener("focus", focusHandler);
     window.addEventListener("blur", focusHandler);
@@ -773,7 +776,7 @@ function handleMessageFromChild(windowNum, command, args) {
     }
     switch (command) {
     case "domterm-focus-window":
-        DomTerm.setWindowFocused(args[0], true);
+        DomTerm.setWindowFocused(args[0], true, args[1]);
         break;
     case "focus-event":
         if (item) {
