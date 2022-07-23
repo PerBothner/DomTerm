@@ -137,8 +137,6 @@ class Terminal {
     this.windowForSessionNumber = -1;
     this._settingsCounterInstance = -1;
     
-    this._deferredLinebreaksStart = -1;
-
     this.lineIdCounter = 0; // FIXME temporary debugging
 
     sstate.insertMode = false;
@@ -631,6 +629,7 @@ class Terminal {
 
         this.lineStarts = null;
         this.lineEnds = null;
+        this._deferredLinebreaksStart = -1;
         this.sstate.styleMap = null;
         // A span whose style is "correct" for sstate.styleMap.
         this._currentStyleSpan = null;
