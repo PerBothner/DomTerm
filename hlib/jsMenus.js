@@ -224,6 +224,8 @@ class Menu {
 			(this.beforeShow)(this);
 		let menuNode = document.createElement('ul');
 		menuNode.classList.add('nwjs-menu', this.type);
+		// make focusable
+		menuNode.setAttribute('contenteditable', 'true');
 		menuNode.setAttribute('role',
 				      this.type === 'menubar' ? 'menubar' : 'menu'); // ARIA recommended
 		if(submenu) menuNode.classList.add('submenu');
@@ -264,6 +266,25 @@ class Menu {
 		}
 		return false;
 	}
+
+	static _activateSubmenu(miNode) {
+		let item = miNode.jsMenuItem;
+		let wasActive = item.node.classList.contains('submenu-active');
+		Menu.showSubmenuActive(item.node, !wasActive);
+		// FIXME use select method
+		if(item.submenu) {
+			if(! wasActive) {
+				miNode.jsMenu.node.activeItemNode = item.node;
+				let rect = item.node.getBoundingClientRect();
+					item.popupSubmenu(rect.left, rect.bottom, true);
+			} else {
+				item.submenu.popdown();
+				miNode.jsMenu.node.currentSubmenu = null;
+				miNode.jsMenu.node.activeItemNode = null;
+			}
+		}
+	}
+
 	static _mouseHandler(e) {
 		e.preventDefault(); // prevent focus change on mousedown
 		let inMenubar = Menu._inMenubar(e.target);
@@ -286,28 +307,23 @@ class Menu {
 				Menu.popdownAll();
 		}
 		if ((inMenubar == menubarHandler) && miNode) {
-			let item = miNode.jsMenuItem;
 			if (e.type=="mousedown") {
-				let wasActive = item.node.classList.contains('submenu-active');
-				Menu.showSubmenuActive(item.node, !wasActive);
-				// FIXME use select method
-				if(item.submenu) {
-					if(! wasActive) {
-						miNode.jsMenu.node.activeItemNode = item.node;
-						let rect = item.node.getBoundingClientRect();
-
-						item.popupSubmenu(rect.left, rect.bottom, true);
-					} else {
-						item.submenu.popdown();
-						miNode.jsMenu.node.currentSubmenu = null;
-						miNode.jsMenu.node.activeItemNode = null;
-					}
-				}
+				Menu._activateSubmenu(miNode);
 			}
 			if (e.type=="mouseup") {
-				item.doit(miNode);
+				miNode.jsMenuItem.doit(miNode);
 			}
 		}
+	}
+
+	static focusMenubar() {
+		const items = Menu._menubar?.items;
+		if (items && items.length > 0 && items[0].node
+		    && Menu._menubarNode) {
+			Menu._activateSubmenu(items[0].node);
+			return true;
+		}
+		return false;
 	}
 
 	static setApplicationMenu(menubar, parent=document.body, before=parent.firstChild) {
