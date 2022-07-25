@@ -212,7 +212,10 @@ void Backend::closePane(int windowNumber)
 }
 void Backend::focusPane(int windowNumber)
 {
-    mainWindow()->application()->focusPane(windowNumber);
+    if (windowNumber < 0)
+        mainWindow()->webView()->setFocus();
+    else
+        mainWindow()->application()->focusPane(windowNumber);
 }
 void Backend::showPane(int windowNumber, bool visible)
 {

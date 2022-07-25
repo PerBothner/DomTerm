@@ -434,7 +434,6 @@ function loadHandler(event) {
     //DomTerm.useIFrame = false;
     const DomTermLayout = DomTerm._domtermLayout;
     let url = location.href;
-
     let hash = location.hash.replace(/^#[;]*/, '').replace(/;/g, '&');
     let params = new URLSearchParams(hash);
     let sparams = new URLSearchParams(location.search);
@@ -629,6 +628,11 @@ function loadHandler(event) {
             wparams.set("main-window", "true");
             DTerminal.connectWS(null, wparams.toString(), null, no_session);
             wparams.delete("main-window");
+            const term = DomTerm.mainTerm;
+            if (term && mwinnum >= 0) {
+                term.windowNumber = mwinnum;
+                term.connectionNumber = mwinnum;
+            }
         }
         if (mwinnum >= 0)
             DomTerm._mainWindowNumber = mwinnum;
@@ -691,7 +695,7 @@ function loadHandler(event) {
         if (topNodes.length == 0) {
             let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
             let parent = DomTerm.layoutTop;
-            if (! DomTerm.isSubWindow() && ! DomTerm.useToolkitSubwindow) {
+            if (! DomTerm.isSubWindow() && ! DomTerm.useToolkitSubwindows) {
                 const wrapper = document.createElement("div");
                 wrapper.classList.add("lm_component");
                 wrapper.style.width = "100%";
@@ -775,6 +779,10 @@ function handleMessageFromChild(windowNum, command, args) {
         console.log(`bad window number ${windowNum} to '${command}' command`);
     }
     switch (command) {
+    case "do-command":
+        if (item)
+            DomTerm.doNamedCommand(args[0], item, args[1]);
+        break;
     case "domterm-focus-window":
         DomTerm.setWindowFocused(args[0], true, args[1]);
         break;
@@ -851,8 +859,6 @@ function handleMessage(event) {
         dt.initializeTerminal(dt.topNode);
     } else if (data.command=="domterm-new-window") { // either direction
         DomTerm.openNewWindow(null, data.args[0]);
-    } else if (data.command=="do-command") {
-        DomTerm.doNamedCommand(data.args[0], iframe, data.args[1]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
     } else if(data.command=="save-file") {

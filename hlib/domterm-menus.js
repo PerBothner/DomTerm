@@ -294,6 +294,17 @@ if (DomTerm.isElectron() ) {
     });
 }
 
+DomTerm.focusMenubar = function() {
+    if (! Menu.focusMenubar)
+        return false;
+    if (DomTerm.useToolkitSubwindows)
+        DomTerm._qtBackend.focusPane(-1);
+    else if (document.activeElement instanceof HTMLIFrameElement)
+        Menu._menubarNode?.focus({preventScroll: true});
+    Menu.focusMenubar();
+    return true;
+}
+
 DomTerm.popupMenu = function(menu, options) {
     if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
         electronAccess.ipcRenderer.send("show-context-menu", menu, options);

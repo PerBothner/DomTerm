@@ -458,7 +458,7 @@ QDataStream& operator>>(QDataStream& stream, ProcessOptions& state)
 void
 BrowserApplication::registerPane(int windowNumber, WebView*pane)
 {
-    if (windowNumber >= paneMap.size()) {
+    if (windowNumber >= paneMap.size() && windowNumber >= 0) {
         paneMap.resize(windowNumber+10);
     }
     paneMap[windowNumber] = pane;
@@ -466,7 +466,7 @@ BrowserApplication::registerPane(int windowNumber, WebView*pane)
 void
 BrowserApplication::adoptPane(int windowNumber, WebView*parentView)
 {
-    if (windowNumber < paneMap.size()) {
+    if (windowNumber < paneMap.size() && windowNumber >= 0) {
         auto webv = paneMap[windowNumber];
         if (webv)
             webv->setParent((QWidget*) parentView);
@@ -475,7 +475,7 @@ BrowserApplication::adoptPane(int windowNumber, WebView*parentView)
 void
 BrowserApplication::setGeometry(int windowNumber, int x, int y, int width, int height)
 {
-    if (windowNumber < paneMap.size()) {
+    if (windowNumber < paneMap.size() && windowNumber >= 0) {
         auto webv = paneMap[windowNumber];
         if (webv)
             webv->setGeometry(x, y, width, height);
@@ -485,7 +485,7 @@ BrowserApplication::setGeometry(int windowNumber, int x, int y, int width, int h
 void
 BrowserApplication::closePane(int windowNumber)
 {
-    if (windowNumber < paneMap.size()) {
+    if (windowNumber < paneMap.size() && windowNumber >= 0) {
         auto webv = paneMap[windowNumber];
         if (webv) {
             delete webv;
@@ -497,7 +497,7 @@ BrowserApplication::closePane(int windowNumber)
 void
 BrowserApplication::focusPane(int windowNumber)
 {
-    if (windowNumber < paneMap.size()) {
+    if (windowNumber < paneMap.size() && windowNumber >= 0) {
         auto webv = paneMap[windowNumber];
         if (webv) {
             webv->setFocus();
@@ -508,7 +508,7 @@ BrowserApplication::focusPane(int windowNumber)
 void
 BrowserApplication::showPane(int windowNumber, bool visible)
 {
-    if (windowNumber < paneMap.size()) {
+    if (windowNumber < paneMap.size() && windowNumber >= 0) {
         auto webv = paneMap[windowNumber];
         if (webv) {
             webv->setVisible(visible);

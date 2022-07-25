@@ -3072,9 +3072,15 @@ Toggle full-screen mode.
 @item @kbd{Shift+@key{F11}} (@code{toggle-fullscreen-current-window})
 (Not for Electron or Qt.)
 Toggle full-screen mode for the current sub-window.
+@item @kbd{Ctrl+Shift+@key{F10}} @emph{(except macOS)} (@code{focus-menubar})
+@itemx @kbd{Ctrl+@key{F2}} @emph{(only macOS)}
+@itemx @kbd{@key{F10}} @emph{(only line-edit and view modes)}
+Open the first submenu of the menubar.
+You can use keyboard shortcuts to navigate between menu-items.
+To select an item, type @kbd{@key{Enter}}; to cancel type @kbd{@key{Escape}}.
 @item @kbd{Ctrl+Shift+@key{I}} @emph{(except macOS)} (@code{toggle-developer-tools})
 @itemx @kbd{Alt+Cmd+@key{I}} @emph{(only macOS)}
-Toogle Developer Window, useful for debugging or examining
+Toggle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
 @end table
 

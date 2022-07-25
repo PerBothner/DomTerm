@@ -36,8 +36,7 @@ function showMessage(title, message) {
     popup.innerHTML = msg;
     //For some unknown reason, selections work if we use topNode,
     //not not if we use layoutTop or body.
-    //let parent = DomTerm.layoutTop || document.body;
-    let parent = DomTerm.focusedTerm.topNode;
+    let parent = DomTerm.layoutTop || document.body;
     parent.appendChild(popup);
     let oldX = 50, oldY = 50;
     popup.style.left = oldX + 'px';

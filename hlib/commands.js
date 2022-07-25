@@ -44,7 +44,7 @@ cmd('reset-terminal-soft',
         return true;
     });
 cmd('close-window',
-    function(dt, key) {
+    function(item, key) {
         DomTerm.closeAll(null);
         return true;
     }, {
@@ -159,7 +159,7 @@ cmd('enter-mux-mode',
         return true;
     });
 cmd('toggle-menubar',
-    function(dt, key) {
+    function(item, key) {
         if (DomTerm.toggleMenubar)
             DomTerm.toggleMenubar();
         return true;
@@ -574,26 +574,29 @@ cmd('insert-char',
         return true;
     });
 
-function popoutTab(dt, wholeStack)
+cmd('focus-menubar',
+    function(item, keyName) {
+        console.log("focus-menubar subw:"+DomTerm.isSubWindow());
+        return DomTerm.focusMenubar();
+    }, {
+        context: "parent"
+    });
+
+function popoutTab(pane, wholeStack)
 {
-    if (! dt || ! DomTerm._layout)
-        return false;
-    let content = dt instanceof Terminal ? dt.topNode : dt;
-    let pane = DomTerm._layout._elementToLayoutItem(content);
-    if (! pane) return false;
     DomTerm._layout.popoutWindow(wholeStack ? pane.parent : pane, null);
     return true;
 }
 
 cmd('popout-tab',
-    function(dt, keyName) {
-        return popoutTab(dt, false);
+    function(item, keyName) {
+        return popoutTab(item, false);
     }, {
         context: "parent"
     });
 cmd('popout-tabset',
-    function(dt, keyName) {
-        return popoutTab(dt, true);
+    function(item, keyName) {
+        return popoutTab(item, true);
     }, {
         context: "parent"
     });
@@ -618,14 +621,14 @@ cmd('open-domterm-homepage',
         return true;
     });
 cmd('show-about-message',
-    function(dt, keyName) {
+    function(item, keyName) {
         showAboutMessage();
         return true;
     }, {
         context: "parent"
     });
 cmd('toggle-developer-tools',
-    function(dt, keyName) {
+    function(item, keyName) {
         let toggleTools =  window._dt_toggleDeveloperTools;
         if (!toggleTools)
             return "do-default";

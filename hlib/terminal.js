@@ -9644,6 +9644,7 @@ DomTerm.masterKeymapDefault =
         Object.assign({
             "F7": "toggle-paging-mode", // actually toogle view-paused-mode
             "Shift-F7": "enter-paging-mode",
+            // FUTURE/FIXME: "Shift-F10": "context-menu", // Used by Konsole, Windows
             "F11": "toggle-fullscreen",
             "Shift-F11": "toggle-fullscreen-current-window",
             "Ctrl+Insert": "copy-text",
@@ -9662,9 +9663,8 @@ DomTerm.masterKeymapDefault =
             "Ctrl-Shift-PageUp": "scroll-page-up",
             "Ctrl-Shift-PageDown": "scroll-page-down"
         }, DomTerm.isMac ? {
-            // FUTURE/FIXME: "Ctrl-F2": "focus-menubar",
             "Alt+Cmd+I": "toggle-developer-tools",
-            "Ctrl-F2": "default-action", /* focus menubar */
+            "Ctrl+F2": "default-action", /* focus menubar */
             "Cmd+Up": "scroll-line-up", // iterm2 - Terminal: previous command
             "Cmd-Down": "scroll-line-down", // iterm2 - Terminal: next command
             "Shift+PageUp": "scroll-page-up", // iterm2
@@ -9676,7 +9676,9 @@ DomTerm.masterKeymapDefault =
             "Mod-C": "copy-text",
             "Mod-X": "cut-text"
         } : {
-            // FUTURE/FIXME: "Ctrl-Shift-F10": "focus-menubar", // Used by Konsole
+            "Ctrl-Shift-F10": "focus-menubar", // Used by Konsole
+            // "ContextMenu":  "context-menu",
+            // "Ctrl-ContextMenu": "context-menu",
             "Ctrl-Shift-Up": "scroll-line-up",
             "Ctrl-Shift-Down": "scroll-line-down",
             "Ctrl+Shift+I": "toggle-developer-tools",
@@ -9761,7 +9763,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap( Object.assign({
     "Alt+Shift+Right": "forward-word-extend",
     "Mod+X": "cut-text",
 } : {
-    // FUTURE/FIXME: "F10": "focus-menubar",
+    "F10": "focus-menubar",
     "Ctrl+Left": 'backward-word',
     "Ctrl+Right": 'forward-word',
     "Ctrl+Shift+Left": "backward-word-extend",
@@ -9771,7 +9773,7 @@ DomTerm.lineEditKeymapDefault = new browserKeymap( Object.assign({
 DomTerm.lineEditKeymap = DomTerm.lineEditKeymapDefault;
 
 DomTerm.pagingKeymapDefault = new browserKeymap({
-    // FUTURE/FIXME: "F10": "focus-menubar",
+    "F10": "focus-menubar",
     "F11": "toggle-fullscreen",
     "Shift-F11": "toggle-fullscreen-current-window",
     "Ctrl-C": DomTerm.isMac ? "paging-interrupt" : "paging-copy-or-interrupt",
@@ -9872,12 +9874,12 @@ DomTerm.dispatchTerminalMessage = function(command, ...args) {
     return false;
 }
 
-DomTerm.doNamedCommand = function(name, dt=DomTerm.focusedTerm, keyName=null) {
+DomTerm.doNamedCommand = function(name, dt_or_item=DomTerm.focusedTerm, keyName=null) {
     let command = commandMap[name];
     if (command && command.context === "parent" && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("do-command", name, keyName);
     else
-        command(dt, keyName);
+        command(dt_or_item, keyName);
 }
 
 DomTerm.handleKey = function(map, dt, keyName, event=null) {
