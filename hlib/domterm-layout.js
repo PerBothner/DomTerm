@@ -431,6 +431,7 @@ DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop
         else
             query += "&main-window=true";
         el.query = query;
+        maybeWindowName(el, new URLSearchParams(query));
         DTerminal.connectWS(null, query, el, null);
     }
     if (wrapped) {
