@@ -5080,20 +5080,26 @@ Some notes on how sessions and windows are named and identified.
 @strong{This needs to be updated.}
 Merge with @ref{Sessions and Windows} section.
 
-@subsubheading Session name
+@subsubheading Window name
 
-The session name is an optional user-specified name for a terminal session.
+The window name is an optional user-specified name for a window.
 It is recommended that this be unique, but that is not enforced.
-The session name can be specified with the @code{-session-name}
-(or @code{--sn}) option in the @code{domterm new} command.
-You can also dynamically change the session name with an escape sequence:
+The window name can be specified with the @code{--name}
+option in the @code{domterm new} command or oher command
+that creates a new window (such as @code{browse} or @code{attach}).
+You can also dynamically change the window name wirh a
+@code{set-window-name} command or an escape sequence:
 @example
-echo -en "\e]30;@var{session-name}\007"
+echo -en "\e]30;@var{window-name}\007"
 @end example
 
-It is recommended (but not required) that a session name
+It is recommended (but not required) that a window name
 have the format of an ``identifier'': The first character should be a letter,
 and the rest should be letters, digits, hyphen, or underscore.
+
+If you detach a session, the most recent window name is remembered,
+and used when if you attach a window.  Effectively, a ``session name''
+is the most recent ``window name'' for a window on the session.
 
 @subsubheading Session number
 
@@ -6135,8 +6141,8 @@ The @var{options} are ignored.  The link has @code{class="subtle plain"}.
 See @uref{https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda,this link}.
 
 @item @code{"\e]30;" @var{name} "\a"}
-Sets the ``session name'' to @var{name}, which is shown in the window title.
-Specifically sets the @code{name} attribute of the top-level
+Sets the ``window name'' to @var{name}, which is shown in the window title.
+Specifically sets the @code{window-name} attribute of the top-level
 domterm @code{<div>} node to @var{name}.  This can be used
 to enable stylesheet rules to only apply to specfic DomTerm windows.
 If an active CSS stylesheet contains:
