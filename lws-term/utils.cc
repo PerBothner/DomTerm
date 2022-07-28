@@ -387,8 +387,8 @@ url_encode(const char *in, int mode)
         while (*p) {
             int ch = *p++;
             bool ok = (ch >= '0' && ch <= '9')
-              || (ch >= 'a' && ch < 'z')
-              || (ch >= 'A' && ch < 'Z')
+              || (ch >= 'a' && ch <= 'z')
+              || (ch >= 'A' && ch <= 'Z')
               || (ch == '/') /* may depend on mode */
               || (ch == '.' || ch == '-' || ch == '_'  || ch == '*');
             if (pass == 0) {
