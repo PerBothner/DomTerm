@@ -2552,7 +2552,7 @@ display_session(struct options *options, struct pty_client *pclient,
                 sb.printf("&log-to-server=%s", log_to_server);
             }
             if (has_name) {
-                sb.printf(tclient->window_name_unique ? ";wname-unique=%s"
+                sb.printf(tclient->window_name_unique ? "&wname-unique=%s"
                           : "&wname=%s",
                           url_encode(tclient->window_name).c_str());
             }
