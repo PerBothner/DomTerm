@@ -58,6 +58,17 @@ DomTermLayout.shouldSplitVertically = function(w, h) {
     return 2*w < 3*h && (h > 800 || w < 900)
 }
 
+DomTermLayout.updateSize = function() {
+    const lm = DomTermLayout.manager;
+    if (! lm || ! lm.root.element )
+        return;
+    const element = lm.root.element;
+    const body = document.body;
+    const width = body.offsetWidth - element.offsetLeft;
+    const height = body.offsetHeight - element.offsetTop;
+    lm.setSize(width, height);
+}
+
 /*
   * paneOp - see enum pane_specifer in server.h.
  */
@@ -291,12 +302,6 @@ DomTermLayout.popinWindow = function(minifiedWindowConfig) {
 };
 */
 
-DomTermLayout.newItemConfig = {
-    type: 'component',
-    componentType: 'domterm',
-    componentState: {}
-};
-
 DomTermLayout.config = {
     settings:  { showMaximiseIcon: false,
                  reorderOnTabMenuClick: false,
@@ -403,7 +408,7 @@ DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop
                       : "&wname=")
             + cstate.windowName;
     }
-    if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 :2)
+    if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 : 2)
         || ctype === 'browser') {
         let url = cstate && cstate.url; //cstate.componentType === 'browser' ? cstate.urlconfig.url;
         if (! url) {
@@ -465,7 +470,7 @@ function _handleLayoutClick(ev) {
     }
 }
 
-DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfig]) {
+DomTermLayout.initialize = function(initialContent = null) {
     function activeContentItemHandler(item) {
         //if (item.componentName == "browser")
         //    DomTerm.setTitle(item.config.url);
@@ -473,11 +478,26 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     }
 
     let top = DomTerm.layoutTop || document.body;
+    let before = DomTerm.layoutBefore === undefined ? top.firstChild : DomTerm.layoutBefore;
     let lcontent = DomTerm._oldFocusedContent;
-
+    if (initialContent == null) {
+        let newConfig;
+        const term = lcontent && lcontent.terminal;
+        if (term && term.topNode) {
+            newConfig = DomTerm._initialLayoutConfig;
+        } else {
+            newConfig = {
+                type: 'component',
+                componentType: 'domterm',
+                componentState: {}
+            };
+        }
+        initialContent = [ newConfig ];
+    }
     let lparent = lcontent && lcontent.parentElement;
     const config = Object.assign({}, DomTermLayout.config, { content: initialContent });
-    DomTermLayout.manager = new GoldenLayout(config, top);
+    const lmanager = new GoldenLayout(config, top, before);
+    DomTermLayout.manager = lmanager;
     let lastContainer = null;
 
     DomTermLayout.manager.createContainerElement = (manager, config) => {
@@ -485,7 +505,8 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             return undefined;
         }
         let element;
-        if (lparent && lparent.classList.contains("lm_component")) {
+        if (lparent && lparent.classList.contains("domterm-wrapper")) {
+            lparent.classList.add("lm_component");
             element = lparent;
             lparent = null;
         } else {
@@ -520,6 +541,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
             let e = DomTerm._oldFocusedContent;
             name = (e && (e.layoutTitle || e.getAttribute("name")))
                 || DomTerm.freshName();
+            wrapped.paneNumber = DomTermLayout._newPaneNumber();
             lcontent.layoutTitle = undefined;
             lcontent = null;
         } else {
@@ -593,6 +615,22 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
     }
 
     DomTermLayout.manager.init(); // ??
+    if (top == document.body) {
+        DomTerm._contentSetSize = function(w, h) {
+            lmanager.setSize(w, h);
+        };
+        const lelement = lmanager.root.element;
+        DomTerm._contentElement = lelement;
+        lmanager.containerWidthAndHeight = () => {
+            // compare DomTerm.updateSizeFromBody
+            const body = document.body;
+            return {
+                width: body.offsetWidth - lelement.offsetLeft,
+                height: body.offsetHeight - lelement.offsetTop,
+            }
+        };
+        DomTerm.updateSizeFromBody();
+    }
     DomTermLayout.manager.on('activeContentItemChanged',
                              activeContentItemHandler);
     DomTermLayout.manager.on('stateChanged',
@@ -629,6 +667,7 @@ DomTermLayout.initialize = function(initialContent = [DomTermLayout.newItemConfi
                                          createTitlebar(DomTerm.titlebarElement, null);
                                      }
                                      DomTermLayout.singleStack = singleStack;
+                                     DomTerm.updateSizeFromBody();
                                  }
                              });
     DomTermLayout.manager.on('dragstart',

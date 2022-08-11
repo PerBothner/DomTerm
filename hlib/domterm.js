@@ -81,7 +81,7 @@ DomTerm.mainTerm = null;
 /** The <body>, or a node below the menubar if using jsMenus. */
 DomTerm.layoutTop = null; // document.body is null until loaded
 
-DomTerm.withLayout = function(callback, err = undefined) {
+DomTerm.withLayout = function(callback, initIfNeeded = false, err = undefined) {
     const path = './domterm-layout.js';
     if (DomTerm._layout)
         callback(DomTerm._layout);
@@ -89,6 +89,8 @@ DomTerm.withLayout = function(callback, err = undefined) {
         .then(mod => {
             const dl = mod.DomTermLayout;
             DomTerm._layout = dl;
+            if (initIfNeeded && ! dl.manager)
+                dl.initialize();
             callback(dl);
         }, err || ((e)=> {
             console.log(`import '${path}'${e.lineNumber ? ` (line:${e.lineNumber})` : ""} failed: ${e}`);
@@ -196,7 +198,7 @@ DomTerm.forEachTerminal = function(func) {
    * Note this is in the DomTerm global object, not DomTermLayout. FIXME?
  */
 DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
-    let oldWindowNum = dt ? dt.windowNumber
+    let oldWindowNum = dt ? dt.topNode?.windowNumber
         : Number(DomTerm.focusedWindowItem?.id);
     if (! dt)
         dt = DomTerm.mainTerm;
@@ -264,7 +266,8 @@ DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
 }
 
 DomTerm.closeAll = function(event) {
-    DomTerm._layout.manager.root.destroy();
+    if (DomTerm._layout && DomTerm._layout.manager)
+        DomTerm._layout.manager.root.destroy();
 }
 
 DomTerm.windowClose = function() {
@@ -508,6 +511,26 @@ DomTerm.makeIFrameWrapper = function(location, mode='T',
     }
     return ifr;
 }
+
+// Either element/iframe/wrapper (if no LayoutManager);
+// or the root element of the LayoutManager;
+DomTerm._contentElement = null;
+DomTerm._contentSetSize = function(w, h) {
+    const st = DomTerm._contentElement.style;
+    st.width = `${w}px`;
+    st.height = `${h}px`;
+}
+DomTerm.updateSizeFromBody = function() {
+    const element = DomTerm._contentElement;
+    if (element) {
+        const body = document.body;
+        const width = body.offsetWidth - element.offsetLeft;
+        const height = body.offsetHeight - element.offsetTop;
+        //lm.setSize(width, height);
+        DomTerm._contentSetSize(width, height);
+    }
+};
+
 DomTerm.handlingJsMenu = function() {
     return typeof Menu !== "undefined" && Menu._topmostMenu;
 };

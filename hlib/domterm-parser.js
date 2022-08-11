@@ -1274,7 +1274,7 @@ class DTParser {
                             m.manager.draggingInOtherWindow(op==2);
                         else if (op == 4 /*enter*/ || op == 5 /*leave*/)
                             m.dragNotificationFromServer(op==4);
-                    });
+                    }, true);
                     break;
                     }
                 }
@@ -2207,7 +2207,7 @@ class DTParser {
                         let oldItem = m._numberToLayoutItem(wnum);
                         if (oldItem)
                             m.addPaneRelative(oldItem, paneOp, options);
-                    });
+                    }, true);
                 }
             } catch (e) {
                 term.log("bad new-pane request (" + e + "): " +JSON.stringify(text));

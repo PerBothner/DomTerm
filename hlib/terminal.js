@@ -126,14 +126,6 @@ class Terminal {
     sstate.sessionNumber = -1;
     //sstate.paneNumber = -1;
 
-    // the local window number.
-    // Normally same as connectionNumber, except when remoting over ssh.
-    // When remoting over ssh, this is the local server's connection number.
-    this.windowNumber = -1;
-    // connection number for (application, possibly-remote) process
-    // When remoting over ssh, this is the remote server's connection number.
-    this.connectionNumber = -1;
-
     this.windowForSessionNumber = -1;
     this._settingsCounterInstance = -1;
     
@@ -1020,6 +1012,7 @@ DomTerm.closeFromEof = function(dt) {
 
 // detach is true, false, or "export"
 Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
+    const wnumber = this.topNode?.windowNumber;
     this.historySave();
     if (detach) {
         if (detach !== "export") // handled by "dragExported" handler
@@ -1037,7 +1030,6 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
     this.clearVisibleState();
     this.inputFollowsOutput = false;
 
-    const wnumber = this.windowNumber;
     if (DomTerm.useIFrame && DomTerm.isInIFrame())
         DomTerm.sendParentMessage("layout-close", fromLayoutEvent);
     else if (DomTerm._layout && wnumber >= 0) {
@@ -1248,8 +1240,8 @@ DomTerm.focusedTerm = null; // used if !useIFrame
 // (if 2 - also request low-level focus)
 // Runs in terminal's frame
 Terminal.prototype.setFocused = function(focused) {
-    if (! this._rulerNode || DomTerm.handlingJsMenu()) // skip if _initializeDomTerm not called
-        return;
+    if (! this._rulerNode || DomTerm.handlingJsMenu() || ! this.topNode)
+        return;  // skip if _initializeDomTerm not called
     let classList = this.topNode.classList;
     let wasFocused = classList.contains("domterm-active");
     const changeFocused = wasFocused !== (focused > 0);
@@ -1274,8 +1266,11 @@ DomTerm.selectNextPane = function(forwards) {
     if (DomTerm.useIFrame && DomTerm.isSubWindow()) {
         DomTerm.sendParentMessage("domterm-next-pane", forwards);
     }
-    else if (this.windowNumber >= 0)
-        DomTerm.withLayout((m) => m.selectNextPane(forwards, this.windowNumber));
+    else {
+        const wnum = this.topNode?.windowNumber;
+        if (wnum >= 0)
+            DomTerm.withLayout((m) => m.selectNextPane(forwards, wnum), true);
+    }
 };
 
 // originMode can be one of (should simplify):
@@ -3880,8 +3875,8 @@ DomTerm.displayMiscInfo = function(dt, show) {
             contents += " session #"+sessionNumber;
         if (dt.sstate.disconnected)
             contents += " disconnected";
-        else if (dt.windowNumber >= 0) {
-            contents += " window:"+dt.windowNumber;
+        else if (dt.topNode && dt.topNode.windowNumber >= 0) {
+            contents += " window:"+dt.topNode.windowNumber;
             if (dt.isSecondaryWindow())
                 contents += " (secondary)";
             else if (dt.isPrimaryWindow())
@@ -5850,23 +5845,12 @@ DomTerm.handleLinkRef = function(href, textContent, dt=DomTerm.focusedTerm) {
     }
 };
 
-// Set the "session name" which is the "session-name" attribute of the toplevel div. FIXME
-// It can be used in stylesheets as well as the window title.
-Terminal.prototype.setSessionName = function(title) {
-    this.setWindowTitle(title, 30);
-}
-
 Terminal.prototype.setSessionNumber = function(kind, snumber,
                                                windowForSession, windowNumber) {
     let unique = kind != 0;
-    if (kind == 2) {
-        this.windowNumber = windowNumber; // UNUSED?
-    } else {
+    if (kind !== 2) {
         const mainWindowForce = this.topNode == null;
         this.sstate.sessionNumber = snumber || -1;
-        if (this.windowNumber < 0 || mainWindowForce)
-            this.windowNumber = windowNumber; // UNUSED?
-        this.connectionNumber = windowNumber;
         if (DomTerm._mainWindowNumber < 0 || mainWindowForce)
             DomTerm._mainWindowNumber = windowNumber;
         this.windowForSessionNumber = windowForSession;
@@ -5892,7 +5876,7 @@ Terminal.prototype.getWindowTitle = function() {
 Terminal.prototype.getWindowName = function() {
     var sname = this.topNode.getAttribute("window-name");
     let snumber = this.sstate.sessionNumber;
-    let wnumber = this.windowNumber;
+    let wnumber = this.topNode?.windowNumber;
     if (! sname) {
         let rhost = this.getRemoteHostUser();
         sname  = "DomTerm";

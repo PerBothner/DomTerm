@@ -434,7 +434,7 @@ function loadHandler(event) {
     //DomTerm.useIFrame = false;
     const DomTermLayout = DomTerm._domtermLayout;
     let url = location.href;
-    let hash = location.hash.replace(/^#[;]*/, '').replace(/;/g, '&');
+    let hash = location.hash.replace(/^#/, '');
     let params = new URLSearchParams(hash);
     let sparams = new URLSearchParams(location.search);
     DomTerm.mainSearchParams = params;
@@ -527,25 +527,12 @@ function loadHandler(event) {
             DomTerm.createMenus();
         resizeTitlebar(DomTerm.titlebarElement);
     }
-    let bodyChild = bodyNode.firstElementChild;
-    if (bodyChild) {
-        let bodyClassList = bodyChild.classList;
-        if (bodyClassList.contains('dt-titlebar') || bodyClassList.contains('nwjs-menu')) {
-            let wrapTopNode = document.createElement('div');
-            wrapTopNode.setAttribute("class", "below-menubar");
-            bodyNode.appendChild(wrapTopNode);
-            if (DomTerm._savedMenubarParent === bodyNode
-                && DomTerm._savedMenubarBefore === null)
-                DomTerm._savedMenubarBefore = wrapTopNode;
-            DomTerm.layoutTop = wrapTopNode;
-        }
-    }
     m = location.hash.match(/open=([^&;]*)/);
     const open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded)
         DomTerm.useIFrame = 2;
 
-    let layoutInitAlways = true; //DomTerm.useIFrame == 2;
+    let layoutInitAlways = DomTerm.useIFrame == 2 || DomTerm.addTitlebar;
     if (DomTerm.useIFrame || layoutInitAlways) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
@@ -591,7 +578,7 @@ function loadHandler(event) {
 
     function focusHandler(e) {
         const focused = e.type === "focus";
-        const wnum = DomTerm.mainTerm.windowNumber;
+        const wnum = DomTerm._mainWindowNumber;
         if (! DomTerm.isSubWindow())
             DomTerm.setWindowFocused(focused, false, wnum);
         else if (DomTerm.sendParentMessage)
@@ -599,6 +586,15 @@ function loadHandler(event) {
     }
     window.addEventListener("focus", focusHandler);
     window.addEventListener("blur", focusHandler);
+    let resizeTimeoutId = undefined;
+    window.addEventListener("resize",
+                            (ev) => {
+                                if (resizeTimeoutId !== undefined)
+                                    clearTimeout(resizeTimeoutId);
+                                resizeTimeoutId = setTimeout(() => {
+                                    DomTerm.updateSizeFromBody();
+                                }, 100);
+                            },  { passive: true });
     DomTerm.setWindowFocused(true, DomTerm.isSubWindow());
 
     // non-null if we need to create a websocket but we have no Terminal
@@ -628,11 +624,6 @@ function loadHandler(event) {
             wparams.set("main-window", "true");
             DTerminal.connectWS(null, wparams.toString(), null, no_session);
             wparams.delete("main-window");
-            const term = DomTerm.mainTerm;
-            if (term && mwinnum >= 0) {
-                term.windowNumber = mwinnum;
-                term.connectionNumber = mwinnum;
-            }
         }
         if (mwinnum >= 0)
             DomTerm._mainWindowNumber = mwinnum;
@@ -648,58 +639,47 @@ function loadHandler(event) {
             paneParams.set(pname, pvalue);
     }
     DomTerm.mainLocationParams = paneParams.toString();
-    /*
-    const windowConfigKey = sparams.get("gl-window");
-    if (windowConfigKey) {
-        const windowConfigStr = localStorage.getItem(windowConfigKey);
-        if (windowConfigStr === null) {
-            throw new Error('Null gl-window Config');
-        }
-        localStorage.removeItem(windowConfigKey);
-        const minifiedWindowConfig = JSON.parse(windowConfigStr);
-        DomTerm.withLayout((m) => {
-            m.popinWindow(minifiedWindowConfig);
-        });
-        return;
-    }
-    */
-    let topNodes = [];
+    const lastBodyChild = document.body.lastChild;
+    DomTerm.layoutBefore = null;
     if (open_encoded) {
         DomTerm.withLayout((m) => m.initSaved(JSON.parse(open_encoded)));
-    } else if (layoutInitAlways && ! DomTerm.isSubWindow()) {
-        const cstate = { windowNumber: mwinnum };
-        if (snum)
-            cstate.sessionNumber = snum;
-        const wnameUnique = params.get("wname-unique");
-        const wname = params.get("wname") || wnameUnique;
-        if (wname) {
-            cstate.windowName = wname;
-            cstate.windowNameUnique = !!wnameUnique;
-        }
-        cstate.windowName = wname;
-        let ctype = 'domterm';
-        if (browse_param) {
-            cstate.url = browse_param;
-            ctype = "browser";
-        }
-        const config = { type: 'component',
-                         componentType: ctype,
-                         componentState: cstate };
-        DomTerm.withLayout((m) => { m.initialize([config]); });
     } else if (DomTerm.loadDomTerm) { // used by electron-nodepty
         DomTerm.loadDomTerm();
     } else {
+        let query = hash; // location.hash ? location.hash.substring(1).replace(/;/g, '&') : null;
+        if (! DomTerm.isSubWindow()) {
+            const cstate = { windowNumber: mwinnum };
+            if (snum)
+                cstate.sessionNumber = snum;
+            const wnameUnique = params.get("wname-unique");
+            const wname = params.get("wname") || wnameUnique;
+            if (wname) {
+                cstate.windowName = wname;
+                cstate.windowNameUnique = !!wnameUnique;
+            }
+            let ctype = 'domterm';
+            if (browse_param) {
+                cstate.url = browse_param;
+                ctype = "browser";
+            }
+            const config = { type: 'component',
+                             componentType: ctype,
+                             componentState: cstate };
+            DomTerm._initialLayoutConfig = config;
+        }
+        let topNodes = [];
         topNodes = document.getElementsByClassName("domterm");
         if (topNodes.length == 0)
             topNodes = document.getElementsByClassName("domterm-wrapper");
-        if (topNodes.length == 0) {
+        if (layoutInitAlways && ! DomTerm.isSubWindow()) {
+            DomTerm.withLayout((m) => { m.initialize([DomTerm._initialLayoutConfig]); });
+        } else if (topNodes.length == 0) {
             let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
             let parent = DomTerm.layoutTop;
+            // only needed if we might use DnD setDragImage
             if (! DomTerm.isSubWindow() && ! DomTerm.useToolkitSubwindows) {
                 const wrapper = document.createElement("div");
-                wrapper.classList.add("lm_component");
-                wrapper.style.width = "100%";
-                wrapper.style.height = "100%";
+                wrapper.classList.add("domterm-wrapper");
                 parent.appendChild(wrapper);
                 parent = wrapper;
             }
@@ -720,10 +700,12 @@ function loadHandler(event) {
                 DomTerm.mainLocationParams = paneParams.toString();
             } else {
                 el = DomTerm.makeElement(name, parent);
+                query += "&main-window=true";
             }
             topNodes = [ el ];
+            DomTerm._contentElement = el;
+            DomTerm.updateSizeFromBody();
         }
-        let query = hash; // location.hash ? location.hash.substring(1).replace(/;/g, '&') : null;
         if (location.search.search(/wait/) >= 0) {
         } else if (location.hash == "#ajax" || ! window.WebSocket) {
             DomTerm.usingAjax = true;
@@ -736,7 +718,9 @@ function loadHandler(event) {
                 maybeWindowName(top);
             }
         }
+        DomTerm.layoutBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
     }
+    DomTerm._savedMenubarBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
     if (!DomTerm.inAtomFlag)
         location.hash = "";
 }
