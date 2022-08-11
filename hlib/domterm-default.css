@@ -140,7 +140,7 @@ div.domterm span[caret="underline"][std="caret"], div.domterm span[caret="blinki
 div.domterm span[caret="bar"][std="caret"], div.domterm span[caret="blinking-bar"][std="caret"] {
     border-right: 2px solid red; margin-right: -2px;
 }
-span[caret]:focus-visible {
+span[std="caret"]:focus {
     outline: none; /* disable browser's default focus style */
 }
 
