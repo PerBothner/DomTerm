@@ -441,8 +441,20 @@ tty_client::set_window_name(const std::string& name)
     this->window_name_unique = unique;
     if (! same_name) {
         this->window_name = name;
-        if (pclient)
-            pclient->saved_window_name = name;
+        if (pclient) {
+            std::string sname;
+            FOREACH_WSCLIENT(w, pclient) {
+                std::string& other_name = w->window_name;
+                if (! other_name.empty()) {
+                    if (! sname.empty() && sname != other_name) {
+                        sname = ""; // conficting window names - no session name
+                        break;
+                    }
+                    sname = other_name;
+                }
+            }
+            pclient->session_name = sname;
+        }
     }
 
     if (! unique || ! old_unique) {
@@ -699,9 +711,7 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     pclient->first_tclient = NULL;
     pclient->last_tclient_ptr = &pclient->first_tclient;
     pclient->recent_tclient = NULL;
-    pclient->session_name = NULL;
     pclient->timed_out = false;
-    pclient->session_name_unique = false;
     pclient->is_ssh_pclient = false;
     pclient->has_primary_window = false;
     pclient->pty_wsi = outwsi;
@@ -845,6 +855,19 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
     return NULL;
 }
 
+void
+pty_client::start_if_needed(struct options *opts)
+{
+    if (this->cmd) {
+        run_command(this->cmd, this->argv,
+                    opts ? opts->cwd : NULL,
+                    opts ? opts->env : NULL,
+                    this);
+            free((void*)this->cmd); this->cmd = NULL;
+            free((void*)this->argv); this->argv = NULL;
+    }
+}
+
 struct pty_client *
 find_session(const char *specifier)
 {
@@ -867,8 +890,7 @@ find_session(const char *specifier)
         int match = 0;
         if (pclient->pid == pid && pid != -1)
             return pclient;
-        if (pclient->session_name != NULL
-            && strcmp(specifier, pclient->session_name) == 0)
+        if (specifier == pclient->session_name)
             match = 1;
         else if ((specifier[0] == '#' || specifier[0] == ':'/*DEPRECATED*/)
                  && strtol(specifier+1, NULL, 10) == pclient->session_number)
@@ -1330,14 +1352,9 @@ reportEvent(const char *name, char *data, size_t dlen,
             lws_callback_on_writable(client->out_wsi);
             return true;
         }
-        if (pclient->cmd) {
-            run_command(pclient->cmd, pclient->argv,
-                        options ? options->cwd : NULL,
-                        options ? options->env : NULL,
-                        pclient);
-            free((void*)pclient->cmd); pclient->cmd = NULL;
-            free((void*)pclient->argv); pclient->argv = NULL;
-        }
+        // We normally defer fork+exec until after the window is active
+        // so the command can start with the correct window size.
+        pclient->start_if_needed(options);
         if (pclient->saved_window_contents != NULL
             || client->pending_requests.first())
             lws_callback_on_writable(wsi);
@@ -1439,33 +1456,6 @@ reportEvent(const char *name, char *data, size_t dlen,
         json obj = json::parse(q, nullptr, false);
         std::string str = obj.is_string() ? obj : "";
         client->set_window_name(str);
-#if 0
-        const char *kstr = str.c_str();
-        int klen = str.length();
-        char *session_name = challoc(klen+1);
-        strcpy(session_name, kstr);
-        if (pclient->session_name)
-            free(pclient->session_name);
-        pclient->session_name = session_name;
-        pclient->session_name_unique = true;
-        FOREACH_PCLIENT(p) {
-            if (p != pclient && p->session_name != NULL
-                && strcmp(session_name, p->session_name) == 0) {
-                struct pty_client *pp = p;
-                p->session_name_unique = false;
-                for (;;) {
-                    FOREACH_WSCLIENT(t, pp) {
-                        t->pty_window_update_needed = true;
-                        lws_callback_on_writable(t->out_wsi);
-                    }
-                    if (! pclient->session_name_unique || pp == pclient)
-                        break;
-                    pp = pclient;
-                }
-                pclient->session_name_unique = false;
-            }
-        }
-#endif
     } else if (strcmp(name, "SESSION-NUMBER-ECHO") == 0) {
         if (proxyMode == proxy_display_local && options) {
             set_setting(options->cmd_settings, REMOTE_SESSIONNUMBER_KEY, data);
@@ -1899,11 +1889,11 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         if (pclient && pclient->pid > 0) {
 #define FORMAT_PID_SNUMBER "\033]31;%d\007"
 #define FORMAT_SNAME "\033]30;%s\007"
-            sb.printf(pclient->session_name
-                      ? URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME)
-                      : URGENT_WRAP(FORMAT_PID_SNUMBER),
+            sb.printf(pclient->session_name.empty()
+                      ? URGENT_WRAP(FORMAT_PID_SNUMBER)
+                      : URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME),
                       pclient->pid,
-                      pclient->session_name);
+                      pclient->session_name.c_str());
         }
         if (pclient && pclient->saved_window_contents != NULL) {
             int rcount = pclient->saved_window_sent_count;
@@ -1944,7 +1934,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         client->pty_window_update_needed = false;
         int kind = proxyMode == proxy_display_local ? 2
             : ! pclient ? 0
-            : (int) pclient->session_name_unique;
+            : 1;
         sb.printf(URGENT_WRAP("\033[91;%d;%d;%d;%du"),
                   kind,
                   pclient ? pclient->session_number : 0,
@@ -2421,9 +2411,14 @@ display_session(struct options *options, struct pty_client *pclient,
     }
 #endif
     int paneOp = options->paneOp;
+    bool has_name = ! options->name_option.empty();
     if (browser_specifier != NULL && browser_specifier[0] == '-') {
       if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
           pclient->detach_count = 1;
+          if (has_name)
+              pclient->session_name = options->name_option;
+          options->browser_command = "";
+          pclient->start_if_needed(options);
           return EXIT_SUCCESS;
       }
       if (paneOp < 1 || paneOp > 13)
@@ -2431,7 +2426,6 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     struct tty_client *tclient = nullptr;
     int wnum = -1;
-    bool has_name = ! options->name_option.empty();
     struct tty_client *wclient = nullptr;
     bool top_marker = false;
     if (wkind != unknown_window) {
@@ -2482,9 +2476,9 @@ display_session(struct options *options, struct pty_client *pclient,
         }
         if (has_name) {
             tclient->set_window_name(options->name_option);
-        } else if (pclient && ! pclient->saved_window_name.empty()) {
+        } else if (pclient && ! pclient->session_name.empty()) {
             has_name = true;
-            tclient->set_window_name(pclient->saved_window_name);
+            tclient->set_window_name(pclient->session_name);
         }
         wnum = tclient->connection_number;
     }
@@ -2604,12 +2598,6 @@ int new_action(int argc, arglist_t argv,
     if (r == EXIT_FAILURE) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
-#if 0
-    else if (opts->session_name) {
-        pclient->session_name = strdup(opts->session_name);
-        opts->session_name = NULL;
-    }
-#endif
     return r;
 }
 

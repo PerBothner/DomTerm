@@ -728,8 +728,8 @@ int list_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
     FOREACH_PCLIENT(pclient)  {
         fprintf(out, "pid: %d", pclient->pid);
         fprintf(out, ", session#: %d", pclient->session_number);
-        if (pclient->session_name != NULL)
-            fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
+        if (! pclient->session_name.empty())
+            fprintf(out, ", name: %s", pclient->session_name.c_str()); // FIXME-quote?
         int nwindows = 0;
         FOREACH_WSCLIENT(tclient, pclient) { nwindows++; }
         fprintf(out, ", #windows: %d", nwindows);
@@ -804,8 +804,8 @@ static void pclient_status_info(struct pty_client *pclient, FILE *out)
             fprintf(out, "#%s", remote.c_str());
     } else
         fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
-    if (pclient->session_name != NULL)
-        fprintf(out, ", name: %s", pclient->session_name); // FIXME-quote?
+    if (! pclient->session_name.empty())
+        fprintf(out, ", name: %s", pclient->session_name.c_str()); // FIXME-quote?
     if (pclient->paused)
         fprintf(out, ", paused");
 }
@@ -850,6 +850,10 @@ static void status_by_session(FILE * out, int verbosity)
                 } else {
                     if (number >= 0) {
                         fprintf(out, "  window %d", number);
+                        if (! tclient->window_name.empty()) {
+                            fprintf(out, "=\"%s\"",
+                                    tclient->window_name.c_str());
+                        }
                         if (tclient->main_window > 0)
                             fprintf(out, " in %d", tclient->main_window);
                         fprintf(out, ":");
@@ -965,9 +969,9 @@ static void status_by_connection(FILE *out, int verbosity)
                 fprintf(out, "Detached sessions:\n");
             seen_detached = true;
             fprintf(out, "  Terminal#%d", pclient->session_number);
-            if (! pclient->saved_window_name.empty()) {
+            if (! pclient->session_name.empty()) {
                 fprintf(out, "=\"%s\"",
-                        pclient->saved_window_name.c_str());
+                        pclient->session_name.c_str());
             }
             fprintf(out, ": ");
             pclient_status_info(pclient, out);

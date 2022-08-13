@@ -135,16 +135,15 @@ enum option_name {
 class pty_client {
 public:
     int index() { return session_number; }
+    void start_if_needed(struct options *opts);
     int pid;
     int pty; // pty master
     int pty_slave;
     struct stderr_client *stderr_client;
     int session_number;
-    char *session_name;  // DEPRECATED
     int nrows, ncols;
     float pixh, pixw;
     bool timed_out : 1;
-    bool session_name_unique :1; // DEPRECATED
     bool is_ssh_pclient :1;
     bool has_primary_window :1;
     bool uses_packet_mode :1;
@@ -174,7 +173,7 @@ public:
     // (Should be minumum of saved_window_sent_count (if saved_window_contents)
     // and miniumum of confirmed_count for each tclient.)
 
-    std::string saved_window_name; // used for detached windows
+    std::string session_name;
     const char *cmd;
     argblob_t argv;
 #if REMOTE_SSH
