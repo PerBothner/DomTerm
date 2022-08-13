@@ -157,6 +157,19 @@ maybe_exit(int exit_code)
         do_exit(exit_code, false);
 }
 
+void send_exit_code(int exit_code, int cmd_socket)
+{
+    char r[2];
+    int rcount = 0;
+#if !PASS_STDFILES_UNIX_SOCKET
+    r[rcount++] = PASS_STDFILES_EXIT_CODE;
+#endif
+    r[rcount++] = exit_code;
+    if (write(cmd_socket, r, rcount) != rcount)
+        lwsl_err("write exit code %d to %d failed - %s\n",
+                 exit_code, cmd_socket, strerror(errno));
+}
+
 #if REMOTE_SSH
 void finish_request(struct options *opts, int exit_code, bool do_close)
 {
@@ -172,14 +185,7 @@ void finish_request(struct options *opts, int exit_code, bool do_close)
     }
 #endif
     if (opts->fd_cmd_socket >= 0) {
-        char r[2];
-        int rcount = 0;
-#if !PASS_STDFILES_UNIX_SOCKET
-        r[rcount++] = PASS_STDFILES_EXIT_CODE;
-#endif
-        r[rcount++] = exit_code;
-        if (write(opts->fd_cmd_socket, r, rcount) != rcount)
-            lwsl_err("write %d failed - callback_cmd %s\n", opts->fd_cmd_socket, strerror(errno));
+        send_exit_code(exit_code, opts->fd_cmd_socket);
         if (do_close) {
             close(opts->fd_cmd_socket);
             opts->fd_cmd_socket = -1;
@@ -1851,12 +1857,13 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
                 }
                 client->out_wsi = NULL;
                 maybe_daemonize();
-#if PASS_STDFILES_UNIX_SOCKET
                 if (pclient->cmd_socket >= 0) {
+                    send_exit_code(0, pclient->cmd_socket);
+#if PASS_STDFILES_UNIX_SOCKET
                     close(pclient->cmd_socket);
                     pclient->cmd_socket = -1;
-                }
 #endif
+                }
                 if (client->options) {
                     client->options->fd_in = -1;
                     client->options->fd_out = -1;
