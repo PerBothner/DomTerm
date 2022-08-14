@@ -873,12 +873,14 @@ find_session(const char *specifier)
 {
     struct pty_client *session = nullptr;
     char *pend;
-    pid_t pid = -1;
-    if (specifier[0] == '$' && specifier[1] != '\0') {
-        pid = strtol(specifier+1, &pend, 10);
+    int num = -1;
+    if ((specifier[0] == '$' || specifier[0] == ':' || specifier[0] == '#')
+        && specifier[1] != '\0') {
+        num = strtol(specifier+1, &pend, 10);
         if (*pend != '\0')
-            pid = -1;
+            num = -1;
     }
+    pid_t pid = specifier[0] == '$' ? num : -1;
     int snum = -1;
     if (specifier[0] >= '0' && specifier[1] <= '9') {
         snum = strtol(specifier, &pend, 10);
@@ -887,27 +889,36 @@ find_session(const char *specifier)
     }
 
     FOREACH_PCLIENT(pclient) {
-        int match = 0;
         if (pclient->pid == pid && pid != -1)
             return pclient;
-        if (specifier == pclient->session_name)
-            match = 1;
-        else if ((specifier[0] == '#' || specifier[0] == ':'/*DEPRECATED*/)
-                 && strtol(specifier+1, NULL, 10) == pclient->session_number)
-          match = 1;
-        else if (snum >= 0 && snum == pclient->session_number)
-          match = 1;
-        if (match) {
-          if (session != NULL)
-            return NULL; // ambiguous
-          else
-            session = pclient;
+        if (specifier == pclient->session_name
+            || (specifier[0] == '#' && num == pclient->session_number)
+            || (snum >= 0 && snum == pclient->session_number)) {
+            if (session != NULL)
+                return NULL; // ambiguous
+            else
+                session = pclient;
         }
     }
-    if (session == nullptr && snum >= 0) {
-        tty_client *tclient = tty_clients(snum);
-        if (tclient)
-            session = tclient->pclient;
+    if (session == nullptr) {
+        struct tty_client *tclient;
+        FORALL_WSCLIENT(tclient) {
+            struct pty_client *pclient = tclient->pclient;
+            if (pclient
+                && (specifier == tclient->window_name
+                    || (specifier[0] == ':'
+                        && num == tclient->connection_number))) {
+                if (session != NULL)
+                    return NULL; // ambiguous
+                else
+                    session = pclient;
+            }
+        }
+        if (snum >= 0) {
+            tty_client *tclient = tty_clients(snum);
+            if (tclient)
+                session = tclient->pclient;
+        }
     }
     return session;
 }

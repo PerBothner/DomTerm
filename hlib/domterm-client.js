@@ -350,9 +350,10 @@ function createTitlebar(titlebarNode, tabs) {
         titleNode.classList.add('dt-window-title');
         titlebarNode.appendChild(titleNode);
         titleNode.innerText = "DomTerm window";
-        DomTerm.displayWindowTitle = (wname, wtitle) => {
+        DomTerm.displayWindowTitle = (info) => {
             // optimize if (partially) unchanged - FIXME
-            titleNode.innerText = wname + (wtitle ? " " : "");
+            titleNode.innerText = DomTerm.formatWindowLabel(info);
+            const wtitle = info.windowTitle;
             if (wtitle) {
                 const tnode = DomTerm.createSpanNode("domterm-windowname", "(" + wtitle +")");
                 titleNode.appendChild(tnode);
@@ -571,8 +572,8 @@ function loadHandler(event) {
         } else {
             setupParentMessages1();
             setupParentMessages2();
-            DomTerm.displayWindowTitle = function(wname, wtitle) {
-                DomTerm.sendParentMessage("set-window-title", wname, wtitle); }
+            DomTerm.displayWindowTitle = function(info) {
+                DomTerm.sendParentMessage("set-window-title", info); }
         }
     }
 
@@ -649,8 +650,9 @@ function loadHandler(event) {
         let query = hash; // location.hash ? location.hash.substring(1).replace(/;/g, '&') : null;
         if (! DomTerm.isSubWindow()) {
             const cstate = { windowNumber: mwinnum };
-            if (snum)
-                cstate.sessionNumber = snum;
+            const snumn = snum && Number(snum);
+            if (snumn > 0)
+                cstate.sessionNumber = snumn;
             const wnameUnique = params.get("wname-unique");
             const wname = params.get("wname") || wnameUnique;
             if (wname) {
@@ -788,14 +790,14 @@ function handleMessageFromChild(windowNum, command, args) {
         break;
     case "domterm-set-title":
         if (item) {
-            dlayout.setLayoutTitle(item, args[0], args[1]);
+            dlayout.updateLayoutTitle(item, args[0]);
         }
         break;
     case "domterm-update-title":
         DomTerm.updateTitle(null, args[0]);
         break;
     case "set-window-title":
-        DomTerm.displayWindowTitle(args[0], args[1]);
+        DomTerm.displayWindowTitle(args[0]);
         break;
     case "domterm-context-menu":
         let options = args[0];

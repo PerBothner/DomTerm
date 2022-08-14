@@ -103,7 +103,6 @@ Double-width characters now really are two columns wide.
 * Edit and View modes::
 * Styling::
 * Tips and solutions::
-* Java tools::
 * Uses:: Projects using DomTerm
 * To do:: Ideas and projects for DomTerm
 * Technical documentation::
@@ -2904,11 +2903,119 @@ so this is only suitable for testing.
 @node Sessions and Windows
 @chapter Sessions and Windows
 
-DomTerm can ``multiplex'' multiple terminal emulators
-(similar to tmux or GNU Screen).
+DomTerm can ``multiplex'' multiple sub-windows,
+each containing a separate terminal emulator @dfn{session}
+or other information, such as a web browser.
+This is similar to tmux or GNU Screen.
 
-@strong{This needs to be updated.}
-We now use window names, not session names.
+This section explains these concepts in detail.
+
+@subheading Windows and connections
+
+A @dfn{window} is an area of the screen
+where you can display or interact with a session or a browser:
+Either a @dfn{top-level window} (a window or tab
+managed by a window manager or a web browser),
+or a @dfn{sub-window} (managed by DomTerm),
+which can be a @dfn{pane} or a @dfn{tab}.
+A top-level window may be split vertically and/or horizontally
+into one or more panes (or tiles),
+which can each have multiple tabs, only one of which is visible at a time,
+
+A @dfn{non-session window} displays something other than
+a DomTerm terminal session.  The @code{domterm browse} command creates
+a non-session window that displays a specified web page.
+One use of this for is viewing documentation.
+
+@subsubheading Window number
+@anchor{window number}
+Every window has a unique window number.
+Normally, when a new terminal session is created a window will
+be created with the same window number as the session number.
+However, there may be detached sessions without windows,
+and (rarely) there may be sessions that use multiple windows.
+
+A window-number can be prefixed by a @samp{:}
+when a separator is desired or for disambiguation, like @code{:2}.
+
+A remote session will have a connection number on the remote (process) end.
+The connection number is like a pseudo-window-number.
+It is unique and specific to the remote server.
+The local (display) end may have an unrelated window number.
+
+Some commands may refer to a specific top-level window.
+The @dfn{top-window-number} shown by @code{domterm status} is usually
+the number of one of its subwindows, though sometimes it might be
+the number of a deleted window.
+To refer to a top-window you don't have to use the top-window-number;
+you can use the number of any sub-window.
+You can use a prefix @samp{^} if you need to distinguish
+the top window as a whole from one of the sub-windows.
+
+A window keeps the same window number if it is dragged from
+one top-level window to another.
+This may cause the top-window-number to change.
+
+@subsubheading Window name
+
+The window name is an optional user-specified name for a window.
+It is recommended that this be unique, but that is not enforced.
+The window name can be specified with the @code{--name}
+option in the @code{domterm new} command or other command
+that creates a new window (such as @code{browse} or @code{attach}).
+You can also dynamically change the window name wirh a
+@code{set-window-name} command or an escape sequence:
+@example
+echo -en "\e]30;@var{window-name}\007"
+@end example
+
+It is recommended (but not required) that a window name
+have the format of an ``identifier'': The first character should be a letter,
+and the rest should be letters, digits, hyphen, or underscore.
+
+@subsubheading Window title and icon title
+
+The @dfn{window-title} is an application-specific string
+associated with a window.
+For a browser window, the URL is used.
+
+A terminal can sets its title dynamically
+using standard xterm escape sequences.
+They are commonly sent by shells (for example using bash's
+@code{PROMPT_COMMAND}) and may include the current directory and maybe
+other information.
+
+An application can also send an escape sequence to set an icon name.
+This is currently remembered but otherwise unused by DomTerm,
+unless no window title is set.
+
+@subsubheading Window header - label and title
+
+The window label is used in a window or tab title to visually identify a window.
+
+If the window has a window-name, that is used for the window-label.
+If the window-name is not unique, a colon and the window-number are added.
+
+If there is no window-name, a label is constructed.
+By default this contains:
+@enumerate
+@item
+A generic descriptor (like @code{DomTerm} for a terminal
+window or @code{Browser} for a browser window);
+@item
+a @samp{#} followed by the session number - but only for non-remote
+terminals and when the session number differs from the window number;
+@item
+a @samp{:} followed by the window number;
+@item
+in the case of a remote session:
+@code{@@@var{host}#@var{remote-session-number}}
+@end enumerate
+
+If there is room, the label is followed by the @var{window-title} in parenthesis.
+
+You cannot customise the window label at the time of writing,
+but it planned as a future enhancement.
 
 @subheading Sessions
 
@@ -2927,37 +3034,32 @@ If the session is not displayed in any window,
 we say it is @dfn{detached}.
 It is possible to display the same session in multiple windows.
 
-Every session has a unique integer session number.
-These numbers are unique with a domterm server:
+@subsubheading Session number
+
+Every session has an integer session number.
+These numbers are unique within a domterm server:
 If you connect to a @ref{Remote serving,remote domterm server}
 the session numbers may be different on the local and remote end.
 
-@subheading Windows and connections
+In most cases the session number will be the same
+as the window-number of a window attached to it.
+The main (non-contrived) exception if for remote sessions:
+A remote process will have a session number local to the remote server,
+and a window number local to the local (display) server.
+(The local server will also have an internal pseudo-session-number
+for the @code{ssh} client process.)
 
-A @dfn{window} is an area of the screen
-where you can display or interact with a session:
-Either a @dfn{top-level window} (a window or tab
-managed by a window manager or a web browser),
-or a @dfn{sub-window} (managed by DomTerm),
-which can be a @dfn{pane} or a @dfn{tab}.
-A top-level window may be split vertically and/or horizontally
-into one or more panes (or tiles),
-which can each have multiple tabs, only one of which is visible at a time,
+A session-number can be prefixed by a @samp{#}
+when a separator is desired or for disambiguation, like: @code{#2}.
 
-A @dfn{non-session window} displays something other than
-a DomTerm session.  The @code{domterm browse} command creates
-a non-session window that displays a specified web page.
-One use of this for is viewing documentation.
+@subsubheading Session name
 
-@anchor{window number}
-Every window has a unique window number.
-Normally, when a new terminal session is created a window will
-be created with the same window number as the session number.
-However, there may be detached sessions without windows,
-and (rarely) there may be sessions that use multiple windows.
+A session may have a name, based on the name of the window attached to it.
+If there is more than one attached window that has a name,
+and the names are not identical, then there is no session name.
 
-Also the remote server will use a proxy connection with
-a connection number that is similar to a window number.
+A detached session keeps the session name (if any) it had when detached.
+This is used as the default name when the window is attached.
 
 @subheading Managing sessions
 
@@ -2972,8 +3074,8 @@ The sub-command @code{attach} connects to an existing session,
 often a detached session.  You specify the session
 with a @ref{session-specifier}.
 
-The can detach the current session using either the
-keyboard short-cur @code{@mux-prefix d} or a menu command (Electron only).
+You can detach the current session using either the
+keyboard short-cur @code{@mux-prefix d} or a menu command.
 More precisely, it marks the current session as @var{want-to-detach},
 and closes the current window.  If there are other windows on the
 session, they remain active, but the session is detached (rather than
@@ -2984,19 +3086,26 @@ be re-created if the session is later attached.
 There is no auto-save in case of unintentional detach, such as
 network failure or a browser crash, but there are plans to implement that.
 
-@subsubheading Session specifiers
+@anchor{session-specifier}
+@subsubheading Session specifier
 
-A session specifier has one of the following forms:
+A  @dfn{session specifier} (used by the @code{domterm attach} command)
+which can be any one of the following forms:
+
 @table @asis
-@item @var{number}
-Normally a session number.
-Can also be a window (connection) number in which case the corresponding session is used.
-@item @var{session-name}
-The @var{session -name} is a user-friendly name associated with the session,
-and displaying in the tab-bar and title-bar of windows displaying the session.
-The default @var{session-name} is @samp{DomTerm:@var{session-number}}.
-@item @code{$}@var{pid}
-The @var{pid} is the process ID (an integer) of the designed session.
+@item @code{@var{session-number}}
+@itemx @code{#@var{session-number}}
+The session with the given @var{session-number}.
+@item @code{@var{window-number}}
+@itemx @code{:@var{window-number}}
+The session attached to the specified window.
+@item @code{@var{name}}
+The session whose @var{session-name} matches @var{name},
+assuming there is only one such session.
+Can also be the session (if unique)
+that is attached to a window whose @var{window-name} matches @var{name}.
+@item @code{$@var{pid}}
+The session whose process ID (an integer) matches @var{pid}.
 @end table
 
 @node Keyboard shortcuts
@@ -3905,7 +4014,9 @@ Enable or disable searching using @uref{https://developer.mozilla.org/en-US/docs
 @node Styling
 @chapter Styling
 
-The appearance of a DomTerm window is controlled by CSS stylesheets.
+A DomTerm terminal window is represented by @code{<div>} element
+that has @code{domterm} in its @code{class} attribute.
+The appearance of a window can be controlled by CSS stylesheets.
 
 You can place stylesheet rules in the @ref{Settings,@code{settings.ini}} file.
 For example:
@@ -4172,20 +4283,26 @@ to @code{style.dark=no}.
 
 @subheading Session-specific styles
 
-Each ``session'' (terminal window) has a session number
-and an optional settable session name.
-See @ref{Names and titles} for the details.
-The session number sets the @code{session-number} attribute
-in the top-level @code{<div class="domterm">} element,
-while the session name sets the @code{session-name} attribute.
+Each window has various properties (see @ref{Sessions and Windows})
+that can be used to select a specific window or group of windows.
+You can use the following attributes to set different styles for
+different windows:
+@itemize
+@item
+@code{session-number=}@var{session-number}
+@item
+@code{pid=}@var{pid}
+@item
+@code{window-name=}@var{window-name}
+(but only if the @var{window-name} has been set).
+@end itemize
 
-You can use these to set different styles for different terminal windows.
 For example:
 
 @example
 div.domterm @{ background-color: #FFE @}
 div.domterm[session-number="1"] @{ background-color: #FEE @}
-div.domterm[session-name="compile"] @{ background-color: #EEF @}
+div.domterm[window-name="compile"] @{ background-color: #EEF @}
 div.input-line @{ background-color: inherit @}
 @end example
 
@@ -4205,7 +4322,7 @@ for how they may support some features differently.
 * Shell prompts::  Shell prompts and tricks
 * drop down:: Use as a drop-down terminal
 * Python tips::
-* Names and titles::
+* Java tools:: Java tools (old notes)
 @end menu
 
 @node Tips
@@ -5073,106 +5190,8 @@ area (@code{overwrite=False}) or re-use the most recent previous one
 call to @code{show} and @code{True} for subsequent calls.
 @end deffn
 
-@node Names and titles
-@section Names and titles
-
-Some notes on how sessions and windows are named and identified.
-@strong{This needs to be updated.}
-Merge with @ref{Sessions and Windows} section.
-
-@subsubheading Window name
-
-The window name is an optional user-specified name for a window.
-It is recommended that this be unique, but that is not enforced.
-The window name can be specified with the @code{--name}
-option in the @code{domterm new} command or oher command
-that creates a new window (such as @code{browse} or @code{attach}).
-You can also dynamically change the window name wirh a
-@code{set-window-name} command or an escape sequence:
-@example
-echo -en "\e]30;@var{window-name}\007"
-@end example
-
-It is recommended (but not required) that a window name
-have the format of an ``identifier'': The first character should be a letter,
-and the rest should be letters, digits, hyphen, or underscore.
-
-If you detach a session, the most recent window name is remembered,
-and used when if you attach a window.  Effectively, a ``session name''
-is the most recent ``window name'' for a window on the session.
-
-@subsubheading Session number
-
-The session number is a positive integer associated with a terminal
-session.  It is unique within a domterm server.
-
-@anchor{session-specifier}
-@subsubheading Session specifier
-
-The @code{domterm attach} command requires a @dfn{session specifier},
-which can be any one of:
-@itemize
-@item
-A session name.
-@item
-A colon followed by a session number.
-@item
-A process number (pid).
-@end itemize
-
-@subsubheading DomTerm element attributes
-
-Each DomTerm instance in a browser has a corresponding
-@code{<div>} element which has @code{domterm} in its
-@code{class} attribute.
-The @code{<div class="domterm">} element also has the following
-identifying attributes, which can be used for session-specific @ref{Styling,styling}:
-@itemize
-@item
-@code{session-number=}@var{session-number}
-@item
-@code{pid=}@var{pid}
-@item
-@code{session-name=}@var{session-name}
-(but only if the @var{session-name} has been set).
-@end itemize
-
-@subsubheading Window name
-
-The window name is a short name displayed for each terminal
-in the window title or tab.
-It is constructed from up to 3 parts:
-@enumerate
-@item
-The session name, or @code{DomTerm} if the session name is not specified.
-@item
-If the session name is unset or not unique,
-we add a colon and the session number.
-@item
-If there is more than one window attached to the same terminal,
-then we add a period followed by window number.
-@end enumerate
-
-@subsubheading Window title and icon title
-
-The window and icon titles are strings sent by the application.
-The escape sequences are those of xterm.
-They are commonly sent by shells (for example using bash's
-@code{PROMPT_COMMAND}) and may include the current directory and maybe
-other information.
-Most terminal emulators include the window title string
-in the window title bar.
-
-@subsubheading Window and tab title bars
-
-When tabs are used, DomTerm displays the window name in each tab.
-For active tabs, DomTerm displays both the window name (normally the session name)
-and the window title (typically the current directory).
-This information may be shown in the main window title bar
-as well as the currently active tab.
-
 @node Java tools
-@chapter Java tools
+@section Java tools (old notes)
 
 The @code{domterm.jar} by default includes various useful Java classes
 (in addition

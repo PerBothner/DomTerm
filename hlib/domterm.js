@@ -168,6 +168,35 @@ DomTerm.isLineBlock = function(node) {
         || (tag == "DIV" && node.classList.contains("domterm-pre"));
 }
 
+DomTerm.formatWindowLabel = function(info) {
+    let label;
+    if (info.windowName) {
+        label = info.windowName
+        if (! info.windowNameUnique
+            && info.windowNumber !== undefined)
+            label += ":" + info.windowNumber;
+    } else {
+        label = info.url ? "Browser" : "DomTerm";
+        const wnum = info.windowNumber;
+        let rhost = info.remoteHostUser;
+        const snum = info.sessionNumber;
+        if (wnum !== undefined) {
+            if (! rhost && snum !== undefined && snum !== wnum)
+                label += "#" + snum;
+            label += ":" + wnum;
+        }
+        if (rhost) {
+            let at = rhost.indexOf('@');
+            if (at >= 0)
+                rhost = rhost.substring(at+1);
+            label += "@" + rhost;
+            if (snum)
+                label += "#" + snum;
+        }
+    }
+    return label;
+};
+
 DomTerm.displayWindowTitle = function(name, title) {
     let str = name || "";
     if (title) {
@@ -218,7 +247,7 @@ DomTerm.updateContentTitle = function(content, options) {
 }
 
 DomTerm.updateTitle = function(content, options) {
-    if (DomTerm.useIFrame && DomTerm.isInIFrame())
+    if (DomTerm.useIFrame && DomTerm.isSubWindow())
         DomTerm.sendParentMessage("domterm-update-title", options);
     else {
         const dl = DomTerm._layout;
@@ -243,13 +272,13 @@ DomTerm.updateTitle = function(content, options) {
             if (options.windowNameUnique !== undefined)
                 cstate.windowNameUnique = options.windowNameUnique;
             if (dl && item) {
-                dl.updateLayoutTitle(item, null);
+                dl.updateLayoutTitle(item, cstate);
             };
         }
         if (content) {
             DomTerm.updateContentTitle(content, options); // FIXME
             if (dl && item) {
-                dl.updateLayoutTitle(item, content);
+                dl.updateLayoutTitle(item);
             };
         }
     }

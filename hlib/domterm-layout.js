@@ -162,32 +162,11 @@ DomTermLayout._numberToLayoutItem = function(wnum) {
     return DomTermLayout.manager.findFirstComponentItemById(`${wnum}`);
 }
 
-DomTermLayout.setLayoutTitle = function(item, title, wtitle) {
-    const cstate = item.toConfig().componentState;
-    if (cstate) {
-        if (wtitle !== undefined)
-            cstate.windowTitle = wtitle;
-        //if (title)
-    }
-    DomTermLayout.updateLayoutTitle(item, null, cstate);
-}
-
-DomTermLayout.updateLayoutTitle = function(item, content,
+DomTermLayout.updateLayoutTitle = function(item,
                                            cstate = item?.toConfig().componentState) {
-    let title = cstate.windowName;
-    if (title) {
-        if (! cstate.windowNameUnique
-            && ctstate.windowNumber !== undefined)
-            title += ":" + cstate.windowNumber;
-    } else {
-        title = "DomTerm"; // FIXME
-        if (cstate.windowNumber !== undefined)
-            title += ":" + cstate.windowNumber;
-    }
-    DomTermLayout.setContainerTitle(item, title, cstate.windowTitle);
-}
+    let title = DomTerm.formatWindowLabel(cstate);
+    const wname = cstate.windowTitle || cstate.url;
 
-DomTermLayout.setContainerTitle = function(item, title, wname) {
     item.setTitle(title);
     item.setTitleRenderer((container, el, width, flags) => {
         // Redundant if we use innerHTML/innerText:
@@ -537,12 +516,16 @@ DomTermLayout.initialize = function(initialContent = null) {
             DomTerm.mainTerm.reportEvent("WINDOW-MOVED", wnum);
             wrapped = undefined;
         } else if (lcontent != null && type === "domterm") { // UNUSED?
+            const wtitle = ! componentConfig.windowTitle
+                  && DomTerm.focusedTerm?.getWindowTitle();
+            if (wtitle)
+                componentConfig.windowTitle = wtitle;
             wrapped = lcontent;
             let e = DomTerm._oldFocusedContent;
             name = (e && (e.layoutTitle || e.getAttribute("name")))
                 || DomTerm.freshName();
             wrapped.paneNumber = DomTermLayout._newPaneNumber();
-            lcontent.layoutTitle = undefined;
+            lcontent.layoutTitle = undefined; // ???
             lcontent = null;
         } else {
             wrapped = DomTermLayout._initTerminal(componentConfig, type, container.element);
@@ -556,7 +539,7 @@ DomTermLayout.initialize = function(initialContent = null) {
             if (typeof wnum === "number")
                 wrapped.windowNumber = wnum;
         }
-        DomTermLayout.updateLayoutTitle(container.parent, null, componentConfig);
+        DomTermLayout.updateLayoutTitle(container.parent, componentConfig);
 
         container.parent.id = `${wnum}`;
         container.stateRequestEvent = () => { return componentConfig; }

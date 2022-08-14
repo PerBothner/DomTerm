@@ -1247,7 +1247,7 @@ Terminal.prototype.setFocused = function(focused) {
     const changeFocused = wasFocused !== (focused > 0);
     if (focused > 0) {
         classList.add("domterm-active");
-        DomTerm.displayWindowTitle(this.getWindowName(), this.getWindowTitle());
+        DomTerm.displayWindowTitle(this.getTitleInfo());
         if (! this.isSavedSession()) {
             this.reportEvent("FOCUSED", ""); // to server
             if (changeFocused)
@@ -5862,7 +5862,11 @@ Terminal.prototype.setSessionNumber = function(kind, snumber,
         }
     }
     if (this.topNode) {
-        this.topNode.windowNumber = windowNumber;
+        // When remoting over ssh, windowNumber is actually the
+        // connection-number of the remote server.
+        // Don't use that as the windowNumber.
+        if (! (this.topNode.windowNumber > 0))
+            this.topNode.windowNumber = windowNumber;
         this.updateWindowTitle();
     }
 }
@@ -5872,34 +5876,6 @@ Terminal.prototype.getWindowTitle = function() {
         : this.sstate.iconName ? this.sstate.iconName
         : "";
 }
-
-Terminal.prototype.getWindowName = function() {
-    var sname = this.topNode.getAttribute("window-name");
-    let snumber = this.sstate.sessionNumber;
-    let wnumber = this.topNode?.windowNumber;
-    if (! sname) {
-        let rhost = this.getRemoteHostUser();
-        sname  = "DomTerm";
-        if (rhost) {
-            if (wnumber)
-                sname += "-"+wnumber;
-            let at = rhost.indexOf('@');
-            if (at >= 0)
-                rhost = rhost.substring(at+1);
-            if (! rhost)
-                host = "";
-            sname += "=" + rhost + "#" + snumber;
-        } else {
-            if (snumber)
-                sname += "#"+snumber;
-        }
-        if (wnumber && snumber != wnumber)
-            sname += "-"+wnumber;
-    }
-    else if (! this.topNode.windowNameUnique)
-        sname = sname + ":" + wnumber;
-    return sname;
-};
 
 Terminal.prototype.setWindowTitle = function(title, option) {
     switch (option) {
@@ -5923,16 +5899,39 @@ Terminal.prototype.setWindowTitle = function(title, option) {
     this.updateWindowTitle();
 };
 
+Terminal.prototype.getTitleInfo = function() {
+    let wtitle = this.getWindowTitle();
+    const info = { };
+    if (wtitle)
+        info.windowTitle = wtitle;
+    const snumber = this.sstate.sessionNumber;
+    const wnumber = this.topNode?.windowNumber;
+    const wname = this.topNode.getAttribute("window-name");
+    if (wtitle)
+        info.windowTitle = wtitle;
+    if (snumber)
+        info.sessionNumber = snumber;
+    if (wnumber)
+        info.windowNumber = wnumber;
+    if (wname) {
+        info.windowName = wname;
+        info.windowNameUnique = this.topNode.windowNameUnique;
+    }
+    const rhost = this.getRemoteHostUser();
+    if (rhost)
+        info.remoteHostUser = rhost;
+    return info;
+}
+
 Terminal.prototype.updateWindowTitle = function() {
-    let sname = this.getWindowName();
-    let wname = this.getWindowTitle();
+    const info = this.getTitleInfo();
     const layout = DomTerm._layout;
     if (DomTerm.isSubWindow())
-        DomTerm.sendParentMessage("domterm-set-title", sname, wname);
+        DomTerm.sendParentMessage("domterm-set-title", info);
     else if (layout && layout.manager)
-        layout.setLayoutTitle(layout._elementToLayoutItem(this.topNode), sname, wname);
+        layout.updateLayoutTitle(layout._elementToLayoutItem(this.topNode), info);
     if (this.hasFocus())
-        DomTerm.displayWindowTitle(sname, wname);
+        DomTerm.displayWindowTitle(info);
 }
 
 Terminal.prototype.resetCharsets = function() {

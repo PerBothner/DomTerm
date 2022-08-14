@@ -2098,13 +2098,7 @@ class DTParser {
             case 'set-window-name':
                 if (typeof options.windowName === "string"
                     && typeof options.windowNumber == "number") {
-                    const content = term.topNode || DomTerm._oldFocusedContent;
-                    term.sstate.windowName = options.windowName; // redundant?
-                    DomTerm.updateTitle(content, options);
-                    if (options.windowNumber === term.topNode.windowNumber) {
-                        content.setAttribute("window-name", options.windowName);
-                        term.topNode.windowNameUnique = options.windowNameUnique;
-                    }
+                    DomTerm.updateTitle(null/*content*/, options);
                 }
                 break;
             case 'close':

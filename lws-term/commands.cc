@@ -1328,7 +1328,6 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
                       struct options *opts)
 {
     const char *session_specifier = nullptr;
-    const char *window_specifier = nullptr;
     const char *close_response = nullptr;
     optind = 1;
     opterr = 0;
