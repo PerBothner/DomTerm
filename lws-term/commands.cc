@@ -36,9 +36,11 @@ bool check_window_option(const std::string& option,
         size_t sep = option.find_first_of(sep_chars, start);
         std::string s = option.substr(start, sep);
         size_t slen = s.length();
-        bool top_marker = slen > 0 && s[slen-1] == '^';
+        bool top_marker = slen > 0 && s[0] == '^';
         if (top_marker && slen > 1)
-            s.pop_back();
+            s.erase(0, 1);
+        char num_marker =
+            slen > 1 && (s[0] == '#' || s[0] == ':') ? s[0] : '\0';
         bool matched = false;
         if (s != "") {
             for (struct tty_client *tclient  = TCLIENT_FIRST;
@@ -51,21 +53,20 @@ bool check_window_option(const std::string& option,
         }
         if (! matched && s != "") {
             tty_client *mclient = nullptr;
-            if (s == "all" || s == "all-top" || s == "*" || s == "*") {
+            if (s == "*") {
                 for (struct tty_client *tclient  = TCLIENT_FIRST;
                      tclient != NULL; tclient = TCLIENT_NEXT(tclient)) {
-                    if (tclient->main_window == 0 || s == "all" || s == "*") {
+                    if (tclient->main_window == 0 || s == "*") {
                         insert_window(windows, tclient, top_marker);
                     }
                 }
-            } else if (s == "current" || s == "top" || s == "current-top"
-                       || s == "." || s == "^" || s == ".^") {
+            } else if (s == "." || s == "^" || s == "^.") {
                 if (focused_client == nullptr) {
                     printf_error(opts, "domterm %s: no current window", cmd);
                     return false;
                 }
                 struct tty_client *main;
-                if (s == "current" || s == "."
+                if (s == "."
                     || focused_client->main_window == 0
                     || (main = tty_clients(focused_client->main_window)) == nullptr)
                     mclient = focused_client;
@@ -74,15 +75,27 @@ bool check_window_option(const std::string& option,
             } else {
                 char *endptr;
                 const char *s_c = s.c_str();
-                long wl = strtol(s_c, &endptr, 10);
+                long wl = strtol(s_c + (num_marker ? 1 : 0), &endptr, 10);
                 int w = (int) wl;
-                if (endptr[0] || w != wl ||
-                    ! tty_clients.valid_index(w)) {
-                    printf_error(opts, "domterm %s: invalid window number '%s'",
-                                 cmd, s_c);
-                    return false;
+                if (num_marker == '#') {
+                    if (endptr[0] || w != wl ||
+                        ! pty_clients.valid_index(w)) {
+                        printf_error(opts, "domterm %s: invalid session number '%s'",
+                                     cmd, s_c);
+                        return false;
+                    }
+                    FOREACH_WSCLIENT(win, pty_clients[w]) {
+                        insert_window(windows, win, top_marker);
+                    }
+                } else {
+                    if (endptr[0] || w != wl ||
+                        ! tty_clients.valid_index(w)) {
+                        printf_error(opts, "domterm %s: invalid window number '%s'",
+                                     cmd, s_c);
+                        return false;
+                    }
+                    mclient = tty_clients[w];
                 }
-                mclient = tty_clients[w];
             }
             if (mclient)
                 insert_window(windows, mclient, top_marker);

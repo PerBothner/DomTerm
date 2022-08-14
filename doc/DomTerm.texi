@@ -1186,7 +1186,7 @@ or have other special uses.
 @itemx @code{--right}[@code{=}@var{window}]
 @itemx @code{--above}[@code{=}@var{window}]
 @itemx @code{--below}[@code{=}@var{window}]
-Split @var{window} (a @ref{window-specifier-option, window specifier}) in two,
+Split @var{window} (a @ref{window specifier option, window specifier}) in two,
 and create a new pane (sub-window) to the left/right/above/below the old one.
 If @var{window} is not specified, use the current window.
 
@@ -1243,7 +1243,7 @@ with various parameters that are interpreted by JavaScript in the browser.
 usually over an @code{ssh} connection.
 @end table
 
-@anchor{window-specifier-option}
+@anchor{window specifier option}
 @subheading Window specifier option
 
 Certain commands affect an existing window.
@@ -1261,35 +1261,7 @@ domterm -w 2,3 minimize
 Specify which windows are affected by the current command.
 @end table
 
-A @var{window-specifier} can be one of:
-@table @asis
-@item @code{@var{window-number}}
-The window with the specified @ref{window number,@var{window-number}}.
-@item @code{@var{window-name}}
-A window-name, as specified by a @code{--name} option
-or a @code{set-window-name} command.
-The @var{window-name} is a user-friendly name associated with the window,
-and displaying in the tab-bar and title-bar.
-(If the @var{window-name} is not unique,
-it is displayed as @samp{@var{window-name}:@var{window-number}}.)
-The default @var{window-name} is @samp{DomTerm:@var{window-number}}.
-@item @code{.}
-@itemx @code{current}
-The ``current'' window, which is the one that most recently has received focus.
-@item @code{^}
-@itemx @code{top}
-The top-level window containing the current window.
-@item @code{*}
-@itemx @code{all}
-All windows, including sub-windows.
-@item @code{*^}
-@itemx @code{all-top}
-All top-level sub-windows.
-@item @var{window-specifier}@code{^}
-The top-level window(s) containing the specified windows.
-@item @var{window-specifier}@code{,}@var{window-specifier}@var{...}
-A comma-separated list of window specifiers.
-@end table
+The general format for window specifiers is @ref{window specifier,here}.
 
 @subheading Miscellaneous commands
 
@@ -1534,7 +1506,7 @@ A @var{send-option} can be:
 @item @code{-s} @var{session-specifier}
 Send to the session as specified by the @ref{session-specifier,@var{session-specifier}}.
 @item @code{-w} @var{window-specifier}
-Send to the session attached to the @ref{window-specifier-option, specified window}.
+Send to the session attached to the @ref{window specifier option, specified window}.
 @item @code{-C}@var{[response]}
 Wait until connection is closed.
 Only a single window is allowed in this case.
@@ -1543,7 +1515,7 @@ command, but avoids a race condition.
 @end table
 
 @item @b{@code{capture}} @var{capture-option}...
-Get the text contents of the @ref{window-specifier-option, specified window}
+Get the text contents of the @ref{window specifier option, specified window}
 (defaulting to the @code{current} window).
 The text is printed on standard output.
 This command is useful for testing.
@@ -1604,7 +1576,7 @@ If after @var{time} seconds none of the other @var{events} have occurred,
 return (with a non-zero exit code indicating failure).
 If @var{response} is non-empty, write it (plus a newline) to standard error.
 @item @code{-w} @var{window-specifier}
-A @ref{window-specifier-option,window specifier} for the affected window.
+A @ref{window specifier option,window specifier} for the affected window.
 @end table
 
 @end table
@@ -1728,7 +1700,7 @@ This option is the default unless @code{--port} is specified.
 
 @subheading Working with styles
 
-All of these work with a @ref{window-specifier-option, window-specifier option},
+All of these work with a @ref{window specifier option, window-specifier option},
 defaulting to the @code{current} window.
 
 @table @asis
@@ -2927,8 +2899,8 @@ a DomTerm terminal session.  The @code{domterm browse} command creates
 a non-session window that displays a specified web page.
 One use of this for is viewing documentation.
 
-@subsubheading Window number
 @anchor{window number}
+@subsubheading Window number
 Every window has a unique window number.
 Normally, when a new terminal session is created a window will
 be created with the same window number as the session number.
@@ -2956,6 +2928,7 @@ A window keeps the same window number if it is dragged from
 one top-level window to another.
 This may cause the top-window-number to change.
 
+@anchor{window name}
 @subsubheading Window name
 
 The window name is an optional user-specified name for a window.
@@ -2972,6 +2945,33 @@ echo -en "\e]30;@var{window-name}\007"
 It is recommended (but not required) that a window name
 have the format of an ``identifier'': The first character should be a letter,
 and the rest should be letters, digits, hyphen, or underscore.
+
+@anchor{window specifier}
+@subsubheading Window specifier
+
+A @var{window-specifier} is used
+in @ref{window specifier option,various commands}, and can be one of:
+@table @asis
+@item @code{@var{window-number}}
+@itemx @code{:@var{window-number}}
+The window with the specified @ref{window number,@var{window-number}}.
+@item @code{#@var{session-number}}
+The window(s) attached to the specified session.
+@item @code{@var{window-name}}
+The window(s) with the specified @ref{window name,window-name}.
+@item @code{.}
+The ``current'' window, which is the one that most recently has received focus.
+@item @code{^}
+The top-level window containing the current window.
+@item @code{*}
+All windows, including sub-windows.
+@item @code{^*}
+All top-level sub-windows.
+@item @code{^}@var{window-specifier}
+The top-level window(s) containing the specified windows.
+@item @var{window-specifier}@code{,}@var{window-specifier}@var{...}
+A comma-separated list of window specifiers.
+@end table
 
 @subsubheading Window title and icon title
 
