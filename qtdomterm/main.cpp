@@ -143,7 +143,7 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
         else
           name = (char*)"domterm";
         nargv[0] = name;
-        nargv[1] = (char*)"--qtdomterm";
+        nargv[1] = (char*)"-Bqt";
         for (int i = 1; i < argc; i++)
           nargv[i+1] = argv[i];
         nargv[argc+1] = NULL;
