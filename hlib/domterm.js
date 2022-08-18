@@ -197,8 +197,9 @@ DomTerm.formatWindowLabel = function(info) {
     return label;
 };
 
-DomTerm.displayWindowTitle = function(name, title) {
-    let str = name || "";
+DomTerm.displayWindowTitle = function(info) {
+    let str = DomTerm.formatWindowLabel(info) || "";
+    const title = info.windowTitle;
     if (title) {
         if (str)
             str += " ";
