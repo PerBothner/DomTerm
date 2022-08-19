@@ -225,13 +225,20 @@ DomTerm.forEachTerminal = function(func) {
 }
 
 /* Can be called in either DomTerm sub-window or layout-manager context.
-   * Note this is in the DomTerm global object, not DomTermLayout. FIXME?
+   * Note this is in the DomTerm global object, not DomTermLayout.
  */
-DomTerm.newPane = function(paneOp, options = null, dt = DomTerm.focusedTerm) {
-    let oldWindowNum = dt ? dt.topNode?.windowNumber
-        : Number(DomTerm.focusedWindowItem?.id);
+DomTerm.newPane = function(paneOp, options = null, dt) {
+    let oldWindowNum;
     if (! dt)
+        dt = DomTerm.focusedTerm || DomTerm.mainTerm;
+    if (dt instanceof window.DTerminal) {
+        oldWindowNum = dt.topNode?.windowNumber;
+    } else if (dt) { // ComponentItem
+        oldWindowNum = Number(dt.id);
         dt = DomTerm.mainTerm;
+    }
+    if (typeof oldWindowNum !== "number")
+        return; // ERROR
     dt.reportEvent("OPEN-PANE",
                    `${paneOp},${oldWindowNum},${options ? JSON.stringify(options) : "{}"}`);
 }
@@ -379,39 +386,37 @@ DomTerm._extractGeometryOptions = function(options={}) {
 }
 
 DomTerm.openNewWindow = function(dt, options={}) {
-    if (! dt)
+    if (! (dt instanceof window.DTerminal))
         dt = DomTerm.mainTerm;
     options = DomTerm._extractGeometryOptions(options);
     let url = options.url;
+    console.log("openNewWindow dt:"+(typeof dt==="object" ? dt.constructor?.name : dt)+" url:"+url);
     if ((DomTerm.isElectron() || DomTerm.versions.wry
          || DomTerm._qtBackend)
-        && (url || ! dt)) {
-        if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
-            DomTerm.sendParentMessage("domterm-new-window", options);
-        } else {
-            if (! url)
-                options.url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
-            else if (url.charAt(0) == '#')
-                options.url = DomTerm.mainLocation + url + "&server-key=" + DomTerm.server_key;
-            if (DomTerm.isElectron())
-                electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
-            else if (DomTerm._qtBackend)
-                DomTerm._qtBackend.openNewWindow(options.width, options.height,
-                                                 options.position || "",
-                                                 options.url,
-                                                 !!options['headless'],
-                                                 options.titlebar || "");
-            else // DomTerm.versions.wry
-                ipc.postMessage("new-window "+JSON.stringify(options));
-        }
+        && url) {
+        if (url.charAt(0) == '#')
+            options.url = DomTerm.mainLocation + url + "&server-key=" + DomTerm.server_key;
+        if (DomTerm.isElectron())
+            electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
+        else if (DomTerm._qtBackend)
+            DomTerm._qtBackend.openNewWindow(options.width, options.height,
+                                             options.position || "",
+                                             options.url,
+                                             !!options['headless'],
+                                             options.titlebar || "");
+        else // DomTerm.versions.wry
+            ipc.postMessage("new-window "+JSON.stringify(options));
     } else {
         if (dt) {
             dt.reportEvent("OPEN-WINDOW", JSON.stringify(options));
         } else {
+            // should never happen
             let width = options.width;
             let height = options.height;
             if (! url)
                 url = DomTerm.mainLocation + "#" + DomTerm.mainLocationParams;
+            else if (url.charAt(0) == '#')
+                options.url = DomTerm.mainLocation + url + "&server-key=" + DomTerm.server_key;
             let wopt = "";
             if (width > 0 && height > 0)
                 wopt = "width="+width+",height="+height;

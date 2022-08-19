@@ -4,6 +4,11 @@ import { showAboutMessage } from './domterm-overlays.js';
 
 const commandMap = new Object();
 
+// properties.context - whether to run in child or parent or either
+// context=="terminal": run in child, requires a Terminal
+// context=="parent: run in parent, usually with a ComponentItem
+//    (unless DomTermLayout has not been loaded and initialized)
+
 function cmd(name, action, properties=null) {
     if (properties)
         Object.assign(action, properties);
@@ -17,31 +22,43 @@ cmd('input-mode-line',
     function(dt, key) {
         DomTerm.setInputMode(108, dt);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('input-mode-char',
     function(dt, key) {
         DomTerm.setInputMode(99, dt);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('input-mode-auto',
     function(dt, key) {
         DomTerm.setInputMode(97, dt);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('input-mode-cycle',
     function(dt, key) {
         dt.nextInputMode();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('clear-buffer',
     function(dt, key) {
         dt.reportEvent("ECHO-URGENT", JSON.stringify("\x1b[7J"));
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('reset-terminal-soft',
     function(dt, key) {
         dt.reportEvent("ECHO-URGENT", JSON.stringify("\x1b[!p"));
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('close-window',
     function(item, key) {
@@ -50,20 +67,32 @@ cmd('close-window',
     }, {
         context: "parent"
     });
-cmd('new-window',
+cmd('new-window', // FIXME needed
     function(dt, key) {
         DomTerm.openNewWindow(dt);
         return true;
     });
+function selectNextPane(forwards) {
+    const dl = DomTerm._layout;
+    const current = DomTerm.focusedWindowItem;
+    if (dl && current && current.id) {
+        dl.selectNextPane(forwards, Number(current.id));
+    }
+    DomTerm.selectNextPane(forwards);
+}
 cmd('select-pane-previous',
     function(dt, key) {
-        DomTerm.selectNextPane(false);
+        selectNextPane(false);
         return true;
+    }, {
+        context: "parent"
     });
 cmd('select-pane-next',
     function(dt, key) {
-        DomTerm.selectNextPane(true);
+        selectNextPane(true);
         return true;
+    }, {
+        context: "parent"
     });
 cmd('new-tab',
     function(dt, key) {
@@ -100,56 +129,76 @@ cmd('scroll-top',
         dt._disableScrollOnOutput = true;
         dt._pageTop();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('scroll-bottom',
     function(dt, key) {
         dt._pageBottom();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('scroll-line-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
         dt._scrollLine(- dt.numericArgumentGet(1));
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('scroll-line-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
         dt._scrollLine(dt.numericArgumentGet(1));
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('scroll-page-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
         dt._scrollPage(- dt.numericArgumentGet(1));
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('scroll-page-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
         dt._scrollPage(dt.numericArgumentGet(1));
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('scroll-percentage',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
         dt._pageScrollAbsolute(dt.numericArgumentGet(50));
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('up-page',
     function(dt, key) {
         dt._pageUpOrDown(dt.numericArgumentGet(1), true);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('down-page-or-continue',
     function(dt, key) {
         dt._pageUpOrDown(dt.numericArgumentGet(1), false, false);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('down-page-or-unpause',
     function(dt, key) {
         dt._pageUpOrDown(dt.numericArgumentGet(1), false, true);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('enter-mux-mode',
     function(dt, key) {
@@ -157,6 +206,8 @@ cmd('enter-mux-mode',
             return false;
         dt.enterMuxMode();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('toggle-menubar',
     function(item, key) {
@@ -170,13 +221,17 @@ cmd('toggle-fullscreen',
     function(dt, key) {
         DomTerm.windowOp('fullscreen', 'toggle');
         return true;
+    }, {
+        context: "parent"
     });
 cmd('exit-fullscreen',
     function(dt, key) {
         DomTerm.windowOp('fullscreen', 'off');
         return true;
+    }, {
+        context: "parent"
     });
-cmd('toggle-fullscreen-current-window',
+cmd('toggle-fullscreen-current-window', // FIXME needs work
     function(dt, key) {
         let requesting = ! screenfull.isFullscreen;
         if (! requesting) {
@@ -196,6 +251,8 @@ cmd('paging-keypress',
     function(dt, key) {
         dt._displayInputModeWithTimeout(dt._modeInfo("P"));
         return true;
+    }, {
+        context: "terminal"
     });
 // should rename but note existing toogle-pause-mode
 cmd('toggle-paging-mode', // toggle view-paused
@@ -206,12 +263,16 @@ cmd('toggle-paging-mode', // toggle view-paused
         } else
             dt._enterPaging(true);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('enter-paging-mode',
     function(dt, key) {
         if (! dt._currentlyPagingOrPaused())
             dt._enterPaging(false);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('exit-paging-mode',
     function(dt, key) {
@@ -226,6 +287,8 @@ cmd('exit-paging-mode',
             }
         }
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('exit-line-mode',
     function(dt, key) {
@@ -234,6 +297,8 @@ cmd('exit-line-mode',
             return true
         }
         return false;
+    }, {
+        context: "terminal"
     });
 cmd('exit-pager-disable-auto',
     function(dt, key) {
@@ -244,6 +309,8 @@ cmd('exit-pager-disable-auto',
             dt._enableScroll();
         };
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('toggle-auto-pager',
     function(dt, key) {
@@ -255,6 +322,8 @@ cmd('toggle-auto-pager',
             DomTerm.setAutoPaging("toggle", dt);
         DomTerm.autoPagerChanged(dt, dt._autoPaging);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('toggle-pause-mode',
     function(dt, key) {
@@ -265,23 +334,33 @@ cmd('toggle-pause-mode',
         }
         dt._enterPaging(oldMode==1);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('save-as-html',
     function(dt, key) {
         DomTerm.doSaveAs(dt);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('paste-text',
     function(dt, key) {
         return DomTerm.doPaste(dt);
+    }, {
+        context: "terminal"
     });
 cmd('copy-text',
     function(dt, key) {
         return DomTerm.valueToClipboard(Terminal._selectionValue(false));
+    }, {
+        context: "terminal"
     });
 cmd('copy-html',
     function(dt, key) {
         return DomTerm.valueToClipboard(Terminal._selectionValue(true));
+    }, {
+        context: "terminal"
     });
 cmd('copy-in-context',
     function(dt, key) {
@@ -290,6 +369,8 @@ cmd('copy-in-context',
             DomTerm.valueToClipboard(contentValue);
         else
             DomTerm.doCopy();
+    }, {
+        context: "terminal"
     });
 cmd('copy-text-or-interrupt',
     function(dt, key) {
@@ -297,6 +378,8 @@ cmd('copy-text-or-interrupt',
             ? 'client-action'
             : 'copy-text';
         return (commandMap[cmd])(dt, key);
+    }, {
+        context: "terminal"
     });
 cmd('paging-interrupt',
     function(dt, key) {
@@ -304,6 +387,8 @@ cmd('paging-interrupt',
         dt._pauseContinue(false, true);
         dt._adjustPauseLimit();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('paging-copy-or-interrupt',
     function(dt, key) {
@@ -311,6 +396,8 @@ cmd('paging-copy-or-interrupt',
             ? 'paging-interrupt'
             : 'copy-text';
         return (commandMap[cmd])(dt, key);
+    }, {
+        context: "terminal"
     });
 cmd('cut-text',
     function(dt, key) {
@@ -318,141 +405,231 @@ cmd('cut-text',
             //dt.editMove(1, "kill", "line", "buffer");
             dt.deleteSelected(true);
         }
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('backward-char',
     function(dt, key) {
         dt.editMovePosition(dt.numericArgumentGet(), "char");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('backward-word',
     function(dt, key) {
         dt.editMovePosition(dt.numericArgumentGet(), "word");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('forward-char',
     function(dt, key) {
         dt.editMovePosition(- dt.numericArgumentGet(), "char");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('forward-word',
     function(dt, key) {
         dt.editMovePosition(- dt.numericArgumentGet(), "word");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('backward-char-extend',
     function(dt, key) {
         dt.extendSelection(dt.numericArgumentGet(), "char");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('backward-word-extend',
     function(dt, key) {
         dt.extendSelection(dt.numericArgumentGet(), "word");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('forward-char-extend',
     function(dt, key) {
         dt.extendSelection(- dt.numericArgumentGet(), "char");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('forward-word-extend',
     function(dt, key) {
         dt.extendSelection(- dt.numericArgumentGet(), "word");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('backward-delete-char',
     function(dt, key) {
         dt.editMove(dt.numericArgumentGet(), "delete", "char");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('backward-delete-word',
     function(dt, key) {
         dt.editMove(dt.numericArgumentGet(), "delete", "word");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('forward-delete-char',
     function(dt, key) {
         dt.editMove(- dt.numericArgumentGet(), "delete", "char");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('forward-delete-char-or-eof',
    function(dt, key) {
        let cmd = 'client-action';
        if (dt.grabInput(dt._inputLine).length > 0)
            cmd = "forward-delete-char";
        return (commandMap[cmd])(dt, key);
+    }, {
+        context: "terminal"
    });
 cmd('forward-delete-word',
     function(dt, key) {
     dt.editMove(- dt.numericArgumentGet(), "delete", "word");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('beginning-of-line',
     function(dt, key) {
         dt.editorMoveStartOrEndLine(false); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('end-of-line',
     function(dt, key) {
         dt.editorMoveStartOrEndLine(true); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('beginning-of-line-extend',
     function(dt, key) {
         dt.editorMoveStartOrEndLine(false, true); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('end-of-line-extend',
     function(dt, key) {
         dt.editorMoveStartOrEndLine(true, true); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('kill-line',
     function(dt, key) {
         let count = dt.numericArgumentGet();
         dt.editMove(- count, "kill", "line", "buffer");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('beginning-of-buffer',
     function(dt, key) {
         dt.editorMoveStartOrEndBuffer(false, "move"); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('end-of-buffer',
     function(dt, key) {
         dt.editorMoveStartOrEndBuffer(true, "move"); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('beginning-of-buffer-extend',
     function(dt, key) {
         dt.editorMoveStartOrEndBuffer(false, "extend"); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('end-of-buffer-extend',
     function(dt, key) {
         dt.editorMoveStartOrEndBuffer(true, "extend"); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('beginning-of-input',
     function(dt, key) {
         dt.editorMoveStartOrEndInput(false); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('end-of-input',
     function(dt, key) {
         dt.editorMoveStartOrEndInput(true); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('beginning-of-input-extend',
     function(dt, key) {
         dt.editorMoveStartOrEndInput(false, "extend"); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('end-of-input-extend',
     function(dt, key) {
         dt.editorMoveStartOrEndInput(true, "extend"); dt._numericArgument = null;
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('up-line-or-history',
     function(dt, key) {
         if (dt.editorMoveLines(true, dt.numericArgumentGet()) > 0)
             dt.historyMove(-1);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('down-line-or-history',
     function(dt, key) {
         if (dt.editorMoveLines(false, dt.numericArgumentGet()) > 0)
             dt.historyMove(1)
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('up-line',
     function(dt, key) {
         dt.editorMoveLines(true, dt.numericArgumentGet(), false);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('down-line',
     function(dt, key) {
         dt.editorMoveLines(false, dt.numericArgumentGet(), false)
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('down-line-or-unpause',
     function(dt, key) {
         dt._downLinesOrContinue(dt.numericArgumentGet(), true);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('down-line-or-continue',
     function(dt, key) {
@@ -463,16 +640,22 @@ cmd('up-line-extend',
     function(dt, key) {
         dt.editorMoveLines(true, dt.numericArgumentGet(), true);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('down-line-extend',
     function(dt, key) {
         dt.editorMoveLines(false, dt.numericArgumentGet(), true)
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('toggle-mark-mode',
     function(dt, key) {
         dt.setMarkMode('toggle');
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('swap-focus-anchor',
     function(dt, key) {
@@ -483,13 +666,21 @@ cmd('swap-focus-anchor',
             dt._didExtend = true;
         }
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('ignore-action',
     function(dt, key) {
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('default-action',
     function(dt, key) {
-        return "do-default"; });
+        return "do-default";
+    }, {
+        context: "terminal"
+    });
 cmd('client-action',
     function(dt, key) {
         if (! dt.isLineEditing())
@@ -506,7 +697,10 @@ cmd('client-action',
             dt.maybeResetWantsEditing();
             return true;
         }
-        return false; });
+        return false;
+    }, {
+        context: "terminal"
+    });
 cmd('control-action',
    function(dt, key) {
     let cmd = 'client-action';
@@ -514,6 +708,8 @@ cmd('control-action',
         && dt.grabInput(dt._inputLine).length > 0)
         cmd = "forward-delete-char";
     return (DomTerm.commandMap[cmd])(dt, key);
+    }, {
+        context: "terminal"
    });
 cmd('numeric-argument',
     function(dt, key) {
@@ -523,16 +719,24 @@ cmd('numeric-argument',
             : dt._numericArgument + c;
         dt._updateCountInfo();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('accept-line',
     function(dt, key) {
         dt.processEnter();
         dt.maybeResetWantsEditing();
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('insert-newline',
     function(dt, key) {
         dt.editorInsertString("\n");
-        return true; });
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('backward-search-history',
     function(dt, key) {
         dt.editorAddLine();
@@ -552,6 +756,8 @@ cmd('backward-search-history',
             dt.historyCursor < 0 ? dt.history.length
             : dt.historyCursor;
         return true;
+    }, {
+        context: "terminal"
     });
 
 cmd('insert-char',
@@ -572,6 +778,8 @@ cmd('insert-char',
             str = str.repeat(count);
         dt.editorInsertString(str, true);
         return true;
+    }, {
+        context: "terminal"
     });
 
 cmd('focus-menubar',

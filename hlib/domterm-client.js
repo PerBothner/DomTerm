@@ -734,6 +734,9 @@ DomTerm.handleCommand = function(iframe, command, args) {
 function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
 {
     switch (command) {
+    case "do-command":
+        DomTerm.doNamedCommand(args[0], dt, args[1]);
+        break;
     case "set-focused":
         if (dt)
             dt.setFocused(args[0]);
@@ -843,7 +846,7 @@ function handleMessage(event) {
         dt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
         dt.reportEvent("DETACH", "");
         dt.initializeTerminal(dt.topNode);
-    } else if (data.command=="domterm-new-window") { // either direction
+    } else if (data.command=="domterm-new-window") { // child to parent
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);

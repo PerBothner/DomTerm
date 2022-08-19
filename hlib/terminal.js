@@ -1262,17 +1262,6 @@ Terminal.prototype.setFocused = function(focused) {
         this.processResponseCharacters(focused ? "\x1b[I" : "\x1b[O");
 }
 
-DomTerm.selectNextPane = function(forwards) {
-    if (DomTerm.useIFrame && DomTerm.isSubWindow()) {
-        DomTerm.sendParentMessage("domterm-next-pane", forwards);
-    }
-    else {
-        const wnum = this.topNode?.windowNumber;
-        if (wnum >= 0)
-            DomTerm.withLayout((m) => m.selectNextPane(forwards, wnum), true);
-    }
-};
-
 // originMode can be one of (should simplify):
 // "F" - focusin event (in inferior frame)
 // "X" - selectNextPane
@@ -8779,7 +8768,7 @@ Terminal.prototype.eventToKeyName = function(event) {
     if (! event.key)
         return browserKeymap.keyName(event);
     let base = event.key;
-    let shift = event.shiftKey && base != "Shift"
+    let shift = event.shiftKey && base !== "Shift";
     if (event.type == "keypress") {
         base = "'" + base + "'";
         shift = false;
@@ -8806,7 +8795,9 @@ Terminal.prototype.eventToKeyName = function(event) {
     // E.g. "Shift+A" should be plain "A", but we do want "Shift+Enter".
     // "Shift" of "." on US keyboard should be plain ">",
     // while Shift+Ctrl with "." (on US keyboard) should be "Shift+Ctrl+>".
-    if (shift && (mods !== "" || event.key===event.code))
+    if (shift &&
+        (event.key===event.code || base === "Space" || base === "Meta"
+         || (mods !== "" && event.code == "Key" + event.key)))
         mods = "Shift+" + mods;
     return mods + name;
 }
@@ -9857,12 +9848,29 @@ DomTerm.dispatchTerminalMessage = function(command, ...args) {
     return false;
 }
 
-DomTerm.doNamedCommand = function(name, dt_or_item=DomTerm.focusedTerm, keyName=null) {
+DomTerm.doNamedCommand = function(name, dt_or_item=undefined, keyName=null) {
     let command = commandMap[name];
-    if (command && command.context === "parent" && DomTerm.isInIFrame())
+    if (! command)
+        return; // ERROR
+    if (command.context === "parent" && DomTerm.isSubWindow()) {
         DomTerm.sendParentMessage("do-command", name, keyName);
-    else
-        command(dt_or_item, keyName);
+    } else {
+        if (! dt_or_item)
+            dt_or_item = DomTerm.focusedWindowItem || DomTerm.focusedTerm;
+        if (command.context === "terminal" && ! (dt_or_item instanceof Terminal)) {
+            const ctype = dt_or_item.componentType;
+            if (ctype !== "domterm" && ctype !== "view-saved")
+                return;
+            const term = dt_or_item.component?.terminal;
+            if (term)
+                command(term, keyName);
+            else if (! DomTerm.isSubWindow())
+                DomTerm.sendChildMessage(Number(dt_or_item.id), "do-command",
+                                         name, keyName);
+        }
+        else
+            command(dt_or_item, keyName);
+    }
 }
 
 DomTerm.handleKey = function(map, dt, keyName, event=null) {
