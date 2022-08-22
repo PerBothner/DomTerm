@@ -21,10 +21,8 @@ public:
                      QObject *parent = 0);
     ~Backend();
     void setInputMode(char mode);
-    void paste();
     QString sessionName() { return _nameTitle; }
     void setSessionName(const QString& name);
-    void requestHtmlData();
     void requestChangeCaret(bool);
     void loadSessionName();
 
@@ -46,9 +44,7 @@ signals:
      */
     void finished();
     void layoutAddPane(int paneOp);
-    void copyAsHTML();
     void logToBrowserConsole(const QString& text);
-    void pasteText(const QString& text);
     void handleSimpleCommand(const QString& msg);
     void writeInputMode(int mode);
     void writeSetCaretStyle(int style);

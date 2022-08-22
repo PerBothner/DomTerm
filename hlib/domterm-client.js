@@ -200,19 +200,11 @@ function setupQWebChannel(channel) {
         if (dt)
             dt.reportEvent(name, data);
     })
-    backend.pasteText.connect(function(text) {
-        var dt = DomTerm.focusedTerm;
-        if (dt)
-            dt.pasteText(text);
-    });
     backend.layoutAddPane.connect(function(paneOp) {
         DomTerm.newPane(paneOp);
     });
     backend.handleSimpleCommand.connect(function(command) {
         DomTerm.doNamedCommand(command);
-    });
-    backend.copyAsHTML.connect(function() {
-        DomTerm.doCopy(true);
     });
     backend.logToBrowserConsole.connect(function(str) {
         DomTerm.log(str);

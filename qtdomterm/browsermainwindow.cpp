@@ -225,7 +225,6 @@ void BrowserMainWindow::setupMenu()
     m_paste = editMenu->addAction(tr("&Paste"),
                                   this, &BrowserMainWindow::slotPaste);
     m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
-    //m_tabWidget->addWebAction(m_paste, QWebEnginePage::Paste);
     editMenu->addAction(tr("Clear Buffer"),
                         this, &BrowserMainWindow::slotClearBuffer);
     editMenu->addSeparator();
@@ -405,12 +404,12 @@ void BrowserMainWindow::slotCopy()
 
 void BrowserMainWindow::slotPaste()
 {
-    webView()->backend()->paste();
+    emit webView()->backend()->handleSimpleCommand("paste-text");
 }
 
 void BrowserMainWindow::slotCopyAsHTML()
 {
-    emit webView()->backend()->copyAsHTML();
+    emit webView()->backend()->handleSimpleCommand("copy-html");
 }
 
 void BrowserMainWindow::slotOpenHomePage()

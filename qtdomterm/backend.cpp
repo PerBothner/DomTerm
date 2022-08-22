@@ -61,19 +61,6 @@ Backend::mainWindow() const
     return webView()->mainWindow();
 }
 
-void Backend::paste()
-{
-    QString text = QApplication::clipboard()->text();
-    // There is some problem accessing the clipboard it has been
-    // set by another process.
-    // (Weirdly C-S-V works, but Edit->Paste doesn't.)
-    // This defers to libclipboard when direct access doesn't work.
-    if (text.isEmpty())
-        emit reportEventToServer("REQUEST-CLIPBOARD-TEXT", "");
-    else
-        emit pasteText(text);
-}
-
 void Backend::setInputMode(char mode)
 {
     emit writeInputMode((int) mode);
@@ -82,11 +69,6 @@ void Backend::setInputMode(char mode)
 void Backend::setSessionName(const QString& name)
 {
    _nameTitle = name;
-}
-
-void Backend::requestHtmlData()
-{
-    emit writeOperatingSystemControl(102, "");
 }
 
 void Backend::requestChangeCaret(bool set)
@@ -188,7 +170,7 @@ void Backend::newPane(int paneOp, const QString& url)
 #else
 void Backend::newPane(int windowNumber, const QString& url)
 {
-    auto webv = new WebView(webView()->m_processOptions,   webView());
+    auto webv = new WebView(webView()->m_processOptions, webView());
     webv->newPage(url);
     webv->resize(300, 300);
     webv->show();
