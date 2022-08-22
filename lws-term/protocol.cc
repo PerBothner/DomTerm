@@ -2458,7 +2458,7 @@ display_session(struct options *options, struct pty_client *pclient,
                     return EXIT_FAILURE;
                 }
                 size_t wlen = wopt.length();
-                top_marker = wlen > 0 && wopt[wlen-1] == '^';
+                top_marker = wlen > 0 && wopt[0] == '^';
                 wclient = tty_clients(w);
             } else if (focused_client == NULL) {
                 printf_error(options, "no current window for '%s' option",

@@ -170,7 +170,6 @@ int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
                          struct options *opts, const char *cmd,
                          const char *seq, const char *default_window)
 {
-    const char *subarg = argc >= 2 ? argv[1] : NULL;
     std::set<int> windows;
     std::string option = opts->windows;
     if (option.empty())
@@ -484,7 +483,7 @@ int await_action(int argc, arglist_t argv, struct lws *wsi,
         }
     }
     if (woption.empty())
-        woption = "current";
+        woption = "^";
     int window = check_single_window_option(woption, "await", opts);
     if (window < 0)
         return EXIT_FAILURE;
@@ -515,7 +514,7 @@ int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
     }
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
+        option = ".";
     int window = check_single_window_option(option, "print-stylesheets", opts);
     if (window < 0)
         return EXIT_FAILURE;
@@ -530,7 +529,7 @@ int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
 {
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
+        option = ".";
     int window = check_single_window_option(option, "list-stylesheets", opts);
     if (window < 0)
         return EXIT_FAILURE;
@@ -573,7 +572,7 @@ int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
     }
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
+        option = ".";
     int window = check_single_window_option(option, "load-stylesheet", opts);
     if (window < 0)
         return EXIT_FAILURE;
@@ -597,7 +596,7 @@ int maybe_disable_stylesheet(bool disable, int argc, arglist_t argv,
     const char *specifier = argv[1];
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
+        option = ".";
     int window = check_single_window_option(option, command, opts);
     if (window < 0)
         return EXIT_FAILURE;
@@ -622,11 +621,10 @@ int disable_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
 int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
                             struct options *opts)
 {
-    const char *subarg = argc >= 2 ? argv[1] : NULL;
     std::set<int> windows;
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
+        option = ".";
     if (! check_window_option(option, windows, "add-style", opts))
         return EXIT_FAILURE;
     for (int w : windows) {
@@ -643,7 +641,6 @@ int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
 int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
                    struct options *opts)
 {
-    const char *subarg = argc >= 2 ? argv[1] : NULL;
     std::set<int> windows;
     std::string woption = opts->windows;
     int start = 1;
@@ -664,7 +661,7 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
             break;
     }
     if (woption.empty())
-        woption = "current";
+        woption = ".";
     if (! check_window_option(woption, windows, "do-keys", opts))
         return EXIT_FAILURE;
     long repeat_count = 1;
@@ -1105,7 +1102,6 @@ int settings_action(int argc, arglist_t argv, struct lws *wsi,
         }
         return EXIT_SUCCESS;
     }
-    check_domterm(opts);
     opts->cmd_settings.clear();
     int nsettings = 0;
     for (int i = 1; i < argc; i++) {
@@ -1119,10 +1115,18 @@ int settings_action(int argc, arglist_t argv, struct lws *wsi,
         printf_error(opts, "no options specified");
         return EXIT_FAILURE;
     }
-    FILE *tout = fdopen(dup(get_tty_out()), "w");
-    fprintf(tout, URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
-            opts->cmd_settings.dump().c_str());
-    fclose(tout);
+    std::set<int> windows;
+    std::string option = opts->windows;
+    if (option.empty())
+        option = ".";
+    if (! check_window_option(option, windows, "settings", opts))
+        return EXIT_FAILURE;
+    for (int w : windows) {
+        tty_client *tclient = tty_clients(w);
+        tclient->ob.printf(URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
+                           opts->cmd_settings.dump().c_str());
+        lws_callback_on_writable(tclient->wsi);
+    }
     return EXIT_SUCCESS;
 }
 
@@ -1144,7 +1148,7 @@ int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
     return simple_window_action(argc, argv, wsi, opts,
                                 "reverse-video",
                                 cmd,
-                                "current");
+                                ".");
 }
 
 int complete_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1248,7 +1252,7 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
     }
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
+        option = ".";
     int window = check_single_window_option(option, "capture", opts);
     if (window < 0)
         return EXIT_FAILURE;
@@ -1262,7 +1266,7 @@ int close_action(int argc, arglist_t argv, struct lws *wsi,
     return simple_window_action(argc, argv, wsi, opts,
                                 "close",
                                 URGENT_WRAP("\033]97;detach\007"),
-                                "current");
+                                ".");
 }
 
 int detach_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1271,7 +1275,7 @@ int detach_action(int argc, arglist_t argv, struct lws *wsi,
     return simple_window_action(argc, argv, wsi, opts,
                                 "detach",
                                 URGENT_WRAP("\033]97;detach\007"),
-                                "current");
+                                ".");
 }
 
 int set_window_name_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1289,7 +1293,7 @@ int set_window_name_action(int argc, arglist_t argv, struct lws *wsi,
     std::set<int> windows;
     std::string option = opts->windows;
     if (option.empty())
-        option = "current";
+        option = ".";
     if (! check_window_option(option, windows, cmd, opts))
         return EXIT_FAILURE;
     for (int w : windows) {
@@ -1316,7 +1320,7 @@ int fullscreen_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     }
     return simple_window_action(argc, argv, wsi, opts,
-                                "fullscreen", seq, "top");
+                                "fullscreen", seq, "^");
 }
 
 int hide_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1325,7 +1329,7 @@ int hide_action(int argc, arglist_t argv, struct lws *wsi,
     return simple_window_action(argc, argv, wsi, opts,
                                 "hide",
                                 URGENT_WRAP("\033[2;72t"),
-                                "top");
+                                "^");
 }
 
 int minimize_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1334,7 +1338,7 @@ int minimize_action(int argc, arglist_t argv, struct lws *wsi,
     return simple_window_action(argc, argv, wsi, opts,
                                 "minimize",
                                 URGENT_WRAP("\033[2t"),
-                                "top");
+                                "^");
 }
 
 int send_input_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1388,7 +1392,7 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
     } else {
         std::string woption = opts->windows;
         if (woption.empty())
-            woption = "current";
+            woption = ".";
         int window = check_single_window_option(woption, "send-input", opts);
         if (window < 0)
             return EXIT_FAILURE;
@@ -1432,7 +1436,7 @@ int show_action(int argc, arglist_t argv, struct lws *wsi,
     return simple_window_action(argc, argv, wsi, opts,
                                 "show",
                                 URGENT_WRAP("\033[1t"),
-                                "top");
+                                "^");
 }
 
 int toggle_hide_action(int argc, arglist_t argv, struct lws *wsi,
@@ -1446,7 +1450,7 @@ int toggle_hide_action(int argc, arglist_t argv, struct lws *wsi,
     bool minimize = strcmp(cmd, "toggle-minimize") == 0;
     const char *seq = minimize ? URGENT_WRAP("\033[2;73t")
         : URGENT_WRAP("\033[2;74t");
-    return simple_window_action(argc, argv, wsi, opts, cmd, seq, "top");
+    return simple_window_action(argc, argv, wsi, opts, cmd, seq, "^");
 }
 
 // deprecated - used -w/--window option instead
@@ -1462,9 +1466,9 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
     std::string woptions;
     for (; i < argc; i++) {
         const char *arg = argv[i];
-        if (strcmp(arg, "top") != 0
-            && strcmp(arg, "current") != 0
-            && strcmp(arg, "current-top") != 0) {
+        if (strcmp(arg, "^") != 0
+            && strcmp(arg, ".") != 0
+            && strcmp(arg, "^.") != 0) {
             if (arg[0] == '\0')
                 break;
             char *endptr;
@@ -1580,7 +1584,7 @@ struct command commands[] = {
   //send to front-end
   { .name = "do-keys", .options = COMMAND_IN_EXISTING_SERVER,
     .action = do_keys_action},
-  { .name = "settings", .options = COMMAND_IN_CLIENT|COMMAND_HANDLES_COMPLETION,
+  { .name = "settings", .options = COMMAND_IN_EXISTING_SERVER|COMMAND_HANDLES_COMPLETION,
     .action = settings_action },
   { .name = COMPLETE_FOR_BASH_CMD, .options = COMMAND_IN_CLIENT,
     .action = complete_action },

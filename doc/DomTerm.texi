@@ -470,7 +470,7 @@ over download speed, disk space, or maximum functionality.
 Use @uref{https://brew.sh,HomeBrew} to install some prerequisites:
 
 @example
-brew install automake libwebsockets asciidoctor pkg-config
+brew install automake libwebsockets asciidoctor pkg-config openssl@@3
 @end example
 Optionally one or more of the following (for the Qt, Electron, or Wry frontends):
 @example
@@ -1190,11 +1190,11 @@ Split @var{window} (a @ref{window specifier option, window specifier}) in two,
 and create a new pane (sub-window) to the left/right/above/below the old one.
 If @var{window} is not specified, use the current window.
 
-If @var{window} ends in @code{^}, split the specified top-level window.
+If @var{window} starts with @code{^}, split the specified top-level window.
 For example, if window 1 is above window 2,
 then @code{--left=2} will will put the new window side-by-side with 2,
 and both below window 1 (which is full-width).
-In contrast, @code{--left=2^} will create a new full-height window
+In contrast, @code{--left=^2} will create a new full-height window
 on the left, while on the right window 1 will be above window 2.
 @item @code{--pane}[@code{=}@var{window}]
 Equivalent to either @code{--right} or @code{--below} depending
@@ -1290,7 +1290,8 @@ the @code{--by-session} groups windows by session.
 The @code{--verbose} option adds more detail.
 
 @item @b{@code{settings}} @var{name}@code{=}@var{value} ...
-Change the specified @ref{Settings,local settings} for the current session.
+Change the given @ref{Settings,local settings} for
+the @ref{window specifier option, specified window(s)}.
 
 If the @var{value} is empty, the local setting with the given @var{name} is
 removed, so the global setting (if set) becomes active.
@@ -2516,7 +2517,7 @@ Otherwise, only Electron and WebView work as they should,
 though the keyboard shortcut Ctrl+Shift+V works on all tested platforms,
 (On Qt the Paste menu-item is unreliable if the previous Copy
 was from a different application.
-On a desktop browsers like Firefox, custom menus can't do Paste though system manus can, because of security concerns.)
+On a desktop browsers like Firefox, custom menus can't do Paste though system menus can, because of security concerns.)
 
 The Copy menu-items work on Electron or Qt,
 but there are issues on other front-ends.
