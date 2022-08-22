@@ -21,10 +21,7 @@ public:
                      QObject *parent = 0);
     ~Backend();
     void setInputMode(char mode);
-    QString sessionName() { return _nameTitle; }
-    void setSessionName(const QString& name);
     void requestChangeCaret(bool);
-    void loadSessionName();
 
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
@@ -94,7 +91,6 @@ private:
     bool           _wantedClose;
     int            _sessionId;
 
-    QString        _nameTitle;
     QString        _displayTitle;
 
     QString        _domtermVersion;

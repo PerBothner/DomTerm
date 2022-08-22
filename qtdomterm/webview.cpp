@@ -285,21 +285,10 @@ void WebView::setPage(WebPage *_page)
 #if defined(QWEBENGINEPAGE_UNSUPPORTEDCONTENT)
     page()->setForwardUnsupportedContent(true);
 #endif
-    BrowserApplication * app = BrowserApplication::instance();
-    if (! m_processOptions->should_connect()) {
-        QWebChannel *channel = new QWebChannel(this);
-        m_backend = new Backend(m_processOptions, this);
-        connect(m_backend, SIGNAL(finished()), this, SIGNAL(finished()));
-        channel->registerObject(QStringLiteral("backend"), m_backend);
-        page()->setWebChannel(channel);
-        m_backend->setSessionName(app->generateSessionName());
-    } else {
-        QWebChannel *channel = new QWebChannel(this);
-        m_backend = new Backend(m_processOptions, this);
-        channel->registerObject(QStringLiteral("backend"), m_backend);
-        //channel->registerObject(QStringLiteral("qtwebview"), this);
-        page()->setWebChannel(channel);
-    }
+    QWebChannel *channel = new QWebChannel(this);
+    m_backend = new Backend(m_processOptions, this);
+    channel->registerObject(QStringLiteral("backend"), m_backend);
+    page()->setWebChannel(channel);
 }
 
 void WebView::setSetting(const QString& key, const QString& value)

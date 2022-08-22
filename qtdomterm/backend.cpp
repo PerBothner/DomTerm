@@ -66,19 +66,9 @@ void Backend::setInputMode(char mode)
     emit writeInputMode((int) mode);
 }
 
-void Backend::setSessionName(const QString& name)
-{
-   _nameTitle = name;
-}
-
 void Backend::requestChangeCaret(bool set)
 {
     emit writeSetCaretStyle(set ? 1 : 5);
-}
-
-void Backend::loadSessionName()
-{
-    emit writeOperatingSystemControl(30, _nameTitle);
 }
 
 void Backend::close()

@@ -16,8 +16,6 @@ class ProcessOptions : public QSharedData
      QString wsconnect;
      QString geometry;
 
-     bool should_connect() const { return ! wsconnect.isEmpty(); }
-
      friend QDataStream& operator>>(QDataStream&, ProcessOptions&);
      friend QDataStream& operator<<(QDataStream&, const ProcessOptions&);
 
