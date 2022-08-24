@@ -189,6 +189,9 @@ class Terminal {
     this.caretEditStyle = Terminal.DEFAULT_EDIT_CARET_STYLE;
     sstate.showCaret = true;
 
+    this.darkMode = false; // from settings
+    this.sstate.reverseVideo = false; // from DECSCNM escape sequence
+
     // Use the doLineEdit function when isLineEditing().
     // True if a client performs echo on lines sent to it.
     // In that case, when isLineEditing(), when a completed
@@ -4170,38 +4173,6 @@ Terminal.prototype.measureWindow = function()  {
 
 Terminal.prototype._updateMiscOptions = function() {
     const topStyle = this.topNode.style;
-    /* FUTURE: handle 'foreground' and 'background' options
-    const foreground = map.foreground;
-    const background = map.background;
-    let hex3re = /^#[0-9a-fA-F]{3}$/;
-    let hex6re = /^#[0-9a-fA-F]{6}$/;
-    const fgCols = foreground && foreground.match(hex6re) ? 2
-          : foreground && foreground.match(hex3re) ? 1 : 0;
-    const bgCols = background && background.match(hex6re) ? 2
-          : background && background.match(hex3re) ? 1 : 0;
-    if (fgCols && bgCols) {
-        let fgSum = 0, bgSum = 0;
-        for (let i = 0; i < 3; i++) {
-            fgSum += parseInt(foreground.substring(1+fgCols*i, 3+fgCols*i), 16);
-            bgSum += parseInt(background.substring(1+bgCols*i, 3+bgCols*i), 16);
-        }
-        if (foreground.length == 4)
-            fgSum = 17 * fgSum;
-        if (background.length == 4)
-            bgSum = 17 * bgSum;
-        let darkStyle = fgSum > bgSum;
-        topStyle.setProperty("--main-light-color",
-                             darkStyle ? foreground : background)
-        topStyle.setProperty("--main-dark-color",
-                             darkStyle ? background : foreground);
-        this.setReverseVideo(darkStyle);
-    } else {
-        if (foreground)
-            topStyle.setProperty("--foreground-color", foreground);
-        if (background)
-            topStyle.setProperty("--background-color", background);
-    }
-    */
     topStyle.setProperty("--char-width", this.charWidth+"px");
     topStyle.setProperty("--wchar-width", (this.charWidth * 2)+"px");
     topStyle.setProperty("--char-height", this.charHeight+"px");
@@ -5946,6 +5917,7 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     this.sstate.originMode = false;
     this.sstate.bracketedPasteMode = false;
     this.sstate.wraparoundMode = 2;
+    this.sstate.reverseVideo = false;
     this.sstate.styleMap = new Map();
     this.resetCharsets();
     this.setMouseMode(0);
@@ -5963,7 +5935,8 @@ Terminal.prototype.resetTerminal = function(full, saved) {
     // FIXME a bunch more
 };
 
-Terminal.prototype.setReverseVideo = function(value) {
+Terminal.prototype.updateReverseVideo = function() {
+    const value = this.darkMode !== this.sstate.reverseVideo;
     if (value)
         this.topNode.setAttribute("reverse-video", "yes");
     else
@@ -6046,14 +6019,16 @@ Terminal.prototype.updateSettings = function() {
         if (style_dark === "auto") {
             if (dark_query) {
                 this._style_dark_listener = (e) => {
-                    this.setReverseVideo(e.matches);
+                    this.darkMode = e.matches;
+                    this.updateReverseVideo();
                 };
                 dark_query.addEventListener('change', this._style_dark_listener);
                 style_dark = dark_query.matches ? "true" : "false";
             } else
                 style_dark = "false";
         }
-        this.setReverseVideo(this._asBoolean(style_dark));
+        this.darkMode = this._asBoolean(style_dark);
+        this.updateReverseVideo();
     }
     this.setBlinkRate(getOption("style.blink-rate", ""));
 

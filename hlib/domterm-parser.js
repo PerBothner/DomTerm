@@ -1596,7 +1596,7 @@ class DTParser {
         switch (param) {
         case 1: return term.sstate.applicationCursorKeysMode;
         case 3: return term.numColumns == 132;
-        case 5: return term.topNode.getAttribute("reverse-video") != null;
+        case 5: return term.sstate.reverseVideo;
         case 6: return term.sstate.originMode;
         case 7: return (term.sstate.wraparoundMode & 2) != 0;
         case 12: // Stop/start blinking cursor (AT&T 610) - sent by emacs
@@ -1631,7 +1631,8 @@ class DTParser {
             term.forceWidthInColumns(value ? 132 : 80);
             break;
         case 5: // Reverse Video (DECSCNM)
-            term.setReverseVideo(value);
+            term.sstate.reverseVideo = value;
+            term.updateReverseVideo();
             break;
         case 6: // DECOM
             term.sstate.originMode = value;
