@@ -2183,6 +2183,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 mclient->main_window = 0;
                 mclient->options = link_options(client->options);
                 mclient->connection_number = main_windows.enter(mclient, main_window);
+                lws_callback_on_writable(mclient->out_wsi);
                 tty_clients.enter(client, wnum);
             } else if (reconnect_value < 0) {
                 lwsl_err("connection with invalid connection number %s - error\n", window);
@@ -2687,9 +2688,16 @@ void
 request_upload_settings()
 {
     struct tty_client *tclient;
-    FORALL_WSCLIENT(tclient) {
+    for (tclient = main_windows.first(); tclient != nullptr;
+         tclient = main_windows.next(tclient)) {
         tclient->uploadSettingsNeeded = true;
         lws_callback_on_writable(tclient->wsi);
+    }
+    FORALL_WSCLIENT(tclient) {
+        if (! tclient->uploadSettingsNeeded) {
+            tclient->uploadSettingsNeeded = true;
+            lws_callback_on_writable(tclient->wsi);
+        }
     }
 }
 
