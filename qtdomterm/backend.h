@@ -40,7 +40,6 @@ signals:
      * Emitted when the terminal process exits.
      */
     void finished();
-    void layoutAddPane(int paneOp);
     void logToBrowserConsole(const QString& text);
     void handleSimpleCommand(const QString& msg);
     void writeInputMode(int mode);

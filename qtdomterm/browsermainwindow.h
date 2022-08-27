@@ -113,13 +113,13 @@ protected:
 private slots:
     void slotUpdateWindowTitle(const QString &title = QString());
 
-    void slotNewTerminal(int paneOp);
-    void slotNewTerminalTab() { slotNewTerminal(2); }
-    void slotNewTerminalPane() { slotNewTerminal(1); }
-    void slotNewTerminalAbove() { slotNewTerminal(12); }
-    void slotNewTerminalBelow() { slotNewTerminal(13); }
-    void slotNewTerminalLeft() { slotNewTerminal(10); }
-    void slotNewTerminalRight() { slotNewTerminal(11); }
+    void slotSimpleCommand(const QString &command);
+    void slotNewTerminalTab() { slotSimpleCommand("new-tab"); }
+    void slotNewTerminalPane() { slotSimpleCommand("new-pane"); }
+    void slotNewTerminalAbove() { slotSimpleCommand("new-pane-above"); }
+    void slotNewTerminalBelow() { slotSimpleCommand("new-pane-below"); }
+    void slotNewTerminalLeft() { slotSimpleCommand("new-pane-left"); }
+    void slotNewTerminalRight() { slotSimpleCommand("new-pane-right"); }
     void slotDetach();
     void slotAutoPager();
     void slotClearBuffer();

@@ -377,9 +377,9 @@ void BrowserMainWindow::slotUpdateWindowTitle(const QString &title)
     }
 }
 
-void  BrowserMainWindow::slotNewTerminal(int paneOp)
+void  BrowserMainWindow::slotSimpleCommand(const QString &command)
 {
-    emit webView()->backend()->layoutAddPane(paneOp);
+    emit webView()->backend()->handleSimpleCommand(command);
 }
 
 void BrowserMainWindow::slotDetach()

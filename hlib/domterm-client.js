@@ -200,9 +200,6 @@ function setupQWebChannel(channel) {
         if (dt)
             dt.reportEvent(name, data);
     })
-    backend.layoutAddPane.connect(function(paneOp) {
-        DomTerm.newPane(paneOp);
-    });
     backend.handleSimpleCommand.connect(function(command) {
         DomTerm.doNamedCommand(command);
     });
