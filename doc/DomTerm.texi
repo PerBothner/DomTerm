@@ -1404,9 +1404,9 @@ including some information about each window.
 @table @asis
 @item @b{@code{close}}
 Close specified window(s), as if you clicked on the ``close'' button.
-The default @var{windows-specifier} is @code{current}
+The default @var{windows-specifier} is @code{.} (the current window).
 @item@b{@code{detach}}
-Close specified window(s) (the default is @code{current}),
+Close specified window(s) (the default is @code{.}),
 and (assuming there are no more windows attached to the session)
 make the session detached.
 
@@ -1517,7 +1517,7 @@ command, but avoids a race condition.
 
 @item @b{@code{capture}} @var{capture-option}...
 Get the text contents of the @ref{window specifier option, specified window}
-(defaulting to the @code{current} window).
+(defaulting @code{.}, the current window).
 The text is printed on standard output.
 This command is useful for testing.
 
@@ -1702,7 +1702,7 @@ This option is the default unless @code{--port} is specified.
 @subheading Working with styles
 
 All of these work with a @ref{window specifier option, window-specifier option},
-defaulting to the @code{current} window.
+defaulting to @code{.}, the current window.
 
 @table @asis
 @item @b{@code{reverse-video}} @code{on}|@code{off}
@@ -2087,7 +2087,10 @@ for a darker background and a ligher foreground (text).
 The default is @code{auto}, which follows the system/desktop preference
 if possible, or otherwise @code{off}, which selects
 lighter background and a darker foreground colors.
-Currently @code{auto} is only known to work on Firefox running on Gnome.
+
+Whether @code{auto} works depends on browser and system support.
+It is known to work on Firefox on MacOS and Gnome;
+Electron and Wry on MacOS (but not Gnome); Epihany (on Gnome).
 
 @item @code{@b{style.blink-rate} =} [@var{hide-time} [@var{show-time}]]
 @itemx @code{@b{style.blink-rate} =} @var{hide-time}@code{,}@var{show-time}
