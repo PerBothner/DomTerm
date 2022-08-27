@@ -375,30 +375,6 @@ function createTitlebar(titlebarNode, tabs) {
         titlebarNode.addEventListener('mousedown', drag);
         titlebarNode.addEventListener('touchstart', drag);
     }
-    if (DomTerm.usingQtWebEngine) {
-        const resizeAreas = document.createElement('div');
-        resizeAreas.classList.add("dt-resize-areas");
-        function resizeHandler(ev) {
-            const edges = ev.target.getAttribute("edges");
-            DomTerm.startSystemResize(edges);
-        }
-        function subarea(edges) {
-            const resizeArea = document.createElement('div');
-            resizeArea.classList.add("dt-resize-area");
-            resizeArea.setAttribute("edges", edges);
-            document.body.appendChild(resizeAreas);
-            resizeAreas.appendChild(resizeArea);
-            resizeArea.addEventListener('mousedown', resizeHandler);
-        }
-        subarea("n");
-        subarea("s");
-        subarea("e");
-        subarea("w");
-        subarea("s w");
-        subarea("s e");
-        subarea("n w");
-        subarea("n e");
-    }
     if (! DomTerm.isMac) {
         titlebarNode.appendChild(titleButtons);
     }
@@ -413,6 +389,33 @@ function createTitlebar(titlebarNode, tabs) {
             });
         titlebarNode.querySelector("#dt-titlebar-close")
             .addEventListener('click', (e) => DomTerm.doNamedCommand('close-window'));
+    }
+}
+
+function createResizeAreas() {
+    if (DomTerm.usingQtWebEngine) {
+        const resizeAreas = document.createElement('div');
+        resizeAreas.classList.add("dt-resize-areas");
+        document.body.appendChild(resizeAreas);
+        function resizeHandler(ev) {
+            const edges = ev.target.getAttribute("edges");
+            DomTerm.startSystemResize(edges);
+        }
+        function subarea(edges) {
+            const resizeArea = document.createElement('div');
+            resizeAreas.appendChild(resizeArea);
+            resizeArea.classList.add("dt-resize-area");
+            resizeArea.setAttribute("edges", edges);
+            resizeArea.addEventListener('mousedown', resizeHandler);
+        }
+        subarea("n");
+        subarea("s");
+        subarea("e");
+        subarea("w");
+        subarea("s w");
+        subarea("s e");
+        subarea("n w");
+        subarea("n e");
     }
 }
 
@@ -506,6 +509,7 @@ function loadHandler(event) {
             DomTerm.titlebarElement = titlebarNode;
             DomTerm.titlebarCurrent = titlebarNode;
             createTitlebar(titlebarNode, null);
+            createResizeAreas();
             titlebarNode.addEventListener('click',
                                           (e) => { console.log("clicked titlebar"); }, true);
             if (DomTerm.isMac && ! DomTerm.isElectron()) {
