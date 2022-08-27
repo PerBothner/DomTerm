@@ -21,7 +21,7 @@ div.domterm-active div.lm_stack{background:#e1e1e1;border:2px solid magenta}
 .lm_dropTargetIndicator .lm_inner{background:#000000;opacity:.1}
 .lm_header, .dt-titlebar {height:20px}
 .lm_header { display: flex; }
-.lm_header { background-color:#d8d0d0}
+.lm_header, .dt-titlebar { background-color:#d8d0d0}
 .lm_tab {cursor:pointer; }
 body.focused .lm_header.lm_focused,
 body.focused .dt-titlebar { background-color:#f0d8e8; }

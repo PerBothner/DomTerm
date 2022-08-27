@@ -285,9 +285,6 @@ body[reverse-video] .nwjs-menu {
     color: #f0f0f0;
     background-color: #101010;
 }
-/*body[reverse-video] .nwjs-menu .menu-item:hover,
-body[reverse-video] .nwjs-menu .menu-item.normal.submenu-active {
-*/
 body[reverse-video] .contextmenu .menu-item.active,
 body[reverse-video] .menu-item.normal.submenu-active,
 body[reverse-video] .menu-item.normal.submenu-active:hover {
