@@ -334,10 +334,20 @@ HLIB_FIXED_FILES_MISC="\
   hlib/domterm-layout.css \
   hlib/domterm-standard.css \
   hlib/goldenlayout-base.css \
-  hlib/goldenlayout-dark-theme.css \
-  hlib/goldenlayout-light-theme.css \
-  hlib/goldenlayout-soda-theme.css \
-  hlib/goldenlayout-translucent-theme.css \
+  hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css \
+  hlib/goldenlayout/css/themes/goldenlayout-light-theme.css \
+  hlib/goldenlayout/css/themes/goldenlayout-soda-theme.css \
+  hlib/goldenlayout/css/themes/goldenlayout-translucent-theme.css \
+  hlib/goldenlayout/img/lm_close_black.png \
+  hlib/goldenlayout/img/lm_popout_black.png \
+  hlib/goldenlayout/img/lm_maximise_black.png \
+  hlib/goldenlayout/img/lm_minimize_black.png \
+  hlib/goldenlayout/img/lm_popin_black.png \
+  hlib/goldenlayout/img/lm_close_white.png \
+  hlib/goldenlayout/img/lm_popout_white.png \
+  hlib/goldenlayout/img/lm_maximise_white.png \
+  hlib/goldenlayout/img/lm_minimize_white.png \
+  hlib/goldenlayout/img/lm_popin_white.png \
   hlib/macos-traffic-lights.css \
   hlib/jsMenus.css"
 case "$with_xterm_js" in

@@ -1770,14 +1770,17 @@ static const char * standard_stylesheets[] = {
     "hlib/domterm-core.css",
     "hlib/domterm-standard.css",
     "hlib/goldenlayout-base.css",
-    //"hlib/goldenlayout-dark-theme.css",
-    "hlib/goldenlayout-light-theme.css",
+    "hlib/goldenlayout/css/themes/goldenlayout-light-theme.css",
     "hlib/jsMenus.css",
     "hlib/domterm-layout.css",
     "hlib/domterm-default.css",
 #if WITH_XTERMJS
     "hlib/xterm.css",
 #endif
+    NULL
+};
+static const char * standard_stylesheets_disabled[] = {
+    "hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css",
     NULL
 };
 static const char * standard_stylesheets_simple[] = {
@@ -1843,6 +1846,11 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
     const char **p;
     for (p = simple ? standard_stylesheets_simple : standard_stylesheets; *p; p++) {
         obuf->printf("<link type='text/css' rel='stylesheet' href='%s'>\n", *p);
+    }
+    if (! simple) {
+        for (p = standard_stylesheets_disabled; *p; p++) {
+            obuf->printf("<link type='text/css' rel='stylesheet' href='%s' disabled='true'>\n", *p);
+        }
     }
     struct lib_info *lib;
     for (lib = standard_jslibs; lib->file != NULL; lib++) {

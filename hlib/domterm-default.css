@@ -39,9 +39,9 @@ div.domterm[reverse-video] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
     --background-color: var(--main-dark-color);
     --foreground-color: var(--main-light-color);
-    --spacer-color:  #101040;
-    --input-line-color: #505030;
-    --input-span-color: #404020;
+    --spacer-color:  #080818;
+    --input-line-color: #342400;
+    --input-span-color: #241400;
 }
 div.domterm-spacer {
 }
@@ -57,7 +57,7 @@ div.domterm-spacer {
    Check with tests/256-colors.sh. */
 div.domterm { --monospace-family: Terminal, Menlo, monospace, DejaVu Sans Mono; }
 div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family) }
-div.domterm[reverse-video] span[std="prompt"] { background-color: #006000 } /* a dark green */
+div.domterm[reverse-video] span[std="prompt"] { background-color: #004000 } /* a dark green */
 .dt-editing-line {
     outline: 2px dashed #a0522440; /* sienna 25% */
     outline-offset: -2px; }
@@ -234,7 +234,12 @@ div.dt-popup-panel, div.dt-popup-panel span.dt-close-button:hover,
 .dt-titlebar-button:hover, .dt-titlebar .menu-item:hover {
     background-color:  #ececec;
 }
-.dt-titlebar .menubar { background-color: inherit }
+body[reverse-video] .dt-titlebar-button:hover, body[reverse-video] .dt-titlebar .menu-item:hover {
+    background-color: #4040a0;
+}
+.dt-titlebar .menubar,
+body[reverse-video] .nwjs-menu.menubar
+{ background-color: inherit }
 
 div.dt-popup-panel div.dt-overlay-titlebar {background-color: lightgrey; }
 
@@ -244,11 +249,18 @@ div.dt-context-popup {
     width: 30em;
     min-width: 15em;
     max-width: 80%;
-    border: thin solid sienna;
+    border: thin solid;
     border-radius: 6px;
-    background: #ececec;
     /*position: relative;*/
     position: fixed;
+}
+div.dt-context-popup {
+    background: #ececec;
+    border-color: sienna;
+}
+body[reverse-video] div.dt-context-popup {
+   background: #6c4c4c;
+   border-color: #150262;
 }
 a[domterm-href], a[href] {
     color: blue;
@@ -268,3 +280,29 @@ thead > tr > th {
 tbody > tr > td  {
     outline: solid thin #CCC;
 }
+
+body[reverse-video] .nwjs-menu {
+    color: #f0f0f0;
+    background-color: #101010;
+}
+/*body[reverse-video] .nwjs-menu .menu-item:hover,
+body[reverse-video] .nwjs-menu .menu-item.normal.submenu-active {
+*/
+body[reverse-video] .contextmenu .menu-item.active,
+body[reverse-video] .menu-item.normal.submenu-active,
+body[reverse-video] .menu-item.normal.submenu-active:hover {
+    background-color: #3030a0;
+}
+body[reverse-video] .menu-item:hover {
+    background-color: inherit;
+}
+
+body[reverse-video] div.dt-buffers::-webkit-scrollbar { width: 8px; }
+body[reverse-video] div.dt-buffers::-webkit-scrollbar-track {
+    background: #a0a0a0; }
+body[reverse-video] div.dt-buffers::-webkit-scrollbar-thumb {
+    background: #404040;
+    width: 6px;
+    border-radius: 4px; }
+body[reverse-video] div.dt-buffers::-webkit-scrollbar-thumb:hover { background: lightblue; }
+body[reverse-video] div.dt-buffers::-webkit-scrollbar-thumb:active { background: blue; }

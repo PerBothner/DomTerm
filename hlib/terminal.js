@@ -5937,10 +5937,25 @@ Terminal.prototype.resetTerminal = function(full, saved) {
 
 Terminal.prototype.updateReverseVideo = function() {
     const value = this.darkMode !== this.sstate.reverseVideo;
-    if (value)
-        this.topNode.setAttribute("reverse-video", "yes");
-    else
-        this.topNode.removeAttribute("reverse-video");
+    if (value) {
+        document.body.setAttribute("reverse-video", "yes");
+        if (this.topNode)
+            this.topNode.setAttribute("reverse-video", "yes");
+    } else {
+        document.body.removeAttribute("reverse-video");
+        if (this.topNode)
+            this.topNode.removeAttribute("reverse-video");
+    }
+    if (! DomTerm.isSubWindow()) {
+        const gl_style_light = document.head
+              .querySelector("head link[href='hlib/goldenlayout/css/themes/goldenlayout-light-theme.css']");
+        const gl_style_dark = document.head
+              .querySelector("head link[href='hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css']");
+        if (gl_style_light && gl_style_dark) {
+            gl_style_light.disabled = value;
+            gl_style_dark.disabled = ! value;
+        }
+    }
 }
 
 Terminal.prototype._asBoolean = function(value) {
@@ -6005,7 +6020,7 @@ Terminal.prototype.updateSettings = function() {
     }
 
     var style_dark = getOption("style.dark", "auto");
-    if (style_dark !== this._style_dark_old && this.topNode) {
+    if (style_dark !== this._style_dark_old) {
         this._style_dark_old = style_dark;
         let dark_query = this._style_dark_query;
         if (style_dark === "auto" && ! dark_query && window.matchMedia) {
