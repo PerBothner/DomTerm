@@ -160,6 +160,9 @@ class Menu {
 			menuNode.style.right = x + 'px';
 			menuNode.style.left = 'auto';
 		}
+		// Don't have topSheet cover menubar, so we can catch mouseenter
+		if (Menu._menubarNode && Menu._topSheet)
+			Menu._topSheet.style.top = `${Menu._menubarNode.offsetHeight}px`;
 
 		menuNode.style.top = y + 'px';
 		if (! Menu.showMenuNode
