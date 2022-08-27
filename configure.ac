@@ -333,7 +333,7 @@ HLIB_FIXED_FILES_MISC="\
   hlib/domterm-default.css \
   hlib/domterm-layout.css \
   hlib/domterm-standard.css \
-  hlib/goldenlayout-base.css \
+  hlib/goldenlayout/css/goldenlayout-base.css \
   hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css \
   hlib/goldenlayout/css/themes/goldenlayout-light-theme.css \
   hlib/goldenlayout/css/themes/goldenlayout-soda-theme.css \

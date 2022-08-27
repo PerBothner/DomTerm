@@ -1769,7 +1769,7 @@ char server_key[SERVER_KEY_LENGTH];
 static const char * standard_stylesheets[] = {
     "hlib/domterm-core.css",
     "hlib/domterm-standard.css",
-    "hlib/goldenlayout-base.css",
+    "hlib/goldenlayout/css/goldenlayout-base.css",
     "hlib/goldenlayout/css/themes/goldenlayout-light-theme.css",
     "hlib/jsMenus.css",
     "hlib/domterm-layout.css",
