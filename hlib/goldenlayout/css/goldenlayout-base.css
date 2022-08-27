@@ -10,7 +10,7 @@
 }
 .lm_dragging,
 .lm_dragging * {
-  cursor: move !important;
+  cursor: move;
   -webkit-user-select: none;
           user-select: none;
 }
@@ -48,7 +48,7 @@
 }
 .lm_splitter.lm_vertical .lm_drag_handle {
   width: 100%;
-  cursor: ns-resize;
+  cursor: row-resize;
 }
 .lm_splitter.lm_horizontal {
   float: left;
@@ -59,7 +59,7 @@
 }
 .lm_splitter.lm_horizontal .lm_drag_handle {
   height: 100%;
-  cursor: ew-resize;
+  cursor: col-resize;
 }
 .lm_component {
   position: absolute;
