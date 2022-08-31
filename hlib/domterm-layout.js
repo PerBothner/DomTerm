@@ -195,7 +195,7 @@ DomTermLayout.focusItem = function(item, focused) {
     }
 };
 
-DomTermLayout._selectLayoutPane = function(component, originMode) {
+DomTermLayout._selectLayoutPane = function(component, originMode/*unused*/) {
     if (! DomTerm.useIFrame && ! DomTerm.usingXtermJs()) {
         let element = component.container.getElement().firstChild;
         let dt = element && element.classList.contains("domterm")

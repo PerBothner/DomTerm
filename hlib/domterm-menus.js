@@ -257,14 +257,25 @@ DomTerm.createMenus = function(options) {
             moptions.position = `+${base_x}+${base_y}`;
             DomTerm.openNewWindow(null, moptions);
             */
-            if (DomTerm.useToolkitSubwindows && menuCount++ == 0) {
+            const mcount = menuCount++;
+            if (DomTerm.useToolkitSubwindows && mcount == 0) {
                 DomTerm._qtBackend.lowerOrRaisePanes(false, true);
             }
+            DomTerm._focusMenu();
             return false;
         };
         Menu.hideMenuNode = function(menu, menuNode) {
-            if (DomTerm.useToolkitSubwindows && --menuCount <= 0) {
-                DomTerm._qtBackend.lowerOrRaisePanes(true, true);
+            if (--menuCount <= 0) {
+                if (DomTerm.useToolkitSubwindows) {
+                    DomTerm._qtBackend.lowerOrRaisePanes(true, true);
+                }
+                const wnum = DomTerm._contextOptions?.windowNumber;
+                const layout = DomTerm._layout;
+                if (layout && wnum >= 0) {
+                    const item = layout._numberToLayoutItem(wnum);
+                    layout._selectLayoutPane(item);
+                }
+                DomTerm._contextOptions = undefined;
             }
         };
         showMenubar(true);
@@ -294,13 +305,17 @@ if (DomTerm.isElectron() ) {
     });
 }
 
-DomTerm.focusMenubar = function() {
-    if (! Menu.focusMenubar)
-        return false;
+DomTerm._focusMenu = function() {
     if (DomTerm.useToolkitSubwindows)
         DomTerm._qtBackend.focusPane(-1);
     else if (document.activeElement instanceof HTMLIFrameElement)
         Menu._menubarNode?.focus({preventScroll: true});
+}
+
+DomTerm.focusMenubar = function() {
+    if (! Menu.focusMenubar)
+        return false;
+    DomTerm._focusMenu();
     Menu.focusMenubar();
     return true;
 }
@@ -316,9 +331,7 @@ DomTerm.popupMenu = function(menu, options) {
         if (menu.node)
             menu.popdown();
         menu.popup(x, y);
-        let dt = DomTerm.focusedTerm;
-        if (dt)
-            dt.maybeFocus(true);
+        DomTerm._focusMenu();
     }
 }
 DomTerm.makeMenu = function(items) {

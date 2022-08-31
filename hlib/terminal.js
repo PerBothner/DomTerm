@@ -3505,6 +3505,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
         else if (DomTerm.showContextMenu && ! e.shiftKey) {
             let opts = {inputMode: dt.getInputMode(),
                         autoPaging: dt._autoPaging,
+                        windowNumber: dt.topNode.windowNumber,
                         clientX: e.clientX / dt._computedZoom,
                         clientY: e.clientY / dt._computedZoom};
             let link = DomTerm._isInElement(e.target, "A");
