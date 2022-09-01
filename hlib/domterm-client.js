@@ -809,6 +809,9 @@ function handleMessageFromChild(windowNum, command, args) {
         DomTerm._contextOptions = options;
         DomTerm.showContextMenu(options);
         break;
+    case "value-to-clipboard":
+        DomTerm.valueToClipboard(args[0]);
+        break;
     default:
         console.log("unhandled command '"+command+"' in handleMessageFromChild");
     }
@@ -863,8 +866,6 @@ function handleMessage(event) {
         // FIXME rename to doNamedCommand("copy"/"copy-as-html");
         DomTerm.sendParentMessage("value-to-clipboard",
                                    DTerminal._selectionValue(data.args[0]));
-    } else if (data.command=="value-to-clipboard") { // in layout-context
-        DomTerm.valueToClipboard(data.args[0]);
     } else if (data.command=="copy-selection") { // message to child
         DomTerm.doCopy(data.args[0]);
     } else if (data.command=="open-link") { // message to child
