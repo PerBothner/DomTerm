@@ -266,14 +266,13 @@ DomTerm.createMenus = function(options) {
         };
         Menu.hideMenuNode = function(menu, menuNode) {
             if (--menuCount <= 0) {
+                const layout = DomTerm._layout;
+                const wnum = DomTerm._contextOptions?.windowNumber;
                 if (DomTerm.useToolkitSubwindows) {
                     DomTerm._qtBackend.lowerOrRaisePanes(true, true);
-                }
-                const wnum = DomTerm._contextOptions?.windowNumber;
-                const layout = DomTerm._layout;
-                if (layout && wnum >= 0) {
-                    const item = layout._numberToLayoutItem(wnum);
-                    layout._selectLayoutPane(item);
+                    DomTerm._qtBackend.focusPane(wnum);
+                } else if (layout && wnum >= 0) {
+                    layout._selectLayoutPane(layout._numberToLayoutItem(wnum));
                 }
                 DomTerm._contextOptions = undefined;
             }
