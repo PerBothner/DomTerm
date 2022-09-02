@@ -207,6 +207,7 @@ DomTermLayout._selectLayoutPane = function(component, originMode/*unused*/) {
     }
     DomTermLayout.manager.focusComponent(component);
     DomTerm.focusedWindowItem = component;
+    DomTerm.focusedWindowNumber = Number(component.id) || 0;
 }
 
 DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
@@ -700,6 +701,8 @@ DomTermLayout.initialize = function(initialContent = null) {
                                  const widowFocused = DomTerm.focusedTop || DomTerm.focusedChild;
                                  if (DomTerm.focusedChanged || newItem !== oldItem) {
                                      DomTerm.focusedWindowItem = item;
+                                     if (! DomTerm._menuActive)
+                                         DomTerm.focusedWindowNumber = newWindow || 0;
                                      DomTerm.focusedChanged = false;
                                      if (newItem !== oldItem && oldItem)
                                          DomTermLayout.focusItem(oldItem, 0);

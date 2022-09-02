@@ -74,10 +74,8 @@ cmd('new-window', // FIXME needed
     });
 function selectNextPane(forwards) {
     const dl = DomTerm._layout;
-    const current = DomTerm.focusedWindowItem;
-    if (dl && current && current.id) {
-        dl.selectNextPane(forwards, Number(current.id));
-    }
+    if (dl && DomTerm.focusedWindowNumber > 0)
+        dl.selectNextPane(forwards, DomTerm.focusedWindowNumber);
     DomTerm.selectNextPane(forwards);
 }
 cmd('select-pane-previous',
@@ -815,13 +813,17 @@ cmd('detach-session',
     });
 cmd('open-link',
     function(dt, keyName) {
-        DomTerm.handleLink();;
+        DomTerm.handleLink();
         return true;
+    }, {
+        context: "parent"
     });
 cmd('copy-link-address',
     function(dt, keyName) {
-        DomTerm.copyLink();;
+        DomTerm.copyLink();
         return true;
+    }, {
+        context: "parent"
     });
 cmd('open-domterm-homepage',
     function(dt, keyName) {

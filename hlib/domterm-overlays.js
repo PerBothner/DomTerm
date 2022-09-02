@@ -71,9 +71,8 @@ function showMessage(title, message) {
         popup.parentNode.removeChild(popup);
         if (DomTerm.useToolkitSubwindows) {
             DomTerm._qtBackend.lowerOrRaisePanes(true, true);
-            const wnum = DomTerm.focusedWindowItem
-                  && Number(DomTerm.focusedWindowItem.id);
-            if (wnum >= 0)
+            const wnum = DomTerm.focusedWindowNumber;
+            if (wnum > 0)
                 DomTerm._qtBackend.focusPane(wnum);
         }
     }

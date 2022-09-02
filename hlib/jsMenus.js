@@ -306,8 +306,10 @@ class Menu {
 		*/
 		if (e.type=="mousedown" && inMenubar == menubarHandler
 		    && (!miNode || miNode.jsMenuItem.menuBarTopLevel)) {
-			if (Menu._topmostMenu)
+			if (Menu._topmostMenu) {
 				Menu.popdownAll();
+				Menu.menuDone(null);
+			}
 		}
 		if ((inMenubar == menubarHandler) && miNode) {
 			if (e.type=="mousedown") {
@@ -453,6 +455,8 @@ Menu._keydownListener = function(e) {
 			    && nextMenu(menuNode, false))
 				return;
 			menuNode.jsMenu.popdown();
+			if (! Menu._topmostMenu && Menu.menuDone)
+				Menu.menuDone(null);
 			break;
 		case 32: // Space
 		case 13: // Enter
@@ -669,6 +673,8 @@ class MenuItem {
 				}
 			}
 			if(this.click) this.click(this);
+			if (Menu.menuDone)
+				Menu.menuDone(this);
 		}
 	}
 

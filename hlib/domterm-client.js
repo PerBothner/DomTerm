@@ -530,10 +530,9 @@ function loadHandler(event) {
     if (DomTerm.useIFrame || layoutInitAlways) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
-                const lcontent = DomTerm._oldFocusedContent;
-                const w = lcontent && lcontent.contentWindow;
-                if (w) {
-                    w.postMessage({"command": command, "args": args}, "*");
+                const wnum = DomTerm.focusedWindowNumber;
+                if (wnum > 0) {
+                    DomTerm.sendChildMessage(wnum, commmand, ...args);
                     return true;
                 }
                 return false;

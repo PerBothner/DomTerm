@@ -262,21 +262,27 @@ DomTerm.createMenus = function(options) {
                 DomTerm._qtBackend.lowerOrRaisePanes(false, true);
             }
             DomTerm._focusMenu();
+            DomTerm._menuActive = true;
             return false;
         };
         Menu.hideMenuNode = function(menu, menuNode) {
             if (--menuCount <= 0) {
                 const layout = DomTerm._layout;
-                const wnum = DomTerm._contextOptions?.windowNumber;
+                const wnum = DomTerm._contextOptions?.windowNumber
+                      || DomTerm.focusedWindowNumber;
                 if (DomTerm.useToolkitSubwindows) {
                     DomTerm._qtBackend.lowerOrRaisePanes(true, true);
-                    DomTerm._qtBackend.focusPane(wnum);
-                } else if (layout && wnum >= 0) {
+                    if (wnum > 0)
+                        DomTerm._qtBackend.focusPane(wnum);
+                } else if (layout && wnum > 0) {
                     layout._selectLayoutPane(layout._numberToLayoutItem(wnum));
                 }
-                DomTerm._contextOptions = undefined;
+                DomTerm._menuActive = false;
             }
         };
+        Menu.menuDone = function(menuItem) {
+            DomTerm._contextOptions = undefined;
+        }
         showMenubar(true);
     }
 

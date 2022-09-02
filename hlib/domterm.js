@@ -75,6 +75,7 @@ DomTerm._instanceCounter = 0;
 // The current domterm Terminal *or* domterm-wrapper iframe Element.
 DomTerm._oldFocusedContent = null;
 DomTerm.focusedWindowItem = null;
+DomTerm.focusedWindowNumber = 0;
 
 DomTerm.mainTerm = null;
 

@@ -5765,21 +5765,17 @@ Terminal.prototype.handleBell = function() {
         this._displayInfoWithTimeout(Terminal.BELL_TEXT, null, Terminal.BELL_TIMEOUT);
 };
 
-DomTerm.requestOpenLink = function(obj, dt=DomTerm.focusedTerm) {
-    if (dt != null)
-        dt.reportEvent("LINK", JSON.stringify(obj));
+DomTerm.requestOpenLink = function(obj, dt = DomTerm.focusedTerm || DomTerm.mainTerm) {
+    dt.reportEvent("LINK", JSON.stringify(obj));
 }
 
 DomTerm.handleLink = function(options=DomTerm._contextOptions) {
-    if (DomTerm.dispatchTerminalMessage("open-link", options))
-        return;
-    let dt = DomTerm.focusedTerm;
-    if (dt && options && options.href) {
+    if (options && options.href) {
         let contents = options.contentValue &&  options.contentValue.text;
-        DomTerm.handleLinkRef(options.href, contents, dt);
+        DomTerm.handleLinkRef(options.href, contents);
     }
 }
-DomTerm.handleLinkRef = function(href, textContent, dt=DomTerm.focusedTerm) {
+DomTerm.handleLinkRef = function(href, textContent, dt=undefined) {
     if (href.startsWith('#'))
         window.location.hash = href;
     else {
