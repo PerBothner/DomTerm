@@ -507,8 +507,6 @@ function loadHandler(event) {
             DomTerm.titlebarCurrent = titlebarNode;
             createTitlebar(titlebarNode, null);
             createResizeAreas();
-            titlebarNode.addEventListener('click',
-                                          (e) => { console.log("clicked titlebar"); }, true);
             if (DomTerm.isMac && ! DomTerm.isElectron()) {
                 const slink = document.createElement("link");
                 slink.rel = "stylesheet";
@@ -532,7 +530,7 @@ function loadHandler(event) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
                 const wnum = DomTerm.focusedWindowNumber;
                 if (wnum > 0) {
-                    DomTerm.sendChildMessage(wnum, commmand, ...args);
+                    DomTerm.sendChildMessage(wnum, command, ...args);
                     return true;
                 }
                 return false;
