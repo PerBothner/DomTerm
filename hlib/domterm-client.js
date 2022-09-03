@@ -529,7 +529,7 @@ function loadHandler(event) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
                 const wnum = DomTerm.focusedWindowNumber;
-                if (wnum > 0) {
+                if (wnum > 0 && DomTerm.focusedTerm !== DomTerm.mainTerm) {
                     DomTerm.sendChildMessage(wnum, command, ...args);
                     return true;
                 }
