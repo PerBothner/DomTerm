@@ -9777,8 +9777,9 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-Mod-Left": "backward-word-extend",
     "Shift-Right": "forward-char-extend",
     "Shift-Mod-Right": "forward-word-extend",
-    "Up": "up-line",
-    "Down": "down-line-or-unpause",
+    "Up": "up-line", // should move by "visible-line" not logical "line" ???
+    "Down": "down-line-or-unpause", // likewise: should be "visible-line" ???
+    //"Alt+Up": // "Alt+Down" // move by logical line ???
     "Shift-Up": "up-line-extend",
     "Shift-Down": "down-line-extend",
     "Mod-Right": 'forward-word',
@@ -11122,6 +11123,7 @@ Terminal.prototype._enterPaging = function(pause = true) {
     } else {
         this._updateSelected();
     }
+    this.maybeFocus();
 }
 
 
