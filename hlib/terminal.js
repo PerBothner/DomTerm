@@ -4891,6 +4891,9 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
     this._pendingEcho = this._pendingEcho
         + String.fromCharCode(code).repeat(count - scanState.todo);
     this._restoreCaret();
+    const sel = document.getSelection();
+    if (sel.isCollapsed && this._caretNode.parentNode)
+        sel.collapse(this._caretNode, 0);
 }
 
 Terminal.prototype._respondSimpleInput = function(str, keyName) {
