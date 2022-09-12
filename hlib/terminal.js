@@ -1322,7 +1322,7 @@ Terminal.prototype.maybeFocus = function(force = false) {
         let aOffset = sel.anchorOffset;
         let collapsed = sel.isCollapsed;
         goal.focus({preventScroll: true});
-        if (sel.isCollapsed && ! collapsed)
+        if (sel.focusNode !== fNode)
             sel.setBaseAndExtent(aNode, aOffset, fNode, fOffset);
     }
 }
