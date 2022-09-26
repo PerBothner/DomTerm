@@ -384,32 +384,32 @@ void  BrowserMainWindow::slotSimpleCommand(const QString &command)
 
 void BrowserMainWindow::slotDetach()
 {
-    emit webView()->backend()->handleSimpleCommand("detach-session");
+    slotSimpleCommand("detach-session");
 }
 
 void BrowserMainWindow::slotAutoPager()
 {
-    emit webView()->backend()->handleSimpleCommand("toggle-auto-pager");
+    slotSimpleCommand("toggle-auto-pager");
 }
 
 void BrowserMainWindow::slotClearBuffer()
 {
-    emit webView()->backend()->handleSimpleCommand("clear-buffer");
+    slotSimpleCommand("clear-buffer");
 }
 
 void BrowserMainWindow::slotCopy()
 {
-    emit webView()->backend()->handleSimpleCommand("copy-text");
+    slotSimpleCommand("copy-text");
 }
 
 void BrowserMainWindow::slotPaste()
 {
-    emit webView()->backend()->handleSimpleCommand("paste-text");
+    slotSimpleCommand("paste-text");
 }
 
 void BrowserMainWindow::slotCopyAsHTML()
 {
-    emit webView()->backend()->handleSimpleCommand("copy-html");
+    slotSimpleCommand("copy-html");
 }
 
 void BrowserMainWindow::slotOpenHomePage()
@@ -434,7 +434,7 @@ void BrowserMainWindow::slotFileNew()
     // Calling newMainWindow directly is more efficient, but
     // using handleSimpleCommand makes it easier to do things consistently.
 #if 1
-    emit webView()->backend()->handleSimpleCommand("new-window");
+    slotSimpleCommand("new-window");
 #else
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     QUrl url = options->url;
@@ -457,7 +457,7 @@ void BrowserMainWindow::closeEvent(QCloseEvent *event)
 
 void BrowserMainWindow::slotEditFind()
 {
-    emit webView()->backend()->handleSimpleCommand("find-text");
+    slotSimpleCommand("find-text");
 }
 
 void BrowserMainWindow::slotViewZoomIn()
