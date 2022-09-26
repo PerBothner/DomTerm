@@ -132,7 +132,7 @@ function connectAjax(name, prefix="", topNode=null)
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
     DomTerm._qtBackend = backend;
-    if (! DomTerm.usingJsMenus() && ! DomTerm.addTitlebar) {
+    if (! DomTerm.usingJsMenus()) {
         DomTerm.showContextMenu = function(options) {
             backend.showContextMenu(options.contextType);
             return false;
