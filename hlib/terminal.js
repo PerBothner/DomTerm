@@ -1039,7 +1039,7 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
         setTimeout(() => {
             // Note this.windowNumber might have changed from wnumber
             DomTerm._layout.layoutClose(this.topNode,
-                                        DomTerm._layout._numberToLayoutItem(wnumber),
+                                        wnumber,
                                         fromLayoutEvent);
        }, 1);
     } else if (! fromLayoutEvent)

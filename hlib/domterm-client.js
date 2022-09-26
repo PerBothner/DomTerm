@@ -777,7 +777,8 @@ function handleMessageFromChild(windowNum, command, args) {
         break;
     case "layout-close":
         if (dlayout && dlayout.manager) {
-            dlayout.layoutClose(lcontent/*item && item.container.element*/, item, args[0]);
+            dlayout.layoutClose(lcontent/*item && item.container.element*/,
+                                windowNum, args[0]);
         } else
             DomTerm.windowClose();
         break;

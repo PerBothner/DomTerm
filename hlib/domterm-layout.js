@@ -310,14 +310,13 @@ DomTermLayout._containerHandleResize = function(container, wrapped) { // unused 
                  })
 }
 
-DomTermLayout.layoutClose = function(lcontent, r, from_handler=false) {
-    const component = r?.element;
+DomTermLayout.layoutClose = function(lcontent, windowNumber, from_handler=false) {
+    if (DomTerm.useToolkitSubwindows) {
+        DomTerm._qtBackend.closePane(windowNumber);
+    }
+    const r = DomTermLayout._numberToLayoutItem(windowNumber)
     if (r && ! from_handler) {
-        const windowNum = Number(r.id);
-        if (DomTerm.useToolkitSubwindows) {
-            DomTerm._qtBackend.closePane(windowNum);
-        }
-        DomTermLayout.selectNextPane(true, windowNum);
+        DomTermLayout.selectNextPane(true, windowNumber);
         r.remove();
     }
     if (DomTermLayout.manager.root.contentItems.length == 0)
@@ -348,7 +347,7 @@ DomTermLayout.onLayoutClosed = function(container) {
             if (dt && wnum) {
                 dt.reportEvent("CLOSE-WINDOW", wnum);
             }
-            DomTermLayout.layoutClose(content, container.parent, true);
+            DomTermLayout.layoutClose(content, wnum, true);
             return;
         }
         // Like DomTerm.closeSession(container.component, false, true)
@@ -540,9 +539,9 @@ DomTermLayout.initialize = function(initialContent = null) {
             if (typeof wnum === "number")
                 wrapped.windowNumber = wnum;
         }
-        DomTermLayout.updateLayoutTitle(container.parent, componentConfig);
-
-        container.parent.id = `${wnum}`;
+        const item = container.parent;
+        DomTermLayout.updateLayoutTitle(item, componentConfig);
+        item.id = `${wnum}`;
         container.stateRequestEvent = () => { return componentConfig; }
 
         if (DomTerm.useToolkitSubwindows && wnum >= 0) {
@@ -556,6 +555,7 @@ DomTermLayout.initialize = function(initialContent = null) {
                     DomTerm._qtBackend.setGeometry(wnum, x, y, width, height);
                 }
             };
+
         }
         componentConfig.initialized = true;
 
