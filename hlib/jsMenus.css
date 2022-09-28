@@ -8,7 +8,7 @@ body { display: flex; flex-direction: column }
 .menubar { flex: 0 0 22px }
 div.below-menubar { flex: 1 1 0; min-height: 0;}
 
-.menu-item > button {
+.menu-item > [role=button] {
     display: flex;
     width: 100%;
     border: none;
@@ -110,6 +110,7 @@ li.menu-item.separator {
 }
 
 .menu-item .modifiers,
+.menu-item .keys,
 .menu-item .icon-wrap,
 .menu-item .checkmark {
 	display: inline-flex;
@@ -124,17 +125,17 @@ li.menu-item.separator {
 .menu-item .checkmark {
 	width: 22px;
 }
-
-.menu-item .modifiers {
-	box-sizing: border-box;
-	padding: 0 6px;
-	text-align: right;
-	order: 0;
+.menu-item > [role=button] > .modifiers,
+.menu-item > [role=button] > .keys {
+    box-sizing: border-box;
+    padding: 0 6px;
+    text-align: right;
+    order: 0;
     flex: 0 0 auto;
     align-self: center;
 }
 
-.menu-item > button > .label {
+.menu-item > [role=button] > .label {
     padding: 0 22px 0 0;
     order: 0;
     flex: 1 0 auto;

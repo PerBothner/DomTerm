@@ -227,6 +227,7 @@ class Menu {
 			(this.beforeShow)(this);
 		let menuNode = document.createElement('ul');
 		menuNode.classList.add('nwjs-menu', this.type);
+		menuNode.spellcheck = false;
 		// make focusable
 		menuNode.setAttribute('contenteditable', 'true');
 		menuNode.setAttribute('role',
@@ -308,7 +309,8 @@ class Menu {
 		    && (!miNode || miNode.jsMenuItem.menuBarTopLevel)) {
 			if (Menu._topmostMenu) {
 				Menu.popdownAll();
-				Menu.menuDone(null);
+				if (Menu.menuDone)
+					Menu.menuDone(null);
 			}
 		}
 		if ((inMenubar == menubarHandler) && miNode) {
@@ -512,14 +514,13 @@ Menu.topsheetZindex = 5;
 class MenuItem {
 	constructor(settings = {}) {
 
-		const modifiersEnum = ['cmd', 'command', 'super', 'shift', 'ctrl', 'alt'];
 		const typeEnum = ['separator', 'checkbox', 'radio', 'normal'];
 		let type = isValidType(settings.type) ? settings.type : 'normal';
 		let submenu = settings.submenu || null;
 		if (submenu && ! (submenu instanceof Menu))
 			submenu = new Menu({}, submenu);
 		let click = settings.click || null;
-		let modifiers = validModifiers(settings.modifiers) ? settings.modifiers : null;
+		this.modifiers = settings.modifiers;
 		let label = settings.label || '';
 		let enabled = settings.enabled;
 		if(typeof settings.enabled === 'undefined') enabled = true;
@@ -568,15 +569,6 @@ class MenuItem {
 			}
 		});
 
-		Object.defineProperty(this, 'modifiers', {
-			get: () => {
-				return modifiers;
-			},
-			set: (inputModifiers) => {
-				modifiers = validModifiers(inputModifiers) ? inputModifiers : modifiers;
-			}
-		});
-
 		Object.defineProperty(this, 'enabled', {
 			get: () => {
 				return enabled;
@@ -610,22 +602,32 @@ class MenuItem {
 		this.checked = settings.checked || false;
 
 		this.key = settings.key || null;
-		this.accelerator = settings.accelerator;
+		let accelerator = settings.accelerator;
+		if (! accelerator && settings.key) {
+			accelerator = (settings.modifiers ? (settings.modifiers + "+") : "") + settings.key;
+		}
+		if (accelerator) {
+			accelerator = accelerator
+				.replace(/Command[+]/i, "Cmd+")
+				.replace(/Control[+]/i, "Ctrl+")
+				.replace(/(Mod|((Command|Cmd)OrCtrl))[+]/i,
+					 Menu._isMac ? "Cmd+" : "Ctrl+");
+		}
+		this.accelerator = accelerator;
+		if (accelerator && ! settings.key) {
+			const plus =
+			      accelerator.lastIndexOf("+", accelerator.length-2);
+			if (plus > 0) {
+				this.modifiers = accelerator.substring(0, plus);
+				this.key = accelerator.substring(plus+1);
+			} else {
+				settings.key = accelerator;
+			}
+		}
 		this.node = null;
 
 		if(this.key) {
 			this.key = this.key.toUpperCase();
-		}
-		function validModifiers(modifiersIn = '') {
-			let modsArr = modifiersIn.split('+');
-			for(let i=0; i < modsArr; i++) {
-				let mod = modsArr[i].trim();
-				if(modifiersEnum.indexOf(mod) < 0) {
-					console.error(`${mod} is not a valid modifier`);
-					return false;
-				}
-			}
-			return true;
 		}
 
 		function isValidType(typeIn = '', debug = false) {
@@ -743,56 +745,22 @@ class MenuItem {
 		let labelNode = document.createElement('span');
 		labelNode.classList.add('label');
 
-		let modifierNode = document.createElement('span');
-		modifierNode.classList.add('modifiers');
-
 		let checkmarkNode = document.createElement('span');
 		checkmarkNode.classList.add('checkmark');
 
 		if(this.checked && !menuBarTopLevel)
 			node.classList.add('checked');
 
-		let text = '';
-
 		if(this.submenu)
 			node.setAttribute('aria-haspopup', 'true');
 
 		if(this.submenu && !menuBarTopLevel) {
-			text = MenuItem.submenuSymbol;
-
 			node.addEventListener('mouseleave', (e) => {
 				if(node !== e.target) {
 					if(!Menu.isDescendant(node, e.target))
 						this.submenu.popdown();
 				}
 			});
-		}
-
-		if(this.modifiers && !menuBarTopLevel) {
-			if (MenuItem.useModifierSymbols) {
-				let mods = this.modifiers.split('+');
-
-				// Looping this way to keep order of symbols - required by macOS
-				for(let symbol in MenuItem.modifierSymbols) {
-					if(mods.indexOf(symbol) > -1) {
-						text += MenuItem.modifierSymbols[symbol];
-					}
-				}
-			} else
-				text += this.modifiers + "+";
-		}
-
-		if(this.key && !menuBarTopLevel) {
-			text += this.key;
-		}
-		if (this.accelerator && !menuBarTopLevel) {
-			let acc = this.accelerator;
-			let cmd = Menu._isMac ? "Cmd" : "Ctrl";
-			acc = acc.replace("Command", "Cmd");
-			acc = acc.replace("Control", "Ctrl");
-			acc = acc.replace("CmdOrCtrl", cmd);
-			acc = acc.replace("Mod+", cmd+"+");
-			text += acc;
 		}
 
 		if(!this.enabled) {
@@ -826,11 +794,51 @@ class MenuItem {
 		labelNode.appendChild(textLabelNode);
 		buttonNode.appendChild(labelNode);
 
-		if (text) {
-			if (! this.submenu && ! MenuItem.useModifierSymbols)
-				modifierNode.classList.add('keys');
-			modifierNode.appendChild(document.createTextNode(text));
-			buttonNode.appendChild(modifierNode);
+		if(this.submenu && !menuBarTopLevel) {
+			const n = document.createElement('span');
+			n.classList.add('modifiers');
+			n.append(MenuItem.submenuSymbol);
+			buttonNode.appendChild(n);
+		}
+		let accelerator = this.accelerator;
+		if (accelerator) {
+			let keyNode = document.createElement('span');
+			keyNode.classList.add('keys');
+			let i = 0;
+			const len = accelerator.length;
+			for (;;) {
+				if (i > 0) {
+					keyNode.append(" ");
+				}
+				let sp = accelerator.indexOf(' ', i);
+				let key = accelerator.substring(i, sp < 0 ? len : sp);
+				let pl = key.lastIndexOf('+', key.length-2);
+				if (pl > 0) {
+					let mod = key.substring(0, pl);
+					let modNode = document.createElement('span');
+					modNode.classList.add('modifiers');
+					if (MenuItem.useModifierSymbols) {
+						let mods = mod.toLowerCase().split('+');
+						mod = "";
+						// Looping this way to keep order of symbols - required by macOS
+						for(let symbol in MenuItem.modifierSymbols) {
+							if(mods.indexOf(symbol) >= 0) {
+								mod += MenuItem.modifierSymbols[symbol];
+							}
+						}
+					} else
+						mod += "+";
+					modNode.append(mod);
+					keyNode.append(modNode);
+					key = key.substring(pl+1);
+				}
+				keyNode.append(key);
+				if (sp < 0)
+					break;
+				i = sp + 1;
+			}
+			keyNode.normalize();
+			buttonNode.appendChild(keyNode);
 		}
 
 		node.title = this.tooltip;
