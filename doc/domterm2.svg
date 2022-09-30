@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="76mm"
-   height="48mm"
-   viewBox="47 57 71 66"
+   width="60.164867mm"
+   height="48.02953mm"
+   viewBox="47 57 56.206653 66.040602"
    version="1.1"
    id="svg8"
-   inkscape:version="0.92.4 (unknown)"
-   sodipodi:docname="domterm2.svg">
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   sodipodi:docname="domterm2.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <defs
      id="defs2" />
   <sodipodi:namedview
@@ -24,17 +24,20 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.4"
-     inkscape:cx="65.504653"
-     inkscape:cy="124.83869"
+     inkscape:cx="78.928571"
+     inkscape:cy="125"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      inkscape:document-rotation="0"
      showgrid="false"
-     inkscape:window-width="1391"
+     inkscape:window-width="2583"
      inkscape:window-height="1169"
-     inkscape:window-x="1305"
-     inkscape:window-y="954"
-     inkscape:window-maximized="0" />
+     inkscape:window-x="26"
+     inkscape:window-y="23"
+     inkscape:window-maximized="0"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1" />
   <metadata
      id="metadata5">
     <rdf:RDF>
@@ -43,60 +46,50 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     transform="translate(1.3774538,0.12485393)">
     <rect
-       style="opacity:0.969;fill:#e2e8e3;fill-opacity:1;stroke:#000600;stroke-width:2.11749994;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="opacity:0.969;fill:#e9ddaf;fill-opacity:1;stroke:#000600;stroke-width:2.0656;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect4267"
-       width="82.777473"
-       height="62.483906"
-       x="34.350128"
-       y="58.939976"
-       ry="5.7139854" />
+       width="78.704117"
+       height="62.535805"
+       x="34.324177"
+       y="58.914024"
+       ry="5.7187314" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.87494171;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="M 34.285237,71.599524 H 116.06452"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.86142;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 34.285237,71.599524 H 113.55628"
        id="path4269"
        inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.16897964px;line-height:9.48075581px;font-family:'Latin Modern Mono Caps';-inkscape-font-specification:'Latin Modern Mono Caps, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.37923026px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="37.710709"
-       y="79.977478"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.169px;line-height:9.48076px;font-family:'Latin Modern Mono Caps';-inkscape-font-specification:'Latin Modern Mono Caps, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000084;fill-opacity:1;stroke:none;stroke-width:0.37923px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="35.794998"
+       y="80.123207"
        id="text4273"
        transform="scale(1.157761,0.86373613)"><tspan
          sodipodi:role="line"
          id="tspan4271"
-         x="37.710709"
-         y="79.977478"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.16897964px;font-family:'Latin Modern Mono Caps';-inkscape-font-specification:'Latin Modern Mono Caps, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-width:0.37923026px">DomTerm</tspan></text>
+         x="35.794998"
+         y="80.123207"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.169px;font-family:'Latin Modern Mono Caps';-inkscape-font-specification:'Latin Modern Mono Caps, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-width:0.37923px;fill:#000084;fill-opacity:1">DomTerm</tspan></text>
     <text
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:6.61458302px;font-family:'Courier 10 Pitch';-inkscape-font-specification:'Courier 10 Pitch, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="37.248234"
-       y="81.791237"
-       id="text4287"><tspan
-         sodipodi:role="line"
-         id="tspan4285"
-         x="37.248234"
-         y="81.791237"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;font-family:'Courier 10 Pitch';-inkscape-font-specification:'Courier 10 Pitch, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-width:0.26458332px">DT&gt; _</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:19.40277672px;line-height:9.09505177px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.36380208px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="37.785904"
-       y="87.399368"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:19.4028px;line-height:9.09505px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.363802px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="36.630749"
+       y="85.804695"
        id="text4526"><tspan
          sodipodi:role="line"
          id="tspan4524"
-         x="37.785904"
-         y="87.399368"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:19.40277672px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-width:0.36380208px">DT&gt; _</tspan></text>
+         x="36.630749"
+         y="85.804695"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:19.4028px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-width:0.363802px">DT&gt; _</tspan></text>
   </g>
 </svg>
