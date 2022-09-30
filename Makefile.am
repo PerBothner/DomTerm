@@ -262,7 +262,7 @@ clean-am:
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm bin/dt-webview bin/dt-wry
-	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage appimage/bad-dyn-libs DomTerm.app doc/DomTerm.icons doc/DomTerm.iconset
+	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage appimage/bad-dyn-libs DomTerm.app
 
 websocket_sources = org/domterm/websocket/DomServer.java
 pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
@@ -631,13 +631,14 @@ DomTerm.app: doc/DomTerm.icns
 	cp doc/DomTerm.icns DomTerm.app/Contents/Resources/
 
 DomTerm-$(VERSION).dmg: DomTerm.app
-	create-dmg --volname DomTerm --volicon doc/DomTerm.icns DomTerm-$(VERSION).dmg ./DomTerm.app
+	rm -r $@
+	create-dmg --volname DomTerm --volicon doc/DomTerm.icns $@ ./DomTerm.app
 
 doc/DomTerm.iconset: doc/domterm2.svg
 	$(MKDIR_P) doc/DomTerm.iconset
-	for SZ in 16 32 48 64 128 256 512; do \
+	for SZ in 16 32 128 256 512; do \
 	  $(IMAGEMAGICK_CONVERT) -background none -resize $${SZ}x$${SZ}'!' doc/domterm2.svg doc/DomTerm.iconset/icon_$${SZ}x$${SZ}.png; \
 	done
 
 doc/DomTerm.icns: doc/DomTerm.iconset
-	iconutil -c icns -o doc/DomTerm.icns doc/DomTerm.iconset
+	iconutil -c icns -o $@ doc/DomTerm.iconset
