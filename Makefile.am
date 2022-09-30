@@ -262,7 +262,7 @@ clean-am:
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
 	rm -rf bin/qtdomterm bin/dt-webview bin/dt-wry
-	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage appimage/bad-dyn-libs
+	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage appimage/bad-dyn-libs DomTerm.app doc/DomTerm.icons doc/DomTerm.iconset
 
 websocket_sources = org/domterm/websocket/DomServer.java
 pty_sources = org/domterm/pty/PtyBackend.java org/domterm/pty/PTY.java
@@ -516,10 +516,10 @@ if WITH_JAVA
 else
 if ENABLE_COMPILED_IN_RESOURCES
 else
-	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm.jar
+	$(INSTALL_DATA) share/domterm/domterm.jar $(DESTDIR)$(pkgdatadir)
 endif
 endif
-	$(INSTALL_DATA) -t $(DESTDIR)$(pkgdatadir) share/domterm/domterm2.ico
+	$(INSTALL_DATA) share/domterm/domterm2.ico $(DESTDIR)$(pkgdatadir)
 	$(MKDIR_P) $(DESTDIR)$(datadir)/applications \
 	    $(DESTDIR)$(datadir)/appdata
 	$(INSTALL_DATA) $(srcdir)/domterm.desktop $(DESTDIR)$(datadir)/applications/
@@ -609,14 +609,10 @@ APP_DESKTOP=appimage/DomTerm.AppDir/domterm.desktop
 #if echo "@LIBWEBSOCKETS_LIBS@"|grep '[-]lwebsockets' >&/dev/null; then echo Must link libsockets staticaly for AppImage; false; fi
 appimage/DomTerm.AppImage: bin/domterm
 	mkdir -p appimage appimage/DomTerm.AppDir
-	make install prefix=`pwd`/appimage/DomTerm.AppDir/usr
+	make install-strip prefix=`pwd`/appimage/DomTerm.AppDir/usr
 	cp $(srcdir)/domterm.desktop $(APP_DESKTOP)
 	echo "X-AppImage-Version=$(DOMTERM_VERSION)" >>$(APP_DESKTOP)
 	cp $(srcdir)/doc/domterm1.svg appimage/DomTerm.AppDir/domterm.svg
-	strip appimage/DomTerm.AppDir/usr/bin/domterm
-	-test -x appimage/DomTerm.AppDir/usr/bin/qtdomterm && strip appimage/DomTerm.AppDir/usr/bin/qtdomterm
-	-test -x appimage/DomTerm.AppDir/usr/bin/dt-webview && strip appimage/DomTerm.AppDir/usr/bin/dt-webview
-	-test -x appimage/DomTerm.AppDir/usr/bin/dt-wry && strip appimage/DomTerm.AppDir/usr/bin/dt-wry
 	ldd ./appimage/DomTerm.AppDir/usr/bin/domterm|(grep 'libwebsockets[.]so'||true) >appimage/bad-dyn-libs
 	@if test -s appimage/bad-dyn-libs; then echo WARNING: These libraries should have static linking for AppImage:; cat appimage/bad-dyn-libs; fi
 #	echo '#!/bin/bash' > $(APP_RUN)
@@ -625,3 +621,23 @@ appimage/DomTerm.AppImage: bin/domterm
 #	chmod +x $(APP_RUN)
 	cd appimage/DomTerm.AppDir && ln -fs usr/bin/domterm AppRun
 	cd appimage && $(APPIMAGETOOL) DomTerm.AppDir DomTerm.AppImage
+
+DomTerm.app: doc/DomTerm.icns
+	$(MKDIR_P) DomTerm.app DomTerm.app/Contents DomTerm.app/Contents/Resources
+	$(MKDIR_P) DomTerm.app/Contents/MacOS
+	make install-strip prefix=`pwd`/DomTerm.app/Contents/Resources
+	cd DomTerm.app/Contents/MacOS && ln -s ../Resources/bin/domterm .
+	cp native/macOS.plist DomTerm.app/Contents/Info.plist
+	cp doc/DomTerm.icns DomTerm.app/Contents/Resources/
+
+DomTerm-$(VERSION).dmg: DomTerm.app
+	create-dmg --volname DomTerm --volicon doc/DomTerm.icns DomTerm-$(VERSION).dmg ./DomTerm.app
+
+doc/DomTerm.iconset: doc/domterm2.svg
+	$(MKDIR_P) doc/DomTerm.iconset
+	for SZ in 16 32 64 128 256 512 1024; do \
+	  $(IMAGEMAGICK_CONVERT) -background none -size $${SZ}x$${SZ} doc/domterm2.svg doc/DomTerm.iconset/icon_$${SZ}x$${SZ}.png; \
+	done
+
+doc/DomTerm.icns: doc/DomTerm.iconset
+	iconutil -c icns -o doc/DomTerm.icns doc/DomTerm.iconset
