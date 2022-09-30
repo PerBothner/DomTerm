@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   width="60.164867mm"
-   height="48.02953mm"
-   viewBox="47 57 56.206653 66.040602"
+   width="54mm"
+   height="54mm"
+   viewBox="47 57 50.447368 74.249998"
    version="1.1"
    id="svg8"
    inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
@@ -23,9 +23,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4"
-     inkscape:cx="78.928571"
-     inkscape:cy="125"
+     inkscape:zoom="2.8"
+     inkscape:cx="108.57143"
+     inkscape:cy="150.71429"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      inkscape:document-rotation="0"
@@ -46,7 +46,6 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -54,42 +53,56 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(1.3774538,0.12485393)">
+     transform="translate(1.2373738,-0.88122344)">
     <rect
-       style="opacity:0.969;fill:#e9ddaf;fill-opacity:1;stroke:#000600;stroke-width:2.0656;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="opacity:0.969;fill:#f6eeec;fill-opacity:1;stroke:#000600;stroke-width:2.04497;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect4267"
-       width="78.704117"
-       height="62.535805"
-       x="34.324177"
-       y="58.914024"
-       ry="5.7187314" />
+       width="69.455025"
+       height="69.455025"
+       x="36.699589"
+       y="60.278713"
+       ry="6.3514762" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.86142;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="M 34.285237,71.599524 H 113.55628"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.797742;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 37.431456,74.092289 H 105.41591"
        id="path4269"
        inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.169px;line-height:9.48076px;font-family:'Latin Modern Mono Caps';-inkscape-font-specification:'Latin Modern Mono Caps, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000084;fill-opacity:1;stroke:none;stroke-width:0.37923px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="35.794998"
-       y="80.123207"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.0265px;line-height:9.39169px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000084;fill-opacity:1;stroke:none;stroke-width:0.375667px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="34.599464"
+       y="83.120232"
        id="text4273"
-       transform="scale(1.157761,0.86373613)"><tspan
+       transform="scale(1.1468836,0.87192805)"><tspan
          sodipodi:role="line"
          id="tspan4271"
-         x="35.794998"
-         y="80.123207"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.169px;font-family:'Latin Modern Mono Caps';-inkscape-font-specification:'Latin Modern Mono Caps, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-width:0.37923px;fill:#000084;fill-opacity:1">DomTerm</tspan></text>
+         x="34.599464"
+         y="83.120232"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:15.0265px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000084;fill-opacity:1;stroke-width:0.375667px">DomTerm</tspan></text>
+    <rect
+       style="opacity:0.967259;fill:#e5ffd5;fill-opacity:1;stroke-width:1.58106;stroke-dasharray:6.32427, 1.58106"
+       id="rect1271"
+       width="39.603577"
+       height="17.878477"
+       x="37.924473"
+       y="76.239822" />
+    <rect
+       style="opacity:0.967259;fill:#ffe693;fill-opacity:1;stroke-width:1.52625;stroke-dasharray:6.10498, 1.52625"
+       id="rect1269"
+       width="27.538418"
+       height="17.941412"
+       x="77.711266"
+       y="76.398186" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:19.4028px;line-height:9.09505px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.363802px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="36.630749"
-       y="85.804695"
+       x="38.597958"
+       y="90.223816"
        id="text4526"><tspan
          sodipodi:role="line"
          id="tspan4524"
-         x="36.630749"
-         y="85.804695"
+         x="38.597958"
+         y="90.223816"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:19.4028px;font-family:'Latin Modern Mono Light';-inkscape-font-specification:'Latin Modern Mono Light, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-width:0.363802px">DT&gt; _</tspan></text>
   </g>
 </svg>
