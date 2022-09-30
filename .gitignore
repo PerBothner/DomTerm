@@ -14,6 +14,7 @@ config.log
 config.status
 autotools-aux
 xulapp/domterm-chrome.jar
+native/macOS.plist
 native/pty/org_domterm_pty_PTY.h
 hlib/domterm-version.js
 hlib/dt-combined.js
@@ -23,6 +24,8 @@ wsclasses.stamp
 tmp-for-xul
 tmp-for-jar
 tmp-repl.in
+DomTerm-*.dmg
+DomTerm.app
 doc/*.1
 doc/index.html
 doc/Applications.html
@@ -36,9 +39,12 @@ doc/To-do.html
 doc/Wire-byte-protocol.html
 doc/DomTerm.xml
 doc/man/*.man
+doc/DomTerm.icns
+doc/DomTerm.iconset
 dt-wry/Cargo.lock
 dt-wry/Cargo.toml
 dt-wry/target
+dt-wry/src/versions.rs
 web/*.html
 web/images/*.png
 autom4te.cache/*
