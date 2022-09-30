@@ -635,8 +635,8 @@ DomTerm-$(VERSION).dmg: DomTerm.app
 
 doc/DomTerm.iconset: doc/domterm2.svg
 	$(MKDIR_P) doc/DomTerm.iconset
-	for SZ in 16 32 64 128 256 512 1024; do \
-	  $(IMAGEMAGICK_CONVERT) -background none -size $${SZ}x$${SZ} doc/domterm2.svg doc/DomTerm.iconset/icon_$${SZ}x$${SZ}.png; \
+	for SZ in 16 32 48 64 128 256 512; do \
+	  $(IMAGEMAGICK_CONVERT) -background none -resize $${SZ}x$${SZ}'!' doc/domterm2.svg doc/DomTerm.iconset/icon_$${SZ}x$${SZ}.png; \
 	done
 
 doc/DomTerm.icns: doc/DomTerm.iconset
