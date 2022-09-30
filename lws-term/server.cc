@@ -808,12 +808,21 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
             if (! p) {
                 if (is_WindowsSubsystemForLinux())
                     p = "edge-app;electron;qt;chrome-app;firefox;browser";
-                else
+                else {
 #if __APPLE__
-                    p = "electron;qt;chrome-app;firefox;browser";
+                    bool prefer_Qt = false;
+#if 0
+                    if (Qt framework installed)
+                        prefer_Qt = true;
+#endif
+                    if (prefer_Qt)
+                        p = "qt;wry;electron;chrome-app;firefox;browser";
+                    else
+                        p = "wry;qt;electron;chrome-app;firefox;browser";
 #else
                     p = "electron;qt;chrome-app;safari;firefox;browser";
 #endif
+                }
             }
         }
         std::string error_if_single;
