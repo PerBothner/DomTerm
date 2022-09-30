@@ -1632,7 +1632,16 @@ class DTParser {
             break;
         case 5: // Reverse Video (DECSCNM)
             term.sstate.reverseVideo = value;
-            term.updateReverseVideo();
+            // TermInfo for xterm and similar has 'flash=\E[?5h$<100/>\E[?5l'.
+            // I.e. "visible bell" by doing: reverse-video, short-delay, reset.
+            // Unfortunately, the short delay may get dropped, so we see
+            // no flash. Worse: clearing and setting the disabled flag on
+            // stylesheets in quick order seems to confuse Chrome-based
+            // browsers.  Using a short timeout avoids both problems.
+            if (value)
+                term.updateReverseVideo();
+            else
+                setTimeout(() => term.updateReverseVideo(), 50);
             break;
         case 6: // DECOM
             term.sstate.originMode = value;
