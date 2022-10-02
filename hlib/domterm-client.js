@@ -537,27 +537,24 @@ function loadHandler(event) {
                 return false;
             }
             DomTerm.sendChildMessage = function(lcontent, command, ...args) {
-                if (typeof lcontent === "number") {
-                    if (DomTerm.useToolkitSubwindows) {
-                        DomTerm._qtBackend.sendChildMessage(lcontent, command, JSON.stringify(args));
-                        return;
-                    } else {
-                        const item = DomTerm._layout._numberToLayoutItem(lcontent);
-                        if (! item || ! item.component)
-                            return;
-                        lcontent = item.component;
-                        if (lcontent && lcontent.terminal) {
-                            handleMessageFromParent(command, args,
-                                                    lcontent.terminal);
-                            return;
-                        }
-                        // ... else fall through ...
-                    }
+                let wnum, pane;
+                if (lcontent instanceof PaneInfo) {
+                    pane = lcontent;
+                    wnum = pane.number;
+                } else if (typeof lcontent === "number") {
+                    wnum = lcontent;
+                    pane = DomTerm.paneMap[wnum];
                 }
-                let w = lcontent && lcontent.contentWindow;
-                if (w)
-                    w.postMessage({"command": command, "args": args}, "*");
-                else
+                const terminal = pane?.terminal;
+                let childWindow;
+                if (DomTerm.useToolkitSubwindows && wnum >= 0) {
+                    DomTerm._qtBackend.sendChildMessage(wnum, command, JSON.stringify(args));
+                } else if (terminal) {
+                    handleMessageFromParent(command, args, terminal);
+                } else if (pane?.contentElement instanceof HTMLIFrameElement
+                           && (childWindow = pane?.contentElement?.contentWindow)) {
+                    childWindow.postMessage({"command": command, "args": args}, "*");
+                } else
                     console.log("sending "+command+" to unknown or closed child - ignored");
             }
         } else {
@@ -695,6 +692,10 @@ function loadHandler(event) {
                 el = DomTerm.makeElement(name, parent);
                 query += "&main-window=true";
             }
+            const pane = new PaneInfo(mwinnum);
+            pane.contentElement = el;
+            el.paneInfo = pane;
+            DomTerm.focusedPane = pane;
             topNodes = [ el ];
             DomTerm._contentElement = el;
             DomTerm.updateSizeFromBody();

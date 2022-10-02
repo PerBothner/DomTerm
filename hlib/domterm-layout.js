@@ -182,7 +182,8 @@ DomTermLayout.updateLayoutTitle = function(item,
     });
 }
 
-DomTermLayout.focusItem = function(item, focused) {
+DomTermLayout.focusPane = function(pane, focused) {
+    const item = pane.layoutItem;
     let element = item?.container?.element;
     if (element && element.firstElementChild
         && element.firstElementChild.classList.contains("lm_content"))
@@ -206,7 +207,7 @@ DomTermLayout._selectLayoutPane = function(component, originMode/*unused*/) {
             dt.maybeFocus();
     }
     DomTermLayout.manager.focusComponent(component);
-    DomTerm.focusedWindowItem = component;
+    DomTerm.focusedPane = component.container.paneInfo;
     DomTerm.focusedWindowNumber = Number(component.id) || 0;
 }
 
@@ -340,7 +341,8 @@ DomTermLayout.onLayoutClosed = function(container) {
         container.off('destroy', handler);
         const config = container.parent.toConfig();
         const wnum = config.componentState?.windowNumber;
-        const content = !DomTerm.useToolkitSubwindows && container.parent.component;;
+        const pane = container.paneInfo;
+        const content = pane.contentElement;
         if (config.componentType === "browser"
             || config.componentType === "view-saved") {
             const dt = DomTerm.mainTerm;
@@ -354,7 +356,7 @@ DomTermLayout.onLayoutClosed = function(container) {
         if (content && content.terminal && content.terminal.topNode)
             content.terminal.close(false, true);
         else
-            DomTerm.sendChildMessage(wnum, "domterm-close", false, true);
+            DomTerm.sendChildMessage(pane, "domterm-close", false, true);
     };
     return handler;
 }
@@ -371,7 +373,7 @@ DomTermLayout._newPaneNumber = function() {
 
 DomTerm.newPaneHook = null; // is this ever set ???
 
-DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop) {
+DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
     let wrapped;
     let sessionNumber = cstate.sessionNumber;
     let windowNumber = cstate.windowNumber;
@@ -387,6 +389,7 @@ DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop
                       : "&wname=")
             + cstate.windowName;
     }
+    let pane = new PaneInfo(cstate.windowNumber);
     if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 : 2)
         || ctype === 'browser') {
         let url = cstate && cstate.url; //cstate.componentType === 'browser' ? cstate.urlconfig.url;
@@ -404,11 +407,15 @@ DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop
                   : ctype === 'view-saved' ? 'V'
                   : 'T';
             wrapped = DomTerm.makeIFrameWrapper(url, mode, parent);
+            pane.contentElement = wrapped;
+            wrapped.paneInfo = pane;
         }
     } else {
         let name = DomTerm.freshName();
         let el = DomTerm.makeElement(name, parent);
         wrapped = el;
+        pane.contentElement = wrapped;
+        wrapped.paneInfo = pane;
         wrapped.name = name;
         if (DomTerm.mainTerm && DomTerm._mainWindowNumber >= 0)
             query += `&main-window=${DomTerm._mainWindowNumber}`;
@@ -425,7 +432,7 @@ DomTermLayout._initTerminal = function(cstate, ctype, parent = DomTerm.layoutTop
         if (DomTerm.newPaneHook)
             DomTerm.newPaneHook(paneNumber, sessionNumber, wrapped);
     }
-    return wrapped;
+    return pane;
 }
 
 // This is actually called during the capture phase of a mousedown,
@@ -439,10 +446,10 @@ function _handleLayoutClick(ev) {
             DomTermLayout.manager.clearComponentFocus(true);
             return;
         } else if (cl.contains("dt-titlebar")) {
-            if (DomTerm.focusedWindowItem) {
+            if (DomTerm.focusedPane) {
                 // to force focus to be updated
                 DomTermLayout.manager.clearComponentFocus(true);
-                DomTermLayout.manager.focusComponent(DomTerm.focusedWindowItem);
+                DomTermLayout.manager.focusComponent(DomTerm.focusedPane.layoutItem);
             }
             return;
         }
@@ -510,26 +517,33 @@ DomTermLayout.initialize = function(initialContent = null) {
         var el;
         let name;
         let wrapped;
+        let pane;
         if (DomTerm.useToolkitSubwindows && componentConfig.initialized
            && wnum) { // dropped from elsewhere
             DomTerm._qtBackend.adoptPane(Number(wnum));
             DomTerm.mainTerm.reportEvent("WINDOW-MOVED", wnum);
+            pane = new PaneInfo(wnum);
             wrapped = undefined;
-        } else if (lcontent != null && type === "domterm") { // UNUSED?
+        } else if (lcontent != null && type === "domterm") {
             const wtitle = ! componentConfig.windowTitle
                   && DomTerm.focusedTerm?.getWindowTitle();
             if (wtitle)
                 componentConfig.windowTitle = wtitle;
             wrapped = lcontent;
             let e = DomTerm._oldFocusedContent;
+            pane = DomTerm.focusedPane;
             name = (e && (e.layoutTitle || e.getAttribute("name")))
                 || DomTerm.freshName();
             wrapped.paneNumber = DomTermLayout._newPaneNumber();
             lcontent.layoutTitle = undefined; // ???
             lcontent = null;
         } else {
-            wrapped = DomTermLayout._initTerminal(componentConfig, type, container.element);
+            pane = DomTermLayout._initPane(componentConfig, type, container.element);
+            wrapped = pane.contentElement;
         }
+        pane.layoutContainer = container;
+        pane.layoutItem = container.parent;
+        container.paneInfo = pane;
         componentConfig.initialized = true;
         if (wrapped) {
             name = wrapped.name;
@@ -575,6 +589,7 @@ DomTermLayout.initialize = function(initialContent = null) {
                 DomTermLayout.manager.updateSize(); })
             ).observe(top);
         }
+        container.wrapped = wrapped;
         return wrapped;
     }
 
@@ -695,30 +710,27 @@ DomTermLayout.initialize = function(initialContent = null) {
     DomTermLayout.manager.on('focus',
                              (e) => {
                                  const item = e.target;
-                                 const oldItem = DomTerm.focusedWindowItem;
-                                 const newItem = item;
-                                 const newWindow = Number(item.id);
+                                 const oldPane = DomTerm.focusedPane;
+                                 const newPane = item.container.paneInfo;
+                                 const newWindow = newPane.number;
                                  const widowFocused = DomTerm.focusedTop || DomTerm.focusedChild;
-                                 if (DomTerm.focusedChanged || newItem !== oldItem) {
-                                     DomTerm.focusedWindowItem = item;
+                                 if (DomTerm.focusedChanged || newPane !== oldPane) {
+                                     DomTerm.focusedPane = newPane;
                                      if (! DomTerm._menuActive)
                                          DomTerm.focusedWindowNumber = newWindow || 0;
                                      DomTerm.focusedChanged = false;
-                                     if (newItem !== oldItem && oldItem)
-                                         DomTermLayout.focusItem(oldItem, 0);
+                                     if (newPane !== oldPane && oldPane)
+                                         DomTermLayout.focusPane(oldPane, 0);
 
-                                     if (newItem)
-                                         DomTermLayout.focusItem(newItem, 2);
+                                     if (newPane)
+                                         DomTermLayout.focusPane(newPane, 2);
                                  }
-                                 if (newItem) {
+                                 if (newPane) {
                                      if (DomTerm.useToolkitSubwindows)
                                          DomTerm._qtBackend.focusPane(newWindow);
-                                     else if (item.component instanceof HTMLIFrameElement)
-                                         item.component.focus({preventScroll: true});
+                                     else if (newPane.contentElement.component instanceof HTMLIFrameElement)
+                                         newPane.contentElement.focus({preventScroll: true});
                                  }
-
-                                 let dt = e.target.component;
-// FIXME                                 DomTerm.focusChild(dt, 'X')
                              });
     if (lastContainer)
         DomTermLayout._selectLayoutPane(lastContainer.parent, "X");

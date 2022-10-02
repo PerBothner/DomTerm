@@ -74,7 +74,8 @@ DomTerm._instanceCounter = 0;
 
 // The current domterm Terminal *or* domterm-wrapper iframe Element.
 DomTerm._oldFocusedContent = null;
-DomTerm.focusedWindowItem = null;
+/** Current PaneInfo or null. */
+DomTerm.focusedPane = null;
 DomTerm.focusedWindowNumber = 0;
 
 DomTerm.mainTerm = null;
@@ -576,5 +577,31 @@ if (DomTerm.isElectron()) {
         electronAccess.ipcRenderer.send('window-ops', 'toggle-devtools', null);
     }
 };
+
+class PaneInfo {
+    constructor(windowNumber) {
+        this.number = windowNumber;
+        if (windowNumber > 0)
+            DomTerm.paneMap[windowNumber] = this;
+
+        /** The ComponentItem for this pane if using GoldenLayout. */
+        this.layoutItem = undefined;
+
+        /** The ComponentContainer for this pane if using GoldenLayout. */
+        this.layoutContainer = undefined;
+
+        /** The HTMLElement for this pane, if any.
+         * If DomTerm.useToolkitSubwindows: undefined.
+         * Otherwise, either the topNode of a Terminal or an iframe. */
+        this.contentElement = undefined;
+
+        /** Corresponding Terminal object, if it is not in a sub-window.
+         * If defined: this.terminal.topNode === this.contentElement. */
+        this.terminal = undefined;
+    }
+};
+
+/** Map from windowNumber to Paneinfo. */
+DomTerm.paneMap = new Array();
 
 window.DomTerm = DomTerm;

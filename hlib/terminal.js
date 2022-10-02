@@ -1322,7 +1322,7 @@ Terminal.prototype.maybeFocus = function(force = false) {
         let aOffset = sel.anchorOffset;
         let collapsed = sel.isCollapsed;
         goal.focus({preventScroll: true});
-        if (sel.focusNode !== fNode)
+        if (sel.focusNode !== fNode && ! collapsed)
             sel.setBaseAndExtent(aNode, aOffset, fNode, fOffset);
     }
 }
@@ -9847,7 +9847,7 @@ DomTerm.doNamedCommand = function(name, dt_or_item=undefined, keyName=null) {
         DomTerm.sendParentMessage("do-command", name, keyName);
     } else {
         if (! dt_or_item)
-            dt_or_item = DomTerm.focusedWindowItem || DomTerm.focusedTerm;
+            dt_or_item = DomTerm.focusedPane?.layoutItem || DomTerm.focusedTerm;
         if (command.context === "terminal" && ! (dt_or_item instanceof Terminal)) {
             const ctype = dt_or_item.componentType;
             if (ctype !== "domterm" && ctype !== "view-saved")
