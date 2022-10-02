@@ -502,6 +502,7 @@ function loadHandler(event) {
         if (DomTerm.addTitlebar) {
             let titlebarNode = document.createElement('div');
             titlebarNode.classList.add('dt-titlebar');
+            titlebarNode.spellcheck = false;
             bodyNode.appendChild(titlebarNode);
             DomTerm.titlebarElement = titlebarNode;
             DomTerm.titlebarCurrent = titlebarNode;
