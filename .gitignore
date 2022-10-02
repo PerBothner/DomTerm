@@ -39,7 +39,6 @@ doc/To-do.html
 doc/Wire-byte-protocol.html
 doc/DomTerm.xml
 doc/man/*.man
-doc/DomTerm.icns
 doc/DomTerm.iconset
 dt-wry/Cargo.lock
 dt-wry/Cargo.toml
