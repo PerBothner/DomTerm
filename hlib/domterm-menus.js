@@ -15,10 +15,12 @@ DomTerm.createMenus = function(options) {
     function showMenubar(show) {
         if (electronMenus)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', show);
-        else
+        else {
             Menu.setApplicationMenu(show ? DomTerm._savedMenuBar : null,
                                     DomTerm._savedMenubarParent,
                                     DomTerm._savedMenubarBefore);
+            DomTerm.updateSizeFromBody();
+        }
     }
     const muxPrefix = 'CommandOrControl+Shift+M';
     const copyItem =
@@ -194,12 +196,27 @@ DomTerm.createMenus = function(options) {
         viewMenuItems.push(fullscreenAllItem);
         viewMenuItems.push(fullscreenCurrentItem);
     }
-    if (electronMenus) {
-        viewMenuItems.push(menuItem({type: 'separator'}));
-        viewMenuItems.push(menuItem({role: 'resetzoom'}));
-        viewMenuItems.push(menuItem({role: 'zoomin'}));
-        viewMenuItems.push(menuItem({role: 'zoomout'}));
-    }
+    viewMenuItems.push(menuItem({type: 'separator'}));
+
+    viewMenuItems.push(menuItem({label: "Zoom In (all)",
+                                 accelerator: DomTerm.isMac ? "Cmd++" : "Ctrl++",
+                                 clickClientAction: "frame-zoom-in"}));
+    viewMenuItems.push(menuItem({label: "Zoom Out (all)",
+                                 accelerator: DomTerm.isMac ? "Cmd+-" : "Ctrl+-",
+                                 clickClientAction: "frame-zoom-out"}));
+    viewMenuItems.push(menuItem({label: "Zoom Reset (all)",
+                                 accelerator: DomTerm.isMac ? "Cmd+0" : "Ctrl+0",
+                                 clickClientAction: "frame-zoom-reset"}));
+    viewMenuItems.push(menuItem({label: "Zoom In (pane)",
+                                 accelerator: DomTerm.isMac ? "Alt+Cmd++" : "Alt+Ctrl++",
+                                 clickClientAction: "pane-zoom-in"}));
+    viewMenuItems.push(menuItem({label: "Zoom Out (pane)",
+                                 accelerator: DomTerm.isMac ? "Alt+Cmd+-" : "Alt+Ctrl+-",
+                                 clickClientAction: "pane-zoom-out"}));
+    viewMenuItems.push(menuItem({label: "Zoom Reset (pane)",
+                                 accelerator: DomTerm.isMac ? "Alt+Cmd+0" : "Alt+Ctrl+0",
+                                 clickClientAction: "pane-zoom-reset"}));
+
     if (showInspectorItem != null) {
         viewMenuItems.push(menuItem({type: 'separator'}));
         viewMenuItems.push(showInspectorItem);

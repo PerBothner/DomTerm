@@ -64,13 +64,17 @@ public slots:
     void newPane(int windowNumber, const QString& url);
 #endif
     void adoptPane(int windowNumber);
+    void setMainZoom(qreal zoom);
+    void setPaneZoom(int windowNumber, qreal zoom);
     void setGeometry(int windowNumber, int x, int y, int width, int height);
     void closePane(int windowNumber);
     void sendParentMessage(const QString& command, const QString& args_json);
     void sendChildMessage(int windowNumber, const QString& command, const QString& args_json);
     void lowerOrRaisePanes(bool raise, bool allWindows);
     void focusPane(int windowNumber);
+    QWidget* paneFor(int windowNumber);
     void showPane(int windowNumber, bool visibility);
+
     void showContextMenu(const QString& contextType);
     void setSetting(const QString& key, const QString& value);
     void setClipboard(const QString& plain, const QString& html);

@@ -106,6 +106,7 @@ public slots:
     void inputModeChanged(char mode);
     void autoPagerChanged(bool mode);
     bool usingQtMenus() { return _usingQtMenus; }
+    qreal mainZoom() { return _mainZoom; }
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -135,6 +136,9 @@ private slots:
     void slotViewZoomIn();
     void slotViewZoomOut();
     void slotViewResetZoom();
+    void slotPaneZoomIn();
+    void slotPaneZoomOut();
+    void slotPaneResetZoom();
     void slotViewMenubar();
     void slotViewFullScreen(bool enable);
 
@@ -189,6 +193,7 @@ private:
 #if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* m_DockManager;
 #endif
+    qreal _mainZoom = 1.0;
 };
 
 #endif // BROWSERMAINWINDOW_H

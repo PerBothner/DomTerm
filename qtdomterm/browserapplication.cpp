@@ -463,24 +463,6 @@ BrowserApplication::registerPane(int windowNumber, WebView*pane)
     }
     paneMap[windowNumber] = pane;
 }
-void
-BrowserApplication::adoptPane(int windowNumber, WebView*parentView)
-{
-    if (windowNumber < paneMap.size() && windowNumber >= 0) {
-        auto webv = paneMap[windowNumber];
-        if (webv)
-            webv->setParent((QWidget*) parentView);
-    }
-}
-void
-BrowserApplication::setGeometry(int windowNumber, int x, int y, int width, int height)
-{
-    if (windowNumber < paneMap.size() && windowNumber >= 0) {
-        auto webv = paneMap[windowNumber];
-        if (webv)
-            webv->setGeometry(x, y, width, height);
-    }
-}
 
 void
 BrowserApplication::closePane(int windowNumber)
@@ -536,5 +518,21 @@ void BrowserApplication::lowerOrRaisePanes(bool raise, bool allWindows, BrowserM
             else
                 pane->lower();
         }
+    }
+}
+
+void BrowserApplication::setMainZoom(qreal zoom, BrowserMainWindow *mainWindow)
+{
+    int npanes = paneMap.size();
+    mainWindow->_mainZoom = zoom;
+    WebView *mainWeb = mainWindow->webView();
+    for (int windowNum = 0; ; windowNum++ ) {
+        WebView *webv = windowNum == npanes ? mainWeb
+            : dynamic_cast<WebView*>(paneMap[windowNum]);
+        if (windowNum == npanes || (webv && webv->parent() == mainWindow)) {
+            webv->setZoomFactor(zoom * webv->paneZoom);
+        }
+        if (windowNum == npanes)
+            break;
     }
 }

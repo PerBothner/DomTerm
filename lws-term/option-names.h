@@ -51,3 +51,5 @@ OPTION_F(remote_input_timeout, "remote-input-timeout", OPTION_NUMBER_TYPE)
 OPTION_F(remote_output_interval, "remote-output-interval", OPTION_NUMBER_TYPE)
 /** Browser times out if no output received from remote server */
 OPTION_F(remote_output_timeout, "remote-output-timeout", OPTION_NUMBER_TYPE)
+OPTION_F(window_zoom, "window-zoom", OPTION_NUMBER_TYPE)
+OPTION_F(pane_zoom, "pane-zoom", OPTION_NUMBER_TYPE)

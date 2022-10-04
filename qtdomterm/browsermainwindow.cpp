@@ -244,6 +244,9 @@ void BrowserMainWindow::setupMenu()
     viewMenu->addAction(tr("Zoom &In"), this, SLOT(slotViewZoomIn()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Plus));
     viewMenu->addAction(tr("Zoom &Out"), this, SLOT(slotViewZoomOut()), QKeySequence(Qt::CTRL | Qt::Key_Minus));
     viewMenu->addAction(tr("Reset &Zoom"), this, SLOT(slotViewResetZoom()), QKeySequence(Qt::CTRL | Qt::Key_0));
+    viewMenu->addAction(tr("Zoom &In (pane)"), this, SLOT(slotPaneZoomIn()), QKeySequence(Qt::ALT | Qt::CTRL | Qt::SHIFT | Qt::Key_Plus));
+    viewMenu->addAction(tr("Zoom &Out (pane)"), this, SLOT(slotPaneZoomOut()), QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Minus));
+    viewMenu->addAction(tr("Reset &Zoom (pane)"), this, SLOT(slotPaneResetZoom()), QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_0));
 
     QAction *a = viewMenu->addAction(tr("&Full Screen"), this, SLOT(slotViewFullScreen(bool)),  Qt::Key_F11);
     a->setCheckable(true);
@@ -462,23 +465,32 @@ void BrowserMainWindow::slotEditFind()
 
 void BrowserMainWindow::slotViewZoomIn()
 {
-    if (!currentTab())
-        return;
-    currentTab()->setZoomFactor(currentTab()->zoomFactor() + 0.1);
+    slotSimpleCommand("frame-zoom-in");
 }
 
 void BrowserMainWindow::slotViewZoomOut()
 {
-    if (!currentTab())
-        return;
-    currentTab()->setZoomFactor(currentTab()->zoomFactor() - 0.1);
+    slotSimpleCommand("frame-zoom-out");
 }
 
 void BrowserMainWindow::slotViewResetZoom()
 {
-    if (!currentTab())
-        return;
-    currentTab()->setZoomFactor(1.0);
+    slotSimpleCommand("frame-zoom-reset");
+}
+
+void BrowserMainWindow::slotPaneZoomIn()
+{
+    slotSimpleCommand("pane-zoom-in");
+}
+
+void BrowserMainWindow::slotPaneZoomOut()
+{
+    slotSimpleCommand("pane-zoom-out");
+}
+
+void BrowserMainWindow::slotPaneResetZoom()
+{
+    slotSimpleCommand("pane-zoom-reset");
 }
 
 void BrowserMainWindow::slotViewFullScreen(bool makeFullScreen)

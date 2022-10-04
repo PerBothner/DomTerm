@@ -456,6 +456,42 @@ function _handleLayoutClick(ev) {
     }
 }
 
+DomTermLayout.updateContentSize = function(pane) {
+    // Based on updateNodeSize in goldenlayout's component-item.ts.
+    // Also takes zoom into account.
+    const container = pane.layoutContainer;
+    const item = pane.layoutItem;
+    const mainZoom = (! DomTerm.isElectron() && ! DomTerm._qtBackend && document.body.zoomFactor) || 1.0;
+    const itemZoom = mainZoom * pane.paneZoom();
+    const contentElement = container.wrapped;
+    const componentElement =
+          (contentElement instanceof HTMLElement
+           && contentElement.parentNode instanceof HTMLElement
+           && contentElement.parentNode.classList.contains("lm_component"))
+          ? contentElement.parentNode
+          : contentElement;
+    if (contentElement instanceof HTMLElement
+        && item.parent.type === 'stack') {
+        const stackElement = item.parentItem.element;
+        const stackBounds = stackElement.getBoundingClientRect();
+        const itemElement = item.element;
+        const itemBounds = itemElement.getBoundingClientRect();
+        const layoutBounds = DomTermLayout.manager.container.getBoundingClientRect();
+        if (componentElement instanceof HTMLElement
+            && contentElement !== componentElement) {
+            componentElement.style.top = `${(stackBounds.top - layoutBounds.top) / mainZoom}px`;
+            componentElement.style.left = `${(stackBounds.left - layoutBounds.left) / mainZoom}px`;
+            componentElement.style.width = `${stackBounds.width / itemZoom}px`;
+            componentElement.style.height = `${stackBounds.height / itemZoom}px`;
+        }
+        contentElement.style.position = "absolute";
+        contentElement.style.top = `${(itemBounds.top - stackBounds.top) / mainZoom}px`;
+        contentElement.style.left = `${(itemBounds.left - stackBounds.left) / itemZoom}px`;
+        contentElement.style.width = `${itemBounds.width / itemZoom}px`;
+        contentElement.style.height = `${itemBounds.height / itemZoom}px`;
+    }
+}
+
 DomTermLayout.initialize = function(initialContent = null) {
     function activeContentItemHandler(item) {
         //if (item.componentName == "browser")
@@ -564,13 +600,16 @@ DomTermLayout.initialize = function(initialContent = null) {
                     DomTerm._qtBackend.showPane(wnum, visible);
                 }
             };
-            container.notifyResize = (container, x, y, width, height) => {
-                if (DomTerm.useToolkitSubwindows) {
-                    DomTerm._qtBackend.setGeometry(wnum, x, y, width, height);
-                }
-            };
-
         }
+        container.notifyResize = (container, x, y, width, height) => {
+            const pane = container.paneInfo;
+            if (DomTerm.useToolkitSubwindows) {
+                DomTerm._qtBackend.setGeometry(wnum, x, y, width, height);
+            } else {
+                DomTermLayout.updateContentSize(pane);
+            }
+        };
+
         componentConfig.initialized = true;
 
         container.on("dragExported", (event, component) => {
@@ -590,7 +629,7 @@ DomTermLayout.initialize = function(initialContent = null) {
             ).observe(top);
         }
         container.wrapped = wrapped;
-        return wrapped;
+        return undefined;
     }
 
     DomTermLayout.manager.registerComponent( 'domterm', registerComponent);

@@ -42,6 +42,8 @@
 #include "savepagedialog.h"
 #include "webview.h"
 
+extern QVector<QWidget*> paneMap;
+
 Backend::Backend(QSharedDataPointer<ProcessOptions> processOptions,
                  QObject *parent)
   :  QObject(parent),
@@ -160,23 +162,53 @@ void Backend::newPane(int paneOp, const QString& url)
 #else
 void Backend::newPane(int windowNumber, const QString& url)
 {
-    auto webv = new WebView(webView()->m_processOptions, webView());
+    auto mainW = mainWindow();
+    auto webv = new WebView(webView()->m_processOptions, mainW);
     webv->newPage(url);
     webv->resize(300, 300);
     webv->show();
 //   webv->lower();
-    webView()->mainWindow()->application()->registerPane(windowNumber, webv);
+    mainW->application()->registerPane(windowNumber, webv);
     webv->backend()->_windowNumber = windowNumber;
     webv->setFocus(Qt::OtherFocusReason); // FIXME
 }
 #endif
 void Backend::adoptPane(int windowNumber)
 {
-    mainWindow()->application()->adoptPane(windowNumber, webView());
+    auto pane = paneFor(windowNumber);
+    if (pane)
+        pane->setParent((QWidget*) webView());
 }
+
+void Backend::setPaneZoom(int windowNumber, qreal zoom)
+{
+    auto pane = paneFor(windowNumber);
+    if (pane) {
+        WebView *webv = dynamic_cast<WebView*>(pane);
+        if (webv)
+            webv->setPaneZoom(zoom);
+    }
+}
+
+void Backend::setMainZoom(qreal zoom)
+{
+    auto mainW = mainWindow();
+    mainW->application()->setMainZoom(zoom, mainW);
+}
+
 void Backend::setGeometry(int windowNumber, int x, int y, int width, int height)
 {
-    mainWindow()->application()->setGeometry(windowNumber, x, y, width, height);
+    auto pane = paneFor(windowNumber);
+    if (pane) {
+         qreal zoom = mainWindow()->mainZoom();
+         if (zoom > 0 && zoom != 1.0) {
+             width = (int) (zoom * width + 0.5);
+             height = (int) (zoom * height + 0.5);
+             x = (int) (zoom * x + 0.5);
+             y = (int) (zoom * y + 0.5);
+         }
+         pane->setGeometry(x, y, width, height);
+    }
 }
 void Backend::closePane(int windowNumber)
 {
@@ -189,6 +221,13 @@ void Backend::focusPane(int windowNumber)
     else
         mainWindow()->application()->focusPane(windowNumber);
 }
+
+QWidget* Backend::paneFor(int windowNumber)
+{
+    return windowNumber >= paneMap.size() || windowNumber < 0 ? nullptr
+        : paneMap[windowNumber];
+}
+
 void Backend::showPane(int windowNumber, bool visible)
 {
     mainWindow()->application()->showPane(windowNumber, visible);

@@ -7,6 +7,11 @@ DomTerm.logStringMax = 200;
 DomTerm._savedLogEntries = null;
 DomTerm._mainWindowNumber = -1;
 
+// Whole-window zoom set by settings
+DomTerm.zoomMainBase = 1.0;
+// Adjustment to whole-window zoom by zoom-in/-out commands
+DomTerm.zoomMainAdjust = 1.0;
+
 DomTerm.log = function(str, dt=null) {
     if (dt && dt._socketOpen)
         dt.log(str);
@@ -558,15 +563,74 @@ DomTerm._contentSetSize = function(w, h) {
     st.height = `${h}px`;
 }
 DomTerm.updateSizeFromBody = function() {
+    const body = document.body;
     const element = DomTerm._contentElement;
     if (element) {
-        const body = document.body;
         const width = body.offsetWidth - element.offsetLeft;
         const height = body.offsetHeight - element.offsetTop;
-        //lm.setSize(width, height);
         DomTerm._contentSetSize(width, height);
     }
 };
+
+DomTerm.updateBodySizeWithZoom = function() {
+    if (DomTerm.useToolkitSubwindows || DomTerm.isElectron() || DomTerm._qtBackend)
+        return;
+    const zoom = document.body.zoomFactor;
+    const bodyStyle = document.body.style;
+    if (zoom && (zoom < 0.99 || zoom > 1.01)) {
+        const topElement = document.documentElement;
+        bodyStyle.width = `${topElement.offsetWidth / zoom}px`;
+        bodyStyle.height = `${topElement.offsetHeight / zoom}px`;
+    } else {
+        bodyStyle.width = "";
+        bodyStyle.height = "";
+    }
+}
+
+DomTerm.updatePaneZoom = function(pane) {
+    const element = pane.contentElement;
+    const scale = pane.paneZoom();
+    if (element) {
+        if (scale > 0.99 && scale < 1.01) {
+            element.style.removeProperty("transform");
+            element.style.removeProperty("transform-orgin");
+        } else {
+            element.style.setProperty("transform", `scale(${scale})`);
+            element.style.setProperty("transform-origin", "top left");
+        }
+        DomTerm._layout.updateContentSize(pane);
+    } else if (DomTerm.useToolkitSubwindows && DomTerm._qtBackend) {
+        DomTerm._qtBackend.setPaneZoom(pane.number, scale);
+    }
+}
+DomTerm.updateZoom = function() {
+    let node = document.body;
+    const zoom = DomTerm.zoomMainBase * DomTerm.zoomMainAdjust;
+    const oldZoom = node.zoomFactor || 1.0;
+    if (zoom === oldZoom)
+        return;
+    node.zoomFactor = zoom;
+
+    if (DomTerm.isElectron()) {
+        electronAccess.webFrame.setZoomFactor(zoom);
+    } else if (DomTerm._qtBackend) {
+        DomTerm._qtBackend.setMainZoom(zoom);
+    } else if (false && DomTerm.versions.wry) { // FUTURE - TODO
+    } else {
+        if (zoom >= 0.99 && zoom <= 1.01) {
+            node.zoomFactor = undefined;
+            node.style.removeProperty("transform");
+            node.style.removeProperty("transform-orgin");
+        } else {
+            node.zoomFactor = zoom;
+            node.style.setProperty("transform",
+                                   `scale(${node.zoomFactor})`);
+            node.style.setProperty("transform-origin", "top left");
+        }
+        DomTerm.updateBodySizeWithZoom();
+        DomTerm.updateSizeFromBody();
+    }
+}
 
 DomTerm.handlingJsMenu = function() {
     return typeof Menu !== "undefined" && Menu._topmostMenu;
@@ -598,6 +662,22 @@ class PaneInfo {
         /** Corresponding Terminal object, if it is not in a sub-window.
          * If defined: this.terminal.topNode === this.contentElement. */
         this.terminal = undefined;
+
+        /** The 'pane-zoom' setting for this pane.
+         * This needs to multiplied by DomTerm.zoomMainBase
+         * and DomTerm.zoomMainAdjust. */
+        this.zoomSetting = 1.0;
+
+        /** Zoom adjustment from pane-zoon-in/pane-zoom-out commands.
+         * This needs to multiplied by zoomSetting as well
+         * as DomTerm.zoomMainBase and DomTerm.zoomMainAdjust. */
+        this.zoomAdjust = 1.0;
+    }
+
+    paneZoom() { return this.zoomSetting * this.zoomAdjust; }
+
+    effectiveZoom() {
+        return DomTerm.zoomMainBase * DomTerm.zoomMainAdjust * this.paneZoom();
     }
 };
 

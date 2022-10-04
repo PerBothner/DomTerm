@@ -3,6 +3,7 @@
     const _fs = require('fs');
     const _require = require;
     const _electronAccess = {
+        webFrame: _electron.webFrame,
         clipboard: _electron.clipboard,
         fs: _fs,
         ipcRenderer: _electron.ipcRenderer,

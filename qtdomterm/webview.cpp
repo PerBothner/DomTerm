@@ -291,6 +291,12 @@ void WebView::setPage(WebPage *_page)
     page()->setWebChannel(channel);
 }
 
+void WebView::setPaneZoom(qreal zoom)
+{
+    this->paneZoom = zoom;
+    setZoomFactor(zoom * mainWindow()->mainZoom());
+}
+
 void WebView::setSetting(const QString& key, const QString& value)
 {
     if (key=="style.qt") {

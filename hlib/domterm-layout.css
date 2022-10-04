@@ -8,7 +8,7 @@ div.lm_goldenlayout.lm_root { background: transparent }
 .lm_content { border-width: 1px; border-style: solid; }
 .lm_content, div.domterm.lm_content, iframe.domterm-wrapper.lm_content { border-color: #cccccc; box-sizing: border-box }
 */
-.domterm-wrapper { width: 100%; height: 100% }
+.domterm-wrapper { width: 100%; flex: 1 1 0; max-height: 100%; }
 .menubar { position: relative }
 body { --focused-pane-color: magenta}
 iframe.domterm-wrapper { border: none }

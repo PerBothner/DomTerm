@@ -581,6 +581,7 @@ function loadHandler(event) {
                                 if (resizeTimeoutId !== undefined)
                                     clearTimeout(resizeTimeoutId);
                                 resizeTimeoutId = setTimeout(() => {
+                                    DomTerm.updateBodySizeWithZoom();
                                     DomTerm.updateSizeFromBody();
                                 }, 100);
                             },  { passive: true });

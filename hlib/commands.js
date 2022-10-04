@@ -847,3 +847,57 @@ cmd('toggle-developer-tools',
     }, {
         context: "parent"
     });
+
+function zoom_command(step, mainWindow, item) {
+    let node = null;
+    if (mainWindow) {
+        const zoom = step == 0 ? 1.0 : (1 + 0.2 * step) * DomTerm.zoomMainAdjust;
+        DomTerm.zoomMainAdjust = zoom;
+        DomTerm.updateZoom();
+    } else {
+        let pane = item
+            && (item.paneInfo || item.topNode?.paneInfo|| item.container?.paneInfo);
+        if (! pane)
+            return false;
+        const zoom = step == 0 ? 1.0 : (1 + 0.2 * step) * pane.zoomAdjust;
+        pane.zoomAdjust = zoom;
+        DomTerm.updatePaneZoom(pane);
+    }
+    return true;
+}
+cmd('frame-zoom-reset',
+    function(item, keyName) {
+        return zoom_command(0, true, item);
+    }, {
+        context: "parent"
+    });
+cmd('frame-zoom-in',
+    function(item, keyName) {
+        return zoom_command(+1, true, item);
+    }, {
+        context: "parent"
+    });
+cmd('frame-zoom-out',
+    function(item, keyName) {
+        return zoom_command(-1, true, item);
+    }, {
+        context: "parent"
+    });
+cmd('pane-zoom-in',
+    function(item, keyName) {
+        return zoom_command(+1, false, item);
+    }, {
+        context: "parent"
+    });
+cmd('pane-zoom-out',
+    function(item, keyName) {
+        return zoom_command(-1, false, item);
+    }, {
+        context: "parent"
+    });
+cmd('pane-zoom-reset',
+    function(item, keyName) {
+        return zoom_command(0, false, item);
+    }, {
+        context: "parent"
+    });

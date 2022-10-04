@@ -107,6 +107,7 @@ public:
     void setPage(WebPage *page);
     bool blockCaret() { return m_blockCaret; }
     void setBlockCaret(bool set) { m_blockCaret = set; }
+    void setPaneZoom(qreal zoom);
 
     QAction *saveAsAction() const { return m_saveAsAction; }
     QAction *changeCaretAction() const { return m_changeCaretAction; }
@@ -146,6 +147,7 @@ private slots:
     void slotCopyInContext();
 
 private:
+    friend class BrowserApplication;
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     DockWidget *m_dockWidget;
 #endif
@@ -161,6 +163,7 @@ private:
     QAction *m_openAction;
     QAction *m_copyLinkAddress;
     QAction *m_copyInContext;
+    qreal paneZoom = 1.0;
 };
 
 #endif

@@ -249,7 +249,7 @@ class Terminal {
 
     this.charWidth = 1;  // Width of a character in pixels
     this.charHeight = 1; // Height of a character in pixels
-    this._computedZoom = 1.0;
+    this._computedZoom = 1.0; // DEPRECATED
 
     this.numRows = 24;
     this.numColumns = 80;
@@ -1393,12 +1393,13 @@ Terminal.prototype._homeOffset = function(homeLine = this.homeLine) {
 Terminal.prototype._checkSpacer = function() {
     if (this._vspacer != null) {
         let needed;
-        if (this.sstate.bottomHeight < 0)
+        const old = this.sstate.bottomHeight;
+        if (this.sstate.bottomHeight < 0.5)
             needed = -1;
         else {
             needed = this.actualHeight - this._vspacer.offsetTop
                 + (this.initial.noScrollTop ? 0 : this._homeOffset(this.homeLine));
-            if (needed < 0)
+            if (needed < 0.5)
                 needed = 0;
         }
         this._adjustSpacer(needed);
@@ -4166,7 +4167,7 @@ Terminal.prototype.measureWindow = function()  {
     this.adjustFocusCaretStyle();
     this._updateMiscOptions();
     const zoomTop = this.topNode || document.body;
-    let computedZoom = window.getComputedStyle(zoomTop)['zoom'];
+    let computedZoom = window.getComputedStyle(zoomTop)['zoom']; // DEPRECATED
     this._computedZoom = Number(computedZoom);
     if (! this._computedZoom)
         this._computedZoom = 1.0;
@@ -6118,6 +6119,12 @@ Terminal.prototype.updateSettings = function() {
     if (DomTerm.settingsHook) {
         var style_qt = getOption("style.qt");
         DomTerm.settingsHook("style.qt", style_qt ? style_qt : "");
+    }
+
+    const mainZoom = DomTerm.mainTerm.getOption("window-zoom", 1.0);
+    if (mainZoom != DomTerm.zoomMainBase) {
+        DomTerm.zoomMainBase = mainZoom;
+        DomTerm.updateZoom();
     }
     DomTerm._checkStyleResize(this);
 };
@@ -9613,6 +9620,12 @@ DomTerm.masterKeymapDefault =
             "Shift-F11": "toggle-fullscreen-current-window",
             "Ctrl+Insert": "copy-text",
             "Shift-Insert": "paste-text",
+            "Mod++": "frame-zoom-in",
+            "Mod+-": "frame-zoom-out",
+            "Mod+0": "frame-zoom-reset",
+            "Alt+Mod++": "pane-zoom-in",
+            "Alt+Mod+-": "pane-zoom-out",
+            "Alt+Mod+0": "pane-zoom-reset",
             "Ctrl-Shift-A": "enter-mux-mode",
             "Ctrl-Shift-F": "find-text",
             "Ctrl+Shift+L": "input-mode-cycle",
@@ -10596,7 +10609,7 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
         if (wt == DomTerm.mainTerm && wt != DomTerm.focusedTerm)
             return;
         if (DomTerm.verbosity > 0)
-            DomTerm.log("unexpected WebSocket (connection:"+wt.windowNumber+") close code:"+e.code+" e:"+e);
+            DomTerm.log("unexpected WebSocket (connection:"+wt.topNode?.windowNumber+") close code:"+e.code+" e:"+e);
         wt._socketOpen = false;
         let reconnect = () => {
             let reconnect = "&reconnect=" + wt._receivedCount;

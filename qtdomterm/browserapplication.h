@@ -97,13 +97,12 @@ public:
     void dockManager(ads::CDockManager* dm) { m_DockManager = dm; }
 #endif
     void registerPane(int windowNumber, WebView*pane);
-    void adoptPane(int windowNumber, WebView*parentView);
-    void setGeometry(int windowNumber, int x, int y, int width, int height);
     void closePane(int windowNumber);
     void focusPane(int windowNumber);
     void showPane(int windowNumber, bool visible);
     void sendChildMessage(int windowNumber, const QString& command, const QString& args_json);
     void lowerOrRaisePanes(bool raise, bool allWindows, BrowserMainWindow *mainWindow);
+    void setMainZoom(qreal zoom, BrowserMainWindow *mainWindow);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     static QString uniqueNameFromUrl(const QString& url);
 #endif
