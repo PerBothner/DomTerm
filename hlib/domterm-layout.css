@@ -47,9 +47,9 @@ div.lm_row section.lm_header li.lm_tab.lm_active span.domterm-windowname {
 .lm_header .lm_tab .lm_title{padding-top:1px}
 .lm_header .lm_tab .lm_close_tab{width:11px;height:11px;background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAYAAADEUlfTAAAAIklEQVR4nGNgYGD4z4Ad/Mdg4ODDBXCZRFgCp5EEHQMXBwAQAgz0SVCcggAAAABJRU5ErkJggg==);background-position:center center;background-repeat:no-repeat;right:6px;top:4px;opacity:.4}
 .lm_header .lm_tab .lm_close_tab:hover{opacity:1}
-.lm_header .lm_tab.lm_active{border-bottom:none;box-shadow:2px -2px 2px -2px rgba(0,0,0,0.2);padding-bottom:3px}
+.lm_tab { box-shadow: none !important }
+.lm_header .lm_tab.lm_active{border-bottom:none; padding-bottom:3px}
 .lm_header .lm_tab.lm_active .lm_close_tab{opacity:1}
-.lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,.lm_stack.lm_bottom .lm_header .lm_tab.lm_active{box-shadow:2px 2px 2px -2px rgba(0,0,0,0.2)}
 .lm_tab:hover {background:#e1e1e1;color:#777777}
 div.lm_tab.lm_focused {color: var(--focused-pane-color)}
 .lm_header .lm_controls .lm_tabdropdown:before{color:#000000}
