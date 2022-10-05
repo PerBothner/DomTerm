@@ -45,13 +45,13 @@ if WITH_QTWEBENGINE
 MISCBINS += bin/qtdomterm$(EXEEXT)
 endif
 if WITH_WEBVIEW
-MISCBINS += bin/dt-webview$(EXEEXT)
+MISCBINS += libexec/dt-webview$(EXEEXT)
 endif
 if WITH_WRY
-MISCBINS += bin/dt-wry$(EXEEXT)
+MISCBINS += libexec/dt-wry$(EXEEXT)
 endif
 if WITH_LIBCLIPBOARD
-MISCBINS += bin/dt-libclip$(EXEEXT)
+MISCBINS += libexec/dt-libclip$(EXEEXT)
 endif
 domterm_jar_dir = share/domterm
 
@@ -261,7 +261,7 @@ clean-am:
 	  share/domterm/electron/*.js share/domterm/help \
 	  share/man/man1/domterm.1 share/man/man1/qtdomterm.1
 	if test -f qtdomterm/Makefile; then cd qtdomterm && $(MAKE) clean; fi
-	rm -rf bin/qtdomterm bin/dt-webview bin/dt-wry
+	rm -rf bin/qtdomterm$(EXEEXT) libexec/dt-webview$(EXEEXT) libexec/dt-wry$(EXEEXT)
 	rm -rf appimage/DomTerm.AppDir appimage/DomTerm.AppImage appimage/bad-dyn-libs DomTerm.app
 
 websocket_sources = org/domterm/websocket/DomServer.java
@@ -464,14 +464,17 @@ upload-web: web/index.html
 	cd web && \
 	  rsync -v -r -u -l -p -t --relative . $(WEB_SERVER_ROOT)
 
-bin/dt-webview: native/webview.cc
+libexec:
+	$(MKDIR_P) libexec
+
+libexec/dt-webview: native/webview.cc libexec
 if MACOS
-	c++ native/webview.cc -std=c++11 -framework WebKit -o bin/dt-webview
+	c++ native/webview.cc -std=c++11 -framework WebKit -o $@
 else
-	$(CXX) $(CXXFLAGS) native/webview.cc `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0` -o bin/dt-webview
+	$(CXX) $(CXXFLAGS) native/webview.cc `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0` -o $@
 endif
 
-bin/dt-libclip$(EXE): native/dt-libclip.cc
+libexec/dt-libclip$(EXE): native/dt-libclip.cc libexec
 	$(CXX) $(CXXFLAGS) native/dt-libclip.cc @LIBCLIPBOARD_CFLAGS@ @LIBCLIPBOARD_LIBS@ -lpthread -o bin/dt-libclip
 
 if ENABLE_DEBUG
@@ -479,8 +482,8 @@ WRY_PROFILE_DIR=debug
 else
 WRY_PROFILE_DIR=release
 endif
-bin/dt-wry: dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry
-	cp -p dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry bin
+libexec/dt-wry$(EXEEXT): dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry$(EXEEXT) libexec
+	cp -p dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry libexec/
 dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry: dt-wry/src/main.rs dt-wry/src/versions.rs
 if ENABLE_DEBUG
 	cd dt-wry && cargo build
@@ -498,15 +501,15 @@ dt-wry/print-wry-version:
 ELECTRON_FILES = electron/package.json electron/main.js electron/preload.js
 
 install-exec-local: $(MISCBINS)
-	$(MKDIR_P) $(DESTDIR)$(bindir)
+	$(MKDIR_P) $(DESTDIR)$(bindir) $(DESTDIR)$(libexecdir)
 if WITH_QTWEBENGINE
 	$(INSTALL_PROGRAM) bin/qtdomterm$(EXEEXT) $(DESTDIR)$(bindir)/qtdomterm$(EXEEXT)
 endif
 if WITH_WEBVIEW
-	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-webview$(EXEEXT) "$(DESTDIR)$(bindir)/dt-webview$(EXEEXT)"
+	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) libexec/dt-webview$(EXEEXT) "$(DESTDIR)$(libexecdir)/dt-webview$(EXEEXT)"
 endif
 if WITH_WRY
-	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) bin/dt-wry$(EXEEXT) "$(DESTDIR)$(bindir)/dt-wry$(EXEEXT)"
+	$(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) libexec/dt-wry$(EXEEXT) "$(DESTDIR)$(libexecdir)/dt-wry$(EXEEXT)"
 endif
 
 install-data-local:

@@ -635,7 +635,7 @@ qtwebengine_command(struct options *options)
 static char *
 webview_command(struct options *options)
 {
-    char *cmd = get_bin_relative_path("/bin/dt-webview");
+    char *cmd = get_bin_relative_path("/libexec/dt-webview");
     if (cmd == NULL || access(cmd, X_OK) != 0) {
         if (cmd == NULL)
             free(cmd);
@@ -660,7 +660,7 @@ webview_command(struct options *options)
 static char *
 wry_command(struct options *options)
 {
-    char *cmd = get_bin_relative_path("/bin/dt-wry");
+    char *cmd = get_bin_relative_path("/libexec/dt-wry");
     if (cmd == NULL || access(cmd, X_OK) != 0) {
         if (cmd == NULL)
             free(cmd);

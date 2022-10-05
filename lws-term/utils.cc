@@ -997,10 +997,10 @@ const char *get_clipboard_command(const char *op, bool clear_cache)
                 read_clip_cmd = "wl-paste";
                 read_sel_cmd = "wl-paste --primary";
             } else if (getenv("DISPLAY")) {
-                char *dt_libclip_path = get_bin_relative_path("/bin/dt-libclip");
+                char *dt_libclip_path = get_bin_relative_path("/libexec/dt-libclip");
                 if (have_in_path(dt_libclip_path)) {
-                    read_clip_cmd = get_bin_relative_path("/bin/dt-libclip --print-clipboard");
-                    read_sel_cmd = get_bin_relative_path("/bin/dt-libclip --print-selection");
+                    read_clip_cmd = get_bin_relative_path("/libexec/dt-libclip --print-clipboard");
+                    read_sel_cmd = get_bin_relative_path("/libexec/dt-libclip --print-selection");
                     clipboard_read_commands_set = 2;
                 } else if (have_in_path("xclip")) {
                     read_clip_cmd = "xclip -o -selection clipboard && echo";
