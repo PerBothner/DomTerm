@@ -770,6 +770,16 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             const char **nenv = (const char **) xmalloc((env_max + 1)*sizeof(const char*));
             memcpy(nenv, env, (env_size + 1)*sizeof(const char*));
 
+            std::string path = get_executable_path();
+            if (strcmp(path.c_str(), find_in_path("domterm")) != 0) {
+                int dirname_length = get_executable_directory_length();
+                path.erase(get_executable_directory_length());
+                path += ':';
+                path += getenv("PATH");
+                path.insert(0, "PATH=");
+                put_to_env_array(nenv, env_max, path.c_str());
+            }
+
             put_to_env_array(nenv, env_max, "TERM=xterm-256color");
 #if !  WITH_XTERMJS
             put_to_env_array(nenv, env_max, "COLORTERM=truecolor");
