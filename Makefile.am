@@ -630,7 +630,7 @@ DomTerm.app: doc/DomTerm.icns
 	$(MKDIR_P) DomTerm.app/Contents/MacOS
 	make install-strip prefix=`pwd`/DomTerm.app/Contents/Resources
 	cd DomTerm.app/Contents/MacOS && ln -s ../Resources/bin/domterm .
-	cp native/macOS.plist DomTerm.app/Contents/Info.plist
+	cp util/macOS.plist DomTerm.app/Contents/Info.plist
 	cp doc/DomTerm.icns DomTerm.app/Contents/Resources/
 
 DomTerm-$(VERSION).dmg: DomTerm.app
