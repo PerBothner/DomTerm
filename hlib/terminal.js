@@ -10460,7 +10460,7 @@ Terminal.connectWS = function(name, query, topNode=null, no_session=null) {
              DomTerm.sendParentMessage("domterm-socket-close"); }
         wt.processInputBytes = function(str) {
             DomTerm.sendParentMessage("domterm-socket-send", str); }
-        return;
+        return wt;
     }
     let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
     wsocket.onopen = function(e) {
@@ -10483,6 +10483,7 @@ Terminal.connectWS = function(name, query, topNode=null, no_session=null) {
         wt.reportEvent(topNode ? "CONNECT" : "VERSION",
                        JSON.stringify(DomTerm.versions));
     };
+    return wt;
 }
 
 Terminal.prototype.showConnectFailure = function(ecode, reconnect=null, toRemote=true)  {

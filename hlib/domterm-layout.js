@@ -423,7 +423,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
             query += "&main-window=true";
         el.query = query;
         maybeWindowName(el, new URLSearchParams(query));
-        DTerminal.connectWS(null, query, el, null);
+        pane.terminal = DTerminal.connectWS(null, query, el, null);
     }
     if (wrapped) {
         wrapped.paneNumber = paneNumber;
