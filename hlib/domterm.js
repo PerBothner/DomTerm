@@ -300,12 +300,12 @@ DomTerm.updateTitle = function(content, options) {
 }
 
 // detach is true, false, or "export"
-DomTerm.closeSession = function(content = DomTerm._oldFocusedContent,
+DomTerm.closeSession = function(pane = DomTerm.focusedPane,
                                 detach = false, fromLayoutEvent = false) {
-    if (content && content.terminal && content.terminal.topNode)
-        content.terminal.close(detach, fromLayoutEvent);
-    else if (content) {
-        DomTerm.sendChildMessage(content, "domterm-close", detach, fromLayoutEvent);
+    if (pane && pane.terminal && pane.terminal.topNode)
+        pane.terminal.close(detach, fromLayoutEvent);
+    else if (pane) {
+        DomTerm.sendChildMessage(pane, "domterm-close", detach, fromLayoutEvent);
     }
 }
 

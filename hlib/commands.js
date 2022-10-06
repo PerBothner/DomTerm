@@ -808,7 +808,7 @@ cmd('popout-tabset',
     });
 cmd('detach-session',
     function(dt, keyName) {
-        DomTerm.closeSession(DomTerm._oldFocusedContent, true, false);
+        DomTerm.closeSession(DomTerm.focusedPane, true, false);
         return true;
     });
 cmd('open-link',

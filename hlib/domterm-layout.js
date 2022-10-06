@@ -238,7 +238,7 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
                     DomTerm.windowClose();
             }
         } else
-            DomTerm.closeSession(item.component, "export", dragged);
+            DomTerm.closeSession(pane, "export", dragged);
         if (wnum && ! options.windowNumber)
             options.windowNumber = wnum;
         if (! DomTerm.useToolkitSubwindows && wnum
@@ -352,11 +352,7 @@ DomTermLayout.onLayoutClosed = function(container) {
             DomTermLayout.layoutClose(content, wnum, true);
             return;
         }
-        // Like DomTerm.closeSession(container.component, false, true)
-        if (content && content.terminal && content.terminal.topNode)
-            content.terminal.close(false, true);
-        else
-            DomTerm.sendChildMessage(pane, "domterm-close", false, true);
+        DomTerm.closeSession(pane, false, true);
     };
     return handler;
 }
@@ -616,7 +612,7 @@ DomTermLayout.initialize = function(initialContent = null) {
             if (DomTermLayout.manager.inSomeWindow) {
                 DomTerm.mainTerm.reportEvent("DETACH-WINDOW", component.id);
                 if (! DomTerm.useToolkitSubwindows)
-                    DomTerm.closeSession(component.component, "export", true);
+                    DomTerm.closeSession(pane, "export", true);
             } else {
                 DomTermLayout.popoutWindow(component, event);
             }
