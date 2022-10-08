@@ -76,7 +76,6 @@ function selectNextPane(forwards) {
     const dl = DomTerm._layout;
     if (dl && DomTerm.focusedWindowNumber > 0)
         dl.selectNextPane(forwards, DomTerm.focusedWindowNumber);
-    DomTerm.selectNextPane(forwards);
 }
 cmd('select-pane-previous',
     function(dt, key) {
