@@ -478,32 +478,6 @@ DomTerm.showFocusedPane = function(lcontent) {
         DomTerm._oldFocusedContent = lcontent;
     }
 };
-DomTerm.focusChild = function(iframe, originMode) { // OBSOLETE?
-    let oldContent = DomTerm._oldFocusedContent;
-    if (iframe !== oldContent || originMode=="C") {
-        if (oldContent != null) {
-            let terminal = oldContent.terminal;
-            if (oldContent.tagName == "IFRAME") {
-                if (oldContent.contentWindow)
-                    DomTerm.sendChildMessage(oldContent, "set-focused", 0);
-            } else if (terminal) {
-                if (terminal.topNode)
-                    terminal.setFocused(0);
-            }
-        }
-        if (originMode != "F") {
-            if (! iframe) {
-                return;
-            }
-            let terminal = iframe.terminal;
-            if (iframe.tagName == "IFRAME")
-                DomTerm.sendChildMessage(iframe, "set-focused", 2);
-            else if (terminal)
-                terminal.setFocused(2);
-        }
-    }
-    DomTerm.showFocusedPane(iframe);
-}
 
 DomTerm.createSpanNode = function(cls=null, txt=null) {
     let el = document.createElement("span");

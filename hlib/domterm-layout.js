@@ -492,7 +492,7 @@ DomTermLayout.initialize = function(initialContent = null) {
     function activeContentItemHandler(item) {
         //if (item.componentName == "browser")
         //    DomTerm.setTitle(item.config.url);
-        DomTerm.focusChild(item.container.element, "A");
+        DomTerm.showFocusedPane(item.container.elemen);
     }
 
     let top = DomTerm.layoutTop || document.body;
