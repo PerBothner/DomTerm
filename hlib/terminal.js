@@ -127,7 +127,6 @@ class Terminal {
     //sstate.paneNumber = -1;
 
     this.windowForSessionNumber = -1;
-    this._settingsCounterInstance = -1;
     
     this.lineIdCounter = 0; // FIXME temporary debugging
 
@@ -213,13 +212,6 @@ class Terminal {
     this._pendingEcho = "";
 
     this._displayInfoWidget = null;
-
-    // Table of named options local to this terminal.
-    // Maybe set from command-line or UI
-    this.sstate.termOptions = {};
-    // Table of named options global to domterm server.
-    // Normally read from settings.ini
-    this._globalOptions = {};
 
     this.scrollOnKeystroke = true;
     this._usingScrollBar = false;
@@ -495,14 +487,11 @@ class Terminal {
     }
 
     getOption(name, dflt = undefined) {
-        let opt = this.sstate.termOptions[name];
-        if (opt !== undefined)
-            return opt;
-        opt = this._globalOptions[name];
-        return opt === undefined ? dflt : opt;
+        return this.paneInfo ? this.paneInfo.getOption(name, dflt): dflt;
     }
+
     getRemoteHostUser() {
-        return this.sstate.termOptions["`remote-host-user"];
+        return this.paneInfo.termOptions["`remote-host-user"];
     }
     isRemoteSession() {
         return !!this.getRemoteHostUser();
@@ -5963,23 +5952,23 @@ Terminal.prototype._asBoolean = function(value) {
     return value == "true" || value == "yes" || value == "on";
 }
 
-DomTerm._settingsCounter = -1;
 DomTerm.settingsHook = null;
 DomTerm.defaultWidth = -1;
 DomTerm.defaultHeight = -1;
 
 Terminal.prototype.setSettings = function(obj) {
-    var settingsCounter = obj["##"];
-    if (this._settingsCounterInstance == settingsCounter)
+    let settingsCounter = obj["##"];
+    if (DomTerm._settingsCounter == settingsCounter)
         return;
-    this._globalOptions = obj;
-    this._settingsCounterInstance = settingsCounter;
+    DomTerm.globalSettings = obj;
+    DomTerm._settingsCounter = settingsCounter;
     this.updateSettings();
 }
 
 Terminal.prototype.updateSettings = function() {
     let getOption = (name, dflt = undefined) => this.getOption(name, dflt);
     let val;
+    const pane = this.paneInfo;
 
     val = getOption("log.js-verbosity", -1);
     if (val) {
@@ -6073,8 +6062,6 @@ Terminal.prototype.updateSettings = function() {
         }
     }
 
-   // if (DomTerm._settingsCounter != settingsCounter) {
-   //     DomTerm._settingsCounter = settingsCounter;
         var style_user = getOption("style.user");
         if (style_user) {
             this.loadStyleSheet("user", style_user);
@@ -6121,11 +6108,6 @@ Terminal.prototype.updateSettings = function() {
         DomTerm.settingsHook("style.qt", style_qt ? style_qt : "");
     }
 
-    const mainZoom = DomTerm.mainTerm.getOption("window-zoom", 1.0);
-    if (mainZoom != DomTerm.zoomMainBase) {
-        DomTerm.zoomMainBase = mainZoom;
-        DomTerm.updateZoom();
-    }
     DomTerm._checkStyleResize(this);
 };
 
@@ -10440,15 +10422,18 @@ DomTerm.initXtermJs = function(dt, topNode) {
 }
 
 /** Connect using WebSockets */
-Terminal.connectWS = function(name, query, topNode=null, no_session=null) {
+Terminal.connectWS = function(query, topNode=null, no_session=null) {
     const wsprotocol = "domterm";
+    const pane = topNode?.paneInfo;
     const wspath = Terminal._makeWsUrl(query);
-    if (name == null) {
-        name = topNode == null ? null : topNode.getAttribute("id");
-        if (name == null)
-            name = "domterm";
-    }
+    let name = topNode == null ? null : topNode.getAttribute("id");
+    if (name == null)
+        name = "domterm";
     var wt = new Terminal(name, topNode, no_session);
+    if (pane) {
+        wt.paneInfo = pane;
+        pane.terminal = wt;
+    }
     if (! DomTerm.mainTerm)
         DomTerm.mainTerm = wt;
     if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
@@ -10460,7 +10445,7 @@ Terminal.connectWS = function(name, query, topNode=null, no_session=null) {
              DomTerm.sendParentMessage("domterm-socket-close"); }
         wt.processInputBytes = function(str) {
             DomTerm.sendParentMessage("domterm-socket-send", str); }
-        return wt;
+        return;
     }
     let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
     wsocket.onopen = function(e) {
@@ -10483,7 +10468,6 @@ Terminal.connectWS = function(name, query, topNode=null, no_session=null) {
         wt.reportEvent(topNode ? "CONNECT" : "VERSION",
                        JSON.stringify(DomTerm.versions));
     };
-    return wt;
 }
 
 Terminal.prototype.showConnectFailure = function(ecode, reconnect=null, toRemote=true)  {

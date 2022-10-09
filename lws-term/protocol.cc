@@ -1902,18 +1902,21 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     }
     if (client->initialized == 0 && proxyMode != proxy_command_local) {
         if (client->options && client->options->cmd_settings.is_object()) {
-            sb.printf(URGENT_WRAP("\033]88;%s\007"),
+            tty_client *mclient = client->main_window <= 0 ? client
+                : main_windows[client->main_window];
+            struct sbuf &mb = mclient == client ? sb : mclient->ob;
+            mb.printf(URGENT_WRAP("\033]88;%d,%s\007"),
+                      client->connection_number,
                       client->options->cmd_settings.dump().c_str());
-        } else {
-            sb.printf(URGENT_WRAP("\033]88;{}\007"));
+            if (mclient != client)
+                lws_callback_on_writable(mclient->wsi);
         }
-        if (pclient && pclient->pid > 0) {
-#define FORMAT_PID_SNUMBER "\033]31;%d\007"
-#define FORMAT_SNAME "\033]30;%s\007"
-            sb.printf(pclient->session_name.empty()
-                      ? URGENT_WRAP(FORMAT_PID_SNUMBER)
-                      : URGENT_WRAP(FORMAT_PID_SNUMBER FORMAT_SNAME),
-                      pclient->pid,
+        // Need to send this escape code (even if there is no pid),
+        // because it triggers _initializeDomTerm.
+        sb.printf(URGENT_WRAP("\033]31;%d\007"),
+                  pclient && pclient->pid > 0 ? pclient->pid : 0);
+        if (pclient && ! pclient->session_name.empty()) {
+            sb.printf(URGENT_WRAP("\033]30;%s\007"),
                       pclient->session_name.c_str());
         }
         if (pclient && pclient->saved_window_contents != NULL) {

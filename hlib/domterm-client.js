@@ -612,7 +612,7 @@ function loadHandler(event) {
             wparams.delete("open");
             wparams.delete("session-number");
             wparams.set("main-window", "true");
-            DTerminal.connectWS(null, wparams.toString(), null, no_session);
+            DTerminal.connectWS(wparams.toString(), null, no_session);
             wparams.delete("main-window");
         }
         if (mwinnum >= 0)
@@ -709,7 +709,7 @@ function loadHandler(event) {
         } else if (! no_session) {
             for (var i = 0; i < topNodes.length; i++) {
                 const top = topNodes[i];
-                DTerminal.connectWS(null, query, top, no_session);
+                DTerminal.connectWS(query, top, no_session);
                 maybeWindowName(top);
             }
         }
@@ -726,6 +726,7 @@ DomTerm.handleCommand = function(iframe, command, args) {
 
 function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
 {
+    const pane = dt.paneInfo;
     switch (command) {
     case "do-command":
         DomTerm.doNamedCommand(args[0], dt, args[1]);
@@ -733,6 +734,10 @@ function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
     case "set-focused":
         if (dt)
             dt.setFocused(args[0]);
+        break;
+    case "term-settings":
+        pane.termOptions = args[0];
+        DomTerm.updateSettings(pane);
         break;
     case "domterm-close":
         if (dt)

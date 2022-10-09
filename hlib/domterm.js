@@ -110,6 +110,11 @@ DomTerm.freshName = function() {
     return "domterm-"+(++DomTerm._instanceCounter);
 }
 
+// Table of named options global to domterm server.
+// Normally read from settings.ini
+DomTerm.globalSettings = {};
+DomTerm._settingsCounter = -1;
+
 //DomTerm.isInIFrame = function() { return window.parent != window; }
 DomTerm.isInIFrame = function() { return DomTerm.isSubWindow(); }
 DomTerm.isSubWindow = function() { return location.pathname == "/simple.html"; }
@@ -606,6 +611,29 @@ DomTerm.updateZoom = function() {
     }
 }
 
+DomTerm.updateSettings = function(pane) {
+    if (pane.terminal)
+        pane.terminal.updateSettings();
+    else if (pane.layoutItem) {
+        const componentType = pane.layoutItem.toConfig().componentType;
+        if (componentType === "domterm" || componentType === "view-saved")
+            DomTerm.sendChildMessage(pane, "term-settings", pane.termOptions);
+    }
+
+    if (! DomTerm.isSubWindow()) {
+        const mainZoom = DomTerm.mainTerm.getOption("window-zoom", 1.0);
+        if (mainZoom != DomTerm.zoomMainBase) {
+            DomTerm.zoomMainBase = mainZoom;
+            DomTerm.updateZoom();
+        }
+        const paneZoom = pane.getOption("pane-zoom", 1.0);
+        if (pane && paneZoom != pane.zoomSetting) {
+            pane.zoomSetting = paneZoom;
+            DomTerm.updatePaneZoom(pane);
+        }
+    }
+}
+
 DomTerm.handlingJsMenu = function() {
     return typeof Menu !== "undefined" && Menu._topmostMenu;
 };
@@ -646,12 +674,24 @@ class PaneInfo {
          * This needs to multiplied by zoomSetting as well
          * as DomTerm.zoomMainBase and DomTerm.zoomMainAdjust. */
         this.zoomAdjust = 1.0;
+
+        // Table of named options local to this pane or terminal.
+        // Maybe set from command-line or UI
+        this.termOptions = {};
     }
 
     paneZoom() { return this.zoomSetting * this.zoomAdjust; }
 
     effectiveZoom() {
         return DomTerm.zoomMainBase * DomTerm.zoomMainAdjust * this.paneZoom();
+    }
+
+    getOption(name, dflt = undefined) {
+        let opt = this.termOptions[name];
+        if (opt !== undefined)
+            return opt;
+        opt = DomTerm.globalSettings[name];
+        return opt === undefined ? dflt : opt;
     }
 };
 

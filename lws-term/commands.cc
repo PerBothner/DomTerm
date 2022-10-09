@@ -16,18 +16,27 @@ struct lws;
 
 extern struct command commands[];
 
+/**
+ * Add window number correspondong to 'mclient' into 'windows' set.
+ * top_merker: 0 not prefixed by '^' indicating top/main window;
+ *   1 or 2 prefixed by '^', 2 means negate window number.
+ */
 static void insert_window(std::set<int>& windows,
-                     tty_client *mclient, bool top_marker)
+                     tty_client *mclient, int top_marker)
 {
-    if (top_marker && mclient->main_window > 0
+    if (top_marker > 0 && mclient->main_window > 0
         && main_windows.valid_index(mclient->main_window))
         mclient = main_windows[mclient->main_window];
-    windows.insert(mclient->index());
+    int wnum = mclient->index();
+    if (top_marker == 2)
+        wnum = - wnum;
+    windows.insert(wnum);
 }
 
 bool check_window_option(const std::string& option,
                          std::set<int>& windows,
-                         const char *cmd, struct options *opts)
+                         const char *cmd, struct options *opts,
+                         bool negative_if_top = false)
 {
     size_t start = 0;
     size_t osize = option.size();
@@ -36,7 +45,8 @@ bool check_window_option(const std::string& option,
         size_t sep = option.find_first_of(sep_chars, start);
         std::string s = option.substr(start, sep);
         size_t slen = s.length();
-        bool top_marker = slen > 0 && s[0] == '^';
+        int top_marker = slen <= 0 || s[0] != '^' ? 0
+            : negative_if_top ? 2 : 1;
         if (top_marker && slen > 1)
             s.erase(0, 1);
         char num_marker =
@@ -1119,12 +1129,22 @@ int settings_action(int argc, arglist_t argv, struct lws *wsi,
     std::string option = opts->windows;
     if (option.empty())
         option = ".";
-    if (! check_window_option(option, windows, "settings", opts))
+    if (! check_window_option(option, windows, "settings", opts, true))
         return EXIT_FAILURE;
     for (int w : windows) {
-        tty_client *tclient = tty_clients(w);
-        tclient->ob.printf(URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
-                           opts->cmd_settings.dump().c_str());
+        int wnum = w < 0 ? -w : w;
+        tty_client *tclient = tty_clients(wnum);
+        if (w < 0) { // marked as top-window
+            tclient->ob.printf(URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
+                               opts->cmd_settings.dump().c_str());
+        } else {
+            tty_client *mclient = tclient->main_window <= 0 ? tclient
+                : main_windows[tclient->main_window];
+            mclient->ob.printf(URGENT_START_STRING "\033]88;%d,%s\007" URGENT_END_STRING,
+                               tclient->connection_number,
+                               opts->cmd_settings.dump().c_str());
+            tclient = mclient;
+        }
         lws_callback_on_writable(tclient->wsi);
     }
     return EXIT_SUCCESS;

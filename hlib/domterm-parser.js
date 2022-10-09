@@ -1715,7 +1715,10 @@ class DTParser {
             term.setWindowTitle(text, code);
             break;
         case 31:
-            term.topNode.setAttribute("pid", text);
+            text = text.trim();
+            if (text && text != "0")
+                term.topNode.setAttribute("pid", text);
+            term._initializeDomTerm(term.topNode);
             break;
         case 8:
             semi = text.indexOf(';');
@@ -1941,15 +1944,22 @@ class DTParser {
             // Is printed by /etc/profile/vte.sh on Fedora
             break;
         case 88:
-            var obj = JSON.parse(text);
-            for (const prop in obj) {
-                if (obj[prop] == null)
-                    delete term.sstate.termOptions[prop];
-                else
-                    term.sstate.termOptions[prop] = obj[prop];
+            try {
+                // Handle '{SETTINGS}' or 'WNUM,{OPTIONS}'/
+                var obj2 = JSON.parse("["+text+"]");
+                let obj = obj2[obj2.length-1];
+                let pane = obj2.length >= 2 ? DomTerm.paneMap[obj2[0]]
+                    : term.paneInfo;
+                for (const prop in obj) {
+                    if (obj[prop] == null)
+                        delete pane.termOptions[prop];
+                    else
+                        pane.termOptions[prop] = obj[prop];
+                }
+                DomTerm.updateSettings(pane);
+            } catch(e) {
+                console.log("error handling local settings");
             }
-            term.updateSettings();
-            term._initializeDomTerm(term.topNode);
             break;
         case 89:
             try {
