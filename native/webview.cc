@@ -12,9 +12,9 @@ void set_w_t(const char *seq, const char *req, void *arg)
     size_t rlen = strlen(req);
     // The req is a JSON list of a single string.
     // The +1 and -2 are to strip off the list delimiters '[' and ']'
-    int jlen = webview::json_unescape(req+1, rlen-2, nullptr);
+    int jlen = webview::detail::json_unescape(req+1, rlen-2, nullptr);
     char *tmp = new char[jlen+1];
-    webview::json_unescape(req+1, rlen-2, tmp);
+    webview::detail::json_unescape(req+1, rlen-2, tmp);
     w.set_title(tmp);
     delete[] tmp;
 }
