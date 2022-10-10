@@ -162,13 +162,12 @@ void Backend::newPane(int paneOp, const QString& url)
 #else
 void Backend::newPane(int windowNumber, const QString& url)
 {
-    auto mainW = mainWindow();
-    auto webv = new WebView(webView()->m_processOptions, mainW);
+    auto webv = new WebView(webView()->m_processOptions, webView());
     webv->newPage(url);
     webv->resize(300, 300);
     webv->show();
 //   webv->lower();
-    mainW->application()->registerPane(windowNumber, webv);
+    mainWindow()->application()->registerPane(windowNumber, webv);
     webv->backend()->_windowNumber = windowNumber;
     webv->setFocus(Qt::OtherFocusReason); // FIXME
 }
