@@ -55,6 +55,7 @@
 #include <QtGui/QIcon>
 #include <QtCore/QUrl>
 #include <QRegularExpression>
+#include <QAction>
 
 QT_BEGIN_NAMESPACE
 class QActionGroup;
@@ -85,7 +86,6 @@ class BrowserMainWindow
 #endif
 {
     Q_OBJECT
-
 public:
     BrowserMainWindow(BrowserApplication*application, const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags);
     ~BrowserMainWindow();
@@ -124,7 +124,6 @@ private slots:
     void slotDetach();
     void slotAutoPager();
     void slotClearBuffer();
-    void slotOpenHomePage();
     void slotCopy();
     void slotCopyAsHTML();
     void slotPaste();
@@ -133,12 +132,6 @@ private slots:
 
     void slotFileNew();
     void slotEditFind();
-    void slotViewZoomIn();
-    void slotViewZoomOut();
-    void slotViewResetZoom();
-    void slotPaneZoomIn();
-    void slotPaneZoomOut();
-    void slotPaneResetZoom();
     void slotViewMenubar();
     void slotViewFullScreen(bool enable);
 
@@ -182,6 +175,7 @@ private:
 
     friend class BrowserApplication;
     friend class WebView;
+    friend class NamedAction;
 
     bool _usingQtMenus;
     QAction *charInputMode;
@@ -194,6 +188,19 @@ private:
     ads::CDockManager* m_DockManager;
 #endif
     qreal _mainZoom = 1.0;
+};
+
+// NOTE Qt 6.3 has new addAction method that take Args
+// which might rename the need for this class.
+class NamedAction : public QAction {
+    Q_OBJECT
+public:
+    NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd);
+    NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd,
+                const QKeySequence &);
+    BrowserMainWindow *window;
+    const QString command;
+    void doit();
 };
 
 #endif // BROWSERMAINWINDOW_H

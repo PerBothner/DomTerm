@@ -74,20 +74,21 @@
 #include <QActionGroup>
 #include <QtCore/QDebug>
 
-template<typename Arg, typename R, typename C>
-struct InvokeWrapper {
-    R *receiver;
-    void (C::*memberFun)(Arg);
-    void operator()(Arg result) {
-        (receiver->*memberFun)(result);
-    }
-};
-
-template<typename Arg, typename R, typename C>
-InvokeWrapper<Arg, R, C> invoke(R *receiver, void (C::*memberFun)(Arg))
+NamedAction::NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd)
+    : QAction(text), window(w), command(cmd)
 {
-    InvokeWrapper<Arg, R, C> wrapper = {receiver, memberFun};
-    return wrapper;
+    connect(this, &QAction::triggered, this, &NamedAction::doit);
+}
+NamedAction::NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd, const QKeySequence &shortcut)
+    : QAction(text), window(w), command(cmd)
+{
+    setShortcut(shortcut);
+    connect(this, &QAction::triggered, this, &NamedAction::doit);
+}
+
+void NamedAction::doit()
+{
+    window->slotSimpleCommand(command);
 }
 
 BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
@@ -241,12 +242,12 @@ void BrowserMainWindow::setupMenu()
     connect(m_viewMenubar, SIGNAL(triggered()), this, SLOT(slotViewMenubar()));
     viewMenu->addAction(m_viewMenubar);
 
-    viewMenu->addAction(tr("Zoom &In"), this, SLOT(slotViewZoomIn()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Plus));
-    viewMenu->addAction(tr("Zoom &Out"), this, SLOT(slotViewZoomOut()), QKeySequence(Qt::CTRL | Qt::Key_Minus));
-    viewMenu->addAction(tr("Reset &Zoom"), this, SLOT(slotViewResetZoom()), QKeySequence(Qt::CTRL | Qt::Key_0));
-    viewMenu->addAction(tr("Zoom &In (pane)"), this, SLOT(slotPaneZoomIn()), QKeySequence(Qt::ALT | Qt::CTRL | Qt::SHIFT | Qt::Key_Plus));
-    viewMenu->addAction(tr("Zoom &Out (pane)"), this, SLOT(slotPaneZoomOut()), QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Minus));
-    viewMenu->addAction(tr("Reset &Zoom (pane)"), this, SLOT(slotPaneResetZoom()), QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_0));
+    viewMenu->addAction(new NamedAction(tr("Zoom &In"), this, "frame-zoom-in", QKeySequence(Qt::CTRL | Qt::Key_Plus)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &Out"), this, "frame-zoom-out", QKeySequence(Qt::CTRL | Qt::Key_Minus)));
+    viewMenu->addAction(new NamedAction(tr("Reset &Zoom"), this, "frame-zoom-reset", QKeySequence(Qt::CTRL | Qt::Key_0)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &In (pane)"), this, "pane-zoom-in", QKeySequence(Qt::ALT | Qt::CTRL | Qt::SHIFT | Qt::Key_Plus)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &Out (pane)"), this, "pane-zoom-out", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Minus)));
+    viewMenu->addAction(new NamedAction(tr("Reset &Zoom (pane)"), this, "pane-zoom-reset", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_0)));
 
     QAction *a = viewMenu->addAction(tr("&Full Screen"), this, SLOT(slotViewFullScreen(bool)),  Qt::Key_F11);
     a->setCheckable(true);
@@ -305,8 +306,8 @@ void BrowserMainWindow::setupMenu()
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(tr("About QtDomTerm"), this, SLOT(slotAboutApplication()));
-    helpMenu->addAction(tr("DomTerm home page"), this,
-                        &BrowserMainWindow::slotOpenHomePage);
+    helpMenu->addAction(new NamedAction(tr("DomTerm home page"), this,
+                                        "open-domterm-homepage"));
 }
 
 void BrowserMainWindow::changeInputMode(QAction* action)
@@ -415,11 +416,6 @@ void BrowserMainWindow::slotCopyAsHTML()
     slotSimpleCommand("copy-html");
 }
 
-void BrowserMainWindow::slotOpenHomePage()
-{
-    QDesktopServices::openUrl(QUrl("https://domterm.org/"));
-}
-
 void BrowserMainWindow::slotAboutApplication()
 {
     QMessageBox::about(this, tr("About"), tr(
@@ -461,36 +457,6 @@ void BrowserMainWindow::closeEvent(QCloseEvent *event)
 void BrowserMainWindow::slotEditFind()
 {
     slotSimpleCommand("find-text");
-}
-
-void BrowserMainWindow::slotViewZoomIn()
-{
-    slotSimpleCommand("frame-zoom-in");
-}
-
-void BrowserMainWindow::slotViewZoomOut()
-{
-    slotSimpleCommand("frame-zoom-out");
-}
-
-void BrowserMainWindow::slotViewResetZoom()
-{
-    slotSimpleCommand("frame-zoom-reset");
-}
-
-void BrowserMainWindow::slotPaneZoomIn()
-{
-    slotSimpleCommand("pane-zoom-in");
-}
-
-void BrowserMainWindow::slotPaneZoomOut()
-{
-    slotSimpleCommand("pane-zoom-out");
-}
-
-void BrowserMainWindow::slotPaneResetZoom()
-{
-    slotSimpleCommand("pane-zoom-reset");
 }
 
 void BrowserMainWindow::slotViewFullScreen(bool makeFullScreen)
