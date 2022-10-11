@@ -591,7 +591,8 @@ DomTerm.updateZoom = function() {
     node.zoomFactor = zoom;
 
     if (DomTerm.isElectron()) {
-        electronAccess.webFrame.setZoomFactor(zoom);
+        const webFrame = electronAccess.webFrame;
+        webFrame.setZoomFactor(webFrame.getZoomFactor() * zoom / oldZoom);
     } else if (DomTerm._qtBackend) {
         DomTerm._qtBackend.setMainZoom(zoom);
     } else if (false && DomTerm.versions.wry) { // FUTURE - TODO
