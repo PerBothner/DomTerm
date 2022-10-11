@@ -200,13 +200,13 @@ DomTerm.createMenus = function(options) {
 
     viewMenuItems.push(menuItem({label: "Zoom In (all)",
                                  accelerator: DomTerm.isMac ? "Cmd++" : "Ctrl++",
-                                 clickClientAction: "frame-zoom-in"}));
+                                 clickClientAction: "window-zoom-in"}));
     viewMenuItems.push(menuItem({label: "Zoom Out (all)",
                                  accelerator: DomTerm.isMac ? "Cmd+-" : "Ctrl+-",
-                                 clickClientAction: "frame-zoom-out"}));
+                                 clickClientAction: "window-zoom-out"}));
     viewMenuItems.push(menuItem({label: "Zoom Reset (all)",
                                  accelerator: DomTerm.isMac ? "Cmd+0" : "Ctrl+0",
-                                 clickClientAction: "frame-zoom-reset"}));
+                                 clickClientAction: "window-zoom-reset"}));
     viewMenuItems.push(menuItem({label: "Zoom In (pane)",
                                  accelerator: DomTerm.isMac ? "Alt+Cmd++" : "Alt+Ctrl++",
                                  clickClientAction: "pane-zoom-in"}));

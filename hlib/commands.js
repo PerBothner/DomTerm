@@ -864,19 +864,19 @@ function zoom_command(step, mainWindow, item) {
     }
     return true;
 }
-cmd('frame-zoom-reset',
+cmd('window-zoom-reset',
     function(item, keyName) {
         return zoom_command(0, true, item);
     }, {
         context: "parent"
     });
-cmd('frame-zoom-in',
+cmd('window-zoom-in',
     function(item, keyName) {
         return zoom_command(+1, true, item);
     }, {
         context: "parent"
     });
-cmd('frame-zoom-out',
+cmd('window-zoom-out',
     function(item, keyName) {
         return zoom_command(-1, true, item);
     }, {
