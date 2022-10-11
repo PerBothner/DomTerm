@@ -529,7 +529,7 @@ void BrowserApplication::setMainZoom(qreal zoom, BrowserMainWindow *mainWindow)
     for (int windowNum = 0; ; windowNum++ ) {
         WebView *webv = windowNum == npanes ? mainWeb
             : dynamic_cast<WebView*>(paneMap[windowNum]);
-        if (windowNum == npanes || (webv && webv->parent() == mainWindow)) {
+        if (windowNum == npanes || (webv && webv->parent() == mainWeb)) {
             webv->setZoomFactor(zoom * webv->paneZoom);
         }
         if (windowNum == npanes)
