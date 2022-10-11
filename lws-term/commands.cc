@@ -1134,18 +1134,17 @@ int settings_action(int argc, arglist_t argv, struct lws *wsi,
     for (int w : windows) {
         int wnum = w < 0 ? -w : w;
         tty_client *tclient = tty_clients(wnum);
+        tty_client *mclient = tclient->main_window <= 0 ? tclient
+            : main_windows[tclient->main_window];
+        std::string csettings = opts->cmd_settings.dump();
         if (w < 0) { // marked as top-window
-            tclient->ob.printf(URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
-                               opts->cmd_settings.dump().c_str());
+            mclient->ob.printf(URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
+                               csettings.c_str());
         } else {
-            tty_client *mclient = tclient->main_window <= 0 ? tclient
-                : main_windows[tclient->main_window];
             mclient->ob.printf(URGENT_START_STRING "\033]88;%d,%s\007" URGENT_END_STRING,
-                               tclient->connection_number,
-                               opts->cmd_settings.dump().c_str());
-            tclient = mclient;
+                               tclient->connection_number, csettings.c_str());
         }
-        lws_callback_on_writable(tclient->wsi);
+        lws_callback_on_writable(mclient->wsi);
     }
     return EXIT_SUCCESS;
 }

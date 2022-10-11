@@ -226,6 +226,7 @@ public:
     int index() { return connection_number; }
     void set_window_name(const std::string& name);
     void unlink_main_html_filename();
+    void unlink_pclient();
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
     struct pty_client *pclient;
     struct options *options;

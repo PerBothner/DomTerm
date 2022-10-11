@@ -1949,7 +1949,7 @@ class DTParser {
                 var obj2 = JSON.parse("["+text+"]");
                 let obj = obj2[obj2.length-1];
                 let pane = obj2.length >= 2 ? DomTerm.paneMap[obj2[0]]
-                    : term.paneInfo;
+                    : DomTerm.mainTerm.paneInfo;
                 for (const prop in obj) {
                     if (obj[prop] == null)
                         delete pane.termOptions[prop];

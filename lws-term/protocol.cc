@@ -315,13 +315,15 @@ clear_connection_number(struct tty_client *tclient)
 }
 
 // Unlink wsi from pclient's list of client_wsi-s.
-static void
-unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
+void
+tty_client::unlink_pclient()
 {
-    lwsl_notice("unlink_tty_from_pty p:%p t:%p\n", pclient, tclient);
+    struct pty_client *pclient = this->pclient;
+    if (! pclient)
+        return;
     for (struct tty_client **pt = &pclient->first_tclient; *pt != NULL; ) {
         struct tty_client **nt = &(*pt)->next_tclient;
-        if (tclient == *pt) {
+        if (this == *pt) {
             if (*nt == NULL)
                 pclient->last_tclient_ptr = pt;
             *pt = *nt;
@@ -329,6 +331,15 @@ unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
         }
         pt = nt;
     }
+    this->pclient = nullptr;
+}
+// Unlink wsi from pclient's list of client_wsi-s.
+static void
+unlink_tty_from_pty(struct pty_client *pclient, struct tty_client *tclient)
+{
+    lwsl_notice("unlink_tty_from_pty p:%p t:%p\n", pclient, tclient);
+    tclient->unlink_pclient();
+
     if (tclient->is_primary_window) {
         tclient->is_primary_window = false;
         pclient->has_primary_window = false;
@@ -391,7 +402,6 @@ tty_client::~tty_client()
         tclient->ssh_connection_info = NULL;
         if (pclient != NULL)
             unlink_tty_from_pty(pclient, tclient);
-        tclient->pclient = NULL;
     }
     if (tclient->options && !keep_client) {
         options::release(tclient->options);
@@ -1566,7 +1576,6 @@ reportEvent(const char *name, char *data, size_t dlen,
         int wnumber = wclient->connection_number;
         if (pclient != NULL && ! wclient->keep_after_detach) {
             unlink_tty_from_pty(pclient, wclient);
-            wclient->pclient = NULL;
         }
         if (tty_clients(wnumber) == wclient && ! wclient->keep_after_detach)
             tty_clients.remove(wclient);
@@ -1905,9 +1914,13 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
             tty_client *mclient = client->main_window <= 0 ? client
                 : main_windows[client->main_window];
             struct sbuf &mb = mclient == client ? sb : mclient->ob;
-            mb.printf(URGENT_WRAP("\033]88;%d,%s\007"),
-                      client->connection_number,
-                      client->options->cmd_settings.dump().c_str());
+            std::string csetts = client->options->cmd_settings.dump();
+            if (mclient != client || mclient->wkind != main_only_window) {
+                mb.printf(URGENT_WRAP("\033]88;%d,%s\007"),
+                          client->connection_number, csetts.c_str());
+            } else {
+                mb.printf(URGENT_WRAP("\033]88;%s\007"), csetts.c_str());
+            }
             if (mclient != client)
                 lws_callback_on_writable(mclient->wsi);
         }
@@ -2178,26 +2191,30 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         if (no_session && strcmp(no_session, "top") == 0
             && main_window == 0 && main_windows.valid_index(wnum) ) {
             client = main_windows[wnum];
+            client->wkind = main_only_window;
             if (tty_clients(wnum) == client)
                 tty_clients.remove(client);
         } else if (wnum >= 0) {
             if (tty_clients.valid_index(wnum))
                 client = tty_clients[wnum];
             else if (main_windows.valid_index(main_window)) {
-                client = main_windows[main_window];
-                main_windows.remove(client);
-                struct tty_client *mclient = new tty_client();
-                mclient->wkind = main_only_window;
-                mclient->wsi = client->wsi;
-                mclient->out_wsi = client->out_wsi;
-                WSI_SET_TCLIENT(client->wsi, mclient);
-                if (client->version_info)
-                    mclient->version_info = strdup(client->version_info);
+                struct tty_client *mclient = main_windows[main_window];
+                struct tty_client *tclient = new tty_client();
+                pclient = mclient->pclient;
+                if (pclient) {
+                    mclient->unlink_pclient();
+                    link_clients(tclient, pclient);
+                }
+                tclient->wsi = mclient->wsi;
+                tclient->out_wsi = mclient->out_wsi;
+                if (mclient->version_info)
+                    tclient->version_info = strdup(mclient->version_info);
                 mclient->main_window = 0;
-                mclient->options = link_options(client->options);
-                mclient->connection_number = main_windows.enter(mclient, main_window);
-                lws_callback_on_writable(mclient->out_wsi);
-                tty_clients.enter(client, wnum);
+                tclient->main_window = wnum;
+                tclient->options = link_options(mclient->options);
+                lws_callback_on_writable(tclient->out_wsi);
+                set_connection_number(tclient, wnum);
+                client = tclient;
             } else if (reconnect_value < 0) {
                 lwsl_err("connection with invalid connection number %s - error\n", window);
                 break;

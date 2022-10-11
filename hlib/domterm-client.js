@@ -612,7 +612,11 @@ function loadHandler(event) {
             wparams.delete("open");
             wparams.delete("session-number");
             wparams.set("main-window", "true");
-            DTerminal.connectWS(wparams.toString(), null, no_session);
+            const dt = DTerminal.connectWS(wparams.toString(),
+                                           null, no_session);
+            const pane = new PaneInfo(mwinnum);
+            pane.terminal = dt;
+            dt.paneInfo = pane;
             wparams.delete("main-window");
         }
         if (mwinnum >= 0)
