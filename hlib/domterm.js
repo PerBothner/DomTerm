@@ -621,12 +621,12 @@ DomTerm.updateSettings = function(pane) {
     }
 
     if (! DomTerm.isSubWindow()) {
-        const mainZoom = DomTerm.mainTerm.getOption("window-zoom", 1.0);
+        const mainZoom = DomTerm.mainTerm.getOption("window-scale", 1.0);
         if (mainZoom != DomTerm.zoomMainBase) {
             DomTerm.zoomMainBase = mainZoom;
             DomTerm.updateZoom();
         }
-        const paneZoom = pane.getOption("pane-zoom", 1.0);
+        const paneZoom = pane.getOption("pane-scale", 1.0);
         if (pane && paneZoom != pane.zoomSetting) {
             pane.zoomSetting = paneZoom;
             DomTerm.updatePaneZoom(pane);
@@ -665,7 +665,7 @@ class PaneInfo {
          * If defined: this.terminal.topNode === this.contentElement. */
         this.terminal = undefined;
 
-        /** The 'pane-zoom' setting for this pane.
+        /** The 'pane-scale' setting for this pane.
          * This needs to multiplied by DomTerm.zoomMainBase
          * and DomTerm.zoomMainAdjust. */
         this.zoomSetting = 1.0;
