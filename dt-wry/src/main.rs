@@ -193,9 +193,6 @@ fn main() -> wry::Result<()> {
                         *control_flow = ControlFlow::Exit
                     }
                 }
-                WindowEvent::Resized(_) => {
-                    let _ = webviews[&window_id].resize();
-                }
                 _ => (),
             },
             Event::UserEvent(UserEvents::NewWindow(options)) => {
