@@ -2063,7 +2063,7 @@ A specified @var{position} is ignored if there are other windows.
 The default is @code{800x600}.
 @end table
 
-@subsubheading Display styling
+@subsubheading Appearance and styling
 @table @asis
 @item @code{@b{style.user} =} @var{css-style-rules}
 Set the @code{user} stylesheet to the rules in @var{css-style-rules}.
@@ -2106,6 +2106,42 @@ If neither is specified the default is @code{0.3,0.7}.
 @itemx @code{@b{style.edit-caret} =} @var{value}
 Change the style of the caret (text input cursor).
 See @ref{caret styling}.
+
+@item @code{@b{window-scale} =} @var{value}
+The @code{window-scale} setting scales (zooms) entire top-level
+windows by the given @var{value} factor, which defaults to @code{1.0}.
+All sub-windows (panes) and menus and titlebars are also scaled,
+as long as you're using DomTerm (non-system) titlebars and menus.
+
+If using the @code{settings} command, use the @code{^} (top) modifier
+to specify a top window (as opposed to a pane).  To scale by 20%
+the window that includes pane @code{2} you can do:
+@example
+domterm -w ^2 settings window-scale=1.2
+@end example
+
+@anchor{effective window scale}
+The @dfn{effective window scale} is the @code{window-scale} setting
+but modified by the
+@code{window-zoom-in}, @code{window-zoom-out}, and @code{window-zoom-reset}
+(menu or keyboard shortcut) commands for each window.
+
+@item @code{@b{pane-scale} =} @var{value}
+Like @code{window-scale}, but scale the specified panes only.
+The @var{value} is multiplied by the @ref{effective window scale}.
+If this is in @code{settings.ini} it applies by default to all
+panes, but not the titlebar or menu.
+You can change the scale for each pane individually:
+@example
+domterm -w 3 settings pane-scale=0.8
+@end example
+
+@anchor{effective pane scale}
+The @dfn{effective pane scale} is the @code{pane-scale} setting
+multiplied by the @ref{effective window scale},
+and modified by the
+@code{pane-zoom-in}, @code{pane-zoom-out}, and @code{pane-zoom-reset}
+commands.
 @end table
 
 @subsubheading Key and mouse handling
@@ -2555,7 +2591,7 @@ Start the Qt frontend (if available) with the @code{--qt} option.
 @anchor{webview-frontend}
 @subheading Webview
 
-Start the Webview frontend (if available) with the @code{--webview} option.
+Start the Webview frontend (if available) with the @code{-Bwebview} option.
 
 This is quite usable - nicer than using a web-browser.
 It uses JavaScript menus, which is OK except on macOS.
@@ -2566,12 +2602,6 @@ Both of these may change if we implement smarter lazy line-breaking.
 
 Some known issues:
 @itemize
-@item
-Windows zoom (with @kbd{Ctrl+@key{Minus}} or @kbd{Ctrl+Shift+@key{Plus}})
-doesn't work.  You can work around it with CSS styling:
-@code{body @{zoom: 120%@}}
-@item
-Copy from menu doesn't work.  Ctrl+Shift+C works.
 @item
 Clicking the window close button doesn't shut down cleanly.
 Using the @code{File}->@code{Quit} menu item works,
@@ -3166,20 +3196,6 @@ or other data.
 This is shown if you press and release the @key{Ctrl} key
 without pressing some other key.
 Easiest way to make the popup go away is to press @key{Ctrl} again.
-@end table
-
-The following are implemented by most browsers, rather than DomTerm,
-so it may not work on all browsers.
-@table @asis
-@item @kbd{Ctrl+Shift+@key{Plus}}
-Zoom in (makes text bigger).
-(Does not work in atom-domterm.)
-@item @kbd{Ctrl+Shift+@key{Minus}}
-@itemx @kbd{Ctrl+@key{Minus}}
-Zoom out (makes text smaller).
-(Does not work in atom-domterm.)
-@item @kbd{Ctrl+@key{0}}
-``Un-zoom'' to normal size.
 @item @kbd{@key{F11}} (@code{toggle-fullscreen})
 Toggle full-screen mode.
 @item @kbd{Shift+@key{F11}} (@code{toggle-fullscreen-current-window})
@@ -3195,6 +3211,37 @@ To select an item, type @kbd{@key{Enter}}; to cancel type @kbd{@key{Escape}}.
 @itemx @kbd{Alt+Cmd+@key{I}} @emph{(only macOS)}
 Toggle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
+@end table
+
+@subsubheading Scaling (zooming)
+
+The following commands change the @ref{effective window scale}
+by zooming in or out, relative to the @code{window-scale} setting.
+The entire top window is zoomed, icnluding sub-windows, titlebars,
+and menus (unless you're using system titlebars or menus).
+
+@table @asis
+@item @kbd{Ctrl+Shift+@key{Plus}} (@code{window-zoom-in})
+Zoom in (makes text bigger).
+@item @kbd{Ctrl+Shift+@key{Minus}} (@code{window-zoom-out})
+@itemx @kbd{Ctrl+@key{Minus}}
+Zoom out (makes text smaller).
+@item @kbd{Ctrl+@key{0}} (@code{window-zoom-reset})
+``Un-zoom'' to normal size, as specified by the @code{window-scale} setting.
+@end table
+
+The following commands change the @ref{effective pane scale}
+by zooming in or out, relative to the @code{pane-scale} setting.
+
+@table @asis
+@item @kbd{Alt+Ctrl+Shift+@key{Plus}} (@code{pane-zoom-in})
+Zoom in (makes text bigger).
+@item @kbd{Alt+Ctrl+Shift+@key{Minus}} (@code{pane-zoom-out})
+@itemx @kbd{Alt+Ctrl+@key{Minus}}
+Zoom out (makes text smaller).
+@item @kbd{Alt+Ctrl+@key{0}} (@code{pane-zoom-reset})
+``Un-zoom'' to normal size, as specified by the @code{pane-scale} setting
+multiplied by the effective window scale.
 @end table
 
 @anchor{scrolling shortcuts}
