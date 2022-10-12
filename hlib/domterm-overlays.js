@@ -2,11 +2,15 @@ export { addDragHandler, addInfoDisplay, showMessage, showAboutMessage };
 
 function aboutMessageVariant() {
     if (DomTerm.isElectron()) {
-        return '<br/>The "frontend" uses Electron '
+        return '<br/>This frontend uses Electron '
             + DomTerm.versions.electron
             + '.';
+    } else if (DomTerm.usingQtWebEngine) {
+        return '<br/>This frontend uses QtWebEngine '
+            + DomTerm.versions.qtwebengine
+            + '.';
     } else if (DomTerm.versions.wry) {
-        return '<br/>The "frontend" uses <a href="https://github.com/tauri-apps/wry">Wry</a> '+DomTerm.versions.wry+'.';
+        return '<br/>This frontend uses <a href="https://github.com/tauri-apps/wry">Wry</a> '+DomTerm.versions.wry+'.';
     }
     return "";
 }
