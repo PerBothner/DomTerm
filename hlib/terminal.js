@@ -1036,15 +1036,29 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
 };
 
 Terminal.prototype.startCommandGroup = function(parentKey, pushing=0, options=[]) {
+    const container = this.outputContainer;
+    let commandGroup;
+    if (this.sstate.inInputMode) {
+        for (let p = container; p instanceof Element; p = p.parentNode) {
+            const cl = p.classList;
+            if (cl.contains("command-output"))
+                break;
+            if (cl.contains("command-group")) {
+                commandGroup = p;
+                break;
+            }
+        }
+    }
+    if (! commandGroup) {
+        commandGroup = document.createElement("div");
+        commandGroup.setAttribute("class", "command-group");
+        if (parentKey)
+            commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
+        container.parentNode.insertBefore(commandGroup, container);
+        commandGroup.appendChild(container);
+    }
     this.sstate.inInputMode = false;
     this.sstate.inPromptMode = false;
-    const container = this.outputContainer;
-    let commandGroup = document.createElement("div");
-    commandGroup.setAttribute("class", "command-group");
-    if (parentKey)
-        commandGroup.setAttribute(pushing > 0 ? "group-id" : "group-parent-id", parentKey);
-    container.parentNode.insertBefore(commandGroup, container);
-    commandGroup.appendChild(container);
     let clickMove = Terminal.namedOptionFromArray(options, "cl=");
     if (clickMove)
         container.setAttribute("click-move", clickMove);
