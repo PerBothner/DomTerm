@@ -2651,7 +2651,7 @@ Terminal.prototype.cursorNewLine = function(autoNewline) {
               || this._regionBottom < this.numRows
               || this.usingAlternateScreenBuffer)
              && this.getCursorLine() == this._regionBottom-1)
-        this.scrollForward(1);
+        this.scrollForwardInRegion(1);
     else
         this.moveToAbs(this.getAbsCursorLine()+1, this.getCursorColumn(), true);
 };
@@ -3219,7 +3219,7 @@ Terminal.prototype._deleteLinesAt = function(count, line) {
      this._deleteLinesAt(count, this.getAbsCursorLine());
 };
 
-Terminal.prototype.scrollForward = function(count) {
+Terminal.prototype.scrollForwardInRegion = function(count) {
     var line = this.getCursorLine();
     this.moveToAbs(this._regionTop+this.homeLine, 0, true);
     this._deleteLinesAt(count, this._regionTop+this.homeLine);

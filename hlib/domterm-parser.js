@@ -856,8 +856,14 @@ class DTParser {
                 let pi = this.getParameter(0, 1);
                 term.processResponseCharacters("\x1B[?"+pi+";3;0S");
                 break;
+            } else { // Scroll up
+                let count = this.getParameter(0, 1);
+                let saved_home = term.homeLine;
+                term.moveToAbs(term.getAbsCursorLine()+count, term.getCursorColumn(), true);
+                const newHome = saved_home + count;
+                if (newHome < term.lineStarts.length)
+                    term.homeLine = newHome;
             }
-            term.scrollForward(this.getParameter(0, 1));
             break;
         case 84 /*'T'*/:
             /* FIXME Initiate mouse tracking.
