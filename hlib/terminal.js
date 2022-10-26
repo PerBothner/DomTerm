@@ -1773,15 +1773,18 @@ Terminal.prototype.saveCursor = function() {
 
 Terminal.prototype.curBufferStartLine = function() {
     if (this.initial._saveLastLine < 0) {
-        const nlines = this.lineStarts.length;
-        let line = nlines - 1;
-        const findLines = (node) => {
-            if (node === this.lineStarts[line])
-                line--;
-            return true;
-        };
-        Terminal._forEachElementIn(this.initial, findLines, false, true);
-        this.initial._saveLastLine = line + 1;
+        const saveBefore = this.outputBefore;
+        const saveContainer = this.outputContainer;
+        const saveLine = this.currentAbsLine;
+        const saveColumn = this.currentCursorColumn;
+        this.resetCursorCache();
+        this.outputContainer = this.initial.firstChild;
+        this.outputBefore = this.outputContainer.firstChild;
+        this.initial._saveLastLine = this.getAbsCursorLine();
+        this.outputBefore = saveBefore;
+        this.outputContainer = saveContainer;
+        this.currentAbsLine = saveLine;
+        this.currentCursorColumn = saveColumn;
     }
     return this.initial._saveLastLine;
 }
