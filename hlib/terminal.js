@@ -374,7 +374,12 @@ class Terminal {
         this.buffers.contentEditable = false;
         topNode.appendChild(this.buffers);
         this.buffers.addEventListener('scroll',
-                                      (e) => { dt.requestUpdateDisplay(); },
+                                      (e) => {
+                                          dt.requestUpdateDisplay();
+                                          const adjust = dt.buffers._adjustFloatingTableHead;
+                                          if (adjust)
+                                              adjust();
+                                      },
                                       false);
         this._topOffset = 0; // placeholder - set in measureWindow
         if (no_session=='view-saved') {
@@ -6188,22 +6193,36 @@ function tableIntersectionCallback(entries, observer) {
     entries.forEach(entry => {
         const table = entry.target.parentNode;
         if (table && table.tagName == "TABLE") {
+            // The element that we "float" to the top is the <tr> element.
+            // It might be cleaner to re-position the <thead> element,
+            // but that makes the IntersectionObserver logic difficult.
+            const float_element = table.firstElementChild?.firstElementChild;
+            if (! float_element)
+                return;
+            const root = this.root;
+            const rootTop = root.getBoundingClientRect().top;
             const rect = table.getBoundingClientRect();
-            const needHeaderClone = rect.top < 1
-                  && rect.bottom > 1;
-            let clone = table.headerClone;
-            if (clone && ! needHeaderClone) {
-                clone.remove();
-                table.headerClone = undefined;
-                table.classList.remove("dt-has-floating-thead");
-            } else if (needHeaderClone && ! clone) {
-                const buffers = observer.root;
-                clone = table.cloneNode(true);
-                clone.style.top = `${buffers.getBoundingClientRect().top}px`;
-                table.headerClone = clone;
-                clone.classList.add("dt-floating-thead");
-                table.classList.add("dt-has-floating-thead");
-                table.parentNode.insertBefore(clone, table.nextSibling);
+            const needHeaderFloat = rect.top + 1 <= rootTop
+                  && rect.bottom - 1 > rootTop;
+            const cl = table.classList;
+            const hasHeaderFloat = cl.contains("dt-float-thead");
+            if (! hasHeaderFloat && needHeaderFloat) {
+                cl.add("dt-float-thead");
+                if (root._currentFloatedTable
+                    && table !== root._currentFloatedTable) {
+                    root._currentFloatedTable.classList.remove("dt-float-thead");
+                }
+                root._currentFloatedTable = table;
+                const adjustFloatingTableHead = () => {
+                    float_element.style.top = `${rootTop - table.getBoundingClientRect().top}px`;
+                };
+                adjustFloatingTableHead();
+                root._adjustFloatingTableHead = adjustFloatingTableHead;
+            } else if (! needHeaderFloat && hasHeaderFloat) {
+                cl.remove("dt-float-thead");
+                root._currentFloatedTable = undefined;
+                root._adjustFloatingTableHead = undefined;
+                float_element.style.top = "";
             }
         }
     });
