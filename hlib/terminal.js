@@ -6368,7 +6368,7 @@ DomTerm.HTMLinfo = {
     "basefont": DomTerm._ELEMENT_KIND_EMPTY, //obsolete
     "big": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "blockquote": DomTerm._ELEMENT_KIND_ALLOW,
-    "br": 0x15,
+    "br": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
     "body": DomTerm._ELEMENT_KIND_CONVERT_TO_DIV+DomTerm._ELEMENT_KIND_ALLOW,
     "canvas": DomTerm._ELEMENT_KIND_INLINE,
     "center": DomTerm._ELEMENT_KIND_ALLOW,
@@ -6546,6 +6546,7 @@ DomTerm.HTMLinfo = {
     //area (if it is a descendant of a map element) audio bdi bdo br button canvas data datalist del embed iframe input ins kbd keygen label map math meter noscript object output progress q ruby s select svg template textarea time u  video wbr text
 };
 
+// Maybe use a separate library, perhaps DomPurify ?
 Terminal.prototype._scrubAndInsertHTML = function(str) {
     function skipWhitespace(pos) {
         for (; pos < len; pos++) {
