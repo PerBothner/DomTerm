@@ -3830,9 +3830,11 @@ Terminal.prototype._sizeInfoText = function() {
             + "\xD7" + DomTerm.toFixed(this.actualHeight);
     }
     text += "px)";
+    /* // This is confusing as it doesn't reliably include scale (zoom).
     let ratio = window.devicePixelRatio;
     if (ratio)
-        text += " "+(ratio*100.0).toFixed(0)+"%";
+    text += " "+(ratio*100.0).toFixed(0)+"%";
+    */
     return text;
 }
 
