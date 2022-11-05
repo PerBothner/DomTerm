@@ -369,7 +369,29 @@ class Terminal {
         this.topNode = topNode;
         topNode.spellcheck = false;
         topNode.terminal = this;
-        this.buffers = document.createElement("div");
+        const pane = topNode.paneInfo;
+        if (pane) {
+            this.paneInfo = pane;
+            pane.terminal = this;
+        }
+        if (no_session=='view-saved') {
+            // re-purpose the top-level node from the saved file.
+            const buffers = topNode.firstElementChild;
+            this.buffers = buffers;
+            buffers.removeAttribute("class");
+            buffers.removeAttribute("style");
+            const topClass = topNode.classList;
+            topClass.add("domterm-saved-session");
+            for (const aname of ["saved-version", "saved-time"]) {
+                const at = buffers.getAttribute(aname);
+                if (at) {
+                    topNode.setAttribute(aname, at);
+                    buffers.removeAttribute(aname);
+                }
+            }
+        } else {
+            this.buffers = document.createElement("div");
+        }
         this.buffers.classList.add("dt-buffers");
         this.buffers.contentEditable = false;
         topNode.appendChild(this.buffers);
@@ -1290,12 +1312,8 @@ DomTerm.setFocus = function(term, originMode="") {
         if (DomTerm.useIFrame)
             DomTerm.showFocusedTerm(term);
         var current = DomTerm.focusedTerm;
-        if (! DomTerm.useIFrame) {
-            if (current == term)
-                return;
-            if (current !== null)
-                current.setFocused(0);
-        }
+        if (! DomTerm.useIFrame && current !== null)
+            current.setFocused(0);
         if (term != null)
             term.setFocused(1);
     }
@@ -3582,15 +3600,6 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
     }
     document.addEventListener("selectionchange", dt._selectionchangeListener);
 
-    /*
-    function docMouseDown(event) {
-        if (! dt._isAnAncestor(event.target, dt.topNode)
-            && DomTerm.focusedTerm === dt) {
-            DomTerm.setFocus(null);
-        }
-    }
-    document.addEventListener("mousedown", docMouseDown, false);
-    */
     if (! DomTerm._userStyleSet)
         this.loadStyleSheet("user", "");
 
@@ -5881,7 +5890,7 @@ Terminal.prototype.getTitleInfo = function() {
     const wname = this.topNode.getAttribute("window-name");
     if (wtitle)
         info.windowTitle = wtitle;
-    if (snumber)
+    if (snumber >= 0)
         info.sessionNumber = snumber;
     if (wnumber)
         info.windowNumber = wnumber;
@@ -10462,16 +10471,11 @@ DomTerm.initXtermJs = function(dt, topNode) {
 /** Connect using WebSockets */
 Terminal.connectWS = function(query, topNode=null, no_session=null) {
     const wsprotocol = "domterm";
-    const pane = topNode?.paneInfo;
     const wspath = Terminal._makeWsUrl(query);
     let name = topNode == null ? null : topNode.getAttribute("id");
     if (name == null)
         name = "domterm";
     var wt = new Terminal(name, topNode, no_session);
-    if (pane) {
-        wt.paneInfo = pane;
-        pane.terminal = wt;
-    }
     if (! DomTerm.mainTerm)
         DomTerm.mainTerm = wt;
     if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
@@ -10686,35 +10690,6 @@ Terminal._makeWsUrl = function(query=null) {
     if (query)
         url = url + '?' + query;
     return url;
-}
-
-DomTerm.initSavedFile = function(topNode) {
-    var name = "domterm";
-    var dt = new Terminal(name, topNode, 'view-saved');
-    dt.initial = document.getElementById(dt.makeId("main"));
-    dt._initializeDomTerm(topNode);
-    dt.sstate.windowTitle = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
-    dt.topNode.classList.remove("domterm-noscript");
-    dt.measureWindow();
-    dt._restoreLineTables(topNode, 0);
-    dt._breakAllLines();
-    dt.updateWindowTitle();
-    function showHideHandler(e) {
-        var target = e.target;
-        if (target instanceof Element
-            && target.nodeName == "SPAN"
-            && target.getAttribute("std") == "hider") { // FIXME
-            dt._showHideHandler(e);
-            e.preventDefault();
-        }
-    }
-    topNode.addEventListener("click", showHideHandler, false);
-    for (let group of topNode.getElementsByClassName("command-group")) {
-        dt._maybeAddTailHider(group);
-    }
-    dt.setWindowSize = function(numRows, numColumns,
-                                availHeight, availWidth) {
-    };
 }
 
 Terminal.isDelimiter = (function() {

@@ -927,7 +927,7 @@ static void status_by_connection(FILE *out, int verbosity)
             } else if (sub_client->wkind == browser_window)
                 fprintf(out, "%sBrowser:%d", indent, cnumber);
             else if (sub_client->wkind == saved_window)
-                fprintf(out, "%sSaved:%d", indent, cnumber);
+                fprintf(out, "%sView-saved:%d", indent, cnumber);
             else if (verbosity > 0 || cnumber != number || has_name)
                 fprintf(out,
                         sub_client->wkind == main_only_window

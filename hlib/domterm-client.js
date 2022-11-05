@@ -232,36 +232,6 @@ function maybeWindowName(el, params = DomTerm.mainSearchParams) {
     return el;
 }
 
-function viewSavedFile(urlEncoded, contextNode=DomTerm.layoutTop) {
-    let url = decodeURIComponent(urlEncoded);
-    // Requesting the saved file using a file: URL runs into CORS
-    // (Cross-Origin Resource Sharing) restrictions on desktop browsers.
-    if (url.startsWith("file:")) {
-        url = "http://localhost:"+DomTerm.server_port
-            +"/saved-file/"+DomTerm.server_key
-            +"/"+url.substring(5);
-        return DomTerm.makeIFrameWrapper(url, 'V', contextNode);
-    }
-    let el = DomTerm.makeElement(DomTerm.freshName());
-    el.innerHTML = "<h2>waiting for file data ...</h2>";
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url);
-    xhr.setRequestHeader("Content-Type", "text/plain");
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState != 4)
-            return;
-        var responseText = xhr.responseText;
-        if (! responseText) {
-            el.innerHTML = "<h2>error loading "+url+"</h2>";
-            return;
-        }
-        el.innerHTML = responseText;
-        DomTermLayout.initSaved(el);
-    };
-    xhr.send("");
-    return el;
-}
-
 function setupParentMessages1() {
     if (DomTerm.useToolkitSubwindows) {
         DomTerm.sendParentMessage = function(command, ...args) {
@@ -589,17 +559,11 @@ function loadHandler(event) {
 
     // non-null if we need to create a websocket but we have no Terminal
     let no_session = null;
-    if ((m = location.hash.match(/view-saved=([^&;]*)/))) {
-        maybeWindowName(viewSavedFile(m[1]));
-        no_session = "view-saved";
-    }
-    const browse_param = params.get("browse");
+    let browse_param = params.get("browse");
     if (browse_param)
         no_session = "browse";
-    if (location.pathname.startsWith("/saved-file/")) {
-        DomTerm.initSavedFile(DomTerm.layoutTop.firstChild);
-        return;
-    }
+    else if ((browse_param = params.get("view-saved")))
+        no_session = "view-saved";
     const mwin = params.get('window');
     const mwinnum = mwin && Number(mwin) >= 0 ? Number(mwin) : -1;
     const snum = params.get('session-number');
@@ -655,7 +619,7 @@ function loadHandler(event) {
             let ctype = 'domterm';
             if (browse_param) {
                 cstate.url = browse_param;
-                ctype = "browser";
+                ctype = no_session === "browse" ? "browser" : no_session;
             }
             const config = { type: 'component',
                              componentType: ctype,
@@ -679,7 +643,9 @@ function loadHandler(event) {
                 parent = wrapper;
             }
             let el;
-            if (DomTerm.useIFrame == 2 && ! DomTerm.isSubWindow()) {
+            const mode = no_session === "browse" ? 'B' : 'T';
+            if ((DomTerm.useIFrame == 2 || mode === 'B')
+                && ! DomTerm.isSubWindow()) {
                 if (snum)
                     paneParams.set('session-number', snum);
                 if (mwin) {
@@ -687,8 +653,9 @@ function loadHandler(event) {
                     paneParams.set('main-window', mwin);
                 }
                 DomTerm.mainLocationParams = paneParams.toString();
-                el = DomTerm.makeIFrameWrapper(DomTerm.paneLocation/*+location.hash*/,
-                                               'T', parent);
+                const frame_url = mode === 'B' ? browse_param
+                      : DomTerm.paneLocation/*+location.hash*/;
+                el = DomTerm.makeIFrameWrapper(frame_url, mode, parent);
                 maybeWindowName(el);
                 paneParams.delete('session-number');
                 paneParams.delete('window');
@@ -710,10 +677,14 @@ function loadHandler(event) {
             DomTerm.usingAjax = true;
             for (var i = 0; i < topNodes.length; i++)
                 connectAjax("domterm", "", topNodes[i]);
-        } else if (! no_session) {
+        } else if (! no_session || no_session === "view-saved") {
             for (var i = 0; i < topNodes.length; i++) {
                 const top = topNodes[i];
-                DTerminal.connectWS(query, top, no_session);
+                if (no_session === "view-saved") {
+                    DomTerm.loadSavedFile(top, browse_param);
+                } else {
+                    DTerminal.connectWS(query, top, no_session);
+                }
                 maybeWindowName(top);
             }
         }

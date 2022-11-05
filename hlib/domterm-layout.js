@@ -388,11 +388,14 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
     let pane = new PaneInfo(cstate.windowNumber);
     if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 : 2)
         || ctype === 'browser') {
-        let url = cstate && cstate.url; //cstate.componentType === 'browser' ? cstate.urlconfig.url;
+        let url = ctype !== "view-saved" && cstate && cstate.url;
         if (! url) {
             url = DomTerm.paneLocation;
             if (query)
-                url += url.indexOf('#') >= 0 ? '&' : '#' + query;
+                url += (url.indexOf('#') >= 0 ? '&' : '#') + query;
+            if (ctype === "view-saved" && cstate.url)
+                url += (url.indexOf('#') >= 0 ? '&' : '#')
+                + "view-saved=" +encodeURIComponent(cstate.url);
         }
         if (DomTerm.useToolkitSubwindows && cstate.windowNumber >= 0 /*&& cstate.componentType === 'browser'*/) {
             url = DomTerm.addSubWindowParams(url, cstate.componentType === 'browser'?'B':'T'/*FIXME*/);
@@ -419,7 +422,11 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
             query += "&main-window=true";
         el.query = query;
         maybeWindowName(el, new URLSearchParams(query));
-        DTerminal.connectWS(query, el, null);
+        if (ctype === "view-saved") {
+            DomTerm.loadSavedFile(el, cstate.url);
+        } else {
+            DTerminal.connectWS(query, el, null);
+        }
     }
     if (wrapped) {
         wrapped.paneNumber = paneNumber;
@@ -490,8 +497,6 @@ DomTermLayout.updateContentSize = function(pane) {
 
 DomTermLayout.initialize = function(initialContent = null) {
     function activeContentItemHandler(item) {
-        //if (item.componentName == "browser")
-        //    DomTerm.setTitle(item.config.url);
         DomTerm.showFocusedPane(item.container.elemen);
     }
 
@@ -499,17 +504,12 @@ DomTermLayout.initialize = function(initialContent = null) {
     let before = DomTerm.layoutBefore === undefined ? top.firstChild : DomTerm.layoutBefore;
     let lcontent = DomTerm._oldFocusedContent;
     if (initialContent == null) {
-        let newConfig;
-        const term = lcontent && lcontent.terminal;
-        if (term && term.topNode) {
-            newConfig = DomTerm._initialLayoutConfig;
-        } else {
-            newConfig = {
-                type: 'component',
-                componentType: 'domterm',
-                componentState: {}
-            };
-        }
+        const newConfig = DomTerm._initialLayoutConfig
+              || {
+                  type: 'component',
+                  componentType: 'domterm',
+                  componentState: {}
+              };
         initialContent = [ newConfig ];
     }
     let lparent = lcontent && lcontent.parentElement;
@@ -630,13 +630,7 @@ DomTermLayout.initialize = function(initialContent = null) {
 
     DomTermLayout.manager.registerComponent( 'domterm', registerComponent);
     DomTermLayout.manager.registerComponent("browser", registerComponent);
-    DomTermLayout.manager.registerComponent( 'view-saved', function( container, componentConfig ){ // FIXME - old
-        container.on('destroy', DomTermLayout.onLayoutClosed(container));
-        let el = viewSavedFile(componentConfig.url);
-        if (typeof componentConfig.windowNumber === "number")
-            el.windowNumber = componentConfig.windowNumber;
-        return el;
-    });
+    DomTermLayout.manager.registerComponent("view-saved", registerComponent);
 
     function checkClick(event) {
         for (var t = event.target; t instanceof Element; t = t.parentNode) {

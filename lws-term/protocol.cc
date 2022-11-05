@@ -2509,12 +2509,11 @@ display_session(struct options *options, struct pty_client *pclient,
             tclient->connection_number = wnum;
         }
         tclient->wkind = wkind;
-        if (wkind != browser_window && wkind != saved_window
-            && url == NULL && pclient) {
-            link_clients(tclient, pclient);
-        } else if (wkind == browser_window) {
+        if (wkind == browser_window || wkind == saved_window) {
             if (url)
                 tclient->description = url;
+        } else if (url == NULL && pclient) {
+            link_clients(tclient, pclient);
         }
         if (has_name) {
             tclient->set_window_name(options->name_option);

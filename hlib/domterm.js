@@ -247,12 +247,12 @@ DomTerm.newPane = function(paneOp, options = null, dt) {
         oldWindowNum = dt.topNode?.windowNumber;
     } else if (dt) { // ComponentItem
         oldWindowNum = Number(dt.id);
-        dt = DomTerm.mainTerm;
     }
     if (typeof oldWindowNum !== "number")
         return; // ERROR
-    dt.reportEvent("OPEN-PANE",
-                   `${paneOp},${oldWindowNum},${options ? JSON.stringify(options) : "{}"}`);
+    DomTerm.mainTerm
+        .reportEvent("OPEN-PANE",
+                     `${paneOp},${oldWindowNum},${options ? JSON.stringify(options) : "{}"}`);
 }
 
 DomTerm.updateContentTitle = function(content, options) {
@@ -307,10 +307,13 @@ DomTerm.updateTitle = function(content, options) {
 // detach is true, false, or "export"
 DomTerm.closeSession = function(pane = DomTerm.focusedPane,
                                 detach = false, fromLayoutEvent = false) {
-    if (pane && pane.terminal && pane.terminal.topNode)
-        pane.terminal.close(detach, fromLayoutEvent);
-    else if (pane) {
-        DomTerm.sendChildMessage(pane, "domterm-close", detach, fromLayoutEvent);
+    if (pane) {
+        if (pane.terminal) {
+            if (pane.terminal.topNode)
+                pane.terminal.close(detach, fromLayoutEvent);
+        } else {
+            DomTerm.sendChildMessage(pane, "domterm-close", detach, fromLayoutEvent);
+        }
     }
 }
 
@@ -495,7 +498,7 @@ DomTerm.createSpanNode = function(cls=null, txt=null) {
 
 
 DomTerm.addSubWindowParams = function(location, mode) {
-    if (mode == 'T') {
+    if (mode == 'T' || mode == 'V') {
         location = DomTerm.addLocationParams(location);
     } else if (location.startsWith('file:')) {
         location = "http://localhost:"+DomTerm.server_port + '/get-file/'
@@ -507,6 +510,58 @@ DomTerm.addSubWindowParams = function(location, mode) {
             + "main-window=" + DomTerm._mainWindowNumber;
     }
     return location;
+};
+
+DomTerm.loadSavedFile = function(topNode, url) {
+    if (url.startsWith("file:")) {
+        url = "http://localhost:"+DomTerm.server_port
+            +"/get-file/"+DomTerm.server_key
+            +"/"+url.substring(5);
+    }
+    topNode.innerHTML = "<h2>waiting for file data ...</h2>";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.setRequestHeader("Content-Type", "text/plain");
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState != 4)
+            return;
+        var responseText = xhr.responseText;
+        if (! responseText) {
+            topNode.innerHTML = "<h2>error loading "+url+"</h2>";
+            return;
+        }
+
+        topNode.removeChild(topNode.firstElementChild);
+        topNode.innerHTML = responseText;
+
+        let name = "domterm";
+        const dt = new window.DTerminal(name, topNode, 'view-saved');
+        dt.initial = document.getElementById(dt.makeId("main"));
+        dt._initializeDomTerm(topNode);
+        dt.sstate.windowTitle = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
+        dt.topNode.classList.remove("domterm-noscript");
+        dt.measureWindow();
+        dt._restoreLineTables(topNode, 0);
+        dt._breakAllLines();
+        dt.updateWindowTitle();
+        function showHideHandler(e) {
+            var target = e.target;
+            if (target instanceof Element
+                && target.nodeName == "SPAN"
+                && target.getAttribute("std") == "hider") { // FIXME
+                dt._showHideHandler(e);
+                e.preventDefault();
+            }
+        }
+        topNode.addEventListener("click", showHideHandler, false);
+        for (let group of topNode.getElementsByClassName("command-group")) {
+            dt._maybeAddTailHider(group);
+        }
+        dt.setWindowSize = function(numRows, numColumns,
+                                    availHeight, availWidth) {
+        };
+    };
+    xhr.send("");
 };
 
 // mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)
