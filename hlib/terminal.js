@@ -10211,7 +10211,8 @@ Terminal.prototype._checkTree = function() {
     if (this.inputFollowsOutput && this._inputLine
         && this._inputLine.parentNode && this.outputBefore != this._inputLine)
         error("bad inputLine");
-    if (this.homeLine < 0 || this.homeLine >= nlines)
+    if (this.homeLine < 0 || this.homeLine >= nlines
+        || this.homeLine + this.numRows < nlines)
         error("homeLine out of range");
     if (this.viewCaretNode==this.outputContainer)
         error("outputContainer is focus-node");
