@@ -2,6 +2,7 @@
  * Various tweaks for DomTerm.
  */
 .lm_stack .lm_items {border:1px solid #cccccc; box-sizing: border-box }
+body[reverse-video] .lm_stack .lm_items { border-color: #666666; }
 .lm_stack.lm_focused .lm_items { border-color: var(--focused-pane-color); }
 div.lm_goldenlayout.lm_root { background: transparent }
 /*
