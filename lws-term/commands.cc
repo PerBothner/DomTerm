@@ -43,7 +43,7 @@ bool check_window_option(const std::string& option,
     const char* sep_chars = ", \t\n\r\f\v";
     for (;;) {
         size_t sep = option.find_first_of(sep_chars, start);
-        std::string s = option.substr(start, sep);
+        std::string s = option.substr(start, sep - start);
         size_t slen = s.length();
         int top_marker = slen <= 0 || s[0] != '^' ? 0
             : negative_if_top ? 2 : 1;
