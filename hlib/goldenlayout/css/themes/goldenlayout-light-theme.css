@@ -23,7 +23,7 @@
 }
 .lm_splitter:hover .lm_drag_handle,
 .lm_splitter.lm_dragging .lm_drag_handle {
-  background-color: #bbbbbb;
+  background-color: #452500;
 }
 .lm_header {
   height: 20px;
