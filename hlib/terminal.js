@@ -2351,6 +2351,7 @@ Terminal.prototype._removeCaret = function(normalize=true) {
         if (value && next && next.nodeName == "SPAN"
             && (nextValue = next.getAttribute("content-value")) != null) {
             next.setAttribute("content-value", value + nextValue);
+            caretNode.removeAttribute("value");
         }
     }
 }
@@ -7745,6 +7746,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                 needSectionEndFence = needSectionEndList;
             } else if ((value = el.getAttribute("content-value")) != null
                        && el.nodeName == "SPAN") {
+                if (el.previousSibling === dt._caretNode) {
+                    // Should be a no-op
+                    el.measureLeft -= el.previousSibling.measureWidth;
+                }
                 if (countColumns)
                     beforePos += dt.charWidth * dt.strWidthInContext(value, el);
             }
@@ -7992,15 +7997,32 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                            != null)) {
                 let start = previous.measureLeft - startOffset;
                 let pad = availWidth - start - measureWidth;
+                if (previous.previousSibling === dt._caretNode) {
+                    const caretValue = dt._caretNode.getAttribute("value");
+                    if (caretValue) {
+                        pad -= dt.charWidth
+                            * dt.strWidthInContext(caretValue, el);
+                    }
+                }
+                const adjustMargin = false;
                 if (pad < dt.charWidth) { // hide
                     previous.setAttribute("content-value", "");
                     el.style.visibility = "hidden";
                     el.style.position = "absolute";
+                    if (adjustMargin)
+                        previous.style.marginRight = "";
                 } else {
-                    let numSpaces = Math.floor((pad + 0.1) / dt.charWidth);
-                    let spaces = DomTerm.makeSpaces(numSpaces);
-                    previous.setAttribute("content-value", spaces);
-                    startOffset -= numSpaces * dt.charWidth - previous.measureWidth;
+                    if (adjustMargin) {
+                        // Better for non-monospace fonts, but fragile.
+                        previous.setAttribute("content-value", " ");
+                        previous.style.marginRight = `${pad-dt.charWidth}px`;
+                        startOffset -= pad - previous.measureWidth;
+                    } else {
+                        let numSpaces = Math.floor((pad + 0.1) / dt.charWidth);
+                        let spaces = DomTerm.makeSpaces(numSpaces);
+                        previous.setAttribute("content-value", spaces);
+                        startOffset -= numSpaces * dt.charWidth - previous.measureWidth;
+                    }
                     el.style.visibility = "";
                     el.style.position = "";
                 }
