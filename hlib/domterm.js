@@ -122,14 +122,6 @@ DomTerm.isSubWindow = function() { return location.pathname == "/simple.html"; }
 DomTerm.usingAjax = false;
 DomTerm.usingQtWebEngine = !!navigator.userAgent.match(/QtWebEngine[/]([^ ]+)/);
 
-DomTerm._escapeMap = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;'
-};
-
 DomTerm.clickLink = function(e, dt = DomTerm.focuedTerm) {
     let target = e.target;
     for (let n = target; n instanceof Element; n = n.parentNode) {
@@ -150,28 +142,6 @@ DomTerm.clickLink = function(e, dt = DomTerm.focuedTerm) {
             break;
     }
     return false;
-}
-
-DomTerm.escapeText = function(text) {
-    // Assume single quote is not used in attributes
-    return text.replace(/[&<>"]/g,
-                        function(m) { return DomTerm._escapeMap[m]; });
-};
-
-// Like toFixed, but strip off trailing zeros and decimal point
-DomTerm.toFixed = function(n, d) {
-    let s = Number(n).toFixed(d);
-    let nzeros = 0;
-    let len = s.length;
-    for (;;) {
-        let last = s.charAt(len-nzeros-1);
-        if (last !== '0' && last !== '.')
-            break;
-        nzeros++;
-        if (last == '.')
-            break;
-    }
-    return nzeros ? s.substring(0, len-nzeros) : s;
 }
 
 DomTerm.isLineBlock = function(node) {
@@ -510,58 +480,6 @@ DomTerm.addSubWindowParams = function(location, mode) {
             + "main-window=" + DomTerm._mainWindowNumber;
     }
     return location;
-};
-
-DomTerm.loadSavedFile = function(topNode, url) {
-    if (url.startsWith("file:")) {
-        url = "http://localhost:"+DomTerm.server_port
-            +"/get-file/"+DomTerm.server_key
-            +"/"+url.substring(5);
-    }
-    topNode.innerHTML = "<h2>waiting for file data ...</h2>";
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url);
-    xhr.setRequestHeader("Content-Type", "text/plain");
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState != 4)
-            return;
-        var responseText = xhr.responseText;
-        if (! responseText) {
-            topNode.innerHTML = "<h2>error loading "+url+"</h2>";
-            return;
-        }
-
-        topNode.removeChild(topNode.firstElementChild);
-        topNode.innerHTML = responseText;
-
-        let name = "domterm";
-        const dt = new window.DTerminal(name, topNode, 'view-saved');
-        dt.initial = document.getElementById(dt.makeId("main"));
-        dt._initializeDomTerm(topNode);
-        dt.sstate.windowTitle = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
-        dt.topNode.classList.remove("domterm-noscript");
-        dt.measureWindow();
-        dt._restoreLineTables(topNode, 0);
-        dt._breakAllLines();
-        dt.updateWindowTitle();
-        function showHideHandler(e) {
-            var target = e.target;
-            if (target instanceof Element
-                && target.nodeName == "SPAN"
-                && target.getAttribute("std") == "hider") { // FIXME
-                dt._showHideHandler(e);
-                e.preventDefault();
-            }
-        }
-        topNode.addEventListener("click", showHideHandler, false);
-        for (let group of topNode.getElementsByClassName("command-group")) {
-            dt._maybeAddTailHider(group);
-        }
-        dt.setWindowSize = function(numRows, numColumns,
-                                    availHeight, availWidth) {
-        };
-    };
-    xhr.send("");
 };
 
 // mode is 'T' (terminal), 'V' (view-saved), or 'B' (browse)

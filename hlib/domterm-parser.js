@@ -1,6 +1,6 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
-import { fromJson } from './domterm-utils.js';
+import { fromJson, isBlockNode } from './domterm-utils.js';
 
 class DTParser {
     constructor(term) {
@@ -2035,7 +2035,7 @@ class DTParser {
                             let iline = term.lineStarts.length - 1;
                             for (; output == null && iline >= 0; iline--) {
                                 let ln = term.lineStarts[iline];
-                                if (! Terminal.isBlockNode(ln))
+                                if (! isBlockNode(ln))
                                     continue;
                                 let text = ln.textContent;
                                 if (lines_checked == 0

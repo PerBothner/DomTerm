@@ -681,7 +681,7 @@ function loadHandler(event) {
             for (var i = 0; i < topNodes.length; i++) {
                 const top = topNodes[i];
                 if (no_session === "view-saved") {
-                    DomTerm.loadSavedFile(top, browse_param);
+                    DTerminal.loadSavedFile(top, browse_param);
                 } else {
                     DTerminal.connectWS(query, top, no_session);
                 }

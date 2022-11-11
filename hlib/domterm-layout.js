@@ -4,6 +4,7 @@
 export { DomTermLayout };
 
 import { GoldenLayout, LayoutConfig, ResolvedLayoutConfig, ItemConfig, ResolvedItemConfig, RowOrColumn, Tab } from './goldenlayout.js';
+import { escapeText } from './domterm-utils.js';
 
 class DomTermLayout {
 };
@@ -175,7 +176,7 @@ DomTermLayout.updateLayoutTitle = function(item,
             ((flags & Tab.RenderFlags.InDropdownMenu) ||
              ! (flags & Tab.RenderFlags.DropdownActive))) {
             el.innerHTML =
-                DomTerm.escapeText(title)+' <span class="domterm-windowname">('+DomTerm.escapeText(wname)+')</span>';
+                escapeText(title)+' <span class="domterm-windowname">('+escapeText(wname)+')</span>';
         } else {
             el.innerText = title;
         }
@@ -423,7 +424,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
         el.query = query;
         maybeWindowName(el, new URLSearchParams(query));
         if (ctype === "view-saved") {
-            DomTerm.loadSavedFile(el, cstate.url);
+            DTerminal.loadSavedFile(el, cstate.url);
         } else {
             DTerminal.connectWS(query, el, null);
         }

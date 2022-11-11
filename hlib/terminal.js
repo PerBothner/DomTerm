@@ -94,7 +94,8 @@ export { Terminal };
 import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
-import { toJson } from './domterm-utils.js';
+import { toJson, scrubHtml, isBlockTag, isBlockNode, escapeText, toFixed }
+    from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -475,7 +476,7 @@ class Terminal {
             if (dt.sstate.mouseMode == 0
                 && (ref = (curTarget.getAttribute("domterm-href")
                            || curTarget.getAttribute("href")))) {
-                let infoHtml = '<span class="url">' + DomTerm.escapeText(ref) + '</span>';
+                let infoHtml = '<span class="url">' + escapeText(ref) + '</span>';
                 if (dt._linkNeedsCtrlClick(curTarget))
                     infoHtml += "<br/><i>(Ctrl+Click to open link)</i>";
                 dt.hoverHandler(event, dt, curTarget,
@@ -838,7 +839,7 @@ class Terminal {
                 : this._splitNode(parent, cur);
             parent = parent.parentNode;
             if (prev instanceof Element && prev.getAttribute("line") !== null
-                && ! Terminal.isBlockNode(prev.parentNode)) {
+                && ! isBlockNode(prev.parentNode)) {
                 parent.insertBefore(prev, cur);
             }
         }
@@ -1660,13 +1661,13 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     || classList.contains("resize-sensor")
                     || classList.contains("domterm-show-info")))
                 descend = false;
-            else if (Terminal.isBlockTag(tag)) {
+            else if (isBlockTag(tag)) {
                 var hasData = false;
                 var prevWasBlock = false;
                 // Check to see if cur has any non-block children:
                 for (var ch = cur.firstChild; ch != null; ) {
                     var next = ch.nextSibling;
-                    var isBlockNode = false;
+                    let isBlock = false;
                     if (ch instanceof Text) {
                         if (prevWasBlock && ch.data.trim() == "") {
                             cur.removeChild(ch);
@@ -1675,13 +1676,12 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                         }
                         hasData = true;
                     } else if (ch instanceof Element && ! hasData) {
-                        isBlockNode = Terminal.isBlockNode(ch);
-                        if (! isBlockNode
-                            && !ch.classList.contains("focus-area"))
+                        isBlock = isBlockNode(ch);
+                        if (! isBlock && !ch.classList.contains("focus-area"))
                             hasData = true;
                     }
                     ch = next;
-                    prevWasBlock = isBlockNode;
+                    prevWasBlock = isBlock;
                 }
                 if (hasData) {
                     start = cur;
@@ -1875,7 +1875,7 @@ Terminal.prototype._maybeGoDeeper = function(current) {
     let parent = null;
     while (current instanceof Element) {
         let tag = current.tagName.toLowerCase();
-        if (! Terminal.isBlockTag(tag)
+        if (! isBlockTag(tag)
             && tag !== "td"
             && (tag !== "span" || current.stayOut
                 || current.getAttribute("content-value")))
@@ -1979,7 +1979,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                 if (lastParent == null)
                     lastParent = this.lineStarts[lineCount-1];
                 for (;;) {
-                    if (Terminal.isBlockNode(lastParent))
+                    if (isBlockNode(lastParent))
                         break;
                     var p = lastParent.parentNode;
                     if (p == this.initial)
@@ -2216,7 +2216,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     continue;
                 }
                 // Otherwise go to the parent's sibling - but this gets complicated.
-                if (Terminal.isBlockNode(current))
+                if (isBlockNode(current))
                     absLine++;
             }
 
@@ -2613,7 +2613,7 @@ Terminal.prototype.cursorLineStart = function(deltaLines, kind=undefined) {
         if (kind)
             newBlock = false;
         else {
-            newBlock = Terminal.isBlockNode(parent);
+            newBlock = isBlockNode(parent);
             if (! newBlock) {
                 let endLine = this.lineEnds[curLine];
                 for (; parent  ;) {
@@ -2623,7 +2623,7 @@ Terminal.prototype.cursorLineStart = function(deltaLines, kind=undefined) {
                         newBlock = true;
                         break;
                     }
-                    if (Terminal.isBlockNode(parent))
+                    if (isBlockNode(parent))
                         break;
                     next = parent.nextSibling;
                     parent = parent.parentNode;
@@ -3455,20 +3455,10 @@ Terminal.isNormalBlock = function(node) {
     return tag == "PRE" || tag == "P" || tag == "DIV";
 }
 
-Terminal.isBlockNode = function(node) {
-    return node instanceof Element
-        && Terminal.isBlockTag(node.tagName.toLowerCase());
-};
-
-Terminal.isBlockTag = function(tag) { // lowercase tag
-    var einfo = DomTerm._elementInfo(tag, null);
-    return (einfo & DomTerm._ELEMENT_KIND_INLINE) == 0;
-}
-
 Terminal.prototype._getOuterBlock = function(node, stopIfInputLine=false) {
     for (var n = node; n; n = n.parentNode) {
         if ((stopIfInputLine && n == this._inputLine)
-            || Terminal.isBlockNode(n))
+            || isBlockNode(n))
             return n;
     }
     return null;
@@ -3823,12 +3813,12 @@ Terminal.prototype._sizeInfoText = function() {
     // Might be nicer to keep displaying the size-info while
     // button-1 is pressed. However, that seems a bit tricky.
     let text = ""+this.numColumns+"\xD7"+this.numRows
-        +" ("+DomTerm.toFixed(this.availWidth, 2)+"\xD7"
-        +DomTerm.toFixed(this.availHeight, 2);
+        +" ("+toFixed(this.availWidth, 2)+"\xD7"
+        +toFixed(this.availHeight, 2);
     if (this.sstate.forcedSize) {
         text += "px, actual:"
-            + DomTerm.toFixed(this.topNode.clientWidth -  this.rightMarginWidth)
-            + "\xD7" + DomTerm.toFixed(this.actualHeight);
+            + toFixed(this.topNode.clientWidth -  this.rightMarginWidth)
+            + "\xD7" + toFixed(this.actualHeight);
     }
     text += "px)";
     /* // This is confusing as it doesn't reliably include scale (zoom).
@@ -3902,7 +3892,7 @@ DomTerm.displayMiscInfo = function(dt, show) {
         contents += "<br/>";
         contents += dt._modeInfo() + "<br/>Size: " + dt._sizeInfoText();
         if (dt.sstate.lastWorkingPath)
-            contents += "<br/>Last path: <code>"+DomTerm.escapeText(dt.sstate.lastWorkingPath)+"</code>";
+            contents += "<br/>Last path: <code>"+ escapeText(dt.sstate.lastWorkingPath)+"</code>";
         contents += "</span>";
         dt._showingMiscInfo = addInfoDisplay(contents, dt._showingMiscInfo, dt);
     } else if (dt._showingMiscInfo) {
@@ -4711,7 +4701,7 @@ Terminal.prototype._showHideHandler = function(event) {
             var next = node.nextSibling;
             if (next == null) {
                 var parent = node.parentNode;
-                if (parent == start.parentNode && Terminal.isBlockNode(parent))
+                if (parent == start.parentNode && isBlockNode(parent))
                     next = parent.nextSibling;
             }
             node = next;
@@ -6306,566 +6296,59 @@ Terminal.prototype._unsafeInsertHTML = function(text) {
     }
 };
 
-DomTerm._ELEMENT_KIND_ALLOW = 1; // Allow in inserted HTML
-DomTerm._ELEMENT_KIND_CHECK_JS_TAG = 2; // Check href/src for "javascript:"
-DomTerm._ELEMENT_KIND_INLINE = 4; // Phrasing [inline] content
-DomTerm._ELEMENT_KIND_SVG = 8; // Allow in SVG
-DomTerm._ELEMENT_KIND_MATH = 512; // Allow in MathML
-DomTerm._ELEMENT_KIND_EMPTY = 16; // Void (empty) HTML element, like <hr>
-DomTerm._ELEMENT_KIND_TABLE = 32; // allowed in table
-DomTerm._ELEMENT_KIND_SKIP_TAG = 64; // ignore (skip) element (tag)
-DomTerm._ELEMENT_KIND_CONVERT_TO_DIV = 128; // used for <body> and <html>
-DomTerm._ELEMENT_KIND_SKIP_FULLY = 256; // skip element (tag and contents)
-DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY = DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_SKIP_FULLY;
-
-DomTerm._elementInfo = function(tag, parents=null) {
-    var v = DomTerm.HTMLinfo.hasOwnProperty(tag)
-        ||  DomTerm.HTMLinfo.hasOwnProperty(tag = tag.toLowerCase())
-        ? DomTerm.HTMLinfo[tag]
-        : 0;
-
-    if ((v & DomTerm._ELEMENT_KIND_SVG) != 0 && parents) {
-        // If allow in SVG, check parents for svg
-        for (var i = parents.length; --i >= 0; ) {
-            if (parents[i] == "svg") {
-                v |= DomTerm._ELEMENT_KIND_ALLOW;
-                v &= ~DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY;
-                break;
-            }
-        }
-    }
-    return v;
-};
-
-Terminal.prototype.allowAttribute = function(name, value, einfo, parents) {
-    //Should "style" be allowed?  Or further scrubbed?
-    //It is required for SVG. FIXME.
-    //if (name=="style")
-    //    return false;
-    if (name.startsWith("on"))
-        return false;
-    if ((einfo & DomTerm._ELEMENT_KIND_CHECK_JS_TAG) != 0) {
-        if (name=="href" || name=="domterm-href" || name=="src") {
-            // scrub for "javascript:"
-            var amp = value.indexOf("&");
-            var colon = value.indexOf(":");
-            if (amp >= 0 && amp <= 11 && (colon < 0 || amp <= colon))
-                return false;
-            if (value.startsWith("javascript:"))
-                return false;
-        }
-    }
-    return true;
-};
-
-//FIXME Study the following:
-//https://www.owasp.org/index.php/XSS_Filter_Evasion_Cheat_Sheet
-
-// See elementInfo comment for bit values.
-DomTerm.HTMLinfo = {
-    "a": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_CHECK_JS_TAG+DomTerm._ELEMENT_KIND_ALLOW,
-    "abbr": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "acronym": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "address": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "altGlyph": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "altGlyphDef": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "altGlyphItem": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "animate": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "animateColor": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "animateMotion": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "animateTransform": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "area": 0x14,
-    "b": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "base": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_CHECK_JS_TAG+DomTerm._ELEMENT_KIND_ALLOW,
-    "basefont": DomTerm._ELEMENT_KIND_EMPTY, //obsolete
-    "big": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "blockquote": DomTerm._ELEMENT_KIND_ALLOW,
-    "br": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "body": DomTerm._ELEMENT_KIND_CONVERT_TO_DIV+DomTerm._ELEMENT_KIND_ALLOW,
-    "canvas": DomTerm._ELEMENT_KIND_INLINE,
-    "center": DomTerm._ELEMENT_KIND_ALLOW,
-    "circle": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "cite": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "clipPath": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "code": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "col": 0x11,
-    "color-profile": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "command": 0x15, // obsolete
-    "cursor": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "dd": DomTerm._ELEMENT_KIND_ALLOW,
-    "dfn": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "defs": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "desc": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "div": DomTerm._ELEMENT_KIND_ALLOW,
-    "dl": DomTerm._ELEMENT_KIND_ALLOW,
-    "dt": DomTerm._ELEMENT_KIND_ALLOW,
-    "ellipse": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "em": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "embed": 0x14,
-    "feBlend": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feColorMatrix": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feComponentTransfer": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feComposite": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feConvolveMatrix": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feDiffuseLighting": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feDisplacementMap": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feDistantLight": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feFlood": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feFuncA": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feFuncB": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feFuncG": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feFuncR": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feGaussianBlur": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feImage": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feMerge": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feMergeNode": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feMorphology": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feOffset": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "fePointLight": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feSpecularLighting": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feSpotLight": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feTile": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "feTurbulence": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "figcaption": DomTerm._ELEMENT_KIND_ALLOW,
-    "figure": DomTerm._ELEMENT_KIND_ALLOW,
-    "filter": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "font": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "font-face": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "font-face-format": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "font-face-name": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "font-face-src": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "font-face-uri": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "foreignObject": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "frame": 0x10,
-    "g": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "glyph": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "glyphRef": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "h1": DomTerm._ELEMENT_KIND_ALLOW,
-    "h2": DomTerm._ELEMENT_KIND_ALLOW,
-    "h3": DomTerm._ELEMENT_KIND_ALLOW,
-    "h4": DomTerm._ELEMENT_KIND_ALLOW,
-    "h5": DomTerm._ELEMENT_KIND_ALLOW,
-    "h6": DomTerm._ELEMENT_KIND_ALLOW,
-    "head": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_ALLOW,
-    "header": DomTerm._ELEMENT_KIND_ALLOW,
-    "hkern": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "hr": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
-    "html": DomTerm._ELEMENT_KIND_CONVERT_TO_DIV+DomTerm._ELEMENT_KIND_ALLOW,
-    "i": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "iframe": DomTerm._ELEMENT_KIND_ALLOW,
-    "image": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE, // FIXME
-    "img": DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_CHECK_JS_TAG+DomTerm._ELEMENT_KIND_ALLOW,
-    "input": 0x15,
-    //"isindex": 0x10, //metadata
-    "kbd": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "keygen": 0x15,
-    "li": DomTerm._ELEMENT_KIND_ALLOW,
-    "line": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "linearGradient": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "link": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
-    "maction": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "maligngroup": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "malignmark": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mark": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "marker": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "mask": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "math": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "menclose": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "merror": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mfrac": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "meta": DomTerm._ELEMENT_KIND_SKIP_TAG+DomTerm._ELEMENT_KIND_EMPTY+DomTerm._ELEMENT_KIND_ALLOW,
-    "metadata": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "mi": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "missing-glyph": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "mlongdiv": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mmultiscripts": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mn": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mo": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mover": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mpadded": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mpath": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "mphantom": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mroot": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mrow": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "ms": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mscarries": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mscarry": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "msgroup": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "msline": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mspace": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "msqrt": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "msrow": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mstack": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mstyle": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "msub": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "msubsup": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "msup": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mtable": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mtd": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mtext": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "mtr": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "munder": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "munderover": DomTerm._ELEMENT_KIND_MATH+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "ol": DomTerm._ELEMENT_KIND_ALLOW,
-    "p": DomTerm._ELEMENT_KIND_ALLOW,
-    //"para": 0x10, //???
-    "param": DomTerm._ELEMENT_KIND_EMPTY, // invalid
-    "path": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "pattern": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "polygon": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "polyline": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "pre": DomTerm._ELEMENT_KIND_ALLOW,
-    "q": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "radialGradient": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "rect": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "samp": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "script": DomTerm._ELEMENT_KIND_SKIP_FULLY+DomTerm._ELEMENT_KIND_ALLOW,
-    "set": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "small": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "source": DomTerm._ELEMENT_KIND_EMPTY, // invalid
-    "span": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "stop": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "strong": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "style": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_SKIP_FULLY+DomTerm._ELEMENT_KIND_ALLOW,
-    "sub": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "sup": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "svg": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "switch": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "symbol": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "table": DomTerm._ELEMENT_KIND_ALLOW,
-    "tbody": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
-    "thead": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
-    "tfoot": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
-    "tr": DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
-    "td": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
-    "text": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "textPath": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "th": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_TABLE+DomTerm._ELEMENT_KIND_ALLOW,
-    "title": DomTerm._ELEMENT_KIND_SKIP_FULLY+DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_ALLOW,
-    //"track": 0x10,
-    "tref": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "tspan": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "tt": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "u": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "ul": 1,
-    "use": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "view": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "var": DomTerm._ELEMENT_KIND_INLINE+DomTerm._ELEMENT_KIND_ALLOW,
-    "vkern": DomTerm._ELEMENT_KIND_SVG+DomTerm._ELEMENT_KIND_INLINE,
-    "wbr": 0x15,
-    
-    // Phrasing content:
-    //area (if it is a descendant of a map element) audio bdi bdo br button canvas data datalist del embed iframe input ins kbd keygen label map math meter noscript object output progress q ruby s select svg template textarea time u  video wbr text
-};
-
 // Maybe use a separate library, perhaps DomPurify ?
-Terminal.prototype._scrubAndInsertHTML = function(str) {
-    function skipWhitespace(pos) {
-        for (; pos < len; pos++) {
-            let c = str.charCodeAt(pos);
-            if (c != 32 && (c < 8 || c > 13))
-                break;
+Terminal.prototype._scrubAndInsertHTML = function(str, handleLines = true) {
+    const handleNewline = (str, i, start, len) => {
+        this._unsafeInsertHTML(str.substring(start, i-1));
+        /*
+          if (pauseNeeded) {
+          this._deferredBytes = ....;
+          this.controlSequenceState = DTParser.PAUSE_REQUESTED;
+          }
+        */
+        this.cursorLineStart(1);
+        let ln = this.lineStarts[this.getAbsCursorLine()];
+        ln._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+        ln._breakState = Terminal._BREAKS_UNMEASURED;
+        if (str.charCodeAt(i-1) == 13 && i < len && str.charCodeAt(i) == 10)
+            i++;
+        return i;
+    };
+    const handlePopOuterBlock = function() {
+        this._breakDeferredLines();
+        this.freshLine();
+        const line = this.getAbsCursorLine();
+        const lstart = this.lineStarts[line];
+        const lend = this.lineEnds[line];
+        const emptyLine = (lstart == this.outputContainer
+                           && lstart.firstChild == lend
+                           && this.outputBefore == lend);
+        this._unsafeInsertHTML(str.substring(start, ok));
+        const created = lstart.firstChild;
+        if (emptyLine && created.nextSibling == lend) {
+            lstart.removeChild(created);
+            lstart.parentNode.insertBefore(created, lstart);
+            const delta = this.lineStarts.length;
+            this._restoreLineTables(created, line);
+            this.outputContainer = lstart;
+            this.outputBefore = lend;
+            this.resetCursorCache();
         }
-        return pos;
+        return i;
+        //insert immediately, as new line
     }
-    var doctypeRE = /^\s*<!DOCTYPE\s[^>]*>\s*/;
-    var len = str.length;
-    var baseUrl = null;
-    var start = 0;
-    var ok = 0;
-    var i = 0;
-    var startLine = this.getAbsCursorLine();
+
+    let options = {
+        handleNewline,
+    };
+    let startLine = this.getAbsCursorLine();
     // FIXME could be smarter - we should avoid _WIDTH_MODE_VARIABLE_SEEN
     // until we actually see something that needs it.
     this.lineStarts[startLine]._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
     this.lineStarts[startLine]._breakState = Terminal._BREAKS_UNMEASURED;
-    var activeTags = new Array();
-    loop:
-    for (;;) {
-        if (i == len) {
-            ok = i;
-            break;
-        }
-        var ch = str.charCodeAt(i++);
-        switch (ch) {
-        case 10:
-        case 12:
-        case 13:
-            if (activeTags.length == 0) {
-                this._unsafeInsertHTML(str.substring(start, i-1));
-                /*
-                if (pauseNeeded) {
-                    this._deferredBytes = ....;
-                    this.controlSequenceState = DTParser.PAUSE_REQUESTED;
-                }
-                */
-                this.cursorLineStart(1);
-                let ln = this.lineStarts[this.getAbsCursorLine()];
-                ln._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
-                ln._breakState = Terminal._BREAKS_UNMEASURED;
-                if (ch == 13 && i < len && str.charCodeAt(i) == 10)
-                    i++;
-                start = i;
-                ok = i;
-            }
-            break;
-        case 38 /*'&'*/:
-            ok = i-1;
-            for (;;) {
-                if (i == len)
-                    break loop;
-                ch = str.charCodeAt(i++);
-                if (ch == 59) //';'
-                    break;
-                if (! ((ch >= 65 && ch <= 90)  // 'A'..'Z'
-                       || (ch >= 97 && ch <= 122) // 'a'..'z'
-                       || (ch >= 48 && ch <= 57) // '0'..'9'
-                       || (ch == 35 && i==ok+2))) // initial '#'
-                    break loop;
-            }
-            break;
-        case 62: // '>'
-            ok = i-1;
-            break;
-        case 60 /*'<'*/:
-            ok = i-1;
-            if (i + 1 == len)
-                break loop; // invalid
-            ch = str.charCodeAt(i++);
-            if (ok == 0 && ch == 33) {
-                let m = str.match(doctypeRE);
-                if (m) {
-                    str = str.substring(m[0].length);
-                    len = str.length;
-                    i = 0;
-                    break;
-                }
-            }
-            if (ch == 33 && i + 1 < len
-                && str.charCodeAt(i) == 45 && str.charCodeAt(i+1) == 45) {
-                // Saw comment start "<!--". Look for "-->".
-                i += 2;
-                for (; ; i++) {
-                    if (i + 2 >= len)
-                        break loop; // invalid
-                    if (str.charCodeAt(i) == 45
-                        && str.charCodeAt(i+1) == 45
-                        && str.charCodeAt(i+2) == 62) {
-                        i += 3;
-                        if (activeTags.length == 0)
-                            i = skipWhitespace(i);
-                        str = str.substring(0, ok) + str.substring(i);
-                        len = str.length;
-                        i = ok;
-                        break;
-                    }
-                }
-                break;
-            }
-
-            var end = ch == 47; // '/';
-            if (end)
-                ch = str.charCodeAt(i++);
-            for (;;) {
-                if (i == len)
-                    break loop; // invalid
-                ch = str.charCodeAt(i++);
-                if (! ((ch >= 65 && ch <= 90)  // 'A'..'Z'
-                       || (ch >= 97 && ch <= 122) // 'a'..'z'
-                       || (ch >= 48 && ch <= 57) // '0'..'9'
-                       || (ch == 35 && i==ok+2))) // initial '#'
-                    break;
-            }
-            if (end) {
-                if (ch != 62) // '>'
-                    break loop; // invalid
-                var tag = str.substring(ok+2,i-1);
-                var einfo = DomTerm._elementInfo(tag, activeTags);
-                if (activeTags.length == 0) {
-                    // maybe TODO: allow unbalanced "</foo>" to pop from foo.
-                    break loop;
-                } else if (activeTags.pop() == tag) {
-                    if ((einfo & DomTerm._ELEMENT_KIND_CONVERT_TO_DIV) != 0) {
-                        i = skipWhitespace(i);
-                        str = str.substring(0, ok) + "</div>" + str.substring(i);
-                        len = str.length;
-                        ok = i = ok + 6;
-                    } else if ((einfo & DomTerm._ELEMENT_KIND_SKIP_TAG_OR_FULLY) != 0) {
-                        if ((einfo & DomTerm._ELEMENT_KIND_SKIP_FULLY) != 0)
-                            ok = activeTags.pop();
-                        if ((einfo & DomTerm._ELEMENT_KIND_INLINE) == 0)
-                            i = skipWhitespace(i);
-                        str = str.substring(0, ok) + str.substring(i);
-                        len = str.length;
-                        i = ok;
-                    } else if ((einfo & DomTerm._ELEMENT_KIND_INLINE) == 0) {
-                        let i2 = skipWhitespace(i);
-                        if (i2 > i) {
-                            str = str.substring(0, i) + str.substring(i2);
-                            len = str.length;
-                        }
-                    }
-                    ok = i;
-                    if (activeTags.length == 0
-                        && (DomTerm._elementInfo(tag, activeTags) & 4) == 0) {
-                        this._breakDeferredLines();
-                        this.freshLine();
-                        var line = this.getAbsCursorLine();
-                        var lstart = this.lineStarts[line];
-                        var lend = this.lineEnds[line];
-                        var emptyLine = (lstart == this.outputContainer
-                                         && lstart.firstChild == lend
-                                         && this.outputBefore == lend);
-                        this._unsafeInsertHTML(str.substring(start, ok));
-                        var created = lstart.firstChild;
-                        if (emptyLine && created.nextSibling == lend) {
-                            lstart.removeChild(created);
-                            lstart.parentNode.insertBefore(created, lstart);
-                            var delta = this.lineStarts.length;
-                            this._restoreLineTables(created, line);
-                            this.outputContainer = lstart;
-                            this.outputBefore = lend;
-                            this.resetCursorCache();
-                        }
-                        start = i;
-                        //insert immediately, as new line
-                    }
-                    continue;
-                } else
-                    break loop; // invalid - tag mismatch                    
-            } else {
-                var tag = str.substring(ok+1,i-1);
-                var einfo = DomTerm._elementInfo(tag, activeTags);
-                if ((einfo & DomTerm._ELEMENT_KIND_ALLOW) == 0)
-                    break loop;
-                if ((einfo & DomTerm._ELEMENT_KIND_SKIP_FULLY) != 0) {
-                    activeTags.push(ok);
-                }
-                activeTags.push(tag);
-                // we've seen start tag - now check for attributes
-                for (;;) {
-                    while (ch <= 32 && i < len)
-                        ch = str.charCodeAt(i++);
-                    var attrstart = i-1;
-                    while (ch != 61 && ch != 62 && ch != 47) { //' =' '>' '/'
-                        if (i == len || ch == 60 || ch == 38) //'<' or '&'
-                            break loop; // invalid
-                        ch = str.charCodeAt(i++);
-                    }
-                    var attrend = i-1;
-                    if (attrstart == attrend) {
-                        if (ch == 62 || ch == 47) // '>' or '/'
-                            break;
-                        else
-                            break loop; // invalid - junk in element start
-                    }
-                    var attrname = str.substring(attrstart,attrend);
-                    while (ch <= 32 && i < len)
-                        ch = str.charCodeAt(i++);
-                    let valstart, valend;
-                    if (ch == 61) { // '='
-                        if (i == len)
-                            break loop; // invalid
-                        for (ch = 32; ch <= 32 && i < len; )
-                            ch = str.charCodeAt(i++);
-                        var quote = i == len ? -1 : ch;
-                        if (quote == 34 || quote == 39) { // '"' or '\''
-                            valstart = i;
-                            for (;;) {
-                                if (i+1 >= len) //i+1 to allow for '/' or '>'
-                                    break loop; // invalid
-                                ch = str.charCodeAt(i++);
-                                if (ch == quote)
-                                    break;
-                            }
-                            valend = i-1;
-                        } else {
-                            // Unquoted attribute value
-                            valstart = i-1;
-                            while (ch > 32 && ch != 34 && ch != 39
-                                   && (ch < 60 || ch > 62) && ch != 96)
-                                ch = str.charCodeAt(i++);
-                            valend = --i;
-                        }
-                    } else {
-                        i--;
-                        valstart = i;
-                        valend = i;
-                    }
-                    let attrvalue = str.substring(valstart, valend);
-                    if (! this.allowAttribute(attrname, attrvalue,
-                                              einfo, activeTags))
-                        break loop;
-                    if ((einfo & DomTerm._ELEMENT_KIND_CHECK_JS_TAG) != 0
-                        && (attrname=="href" || attrname=="domterm-href"
-                            || attrname=="src")) {
-                        if (tag == "base" && attrname == "href") {
-                            baseUrl = attrvalue;
-                        } else if (baseUrl != null
-                                   && attrvalue.indexOf(":") < 0) {
-                            // resolve attrvalue relative to baseUrl
-                            try {
-                                attrvalue = new URL(attrvalue, baseUrl).href;
-                                i = valstart + attrvalue.length+1;
-                            } catch (e) {
-                                break loop;
-                            }
-                            str = str.substring(0, valstart) + attrvalue
-                                + str.substring(valend);
-                            len = str.length;
-                        }
-                    }
-                    ch = str.charCodeAt(i++); // safe because of prior i+1
-
-                }
-                while (ch == 32 && i < len)
-                    ch = str.charCodeAt(i++);
-                if (ch == 47) { // '/'
-                    if (i == len || str.charCodeAt(i++) != 62) // '>'
-                        break loop; // invalid
-                    activeTags.pop();
-                } else if (ch != 62) // '>'
-                    break loop; // invalid
-                else if ((einfo & DomTerm._ELEMENT_KIND_EMPTY) != 0)
-                    activeTags.pop();
-                if ((einfo & DomTerm._ELEMENT_KIND_CONVERT_TO_DIV) != 0) {
-                    str = str.substring(0, ok)
-                        + "<div" + str.substring(ok+5);
-                    len = str.length;
-                    i = ok + 5;
-                } else if ((einfo & DomTerm._ELEMENT_KIND_SKIP_TAG) != 0) {
-                    str = str.substring(0, ok) + str.substring(i);
-                    len = str.length;
-                    i = ok;
-                }
-                if ((einfo & DomTerm._ELEMENT_KIND_INLINE) == 0) {
-                    let i2 = skipWhitespace(i);
-                    if (i2 > i) {
-                        str = str.substring(0, i) + str.substring(i2);
-                        len = str.length;
-                    }
-                }
-                ok = i;
-            }
-            break;
-        }
-    }
-    if (ok < len) {
-        str = DomTerm.escapeText(str.substring(ok, len));
-        str = '<div style="color: red"><b>Inserted invalid HTML starting here:</b>'
-            + '<pre style="background-color: #fee">'
-            + str + '</pre></div>';
-        this._scrubAndInsertHTML(str);
-    } else if (activeTags.length > 0) {
-        str = "";
-        while (activeTags.length)
-            str += '&lt;/' + activeTags.pop() + '&gt;'
-        str = '<div style="color: red"><b>Inserted invalid HTML - missing close tags:</b>'
-            + ' <code style="background-color: #fee">'
-            + str + '</code></div>';
-        this._scrubAndInsertHTML(str);
-    } else if (ok > start) {
-        this._unsafeInsertHTML(str.substring(start, ok));
+    str = scrubHtml(str, options);
+    this._unsafeInsertHTML(str);
+    if (! options.errorSeen) {
         this.resetCursorCache();
         this._updateLinebreaksStart(startLine);
     }
@@ -7000,7 +6483,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                         continue;
                     }
                     s += ' ' + aname+ // .toLowerCase() +
-                        '="' + DomTerm.escapeText(avalue) + '"';
+                        '="' + escapeText(avalue) + '"';
                 }
             }
             if (skip)
@@ -7022,10 +6505,10 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
             break;
         case 2: // ATTRIBUTE (should only get here if passing in an attribute node)
             string += ' ' + node.name+ // .toLowerCase() +
-            '="' + DomTerm.escapeText(node.value) + '"'; // .toLowerCase()
+            '="' + escapeText(node.value) + '"'; // .toLowerCase()
             break;
         case 3: // TEXT
-            string += DomTerm.escapeText(node.nodeValue);
+            string += escapeText(node.nodeValue);
             break;
         case 4: // CDATA
             if (node.nodeValue.indexOf(']]'+'>') !== -1) {
@@ -7796,7 +7279,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     function breakLine2 (dt, line, lineStart, availWidth, countColumns) {
         // second pass - edit DOM, but don't look at offsetLeft
         let start, startOffset;
-        if (Terminal.isBlockNode(lineStart)) {
+        if (isBlockNode(lineStart)) {
             start = lineStart.firstChild;
             startOffset = 0;
         } else {
@@ -8106,7 +7589,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         if (start.alwaysMeasureForBreak || breakNeeded(this, line, start)) {
             changed = true; // FIXME needlessly conservative
             var first;
-            if (Terminal.isBlockNode(start))
+            if (isBlockNode(start))
                 first = start.firstChild;
             else {
                 while (start.nextSibling == null)
@@ -9065,7 +8548,7 @@ Terminal._rangeAsText = function(range, options={}) {
         if (addEscapes) {
             let curBg = null, curFg = null, curStyle = 0;
             for (let p = parent; ; p = p.parentNode) {
-                let isBlock = Terminal.isBlockNode(p);
+                let isBlock = isBlockNode(p);
                 let pstyle = p.style;
                 if (! curFg)
                     curFg = pstyle['color'];
@@ -9194,7 +8677,7 @@ Terminal._rangeAsText = function(range, options={}) {
     }
     function elementExit(node) {
         let endOfLine /* : string | false */ = false;
-        if (Terminal.isBlockNode(node)
+        if (isBlockNode(node)
             && t.length > 0 && t.charCodeAt(t.length-1) != 10) {
             endOfLine = '\n';
         }
@@ -10307,7 +9790,7 @@ Terminal.prototype._checkTree = function() {
             if (istart < nlines && this.lineStarts[istart] == cur) {
                 if (iend == istart && this.lineEnds[iend] == null)
                     iend++;
-                if (Terminal.isBlockNode(cur)) {
+                if (isBlockNode(cur)) {
                     currentLineStart = cur;
                 } else {
                     if (! this._isAnAncestor(cur, currentLineStart))
@@ -10798,7 +10281,7 @@ Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
             // Check if we're at start of line
             // Roughly equivalue to: this.outputContainer.offsetLeft
             // - but that causes expensive re-flow
-            for (let p = this.outputContainer; ! Terminal.isBlockNode(p); ) {
+            for (let p = this.outputContainer; ! isBlockNode(p); ) {
                 let pp = p.parentNode;
                 if (pp.firstChild != p)
                     return false;
@@ -12149,6 +11632,62 @@ Terminal.prototype._showSelection = function() {
     return "secl[anchor:"+aa+",aoff:"+sel.anchorOffset+",to-anchor:"+r1+(sel.isCollapsed?",":(",focus:"+ff+",to-focus:"+r2))+" col:"+sel.isCollapsed+"]";
 }
 */
+
+Terminal.loadSavedFile = function(topNode, url) {
+    if (url.startsWith("file:")) {
+        url = "http://localhost:"+DomTerm.server_port
+            +"/get-file/"+DomTerm.server_key
+            +"/"+url.substring(5);
+    }
+    topNode.innerHTML = "<h2>waiting for file data ...</h2>";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.setRequestHeader("Content-Type", "text/plain");
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState != 4)
+            return;
+        var responseText = xhr.responseText;
+        if (! responseText) {
+            topNode.innerHTML = "<h2>error loading "+url+"</h2>";
+            return;
+        }
+
+        topNode.removeChild(topNode.firstElementChild);
+        let purifyConfig = {
+            RETURN_DOM_FRAGMENT: true // return a document object instead of a string
+
+        };
+        topNode.innerHTML = scrubHtml(responseText, {});
+
+        let name = "domterm";
+        const dt = new Terminal(name, topNode, 'view-saved');
+        dt.initial = document.getElementById(dt.makeId("main"));
+        dt._initializeDomTerm(topNode);
+        dt.sstate.windowTitle = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");
+        dt.topNode.classList.remove("domterm-noscript");
+        dt.measureWindow();
+        dt._restoreLineTables(topNode, 0);
+        dt._breakAllLines();
+        dt.updateWindowTitle();
+        function showHideHandler(e) {
+            var target = e.target;
+            if (target instanceof Element
+                && target.nodeName == "SPAN"
+                && target.getAttribute("std") == "hider") { // FIXME
+                dt._showHideHandler(e);
+                e.preventDefault();
+            }
+        }
+        topNode.addEventListener("click", showHideHandler, false);
+        for (let group of topNode.getElementsByClassName("command-group")) {
+            dt._maybeAddTailHider(group);
+        }
+        dt.setWindowSize = function(numRows, numColumns,
+                                    availHeight, availWidth) {
+        };
+    };
+    xhr.send("");
+};
 
 /** Runs in DomTerm sub-window. */
 function _muxModeInfo(dt) {
