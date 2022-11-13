@@ -420,7 +420,8 @@ function scrubHtml(str, options = {}) {
                     if (activeTags.length == 0
                         && options.handlePopOuterBlock
                         && (elementInfo(tag, activeTags) & ELEMENT_KIND_INLINE) == 0) {
-                        start = options.handlePopOuterBlock();
+                        options.handlePopOuterBlock(str.substring(start, ok));
+                        start = i;
                     }
                     continue;
                 } else
@@ -556,7 +557,7 @@ function scrubHtml(str, options = {}) {
             + ' <code style="background-color: #fee">'
             + str + '</code></div>';
         options.errorSeen = "unclosed"
-    } else if (ok > start) {
+    } else {
         str = str.substring(start, ok);
     }
     return str;

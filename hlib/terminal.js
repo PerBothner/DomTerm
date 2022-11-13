@@ -6314,7 +6314,7 @@ Terminal.prototype._scrubAndInsertHTML = function(str, handleLines = true) {
             i++;
         return i;
     };
-    const handlePopOuterBlock = function() {
+    const handlePopOuterBlock = (str) => {
         this._breakDeferredLines();
         this.freshLine();
         const line = this.getAbsCursorLine();
@@ -6323,7 +6323,7 @@ Terminal.prototype._scrubAndInsertHTML = function(str, handleLines = true) {
         const emptyLine = (lstart == this.outputContainer
                            && lstart.firstChild == lend
                            && this.outputBefore == lend);
-        this._unsafeInsertHTML(str.substring(start, ok));
+        this._unsafeInsertHTML(str);
         const created = lstart.firstChild;
         if (emptyLine && created.nextSibling == lend) {
             lstart.removeChild(created);
@@ -6334,23 +6334,22 @@ Terminal.prototype._scrubAndInsertHTML = function(str, handleLines = true) {
             this.outputBefore = lend;
             this.resetCursorCache();
         }
-        return i;
         //insert immediately, as new line
     }
 
-    let options = {
-        handleNewline,
-    };
+    let options = { handleNewline, handlePopOuterBlock };
     let startLine = this.getAbsCursorLine();
     // FIXME could be smarter - we should avoid _WIDTH_MODE_VARIABLE_SEEN
     // until we actually see something that needs it.
     this.lineStarts[startLine]._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
     this.lineStarts[startLine]._breakState = Terminal._BREAKS_UNMEASURED;
     str = scrubHtml(str, options);
-    this._unsafeInsertHTML(str);
-    if (! options.errorSeen) {
-        this.resetCursorCache();
-        this._updateLinebreaksStart(startLine);
+    if (str) {
+        this._unsafeInsertHTML(str);
+        if (! options.errorSeen) {
+            this.resetCursorCache();
+            this._updateLinebreaksStart(startLine);
+        }
     }
     this._updateHomeLine();
     //this.cursorColumn = -1;
