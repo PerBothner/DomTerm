@@ -11182,6 +11182,10 @@ Terminal.scanInRange = function(range, backwards, state) {
     }
     function blockAfterLine(line) {
         function f(n) {
+            if (n instanceof Text)
+                return n;
+            if (! (n instanceof Element))
+                return false;
             let ch = n.firstChild;
             return n !== line && ch !== null
                 && (Terminal.isNormalBlock(ch) || n);
