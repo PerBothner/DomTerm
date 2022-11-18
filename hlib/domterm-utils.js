@@ -1,5 +1,5 @@
 export {toJson, fromJson, scrubHtml, isBlockTag, isBlockNode,
-        isEmptyTag, escapeText, toFixed };
+        isEmptyTag, escapeText, toFixed, forEachElementIn, forEachTextIn };
 
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
@@ -597,3 +597,81 @@ function isBlockNode(node) {
     return node instanceof Element
         && isBlockTag(node.tagName.toLowerCase());
 };
+
+/**
+* Iterate for sub-node of 'node', starting with 'start'.
+* Call 'func' for each node (if allNodes is true) or each Element
+* (if allNodes is false).  If the value returned by 'func' is not a boolean,
+* stop iterating and return that as the result of forEachElementIn.
+* If the value is true, continue with children; if false, skip children.
+* The function may safely remove or replace the active node,
+* or change its children.
+*/
+function forEachElementIn(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild, elementExit=null) {
+    let starting = true;
+    for (var cur = start; ;) {
+        if (cur == null || (cur == node && !starting))
+            break;
+        starting = false;
+        let sibling = backwards?cur.previousSibling:cur.nextSibling;
+        let parent = cur.parentNode;
+        let doChildren = true;
+        if (allNodes || cur instanceof Element) {
+            let r = func(cur);
+            if (r === true || r === false)
+                doChildren = r;
+            else
+                return r;
+        }
+        let next;
+        if (doChildren && cur instanceof Element
+            && (next = backwards?cur.lastChild:cur.firstChild) != null) {
+            cur = next;
+        } else {
+            for (;;) {
+                if (elementExit && cur instanceof Element) {
+                    let r = elementExit(cur);
+                    if (r !== false)
+                        return r;
+                }
+                next = sibling;
+                if (next != null) {
+                    cur = next;
+                    break;
+                }
+                cur = parent;
+                if (cur == node)
+                    break;
+                sibling = backwards?cur.previousSibling:cur.nextSibling;
+                parent = cur.parentNode;
+            }
+        }
+    }
+    return null;
+};
+
+function forEachTextIn(el, fun) {
+    let n = el;
+    for (;;) {
+        if (n instanceof Text) {
+            let r = fun(n);
+            if (r != null)
+                return r;
+        }
+        let next = n.firstChild
+        if (next) {
+            n = next;
+        } else {
+            for (;;) {
+                if (n == el)
+                    return null;
+                next = n.nextSibling;
+                if (next) {
+                    n = next;
+                    break;
+                }
+                n = n.parentNode;
+            }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
-import { fromJson, isBlockNode } from './domterm-utils.js';
+import { fromJson, isBlockNode, forEachElementIn } from './domterm-utils.js';
 
 class DTParser {
     constructor(term) {
@@ -2188,7 +2188,7 @@ class DTParser {
                 let bufAttr = term.initial.getAttribute("buffer");
                 term.usingAlternateScreenBuffer =
                     bufAttr && bufAttr.indexOf("alternate") >= 0;
-                Terminal._forEachElementIn(parent, findInputLine);
+                forEachElementIn(parent, findInputLine);
                 term.outputBefore =
                     term._inputLine != null ? term._inputLine : term._caretNode;
                 term.outputContainer = term.outputBefore.parentNode;

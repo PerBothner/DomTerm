@@ -95,7 +95,8 @@ import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
 import { toJson, scrubHtml, isEmptyTag, isBlockTag, isBlockNode,
-         escapeText, toFixed } from './domterm-utils.js';
+         escapeText, toFixed, forEachElementIn, forEachTextIn
+       } from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -806,7 +807,7 @@ class Terminal {
                         }
                         return true;
                     }
-                    let pr = Terminal._forEachElementIn(plin, fun, false, true);
+                    let pr = forEachElementIn(plin, fun, false, true);
                     if (pr) {
                         // FIXME broken if pr is nested
                         this.outputContainer = plin;
@@ -863,7 +864,7 @@ class Terminal {
             commandOutput.setAttribute("class", "command-output");
             group.insertBefore(commandOutput, cur);
             commandOutput.appendChild(cur);
-            Terminal._forEachElementIn(cur,
+            forEachElementIn(cur,
                                        (el) => {
                                            if (el.getAttribute("std")==="input") {
                                                this._moveNodes(el.firstChild, el.parentNode, el);
@@ -1193,7 +1194,7 @@ Terminal.prototype._maybeAddTailHider = function(oldGroup) {
             } else
                 return true;
         }
-        Terminal._forEachElementIn(oldGroup, checkLine);
+        forEachElementIn(oldGroup, checkLine);
 
         // If multiple input lines, split into separate input-line elements.
         // The main reason is that the tail-hider elements gets displayed
@@ -2280,8 +2281,8 @@ Terminal.prototype._followingText = function(cur, backwards = false) {
             return node;
         return true;
     }
-    return Terminal._forEachElementIn(this._getOuterBlock(cur, true), check,
-                                      true, backwards, cur);
+    return forEachElementIn(this._getOuterBlock(cur, true), check,
+                            true, backwards, cur);
 };
 
 Terminal.prototype._showPassword = function() {
@@ -2454,7 +2455,7 @@ DomTerm._replaceTextContents = function(el, text) {
         text = text.substring(dlen);
         return null;
     }
-    DomTerm._forEachTextIn(el, replace);
+    forEachTextIn(el, replace);
 };
 
 Terminal.prototype._restoreCaret = function() {
@@ -2570,17 +2571,17 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
                 this.lineStarts[lineno]._breakState = Terminal._BREAKS_UNMEASURED;
                 // Takes time proportional to the number of lines in _inputLine
                 // times lines below the input.  Both are likely to be small.
-                Terminal._forEachElementIn(inputLine,
-                                           (el) => {
-                                               let ln = el.nodeName === "SPAN"
-                                                   && el.getAttribute("line");
-                                               if (ln === 'hard'
-                                                   || (ln && el.getAttribute('breaking')==='yes')) {
-                                                   dt._insertIntoLines(el, lineno++);
-                                               return false;
-                                               }
-                                               return true;
-                                           });
+                forEachElementIn(inputLine,
+                                 (el) => {
+                                     let ln = el.nodeName === "SPAN"
+                                         && el.getAttribute("line");
+                                     if (ln === 'hard'
+                                         || (ln && el.getAttribute('breaking')==='yes')) {
+                                         dt._insertIntoLines(el, lineno++);
+                                         return false;
+                                     }
+                                     return true;
+                                 });
             }
         }
     }
@@ -3403,16 +3404,16 @@ Terminal.prototype.popScreenBuffer = function()
     this.lineEnds.length = lastLine;
     let homeNode = null;
     let homeOffset = -1;
-    Terminal._forEachElementIn(this.initial,
-                               function(node) {
-                                   const offset = node.getAttribute('home-line');
-                                   if (offset) {
-                                       homeNode = node;
-                                       homeOffset = 0 + parseInt(offset, 10);
-                                       return node;
-                                   }
-                                   return true;
-                               });
+    forEachElementIn(this.initial,
+                     function(node) {
+                         const offset = node.getAttribute('home-line');
+                         if (offset) {
+                             homeNode = node;
+                             homeOffset = 0 + parseInt(offset, 10);
+                             return node;
+                         }
+                         return true;
+                     });
     this.homeLine = this._computeHomeLine(homeNode, homeOffset, false);
     this.sstate.savedCursor = this.sstate.savedCursorMain;
     this.sstate.savedCursorMain = undefined;
@@ -3606,11 +3607,11 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
 
 /*
 Terminal.prototype._findHomeLine = function(bufNode) {
-    Terminal._forEachElementIn(bufNode,
-                           function(node) {
-                               var offset = node.getAttribute('home-line');
-                               return offset != null ? node : null;
-                           });
+    forEachElementIn(bufNode,
+                     function(node) {
+                         var offset = node.getAttribute('home-line');
+                         return offset != null ? node : null;
+                     });
 }
 */
 
@@ -4933,84 +4934,6 @@ Terminal.namedOptionFromArray = function(options, namex, defValue=null) {
     return defValue;
 }
 
-/**
-* Iterate for sub-node of 'node', starting with 'start'.
-* Call 'func' for each node (if allNodes is true) or each Element
-* (if allNodes is false).  If the value returned by 'func' is not a boolean,
-* stop iterating and return that as the result of forEachElementIn.
-* If the value is true, continue with children; if false, skip children.
-* The function may safely remove or replace the active node,
-* or change its children.
-*/
-Terminal._forEachElementIn = function(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild, elementExit=null) {
-    let starting = true;
-    for (var cur = start; ;) {
-        if (cur == null || (cur == node && !starting))
-            break;
-        starting = false;
-        let sibling = backwards?cur.previousSibling:cur.nextSibling;
-        let parent = cur.parentNode;
-        let doChildren = true;
-        if (allNodes || cur instanceof Element) {
-            let r = func(cur);
-            if (r === true || r === false)
-                doChildren = r;
-            else
-                return r;
-        }
-        let next;
-        if (doChildren && cur instanceof Element
-            && (next = backwards?cur.lastChild:cur.firstChild) != null) {
-            cur = next;
-        } else {
-            for (;;) {
-                if (elementExit && cur instanceof Element) {
-                    let r = elementExit(cur);
-                    if (r !== false)
-                        return r;
-                }
-                next = sibling;
-                if (next != null) {
-                    cur = next;
-                    break;
-                }
-                cur = parent;
-                if (cur == node)
-                    break;
-                sibling = backwards?cur.previousSibling:cur.nextSibling;
-                parent = cur.parentNode;
-            }
-        }
-    }
-    return null;
-};
-
-DomTerm._forEachTextIn = function(el, fun) {
-    let n = el;
-    for (;;) {
-        if (n instanceof Text) {
-            let r = fun(n);
-            if (r != null)
-                return r;
-        }
-        let next = n.firstChild
-        if (next) {
-            n = next;
-        } else {
-            for (;;) {
-                if (n == el)
-                    return null;
-                next = n.nextSibling;
-                if (next) {
-                    n = next;
-                    break;
-                }
-                n = n.parentNode;
-            }
-        }
-    }
-}
-
 Terminal.prototype.resetCursorCache = function() {
     this.currentCursorColumn = -1;
     this.currentAbsLine = -1;
@@ -5506,13 +5429,13 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         lineEnd.removeAttribute("breaking");
         let oldMeasure = lineEnd.measureLeft;
         if (oldMeasure) {
-            Terminal._forEachElementIn(this._getOuterBlock(lineEnd),
-                                       (el)=> {
-                                           if (el.measureLeft
-                                               && el.measureLeft >= oldMeasure)
-                                               el.measureLeft -= oldMeasure;
-                                       },
-                                       false, false, lineEnd);
+            forEachElementIn(this._getOuterBlock(lineEnd),
+                             (el)=> {
+                                 if (el.measureLeft
+                                     && el.measureLeft >= oldMeasure)
+                                     el.measureLeft -= oldMeasure;
+                             },
+                             false, false, lineEnd);
         }
         var child = lineEnd.firstChild;
         if (child)
@@ -11197,7 +11120,7 @@ Terminal.scanInRange = function(range, backwards, state) {
             return true;
             */
         }
-        let n = Terminal._forEachElementIn(range.commonAncestorContainer,
+        let n = forEachElementIn(range.commonAncestorContainer,
                                            f, false, false, line);
         return n && range.isPointInRange(n, 0) ? n : null;
     }
@@ -11350,8 +11273,8 @@ Terminal.scanInRange = function(range, backwards, state) {
         }
         return false;
     }
-    Terminal._forEachElementIn(range.commonAncestorContainer, fun,
-                               true, backwards, firstNode, elementExit);
+    forEachElementIn(range.commonAncestorContainer, fun,
+                     true, backwards, firstNode, elementExit);
 }
 
 Terminal.prototype.deleteSelected = function(toClipboard) {
