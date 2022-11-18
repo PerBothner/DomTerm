@@ -94,8 +94,8 @@ export { Terminal };
 import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
-import { toJson, scrubHtml, isBlockTag, isBlockNode, escapeText, toFixed }
-    from './domterm-utils.js';
+import { toJson, scrubHtml, isEmptyTag, isBlockTag, isBlockNode,
+         escapeText, toFixed } from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -6489,7 +6489,7 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                 break;
             string += s;
             if (!node.firstChild) {
-                if ((DomTerm._elementInfo(tagName) & 0x10) == 0)
+                if (isEmptyTag(tagName))
                     string += '></'+tagName+'>';
                 else
                     string += '/>';

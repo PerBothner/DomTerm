@@ -1,5 +1,5 @@
 export {toJson, fromJson, scrubHtml, isBlockTag, isBlockNode,
-        escapeText, toFixed };
+        isEmptyTag, escapeText, toFixed };
 
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
@@ -145,7 +145,7 @@ const HTMLinfo = {
     "font-face-src": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "font-face-uri": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "foreignObject": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
-    "frame": 0x10,
+    "frame": ELEMENT_KIND_EMPTY,
     "g": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "glyph": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "glyphRef": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
@@ -217,7 +217,7 @@ const HTMLinfo = {
     "munderover": ELEMENT_KIND_MATH+ELEMENT_KIND_INLINE+ELEMENT_KIND_ALLOW,
     "ol": ELEMENT_KIND_ALLOW,
     "p": ELEMENT_KIND_ALLOW,
-    //"para": 0x10, //???
+    //"para": ELEMENT_KIND_EMPTY, //???
     "param": ELEMENT_KIND_EMPTY, // invalid
     "path": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "pattern": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
@@ -251,7 +251,7 @@ const HTMLinfo = {
     "textPath": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "th": ELEMENT_KIND_INLINE+ELEMENT_KIND_TABLE+ELEMENT_KIND_ALLOW,
     "title": ELEMENT_KIND_SKIP_FULLY+ELEMENT_KIND_SVG+ELEMENT_KIND_ALLOW,
-    //"track": 0x10,
+    //"track": ELEMENT_KIND_EMPTY,
     "tref": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "tspan": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "tt": ELEMENT_KIND_INLINE+ELEMENT_KIND_ALLOW,
@@ -583,6 +583,10 @@ function allowAttribute(name, value, einfo, parents) {
     }
     return true;
 };
+
+function isEmptyTag(tag) { // lowercase tag
+    return (elementInfo(tag, null) & ELEMENT_KIND_EMPTY) == 0;
+}
 
 function isBlockTag(tag) { // lowercase tag
     var einfo = elementInfo(tag, null);
