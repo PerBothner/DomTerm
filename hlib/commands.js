@@ -614,6 +614,20 @@ cmd('up-line',
     }, {
         context: "terminal"
     });
+cmd('up-paragraph',
+    function(dt, key) {
+        dt.editorMoveLines(true, dt.numericArgumentGet(), false, true)
+        return true;
+    }, {
+        context: "terminal"
+    });
+cmd('down-paragraph',
+    function(dt, key) {
+        dt.editorMoveLines(false, dt.numericArgumentGet(), false, true)
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('down-line',
     function(dt, key) {
         dt.editorMoveLines(false, dt.numericArgumentGet(), false)

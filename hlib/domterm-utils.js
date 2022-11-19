@@ -1,5 +1,6 @@
 export {toJson, fromJson, scrubHtml, isBlockTag, isBlockNode,
-        isEmptyTag, escapeText, toFixed, forEachElementIn, forEachTextIn };
+        isEmptyTag, escapeText, toFixed, forEachElementIn, forEachTextIn,
+        caretFromPoint };
 
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
@@ -674,4 +675,17 @@ function forEachTextIn(el, fun) {
             }
         }
     }
+}
+
+function caretFromPoint(x, y) {
+    if (document.caretPositionFromPoint) {
+        return document.caretPositionFromPoint(x, y);
+    }
+    if (document.caretRangeFromPoint) {
+        const range = document.caretRangeFromPoint(x, y);
+        if (range)
+            return { offsetNode: range.startContainer,
+                     offset: range.startOffset };
+    }
+    return undefined;
 }

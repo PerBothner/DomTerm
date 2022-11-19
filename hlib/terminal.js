@@ -95,7 +95,7 @@ import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
 import { toJson, scrubHtml, isEmptyTag, isBlockTag, isBlockNode,
-         escapeText, toFixed, forEachElementIn, forEachTextIn
+         escapeText, toFixed, forEachElementIn, forEachTextIn, caretFromPoint
        } from './domterm-utils.js';
 
 class Terminal {
@@ -4488,7 +4488,7 @@ Terminal.prototype._mouseHandler = function(ev) {
             this._usingScrollBar = true;
         this.setMarkMode(false);
         this._didExtend = ev.shiftKey;
-        this.sstate.goalColumn = undefined;
+        this.sstate.goalX = undefined;
         if (! DomTerm.useIFrame)
             DomTerm.setFocus(this, "S");
         if (ev.button !== 2)
@@ -9252,7 +9252,8 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-Mod-Right": "forward-word-extend",
     "Up": "up-line", // should move by "visible-line" not logical "line" ???
     "Down": "down-line-or-unpause", // likewise: should be "visible-line" ???
-    //"Alt+Up": // "Alt+Down" // move by logical line ???
+    "Alt+Up": "up-paragraph",
+    "Alt+Down": "down-paragraph",
     "Shift-Up": "up-line-extend",
     "Shift-Down": "down-line-extend",
     "Mod-Right": 'forward-word',
@@ -10670,122 +10671,150 @@ Terminal.prototype.numericArgumentGet = function(def = 1) {
     return Number(s);
 }
 
+Terminal._setSelection = function(extend, startContainer, startBefore, container, offset) {
+    let sel = window.getSelection();
+    // Same logic as editorMoveStartOrEndBuffer
+    if (extend) {
+        let anchorNode, anchorOffset;
+        if (sel.anchorNode == null) {
+            let ra = posToRangeEnd(startBefore, startContainer);
+            anchorNode = ra.endContainer;
+            anchorOffset = ra.endOffset;
+        } else {
+            anchorNode = sel.anchorNode;
+            anchorOffset = sel.anchorOffset;
+        }
+        sel.setBaseAndExtent(anchorNode, anchorOffset,
+                             container, offset);
+    } else
+        sel.collapse(container, offset);
+};
+
 /** Move COUNT lines down (or up if COUNT is negative).
  * Return number of lines we aren't able to do.
  */
-Terminal.prototype.editorMoveLines = function(backwards, count, extend = false) {
+Terminal.prototype.editorMoveLines =
+    function(backwards, count, extend = false, logicalLines = false)
+{
     if (count == 0)
         return 0;
     let delta1 = backwards ? -1 : 1;
-    let goalColumn = this.sstate.goalColumn;
-    let save = this._pushToCaret(this._pagingMode);
-    let oldColumn = this.getCursorColumn();
-    let oldLine = this.getAbsCursorLine();
-    if (this._pagingMode) {
-        let todo = 0;
-        let startBefore = this.outputBefore;
-        let startContainer = this.outputContainer;
-        let column = oldColumn;
-        if (goalColumn && goalColumn > column)
-            column = goalColumn;
-        let line = backwards ? oldLine - count : oldLine + count;
-        if (line < 0) {
-            todo = -line;
-            line = 0;
-        } else if (line >= this.lineStarts.length) {
-            todo = line - (this.lineStarts.length - 1);
-            line = this.lineStarts.length - 1;
-        }
-        this.moveToAbs(line, column, false);
-        function posToRangeEnd(outputBefore, outputContainer) {
-            let r = new Range();
-            if (typeof outputBefore == "number")
-                r.setEnd(outputContainer, outputBefore);
-            else if (outputBefore)
-                r.setEndBefore(outputBefore);
-            else
-                r.selectNodeContents(outputContainer);
-            return r;
-        }
-        let r = posToRangeEnd(this.outputBefore, this.outputContainer);
-        let sel = window.getSelection();
-        // Same logic as editorMoveStartOrEndBuffer
-        if (extend) {
-            let anchorNode, anchorOffset;
-            if (sel.anchorNode == null) {
-                let ra = posToRangeEnd(startBefore, startContainer);
-                anchorNode = ra.endContainer;
-                anchorOffset = ra.endOffset;
-            } else {
-                anchorNode = sel.anchorNode;
-                anchorOffset = sel.anchorOffset;
-            }
-            sel.setBaseAndExtent(anchorNode, anchorOffset,
-                                 r.endContainer, r.endOffset);
-        } else
-            sel.collapse(r.endContainer, r.endOffset);
-        this._popFromCaret(save);
-        this.sstate.goalColumn = column;
-        return todo;
+    let caret = this._pagingMode ? this.viewCaretNode : this._caretNode;
+    if (! caret || ! caret.parentNode)
+        return count;
+
+    function positionBoundingRect(node, offset) {
+        const r = new Range();
+        r.setEnd(node, offset);
+        r.collapse();
+        return r.getBoundingClientRect();
     }
-    this._popFromCaret(save);
-    this.editorAddLine();
-    this.editorMoveStartOrEndLine(false);
-    save = this._pushToCaret();
-    // start of (logical) line (after prompt)
-    let startColumn = this.getCursorColumn();
-    let startLine = this.getAbsCursorLine();
-    this._popFromCaret(save);
-    // calculate start (logical) column number (after prompt).
-    let column = oldColumn - startColumn
-        + this.numColumns * (oldLine - startLine);
-    if (goalColumn && goalColumn > column)
-        column = goalColumn;
-    let line = startLine;
-    if (backwards) {
+
+    // Get row number (visible line) within logical line
+    const rowInLine = (startNode, startOffset, rect) => {
+        let nrows = 0;
         for (;;) {
-            if (count <= 0)
+            let deltaY = 0.25 * rect.height;
+            let goalY = rect.top - deltaY;
+            let new_pos = caretFromPoint(rect.x, goalY);
+            if (! new_pos || ! this._isAnAncestor(new_pos.offsetNode, this.buffers))
                 break;
-            if (! this._newlineInInputLine(line))
+            const rangeTraversed = new Range();
+            rangeTraversed.setStart(new_pos.offsetNode, new_pos.offset);
+            rangeTraversed.setEnd(startNode, startOffset);
+            startNode = new_pos.offsetNode;
+            startOffset = new_pos.offset;
+            const textTraversed = Terminal._rangeAsText(rangeTraversed);
+            if (textTraversed.indexOf('\n') >= 0)
                 break;
-            line--;
-            let ln = this.lineStarts[line];
-            if (ln.nodeName != "SPAN" || ln.getAttribute("line") == "hard")
-                count--;
+            nrows++;
+            rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
         }
-    } else {
-        for (;;) {
-            if (count <= 0)
-                break;
-            if (! this._newlineInInputLine(line+1))
-                break;
-            line++;
-            let ln = this.lineStarts[line];
-            if (ln.nodeName != "SPAN" || ln.getAttribute("line") == "hard")
-                count--;
-        }
+        return nrows;
     }
+
     this._removeCaret();
-    let parent, next;
-    if (! this._newlineInInputLine(line)) {
-        parent = this._inputLine;
-        next = parent.firstChild;
+    let rect = caret.getBoundingClientRect();
+    let goalX = this.sstate.goalX;
+    let goalRow;
+    let currentRow = rowInLine(caret, 0, rect);
+    if (goalX) {
+        goalRow = Math.trunc(goalX / this.availWidth);
+        goalX = goalX % this.availWidth;
     } else {
-        var node = this.lineStarts[line];
-        parent = node.parentNode;
-        next = node.nextSibling;
-        if (next instanceof Element
-            && next.getAttribute("std") == "prompt") {
-            node = next;
-            next = node.nextSibling;
+        if (logicalLines) {
+            goalRow = currentRow;
+        }
+        goalX = rect.x;
+        this.sstate.goalX = goalX + this.availWidth * currentRow;
+    }
+    let result_pos;
+    let prevNode = caret;
+    let prevOffset = 0;
+    for (;;) {
+        let deltaY = 0.25 * rect.height;
+        let goalY = backwards ? rect.top - deltaY : rect.bottom + deltaY;
+        let thisX = goalX;
+        if (logicalLines) {
+            if (backwards) { /* ??? */
+            } else {
+                if (count == 0 && currentRow + 1 < goalRow)
+                    thisX = this.availWidth - 0.4 * this.charWidth;
+            }
+        }
+        let new_pos = caretFromPoint(thisX, goalY);
+        if (! new_pos || ! this._isAnAncestor(new_pos.offsetNode, this.buffers))
+            break;
+        if (! this._pagingMode) {
+            if (! this._isAnAncestor(new_pos.offsetNode, this._inputLine))
+                break;
+            // if (in prompt or content-value) adjust
+        }
+        if (! logicalLines && --count <= 0) {
+            result_pos = new_pos;
+            break;
+        }
+        rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
+        if (logicalLines) {
+            // If we didn't moved over any newlines, try more.
+            const r = new Range();
+            if (backwards) {
+                r.setStart(new_pos.offsetNode, new_pos.offset);
+                r.setEnd(prevNode, prevOffset);
+            } else {
+                r.setStart(prevNode, prevOffset);
+                r.setEnd(new_pos.offsetNode, new_pos.offset);
+            };
+            prevNode = new_pos.offsetNode;
+            prevOffset = new_pos.offset;
+            const textTraversed = Terminal._rangeAsText(r);
+            let new_line = textTraversed.indexOf('\n') >= 0;
+            if (new_line) {
+                if (backwards)
+                    currentRow = rowInLine(prevNode, prevOffset, rect);
+                else
+                    currentRow = 0;
+            } else {
+                if (backwards) currentRow --;
+                else currentRow++;
+            }
+            if (new_line)
+                count--;
+        }
+        if (logicalLines && count < 0)
+            break;
+        result_pos = new_pos;
+        if (logicalLines) {
+            if (count == 0
+                && (backwards ? currentRow <= goalRow : currentRow >= goalRow))
+                break;
         }
     }
-    parent.insertBefore(this._caretNode, next);
-    parent.normalize();
-    this.editMove(- column, "move", "char", "line");
-    this.sstate.goalColumn = column;
-    this._restoreCaret();
-    return count <= 0 ? 0 : count;
+    if (result_pos)
+        Terminal._setSelection(extend, caret, 0, // FIXME: inline
+                               result_pos.offsetNode, result_pos.offset);
+
+    return count;
 }
 
 Terminal.prototype.editorMoveToRangeStart = function(range) {
@@ -10835,7 +10864,7 @@ Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, extend=false) {
         this.extendSelection(count, "char", "line");
     else
         this.editMovePosition(count, "char", "line");
-    this.sstate.goalColumn = undefined; // FIXME add other places
+    this.sstate.goalX = undefined; // FIXME add other places
 }
 
 Terminal.prototype.editorMoveStartOrEndInput = function(toEnd, action="move") {
@@ -10844,7 +10873,7 @@ Terminal.prototype.editorMoveStartOrEndInput = function(toEnd, action="move") {
         this.extendSelection(count, "char", "input");
     else
         this.editMovePosition(count, "char", "input");
-    this.sstate.goalColumn = undefined; // FIXME add other places
+    this.sstate.goalX = undefined; // FIXME add other places
 }
 
 Terminal.prototype._updateAutomaticPrompts = function() {
@@ -11121,7 +11150,7 @@ Terminal.scanInRange = function(range, backwards, state) {
             */
         }
         let n = forEachElementIn(range.commonAncestorContainer,
-                                           f, false, false, line);
+                                           f, true, false, line);
         return n && range.isPointInRange(n, 0) ? n : null;
     }
     function updateRangeWhenDone(node, stopped) {
@@ -11341,7 +11370,7 @@ Terminal.prototype.editMove = function(count, action, unit,
                                        stopAt=undefined) {
     if (stopAt === undefined)
         stopAt = this.shouldMoveFocus() ? "buffer" : "input";
-    this.sstate.goalColumn = undefined;
+    this.sstate.goalX = undefined;
     let doDelete = action == "delete" || action == "kill";
     let backwards = count > 0;
     let todo = backwards ? count : -count;
