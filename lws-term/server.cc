@@ -547,10 +547,29 @@ chrome_command(bool app_mode, struct options *options)
     sb.append(chrome_cmd);
     if (free_needed)
         free((void*) chrome_cmd);
+
+    geometry_option(options);
+    std::string geometry = current_geometry;
+    // -Bchrome-app like to create maximum-size windows by default.1
+    if (app_mode && geometry.empty())
+        geometry = "800x600";
+    if (! geometry.empty()) {
+        int window_pos = geometry.find_first_of("+-");
+        if (window_pos != std::string::npos) {
+            geometry.erase(window_pos);
+        }
+        // chrome uses --window-size=WIDTH,HEIGHT - using comma as separator
+        window_pos = geometry.find_first_of("x");
+        if (window_pos != std::string::npos) {
+            geometry.replace(window_pos, 1, ",");
+        }
+        sb.printf(" --window-size=%s", geometry.c_str());
+    }
+
     if (options->headless)
         sb.append(" --headless --remote-debugging-port=0 '%U'");
     else if (app_mode)
-        sb.append(" --app='%U%g'");
+        sb.append(" --app='%U'");
     return sb.strdup();
 }
 
