@@ -240,6 +240,18 @@ ipcMain.handle('open-dialog', async (event, kind, options) => {
     return await dialog.showSaveDialog(options);
 });
 
+ipcMain.handle('save-file', async (event, options, data) => {
+    dialog.showSaveDialog(options).then((value) => {
+        let filePath = value.filePath;
+        if (filePath)
+            fs.writeFile(filePath, data, function (err) {
+                if (err)
+                    alert("An error ocurred creating the file "+ err.message);
+            });
+    });
+});
+
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
