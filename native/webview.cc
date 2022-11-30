@@ -61,15 +61,23 @@ int main(int argc, char **argv) {
         }
     }
     w.set_title("DomTerm");
-#ifdef WEBVIEW_GTK
-    char gtk_version_str[80];
-    sprintf(gtk_version_str, "window.gtk_version = '%d.%d.%d';",
-            gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
-    webview_init(&w, gtk_version_str);
-    // gtk_window_set_decorated((GtkWindow*)(w.window()), 0);
-#if 0
-    webview_bind(&w, "_dt_toggleDeveloperTools", toggle_inspector, NULL);
+    char version_str[80];
+    version_str[0] = '\0';
+    int version_length = 0;
+#ifdef WEBVIEW_VERSION_NUMBER
+    version_length +=
+        sprintf(version_str + version_length,
+                "window.webview_version = '%s';", WEBVIEW_VERSION_NUMBER);
 #endif
+#ifdef WEBVIEW_GTK
+    version_length +=
+        sprintf(version_str + version_length, "window.gtk_version = '%d.%d.%d';",
+                gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
+    // gtk_window_set_decorated((GtkWindow*)(w.window()), 0);
+#endif
+    webview_init(&w, version_str);
+#if 0 && defined(WEBVIEW_GTK)
+    webview_bind(&w, "_dt_toggleDeveloperTools", toggle_inspector, NULL);
 #endif
     webview_bind(&w, "setWindowTitle", set_w_t, NULL);
     webview_bind(&w, "closeMainWindow", close_main_window, NULL);

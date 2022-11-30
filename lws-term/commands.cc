@@ -785,6 +785,8 @@ static void tclient_status_info(struct tty_client *tclient, FILE *out)
         }
         if (json_print_property(out, vobj, "wry", prefix, NULL))
             prefix = ", ";
+        if (json_print_property(out, vobj, "webview", prefix, NULL))
+            prefix = ", ";
         if (json_print_property(out, vobj, "webkitgtk", prefix, NULL))
             prefix = ", ";
         if (json_print_property(out, vobj, "qtwebengine", prefix, NULL))
