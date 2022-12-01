@@ -12,6 +12,7 @@ extern char **environ;
 static struct options opts;
 struct options *main_options = &opts;
 struct lws *cmdwsi = NULL;
+char *argv0;
 
 char *main_html_prefix;
 
@@ -1375,6 +1376,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
 int
 main(int argc, char **argv)
 {
+    argv0 = argv[0];
     memset(&info, 0, sizeof(info));
 #if LWS_LIBRARY_VERSION_NUMBER <= 2004002
     // See "problems with big dynamic content" thread on libwebsockets list

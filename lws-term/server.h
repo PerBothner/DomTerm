@@ -59,6 +59,7 @@ using json = nlohmann::json;
 #define SERVER_KEY_LENGTH 20
 extern char server_key[SERVER_KEY_LENGTH];
 extern char *backend_socket_name;
+extern char*argv0;
 extern const char *settings_fname;
 extern json settings_json_object;
 extern volatile bool force_exit;

@@ -780,14 +780,30 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             const char **nenv = (const char **) xmalloc((env_max + 1)*sizeof(const char*));
             memcpy(nenv, env, (env_size + 1)*sizeof(const char*));
 
-            std::string path = get_executable_path();
-            if (strcmp(path.c_str(), find_in_path("domterm")) != 0) {
-                int dirname_length = get_executable_directory_length();
-                path.erase(get_executable_directory_length());
-                path += ':';
-                path += getenv("PATH");
-                path.insert(0, "PATH=");
-                put_to_env_array(nenv, env_max, path.c_str());
+            if (argv0 == nullptr || strcmp(argv0, "domterm") != 0) {
+                int dirname_length;
+                char *path;
+                if (argv0 == nullptr || argv0[0] != '/') {
+                    path = get_executable_path();
+                    dirname_length = get_executable_directory_length();
+                } else {
+                    path = argv0;
+                    char *sl = strrchr(argv0, '/');
+#if defined(_WIN32)
+                    if (! sl)
+                        sl = strrchr(argv0, '\\');
+#endif
+                    dirname_length = sl ? sl - argv0 : -1;
+                }
+                if (dirname_length > 0
+                    && strcmp(path, find_in_path("domterm")) != 0) {
+                    char *old_path = getenv("PATH");
+                    char *buf = (char *)
+                        xmalloc(dirname_length + strlen(old_path) + 20);
+                    sprintf(buf, "PATH=%.*s:%s",
+                            dirname_length, path, old_path);
+                    put_to_env_array(nenv, env_max, buf);
+                }
             }
 
             put_to_env_array(nenv, env_max, "TERM=xterm-256color");
