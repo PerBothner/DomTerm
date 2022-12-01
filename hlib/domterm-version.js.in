@@ -38,7 +38,8 @@ if (typeof navigator !== 'undefined' && navigator.userAgent) {
         DomTerm.versions.wry = window.wry_version;
         if (window.webview_version && DomTerm.versions.appleWebKit)
             DomTerm.versions.webkitgtk = window.webview_version;
-    }
+    } else if (window.webview_version)
+        DomTerm.versions.webview = window.webview_version;
     DomTerm.versions.userAgent = navigator.userAgent;
 }
 
