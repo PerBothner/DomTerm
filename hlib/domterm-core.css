@@ -85,16 +85,15 @@ span.pprint-indent,
 span.pprint-indentation {
     visibility: hidden; position: absolute*/ }
 
-div.domterm span.focus-caret {
+div.domterm div.focus-caret {
     caret-color: transparent;
-    position: relative;
     z-index: 1;
     --focus-color: #a0522d; /* sienna */
     pointer-events: none;
+    user-select: none;
 }
-div.domterm span.focus-caret span {
+div.domterm span.focus-caret-mark, div.domterm div.focus-caret-line {
     position: absolute;
-    top: 0px; bottom: 0px;
 }
 
 /* Doesn't seem to work on Chrome */

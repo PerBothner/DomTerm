@@ -145,16 +145,15 @@ span[std="caret"]:focus {
     outline: none; /* disable browser's default focus style */
 }
 
-div.domterm span.focus-caret-line {
+div.domterm div.focus-caret-line {
     border-style: dashed dashed dashed none;
     border-color: var(--focus-color);
     border-width: 1px;
     left: -4px;
-    width: 8px;
     opacity: 0.4;
     box-sizing: border-box
 }
-div.domterm.paused span.focus-caret-line {
+div.domterm.paused div.focus-caret-line {
     border-style: solid solid solid none;
 }
 div.domterm span.focus-caret-mark {
@@ -162,10 +161,10 @@ div.domterm span.focus-caret-mark {
     width: 2px;
     background-color: var(--focus-color);
 }
-div.domterm.focusmode span.focus-caret{
+div.domterm.focusmode div.focus-caret {
     --focus-color: purple;
 }
-div.domterm.markmode span.focus-caret {
+div.domterm.markmode div.focus-caret {
     --focus-color: orange;
 }
 div.domterm-active span[caret="blinking-block"][std="caret"],

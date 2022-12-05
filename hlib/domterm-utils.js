@@ -1,6 +1,6 @@
 export {toJson, fromJson, scrubHtml, isBlockTag, isBlockNode,
         isEmptyTag, escapeText, toFixed, forEachElementIn, forEachTextIn,
-        caretFromPoint };
+        caretFromPoint, positionBoundingRect };
 
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
@@ -247,7 +247,7 @@ const HTMLinfo = {
     "thead": ELEMENT_KIND_TABLE+ELEMENT_KIND_ALLOW,
     "tfoot": ELEMENT_KIND_TABLE+ELEMENT_KIND_ALLOW,
     "tr": ELEMENT_KIND_TABLE+ELEMENT_KIND_ALLOW,
-    "td": ELEMENT_KIND_INLINE+ELEMENT_KIND_TABLE+ELEMENT_KIND_ALLOW,
+    "td": ELEMENT_KIND_TABLE+ELEMENT_KIND_ALLOW,
     "text": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "textPath": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "th": ELEMENT_KIND_INLINE+ELEMENT_KIND_TABLE+ELEMENT_KIND_ALLOW,
@@ -688,4 +688,17 @@ function caretFromPoint(x, y) {
                      offset: range.startOffset };
     }
     return undefined;
+}
+function positionBoundingRect(node, offset) {
+    if (node === undefined) {
+        const sel = document.getSelection();
+        node = sel.focusNode;
+        offset = sel.focusOffset;
+    }
+    while (offset === 0 && node instanceof Element && node.firstChild)
+        node = node.firstChild;
+    const r = new Range();
+    r.setEnd(node, offset);
+    r.collapse();
+    return r.getBoundingClientRect();
 }

@@ -95,8 +95,8 @@ import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
 import { toJson, scrubHtml, isEmptyTag, isBlockTag, isBlockNode,
-         escapeText, toFixed, forEachElementIn, forEachTextIn, caretFromPoint
-       } from './domterm-utils.js';
+         escapeText, toFixed, forEachElementIn, forEachTextIn, caretFromPoint,
+         positionBoundingRect } from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -269,7 +269,7 @@ class Terminal {
     // In this case _caretNode is required to be within _inputLine.
     this._inputLine = null;
 
-    let vcaretNode = this._createSpanNode();
+    let vcaretNode = document.createElement("div");
     this.viewCaretNode = vcaretNode;
     vcaretNode.setAttribute("std", "caret");
     vcaretNode.classList.add("focus-caret");
@@ -280,7 +280,8 @@ class Terminal {
     let vcaretNode1 = this._createSpanNode();
     vcaretNode1.classList.add("focus-caret-mark");
     vcaretNode.appendChild(vcaretNode1);
-    let vcaretNode2 = this._createSpanNode();
+    this.viewCaretMarkNode = vcaretNode1;
+    let vcaretNode2 = document.createElement("div");
     vcaretNode2.classList.add("focus-caret-line");
     vcaretNode.appendChild(vcaretNode2);
     this.viewCaretLineNode = vcaretNode2;
@@ -535,6 +536,13 @@ class Terminal {
 
     caretStyle(editStyle = this._caretNode && this._caretNode.useEditCaretStyle) {
         return editStyle ? this.caretEditStyle : this.caretCharStyle;
+    }
+
+    showViewCaret(show = true) {
+        if (show)
+            this.buffers.insertBefore(this.viewCaretNode, null);
+        else
+            this.viewCaretNode.remove();
     }
 
     startBlinkTimer() {
@@ -914,6 +922,12 @@ class Terminal {
             }
         }
         return null;
+    }
+
+    disableMouseMode(disable) {
+        const oldMode = this.sstate.mouseMode;
+        this.setMouseMode(disable ? 0 : oldMode);
+        this.sstate.mouseMode = oldMode;
     }
 
     setMouseMode(value) {
@@ -1350,7 +1364,7 @@ Terminal.prototype.maybeFocus = function(force = false) {
         let aOffset = sel.anchorOffset;
         let collapsed = sel.isCollapsed;
         goal.focus({preventScroll: true});
-        if (sel.focusNode !== fNode && ! collapsed)
+        if (sel.focusNode !== fNode)
             sel.setBaseAndExtent(aNode, aOffset, fNode, fOffset);
     }
 }
@@ -2269,12 +2283,13 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
     this.currentCursorColumn = column;
 };
 
-Terminal.prototype._followingText = function(cur, backwards = false) {
+Terminal.prototype._followingText = function(cur, backwards = false,
+                                             lineOk = false) {
     function check(node) {
         if (node == cur)
-            return false;
+            return true;
         if (node.tagName == "SPAN" && node.getAttribute("line"))
-            return null;
+            return lineOk ? node : null;
         if (node.tagName == "SPAN" && node.getAttribute("content-value"))
             return node;
         if (node instanceof Text)
@@ -4116,9 +4131,6 @@ Terminal.prototype.measureWindow = function()  {
     let topRect = this.buffers.getBoundingClientRect();
     if (topRect.width === 0 && topRect.height === 0)
         return;
-    let lcaret = this.viewCaretLineNode;
-    lcaret.style.width = "";
-    lcaret.style.left = "";
     this.actualHeight = topRect.height;
     this._topOffset = topRect.y;
     if (DomTerm.verbosity >= 2)
@@ -4202,19 +4214,11 @@ DomTerm.showContextMenu = null;
 // Hence we make an empty selection on the caret.
 // When composing starts, we have to be careful to not make DOM
 // changes that might break the selection.
-Terminal.prototype._clearSelection = function(keepViewCaret = false) {
+Terminal.prototype._clearSelection = function() {
     let sel = document.getSelection();
     let viewCaretNode = this.viewCaretNode;
     if (viewCaretNode && viewCaretNode.parentNode) {
-        if (! keepViewCaret) {
-            let viewCaretPrevious = viewCaretNode.previousSibling;
-            viewCaretNode.parentNode.removeChild(viewCaretNode);
-            if (viewCaretPrevious instanceof Text)
-                this._normalize1(viewCaretPrevious);
-        } else {
-            sel.collapse(viewCaretNode, 0);
-            return;
-        }
+        this.showViewCaret(false);
     }
     let caretNode = this._caretNode;
     if (caretNode && caretNode.parentNode) {
@@ -4243,8 +4247,7 @@ Terminal.prototype._updateSelected = function() {
             // toString is probably wasteful - but isCollapsed can be wrong.
             : sel.toString().length == 0);
     if (this._pagingMode > 0) {
-        if (sel.focusNode !== this.viewCaretNode
-            && sel.focusNode !== null
+        if (sel.focusNode !== null
             && this._isAnAncestor(sel.focusNode, this.buffers)) {
             let r = document.createRange();
             let focusNode = sel.focusNode;
@@ -4266,31 +4269,9 @@ Terminal.prototype._updateSelected = function() {
                 r.setStartAfter(focusNode);
             else
                 r.setStart(focusNode, focusOffset);
-            let rbase = new Range();
-            rbase.setStart(sel.anchorNode, sel.anchorOffset);
-            // FIXME if after LINE node and end of DIV, move to start of next DIV.
-            let viewCaretPrevious = this.viewCaretNode.previousSibling;
-            if (viewCaretPrevious instanceof Text) {
-                viewCaretPrevious.parentNode.removeChild(this.viewCaretNode);
-                this._normalize1(viewCaretPrevious);
-            }
-            if (! r.intersectsNode(this.viewCaretNode))
-                r.insertNode(this.viewCaretNode);
-            // Kludge for HTML insertions using tables
-            if (this.viewCaretNode.parentNode
-                && this.viewCaretNode.parentNode.nodeName == "TR") {
-                let next = this.viewCaretNode.nextSibling;
-                if (next && next.nodeName == "TD")
-                    next.insertBefore(this.viewCaretNode, next.firstChild);
-                // else if (! next) ...
-            }
-            if (point) {
-                sel.collapse(this.viewCaretNode, 0);
-            } else {
-                sel.setBaseAndExtent(rbase.startContainer, rbase.startOffset,
-                                     this.viewCaretNode, 0);
-            }
+            this.showViewCaret();
             this.scrollToCaret(this.viewCaretNode);
+            this.requestUpdateDisplay();
         }
     }
 
@@ -4432,14 +4413,6 @@ Terminal.prototype._updateSelected = function() {
             }
         }
     }
-    if (point
-        && this._composing <= 0
-        //&& this._pagingMode == 0
-        && DomTerm.focusedTerm==this
-        && ! this._mouseButtonPresse
-        && this.caretStyle() !== Terminal.NATIVE_CARET_STYLE) {
-        this._clearSelection(true);
-    }
 }
 Terminal.prototype._mouseHandler = function(ev) {
     if (DomTerm.verbosity >= 2)
@@ -4462,7 +4435,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
     let wasPressed = this._mouseButtonPressed;
-    this._mouseButtonPressed = ev.type !== "mouseup";
+    this._mouseButtonPressed = ev.type === "mousedown";
 
     // Get mouse coordinates relative to viewport.
     let xdelta = ev.pageX / this._computedZoom;
@@ -6515,13 +6488,15 @@ Terminal.prototype._downContinue = function(height, paging) {
         if (limit > this._pauseLimit)
             this._pauseLimit = limit;
     }
-    this._clearSelection();
+    if (! paging)
+        this._clearSelection();
     this._disableScrollOnOutput = false;
     this._pauseContinue(paging);
     DomTerm.setAutoPaging("true", this);
 }
 
 Terminal.prototype._downLinesOrContinue = function(count, paging) {
+    this.sstate.goalX = 0;
     let todo = this.editorMoveLines(false, count, false);
     if (todo > 0) {
         this._pauseLimit = this._dataHeight() + count * this.charHeight + 2;
@@ -6537,6 +6512,7 @@ Terminal.prototype._pauseContinue = function(paging = false, skip = false) {
         this._clearSelection();
     var wasMode = this._pagingMode;
     this._pagingMode = paging ? 1 : 0;
+    this.disableMouseMode(paging);
     if (wasMode != 0)
         this._displayInputModeWithTimeout(this._modeInfo("C"));
     if (DomTerm.verbosity >= 2)
@@ -6766,12 +6742,19 @@ Terminal.prototype._scrollIfNeeded = function() {
 }
 
 Terminal.prototype.adjustFocusCaretStyle = function() {
-    let caret = this.viewCaretNode;
-    if (caret && caret.parentNode) {
+    if (this.viewCaretNode.parentNode) {
+        let caret = this.viewCaretMarkNode;
+        let outerRect = this.topNode.getBoundingClientRect();
+        let rect = positionBoundingRect();
+        caret.style.top = `${rect.top - outerRect.top}px`;
+        caret.style.left = `${rect.left - outerRect.left}px`;
+        caret.style.bottom = `${outerRect.bottom - rect.bottom}px`;
+        caret.style.right = `${outerRect.width - rect.right}px`;
         let lcaret = this.viewCaretLineNode;
-        lcaret.style.width = this.initial.clientWidth + "px";
-        lcaret.style.left = (this.topNode.getBoundingClientRect().x
-                             - caret.getBoundingClientRect().x) + "px";
+        lcaret.style.top = `${rect.top - outerRect.top}px`;
+        lcaret.style.bottom = `${outerRect.bottom - rect.bottom}px`;
+        lcaret.style.left = `${outerRect.left}px`;
+        lcaret.style.right = `${this.rightMarginWidth}px`;
     }
 };
 
@@ -6783,7 +6766,11 @@ Terminal.prototype.scrollToCaret = function(caret = null, force = null) {
     }
     if (caret.parentNode == null)
         return;
-    let rect = caret.getBoundingClientRect();
+    let rect;
+    if (caret === this.viewCaretNode) {
+        rect = positionBoundingRect(); // from selection
+     } else
+        rect = caret.getBoundingClientRect();
     let top = rect.y + this.buffers.scrollTop - this._topOffset;
     let bottom = top + rect.height;
     if (force === "bottom" || bottom > this.buffers.scrollTop + this.availHeight) {
@@ -9036,12 +9023,14 @@ Terminal.prototype._pushToCaret = function(useFocus = false) {
         before: this.outputBefore, container: this.outputContainer,
         outputInWide: this.outputInWide,
         wasStyleSpan };
-    if (useFocus && this.viewCaretNode && this.viewCaretNode.parentNode) {
-        this.outputBefore = this.viewCaretNode;
+    if (useFocus && this.viewCaretNode.parentNode) {
+        const sel = document.getSelection();
+        this.outputContainer = sel.focusNode;
+        this.outputBefore = sel.focusOffset;
     } else {
         this.outputBefore = this._caretNode;
+        this.outputContainer = this.outputBefore.parentNode;
     }
-    this.outputContainer = this.outputBefore.parentNode;
     this.outputInWide = false;
     if (wasStyleSpan && this._isAnAncestor(this.outputBefore, this._currentStyleSpan))
         this._currentStyleSpan = this.outputContainer;
@@ -10460,14 +10449,18 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
         if (count === 'limit') {
             top = this._pauseLimit + 0.8;
         } else {
-            let cursor =
-                this.viewCaretNode && this.viewCaretNode.parentNode ? this.viewCaretNode
-                : this.outputBefore instanceof Element ? this.outputBefore
-                : this.outputContainer instanceof Element ? this.outputContainer
-                : this.outputContainer.parentNode;
+            let rect;
+            if (this.viewCaretNode.parentNode) {
+                rect = positionBoundingRect();
+            } else {
+                let cursor = this.outputBefore instanceof Element ? this.outputBefore
+                    : this.outputContainer instanceof Element ? this.outputContainer
+                    : this.outputContainer.parentNode;
+                rect = cursor.getBoundingClientRect();
+            }
             let height = count * this.actualHeight;
             let scTop = this.buffers.scrollTop;
-            top = cursor.getBoundingClientRect().y + scTop + height;
+            top = rect.y + scTop + height;
             let vtop = this._vspacer.getBoundingClientRect().y + scTop;
             if (top > vtop) {
                 vtop -= this.actualHeight;
@@ -10494,10 +10487,25 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
                 break;
         }
     }
-    if (lineBlock)
-        line.insertBefore(this.viewCaretNode, line.firstChild);
-    else
-        line.parentNode.insertBefore(this.viewCaretNode, line.nextSibling);
+    const sel = document.getSelection();
+    if (lineBlock) {
+        const text = this._followingText(line, false, true);
+        let offset = 0;
+        if (text) {
+            if (text.tagName == "SPAN" && text.getAttribute("line")
+                && text.firstChild) {
+                line = text.firstChild;
+            } else
+                line = text;
+        }
+        sel.setBaseAndExtent(line, offset, line, offset);
+    } else {
+        const r = new Range();
+        r.setEndAfter(line);
+        sel.setBaseAndExtent(r.endContainer, r.endOffset,
+                             r.endContainer, r.endOffset);
+    }
+    this.showViewCaret(true);
     this._disableScrollOnOutput = true;
     this.scrollToCaret(null, force);
 };
@@ -10542,6 +10550,7 @@ Terminal.prototype._enterPaging = function(pause = true) {
     }
     this._numericArgument = null;
     this._pagingMode = pause ? 2 : 1;
+    this.disableMouseMode(true);
     this._displayInputModeWithTimeout(this._modeInfo("P"));
 
     let sel = document.getSelection();
@@ -10553,8 +10562,14 @@ Terminal.prototype._enterPaging = function(pause = true) {
             before = this.outputBefore;
             parent = this.outputContainer;
         }
-        parent.insertBefore(this.viewCaretNode, before);
-        sel.collapse(this.viewCaretNode, 0);
+        const r = new Range();
+        if (before)
+            r.setEndBefore(before);
+        else
+            r.setNodeContents(parent);
+        sel.setBaseAndExtent(r.endContainer, r.endOffset,
+                             r.endContainer, r.endOffset);
+        this.showViewCaret();
         this.adjustFocusCaretStyle();
     } else {
         this._updateSelected();
@@ -10569,10 +10584,9 @@ Terminal.prototype._exitPaging = function() {
     cl.remove("paused");
     if (! this.isLineEditing())
         this.setMarkMode(false);
-    let focusCaret = this.viewCaretNode;
-    if (focusCaret && focusCaret.parentNode)
-        focusCaret.parentNode.removeChild(focusCaret);
+    this.showViewCaret(false);
     this._pagingMode = 0;
+    this.disableMouseMode(false);
     this._displayInputModeWithTimeout(this._modeInfo("P"));
 }
 
@@ -10690,25 +10704,18 @@ Terminal.prototype.editorMoveLines =
     if (count == 0)
         return 0;
     let delta1 = backwards ? -1 : 1;
-    let caret = this._pagingMode ? this.viewCaretNode : this._caretNode;
-    if (! caret || ! caret.parentNode)
-        return count;
-
-    function positionBoundingRect(node, offset) {
-        const r = new Range();
-        r.setEnd(node, offset);
-        r.collapse();
-        return r.getBoundingClientRect();
-    }
 
     // Get row number (visible line) within logical line
     const rowInLine = (startNode, startOffset, rect) => {
         let nrows = 0;
         for (;;) {
-            let deltaY = 0.25 * rect.height;
+            let deltaY = 0.5 * rect.height;
             let goalY = rect.top - deltaY;
             let new_pos = caretFromPoint(rect.x, goalY);
             if (! new_pos || ! this._isAnAncestor(new_pos.offsetNode, this.buffers))
+                break;
+            const new_rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
+            if (new_rect.top <= rect.top || new_rect.bottom <= rect.bottom)
                 break;
             const rangeTraversed = new Range();
             rangeTraversed.setStart(new_pos.offsetNode, new_pos.offset);
@@ -10719,16 +10726,29 @@ Terminal.prototype.editorMoveLines =
             if (textTraversed.indexOf('\n') >= 0)
                 break;
             nrows++;
-            rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
+            rect = new_rect;
         }
         return nrows;
     }
 
     this._removeCaret();
-    let rect = caret.getBoundingClientRect();
+    let rect, startNode, startOffset;
+    if (this._pagingMode) {
+        const sel = document.getSelection();
+        startNode = sel.focusNode;
+        startOffset = sel.focusOffset;
+        rect = positionBoundingRect(startNode, startOffset);
+    } else {
+        let caret = this._caretNode;
+        if (! caret || ! caret.parentNode)
+            return count;
+        rect = caret.getBoundingClientRect();
+        startNode = caret;
+        startOffset = 0;
+    }
     let goalX = this.sstate.goalX;
     let goalRow;
-    let currentRow = rowInLine(caret, 0, rect);
+    let currentRow = rowInLine(startNode, startOffset, rect);
     if (goalX) {
         goalRow = Math.trunc(goalX / this.availWidth);
         goalX = goalX % this.availWidth;
@@ -10740,12 +10760,35 @@ Terminal.prototype.editorMoveLines =
         this.sstate.goalX = goalX + this.availWidth * currentRow;
     }
     let result_pos;
-    let prevNode = caret;
-    let prevOffset = 0;
+    let prevNode = startNode;
+    let prevOffset = startOffset;
+    let buffersRect = this.buffers.getBoundingClientRect();
+    let buffersLeft = buffersRect.x;
+    let buffersTop = buffersRect.top;
     for (;;) {
-        let deltaY = 0.25 * rect.height;
+        let deltaY = 0.5 * rect.height;
         let goalY = backwards ? rect.top - deltaY : rect.bottom + deltaY;
+        if (backwards ? goalY <= buffersTop : goalY >= buffersRect.bottom) {
+            let scroll;
+            if (backwards) {
+                // FIXME better: scroll is last (visble) line above the
+                // current position (if non-huge) is scrolled wholly into view.
+                scroll = Math.max(this.charHeight, buffersRect.top - goalY);
+                if (scroll >= this.buffers.scrollTop)
+                    break;
+            } else {
+                scroll = Math.max(this.charHeight, goalY - buffersRect.bottom);
+                if (scroll >= this.initial.getBoundingClientRect().bottom - buffersRect.bottom)
+                    break;
+                scroll = - scroll;
+            }
+            this.buffers.scrollTop -= scroll;
+            goalY += scroll;
+            rect = positionBoundingRect(prevNode, prevOffset);
+        }
         let thisX = goalX;
+        // Work-around for problem on Electron.
+        thisX = Math.max(thisX, buffersLeft + 1);
         if (logicalLines) {
             if (backwards) { /* ??? */
             } else {
@@ -10761,11 +10804,18 @@ Terminal.prototype.editorMoveLines =
                 break;
             // if (in prompt or content-value) adjust
         }
+        const new_rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
+        if (backwards
+            ? new_rect.top >= rect.top || new_rect.bottom >= rect.bottom
+            : new_rect.top <= rect.top || new_rect.bottom <= rect.bottom) {
+            result_pos = new_pos; // ???
+            break;
+        }
         if (! logicalLines && --count <= 0) {
             result_pos = new_pos;
             break;
         }
-        rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
+        rect = new_rect;
         if (logicalLines) {
             // If we didn't moved over any newlines, try more.
             const r = new Range();
@@ -10802,7 +10852,7 @@ Terminal.prototype.editorMoveLines =
         }
     }
     if (result_pos)
-        Terminal._setSelection(extend, caret, 0, // FIXME: inline
+        Terminal._setSelection(extend, startNode, startOffset,
                                result_pos.offsetNode, result_pos.offset);
 
     return count;
@@ -11431,6 +11481,7 @@ Terminal.prototype.editMove = function(count, action, unit,
                 sel.collapse(range.startContainer, range.startOffset);
         }
     }
+    DomTerm.displaySelection();
     return todo;
 }
 

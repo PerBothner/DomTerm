@@ -116,10 +116,8 @@ class DTParser {
             if (state === DTParser.PAUSE_REQUESTED) {
                 this.controlSequenceState = DTParser.INITIAL_STATE;
                 this._deferredBytes = this.withDeferredBytes(bytes, i, endIndex);
-                if (term._pagingMode != 1) {
-                    term._pageUpOrDown('limit', false, true);
-                    document.getSelection().collapse(term.viewCaretNode, 0);
-                }
+                term._breakVisibleLines();
+                term._pageUpOrDown('limit', false, true);
                 term._enterPaging(true);
                 term._updateDisplay();
                 return;
