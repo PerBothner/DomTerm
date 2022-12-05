@@ -4425,7 +4425,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     // (It uses clipboard instead of selection.)
     if (ev.type == "mousedown" && ev.button == 1
         && DomTerm.versions.appleWebKit
-        && DomTerm.versions.userAgent.match(/X11/)
+        && DomTerm.versions.userAgent.match(/X11/) // Also set for Wayland
         && ((","+this.getOption("`server-for-clipboard", "")+",")
             .indexOf(",selection-paste,") >= 0)) {
         ev.preventDefault();
@@ -5162,16 +5162,19 @@ Terminal.prototype.historyMove = function(delta) {
     this.historyCursor = newIndex;
     str = this.history[newIndex];
     var inputLine = this._inputLine;
-    this._removeCaret();
-    for (var child = inputLine.firstChild; child != null; ) {
-        var next = child.nextSibling;
-        inputLine.removeChild(child);
-        child = next;
+    if (inputLine) {
+        this._removeCaret();
+        for (var child = inputLine.firstChild; child != null; ) {
+            var next = child.nextSibling;
+            inputLine.removeChild(child);
+            child = next;
+        }
+        inputLine.appendChild(this._caretNode);
+        this._removeInputFromLineTable();
+        this._restoreCaret();
     }
-    inputLine.appendChild(this._caretNode);
-    this._removeInputFromLineTable();
-    this._restoreCaret();
     this.editorInsertString(str);
+    this.maybeFocus();
     this._scrollIfNeeded();
 };
 
