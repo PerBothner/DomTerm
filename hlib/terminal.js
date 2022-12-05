@@ -8578,9 +8578,12 @@ Terminal._rangeAsText = function(range, options={}) {
         if (style["visibility"] === "hidden"
             || style["display"] === "none")
             return;
-        let stdElement = Terminal._getStdElement(tnode);
-        if (stdElement && stdElement.getAttribute("prompt-kind") == "r")
-            return;
+        const stdElement = Terminal._getStdElement(tnode);
+        if (stdElement) {
+            const promptKind = stdElement.getAttribute("prompt-kind");
+            if (promptKind && (promptKind === "r" || promptKind === "c"))
+                return;
+        }
         let str = tnode.data.substring(start, end);
         t += str;
         if (end > start && lineNonEmpty < 2) {
