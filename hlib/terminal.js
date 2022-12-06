@@ -94,9 +94,10 @@ export { Terminal };
 import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
-import { toJson, scrubHtml, isEmptyTag, isBlockTag, isBlockNode,
-         escapeText, toFixed, forEachElementIn, forEachTextIn, caretFromPoint,
-         positionBoundingRect } from './domterm-utils.js';
+import { toJson, scrubHtml, isEmptyTag, isBlockTag, isBlockNode, isNormalBlock,
+         escapeText, toFixed, forEachElementIn, forEachTextIn, scanInRange,
+         caretFromPoint, positionBoundingRect, isDelimiter
+       } from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -685,7 +686,7 @@ class Terminal {
 
     startPrompt(options = []) {
         let ln = this.outputContainer;
-        if (Terminal.isNormalBlock(ln))
+        if (isNormalBlock(ln))
             ln.classList.add("input-line");
 
         let promptKind = Terminal.namedOptionFromArray(options, "k=");
@@ -778,7 +779,7 @@ class Terminal {
         this._pushStdMode(null);
         this._fixOutputPosition();
         let ln = this.outputContainer;
-        if (Terminal.isNormalBlock(ln))
+        if (isNormalBlock(ln))
             ln.classList.add("input-line");
 
         let prev = this.outputBefore ? this.outputBefore.previousSibling
@@ -3203,7 +3204,7 @@ Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getA
         if (! this._isAnAncestor(start, this.topNode)) {
             start = end;
             for (;;) {
-                if (Terminal.isNormalBlock(start))
+                if (isNormalBlock(start))
                     break;
                 start = start.parentNode;
             }
@@ -3465,11 +3466,6 @@ Terminal.prototype.isObjectElement = function(node) {
     return "OBJECT" == tag || "CANVAS" == tag
         || "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
 };
-
-Terminal.isNormalBlock = function(node) {
-    let tag = node.nodeName;
-    return tag == "PRE" || tag == "P" || tag == "DIV";
-}
 
 Terminal.prototype._getOuterBlock = function(node, stopIfInputLine=false) {
     for (var n = node; n; n = n.parentNode) {
@@ -4843,7 +4839,7 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
         pending.setAttribute("direction", forwards ? "Right" : "Left");
     }
     let scanState = { linesCount: 0, todo: count, unit: "char", stopAt: "", wrapText: wrapText };
-    Terminal.scanInRange(range, ! forwards, scanState);
+    scanInRange(range, ! forwards, scanState);
     if (! doDelete) {
         let caret = this._caretNode;
         if (this.outputBefore == caret)
@@ -5382,7 +5378,7 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         // this case.
         var parent = lineEnd.parentNode;
         var pname = parent.nodeName;
-        if (Terminal.isNormalBlock(parent)
+        if (isNormalBlock(parent)
             && ! parent.classList.contains("input-line")) {
             var newBlock = this._splitNode(parent, lineEnd.nextSibling);
             // If a wrapped input line is edited to a single (or fewer) lines,
@@ -8620,7 +8616,7 @@ Terminal._rangeAsText = function(range, options={}) {
     function lineHandler(node) { return true; }
     let scanState = { linesCount: 0, todo: Infinity, unit: "char", stopAt: "",
                       wrapText: wrapText, elementExit, lineHandler };
-    Terminal.scanInRange(range, false, scanState);
+    scanInRange(range, false, scanState);
     if (addEscapes && (prevFg || prevBg)) {
         t += '\x1B[m';
     }
@@ -10108,31 +10104,6 @@ Terminal._makeWsUrl = function(query=null) {
     return url;
 }
 
-Terminal.isDelimiter = (function() {
-    let delimiterChars = '()<>[]{}`;|\'"';
-    let mask1 = 0; // mask for char values 32..63
-    let mask2 = 0; // mask for char values 64..95
-    let mask3 = 0; // mask for char values 96..127
-    for (let i = delimiterChars.length; --i >= 0; ) {
-        let ch = delimiterChars.charCodeAt(i);
-        if (ch >= 32 && ch < 64)
-            mask1 |= 1 << (ch - 32);
-        else if (ch >= 64 && ch < 96)
-            mask2 |= 1 << (ch - 64);
-        else if (ch >= 96 && ch < 128)
-            mask3 |= 1 << (ch - 96);
-    }
-    return function(ch) {
-        if (ch < 64)
-            return ch <= 32 ? true : (mask1 & (1 << (ch - 32))) != 0;
-        else if (ch < 128)
-            return ch < 96 ? (mask2 & (1 << (ch - 64))) != 0
-            : (mask3 & (1 << (ch - 96))) != 0;
-        else
-            return false;
-    }
-})();
-
 Terminal.prototype.linkAllowedUrlSchemes = ":http:https:file:ftp:mailto:";
 
 Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
@@ -10145,7 +10116,7 @@ Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
 
     function rindexDelimiter(str, start, end) {
         for (let i = end; --i >= start; )
-            if (Terminal.isDelimiter(str.charCodeAt(i)))
+            if (isDelimiter(str.charCodeAt(i)))
                 return i;
         return -1;
     }
@@ -11127,232 +11098,6 @@ Terminal.prototype.editorDeleteRange = function(range, toClipboard) {
     this._updateLinebreaksStart(lineNum, true);
 }
 
-DomTerm.editorNonWordChar = function(ch) {
-    return " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{|}".indexOf(ch) >= 0;
-}
-
-/** Scan through a Range.
- * If backwards is false: scan forwards, starting from range start;
- * stop at or before range end; update range end if stopped earlier.
- * If backwards is true: scan backwards, starting from range end;
- * stop at or before range start; update range start if stopped earlier.
- * (I.e. Change end/start position of range if backwards is false/true.)
- *
- * state: various options and counters:
- * state.todo: Infinity, or maximum number of units
- * state.unit: "char", "word", "line"
- * state.stopAt: one of "", "line" (stop before moving to different hard line),
- *   "visible-line" (stop before moving to different screen line),
- *   "input" (line-edit input area), or "buffer".
- * state.linesCount: increment for each (non-soft) newline
- * state.wrapText: function called on each text node
- * state.lineHandler: handler for non-stopping lines.
- */
-Terminal.scanInRange = function(range, backwards, state) {
-    let unit = state.unit;
-    let doWords = unit == "word";
-    let stopAt = state.stopAt;
-    let wordCharSeen = false;
-    let firstNode = backwards ? range.endContainer : range.startContainer;
-    let lastNode = backwards ? range.startContainer : range.endContainer;
-    let skipFirst;
-    if (firstNode instanceof CharacterData)
-        skipFirst = 0;
-    else if (backwards)
-        skipFirst = 1 + firstNode.childNodes.length - range.endOffset;
-    else
-        skipFirst = 1 + range.startOffset;
-    /*
-    let lastNonSkip = lastNode instanceof CharacterData ? 1
-        : backwards ? lastNode.childNodes.length - range.startOffset
-        : range.endOffset;
-    */
-    let lastOffset = backwards ?  range.startOffset : range.endOffset;
-    let stopNode = null;
-    if (! (lastNode instanceof CharacterData)) {
-        let lastChildren = lastNode.childNodes;
-        // possibly undefined if at start/beginning of container
-        stopNode = lastChildren[backwards ? lastOffset-1 : lastOffset];
-    }
-    function elementExit(node) {
-        if (state.elementExit)
-            (state.elementExit) (node);
-        return node === lastNode ? null : false;
-    }
-    function blockAfterLine(line) {
-        function f(n) {
-            if (n instanceof Text)
-                return n;
-            if (! (n instanceof Element))
-                return false;
-            let ch = n.firstChild;
-            return n !== line && ch !== null
-                && (Terminal.isNormalBlock(ch) || n);
-            /*
-            if (n == line || ch == null)
-                return false;
-            if (! Terminal.isNormalBlock(ch))
-                return n;
-            return true;
-            */
-        }
-        let n = forEachElementIn(range.commonAncestorContainer,
-                                           f, true, false, line);
-        return n && range.isPointInRange(n, 0) ? n : null;
-    }
-    function updateRangeWhenDone(node, stopped) {
-        if (backwards) {
-            if (stopped)
-                range.setStartAfter(node);
-            else
-                range.setStartBefore(node);
-        } else {
-            if (stopped)
-                range.setEndBefore(node);
-            else {
-                if (node.nextSibling instanceof Element
-                         && node.nextSibling.getAttribute('line') === 'soft')
-                    range.setEndAfter(node.nextSibling);
-                else
-                    range.setEndAfter(node);
-            }
-        }
-    }
-    function fun(node) {
-        if (skipFirst > 0) {
-            skipFirst--;
-            return node == firstNode;
-        }
-        if (node === stopNode)
-            return null;
-        /*
-        if (node.parentNode == lastNode) {
-            if (lastNonSkip == 0)
-                return null;
-            lastNonSkip--;
-        }
-        */
-        if (! (node instanceof Text)) {
-            if (node.nodeName == "SPAN" && node.getAttribute("std") == "caret")
-                return ! node.classList.contains("focus-caret");
-            if (node.nodeName == "SPAN"
-                && node.classList.contains('dt-cluster')) {
-                state.todo--;
-                if (state.wrapText && node.firstChild instanceof Text) {
-                    const d = node.firstChild.data;
-                    state.wrapText(node.firstChild, d, d.length);
-                }
-                if (state.todo == 0) {
-                    updateRangeWhenDone(node, false);
-                    return null;
-                }
-                return false;
-            }
-            if (node.nodeName == "SPAN"
-                && node.getAttribute("line") != null) {
-                let stopped = false;
-                if (stopAt == "visible-line")
-                    stopped = true;
-                else if (node.textContent == "")
-                    return false;
-                else if (stopAt == "line")
-                    stopped = true;
-                state.linesCount++;
-                if (stopped) {
-                    state.todo = 0;
-                } else if (doWords) {
-                    if (wordCharSeen)
-                        state.todo--;
-                    wordCharSeen = false;
-                } else
-                    state.todo--;
-                if (state.todo == 0) {
-                    let next;
-                    if (backwards == stopped) {
-                        next = node.nextSibling;
-                        if (next instanceof Element
-                            && next.getAttribute("std") == "prompt")
-                            node = next;
-                    }
-                    if (backwards == stopped
-                        && (next = blockAfterLine(node))) {
-                        if (backwards)
-                            range.setStart(next, 0);
-                        else
-                            range.setEnd(next, 0);
-                    } else
-                        updateRangeWhenDone(node, stopped);
-                    return null;
-                }
-                return state.lineHandler ? state.lineHandler(node) : false;
-            }
-            return true;
-        }
-        // else: node instanceof Text
-        if (unit == "line")
-            return false;
-        var data = node.data;
-        let dlen = data.length;
-        let istart = backwards ? dlen : 0;
-        if (node == firstNode)
-            istart = backwards ? range.endOffset : range.startOffset;
-        let dend = node !== lastNode ? (backwards ? 0 : dlen)
-            : (backwards ? range.startOffset : dlen = range.endOffset);
-        let index = istart;
-        for (;; ) {
-            if (state.wrapText && (state.todo == 0 || index == dend)) {
-                if (backwards)
-                    state.wrapText(node, index, istart);
-                else
-                    state.wrapText(node, istart, index);
-            }
-            if (state.todo == 0) {
-                if (backwards)
-                    range.setStart(node, index);
-                else if (index === dlen
-                         && node.nextSibling instanceof Element
-                         && node.nextSibling.getAttribute('line') === 'soft')
-                    range.setEndAfter(node.nextSibling);
-                else
-                    range.setEnd(node, index);
-                return null;
-            }
-            if (index == dend)
-                return node == lastNode ? null : false;
-            let i0 = index;
-            let i1 = backwards ? --index : index++;
-            // Optimization: skip character processing if Infinity
-            if (state.todo < Infinity) {
-                let c = data.charCodeAt(i1);
-                let clen = 1;
-                if (backwards ? (index > 0 && c >= 0xdc00 && c <= 0xdfff)
-                    : (index < dlen && c >= 0xd800 && c <= 0xdbff)) {
-                    let c2 = data.charCodeAt(backwards ? index-1 : index);
-                    if (backwards ? (c2 >= 0xd800 && c2 <= 0xdbff)
-                        : (c2 >= 0xdc00 && c2 <= 0xdfff)) {
-                        clen = 2;
-                        if (backwards) index--; else index++;
-                        // c = FIXME
-                    }
-                }
-                if (doWords) {
-                    let sep = DomTerm.editorNonWordChar(String.fromCharCode(c));
-                    if (sep && wordCharSeen) {
-                        index = i0;
-                    } else {
-                        state.todo++;
-                    }
-                    wordCharSeen = ! sep;
-                }
-                state.todo--;
-            }
-        }
-        return false;
-    }
-    forEachElementIn(range.commonAncestorContainer, fun,
-                     true, backwards, firstNode, elementExit);
-}
-
 Terminal.prototype.deleteSelected = function(toClipboard) {
     let input = this.isLineEditing() ? this._inputLine
         : this._getOuterInputArea();
@@ -11463,7 +11208,7 @@ Terminal.prototype.editMove = function(count, action, unit,
                 range.setStart(sel.focusNode, sel.focusOffset);
         }
         let scanState = { linesCount: 0, todo: todo, unit: unit, stopAt: stopAt };
-        Terminal.scanInRange(range, backwards, scanState);
+        scanInRange(range, backwards, scanState);
         linesCount = scanState.linesCount;
         todo = scanState.todo;
         if (doDelete) {

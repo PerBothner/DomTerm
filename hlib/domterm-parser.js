@@ -1,6 +1,7 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
-import { fromJson, isBlockNode, forEachElementIn } from './domterm-utils.js';
+import { fromJson, isBlockNode, forEachElementIn, isDelimiter
+       } from './domterm-utils.js';
 
 class DTParser {
     constructor(term) {
@@ -433,7 +434,7 @@ class DTParser {
                     this.controlSequenceState = DTParser.INITIAL_STATE;
                 /* falls through */
             case DTParser.INITIAL_STATE:
-                if (term.sstate.doLinkify && Terminal.isDelimiter(ch)
+                if (term.sstate.doLinkify && isDelimiter(ch)
                     && term.linkify("", 0, 0, ch)) {
                 }
                 switch (ch) {
@@ -658,7 +659,7 @@ class DTParser {
                             let tch = ti < tend ? tstr.charCodeAt(ti)
                                 : i < endIndex ? bytes[i] : 'X';
                             if (term.sstate.doLinkify
-                                && Terminal.isDelimiter(tch)
+                                && isDelimiter(tch)
                                 && term.linkify(tstr, tstart, ti, tch)) {
                                 tstart = ti;
                             }
