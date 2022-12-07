@@ -1,7 +1,6 @@
 export { DTParser };
 import { Terminal } from './terminal.js';
-import { fromJson, isBlockNode, forEachElementIn, isDelimiter
-       } from './domterm-utils.js';
+import * as DtUtil from './domterm-utils.js';
 
 class DTParser {
     constructor(term) {
@@ -434,7 +433,7 @@ class DTParser {
                     this.controlSequenceState = DTParser.INITIAL_STATE;
                 /* falls through */
             case DTParser.INITIAL_STATE:
-                if (term.sstate.doLinkify && isDelimiter(ch)
+                if (term.sstate.doLinkify && DtUtil.isDelimiter(ch)
                     && term.linkify("", 0, 0, ch)) {
                 }
                 switch (ch) {
@@ -659,7 +658,7 @@ class DTParser {
                             let tch = ti < tend ? tstr.charCodeAt(ti)
                                 : i < endIndex ? bytes[i] : 'X';
                             if (term.sstate.doLinkify
-                                && isDelimiter(tch)
+                                && DtUtil.isDelimiter(tch)
                                 && term.linkify(tstr, tstart, ti, tch)) {
                                 tstart = ti;
                             }
@@ -2034,7 +2033,7 @@ class DTParser {
                             let iline = term.lineStarts.length - 1;
                             for (; output == null && iline >= 0; iline--) {
                                 let ln = term.lineStarts[iline];
-                                if (! isBlockNode(ln))
+                                if (! DtUtil.isBlockNode(ln))
                                     continue;
                                 let text = ln.textContent;
                                 if (lines_checked == 0
@@ -2163,7 +2162,7 @@ class DTParser {
         case 103: // restore saved snapshot
             var comma = text.indexOf(",");
             var rcount = Number(text.substring(0,comma));
-            var data = fromJson(text.substring(comma+1));
+            var data = DtUtil.fromJson(text.substring(comma+1));
             let main = term.initial;
             if (main instanceof Element &&
                 main.getAttribute('class') == 'dt-buffer') {
@@ -2187,7 +2186,7 @@ class DTParser {
                 let bufAttr = term.initial.getAttribute("buffer");
                 term.usingAlternateScreenBuffer =
                     bufAttr && bufAttr.indexOf("alternate") >= 0;
-                forEachElementIn(parent, findInputLine);
+                DtUtil.forEachElementIn(parent, findInputLine);
                 term.outputBefore =
                     term._inputLine != null ? term._inputLine : term._caretNode;
                 term.outputContainer = term.outputBefore.parentNode;

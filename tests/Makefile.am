@@ -28,7 +28,7 @@ test-wrap1:
 test-24-bit-color:
 	$(TDOMTERM) $(TNEWOPTIONS) $(TEST_SHELL)
 	$(TDOMTERM) -w 1 await --match-output '1[$$]' ''
-	@$(TSEND_INPUT) './24-bit-color.sh\r'
+	$(TSEND_INPUT) './24-bit-color.sh\r'
 	$(TDOMTERM) -w 1 await --match-output '2[$$]' ''
 	$(TCAPTURE) -e >t24.out
 	cmp t24.exp t24.out

@@ -94,10 +94,7 @@ export { Terminal };
 import { commandMap } from './commands.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
-import { toJson, scrubHtml, isEmptyTag, isBlockTag, isBlockNode, isNormalBlock,
-         escapeText, toFixed, forEachElementIn, forEachTextIn, scanInRange,
-         caretFromPoint, positionBoundingRect, isDelimiter
-       } from './domterm-utils.js';
+import * as DtUtil from './domterm-utils.js';
 
 class Terminal {
   constructor(name, topNode=null, no_session=null) {
@@ -479,7 +476,7 @@ class Terminal {
             if (dt.sstate.mouseMode == 0
                 && (ref = (curTarget.getAttribute("domterm-href")
                            || curTarget.getAttribute("href")))) {
-                let infoHtml = '<span class="url">' + escapeText(ref) + '</span>';
+                let infoHtml = '<span class="url">' + DtUtil.escapeText(ref) + '</span>';
                 if (dt._linkNeedsCtrlClick(curTarget))
                     infoHtml += "<br/><i>(Ctrl+Click to open link)</i>";
                 dt.hoverHandler(event, dt, curTarget,
@@ -686,7 +683,7 @@ class Terminal {
 
     startPrompt(options = []) {
         let ln = this.outputContainer;
-        if (isNormalBlock(ln))
+        if (DtUtil.isNormalBlock(ln))
             ln.classList.add("input-line");
 
         let promptKind = Terminal.namedOptionFromArray(options, "k=");
@@ -779,7 +776,7 @@ class Terminal {
         this._pushStdMode(null);
         this._fixOutputPosition();
         let ln = this.outputContainer;
-        if (isNormalBlock(ln))
+        if (DtUtil.isNormalBlock(ln))
             ln.classList.add("input-line");
 
         let prev = this.outputBefore ? this.outputBefore.previousSibling
@@ -816,7 +813,7 @@ class Terminal {
                         }
                         return true;
                     }
-                    let pr = forEachElementIn(plin, fun, false, true);
+                    let pr = DtUtil.forEachElementIn(plin, fun, false, true);
                     if (pr) {
                         // FIXME broken if pr is nested
                         this.outputContainer = plin;
@@ -849,7 +846,7 @@ class Terminal {
                 : this._splitNode(parent, cur);
             parent = parent.parentNode;
             if (prev instanceof Element && prev.getAttribute("line") !== null
-                && ! isBlockNode(prev.parentNode)) {
+                && ! DtUtil.isBlockNode(prev.parentNode)) {
                 parent.insertBefore(prev, cur);
             }
         }
@@ -873,15 +870,15 @@ class Terminal {
             commandOutput.setAttribute("class", "command-output");
             group.insertBefore(commandOutput, cur);
             commandOutput.appendChild(cur);
-            forEachElementIn(cur,
-                                       (el) => {
-                                           if (el.getAttribute("std")==="input") {
-                                               this._moveNodes(el.firstChild, el.parentNode, el);
-                                               el.parentNode.removeChild(el);
-                                               return false;
-                                           }
-                                           return true;
-                                       });
+            DtUtil.forEachElementIn(cur,
+                                    (el) => {
+                                        if (el.getAttribute("std")==="input") {
+                                            this._moveNodes(el.firstChild, el.parentNode, el);
+                                            el.parentNode.removeChild(el);
+                                            return false;
+                                        }
+                                        return true;
+                                    });
             cur.normalize();
             this.lineStarts[lineNo] = cur;
             cur._widthMode = Terminal._WIDTH_MODE_NORMAL;
@@ -1034,7 +1031,7 @@ DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
         : dt._receivedCount;
     var data =
         rcount
-        + ',{"sstate":'+toJson(dt.sstate);
+        + ',{"sstate":'+DtUtil.toJson(dt.sstate);
     data += ',"rows":'+dt.numRows+',"columns":'+dt.numColumns;
     data += ', "html":'
         + JSON.stringify(dt.getAsHTML(false))
@@ -1209,7 +1206,7 @@ Terminal.prototype._maybeAddTailHider = function(oldGroup) {
             } else
                 return true;
         }
-        forEachElementIn(oldGroup, checkLine);
+        DtUtil.forEachElementIn(oldGroup, checkLine);
 
         // If multiple input lines, split into separate input-line elements.
         // The main reason is that the tail-hider elements gets displayed
@@ -1677,7 +1674,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                     || classList.contains("resize-sensor")
                     || classList.contains("domterm-show-info")))
                 descend = false;
-            else if (isBlockTag(tag)) {
+            else if (DtUtil.isBlockTag(tag)) {
                 var hasData = false;
                 var prevWasBlock = false;
                 // Check to see if cur has any non-block children:
@@ -1692,7 +1689,7 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
                         }
                         hasData = true;
                     } else if (ch instanceof Element && ! hasData) {
-                        isBlock = isBlockNode(ch);
+                        isBlock = DtUtil.isBlockNode(ch);
                         if (! isBlock && !ch.classList.contains("focus-area"))
                             hasData = true;
                     }
@@ -1891,7 +1888,7 @@ Terminal.prototype._maybeGoDeeper = function(current) {
     let parent = null;
     while (current instanceof Element) {
         let tag = current.tagName.toLowerCase();
-        if (! isBlockTag(tag)
+        if (! DtUtil.isBlockTag(tag)
             && tag !== "td"
             && (tag !== "span" || current.stayOut
                 || current.getAttribute("content-value")))
@@ -1995,7 +1992,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                 if (lastParent == null)
                     lastParent = this.lineStarts[lineCount-1];
                 for (;;) {
-                    if (isBlockNode(lastParent))
+                    if (DtUtil.isBlockNode(lastParent))
                         break;
                     var p = lastParent.parentNode;
                     if (p == this.initial)
@@ -2232,7 +2229,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     continue;
                 }
                 // Otherwise go to the parent's sibling - but this gets complicated.
-                if (isBlockNode(current))
+                if (DtUtil.isBlockNode(current))
                     absLine++;
             }
 
@@ -2297,8 +2294,8 @@ Terminal.prototype._followingText = function(cur, backwards = false,
             return node;
         return true;
     }
-    return forEachElementIn(this._getOuterBlock(cur, true), check,
-                            true, backwards, cur);
+    return DtUtil.forEachElementIn(this._getOuterBlock(cur, true), check,
+                                   true, backwards, cur);
 };
 
 Terminal.prototype._showPassword = function() {
@@ -2471,7 +2468,7 @@ DomTerm._replaceTextContents = function(el, text) {
         text = text.substring(dlen);
         return null;
     }
-    forEachTextIn(el, replace);
+    DtUtil.forEachTextIn(el, replace);
 };
 
 Terminal.prototype._restoreCaret = function() {
@@ -2587,17 +2584,17 @@ Terminal.prototype._restoreInputLine = function(caretToo = true) {
                 this.lineStarts[lineno]._breakState = Terminal._BREAKS_UNMEASURED;
                 // Takes time proportional to the number of lines in _inputLine
                 // times lines below the input.  Both are likely to be small.
-                forEachElementIn(inputLine,
-                                 (el) => {
-                                     let ln = el.nodeName === "SPAN"
-                                         && el.getAttribute("line");
-                                     if (ln === 'hard'
-                                         || (ln && el.getAttribute('breaking')==='yes')) {
-                                         dt._insertIntoLines(el, lineno++);
-                                         return false;
-                                     }
-                                     return true;
-                                 });
+                DtUtil.forEachElementIn(inputLine,
+                                        (el) => {
+                                            let ln = el.nodeName === "SPAN"
+                                                && el.getAttribute("line");
+                                            if (ln === 'hard'
+                                                || (ln && el.getAttribute('breaking')==='yes')) {
+                                                dt._insertIntoLines(el, lineno++);
+                                                return false;
+                                            }
+                                            return true;
+                                        });
             }
         }
     }
@@ -2630,7 +2627,7 @@ Terminal.prototype.cursorLineStart = function(deltaLines, kind=undefined) {
         if (kind)
             newBlock = false;
         else {
-            newBlock = isBlockNode(parent);
+            newBlock = DtUtil.isBlockNode(parent);
             if (! newBlock) {
                 let endLine = this.lineEnds[curLine];
                 for (; parent  ;) {
@@ -2640,7 +2637,7 @@ Terminal.prototype.cursorLineStart = function(deltaLines, kind=undefined) {
                         newBlock = true;
                         break;
                     }
-                    if (isBlockNode(parent))
+                    if (DtUtil.isBlockNode(parent))
                         break;
                     next = parent.nextSibling;
                     parent = parent.parentNode;
@@ -3204,7 +3201,7 @@ Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getA
         if (! this._isAnAncestor(start, this.topNode)) {
             start = end;
             for (;;) {
-                if (isNormalBlock(start))
+                if (DtUtil.isNormalBlock(start))
                     break;
                 start = start.parentNode;
             }
@@ -3420,16 +3417,16 @@ Terminal.prototype.popScreenBuffer = function()
     this.lineEnds.length = lastLine;
     let homeNode = null;
     let homeOffset = -1;
-    forEachElementIn(this.initial,
-                     function(node) {
-                         const offset = node.getAttribute('home-line');
-                         if (offset) {
-                             homeNode = node;
-                             homeOffset = 0 + parseInt(offset, 10);
-                             return node;
-                         }
-                         return true;
-                     });
+    DtUtil.forEachElementIn(this.initial,
+                            function(node) {
+                                const offset = node.getAttribute('home-line');
+                                if (offset) {
+                                    homeNode = node;
+                                    homeOffset = 0 + parseInt(offset, 10);
+                                    return node;
+                                }
+                                return true;
+                            });
     this.homeLine = this._computeHomeLine(homeNode, homeOffset, false);
     this.sstate.savedCursor = this.sstate.savedCursorMain;
     this.sstate.savedCursorMain = undefined;
@@ -3470,7 +3467,7 @@ Terminal.prototype.isObjectElement = function(node) {
 Terminal.prototype._getOuterBlock = function(node, stopIfInputLine=false) {
     for (var n = node; n; n = n.parentNode) {
         if ((stopIfInputLine && n == this._inputLine)
-            || isBlockNode(n))
+            || DtUtil.isBlockNode(n))
             return n;
     }
     return null;
@@ -3618,7 +3615,7 @@ Terminal.prototype._initializeDomTerm = function(topNode) {
 
 /*
 Terminal.prototype._findHomeLine = function(bufNode) {
-    forEachElementIn(bufNode,
+    DtUtil.forEachElementIn(bufNode,
                      function(node) {
                          var offset = node.getAttribute('home-line');
                          return offset != null ? node : null;
@@ -3825,12 +3822,12 @@ Terminal.prototype._sizeInfoText = function() {
     // Might be nicer to keep displaying the size-info while
     // button-1 is pressed. However, that seems a bit tricky.
     let text = ""+this.numColumns+"\xD7"+this.numRows
-        +" ("+toFixed(this.availWidth, 2)+"\xD7"
-        +toFixed(this.availHeight, 2);
+        +" ("+DtUtil.toFixed(this.availWidth, 2)+"\xD7"
+        +DtUtil.toFixed(this.availHeight, 2);
     if (this.sstate.forcedSize) {
         text += "px, actual:"
-            + toFixed(this.topNode.clientWidth -  this.rightMarginWidth)
-            + "\xD7" + toFixed(this.actualHeight);
+            + DtUtil.toFixed(this.topNode.clientWidth -  this.rightMarginWidth)
+            + "\xD7" + DtUtil.toFixed(this.actualHeight);
     }
     text += "px)";
     /* // This is confusing as it doesn't reliably include scale (zoom).
@@ -3904,7 +3901,7 @@ DomTerm.displayMiscInfo = function(dt, show) {
         contents += "<br/>";
         contents += dt._modeInfo() + "<br/>Size: " + dt._sizeInfoText();
         if (dt.sstate.lastWorkingPath)
-            contents += "<br/>Last path: <code>"+ escapeText(dt.sstate.lastWorkingPath)+"</code>";
+            contents += "<br/>Last path: <code>"+ DtUtil.escapeText(dt.sstate.lastWorkingPath)+"</code>";
         contents += "</span>";
         dt._showingMiscInfo = addInfoDisplay(contents, dt._showingMiscInfo, dt);
     } else if (dt._showingMiscInfo) {
@@ -4671,7 +4668,7 @@ Terminal.prototype._showHideHandler = function(event) {
             var next = node.nextSibling;
             if (next == null) {
                 var parent = node.parentNode;
-                if (parent == start.parentNode && isBlockNode(parent))
+                if (parent == start.parentNode && DtUtil.isBlockNode(parent))
                     next = parent.nextSibling;
             }
             node = next;
@@ -4839,7 +4836,7 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
         pending.setAttribute("direction", forwards ? "Right" : "Left");
     }
     let scanState = { linesCount: 0, todo: count, unit: "char", stopAt: "", wrapText: wrapText };
-    scanInRange(range, ! forwards, scanState);
+    DtUtil.scanInRange(range, ! forwards, scanState);
     if (! doDelete) {
         let caret = this._caretNode;
         if (this.outputBefore == caret)
@@ -5378,7 +5375,7 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         // this case.
         var parent = lineEnd.parentNode;
         var pname = parent.nodeName;
-        if (isNormalBlock(parent)
+        if (DtUtil.isNormalBlock(parent)
             && ! parent.classList.contains("input-line")) {
             var newBlock = this._splitNode(parent, lineEnd.nextSibling);
             // If a wrapped input line is edited to a single (or fewer) lines,
@@ -5401,13 +5398,13 @@ Terminal.prototype._clearWrap = function(absLine=this.getAbsCursorLine()) {
         lineEnd.removeAttribute("breaking");
         let oldMeasure = lineEnd.measureLeft;
         if (oldMeasure) {
-            forEachElementIn(this._getOuterBlock(lineEnd),
-                             (el)=> {
-                                 if (el.measureLeft
-                                     && el.measureLeft >= oldMeasure)
-                                     el.measureLeft -= oldMeasure;
-                             },
-                             false, false, lineEnd);
+            DtUtil.forEachElementIn(this._getOuterBlock(lineEnd),
+                                    (el)=> {
+                                        if (el.measureLeft
+                                            && el.measureLeft >= oldMeasure)
+                                            el.measureLeft -= oldMeasure;
+                                    },
+                                    false, false, lineEnd);
         }
         var child = lineEnd.firstChild;
         if (child)
@@ -6238,7 +6235,7 @@ Terminal.prototype._scrubAndInsertHTML = function(str, handleLines = true) {
     // until we actually see something that needs it.
     this.lineStarts[startLine]._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
     this.lineStarts[startLine]._breakState = Terminal._BREAKS_UNMEASURED;
-    str = scrubHtml(str, options);
+    str = DtUtil.scrubHtml(str, options);
     if (str) {
         this._unsafeInsertHTML(str);
         if (! options.errorSeen) {
@@ -6377,14 +6374,14 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                         continue;
                     }
                     s += ' ' + aname+ // .toLowerCase() +
-                        '="' + escapeText(avalue) + '"';
+                        '="' + DtUtil.escapeText(avalue) + '"';
                 }
             }
             if (skip)
                 break;
             string += s;
             if (!node.firstChild) {
-                if (isEmptyTag(tagName))
+                if (DtUtil.isEmptyTag(tagName))
                     string += '></'+tagName+'>';
                 else
                     string += '/>';
@@ -6399,10 +6396,10 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
             break;
         case 2: // ATTRIBUTE (should only get here if passing in an attribute node)
             string += ' ' + node.name+ // .toLowerCase() +
-            '="' + escapeText(node.value) + '"'; // .toLowerCase()
+            '="' + DtUtil.escapeText(node.value) + '"'; // .toLowerCase()
             break;
         case 3: // TEXT
-            string += escapeText(node.nodeValue);
+            string += DtUtil.escapeText(node.nodeValue);
             break;
         case 4: // CDATA
             if (node.nodeValue.indexOf(']]'+'>') !== -1) {
@@ -6744,7 +6741,7 @@ Terminal.prototype.adjustFocusCaretStyle = function() {
     if (this.viewCaretNode.parentNode) {
         let caret = this.viewCaretMarkNode;
         let outerRect = this.topNode.getBoundingClientRect();
-        let rect = positionBoundingRect();
+        let rect = DtUtil.positionBoundingRect();
         caret.style.top = `${rect.top - outerRect.top}px`;
         caret.style.left = `${rect.left - outerRect.left}px`;
         caret.style.bottom = `${outerRect.bottom - rect.bottom}px`;
@@ -6767,7 +6764,7 @@ Terminal.prototype.scrollToCaret = function(caret = null, force = null) {
         return;
     let rect;
     if (caret === this.viewCaretNode) {
-        rect = positionBoundingRect(); // from selection
+        rect = DtUtil.positionBoundingRect(); // from selection
      } else
         rect = caret.getBoundingClientRect();
     let top = rect.y + this.buffers.scrollTop - this._topOffset;
@@ -7187,7 +7184,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     function breakLine2 (dt, line, lineStart, availWidth, countColumns) {
         // second pass - edit DOM, but don't look at offsetLeft
         let start, startOffset;
-        if (isBlockNode(lineStart)) {
+        if (DtUtil.isBlockNode(lineStart)) {
             start = lineStart.firstChild;
             startOffset = 0;
         } else {
@@ -7497,7 +7494,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
         if (start.alwaysMeasureForBreak || breakNeeded(this, line, start)) {
             changed = true; // FIXME needlessly conservative
             var first;
-            if (isBlockNode(start))
+            if (DtUtil.isBlockNode(start))
                 first = start.firstChild;
             else {
                 while (start.nextSibling == null)
@@ -8456,7 +8453,7 @@ Terminal._rangeAsText = function(range, options={}) {
         if (addEscapes) {
             let curBg = null, curFg = null, curStyle = 0;
             for (let p = parent; ; p = p.parentNode) {
-                let isBlock = isBlockNode(p);
+                let isBlock = DtUtil.isBlockNode(p);
                 let pstyle = p.style;
                 if (! curFg)
                     curFg = pstyle['color'];
@@ -8588,7 +8585,7 @@ Terminal._rangeAsText = function(range, options={}) {
     }
     function elementExit(node) {
         let endOfLine /* : string | false */ = false;
-        if (isBlockNode(node)
+        if (DtUtil.isBlockNode(node)
             && t.length > 0 && t.charCodeAt(t.length-1) != 10) {
             endOfLine = '\n';
         }
@@ -8616,7 +8613,7 @@ Terminal._rangeAsText = function(range, options={}) {
     function lineHandler(node) { return true; }
     let scanState = { linesCount: 0, todo: Infinity, unit: "char", stopAt: "",
                       wrapText: wrapText, elementExit, lineHandler };
-    scanInRange(range, false, scanState);
+    DtUtil.scanInRange(range, false, scanState);
     if (addEscapes && (prevFg || prevBg)) {
         t += '\x1B[m';
     }
@@ -9695,7 +9692,7 @@ Terminal.prototype._checkTree = function() {
             if (istart < nlines && this.lineStarts[istart] == cur) {
                 if (iend == istart && this.lineEnds[iend] == null)
                     iend++;
-                if (isBlockNode(cur)) {
+                if (DtUtil.isBlockNode(cur)) {
                     currentLineStart = cur;
                 } else {
                     if (! this._isAnAncestor(cur, currentLineStart))
@@ -10116,7 +10113,7 @@ Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
 
     function rindexDelimiter(str, start, end) {
         for (let i = end; --i >= start; )
-            if (isDelimiter(str.charCodeAt(i)))
+            if (DtUtil.isDelimiter(str.charCodeAt(i)))
                 return i;
         return -1;
     }
@@ -10161,7 +10158,7 @@ Terminal.prototype.linkify = function(str, start, end, delimiter/*unused*/) {
             // Check if we're at start of line
             // Roughly equivalue to: this.outputContainer.offsetLeft
             // - but that causes expensive re-flow
-            for (let p = this.outputContainer; ! isBlockNode(p); ) {
+            for (let p = this.outputContainer; ! DtUtil.isBlockNode(p); ) {
                 let pp = p.parentNode;
                 if (pp.firstChild != p)
                     return false;
@@ -10428,7 +10425,7 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
         } else {
             let rect;
             if (this.viewCaretNode.parentNode) {
-                rect = positionBoundingRect();
+                rect = DtUtil.positionBoundingRect();
             } else {
                 let cursor = this.outputBefore instanceof Element ? this.outputBefore
                     : this.outputContainer instanceof Element ? this.outputContainer
@@ -10688,10 +10685,10 @@ Terminal.prototype.editorMoveLines =
         for (;;) {
             let deltaY = 0.5 * rect.height;
             let goalY = rect.top - deltaY;
-            let new_pos = caretFromPoint(rect.x, goalY);
+            let new_pos = DtUtil.caretFromPoint(rect.x, goalY);
             if (! new_pos || ! this._isAnAncestor(new_pos.offsetNode, this.buffers))
                 break;
-            const new_rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
+            const new_rect = DtUtil.positionBoundingRect(new_pos.offsetNode, new_pos.offset);
             if (new_rect.top <= rect.top || new_rect.bottom <= rect.bottom)
                 break;
             const rangeTraversed = new Range();
@@ -10714,7 +10711,7 @@ Terminal.prototype.editorMoveLines =
         const sel = document.getSelection();
         startNode = sel.focusNode;
         startOffset = sel.focusOffset;
-        rect = positionBoundingRect(startNode, startOffset);
+        rect = DtUtil.positionBoundingRect(startNode, startOffset);
     } else {
         let caret = this._caretNode;
         if (! caret || ! caret.parentNode)
@@ -10761,7 +10758,7 @@ Terminal.prototype.editorMoveLines =
             }
             this.buffers.scrollTop -= scroll;
             goalY += scroll;
-            rect = positionBoundingRect(prevNode, prevOffset);
+            rect = DtUtil.positionBoundingRect(prevNode, prevOffset);
         }
         let thisX = goalX;
         // Work-around for problem on Electron.
@@ -10773,7 +10770,7 @@ Terminal.prototype.editorMoveLines =
                     thisX = this.availWidth - 0.4 * this.charWidth;
             }
         }
-        let new_pos = caretFromPoint(thisX, goalY);
+        let new_pos = DtUtil.caretFromPoint(thisX, goalY);
         if (! new_pos || ! this._isAnAncestor(new_pos.offsetNode, this.buffers))
             break;
         if (! this._pagingMode) {
@@ -10781,7 +10778,7 @@ Terminal.prototype.editorMoveLines =
                 break;
             // if (in prompt or content-value) adjust
         }
-        const new_rect = positionBoundingRect(new_pos.offsetNode, new_pos.offset);
+        const new_rect = DtUtil.positionBoundingRect(new_pos.offsetNode, new_pos.offset);
         if (backwards
             ? new_rect.top >= rect.top || new_rect.bottom >= rect.bottom
             : new_rect.top <= rect.top || new_rect.bottom <= rect.bottom) {
@@ -11208,7 +11205,7 @@ Terminal.prototype.editMove = function(count, action, unit,
                 range.setStart(sel.focusNode, sel.focusOffset);
         }
         let scanState = { linesCount: 0, todo: todo, unit: unit, stopAt: stopAt };
-        scanInRange(range, backwards, scanState);
+        DtUtil.scanInRange(range, backwards, scanState);
         linesCount = scanState.linesCount;
         todo = scanState.todo;
         if (doDelete) {
@@ -11405,7 +11402,7 @@ Terminal.loadSavedFile = function(topNode, url) {
             RETURN_DOM_FRAGMENT: true // return a document object instead of a string
 
         };
-        topNode.innerHTML = scrubHtml(responseText, {});
+        topNode.innerHTML = DtUtil.scrubHtml(responseText, {});
 
         let name = "domterm";
         const dt = new Terminal(name, topNode, 'view-saved');

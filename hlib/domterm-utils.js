@@ -1,7 +1,3 @@
-export {toJson, fromJson, scrubHtml, isBlockTag, isBlockNode, isNormalBlock,
-        isEmptyTag, escapeText, toFixed, forEachElementIn, forEachTextIn,
-        scanInRange, caretFromPoint, positionBoundingRect, isDelimiter };
-
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
         return { "%T": "Map", "$V": Array.from(value.entries()) };
@@ -18,11 +14,11 @@ function jsonReviver(key, value) {
     return value;
 }
 
-function toJson(value) {
+export function toJson(value) {
     return JSON.stringify(value, jsonReplacer);
 }
 
-function fromJson(text) {
+export function fromJson(text) {
     return JSON.parse(text, jsonReviver);
 }
 
@@ -34,14 +30,14 @@ const escapeMap = {
     "'": '&#039;'
 };
 
-function escapeText(text) {
+export function escapeText(text) {
     // Assume single quote is not used in attributes
     return text.replace(/[&<>"]/g,
                         function(m) { return escapeMap[m]; });
 };
 
 // Like Number.toFixed, but strip off trailing zeros and decimal point
-function toFixed(n, d) {
+export function toFixed(n, d) {
     let s = Number(n).toFixed(d);
     let nzeros = 0;
     let len = s.length;
@@ -287,7 +283,7 @@ function elementInfo(tag, parents=null) {
     return v;
 };
 
-function scrubHtml(str, options = {}) {
+export function scrubHtml(str, options = {}) {
     function skipWhitespace(pos) {
         for (; pos < len; pos++) {
             let c = str.charCodeAt(pos);
@@ -585,21 +581,21 @@ function allowAttribute(name, value, einfo, parents) {
     return true;
 };
 
-function isEmptyTag(tag) { // lowercase tag
+export function isEmptyTag(tag) { // lowercase tag
     return (elementInfo(tag, null) & ELEMENT_KIND_EMPTY) == 0;
 }
 
-function isBlockTag(tag) { // lowercase tag
+export function isBlockTag(tag) { // lowercase tag
     var einfo = elementInfo(tag, null);
     return (einfo & ELEMENT_KIND_INLINE) == 0;
 }
 
-function isBlockNode(node) {
+export function isBlockNode(node) {
     return node instanceof Element
         && isBlockTag(node.tagName.toLowerCase());
 };
 
-function isNormalBlock(node) {
+export function isNormalBlock(node) {
     let tag = node.nodeName;
     return tag == "PRE" || tag == "P" || tag == "DIV";
 }
@@ -613,7 +609,12 @@ function isNormalBlock(node) {
 * The function may safely remove or replace the active node,
 * or change its children.
 */
-function forEachElementIn(node, func, allNodes=false, backwards=false, start=backwards?node.lastChild:node.firstChild, elementExit=null) {
+export function forEachElementIn(node,
+                                 func,
+                                 allNodes=false,
+                                 backwards=false,
+                                 start=backwards?node.lastChild:node.firstChild,
+                                 elementExit=null) {
     let starting = true;
     for (var cur = start; ;) {
         if (cur == null || (cur == node && !starting))
@@ -656,7 +657,7 @@ function forEachElementIn(node, func, allNodes=false, backwards=false, start=bac
     return null;
 };
 
-function forEachTextIn(el, fun) {
+export function forEachTextIn(el, fun) {
     let n = el;
     for (;;) {
         if (n instanceof Text) {
@@ -700,10 +701,11 @@ function editorNonWordChar(ch) {
  *   "visible-line" (stop before moving to different screen line),
  *   "input" (line-edit input area), or "buffer".
  * state.linesCount: increment for each (non-soft) newline
- * state.wrapText: function called on each text node
+ * state.wrapText: function called on each text node - return int or undefined
+ * - if wrapText returns integer, stop at that index
  * state.lineHandler: handler for non-stopping lines.
  */
-function scanInRange(range, backwards, state) {
+export function scanInRange(range, backwards, state) {
     let unit = state.unit;
     let doWords = unit == "word";
     let stopAt = state.stopAt;
@@ -793,12 +795,17 @@ function scanInRange(range, backwards, state) {
             if (node.nodeName == "SPAN"
                 && node.classList.contains('dt-cluster')) {
                 state.todo--;
+                let stopped = false;
                 if (state.wrapText && node.firstChild instanceof Text) {
                     const d = node.firstChild.data;
-                    state.wrapText(node.firstChild, d, d.length);
+                    const r = state.wrapText(node.firstChild, d, d.length);
+                    if (r != undefined) {
+                        state.todo = 0;
+                        stopped = r == 0;
+                    }
                 }
                 if (state.todo == 0) {
-                    updateRangeWhenDone(node, false);
+                    updateRangeWhenDone(node, stopped);
                     return null;
                 }
                 return false;
@@ -852,14 +859,17 @@ function scanInRange(range, backwards, state) {
         if (node == firstNode)
             istart = backwards ? range.endOffset : range.startOffset;
         let dend = node !== lastNode ? (backwards ? 0 : dlen)
-            : (backwards ? range.startOffset : dlen = range.endOffset);
+            : (backwards ? range.startOffset : (dlen = range.endOffset));
         let index = istart;
         for (;; ) {
             if (state.wrapText && (state.todo == 0 || index == dend)) {
-                if (backwards)
-                    state.wrapText(node, index, istart);
-                else
-                    state.wrapText(node, istart, index);
+                const r = state.wrapText(node,
+                                         backwards ? index : istart,
+                                         backwards ? istart : index);
+                if (r !== undefined) {
+                    state.todo = 0;
+                    index = r;
+                }
             }
             if (state.todo == 0) {
                 if (backwards)
@@ -908,7 +918,7 @@ function scanInRange(range, backwards, state) {
                      true, backwards, firstNode, elementExit);
 }
 
-const isDelimiter = (function() {
+export const isDelimiter = (function() {
     let delimiterChars = '()<>[]{}`;|\'"';
     let mask1 = 0; // mask for char values 32..63
     let mask2 = 0; // mask for char values 64..95
@@ -933,7 +943,7 @@ const isDelimiter = (function() {
     }
 })();
 
-function caretFromPoint(x, y) {
+export function caretFromPoint(x, y) {
     if (document.caretPositionFromPoint) {
         return document.caretPositionFromPoint(x, y);
     }
@@ -945,7 +955,8 @@ function caretFromPoint(x, y) {
     }
     return undefined;
 }
-function positionBoundingRect(node, offset) {
+
+export function positionBoundingRect(node, offset) {
     if (node === undefined) {
         const sel = document.getSelection();
         node = sel.focusNode;
