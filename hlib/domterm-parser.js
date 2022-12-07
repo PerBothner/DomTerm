@@ -2261,7 +2261,7 @@ class DTParser {
             break;
         case 111: // end prettyprinting-group
             if (term._currentPprintGroup != null) {
-                if (term._isAnAncestor(term.outputContainer, term._currentPprintGroup)) {
+                if (term._currentPprintGroup.contains(term.outputContainer)) {
                     var saveBefore = term.outputBefore;
                     var saveContainer = term.outputContainer;
                     for (;;) {

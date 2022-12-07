@@ -861,7 +861,7 @@ class Terminal {
         const group = this.currentCommandGroup();
         if (group && group.lastChild instanceof Element
             && group.lastChild.classList.contains("input-line")
-            && this._isAnAncestor(this.outputContainer, group.lastChild)) {
+            && group.lastChild.contains(this.outputContainer)) {
             const lineNo = this.getAbsCursorLine();
             let cur = this._splitParents(group);
             cur.classList.remove("input-line", "dt-editing-line");
@@ -1141,7 +1141,7 @@ Terminal.prototype.endCommandGroup = function(parentKey, maybePush) {
 
 Terminal.prototype.popCommandGroup = function(oldGroup) {
     let oldOutput;
-    if (oldGroup && ! this._isAnAncestor(this.outputContainer, oldGroup)) {
+    if (oldGroup && ! oldGroup.contains(this.outputContainer)) {
         oldGroup = null;
         oldOutput = null;
     } else
@@ -2106,8 +2106,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
                     // (Java stacktraces by default prints with tabs.)
                     if (prev && prev.nodeName == "SPAN"
                         && prev.getAttribute("std") == "error"
-                        && this._isAnAncestor(this.outputContainer,
-                                              current.previousSibling)) {
+                        && current.previousSibling.contains(this.outputContainer)) {
                         parent = current.previousSibling;
                         current = null;
                     }
@@ -3141,16 +3140,6 @@ DomTerm._isInElement = function(node, name="A") {
     }
 }
 
-Terminal.prototype._isAnAncestor = function(node, ancestor) {
-    while (node != ancestor) {
-        var parent = node.parentNode;
-        if (! parent)
-            return false;
-        node = parent;
-    }
-    return true;
-};
-
 Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getAbsCursorLine()) {
     if (absLine > 0)
         this._clearWrap(absLine-1);
@@ -3181,7 +3170,7 @@ Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getA
             parent = cur.parentNode;
         } else if (cur == end) {
             break;
-        } else if (end != null && this._isAnAncestor(end, cur)) {
+        } else if (end != null && cur.contains(end)) {
             parent = cur;
             cur = cur.firstChild;
         } else {
@@ -3198,7 +3187,7 @@ Terminal.prototype.deleteLinesIgnoreScroll = function(count, absLine = this.getA
         }
     }
     if (all) { // remove - never done FIXME
-        if (! this._isAnAncestor(start, this.topNode)) {
+        if (! this.topNode.contains(start)) {
             start = end;
             for (;;) {
                 if (DtUtil.isNormalBlock(start))
@@ -4241,7 +4230,7 @@ Terminal.prototype._updateSelected = function() {
             : sel.toString().length == 0);
     if (this._pagingMode > 0) {
         if (sel.focusNode !== null
-            && this._isAnAncestor(sel.focusNode, this.buffers)) {
+            && this.buffers.contains(sel.focusNode)) {
             let r = document.createRange();
             let focusNode = sel.focusNode;
             let focusOffset = sel.focusOffset;
@@ -4281,7 +4270,7 @@ Terminal.prototype._updateSelected = function() {
             targetPreNode = dt._getOuterBlock(sel.focusNode);
             moveCaret = targetPreNode != null;
         } else if (dt._miniBuffer) {
-            moveCaret = dt._isAnAncestor(sel.focusNode, dt._miniBuffer);
+            moveCaret = dt._miniBuffer.contains(sel.focusNode);
         } else {
             targetPreNode = dt._getOuterPre(sel.focusNode);
             currentPreNode = this._getOuterPre(this.outputContainer);
@@ -4305,7 +4294,7 @@ Terminal.prototype._updateSelected = function() {
             // Alternatively: use input span, which does not include initial prompt
             if (targetFirst instanceof Element
                 && targetFirst.getAttribute("std")==="prompt"
-                && dt._isAnAncestor(targetNode, targetFirst)) {
+                && targetFirst.contains(targetNode)) {
                 targetNode = targetFirst.parentNode;
                 targetOffset = 1;
             }
@@ -8119,7 +8108,7 @@ Terminal.prototype.processEnter = function() {
     this._restoreInputLine(false);
     this.editorUpdateRemote();
     if (this._currentEditingLine
-        && this._isAnAncestor(this.outputContainer, this._currentEditingLine)) {
+        && this._currentEditingLine.contains(this.outputContainer)) {
         let cl = this._currentEditingLine.classList;
         if (! cl.contains('input-line'))
             cl.add('input-line');
@@ -9031,7 +9020,7 @@ Terminal.prototype._pushToCaret = function(useFocus = false) {
         this.outputContainer = this.outputBefore.parentNode;
     }
     this.outputInWide = false;
-    if (wasStyleSpan && this._isAnAncestor(this.outputBefore, this._currentStyleSpan))
+    if (wasStyleSpan && this._currentStyleSpan.contains(this.outputBefore))
         this._currentStyleSpan = this.outputContainer;
     this.resetCursorCache();
     return saved;
@@ -9432,7 +9421,6 @@ Terminal.sendSavedHtml = function(dt, html) {
 }
 
 Terminal.prototype._isOurEvent = function(event) {
-    //return this._isAnAncestor(event.target, this.topNode);
     return this.hasFocus();
 }
 
@@ -9643,13 +9631,13 @@ Terminal.prototype._checkTree = function() {
             error("homeLine after current");
         this.currentAbsLine = aline;
     }
-    if (! this._isAnAncestor(this.outputContainer, this.initial))
+    if (! this.initial.contains(this.outputContainer))
         error("outputContainer not in initial");
     if (this._currentPprintGroup != null
-        && ! this._isAnAncestor(this.outputContainer, this._currentPprintGroup))
+        && ! this._currentPprintGroup.contains(this.outputContainer))
         error("not in non-null pprint-group");
     for (let i = nlines; --i >= this.homeLine; )
-        if (! this._isAnAncestor(this.lineStarts[i], this.initial))
+        if (! this.initial.contains(this.lineStarts[i]))
             error("line "+i+" not in initial");
     if (this._caretNode && this._caretNode.firstElementChild)
         error("element in caret");
@@ -9695,7 +9683,7 @@ Terminal.prototype._checkTree = function() {
                 if (DtUtil.isBlockNode(cur)) {
                     currentLineStart = cur;
                 } else {
-                    if (! this._isAnAncestor(cur, currentLineStart))
+                    if (! currentLineStart.contains(cur))
                         error("line start node not in line start block");
                 }
                 istart++;
@@ -9741,7 +9729,7 @@ Terminal.prototype._checkTree = function() {
         const main = DomTerm._currentBufferNode(this, 0);
         if (! main || main == this.initial)
             error("missing main-screenbuffer");
-        if (this._isAnAncestor(this.initial, main))
+        if (main.contains(this.initial))
             error("alternate-screenbuffer nested in main-screenbuffer");
     }
 };
@@ -10686,7 +10674,7 @@ Terminal.prototype.editorMoveLines =
             let deltaY = 0.5 * rect.height;
             let goalY = rect.top - deltaY;
             let new_pos = DtUtil.caretFromPoint(rect.x, goalY);
-            if (! new_pos || ! this._isAnAncestor(new_pos.offsetNode, this.buffers))
+            if (! new_pos || ! this.buffers.contains(new_pos.offsetNode))
                 break;
             const new_rect = DtUtil.positionBoundingRect(new_pos.offsetNode, new_pos.offset);
             if (new_rect.top <= rect.top || new_rect.bottom <= rect.bottom)
@@ -10771,10 +10759,10 @@ Terminal.prototype.editorMoveLines =
             }
         }
         let new_pos = DtUtil.caretFromPoint(thisX, goalY);
-        if (! new_pos || ! this._isAnAncestor(new_pos.offsetNode, this.buffers))
+        if (! new_pos || ! this.buffers.contains(new_pos.offsetNode))
             break;
         if (! this._pagingMode) {
-            if (! this._isAnAncestor(new_pos.offsetNode, this._inputLine))
+            if (! this._inputLine.contains(new_pos.offsetNode))
                 break;
             // if (in prompt or content-value) adjust
         }
@@ -10967,7 +10955,7 @@ Terminal.prototype._newlineInInputLine = function(i) {
     // return start.nodeName == "SPAN" &&  start != this._inputLine.nextSibling
     return i > 0 && i < this.lineStarts.length
         && this.lineStarts[i] == this.lineEnds[i-1]
-        && this._isAnAncestor(this.lineStarts[i], this._inputLine);
+        && this._inputLine.contains(this.lineStarts[i]);
 }
 
 Terminal.prototype.editorContinueInput = function() {
@@ -11171,8 +11159,8 @@ Terminal.prototype.editMove = function(count, action, unit,
     let sel = document.getSelection();
     let useSelection = ! sel.isCollapsed
         && (! this._miniBuffer
-            || (this._isAnAncestor(sel.focusNode, this._miniBuffer)
-                && this._isAnAncestor(sel.anchorNode, this._miniBuffer)));
+            || (this._miniBuffer.contains(sel.focusNode)
+                && this._miniBuffer.contains(sel.anchorNode)));
     if (useSelection && doDelete) {
         this.deleteSelected(action=="kill");
         if (this._pagingMode == 0)
