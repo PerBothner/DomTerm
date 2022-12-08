@@ -2322,6 +2322,12 @@ titlebar, or @code{domterm} to use a custom titlebar (in HTML).
 Further options and customization is planned for later.
 The default on Electron, Wry, and Qt is @code{domterm},
 and @code{system} otherwise.
+
+@item @code{@b{subwindows} =} @var{mode}
+If @var{mode} is @code{no}, disable support for sub-windows,
+which means all windows are top-level windows.
+Defaults to @code{yes}, unless running under a tiling window manager.
+(Currently only Sway is detected.) @emph{(Experimental.)}
 @end table
 
 @node Applications

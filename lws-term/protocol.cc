@@ -2456,6 +2456,13 @@ display_pipe_session(struct options *options, struct pty_client *pclient)
     return tclient;
 }
 
+bool
+in_tiling_window_manager()
+{
+    char *desktop = getenv("XDG_SESSION_DESKTOP");
+    return desktop != nullptr && strcmp(desktop, "sway") == 0;
+}
+
 int
 display_session(struct options *options, struct pty_client *pclient,
                 const char *url, enum window_kind wkind)
@@ -2590,10 +2597,20 @@ display_session(struct options *options, struct pty_client *pclient,
             }
             if (options->headless)
                 sb.printf("&headless=true");
-            if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
-                && strcmp(browser_specifier, "qt-frames") != 0) {
-                sb.printf("&subwindows=qt");
-            }
+
+            std::string subwindows = get_setting_s(options->settings, "subwindows");
+            if (subwindows.empty()) {
+                if (in_tiling_window_manager()) {
+                    subwindows = "no";
+                } else if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
+                           && strcmp(browser_specifier, "qt-frames") != 0) {
+                    subwindows = "qt";
+                }
+            } else if (subwindows == "none")
+                subwindows = "no";
+            if (! subwindows.empty())
+                sb.printf("&subwindows=%s", subwindows.c_str());
+
             std::string titlebar = get_setting_s(options->settings, "titlebar");
             if (! titlebar.empty())
                 sb.printf("&titlebar=%s", url_encode(titlebar).c_str());

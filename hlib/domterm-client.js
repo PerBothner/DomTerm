@@ -1,5 +1,7 @@
 var maxAjaxInterval = 2000;
 
+// These should perhaps be combined
+DomTerm.subwindows = true;
 DomTerm.simpleLayout = false;
 
 DomTerm.addTitlebar = false;
@@ -425,6 +427,8 @@ function loadHandler(event) {
     if (m === "qt") {
         DomTerm.useToolkitSubwindows = true;
         DomTerm.useIFrame = 2;
+    } else if (m === "no") {
+        DomTerm.subwindows = false;
     }
     DomTerm.layoutTop = document.body;
     if (DomTerm.verbosity > 0)
@@ -472,6 +476,8 @@ function loadHandler(event) {
         if (DomTerm.addTitlebar) {
             let titlebarNode = document.createElement('div');
             titlebarNode.classList.add('dt-titlebar');
+            if (DomTerm.versions.wry)
+                titlebarNode.setAttribute("data-tauri-drag-region", "");
             titlebarNode.spellcheck = false;
             bodyNode.appendChild(titlebarNode);
             DomTerm.titlebarElement = titlebarNode;
@@ -495,7 +501,7 @@ function loadHandler(event) {
     if (open_encoded)
         DomTerm.useIFrame = 2;
 
-    let layoutInitAlways = DomTerm.useIFrame == 2 || DomTerm.addTitlebar;
+    let layoutInitAlways = DomTerm.subwindows && (DomTerm.useIFrame == 2 || DomTerm.addTitlebar);
     if (DomTerm.useIFrame || layoutInitAlways) {
         if (! DomTerm.isInIFrame()) {
             DomTerm.dispatchTerminalMessage = function(command, ...args) {
@@ -636,7 +642,8 @@ function loadHandler(event) {
             let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
             let parent = DomTerm.layoutTop;
             // only needed if we might use DnD setDragImage
-            if (! DomTerm.isSubWindow() && ! DomTerm.useToolkitSubwindows) {
+            if (! DomTerm.isSubWindow() && ! DomTerm.useToolkitSubwindows
+               && DomTerm.subwindows) {
                 const wrapper = document.createElement("div");
                 wrapper.classList.add("domterm-wrapper");
                 parent.appendChild(wrapper);
