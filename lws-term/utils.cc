@@ -923,12 +923,12 @@ find_in_path(const char *name)
         if (colon == NULL)
             colon = end;
         if (path != colon) {
-             sprintf(buf, "%.*s/%s", (int) (colon-path), path, name);
+            sprintf(buf, "%.*s/%s", (int) (colon-path), path, name);
             if (access(buf, X_OK) == 0)
                 return buf;
         }
         if (colon == end)
-            return NULL;
+            return nullptr;
         path = colon + 1;
     }
 }
