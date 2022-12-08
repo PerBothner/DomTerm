@@ -795,14 +795,16 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
 #endif
                     dirname_length = sl ? sl - argv0 : -1;
                 }
-                if (dirname_length > 0
-                    && strcmp(path, find_in_path("domterm")) != 0) {
-                    char *old_path = getenv("PATH");
-                    char *buf = (char *)
-                        xmalloc(dirname_length + strlen(old_path) + 20);
-                    sprintf(buf, "PATH=%.*s:%s",
-                            dirname_length, path, old_path);
-                    put_to_env_array(nenv, env_max, buf);
+                if (dirname_length > 0) {
+                    char *dpath = find_in_path("domterm");
+                    if (dpath == nullptr || strcmp(path, dpath) != 0) {
+                        char *old_path = getenv("PATH");
+                        char *buf = (char *)
+                            xmalloc(dirname_length + strlen(old_path) + 20);
+                        sprintf(buf, "PATH=%.*s:%s",
+                                dirname_length, path, old_path);
+                        put_to_env_array(nenv, env_max, buf);
+                    }
                 }
             }
 
