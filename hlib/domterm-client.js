@@ -701,7 +701,8 @@ function loadHandler(event) {
         }
         DomTerm.layoutBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
     }
-    DomTerm._savedMenubarBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
+    if (lastBodyChild && lastBodyChild.parentNode == DomTerm._savedMenubarParent)
+        DomTerm._savedMenubarBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
     if (!DomTerm.inAtomFlag)
         location.hash = "";
 }
