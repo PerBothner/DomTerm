@@ -16,6 +16,12 @@ DomTerm.createMenus = function(options) {
         if (electronMenus)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', show);
         else {
+            if (! DomTerm.subwindows
+                && DomTerm._savedMenubarParent
+                && DomTerm._savedMenubarParent.classList.contains("dt-titlebar-prefix")) {
+                DomTerm._savedMenubarParent.parentNode.style.display =
+                    show ? "" : "none";
+            }
             Menu.setApplicationMenu(show ? DomTerm._savedMenuBar : null,
                                     DomTerm._savedMenubarParent,
                                     DomTerm._savedMenubarBefore);
