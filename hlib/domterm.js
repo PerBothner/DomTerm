@@ -179,6 +179,13 @@ DomTerm.formatWindowLabel = function(info) {
     return label;
 };
 
+DomTerm.displayTitleString = function(str) {
+    if (window.setWindowTitle)
+        window.setWindowTitle(str); // hook used by -Bwebview, -Bwry, -Bqt
+    else
+       document.title = str;
+}
+
 DomTerm.displayWindowTitle = function(info) {
     let str = DomTerm.formatWindowLabel(info) || "";
     const title = info.windowTitle;
@@ -187,11 +194,7 @@ DomTerm.displayWindowTitle = function(info) {
             str += " ";
         str += "(" + title +")";
     }
-
-    if (window.setWindowTitle)
-        window.setWindowTitle(str); // hook used by -Bwebview, -Bwry, -Bqt
-    else
-       document.title = str;
+    DomTerm.displayTitleString(str);
 }
 
 DomTerm.forEachTerminal = function(func) {

@@ -313,12 +313,16 @@ function createTitlebar(titlebarNode, tabs) {
         titleNode.innerText = "DomTerm window";
         DomTerm.displayWindowTitle = (info) => {
             // optimize if (partially) unchanged - FIXME
-            titleNode.innerText = DomTerm.formatWindowLabel(info);
+            let str = DomTerm.formatWindowLabel(info);
+            titleNode.innerText = str;
             const wtitle = info.windowTitle;
             if (wtitle) {
-                const tnode = DomTerm.createSpanNode("domterm-windowname", "(" + wtitle +")");
+                const wstr = "(" + wtitle +")";
+                const tnode = DomTerm.createSpanNode("domterm-windowname", wstr);
+                str = str ? str + " " + wstr : wstr;
                 titleNode.appendChild(tnode);
             }
+            DomTerm.displayTitleString(str);
         };
     }
     function dragWindowTarget(target) {

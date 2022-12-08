@@ -89,11 +89,7 @@ fn main() -> wry::Result<()> {
 }})();
   "#,
             wversion_js,
-            if titlebar {
-                "window.setWindowTitle = (str)=>{ipc.postMessage('set-title '+str);}\n"
-            } else {
-                ""
-            },
+            "window.setWindowTitle = (str)=>{ipc.postMessage('set-title '+str);}\n",
             wry_version
         );
 
