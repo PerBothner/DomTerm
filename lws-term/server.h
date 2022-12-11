@@ -538,8 +538,8 @@ extern void print_version(FILE*);
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, const char *arg);
 extern struct pty_client *find_session(const char *specifier);
-extern int check_single_window_option(const std::string& woption,
-                                      const char *cmd, struct options *opts);
+extern int check_single_window_option(const std::string& woption, const char *cmd,
+                                      const struct options *opts, bool negative_if_top = false);
 
 #ifndef DOMTERM_DIR_RELATIVE
 /* Data directory, relative to binary's parent directory.

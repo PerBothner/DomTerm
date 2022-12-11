@@ -10,7 +10,7 @@ typedef const string_t *arglist_t; // Also used for environments
 // This type indicates the receiver "owns" (is responsible for freeing) it
 typedef arglist_t argblob_t;
 
-extern void printf_error(struct options *opts, const char *format, ...)
+extern void printf_error(const struct options *opts, const char *format, ...)
 #ifdef __GNUC__
     __attribute__((format(printf, 2,3)))
 #endif

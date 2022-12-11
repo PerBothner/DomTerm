@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <string>
 #include <set>
+#include <limits.h>
 
 #define DO_HTML_ACTION_IN_SERVER PASS_STDFILES_UNIX_SOCKET
 #define COMPLETE_FOR_BASH_CMD "#complete-for-bash"
@@ -35,7 +36,7 @@ static void insert_window(std::set<int>& windows,
 
 bool check_window_option(const std::string& option,
                          std::set<int>& windows,
-                         const char *cmd, struct options *opts,
+                         const char *cmd, const struct options *opts,
                          bool negative_if_top = false)
 {
     size_t start = 0;
@@ -122,14 +123,15 @@ bool check_window_option(const std::string& option,
 }
 
 int check_single_window_option(const std::string& woption,
-                               const char *cmd, struct options *opts)
+                               const char *cmd, const struct options *opts,
+                               bool negative_if_top)
 {
     std::set<int> windows;
-    if (! check_window_option(woption, windows, cmd, opts))
-        return -1;
+    if (! check_window_option(woption, windows, cmd, opts, negative_if_top))
+        return INT_MIN;
     if (windows.size() != 1 ) {
         printf_error(opts, "domterm %s: multiple windows not allowed", cmd);
-        return -1;
+        return INT_MIN;
     }
     return *windows.begin();
 }

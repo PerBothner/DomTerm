@@ -870,7 +870,7 @@ sbuf::copy_file(FILE*in)
 }
 
 void
-printf_error(struct options *opts, const char *format, ...)
+printf_error(const struct options *opts, const char *format, ...)
 {
     sbuf sb;
     bool in_domterm = false;  // TODO - needs some work to get right
