@@ -1158,7 +1158,7 @@ handle_tlink(const char *tmplate, const json& obj)
         }
     }
     lwsl_notice("open linked application %s\n", command);
-    bool r = start_command(main_options, command) == EXIT_SUCCESS;
+    bool r = start_command(main_options, command, nullptr) == EXIT_SUCCESS;
     free(command);
     return r;
 }
@@ -2141,8 +2141,7 @@ callback_proxy(struct lws *wsi, enum lws_callback_reasons reason,
         // read data, send to
         tclient->inb.extend(1024);
         n = read(tclient->options->fd_in,
-                         tclient->inb.buffer + tclient->inb.len,
-                         tclient->inb.size - tclient->inb.len);
+                 tclient->inb.avail_start(), tclient->inb.avail_space());
         lwsl_info("proxy RAW_RX_FILE n:%ld avail:%zu-%zu\n",
                     (long) n, tclient->inb.size, tclient->inb.len);
         if (n <= 0) {
@@ -2588,6 +2587,7 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     options->name_option.clear();
     int r = EXIT_SUCCESS;
+
     if (paneOp > 0) {
         tclient->main_window =
             wclient->main_window || wclient->connection_number;
@@ -2673,7 +2673,7 @@ display_session(struct options *options, struct pty_client *pclient,
             sb.printf("%s", url);
         if (encoded)
             free(encoded);
-        r = do_run_browser(options, tclient, sb.null_terminated());
+        r = do_run_browser(options, tclient, sb.null_terminated(), wnum);
     }
     return r;
 }

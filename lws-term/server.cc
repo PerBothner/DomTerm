@@ -3,6 +3,7 @@
 
 #include <sys/file.h>
 #include <regex.h>
+#include <limits.h>
 extern char **environ;
 
 #ifndef DEFAULT_SHELL
@@ -149,12 +150,24 @@ subst_run_command(struct options *opts, const char *browser_command,
     std::string cmd = subst_command(opts, browser_command, url);
     const char *ccmd = cmd.c_str();
     lwsl_notice("starting frontend command: %s\n", ccmd);
-    return start_command(opts, ccmd);
+    return start_command(opts, ccmd, nullptr);
 }
 
-int start_command(struct options *opts, const char *cmd) {
+/**
+ * Run 'cmd', normall in a shell.
+ * If 'cclient' is null, this is similar to system(cmd).
+ * If 'cclient' is non-null, set cclient->read_fd for reading from command's stdout.
+ * (This is similar to popen(cmd, "r").)
+ */
+int start_command(struct options *opts, const char *cmd,
+                  struct browser_cmd_client *cclient)
+{
+    bool start_only = cclient != nullptr;
     arglist_t args = parse_args(cmd, true);
     const char *arg0;
+    int pipe_fds[2];
+    if (start_only && pipe(pipe_fds) < 0)
+        return -1;
     if (args != NULL) {
         arg0 = find_in_path(args[0]);
         if (arg0 == NULL) {
@@ -206,13 +219,30 @@ int start_command(struct options *opts, const char *cmd) {
 #endif
         }
 #endif
-        daemonize();
+        if (start_only) {
+            (void) close(pipe_fds[0]);
+            if (pipe_fds[1] != STDOUT_FILENO) {
+                (void) dup2(pipe_fds[1], STDOUT_FILENO);
+                (void) close(pipe_fds[1]);
+            }
+        } else {
+            daemonize();
+        }
         execv(arg0, (char**) args);
         exit(-1);
     } else if (pid > 0) {// master
         free((void*) args);
+        if (start_only) {
+            cclient->cmd_pid = pid;
+            cclient->read_fd = pipe_fds[0];
+            (void)close(pipe_fds[1]);
+        }
     } else {
         printf_error(opts, "could not fork front-end command");
+        if (start_only) {
+            (void)close(pipe_fds[0]);
+            (void)close(pipe_fds[1]);
+        }
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -241,6 +271,8 @@ static const struct lws_protocols protocols[] = {
     /* Unix domain socket for client to send to commands to server.
        This is the listener socket on the server. */
     {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
+
+    {"browser-output", callback_browser_cmd,  sizeof(struct browser_cmd_client),  0},
 
 #if REMOTE_SSH
     /* "proxy" protocol is an alternative to "domterm" in that
@@ -677,7 +709,7 @@ webview_command(struct options *options)
 
 /** Return freshly allocated command string or NULL */
 static char *
-wry_command(struct options *options)
+wry_command(struct options *options, int wnum)
 {
     char *cmd = get_bin_relative_path("/libexec/dt-wry");
     if (cmd == NULL || access(cmd, X_OK) != 0) {
@@ -691,6 +723,8 @@ wry_command(struct options *options)
     if (geometry) {
         sb.printf(" --geometry %s", geometry);
     }
+    if (wnum > 0)
+        sb.printf(" --window-number %d", wnum);
     std::string titlebar = get_setting_s(options->settings, "titlebar");
     if (! titlebar.empty())
         sb.printf(" --titlebar '%s'",
@@ -787,7 +821,7 @@ default_link_command(const char *url)
 /** Request browser client to open new browser window. */
 void
 browser_run_browser(struct options *options, const char *url,
-                    struct tty_client *tclient)
+                    struct tty_client *tclient, int wnum)
 {
     json jobj;
     jobj["url"] = url;
@@ -799,14 +833,17 @@ browser_run_browser(struct options *options, const char *url,
     std::string titlebar = get_setting_s(options->settings, "titlebar");
     if (! titlebar.empty())
         jobj["titlebar"] = titlebar;
+    if (wnum > 0)
+        jobj["windowNumber"] = wnum;
     printf_to_browser(tclient,
                       URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
                       jobj.dump().c_str());
 }
 
 int
-do_run_browser(struct options *options, struct tty_client *tclient, const char *url)
+do_run_browser(struct options *options, struct tty_client *tclient, const char *url, int wnum)
 {
+    bool start_only = false;
     std::string browser_specifier_string; // placeholder for allocation
     const char *browser_specifier;
     if (options != NULL && ! options->browser_command.empty()) {
@@ -876,11 +913,12 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                     else
                         break;
                 } else if (cmd == "wry") {
-                    browser_specifier = wry_command(options);
+                    browser_specifier = wry_command(options, wnum);
                     if (browser_specifier == NULL)
                         error_if_single = "cannot find dt-wry command";
                     else {
                         do_wry = true;
+                        start_only = true;
                         break;
                     }
                 } else if (cmd == "qt"
@@ -969,7 +1007,7 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
         for (struct tty_client *t = main_windows.first(); t != nullptr;
              t = main_windows.next(t)) {
             if (t->version_info && strstr(t->version_info, do_pattern)) {
-                browser_run_browser(options, url, t);
+                browser_run_browser(options, url, t, wnum);
                 lws_callback_on_writable(t->wsi);
                 return EXIT_SUCCESS;
             }
@@ -980,7 +1018,7 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
     // file. This verifies that the browser is running as the current user.
     // It is just a stub file that redirects to a http URL with the real
     // resources.  The loading of JavaScript and CSS is deferred to
-    // the redircted http file because CORS (Cross-Origin Resource Sharing)
+    // the redirected http file because CORS (Cross-Origin Resource Sharing)
     // restricts what we can do from file URLs.
 
     const char *hash_only =
@@ -1029,7 +1067,21 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
         return 0;
     }
     lwsl_notice("starting frontend command: %s\n", cmd.c_str());
-    int r = start_command(options, cmd.c_str());
+    int r;
+    browser_cmd_client *cclient = ! start_only ? nullptr
+        : new browser_cmd_client();
+    r = start_command(options, cmd.c_str(), cclient);
+    if (cclient) {
+        if (r < 0)
+            return EXIT_FAILURE;
+        lws_sock_file_fd_type fd;
+        fd.filefd = cclient->read_fd;
+        struct lws *cmd_lws =
+            lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd,
+                                       "browser-output", NULL);
+        lws_set_wsi_user(cmd_lws, cclient);
+        r = EXIT_SUCCESS;
+    }
     options->qt_frontend = false;
     return r;
 }
@@ -1896,6 +1948,60 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
                      port, SERVER_KEY_LENGTH, server_key);
     obuf->printf("</head>\n<body>%.*s</body>\n</html>\n",
                  body_length, body_text);
+}
+
+int
+callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
+                     void *user, void *in, size_t len) {
+    struct browser_cmd_client *cclient = (struct browser_cmd_client *) lws_wsi_user(wsi);
+    int status = -1;
+    //lwsl_info("browser_cmd callback %d\n", reason);
+    switch (reason) {
+    case LWS_CALLBACK_RAW_CLOSE_FILE:
+        while (waitpid(cclient->cmd_pid, &status, 0) == -1 && errno == EINTR)
+            ;
+        lwsl_notice("front-end exited with code %d exitcode:%d, pid: %d\n", status, WEXITSTATUS(status), cclient->cmd_pid);
+        break;
+    case LWS_CALLBACK_RAW_RX_FILE: {
+        struct sbuf &obuf = cclient->output_buffer;
+        obuf.extend(1024);
+        ssize_t rcount = read(cclient->read_fd, obuf.avail_start(), obuf.avail_space());
+        if (rcount <= 0) {
+            lwsl_info("browser_cmd read %d bytes errno:%s\n", rcount, strerror(errno));
+            if (errno == EAGAIN)
+                return 0;
+            return -1;
+        }
+        obuf.len += rcount;
+        while (obuf.len > 0) {
+            char *text = obuf.null_terminated();
+            char *newline = strchr(text, '\n');
+            if (newline == nullptr)
+                break;
+            size_t linelen = newline - obuf.buffer;
+            *newline = '\0';
+            char *cmd = obuf.buffer;
+            if (strncmp(cmd, "CLOSE-WINDOW ", 13) == 0) {
+                char *end;
+                long wnum = strtol(cmd+13, &end, 10);
+                tty_client *mclient = wnum > 0 && ! end[0] ? main_windows(wnum) : nullptr;
+                if (mclient) {
+                    lwsl_info("front-end window %d closed\n", wnum);
+                    mclient->keep_after_unexpected_close = false;
+                    FORALL_WSCLIENT(mclient) {
+                        if (mclient->main_window == wnum)
+                            mclient->keep_after_unexpected_close = false;
+                    }
+                }
+            }
+            obuf.erase(0, linelen+1);
+        }
+    }
+        break;
+    default:
+        break;
+    }
+    return 0;
 }
 
 void

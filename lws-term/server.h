@@ -307,6 +307,14 @@ struct http_client {
     int length;
 };
 
+// Used for listening for message or close from browser process.
+struct browser_cmd_client {
+    //int window_number; may be multiple FIXME
+    int read_fd; // fd for reading browser's stdout
+    int cmd_pid;
+    sbuf output_buffer;
+};
+
 struct cmd_client {
     int socket;
 };
@@ -399,6 +407,8 @@ callback_pty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void
 extern int
 callback_cmd(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 extern int
+callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+extern int
 callback_inotify(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 extern int
 callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
@@ -415,8 +425,8 @@ extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
                            const char *, enum window_kind);
-extern int do_run_browser(struct options *, struct tty_client*, const char *url);
-extern int start_command(struct options *, const char *cmd);
+extern int do_run_browser(struct options *, struct tty_client*, const char *url, int wnum);
+extern int start_command(struct options *, const char *cmd, struct browser_cmd_client *);
 extern char* check_browser_specifier(const char *specifier);
 extern void printf_to_browser(struct tty_client *, const char *, ...);
 extern void fatal(const char *format, ...);

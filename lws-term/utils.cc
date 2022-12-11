@@ -829,6 +829,14 @@ void sbuf::reset()
     size = 0;
 }
 
+void sbuf::erase(size_t index, size_t count)
+{
+    if (count > len - index)
+        count = len - index;
+    memmove(buffer + index, buffer + index + count, len - index + count);
+    len -= count;
+}
+
 void
 sbuf::vprintf(const char *format, va_list ap)
 {

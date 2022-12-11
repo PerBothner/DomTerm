@@ -56,6 +56,7 @@ public:
     sbuf();
     ~sbuf();
     void reset();
+    void erase(size_t index, size_t count);
     void extend(int needed);
     void append(const char *bytes, ssize_t length);
     void append(const char *bytes) {
@@ -65,6 +66,8 @@ public:
         append(sb.buffer, sb.len);
     }
     void* blank(int space);
+    size_t avail_space() { return size - len; }
+    char *avail_start() { return buffer + len; }
     char *null_terminated();
     void copy_file(FILE* in);
     void vprintf(const char *format, va_list ap)

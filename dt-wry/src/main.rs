@@ -4,7 +4,8 @@
 
 use serde_json::Value;
 use std::collections::HashMap;
-use std::env;
+use std::env;use std::io::Write;
+use std::io;
 mod versions;
 
 fn main() -> wry::Result<()> {
@@ -37,6 +38,10 @@ fn main() -> wry::Result<()> {
             iarg += 1;
             options.insert("titlebar".to_string(),
                            serde_json::to_value(&args[iarg]).unwrap());
+        } else if arg == "--window-number" && iarg + 1 < args.len() {
+            iarg += 1;
+            options.insert("windowNumber".to_string(),
+                           serde_json::to_value(&args[iarg].parse::<i64>().unwrap()).unwrap());
         } else if arg == "--geometry" && iarg + 1 < args.len() {
             iarg += 1;
             let re = Regex::new(r"^(([0-9]+)x([0-9]+))?([-+][0-9]+[-+][0-9]+)?$").unwrap();
@@ -66,7 +71,7 @@ fn main() -> wry::Result<()> {
         options: &serde_json::Map<String, Value>,
         event_loop: &EventLoopWindowTarget<UserEvents>,
         proxy: EventLoopProxy<UserEvents>,
-    ) -> (WindowId, WebView) {
+    ) -> (WindowId, WebView, i32) {
         let url = options["url"].as_str().unwrap();
         let wversion = wry::webview::webview_version();
         let titlebar = match options.get("titlebar") {
@@ -92,6 +97,17 @@ fn main() -> wry::Result<()> {
             "window.setWindowTitle = (str)=>{ipc.postMessage('set-title '+str);}\n",
             wry_version
         );
+
+        let window_number =
+            if let Some(val) = options.get("windowNumber") {
+                if let Some(wnum) = val.as_i64() {
+                    wnum as i32
+                } else {
+                    -1
+                }
+            } else {
+                -1
+            };
 
         let window = WindowBuilder::new()
             .with_title(title)
@@ -164,17 +180,18 @@ fn main() -> wry::Result<()> {
             .build()
             .unwrap();
 
-        (window_id, webview)
+        (window_id, webview, window_number)
     }
 
-    let window_pair = create_new_window(
+    let window_triple = create_new_window(
         "DomTerm".to_string(),
         &options,
         // &script,
         &event_loop,
         proxy.clone(),
     );
-    webviews.insert(window_pair.0, window_pair.1);
+    let window_number = window_triple.2;
+    webviews.insert(window_triple.0, (window_triple.1, window_number));
 
     event_loop.run(move |event, event_loop, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -184,6 +201,8 @@ fn main() -> wry::Result<()> {
                 event, window_id, ..
             } => match event {
                 WindowEvent::CloseRequested => {
+                    let (_, window_number) = &webviews[&window_id];
+                    println!("CLOSE-WINDOW {}", window_number); io::stdout().flush().unwrap();
                     webviews.remove(&window_id);
                     if webviews.is_empty() {
                         *control_flow = ControlFlow::Exit
@@ -198,7 +217,7 @@ fn main() -> wry::Result<()> {
                     //          script,
                     &event_loop,
                     proxy.clone());
-                webviews.insert(window_pair.0, window_pair.1);
+                webviews.insert(window_pair.0, (window_pair.1, window_pair.2));
             }
             Event::UserEvent(UserEvents::CloseWindow(id)) => {
                 webviews.remove(&id);
@@ -208,7 +227,7 @@ fn main() -> wry::Result<()> {
             }
             Event::UserEvent(UserEvents::Devtools(_id, _op)) => {
                 #[cfg(debug_assertions)] {
-                    let webview = &webviews[&_id];
+                    let (webview, _) = &webviews[&_id];
                     if webview.is_devtools_open() {
                         webview.close_devtools();
                     } else {
