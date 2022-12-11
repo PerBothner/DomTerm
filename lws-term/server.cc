@@ -1253,7 +1253,7 @@ int process_options(int argc, arglist_t argv, struct options *opts)
         case BELOW_OPTION:
         case ABOVE_OPTION:
             opts->paneOp = c - PANE_OPTIONS_START;
-            opts->browser_command = argv[optind-1];
+            opts->paneBase = argv[optind-1];
             break;
         case PRINT_BROWSER_OPTION:
             opts->print_browser_only = true;

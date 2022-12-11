@@ -1543,13 +1543,11 @@ reportEvent(const char *name, char *data, size_t dlen,
         int paneOp = -1, oldWindowNum = -1, start_options = -1;
         sscanf(data, "%d,%d,%n", &paneOp, &oldWindowNum, &start_options);
         if (paneOp >= 0 && oldWindowNum > 0 && start_options > 0) {
-            options->paneOp = paneOp;
             char wbuf[20];
             sprintf(wbuf, "=%d", oldWindowNum);
-            std::string save_command = options->browser_command;
-            options->browser_command = wbuf;
+            options->paneBase = wbuf;
+            options->paneOp = paneOp;
             open_window(data+start_options, client);
-            options->browser_command = save_command;
         }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
         open_window(data, client);
@@ -2491,6 +2489,19 @@ display_session(struct options *options, struct pty_client *pclient,
       if (paneOp < 1 || paneOp > 13)
           paneOp = 0;
     }
+    std::string subwindows = get_setting_s(options->settings, "subwindow");
+    if (subwindows.empty())
+        subwindows = get_setting_s(main_options->settings, "subwindow");
+    if (subwindows.empty()) {
+        if (in_tiling_window_manager()) {
+            subwindows = "no";
+        } else if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
+                   && strcmp(browser_specifier, "qt-frames") != 0) {
+            subwindows = "qt";
+        }
+    } else if (subwindows == "none")
+        subwindows = "no";
+
     struct tty_client *tclient = nullptr;
     int wnum = -1;
     struct tty_client *wclient = nullptr;
@@ -2503,7 +2514,7 @@ display_session(struct options *options, struct pty_client *pclient,
             paneOp = -1;
             options->paneOp = -1;
         } else if (paneOp > 0) {
-            const char *eq = strchr(browser_specifier, '=');
+            const char *eq = strchr(options->paneBase.c_str(), '=');
             if (eq) {
                 std::string wopt = eq + 1;
                 int w = check_single_window_option(wopt, "(display)", options);
@@ -2524,8 +2535,35 @@ display_session(struct options *options, struct pty_client *pclient,
                 wclient = focused_client;
 
             options->paneOp = -1;
-            options->browser_command = "";
+            options->paneBase = "";
         }
+    }
+    if (paneOp > 0 && subwindows == "no") {
+        char *desktop = getenv("XDG_SESSION_DESKTOP");
+        if (desktop != nullptr && strcmp(desktop, "sway") == 0) {
+            char *swaymsg = find_in_path("swaymsg");
+            if (swaymsg) {
+                char buf[60];
+                int wnum = wclient ? wclient->connection_number : -1;
+                int blen = 0;
+                if (wnum >= 0)
+                    blen = sprintf(buf, "swaymsg '[title=\"DomTerm.*:%d\"]' focus;", wnum);
+                if (paneOp == pane_left || paneOp == pane_right || paneOp == pane_tab)
+                    sprintf(buf+blen, "swaymsg split h");
+                else if (paneOp == pane_above || paneOp == pane_below || paneOp == pane_best)
+                    sprintf(buf+blen, "swaymsg split v");
+                else
+                    buf[0] = 0;
+                if (buf[0]) {
+                    system(buf);
+                }
+            }
+            free(swaymsg);
+        }
+        paneOp = 0;
+    }
+
+    if (wkind != unknown_window) {
         tclient->options = link_options(options);
         if (wkind != main_only_window)
             wnum = set_connection_number(tclient, wnum);
@@ -2598,16 +2636,6 @@ display_session(struct options *options, struct pty_client *pclient,
             if (options->headless)
                 sb.printf("&headless=true");
 
-            std::string subwindows = get_setting_s(options->settings, "subwindows");
-            if (subwindows.empty()) {
-                if (in_tiling_window_manager()) {
-                    subwindows = "no";
-                } else if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
-                           && strcmp(browser_specifier, "qt-frames") != 0) {
-                    subwindows = "qt";
-                }
-            } else if (subwindows == "none")
-                subwindows = "no";
             if (! subwindows.empty())
                 sb.printf("&subwindows=%s", subwindows.c_str());
 

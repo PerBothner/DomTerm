@@ -334,6 +334,7 @@ public:
     std::string browser_command;
     const char *tty_packet_mode;
     int paneOp;
+    std::string paneBase;
     char *iface;
 #if HAVE_OPENSSL
     char *cert_path;
