@@ -78,7 +78,7 @@ maybe_daemonize()
 
 static std::string
 subst_command(struct options *opts, const char *browser_command,
-                  const char *url)
+              const char *url)
 {
     size_t clen = strlen(browser_command);
     const char *upos = strstr(browser_command, "%U");
@@ -132,11 +132,11 @@ subst_command(struct options *opts, const char *browser_command,
         }
     }
     if (upos) {
-      size_t beforeU = upos - browser_command;
-      cmd.printf("%.*s%s%.*s",
-                 (int) beforeU, browser_command,
-                 url_fixed,
-                 (int) (clen - beforeU - skip), upos+skip);
+        size_t beforeU = upos - browser_command;
+        cmd.printf("%.*s%s%.*s",
+                   (int) beforeU, browser_command,
+                   url_fixed,
+                   (int) (clen - beforeU - skip), upos+skip);
     } else
         cmd.printf("%s '%s'", browser_command, url_fixed);
     free(url_tmp);
@@ -228,57 +228,56 @@ struct lws_context_creation_info info;
 struct cmd_client *cclient;
 
 static const struct lws_protocols protocols[] = {
-        /* http server for (mostly) static data */
-        {"http-only", callback_http, sizeof(struct http_client),  0},
+    /* http server for (mostly) static data */
+    {"http-only", callback_http, sizeof(struct http_client),  0},
 
-        /* websockets server for communicating with browser */
-        {"domterm",   callback_tty,
-         BROKEN_LWS_SET_WSI_USER ? sizeof(struct tty_client*) : 0,  0},
+    /* websockets server for communicating with browser */
+    {"domterm",   callback_tty,
+     BROKEN_LWS_SET_WSI_USER ? sizeof(struct tty_client*) : 0,  0},
 
-        /* callbacks for pty I/O, one pty for each session (process) */
-        {"pty",       callback_pty,  sizeof(struct pty_client),  0},
+    /* callbacks for pty I/O, one pty for each session (process) */
+    {"pty",       callback_pty,  sizeof(struct pty_client),  0},
 
-        /* Unix domain socket for client to send to commands to server.
-           This is the listener socket on the server. */
-        {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
+    /* Unix domain socket for client to send to commands to server.
+       This is the listener socket on the server. */
+    {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
 
 #if REMOTE_SSH
-        /*
-          "proxy" protocol is an alternative to "domterm" in that
-          it proxies between a pty_client and a file (or socket?) handle(s):
-          (The pty/application runs on the "Remote" computer;
-          the browser/UI runs on the "Local" computer.)
-          The handles are stdout/stdin of an ssh (server) session.
-          The proxy-in protocol runs on the Remote end and copies input
-          (keystokes and other events) received via ssh to the pty/application.
-          Output read from the pty_client is written to the file handle (stdout)
-          (instead of being written to websocket client).
+    /* "proxy" protocol is an alternative to "domterm" in that
+       it proxies between a pty_client and a file (or socket?) handle(s):
+       (The pty/application runs on the "Remote" computer;
+       the browser/UI runs on the "Local" computer.)
+       The handles are stdout/stdin of an ssh (server) session.
+       The proxy-in protocol runs on the Remote end and copies input
+       (keystokes and other events) received via ssh to the pty/application.
+       Output read from the pty_client is written to the file handle (stdout)
+       (instead of being written to websocket client).
 
-          If the proxy wraps a socket, there is a single "proxy" wsi.
-          If the proxy is an input/output pair, then we need to
-          use two struct lws instances (the "proxy" instands wraps input,
-          while "proxy-out" wraps output), but they share the same
-          "user-data", the same tty_client instance.
-        */
-        { "proxy", callback_proxy, sizeof(struct tty_client),  0},
-        { "proxy-out", callback_proxy, 0,  0},
-        { "ssh-stderr", callback_ssh_stderr, sizeof(struct stderr_client), 0 },
+       If the proxy wraps a socket, there is a single "proxy" wsi.
+       If the proxy is an input/output pair, then we need to
+       use two struct lws instances (the "proxy" instands wraps input,
+       while "proxy-out" wraps output), but they share the same
+       "user-data", the same tty_client instance.
+    */
+    { "proxy", callback_proxy, sizeof(struct tty_client),  0},
+    { "proxy-out", callback_proxy, 0,  0},
+    { "ssh-stderr", callback_ssh_stderr, sizeof(struct stderr_client), 0 },
 #endif
 
 #if HAVE_INOTIFY
-        /* calling back for "inotify" to watch settings.ini */
-        {"inotify",    callback_inotify,  0,  0},
+    /* calling back for "inotify" to watch settings.ini */
+    {"inotify",    callback_inotify,  0,  0},
 #endif
 
-        {NULL,        NULL,          0,                          0}
+    {NULL,        NULL,          0,                          0}
 };
 
 #if !defined(LWS_WITHOUT_EXTENSIONS)
 // websocket extensions
 static const struct lws_extension extensions[] = {
-        {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate"},
-        {"deflate-frame",      lws_extension_callback_pm_deflate, "deflate_frame"},
-        {NULL, NULL, NULL}
+    {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate"},
+    {"deflate-frame",      lws_extension_callback_pm_deflate, "deflate_frame"},
+    {NULL, NULL, NULL}
 };
 #endif
 
@@ -289,23 +288,23 @@ static struct lws_protocol_vhost_options extra_mimetypes = {
 };
 
 static struct lws_http_mount mount_domterm_zip = {
-        NULL,                   /* linked-list pointer to next*/
-        ZIP_MOUNT,              /* mountpoint in URL namespace on this vhost */
-        "<change this>",      /* handler */
-        "",   /* default filename if none given */
-        NULL,
-        NULL,
-        &extra_mimetypes,
-        NULL,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        LWSMPRO_FILE,   /* origin points to a callback */
-        sizeof(ZIP_MOUNT)-1,
-        NULL,
+    NULL,                   /* linked-list pointer to next*/
+    ZIP_MOUNT,              /* mountpoint in URL namespace on this vhost */
+    "<change this>",      /* handler */
+    "",   /* default filename if none given */
+    NULL,
+    NULL,
+    &extra_mimetypes,
+    NULL,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    LWSMPRO_FILE,   /* origin points to a callback */
+    sizeof(ZIP_MOUNT)-1,
+    NULL,
 };
 
 #define CHROME_OPTION 1000
@@ -338,62 +337,62 @@ static struct lws_http_mount mount_domterm_zip = {
 
 // command line options
 static const struct option options[] = {
-        {"port",         required_argument, NULL, 'p'},
-        {"browser",      optional_argument, NULL, 'B'},
-        {"window",       required_argument, NULL, 'w'},
-        {"chrome",       no_argument,       NULL, CHROME_OPTION},
-        {"chrome-app",   no_argument,       NULL, CHROME_APP_OPTION},
-        {"google-chrome",no_argument,       NULL, CHROME_OPTION},
-        {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
-        // TODO:  "--chrome-window" --> --new-window '%U'
-        // "--chrome-tab" --> --new-tab '%U'
-        // "--firefox-window" --> --new-window '%U'
-        // "--firefox-tab" --> --new-tab '%U'
-        {"qt",           no_argument,       NULL, QTDOMTERM_OPTION},
-        {"electron",     no_argument,       NULL, ELECTRON_OPTION},
-        {"webview",      no_argument,       NULL, WEBVIEW_OPTION},
-        {"force",        no_argument,       NULL, FORCE_OPTION},
-        {"daemonize",    no_argument,       NULL, DAEMONIZE_OPTION},
-        {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
-        {"name",         required_argument, NULL, NAME_OPTION},
-        {"settings",     required_argument, NULL, SETTINGS_FILE_OPTION},
-        {"tty-packet-mode",optional_argument,NULL,TTY_PACKET_MODE_OPTION},
-        {"detached",     no_argument,       NULL, DETACHED_OPTION},
-        {"headless",     no_argument,       NULL, HEADLESS_OPTION},
-        {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
-        {"pane",         optional_argument, NULL, PANE_OPTION},
-        {"tab",          optional_argument, NULL, TAB_OPTION},
-        {"left",         optional_argument, NULL, LEFT_OPTION},
-        {"right",        optional_argument, NULL, RIGHT_OPTION},
-        {"above",        optional_argument, NULL, ABOVE_OPTION},
-        {"below",        optional_argument, NULL, BELOW_OPTION},
-        {"print-browser-command", no_argument,  NULL, PRINT_BROWSER_OPTION},
+    {"port",         required_argument, NULL, 'p'},
+    {"browser",      optional_argument, NULL, 'B'},
+    {"window",       required_argument, NULL, 'w'},
+    {"chrome",       no_argument,       NULL, CHROME_OPTION},
+    {"chrome-app",   no_argument,       NULL, CHROME_APP_OPTION},
+    {"google-chrome",no_argument,       NULL, CHROME_OPTION},
+    {"firefox",      no_argument,       NULL, FIREFOX_OPTION},
+    // TODO:  "--chrome-window" --> --new-window '%U'
+    // "--chrome-tab" --> --new-tab '%U'
+    // "--firefox-window" --> --new-window '%U'
+    // "--firefox-tab" --> --new-tab '%U'
+    {"qt",           no_argument,       NULL, QTDOMTERM_OPTION},
+    {"electron",     no_argument,       NULL, ELECTRON_OPTION},
+    {"webview",      no_argument,       NULL, WEBVIEW_OPTION},
+    {"force",        no_argument,       NULL, FORCE_OPTION},
+    {"daemonize",    no_argument,       NULL, DAEMONIZE_OPTION},
+    {"no-daemonize", no_argument,       NULL, NO_DAEMONIZE_OPTION},
+    {"name",         required_argument, NULL, NAME_OPTION},
+    {"settings",     required_argument, NULL, SETTINGS_FILE_OPTION},
+    {"tty-packet-mode",optional_argument,NULL,TTY_PACKET_MODE_OPTION},
+    {"detached",     no_argument,       NULL, DETACHED_OPTION},
+    {"headless",     no_argument,       NULL, HEADLESS_OPTION},
+    {"geometry",     required_argument, NULL, GEOMETRY_OPTION},
+    {"pane",         optional_argument, NULL, PANE_OPTION},
+    {"tab",          optional_argument, NULL, TAB_OPTION},
+    {"left",         optional_argument, NULL, LEFT_OPTION},
+    {"right",        optional_argument, NULL, RIGHT_OPTION},
+    {"above",        optional_argument, NULL, ABOVE_OPTION},
+    {"below",        optional_argument, NULL, BELOW_OPTION},
+    {"print-browser-command", no_argument,  NULL, PRINT_BROWSER_OPTION},
 #if REMOTE_SSH
-        {"browser-pipe", no_argument,       NULL, BROWSER_PIPE_OPTION},
+    {"browser-pipe", no_argument,       NULL, BROWSER_PIPE_OPTION},
 #endif
-        {"socket-name",  required_argument, NULL, 'L'},
-        {"interface",    required_argument, NULL, 'i'},
-        {"credential",   required_argument, NULL, 'c'},
-        {"uid",          required_argument, NULL, 'u'},
-        {"gid",          required_argument, NULL, 'g'},
-        {"signal",       required_argument, NULL, 's'},
-        {"reconnect",    required_argument, NULL, 'r'},
+    {"socket-name",  required_argument, NULL, 'L'},
+    {"interface",    required_argument, NULL, 'i'},
+    {"credential",   required_argument, NULL, 'c'},
+    {"uid",          required_argument, NULL, 'u'},
+    {"gid",          required_argument, NULL, 'g'},
+    {"signal",       required_argument, NULL, 's'},
+    {"reconnect",    required_argument, NULL, 'r'},
 #if HAVE_OPENSSL
-        {"ssl",          no_argument,       NULL, 'S'},
-        {"ssl-cert",     required_argument, NULL, 'C'},
-        {"ssl-key",      required_argument, NULL, 'K'},
-        {"ssl-ca",       required_argument, NULL, 'A'},
+    {"ssl",          no_argument,       NULL, 'S'},
+    {"ssl-cert",     required_argument, NULL, 'C'},
+    {"ssl-key",      required_argument, NULL, 'K'},
+    {"ssl-ca",       required_argument, NULL, 'A'},
 #endif
-        {"readonly",     no_argument,       NULL, 'R'},
-        {"check-origin", no_argument,       NULL, 'O'},
-        {"once",         no_argument,       NULL, 'o'},
-        {"debug",        required_argument, NULL, 'd'},
-        {"remote-debugging-port", required_argument, NULL, QT_REMOTE_DEBUGGING_OPTION},
+    {"readonly",     no_argument,       NULL, 'R'},
+    {"check-origin", no_argument,       NULL, 'O'},
+    {"once",         no_argument,       NULL, 'o'},
+    {"debug",        required_argument, NULL, 'd'},
+    {"remote-debugging-port", required_argument, NULL, QT_REMOTE_DEBUGGING_OPTION},
 
-        {"version",      no_argument,       NULL, 'v'},
-        {"verbose",      no_argument,       NULL, VERBOSE_OPTION },
-        {"help",         no_argument,       NULL, 'h'},
-        {NULL, 0, 0,                              0}
+    {"version",      no_argument,       NULL, 'v'},
+    {"verbose",      no_argument,       NULL, VERBOSE_OPTION },
+    {"help",         no_argument,       NULL, 'h'},
+    {NULL, 0, 0,                              0}
 };
 static const char *opt_string = "+p:B::w:i:c:u:g:s:r:aSC:K:A:Rt:Ood:L:vh";
 
@@ -483,7 +482,7 @@ get_bin_relative_path(const char* app_path)
     int dirname_length = get_executable_directory_length();
 
     if (dirname_length > 4 && memcmp(path+dirname_length-4, "/bin", 4)==0)
-      dirname_length -= 4;
+        dirname_length -= 4;
 
     int app_path_length = strlen(app_path);
     char *buf = (char*)xmalloc(dirname_length + app_path_length + 1);
@@ -611,15 +610,15 @@ firefox_browser_command(struct options *options)
     if (is_WindowsSubsystemForLinux()) {
 #define firefoxWSL "/mnt/c/Program Files/Mozilla Firefox/firefox.exe"
 #define firefoxWSL86 "/mnt/c/Program Files (x86)/Mozilla Firefox/firefox.exe"
-      if (access(firefoxWSL, X_OK) == 0)
-	return "\"" firefoxWSL "\"";
-      if (access(firefoxWSL86, X_OK) == 0)
-	return "\"" firefoxWSL86 "\"";
+        if (access(firefoxWSL, X_OK) == 0)
+            return "\"" firefoxWSL "\"";
+        if (access(firefoxWSL86, X_OK) == 0)
+            return "\"" firefoxWSL86 "\"";
     }
 #define firefoxMac "/Applications/Firefox.app"
     if (access(firefoxMac, X_OK) == 0)
         //return "/usr/bin/open -a " firefoxMac " '%U'";
-      return firefoxMac "/Contents/MacOS/firefox '%U'";
+        return firefoxMac "/Contents/MacOS/firefox '%U'";
     return NULL;
 }
 
@@ -864,12 +863,12 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                 }
                 if (cmd == "electron") {
                     browser_specifier = electron_command(options);
-                     if (browser_specifier == NULL)
-                         error_if_single = "'electron' not found in PATH";
-                     else {
-                         do_electron = true;
-                         break;
-                     }
+                    if (browser_specifier == NULL)
+                        error_if_single = "'electron' not found in PATH";
+                    else {
+                        do_electron = true;
+                        break;
+                    }
                 } else if (cmd == "webview") {
                     browser_specifier = webview_command(options);
                     if (browser_specifier == NULL)
@@ -953,8 +952,8 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
             // default to chrome for headless
             browser_specifier = hcmd;
         } else {
-             printf_error(options, "unspecified browser for --headless");
-             return EXIT_FAILURE;
+            printf_error(options, "unspecified browser for --headless");
+            return EXIT_FAILURE;
         }
     }
 
@@ -1165,10 +1164,10 @@ print_version (FILE *out)
 {
     if (git_describe[0])
         fprintf(out, "DomTerm version %s (git describe: %s)\n",
-               LDOMTERM_VERSION, git_describe);
+                LDOMTERM_VERSION, git_describe);
     else
         fprintf(out, "DomTerm version %s\n",
-               LDOMTERM_VERSION);
+                LDOMTERM_VERSION);
     fprintf(out, "Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
 #ifdef LWS_LIBRARY_VERSION
     fprintf(out, "Using Libwebsockets " LWS_LIBRARY_VERSION "\n");
@@ -1190,184 +1189,184 @@ int process_options(int argc, arglist_t argv, struct options *opts)
             break;
         }
         switch (c) {
-            case 'h':
-                print_help(stderr);
-                opts->something_done = true;
-                break;
-            case 'v':
-                print_version(stdout);
-                opts->something_done = true;
-                break;
-            case 'R':
-                opts->readonly = true;
-                break;
-            case 'O':
-                opts->check_origin = true;
-                break;
-            case 'o':
-                opts->once = true;
-                break;
-            case 'p':
-                info.port = atoi(optarg);
-                port_specified = info.port;
-                if (info.port < 0) {
-                    fprintf(stderr, "domterm: invalid port: %s\n", optarg);
-                    return -1;
-                }
-                break;
-            case 'B':
-                opts->browser_command = optarg == NULL ? "browser" : optarg;
-                break;
-            case 'w':
-                opts->windows = optarg;
-                break;
-            case FORCE_OPTION:
-                opts->force_option = 1;
-                break;
-            case NO_DAEMONIZE_OPTION:
-            case DAEMONIZE_OPTION:
-                opts->do_daemonize = (c == DAEMONIZE_OPTION);
-                break;
-            case NAME_OPTION:
-                opts->name_option = optarg;
-                break;
-            case TTY_PACKET_MODE_OPTION:
-                if (optarg != NULL) {
+        case 'h':
+            print_help(stderr);
+            opts->something_done = true;
+            break;
+        case 'v':
+            print_version(stdout);
+            opts->something_done = true;
+            break;
+        case 'R':
+            opts->readonly = true;
+            break;
+        case 'O':
+            opts->check_origin = true;
+            break;
+        case 'o':
+            opts->once = true;
+            break;
+        case 'p':
+            info.port = atoi(optarg);
+            port_specified = info.port;
+            if (info.port < 0) {
+                fprintf(stderr, "domterm: invalid port: %s\n", optarg);
+                return -1;
+            }
+            break;
+        case 'B':
+            opts->browser_command = optarg == NULL ? "browser" : optarg;
+            break;
+        case 'w':
+            opts->windows = optarg;
+            break;
+        case FORCE_OPTION:
+            opts->force_option = 1;
+            break;
+        case NO_DAEMONIZE_OPTION:
+        case DAEMONIZE_OPTION:
+            opts->do_daemonize = (c == DAEMONIZE_OPTION);
+            break;
+        case NAME_OPTION:
+            opts->name_option = optarg;
+            break;
+        case TTY_PACKET_MODE_OPTION:
+            if (optarg != NULL) {
 #if !defined(TIOCPKT)
-                    if (strcmp(optarg, "yes") == 0)
-                        fprintf(stderr, "warning - tty package mode not available\n");
+                if (strcmp(optarg, "yes") == 0)
+                    fprintf(stderr, "warning - tty package mode not available\n");
 #endif
 #if ! defined(EXTPROC)
-                    if (strcmp(optarg, "extproc") == 0)
-                        fprintf(stderr, "warning - tty package mode EXTPROC not available\n");
+                if (strcmp(optarg, "extproc") == 0)
+                    fprintf(stderr, "warning - tty package mode EXTPROC not available\n");
 #endif
-                }
-                opts->tty_packet_mode = optarg == NULL ? "yes" : optarg;
-                break;
-            case VERBOSE_OPTION:
-            case SETTINGS_FILE_OPTION:
-            case 'd':
-                break; // handled in prescan_options
-            case TAB_OPTION:
-            case LEFT_OPTION:
-            case RIGHT_OPTION:
-            case BELOW_OPTION:
-            case ABOVE_OPTION:
-                opts->paneOp = c - PANE_OPTIONS_START;
-                opts->browser_command = argv[optind-1];
-                break;
-            case PRINT_BROWSER_OPTION:
-                opts->print_browser_only = true;
-                break;
-            case PANE_OPTION:
+            }
+            opts->tty_packet_mode = optarg == NULL ? "yes" : optarg;
+            break;
+        case VERBOSE_OPTION:
+        case SETTINGS_FILE_OPTION:
+        case 'd':
+            break; // handled in prescan_options
+        case TAB_OPTION:
+        case LEFT_OPTION:
+        case RIGHT_OPTION:
+        case BELOW_OPTION:
+        case ABOVE_OPTION:
+            opts->paneOp = c - PANE_OPTIONS_START;
+            opts->browser_command = argv[optind-1];
+            break;
+        case PRINT_BROWSER_OPTION:
+            opts->print_browser_only = true;
+            break;
+        case PANE_OPTION:
 #if REMOTE_SSH
-            case BROWSER_PIPE_OPTION:
+        case BROWSER_PIPE_OPTION:
 #endif
-                opts->paneOp = c - PANE_OPTIONS_START;
-                /* ... fall through ... */
-            case DETACHED_OPTION:
-                opts->browser_command = argv[optind-1];
-                break;
-            case ELECTRON_OPTION:
-            case FIREFOX_OPTION:
-                opts->browser_command = argv[optind-1] + 2; // Skip '--'
-                break;
-            case HEADLESS_OPTION:
-                opts->headless = true;
-                break;
-            case GEOMETRY_OPTION: {
-                regex_t rx;
+            opts->paneOp = c - PANE_OPTIONS_START;
+            /* ... fall through ... */
+        case DETACHED_OPTION:
+            opts->browser_command = argv[optind-1];
+            break;
+        case ELECTRON_OPTION:
+        case FIREFOX_OPTION:
+            opts->browser_command = argv[optind-1] + 2; // Skip '--'
+            break;
+        case HEADLESS_OPTION:
+            opts->headless = true;
+            break;
+        case GEOMETRY_OPTION: {
+            regex_t rx;
 #define SZ_REGEX "[0-9]+x[0-9]+"
 #define POS_REGEX "[-+][0-9]+[-+][0-9]+"
 #define GEOM_REGEX "^" SZ_REGEX "$|^" POS_REGEX "$|^" SZ_REGEX POS_REGEX "$"
-                regcomp(&rx, GEOM_REGEX, REG_EXTENDED|REG_NOSUB);
-                if (regexec(&rx, optarg, 0, NULL, 0)) {
-                    fprintf(stderr, "bad geometry specifier '%s'\n", optarg);
-                    fprintf(stderr, "must have the form: [{WIDTH}x{HEIGHT}][{+-}{XOFF}{+-}{YOFF}]\n");
-                    exit(-1);
-                }
-                regfree(&rx);
-                opts->geometry_option = optarg;
+            regcomp(&rx, GEOM_REGEX, REG_EXTENDED|REG_NOSUB);
+            if (regexec(&rx, optarg, 0, NULL, 0)) {
+                fprintf(stderr, "bad geometry specifier '%s'\n", optarg);
+                fprintf(stderr, "must have the form: [{WIDTH}x{HEIGHT}][{+-}{XOFF}{+-}{YOFF}]\n");
+                exit(-1);
             }
-                break;
-            case CHROME_OPTION:
-                opts->browser_command = "chrome";
-                break;
-            case CHROME_APP_OPTION:
-                opts->browser_command = "chrome-app";
-                break;
-            case QTDOMTERM_OPTION:
-                opts->browser_command = "qt";
-                break;
-            case WEBVIEW_OPTION:
-                opts->browser_command = "webview";
-                break;
-            case QT_REMOTE_DEBUGGING_OPTION:
-                opts->qt_remote_debugging = strdup(optarg);
-                break;
-            case 'L':
-                opts->socket_name = strdup(optarg);
-                break;
-            case 'i':
-                if (opts->iface != NULL)
-                    free(opts->iface);
-                break;
-            case 'c':
-                if (strchr(optarg, ':') == NULL) {
-                    fprintf(stderr, "domterm: invalid credential, format: username:password\n");
-                    return -1;
-                }
-                opts->credential = base64_encode((const unsigned char *) optarg, strlen(optarg));
-                break;
-            case 'u':
-                info.uid = atoi(optarg);
-                break;
-            case 'g':
-                info.gid = atoi(optarg);
-                break;
-            case 's': {
-                int sig = get_sig(optarg);
-                if (sig > 0) {
-                    opts->sig_code = get_sig(optarg);
-                    opts->sig_name = uppercase(strdup(optarg));
-                } else {
-                    fprintf(stderr, "domterm: invalid signal: %s\n", optarg);
-                    return -1;
-                }
+            regfree(&rx);
+            opts->geometry_option = optarg;
+        }
+            break;
+        case CHROME_OPTION:
+            opts->browser_command = "chrome";
+            break;
+        case CHROME_APP_OPTION:
+            opts->browser_command = "chrome-app";
+            break;
+        case QTDOMTERM_OPTION:
+            opts->browser_command = "qt";
+            break;
+        case WEBVIEW_OPTION:
+            opts->browser_command = "webview";
+            break;
+        case QT_REMOTE_DEBUGGING_OPTION:
+            opts->qt_remote_debugging = strdup(optarg);
+            break;
+        case 'L':
+            opts->socket_name = strdup(optarg);
+            break;
+        case 'i':
+            if (opts->iface != NULL)
+                free(opts->iface);
+            break;
+        case 'c':
+            if (strchr(optarg, ':') == NULL) {
+                fprintf(stderr, "domterm: invalid credential, format: username:password\n");
+                return -1;
             }
-                break;
-            case 'r':
-                opts->reconnect = atoi(optarg);
-                if (opts->reconnect <= 0) {
-                    fprintf(stderr, "domterm: invalid reconnect: %s\n", optarg);
-                    return -1;
-                }
-                break;
+            opts->credential = base64_encode((const unsigned char *) optarg, strlen(optarg));
+            break;
+        case 'u':
+            info.uid = atoi(optarg);
+            break;
+        case 'g':
+            info.gid = atoi(optarg);
+            break;
+        case 's': {
+            int sig = get_sig(optarg);
+            if (sig > 0) {
+                opts->sig_code = get_sig(optarg);
+                opts->sig_name = uppercase(strdup(optarg));
+            } else {
+                fprintf(stderr, "domterm: invalid signal: %s\n", optarg);
+                return -1;
+            }
+        }
+            break;
+        case 'r':
+            opts->reconnect = atoi(optarg);
+            if (opts->reconnect <= 0) {
+                fprintf(stderr, "domterm: invalid reconnect: %s\n", optarg);
+                return -1;
+            }
+            break;
 #if HAVE_OPENSSL
-            case 'S':
-                opts->ssl = true;
-                break;
-            case 'C':
-                if (opts->cert_path != NULL)
-                    free(opts->cert_path);
-                opts->cert_path = strdup(optarg);
-                break;
-            case 'K':
-                if (opts->key_path != NULL)
-                    free(opts->key_path);
-                opts->key_path = strdup(optarg);
-                break;
-            case 'A':
-                if (opts->ca_path != NULL)
-                    free(opts->ca_path);
-                opts->ca_path = strdup(optarg);
-                break;
+        case 'S':
+            opts->ssl = true;
+            break;
+        case 'C':
+            if (opts->cert_path != NULL)
+                free(opts->cert_path);
+            opts->cert_path = strdup(optarg);
+            break;
+        case 'K':
+            if (opts->key_path != NULL)
+                free(opts->key_path);
+            opts->key_path = strdup(optarg);
+            break;
+        case 'A':
+            if (opts->ca_path != NULL)
+                free(opts->ca_path);
+            opts->ca_path = strdup(optarg);
+            break;
 #endif
-            case '?':
-                return -1;
-            default:
-                print_help(stderr);
-                return -1;
+        case '?':
+            return -1;
+        default:
+            print_help(stderr);
+            return -1;
         }
     }
     return 0;
@@ -1415,10 +1414,10 @@ main(int argc, char **argv)
     int debug_level = opts.debug_level;
     const char *logfilefmt = get_setting(opts.settings, "log.file");
     if (debug_level == 0 && opts.verbosity > 0) {
-         debug_level = LLL_ERR|LLL_WARN|LLL_NOTICE
-             |(opts.verbosity > 1 ? LLL_INFO : 0);
-         if (logfilefmt == NULL)
-             logfilefmt = "notimestamp";
+        debug_level = LLL_ERR|LLL_WARN|LLL_NOTICE
+            |(opts.verbosity > 1 ? LLL_INFO : 0);
+        if (logfilefmt == NULL)
+            logfilefmt = "notimestamp";
     }
     if (debug_level == 0) {
         const char *to_server = get_setting(opts.settings, "log.js-to-server");
@@ -1557,18 +1556,18 @@ main(int argc, char **argv)
         info.ssl_private_key_filepath = opts.key_path;
         info.ssl_ca_filepath = opts.ca_path;
         info.ssl_cipher_list = "ECDHE-ECDSA-AES256-GCM-SHA384:"
-                "ECDHE-RSA-AES256-GCM-SHA384:"
-                "DHE-RSA-AES256-GCM-SHA384:"
-                "ECDHE-RSA-AES256-SHA384:"
-                "HIGH:!aNULL:!eNULL:!EXPORT:"
-                "!DES:!MD5:!PSK:!RC4:!HMAC_SHA1:"
-                "!SHA1:!DHE-RSA-AES128-GCM-SHA256:"
-                "!DHE-RSA-AES128-SHA256:"
-                "!AES128-GCM-SHA256:"
-                "!AES128-SHA256:"
-                "!DHE-RSA-AES256-SHA256:"
-                "!AES256-GCM-SHA384:"
-                "!AES256-SHA256";
+            "ECDHE-RSA-AES256-GCM-SHA384:"
+            "DHE-RSA-AES256-GCM-SHA384:"
+            "ECDHE-RSA-AES256-SHA384:"
+            "HIGH:!aNULL:!eNULL:!EXPORT:"
+            "!DES:!MD5:!PSK:!RC4:!HMAC_SHA1:"
+            "!SHA1:!DHE-RSA-AES128-GCM-SHA256:"
+            "!DHE-RSA-AES128-SHA256:"
+            "!AES128-GCM-SHA256:"
+            "!AES128-SHA256:"
+            "!DHE-RSA-AES256-SHA256:"
+            "!AES256-GCM-SHA384:"
+            "!AES256-SHA256";
         if (info.ssl_ca_filepath != NULL && strlen(info.ssl_ca_filepath) > 0)
             info.options |= LWS_SERVER_OPTION_REQUIRE_VALID_OPENSSL_CLIENT_CERT;
 #if LWS_LIBRARY_VERSION_MAJOR >= 2
@@ -1604,9 +1603,9 @@ main(int argc, char **argv)
         lwsl_info("  credential: %s\n", opts.credential);
     lwsl_info("  reconnect timeout: %ds\n", opts.reconnect);
     lwsl_info("  close signal: %s (%d)\n",
-                opts.sig_name != NULL ? opts.sig_name :
-                opts.sig_code == SIGHUP ? "SIGHUP" : "???",
-                opts.sig_code);
+              opts.sig_name != NULL ? opts.sig_name :
+              opts.sig_code == SIGHUP ? "SIGHUP" : "???",
+              opts.sig_code);
     if (opts.check_origin)
         lwsl_info("  check origin: true\n");
     if (opts.readonly)
@@ -1706,9 +1705,9 @@ domterm_dir(bool settings, bool check_wsl)
 	tmp = challoc(strlen(xdg_home)+40);
 	sprintf(tmp, "%s/domterm%s", xdg_home, sini);
     } else if (check_wsl && is_WindowsSubsystemForLinux()
-	&& (user_profile = get_WSL_userprofile()) != NULL
-	&& strlen(user_profile) > (user_prefix_length = strlen(user_prefix))
-	&& memcmp(user_profile, user_prefix, user_prefix_length) == 0) {
+               && (user_profile = get_WSL_userprofile()) != NULL
+               && strlen(user_profile) > (user_prefix_length = strlen(user_prefix))
+               && memcmp(user_profile, user_prefix, user_prefix_length) == 0) {
 	const char *fmt = "/mnt/c/Users/%s/AppData/%s/DomTerm%s";
 	const char *subdir = settings ? "Roaming" : "Local";
 	tmp = challoc(strlen(fmt) + strlen(user_profile) + 40);
@@ -1730,7 +1729,7 @@ domterm_settings_default()
 {
     static const char *dir = NULL;
     if (dir == NULL)
-      dir = domterm_dir(true, true);
+        dir = domterm_dir(true, true);
     return dir;
 }
 
@@ -1739,7 +1738,7 @@ domterm_socket_dir()
 {
     static const char *dir = NULL;
     if (dir == NULL)
-      dir = domterm_dir(false, false);
+        dir = domterm_dir(false, false);
     return dir;
 }
 
@@ -1748,7 +1747,7 @@ domterm_genhtml_dir()
 {
     static const char *dir = NULL;
     if (dir == NULL)
-      dir = domterm_dir(false, true);
+        dir = domterm_dir(false, true);
     return dir;
 }
 
@@ -1764,11 +1763,11 @@ make_socket_name(bool html_filename)
         for (int i = 0; ; i++) {
             char ch = socket_name[i];
             if (ch == 0)
-              break;
+                break;
             if (ch == '.')
-              dot = i;
+                dot = i;
             if (ch == '/')
-              dot = -1;
+                dot = -1;
         }
 	int socket_name_length = strlen(socket_name);
         const char *ext;
@@ -1787,7 +1786,7 @@ make_socket_name(bool html_filename)
             sprintf(r, "%.*s%s", socket_name_length, socket_name, ext);
         }
     } else {
-      const char *sname = html_filename ? "/start" : "/default.socket";
+        const char *sname = html_filename ? "/start" : "/default.socket";
         r = challoc(strlen(ddir)+strlen(sname)+1);
         sprintf(r, "%s%s", ddir, sname);
     }
@@ -1929,26 +1928,26 @@ fatal(const char *format, ...)
 static int
 client_get_lock(char *lockfile)
 {
-        int lockfd;
+    int lockfd;
 
-        lwsl_notice("lock file is %s\n", lockfile);
+    lwsl_notice("lock file is %s\n", lockfile);
 
-        if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
-                lwsl_notice("open failed: %s\n", strerror(errno));
-                return (-1);
-        }
+    if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
+        lwsl_notice("open failed: %s\n", strerror(errno));
+        return (-1);
+    }
 
-        if (flock(lockfd, LOCK_EX|LOCK_NB) == -1) {
-                lwsl_notice("flock failed: %s\n", strerror(errno));
-                if (errno != EAGAIN)
-                        return (lockfd);
-                while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
-                        /* nothing */;
-                close(lockfd);
-                return (-2);
-        }
-        lwsl_notice("flock succeeded\n");
+    if (flock(lockfd, LOCK_EX|LOCK_NB) == -1) {
+        lwsl_notice("flock failed: %s\n", strerror(errno));
+        if (errno != EAGAIN)
+            return (lockfd);
+        while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
+            /* nothing */;
+        close(lockfd);
+        return (-2);
+    }
+    lwsl_notice("flock succeeded\n");
 
-        return (lockfd);
+    return (lockfd);
 }
 #endif
