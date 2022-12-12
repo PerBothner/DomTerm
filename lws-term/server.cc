@@ -764,6 +764,8 @@ electron_command(struct options *options, int wnum)
         sb.printf(" --geometry %s", geometry);
     if (options->headless)
         sb.printf(" --headless");
+    if (wnum > 0)
+        sb.printf(" --window-number %d", wnum);
     std::string titlebar = get_setting_s(options->settings, "titlebar");
     if (! titlebar.empty())
         sb.printf(" --titlebar '%s'",

@@ -11,19 +11,20 @@ function createInitialWindow (argv) {
     // options = yargs(process.argv[1..]).wrap(100)
     // and load the index.html of the app.
     let argc = argv.length;
-    let openDevTools = false;
+    let options = { };
     let headless = false;
-    let titlebar = "";
     var url = "http://localhost:7033/#ws=same";
     var geometry = null;
     for (let i = 2; i < argc; i++) {
         let arg = argv[i];
         if (arg == "--devtools")
-            openDevTools = true;
+            options.openDevTools = true;
         else if (arg == "--headless")
             headless = true;
         else if (arg == "--titlebar" && i+1 < argc)
-            titlebar = argv[++i];
+            options.titlebar = argv[++i];
+        else if (arg == "--window-number" && i+1 < argc)
+            options.windowNumber = Number(argv[++i]);
         else if (arg == "--url" && i+1 < argc)
             url = argv[++i];
         else if (arg == "--geometry" && i+1 < argc)
@@ -33,7 +34,6 @@ function createInitialWindow (argv) {
     }
 
     // Create the browser window.
-    let options = { openDevTools: openDevTools};
     if (geometry) {
         let hasSize = -1, hasPos = -1;
         let m = geometry.match(/^([0-9]+)x([0-9]+)$/);
@@ -53,8 +53,6 @@ function createInitialWindow (argv) {
             options.position = m[hasPos+1];
         }
     }
-    if (titlebar)
-        options.titlebar = titlebar;
     openNewWindow(url, options, headless);
 }
 var previousUrl = null;
@@ -140,6 +138,7 @@ function createNewWindow (url, options, headless)
     if (process.platform == "win32")
 	bwoptions.icon = __dirname.replace("\\electron", "\\domterm2.ico");
     let win = new BrowserWindow(bwoptions);
+    const wnum = options.windowNumber;
     windowList.push(win);
     win.loadURL(url);
     if (options.openDevTools)
@@ -147,6 +146,7 @@ function createNewWindow (url, options, headless)
     if (! headless)
         win.once('ready-to-show', function () { win.show(); });
     win.on('closed', () => {
+        process.stdout.write("CLOSE-WINDOW "+wnum+"\n");
         let index = windowList.indexOf(win);
         if (index >= 0)
             windowList.splice(index, 1);
