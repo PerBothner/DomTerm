@@ -42,6 +42,10 @@ fn main() -> wry::Result<()> {
             iarg += 1;
             options.insert("windowNumber".to_string(),
                            serde_json::to_value(&args[iarg].parse::<i64>().unwrap()).unwrap());
+        } else if arg == "--window-title" && iarg + 1 < args.len() {
+            iarg += 1;
+            options.insert("windowTitle".to_string(),
+                           serde_json::to_value(&args[iarg]).unwrap());
         } else if arg == "--geometry" && iarg + 1 < args.len() {
             iarg += 1;
             let re = Regex::new(r"^(([0-9]+)x([0-9]+))?([-+][0-9]+[-+][0-9]+)?$").unwrap();
@@ -67,7 +71,6 @@ fn main() -> wry::Result<()> {
     let proxy = event_loop.create_proxy();
 
     fn create_new_window(
-        title: String,
         options: &serde_json::Map<String, Value>,
         event_loop: &EventLoopWindowTarget<UserEvents>,
         proxy: EventLoopProxy<UserEvents>,
@@ -108,6 +111,13 @@ fn main() -> wry::Result<()> {
             } else {
                 -1
             };
+
+        let title = match options.get("windowTitle") {
+            Some(t) => t.as_str().unwrap_or("DomTerm").to_string(),
+            None => format!("DomTerm{}: ({})",
+                            if window_number > 0 { format!("#{}", window_number) } else { "".to_string() },
+                            url)
+        };
 
         let window = WindowBuilder::new()
             .with_title(title)
@@ -184,7 +194,6 @@ fn main() -> wry::Result<()> {
     }
 
     let window_triple = create_new_window(
-        "DomTerm".to_string(),
         &options,
         // &script,
         &event_loop,
@@ -212,7 +221,6 @@ fn main() -> wry::Result<()> {
             },
             Event::UserEvent(UserEvents::NewWindow(options)) => {
                 let window_pair = create_new_window(
-                    format!("DomTerm {}", webviews.len() + 1).to_string(),
                     &options,
                     //          script,
                     &event_loop,

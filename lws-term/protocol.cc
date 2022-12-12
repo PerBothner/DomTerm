@@ -2488,9 +2488,9 @@ display_session(struct options *options, struct pty_client *pclient,
       if (paneOp < 1 || paneOp > 13)
           paneOp = 0;
     }
-    std::string subwindows = get_setting_s(options->settings, "subwindow");
+    std::string subwindows = get_setting_s(options->settings, "subwindows");
     if (subwindows.empty())
-        subwindows = get_setting_s(main_options->settings, "subwindow");
+        subwindows = get_setting_s(main_options->settings, "subwindows");
     if (subwindows.empty()) {
         if (in_tiling_window_manager()) {
             subwindows = "no";
@@ -2621,6 +2621,8 @@ display_session(struct options *options, struct pty_client *pclient,
                           104, paneOp, oldnum,
                           pane_options.dump().c_str());
         lws_callback_on_writable(wclient->out_wsi);
+    } else if (wkind == browser_window && subwindows == "no") {
+        r = do_run_browser(options, tclient, url, wnum);
     } else {
         char *encoded = wkind == browser_window || wkind == saved_window
             ? url_encode(url, 0)

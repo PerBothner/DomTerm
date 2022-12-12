@@ -1988,9 +1988,14 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 if (mclient) {
                     lwsl_info("front-end window %d closed\n", wnum);
                     mclient->keep_after_unexpected_close = false;
+                    if (mclient->wsi == nullptr)
+                        delete mclient;
                     FORALL_WSCLIENT(mclient) {
-                        if (mclient->main_window == wnum)
+                        if (mclient->main_window == wnum) {
                             mclient->keep_after_unexpected_close = false;
+                            if (mclient->wsi == nullptr)
+                                delete mclient;
+                        }
                     }
                 }
             }
