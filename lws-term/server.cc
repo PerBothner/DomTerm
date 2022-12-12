@@ -735,7 +735,7 @@ wry_command(struct options *options, int wnum)
 
 /** Return freshly allocated command string or NULL */
 static char *
-electron_command(struct options *options)
+electron_command(struct options *options, int wnum)
 {
     char *epath_free_needed = NULL;
     const char *epath = get_setting(options->settings, "command.electron");
@@ -864,6 +864,8 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
             if (! p) {
                 if (is_WindowsSubsystemForLinux())
                     p = "edge-app;electron;qt;chrome-app;firefox;browser";
+                else if (is_SwayDesktop())
+                    p = "wry;electron;qt;chrome-app;safari;firefox;browser";
                 else {
 #if __APPLE__
                     bool prefer_Qt = false;
@@ -876,7 +878,7 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                     else
                         p = "wry;qt;electron;chrome-app;firefox;browser";
 #else
-                    p = "electron;qt;chrome-app;safari;firefox;browser";
+                    p = "electron;qt;wry;chrome-app;safari;firefox;browser";
 #endif
                 }
             }
@@ -899,11 +901,12 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                     break;
                 }
                 if (cmd == "electron") {
-                    browser_specifier = electron_command(options);
+                    browser_specifier = electron_command(options, wnum);
                     if (browser_specifier == NULL)
                         error_if_single = "'electron' not found in PATH";
                     else {
                         do_electron = true;
+                        start_only = true;
                         break;
                     }
                 } else if (cmd == "webview") {
@@ -1691,6 +1694,14 @@ main(int argc, char **argv)
 
     return ret;
 }
+
+bool
+is_SwayDesktop()
+{
+    char *desktop = getenv("XDG_SESSION_DESKTOP");
+    return desktop != nullptr && strcmp(desktop, "sway") == 0;
+}
+
 bool
 is_WindowsSubsystemForLinux()
 {
@@ -1960,7 +1971,7 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         while (waitpid(cclient->cmd_pid, &status, 0) == -1 && errno == EINTR)
             ;
-        lwsl_notice("front-end exited with code %d exitcode:%d, pid: %d\n", status, WEXITSTATUS(status), cclient->cmd_pid);
+        lwsl_notice("frontend exited with code %d exitcode:%d, pid: %d\n", status, WEXITSTATUS(status), cclient->cmd_pid);
         break;
     case LWS_CALLBACK_RAW_RX_FILE: {
         struct sbuf &obuf = cclient->output_buffer;
@@ -1986,7 +1997,7 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 long wnum = strtol(cmd+13, &end, 10);
                 tty_client *mclient = wnum > 0 && ! end[0] ? main_windows(wnum) : nullptr;
                 if (mclient) {
-                    lwsl_info("front-end window %d closed\n", wnum);
+                    lwsl_info("frontend window %d closed\n", wnum);
                     mclient->keep_after_unexpected_close = false;
                     if (mclient->wsi == nullptr)
                         delete mclient;

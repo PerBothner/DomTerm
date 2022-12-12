@@ -421,6 +421,7 @@ extern char* get_executable_path();
 extern char *get_bin_relative_path(const char* app_path);
 const char *domterm_settings_default(void);
 extern bool is_WindowsSubsystemForLinux(void);
+extern bool is_SwayDesktop(void);
 extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,

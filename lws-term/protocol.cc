@@ -2456,8 +2456,7 @@ display_pipe_session(struct options *options, struct pty_client *pclient)
 bool
 in_tiling_window_manager()
 {
-    char *desktop = getenv("XDG_SESSION_DESKTOP");
-    return desktop != nullptr && strcmp(desktop, "sway") == 0;
+    return is_SwayDesktop();
 }
 
 int
@@ -2538,19 +2537,20 @@ display_session(struct options *options, struct pty_client *pclient,
         }
     }
     if (paneOp > 0 && subwindows == "no") {
-        char *desktop = getenv("XDG_SESSION_DESKTOP");
-        if (desktop != nullptr && strcmp(desktop, "sway") == 0) {
+        if (is_SwayDesktop()) {
             char *swaymsg = find_in_path("swaymsg");
             if (swaymsg) {
-                char buf[60];
+                char buf[100];
                 int wnum = wclient ? wclient->connection_number : -1;
                 int blen = 0;
                 if (wnum >= 0)
                     blen = sprintf(buf, "swaymsg '[title=\"DomTerm.*:%d\"]' focus;", wnum);
-                if (paneOp == pane_left || paneOp == pane_right || paneOp == pane_tab)
+                if (paneOp == pane_left || paneOp == pane_right)
                     sprintf(buf+blen, "swaymsg split h");
                 else if (paneOp == pane_above || paneOp == pane_below || paneOp == pane_best)
                     sprintf(buf+blen, "swaymsg split v");
+                else if (paneOp == pane_tab)
+                     sprintf(buf+blen, "swaymsg split h;swaymsg layout tabbed");
                 else
                     buf[0] = 0;
                 if (buf[0]) {
