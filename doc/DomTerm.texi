@@ -6777,11 +6777,14 @@ but as of the start of the most recent urgent message.
 @item @code{0xFD "VERSION " @var{version-info} "\n"}
 Sends @var{version-info} to the back-end.  Used during initialization.
 
-@item @code{0xFD "REQUEST-CLIPBOARD-TEXT" "\n"}
+@item @code{0xFD "REQUEST-CLIPBOARD-TEXT"  ["OSC52"] "\n"}
+@itemx @code{0xFD "REQUEST-SELECTION-TEXT" ["OSC52"] "\n"}
 Sent by the front-end on a Paste request when the browser doesn't
 have access to clipboard.
-Requests the server to access the clipboard on its behalf,
-and send the contents using an OSC 231 sequence.
+Requests the server to access the clipboard (if @code{REQUEST-CLIPBOARD-TEXT})
+or the most recent selection (if @code{REQUEST-SELECTION-TEXT}) on its behalf.
+If @code{OSC52} sends the contents to the process as an @code{OSC 52} response
+(see xterm specification); otherwise replies back with an @code{OSC 231} sequence.
 
 @item @code{0xFD "RESPONSE" @var{response-data} "\n"}
 Response to a request from the server.

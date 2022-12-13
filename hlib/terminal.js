@@ -518,6 +518,11 @@ class Terminal {
         return this.paneInfo ? this.paneInfo.getOption(name, dflt): dflt;
     }
 
+    hasClipboardServer(mode) {
+        const option = this.getOption("`server-for-clipboard", "");
+        return `,${option},`.indexOf(`,${mode},`) >= 0;
+    }
+
     getRemoteHostUser() {
         return this.paneInfo.termOptions["`remote-host-user"];
     }
@@ -1363,8 +1368,12 @@ Terminal.prototype.maybeFocus = function(force = false) {
         let aOffset = sel.anchorOffset;
         let collapsed = sel.isCollapsed;
         goal.focus({preventScroll: true});
-        if (sel.focusNode !== fNode)
-            sel.setBaseAndExtent(aNode, aOffset, fNode, fOffset);
+        if (sel.focusNode !== fNode) {
+            if (fNode === null)
+                sel.removeAllRanges();
+            else
+                sel.setBaseAndExtent(aNode, aOffset, fNode, fOffset);
+        }
     }
 }
 
@@ -4041,9 +4050,11 @@ Terminal.prototype.initializeTerminal = function(topNode) {
     topNode.addEventListener("compositionend", compositionEnd, true);
     topNode.addEventListener("paste",
                              function(e) {
+                                 if (dt._ignorePaste)
+                                     return;
                                  dt.pasteText(e.clipboardData.getData("text"));
                                  e.preventDefault(); },
-                             false);
+                                 false);
     topNode.addEventListener("click",
                              function(e) { DomTerm.clickLink(e, dt); },
                              false);
@@ -4404,17 +4415,18 @@ Terminal.prototype._mouseHandler = function(ev) {
     // Avoids clearing selection.  Helps on Chrome, at least.
     if (ev.type == "mousedown" && ev.button == 2)
         ev.preventDefault();
-    // Middle-button paste doesn't work on GtkWebKit/Wayland.
-    // (It uses clipboard instead of selection.)
-    if (ev.type == "mousedown" && ev.button == 1
-        && DomTerm.versions.appleWebKit
-        && DomTerm.versions.userAgent.match(/X11/) // Also set for Wayland
-        && ((","+this.getOption("`server-for-clipboard", "")+",")
-            .indexOf(",selection-paste,") >= 0)) {
+
+    if (ev.button == 1 // middle-button should do "paste selection" on X11/Wayland
+        && DomTerm.versions.userAgent.match(/X11/)) { // Also set for Wayland
         ev.preventDefault();
-        this.reportEvent("REQUEST-SELECTION-TEXT", "")
-        return;
+        this._ignorePaste = true;
+        if (ev.type == "mousedown" && ! this.mouseReporting()
+            && this.hasClipboardServer("selection-paste")) {
+            this.reportEvent("REQUEST-SELECTION-TEXT", "");
+            return;
+        }
     }
+
     this._focusinLastEvent = false;
     this._altPressed = ev.altKey;
     let wasPressed = this._mouseButtonPressed;
@@ -8388,12 +8400,12 @@ DomTerm.copyText = function(str) {
 DomTerm.doPaste = function(dt=DomTerm.focusedTerm) {
     let sel = document.getSelection();
     dt.maybeFocus();
+    dt._ignorePaste = undefined;
     let useClipboardApi = DomTerm.isElectron();
     if (useClipboardApi) {
         navigator.clipboard.readText().then(clipText =>
             dt.pasteText(clipText));
-    } else if ((","+dt.getOption("`server-for-clipboard", "")+",")
-               .indexOf(",paste,") >= 0) {
+    } else if (dt.hasClipboardServer("paste")) {
         dt.reportEvent("REQUEST-CLIPBOARD-TEXT", "");
     } else {
         document.execCommand("paste", false);

@@ -1822,15 +1822,19 @@ class DTParser {
                                                            +"\x1B\\");
                         };
                         if (where == 'c') { // get clipboard
-                            if (term.checkPermission("get-clipboard"))
-                                navigator.clipboard.readText().then(send_data);
-                            else
+                            if (! term.checkPermission("get-clipboard"))
                                 send_data("{get-clipboard not allowed}");
+                            else if (term.hasClipboardServer("paste"))
+                                term.reportEvent("REQUEST-CLIPBOARD-TEXT", "OSC52");
+                            else
+                                navigator.clipboard.readText().then(send_data);
                         } else if (where == 'p') { // get primary (selection)
-                            let text = term.checkPermission("get-selection")
-                                ? Terminal._selectionAsText()
-                                : "{get-selection not allowed}";
-                            send_data(text);
+                            if (! term.checkPermission("get-selection"))
+                                send_data("{get-selection not allowed}");
+                            else if (term.hasClipboardServer("selection-paste"))
+                                term.reportEvent("REQUEST-SELECTION-TEXT", "OSC52");
+                            else
+                                send_data(Terminal._selectionAsText());
                         }
                     } else { // set
                         let str = atob(data);

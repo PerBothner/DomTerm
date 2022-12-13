@@ -1655,10 +1655,19 @@ reportEvent(const char *name, char *data, size_t dlen,
                 if (sb.len > 0 && sb.buffer[sb.len-1] == '\r')
                     sb.len--;
             }
-            json jobj = sb.null_terminated();
-            printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
-                              jobj.dump().c_str());
-            lws_callback_on_writable(wsi);
+            if (strcmp(data, "OSC52") == 0) {
+                char *response64 = base64_encode((unsigned char*) sb.buffer, sb.len);
+                sb.reset();
+                sb.printf("\033]52;%c;%s\033\\", getting_clipboard ? 'c' : 'p', response64);
+                free(response64);
+                if (write(pclient->pty, sb.buffer, sb.len) != sb.len)
+                    lwsl_err("write to pty failed for OSC 52 response\n");
+            } else {
+                json jobj = sb.null_terminated();
+                printf_to_browser(client, URGENT_WRAP("\033]231;%s\007"),
+                                  jobj.dump().c_str());
+                lws_callback_on_writable(wsi);
+            }
         }
     } else if (strcmp(name, "WINDOW-CONTENTS") == 0) {
         if (proxyMode == proxy_display_local)
