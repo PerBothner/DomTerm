@@ -1551,6 +1551,21 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
         open_window(data, client);
+    } else if (strcmp(name, "FOCUS-NEXT-WINDOW") == 0) {
+        const char *direction = nullptr;
+        if (strcmp(data, "next,v") == 0)
+            direction = "down";
+        else if (strcmp(data, "next,h") == 0)
+            direction = "right";
+        else if (strcmp(data, "prev,v") == 0)
+            direction = "up";
+        else if (strcmp(data, "prev,h") == 0)
+            direction = "left";
+        if (direction && is_SwayDesktop()) {
+            char buf[30];
+            sprintf(buf, "swaymsg focus %s", direction);
+            system(buf);
+        }
     } else if (strcmp(name, "DETACH") == 0
         || strcmp(name, "DETACH-WINDOW") == 0) {
         if (proxyMode == proxy_display_local)

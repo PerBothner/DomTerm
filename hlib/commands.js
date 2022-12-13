@@ -72,21 +72,38 @@ cmd('new-window', // FIXME needed
         DomTerm.openNewWindow(dt);
         return true;
     });
-function selectNextPane(forwards) {
+function selectNextPane(forwards, vertical) {
     const dl = DomTerm._layout;
     if (dl && DomTerm.focusedWindowNumber > 0)
         dl.selectNextPane(forwards, DomTerm.focusedWindowNumber);
+    else if (! DomTerm.subwindows && DomTerm.mainTerm)
+        DomTerm.mainTerm.reportEvent("FOCUS-NEXT-WINDOW",
+                                     `${forwards ? "next" : "prev"},${vertical ? "v" : "h"}`);
 }
-cmd('select-pane-previous',
-    function(dt, key) {
-        selectNextPane(false);
+cmd('select-pane-left',
+    function(item, key) {
+        selectNextPane(true, false);
         return true;
     }, {
         context: "parent"
     });
-cmd('select-pane-next',
+cmd('select-pane-right',
     function(dt, key) {
-        selectNextPane(true);
+        selectNextPane(true, false);
+        return true;
+    }, {
+        context: "parent"
+    });
+cmd('select-pane-up',
+    function(dt, key) {
+        selectNextPane(false, true);
+        return true;
+    }, {
+        context: "parent"
+    });
+cmd('select-pane-down',
+    function(dt, key) {
+        selectNextPane(false, true);
         return true;
     }, {
         context: "parent"
