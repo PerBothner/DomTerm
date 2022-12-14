@@ -6200,7 +6200,7 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 * Sequences sent by DomTerm::
 @end menu
 
-@node Sequences handled by DomTerm
+@c @node Sequences handled by DomTerm
 @subsection Special sequences sent by back-end and handled by DomTerm
 
 @menu
@@ -6214,7 +6214,6 @@ Specifically @code{"\e"} is an escape; @code{"\a"} is alert (bell);
 * Pretty printing escapes::  Pretty-printing
 @end menu
 
-@node Miscellaneous sequences
 @subsubsection Miscellaneous sequences
 
 @table @asis
@@ -6352,7 +6351,6 @@ whose preperties may include @code{cmd} (a command-name),
 and possibly other properties, depending on the @code{cmd}.
 @end table
 
-@node Command parts
 @subsubsection Command parts (shell integration)
 
 The escape sequences will be deprecated
@@ -6457,7 +6455,6 @@ The previous input is ``re-opened'' for editing, and
 a fresh empty line added.
 @end table
 
-@node Window operations
 @subsubsection Window operations
 
 @table @asis
@@ -6508,7 +6505,6 @@ Save window and icon title to stack. [In xterm.]
 Restore window and icon title from stack. [In xterm.]
 @end table
 
-@node Urgent messages
 @subsubsection Urgent messages
 
 @table @asis
@@ -6535,7 +6531,6 @@ When DomTerm receives a sequence of bytes that contains
 an urgent sequence, it will execute that before handling preceding bytes.
 @end table
 
-@node Diagnostic (error) messages
 @subsubsection Diagnostic (error) messages
 
 @table @asis
@@ -6561,7 +6556,6 @@ parts of a diagnostic.
 
 @end table
 
-@node Stylesheet manipulation
 @subsubsection Stylesheet manipulation
 
 @table @asis
@@ -6617,7 +6611,6 @@ If the code is @code{95}, the result to the client is
 is the index of the replaced or created stylesheet.
 @end table
 
-@node Alterate screen buffers
 @subsubsection Alterate screen buffers
 
 @table @asis
@@ -6643,7 +6636,6 @@ Pop the most recent buffer.
 @end table
 
 @anchor{escapes-pretty-printing}
-@node Pretty printing escapes
 @subsubsection Pretty-printing
 
 "Pretty-printing" refers to breaking a text info multiple lines
@@ -6734,7 +6726,6 @@ Zu\e]115;"k-","k","ck"\aer
 @end example
 @end table
 
-@node Sequences sent by DomTerm
 @subsection Special sequences sent by DomTerm to back-end
 
 The prefix byte 0xFD is used to report an event or other information
