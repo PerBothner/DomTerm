@@ -4378,6 +4378,7 @@ for how they may support some features differently.
 * Detecting domterm terminal::
 * Shell prompts::  Shell prompts and tricks
 * drop down:: Use as a drop-down terminal
+* Tiling Window Managers:: Sway and other Tiling Window Managers
 * Python tips::
 * Java tools:: Java tools (old notes)
 @end menu
@@ -5094,6 +5095,29 @@ either in the @ref{Settings} file, or with a @code{--geometry} option:
 domterm --geometry 775x600+20+10 window toggle-minimize
 @end example
 
+@node Tiling Window Managers
+@section Sway and other Tiling Window Managers
+
+A @uref{https://en.wikipedia.org/wiki/Tiling_window_manager,Tiling Window Manager}
+organizes your screen into (mostly) non-overlapping windows or @dfn{tiles}.
+This makes redundant DomTerm's builtin window management based on the GoldenLayout library.
+If you are using a Tiling Window Manager, you make want to disable the latter with the setting
+@code{subwindows=no}.
+
+@uref{https://en.wikipedia.org/wiki/Sway_(window_manager),Sway} is one of the more
+featureful and popular Tiling Window Managers for the Wayland desktop
+which is the standard for newer Linux and Unix-like systems.
+Using DomTerm under Sway is quite nice:
+DomTerm has builtin support for running under Sway,
+including defaulting to the setting @code{subwindows=no}.
+
+To use DomTerm as your default terminal emulator, edit your @code{~/.config/sway/config}
+file to change the default @code{set $term foot} to:
+@example
+set $term domterm
+@end example
+This assumes @code{domterm} is in your @code{$PATH}.
+
 @node Python tips
 @section Python tips
 
@@ -5352,8 +5376,12 @@ character indicates a places where values and expressions are substituted.
 Special characters are percent,
 double quotes, curly barces, and semicolon.
 
+Simple substitution uses curly braces: @code{@{directory@}}.
+
 Conditional: @code{@{A1?A2?A3?X1|B1?Y|Z@}}
 is like C's @code{A1||A2||A3 ? X1 : B1 ? Y : Z}.
+
+Expressions, Lisp-style (prefix operator):  @code{@{+ @{N@} 1@}}
 
 Usually an unescaped semi-colon is equivalent to a line-break.
 Both are usually used to separate items in a list.
