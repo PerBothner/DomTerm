@@ -444,9 +444,11 @@ if WITH_DOCBOOK
 	mv $(HTML_DIR)/tmp-index.html $(HTML_DIR)/index.html
 else
 	$(MKDIR_P) $(HTML_DIR)/images $(HTML_DIR)/tools
-	$(MAKEINFO) -I=doc --html --split=node --no-number-sections -c INFO_JS_DIR=style -c JS_WEBLABELS=omit -c EXTRA_HEAD='<script src="style/dt-manual.js" type="text/javascript"></script>' --css-ref="style/domterm-1col.css" doc/DomTerm.texi -o web/
+	$(MAKEINFO) -I=doc --html --split=node --no-number-sections -c INFO_JS_DIR=style -c JS_WEBLABELS=omit -c EXTRA_HEAD='<link rel="shortcut icon" type="image/svg+xml" href="images/domterm.svg"> <script src="style/dt-manual.js" type="text/javascript"></script>' --css-ref="style/domterm-1col.css" doc/DomTerm.texi -o web/
 endif
 	cd $(srcdir) && cp $(DOC_IMAGES) $(abs_builddir)/web/images
+	cp $(srcdir)/doc/domterm2.svg $(abs_builddir)/web/images/domterm.svg
+	cp $(srcdir)/doc/domterm2.ico $(abs_builddir)/web/favicon.ico
 	(cd $(srcdir) && tar cf - $(DOC_TOOLS))|(cd web && tar xf -)
 
 web/saved/hlib:
