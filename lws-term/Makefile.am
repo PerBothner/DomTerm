@@ -5,10 +5,17 @@ all-am: ldomterm$(EXEEXT) ../bin/domterm$(EXEEXT)
 # resource files) we get ../bin and not the lws-term.
 # (This is to make execute-in-place and execute-after-install be similar.)
 LN_H = ln
+
 ../bin/domterm$(EXEEXT): ldomterm$(EXEEXT)
 	$(MKDIR_P) ../bin
 	@rm -f ../bin/domterm$(EXEEXT)
 	cd ../bin && $(LN_H) ../lws-term/ldomterm$(EXEEXT) domterm$(EXEEXT)
+
+# Link with -static-libstdc++ for DomTerm.AppImage
+../appimage/domterm: $(ldomterm_OBJECTS) $(ldomterm_DEPENDENCIES) $(EXTRA_ldomterm_DEPENDENCIES)
+	@rm -f ldomterm$(EXEEXT)
+	$(AM_V_CXXLD)$(ldomterm_LINK) $(ldomterm_OBJECTS) -static-libstdc++ $(ldomterm_LDADD) $(LIBS)
+
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.cc utils.cc protocol.cc http.cc whereami.c \
