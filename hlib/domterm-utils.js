@@ -595,6 +595,28 @@ export function isBlockNode(node) {
         && isBlockTag(node.tagName.toLowerCase());
 };
 
+/** True if an img/object/a element.
+ * These are treated as black boxes similar to a single
+ * 1-column character.
+ * @param node an Element we want to check
+ * @return true iff the {@code node} should be treated as a
+ *  block-box embedded object.
+ *  For now returns true for {@code img}, {@code a}, and {@code object}.
+ *  (We should perhaps treat {@code a} as text.)
+ */
+export function isObjectElement(node)
+{
+    var tag = node.tagName;
+    return "OBJECT" == tag || "CANVAS" == tag
+        || "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
+};
+
+export function isSpanNode(node) {
+    if (! (node instanceof Element)) return false;
+    var tag = node.tagName;
+    return "SPAN" == tag;
+};
+
 export function isNormalBlock(node) {
     let tag = node.nodeName;
     return tag == "PRE" || tag == "P" || tag == "DIV";

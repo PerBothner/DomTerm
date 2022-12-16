@@ -2216,7 +2216,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             if (current instanceof Node) {
                 if (current instanceof Element && !handled) {
                     let valueAttr = current.getAttribute("content-value");
-                    if (this.isObjectElement(current))
+                    if (DtUtil.isObjectElement(current))
                         column += 1;
                     else {
                         ch = current.firstChild;
@@ -3448,21 +3448,6 @@ Terminal.prototype.setAlternateScreenBuffer = function(val) {
     }
 };
 
-/** True if an img/object/a element.
- * These are treated as black boxes similar to a single
- * 1-column character.
- * @param node an Element we want to check
- * @return true iff the {@code node} should be treated as a
- *  block-box embedded object.
- *  For now returns true for {@code img}, {@code a}, and {@code object}.
- *  (We should perhaps treat {@code a} as text.)
- */
-Terminal.prototype.isObjectElement = function(node) {
-    var tag = node.tagName;
-    return "OBJECT" == tag || "CANVAS" == tag
-        || "IMG" == tag || "SVG" == tag || "IFRAME" == tag;
-};
-
 Terminal.prototype._getOuterBlock = function(node, stopIfInputLine=false) {
     for (var n = node; n; n = n.parentNode) {
         if ((stopIfInputLine && n == this._inputLine)
@@ -3471,20 +3456,6 @@ Terminal.prototype._getOuterBlock = function(node, stopIfInputLine=false) {
     }
     return null;
 }
-
-// Obsolete?  We should never have a <br> node in the DOM.
-// (If we allow it, we should wrap it in a <span line="br">.)
-Terminal.prototype.isBreakNode = function( node) {
-    if (! (node instanceof Element)) return false;
-    var tag = node.tagName;
-    return "BR" == tag;
-};
-
-Terminal.prototype.isSpanNode = function(node) {
-    if (! (node instanceof Element)) return false;
-    var tag = node.tagName;
-    return "SPAN" == tag;
-};
 
 // Set up event handlers and resize-handling for active and saved sessions.
 // Should be called after settings loaded (specifically after
@@ -4966,7 +4937,7 @@ Terminal.prototype.updateCursorCache = function() {
                 col = 0; // FIXME? maybe
                 cur = cur.nextSibling;
                 continue;
-            } else if (this.isObjectElement(cur)) {
+            } else if (DtUtil.isObjectElement(cur)) {
                 if (cur == goalParent)
                     break;
                 col++;
@@ -5096,7 +5067,7 @@ Terminal.prototype.grabInput = function(input) {
         return "";
     if (input instanceof Text)
         return input.data;
-    if (this.isSpanNode(input) && input.getAttribute("std")=="prompt")
+    if (DtUtil.isSpanNode(input) && input.getAttribute("std")=="prompt")
         return "";
     var result = "";
     for (var n = input.firstChild; n != null;
@@ -5495,7 +5466,7 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
         else if (current == null) {
             next = parent.nextSibling;
             parent = parent.parentNode;
-        } else if (this.isObjectElement(current)) {
+        } else if (DtUtil.isObjectElement(current)) {
             parent.removeChild(current);
             todo--;
         } else if (current instanceof Text
@@ -6819,7 +6790,7 @@ Terminal.prototype._adjustLines = function(startLine, action, single=false, stop
             this.lineEnds[line-delta-1] = this.lineEnds[line-1];
         }
         let lineAttr = lineStart.getAttribute("line");
-        if (skipRest || ! this.isSpanNode(lineStart) || ! lineAttr) {
+        if (skipRest || ! DtUtil.isSpanNode(lineStart) || ! lineAttr) {
             if (single && line > startLine+1) {
                 if (delta == 0)
                     break;
@@ -7101,7 +7072,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
 	        if (countColumns)
 	            beforePos += (cls.contains("w1") ? 1 : 2) * dt.charWidth;
                 skipChildren = true;
-	    } else if (dt.isObjectElement(el)) {
+	    } else if (DtUtil.isObjectElement(el)) {
                 skipChildren = true;
             } else if (el.nodeName == "SPAN"
                        && (lineAttr = el.getAttribute("line")) != null) {
@@ -7217,7 +7188,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             let previous, value;
             const isText = el instanceof Text;
             check_fits:
-            if (isText || dt.isObjectElement(el)
+            if (isText || DtUtil.isObjectElement(el)
                 || el.classList.contains("dt-cluster")
                ) {
                 skipChildren = true;
@@ -7269,7 +7240,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         if (lineNode.previousSibling === dt._caretNode)
                             el.parentNode.insertBefore(el, dt._caretNode);
                         next = rest;
-                    } else { // dt.isObjectElement(el) or dt-cluster
+                    } else { // DtUtil.isObjectElement(el) or dt-cluster
                         dt._insertIntoLines(lineNode, line);
                         el.parentNode.insertBefore(lineNode, el);
                         indentWidth = addIndentation(dt, lineNode, countColumns);

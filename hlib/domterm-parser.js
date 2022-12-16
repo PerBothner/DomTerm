@@ -1352,7 +1352,7 @@ class DTParser {
                 term.outputContainer.addEventListener("click",
                                                       term._showHideEventHandler,
                                                       true);
-                if (term.isSpanNode(term.outputContainer) // sanity check
+                if (DtUtil.isSpanNode(term.outputContainer) // sanity check
                     && term.outputContainer.getAttribute("std") == "hider") {
                     if (term.outputContainer == term._currentStyleSpan)
                         term._currentStyleSpan = term.outputContainer.outerStyle;
