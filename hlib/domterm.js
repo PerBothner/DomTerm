@@ -56,9 +56,16 @@ DomTerm.displaySelection = function(sel = document.getSelection()) {
     r += DomTerm.toDisplayString(sel.anchorNode, sel.anchorOffset);
     if (sel.isCollapsed)
         r += ',collapsed';
-    else if (sel.anchorNode === sel.focusNode)
-        r += ',foc:^' + sel.focusOffset;
-    else
+    else if (sel.anchorNode === sel.focusNode) {
+        if (sel.anchorNode instanceof Text) {
+            const data = sel.focusNode.data;
+            if (sel.anchorOffset < sel.focusOffset)
+                r = "Text:" + DomTerm.JsonLimited(data.substring(0, sel.anchorOffset)) + '_' + DomTerm.JsonLimited(data.substring(sel.anchorOffset, sel.focusOffset))+ '^' + DomTerm.JsonLimited(data.substring(sel.focusOffset));
+            else
+                r = "Text:" + DomTerm.JsonLimited(data.substring(0, sel.focusOffset)) + '^' + DomTerm.JsonLimited(data.substring(sel.focusOffset, sel.anchorOffset))+ '_' + DomTerm.JsonLimited(data.substring(sel.anchorOffset));
+        } else
+            r += ',foc:^' + sel.focusOffset;
+    } else
         r += ',foc:' + DomTerm.toDisplayString(sel.focusNode, sel.focusOffset);
     return r;
 }
