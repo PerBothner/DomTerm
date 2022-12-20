@@ -310,7 +310,7 @@ cmd('exit-line-mode',
             dt.setMarkMode(false);
             return true
         }
-        return false;
+        return true; // ignore
     }, {
         context: "terminal"
     });
