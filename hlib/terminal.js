@@ -11323,33 +11323,6 @@ Terminal.prototype.promptPatternFromInitial = function(initialPrompt) {
 */
 };
 
-/* DEBUGGING
-Terminal.prototype._showSelection = function() {
-    let sel = document.getSelection();
-    if (sel.anchorNode == null)
-        return "sel[no-ranges]";
-    let r = new Range();
-    r.setEnd(sel.anchorNode, sel.anchorOffset);
-    let r1 = r.toString();
-    let r1len = r1.length;
-    if (r1len > 20)
-        r1 = r1.substring(r1len-20);
-    r1 = JSON.stringify(r1);
-    r.setEnd(sel.focusNode, sel.focusOffset);
-    let r2 = r.toString();
-    let r2len = r2.length;
-    if (r2len > 20)
-        r2 = r2.substring(r2len-20);
-    r2 = JSON.stringify(r2);
-    //let aa=sel.anchorNode instanceof Text ? "text["+sel.anchorNode.data+"]"
-    //: "element["+sel.anchorNode.tagName+"."+sel.anchorNode.getAttribute("class")+"]";
-    let aa = Terminal._nodeToHtml(sel.anchorNode,this);
-    let ff=sel.focusNode instanceof Text ? "text["+sel.focusNode.data+"]"
-        : "element["+sel.focusNode.tagName+"."+sel.focusNode.getAttribute("class")+"]";
-    return "secl[anchor:"+aa+",aoff:"+sel.anchorOffset+",to-anchor:"+r1+(sel.isCollapsed?",":(",focus:"+ff+",to-focus:"+r2))+" col:"+sel.isCollapsed+"]";
-}
-*/
-
 Terminal.loadSavedFile = function(topNode, url) {
     if (url.startsWith("file:")) {
         url = "http://localhost:"+DomTerm.server_port
