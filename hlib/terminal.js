@@ -10501,22 +10501,26 @@ Terminal.prototype._enterPaging = function(pause = true) {
 
     let sel = document.getSelection();
     if (sel.focusNode == null) {
-        let before = this._caretNode;
-        let parent = before.parentNode;
-        if (! parent) {
-            this._fixOutputPosition();
-            before = this.outputBefore;
-            parent = this.outputContainer;
+        if (this._pauseLimit > 0) {
+            this._pageUpOrDown("limit", false, true);
+        } else {
+            let before = this._caretNode;
+            let parent = before.parentNode;
+            if (! parent) {
+                this._fixOutputPosition();
+                before = this.outputBefore;
+                parent = this.outputContainer;
+            }
+            const r = new Range();
+            if (before)
+                r.setEndBefore(before);
+            else
+                r.setNodeContents(parent);
+            sel.setBaseAndExtent(r.endContainer, r.endOffset,
+                                 r.endContainer, r.endOffset);
+            this.showViewCaret();
+            this.adjustFocusCaretStyle();
         }
-        const r = new Range();
-        if (before)
-            r.setEndBefore(before);
-        else
-            r.setNodeContents(parent);
-        sel.setBaseAndExtent(r.endContainer, r.endOffset,
-                             r.endContainer, r.endOffset);
-        this.showViewCaret();
-        this.adjustFocusCaretStyle();
     } else {
         this._updateSelected();
     }
