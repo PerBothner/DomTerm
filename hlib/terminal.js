@@ -1635,43 +1635,49 @@ Terminal.prototype._restoreLineTables = function(startNode, startLine, skipText 
         var descend = false;
         if (cur instanceof Text && ! skipText) {
             seenDataThisLine = true;
-            var data = cur.data;
-            var dlen = data.length;
-            for (var i = 0; i < dlen; i++) {
-                var ch = data.codePointAt(i);
-                if (ch == 10) {
-                    if (i > 0)
-                        cur.parentNode.insertBefore(document.createTextNode(data.substring(0,i)), cur);
-                    let white = window.getComputedStyle(cur.parentNode)['white-space'];
-                    let line = white=='normal' || white=='nowrap'
-                        ? this._createSpanNode('non-pre-newline', ' ')
-                        : this._createLineNode("hard", "\n");
-                    cur.parentNode.insertBefore(line, cur);
-                    this._deleteData(cur, 0, i+1);
-                    cur = line; // continue with Element case below
-                    break;
+            let dpos = 0; // position in node.data
+            let data = cur.data;
+            let dlen = data.length;
+            let nl = data.indexOf('\n');
+            if (nl < 0)
+                nl = dlen;
+            let segments = [];
+            DtUtil.getGraphemeSegments (data, 0, nl, segments, null);
+            const nsegments = segments ? segments.length : 0;
+            const parent = cur.parentNode;
+            for (let isegment = 0; isegment < nsegments; isegment++) {
+                const seg = segments[isegment];
+                if (seg instanceof Element) {
+                    const rest = dpos === 0 ? cur
+                          : dpos === nl ? null : cur.splitText(dpos);
+                    let glen = seg.firstChild.length;
+                    parent.insertBefore(seg, rest);
+                    if (rest) {
+                        if (cur != rest)
+                            dpos = 0;
+                        rest.deleteData(dpos, glen);
+                        cur = rest;
+                    }
+                } else {
+                    dpos += seg.length;
                 }
-                // FIXME doesn't handle extended grapheme clusters
-                var cwidth = this.wcwidthInContext(ch, cur.parentNode);
-                if (cwidth == 2) {
-                    var i1 = ch > 0xffff ? i + 2 : i + 1;
-                    const wcnode =
-                        this._createSpanNode("dt-cluster w2",
-                                             String.fromCodePoint(ch));
-                    wcnode.stayOut = true;
-                    cur.parentNode.insertBefore(wcnode, cur.nextSibling);
-                    this._deleteData(cur, i, dlen-i);
-                    cur = wcnode;
-                    if (i1 < dlen) {
-                        data = data.substring(i1, dlen);
-                        var next = document.createTextNode(data);
-                        cur.parentNode.insertBefore(next, cur.nextSibling);
-                        cur = next;
-                        dlen -= i1;
-                        i = -1;
-                    } else
-                        break;
-                }
+            }
+            if (nl < dlen) {
+                const rest = data.substr(nl + 1);
+                //const following = dpos === 0 ? cur : dpos == dlen ? null : cur.splitText(dpos);
+                let white = window.getComputedStyle(cur.parentNode)['white-space'];
+                let line = white=='normal' || white=='nowrap'
+                    ? this._createSpanNode('non-pre-newline', ' ')
+                    : this._createLineNode("hard", "\n");
+                parent.insertBefore(line, cur.nextSibling);
+                if (nl === 0)
+                    parent.removeChild(cur);
+                else
+                    cur.deleteData(nl, dlen - nl);
+                if (rest)
+                    parent.insertBefore(document.createTextNode(rest),
+                                        line.nextSibling);
+                cur = line; // continue with Element case below
             }
         }
         if (cur instanceof Element) {
@@ -7697,92 +7703,10 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         }
     }
 
-    let widthInColumns = 0;
     let segments = [];
     let widths = [];
-    let colsToHere = 0; // columns in str.substring(beginIndex,i)
-    let colsToCluster = 0; // columns in str.substring(beginIndex,clusterStart)
-    let prevInfo = 0;
-    const preferWide = false; //this.ambiguousCharsAreWide(context);
-    let inCluster = false; //FIXME
-    let clusterStart = 0;
-    // Divide the string into grapheme clusters.  A string is used to represent
-    // one or more simple clusters (single-character, single-column).
-    // Other clusters are represented by <span class="cluster"> elements.
-    let width = 0; // max of w (below) of characters from clusterStart..i.
-    for (let i = beginIndex; ; ) {
-        // Text in str.substring.(beginIndex, i) is "simple" clusters.
-        let codePoint, codeInfo, joinState, shouldBreak;
-        let w; // 0 - normal; 1 - force 1-column; 2 - wide
-        // 'width' is max of 'w' since clusterStart
-        if (i >= endIndex) {
-            codePoint = -1;
-            codeInfo = -1; // ???
-            joinState = 0;
-            shouldBreak = true;
-            w = 0;
-        } else {
-            codePoint = str.codePointAt(i);
-            codeInfo = UnicodeProperties.getInfo(codePoint);
-            joinState = UnicodeProperties.shouldJoin(prevInfo, codeInfo);
-            shouldBreak = joinState <= 0;
-            w = UnicodeProperties.infoToWidthInfo(codeInfo);
-            if (w >= 2) {
-                // Treat emoji_presentation_selector as WIDE.
-                w = w == 3 || preferWide || codePoint === 0xfe0f ? 2 : 0;
-            }
-        }
-        // A <span class="cluster">...</span> contains one or more
-        // characters that should be treated an extended grapheme cluster.
-        // A "cluster w1" is 1 column wide; "cluster w2' is 2 columns.
-        // A single wide character should be a "cluster w2".
-        // A "cluster w1" may be used for a single narrow character
-        // to force it to the correct width - e.g. Braille characters.
-        // A "cluster pictographic" is "cluster w2" with Pict property.
-        if (shouldBreak) {
-            if (width == 0 &&
-                (i == clusterStart+1
-                 || (i == clusterStart+2
-                     && str.charCodeAt(clusterStart) > 0xffff))) {
-                clusterStart = i;
-                colsToCluster = colsToHere;
-            }
-            if (clusterStart > beginIndex
-                && (w > 0 || width > 0 || prevInfo > 0 || codePoint < 0)) {
-                segments.push(str.substring(beginIndex, clusterStart));
-                widths.push(colsToCluster);
-                widthInColumns += colsToCluster;
-                beginIndex = clusterStart;
-                colsToHere = 0;
-            }
-            if (clusterStart < i && (width > 0 || prevInfo > 0 || codePoint < 0)) {
-                if (prevInfo == UnicodeProperties.GRAPHEME_BREAK_Regional_Indicator)
-                    width = 2;
-                const node = this._createSpanNode(
-                    width >= 2 ? "dt-cluster w2" : "dt-cluster w1",
-                    str.substring(clusterStart, i));
-                node.stayOut = true;
-                node._prevInfo = prevInfo;
-                segments.push(node);
-                width = width >= 2 ? 2 : 1;
-                widths.push(width);
-                widthInColumns += width;
-                beginIndex = i;
-                width = 0;
-                colsToHere = 0;
-            }
-            clusterStart = i;
-            colsToCluster = colsToHere;
-        }
-        if (i >= endIndex)
-            break;
-        // next_w
-        prevInfo = joinState;
-        if (w > width)
-            width = w;
-        i = i + ((codePoint <= 0xffff) ? 1 : 2);
-        colsToHere += 1; // Only used for narrow simple chars
-    }
+    let widthInColumns = DtUtil.getGraphemeSegments(str, beginIndex, endIndex,
+                                                    segments, widths);
 
     let nsegments = segments.length;
     if (nsegments == 0)

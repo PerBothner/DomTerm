@@ -1,3 +1,5 @@
+import * as UnicodeProperties from './unicode/uc-properties.js';
+
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
         return { "%T": "Map", "$V": Array.from(value.entries()) };
@@ -999,4 +1001,97 @@ export function positionBoundingRect(node, offset) {
     r.setEnd(node, offset);
     r.collapse();
     return r.getBoundingClientRect();
+}
+
+/** Divide a string into grapheme clusters.
+ * The resulting clusters as added to the 'segments' array.
+ * A string segment represents one or more simple clusters
+ * (single-character, single-column).
+ * Other clusters are represented by <span class="cluster"> elements.
+ */
+export function getGraphemeSegments(str, beginIndex, endIndex, segments, widths) {
+    let widthInColumns = 0;
+    let colsToHere = 0; // columns in str.substring(beginIndex,i)
+    let colsToCluster = 0; // columns in str.substring(beginIndex,clusterStart)
+    let prevInfo = 0;
+    const preferWide = false; //this.ambiguousCharsAreWide(context);
+    let inCluster = false; //FIXME
+    let clusterStart = 0;
+    let width = 0; // max of w (below) of characters from clusterStart..i.
+    for (let i = beginIndex; ; ) {
+        // Text in str.substring.(beginIndex, i) is "simple" clusters.
+        let codePoint, codeInfo, joinState, shouldBreak;
+        let w; // 0 - normal; 1 - force 1-column; 2 - wide
+        // 'width' is max of 'w' since clusterStart
+        if (i >= endIndex) {
+            codePoint = -1;
+            codeInfo = -1; // ???
+            joinState = 0;
+            shouldBreak = true;
+            w = 0;
+        } else {
+            codePoint = str.codePointAt(i);
+            codeInfo = UnicodeProperties.getInfo(codePoint);
+            joinState = UnicodeProperties.shouldJoin(prevInfo, codeInfo);
+            shouldBreak = joinState <= 0;
+            w = UnicodeProperties.infoToWidthInfo(codeInfo);
+            if (w >= 2) {
+                // Treat emoji_presentation_selector as WIDE.
+                w = w == 3 || preferWide || codePoint === 0xfe0f ? 2 : 0;
+            }
+        }
+        // A <span class="cluster">...</span> contains one or more
+        // characters that should be treated an extended grapheme cluster.
+        // A "cluster w1" is 1 column wide; "cluster w2' is 2 columns.
+        // A single wide character should be a "cluster w2".
+        // A "cluster w1" may be used for a single narrow character
+        // to force it to the correct width - e.g. Braille characters.
+        // A "cluster pictographic" is "cluster w2" with Pict property.
+        if (shouldBreak) {
+            if (width == 0 &&
+                (i == clusterStart+1
+                 || (i == clusterStart+2
+                     && str.charCodeAt(clusterStart) > 0xffff))) {
+                clusterStart = i;
+                colsToCluster = colsToHere;
+            }
+            if (clusterStart > beginIndex
+                && (w > 0 || width > 0 || prevInfo > 0 || codePoint < 0)) {
+                segments.push(str.substring(beginIndex, clusterStart));
+                if (widths)
+                    widths.push(colsToCluster);
+                widthInColumns += colsToCluster;
+                beginIndex = clusterStart;
+                colsToHere = 0;
+            }
+            if (clusterStart < i && (width > 0 || prevInfo > 0 || codePoint < 0)) {
+                if (prevInfo == UnicodeProperties.GRAPHEME_BREAK_Regional_Indicator)
+                    width = 2;
+                const node = createSpanNode(
+                    width >= 2 ? "dt-cluster w2" : "dt-cluster w1",
+                    str.substring(clusterStart, i));
+                node.stayOut = true;
+                node._prevInfo = prevInfo;
+                segments.push(node);
+                width = width >= 2 ? 2 : 1;
+                if (widths)
+                    widths.push(width);
+                widthInColumns += width;
+                beginIndex = i;
+                width = 0;
+                colsToHere = 0;
+            }
+            clusterStart = i;
+            colsToCluster = colsToHere;
+        }
+        if (i >= endIndex)
+            break;
+        // next_w
+        prevInfo = joinState;
+        if (w > width)
+            width = w;
+        i = i + ((codePoint <= 0xffff) ? 1 : 2);
+        colsToHere += 1; // Only used for narrow simple chars
+    }
+    return widthInColumns;
 }
