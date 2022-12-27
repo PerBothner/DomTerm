@@ -1,4 +1,5 @@
 import { Terminal } from './terminal.js';
+import * as DtUtil from './domterm-utils.js';
 
 var maxAjaxInterval = 2000;
 
@@ -246,7 +247,7 @@ function createTitlebar(titlebarNode, tabs) {
         titlebarNode.removeChild(titlebarNode.firstChild);
     let titleButtons = DomTerm.titlebarButtons;
     if (! titleButtons) {
-        titleButtons = DomTerm.createSpanNode("dt-titlebar-buttons");
+        titleButtons = DtUtil.createSpanNode("dt-titlebar-buttons");
         DomTerm.titlebarButtons = titleButtons;
         if (DomTerm.isMac) {
             if (DomTerm.isElectron()) {
@@ -268,7 +269,7 @@ function createTitlebar(titlebarNode, tabs) {
 
     let titlebarInitial = DomTerm.titlebarInitial;
     if (! titlebarInitial) {
-        titlebarInitial = DomTerm.createSpanNode("dt-titlebar-prefix");
+        titlebarInitial = DtUtil.createSpanNode("dt-titlebar-prefix");
         DomTerm.titlebarButtons = titleButtons;
         if (DomTerm.isMac) {
             titlebarInitial.appendChild(titleButtons);
@@ -304,7 +305,7 @@ function createTitlebar(titlebarNode, tabs) {
             const wtitle = info.windowTitle;
             if (wtitle) {
                 const wstr = "(" + wtitle +")";
-                const tnode = DomTerm.createSpanNode("domterm-windowname", wstr);
+                const tnode = DtUtil.createSpanNode("domterm-windowname", wstr);
                 str = str ? str + " " + wstr : wstr;
                 titleNode.appendChild(tnode);
             }

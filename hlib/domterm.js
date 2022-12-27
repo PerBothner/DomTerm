@@ -483,16 +483,6 @@ DomTerm.showFocusedPane = function(lcontent) {
     }
 };
 
-DomTerm.createSpanNode = function(cls=null, txt=null) {
-    let el = document.createElement("span");
-    if (cls)
-        el.setAttribute("class", cls);
-    if (txt)
-        el.appendChild(document.createTextNode(txt));
-    return el;
-};
-
-
 DomTerm.addSubWindowParams = function(location, mode) {
     if (mode == 'T' || mode == 'V') {
         location = DomTerm.addLocationParams(location);

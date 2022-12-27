@@ -622,6 +622,15 @@ export function isNormalBlock(node) {
     return tag == "PRE" || tag == "P" || tag == "DIV";
 }
 
+export function createSpanNode(cls=null, txt=null) {
+    let el = document.createElement("span");
+    if (cls)
+        el.setAttribute("class", cls);
+    if (txt)
+        el.appendChild(document.createTextNode(txt));
+    return el;
+};
+
 /**
 * Iterate for sub-node of 'node', starting with 'start'.
 * Call 'func' for each node (if allNodes is true) or each Element

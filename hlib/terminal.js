@@ -3313,7 +3313,7 @@ Terminal.prototype._getOuterInputArea = function(node = this._caretNode) {
 }
 
 Terminal.prototype._createSpanNode = function(cls=null, txt=null) { // DEPRECATED
-    return DomTerm.createSpanNode(cls, txt);
+    return DtUtil.createSpanNode(cls, txt);
 };
 
 Terminal.prototype.makeId = function(local) {
