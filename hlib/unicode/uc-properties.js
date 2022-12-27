@@ -1,5 +1,5 @@
 import UnicodeTrie from './unicode-trie/index.mjs';
-const trieRaw = "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";
+const trieRaw = "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";
 let _data = null;
 {
   const bin = window.atob(trieRaw);
@@ -79,6 +79,20 @@ function columnToIndexInContext(str, startIndex, column, preferWide) {
 function shouldJoin(beforeState, afterInfo) {
     let beforeCode = beforeState >= 0 ? beforeState : -beforeState;
     let afterCode = (afterInfo & GRAPHEME_BREAK_MASK) >> GRAPHEME_BREAK_SHIFT;
+    if (afterCode == GRAPHEME_BREAK_Regional_Indicator) // GB12, GB13
+        return beforeState == GRAPHEME_BREAK_SAW_Regional ? afterCode
+        : GRAPHEME_BREAK_SAW_Regional;
+    return _shouldJoin(beforeCode, afterCode) ? afterCode : -afterCode;
+}
+function shouldJoinBackwards(beforeInfo, afterState) {
+    let afterCode = afterState >= 0 ? afterState : -afterState;
+    let beforeCode = (beforeInfo & GRAPHEME_BREAK_MASK) >> GRAPHEME_BREAK_SHIFT;
+    if (beforeCode == GRAPHEME_BREAK_Regional_Indicator) // GB12, GB13
+        return afterState == GRAPHEME_BREAK_SAW_Regional ? beforeCode
+        : GRAPHEME_BREAK_SAW_Regional;
+    return _shouldJoin(beforeCode, afterCode) ? beforeCode : -beforeCode;
+}
+function _shouldJoin(beforeCode, afterCode) {
     if (beforeCode >= GRAPHEME_BREAK_Hangul_L
         && beforeCode <= GRAPHEME_BREAK_Hangul_LVT) {
         if (beforeCode == GRAPHEME_BREAK_Hangul_L // GB6
@@ -86,28 +100,25 @@ function shouldJoin(beforeState, afterInfo) {
                 || afterCode == GRAPHEME_BREAK_Hangul_V
                 || afterCode == GRAPHEME_BREAK_Hangul_LV
                 || afterCode == GRAPHEME_BREAK_Hangul_LVT))
-            return afterCode;
+            return true;
         if ((beforeCode == GRAPHEME_BREAK_Hangul_LV // GB7
              || beforeCode == GRAPHEME_BREAK_Hangul_V)
             && (afterCode == GRAPHEME_BREAK_Hangul_V
                 || afterCode == GRAPHEME_BREAK_Hangul_T))
-            return afterCode;
+            return true;
         if ((beforeCode == GRAPHEME_BREAK_Hangul_LVT // GB8
              || beforeCode == GRAPHEME_BREAK_Hangul_T)
             && afterCode == GRAPHEME_BREAK_Hangul_T)
-            return afterCode;
+            return true;
     }
     if (afterCode == GRAPHEME_BREAK_Extend // GB9
         || afterCode == GRAPHEME_BREAK_ZWJ
         || afterCode == GRAPHEME_BREAK_SpacingMark) // GB9b
-        return afterCode;
+        return true;
     if (beforeCode == GRAPHEME_BREAK_ZWJ // GB11
         && afterCode == GRAPHEME_BREAK_ExtPic)
-        return afterCode;
-    if (afterCode == GRAPHEME_BREAK_Regional_Indicator) // GB12, GB13
-        return beforeState == GRAPHEME_BREAK_SAW_Regional ? afterCode
-        : GRAPHEME_BREAK_SAW_Regional;
-    return -afterCode;
+        return true;
+    return false;
 }
 
 const getInfo = typeof trieData === "undefined" ? undefined
@@ -137,6 +148,7 @@ export {
     infoToWidthInfo,
     infoToWidth,
     shouldJoin,
+    shouldJoinBackwards,
     getInfo,
     strWidth,
     columnToIndexInContext
