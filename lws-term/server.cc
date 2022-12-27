@@ -1915,7 +1915,7 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/jsMenus.js", LIB_WHEN_OUTER},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
-    {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE},
 #if WITH_XTERMJS
     {"hlib/xterm.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
     {"hlib/fit.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},

@@ -3648,7 +3648,7 @@ Terminal.prototype.resizeHandler = function() {
         if (dt._displayInfoWidget) {
             DomTerm._positionInfoWidget(dt._displayInfoWidget, dt);
         }
-        resizeTitlebar();
+        DomTerm.resizeTitlebar();
         dt.requestUpdateDisplay();
     }
 }

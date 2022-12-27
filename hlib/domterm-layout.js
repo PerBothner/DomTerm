@@ -422,7 +422,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
         else
             query += "&main-window=true";
         el.query = query;
-        maybeWindowName(el, new URLSearchParams(query));
+        DomTerm.maybeWindowName(el, new URLSearchParams(query));
         if (ctype === "view-saved") {
             DTerminal.loadSavedFile(el, cstate.url);
         } else {

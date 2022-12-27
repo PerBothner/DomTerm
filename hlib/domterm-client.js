@@ -1,3 +1,5 @@
+import { Terminal } from './terminal.js';
+
 var maxAjaxInterval = 2000;
 
 // These should perhaps be combined
@@ -41,7 +43,7 @@ DomTerm.useIFrame = ! DomTerm.simpleLayout ? 1 : 0;
 /** Connect using XMLHttpRequest ("ajax") */
 function connectAjax(name, prefix="", topNode=null)
 {
-    var wt = new DTerminal(name);
+    var wt = new Terminal(name);
     if (topNode == null)
         topNode = document.getElementById("domterm");
     var xhr = new XMLHttpRequest();
@@ -150,7 +152,7 @@ function setupQWebChannel(channel) {
     DomTerm.doCopy = function(asHTML=false) {
         if (DomTerm.dispatchTerminalMessage("request-selection", asHTML))
             return;
-        DomTerm.valueToClipboard(DTerminal._selectionValue(asHTML));
+        DomTerm.valueToClipboard(Terminal._selectionValue(asHTML));
     }
 
     DomTerm.valueToClipboard = function(values) {
@@ -217,22 +219,6 @@ function setupQWebChannel(channel) {
     }
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
 };
-
-function maybeWindowName(el, params = DomTerm.mainSearchParams) {
-    if (params && el) {
-        const wparam = params.get("window");
-        const wnum = wparam ? Number(wparam) : -1;
-        if (wnum >= 0)
-            el.windowNumber = wnum;
-        let wname_unique = params.get("wname-unique");
-        let name = wname_unique || params.get("wname");
-        if (name) {
-            el.setAttribute("window-name", name);
-            el.windowNameUnique = !!wname_unique;
-        }
-    }
-    return el;
-}
 
 function setupParentMessages1() {
     if (DomTerm.useToolkitSubwindows) {
@@ -392,11 +378,11 @@ function createResizeAreas() {
     }
 }
 
-function resizeTitlebar(titlebarElement = DomTerm.titlebarCurrent) {
+DomTerm.resizeTitlebar = function(titlebarElement = DomTerm.titlebarCurrent) {
     if (! DomTerm.addTitlebar)
         return;
     console.log("resizeTitlebar");
-}
+};
 
 function loadHandler(event) {
     //if (DomTermLayout.initialize === undefined || window.GoldenLayout === undefined)
@@ -498,8 +484,9 @@ function loadHandler(event) {
         }
         if (DomTerm.createMenus && ! DomTerm.simpleLayout)
             DomTerm.createMenus();
-        resizeTitlebar(DomTerm.titlebarElement);
+        DomTerm.resizeTitlebar(DomTerm.titlebarElement);
     }
+
     m = location.hash.match(/open=([^&;]*)/);
     const open_encoded = m ? decodeURIComponent(m[1]) : null;
     if (open_encoded)
@@ -586,8 +573,8 @@ function loadHandler(event) {
             wparams.delete("open");
             wparams.delete("session-number");
             wparams.set("main-window", "true");
-            const dt = DTerminal.connectWS(wparams.toString(),
-                                           null, no_session);
+            const dt = Terminal.connectWS(wparams.toString(),
+                                          null, no_session);
             const pane = new PaneInfo(mwinnum);
             pane.terminal = dt;
             dt.paneInfo = pane;
@@ -667,7 +654,7 @@ function loadHandler(event) {
                 const frame_url = mode === 'B' ? browse_param
                       : DomTerm.paneLocation/*+location.hash*/;
                 el = DomTerm.makeIFrameWrapper(frame_url, mode, parent);
-                maybeWindowName(el);
+                DomTerm.maybeWindowName(el);
                 paneParams.delete('session-number');
                 paneParams.delete('window');
                 DomTerm.mainLocationParams = paneParams.toString();
@@ -692,11 +679,11 @@ function loadHandler(event) {
             for (var i = 0; i < topNodes.length; i++) {
                 const top = topNodes[i];
                 if (no_session === "view-saved") {
-                    DTerminal.loadSavedFile(top, browse_param);
+                    Terminal.loadSavedFile(top, browse_param);
                 } else {
-                    DTerminal.connectWS(query, top, no_session);
+                    Terminal.connectWS(query, top, no_session);
                 }
-                maybeWindowName(top);
+                DomTerm.maybeWindowName(top);
             }
         }
         DomTerm.layoutBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
@@ -858,7 +845,7 @@ function handleMessage(event) {
     } else if (data.command=="request-selection") { // parent to child
         // FIXME rename to doNamedCommand("copy"/"copy-as-html");
         DomTerm.sendParentMessage("value-to-clipboard",
-                                   DTerminal._selectionValue(data.args[0]));
+                                  Terminal._selectionValue(data.args[0]));
     } else if (data.command=="copy-selection") { // message to child
         DomTerm.doCopy(data.args[0]);
     } else if (data.command=="open-link") { // message to child

@@ -204,6 +204,22 @@ DomTerm.displayWindowTitle = function(info) {
     DomTerm.displayTitleString(str);
 }
 
+DomTerm.maybeWindowName = function(el, params = DomTerm.mainSearchParams) {
+    if (params && el) {
+        const wparam = params.get("window");
+        const wnum = wparam ? Number(wparam) : -1;
+        if (wnum >= 0)
+            el.windowNumber = wnum;
+        let wname_unique = params.get("wname-unique");
+        let name = wname_unique || params.get("wname");
+        if (name) {
+            el.setAttribute("window-name", name);
+            el.windowNameUnique = !!wname_unique;
+        }
+    }
+    return el;
+};
+
 DomTerm.forEachTerminal = function(func) {
     if (DomTerm.useIFrame && DomTerm.focusedTerm) // optimization
         return (func)(DomTerm.focusedTerm);
