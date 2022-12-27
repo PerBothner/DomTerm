@@ -688,12 +688,12 @@ DomTermLayout.initialize = function(initialContent = null) {
                                          const hel = header.element;
                                          hel.classList.add("dt-titlebar");
                                          DomTerm.titlebarCurrent = hel;
-                                         createTitlebar(hel, header.tabsContainerElement);
+                                         DomTerm.createTitlebar(hel, header.tabsContainerElement);
                                          DomTerm.titlebarElement.style.display = "none";
                                          // change to merged header
                                      } else {
                                          DomTerm.titlebarElement.style.display = "flex";
-                                         createTitlebar(DomTerm.titlebarElement, null);
+                                         DomTerm.createTitlebar(DomTerm.titlebarElement, null);
                                      }
                                      DomTermLayout.singleStack = singleStack;
                                      DomTerm.updateSizeFromBody();

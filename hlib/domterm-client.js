@@ -242,7 +242,7 @@ function setupParentMessages2() {
     }
 }
 
-function createTitlebar(titlebarNode, tabs) {
+DomTerm.createTitlebar = function(titlebarNode, tabs) {
     while (titlebarNode.firstChild)
         titlebarNode.removeChild(titlebarNode.firstChild);
     let titleButtons = DomTerm.titlebarButtons;
@@ -473,7 +473,7 @@ function loadHandler(event) {
             bodyNode.appendChild(titlebarNode);
             DomTerm.titlebarElement = titlebarNode;
             DomTerm.titlebarCurrent = titlebarNode;
-            createTitlebar(titlebarNode, null);
+            DomTerm.createTitlebar(titlebarNode, null);
             createResizeAreas();
             if (DomTerm.isMac && ! DomTerm.isElectron()) {
                 const slink = document.createElement("link");
