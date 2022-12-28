@@ -19,6 +19,7 @@ show() {
 fi
 
 show "\U1F1F3\U1F1F4" "REGIONAL INDICATOR SYMBOL LETTER N × RI O"
+show "\U1F1E9\U1F1EA\U1F1F3\U1F1F4\U1F1EB" "REGIONAL INDICATOR SYMBOL LETTER D E N O F"
 show "\U1F476\U1F3FF\U1F476" "baby × emoji modifier fitzpatrick type-6 ÷ baby"
 show "\U1F476\U1F476\U1F3FFX" ''
 show '\U0061\U0301'  'letter a × acute accent'

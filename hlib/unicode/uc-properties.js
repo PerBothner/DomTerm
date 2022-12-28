@@ -27,7 +27,10 @@ const GRAPHEME_BREAK_Hangul_LVT = 9;
 const GRAPHEME_BREAK_ZWJ = 10;
 const GRAPHEME_BREAK_ExtPic = 11;
 
-const GRAPHEME_BREAK_SAW_Regional = -3;
+// Only used as return value from shouldJoin/shouldJoinBackwards.
+// (Must be positive; distinct from other values;
+// and become GRAPHEME_BREAK_Other when masked with GRAPHEME_BREAK_MASK.)
+const GRAPHEME_BREAK_SAW_Regional_Pair = 32;
 
 const CHARWIDTH_NORMAL = 0;
 const CHARWIDTH_FORCE_1COLUMN = 1;
@@ -77,21 +80,30 @@ function columnToIndexInContext(str, startIndex, column, preferWide) {
 // the value 0 is start of string.
 // 'afterCode' is the GRAPHEME_BREAK_Xxx value for the following codepoint.
 function shouldJoin(beforeState, afterInfo) {
-    let beforeCode = beforeState >= 0 ? beforeState : -beforeState;
+    let beforeCode = (beforeState & GRAPHEME_BREAK_MASK) >> GRAPHEME_BREAK_SHIFT;
     let afterCode = (afterInfo & GRAPHEME_BREAK_MASK) >> GRAPHEME_BREAK_SHIFT;
-    if (afterCode == GRAPHEME_BREAK_Regional_Indicator) // GB12, GB13
-        return beforeState == GRAPHEME_BREAK_SAW_Regional ? afterCode
-        : GRAPHEME_BREAK_SAW_Regional;
-    return _shouldJoin(beforeCode, afterCode) ? afterCode : -afterCode;
+    if (_shouldJoin(beforeCode, afterCode)) {
+        if (afterCode === GRAPHEME_BREAK_Regional_Indicator)
+            return GRAPHEME_BREAK_SAW_Regional_Pair;
+        else
+            return afterCode + 16;
+    } else
+        return afterCode - 16;
 }
+
 function shouldJoinBackwards(beforeInfo, afterState) {
-    let afterCode = afterState >= 0 ? afterState : -afterState;
+    let afterCode = (afterState & GRAPHEME_BREAK_MASK) >> GRAPHEME_BREAK_SHIFT;
     let beforeCode = (beforeInfo & GRAPHEME_BREAK_MASK) >> GRAPHEME_BREAK_SHIFT;
-    if (beforeCode == GRAPHEME_BREAK_Regional_Indicator) // GB12, GB13
-        return afterState == GRAPHEME_BREAK_SAW_Regional ? beforeCode
-        : GRAPHEME_BREAK_SAW_Regional;
-    return _shouldJoin(beforeCode, afterCode) ? beforeCode : -beforeCode;
+    if (_shouldJoin(beforeCode, afterCode)) {
+        if (beforeCode === GRAPHEME_BREAK_Regional_Indicator)
+            return GRAPHEME_BREAK_SAW_Regional_Pair;
+        else
+            return beforeCode + 16;
+    } else
+        return beforeCode - 16;
 }
+
+/** Doesn't handle an odd number of RI characters. */
 function _shouldJoin(beforeCode, afterCode) {
     if (beforeCode >= GRAPHEME_BREAK_Hangul_L
         && beforeCode <= GRAPHEME_BREAK_Hangul_LVT) {
@@ -118,6 +130,9 @@ function _shouldJoin(beforeCode, afterCode) {
     if (beforeCode == GRAPHEME_BREAK_ZWJ // GB11
         && afterCode == GRAPHEME_BREAK_ExtPic)
         return true;
+    if (afterCode == GRAPHEME_BREAK_Regional_Indicator // GB12, GB13
+        && beforeCode == GRAPHEME_BREAK_Regional_Indicator)
+        return true;
     return false;
 }
 
@@ -139,6 +154,7 @@ export {
     GRAPHEME_BREAK_Hangul_LVT,
     GRAPHEME_BREAK_ZWJ,
     GRAPHEME_BREAK_ExtPic,
+    GRAPHEME_BREAK_SAW_Regional_Pair,
     CHARWIDTH_MASK,
     CHARWIDTH_SHIFT,
     CHARWIDTH_NORMAL,

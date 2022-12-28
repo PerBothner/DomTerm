@@ -729,7 +729,7 @@ function editorNonWordChar(ch) {
  *
  * state: various options and counters:
  * state.todo: Infinity, or maximum number of units
- * state.unit: "char", "word", "line"
+ * state.unit: "char", "grapheme", "word", "line"
  * state.stopAt: one of "", "line" (stop before moving to different hard line),
  *   "visible-line" (stop before moving to different screen line),
  *   "input" (line-edit input area), or "buffer".
@@ -741,6 +741,7 @@ function editorNonWordChar(ch) {
 export function scanInRange(range, backwards, state) {
     let unit = state.unit;
     let doWords = unit == "word";
+    let doGraphemes = unit == "grapheme"
     let stopAt = state.stopAt;
     let wordCharSeen = false;
     let firstNode = backwards ? range.endContainer : range.startContainer;
@@ -826,24 +827,6 @@ export function scanInRange(range, backwards, state) {
             if (node.nodeName == "SPAN" && node.getAttribute("std") == "caret")
                 return ! node.classList.contains("focus-caret");
             if (node.nodeName == "SPAN"
-                && node.classList.contains('dt-cluster')) {
-                state.todo--;
-                let stopped = false;
-                if (state.wrapText && node.firstChild instanceof Text) {
-                    const d = node.firstChild.data;
-                    const r = state.wrapText(node.firstChild, d, d.length);
-                    if (r != undefined) {
-                        state.todo = 0;
-                        stopped = r == 0;
-                    }
-                }
-                if (state.todo == 0) {
-                    updateRangeWhenDone(node, stopped);
-                    return null;
-                }
-                return false;
-            }
-            if (node.nodeName == "SPAN"
                 && node.getAttribute("line") != null) {
                 let stopped = false;
                 if (stopAt == "visible-line")
@@ -922,25 +905,53 @@ export function scanInRange(range, backwards, state) {
             // Optimization: skip character processing if Infinity
             if (state.todo < Infinity) {
                 let c = data.charCodeAt(i1);
-                let clen = 1;
                 if (backwards ? (index > 0 && c >= 0xdc00 && c <= 0xdfff)
                     : (index < dlen && c >= 0xd800 && c <= 0xdbff)) {
                     let c2 = data.charCodeAt(backwards ? index-1 : index);
                     if (backwards ? (c2 >= 0xd800 && c2 <= 0xdbff)
                         : (c2 >= 0xdc00 && c2 <= 0xdfff)) {
-                        clen = 2;
                         if (backwards) index--; else index++;
-                        // c = FIXME
+                        c = data.codePointAt(backwards ? index : index - 2);
                     }
                 }
                 if (doWords) {
-                    let sep = DomTerm.editorNonWordChar(String.fromCharCode(c));
+                    let sep = editorNonWordChar(String.fromCharCode(c));
                     if (sep && wordCharSeen) {
                         index = i0;
                     } else {
                         state.todo++;
                     }
                     wordCharSeen = ! sep;
+                } else if (doGraphemes) {
+                    let joinState = UnicodeProperties.getInfo(c);
+                    if (backwards) {
+                        while (index > dend) {
+                            let prevChar =  data.charCodeAt(index - 1);
+                            let prevW = prevChar >= 0xDC00 && prevChar <= 0xDFFF ? 2 : 1;
+                            if (prevW == 2)
+                                prevChar = data.codePointAt(index - prevW);
+                            const prevInfo = UnicodeProperties.getInfo(prevChar);
+                            const joinCode = UnicodeProperties.shouldJoinBackwards(prevInfo, joinState);
+                            if (joinCode <= 0)
+                                break;
+                            index -= prevW;
+                            joinState = joinCode;
+                        }
+                    } else {
+                        // Does not handle an odd number of Regional Indicators.
+                        // FIXME Need to handle that specially.
+                        for (; index < dlen; ) {
+                            const nextChar = data.codePointAt(index);
+                            const nextInfo = UnicodeProperties.getInfo(nextChar);
+                            const joinCode =
+                                  UnicodeProperties.shouldJoin(joinState,
+                                                               nextInfo);
+                            if (joinCode <= 0)
+                                break;
+                            index += ((nextChar <= 0xffff) ? 1 : 2);
+                            joinState = joinCode;
+                        }
+                    }
                 }
                 state.todo--;
             }
@@ -1065,7 +1076,7 @@ export function getGraphemeSegments(str, beginIndex, endIndex, segments, widths)
                 colsToHere = 0;
             }
             if (clusterStart < i && (width > 0 || prevInfo > 0 || codePoint < 0)) {
-                if (prevInfo == UnicodeProperties.GRAPHEME_BREAK_Regional_Indicator)
+                if (prevInfo == UnicodeProperties.GRAPHEME_BREAK_SAW_Regional_Pair)
                     width = 2;
                 const node = createSpanNode(
                     width >= 2 ? "dt-cluster w2" : "dt-cluster w1",

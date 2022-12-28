@@ -58,7 +58,7 @@ test-grapheme-widths:
 	@echo test-grapheme-widths OK
 
 test-grapheme-widths-byte-by-byte:
-	$(MAKE) test-grapheme-widths TNEWOPTIONS='output-byte-by-byte=-1'
+	$(MAKE) test-grapheme-widths TNEWOPTIONS='$(TNEWOPTIONS) output-byte-by-byte=-1'
 
 test-vttest-1:
 	$(TDOMTERM) $(TNEWOPTIONS) new $(VTTEST)

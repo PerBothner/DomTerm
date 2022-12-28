@@ -4814,7 +4814,7 @@ Terminal.prototype._editPendingInput = function(forwards, doDelete,
             pending.appendChild(node);
         pending.setAttribute("direction", forwards ? "Right" : "Left");
     }
-    let scanState = { linesCount: 0, todo: count, unit: "char", stopAt: "", wrapText: wrapText };
+    let scanState = { linesCount: 0, todo: count, unit: "grapheme", stopAt: "", wrapText: wrapText };
     DtUtil.scanInRange(range, ! forwards, scanState);
     if (! doDelete) {
         let caret = this._caretNode;
@@ -8508,7 +8508,7 @@ Terminal._rangeAsText = function(range, options={}) {
         return false;
     }
     function lineHandler(node) { return true; }
-    let scanState = { linesCount: 0, todo: Infinity, unit: "char", stopAt: "",
+    let scanState = { linesCount: 0, todo: Infinity, unit: "grapheme", stopAt: "",
                       wrapText: wrapText, elementExit, lineHandler };
     DtUtil.scanInRange(range, false, scanState);
     if (addEscapes && (prevFg || prevBg)) {
@@ -10769,25 +10769,25 @@ Terminal.prototype.editorMoveStartOrEndBuffer = function(toEnd, action="move") {
                              r.endContainer, r.endOffset);
     } else {
         // slow but simple
-        this.extendSelection(toEnd ? -Infinity : Infinity, "char", "buffer");
+        this.extendSelection(toEnd ? -Infinity : Infinity, "grapheme", "buffer");
     }
 }
 
 Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, extend=false) {
     let count = toEnd ? -Infinity : Infinity;
     if (extend)
-        this.extendSelection(count, "char", "line");
+        this.extendSelection(count, "grapheme", "line");
     else
-        this.editMovePosition(count, "char", "line");
+        this.editMovePosition(count, "grapheme", "line");
     this.sstate.goalX = undefined; // FIXME add other places
 }
 
 Terminal.prototype.editorMoveStartOrEndInput = function(toEnd, action="move") {
     let count = toEnd ? -Infinity : Infinity;
     if (action==="extend")
-        this.extendSelection(count, "char", "input");
+        this.extendSelection(count, "grapheme", "input");
     else
-        this.editMovePosition(count, "char", "input");
+        this.editMovePosition(count, "grapheme", "input");
     this.sstate.goalX = undefined; // FIXME add other places
 }
 
@@ -11048,7 +11048,7 @@ Terminal.prototype.editorRestrictedRange = function(restrictToInputLine) {
 }
 
 /** Do an edit operation, such as move, extend selection, or delete.
- * unit: "char", "word"
+ * unit: "char", "grapheme", "word"
  * action: one of "move" (move caret), "move-focus" (move selection's focus),
  * "extend", "extend-focus", "delete", or "kill" (cut to clipboard).
  * stopAt: one of "", "line" (stop before moving to different hard line),

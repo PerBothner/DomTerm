@@ -425,7 +425,7 @@ cmd('cut-text',
     });
 cmd('backward-char',
     function(dt, key) {
-        dt.editMovePosition(dt.numericArgumentGet(), "char");
+        dt.editMovePosition(dt.numericArgumentGet(), "grapheme");
         return true;
     }, {
         context: "terminal"
@@ -439,7 +439,7 @@ cmd('backward-word',
     });
 cmd('forward-char',
     function(dt, key) {
-        dt.editMovePosition(- dt.numericArgumentGet(), "char");
+        dt.editMovePosition(- dt.numericArgumentGet(), "grapheme");
         return true;
     }, {
         context: "terminal"
@@ -453,7 +453,7 @@ cmd('forward-word',
     });
 cmd('backward-char-extend',
     function(dt, key) {
-        dt.extendSelection(dt.numericArgumentGet(), "char");
+        dt.extendSelection(dt.numericArgumentGet(), "grapheme");
         return true;
     }, {
         context: "terminal"
@@ -467,7 +467,7 @@ cmd('backward-word-extend',
     });
 cmd('forward-char-extend',
     function(dt, key) {
-        dt.extendSelection(- dt.numericArgumentGet(), "char");
+        dt.extendSelection(- dt.numericArgumentGet(), "grapheme");
         return true;
     }, {
         context: "terminal"
@@ -495,7 +495,7 @@ cmd('backward-delete-word',
     });
 cmd('forward-delete-char',
     function(dt, key) {
-        dt.editMove(- dt.numericArgumentGet(), "delete", "char");
+        dt.editMove(- dt.numericArgumentGet(), "delete", "grapheme");
         return true;
     }, {
         context: "terminal"
@@ -798,7 +798,7 @@ cmd('insert-char',
         if (deleteSelection) {
             let sel = window.getSelection();
             if (! sel.isCollapsed) {
-                dt.editMove(1, "delete", "char");
+                dt.editMove(1, "delete", "grapheme");
             }
         }
         let count = dt.numericArgumentGet();
