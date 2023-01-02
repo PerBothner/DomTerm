@@ -8521,10 +8521,10 @@ Terminal._rangeAsText = function(range, options={}) {
     return t;
 }
 
-Terminal._selectionAsText = function(sel = window.getSelection()) {
+Terminal._selectionAsText = function(options = {}, sel = window.getSelection()) {
     var hstring = "";
     for(var i = 0; i < sel.rangeCount; i++) {
-        hstring += Terminal._rangeAsText(sel.getRangeAt(i));
+        hstring += Terminal._rangeAsText(sel.getRangeAt(i), options);
     }
     return hstring;
     //return sel.toString();
@@ -8534,7 +8534,7 @@ Terminal._selectionValue = function(asHTML) {
     var sel = window.getSelection();
     var html = Terminal._selectionAsHTML(sel);
     return asHTML ? { text: html, html: "" }
-    : { text: Terminal._selectionAsText(sel), html: html };
+    : { text: Terminal._selectionAsText({}, sel), html: html };
 }
 
 DomTerm.valueToClipboard = function(values) {

@@ -2013,11 +2013,16 @@ class DTParser {
             }
             switch (command) {
             case 'capture': {
-                let range = new Range();
-                let rnode = options['current-buffer'] ? term.initial : term.buffers;
-                range.selectNode(rnode);
-                term.sendResponse({out: Terminal._rangeAsText(range, options)},
-                                 options);
+                let response;
+                if (options['selection-only'])
+                    response = Terminal._selectionAsText(options);
+                else {
+                    let range = new Range();
+                    let rnode = options['current-buffer'] ? term.initial : term.buffers;
+                    range.selectNode(rnode);
+                    response = Terminal._rangeAsText(range, options);
+                }
+                term.sendResponse({out: response}, options);
                 break;
             }
             case 'await': {

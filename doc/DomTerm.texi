@@ -1526,6 +1526,8 @@ A @var{capture-options} can be:
 @item @code{-B}
 Only capture the contents of the current buffer,
 as opposed to that of all buffers of the specified window.
+@item @code{-S}
+Only capture the contents of the selection.
 @item @code{-l}
 Include active soft newlines (i.e. from line-wrap or pretty-printing)
 as newlines in the output.
