@@ -3326,7 +3326,7 @@ Terminal.prototype.makeId = function(local) {
     return this.name + "__" + local;
 };
 
-Terminal.prototype._createLineNode = function(kind, text=kind=="hard"?"\n":"") {
+Terminal.prototype._createLineNode = function(kind, text=kind=="hard"||kind=="soft"?"\n":"") {
     var el = document.createElement("span");
     // the following is for debugging
     el.setAttribute("id", this.makeId("L"+(++this.lineIdCounter)));
@@ -8345,8 +8345,11 @@ Terminal._rangeAsText = function(range, options={}) {
         let parent = tnode.parentNode;
         let lineColor = '';
         const inLineEnd = parent.getAttribute('line');
-        if (inLineEnd)
+        if (inLineEnd) {
+            if (inLineEnd == "soft")
+                return;
             end = start; // skip actual '\n' text, but handle escapes (lineColor)
+        }
         if (addEscapes) {
             let curBg = null, curFg = null, curStyle = 0;
             for (let p = parent; ; p = p.parentNode) {
@@ -8488,9 +8491,8 @@ Terminal._rangeAsText = function(range, options={}) {
         }
         let lineAttr = node.getAttribute('line');
         if (lineAttr) {
-            endOfLine = node.textContent
-                || ((softLinebreaks && node.getAttribute('breaking') === 'yes')
-                    ? '\n' : false);
+            endOfLine = (softLinebreaks && node.getAttribute('breaking') === 'yes') ? '\n'
+                : lineAttr === "soft" ? false : node.textContent;
         }
         const wasNonEmpty = lineNonEmpty;
         if (endOfLine !== false) {
