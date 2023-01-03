@@ -2147,7 +2147,7 @@ class DTParser {
                 let str = options.keyDown || options.text;
                 if (str) {
                     let r = options.keyDown
-                        && term.processKeyDown(str.replace(/(Alt|Ctrl|Cmd|Shift)-/g, "$1+"));
+                        && term.processKeyDown(browserKeymap.normalizeKeyName(str.replace(/(Alt|Ctrl|Cmd|Shift)-/g, "$1+")));
                     if (! r) {
                         if (term.isLineEditingOrMinibuffer())
                             term.editorInsertString(str, true);
