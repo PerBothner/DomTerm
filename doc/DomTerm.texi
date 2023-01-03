@@ -7105,6 +7105,7 @@ Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
 @menu
 * Automatic input mode::
 * Line structure::
+* Caret positions::
 * Colors and high lighting::
 * Remote connection over ssh::
 * Predictive echo::
@@ -7112,7 +7113,7 @@ Some @uref{https://en.wikipedia.org/wiki/Web-based_SSH,related links}
 * Line breaking:: Line-breaking / pretty-printing
 @end menu
 
-@node Automatic input mode
+@anchor{Automatic input mode}
 @subsection Automatic input mode
 
 There are two possible ways DomTerm can detect cooked vs raw mode:
@@ -7143,7 +7144,6 @@ Subsequent characters (until @kbd{@key{Enter}}) are handled
 locally by DomTerm without a trip to the backend.
 @end itemize
 
-@node Line structure
 @subsection Line structure
 
 "Line" here refer to "visual line": A section of the DOM that should be
@@ -7158,7 +7158,36 @@ Always points to a span node with the line attribute set.
 Normally lineEnds[i] == lineStarts[i+1]; however, sometimes
 lineStarts[i] is the start of a @code{<div>} or other block element.
 
-@node Colors and high lighting
+@subsection Caret positions
+
+Valid positions for caret (for line-editing or view mode) are as follows:
+
+In text, the caret can be at either end, or between grapheme clusters.
+The caret can be before or after a line element,
+and also before an object element, which includes elements whose
+tag is @code{object}, @code{canvas}, @code{img}, @code{svg}, or @code{iframe}.
+It can also be at the end of a @code{th} or @code{td} element.
+
+A caret position has no width, but it has a height: For a text element
+it is the same as the bounding box of the caret position.
+If before/after an object, it should be the height of the object.
+
+There is an ambiguity when betwen two objects or between object and text.
+LibreOffice and Chrome display the caret with the height of the
+text that is @emph{before} the caret:
+The caret vertical extent depends on the @emph{preceding} text.
+For Firefox it's context-dependent: It depends on the previous caret position,
+or (after a mouse-click) which character was clicked.
+This is related to the ambiguity if the caret is at a soft line-break:
+Should it be shown at the end of preceding line or the start
+of the following line.  In this case it makes sense to resolve
+based on the starting position.
+
+The visible height of the focus caret should be that of the caret.
+
+The move character left/right should move the caret to the previous/next
+valid caret position, in document order.
+
 @subsection Colors and high-lighting
 
 @emph{This needs updating.}
@@ -7188,7 +7217,6 @@ the correspoding CSS rules.  This has the advantage that one could
 override the highlighting appearance with a custom style sheet.
 
 @anchor{Architecture remote over ssh}
-@node Remote connection over ssh
 @subsection Remote connection over ssh
 
 The support for remote connections is a relatively thin
@@ -7255,7 +7283,6 @@ which displays them in the window.
 @end example
 (Compare with diagram at @ref{Terminology}.)
 
-@node Predictive echo
 @subsection Predictive echo
 
 @uref{https://mosh.org/,Mosh} implements local ``tentative echo'', which
@@ -7295,7 +7322,6 @@ In that case we try to create (after handling output) a new
 is a tail of the previous value.
 (We only do this if there are no changes to any other (logical) line.)
 
-@node Connection closing and detaching
 @subsection Connection closing and detaching
 
 A session can have one or more open windows,
@@ -7341,7 +7367,6 @@ Treat as a detach.
 The detach-count is incremented.
 @end itemize
 
-@node Line breaking
 @subsection Line-breaking / pretty-printing
 
 For a terminal emulator we need to preserve (not collapse) whitespace,
