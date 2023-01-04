@@ -2507,6 +2507,13 @@ Terminal.prototype._restoreCaret = function() {
                     : text instanceof Element ? text.getAttribute("content-value")
                     : null;
                 if (tdata) {
+                    let anchorNode = sel.anchorNode;
+                    let anchorOffset = sel.anchorOffset;
+                    let focusNode = sel.focusNode;
+                    let focusOffset = sel.focusOffset;
+                    let fixAnchor = anchorNode === text;
+                    let fixFocus = focusNode === text;
+
                     if (text.previousSibling !== this._caretNode) {
                         text.parentNode.insertBefore(this._caretNode, text);
                         if (this.outputBefore === this._caretNode)
@@ -2540,6 +2547,22 @@ Terminal.prototype._restoreCaret = function() {
                         this._caretNode.appendChild(document.createTextNode(ch));
                         this._deleteData(text, 0, sz);
                         this._caretNode.removeAttribute("value");
+                        if (fixAnchor || fixFocus) {
+                            if (fixFocus) {
+                                if (focusOffset == 0)
+                                    focusNode = this._caretNode.firstChild;
+                                else
+                                    focusOffset -= sz;
+                            }
+                            if (fixAnchor) {
+                                if (anchorOffset == 0)
+                                    anchorNode = this._caretNode.firstChild;
+                                else
+                                    anchorOffset -= sz;
+                            }
+                            sel.setBaseAndExtent(anchorNode, anchorOffset,
+                                                 focusNode, focusOffset);
+                        }
                     } else { // content-value attribute
                         this._caretNode.setAttribute("value", ch);
                         text.setAttribute("content-value", tdata.substring(sz));
@@ -2559,7 +2582,6 @@ Terminal.prototype._restoreCaret = function() {
             this._caretNode.setAttribute("caret", cstyleStr);
     }
     else {
-        let sel = document.getSelection();
         if (sel.isCollapsed) {
             if (this.sstate.showCaret)
                 sel.collapse(this._caretNode, 0);
