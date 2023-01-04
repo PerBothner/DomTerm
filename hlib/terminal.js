@@ -6471,7 +6471,6 @@ Terminal.prototype._downContinue = function(height, paging) {
 }
 
 Terminal.prototype._downLinesOrContinue = function(count, paging) {
-    this.sstate.goalX = 0;
     let todo = this.editorMoveLines(false, count, false);
     if (todo > 0) {
         this._pauseLimit = this._dataHeight() + count * this.charHeight + 2;
@@ -6717,10 +6716,13 @@ Terminal.prototype._scrollIfNeeded = function() {
 }
 
 Terminal.prototype.adjustFocusCaretStyle = function() {
-    if (this.viewCaretNode.parentNode) {
+    const sel = document.getSelection();
+    if (this.viewCaretNode.parentNode && sel.focusNode !== null) {
+        let rect = DtUtil.positionBoundingRect(sel.focusNode, sel.focusOffset);
+        if (rect.height == 0)
+            return;
         let caret = this.viewCaretMarkNode;
         let outerRect = this.topNode.getBoundingClientRect();
-        let rect = DtUtil.positionBoundingRect();
         caret.style.top = `${rect.top - outerRect.top}px`;
         caret.style.left = `${rect.left - outerRect.left}px`;
         caret.style.bottom = `${outerRect.bottom - rect.bottom}px`;
@@ -9038,6 +9040,8 @@ DomTerm.lineEditKeymapDefault = new browserKeymap( Object.assign({
     "End": "end-of-line",
     "Down": "down-line-or-history",
     "Up": "up-line-or-history",
+    "Alt+Down": "down-paragraph-or-history",
+    "Alt+Up": "up-paragraph-or-history",
     "Enter": "accept-line",
     "Alt-Enter": "insert-newline",
     "Alt-0": "numeric-argument",
@@ -9059,14 +9063,14 @@ DomTerm.lineEditKeymapDefault = new browserKeymap( Object.assign({
     // for emacs-like keybindings. FIXME
     "Alt-B": "backward-word",
     "Alt-F": "forward-word",
-    "Ctrl-A": "beginning-of-line",
+    "Ctrl-A": "beginning-of-paragraph",
     "Ctrl-B": "backward-char",
     "Ctrl-D": "forward-delete-char-or-eof",
-    "Ctrl-E": "end-of-line",
+    "Ctrl-E": "end-of-paragraph",
     //"Ctrl-F": "forward-char",
     "Ctrl-K": "kill-line",
-    "Ctrl-N": "down-line-or-history",
-    "Ctrl-P": "up-line-or-history",
+    "Ctrl-N": "down-paragraph-or-history",
+    "Ctrl-P": "up-paragraph-or-history",
     "(keypress)": "insert-char"
 }, DomTerm.isMac ? {
     "Alt+Left": 'backward-word',
@@ -9093,19 +9097,19 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Ctrl-Shift-C": "copy-text",
     "Esc": "exit-paging-mode",
     "Ctrl+Shift+M": "toggle-paging-mode",
-    "'a'": "toggle-auto-pager",
-    "'0'": "numeric-argument",
-    "'1'": "numeric-argument",
-    "'2'": "numeric-argument",
-    "'3'": "numeric-argument",
-    "'4'": "numeric-argument",
-    "'5'": "numeric-argument",
-    "'6'": "numeric-argument",
-    "'7'": "numeric-argument",
-    "'8'": "numeric-argument",
-    "'9'": "numeric-argument",
-    "'-'": "numeric-argument",
-    "'.'": "numeric-argument",
+    "a": "toggle-auto-pager",
+    "0": "numeric-argument",
+    "1": "numeric-argument",
+    "2": "numeric-argument",
+    "3": "numeric-argument",
+    "4": "numeric-argument",
+    "5": "numeric-argument",
+    "6": "numeric-argument",
+    "7": "numeric-argument",
+    "8": "numeric-argument",
+    "9": "numeric-argument",
+    "-": "numeric-argument",
+    ".": "numeric-argument",
     "Alt-0": "numeric-argument",
     "Alt-1": "numeric-argument",
     "Alt-2": "numeric-argument",
@@ -9128,8 +9132,8 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Shift-Mod-Left": "backward-word-extend",
     "Shift-Right": "forward-char-extend",
     "Shift-Mod-Right": "forward-word-extend",
-    "Up": "up-line", // should move by "visible-line" not logical "line" ???
-    "Down": "down-line-or-unpause", // likewise: should be "visible-line" ???
+    "Up": "up-line",
+    "Down": "down-line-or-unpause",
     "Alt+Up": "up-paragraph",
     "Alt+Down": "down-paragraph",
     "Shift-Up": "up-line-extend",
@@ -9152,13 +9156,23 @@ DomTerm.pagingKeymapDefault = new browserKeymap({
     "Alt-Shift-Home": "beginning-of-buffer-extend",
     "Alt-Shift-End": "end-of-buffer-extend",
     "Shift-Enter": "up-line",
-    "Enter": "down-line-or-continue",
+    "Enter": "next-line-or-continue",
     "Shift-Space": "up-page",
     "Space": "down-page-or-continue",
     "'c'": "exit-pager-disable-auto",
     "'p'": "scroll-percentage",
     "'r'": "toggle-pause-mode",
     "'%'": "scroll-percentage",
+    // The following should be controlled by a user preference
+    // for emacs-like keybindings. FIXME
+    "Alt-B": "backward-word",
+    "Alt-F": "forward-word",
+    "Ctrl-A": "beginning-of-paragraph",
+    "Ctrl-B": "backward-char",
+    "Ctrl-E": "end-of-paragraph",
+    //"Ctrl-F": "forward-char",
+    "Ctrl-N": "down-paragraph",
+    "Ctrl-P": "up-paragraph",
     "(keypress)": "paging-keypress"
 });
 DomTerm.pagingKeymap = DomTerm.pagingKeymapDefault;
@@ -10571,34 +10585,47 @@ Terminal._setSelection = function(extend, startContainer, startBefore, container
         sel.collapse(container, offset);
 };
 
-/** Move COUNT lines down (or up if COUNT is negative).
+/** Move AMOUNT lines down/up (depending on if backwards is false/true).
+ * If amount is "current", move with current line, depending on goalX.
+ * If localLines===false: move within visble (screen) line;
+ * if localLines===true: move within logical line (paragraph);
+ * if localLines==="smart" (only valid if amount==="current): do "smart"
+ *   move to start/end line, similar to vsCode's handling of Home/End.
  * Return number of lines we aren't able to do.
  */
 Terminal.prototype.editorMoveLines =
-    function(backwards, count, extend = false, logicalLines = false)
+    function(backwards, amount, extend = false, logicalLines = false)
 {
-    if (count == 0)
+    if (amount === 0)
         return 0;
-    let delta1 = backwards ? -1 : 1;
+    let count = amount === "current" ? 0 : amount;
+    function rangeAsText(oldNode, oldOffset, newNode, newOffset, backwards) {
+        const r = new Range();
+        if (backwards) {
+            r.setStart(newNode, newOffset);
+            r.setEnd(oldNode, oldOffset);
+        } else {
+            r.setStart(oldNode, oldOffset);
+            r.setEnd(newNode, newOffset);
+        };
+        return Terminal._rangeAsText(r);
+    };
 
     // Get row number (visible line) within logical line
     const rowInLine = (startNode, startOffset, rect) => {
         let nrows = 0;
         for (;;) {
-            let deltaY = 0.5 * rect.height;
-            let goalY = rect.top - deltaY;
-            let new_pos = DtUtil.caretFromPoint(rect.x, goalY);
-            if (! new_pos || ! this.buffers.contains(new_pos.offsetNode))
+            let new_pos = DtUtil.caretMoveLine(true, rect.top, rect.bottom, startNode, startOffset, 0, false)
+            if (! new_pos || ! this.buffers.contains(new_pos.parent))
                 break;
-            const new_rect = DtUtil.positionBoundingRect(new_pos.offsetNode, new_pos.offset);
-            if (new_rect.top <= rect.top || new_rect.bottom <= rect.bottom)
+            const new_rect = DtUtil.positionBoundingRect(new_pos.parent, new_pos.offset);
+            if (new_rect.top >= rect.top || new_rect.bottom >= rect.bottom)
                 break;
-            const rangeTraversed = new Range();
-            rangeTraversed.setStart(new_pos.offsetNode, new_pos.offset);
-            rangeTraversed.setEnd(startNode, startOffset);
-            startNode = new_pos.offsetNode;
+            const textTraversed = rangeAsText(startNode, startOffset,
+                                              new_pos.parent, new_pos.offset,
+                                              true);
+            startNode = new_pos.parent;
             startOffset = new_pos.offset;
-            const textTraversed = Terminal._rangeAsText(rangeTraversed);
             if (textTraversed.indexOf('\n') >= 0)
                 break;
             nrows++;
@@ -10608,10 +10635,10 @@ Terminal.prototype.editorMoveLines =
     }
 
     this._removeCaret();
-    let rect, startNode, startOffset;
-    if (this._pagingMode) {
-        const sel = document.getSelection();
-        startNode = sel.focusNode;
+    let rect, startOffset;
+    const sel = document.getSelection();
+    let startNode = sel.focusNode;
+    if (this._pagingMode && startNode !== null) {
         startOffset = sel.focusOffset;
         rect = DtUtil.positionBoundingRect(startNode, startOffset);
     } else {
@@ -10622,114 +10649,137 @@ Terminal.prototype.editorMoveLines =
         startNode = caret;
         startOffset = 0;
     }
+    let continueToLineEnd = logicalLines === true;
+    let startPos = new DtUtil.DPosition(startNode, startOffset);
     let goalX = this.sstate.goalX;
     let goalRow;
-    let currentRow = rowInLine(startNode, startOffset, rect);
-    if (goalX) {
+    // Don't need currentRow/startRow unless amount=="current" OR
+    // logicalInes OR goalX is unset. Should OPTIMIZE.
+    let startRow = rowInLine(startNode, startOffset, rect);
+    let currentRow = startRow;
+    if (typeof goalX === "number") {
         goalRow = Math.trunc(goalX / this.availWidth);
         goalX = goalX % this.availWidth;
     } else {
-        if (logicalLines) {
+        if (continueToLineEnd) {
             goalRow = currentRow;
         }
         goalX = rect.x;
         this.sstate.goalX = goalX + this.availWidth * currentRow;
     }
+    if (amount === "current")
+        this.sstate.goalX = undefined;
     let result_pos;
     let prevNode = startNode;
     let prevOffset = startOffset;
-    let buffersRect = this.buffers.getBoundingClientRect();
-    let buffersLeft = buffersRect.x;
-    let buffersTop = buffersRect.top;
     for (;;) {
-        let deltaY = 0.5 * rect.height;
-        let goalY = backwards ? rect.top - deltaY : rect.bottom + deltaY;
-        if (backwards ? goalY <= buffersTop : goalY >= buffersRect.bottom) {
-            let scroll;
-            if (backwards) {
-                // FIXME better: scroll is last (visble) line above the
-                // current position (if non-huge) is scrolled wholly into view.
-                scroll = Math.max(this.charHeight, buffersRect.top - goalY);
-                if (scroll >= this.buffers.scrollTop)
-                    break;
-            } else {
-                scroll = Math.max(this.charHeight, goalY - buffersRect.bottom);
-                if (scroll >= this.initial.getBoundingClientRect().bottom - buffersRect.bottom)
-                    break;
-                scroll = - scroll;
-            }
-            this.buffers.scrollTop -= scroll;
-            goalY += scroll;
-            rect = DtUtil.positionBoundingRect(prevNode, prevOffset);
-        }
-        let thisX = goalX;
-        // Work-around for problem on Electron.
-        thisX = Math.max(thisX, buffersLeft + 1);
-        if (logicalLines) {
-            if (backwards) { /* ??? */
-            } else {
-                if (count == 0 && currentRow + 1 < goalRow)
-                    thisX = this.availWidth - 0.4 * this.charWidth;
-            }
-        }
-        let new_pos = DtUtil.caretFromPoint(thisX, goalY);
-        if (! new_pos || ! this.buffers.contains(new_pos.offsetNode))
+        const thisX = continueToLineEnd && currentRow + 1 < goalRow
+              ? this.availWidth
+              : goalX;
+        let new_pos = DtUtil.caretMoveLine(backwards, rect.top, rect.bottom, prevNode, prevOffset, thisX, amount === "current" && ! continueToLineEnd);
+        if (! new_pos || ! this.buffers.contains(new_pos.parent))
             break;
         if (! this._pagingMode) {
-            if (! this._inputLine.contains(new_pos.offsetNode))
+            if (! this._inputLine.contains(new_pos.parent))
                 break;
             // if (in prompt or content-value) adjust
         }
-        const new_rect = DtUtil.positionBoundingRect(new_pos.offsetNode, new_pos.offset);
-        if (backwards
-            ? new_rect.top >= rect.top || new_rect.bottom >= rect.bottom
-            : new_rect.top <= rect.top || new_rect.bottom <= rect.bottom) {
-            result_pos = new_pos; // ???
-            break;
+        const new_rect = DtUtil.positionBoundingRect(new_pos.parent, new_pos.offset);
+        if (amount !== "current") {
+            if (backwards
+                ? new_pos.top >= rect.top || new_pos.bottom >= rect.bottom
+                : new_pos.top <= rect.top || new_pos.bottom <= rect.bottom) {
+                result_pos = new_pos; // ???
+                break;
+            }
         }
-        if (! logicalLines && --count <= 0) {
+        if (logicalLines === false && --count <= 0) {
             result_pos = new_pos;
+            this.sstate.goalX = goalX
+                + this.availWidth * rowInLine(new_pos.parent, new_pos.offset, new_rect);
             break;
         }
         rect = new_rect;
-        if (logicalLines) {
+        if (continueToLineEnd || amount === "current") {
             // If we didn't moved over any newlines, try more.
-            const r = new Range();
-            if (backwards) {
-                r.setStart(new_pos.offsetNode, new_pos.offset);
-                r.setEnd(prevNode, prevOffset);
-            } else {
-                r.setStart(prevNode, prevOffset);
-                r.setEnd(new_pos.offsetNode, new_pos.offset);
-            };
-            prevNode = new_pos.offsetNode;
+            const textTraversed = rangeAsText(prevNode, prevOffset, new_pos.parent, new_pos.offset, backwards);
+            prevNode = new_pos.parent;
             prevOffset = new_pos.offset;
-            const textTraversed = Terminal._rangeAsText(r);
             let new_line = textTraversed.indexOf('\n') >= 0;
+            if (amount === "current") {
+                if (new_line)
+                    break;
+                result_pos = new_pos;
+                if (logicalLines === "smart") {
+                    if (backwards) {
+                        const r = new Range();
+                        r.setStart(result_pos.parent, result_pos.offset);
+                        r.setEndAfter(this.initial);
+                        const spaces = DtUtil.skipHSpace(r);
+                        const wasAtFirstNonSpace = textTraversed.length === spaces;
+                        const atStartLine = ! continueToLineEnd;
+                        if ((currentRow == 0 || atStartLine)
+                            && spaces !== 0 && ! wasAtFirstNonSpace) {
+                            result_pos = new DtUtil.DPosition(r.endContainer, r.endOffset);
+                            break;
+                        } else if (currentRow == 0
+                                   || (atStartLine && ! wasAtFirstNonSpace
+                                       && textTraversed.length > 0)) {
+                            result_pos = new_pos;
+                            break;
+                        } else if (atStartLine) {
+                            continueToLineEnd = true;
+                            goalRow = 0;
+                        }
+                    } else {
+                        if (textTraversed.length === 0) {
+                            result_pos = new_pos;
+                            // move to end of logical line FIXME
+                            continueToLineEnd = true;
+                            goalRow = Infinity;
+                        } else {
+                            if (! continueToLineEnd || ! new_line)
+                                result_pos = new_pos;
+                            if (! continueToLineEnd || new_line)
+                                break;
+                        }
+                    }
+                } else if (! continueToLineEnd && currentRow === startRow
+                           && textTraversed.length > 0) {
+                    break;
+                }
+            }
             if (new_line) {
                 if (backwards)
                     currentRow = rowInLine(prevNode, prevOffset, rect);
                 else
                     currentRow = 0;
+                count--;
             } else {
                 if (backwards) currentRow --;
                 else currentRow++;
             }
-            if (new_line)
-                count--;
-        }
-        if (logicalLines && count < 0)
-            break;
-        result_pos = new_pos;
-        if (logicalLines) {
-            if (count == 0
-                && (backwards ? currentRow <= goalRow : currentRow >= goalRow))
+            if (count < 0)
                 break;
+            if (count == 0 && amount !== "current"
+                && (backwards ? currentRow <= goalRow : currentRow >= goalRow)) {
+                if (backwards && new_line && currentRow === goalRow
+                    && thisX === this.availWidth && amount !== "current") {
+                    // Try again in current line with goalX.
+                    amount = "current";
+                    logicalLines = false;
+                    continueToLineEnd = false;
+                    continue;
+                }
+                result_pos = new_pos;
+                break;
+            }
         }
+        result_pos = new_pos;
     }
     if (result_pos)
         Terminal._setSelection(extend, startNode, startOffset,
-                               result_pos.offsetNode, result_pos.offset);
+                               result_pos.parent, result_pos.offset);
 
     return count;
 }
@@ -10775,7 +10825,13 @@ Terminal.prototype.editorMoveStartOrEndBuffer = function(toEnd, action="move") {
     }
 }
 
-Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, extend=false) {
+Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, extend=false, logicalLines=undefined) {
+    if (toEnd)
+        this.sstate.goalX = this.availWidth - 4; // FIXME
+    else
+        this.sstate.goalX = 4; // FIXME
+    this.editorMoveLines(! toEnd, "current", extend, logicalLines ? true : "smart");
+    return;
     let count = toEnd ? -Infinity : Infinity;
     if (extend)
         this.extendSelection(count, "grapheme", "line");

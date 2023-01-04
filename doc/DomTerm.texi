@@ -3810,13 +3810,15 @@ Move the view position @var{count} characters left or right.
 Move the view position @var{count} words left or right.
 @item @kbd{@key{Home}} (@code{beginning-of-line})
 @itemx @kbd{@key{End}} (@code{end-of-line})
-Move the view position to start/end of line.
+Move the view position to start/end of screen line.
+If already at start/end of screen (display) line,
+move to start/end of paragraph (logical line).
 @item @kbd{Alt+@key{Home}} (@code{beginning-of-buffer})
 @itemx @kbd{Alt+@key{End}} (@code{end-of-buffer})
 Move the view position to start/end of the buffer.
-@item @kbd{@key{Up}}
+@item @kbd{@key{Up}} (@code{up-line})
 Move the view position @var{count} lines up.
-@item @kbd{@key{Down}}
+@item @kbd{@key{Down}} (@code{down-line})
 Move the view position @var{count} lines down.
 If that would extend past the end of the buffer
 and we are paused, unpause (while keeping

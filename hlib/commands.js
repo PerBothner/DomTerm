@@ -530,6 +530,22 @@ cmd('end-of-line',
     }, {
         context: "terminal"
     });
+cmd('beginning-of-paragraph',
+    function(dt, key) {
+        dt.editorMoveStartOrEndLine(false, false, true);
+        dt._numericArgument = null;
+        return true;
+    }, {
+        context: "terminal"
+    });
+cmd('end-of-paragraph',
+    function(dt, key) {
+        dt.editorMoveStartOrEndLine(true, false, true);
+        dt._numericArgument = null;
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('beginning-of-line-extend',
     function(dt, key) {
         dt.editorMoveStartOrEndLine(false, true); dt._numericArgument = null;
@@ -624,6 +640,22 @@ cmd('down-line-or-history',
     }, {
         context: "terminal"
     });
+cmd('up-paragraph-or-history',
+    function(dt, key) {
+        if (dt.editorMoveLines(true, dt.numericArgumentGet()) > 0, false, true)
+            dt.historyMove(-1);
+        return true;
+    }, {
+        context: "terminal"
+    });
+cmd('down-paragraph-or-history',
+    function(dt, key) {
+        if (dt.editorMoveLines(false, dt.numericArgumentGet()) > 0, false, true)
+            dt.historyMove(1)
+        return true;
+    }, {
+        context: "terminal"
+    });
 cmd('up-line',
     function(dt, key) {
         dt.editorMoveLines(true, dt.numericArgumentGet(), false);
@@ -659,8 +691,9 @@ cmd('down-line-or-unpause',
     }, {
         context: "terminal"
     });
-cmd('down-line-or-continue',
+cmd('next-line-or-continue',
     function(dt, key) {
+        dt.sstate.goalX = 0;
         dt._downLinesOrContinue(dt.numericArgumentGet(), false);
         return true;
     });

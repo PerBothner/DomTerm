@@ -1,5 +1,20 @@
 import * as UnicodeProperties from './unicode/uc-properties.js';
 
+export class DPosition {
+    constructor(parent = undefined, offset = undefined) {
+        this.parent = parent;
+        /** Offset in parent */
+        this.offset = offset;
+        this.before = undefined;
+        /** X cordinate  of position/caret, in px units relative to viewport. */
+        this.x = undefined;
+        /** Top of position/caret, in px units relative to viewport. */
+        this.top = undefined;
+        /** Bottom of position/caret, in px units relative to viewport. */
+        this.top = undefined;
+    }
+};
+
 function jsonReplacer(key, value) {
     if (value instanceof Map) {
         return { "%T": "Map", "$V": Array.from(value.entries()) };
@@ -987,7 +1002,131 @@ export const isDelimiter = (function() {
     }
 })();
 
-export function caretFromPoint(x, y) {
+// Might be more efficient to use caretPositionFromPoint/caretRangeFromPoint
+// but those have browser-dependent edge cases and issues.
+export function caretMoveLine(backwards, startTop, startBottom, startNode, startOffset, goalX, startLineOK) {
+    let state = new DPosition();
+    let range = new Range();
+
+    function checkNode(node) {
+        let currentParent, currentOffset, currentTop, currentBottom, currentX;
+        function isBetter() {
+            if (! state.parent)
+                return true;
+            if (backwards ? currentBottom < state.bottom - 1
+                : currentTop > state.top + 1)
+                return false;
+            return Math.abs(currentX - goalX) < Math.abs(state.x - goalX);
+        }
+        function updateIfBetter() {
+            if (isBetter()) {
+                state.parent = currentParent;
+                state.offset = currentOffset;
+                state.top = currentTop;
+                state.bottom = currentBottom;
+                state.x = currentX;
+            }
+        }
+        if (node instanceof Element) {
+            const rect = node.getBoundingClientRect();
+            if (backwards && ! startLineOK) {
+                if (rect.top >= startTop - 1 && rect.bottom >= startBottom - 1)
+                    return false;
+            }
+            if (! backwards && ! startLineOK) {
+                if (rect.top <= startTop + 1 && rect.bottom <= startBottom + 1)
+                    return false;
+            }
+            if (backwards && state.top >= 0
+                && rect.bottom < state.top)
+                return null;
+            if (! backwards && state.top >= 0
+                && rect.top > state.bottom)
+                return null;
+            if (node.getAttribute("line") !== null) {
+                if (node.firstChild instanceof Text) {
+                    currentParent = node.firstChild;
+                    currentOffset = 0;
+                    currentTop = rect.top;
+                    currentBottom = rect.bottom;
+                    currentX = rect.x;
+                    updateIfBetter();
+                }
+                return false;
+            }
+            if (isObjectElement(node)) { // FIXME
+                return false;
+            }
+            return true;
+        } else if (node instanceof Text) {
+            const data = node.data;
+            const dstart =
+                  node == startNode && ! backwards ? startOffset : 0;
+            const dend =
+                  node == startNode && backwards ? startOffset : node.length;
+            currentParent = node;
+            let words = [dstart];
+            for (let i = dstart; i < dend; i++) {
+                if (data.charAt(i) === ' ')
+                    words.push(i + 1);
+            }
+            if (words[words.length-1] != dend || words.length == 1)
+                words.push(dend);
+            const nwords = words.length;
+            // Each 'word' ends in a space or end-of-string.
+            for (let j = 1; j < nwords; j++) {
+                let k = backwards ? nwords - j : j;
+                let wstart = words[k-1];
+                let wend = words[k];
+                console.log("process word "+wstart+"..<"+wend+" "+JSON.stringify(data.substring(wstart, wend)));
+                // process data[wstart..<wend]
+                let i = wstart;
+                let prevJoinState = 0;
+                for (;;) {
+                    // FIXME redudant end-point handling?
+                    let skip = false;
+                    let codePoint; // integer or undefined of end-of-string
+                    if (i < wend) {
+                        codePoint = i >= wend ? -1 : data.codePointAt(i);
+                        const charInfo = UnicodeProperties.getInfo(codePoint);
+                        const joinState = UnicodeProperties.shouldJoin(prevJoinState, charInfo);
+                        prevJoinState = joinState;
+                        skip = joinState > 0;
+                    }
+                    range.setEnd(node, i);
+                    range.collapse();
+                    const rect = range.getBoundingClientRect();
+                    if (backwards && ! startLineOK) {
+                        if (rect.top >= startTop && rect.bottom >= startBottom)
+                            skip = true;
+                    }
+                    if (! backwards && ! startLineOK) {
+                        if (rect.top <= startTop && rect.bottom <= startBottom)
+                            skip = true;
+                    }
+                    if (! skip) {
+                        currentX = rect.x;
+                        currentTop = rect.top;
+                        currentBottom = rect.bottom;
+                        currentOffset = i;
+                        updateIfBetter();
+                    }
+                    if (i >= wend)
+                        break;
+                    i = i + ((codePoint <= 0xffff) ? 1 : 2);
+                }
+            }
+        }
+        return true;
+    };
+    forEachElementIn(this.buffers, checkNode, true, backwards, startNode);
+    if (state.parent) {
+        return state;
+    }
+    return undefined;
+}
+
+export function caretFromPoint(x, y) { // DEPRECATED - use caretMoveLine
     if (document.caretPositionFromPoint) {
         return document.caretPositionFromPoint(x, y);
     }
@@ -1011,7 +1150,63 @@ export function positionBoundingRect(node, offset) {
     const r = new Range();
     r.setEnd(node, offset);
     r.collapse();
-    return r.getBoundingClientRect();
+    let rect = r.getBoundingClientRect();
+    if (rect.height === 0) {
+        const children = node.childNodes;
+        const preferSizeOfPrevious = true; // FIXME
+        if (offset > 0
+            && (preferSizeOfPrevious
+                || offset >= children.length)) {
+            const previous = children[offset - 1];
+            if (previous instanceof Text) {
+                const r = new Range();
+                r.setEnd(previous, previous.length);
+                r.collapse();
+                rect = r.getBoundingClientRect();
+            } else {
+                const prevRects = previous.getClientRects();
+                if (prevRects.length > 0) {
+                    rect = prevRects[prevRects.length - 1];
+                    rect = new DOMRect(rect.right, rect.top, 0, rect.heigh);
+                }
+            }
+        } else if (offset < children.length) {
+            const next = children[sel.focusOffset];
+            if (next instanceof Text) {
+                const r = new Range();
+                r.setEnd(next, 0);
+                r.collapse();
+                rect = r.getBoundingClientRect();
+            } else {
+                const nextRects = next.getClientRects();
+                if (nextRects.length > 0) {
+                    rect = nextRects[0];
+                    rect = new DOMRect(rect.left, rect.top, 0, rect.heigh);
+                }
+            }
+        }
+    }
+    return rect;
+}
+
+export function skipCharactersUntil(range, charPredicate, stopAt) {
+    let count = 0;
+    function wrapText(node, start, end) {
+        const data = node.data;
+        for (let i = start; i < end; i++) {
+            if (charPredicate(data.charCodeAt(i)))
+                return i;
+            count++;
+        }
+    }
+    let scanState = { todo: Infinity, unit: "char", stopAt: stopAt, wrapText: wrapText };
+    scanInRange(range, false, scanState);
+    return count;
+}
+
+export function skipHSpace(range) {
+    return skipCharactersUntil(range, (ch) => ch !== 32 && ch != 9,
+                              "visible-line");
 }
 
 /** Divide a string into grapheme clusters.
