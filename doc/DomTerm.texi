@@ -6,9 +6,6 @@
 
 @contents
 
-@syncodeindex fn cp
-@syncodeindex vr cp
-@syncodeindex pg cp
 @codequoteundirected on
 @codequotebacktick on
 
@@ -16,6 +13,12 @@
 Ctrl+Shift+A
 @end macro
 
+@macro indsubcmd{NAME}
+@cindex @code{\NAME\} sub-command
+@end macro
+@macro indsetting{NAME}
+@cindex @code{\NAME\} setting
+@end macro
 
 @titlepage
 @title DomTerm - a terminal emulator and console using DOM and JavaScript
@@ -1036,7 +1039,7 @@ For details @ref{Remoting over ssh,see here}:
 
 @anchor{session-creating}
 @subheading Creating a new session
-
+@indsubcmd{new}
 Creating a new session is done with the @code{new} commands,
 possibly abbreviated:
 
@@ -1266,9 +1269,11 @@ The general format for window specifiers is @ref{window specifier,here}.
 @subheading Miscellaneous commands
 
 @table @asis
+@indsubcmd{help}
 @item @b{@code{help}} [@var{sub-help}]
 Print some help.  The @var{sub-help} may be a sub-command.
 
+@indsubcmd{is-domterm}
 @item @b{@code{is-domterm}}
 Succeeds (exits with code 0) if the current terminal is DomTerm;
 fails (exits with code -1) otherwise.
@@ -1280,6 +1285,7 @@ This test works over an @code{ssh} connection.
 or that @code{TERM} be either empty or contain the string @code{xterm};
 otherwise it does not try to the request code.)
 
+@indsubcmd{status}
 @item @b{@code{status}} [@code{--verbose}] [@code{--by-session}]
 
 Prints various bits of information about the backend,
@@ -1289,6 +1295,7 @@ The default groups sessions by top-level window;
 the @code{--by-session} groups windows by session.
 The @code{--verbose} option adds more detail.
 
+@indsubcmd{settings}
 @item @b{@code{settings}} @var{name}@code{=}@var{value} ...
 Change the given @ref{Settings,local settings} for
 the @ref{window specifier option, specified window(s)}.
@@ -1296,6 +1303,7 @@ the @ref{window specifier option, specified window(s)}.
 If the @var{value} is empty, the local setting with the given @var{name} is
 removed, so the global setting (if set) becomes active.
 
+@indsubcmd{browse}
 @item @b{@code{browse}} @var{url}
 Create a new browser window or sub-window that displays @var{url}.
 This is implemented using an @code{iframe}.
@@ -1307,11 +1315,13 @@ One use for this is to view documentation in a sub-window:
 $ domterm --above browse http://example.com/
 @end example
 
+@indsubcmd{view-saved}
 @item @b{@code{view-saved}} @var{filename}
 The @var{filename} is an HTML file of a previously saved session.
 Open the session is ``view'' mode: Lines will be re-wrapped
 on window re-size, links are clickable, and hide/show buttons work.
 
+@indsubcmd{kill-server}
 @item @b{@code{kill-server}} [@code{--only}]
 Kill the @code{domterm} server.
 This also kills all local sessions.
@@ -1322,6 +1332,8 @@ Also close any windows, unless @code{--only} is specified.
 @subheading ``Printing'' images or html
 
 @table @asis
+@indsubcmd{html}
+@indsubcmd{hcat}
 @item @b{@code{html}} [@code{--base=}@var{base-url}] 
 @itemx @b{@code{html}} [@code{--base=}@var{base-url}] @var{html-value} ...
 @itemx @b{@code{hcat}} [@code{--base=}@var{base-url}] @var{filename}@code{.html} ...
@@ -1352,6 +1364,8 @@ domterm hcat /path/to/doc.html
 cat /path/to/doc.html | domterm html --base=/path/to/
 @end example
 
+@indsubcmd{image}
+@indsubcmd{imgcat}
 @item @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
 @itemx @b{@code{imgcat}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
 
@@ -1380,6 +1394,7 @@ of pixels (in the CSS meaning).  (The height is scaled proportionally,
 unless you also specify the @code{--height} option.)
 @end table
 
+@indsubcmd{fresh-line}
 @item @b{@code{fresh-line}}
 If not already at beginning of line, starts a fresh line
 @end table
@@ -1387,11 +1402,13 @@ If not already at beginning of line, starts a fresh line
 @subheading Sessions
 
 @table @asis
+@indsubcmd{attach}
 @item @b{@code{attach}} @var{session-specifier}
 Create a new window displaying an existing session.
 The same session (process) may be displayed in multiple windows.
 See @ref{session-specifier}.
 
+@indsubcmd{list}
 @item @b{@code{list}}
 List information about running sessions.
 
@@ -1402,43 +1419,59 @@ including some information about each window.
 @subheading Windows operations
 
 @table @asis
+@indsubcmd{close}
 @item @b{@code{close}}
 Close specified window(s), as if you clicked on the ``close'' button.
 The default @var{windows-specifier} is @code{.} (the current window).
+
+@indsubcmd{detach}
 @item@b{@code{detach}}
 Close specified window(s) (the default is @code{.}),
 and (assuming there are no more windows attached to the session)
 make the session detached.
 
+@indsubcmd{minimize}
 @item @b{@code{minimize}}
 @emph{(Electron, Qt, and Wry only.)}
 Minimize (iconify) the specified top-level windows,
 where the default window is @code{top}.
 The minimized windows may be still visible in the task bar,
 as an icon on the desktop, or during an ``windows expose'' operation
+
+@indsubcmd{hide}
 @item @b{@code{hide}}
 @emph{(Electron, Qt, and Wry only.)}
 Hide the specified top-level windows.
 The hidden windows are @emph{not} visible in the task bar,
 as icons on the desktop, or during an ``windows expose'' operation
+
+@indsubcmd{show}
 @item @b{@code{show}}
 @emph{(Electron, Qt, and Wry only.)}
 Show the specified minimized or hidden windows.
 If there are no windows, create one.
+
+@indsubcmd{toggle-minimize}
 @item @b{@code{toggle-minimize}}
 @emph{(Electron and Qt only.)}
 Toggle between normal and minimized state:
 If a window is hidden or minimized, show it.
 If visible, minimize it.
 If there are no windows, create one.
+
+@indsubcmd{toggle-hide}
 @item @b{@code{toggle-hide}}
 @emph{(Electron, Qt, and Wry only.)}
 Toggle between normal and hidden state:
 If a window is hidden or minimized, show it.
 If visible, hide it.
 If there are no windows, create one.
+
+@indsubcmd{set-window-name}
 @item @b{@code{set-window-name}} @var{name}
 Set @var{name} as the window-name of the specified window(s).
+
+@indsubcmd{window}
 @item @b{@code{window}} @var{window-specifier} ... @var{subcommand} @var{options} ...
 Do the @var{subcommand} on the windows specified by the @var{window-specifier} list.
 Older (deprecated) form equivalent to:
@@ -1452,6 +1485,7 @@ For examples for doing automatic testing for DomTerm
 check the file @code{tests/Makefile.am} in the sources.
 
 @table @asis
+@indsubcmd{do-keys}
 @item @b{@code{do-keys}} [@var{option}|@var{string}]...
 Simulate user keystrokes by sending them to the front-end for interpretation.
 
@@ -1488,6 +1522,7 @@ Also, if the @var{key-stroke} has no action in the current context,
 the front-end treats the @var{key-stroke} as if preceeded by @code{-l}
 @end table
 
+@indsubcmd{send-input}
 @item @b{@code{send-input}} @var{send-option}... @var{string}...
 Send the specified @var{string} directly to the standard input
 of a session.
@@ -1515,6 +1550,7 @@ Similar to a separate @code{domterm await --close @var{[response]}}
 command, but avoids a race condition.
 @end table
 
+@indsubcmd{capture}
 @item @b{@code{capture}} @var{capture-option}...
 Get the text contents of the @ref{window specifier option, specified window}
 (defaulting @code{.}, the current window).
@@ -1553,6 +1589,7 @@ In the future some options make be extended to take optional arguments,
 so scripts should not combine options:
 instead of @code{-Ble} write @code{-B -l -e}.
 
+@indsubcmd{await}
 @item @b{@code{await}} @var{options}... @var{event}...
 Wait until one of the specifed @var{events} happen.
 
@@ -1707,10 +1744,12 @@ All of these work with a @ref{window specifier option, window-specifier option},
 defaulting to @code{.}, the current window.
 
 @table @asis
+@indsubcmd{reverse-video}
 @item @b{@code{reverse-video}} @code{on}|@code{off}
 @end table
 
 @table @asis
+@indsubcmd{add-style}
 @item @b{@code{add-style}} @var{style-rule} ...
 
 If called for the first time, create and install a temporary
@@ -1741,6 +1780,7 @@ Changing font size:
 $ domterm add-style "body @{ font-size: 14pt @}"
 @end example
 
+@indsubcmd{list-stylesheets}
 @item @b{@code{list-stylesheets}}
 List on the standard output the set of stylesheets associated with
 the domterm document, one per line:
@@ -1773,10 +1813,13 @@ with a matching @code{name} attribute, then that stylesheet is replaced;
 otherwise a new stylesheet is created.
 The @var{name} attribute is displayed by the @code{list-stylesheets} subcommand.
 
+@indsubcmd{print-stylesheet}
 @item @b{@code{print-stylesheet}} @var{index}
 Print out the style rules of the specified stylesheet,
 which is an @var{index} in the @code{list-stylesheets} output.
 
+@indsubcmd{disable-stylesheet}
+@indsubcmd{enable-stylesheet}
 @item @b{@code{disable-stylesheet}} @var{index}
 @itemx @b{@code{enable-stylesheet}} @var{index}
 Disable or enable the specified stylesheet.
@@ -2000,6 +2043,7 @@ but with the flag @code{-E /tmp/ssh.log} when connecting to other hosts.
 @subheading Available settings
 
 @table @asis
+@indsetting{shell.default}
 @item @code{@b{shell.default} =} @var{command}
 Specify a default ``shell'' command to execute when creating a new terminal.
 The command can include arguments, separated by spaces.
@@ -2008,6 +2052,7 @@ You can uses quotes, as in a shell.
 The default is the value of the @code{SHELL} environment variable;
 if that is not set the default is @code{/bin/bash}.
 
+@indsetting{browser.default}
 @item @code{@b{browser.default} = } @var{browser-specifier}
 
 The browser-like program used to create new top-level windows,
@@ -2028,6 +2073,9 @@ except on windows where it is:
 browser.default = edge-app;electron;qt;chrome-app;firefox;browser
 @end example
 
+@indsetting{command.firefox}
+@indsetting{command.chrome}
+@indsetting{command.electron}
 @item @code{@b{command.firefox} =} @var{command}
 @itemx @code{@b{command.chrome} =} @var{command}
 @itemx @code{@b{command.electron} =} @var{command}
@@ -2037,10 +2085,13 @@ Command to use for respectively @code{firefox},
 The default for these is to search in the @code{PATH},
 possibly with some platform-depending knowledge of default locations.
 
+@indsetting{command.headless}
 @item @code{@b{command.headless} =} @var{command}
 Command used when the @code{--headless} option requests
 an ``invisible'' @ref{Headless mode,headless} window.
 
+@indsetting{command.get-clipboard}
+@indsetting{command.get-selection}
 @item @code{@b{command.get-clipboard} =} @var{command}
 @itemx @code{@b{command.get-selection} =} @var{command}
 Command that prints the string contents of the clipsboard (or the selection)
@@ -2057,6 +2108,7 @@ If unspecified, the default depends on the platform and what
 helper programs are evailable. (See the @code{get_clipboard_command}
 function in the @code{lws-term/utils.cc} source file.)
 
+@indsetting{window.geometry}
 @item @code{@b{window.geometry} =} @var{geometry}
 Control the size and/or position of new top-level windows
 using the syntax of a @ref{geometry specifier}.
@@ -2067,12 +2119,14 @@ The default is @code{800x600}.
 
 @subsubheading Appearance and styling
 @table @asis
+@indsetting{style.user}
 @item @code{@b{style.user} =} @var{css-style-rules}
 Set the @code{user} stylesheet to the rules in @var{css-style-rules}.
 The latter is typically a multi-line value.
 
 See the @ref{Styling} section for examples.
 
+@indsetting{style.qt}
 @item @code{@b{style.qt} =} @var{css-style-rules}
 @code{qtdomterm} only: Set styling for QT user interface widgets.
 For example to specify the color green
@@ -2083,6 +2137,7 @@ style.qt =
 @end example
 See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
 
+@indsetting{style.dark}
 @item @code{@b{style.dark} =} @var{value}
 This option (if set) selects ``reverse video'', which is a color preference
 for a darker background and a ligher foreground (text).
@@ -2094,6 +2149,7 @@ Whether @code{auto} works depends on browser and system support.
 It is known to work on Firefox on MacOS and Gnome;
 Electron and Wry on MacOS (but not Gnome); Epihany (on Gnome).
 
+@indsetting{style.blink-rate}
 @item @code{@b{style.blink-rate} =} [@var{hide-time} [@var{show-time}]]
 @itemx @code{@b{style.blink-rate} =} @var{hide-time}@code{,}@var{show-time}
 Control rate of blinking text.
@@ -2104,11 +2160,14 @@ If only one value is specified,
 @var{show-time} defaults to @var{hide-time}.
 If neither is specified the default is @code{0.3,0.7}.
 
+@indsetting{style.caret}
+@indsetting{style.edit-caret}
 @item @code{@b{style.caret} =} @var{value}
 @itemx @code{@b{style.edit-caret} =} @var{value}
 Change the style of the caret (text input cursor).
 See @ref{caret styling}.
 
+@indsetting{window-scale}
 @item @code{@b{window-scale} =} @var{value}
 The @code{window-scale} setting scales (zooms) entire top-level
 windows by the given @var{value} factor, which defaults to @code{1.0}.
@@ -2128,6 +2187,7 @@ but modified by the
 @code{window-zoom-in}, @code{window-zoom-out}, and @code{window-zoom-reset}
 (menu or keyboard shortcut) commands for each window.
 
+@indsetting{pane-scale}
 @item @code{@b{pane-scale} =} @var{value}
 Like @code{window-scale}, but scale the specified panes only.
 The @var{value} is multiplied by the @ref{effective window scale}.
@@ -2149,6 +2209,8 @@ commands.
 @subsubheading Key and mouse handling
 
 @table @asis
+@indsetting{open.file.application}
+@indsetting{open.link.application}
 @item @code{@b{open.file.application} =} @var{command-conditionals}
 @itemx @code{@b{open.link.application} =} @var{command-conditional}
 List of applications to try when clicking on a link.
@@ -2159,10 +2221,12 @@ For a non-@code{file:} URL, only the @code{open.link.application} list is tried.
 
 For details, see @ref{link-handlers}.
 
+@indsetting{keymap.master}
 @item @code{@b{keymap.master} =} @var{keymap-overrides}
 Add or replace keybindings that are active in all modes.
 See @ref{Keyboard shortcuts} for defaults and an example.
 
+@indsetting{keymap.line-edit}
 @item @code{@b{keymap.line-edit} =} @var{keymap-overrides}
 Add or replace keybindings for @ref{Input line editing,input line editing}.
 @end table
@@ -2170,6 +2234,7 @@ Add or replace keybindings for @ref{Input line editing,input line editing}.
 @subsubheading Remote connnections
 
 @table @asis
+@indsetting{command.remote-domterm}
 @item @code{@b{command.remote-domterm} =} @var{command-conditionals}
 When connecting to a remote server over ssh,
 the command that runs @code{domterm} on the server.
@@ -2191,6 +2256,7 @@ against those used to connect remotelty.
 If @code{@var{user}} is specified it must match exactly,
 otherwise any (or no) @code{@var{user}} matches.
 
+@indsetting{command.ssh}
 @item @code{@b{command.ssh} =} @var{command-conditionals}
 The command to use instead of @code{ssh} to connect to a remote
 server.
@@ -2198,6 +2264,7 @@ The value is a list of alternative commands, optionally
 prefixed by @ref{conditional values,conditions},
 in the same way as for @code{command.remote-domterm}.
 
+@indsetting{predicted-input-timeout}
 @item @code{@b{predicted-input-timeout} =} @var{timeout}
 When the user types a ``simple'' keyboard action (a printable character,
 left/right arrow key, backspace, or delete) the keystroke will be sent
@@ -2215,20 +2282,24 @@ echo within @var{timeout} seconds.  The default timeout is 0.4 seconds.
 The following settings are used to timeout if a connection fails.
 All these values are in seconds; no timeout happens if the values are zero.
 @table @asis
+@indsetting{remote-input-interval}
 @item @code{@b{remote-input-interval} =} @var{input-interval}
 If non-zero, the local browser sends input data at least as
 frequently as every @var{input-interval} seconds.
 If there is no keyboard or other event, artificial data is sent.
 Defaults to 10 seconds,
+@indsetting{remote-input-timeout}
 @item @code{@b{remote-input-timeout} =} @var{input-timeout}
 If the remote (application) end has not received any input data
 in @var{input-timeout} seconds and @var{input-timeout} is non-zero,
 it assume the connection has failed.
 Defaults to twice @code{remote_input_interval}.
+@indsetting{remote-output-interval}
 @item @code{@b{remote-output-interval} =} @var{output-interval}
 If non-zero, the remote (application) ends some data to the
 local browser at least every @code{remote_output_interval} seconds.
 Defaults to 10 seconds.
+@indsetting{remote-output-timeout}
 @item @code{@b{remote-output-timeout} =} @var{output-timeout}
 If the local browser end of the connection has not received any output
 from the remote application end in @code{remote_output_timeout} seconds
@@ -2240,6 +2311,7 @@ Defaults to twice @code{remote_output_interval}.
 
 @subsubheading Debugging and logging
 @table @asis
+@indsetting{log.file}
 @item @code{@b{log.file} = } @var{specifier}
 Send logging output (as controlled by the @code{-d} and @code{--verbose} flags)
 to the specified file.
@@ -2254,9 +2326,11 @@ that is used for a file that is appended to:
 
 The default is @code{/tmp/domterm-%P.log}.
 
+@indsetting{log.js-verbosity}
 @item @code{@b{log.js-verbosity} =} @var{level}
 Write more information to the JavaScript console.
 
+@indsetting{log.js-to-server}
 @item @code{@b{log.js-to-server} =} @var{setting}
 Send diagnostic/logging messages in the browser
 (normally written to the JavaScript console as controlled by
@@ -2267,15 +2341,18 @@ Sets the @code{-d} option to 5 if not specified;
 if specified the @code{-d @var{mask}} must have 4 set in the @var{mask}.
 (If you divide @var{mask} by 4, the result must be an odd integer.)
 
+@indsetting{log.js-string-max}
 @item @code{@b{log.js-string-max} =} @var{length}
 If positive, maximum length of strings to print to the JavaScript console.
 
+@indsetting{debug.input.extra-delay}
 @item @code{@b{debug.input.extra-delay} = } @var{delay}
 Delay an extra @var{delay} seconds before sending keyboard
 and other events from client (browser) to server (application).
 Especially useful for testing @code{predicted-input-timeout},
 which should be higher than @code{debug.input.extra-delay}.
 
+@indsetting{output-byte-by-byte}
 @item @code{@b{output-byte-by-byte} = } @var{count}
 When a front-end receives @var{N} output bytes to process, it may handle
 multiple bytes (such as simple text) in one go.
@@ -2290,14 +2367,17 @@ even if the output arrived in small chunks.
 @subsubheading Miscellaneous settings
 
 @table @asis
+@indsetting{history.storage-key}
 @item @code{@b{history.storage-key} =} @var{string}
 A string (default @code{"DomTerm.history"} used as an identifier
 for the JavaScripr storage mechanism to preserve line-editing history.
 
+@indsetting{history.storage-max}
 @item @code{@b{history.storage-max} =} @var{number}
 Maximum number of entries (default 200)
 of line-editing history to preserve,
 
+@indsetting{password-hide-char}
 @item @code{@b{password-hide-char} =} @var{string}
 Character used to hide characters
 in @ref{password fields,password fields}.
@@ -2306,15 +2386,19 @@ To change it to ``bullet'' you can do:
 @example
 domterm settings password-hide-char="\u2022"
 @end example
+
+@indsetting{password-show-char-timeout}
 @item @code{@b{password-show-char-timeout} =} @var{number}
 Number of seconds (default 0.8) to show the actual password character
 before it is replaced by the @code{password-hide-char}.
 
+@indsetting{terminal.minimum-width}
 @item @code{@b{terminal.minimum-width} =} @var{width}
 Mininum logical width (default 5, in columns/characters) of a terminal:
 If the available width is less, use this width for line-wrapping etc.
 (This avoids certain pathological behavior.)
 
+@indsetting{titlebar}
 @item @code{@b{titlebar} =} @var{mode}
 Use a custom titlebar for main (top-level) windows.
 Only the Electron, Wry, and Qt front-ends support disabling the system
@@ -2325,6 +2409,7 @@ Further options and customization is planned for later.
 The default on Electron, Wry, and Qt is @code{domterm},
 and @code{system} otherwise.
 
+@indsetting{subwindows}
 @item @code{@b{subwindows} =} @var{mode}
 If @var{mode} is @code{no}, disable support for sub-windows,
 which means all windows are top-level windows.
@@ -2925,7 +3010,8 @@ This is similar to tmux or GNU Screen.
 This section explains these concepts in detail.
 
 @subheading Windows and connections
-
+@cindex windows
+@cindex connections
 A @dfn{window} is an area of the screen
 where you can display or interact with a session or a browser:
 Either a @dfn{top-level window} (a window or tab
@@ -2942,6 +3028,7 @@ a non-session window that displays a specified web page.
 One use of this for is viewing documentation.
 
 @anchor{window number}
+@cindex window number
 @subsubheading Window number
 Every window has a unique window number.
 Normally, when a new terminal session is created a window will
@@ -2971,6 +3058,7 @@ one top-level window to another.
 This may cause the top-window-number to change.
 
 @anchor{window name}
+@cindex window name
 @subsubheading Window name
 
 The window name is an optional user-specified name for a window.
@@ -2989,6 +3077,7 @@ have the format of an ``identifier'': The first character should be a letter,
 and the rest should be letters, digits, hyphen, or underscore.
 
 @anchor{window specifier}
+@cindex window specifier
 @subsubheading Window specifier
 
 A @var{window-specifier} is used
@@ -3061,6 +3150,7 @@ but it planned as a future enhancement.
 
 @subheading Sessions
 
+@cindex sessions
 A @dfn{session} is an emulated terminal with a process running under it.
 A @code{domterm} @dfn{server} manages one or more sessions.
 Typically, for each user there is at most a single @code{domterm} server
@@ -3076,6 +3166,7 @@ If the session is not displayed in any window,
 we say it is @dfn{detached}.
 It is possible to display the same session in multiple windows.
 
+@cindex session number
 @subsubheading Session number
 
 Every session has an integer session number.
@@ -3094,6 +3185,7 @@ for the @code{ssh} client process.)
 A session-number can be prefixed by a @samp{#}
 when a separator is desired or for disambiguation, like: @code{#2}.
 
+@cindex session name
 @subsubheading Session name
 
 A session may have a name, based on the name of the window attached to it.
@@ -3129,6 +3221,7 @@ There is no auto-save in case of unintentional detach, such as
 network failure or a browser crash, but there are plans to implement that.
 
 @anchor{session-specifier}
+@cindex session specifier
 @subsubheading Session specifier
 
 A  @dfn{session specifier} (used by the @code{domterm attach} command)
@@ -4827,8 +4920,8 @@ fi
 @end example
 
 @node Shell prompts
+@cindex shell integration
 @section Shell prompts and tricks
-
 Many interactive REPL-style programs (such as a ``shell") allow
 you to customize the string used to prompt for input.
 Putting certain DomTerm-specific @ref{Wire byte protocol,escape sequences}
@@ -5100,6 +5193,8 @@ domterm --geometry 775x600+20+10 window toggle-minimize
 @end example
 
 @node Tiling Window Managers
+@cindex Sway window manager
+@cindex tiling window managers
 @section Sway and other Tiling Window Managers
 
 A @uref{https://en.wikipedia.org/wiki/Tiling_window_manager,Tiling Window Manager}
@@ -5123,6 +5218,7 @@ set $term domterm
 This assumes @code{domterm} is in your @code{$PATH}.
 
 @node Python tips
+@cindex Python tips
 @section Python tips
 
 Here are some ideas for using the Python (Python3)
@@ -7469,3 +7565,8 @@ The find-text facility uses Julian Kühnel's @uref{https://markjs.io/,mark.js}.
 
 Simulated ``traffic light'' window buttons for macOS are based on a
 @uref{https://gist.github.com/merqurio/4e17987b8515d44141e5952c55591869,CSS stylesheet by Gabi Maeztu}.
+
+@node General Index
+@unnumbered General Index
+
+@printindex cp
