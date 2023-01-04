@@ -4,6 +4,7 @@ check: test-24-bit-color \
   test-grapheme-widths-byte-by-byte \
   test-vttest-1 \
   test-vttest-11-6-6-3 \
+  test-view1 \
   test-wrap1
 
 grapheme-break-test: GraphemeBreakTest.sh
@@ -21,6 +22,9 @@ TDOKEYS = $(TDOMTERM) -w 1 do-keys
 TCAPTURE = $(TDOMTERM) -w 1 capture
 TEST_SHELL = /bin/bash --noprofile --rcfile ./test-bash-rc.sh
 VTTEST = vttest
+
+test-view1:
+	$(SHELL) $(srcdir)/test-view1.sh
 
 test-wrap1:
 	$(SHELL) $(srcdir)/test-wrap1.sh
