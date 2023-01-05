@@ -58,16 +58,33 @@ class FindText {
             this.matchRegExpTemplate
         ];
     }
+    unmark() {
+        const sel = window.getSelection();
+        const range = sel.focusedNode === null ? null : this.selectedRange;
+        this.mark.unmark();
+        // selection is likely to be cleared by DOM changes in unmark - but
+        // the saved selectedRange can be used to restore it.
+        if (range) {
+            if (this.selectedForwards)
+                sel.setBaseAndExtent(range.startContainer, range.startOffset,
+                                     range.endContainer, range.endOffset);
+            else
+                sel.setBaseAndExtent(range.endContainer, range.endOffset,
+                                     range.startContainer, range.startOffset);
+        }
+        this.selectedRange = null;
+    }
 
     update() {
         let text = this.searchString;
         if (this.matches !== null)
-            this.mark.unmark();
+            this.unmark();
         if (text.length == 0) {
             this.matches = null;
             this.resultCountView.innerHTML = `No results`;
             this.resultCountView.classList.remove("not-found");
             this.minibuf.infoDiv.classList.add("no-matches");
+            this.selectedRange = null;
             return;
         }
         this.matches = [];
@@ -144,6 +161,8 @@ class FindText {
         let parts = this.matches[index];
         let nparts = parts.length;
         let range = document.createRange();
+        this.selectedRange = range;
+        this.selectedForwards = forwards;
         range.selectNode(parts[0]);
         if (nparts > 1)
             range.setEndAfter(parts[nparts-1]);
@@ -332,7 +351,7 @@ FindText.startSearch = function(dt) {
     let mCloseHandler = panel.closeHandler;
     panel.closeHandler = (d) => {
         if (ft.matches !== null)
-            ft.mark.unmark();
+            ft.unmark();
         dt._findText = undefined;
         if (mCloseHandler)
             mCloseHandler(d);
