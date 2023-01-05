@@ -28,7 +28,8 @@ class FindText {
                 let rect = event.target.getBoundingClientRect();
                 let x = rect.x * term._computedZoom;
                 let y = rect.bottom * term._computedZoom;
-                DomTerm.popupMenu(this.kindPopupTemplate, {x: x, y: y});
+                DomTerm.popupMenu(DomTerm.makeMenu(this.kindPopupTemplate),
+                                  {x: x, y: y});
             }
         };
         this.matchCaseTemplate = {
@@ -268,6 +269,8 @@ cmd('find-toggle-match-case',
         ft.updateSearchMode();
         ft.update();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('find-toggle-match-word',
     function(dt, key) {
@@ -277,6 +280,8 @@ cmd('find-toggle-match-word',
         ft.updateSearchMode();
         ft.update();
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('find-toggle-regexp',
     function(dt, key) {
@@ -286,6 +291,8 @@ cmd('find-toggle-regexp',
         ft.updateSearchMode();
         ft.update();
         return true;
+    }, {
+        context: "terminal"
     });
 
 FindText.keymap = new window.browserKeymap({

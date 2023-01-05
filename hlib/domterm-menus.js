@@ -363,6 +363,8 @@ DomTerm.popupMenu = function(menu, options) {
     }
 }
 DomTerm.makeMenu = function(items) {
+    if (items instanceof Menu)
+        return items;
     if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
         return items;
     } else if (false && DomTerm.usingQtWebEngine) {
