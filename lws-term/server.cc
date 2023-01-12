@@ -156,8 +156,8 @@ subst_run_command(struct options *opts, const char *browser_command,
 /**
  * Run 'cmd', normall in a shell.
  * If 'cclient' is null, this is similar to system(cmd).
- * If 'cclient' is non-null, set cclient->read_fd for reading from command's stdout.
- * (This is similar to popen(cmd, "r").)
+ * If 'cclient' is non-null, this is similar to popen(cmd, "r"):
+ * set cclient->read_fd for reading from command's stdout.
  */
 int start_command(struct options *opts, const char *cmd,
                   struct browser_cmd_client *cclient)
@@ -233,6 +233,7 @@ int start_command(struct options *opts, const char *cmd,
     } else if (pid > 0) {// master
         free((void*) args);
         if (start_only) {
+            tserver.frontend_process_count++;
             cclient->cmd_pid = pid;
             cclient->read_fd = pipe_fds[0];
             (void)close(pipe_fds[1]);
@@ -1974,6 +1975,9 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
         while (waitpid(cclient->cmd_pid, &status, 0) == -1 && errno == EINTR)
             ;
         lwsl_notice("frontend exited with code %d exitcode:%d, pid: %d\n", status, WEXITSTATUS(status), cclient->cmd_pid);
+        tserver.frontend_process_count--;
+        maybe_exit(status == -1 || ! WIFEXITED(status) ? 0
+               : WEXITSTATUS(status));
         break;
     case LWS_CALLBACK_RAW_RX_FILE: {
         struct sbuf &obuf = cclient->output_buffer;

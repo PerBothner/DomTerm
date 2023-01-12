@@ -382,6 +382,7 @@ struct tty_server {
     tty_server();
     ~tty_server();
     int session_count;                        // session count
+    int frontend_process_count = 0;           // only frontends we're waiting on
     int connection_count;                     // clients requested (ever)
     bool client_can_close;
     char *socket_path;                        // UNIX domain socket path
@@ -394,6 +395,7 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
 
 extern void initialize_resource_map(struct lws_context *, const char*);
 extern void maybe_daemonize(void);
+extern void maybe_exit(int exit_code);
 extern void finish_request(struct options *opts, int exit_code, bool close);
 extern void do_exit(int, bool);
 extern void print_browsers_prefixed(const char *, const char *, FILE *);

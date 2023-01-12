@@ -152,8 +152,10 @@ do_exit(int exit_code, bool kill_clients)
 void
 maybe_exit(int exit_code)
 {
-    lwsl_notice("maybe_exit %d sess:%d cl:%s\n", exit_code, tserver.session_count, NO_TCLIENTS?"none":"some");
-    if (tserver.session_count == 0 && NO_TCLIENTS)
+    lwsl_notice("maybe_exit %d sess:%d fr:%d cl:%s\n", exit_code, tserver.session_count, tserver.frontend_process_count, NO_TCLIENTS?"none":"some");
+    if (tserver.session_count == 0
+        && tserver.frontend_process_count == 0
+        && NO_TCLIENTS)
         do_exit(exit_code, false);
 }
 
