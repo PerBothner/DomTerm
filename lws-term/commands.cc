@@ -248,8 +248,9 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
             char *fname_abs = NULL;
             const char *cwd = opts->cwd;
             if (fname[0] != '/' && cwd != NULL) {
-                fname_abs = challoc(strlen(cwd) + strlen(fname) +2);
-                sprintf(fname_abs, "%s/%s", cwd, fname);
+                size_t fname_abs_len = strlen(cwd) + strlen(fname) + 2;
+                fname_abs = challoc(fname_abs_len);
+                snprintf(fname_abs, fname_abs_len, "%s/%s", cwd, fname);
             }
             FILE *fin = fopen(fname_abs ? fname_abs : fname, "r");
             if (fname_abs != NULL)

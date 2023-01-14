@@ -65,7 +65,7 @@ check_host_origin(struct lws *wsi) {
         int port;
         if (lws_parse_uri(buf, &prot, &address, &port, &path))
             return false;
-        sprintf(buf, "%s:%d", address, port);
+        snprintf(buf, sizeof(buf), "%s:%d", address, port);
         int host_length = lws_hdr_total_length(wsi, WSI_TOKEN_HOST);
         if (host_length != strlen(buf))
             return false;
@@ -801,9 +801,9 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
                     char *dpath = find_in_path("domterm");
                     if (dpath == nullptr || strcmp(path, dpath) != 0) {
                         char *old_path = getenv("PATH");
-                        char *buf = (char *)
-                            xmalloc(dirname_length + strlen(old_path) + 20);
-                        sprintf(buf, "PATH=%.*s:%s",
+                        size_t blen = dirname_length + strlen(old_path) + 20;
+                        char *buf = (char *) xmalloc(blen);
+                        snprintf(buf, blen, "PATH=%.*s:%s",
                                 dirname_length, path, old_path);
                         put_to_env_array(nenv, env_max, buf);
                     }
@@ -834,7 +834,7 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             int vlen = version_info == NULL ? 0 : strlen(version_info);
             int mlen = dlen + vlen + llen + (tlen > 0 ? plen + tlen : 0);
             if (pid > 0) {
-                sprintf(pidbuf, ";session#=%d;pid=%d",
+                snprintf(pidbuf, sizeof(pidbuf), ";session#=%d;pid=%d",
                         pclient->session_number, pid);
                 mlen += strlen(pidbuf);
             }
@@ -868,8 +868,9 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
 #else
                 char *fmt =  "LD_PRELOAD=%s/lib/domterm-preloads.so libdl.so.2";
 #endif
-                char *buf = malloc(strlen(domterm_home)+strlen(fmt)-1);
-                sprintf(buf, fmt, domterm_home);
+                size_t blen = strlen(domterm_home)+strlen(fmt)-1;
+                char *buf = malloc(blen);
+                snprintf(buf, blen, fmt, domterm_home);
                 put_to_env_array(nenv, env_max, buf);
             }
 #endif
@@ -1055,8 +1056,9 @@ check_template(const char *tmplate, const json& obj)
             : chrome_command(false, main_options);
         if (chr == NULL)
             return NULL;
-        char *buf = challoc(strlen(chr) + strlen(href)+4);
-        sprintf(buf, "%s '%s'", chr, href);
+        size_t blen = strlen(chr) + strlen(href)+4;
+        char *buf = challoc(blen);
+        snprintf(buf, blen, "%s '%s'", chr, href);
         return buf;
     }
     int i;
@@ -1232,8 +1234,9 @@ maybe_signal (struct pty_client *pclient, int sig, int ch)
     ioctl(pclient->pty, TIOCSIG, (char *)(size_t)sig);
     if (ch >= 0) {
         char cbuf[12];
-        int n = ch >= ' ' && ch != 127 ? sprintf(cbuf, "%c", ch)
-            : sprintf(cbuf, "^%c", ch == 127 ? '?' : ch + 64);
+        int n = ch >= ' ' && ch != 127
+            ? snprintf(cbuf, sizeof(cbuf), "%c", ch)
+            : snprintf(cbuf, sizeof(cbuf), "^%c", ch == 127 ? '?' : ch + 64);
         FOREACH_WSCLIENT(tclient, pclient) {
             tclient->ob.append(cbuf);
             tclient->ocount += n;
@@ -1546,7 +1549,7 @@ reportEvent(const char *name, char *data, size_t dlen,
         sscanf(data, "%d,%d,%n", &paneOp, &oldWindowNum, &start_options);
         if (paneOp >= 0 && oldWindowNum > 0 && start_options > 0) {
             char wbuf[20];
-            sprintf(wbuf, "=%d", oldWindowNum);
+            snprintf(wbuf, sizeof(wbuf), "=%d", oldWindowNum);
             options->paneBase = wbuf;
             options->paneOp = paneOp;
             open_window(data+start_options, client);
@@ -1565,7 +1568,7 @@ reportEvent(const char *name, char *data, size_t dlen,
             direction = "left";
         if (direction && is_SwayDesktop()) {
             char buf[30];
-            sprintf(buf, "swaymsg focus %s", direction);
+            snprintf(buf, sizeof(buf), "swaymsg focus %s", direction);
             system(buf);
         }
     } else if (strcmp(name, "DETACH") == 0
@@ -2310,7 +2313,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 long rsess;
                 if (rsession && (rsess = strtol(rsession, NULL, 0)) > 0) {
                     char data[50];
-                    sprintf(data, "%ld,%ld", rsess, reconnect_value);
+                    snprintf(data, sizeof(data), "%ld,%ld",
+                             rsess, reconnect_value);
                     const char *host_arg= lws_get_urlarg_by_name(wsi, "remote=", arg, sizeof(arg) - 1);
                     if (host_arg) {
                         reconnect(wsi, client, host_arg, data);
@@ -2570,13 +2574,14 @@ display_session(struct options *options, struct pty_client *pclient,
                 int wnum = wclient ? wclient->connection_number : -1;
                 int blen = 0;
                 if (wnum >= 0)
-                    blen = sprintf(buf, "swaymsg '[title=\"DomTerm.*:%d\"]' focus;", wnum);
+                    blen = snprintf(buf, sizeof(buf),
+                                    "swaymsg '[title=\"DomTerm.*:%d\"]' focus;", wnum);
                 if (paneOp == pane_left || paneOp == pane_right)
-                    sprintf(buf+blen, "swaymsg split h");
+                    snprintf(buf+blen, sizeof(buf)-blen, "swaymsg split h");
                 else if (paneOp == pane_above || paneOp == pane_below || paneOp == pane_best)
-                    sprintf(buf+blen, "swaymsg split v");
+                    snprintf(buf+blen, sizeof(buf)-blen, "swaymsg split v");
                 else if (paneOp == pane_tab)
-                     sprintf(buf+blen, "swaymsg split h;swaymsg layout tabbed");
+                     snprintf(buf+blen, sizeof(buf)-blen, "swaymsg split h;swaymsg layout tabbed");
                 else
                     buf[0] = 0;
                 if (buf[0]) {
@@ -2916,13 +2921,15 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         // An ssh URL may not be of the form "ssh://@HOSTNAME".
         // So skip an initial '@' and then prepend "ssh://".
         const char *h = host_arg[0] == '@' ? host_arg + 1 : host_arg;
-        char *tmp = challoc(strlen(h)+7);
-        sprintf(tmp, "ssh://%s", h);
+        size_t tlen = strlen(h)+7;
+        char *tmp = challoc(tlen);
+        snprintf(tmp, tlen, "ssh://%s", h);
         host_url = tmp;
     }
     if (strchr(host_arg, '@') == NULL) {
-        char *tmp = challoc(strlen(host_arg)+2);
-        sprintf(tmp, "@%s", host_arg);
+        size_t tlen = strlen(host_arg)+2;
+        char *tmp = challoc(tlen);
+        snprintf(tmp, tlen, "@%s", host_arg);
         host_spec = tmp;
     } else {
         host_spec = strdup(host_arg);
@@ -3011,7 +3018,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
         pclient->is_ssh_pclient = true;
         pclient->preserve_mode = 0;
         char tbuf[20];
-        sprintf(tbuf, "%d", pclient->session_number);
+        snprintf(tbuf, sizeof(tbuf), "%d", pclient->session_number);
         set_setting(opts->cmd_settings, LOCAL_SESSIONNUMBER_KEY, tbuf);
         set_setting(opts->cmd_settings, REMOTE_HOSTUSER_KEY, host_spec);
         lwsl_notice("handle_remote pcl:%p\n", pclient);
