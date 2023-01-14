@@ -242,10 +242,10 @@ void BrowserMainWindow::setupMenu()
     connect(m_viewMenubar, SIGNAL(triggered()), this, SLOT(slotViewMenubar()));
     viewMenu->addAction(m_viewMenubar);
 
-    viewMenu->addAction(new NamedAction(tr("Zoom &In"), this, "frame-zoom-in", QKeySequence(Qt::CTRL | Qt::Key_Plus)));
-    viewMenu->addAction(new NamedAction(tr("Zoom &Out"), this, "frame-zoom-out", QKeySequence(Qt::CTRL | Qt::Key_Minus)));
-    viewMenu->addAction(new NamedAction(tr("Reset &Zoom"), this, "frame-zoom-reset", QKeySequence(Qt::CTRL | Qt::Key_0)));
-    viewMenu->addAction(new NamedAction(tr("Zoom &In (pane)"), this, "pane-zoom-in", QKeySequence(Qt::ALT | Qt::CTRL | Qt::SHIFT | Qt::Key_Plus)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &In"), this, "window-zoom-in", QKeySequence(Qt::CTRL | Qt::Key_Plus)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &Out"), this, "window-zoom-out", QKeySequence(Qt::CTRL | Qt::Key_Minus)));
+    viewMenu->addAction(new NamedAction(tr("Reset &Zoom"), this, "window-zoom-reset", QKeySequence(Qt::CTRL | Qt::Key_0)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &In (pane)"), this, "pane-zoom-in", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Plus)));
     viewMenu->addAction(new NamedAction(tr("Zoom &Out (pane)"), this, "pane-zoom-out", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Minus)));
     viewMenu->addAction(new NamedAction(tr("Reset &Zoom (pane)"), this, "pane-zoom-reset", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_0)));
 
