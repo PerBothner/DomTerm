@@ -1034,7 +1034,7 @@ int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
         by_session ? status_by_session(out, verbosity)
         : status_by_connection(out, verbosity);
     if (! have_clients)
-        fprintf(out, in_server ? "(no domterm sessions or windows)"
+        fprintf(out, in_server ? "(no domterm sessions or windows)\n"
                 : "(no domterm sessions or server)\n");
     fclose(out);
     return EXIT_SUCCESS;
