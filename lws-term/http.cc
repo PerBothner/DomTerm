@@ -58,10 +58,11 @@ get_resource_path()
       if (resource_path[0] != '/') {
           char *cmd_path = get_executable_path();
           int cmd_dir_length = get_executable_directory_length();
-          char *buf = challoc(cmd_dir_length + strlen(resource_path)
-                             + sizeof(domterm_jar_name) + 2);
-          sprintf(buf, "%.*s/%s/%s", cmd_dir_length, cmd_path, resource_path,
-                  domterm_jar_name);
+          size_t blen = cmd_dir_length + strlen(resource_path)
+              + sizeof(domterm_jar_name) + 2;
+          char *buf = challoc(blen);
+          snprintf(buf, blen, "%.*s/%s/%s",
+                   cmd_dir_length, cmd_path, resource_path, domterm_jar_name);
           resource_path = buf;
       }
   }
@@ -235,7 +236,8 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             }
 #endif
             if (!strncmp((const char *) in, "/auth_token.js", 14)) {
-                size_t n = main_options->credential != NULL ? sprintf(buf, "var tty_auth_token = '%s';", main_options->credential) : 0;
+                size_t n = main_options->credential == nullptr ? 0
+                    : snprintf(buf, sizeof(buf), "var tty_auth_token = '%s';", main_options->credential);
 
                 if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK,
                                             "application/javascript",

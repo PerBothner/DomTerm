@@ -39,7 +39,7 @@ endswith(const char * str, const char * suffix);
 
 // Get human readable signal string
 int
-get_sig_name(int sig, char *buf);
+get_sig_name(int sig, char *buf, size_t blen);
 
 // Get signal code from string like SIGHUP
 int

@@ -499,7 +499,7 @@ sig_handler(int sig) {
         exit(EXIT_FAILURE);
 
     char sig_name[20];
-    get_sig_name(sig, sig_name);
+    get_sig_name(sig, sig_name, sizeof(sig_name));
     lwsl_notice("received signal: %s (%d), exiting...\n", sig_name, sig);
     force_exit = true;
     tty_restore(-1);

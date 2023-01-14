@@ -29,11 +29,12 @@ struct help_info help_table[] = {
 void print_help_file(const char* name, FILE *out)
 {
     char *hdir = get_bin_relative_path(DOMTERM_DIR_RELATIVE "/help");
-    char *buf = challoc(strlen(hdir)+strlen(name)+20);
+    size_t blen = strlen(hdir)+strlen(name)+20;
+    char *buf = challoc(blen);
     bool is_domterm = probe_domterm(true) > 0;
     FILE *rfile = NULL;
     if (! text_option_seen && ! man_option_seen && is_domterm) {
-        sprintf(buf, "%s/%s.html", hdir, name);
+        snprintf(buf, blen, "%s/%s.html", hdir, name);
         rfile = fopen(buf, "r");
         if (rfile == NULL)
             goto err;
@@ -43,7 +44,7 @@ void print_help_file(const char* name, FILE *out)
         fflush(out); // FIXME avoid double fflush
         return;
     }
-    sprintf(buf, "%s/%s.txt", hdir, name);
+    snprintf(buf, blen, "%s/%s.txt", hdir, name);
     rfile = fopen(buf, "r");
     if (rfile == NULL)
         goto err;

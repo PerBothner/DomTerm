@@ -346,7 +346,8 @@ int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
                     || memcmp(arg+2, "hspace=", neq) == 0
                     || memcmp(arg+2, "alt=", neq) == 0
                     || memcmp(arg+2, "longdesc=", neq) == 0)) {
-              int n = sprintf(aptr, " %.*s'%s'", neq, arg+2, eq+1);
+                int n = snprintf(aptr, asize - (aptr - abuf),
+                                 " %.*s'%s'", neq, arg+2, eq+1);
               aptr += n;
             } else if (neq >= 0
                        && (memcmp(arg+2, "overflow=", neq) == 0
@@ -1076,8 +1077,9 @@ int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
     if (! saw_scheme) {
         if (file[0] != '/') {
             const char *cwd = opts->cwd;
-            fencoded = challoc(strlen(cwd)+strlen(file)+2);
-            sprintf(fencoded, "%s/%s", cwd, file);
+            size_t flen = strlen(cwd)+strlen(file)+2;
+            fencoded = challoc(flen);
+            snprintf(fencoded, flen, "%s/%s", cwd, file);
             file = fencoded;
         }
         if (access(file, R_OK) != 0) {
@@ -1087,8 +1089,9 @@ int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
             return EXIT_FAILURE;
         }
     }
-    char *url = challoc(strlen(file) + 40);
-    sprintf(url, "%s%s", fscheme, file);
+    size_t ulen = strlen(file) + 40;
+    char *url = challoc(ulen);
+    snprintf(url, ulen, "%s%s", fscheme, file);
     free(fencoded);
     display_session(opts, NULL, url, saved_window);
     free(url);
@@ -1201,8 +1204,9 @@ int complete_action(int argc, arglist_t argv, struct lws *wsi,
     const char *cmd = optind < before_argc ? before_argv[optind] : NULL;
     if (cmd == NULL && last_arg[0] == '/') {
         const char *fmt = "/bin/bash -c \"compgen -c '%s'\"";
-        char* sysb = new char[strlen(fmt)+strlen(last_arg)];
-        sprintf(sysb, fmt, last_arg);
+        size_t blen = strlen(fmt)+strlen(last_arg);
+        char* sysb = new char[blen];
+        snprintf(sysb, blen, fmt, last_arg);
         system(sysb);
         delete[] sysb;
         return EXIT_SUCCESS;

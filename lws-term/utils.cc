@@ -74,8 +74,9 @@ endswith(const char * str, const char * suffix) {
 }
 
 int
-get_sig_name(int sig, char *buf) {
-    int n = sprintf(buf, "SIG%s", sig < NSIG ? strsignal(sig) : "unknown");
+get_sig_name(int sig, char *buf, size_t blen) {
+    int n = snprintf(buf, blen, "SIG%s",
+                     sig < NSIG ? strsignal(sig) : "unknown");
     uppercase(buf);
     return n;
 }
@@ -925,13 +926,14 @@ find_in_path(const char *name)
     char *path = getenv("PATH");
     int plen = strlen(path);
     char *end = path + plen;
-    char *buf = challoc(plen + strlen(name) + 2);
+    size_t blen = plen + strlen(name) + 2;
+    char *buf = challoc(blen);
     for (;;) {
         char* colon = strchr(path, ':');
         if (colon == NULL)
             colon = end;
         if (path != colon) {
-            sprintf(buf, "%.*s/%s", (int) (colon-path), path, name);
+            snprintf(buf, blen, "%.*s/%s", (int) (colon-path), path, name);
             if (access(buf, X_OK) == 0)
                 return buf;
         }
