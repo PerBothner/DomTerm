@@ -857,7 +857,7 @@ static void show_connection_info(struct tty_client *tclient,
     }
 }
 
-static void status_by_session(FILE * out, int verbosity)
+static bool status_by_session(FILE * out, int verbosity)
 {
     int nclients = 0;
     FOREACH_PCLIENT(pclient) {
@@ -894,11 +894,10 @@ static void status_by_session(FILE * out, int verbosity)
             if (nwindows == 0)
                 fprintf(out, "  (detached)\n");
     }
-    if (nclients == 0)
-        fprintf(out, "(no domterm sessions or server)\n");
+    return nclients > 0;
 }
 
-static void status_by_connection(FILE *out, int verbosity)
+static bool status_by_connection(FILE *out, int verbosity)
 {
     struct tty_client *tclient, *sub_client;
     int nclients = 0, nsessions = 0;
@@ -1004,8 +1003,7 @@ static void status_by_connection(FILE *out, int verbosity)
             fprintf(out, "\n");
         }
     }
-    if (nclients + nsessions == 0)
-        fprintf(out, "(no domterm sessions or server)\n");
+    return nclients + nsessions > 0;
 }
 
 int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
@@ -1032,10 +1030,12 @@ int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
         fprintf(out, "%s", backend_socket_name);
         fprintf(out, "\n");
     }
-    if (by_session)
-        status_by_session(out, verbosity);
-    else
-        status_by_connection(out, verbosity);
+    bool have_clients =
+        by_session ? status_by_session(out, verbosity)
+        : status_by_connection(out, verbosity);
+    if (! have_clients)
+        fprintf(out, in_server ? "(no domterm sessions or windows)"
+                : "(no domterm sessions or server)\n");
     fclose(out);
     return EXIT_SUCCESS;
 }
