@@ -224,8 +224,9 @@ AC_DEFUN([AT_WITH_QT],
      # Find Qt.
      AC_ARG_VAR([QT_PATH],
        [path to Qt binaries])
-     # HomeBrew installs into /usr/local/share/qt/libexec
-     QT_TOOL_PATH=$QT_PATH:$PATH:/usr/local/share/qt/libexec
+     # HomeBrew installs into /usr/local/share/qt/libexec (macOS Intel)
+     # or /opt/homebrew (Apple Silicon)
+     QT_TOOL_PATH=$QT_PATH:$PATH:/usr/local/share/qt/libexec:/opt/homebrew/opt/qt6/share/qt/libexec
 
      # Find qmake.
      AC_ARG_VAR([QMAKE],
