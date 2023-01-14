@@ -103,7 +103,7 @@ function createNewWindow (url, options, headless)
         useContentSize: true,
         frame: frame, transparent: !frame,
         show: false};
-    if (process.platform === 'darwin') {
+    if (process.platform === 'darwin' && ! frame) {
         bwoptions.titleBarStyle = "hidden";
         bwoptions.trafficLightPosition = { x: 8, y: 5 };
     }
