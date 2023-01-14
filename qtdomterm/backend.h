@@ -26,7 +26,7 @@ public:
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
     BrowserMainWindow *mainWindow() const;
-    int windowNumber() const { return _windowNumber; }
+    int windowNumber() const;
 
     QString domtermVersion() { return _domtermVersion; }
     void addDomtermVersion(const QString &info);
@@ -56,7 +56,7 @@ public slots:
     void setSavedHtml(const QString &info) { _savedHtml = info; }
     void windowOp(const QString& opname);
     void openNewWindow(int width, int height, const QString& position,
-                       const QString& url,
+                       const QString& url, int windowNumber,
                        bool headless, const QString& titlebar);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     void newPane(int paneOp, const QString& url);
@@ -90,7 +90,6 @@ private slots:
     QString toJsonQuoted(QString str);
 private:
     QSharedDataPointer<ProcessOptions> _processOptions;
-    int            _windowNumber;
     bool           _wantedClose;
     int            _sessionId;
 

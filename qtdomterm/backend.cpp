@@ -63,6 +63,11 @@ Backend::mainWindow() const
     return webView()->mainWindow();
 }
 
+int Backend::windowNumber() const
+{
+    return webView()->windowNumber();
+}
+
 void Backend::setInputMode(char mode)
 {
     emit writeInputMode((int) mode);
@@ -121,9 +126,9 @@ void Backend::windowOp(const QString& opname)
 }
 
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
-void Backend::newPane(int paneOp, const QString& url)
+void Backend::newPane(int paneOp, int windowNumber, const QString& url)
 {
-    auto webv = new WebView(webView()->m_processOptions, nullptr);
+    auto webv = new WebView(webView()->m_processOptions, windowNumber, nullptr);
     webv->newPage(url);
     auto dockw = webv->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
     auto curDock = webView()->dockWidget();
@@ -162,13 +167,12 @@ void Backend::newPane(int paneOp, const QString& url)
 #else
 void Backend::newPane(int windowNumber, const QString& url)
 {
-    auto webv = new WebView(webView()->m_processOptions, webView());
+    auto webv = new WebView(webView()->m_processOptions, windowNumber, webView());
     webv->newPage(url);
     webv->resize(300, 300);
     webv->show();
 //   webv->lower();
     mainWindow()->application()->registerPane(windowNumber, webv);
-    webv->backend()->_windowNumber = windowNumber;
     webv->setFocus(Qt::OtherFocusReason); // FIXME
 }
 #endif
@@ -247,20 +251,20 @@ void Backend::sendParentMessage(const QString& command, const QString& args_json
 }
 
 void Backend::openNewWindow(int width, int height, const QString& position,
-                            const QString& url, bool headless,
+                            const QString& url, int windowNumber, bool headless,
                             const QString& titlebar)
 {
 #if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
     auto manager = webView()->mainWindow()->dockManager();
-    auto webv = new WebView(webView()->m_processOptions, nullptr);
+    auto webv = new WebView(webView()->m_processOptions, windowNumber, nullptr);
     webv->newPage(url);
     auto dockw = webv->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
     manager->addDockWidgetFloating(dockw);
 #else
     QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
     bool use_titlebar = titlebar=="system";
-    BrowserApplication::instance()->newMainWindow(url, width, height,
-                                                  position, headless,
+    BrowserApplication::instance()->newMainWindow(url, width, height, position,
+                                                  windowNumber, headless,
                                                   use_titlebar, options);
 #endif
 }

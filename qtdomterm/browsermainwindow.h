@@ -87,15 +87,14 @@ class BrowserMainWindow
 {
     Q_OBJECT
 public:
-    BrowserMainWindow(BrowserApplication*application, const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent, Qt::WindowFlags flags);
+    BrowserMainWindow(BrowserApplication*application, const QString& url, QSharedDataPointer<ProcessOptions> processOptions, int windowNumber, QWidget *parent, Qt::WindowFlags flags);
     ~BrowserMainWindow();
     static BrowserMainWindow* containingMainWindow(QWidget *);
     QSize sizeHint() const;
     void setSize(int width, int height) { m_width = width; m_height = height; }
 
 public:
-    WebView *webView() const { return currentTab(); }
-    WebView *currentTab() const;
+    WebView *webView() const;
     BrowserApplication* application() { return m_application; }
 #if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* dockManager() { return m_DockManager; }
@@ -140,7 +139,6 @@ private slots:
 
     void slotOpenActionUrl(QAction *action);
     void slotShowWindow();
-    void slotSwapFocus();
 
 #if defined(QWEBENGINEPAGE_PRINT)
     void printRequested(QWebEngineFrame *frame);

@@ -657,7 +657,7 @@ firefox_browser_command(struct options *options)
 
 /** Return freshly allocated command string or NULL */
 static char *
-qtwebengine_command(struct options *options)
+qtwebengine_command(struct options *options, int wnum)
 {
     char *cmd = get_bin_relative_path("/bin/qtdomterm");
     if (cmd == NULL || access(cmd, X_OK) != 0) {
@@ -673,6 +673,8 @@ qtwebengine_command(struct options *options)
         sb.printf(" --geometry %s", geometry);
     if (options->qt_remote_debugging)
         sb.printf(" --remote-debugging-port=%s", options->qt_remote_debugging);
+    if (wnum > 0)
+        sb.printf(" --window-number %d", wnum);
     if (options->headless)
         sb.append(" --headless");
     std::string titlebar = get_setting_s(options->settings, "titlebar");
@@ -932,12 +934,13 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                            || cmd == "qt-frames"
                            || cmd == "qt-widgets"
                            || cmd == "qtwebengine") {
-                    browser_specifier = qtwebengine_command(options);
+                    browser_specifier = qtwebengine_command(options, wnum);
                     if (browser_specifier == nullptr)
                         error_if_single = "'qtdomterm' front-end missing";
                     else {
                         do_Qt = true;
                         options->qt_frontend = true;
+                        start_only = true;
                         break;
                     }
                 } else if (cmd == "firefox") {

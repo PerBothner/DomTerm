@@ -98,12 +98,13 @@ class WebView : public QWebEngineView {
 
 public:
     WebView(QSharedDataPointer<ProcessOptions> processOptions,
-            QWidget *parent = 0);
+            int windowNumber, QWidget *parent = 0);
     QSharedDataPointer<ProcessOptions> m_processOptions;
     void newPage(const QString& url);
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
     BrowserMainWindow *mainWindow();
+    int windowNumber() const { return m_windowNumber; }
     void setPage(WebPage *page);
     bool blockCaret() { return m_blockCaret; }
     void setBlockCaret(bool set) { m_blockCaret = set; }
@@ -151,6 +152,7 @@ private:
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     DockWidget *m_dockWidget;
 #endif
+    int m_windowNumber = -1;
     QUrl m_initialUrl;
     int m_progress;
     WebPage *m_page;

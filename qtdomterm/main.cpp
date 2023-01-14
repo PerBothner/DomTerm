@@ -50,6 +50,7 @@
 
 #include "browserapplication.h"
 #include <unistd.h>
+#include <stdlib.h>
 #include <qtwebenginewidgetsglobal.h>
 #include <string.h>
 #include <getopt.h>
@@ -62,6 +63,7 @@ const char* const short_options = "+:vhw:e:c:S:";
 #define GEOMETRY_OPTION 1001
 #define HEADLESS_OPTION 1002
 #define TITLEBAR_OPTION 1003
+#define WINDOW_NUMBER_OPTION 1004
 
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
@@ -73,6 +75,7 @@ const struct option long_options[] = {
     {"geometry", 1, NULL, GEOMETRY_OPTION},
     {"headless", 0, NULL, HEADLESS_OPTION},
     {"titlebar", 1, NULL, TITLEBAR_OPTION},
+    {"window-number", 1, NULL, WINDOW_NUMBER_OPTION},
     {NULL,      0, NULL,  0}
 };
 
@@ -116,6 +119,9 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
                 // if changing default to "domterm": strcmp(optarg, "system") == 0
                 processOptions->titlebar =
                     !optarg[0] || strcmp(optarg, "system") == 0;
+                break;
+            case WINDOW_NUMBER_OPTION:
+                processOptions->windowNumber = strtol(optarg, nullptr, 10);
                 break;
             case HEADLESS_OPTION:
                 processOptions->headless = true;

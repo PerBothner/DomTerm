@@ -283,7 +283,7 @@ void BrowserApplication::openUrl(const QUrl &url)
     mainWindow()->loadPage(url.toString());
 }
 
-BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, bool headless, bool titlebar, QSharedDataPointer<ProcessOptions> processOptions)
+BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, int windowNumber, bool headless, bool titlebar, QSharedDataPointer<ProcessOptions> processOptions)
 {
     QUrl xurl = url;
 
@@ -330,7 +330,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
         wflags |= Qt::FramelessWindowHint;
     BrowserMainWindow *browser =
         new BrowserMainWindow(this, xurl.toString(),
-                              processOptions, nullptr, wflags);
+                              processOptions, windowNumber, nullptr, wflags);
     int x = -1, y = -1;
     if (! position.isEmpty()) {
         QRegularExpression re("^([-+])([0-9]+)([-+])([0-9]+)$");
@@ -385,7 +385,8 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QShared
     return newMainWindow(url,
                          w.isEmpty() ? -1 : w.toInt(),
                          h.isEmpty() ? -1 : h.toInt(),
-                         pos, headlessOption, processOptions->titlebar,
+                         pos, processOptions->windowNumber, headlessOption,
+                         processOptions->titlebar,
                          processOptions);
 }
 
@@ -438,6 +439,7 @@ QIcon BrowserApplication::defaultIcon() const
 
 ProcessOptions::ProcessOptions()
     : headless(false)
+    , windowNumber(-1)
 {
 }
 QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state)

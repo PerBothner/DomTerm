@@ -413,6 +413,7 @@ DomTerm.openNewWindow = function(dt, options={}) {
             DomTerm._qtBackend.openNewWindow(options.width, options.height,
                                              options.position || "",
                                              options.url,
+                                             options.windowNumber || -1,
                                              !!options['headless'],
                                              options.titlebar || "");
         else // DomTerm.versions.wry

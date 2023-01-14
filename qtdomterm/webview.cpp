@@ -139,7 +139,7 @@ class PopupWindow : public QWidget {
     Q_OBJECT
 public:
     PopupWindow(QSharedDataPointer<ProcessOptions> processOptions, QWebEngineProfile *profile)
-      : m_view(new WebView(processOptions, this))
+        : m_view(new WebView(processOptions, -1, this))
     {
         m_view->setPage(new WebPage(profile, m_view));
         QVBoxLayout *layout = new QVBoxLayout;
@@ -225,9 +225,10 @@ void WebPage::handleUnsupportedContent(QNetworkReply *reply)
 #endif
 
 WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
-                 QWidget* parent)
+                 int windowNumber, QWidget* parent)
     : QWebEngineView(parent)
     , m_processOptions(processOptions)
+    , m_windowNumber(windowNumber)
     , m_progress(0)
     , m_page(0)
     , m_blockCaret(true)

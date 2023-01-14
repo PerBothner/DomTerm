@@ -168,17 +168,20 @@ function setupQWebChannel(channel) {
     }
     if (DomTerm.mainSearchParams.get('qtdocking')) {
         DomTerm.newPane = function(paneOp, options=null, dt=DomTerm.focusedTerm) {
+            let windowNumber = options.windowNumber || -1;
+            let url;
             if (options && options.componentType === "browser"
                 && options.url) {
-                backend.newPane(paneOp, options.url);
+                url = options.url;
             } else {
                 let url = DomTerm.paneLocation;
                 if (options && options.sessionNumber) {
                     url += url.indexOf('#') >= 0 ? '&' : '#';
                     url += "session-number="+options.sessionNumber;
                 }
-                backend.newPane(paneOp, DomTerm.addLocationParams(url));
+                url = DomTerm.addLocationParams(url);
             }
+            backend.newPane(paneOp, windowNumber, url);
         };
     }
     const oldAutoPagerChanged = DomTerm.autoPagerChanged;

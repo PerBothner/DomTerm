@@ -15,6 +15,7 @@ class ProcessOptions : public QSharedData
      QString url;
      QString wsconnect;
      QString geometry;
+     int windowNumber;
 
      friend QDataStream& operator>>(QDataStream&, ProcessOptions&);
      friend QDataStream& operator<<(QDataStream&, const ProcessOptions&);

@@ -73,6 +73,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QtCore/QDebug>
+#include <stdio.h>
 
 NamedAction::NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd)
     : QAction(text), window(w), command(cmd)
@@ -92,7 +93,7 @@ void NamedAction::doit()
 }
 
 BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
-                                     const QString& url, QSharedDataPointer<ProcessOptions> processOptions, QWidget *parent,
+                                     const QString& url, QSharedDataPointer<ProcessOptions> processOptions, int windowNumber, QWidget *parent,
                                      Qt::WindowFlags wflags
     )
 #if USE_KDDockWidgets
@@ -102,9 +103,9 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
 #endif
     , m_application(application)
 #if USE_KDDockWidgets
-    , m_webView(new WebView(processOptions, nullptr))
+    , m_webView(new WebView(processOptions, windowNumber, nullptr))
 #else
-    , m_webView(new WebView(processOptions, this))
+    , m_webView(new WebView(processOptions, windowNumber, this))
 #endif
     , m_width(-1)
     , m_height(-1)
@@ -188,7 +189,6 @@ QSize BrowserMainWindow::sizeHint() const
 
 void BrowserMainWindow::setupMenu()
 {
-    new QShortcut(QKeySequence(Qt::Key_F6), this, SLOT(slotSwapFocus()));
     //connect(menuBar()->toggleViewAction(), SIGNAL(toggled(bool)),
     //            this, SLOT(updateMenubarActionText(bool)));
 
@@ -365,7 +365,7 @@ void BrowserMainWindow::updateMenubarActionText(bool visible)
 
 void BrowserMainWindow::loadUrl(const QUrl &url)
 {
-    if (!currentTab() || !url.isValid())
+    if (! webView() || !url.isValid())
         return;
 
     m_webView->loadUrl(url);
@@ -451,6 +451,7 @@ void BrowserMainWindow::slotFileNew()
 void BrowserMainWindow::closeEvent(QCloseEvent *event)
 {
     event->accept();
+    printf("CLOSE-WINDOW %d\n", webView()->windowNumber());
     deleteLater();
 }
 
@@ -481,23 +482,13 @@ void BrowserMainWindow::slotToggleInspector(bool enable)
 #endif
 }
 
-void BrowserMainWindow::slotSwapFocus()
-{
-  /*
-    if (currentTab()->hasFocus())
-        m_tabWidget->currentLineEdit()->setFocus();
-    else
-        currentTab()->setFocus();
-  */
-}
-
 void BrowserMainWindow::loadPage(const QString &page)
 {
     QUrl url = QUrl::fromUserInput(page);
     loadUrl(url);
 }
 
-WebView *BrowserMainWindow::currentTab() const
+WebView *BrowserMainWindow::webView() const
 {
     return m_webView;
 }
@@ -510,7 +501,7 @@ void BrowserMainWindow::slotShowWindow()
             int offset = qvariant_cast<int>(v);
             QList<BrowserMainWindow*> windows = BrowserApplication::instance()->mainWindows();
             windows.at(offset)->activateWindow();
-            windows.at(offset)->currentTab()->setFocus();
+            windows.at(offset)->webView()->setFocus();
         }
     }
 }
