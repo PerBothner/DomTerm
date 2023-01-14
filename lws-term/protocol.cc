@@ -1951,7 +1951,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
             sb.printf(URGENT_WRAP("\033]89;%s\007"), settings_as_json.c_str());
         }
     }
-    if (client->initialized == 0 && proxyMode != proxy_command_local) {
+    if (client->initialized == 0 && proxyMode != proxy_command_local && proxyMode != proxy_remote) {
         if (client->options && client->options->cmd_settings.is_object()) {
             tty_client *mclient = client->main_window <= 0 ? client
                 : main_windows[client->main_window];
