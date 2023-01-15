@@ -452,6 +452,7 @@ void BrowserMainWindow::closeEvent(QCloseEvent *event)
 {
     event->accept();
     printf("CLOSE-WINDOW %d\n", webView()->windowNumber());
+    fflush(stdout);
     deleteLater();
 }
 
