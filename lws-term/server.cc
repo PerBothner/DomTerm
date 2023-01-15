@@ -92,9 +92,10 @@ subst_command(struct options *opts, const char *browser_command,
         const char *geometry = geometry_option(opts);
         skip = 4;
         if (geometry) {
-            char *tbuf = challoc(ulen+strlen(geometry)+20);
+            size_t tlen = ulen+strlen(geometry)+20;
+            char *tbuf = challoc(tlen);
             const char *g1 = strchr(url, '#') ? "&geometry=" : "#geometry";
-            sprintf(tbuf, "%s%s%s", url_fixed, g1, geometry);
+            snprintf(tbuf, tlen, "%s%s%s", url_fixed, g1, geometry);
 	    free(url_tmp);
 	    url_fixed = url_tmp = tbuf;
             ulen = strlen(url_fixed);
@@ -107,7 +108,7 @@ subst_command(struct options *opts, const char *browser_command,
         size_t wsl_prefix_length = strlen(wsl_prefix);
         if (memcmp(url, wsl_prefix, wsl_prefix_length) == 0) {
 	    char *tbuf = challoc(ulen);
-            sprintf(tbuf, "file:///c:/%s", url+wsl_prefix_length);
+            snprintf(tbuf, ulen, "file:///c:/%s", url+wsl_prefix_length);
 	    free(url_tmp);
             url_fixed = url_tmp = tbuf;
 	}
@@ -518,8 +519,9 @@ get_bin_relative_path(const char* app_path)
         dirname_length -= 4;
 
     int app_path_length = strlen(app_path);
-    char *buf = (char*)xmalloc(dirname_length + app_path_length + 1);
-    sprintf(buf, "%.*s%s", dirname_length, path, app_path);
+    size_t blen = dirname_length + app_path_length + 1;
+    char *buf = (char*)xmalloc(blen);
+    snprintf(buf, blen, "%.*s%s", dirname_length, path, app_path);
     return buf;
 }
 
@@ -533,7 +535,8 @@ fix_for_windows(char * fname)
         if (memcmp(fname, mnt_prefix, mnt_prefix_length) == 0
             && fname_length > mnt_prefix_length) {
             char *buf = challoc(fname_length);
-            sprintf(buf, "%c:/%s", fname[mnt_prefix_length], fname+mnt_prefix_length+1);
+            snprintf(buf, fname_length, "%c:/%s",
+                     fname[mnt_prefix_length], fname+mnt_prefix_length+1);
             return buf;
         }
     }
@@ -1593,7 +1596,8 @@ main(int argc, char **argv)
 
 #if LWS_LIBRARY_VERSION_MAJOR >= 2
     char server_hdr[128] = "";
-    sprintf(server_hdr, "domterm/%s (libwebsockets/%s)", LDOMTERM_VERSION, LWS_LIBRARY_VERSION);
+    snprintf(server_hdr, sizeof(server_hdr), "domterm/%s (libwebsockets/%s)",
+             LDOMTERM_VERSION, LWS_LIBRARY_VERSION);
     info.server_string = server_hdr;
 #endif
 
@@ -1771,22 +1775,27 @@ domterm_dir(bool settings, bool check_wsl)
     char *xdg_home = getenv(settings ? "XDG_CONFIG_HOME" : "XDG_RUNTIME_DIR");
     const char *sini = settings ? "/settings.ini" : "";
     if (xdg_home) {
-	tmp = challoc(strlen(xdg_home)+40);
-	sprintf(tmp, "%s/domterm%s", xdg_home, sini);
+        size_t tlen = strlen(xdg_home)+40;
+	tmp = challoc(tlen);
+	snprintf(tmp, tlen, "%s/domterm%s", xdg_home, sini);
     } else if (check_wsl && is_WindowsSubsystemForLinux()
                && (user_profile = get_WSL_userprofile()) != NULL
                && strlen(user_profile) > (user_prefix_length = strlen(user_prefix))
                && memcmp(user_profile, user_prefix, user_prefix_length) == 0) {
 	const char *fmt = "/mnt/c/Users/%s/AppData/%s/DomTerm%s";
 	const char *subdir = settings ? "Roaming" : "Local";
-	tmp = challoc(strlen(fmt) + strlen(user_profile) + 40);
-	sprintf(tmp, fmt, user_profile+user_prefix_length, subdir, sini);
+        size_t tlen = strlen(fmt) + strlen(user_profile) + 40;
+	tmp = challoc(tlen);
+	snprintf(tmp, tlen, fmt, user_profile+user_prefix_length, subdir, sini);
     } else {
         const char *home = find_home();
-        tmp = challoc(strlen(home)+30);
-        sprintf(tmp, "%s/.domterm%s", home, sini);
+        size_t tlen = strlen(home)+30;
+        tmp = challoc(tlen);
+        snprintf(tmp, tlen, "%s/.domterm%s", home, sini);
         if (settings && access(tmp, R_OK) != 0)
-            sprintf(tmp, "%s/.config/domterm%s", home, sini);
+            snprintf(tmp, tlen, "%s/.config/domterm%s", home, sini);
+        else
+            snprintf(tmp, tlen, "%s/.domterm%s", home, sini);
     }
     if (! settings && mkdir(tmp, S_IRWXU) != 0 && errno != EEXIST)
         fatal("cannot create directory '%s'", tmp);
@@ -1848,16 +1857,20 @@ make_socket_name(bool html_filename)
             ext = dot < 0 ? ".socket" : "";
         int len = socket_name_length + strlen(ext);
         if (socket_name[0] != '/') {
-            r = challoc(len + strlen(ddir) + 2);
-            sprintf(r, "%s/%.*s%s", ddir, socket_name_length, socket_name, ext);
+            size_t rlen = len + strlen(ddir) + 2;
+            r = challoc(rlen);
+            snprintf(r, rlen, "%s/%.*s%s",
+                     ddir, socket_name_length, socket_name, ext);
         } else {
             r = challoc(len + 1);
-            sprintf(r, "%.*s%s", socket_name_length, socket_name, ext);
+            snprintf(r, len + 1, "%.*s%s",
+                     socket_name_length, socket_name, ext);
         }
     } else {
         const char *sname = html_filename ? "/start" : "/default.socket";
-        r = challoc(strlen(ddir)+strlen(sname)+1);
-        sprintf(r, "%s%s", ddir, sname);
+        size_t rlen = strlen(ddir)+strlen(sname)+1;
+        r = challoc(rlen);
+        snprintf(r, rlen, "%s%s", ddir, sname);
     }
     return r;
 }
@@ -1933,7 +1946,7 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
 {
     char base[40];
     bool simple = (hoptions & LIB_WHEN_OUTER) == 0;
-    sprintf(base, "http://%s:%d/", "localhost", port);
+    snprintf(base, sizeof(base), "http://%s:%d/", "localhost", port);
     obuf->printf("<!DOCTYPE html>\n"
                  "<html><head>\n"
                  "<base href='%s'/>\n"
