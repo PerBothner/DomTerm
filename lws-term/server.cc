@@ -1987,7 +1987,9 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
         obuf.extend(1024);
         ssize_t rcount = read(cclient->read_fd, obuf.avail_start(), obuf.avail_space());
         if (rcount <= 0) {
-            lwsl_info("browser_cmd read %d bytes errno:%s\n", rcount, strerror(errno));
+            if (rcount == 0)
+                return 0;
+            lwsl_err("browser_cmd failed read from browser errno:%s\n", strerror(errno));
             if (errno == EAGAIN)
                 return 0;
             return -1;
@@ -2001,6 +2003,8 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             size_t linelen = newline - obuf.buffer;
             *newline = '\0';
             char *cmd = obuf.buffer;
+            if (cmd[0])
+                lwsl_info("browser_cmd received '%s'\n", cmd);
             if (strncmp(cmd, "CLOSE-WINDOW ", 13) == 0) {
                 char *end;
                 long wnum = strtol(cmd+13, &end, 10);
