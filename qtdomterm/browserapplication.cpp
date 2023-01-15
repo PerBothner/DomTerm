@@ -115,7 +115,7 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
         return;
     }
 
-#if defined(Q_OS_OSX)
+#if defined(Q_OS_MACOS)
     QApplication::setQuitOnLastWindowClosed(false);
 #else
     QApplication::setQuitOnLastWindowClosed(true);
@@ -252,7 +252,7 @@ QString BrowserApplication::generateSessionName()
     return nameTemplate.arg(nextSessionNameIndex++);
 }
 
-#if defined(Q_OS_OSX)
+#if defined(Q_OS_MACOS)
 bool BrowserApplication::event(QEvent* event)
 {
     switch (event->type()) {

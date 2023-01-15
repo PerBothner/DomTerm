@@ -119,7 +119,7 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
     if ((wflags & Qt::FramelessWindowHint) != 0)
         setAttribute(Qt::WA_TranslucentBackground);
     _usingQtMenus = (
-#if defined(Q_OS_OSX)
+#if defined(Q_OS_MACOS)
         true
 #else
         (wflags & Qt::FramelessWindowHint) == 0
@@ -210,7 +210,7 @@ void BrowserMainWindow::setupMenu()
     fileMenu->addAction(webView()->saveAsAction());
     fileMenu->addSeparator();
 
-#if defined(Q_OS_OSX)
+#if defined(Q_OS_MACOS)
     fileMenu->addAction(tr("&Quit"), BrowserApplication::instance(), SLOT(quitBrowser()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));
 #else
     fileMenu->addAction(tr("&Quit"), this, SLOT(close()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));

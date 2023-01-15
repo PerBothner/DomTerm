@@ -111,7 +111,7 @@ public:
 
     static QNetworkAccessManager *networkAccessManager();
 
-#if defined(Q_OS_OSX)
+#if defined(Q_OS_MACOS)
     bool event(QEvent *event);
 #endif
 
