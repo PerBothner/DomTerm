@@ -305,7 +305,8 @@ void BrowserMainWindow::setupMenu()
                                            &BrowserMainWindow::slotDetach);
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-    helpMenu->addAction(tr("About QtDomTerm"), this, SLOT(slotAboutApplication()));
+    QAction *aboutAction = helpMenu->addAction(tr("About QtDomTerm"), this, SLOT(slotAboutApplication()));
+    aboutAction->setMenuRole(QAction::AboutRole);
     helpMenu->addAction(new NamedAction(tr("DomTerm home page"), this,
                                         "open-domterm-homepage"));
 }
