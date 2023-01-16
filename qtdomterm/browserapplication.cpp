@@ -278,6 +278,22 @@ bool BrowserApplication::event(QEvent* event)
 }
 #endif
 
+void BrowserApplication::showAboutMessage(BrowserMainWindow* parent)
+{
+    QMessageBox::about(parent, tr("About QtDomTerm"), tr(
+        "<p><b>DomTerm</b> is terminal emulator based on web technologies. "
+        "Features include embedded graphics and html; tabs and sub-windows; detachable sessions.</p>"
+        "<p>DomTerm version %1.</p>"
+        "<p>This <b>QtDomTerm</b> front-end uses QtWebEngine %2.</p>"
+        "<p>Website: <a href=\"https://domterm.org/\">https://domterm.org/</a>."
+        "<p>Copyright %3 Per Bothner and others."
+                           )
+                       .arg(QCoreApplication::applicationVersion())
+                       .arg(qVersion())
+                       .arg(QTDOMTERM_YEAR)
+        );
+}
+
 void BrowserApplication::openUrl(const QUrl &url)
 {
     mainWindow()->loadPage(url.toString());

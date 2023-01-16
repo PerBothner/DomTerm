@@ -19,7 +19,7 @@ function aboutMessage() {
     var s = ''; //'<h2>Welcome to DomTerm.</h2>\n';
     s += '<p><b>DomTerm</b> is terminal emulator based on web technologies. ';
     s += 'Features include embedded graphics and html; tabs and sub-windows; detachable session.</p>\n';
-    s += '<p>Home page: <a href="https://domterm.org/" target="_blank"><code>https://domterm.org</code></a>.</p>\n';
+    s += '<p>Website: <a href="https://domterm.org/" target="_blank"><code>https://domterm.org</code></a>.</p>\n';
     s += '<p>DomTerm version '+DomTerm.versionString+'.';
     s += aboutMessageVariant();
     s += '</p>\n';

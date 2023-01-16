@@ -108,6 +108,7 @@ public:
 #endif
     QString generateSessionName();
     int getSaveFileCount() { return ++saveFileCounter; }
+    void showAboutMessage(BrowserMainWindow* parent = nullptr);
 
     static QNetworkAccessManager *networkAccessManager();
 
