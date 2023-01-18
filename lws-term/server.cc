@@ -226,6 +226,8 @@ int start_command(struct options *opts, const char *cmd,
                 (void) dup2(pipe_fds[1], STDOUT_FILENO);
                 (void) close(pipe_fds[1]);
             }
+            int nfd = open("/dev/null", O_WRONLY);
+            dup2(nfd, STDERR_FILENO);
         } else {
             daemonize();
         }
@@ -2023,7 +2025,7 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 long wnum = strtol(cmd+13, &end, 10);
                 tty_client *mclient = wnum > 0 && ! end[0] ? main_windows(wnum) : nullptr;
                 if (mclient) {
-                    lwsl_info("frontend window %d closed\n", wnum);
+                    lwsl_info("frontend window %ld closed\n", wnum);
                     mclient->keep_after_unexpected_close = false;
                     if (mclient->wsi == nullptr)
                         delete mclient;
