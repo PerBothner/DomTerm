@@ -375,20 +375,20 @@ QString BrowserApplication::generateSessionName()
 #if defined(Q_OS_MACOS)
 bool BrowserApplication::event(QEvent* event)
 {
+    BrowserMainWindow *mw = currentWindow();
     switch (event->type()) {
     case QEvent::ApplicationActivate: {
         clean();
-        if (!m_mainWindows.isEmpty() && ! headlessOption) {
-            BrowserMainWindow *mw = mainWindow();
+        if (mw != nullptr && ! headlessOption) {
             if (mw && !mw->isMinimized()) {
-                mainWindow()->show();
+                mw->show();
             }
             return true;
         }
     }
     case QEvent::FileOpen:
-        if (!m_mainWindows.isEmpty()) {
-            mainWindow()->loadPage(static_cast<QFileOpenEvent *>(event)->file());
+        if (mw != nullptr) {
+            mw->loadPage(static_cast<QFileOpenEvent *>(event)->file());
             return true;
         }
     default:

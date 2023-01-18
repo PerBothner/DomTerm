@@ -215,17 +215,22 @@ void BrowserMainWindow::showMenubar()
     showMenubar(! menuBar()->isVisible());
 #endif
 }
+
+#if defined(Q_OS_MACOS)
+void BrowserMainWindow::showMenubar(bool)
+{
+}
+#else
 void BrowserMainWindow::showMenubar(bool show)
 {
-#if ! defined(Q_OS_MACOS)
     updateMenubarActionText(show);
     if (show) {
         menuBar()->show();
     } else {
         menuBar()->hide();
     }
-#endif
 }
+#endif
 
 void BrowserMainWindow::updateMenubarActionText(bool visible)
 {

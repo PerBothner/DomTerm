@@ -77,6 +77,7 @@
 #include <QtCore/QDebug>
 #include <QtCore/QBuffer>
 #include <QtCore/QTimer>
+#include <QActionGroup>
 
 WebPage::WebPage(QWebEngineProfile *profile, QObject *parent)
     : QWebEnginePage(profile, parent)
