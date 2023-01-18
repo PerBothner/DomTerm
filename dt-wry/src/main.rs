@@ -213,6 +213,7 @@ fn main() -> wry::Result<()> {
                     let (_, window_number) = &webviews[&window_id];
                     println!("CLOSE-WINDOW {}", window_number); io::stdout().flush().unwrap();
                     webviews.remove(&window_id);
+                    #[cfg(not(target_os = "macos"))]
                     if webviews.is_empty() {
                         *control_flow = ControlFlow::Exit
                     }
@@ -229,6 +230,7 @@ fn main() -> wry::Result<()> {
             }
             Event::UserEvent(UserEvents::CloseWindow(id)) => {
                 webviews.remove(&id);
+                #[cfg(not(target_os = "macos"))]
                 if webviews.is_empty() {
                     *control_flow = ControlFlow::Exit
                 }
