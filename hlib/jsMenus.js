@@ -606,6 +606,8 @@ class MenuItem {
 		if (! accelerator && settings.key) {
 			accelerator = (settings.modifiers ? (settings.modifiers + "+") : "") + settings.key;
 		}
+		if (accelerator instanceof Array)
+			accelerator = accelerator.join(" ");
 		if (accelerator) {
 			accelerator = accelerator
 				.replace(/Command[+]/i, "Cmd+")
