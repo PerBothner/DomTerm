@@ -108,6 +108,11 @@ void Backend::saveFile(const QString& html)
     }
 }
 
+void Backend::showMenubar(bool show)
+{
+    webView()->mainWindow()->showMenubar(show);
+}
+
 void Backend::setWindowTitle(const QString& title)
 {
     webView()->mainWindow()->setWindowTitle(title);
@@ -269,9 +274,9 @@ void Backend::openNewWindow(int width, int height, const QString& position,
 #endif
 }
 
-void Backend::showContextMenu(const QString& contextType)
+void Backend::showContextMenu(const QString& contextMenuAsJson)
 {
-    webView()->showContextMenu(contextType);
+    webView()->showContextMenu(contextMenuAsJson);
 }
 
 void Backend::setSetting(const QString& key, const QString& value)
@@ -290,14 +295,14 @@ void Backend::setClipboard(const QString& textPlain, const QString& textHtml)
     clipboard->setMimeData(data);
 }
 
-void Backend::inputModeChanged(int mode)
+void Backend::inputModeChanged(int)
 {
-    webView()->mainWindow()->inputModeChanged((char) mode);
+    //webView()->mainWindow()->inputModeChanged((char) mode);
 }
 
 void Backend::autoPagerChanged(bool mode)
 {
-    webView()->mainWindow()->autoPagerChanged(mode);
+    //webView()->mainWindow()->autoPagerChanged(mode);
 }
 
 void Backend::log(const QString& message)

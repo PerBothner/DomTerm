@@ -73,6 +73,7 @@
 
 #include <QtGui/QDesktopServices>
 #include <QtGui/QFileOpenEvent>
+#include <QtWidgets/QMenuBar>
 #include <QtWidgets/QMessageBox>
 
 #include <QtNetwork/QLocalServer>
@@ -129,6 +130,7 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
 #endif
 
     QTimer::singleShot(0, this, SLOT(postLaunch()));
+    initActions();
 
 #if USE_KDDockWidgets
     auto flags = KDDockWidgets::Config::self().flags();
@@ -140,6 +142,9 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
 #endif
 #if USE_DOCK_MANAGER && ADS_MULTI_MAIN_WINDOW
     m_DockManager = new ads::CDockManager();
+#endif
+#if defined(Q_OS_MACOS)
+    initMenubar(nullptr);
 #endif
 }
 
@@ -230,6 +235,121 @@ void BrowserApplication::loadSettings()
 #endif
 }
 
+void BrowserApplication::initActions()
+{
+    copyAction = new NamedAction(tr("&Copy"), this, "copy-text");
+    copyAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
+    pasteAction = new NamedAction(tr("&Paste"), this, "paste-text");
+    pasteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
+
+    togglePagingAction = new NamedAction("Automatic &Pager", this, "toggle-auto-pager");
+    togglePagingAction->setCheckable(true);
+    detachAction = new NamedAction("&Detach", this, "detach-session");
+    aboutAction =  new NamedAction(tr("About QtDomTerm"), this, "show-about-message");
+    aboutAction->setMenuRole(QAction::AboutRole);
+
+    newTerminalMenu = new QMenu(tr("New Terminal"), nullptr);
+    newTerminalWindowAction =
+        new NamedAction(tr("&New Window"), this, "new-window",
+                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    newTerminalMenu->addAction(newTerminalWindowAction);
+    newTerminalTabAction = new NamedAction(tr("New terminal tab"), this, "new-tab", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
+    newTerminalMenu->addAction(newTerminalTabAction);
+    QAction *newTerminalPane = new NamedAction(tr("New terminal (right/above)"), this, "new-pane");
+    newTerminalMenu->addAction(newTerminalPane);
+    QAction *newTerminalAbove = new NamedAction(tr("New terminal above"), this, "new-pane-above");
+    newTerminalMenu->addAction(newTerminalAbove);
+    QAction *newTerminalBelow = new NamedAction(tr("New terminal below"), this, "new-pane-below");
+    newTerminalMenu->addAction(newTerminalBelow);
+    QAction *newTerminalLeft = new NamedAction(tr("New terminal left"), this, "new-pane-left");
+    newTerminalMenu->addAction(newTerminalLeft);
+    QAction *newTerminalRight = new NamedAction(tr("New terminal right"), this, "new-pane-right");
+    newTerminalMenu->addAction(newTerminalRight);
+    saveAsHtmlAction = new NamedAction(tr("Save As"), this, "save-as-html",
+                                       QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+}
+
+void BrowserApplication::initMenubar(BrowserMainWindow *window)
+{
+    QMenuBar *menuBar = window ? window->menuBar() : new QMenuBar();
+    //connect(menuBar()->toggleViewAction(), SIGNAL(toggled(bool)),
+    //            this, SLOT(updateMenubarActionText(bool)));
+
+    // File
+    QMenu *fileMenu = menuBar->addMenu(tr("&File"));
+
+    fileMenu->addAction(newTerminalWindowAction);
+    fileMenu->addAction(newTerminalTabAction);
+    fileMenu->addAction(saveAsHtmlAction);
+    fileMenu->addSeparator();
+
+#if defined(Q_OS_MACOS)
+    fileMenu->addAction(tr("&Quit"), BrowserApplication::instance(), SLOT(quitBrowser()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));
+#else
+    if (window != nullptr) {
+        fileMenu->addAction(tr("&Close window"), window, SLOT(close()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));
+    }
+#endif
+
+    // Edit
+    QMenu *editMenu = menuBar->addMenu(tr("&Edit"));
+    editMenu->addAction(copyAction);
+    editMenu->addAction(new NamedAction(tr("Copy as HTML"), this, "copy-html"));
+    editMenu->addAction(pasteAction);
+    editMenu->addAction(new NamedAction(tr("Clear Buffer"), this,
+                                        "clear-buffer"));
+    editMenu->addSeparator();
+
+    editMenu->addAction(new NamedAction(tr("&Find"), this,
+                                        "find-text",
+                                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F)));
+
+    // View
+    QMenu *viewMenu = menuBar->addMenu(tr("&View"));
+
+    if (window) {
+        QAction *viewMenubarAction = new NamedAction("Hide menubar",
+                                                     this, "toggle-menubar");
+        window->viewMenubarAction = viewMenubarAction;
+        window->updateMenubarActionText(true);
+        viewMenu->addAction(viewMenubarAction);
+    }
+
+    viewMenu->addAction(new NamedAction(tr("Zoom &In"), this, "window-zoom-in", QKeySequence(Qt::CTRL | Qt::Key_Plus)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &Out"), this, "window-zoom-out", QKeySequence(Qt::CTRL | Qt::Key_Minus)));
+    viewMenu->addAction(new NamedAction(tr("Reset &Zoom"), this, "window-zoom-reset", QKeySequence(Qt::CTRL | Qt::Key_0)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &In (pane)"), this, "pane-zoom-in", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Plus)));
+    viewMenu->addAction(new NamedAction(tr("Zoom &Out (pane)"), this, "pane-zoom-out", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Minus)));
+    viewMenu->addAction(new NamedAction(tr("Reset &Zoom (pane)"), this, "pane-zoom-reset", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_0)));
+
+    if (window != nullptr) {
+        QAction *a = viewMenu->addAction(tr("&Full Screen"), window, SLOT(slotViewFullScreen(bool)),  Qt::Key_F11);
+        a->setCheckable(true);
+    }
+
+#if 1
+    //QMenu *toolsMenu = menuBar->addMenu(tr("&Tools"));
+#if defined(QWEBENGINEINSPECTOR)
+    a = viewMenu->addAction(tr("Enable Web &Inspector"), this, SLOT(slotToggleInspector(bool)));
+    a->setCheckable(true);
+#endif
+#endif
+
+    QMenu *terminalMenu = menuBar->addMenu(tr("&Terminal"));
+    terminalMenu->addAction(new NamedAction("Cycle input mode", this,
+                                            "input-mode-cycle",
+                                            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_L)));
+    terminalMenu->addAction(togglePagingAction);
+    //terminalMenu->addAction(webView()->changeCaretAction());
+    terminalMenu->addMenu(newTerminalMenu);
+    terminalMenu->addAction(detachAction);
+
+    QMenu *helpMenu = menuBar->addMenu(tr("&Help"));
+    helpMenu->addAction(aboutAction);
+    helpMenu->addAction(new NamedAction(tr("DomTerm home page"), this,
+                                        "open-domterm-homepage"));
+}
+
 QList<BrowserMainWindow*> BrowserApplication::mainWindows()
 {
     clean();
@@ -292,11 +412,6 @@ void BrowserApplication::showAboutMessage(BrowserMainWindow* parent)
                        .arg(qVersion())
                        .arg(QTDOMTERM_YEAR)
         );
-}
-
-void BrowserApplication::openUrl(const QUrl &url)
-{
-    mainWindow()->loadPage(url.toString());
 }
 
 BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, int windowNumber, bool headless, bool titlebar, QSharedDataPointer<ProcessOptions> processOptions)
@@ -418,12 +533,9 @@ BrowserApplication::uniqueNameFromUrl(const QString& /*url*/)
 }
 #endif
 
-BrowserMainWindow *BrowserApplication::mainWindow()
+BrowserMainWindow *BrowserApplication::currentWindow()
 {
-    clean();
-    //if (m_mainWindows.isEmpty())
-    //    newMainWindow();
-    return m_mainWindows[0];
+    return m_currentWindow;
 }
 
 QNetworkAccessManager *BrowserApplication::networkAccessManager()

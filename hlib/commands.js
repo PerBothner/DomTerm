@@ -60,9 +60,23 @@ cmd('reset-terminal-soft',
     }, {
         context: "terminal"
     });
+cmd('quit-domterm',
+    function(item, key) {
+        DomTerm.closeAll(null); // FIXME - send to server
+        return true;
+    }, {
+        context: "parent"
+    });
 cmd('close-window',
     function(item, key) {
         DomTerm.closeAll(null);
+        return true;
+    }, {
+        context: "parent"
+    });
+cmd('close-pane',
+    function(item, key) {
+        DomTerm.closeSession();
         return true;
     }, {
         context: "parent"

@@ -6,7 +6,9 @@ DomTerm.createMenus = function(options) {
         platform = "generic";
     else if (DomTerm.isElectron())
         platform = "electron";
-    else
+    else if (DomTerm.usingQtWebEngine)
+        platform = "qt";
+else
         return;
     let menuItem = DomTerm.makeMenuItem;
     let isElectron = DomTerm.isElectron();
@@ -15,6 +17,8 @@ DomTerm.createMenus = function(options) {
     function showMenubar(show) {
         if (electronMenus)
             electronAccess.ipcRenderer.send('window-ops', 'set-menubar-visibility', show);
+        else if (platform === "qt")
+            DomTerm._qtBackend.showMenubar(show);
         else {
             if (! DomTerm.subwindows
                 && DomTerm._savedMenubarParent
@@ -65,14 +69,16 @@ DomTerm.createMenus = function(options) {
 
     const inputMenu = DomTerm.makeMenu([
         charModeItem, lineModeItem, autoModeItem ]);
-    const inputModeMenu = menuItem({label: 'Input mode',
+    const inputModeMenu = menuItem({label: 'Input mode', type: 'radio',
                                     submenu: inputMenu});
     const saveAsItem = menuItem({label: 'Save as HTML',
                                  accelerator: 'CommandOrControl+Shift+S',
                                  clickClientAction: 'save-as-html'});
 
-    const quitItem =  electronMenus ? menuItem({label: 'Quit', role: 'quit'})
-          : menuItem({label: 'Quit', clickClientAction: 'close-window'});
+    const quitItem =  menuItem({label: 'Quit', role: 'quit', accelerator: 'CommandOrControl+Shift+Q', clickClientAction: 'quit-domterm' });
+    const closeItem = menuItem({label: 'Close session',
+                                accelerator: 'CommandOrControl+Shift+W',
+                                clickClientAction: 'close-pane'});
     const newWindowItem = menuItem({label: 'New terminal window',
                                     accelerator: DomTerm.isMac ? 'Cmd+N' : 'Ctrl+Shift+N',
                                     clickClientAction: 'new-window'});
@@ -80,26 +86,27 @@ DomTerm.createMenus = function(options) {
                                  accelerator: DomTerm.isMac ? 'Cmd+T' : 'Ctrl+Shift+T',
                                  clickClientAction: 'new-tab'});
     const newPaneItem = menuItem({label: 'New terminal (right/below)',
-                                      accelerator: 'Ctrl+Shift+A Enter',
+                                  accelerator: ['Ctrl+Shift+A', 'Enter'],
                                   clickClientAction: 'new-pane'});
     const newTerminalMenu = DomTerm.makeMenu([
         newWindowItem,
         newTabItem,
         newPaneItem,
         menuItem({label: 'New terminal above',
-                  accelerator: 'Ctrl+Shift+A Ctrl+Up',
+                  accelerator: ['Ctrl+Shift+A', 'Ctrl+Up'],
                   clickClientAction: 'new-pane-above'}),
         menuItem({label: 'New terminal below',
-                  accelerator: 'Ctrl+Shift+A Ctrl+Down',
+                  accelerator: ['Ctrl+Shift+A', 'Ctrl+Down'],
                   clickClientAction: 'new-pane-below'}),
         menuItem({label: 'New terminal left',
-                  accelerator: 'Ctrl+Shift+A Ctrl+Left',
+                  accelerator: ['Ctrl+Shift+A', 'Ctrl+Left'],
                   clickClientAction: 'new-pane-left'}),
         menuItem({label: 'New terminal right',
-                  accelerator: 'Ctrl+Shift+A Ctrl+Right',
+                  accelerator: ['Ctrl+Shift+A', 'Ctrl+Right'],
                   clickClientAction: 'new-pane-right'})
     ]);
     const newTerminalMenuItem = menuItem({label: 'New Terminal',
+                                          type: 'submenu',
                                           submenu: newTerminalMenu});
     const detachMenuItem =
           menuItem({label: 'Detach session',
@@ -156,6 +163,7 @@ DomTerm.createMenus = function(options) {
         newWindowItem,
         newTabItem,
         saveAsItem,
+        closeItem,
         quitItem
     ]);
     let editMenu = DomTerm.makeMenu([
@@ -251,7 +259,7 @@ DomTerm.createMenus = function(options) {
     let menuBar;
     if (electronMenus) {
         electronAccess.ipcRenderer.send('set-application-menu', menuBarItems);
-    } else {
+    } else if (platform !== "qt") {
         //menuBar = new Menu({ type: 'menubar' }, hamburgerMenuItems);
         menuBar = new Menu({ type: 'menubar' }, menuBarItems);
         if (isElectron)
@@ -351,8 +359,6 @@ DomTerm.focusMenubar = function() {
 DomTerm.popupMenu = function(menu, options) {
     if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
         electronAccess.ipcRenderer.send("show-context-menu", menu, options);
-    } else if (false && DomTerm.usingQtWebEngine) {
-        // TODO
     } else if (! DomTerm.isAtom()) {
         let x = options.x || options.clientX || 0;
         let y = options.y || options.clientY || 0;
@@ -365,10 +371,9 @@ DomTerm.popupMenu = function(menu, options) {
 DomTerm.makeMenu = function(items) {
     if (items instanceof Menu)
         return items;
-    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
+    if ((DomTerm.isElectron()  || DomTerm.usingQtWebEngine)
+        && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
         return items;
-    } else if (false && DomTerm.usingQtWebEngine) {
-        // TODO
     } else if (! DomTerm.isAtom()) {
         let menu = new Menu();
         for (item of items) {
@@ -383,14 +388,13 @@ DomTerm.makeMenuItem = function(options) {
         return options;
     if (DomTerm._makeMenuItem)
         return DomTerm._makeMenuItem(options);
-    if (DomTerm.isElectron() && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
+    if ((DomTerm.isElectron() || DomTerm.usingQtWebEngine)
+        && ! DomTerm.usingJsMenus() && ! DomTerm.isAtom()) {
         function menuItem(options) {
             return options;
         }
         DomTerm._makeMenuItem = menuItem;
         return menuItem(options);
-    } else if (false && DomTerm.usingQtWebEngine) {
-        // TODO
     } else if (! DomTerm.isAtom()) {
         function menuItem(options) {
             const clickClientAction = options && options.clickClientAction;

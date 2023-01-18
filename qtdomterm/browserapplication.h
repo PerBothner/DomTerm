@@ -61,6 +61,8 @@
 #include <QtNetwork/QAuthenticator>
 
 QT_BEGIN_NAMESPACE
+class QAction;
+class QMenu;
 class QNetworkAccessManager;
 class QWebEngineProfile;
 QT_END_NAMESPACE
@@ -86,9 +88,11 @@ public:
     ~BrowserApplication();
     static BrowserApplication *instance();
     void loadSettings();
+    void initActions();
+    void initMenubar(BrowserMainWindow *);
 
     //bool isTheOnlyBrowser() const;
-    BrowserMainWindow *mainWindow();
+    BrowserMainWindow *currentWindow();
     QList<BrowserMainWindow*> mainWindows();
     QIcon icon(const QUrl &url) const;
     QIcon defaultIcon() const;
@@ -125,7 +129,6 @@ public slots:
     void quitBrowser();
 private slots:
     void postLaunch();
-    void openUrl(const QUrl &url);
 
 private:
     void clean();
@@ -134,6 +137,17 @@ private:
     QList<QPointer<BrowserMainWindow> > m_mainWindows;
     QWebEngineProfile *m_privateProfile;
     mutable QIcon m_defaultIcon;
+    BrowserMainWindow *m_currentWindow = nullptr;
+
+    QAction *aboutAction;
+    QAction *copyAction;
+    QAction *pasteAction;
+    QAction *togglePagingAction;
+    QAction *detachAction;
+    QAction *newTerminalTabAction;
+    QAction *newTerminalWindowAction;
+    QAction *saveAsHtmlAction;
+    QMenu *newTerminalMenu;
 
     QAuthenticator m_lastAuthenticator;
     QAuthenticator m_lastProxyAuthenticator;
@@ -144,6 +158,9 @@ private:
 #if USE_DOCK_MANAGER && ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* m_DockManager = nullptr;
 #endif
+    friend class BrowserMainWindow;
+    friend class NamedAction;
+    friend class WebView;
 };
 
 #endif // BROWSERAPPLICATION_H

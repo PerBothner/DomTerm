@@ -60,7 +60,6 @@
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QMenuBar>
-#include <QtWidgets/QMessageBox>
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QInputDialog>
 
@@ -75,13 +74,24 @@
 #include <QtCore/QDebug>
 #include <stdio.h>
 
-NamedAction::NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd)
-    : QAction(text), window(w), command(cmd)
+NamedAction::NamedAction(const QString &text, BrowserApplication *app, const char *cmd)
+: QAction(text), application(app), command(cmd)
 {
     connect(this, &QAction::triggered, this, &NamedAction::doit);
 }
-NamedAction::NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd, const QKeySequence &shortcut)
-    : QAction(text), window(w), command(cmd)
+NamedAction::NamedAction(const QString &text, BrowserApplication *app, const char *cmd, const QKeySequence &shortcut)
+    : QAction(text), application(app), command(cmd)
+{
+    setShortcut(shortcut);
+    connect(this, &QAction::triggered, this, &NamedAction::doit);
+}
+NamedAction::NamedAction(const QString &text, BrowserApplication *app, QObject *parent, const char *cmd)
+    : QAction(text, parent), application(app), command(cmd)
+{
+    connect(this, &QAction::triggered, this, &NamedAction::doit);
+}
+NamedAction::NamedAction(const QString &text, BrowserApplication *app, QObject *parent, const char *cmd, const QKeySequence &shortcut)
+    : QAction(text, parent), application(app), command(cmd)
 {
     setShortcut(shortcut);
     connect(this, &QAction::triggered, this, &NamedAction::doit);
@@ -89,7 +99,17 @@ NamedAction::NamedAction(const QString &text, BrowserMainWindow *w, const char *
 
 void NamedAction::doit()
 {
-    window->slotSimpleCommand(command);
+    BrowserMainWindow *window = application->currentWindow();
+    if (this == application->aboutAction) {
+        application->showAboutMessage(window);
+        return;
+    }
+    if (window != nullptr)
+        window->slotSimpleCommand(command);
+    else {
+        printf("ACTION %s\n", command.toStdString().c_str());
+        fflush(stdout);
+    }
 }
 
 BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
@@ -125,8 +145,10 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
         (wflags & Qt::FramelessWindowHint) == 0
 #endif
         );
+#if ! defined(Q_OS_MACOS)
     if (usingQtMenus())
-        setupMenu();
+        application->initMenubar(this);
+#endif
     m_webView->newPage(url);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     auto dockw = m_webView->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
@@ -187,181 +209,27 @@ QSize BrowserMainWindow::sizeHint() const
 #endif
 }
 
-void BrowserMainWindow::setupMenu()
+void BrowserMainWindow::showMenubar()
 {
-    //connect(menuBar()->toggleViewAction(), SIGNAL(toggled(bool)),
-    //            this, SLOT(updateMenubarActionText(bool)));
-
-    // File
-    QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
-
-    QAction*newTerminalWindow =
-        fileMenu->addAction(tr("&New Window"), this,
-                            &BrowserMainWindow::slotFileNew,
-                            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
-    newTerminalTab = fileMenu->addAction("New terminal tab",
-                                         this, &BrowserMainWindow::slotNewTerminalTab, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
-    fileMenu->addAction(newTerminalTab);
-#if 0
-    fileMenu->addSeparator();
-    fileMenu->addAction(m_tabWidget->closeTabAction());
-    fileMenu->addSeparator();
+#if ! defined(Q_OS_MACOS)
+    showMenubar(! menuBar()->isVisible());
 #endif
-    fileMenu->addAction(webView()->saveAsAction());
-    fileMenu->addSeparator();
-
-#if defined(Q_OS_MACOS)
-    fileMenu->addAction(tr("&Quit"), BrowserApplication::instance(), SLOT(quitBrowser()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));
-#else
-    fileMenu->addAction(tr("&Quit"), this, SLOT(close()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));
-#endif
-
-    // Edit
-    QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
-    m_copy = editMenu->addAction(tr("&Copy"),
-                                 this, &BrowserMainWindow::slotCopy);
-    m_copy->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
-    editMenu->addAction(tr("Copy as HTML"), this,
-                            &BrowserMainWindow::slotCopyAsHTML);
-    m_paste = editMenu->addAction(tr("&Paste"),
-                                  this, &BrowserMainWindow::slotPaste);
-    m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
-    editMenu->addAction(tr("Clear Buffer"),
-                        this, &BrowserMainWindow::slotClearBuffer);
-    editMenu->addSeparator();
-
-    QAction *m_find = editMenu->addAction(tr("&Find"), this,
-                                          &BrowserMainWindow::slotEditFind);
-    m_find->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F));
-
-    // View
-    QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
-
-    m_viewMenubar = new QAction(this);
-    updateMenubarActionText(true);
-    connect(m_viewMenubar, SIGNAL(triggered()), this, SLOT(slotViewMenubar()));
-    viewMenu->addAction(m_viewMenubar);
-
-    viewMenu->addAction(new NamedAction(tr("Zoom &In"), this, "window-zoom-in", QKeySequence(Qt::CTRL | Qt::Key_Plus)));
-    viewMenu->addAction(new NamedAction(tr("Zoom &Out"), this, "window-zoom-out", QKeySequence(Qt::CTRL | Qt::Key_Minus)));
-    viewMenu->addAction(new NamedAction(tr("Reset &Zoom"), this, "window-zoom-reset", QKeySequence(Qt::CTRL | Qt::Key_0)));
-    viewMenu->addAction(new NamedAction(tr("Zoom &In (pane)"), this, "pane-zoom-in", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Plus)));
-    viewMenu->addAction(new NamedAction(tr("Zoom &Out (pane)"), this, "pane-zoom-out", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Minus)));
-    viewMenu->addAction(new NamedAction(tr("Reset &Zoom (pane)"), this, "pane-zoom-reset", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_0)));
-
-    QAction *a = viewMenu->addAction(tr("&Full Screen"), this, SLOT(slotViewFullScreen(bool)),  Qt::Key_F11);
-    a->setCheckable(true);
-
-#if 1
-    //QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
-#if defined(QWEBENGINEINSPECTOR)
-    a = viewMenu->addAction(tr("Enable Web &Inspector"), this, SLOT(slotToggleInspector(bool)));
-    a->setCheckable(true);
-#endif
-#endif
-
-    newTerminalMenu = new QMenu(tr("New Terminal"), this);
-    newTerminalMenu->addAction(newTerminalWindow);
-    newTerminalMenu->addAction(newTerminalTab);
-    newTerminalPane = newTerminalMenu->addAction("New terminal (right/below)",
-                                                 this, &BrowserMainWindow::slotNewTerminalPane);
-    newTerminalAbove = newTerminalMenu->addAction("New terminal above",
-                                                  this, &BrowserMainWindow::slotNewTerminalAbove);
-    newTerminalBelow = newTerminalMenu->addAction("New terminal below",
-                                                  this, &BrowserMainWindow::slotNewTerminalBelow);
-    newTerminalLeft = newTerminalMenu->addAction("New terminal left",
-                                                 this, &BrowserMainWindow::slotNewTerminalLeft);
-    newTerminalRight = newTerminalMenu->addAction("New terminal right",
-                                                  this, &BrowserMainWindow::slotNewTerminalRight);
-
-    inputModeGroup = new QActionGroup(this);
-    inputModeGroup->setExclusive(true);
-    charInputMode = new QAction(tr("&Char mode"), inputModeGroup);
-    lineInputMode = new QAction(tr("&Line mode"), inputModeGroup);
-    autoInputMode = new QAction(tr("&Auto mode"), inputModeGroup);
-    inputModeGroup->addAction(charInputMode);
-    inputModeGroup->addAction(lineInputMode);
-    inputModeGroup->addAction(autoInputMode);
-    inputModeMenu = new QMenu(tr("&Input mode"), this);
-    int nmodes = 3;
-    for (int i = 0; i < nmodes; i++) {
-        QAction *action = inputModeGroup->actions().at(i);
-        action->setCheckable(true);
-        inputModeMenu->addAction(action);
-    }
-    autoInputMode->setChecked(true);
-    selectedInputMode = autoInputMode;
-    connect(inputModeGroup, &QActionGroup::triggered,
-            this, &BrowserMainWindow::changeInputMode);
-
-    QMenu *terminalMenu = menuBar()->addMenu(tr("&Terminal"));
-    terminalMenu->addMenu(inputModeMenu);
-    togglePagingAction = terminalMenu->addAction("Automatic &Pager", this,
-                                           &BrowserMainWindow::slotAutoPager);
-    togglePagingAction->setCheckable(true);
-    //terminalMenu->addAction(webView()->changeCaretAction());
-    terminalMenu->addMenu(newTerminalMenu);
-    detachAction = terminalMenu->addAction("&Detach", this,
-                                           &BrowserMainWindow::slotDetach);
-
-    QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-    QAction *aboutAction = helpMenu->addAction(tr("About QtDomTerm"), this, SLOT(slotAboutApplication()));
-    aboutAction->setMenuRole(QAction::AboutRole);
-    helpMenu->addAction(new NamedAction(tr("DomTerm home page"), this,
-                                        "open-domterm-homepage"));
 }
-
-void BrowserMainWindow::changeInputMode(QAction* action)
+void BrowserMainWindow::showMenubar(bool show)
 {
-    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
-    if(!inputMode)
-        qFatal("scrollPosition is NULL");
-    if (action != selectedInputMode) {
-        char mode = action == charInputMode ? 'c'
-          : action == lineInputMode ? 'l'
-          : 'a';
-        inputModeChanged(mode);
-        webView()->backend()->setInputMode(mode);
-    }
-}
-
-void BrowserMainWindow::inputModeChanged(char mode)
-{
-    if (! usingQtMenus())
-        return;
-  QAction* action = mode == 'a' ? autoInputMode
-    : mode == 'l' ? lineInputMode
-    : charInputMode;
-#if 0
-    QActionGroup *inputMode = static_cast<QActionGroup *>(sender());
-    if(!inputMode)
-        qFatal("scrollPosition is NULL");
-#endif
-    if (action != selectedInputMode) {
-        selectedInputMode->setChecked(false);
-        action->setChecked(true);
-        selectedInputMode = action;
-    }
-}
-void BrowserMainWindow::autoPagerChanged(bool mode)
-{
-    autoInputMode->setChecked(mode);
-}
-
-void BrowserMainWindow::slotViewMenubar()
-{
-    if (menuBar()->isVisible()) {
-        updateMenubarActionText(false);
-        menuBar()->hide();
-    } else {
-        updateMenubarActionText(true);
+#if ! defined(Q_OS_MACOS)
+    updateMenubarActionText(show);
+    if (show) {
         menuBar()->show();
+    } else {
+        menuBar()->hide();
     }
+#endif
 }
 
 void BrowserMainWindow::updateMenubarActionText(bool visible)
 {
-    m_viewMenubar->setText(!visible ? tr("Show Menubar") : tr("Hide Menubar"));
+    viewMenubarAction->setText(!visible ? tr("Show Menubar") : tr("Hide Menubar"));
 }
 
 void BrowserMainWindow::loadUrl(const QUrl &url)
@@ -387,61 +255,6 @@ void  BrowserMainWindow::slotSimpleCommand(const QString &command)
     emit webView()->backend()->handleSimpleCommand(command);
 }
 
-void BrowserMainWindow::slotDetach()
-{
-    slotSimpleCommand("detach-session");
-}
-
-void BrowserMainWindow::slotAutoPager()
-{
-    slotSimpleCommand("toggle-auto-pager");
-}
-
-void BrowserMainWindow::slotClearBuffer()
-{
-    slotSimpleCommand("clear-buffer");
-}
-
-void BrowserMainWindow::slotCopy()
-{
-    slotSimpleCommand("copy-text");
-}
-
-void BrowserMainWindow::slotPaste()
-{
-    slotSimpleCommand("paste-text");
-}
-
-void BrowserMainWindow::slotCopyAsHTML()
-{
-    slotSimpleCommand("copy-html");
-}
-
-void BrowserMainWindow::slotAboutApplication()
-{
-    application()->showAboutMessage(this);
-}
-
-void BrowserMainWindow::slotFileNew()
-{
-    // Calling newMainWindow directly is more efficient, but
-    // using handleSimpleCommand makes it easier to do things consistently.
-#if 1
-    slotSimpleCommand("new-window");
-#else
-    QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
-    QUrl url = options->url;
-    if (url.hasFragment()) {
-        QUrlQuery fragment = QUrlQuery(url.fragment().replace(";", "&"));
-        fragment.removeQueryItem("session-number");
-        fragment.removeQueryItem("window");
-        url.setFragment(fragment.isEmpty() ? QString()
-                        : fragment.toString());
-    }
-    BrowserApplication::instance()->newMainWindow(url.toString(), options);
-#endif
-}
-
 void BrowserMainWindow::closeEvent(QCloseEvent *event)
 {
     event->accept();
@@ -450,10 +263,16 @@ void BrowserMainWindow::closeEvent(QCloseEvent *event)
     deleteLater();
 }
 
-void BrowserMainWindow::slotEditFind()
-{
-    slotSimpleCommand("find-text");
+void BrowserMainWindow::changeEvent(QEvent * e) {
+    if (e->type() == QEvent::ActivationChange) {
+        BrowserApplication *app = application();
+        if (this->isActiveWindow())
+            app->m_currentWindow = this;
+        else if (app->m_currentWindow == this)
+            app->m_currentWindow = nullptr;
+    }
 }
+
 
 void BrowserMainWindow::slotViewFullScreen(bool makeFullScreen)
 {

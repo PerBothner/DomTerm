@@ -235,6 +235,8 @@ cmd('find-text',
     function(dt, keyName) {
         FindText.startSearch(dt);
         return true;
+    }, {
+        context: "terminal"
     });
 
 cmd('find-select-pattern',

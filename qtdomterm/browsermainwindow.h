@@ -96,46 +96,30 @@ public:
 public:
     WebView *webView() const;
     BrowserApplication* application() { return m_application; }
+    void showMenubar(); // toggle
+    void showMenubar(bool show);
 #if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* dockManager() { return m_DockManager; }
 #endif
 public slots:
     void loadPage(const QString &url);
-    void changeInputMode(QAction*);
-    void inputModeChanged(char mode);
-    void autoPagerChanged(bool mode);
     bool usingQtMenus() { return _usingQtMenus; }
     qreal mainZoom() { return _mainZoom; }
 
 protected:
+    void changeEvent(QEvent *event);
     void closeEvent(QCloseEvent *event);
 
 private slots:
     void slotUpdateWindowTitle(const QString &title = QString());
 
     void slotSimpleCommand(const QString &command);
-    void slotNewTerminalTab() { slotSimpleCommand("new-tab"); }
-    void slotNewTerminalPane() { slotSimpleCommand("new-pane"); }
-    void slotNewTerminalAbove() { slotSimpleCommand("new-pane-above"); }
-    void slotNewTerminalBelow() { slotSimpleCommand("new-pane-below"); }
-    void slotNewTerminalLeft() { slotSimpleCommand("new-pane-left"); }
-    void slotNewTerminalRight() { slotSimpleCommand("new-pane-right"); }
-    void slotDetach();
-    void slotAutoPager();
-    void slotClearBuffer();
-    void slotCopy();
-    void slotCopyAsHTML();
-    void slotPaste();
 
     void loadUrl(const QUrl &url);
 
-    void slotFileNew();
-    void slotEditFind();
-    void slotViewMenubar();
     void slotViewFullScreen(bool enable);
 
     void slotToggleInspector(bool enable);
-    void slotAboutApplication();
 
     void slotOpenActionUrl(QAction *action);
     void slotShowWindow();
@@ -148,27 +132,13 @@ private slots:
 
 private:
     void loadDefaultState();
-    void setupMenu();
 
 private:
     BrowserApplication *m_application;
     WebView *m_webView;
     int m_width, m_height;
 
-    QAction *m_viewMenubar;
-    QAction *m_copy;
-    QAction *m_paste;
-
-    QAction *newTerminalTab;
-    QAction *newTerminalPane;
-    QAction *newTerminalAbove;
-    QAction *newTerminalBelow;
-    QAction *newTerminalLeft;
-    QAction *newTerminalRight;
-    QMenu *newTerminalMenu;
-    QAction *detachAction;
-    QAction *togglePagingAction;
-
+    QAction *viewMenubarAction;
     QIcon m_reloadIcon;
 
     friend class BrowserApplication;
@@ -176,16 +146,20 @@ private:
     friend class NamedAction;
 
     bool _usingQtMenus;
-    QAction *charInputMode;
-    QAction *lineInputMode;
-    QAction *autoInputMode;
-    QActionGroup* inputModeGroup;
-    QAction *selectedInputMode;
-    QMenu *inputModeMenu;
 #if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* m_DockManager;
 #endif
     qreal _mainZoom = 1.0;
+
+    // The following fields ar used for context-menu handling
+    QMenu *_context_menu = nullptr;
+    std::chrono::steady_clock::time_point _context_menu_time;
+    // 1: seen showContextMenu but not contextMenuEvent
+    // 2: seen contextMenuEvent but not showContextMenu
+    // 0: otherwise
+    unsigned _context_menu_pending = 0;
+    QString contextMenuAsJson;
+    QPoint contextMenuPosition;
 };
 
 // NOTE Qt 6.3 has new addAction method that take Args
@@ -193,10 +167,13 @@ private:
 class NamedAction : public QAction {
     Q_OBJECT
 public:
-    NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd);
-    NamedAction(const QString &text, BrowserMainWindow *w, const char *cmd,
+    NamedAction(const QString &text, BrowserApplication *w, const char *cmd);
+    NamedAction(const QString &text, BrowserApplication *w, const char *cmd,
                 const QKeySequence &);
-    BrowserMainWindow *window;
+    NamedAction(const QString &text, BrowserApplication *w, QObject *parent, const char *cmd);
+    NamedAction(const QString &text, BrowserApplication *w, QObject *parent, const char *cmd,
+                const QKeySequence &); // FIXME maybe unneeded
+    BrowserApplication *application;
     const QString command;
     void doit();
 };

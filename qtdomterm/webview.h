@@ -53,6 +53,7 @@
 
 #include <QIcon>
 #include <QWebEngineView>
+#include <chrono>
 
 QT_BEGIN_NAMESPACE
 class QMouseEvent;
@@ -62,6 +63,7 @@ class QSslError;
 QT_END_NAMESPACE
 
 class Backend;
+class BrowserApplication;
 class BrowserMainWindow;
 class ProcessOptions;
 #include "processoptions.h"
@@ -104,15 +106,15 @@ public:
     WebPage *webPage() const { return m_page; }
     Backend *backend() const { return m_backend; }
     BrowserMainWindow *mainWindow();
+    BrowserApplication *application();
     int windowNumber() const { return m_windowNumber; }
     void setPage(WebPage *page);
     bool blockCaret() { return m_blockCaret; }
     void setBlockCaret(bool set) { m_blockCaret = set; }
     void setPaneZoom(qreal zoom);
 
-    QAction *saveAsAction() const { return m_saveAsAction; }
     QAction *changeCaretAction() const { return m_changeCaretAction; }
-    void showContextMenu(const QString& contextType); // FIXME
+    void showContextMenu(const QString& contextMenuAsJson);
     void loadUrl(const QUrl &url);
     QUrl url() const;
 #if USE_KDDockWidgets
@@ -125,7 +127,6 @@ public:
     inline int progress() const { return m_progress; }
 public slots:
     QString generateSaveFileName();
-    void requestSaveAs();
     void requestChangeCaret(bool);
     void setSetting(const QString& key, const QString& value);
 signals:
@@ -137,7 +138,7 @@ protected:
     void contextMenuEvent(QContextMenuEvent *event);
     void wheelEvent(QWheelEvent *event);
 private:
-    void displayContextMenu(const QString& contextType);
+    void displayContextMenu(const QString& menuAsJson);
 
 private slots:
     void setProgress(int progress);
@@ -158,9 +159,6 @@ private:
     WebPage *m_page;
     Backend *m_backend;
     bool m_blockCaret;
-    QString contextTypeForMenu;
-    QPoint contextMenuPosition;
-    QAction *m_saveAsAction;
     QAction *m_changeCaretAction;
     QAction *m_openAction;
     QAction *m_copyLinkAddress;

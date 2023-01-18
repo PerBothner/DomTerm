@@ -52,6 +52,7 @@ signals:
 
 public slots:
     void saveFile(const QString& html);
+    void showMenubar(bool show);
     void setWindowTitle(const QString& title);
     void setSavedHtml(const QString &info) { _savedHtml = info; }
     void windowOp(const QString& opname);
@@ -75,7 +76,7 @@ public slots:
     QWidget* paneFor(int windowNumber);
     void showPane(int windowNumber, bool visibility);
 
-    void showContextMenu(const QString& contextType);
+    void showContextMenu(const QString& contextMenuAsJson);
     void setSetting(const QString& key, const QString& value);
     void setClipboard(const QString& plain, const QString& html);
     void inputModeChanged(int mode);

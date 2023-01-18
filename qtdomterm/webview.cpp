@@ -62,6 +62,9 @@
 #include <QtGui/QMouseEvent>
 #include <QWebChannel>
 #include <QWebEngineProfile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 //#include <QWebEngineContextMenuData>
 
@@ -92,6 +95,11 @@ WebPage::WebPage(QWebEngineProfile *profile, QObject *parent)
 BrowserMainWindow *WebView::mainWindow()
 {
     return BrowserMainWindow::containingMainWindow(this);
+}
+
+BrowserApplication *WebView::application()
+{
+    return mainWindow()->application();
 }
 
 void WebView::newPage(const QString& url)
@@ -228,6 +236,7 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
                  int windowNumber, QWidget* parent)
     : QWebEngineView(parent)
     , m_processOptions(processOptions)
+      //, _context_menu_pending(0)
     , m_windowNumber(windowNumber)
     , m_progress(0)
     , m_page(0)
@@ -257,10 +266,6 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
 
         qInfo() << "Render process exited with code" << statusCode << status;
     });
-
-    m_saveAsAction = new QAction(tr("Save As"), this);
-    m_saveAsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
-    connect(m_saveAsAction, SIGNAL(triggered()), this, SLOT(requestSaveAs()));
 
     m_changeCaretAction = new QAction(tr("Block caret (char mode only)"), this);
     m_changeCaretAction->setCheckable(true);
@@ -313,66 +318,123 @@ QString WebView::generateSaveFileName() // FIXME
     return QString(buf);
 }
 
-void WebView::requestSaveAs()
-{
-    emit backend()->handleSimpleCommand("save-as-html");
-}
-
 void WebView::requestChangeCaret(bool set)
 {
     m_backend->requestChangeCaret(set);
     this->setBlockCaret(set);
 }
 
-void WebView::showContextMenu(const QString& contextType)
+void WebView::showContextMenu(const QString& contextMenuAsJson)
 {
-    this->contextTypeForMenu = contextType;
+    auto *window = mainWindow();
+    window->contextMenuAsJson = contextMenuAsJson;
     // Unfortunately, when using an iframe, the call to showContextMenu
     // arrives *after* the native contextMenuEvent handler.
     // We could delay calling displayContextMenu to here,
     // I can't get contextMenuPosition set properly.
     // displayContextMenu(contextTypeForMenu);
+    auto now = std::chrono::steady_clock::now();
+    if (window->_context_menu_pending == 2
+        && std::chrono::duration<double>(window->_context_menu_time - now).count() < 0.05) {
+        displayContextMenu(window->contextMenuAsJson);
+        window->_context_menu_pending = 0;
+    } else {
+        window->_context_menu_time = now;
+        window->_context_menu_pending = 1;
+    }
 }
 
 void WebView::contextMenuEvent(QContextMenuEvent *event)
 {
-    if (mainWindow()->usingQtMenus()) {
-        contextMenuPosition = event->globalPos();
+    auto *window = mainWindow();
+    if (window->usingQtMenus()) {
+        window->contextMenuPosition = event->globalPos();
         // Ideally, this should be done in showContextMenu.
-        displayContextMenu(contextTypeForMenu);
+        //displayContextMenuT(contextTypeForMenu);
+        auto now = std::chrono::steady_clock::now();
+        if (window->_context_menu_pending == 1
+            && std::chrono::duration<double>(window->_context_menu_time - now).count() < 0.05) {
+            displayContextMenu(window->contextMenuAsJson);
+            window->_context_menu_pending = 0;
+        } else {
+            window->_context_menu_time = now;
+            window->_context_menu_pending = 2;
+        }
     }
 }
-void WebView::displayContextMenu(const QString& contextType)
-{
-    QMenu *menu = new QMenu(this);
-    /*
-      QAction *m_copy = menu->addAction(tr("&Copy"));
-      m_copy->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
-      this->addAction(m_copy, QWebEnginePage::Copy);
-      QAction *m_paste = menu->addAction(tr("&Paste"));
-      m_paste->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
-      this->addAction(m_paste, QWebEnginePage::Paste);
-    */
-    if (contextType.contains("A")) {
-        menu->addAction(m_openAction);
-        menu->addAction(m_copyLinkAddress);
-        menu->addSeparator();
-        menu->addAction(m_copyInContext);
-    } else {
-        menu->addAction(mainWindow()->m_copy);
-    }
-    //menu->addAction(page()->action(QWebEnginePage::Paste));
-    menu->addAction(mainWindow()->m_paste);
 
-    menu->addAction(mainWindow()->m_viewMenubar);
-    menu->addMenu(mainWindow()->inputModeMenu);
-    menu->addAction(mainWindow()->togglePagingAction);
-    menu->addMenu(mainWindow()->newTerminalMenu);
-    menu->addAction(mainWindow()->detachAction);
-    //if (page()->contextMenuData().selectedText().isEmpty())
-    //menu->addAction(page()->action(QWebEnginePage::SavePage));
-    connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
-    menu->popup(contextMenuPosition);
+static void jsonToMenu(const QJsonArray& jarray, QMenu *menu, QActionGroup *group, BrowserApplication *app)
+{
+    QObject *parent;
+    if (group != nullptr)
+        parent = group;
+    else
+        parent = menu;
+    for (auto item : jarray) {
+        if (item.isObject()) {
+            QJsonObject mitem = item.toObject();
+            auto jlabel = mitem.value("label");
+            auto jclick = mitem.value("clickClientAction");
+            auto jsubmenu = mitem.value("submenu");
+            auto jchecked = mitem.value("checked");
+            auto jvisible = mitem.value("visible");
+            auto jtype = mitem.value("type");
+            QString type = jtype.isString() ? jtype.toString() : "normal";
+            auto jaccelerator = mitem.value("accelerator");
+            QAction *action = nullptr;
+            if (jvisible.isBool() && ! jvisible.toBool()) {
+            } else if (type == "separator") {
+                menu->addSeparator();
+            } else if (jlabel.isString() && jsubmenu.isArray()) {
+                QMenu *smenu = menu->addMenu(jlabel.toString());
+                QActionGroup *group = nullptr;
+                if (type == "radio") {
+                    group = new QActionGroup(parent);
+                    group->setExclusive(true);
+                }
+                jsonToMenu(jsubmenu.toArray(), smenu, group, app);
+            } else if (jlabel.isString() && jclick.isString()) {
+                action = new NamedAction(jlabel.toString(), app, parent, jclick.toString().toStdString().c_str());
+                if (group) {
+                    group->addAction(action);
+                    action->setCheckable(true);
+                }
+                if (jaccelerator.isArray()) {
+                    auto acc = jaccelerator.toArray();
+                    if (acc.size() == 2)
+                        action->setShortcut(QKeySequence::fromString(acc[0].toString() + "," + acc[1].toString()));
+                }
+                if (jaccelerator.isString()) {
+                    QString acc = jaccelerator.toString();
+                    action->setShortcut(QKeySequence::fromString(acc));
+                }
+                if (type == "checkbox")
+                    action->setCheckable(true);
+                if (jchecked.isBool()) {
+                    action->setChecked(jchecked.toBool());
+                }
+            }
+            if (action != nullptr) {
+                menu->addAction(action);
+            }
+        }
+    }
+}
+
+void WebView::displayContextMenu(const QString& menuAsJson)
+{
+    auto *window = mainWindow();
+    QMenu *menu = window->_context_menu;
+    if (menu == nullptr) {
+        menu = new QMenu(this);
+        window->_context_menu = menu;
+    } else {
+        menu->clear();
+    }
+    BrowserApplication *app = application();
+    QJsonDocument menuDocument = QJsonDocument::fromJson(menuAsJson.toUtf8());
+    jsonToMenu(menuDocument.array(), menu, nullptr, app);
+    menu->popup(window->contextMenuPosition);
 }
 
 void WebView::slotOpenLink()
@@ -443,9 +505,9 @@ void WebView::mousePressEvent(QMouseEvent *event)
     // This method doesn't seem to be called,
     // so we can't use it to set contextMenuPosition.
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    contextMenuPosition = event->globalPosition().toPoint();
+    mainWindow()->contextMenuPosition = event->globalPosition().toPoint();
 #else
-    contextMenuPosition = event->globalPos();
+    mainWindow()->contextMenuPosition = event->globalPos();
 #endif
     QWebEngineView::mousePressEvent(event);
 }

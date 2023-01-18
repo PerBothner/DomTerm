@@ -137,9 +137,13 @@ function connectAjax(name, prefix="", topNode=null)
 function setupQWebChannel(channel) {
     var backend = channel.objects.backend;
     DomTerm._qtBackend = backend;
-    if (! DomTerm.usingJsMenus()) {
+    if (! DomTerm.usingJsMenus() && ! DomTerm.isSubWindow()) {
+        DomTerm.popupMenu = function(cmenu, options) {
+            backend.showContextMenu(JSON.stringify(cmenu));
+        }
+        const showContextMenu = DomTerm.showContextMenu;
         DomTerm.showContextMenu = function(options) {
-            backend.showContextMenu(options.contextType);
+            showContextMenu(options);
             return false;
         }
     }
