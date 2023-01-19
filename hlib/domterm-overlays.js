@@ -1,4 +1,5 @@
 export { addDragHandler, addInfoDisplay, showMessage, showAboutMessage };
+import { escapeText } from './domterm-utils.js';
 
 function aboutMessageVariant() {
     if (DomTerm.isElectron()) {
@@ -28,37 +29,118 @@ function aboutMessage() {
     return s;
 }
 
-function showMessage(title, message) {
+function showMessage(options, callback) {
+    if (DomTerm.isElectron() && ! options.bodyhtml) {
+        electronAccess.ipcRenderer.invoke('messagebox', options)
+            .then(callback);
+    } else if (DomTerm.usingQtWebEngine) {
+        DomTerm._qtBackend.popupMessage(JSON.stringify(options), callback);
+    } else {
+        showMessageBox(options, callback);
+    }
+}
+function showMessageBox(options, callback) {
     let msg =
         '<div class="dt-overlay-titlebar">'
         + '<span class="dt-close-button">&#x2612;</span>'
-        + title
-        + '</div><div class="dt-overlay-body">'
-        + message + '</div>';
+        + options.title
+        + '</div><div class="dt-overlay-body"></div>';
     let popup = document.createElement("div");
     popup.classList.add("dt-popup-panel");
+    if (options.buttons) {
+        msg += '<p class="dt-popup-buttons">';
+        for (const bspec of options.buttons) {
+            msg += `<button class="dt-popup-button" type="button" value="${bspec.value}"></button>`;
+        }
+        msg += '</p>';
+    }
     popup.innerHTML = msg;
     //For some unknown reason, selections work if we use topNode,
     //not not if we use layoutTop or body.
     let parent = DomTerm.layoutTop || document.body;
     parent.appendChild(popup);
+    const body = popup.querySelector(".dt-overlay-body");
+    let message = "";
+    if (options.bodyhtml)
+        message = options.bodyhtml;
+    else if (options.message) {
+        message = `<p><b>${escapeText(options.message)}</b></p>`;
+        if (options.detail)
+            message += `<p>${escapeText(options.detail)}</p>`;
+    }
+    body.innerHTML = message;
+    const buttons = popup.querySelectorAll(".dt-popup-button");
+    const nbuttons = buttons.length;
+    if (nbuttons > 0) {
+        for (let i = 0; i < nbuttons; i++) {
+            const obutton = options.buttons[i];
+            const button = buttons[i];
+            if (obutton.html)
+                button.innerHTML = obutton.html;
+            else if (obutton.text)
+                button.innerText = obutton.text;
+        }
+    }
+    let focusedButton = options.initialFocus < nbuttons ? options.initialFocus : -1;
+    if (focusedButton >= 0)
+        buttons[focusedButton].classList.add("dt-selected");
     let oldX = 50, oldY = 50;
     popup.style.left = oldX + 'px';
     popup.style.top = oldY + 'px';
     let close;
     let clickHandler = (e) => {
-        let n = e.target;
-        if (n.classList.contains("dt-close-button")) {
-            close();
-            return;
+        for (let n = e.target; n && n !== popup; n = n.parentElement) {
+            const ncl = n.classList;
+            if (ncl.contains("dt-close-button")) {
+                close();
+                return;
+            }
+            if (ncl.contains("dt-popup-button")) {
+                if (callback) {
+                    callback(n.getAttribute("value"));
+                }
+                close();
+                return;
+            }
         }
         DomTerm.clickLink(e);
     }
     let keydownHandler = (e) => {
-        if (e.keyCode == 27) {
+        console.log("keydown "+e.key);
+        let key = e.key;
+        switch (key) {
+        case 'Escape':
             e.preventDefault();
 	    e.stopPropagation();
+            if (callback) {
+                callback(options.cancelValue || "cancel");
+            }
             close();
+            break;
+        case 'Tab':
+            key = e.shiftKey ? 'ArrowLeft' : 'ArrowRight';
+            /* .. fall through ... */
+        case 'ArrowRight':
+        case 'ArrowLeft':
+            e.preventDefault();
+	    e.stopPropagation();
+            if (focusedButton >= 0) {
+                buttons[focusedButton].classList.remove("dt-selected");
+                focusedButton =
+                    (focusedButton + (key === 'ArrowRight'? 1 : nbuttons - 1))
+                    % nbuttons;
+                buttons[focusedButton].classList.add("dt-selected");
+            }
+            break;
+        case 'Enter':
+            e.preventDefault();
+	    e.stopPropagation();
+            if (callback) {
+                callback(focusedButton < 0 ? "ok"
+                         : buttons[focusedButton].getAttribute("value"));
+            }
+            close();
+            break;
         }
     };
     let header = popup.querySelector('.dt-overlay-titlebar');
@@ -103,8 +185,8 @@ function showMessage(title, message) {
 function showAboutMessage() {
     let msg = aboutMessage();
     if (true) {
-        showMessage('<h2 style="margin: 0.4ex 0px">About DomTerm</h2>',
-                    msg);
+        showMessage({title: 'About DomTerm',
+                     bodyhtml: msg});
     } else if (DomTerm.isElectron()) {
         electronAccess.ipcRenderer
             .send('open-simple-window',
