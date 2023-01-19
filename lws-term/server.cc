@@ -2037,6 +2037,12 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                         }
                     }
                 }
+            } else if (strncmp(cmd, "ACTION ", 7) == 0) {
+                const char *rest = cmd + 7;
+                lwsl_info("requested action '%s'\n", rest);
+                if (strcmp(rest, "quit-domterm") == 0) {
+                    do_exit(0, true);
+                }
             }
             obuf.erase(0, linelen+1);
         }

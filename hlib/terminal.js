@@ -8991,10 +8991,8 @@ DomTerm.masterKeymapDefault =
             "Ctrl+Shift+M": "toggle-paging-mode",
             "Ctrl+Shift+N": "new-window",
             // FUTURE: "Ctrl-Shift-P": "command-palette",
-            "Ctrl-Shift-Q": "quit-domterm",
             "Ctrl-Shift-S": "save-as-html",
             "Ctrl-Shift-T": "new-tab",
-            "Ctrl-Shift-W": "close-pane",
             //"Ctrl-@": "toggle-mark-mode",
             "Ctrl-Shift-Home": "scroll-top",
             "Ctrl-Shift-End": "scroll-bottom",
@@ -9012,7 +9010,9 @@ DomTerm.masterKeymapDefault =
             "Mod-F": "find-text",
             "Mod-V": "paste-text",
             "Mod-C": "copy-text",
-            "Mod-X": "cut-text"
+            "Mod-X": "cut-text",
+            "Cmd+Q": "quit-domterm",
+            "Cmd+W": "close-pane",
         } : {
             "Ctrl-Shift-F10": "focus-menubar", // Used by Konsole
             // "ContextMenu":  "context-menu",
@@ -9022,6 +9022,8 @@ DomTerm.masterKeymapDefault =
             "Ctrl+Shift+I": "toggle-developer-tools",
             "Ctrl-Shift-V": "paste-text",
             "Ctrl-Shift-C": "copy-text",
+            "Ctrl+Shift+Q": "quit-domterm",
+            "Ctrl-Shift+W": "close-pane",
             "Ctrl-Shift-X": "cut-text"
         }));
 DomTerm.masterKeymap = DomTerm.masterKeymapDefault;

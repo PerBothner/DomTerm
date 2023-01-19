@@ -1761,6 +1761,8 @@ reportEvent(const char *name, char *data, size_t dlen,
                 lws_callback_on_writable(dclient->out_wsi);
             }
         }
+    } else if (strcmp(name, "QUIT") == 0) {
+        do_exit(0, true);
     } else if (strcmp(name, "RECONNECT") == 0) {
         if (! options) {
             lwsl_err("RECONNECT with NULL options field\n");

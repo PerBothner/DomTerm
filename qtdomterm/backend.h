@@ -84,6 +84,7 @@ public slots:
     void log(const QString& message);
     void startSystemMove();
     void startSystemResize(const QString& edges);
+    QString popupMessage(const QString&optionsAsJson);
 
     void close();
 

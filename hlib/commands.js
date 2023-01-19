@@ -1,6 +1,6 @@
 export { commandMap, lookupCommand, cmd };
 import { Terminal } from './terminal.js';
-import { showAboutMessage } from './domterm-overlays.js';
+import { showAboutMessage, showMessage } from './domterm-overlays.js';
 
 const commandMap = new Object();
 
@@ -62,7 +62,18 @@ cmd('reset-terminal-soft',
     });
 cmd('quit-domterm',
     function(item, key) {
-        DomTerm.closeAll(null); // FIXME - send to server
+        showMessage({ title: "Confirm Quit - DomTerm",
+                      message: "Quit DomTerm?",
+                      detail: "This will close all windows, kill all sessions (including detached sessions), and exit the domterm backend server.",
+                      buttons: [
+                        { value: "cancel", text: "No, cancel" },
+                        { value: "ok", text: "Yes, quit" }],
+                      initialFocus: 1
+                    },
+                    (value) => {
+                        if (value=="ok")
+                            DomTerm.mainTerm.reportEvent("QUIT");
+                    });
         return true;
     }, {
         context: "parent"

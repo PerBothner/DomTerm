@@ -251,6 +251,25 @@ ipcMain.handle('save-file', async (event, options, data) => {
     });
 });
 
+ipcMain.handle('messagebox', async (event, options) => {
+    let moptions = { };
+    moptions.message = options.message;
+    if (options.title)
+        moptions.title = options.title;
+    if (options.detail)
+        moptions.detail = options.detail;
+    if (options.initialFocus)
+        moptions.defaultId = options.initialFocus;
+    if (options.buttons) {
+        const mbuttons = [];
+        for (const button of options.buttons) {
+            mbuttons.push(button.text);
+        }
+        moptions.buttons = mbuttons;
+    }
+    return dialog.showMessageBox(eventToWindow(event), moptions)
+        .then((value) => options.buttons[value.response].value);
+});
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

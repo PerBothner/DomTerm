@@ -75,9 +75,11 @@ else
                                  accelerator: 'CommandOrControl+Shift+S',
                                  clickClientAction: 'save-as-html'});
 
-    const quitItem =  menuItem({label: 'Quit', role: 'quit', accelerator: 'CommandOrControl+Shift+Q', clickClientAction: 'quit-domterm' });
+    const quitItem =  menuItem({label: 'Quit',
+                                accelerator: DomTerm.isMac ? 'Cmd+Q' : 'CommandOrControl+Shift+Q',
+                                clickClientAction: 'quit-domterm' });
     const closeItem = menuItem({label: 'Close session',
-                                accelerator: 'CommandOrControl+Shift+W',
+                                accelerator: DomTerm.isMac ? 'Cmd+W' : 'CommandOrControl+Shift+W',
                                 clickClientAction: 'close-pane'});
     const newWindowItem = menuItem({label: 'New terminal window',
                                     accelerator: DomTerm.isMac ? 'Cmd+N' : 'Ctrl+Shift+N',

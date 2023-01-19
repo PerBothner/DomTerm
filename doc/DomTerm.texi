@@ -3312,6 +3312,13 @@ To select an item, type @kbd{@key{Enter}}; to cancel type @kbd{@key{Escape}}.
 @itemx @kbd{Alt+Cmd+@key{I}} @emph{(only macOS)}
 Toggle Developer Window, useful for debugging or examining
 the state of the Document Object Model.
+@item @kbd{Ctrl+Shift+@key{W}} @emph{(except macOS)} (@code{close-pane)}
+@itemx @kbd{Cmd+@key{W}} @emph{(only macOS)}
+Close the current pane (sub-window).
+@item @kbd{Ctrl+Shift+@key{Q}} @emph{(except macOS)} (@code{quit-domterm)}
+@itemx @kbd{Cmd+@key{Q}} @emph{(only macOS)}
+Close all windows, and exit the domterm backend server.
+This kills any detached jobs.
 @end table
 
 @subsubheading Scaling (zooming)

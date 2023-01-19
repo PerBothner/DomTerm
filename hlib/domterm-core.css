@@ -111,7 +111,14 @@ div.dt-popup-panel {
     position: fixed;
     z-index: 2;
 }
+p.dt-popup-buttons {
+    display: flex;
+    justify-content: space-evenly;
+}
 
+button.dt-popup-button.dt-selected {
+    border-color: blue
+}
 div.show-connection-failure {
     position: fixed;
     background: var(--background-color);

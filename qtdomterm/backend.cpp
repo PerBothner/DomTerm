@@ -34,7 +34,12 @@
 #include <QFileDialog>
 #include <QMimeData>
 #include <QWindow>
+#include <QMessageBox>
 #include <QtGui/QClipboard>
+#include <QAbstractButton>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "backend.h"
 #include "browsermainwindow.h"
@@ -300,7 +305,7 @@ void Backend::inputModeChanged(int)
     //webView()->mainWindow()->inputModeChanged((char) mode);
 }
 
-void Backend::autoPagerChanged(bool mode)
+void Backend::autoPagerChanged(bool)
 {
     //webView()->mainWindow()->autoPagerChanged(mode);
 }
@@ -331,6 +336,46 @@ void Backend::startSystemResize(const QString &edges)
     if (edges.contains('e'))
         e |= Qt::RightEdge;
     webView()->mainWindow()->windowHandle()->startSystemResize(e);
+}
+
+QString Backend::popupMessage(const QString&optionsAsJson)
+{
+    QJsonObject joptions = QJsonDocument::fromJson(optionsAsJson.toUtf8()).object();
+    QMessageBox msgBox(mainWindow());
+    auto jbuttons = joptions.value("buttons").toArray();
+    int initial = joptions.value("initialFocus").toInt();
+    auto jbodyhtml = joptions.value("bodyhtml");
+    auto jmessage = joptions.value("message");
+    auto jdetail = joptions.value("detail");
+    int nbuttons = jbuttons.size();
+    for (int i = 0; i < nbuttons; i++) {
+        auto jbut = jbuttons[i].toObject();
+        auto jvalue = jbut.value("value").toString();
+        QMessageBox::ButtonRole role = jvalue == "cancel" ? QMessageBox::RejectRole : QMessageBox::AcceptRole;
+        auto button =
+            msgBox.addButton(jbut.value("text").toString(), role);
+        if (i == initial)
+            msgBox.setDefaultButton(button);
+    }
+    msgBox.setWindowTitle(joptions.value("title").toString());
+    if (jbodyhtml.isString()) {
+        msgBox.setText(jbodyhtml.toString());
+    } else {
+        msgBox.setText("<b>" + jmessage.toString() + "<\b>");
+        if (jdetail.isString())
+            msgBox.setInformativeText(jdetail.toString());
+    }
+    msgBox.setStyleSheet("QLabel{min-width: 300px;}");
+    msgBox.exec();
+    QAbstractButton *clicked = msgBox.clickedButton();
+    if (clicked != nullptr) {
+        for (int i = 0; i < nbuttons; i++) {
+            auto jbut = jbuttons[i].toObject();
+            if (jbut.value("text").toString() == clicked->text())
+                return jbut.value("value").toString();
+        }
+    }
+    return "unknown";
 }
 
 void Backend::addDomtermVersion(const QString &info)
