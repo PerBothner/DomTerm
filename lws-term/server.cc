@@ -2043,6 +2043,9 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 if (strcmp(rest, "quit-domterm") == 0) {
                     do_exit(0, true);
                 }
+                if (strcmp(rest, "new-window") == 0) {
+                    open_window("{}", main_options);
+                }
             }
             obuf.erase(0, linelen+1);
         }

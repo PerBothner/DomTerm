@@ -398,6 +398,7 @@ extern void maybe_daemonize(void);
 extern void maybe_exit(int exit_code);
 extern void finish_request(struct options *opts, int exit_code, bool close);
 extern void do_exit(int, bool);
+extern void open_window(const char *data, struct options *options);
 extern void print_browsers_prefixed(const char *, const char *, FILE *);
 extern void print_options_prefixed(const char *, const char *, FILE *);
 

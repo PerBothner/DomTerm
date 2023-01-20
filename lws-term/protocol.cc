@@ -1247,9 +1247,8 @@ maybe_signal (struct pty_client *pclient, int sig, int ch)
 #endif
 
 void
-open_window(const char *data, struct tty_client *client)
+open_window(const char *data, struct options *options)
 {
-    struct options *options = client->options;
     json obj = json::parse(data, nullptr, false);
     if (! obj.is_object()) {
         lwsl_err("bad JSON in OPEN-WINDOW request\n");
@@ -1259,7 +1258,7 @@ open_window(const char *data, struct tty_client *client)
         && obj["height"].is_number() && obj["width"].is_number();
     bool has_position = obj.contains("position")
         && obj["position"].is_string();
-    if (has_size || has_position) {
+    if ((has_size || has_position) && options) {
         sbuf sb;
         if (has_size) {
             sb.printf("%dx%d",
@@ -1269,8 +1268,6 @@ open_window(const char *data, struct tty_client *client)
         if (has_position) {
             sb.append(obj["position"].get<std::string>().c_str());
         }
-        if (! options)
-            client->options = options = link_options(NULL);
         options->geometry_option = sb.null_terminated();
     }
     std::string turl = obj.contains("url") && obj["url"].is_string()
@@ -1552,10 +1549,10 @@ reportEvent(const char *name, char *data, size_t dlen,
             snprintf(wbuf, sizeof(wbuf), "=%d", oldWindowNum);
             options->paneBase = wbuf;
             options->paneOp = paneOp;
-            open_window(data+start_options, client);
+            open_window(data+start_options, options);
         }
     } else if (strcmp(name, "OPEN-WINDOW") == 0) {
-        open_window(data, client);
+        open_window(data, options);
     } else if (strcmp(name, "FOCUS-NEXT-WINDOW") == 0) {
         const char *direction = nullptr;
         if (strcmp(data, "next,v") == 0)
