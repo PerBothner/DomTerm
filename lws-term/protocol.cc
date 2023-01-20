@@ -139,6 +139,10 @@ do_exit(int exit_code, bool kill_clients)
                 wait_needed = true;
             }
         }
+        for (browser_cmd_client *bclient = browser_cmd_list;
+             bclient != nullptr; bclient = bclient->next) {
+            kill(bclient->cmd_pid, SIGTERM);
+        }
     }
     if (wait_needed) {
         lws_set_timer_usecs(cmdwsi, 500 * LWS_USEC_PER_SEC/1000);
@@ -152,9 +156,9 @@ do_exit(int exit_code, bool kill_clients)
 void
 maybe_exit(int exit_code)
 {
-    lwsl_notice("maybe_exit %d sess:%d fr:%d cl:%s\n", exit_code, tserver.session_count, tserver.frontend_process_count, NO_TCLIENTS?"none":"some");
+    lwsl_notice("maybe_exit %d sess:%d fr:%d cl:%s\n", exit_code, tserver.session_count, browser_cmd_list != nullptr, NO_TCLIENTS?"none":"some");
     if (tserver.session_count == 0
-        && tserver.frontend_process_count == 0
+        && browser_cmd_list == nullptr
         && NO_TCLIENTS)
         do_exit(exit_code, false);
 }

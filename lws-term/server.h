@@ -309,11 +309,16 @@ struct http_client {
 
 // Used for listening for message or close from browser process.
 struct browser_cmd_client {
+    browser_cmd_client();
+    ~browser_cmd_client();
+
+    browser_cmd_client *next;
     //int window_number; may be multiple FIXME
     int read_fd; // fd for reading browser's stdout
     int cmd_pid;
     sbuf output_buffer;
 };
+extern browser_cmd_client *browser_cmd_list;
 
 struct cmd_client {
     int socket;
@@ -382,7 +387,6 @@ struct tty_server {
     tty_server();
     ~tty_server();
     int session_count;                        // session count
-    int frontend_process_count = 0;           // only frontends we're waiting on
     int connection_count;                     // clients requested (ever)
     bool client_can_close;
     char *socket_path;                        // UNIX domain socket path

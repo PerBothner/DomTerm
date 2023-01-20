@@ -154,6 +154,25 @@ subst_run_command(struct options *opts, const char *browser_command,
     return start_command(opts, ccmd, nullptr);
 }
 
+browser_cmd_client *browser_cmd_list = nullptr;
+
+browser_cmd_client::browser_cmd_client()
+{
+    this->next = browser_cmd_list;
+    browser_cmd_list = this;
+}
+
+browser_cmd_client::~browser_cmd_client()
+{
+    for (browser_cmd_client **ptr = &browser_cmd_list;
+         *ptr != nullptr; ptr = &(*ptr)->next) {
+        if (*ptr == this) {
+            *ptr = this->next;
+            break;
+        }
+    }
+}
+
 /**
  * Run 'cmd', normall in a shell.
  * If 'cclient' is null, this is similar to system(cmd).
@@ -236,7 +255,6 @@ int start_command(struct options *opts, const char *cmd,
     } else if (pid > 0) {// master
         free((void*) args);
         if (start_only) {
-            tserver.frontend_process_count++;
             cclient->cmd_pid = pid;
             cclient->read_fd = pipe_fds[0];
             (void)close(pipe_fds[1]);
@@ -1993,7 +2011,8 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
         while (waitpid(cclient->cmd_pid, &status, 0) == -1 && errno == EINTR)
             ;
         lwsl_notice("frontend exited with code %d exitcode:%d, pid: %d\n", status, WEXITSTATUS(status), cclient->cmd_pid);
-        tserver.frontend_process_count--;
+        delete cclient;
+        lws_set_wsi_user(wsi, NULL);
         maybe_exit(status == -1 || ! WIFEXITED(status) ? 0
                : WEXITSTATUS(status));
         break;
