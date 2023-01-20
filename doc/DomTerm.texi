@@ -5476,33 +5476,113 @@ is a C++ library that may be easier to use than libwebsockets.
 
 @subheading Conditional Values/Formats
 
-Some values can be defined as formats, where a @samp{%} percent
-character indicates a places where values and expressions are substituted.
-(Somewhat like tmux but using @samp{%} instead of @samp{#}.)
+We need a syntax to express values that are the result of
+substitutions and conditionals.
 
-Special characters are percent,
-double quotes, curly barces, and semicolon.
+Compare tmux's ``formats''. One idea is to use @samp{%} as an escape
+character, like extended printf-style formats.
+
+Another idea (explored below) is to use braces as the primary meta-characters:
+braces are used for substitutions and operations.
+
+A format is a mix of literal text, quoted strings (also treated as
+literal, but may have string-escapes), brace-enclosed expressions, and
+some special characters.
 
 Simple substitution uses curly braces: @code{@{directory@}}.
 
+Expressions, Lisp-style (prefix operator):  @code{@{+ @{N@} 1@}}
+or maybe @code{@{+ N 1@}} (see discussion below).
+
 Conditional: @code{@{A1?A2?A3?X1|B1?Y|Z@}}
 is like C's @code{A1||A2||A3 ? X1 : B1 ? Y : Z}.
+For example:
+@example
+style.color.input = @{@{dark-mode@}?green|yellow@}
+@end example
+Perhaps the extra braces could be implicit:
+@example
+style.color.input = @{dark-mode?green|yellow@}
+xx-width = @{< @{yy-width@} 50?50|@{+ @{zz-width@} 10@}@}
+@end example
 
-Expressions, Lisp-style (prefix operator):  @code{@{+ @{N@} 1@}}
+We need clear simple rules to distinguish characters in
+@var{text mode} (literal characters mostly) and @var{expression mode}
+(operators and variables that are evaluated).
+Text inside curly braces are in expression mode.
+However, text in a conditional following unquoted @samp{?} or @samp{|} is in text mode.
+You can get literal text in expression mode by using a quoted string.
+An unquoted word in expression mode can be an operator (prefix function name),
+variable name (looked up in the context), or a constant (which
+may be interpreted in a context-dependent manner).
 
 Usually an unescaped semi-colon is equivalent to a line-break.
-Both are usually used to separate items in a list.
+Both are usually used to separate items in a list,
+in contexts where is list is desired.
 
 Text inside double quotes is literal, except that string escapes
 are processed.  For example to include a literal semi-colon
 instead of having it be processed as a separator write @code{";"};
 to write double quotes write @code{"\""}.
 
-A simple substiution looks like @code{%@{@var{variable}@}}.
-That text is replaced by the value of the @var{variable}.
-Some single-letter forms such as @code{%M} (???)
-are context-dependent shortcurs for variables or expressions.
-aa
+@subheading Selection mode
+
+Selection mode is a light-weight variation/replacement for View mode.
+
+This feature makes use of multiple selection ranges.
+Only Firefox/Gecko currently supports this, which means selections
+would have to be simulated.
+This @uref{https://github.com/DNishanth/MultiLine-Text-Selection, Chrome extension} may be helpful.
+That extension makes use of the @uref{https://github.com/timdown/rangy/,Rangy library}, which could also replace @code{mark.js}.
+
+At any given time, there may be multiple selection ranges.
+There is also a selection caret.
+The selection caret is the same as in View mode, and displayed the same way.
+It is separate from any output/editor cursor.  However, if there is no
+explicit selection caret, the output/editor cursor is used as the
+implicit selection caret.
+
+A problem with simulating selections is it may visibly change the
+display due to different line-breaking.  (Only an issue when using the
+browser line-breaking for variable-width fonts.)
+It might also break middle-check (paste selection).
+A hybrid solution could be to use the native selection for the
+``main'' range (usually the one most recently added), and
+simulated selectiohs for the other - but that adds complexity.
+
+In selection mode, pressing the @code{Ctrl} modifier with a movement key
+(including the arrow keys) moves the selection caret,
+without changing the selection.
+Pressing @code{Shift} with a movement key moves the selection caret,
+but also adds the moved-over text to the selection.
+Moved-over text that was already selected becomes un-selected.
+Pressing both @code{Ctrl} and @code{Shift} does ???.
+
+Find mode is changed so that every match becomes part of the selection.
+Moving between matches does not change the selection, but
+moves the selection caret. Two ways to successfully exit Find mode:
+Keep all selections, or only keep the one with the caret.
+(Remove the other ranges from the selection.)
+Another variation: add/remove the matches to any pre-existing selection
+(ranges before entering Find mode).
+
+Another possible extension: Multiple selection carets.
+@code{Ctrl} and/or @code{Shift} with a movement key moves all of them.
+Some text editors handle multiple cursors - see how they do it.
+However, one caret should be ``preferred'' as in being scrolled into view.
+
+Clicking with @code{Ctrl} pressed moves the selection caret.
+Clicking with @code{Shift} pressed also extends the selection.
+
+Any changes (output or edits) should remove selection ranges
+and selection carets follow the changes (in document order).
+However, ideally selections earlier than the changes should be preserved.
+
+In a file browser or a
+@uref{https://github.com/PerBothner/DomTerm/issues/117,window browser}
+use similar concepts and key-bindings, except that selection is one or
+more items, rather than one or more character ranges. Also, the caret
+indicates a current item rather than a character position.
 
 @subheading New line structure
 
