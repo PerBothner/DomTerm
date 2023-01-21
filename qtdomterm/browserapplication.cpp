@@ -282,14 +282,10 @@ void BrowserApplication::initMenubar(BrowserMainWindow *window)
     fileMenu->addAction(newTerminalTabAction);
     fileMenu->addAction(saveAsHtmlAction);
     fileMenu->addSeparator();
-
-#if defined(Q_OS_MACOS)
-    fileMenu->addAction(tr("&Quit"), BrowserApplication::instance(), SLOT(quitBrowser()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));
-#else
-    if (window != nullptr) {
-        fileMenu->addAction(tr("&Close window"), window, SLOT(close()), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q));
-    }
-#endif
+    fileMenu->addAction(new NamedAction("Close session", this, "close-pane",
+                                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_W)));
+    fileMenu->addAction(new NamedAction("Quit", this, "quit-domterm",
+                                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q)));
 
     // Edit
     QMenu *editMenu = menuBar->addMenu(tr("&Edit"));
@@ -322,10 +318,10 @@ void BrowserApplication::initMenubar(BrowserMainWindow *window)
     viewMenu->addAction(new NamedAction(tr("Zoom &Out (pane)"), this, "pane-zoom-out", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_Minus)));
     viewMenu->addAction(new NamedAction(tr("Reset &Zoom (pane)"), this, "pane-zoom-reset", QKeySequence(Qt::ALT | Qt::CTRL | Qt::Key_0)));
 
-    if (window != nullptr) {
-        QAction *a = viewMenu->addAction(tr("&Full Screen"), window, SLOT(slotViewFullScreen(bool)),  Qt::Key_F11);
-        a->setCheckable(true);
-    }
+    auto a = new NamedAction(tr("&Full Screen"), this, "toggle-fullscreen",
+                             QKeySequence(Qt::Key_F11));
+    a->setCheckable(true);
+    viewMenu->addAction(a);
 
 #if 1
     //QMenu *toolsMenu = menuBar->addMenu(tr("&Tools"));
