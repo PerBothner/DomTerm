@@ -1393,13 +1393,13 @@ reportEvent(const char *name, char *data, size_t dlen,
         strcpy(version_info, data);
         free(client->version_info);
         client->version_info = version_info;
-        client->initialized = 0;
         if (! options->print_browser_only)
             client->unlink_main_html_filename();
         else
             options->print_browser_only = false;
         if (strcmp(name, "VERSION") == 0)
             return true;
+        client->initialized = 0;
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient == NULL) {
@@ -2200,7 +2200,8 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
 {
     struct tty_client *client = WSI_GET_TCLIENT(wsi);
     struct pty_client *pclient = client == NULL ? NULL : client->pclient;
-    lwsl_info("callback_tty %p reason:%d conn#%d\n", wsi, (int) reason,
+    lwsl_info("callback_tty %p reason:%d conn%s%d\n", wsi, (int) reason,
+              client != nullptr && client->main_window == 0 ? "^" : "#" ,
               client == NULL ? -1 : client->connection_number);
 
     switch (reason) {
@@ -2392,12 +2393,15 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
          bool keep_client = client->keep_after_detach
              || (client->keep_after_unexpected_close && ! client->close_requested);
          if (keep_client) {
+             lwsl_notice("client #:%d disconnected keep:%p\n",
+                         client->connection_number, client);
              client->wsi = NULL;
              client->out_wsi = NULL;
          } else {
+             lwsl_notice("client #:%d disconnected keep:no\n",
+                         client->connection_number);
              delete client;
          }
-         lwsl_notice("client #:%d disconnected\n", client->connection_number);
          maybe_exit(0);
          break;
     }
