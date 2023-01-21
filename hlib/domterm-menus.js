@@ -52,7 +52,7 @@ else
         showMenubar(showingMenuBar);
     }
     const autoPagingItem = menuItem({label: 'Automatic Pager',
-                                     accelerator: "Ctrl+Shift+M A",
+                                     accelerator: ["Ctrl+Shift+M", "A"],
                                      type: 'checkbox',
                                      clickClientAction: 'toggle-auto-pager'});
     // These are logically radio buttons, but I'm having
