@@ -315,7 +315,7 @@ QString WebView::generateSaveFileName() // FIXME
 {
     //return backend->sessionName() + ".html";
     char buf[100];
-    sprintf(buf, "domterm-saved-%d.html", mainWindow()->application()->getSaveFileCount());
+    snprintf(buf, sizeof(buf), "domterm-saved-%d.html", mainWindow()->application()->getSaveFileCount());
     return QString(buf);
 }
 
