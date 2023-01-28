@@ -9981,8 +9981,6 @@ Terminal.newWS = function(wspath, wsprotocol, wt) {
             DomTerm.log("unexpected WebSocket error code:"+e.code+" e:"+e);
     }
     wsocket.onclose = function(e) {
-        if (wt == DomTerm.mainTerm && wt != DomTerm.focusedTerm)
-            return;
         if (DomTerm.verbosity > 0)
             DomTerm.log("unexpected WebSocket (connection:"+wt.topNode?.windowNumber+") close code:"+e.code+" e:"+e);
         wt._socketOpen = false;
