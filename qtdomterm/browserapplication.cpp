@@ -312,12 +312,21 @@ void BrowserApplication::loadSettings()
 #endif
 }
 
+static QKeySequence simpleCmdKey(Qt::Key baseChar)
+{
+#if defined(Q_OS_MACOS)
+    return QKeySequence(Qt::CTRL /* actually Cmd */ | baseChar);
+#else
+    return QKeySequence(Qt::CTRL | Qt::SHIFT | baseChar);
+#endif
+}
+
 void BrowserApplication::initActions()
 {
     copyAction = new NamedAction(tr("&Copy"), this, "copy-text");
-    copyAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
+    copyAction->setShortcut(simpleCmdKey(Qt::Key_C));
     pasteAction = new NamedAction(tr("&Paste"), this, "paste-text");
-    pasteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
+    pasteAction->setShortcut(QKeySequence(simpleCmdKey(Qt::Key_V)));
 
     togglePagingAction = new NamedAction("Automatic &Pager", this, "toggle-auto-pager");
     togglePagingAction->setCheckable(true);
@@ -328,9 +337,9 @@ void BrowserApplication::initActions()
     newTerminalMenu = new QMenu(tr("New Terminal"), nullptr);
     newTerminalWindowAction =
         new NamedAction(tr("&New Window"), this, "new-window",
-                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+                        simpleCmdKey(Qt::Key_N));
     newTerminalMenu->addAction(newTerminalWindowAction);
-    newTerminalTabAction = new NamedAction(tr("New terminal tab"), this, "new-tab", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
+    newTerminalTabAction = new NamedAction(tr("New terminal tab"), this, "new-tab", simpleCmdKey(Qt::Key_T));
     newTerminalMenu->addAction(newTerminalTabAction);
     QAction *newTerminalPane = new NamedAction(tr("New terminal (right/above)"), this, "new-pane");
     newTerminalMenu->addAction(newTerminalPane);
@@ -360,9 +369,9 @@ void BrowserApplication::initMenubar(BrowserMainWindow *window)
     fileMenu->addAction(saveAsHtmlAction);
     fileMenu->addSeparator();
     fileMenu->addAction(new NamedAction("Close session", this, "close-pane",
-                                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_W)));
+                                        simpleCmdKey(Qt::Key_W)));
     fileMenu->addAction(new NamedAction("Quit", this, "quit-domterm",
-                                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Q)));
+                                        simpleCmdKey(Qt::Key_Q)));
 
     // Edit
     QMenu *editMenu = menuBar->addMenu(tr("&Edit"));
@@ -375,7 +384,7 @@ void BrowserApplication::initMenubar(BrowserMainWindow *window)
 
     editMenu->addAction(new NamedAction(tr("&Find"), this,
                                         "find-text",
-                                        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F)));
+                                        simpleCmdKey(Qt::Key_F)));
 
     // View
     QMenu *viewMenu = menuBar->addMenu(tr("&View"));
