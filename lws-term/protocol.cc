@@ -301,12 +301,12 @@ printf_to_browser(struct tty_client *tclient, const char *format, ...)
     va_end(ap);
 }
 
-static int
-set_connection_number(struct tty_client *tclient, int hint)
+int
+tty_client::set_connection_number(int hint)
 {
-    int wnum = tty_clients.enter(tclient, hint);
-    tclient->connection_number = wnum;
-    lwsl_notice("set_connection_number %p to %d\n", tclient, wnum);
+    int wnum = tty_clients.enter(this, hint);
+    this->connection_number = wnum;
+    lwsl_notice("set_connection_number %p to %d\n", this, wnum);
     return wnum;
 }
 
@@ -517,19 +517,19 @@ setWindowSize(struct pty_client *client)
 }
 
 void
-link_clients(struct tty_client *tclient, struct pty_client *pclient)
+tty_client::link_pclient(struct pty_client *pclient)
 {
-    tclient->pclient = pclient; // sometimes redundant
-    *pclient->last_tclient_ptr = tclient;
-    pclient->last_tclient_ptr = &tclient->next_tclient;
-    tclient->wkind = dterminal_window;
+    this->pclient = pclient; // sometimes redundant
+    *pclient->last_tclient_ptr = this;
+    pclient->last_tclient_ptr = &this->next_tclient;
+    this->wkind = dterminal_window;
 }
 
 void link_command(struct lws *wsi, struct tty_client *tclient,
                   struct pty_client *pclient)
 {
     if (tclient->pclient == NULL)
-        link_clients(tclient, pclient);
+        tclient->link_pclient(pclient);
 
     if (! pclient->has_primary_window) {
         tclient->is_primary_window = true;
@@ -2276,7 +2276,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 pclient = mclient->pclient;
                 if (pclient) {
                     mclient->unlink_pclient();
-                    link_clients(tclient, pclient);
+                    tclient->link_pclient(pclient);
                 }
                 tclient->wsi = mclient->wsi;
                 tclient->out_wsi = mclient->out_wsi;
@@ -2286,7 +2286,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 tclient->main_window = wnum;
                 tclient->options = link_options(mclient->options);
                 lws_callback_on_writable(tclient->out_wsi);
-                set_connection_number(tclient, wnum);
+                tclient->set_connection_number(wnum);
                 client = tclient;
             } else if (reconnect_value < 0) {
                 lwsl_err("connection with invalid connection number %s - error\n", window);
@@ -2334,7 +2334,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 if (pclient->is_ssh_pclient)
                     client->proxyMode = proxy_display_local;
                 if (client->pclient != pclient)
-                    link_clients(client, pclient);
+                    client->link_pclient(pclient);
                 link_command(wsi, client, pclient);
                 lwsl_info("connection to existing session %d established\n", pclient->session_number);
             } else {
@@ -2369,9 +2369,9 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
             }
         }
         if (client->connection_number < 0)
-            set_connection_number(client,
-                                  reconnect_value > 0 && wnum > 0 ? wnum
-                                  : pclient ? pclient->session_number : -1);
+            client->set_connection_number(
+                reconnect_value > 0 && wnum > 0 ? wnum
+                : pclient ? pclient->session_number : -1);
 
         // Defer start_pty so we can set up DOMTERM variable with version_info.
 
@@ -2461,10 +2461,10 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
                                    "proxy", NULL);
     struct tty_client *tclient =
         new (lws_wsi_user(pin_lws)) tty_client();
-    set_connection_number(tclient, pclient ? pclient->session_number : -1);
+    tclient->set_connection_number(pclient ? pclient->session_number : -1);
     lwsl_notice("make_proxy in:%d out:%d mode:%d in-conn#%d pin-wsi:%p in-tname:%s\n", options->fd_in, options->fd_out, proxyMode, tclient->connection_number, pin_lws, ttyname(options->fd_in));
     tclient->proxyMode = proxyMode;
-    link_clients(tclient, pclient);
+    tclient->link_pclient(pclient);
     const char *ssh_connection;
     if (proxyMode == proxy_remote
         && (ssh_connection = getenv_from_array("SSH_CONNECTION", options->env)) != NULL) {
@@ -2496,7 +2496,7 @@ make_proxy(struct options *options, struct pty_client *pclient, enum proxy_mode 
 // Request that the local (client) side open a window.
 // Create a proxy to connect between that window and our pty process,
 // over the ssh connection.
-static struct tty_client *
+struct tty_client *
 display_pipe_session(struct options *options, struct pty_client *pclient)
 {
     struct tty_client *tclient = make_proxy(options, pclient, proxy_remote);
@@ -2513,234 +2513,6 @@ display_pipe_session(struct options *options, struct pty_client *pclient)
     //lws_callback_on_writable(wsi);
     //daemonize client
     return tclient;
-}
-
-bool
-in_tiling_window_manager()
-{
-    return is_SwayDesktop();
-}
-
-int
-display_session(struct options *options, struct pty_client *pclient,
-                const char *url, enum window_kind wkind)
-{
-    int session_number = pclient == NULL ? -1 : pclient->session_number;
-    const char *browser_specifier = options->browser_command.c_str();
-    lwsl_notice("display_session %d browser:%s\n", session_number, browser_specifier);
-#if REMOTE_SSH
-    if (browser_specifier != NULL
-        && strcmp(browser_specifier, "--browser-pipe") == 0) {
-        display_pipe_session(options, pclient);
-        return EXIT_WAIT;
-    }
-#endif
-    int paneOp = options->paneOp;
-    bool has_name = ! options->name_option.empty();
-    if (browser_specifier != NULL && browser_specifier[0] == '-') {
-      if (pclient != NULL && strcmp(browser_specifier, "--detached") == 0) {
-          pclient->detach_count = 1;
-          if (has_name)
-              pclient->session_name = options->name_option;
-          options->browser_command = "";
-          pclient->start_if_needed(options);
-          return EXIT_SUCCESS;
-      }
-      if (paneOp < 1 || paneOp > 13)
-          paneOp = 0;
-    }
-    std::string subwindows = get_setting_s(options->settings, "subwindows");
-    if (subwindows.empty())
-        subwindows = get_setting_s(main_options->settings, "subwindows");
-    if (subwindows.empty()) {
-        if (in_tiling_window_manager()) {
-            subwindows = "no";
-        } else if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
-                   && strcmp(browser_specifier, "qt-frames") != 0) {
-            subwindows = "qt";
-        }
-    } else if (subwindows == "none")
-        subwindows = "no";
-
-    struct tty_client *tclient = nullptr;
-    int wnum = -1;
-    struct tty_client *wclient = nullptr;
-    bool top_marker = false;
-    if (wkind != unknown_window) {
-        tclient = new tty_client();
-        wnum = session_number;
-        if (wkind == main_only_window && paneOp > 0) {
-            wnum = paneOp;
-            paneOp = -1;
-            options->paneOp = -1;
-        } else if (paneOp > 0) {
-            const char *eq = strchr(options->paneBase.c_str(), '=');
-            if (eq) {
-                std::string wopt = eq + 1;
-                int w = check_single_window_option(wopt, "(display)", options);
-                if (w < 0) {
-                    printf_error(options, "invalid window specifier '%s' in '%s' option",
-                                 wopt.c_str(),
-                                 browser_specifier);
-                    return EXIT_FAILURE;
-                }
-                size_t wlen = wopt.length();
-                top_marker = wlen > 0 && wopt[0] == '^';
-                wclient = tty_clients(w);
-            } else if (focused_client == NULL) {
-                printf_error(options, "no current window for '%s' option",
-                             browser_specifier);
-                return EXIT_FAILURE;
-            } else
-                wclient = focused_client;
-
-            options->paneOp = -1;
-            options->paneBase = "";
-        }
-    }
-    if (paneOp > 0 && subwindows == "no") {
-        if (is_SwayDesktop()) {
-            char *swaymsg = find_in_path("swaymsg");
-            if (swaymsg) {
-                char buf[100];
-                int wnum = wclient ? wclient->connection_number : -1;
-                int blen = 0;
-                if (wnum >= 0)
-                    blen = snprintf(buf, sizeof(buf),
-                                    "swaymsg '[title=\"DomTerm.*:%d\"]' focus;", wnum);
-                if (paneOp == pane_left || paneOp == pane_right)
-                    snprintf(buf+blen, sizeof(buf)-blen, "swaymsg split h");
-                else if (paneOp == pane_above || paneOp == pane_below || paneOp == pane_best)
-                    snprintf(buf+blen, sizeof(buf)-blen, "swaymsg split v");
-                else if (paneOp == pane_tab)
-                     snprintf(buf+blen, sizeof(buf)-blen, "swaymsg split h;swaymsg layout tabbed");
-                else
-                    buf[0] = 0;
-                if (buf[0]) {
-                    system(buf);
-                }
-            }
-            free(swaymsg);
-        }
-        paneOp = 0;
-    }
-
-    if (wkind != unknown_window) {
-        tclient->options = link_options(options);
-        if (wkind != main_only_window)
-            wnum = set_connection_number(tclient, wnum);
-        if (paneOp <= 0) {
-            wnum = main_windows.enter(tclient, wnum);
-            tclient->connection_number = wnum;
-        }
-        tclient->wkind = wkind;
-        if (wkind == browser_window || wkind == saved_window) {
-            if (url)
-                tclient->description = url;
-        } else if (url == NULL && pclient) {
-            link_clients(tclient, pclient);
-        }
-        if (has_name) {
-            tclient->set_window_name(options->name_option);
-        } else if (pclient && ! pclient->session_name.empty()) {
-            has_name = true;
-            tclient->set_window_name(pclient->session_name);
-        }
-        wnum = tclient->connection_number;
-    }
-    options->name_option.clear();
-    int r = EXIT_SUCCESS;
-
-    if (paneOp > 0) {
-        tclient->main_window =
-            wclient->main_window || wclient->connection_number;
-        json pane_options;
-        if (wnum >= 0)
-            pane_options["windowNumber"] = wnum;
-        if (pclient && pclient->session_number >= 0)
-            pane_options["sessionNumber"] = pclient->session_number;
-        if (wkind == saved_window || wkind == browser_window) {
-            pane_options["componentType"] =
-                wkind == browser_window ? "browser" : "view-saved";
-            pane_options["url"] = url;
-        }
-        if (has_name) {
-            pane_options["windowName"] = tclient->window_name;
-            pane_options["windowNameUnique"] =
-                (bool) tclient->window_name_unique;
-        }
-        int oldnum = wclient->connection_number;
-        if (wclient->main_window != 0) {
-            wclient = main_windows(wclient->main_window);
-            if (oldnum <= 0 || oldnum > 999999
-                || wclient == nullptr || wclient->out_wsi == nullptr) {
-                printf_error(options, "No existing window %d", oldnum);
-                return EXIT_FAILURE;
-            }
-        }
-        if (top_marker && paneOp >= pane_left && paneOp <= pane_below)
-            paneOp = pane_main_left + (paneOp - pane_left);
-        printf_to_browser(wclient, URGENT_WRAP("\033]%d;%d,%d,%s\007"),
-                          104, paneOp, oldnum,
-                          pane_options.dump().c_str());
-        lws_callback_on_writable(wclient->out_wsi);
-    } else if (wkind == browser_window && subwindows == "no") {
-        r = do_run_browser(options, tclient, url, wnum);
-    } else {
-        char *encoded = wkind == browser_window || wkind == saved_window
-            ? url_encode(url, 0)
-            : NULL;
-        if (encoded)
-            url = encoded;
-        sbuf sb;
-        if (wnum >= 0) {
-            sb.printf("#window=%d", wnum);
-            if (pclient != NULL) {
-                sb.printf("&session-number=%d", pclient->session_number);
-            }
-            if (options->headless)
-                sb.printf("&headless=true");
-
-            if (! subwindows.empty())
-                sb.printf("&subwindows=%s", subwindows.c_str());
-
-            std::string titlebar = get_setting_s(options->settings, "titlebar");
-            if (! titlebar.empty())
-                sb.printf("&titlebar=%s", url_encode(titlebar).c_str());
-            double verbosity = get_setting_d(options->settings, "log.js-verbosity", -1);
-            if (verbosity >= 0)
-                sb.printf("&js-verbosity=%g", verbosity);
-            double js_string_max = get_setting_d(options->settings, "log.js-string-max", -1);
-            if (js_string_max >= 0)
-                sb.printf("&log-string-max=%g", js_string_max);
-            std::string slog_to_server = get_setting_s(options->settings, "log.js-to-server");
-            const char *log_to_server = slog_to_server.empty() ? NULL
-                : slog_to_server.c_str();
-            if (log_to_server && (strcmp(log_to_server, "yes") == 0
-                                  || strcmp(log_to_server, "true") == 0
-                                  || strcmp(log_to_server, "both") == 0)) {
-                sb.printf("&log-to-server=%s", log_to_server);
-            }
-            if (has_name) {
-                sb.printf(tclient->window_name_unique ? "&wname-unique=%s"
-                          : "&wname=%s",
-                          url_encode(tclient->window_name).c_str());
-            }
-            if (wkind == saved_window)
-                sb.printf("&view-saved=%s", url);
-            else if (wkind == browser_window)
-                sb.printf("&browse=%s", url);
-            else if (wkind == main_only_window && url
-                     && strncmp(url, "open=", 5) == 0)
-                sb.printf("&%s", url);
-        }
-        else
-            sb.printf("%s", url);
-        if (encoded)
-            free(encoded);
-        r = do_run_browser(options, tclient, sb.null_terminated(), wnum);
-    }
-    return r;
 }
 
 int new_action(int argc, arglist_t argv,

@@ -67,6 +67,8 @@ extern struct lws *cmdwsi;
 extern struct lws_context *context;
 extern struct tty_server tserver;
 extern struct lws_vhost *vhost;
+extern char *main_html_prefix;
+extern int port_specified;
 
 // Assume each T has an index()  method that returns a unique positive integer.
 // This table manages the mapping between T and those indexes.
@@ -226,6 +228,8 @@ public:
     ~tty_client();
     int index() { return connection_number; }
     void set_window_name(const std::string& name);
+    int set_connection_number(int hint);
+    void link_pclient(struct pty_client *);
     void unlink_main_html_filename();
     void unlink_pclient();
     struct tty_client *next_tclient; // link in list headed by pty_client:first_tclient [an 'out' field]
@@ -437,6 +441,8 @@ extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
                           struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
                            const char *, enum window_kind);
+extern struct tty_client *display_pipe_session(struct options *, struct pty_client *);
+extern std::string default_browser_command();
 extern int do_run_browser(struct options *, struct tty_client*, const char *url, int wnum);
 extern int start_command(struct options *, const char *cmd, struct browser_cmd_client *);
 extern char* check_browser_specifier(const char *specifier);

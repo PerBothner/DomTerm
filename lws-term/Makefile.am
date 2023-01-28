@@ -19,7 +19,7 @@ LN_H = ln
 LIBWEBSOCKETS_LIBARG = @LIBWEBSOCKETS_LIBS@
 bin_PROGRAMS = ldomterm
 ldomterm_SOURCES = server.cc utils.cc protocol.cc http.cc whereami.c \
-  commands.cc command-connect.cc help.cc junzip.c settings.cc
+  frontends.cc commands.cc command-connect.cc help.cc junzip.c settings.cc
 nodist_ldomterm_SOURCES = git-describe.c
 ldomterm_CFLAGS = $(OPENSSL_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
 ldomterm_CXXFLAGS = $(OPENSSL_CFLAGS) -I$(srcdir)/lws-term @LIBWEBSOCKETS_CFLAGS@ @ldomterm_misc_includes@
