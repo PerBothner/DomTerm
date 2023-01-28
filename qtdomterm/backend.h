@@ -56,9 +56,7 @@ public slots:
     void setWindowTitle(const QString& title);
     void setSavedHtml(const QString &info) { _savedHtml = info; }
     void windowOp(const QString& opname);
-    void openNewWindow(int width, int height, const QString& position,
-                       const QString& url, int windowNumber,
-                       bool headless, const QString& titlebar);
+    void openNewWindow(const QString& joptions);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     void newPane(int paneOp, const QString& url);
 #else

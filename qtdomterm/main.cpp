@@ -64,6 +64,8 @@ const char* const short_options = "+:vhw:e:c:S:";
 #define HEADLESS_OPTION 1002
 #define TITLEBAR_OPTION 1003
 #define WINDOW_NUMBER_OPTION 1004
+#define COMMAND_SOCKET_OPTION 1005
+#define APP_NUMBER_OPTION 1006
 
 const struct option long_options[] = {
     {"version", 0, NULL, 'v'},
@@ -75,7 +77,9 @@ const struct option long_options[] = {
     {"geometry", 1, NULL, GEOMETRY_OPTION},
     {"headless", 0, NULL, HEADLESS_OPTION},
     {"titlebar", 1, NULL, TITLEBAR_OPTION},
+    {"app-number", 1, NULL, APP_NUMBER_OPTION},
     {"window-number", 1, NULL, WINDOW_NUMBER_OPTION},
+    {"command-socket", 1, NULL, COMMAND_SOCKET_OPTION},
     {NULL,      0, NULL,  0}
 };
 
@@ -122,6 +126,12 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
                 break;
             case WINDOW_NUMBER_OPTION:
                 processOptions->windowNumber = strtol(optarg, nullptr, 10);
+                break;
+            case APP_NUMBER_OPTION:
+                processOptions->appNumber = strtol(optarg, nullptr, 10);
+                break;
+            case COMMAND_SOCKET_OPTION:
+                processOptions->commandSocket = optarg;
                 break;
             case HEADLESS_OPTION:
                 processOptions->headless = true;

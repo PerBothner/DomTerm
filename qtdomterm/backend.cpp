@@ -260,22 +260,19 @@ void Backend::sendParentMessage(const QString& command, const QString& args_json
     emit webView()->mainWindow()->webView()->backend()->forwardToParentWindow(windowNumber(), command, args_json);
 }
 
-void Backend::openNewWindow(int width, int height, const QString& position,
-                            const QString& url, int windowNumber, bool headless,
-                            const QString& titlebar)
+void Backend::openNewWindow(const QString& joptions)
 {
-#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
+#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOWQ
+    JsonObject options = QJsonDocument::fromJson(joptions.toUtf8()).object();
+    int windowNumber = options.value("windowNumber").toInt(-1);
+    QString utl = options.value("url").toString();
     auto manager = webView()->mainWindow()->dockManager();
     auto webv = new WebView(webView()->m_processOptions, windowNumber, nullptr);
     webv->newPage(url);
     auto dockw = webv->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
     manager->addDockWidgetFloating(dockw);
 #else
-    QSharedDataPointer<ProcessOptions> options = webView()->m_processOptions;
-    bool use_titlebar = titlebar=="system";
-    BrowserApplication::instance()->newMainWindow(url, width, height, position,
-                                                  windowNumber, headless,
-                                                  use_titlebar, options);
+    BrowserApplication::instance()->newMainWindow(webView()->m_processOptions, joptions);
 #endif
 }
 

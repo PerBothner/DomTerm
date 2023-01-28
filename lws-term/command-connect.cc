@@ -142,7 +142,7 @@ callback_cmd_socket(struct lws *wsi, enum lws_callback_reasons reason,
         int cur_out = STDOUT_FILENO;
         int nr = read(client->socket, rbuf, client->rsize);
         if (nr <= 0) {
-            lwsl_notice("- RAW_RX before exit:%d\n", client->exit_code);
+            //lwsl_info("- RAW_RX before exit:%d\n", client->exit_code);
             goto do_exit;
             /*
             close(client->socket);
@@ -317,7 +317,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             break;
     case LWS_CALLBACK_RAW_RX_FILE: {
             socket = cclient->socket;
-            //fprintf(stderr, "callback_cmd RAW_RX reason:%d socket:%d getpid:%d\n", (int) reason, socket, getpid());
+            //lwsl_info("callback_cmd RAW_RX reason:%d socket:%d getpid:%d\n", (int) reason, socket, getpid());
             struct sockaddr sa;
             socklen_t slen = sizeof sa;
 #ifdef SOCK_CLOEXEC
@@ -381,7 +381,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                 jpos += n;
             }
             jbuf[jpos] = 0;
-            //fprintf(stderr, "from-client: %d bytes '%.*s'\n", jpos, jpos, jbuf);
+            //lwsl_info("from-client: %d bytes '%.*s'\n", jpos, jpos, jbuf);
             json jobj = json::parse(jbuf, nullptr, false);
             if (jobj.is_discarded())
               fatal("json parse fail");

@@ -62,9 +62,11 @@
 
 QT_BEGIN_NAMESPACE
 class QAction;
+class QByteArray;
 class QMenu;
 class QNetworkAccessManager;
 class QWebEngineProfile;
+class QLocalSocket;
 QT_END_NAMESPACE
 
 #include "processoptions.h"
@@ -125,15 +127,23 @@ public slots:
                                    const QString& position, int windowNumber,
                                    bool headless, bool titlebar,
                                    QSharedDataPointer<ProcessOptions> processOption);
+    BrowserMainWindow *newMainWindow(QSharedDataPointer<ProcessOptions> processOption, const QString& joptions);
     BrowserMainWindow *newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOption);
     void quitBrowser();
+    void onCmdReadyRead();
 private slots:
     void postLaunch();
+    void cmdDo(const QString& cmd, const QString& arg);
 
 private:
     void clean();
+    QByteArray cmdBuffer;
+    void cmdSend(const QByteArray& message);
+    void cmdSend(const QString& message);
+    void cmdSendLine(const QString& message);
     static QNetworkAccessManager *s_networkAccessManager;
 
+    QSharedDataPointer<ProcessOptions> m_processOptions;
     QList<QPointer<BrowserMainWindow> > m_mainWindows;
     QWebEngineProfile *m_privateProfile;
     mutable QIcon m_defaultIcon;
@@ -155,6 +165,9 @@ private:
     int nextSessionNameIndex;
     int saveFileCounter;
     bool headlessOption;
+    QString urlMainPart;
+    QString serverKey;
+    QLocalSocket *cmdSocket = nullptr;
 #if USE_DOCK_MANAGER && ADS_MULTI_MAIN_WINDOW
     ads::CDockManager* m_DockManager = nullptr;
 #endif

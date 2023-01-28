@@ -107,8 +107,7 @@ void NamedAction::doit()
     if (window != nullptr)
         window->slotSimpleCommand(command);
     else {
-        printf("ACTION %s\n", command.toStdString().c_str());
-        fflush(stdout);
+        application->cmdSendLine("ACTION " + command);
     }
 }
 
@@ -263,8 +262,7 @@ void  BrowserMainWindow::slotSimpleCommand(const QString &command)
 void BrowserMainWindow::closeEvent(QCloseEvent *event)
 {
     event->accept();
-    printf("CLOSE-WINDOW %d\n", webView()->windowNumber());
-    fflush(stdout);
+    application()->cmdSend(QString("CLOSE-WINDOW %d\n").arg(webView()->windowNumber()));
     deleteLater();
 }
 

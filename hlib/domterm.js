@@ -410,12 +410,7 @@ DomTerm.openNewWindow = function(dt, options={}) {
         if (DomTerm.isElectron())
             electronAccess.ipcRenderer.send('window-ops', 'new-window', options);
         else if (DomTerm._qtBackend)
-            DomTerm._qtBackend.openNewWindow(options.width, options.height,
-                                             options.position || "",
-                                             options.url,
-                                             options.windowNumber || -1,
-                                             !!options['headless'],
-                                             options.titlebar || "");
+            DomTerm._qtBackend.openNewWindow(JSON.stringify(options));
         else // DomTerm.versions.wry
             ipc.postMessage("new-window "+JSON.stringify(options));
     } else {

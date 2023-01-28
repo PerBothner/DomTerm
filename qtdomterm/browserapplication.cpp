@@ -70,6 +70,9 @@
 #include <QNetworkAccessManager>
 #include <QStandardPaths>
 #include <QRegularExpression>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <QtGui/QDesktopServices>
 #include <QtGui/QFileOpenEvent>
@@ -95,6 +98,7 @@ QVector<QWidget*> paneMap;
 
 BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer<ProcessOptions> processOptions)
     : QApplication(argc, argv)
+    , m_processOptions(processOptions)
     , m_privateProfile(0)
     , nextSessionNameIndex(1)
     , saveFileCounter(0)
@@ -108,7 +112,7 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
         + QString::fromLatin1(QT_VERSION_STR).remove('.') + QLatin1String("webengine");
 
     QLocalSocket socket;
-    socket.connectToServer(serverName);
+    socket.connectToServer(serverName); // probably OBSOLETE
     if (socket.waitForConnected(500)) {
         QDataStream stream(&socket);
         stream << *processOptions;
@@ -128,6 +132,23 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
                  "This system does not support OpenSSL. SSL websites will not be available.");
     }
 #endif
+    if (! processOptions->commandSocket.isEmpty()) {
+        cmdSocket = new QLocalSocket(this);
+        cmdSocket->connectToServer(processOptions->commandSocket);
+        connect(cmdSocket, &QLocalSocket::readyRead, this, &BrowserApplication::onCmdReadyRead);
+
+        QJsonObject jobject;
+        QJsonArray argv;
+        argv += QJsonValue("-");
+        argv += QJsonValue("++internal-frontend");
+        argv += QJsonValue(QString("%1").arg(m_processOptions->appNumber));
+        QJsonObject values;
+        values.insert("argv", argv);
+        QJsonDocument jdocument(values);
+        QByteArray jbytes = jdocument.toJson(QJsonDocument::Compact);
+        jbytes.append('\f');
+        cmdSend(jbytes);
+    }
 
     QTimer::singleShot(0, this, SLOT(postLaunch()));
     initActions();
@@ -162,8 +183,64 @@ BrowserApplication *BrowserApplication::instance()
     return (static_cast<BrowserApplication *>(QCoreApplication::instance()));
 }
 
+void BrowserApplication::cmdSend(const QString& cmd)
+{
+    cmdSocket->write(cmd.toStdString().c_str());
+    cmdSocket->flush();
+}
+void BrowserApplication::cmdSend(const QByteArray& message)
+{
+    cmdSocket->write(message);
+    cmdSocket->flush();
+}
+
+void BrowserApplication::cmdSendLine(const QString& cmd)
+{
+    this->cmdSend(cmd + "\n");
+}
+
+void BrowserApplication::onCmdReadyRead()
+{
+    for (;;) {
+        auto bavail = cmdSocket->bytesAvailable();
+        if (bavail <= 0)
+            break;
+        char buf[200];
+        auto n = cmdSocket->read(buf, (qint64) sizeof(buf) > (qint64) bavail ? bavail : sizeof(buf));
+        if (n <= 0)
+            break; // ERROR
+        cmdBuffer.append(buf, n);
+    }
+    for (;;) {
+        char *data = cmdBuffer.data();
+        char *eol = strchr(data, '\n');
+        if (eol == nullptr)
+            break;
+        qint64 len = eol - data;
+        char *sp = strchr(data, ' ');
+        QString cmd, arg;
+        if (sp && sp - data < len) {
+            cmd = QString::fromUtf8(data, sp - data);
+            sp++; // skip space
+            arg = QString::fromUtf8(sp, eol - sp);
+        } else {
+            cmd = QString::fromUtf8(data, len);
+            arg = "";
+        }
+        cmdDo(cmd, arg);
+        cmdBuffer.remove(0, len+1);
+    }
+}
+
 void BrowserApplication::quitBrowser()
 {
+}
+
+void BrowserApplication::cmdDo(const QString& cmd, const QString& arg)
+{
+    if (cmd == "OPEN-WINDOW") {
+        newMainWindow(m_processOptions, arg);
+    }
 }
 
 /*!
@@ -410,10 +487,22 @@ void BrowserApplication::showAboutMessage(BrowserMainWindow* parent)
         );
 }
 
+BrowserMainWindow *BrowserApplication::newMainWindow(QSharedDataPointer<ProcessOptions> processOptions, const QString& joptions)
+{
+    QJsonObject options = QJsonDocument::fromJson(joptions.toUtf8()).object();
+    return newMainWindow(options.value("url").toString(),
+                         options.value("width").toInt(0),
+                         options.value("height").toInt(0),
+                         options.value("position").toString(""),
+                         options.value("windowNumber").toInt(-1),
+                         options.value("headless").toBool(false),
+                         options.value("titlebar").toString("") == "system",
+                         processOptions);
+}
+
 BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int width, int height, const QString& position, int windowNumber, bool headless, bool titlebar, QSharedDataPointer<ProcessOptions> processOptions)
 {
     QUrl xurl = url;
-
 
     // Check if this is a 'file://.../start-WNUM.html' bridge URL from DomTerm
     // (used to make sure browser has read permission to user's files).
@@ -426,7 +515,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
         QFile fileFile(fileName);
         if (fileFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream fileStream(&fileFile);
-            QRegularExpression urlPattern("location.replace.'([^']*)'.;$");
+            QRegularExpression urlPattern("location.replace.'(([^#]*)#[^']*server-key=([^'&]*)[^']*)'.;$");
             for (;;) {
                 QString line = fileStream.readLine();
                 if (line.isNull())
@@ -434,9 +523,13 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
                 QRegularExpressionMatch urlMatch = urlPattern.match(line);
                 if (urlMatch.hasMatch()) {
                     xurl = urlMatch.captured(1);
+                    urlMainPart = urlMatch.captured(2);
+                    serverKey = urlMatch.captured(3);
                 }
             }
         }
+    } else if (url.length() > 1 && url[0] == '#') {
+        xurl = urlMainPart + url + "&server-key=" + serverKey;
     }
 
     QUrlQuery fragment = QUrlQuery(xurl.fragment());
@@ -488,7 +581,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
     return browser;
 }
 
-BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions)
+BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, QSharedDataPointer<ProcessOptions> processOptions) // FIXME maybe inline in main.
 {
     QString w, h, pos;
     QString location = "";

@@ -311,14 +311,18 @@ struct http_client {
 struct browser_cmd_client {
     browser_cmd_client();
     ~browser_cmd_client();
-
-    browser_cmd_client *next;
-    //int window_number; may be multiple FIXME
-    int read_fd; // fd for reading browser's stdout
-    int cmd_pid;
-    sbuf output_buffer;
+    static browser_cmd_client *enter_new(int hint);
+    int index() { return app_number; }
+    int fd = -1; // for communicating with application process
+    int cmd_pid = -1;
+    int app_number = -1;
+    sbuf send_buffer; // for writing to frontend's input
+    sbuf output_buffer; // for reading frontend's output
+    struct lws *wsi = nullptr;
+    std::string pattern;
 };
-extern browser_cmd_client *browser_cmd_list;
+
+extern id_table<browser_cmd_client> browser_cmd_clients;
 
 struct cmd_client {
     int socket;
@@ -491,7 +495,6 @@ extern int count_args(arglist_t);
 extern argblob_t parse_args(const char*, bool);
 extern char* parse_string(const char*, bool);
 extern char* parse_string_escapes(const char*);
-extern const char * maybe_quote_arg(const char *in);
 
 #if COMPILED_IN_RESOURCES
 struct resource {
@@ -529,7 +532,7 @@ extern struct resource resources[];
 #define COMMAND_CHECK_DOMTERM 16
 #define COMMAND_HANDLES_COMPLETION 32
 #define COMMAND_IN_EXISTING_SERVER (COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER|64)
-#define REATTACH_COMMAND "#internal-re-attach"
+#define REATTACH_COMMAND "++internal-re-attach"
 
 // 0xFD cannot appear in a UTF-8 sequence
 #define REPORT_EVENT_PREFIX 0xFD

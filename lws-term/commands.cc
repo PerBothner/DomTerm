@@ -1051,6 +1051,29 @@ int kill_server_action(int argc, arglist_t argv, struct lws *wsi, struct options
     return EXIT_SUCCESS;
 }
 
+int connect_frontend_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+{
+    int app_number = -1;
+    if (argc >= 2)
+        sscanf(argv[1], "%d", &app_number);
+    for (browser_cmd_client *cclient = browser_cmd_clients.first();
+         cclient != nullptr; cclient = browser_cmd_clients.next(cclient)) {
+        if (cclient->app_number == app_number && wsi != nullptr) {
+            int sockfd = opts->fd_cmd_socket;
+            lws_sock_file_fd_type fd;
+            fd.filefd = opts->fd_cmd_socket;
+            cclient->fd = opts->fd_cmd_socket;
+            lwsl_info("connect_frontend_action app:%d socket:%d\n",
+                      app_number, opts->fd_cmd_socket);
+            struct lws *cwsi = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd, "browser-socket", NULL);
+            WSI_SET_TCLIENT(cwsi, cclient);
+            cclient->wsi = cwsi;
+            return EXIT_WAIT;
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
 int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
                   struct options *opts)
 {
@@ -1567,7 +1590,8 @@ struct command commands[] = {
   { .name = "await", .options = COMMAND_IN_EXISTING_SERVER,
     .action = await_action},
   { .name = REATTACH_COMMAND,
-    .options = COMMAND_IN_SERVER|COMMAND_ALIAS },
+    .options = COMMAND_IN_SERVER|COMMAND_ALIAS,
+    .action = attach_action },
   { .name = "browse", .options = COMMAND_IN_SERVER,
     .action = browse_action},
   { .name = "view-saved", .options = COMMAND_IN_SERVER,
@@ -1622,6 +1646,8 @@ struct command commands[] = {
   { .name = "kill-server",
     .options = COMMAND_IN_CLIENT_IF_NO_SERVER|COMMAND_IN_SERVER,
     .action = kill_server_action },
+  { .name = "++internal-frontend", .options = COMMAND_IN_SERVER,
+    .action = connect_frontend_action },
   { .name = 0 }
   };
 

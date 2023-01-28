@@ -363,6 +363,20 @@ maybe_quote_arg(const char *in)
     return out;
 }
 
+void
+maybe_quote_args(arglist_t argv, int argc, sbuf& sb)
+{
+    for (int i = 0; argc < 0 || i < argc; i++) {
+        const char *arg = argv[i];
+        if (arg == nullptr)
+            break;
+        const char *qarg = maybe_quote_arg(arg);
+        sb.printf(" %s", qarg);
+        if (arg != qarg)
+            free((void*) qarg);
+    }
+}
+
 std::string
 url_encode(const std::string& in, int mode)
 {

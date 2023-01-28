@@ -154,30 +154,12 @@ subst_run_command(struct options *opts, const char *browser_command,
     return start_command(opts, ccmd, nullptr);
 }
 
-browser_cmd_client *browser_cmd_list = nullptr;
-
-browser_cmd_client::browser_cmd_client()
-{
-    this->next = browser_cmd_list;
-    browser_cmd_list = this;
-}
-
-browser_cmd_client::~browser_cmd_client()
-{
-    for (browser_cmd_client **ptr = &browser_cmd_list;
-         *ptr != nullptr; ptr = &(*ptr)->next) {
-        if (*ptr == this) {
-            *ptr = this->next;
-            break;
-        }
-    }
-}
-
 /**
  * Run 'cmd', normall in a shell.
  * If 'cclient' is null, this is similar to system(cmd).
  * If 'cclient' is non-null, this is similar to popen(cmd, "r"):
- * set cclient->read_fd for reading from command's stdout.
+ * set cclient->fd for reading from command's stdout.
+ * (If using "browser-socket" client->fd gets replaced by the socket.)
  */
 int start_command(struct options *opts, const char *cmd,
                   struct browser_cmd_client *cclient)
@@ -256,7 +238,7 @@ int start_command(struct options *opts, const char *cmd,
         free((void*) args);
         if (start_only) {
             cclient->cmd_pid = pid;
-            cclient->read_fd = pipe_fds[0];
+            cclient->fd = pipe_fds[0];
             (void)close(pipe_fds[1]);
         }
     } else {
@@ -294,6 +276,9 @@ static const struct lws_protocols protocols[] = {
        This is the listener socket on the server. */
     {"cmd",       callback_cmd,  sizeof(struct cmd_client),  0},
 
+    // connect to browser application using socket - only Qt front-end, so far
+    {"browser-socket", callback_browser_cmd,  sizeof(struct browser_cmd_client),  0},
+    // connect to browser application using pipe - only Electron and Wry - deprecated
     {"browser-output", callback_browser_cmd,  sizeof(struct browser_cmd_client),  0},
 
 #if REMOTE_SSH
@@ -680,7 +665,7 @@ firefox_browser_command(struct options *options)
 
 /** Return freshly allocated command string or NULL */
 static char *
-qtwebengine_command(struct options *options, int wnum)
+qtdomterm_program()
 {
     char *cmd = get_bin_relative_path("/bin/qtdomterm");
     if (cmd == NULL || access(cmd, X_OK) != 0) {
@@ -688,22 +673,32 @@ qtwebengine_command(struct options *options, int wnum)
             free(cmd);
         return NULL;
     }
+    return cmd;
+}
+
+/** Return freshly allocated command string or NULL */
+static char *
+qtwebengine_command(const char *cmd, struct options *options,
+                    int wnum, int app_number)
+{
     struct sbuf sb;
     const char *geometry = geometry_option(options);
     sb.append(cmd);
-    free(cmd);
     if (geometry)
         sb.printf(" --geometry %s", geometry);
     if (options->qt_remote_debugging)
         sb.printf(" --remote-debugging-port=%s", options->qt_remote_debugging);
     if (wnum > 0)
-        sb.printf(" --window-number %d", wnum);
+        sb.printf(" --window-number=%d", wnum);
+    if (app_number > 0)
+        sb.printf(" --app-number=%d", app_number);
     if (options->headless)
         sb.append(" --headless");
     std::string titlebar = get_setting_s(options->settings, "titlebar");
     if (! titlebar.empty())
         sb.printf(" --titlebar='%s'",
                   titlebar == "system" ? "system" : "domterm");
+    sb.printf(" --command-socket='%s'", backend_socket_name);
     sb.append(" --connect '%U'");
     return sb.strdup();
 }
@@ -846,10 +841,9 @@ default_link_command(const char *url)
 #endif
 }
 
-/** Request browser client to open new browser window. */
-void
-browser_run_browser(struct options *options, const char *url,
-                    struct tty_client *tclient, int wnum)
+/** Options to request browser client to open new browser window. */
+static std::string
+browser_run_json_options(struct options *options, const char *url, int wnum)
 {
     json jobj;
     jobj["url"] = url;
@@ -863,9 +857,7 @@ browser_run_browser(struct options *options, const char *url,
         jobj["titlebar"] = titlebar;
     if (wnum > 0)
         jobj["windowNumber"] = wnum;
-    printf_to_browser(tclient,
-                      URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
-                      jobj.dump().c_str());
+    return jobj.dump();
 }
 
 int
@@ -957,11 +949,13 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                            || cmd == "qt-frames"
                            || cmd == "qt-widgets"
                            || cmd == "qtwebengine") {
-                    browser_specifier = qtwebengine_command(options, wnum);
-                    if (browser_specifier == nullptr)
+                    char *cmd = qtdomterm_program();
+                    if (cmd == nullptr)
                         error_if_single = "'qtdomterm' front-end missing";
                     else {
                         do_Qt = true;
+                        browser_specifier_string = cmd;
+                        free(cmd);
                         options->qt_frontend = true;
                         start_only = true;
                         break;
@@ -1036,14 +1030,32 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
     // This is no longer needed on Electron, but is a slight optimization.
     // Other browsers seem to "combine" user commands better.
     if (do_pattern) {
+        for (browser_cmd_client *cclient = browser_cmd_clients.first();
+             cclient != nullptr; cclient = browser_cmd_clients.next(cclient)) {
+            if (cclient->pattern == do_pattern && cclient->wsi != nullptr) {
+                // Only Qt front-end (so far).
+                cclient->send_buffer.printf("OPEN-WINDOW %s\n",
+                                            browser_run_json_options(options, url, wnum).c_str());
+                lws_callback_on_writable(cclient->wsi);
+                return EXIT_SUCCESS;
+            }
+        }
         for (struct tty_client *t = main_windows.first(); t != nullptr;
              t = main_windows.next(t)) {
             if (t->version_info && strstr(t->version_info, do_pattern)) {
-                browser_run_browser(options, url, t, wnum);
+                browser_run_json_options(options, url, wnum);
+                printf_to_browser(t,
+                                  URGENT_START_STRING "\033]108;%s\007" URGENT_END_STRING,
+                                  browser_run_json_options(options, url, wnum).c_str());
                 lws_callback_on_writable(t->wsi);
                 return EXIT_SUCCESS;
             }
         }
+    }
+    browser_cmd_client *cclient = ! start_only ? nullptr
+        : browser_cmd_client::enter_new(wnum);
+    if (do_Qt) {
+        browser_specifier = qtwebengine_command(browser_specifier_string.c_str(), options, wnum, cclient->app_number);
     }
 
     // The initial URL passed to the browser is a file: URL to a user-read-only
@@ -1100,18 +1112,19 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
     }
     lwsl_notice("starting frontend command: %s\n", cmd.c_str());
     int r;
-    browser_cmd_client *cclient = ! start_only ? nullptr
-        : new browser_cmd_client();
     r = start_command(options, cmd.c_str(), cclient);
     if (cclient) {
         if (r < 0)
             return EXIT_FAILURE;
-        lws_sock_file_fd_type fd;
-        fd.filefd = cclient->read_fd;
-        struct lws *cmd_lws =
-            lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd,
-                                       "browser-output", NULL);
-        lws_set_wsi_user(cmd_lws, cclient);
+        cclient->pattern = do_pattern;
+        if (! do_Qt) { // Electron or Wry front-ends
+            lws_sock_file_fd_type fd;
+            fd.filefd = cclient->fd;
+            struct lws *cmd_lws =
+                lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd,
+                                           "browser-output", NULL);
+            lws_set_wsi_user(cmd_lws, cclient);
+        }
         r = EXIT_SUCCESS;
     }
     options->qt_frontend = false;
@@ -1549,13 +1562,7 @@ main(int argc, char **argv)
                 LDOMTERM_VERSION, git_describe);
     if ((debug_level & LLL_NOTICE) != 0) {
         struct sbuf sb;
-        for (int i = 0; i < argc; i++) {
-            char *arg = argv[i];
-            const char *qarg = maybe_quote_arg(arg);
-            sb.printf(" %s", qarg);
-            if (arg != qarg)
-                free((void*) qarg);
-        }
+        maybe_quote_args(argv, argc, sb);
         lwsl_notice("invoked as:%.*s\n", (int) sb.len, sb.buffer);
     }
     lwsl_notice("Copyright %s Per Bothner and others\n", LDOMTERM_YEAR);
@@ -2016,10 +2023,20 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
         maybe_exit(status == -1 || ! WIFEXITED(status) ? 0
                : WEXITSTATUS(status));
         break;
+    case LWS_CALLBACK_RAW_WRITEABLE_FILE: {
+        struct sbuf &ibuf = cclient->send_buffer;
+        int to_write = ibuf.len - LWS_PRE;
+        size_t n =lws_write(cclient->wsi, (unsigned char*) ibuf.buffer+LWS_PRE,
+                            to_write, LWS_WRITE_BINARY);
+        if (n != to_write)
+             lwsl_err("lws_write failure in callback_browser_cmd\n");
+        ibuf.len = LWS_PRE;
+        break;
+    }
     case LWS_CALLBACK_RAW_RX_FILE: {
         struct sbuf &obuf = cclient->output_buffer;
         obuf.extend(1024);
-        ssize_t rcount = read(cclient->read_fd, obuf.avail_start(), obuf.avail_space());
+        ssize_t rcount = read(cclient->fd, obuf.avail_start(), obuf.avail_space());
         if (rcount <= 0) {
             if (rcount == 0)
                 return 0;

@@ -31,6 +31,7 @@ static char end_replay_mode[] = "\033[98u";
 
 id_table<pty_client> pty_clients;
 id_table<tty_client> tty_clients;
+id_table<browser_cmd_client> browser_cmd_clients;
 main_id_table main_windows;
 
 int current_dragover_window = -1;
@@ -139,8 +140,8 @@ do_exit(int exit_code, bool kill_clients)
                 wait_needed = true;
             }
         }
-        for (browser_cmd_client *bclient = browser_cmd_list;
-             bclient != nullptr; bclient = bclient->next) {
+        for (browser_cmd_client *bclient = browser_cmd_clients.first();
+         bclient != nullptr; bclient = browser_cmd_clients.next(bclient)) {
             kill(bclient->cmd_pid, SIGTERM);
         }
     }
@@ -156,9 +157,9 @@ do_exit(int exit_code, bool kill_clients)
 void
 maybe_exit(int exit_code)
 {
-    lwsl_notice("maybe_exit %d sess:%d fr:%d cl:%s\n", exit_code, tserver.session_count, browser_cmd_list != nullptr, NO_TCLIENTS?"none":"some");
+    lwsl_notice("maybe_exit %d sess:%d fr:%d cl:%s\n", exit_code, tserver.session_count, browser_cmd_clients.first() != nullptr, NO_TCLIENTS?"none":"some");
     if (tserver.session_count == 0
-        && browser_cmd_list == nullptr
+        && browser_cmd_clients.first() == nullptr
         && NO_TCLIENTS)
         do_exit(exit_code, false);
 }
@@ -653,6 +654,25 @@ main_id_table::~main_id_table()
     }
 }
 
+browser_cmd_client::browser_cmd_client()
+{
+    send_buffer.blank(LWS_PRE);
+}
+
+browser_cmd_client* browser_cmd_client::enter_new(int hint)
+{
+    browser_cmd_client *cclient = new browser_cmd_client();
+    int app_number = browser_cmd_clients.enter(cclient, hint);
+    cclient->app_number = app_number;
+    return cclient;
+}
+
+browser_cmd_client::~browser_cmd_client()
+{
+    if (browser_cmd_clients(app_number) == this)
+        browser_cmd_clients.remove(this);
+}
+
 void
 request_enter(struct options *opts, tty_client* tclient)
 {
@@ -887,6 +907,11 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
     default: /* parent */
             lwsl_notice("starting application: %s session:%d pid:%d pty:%d\n",
                         pclient->cmd, pclient->session_number, pid, master);
+            if (lwsl_visible(LLL_INFO)) {
+                struct sbuf sb;
+                maybe_quote_args(argv, -1, sb);
+                lwsl_info("arguments:%.*s\n", (int) sb.len, sb.buffer);
+            }
             close(slave);
 
             pclient->pid = pid;

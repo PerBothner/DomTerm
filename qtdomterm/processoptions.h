@@ -8,18 +8,19 @@ class QSharedData;
 class ProcessOptions : public QSharedData
 {
  public:
-     ProcessOptions();
-     bool frontendOnly;
-     bool headless = false;
-     bool titlebar = false;
-     QString url;
-     QString wsconnect;
-     QString geometry;
-     int windowNumber;
+    ProcessOptions();
+    bool frontendOnly;
+    bool headless = false;
+    bool titlebar = false;
+    QString url;
+    QString wsconnect;
+    QString geometry;
+    QString commandSocket;
+    int windowNumber;
+    int appNumber = -1;
 
-     friend QDataStream& operator>>(QDataStream&, ProcessOptions&);
-     friend QDataStream& operator<<(QDataStream&, const ProcessOptions&);
-
+    friend QDataStream& operator>>(QDataStream&, ProcessOptions&);
+    friend QDataStream& operator<<(QDataStream&, const ProcessOptions&);
 };
 QDataStream& operator<<(QDataStream& stream, const ProcessOptions& state);
 QDataStream& operator>>(QDataStream& stream, ProcessOptions& state);
