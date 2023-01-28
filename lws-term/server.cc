@@ -888,10 +888,10 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                     p = "wry;electron;qt;chrome-app;safari;firefox;browser";
                 else {
 #if __APPLE__
-                    bool prefer_Qt = false;
+                    bool prefer_Qt = true;
 #if 0
-                    if (Qt framework installed)
-                        prefer_Qt = true;
+                    if (Qt framework not installed)
+                        prefer_Qt = false;
 #endif
                     if (prefer_Qt)
                         p = "qt;wry;electron;chrome-app;firefox;browser";
