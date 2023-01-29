@@ -422,7 +422,7 @@ callback_cmd(struct lws *wsi, enum lws_callback_reasons reason,
             opts->cwd = cwd;
             free(env);
             process_options(argc, argv, opts);
-            int ret = handle_command(argc-optind, argv+optind, wsi, opts);
+            int ret = handle_command(argc-optind, argv+optind, opts);
             if (ret == EXIT_WAIT) {
                 // request_enter(opts);
             } else {

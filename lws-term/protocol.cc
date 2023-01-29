@@ -2515,8 +2515,7 @@ display_pipe_session(struct options *options, struct pty_client *pclient)
     return tclient;
 }
 
-int new_action(int argc, arglist_t argv,
-               struct lws *wsi, struct options *opts)
+int new_action(int argc, arglist_t argv, struct options *opts)
 {
     int skip = argc == 0 || index(argv[0], '/') != NULL ? 0 : 1;
     if (skip == 1) {
@@ -2542,7 +2541,7 @@ int new_action(int argc, arglist_t argv,
     return r;
 }
 
-int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+int attach_action(int argc, arglist_t argv, struct options *opts)
 {
     bool is_reattach = argc > 0 && strcmp(argv[0], REATTACH_COMMAND) == 0;
     optind = 1;
@@ -2596,7 +2595,7 @@ int attach_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
     return display_session(opts, pclient, nullptr, dterminal_window);
 }
 
-int browse_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+int browse_action(int argc, arglist_t argv, struct options *opts)
 {
     optind = 1;
     // FIXME - note process_options looks for 'foo=value' which can be in URLs
@@ -2845,7 +2844,7 @@ handle_remote(int argc, arglist_t argv, struct options *opts, struct tty_client 
 #endif
 
 int
-handle_command(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+handle_command(int argc, arglist_t argv, struct options *opts)
 {
     lwsl_notice("handle_command %s (%s)\n",
                 argc == 0 ? "(default-new)" :argv[0],
@@ -2860,12 +2859,12 @@ handle_command(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
     int ret = 0;
     if (command != NULL) {
         lwsl_notice("handle command '%s'\n", command->name);
-        ret = (*command->action)(argc, argv, wsi, opts);
+        ret = (*command->action)(argc, argv, opts);
     } else if (strchr(argv0, '@') != NULL || strncmp(argv0, "ssh://", 6) == 0) {
         handle_remote(argc, argv, opts, NULL);
         ret = EXIT_WAIT;
     } else if (argc == 0 || strchr(argv0, '/') != NULL) {
-        ret = new_action(argc, argv, wsi, opts);
+        ret = new_action(argc, argv, opts);
     } else {
         // normally caught earlier
         printf_error(opts, "domterm: unknown command '%s'", argv[0]);

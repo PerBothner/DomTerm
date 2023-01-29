@@ -437,8 +437,7 @@ extern char *get_bin_relative_path(const char* app_path);
 const char *domterm_settings_default(void);
 extern bool is_WindowsSubsystemForLinux(void);
 extern bool is_SwayDesktop(void);
-extern int handle_command(int argc, arglist_t argv, struct lws *wsi,
-                          struct options *opts);
+extern int handle_command(int argc, arglist_t argv, struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
                            const char *, enum window_kind);
 extern struct tty_client *display_pipe_session(struct options *, struct pty_client *);
@@ -547,8 +546,7 @@ extern struct resource resources[];
  * The return value should be one of EXIT_SUCCESS, EXIT_FAILURE,
  * or EXIT_IN_SERVER (if executed by command).
  */
-typedef int (*action_t)(int argc, arglist_t argv, struct lws *wsi,
-                        struct options *opts);
+typedef int (*action_t)(int argc, arglist_t argv, struct options *opts);
 
 struct command {
   const char *name;
@@ -557,11 +555,11 @@ struct command {
 };
 
 extern struct command * find_command(const char *name);
-extern int attach_action(int, arglist_t, struct lws *, struct options *);
-extern int browse_action(int, arglist_t, struct lws *, struct options *);
-extern int view_saved_action(int, arglist_t, struct lws *, struct options *);
-extern int help_action(int, arglist_t, struct lws *, struct options *);
-extern int new_action(int, arglist_t, struct lws *, struct options *);
+extern int attach_action(int, arglist_t, struct options *);
+extern int browse_action(int, arglist_t, struct options *);
+extern int view_saved_action(int, arglist_t, struct options *);
+extern int help_action(int, arglist_t, struct options *);
+extern int new_action(int, arglist_t, struct options *);
 extern void print_version(FILE*);
 extern void print_help(FILE*);
 extern bool check_server_key(struct lws *wsi, const char *arg);

@@ -136,8 +136,7 @@ int check_single_window_option(const std::string& woption,
     return *windows.begin();
 }
 
-int is_domterm_action(int argc, arglist_t argv, struct lws *wsi,
-                      struct options *opts)
+int is_domterm_action(int argc, arglist_t argv, struct options *opts)
 {
     return probe_domterm(false) > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -178,7 +177,7 @@ static void print_base_element(const char*base_url, struct sbuf *sbuf)
     }
 }
 
-int simple_window_action(int argc, arglist_t argv, struct lws *wsi,
+int simple_window_action(int argc, arglist_t argv,
                          struct options *opts, const char *cmd,
                          const char *seq, const char *default_window)
 {
@@ -213,8 +212,7 @@ void send_request(json& request, const char *cmd,
     request_enter(opts, tclient);
 }
 
-int html_action(int argc, arglist_t argv, struct lws *wsi,
-                struct options *opts)
+int html_action(int argc, arglist_t argv, struct options *opts)
 {
     bool is_hcat = argc > 0 && strcmp(argv[0], "hcat") == 0;
     if (opts == main_options) // client mode
@@ -320,8 +318,7 @@ int html_action(int argc, arglist_t argv, struct lws *wsi,
     return ret;
 }
 
-int imgcat_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int imgcat_action(int argc, arglist_t argv, struct options *opts)
 {
     check_domterm(opts);
     int asize = 0;
@@ -431,8 +428,7 @@ await_close(const char *close_response, struct tty_client *tclient,
     opts->close_response = strdup(close_response);
 }
 
-int await_action(int argc, arglist_t argv, struct lws *wsi,
-                 struct options *opts)
+int await_action(int argc, arglist_t argv, struct options *opts)
 {
     std::string woption = opts->windows;
     json request;
@@ -517,8 +513,7 @@ int await_action(int argc, arglist_t argv, struct lws *wsi,
 }
 
 
-int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
-                            struct options *opts)
+int print_stylesheet_action(int argc, arglist_t argv, struct options *opts)
 {
     if (argc != 2) {
         printf_error(opts, argc < 2
@@ -538,8 +533,7 @@ int print_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_WAIT;
 }
 
-int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
-                            struct options *opts)
+int list_stylesheets_action(int argc, arglist_t argv, struct options *opts)
 {
     std::string option = opts->windows;
     if (option.empty())
@@ -552,8 +546,7 @@ int list_stylesheets_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_WAIT;
 }
 
-int load_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
-                           struct options *opts)
+int load_stylesheet_action(int argc, arglist_t argv, struct options *opts)
 {
     if (argc != 3) {
         printf_error(opts, argc < 3
@@ -620,20 +613,17 @@ int maybe_disable_stylesheet(bool disable, int argc, arglist_t argv,
     return EXIT_WAIT;
 }
 
-int enable_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
-                             struct options *opts)
+int enable_stylesheet_action(int argc, arglist_t argv, struct options *opts)
 {
     return maybe_disable_stylesheet(false, argc, argv, opts);
 }
 
-int disable_stylesheet_action(int argc, arglist_t argv, struct lws *wsi,
-                             struct options *opts)
+int disable_stylesheet_action(int argc, arglist_t argv, struct options *opts)
 {
     return maybe_disable_stylesheet(true, argc, argv, opts);
 }
 
-int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
-                            struct options *opts)
+int add_stylerule_action(int argc, arglist_t argv, struct options *opts)
 {
     std::set<int> windows;
     std::string option = opts->windows;
@@ -652,8 +642,7 @@ int add_stylerule_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
-                   struct options *opts)
+int do_keys_action(int argc, arglist_t argv, struct options *opts)
 {
     std::set<int> windows;
     std::string woption = opts->windows;
@@ -745,7 +734,7 @@ int do_keys_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int list_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+int list_action(int argc, arglist_t argv, struct options *opts)
 {
     int nclients = 0;
     FILE *out = fdopen(dup(opts->fd_out), "w");
@@ -1006,7 +995,7 @@ static bool status_by_connection(FILE *out, int verbosity)
     return nclients + nsessions > 0;
 }
 
-int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+int status_action(int argc, arglist_t argv, struct options *opts)
 {
     int verbosity = 0;
     bool by_session = false;
@@ -1040,7 +1029,7 @@ int status_action(int argc, arglist_t argv, struct lws *wsi, struct options *opt
     return EXIT_SUCCESS;
 }
 
-int kill_server_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+int kill_server_action(int argc, arglist_t argv, struct options *opts)
 {
     if (opts == main_options) { // client mode
         printf_error(opts, "no domterm server found");
@@ -1051,14 +1040,14 @@ int kill_server_action(int argc, arglist_t argv, struct lws *wsi, struct options
     return EXIT_SUCCESS;
 }
 
-int connect_frontend_action(int argc, arglist_t argv, struct lws *wsi, struct options *opts)
+int connect_frontend_action(int argc, arglist_t argv, struct options *opts)
 {
     int app_number = -1;
     if (argc >= 2)
         sscanf(argv[1], "%d", &app_number);
     for (browser_cmd_client *cclient = browser_cmd_clients.first();
          cclient != nullptr; cclient = browser_cmd_clients.next(cclient)) {
-        if (cclient->app_number == app_number && wsi != nullptr) {
+        if (cclient->app_number == app_number) {
             int sockfd = opts->fd_cmd_socket;
             lws_sock_file_fd_type fd;
             fd.filefd = opts->fd_cmd_socket;
@@ -1074,8 +1063,7 @@ int connect_frontend_action(int argc, arglist_t argv, struct lws *wsi, struct op
     return EXIT_SUCCESS;
 }
 
-int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int view_saved_action(int argc, arglist_t argv, struct options *opts)
 {
     optind = 1;
     process_options(argc, argv, opts);
@@ -1121,8 +1109,7 @@ int view_saved_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int freshline_action(int argc, arglist_t argv, struct lws *wsi,
-                         struct options *opts)
+int freshline_action(int argc, arglist_t argv, struct options *opts)
 {
     check_domterm(opts);
     const char *cmd = "\033[20u";
@@ -1131,8 +1118,7 @@ int freshline_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int settings_action(int argc, arglist_t argv, struct lws *wsi,
-                         struct options *opts)
+int settings_action(int argc, arglist_t argv, struct options *opts)
 {
     if (opts->doing_complete) {
         if (argc > 1) {
@@ -1180,8 +1166,7 @@ int settings_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
-                         struct options *opts)
+int reverse_video_action(int argc, arglist_t argv, struct options *opts)
 {
     if (argc > 2) {
         printf_error(opts, "too many arguments to reverse-video");
@@ -1195,14 +1180,13 @@ int reverse_video_action(int argc, arglist_t argv, struct lws *wsi,
         return EXIT_FAILURE;
     }
     const char *cmd = on ? URGENT_WRAP("\033[?5h") : URGENT_WRAP("\033[?5l");
-    return simple_window_action(argc, argv, wsi, opts,
+    return simple_window_action(argc, argv, opts,
                                 "reverse-video",
                                 cmd,
                                 ".");
 }
 
-int complete_action(int argc, arglist_t argv, struct lws *wsi,
-                    struct options *opts)
+int complete_action(int argc, arglist_t argv, struct options *opts)
 {
     if (argc != 6)
         return EXIT_FAILURE;
@@ -1239,7 +1223,7 @@ int complete_action(int argc, arglist_t argv, struct lws *wsi,
         if (command && (command->options & COMMAND_HANDLES_COMPLETION) != 0) {
             copts.doing_complete = true;
             return (command->action)(before_argc+1-optind, before_argv+optind,
-                                     NULL, &copts);
+                                     &copts);
         }
     }
 
@@ -1267,8 +1251,7 @@ int complete_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int capture_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int capture_action(int argc, arglist_t argv, struct options *opts)
 {
     json request;
     optind = 1;
@@ -1314,26 +1297,23 @@ int capture_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_WAIT;
 }
 
-int close_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int close_action(int argc, arglist_t argv, struct options *opts)
 {
-    return simple_window_action(argc, argv, wsi, opts,
+    return simple_window_action(argc, argv, opts,
                                 "close",
                                 URGENT_WRAP("\033]97;detach\007"),
                                 ".");
 }
 
-int detach_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int detach_action(int argc, arglist_t argv, struct options *opts)
 {
-    return simple_window_action(argc, argv, wsi, opts,
+    return simple_window_action(argc, argv, opts,
                                 "detach",
                                 URGENT_WRAP("\033]97;detach\007"),
                                 ".");
 }
 
-int set_window_name_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int set_window_name_action(int argc, arglist_t argv, struct options *opts)
 {
     const char *cmd = argc > 0 ? argv[0] : "set-window-name";
     if (argc != 2) {
@@ -1356,8 +1336,7 @@ int set_window_name_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int fullscreen_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int fullscreen_action(int argc, arglist_t argv, struct options *opts)
 {
     const char *subarg = argc >= 2 ? argv[1] : NULL;
     const char *seq;
@@ -1373,30 +1352,27 @@ int fullscreen_action(int argc, arglist_t argv, struct lws *wsi,
                      subarg);
         return EXIT_FAILURE;
     }
-    return simple_window_action(argc, argv, wsi, opts,
+    return simple_window_action(argc, argv, opts,
                                 "fullscreen", seq, "^");
 }
 
-int hide_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int hide_action(int argc, arglist_t argv, struct options *opts)
 {
-    return simple_window_action(argc, argv, wsi, opts,
+    return simple_window_action(argc, argv, opts,
                                 "hide",
                                 URGENT_WRAP("\033[2;72t"),
                                 "^");
 }
 
-int minimize_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int minimize_action(int argc, arglist_t argv, struct options *opts)
 {
-    return simple_window_action(argc, argv, wsi, opts,
+    return simple_window_action(argc, argv, opts,
                                 "minimize",
                                 URGENT_WRAP("\033[2t"),
                                 "^");
 }
 
-int send_input_action(int argc, arglist_t argv, struct lws *wsi,
-                      struct options *opts)
+int send_input_action(int argc, arglist_t argv, struct options *opts)
 {
     const char *session_specifier = nullptr;
     const char *close_response = nullptr;
@@ -1484,32 +1460,29 @@ int send_input_action(int argc, arglist_t argv, struct lws *wsi,
     return EXIT_SUCCESS;
 }
 
-int show_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int show_action(int argc, arglist_t argv, struct options *opts)
 {
-    return simple_window_action(argc, argv, wsi, opts,
+    return simple_window_action(argc, argv, opts,
                                 "show",
                                 URGENT_WRAP("\033[1t"),
                                 "^");
 }
 
-int toggle_hide_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int toggle_hide_action(int argc, arglist_t argv, struct options *opts)
 {
     if (NO_TCLIENTS) {
         static char** no_args = { NULL };
-        return new_action(0, no_args, wsi, opts);
+        return new_action(0, no_args, opts);
     }
     const char *cmd = argv[0];
     bool minimize = strcmp(cmd, "toggle-minimize") == 0;
     const char *seq = minimize ? URGENT_WRAP("\033[2;73t")
         : URGENT_WRAP("\033[2;74t");
-    return simple_window_action(argc, argv, wsi, opts, cmd, seq, "^");
+    return simple_window_action(argc, argv, opts, cmd, seq, "^");
 }
 
 // deprecated - used -w/--window option instead
-int window_action(int argc, arglist_t argv, struct lws *wsi,
-                  struct options *opts)
+int window_action(int argc, arglist_t argv, struct options *opts)
 {
     if (! opts->windows.empty()) {
         printf_error(opts, "domterm window (deprecated): -w option specified");
@@ -1543,7 +1516,7 @@ int window_action(int argc, arglist_t argv, struct lws *wsi,
     int wspec_count = i - first_window_number;
     const char *subcommand = argc >= i ? argv[i] : NULL;
     opts->windows = woptions;
-    return handle_command(argc-i, argv+i, wsi, opts);
+    return handle_command(argc-i, argv+i, opts);
 }
 
 struct command commands[] = {

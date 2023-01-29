@@ -912,7 +912,7 @@ main(int argc, char **argv)
                 return EXIT_FAILURE;
             }
         }
-        exit((*command->action)(argc-optind, (arglist_t)argv+optind, NULL, &opts));
+        exit((*command->action)(argc-optind, (arglist_t)argv+optind, &opts));
     }
     if (socket >= 0) {
         exit(client_send_command(socket, argc, argv, environ));
@@ -1013,7 +1013,7 @@ main(int argc, char **argv)
     } else {
         opts.cwd = getcwd(NULL, 0);
         opts.env = copy_strings((const char*const*) environ);
-        ret = handle_command(argc-optind, (arglist_t)argv+optind, NULL, &opts);
+        ret = handle_command(argc-optind, (arglist_t)argv+optind, &opts);
         if (ret == EXIT_FAILURE)
             exit(ret);
     }
