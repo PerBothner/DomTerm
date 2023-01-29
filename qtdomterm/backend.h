@@ -20,8 +20,6 @@ public:
     explicit Backend(QSharedDataPointer<ProcessOptions> processOptions,
                      QObject *parent = 0);
     ~Backend();
-    void setInputMode(char mode);
-    void requestChangeCaret(bool);
 
     ProcessOptions* processOptions();
     WebView *webView() const { return (WebView*)parent(); }
@@ -42,8 +40,6 @@ signals:
     void finished();
     void logToBrowserConsole(const QString& text);
     void handleSimpleCommand(const QString& msg);
-    void writeInputMode(int mode);
-    void writeSetCaretStyle(int style);
     void writeEncoded(int nbytes, const QString &encodedBytes);
     void writeOperatingSystemControl(int code, const QString& text);
     void reportEventToServer(const QString& name, const QString& data);

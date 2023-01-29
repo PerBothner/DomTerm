@@ -109,11 +109,8 @@ public:
     BrowserApplication *application();
     int windowNumber() const { return m_windowNumber; }
     void setPage(WebPage *page);
-    bool blockCaret() { return m_blockCaret; }
-    void setBlockCaret(bool set) { m_blockCaret = set; }
     void setPaneZoom(qreal zoom);
 
-    QAction *changeCaretAction() const { return m_changeCaretAction; }
     void showContextMenu(const QString& contextMenuAsJson);
     void loadUrl(const QUrl &url);
     QUrl url() const;
@@ -127,7 +124,6 @@ public:
     inline int progress() const { return m_progress; }
 public slots:
     QString generateSaveFileName();
-    void requestChangeCaret(bool);
     void setSetting(const QString& key, const QString& value);
 signals:
     void finished();
@@ -144,9 +140,6 @@ private slots:
     void setProgress(int progress);
     void loadFinished(bool success);
     void onIconChanged(const QIcon &icon);
-    void slotOpenLink();
-    void slotCopyLinkAddress();
-    void slotCopyInContext();
 
 private:
     friend class BrowserApplication;
@@ -158,11 +151,6 @@ private:
     int m_progress;
     WebPage *m_page;
     Backend *m_backend;
-    bool m_blockCaret;
-    QAction *m_changeCaretAction;
-    QAction *m_openAction;
-    QAction *m_copyLinkAddress;
-    QAction *m_copyInContext;
     qreal paneZoom = 1.0;
 };
 

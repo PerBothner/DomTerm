@@ -73,16 +73,6 @@ int Backend::windowNumber() const
     return webView()->windowNumber();
 }
 
-void Backend::setInputMode(char mode)
-{
-    emit writeInputMode((int) mode);
-}
-
-void Backend::requestChangeCaret(bool set)
-{
-    emit writeSetCaretStyle(set ? 1 : 5);
-}
-
 void Backend::close()
 {
     _wantedClose = true;

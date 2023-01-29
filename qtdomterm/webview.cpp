@@ -241,7 +241,6 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
     , m_windowNumber(windowNumber)
     , m_progress(0)
     , m_page(0)
-    , m_blockCaret(true)
 {
     connect(this, SIGNAL(loadProgress(int)),
             this, SLOT(setProgress(int)));
@@ -267,20 +266,6 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
 
         qInfo() << "Render process exited with code" << statusCode << status;
     });
-
-    m_changeCaretAction = new QAction(tr("Block caret (char mode only)"), this);
-    m_changeCaretAction->setCheckable(true);
-    connect(m_changeCaretAction, SIGNAL(triggered(bool)), this, SLOT(requestChangeCaret(bool)));
-    m_openAction = new QAction(tr("Open Link"), this);
-    connect(m_openAction, &QAction::triggered,
-	    this,  &WebView::slotOpenLink);
-    m_copyLinkAddress = new QAction(tr("Copy Link Address"), this);
-    connect(m_copyLinkAddress, &QAction::triggered,
-	    this, &WebView::slotCopyLinkAddress);
-    m_copyInContext = new QAction(tr("&Copy"), this);
-    m_copyInContext->setShortcut(QKeySequence(Qt::CTRL|Qt::SHIFT|Qt::Key_C));
-    connect(m_copyInContext, &QAction::triggered,
-	    this, &WebView::slotCopyInContext);
 }
 
 void WebView::setPage(WebPage *_page)
@@ -317,12 +302,6 @@ QString WebView::generateSaveFileName() // FIXME
     char buf[100];
     snprintf(buf, sizeof(buf), "domterm-saved-%d.html", mainWindow()->application()->getSaveFileCount());
     return QString(buf);
-}
-
-void WebView::requestChangeCaret(bool set)
-{
-    m_backend->requestChangeCaret(set);
-    this->setBlockCaret(set);
 }
 
 void WebView::showContextMenu(const QString& contextMenuAsJson)
@@ -436,20 +415,6 @@ void WebView::displayContextMenu(const QString& menuAsJson)
     QJsonDocument menuDocument = QJsonDocument::fromJson(menuAsJson.toUtf8());
     jsonToMenu(menuDocument.array(), menu, nullptr, app);
     menu->popup(window->contextMenuPosition);
-}
-
-void WebView::slotOpenLink()
-{
-    emit backend()->handleSimpleCommand("open-link");
-}
-
-void WebView::slotCopyLinkAddress()
-{
-    emit backend()->handleSimpleCommand("copy-link-address");
-}
-void WebView::slotCopyInContext()
-{
-    emit backend()->handleSimpleCommand("copy-in-context");
 }
 
 void WebView::wheelEvent(QWheelEvent *event)

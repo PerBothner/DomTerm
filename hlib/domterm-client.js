@@ -198,9 +198,6 @@ function setupQWebChannel(channel) {
         if (dt)
             dt.handleOperatingSystemControl(code, text);
     });
-    backend.writeInputMode.connect(function(mode) {
-        DomTerm.setInputMode(mode);
-    });
     backend.forwardToParentWindow.connect((wnum, command, jargs) => {
         handleMessageFromChild(wnum, command, JSON.parse(jargs));
     });

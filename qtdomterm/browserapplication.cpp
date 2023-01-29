@@ -422,7 +422,6 @@ void BrowserApplication::initMenubar(BrowserMainWindow *window)
                                             "input-mode-cycle",
                                             QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_L)));
     terminalMenu->addAction(togglePagingAction);
-    //terminalMenu->addAction(webView()->changeCaretAction());
     terminalMenu->addMenu(newTerminalMenu);
     terminalMenu->addAction(detachAction);
 
