@@ -6,6 +6,12 @@ DomTerm.logToServer = false;
 DomTerm.logStringMax = 200;
 DomTerm._savedLogEntries = null;
 DomTerm._mainWindowNumber = -1;
+DomTerm.useDragAndDrop = true;
+DomTerm.copyForDragImage = DomTerm.useDragAndDrop;
+DomTerm.useSeparateContentChild = function() {
+    return DomTerm.copyForDragImage && ! DomTerm.useToolkitSubwindow
+        && DomTerm.subwindows;
+}
 
 // Whole-window zoom set by settings
 DomTerm.zoomMainBase = 1.0;
@@ -459,10 +465,10 @@ DomTerm.setWindowFocused = function(focused, fromChild, windowNumber) {
             document.body.classList.add("focused");
         } else {
             document.body.classList.remove("focused");
-            if (DomTerm._layout && DomTerm._layout.manager)
-                DomTerm._layout.manager.clearComponentFocus(true);
         }
-        DomTerm.focusedChanged = true;
+        if (DomTerm.focusedChild && DomTerm.useToolkitSubwindows && windowNumber > 0) {
+            DomTerm._qtBackend.focusPane(windowNumber);
+        }
     }
 }
 
@@ -509,12 +515,7 @@ DomTerm.makeIFrameWrapper = function(location, mode='T',
     ifr.setAttribute("class", "domterm-wrapper");
     if (DomTerm._oldFocusedContent == null)
         DomTerm._oldFocusedContent = ifr;
-    for (let ch = parent.firstChild; ; ch = ch.nextSibling) {
-        if (ch == null || ch.tagName != "IFRAME") {
-            parent.insertBefore(ifr, ch);
-            break;
-        }
-    }
+    parent.appendChild(ifr);
     return ifr;
 }
 

@@ -1,6 +1,7 @@
 /** Manage front-ends (browser applications) for DomTerm. */
    
 #include "server.h"
+#include <regex>
 
 static std::string current_geometry;
 /** Returns a fresh copy of the (non-empty) geometry string, or NULL. */
@@ -325,8 +326,20 @@ browser_run_json_options(struct options *options, const char *url, int wnum)
     json jobj;
     jobj["url"] = url;
     const char *geometry = geometry_option(options);
-    if (geometry)
-        jobj["geometry"] = geometry;
+    if (geometry) {
+        std::string geom = geometry;
+        std::regex position_rx("^(.*)([-+][0-9]+[-+][0-9]+)$");
+        std::smatch match;
+        if (std::regex_match(geom, match, position_rx)) {
+            jobj["position"] = match[2].str();
+            geom = match[1].str();
+        }
+        std::regex size_rx("^([0-9]+)x([0-9]+)$");
+        if (std::regex_match(geom, match, size_rx)) {
+            jobj["width"] = strtol(match[1].str().c_str(), nullptr, 10);
+            jobj["height"] = strtol(match[2].str().c_str(), nullptr, 10);
+        }
+    }
     if (options->headless)
         jobj["headless"] = true;
     std::string titlebar = get_setting_s(options->settings, "titlebar");

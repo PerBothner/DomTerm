@@ -1756,16 +1756,18 @@ reportEvent(const char *name, char *data, size_t dlen,
         }
     } else if (strcmp(name, "DRAG") == 0) {
         bool dstart = false, dend = false;
-        int enter_or_leave = -1;
+        int enter_or_leave_or_drop = -1;
         int wnum = client->connection_number;
         if (strcmp(data, "start") == 0)
             dstart = true;
         else if (strcmp(data, "end") == 0)
             dend = true;
         else if (strcmp(data, "enter-window") == 0)
-            enter_or_leave = 0;
+            enter_or_leave_or_drop = 4;
         else if (strcmp(data, "leave-window") == 0)
-            enter_or_leave = 1;
+            enter_or_leave_or_drop = 5;
+        else if (strcmp(data, "drop") == 0)
+            enter_or_leave_or_drop = 6;
         if (dstart || dend) {
             FOREACH_MAIN_WINDOW(tother) {
                 if (tother->main_window == 0 && tother != client && tother->out_wsi) {
@@ -1776,14 +1778,13 @@ reportEvent(const char *name, char *data, size_t dlen,
             }
             drag_start_window = dstart ? wnum : -1;
         }
-        if (enter_or_leave >= 0) {
+        if (enter_or_leave_or_drop >= 0 && drag_start_window != wnum) {
             current_dragover_window =
-                enter_or_leave == 0 ? client->connection_number : -1;
+                enter_or_leave_or_drop == 4 ? client->connection_number : -1;
             struct tty_client *dclient = main_windows(drag_start_window);
             if (dclient && dclient->out_wsi) {
                  printf_to_browser(dclient, URGENT_WRAP("\033[106;%dt"),
-                                   // enter: 4; leave: 5
-                                   4 + enter_or_leave);
+                                   enter_or_leave_or_drop);
                 lws_callback_on_writable(dclient->out_wsi);
             }
         }

@@ -212,10 +212,10 @@ DomTermLayout._selectLayoutPane = function(component, originMode/*unused*/) {
     DomTerm.focusedWindowNumber = Number(component.id) || 0;
 }
 
-DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
+DomTermLayout.popoutWindow = function(item, screenX, screenY) {
     const wholeStack = item.type == 'stack';
     // True if dropped to desktop; false if popout-button clicked
-    const dragged = !!fromLayoutEvent;
+    const dragged = typeof screenX === "number";
     let bodyZoom = Number(window.getComputedStyle(document.body)['zoom']);
     const zoom = (window.devicePixelRatio || 1.0)
           * (bodyZoom || 1.0);
@@ -229,7 +229,9 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
 
     function encode(item) {
         const itemConfig = item.toConfig();
-        const wnum = itemConfig?.componentState?.windowNumber;
+        const cstate = itemConfig?.componentState;
+        const wnum = cstate?.windowNumber;
+        const snum = cstate?.sessionNumber;
         DomTerm.mainTerm.reportEvent("DETACH-WINDOW", item.id);
         if (DomTerm.useToolkitSubwindows) {
             if (! dragged) {
@@ -242,7 +244,9 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
             DomTerm.closeSession(item.container.paneInfo, "export", dragged);
         if (wnum && ! options.windowNumber)
             options.windowNumber = wnum;
-        if (! DomTerm.useToolkitSubwindows && wnum
+        if (snum && ! options.sessionNumber)
+            options.sessionNumber = snum;
+       if (! DomTerm.useToolkitSubwindows && wnum
             && item.componentType == "domterm") {
             DomTermLayout._pendingPopoutComponents++;
         }
@@ -258,11 +262,9 @@ DomTermLayout.popoutWindow = function(item, fromLayoutEvent = false) {
         e.push(encode(item));
     }
 
-    if (fromLayoutEvent instanceof DragEvent
-        && fromLayoutEvent.screenX >= 0
-        && fromLayoutEvent.screenY >= 0) {
-        const wX = fromLayoutEvent.screenX - DomTermLayout.dragStartOffsetX;
-        const wY = fromLayoutEvent.screenY - DomTermLayout.dragStartOffsetY;
+    if (dragged && screenX >= 0 && screenY >= 0) {
+        const wX = screenX - DomTermLayout.dragStartOffsetX;
+        const wY = screenY - DomTermLayout.dragStartOffsetY;
         options.position = `+${Math.round(wX)}+${Math.round(wY)}`;
     }
     DomTermLayout._pendingPopoutOptions = options;
@@ -287,7 +289,8 @@ DomTermLayout.popinWindow = function(minifiedWindowConfig) {
 DomTermLayout.config = {
     settings:  { showMaximiseIcon: false,
                  reorderOnTabMenuClick: false,
-                 useDragAndDrop: true,
+                 useDragAndDrop: DomTerm.useDragAndDrop,
+                 copyForDragImage: DomTerm.useDragAndDrop,
                  checkGlWindowKey: false,
                },
     content: [{
@@ -321,14 +324,14 @@ DomTermLayout.layoutClose = function(lcontent, windowNumber, from_handler=false)
         DomTermLayout.selectNextPane(true, windowNumber);
         r.remove();
     }
-    if (DomTermLayout.manager.root.contentItems.length == 0)
-        DomTerm.windowClose();
     DomTermLayout._pendingPopoutComponents--;
     if (DomTermLayout._pendingPopoutOptions && DomTerm.mainTerm
         && ! DomTermLayout._pendingPopoutComponents) {
         DomTerm.mainTerm.reportEvent("OPEN-WINDOW", JSON.stringify(DomTermLayout._pendingPopoutOptions));
         DomTermLayout._pendingPopoutOptions = undefined;
     }
+    if (DomTermLayout.manager.root.contentItems.length == 0)
+        DomTerm.windowClose();
     if (lcontent) {
         if (lcontent.parentNode instanceof Element
             && lcontent.parentNode.classList.contains("lm_component"))
@@ -359,7 +362,13 @@ DomTermLayout.onLayoutClosed = function(container) {
 }
 //DomTermLayout.inSomeWindow = false;
 DomTermLayout.dragNotificationFromServer = function(entering) {
-    DomTermLayout.manager.inSomeWindow = entering;
+    DomTermLayout.manager.enterOrLeaveSomeWindow(entering);
+    if (! entering && this.delayedDragEndTimer) {
+        clearTimeout(this.delayedDragEndTimer);
+        (this.delayedDragEndFunction)();
+        this.delayedDragEndFunction = undefined;
+        this.delayedDragEndTimer = undefined;
+    }
 };
 
 DomTermLayout._lastPaneNumber = 0;
@@ -477,16 +486,19 @@ DomTermLayout.updateContentSize = function(pane) {
     if (contentElement instanceof HTMLElement
         && item.parent.type === 'stack') {
         const stackElement = item.parentItem.element;
-        const stackBounds = stackElement.getBoundingClientRect();
+        let stackBounds;
         const itemElement = item.element;
         const itemBounds = itemElement.getBoundingClientRect();
         const layoutBounds = DomTermLayout.manager.container.getBoundingClientRect();
         if (componentElement instanceof HTMLElement
             && contentElement !== componentElement) {
+            stackBounds = stackElement.getBoundingClientRect();
             componentElement.style.top = `${(stackBounds.top - layoutBounds.top) / mainZoom}px`;
             componentElement.style.left = `${(stackBounds.left - layoutBounds.left) / mainZoom}px`;
             componentElement.style.width = `${stackBounds.width / itemZoom}px`;
             componentElement.style.height = `${stackBounds.height / itemZoom}px`;
+        } else {
+            stackBounds = layoutBounds;
         }
         contentElement.style.position = "absolute";
         contentElement.style.top = `${(itemBounds.top - stackBounds.top) / mainZoom}px`;
@@ -519,8 +531,9 @@ DomTermLayout.initialize = function(initialContent = null) {
     DomTermLayout.manager = lmanager;
     let lastContainer = null;
 
-    DomTermLayout.manager.createContainerElement = (manager, config) => {
-        if (DomTerm.useToolkitSubwindows) {
+    DomTermLayout.manager.createContainerElement = (manager, config, item) => {
+        if (DomTerm.useToolkitSubwindows
+            || ! DomTerm.useSeparateContentChild()) {
             return undefined;
         }
         let element;
@@ -536,7 +549,7 @@ DomTermLayout.initialize = function(initialContent = null) {
     };
     DomTermLayout.manager.popoutClickHandler = (stack, event) => {
         if (event.ctrlKey) {
-            DomTermLayout.popoutWindow(stack, event);
+            DomTermLayout.popoutWindow(stack);
         } else {
             DomTermLayout.popoutWindow(stack.getActiveComponentItem());
         }
@@ -609,13 +622,24 @@ DomTermLayout.initialize = function(initialContent = null) {
 
         componentConfig.initialized = true;
 
-        container.on("dragExported", (event, component) => {
+        container.on("dragMoved", (screenX, screenY, component) => {
+            const wX = screenX - DomTermLayout.dragStartOffsetX;
+            const wY = screenY - DomTermLayout.dragStartOffsetY;
+            if (DomTerm.isElectron())
+                electronAccess.ipcRenderer.send("move-window",
+                                                { x: Math.round(wX), y: Math.round(wY)} );
+            else if (DomTerm.versions.wry)
+                ipc.postMessage(`move-window +${Math.round(wX)}+${Math.round(wY)}`);
+            else if (DomTerm._qtBackend)
+                DomTerm._qtBackend.moveMainWindow(Math.round(wX), Math.round(wY));
+        });
+        container.on("dragExported", (screenX, screenY, component) => {
             if (DomTermLayout.manager.inSomeWindow) {
                 DomTerm.mainTerm.reportEvent("DETACH-WINDOW", component.id);
                 if (! DomTerm.useToolkitSubwindows)
                     DomTerm.closeSession(component.container.paneInfo, "export", true);
             } else {
-                DomTermLayout.popoutWindow(component, event);
+                DomTermLayout.popoutWindow(component, screenX, screenY);
             }
         });
 
@@ -626,7 +650,7 @@ DomTermLayout.initialize = function(initialContent = null) {
             ).observe(top);
         }
         container.wrapped = wrapped;
-        return undefined;
+        return DomTerm.useSeparateContentChild() ? undefined : wrapped;
     }
 
     DomTermLayout.manager.registerComponent( 'domterm', registerComponent);
@@ -702,9 +726,12 @@ DomTermLayout.initialize = function(initialContent = null) {
     DomTermLayout.manager.on('dragstart',
                              (ev, item) => {
                                  const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
-                                 const clientRect = item.element.getBoundingClientRect();
-                                 DomTermLayout.dragStartOffsetX = ev.clientX - clientRect.left;
-                                 DomTermLayout.dragStartOffsetY = ev.clientY - clientRect.top;
+                                 const ratio = window.devicePixelRatio;
+                                 const stackBounds = item.parent.element.getBoundingClientRect();
+                                 DomTermLayout.dragStartOffsetX =
+                                     ratio * (ev.clientX - stackBounds.left);
+                                 DomTermLayout.dragStartOffsetY =
+                                     ratio * (ev.clientY - stackBounds.top);
                                  if (dt)
                                      dt.reportEvent("DRAG", "start");
                                  if (DomTerm.useToolkitSubwindows) {
@@ -712,7 +739,7 @@ DomTermLayout.initialize = function(initialContent = null) {
                                  }
                              });
     DomTermLayout.manager.on('dragend',
-                             (e) => {
+                             () => {
                                  const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
                                  if (dt)
                                      dt.reportEvent("DRAG", "end");
@@ -721,19 +748,17 @@ DomTermLayout.initialize = function(initialContent = null) {
                                  }
                              });
 
-    DomTermLayout.manager.on('drag-enter-window',
-                             (e) => {
-                                 const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
-                                 if (dt)
-                                     dt.reportEvent("DRAG", "enter-window");
-                             });
-
-    DomTermLayout.manager.on('drag-leave-window',
-                             (e) => {
-                                 const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
-                                 if (dt)
-                                     dt.reportEvent("DRAG", "leave-window");
-                             });
+    function onDragEvent(eventName, reportName) {
+        DomTermLayout.manager.on(eventName,
+                                 (e) => {
+                                     const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
+                                     if (dt)
+                                         dt.reportEvent("DRAG", reportName);
+                                 });
+    };
+    onDragEvent('drag-enter-window', 'enter-window');
+    onDragEvent('drag-leave-window', 'leave-window');
+    onDragEvent('drop', 'drop');
 
     document.body.addEventListener("mousedown", _handleLayoutClick, true);
     let root = DomTermLayout.manager.container;

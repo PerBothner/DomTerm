@@ -1278,6 +1278,8 @@ class DTParser {
                             m.manager.draggingInOtherWindow(op==2);
                         else if (op == 4 /*enter*/ || op == 5 /*leave*/)
                             m.dragNotificationFromServer(op==4);
+                        else if (op == 6 /* drop*/)
+                            m.manager.droppedInOtherWindow();
                     }, true);
                     break;
                     }

@@ -218,6 +218,11 @@ ipcMain.on('set-application-menu', (event, template) => {
     Menu.setApplicationMenu(Menu.buildFromTemplate(fixMenuItems(template)));
 });
 
+ipcMain.on('move-window', (event, rect) => {
+    let win = BrowserWindow.fromWebContents(event.sender);
+    win.setBounds(rect);
+})
+
 ipcMain.on('show-context-menu', (event, items, options) => {
     let win = BrowserWindow.fromWebContents(event.sender);
     const menu = Menu.buildFromTemplate(fixMenuItems(items, win));

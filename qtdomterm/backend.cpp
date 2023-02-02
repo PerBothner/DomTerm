@@ -213,6 +213,12 @@ void Backend::setGeometry(int windowNumber, int x, int y, int width, int height)
          pane->setGeometry(x, y, width, height);
     }
 }
+
+void Backend::moveMainWindow(int x, int y)
+{
+    mainWindow()->move(x, y);
+}
+
 void Backend::closePane(int windowNumber)
 {
     mainWindow()->application()->closePane(windowNumber);

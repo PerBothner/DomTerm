@@ -878,7 +878,7 @@ cmd('focus-menubar',
 
 function popoutTab(pane, wholeStack)
 {
-    DomTerm._layout.popoutWindow(wholeStack ? pane.parent : pane, null);
+    DomTerm._layout.popoutWindow(wholeStack ? pane.parent : pane);
     return true;
 }
 

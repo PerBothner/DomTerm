@@ -127,7 +127,6 @@ private slots:
 #if defined(QWEBENGINEPAGE_PRINT)
     void printRequested(QWebEngineFrame *frame);
 #endif
-    void geometryChangeRequested(const QRect &geometry);
     void updateMenubarActionText(bool visible);
 
 private:

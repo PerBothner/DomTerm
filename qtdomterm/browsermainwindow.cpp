@@ -326,8 +326,3 @@ void BrowserMainWindow::slotShowWindow()
 void BrowserMainWindow::slotOpenActionUrl(QAction *)
 {
 }
-
-void BrowserMainWindow::geometryChangeRequested(const QRect &geometry)
-{
-    setGeometry(geometry);
-}

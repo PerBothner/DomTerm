@@ -62,6 +62,7 @@ public slots:
     void setMainZoom(qreal zoom);
     void setPaneZoom(int windowNumber, qreal zoom);
     void setGeometry(int windowNumber, int x, int y, int width, int height);
+    void moveMainWindow(int x, int y);
     void closePane(int windowNumber);
     void sendParentMessage(const QString& command, const QString& args_json);
     void sendChildMessage(int windowNumber, const QString& command, const QString& args_json);

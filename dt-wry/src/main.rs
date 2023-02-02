@@ -70,6 +70,16 @@ fn main() -> wry::Result<()> {
     let mut webviews = HashMap::new();
     let proxy = event_loop.create_proxy();
 
+    fn move_window(position: &str, window: &Window) -> () {
+        let re = Regex::new(r"^([-+][0-9]+)([-+][0-9]+)$").unwrap();
+        if let Some(caps) = re.captures(position) {
+            let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
+            let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
+            // This doesn't work on Wayland.
+            window.set_outer_position(LogicalPosition::new(x, y));
+        }
+    }
+
     fn create_new_window(
         options: &serde_json::Map<String, Value>,
         event_loop: &EventLoopWindowTarget<UserEvents>,
@@ -132,20 +142,16 @@ fn main() -> wry::Result<()> {
             }
         }
         if let Some(Value::String(position)) = options.get("position") {
-            let re = Regex::new(r"^([-+][0-9]+)([-+][0-9]+)$").unwrap();
-            if let Some(caps) = re.captures(position.as_str()) {
-                let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
-                let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
-                // This doesn't seem to do anything, at least on Gtk/Wayland.
-                window.set_outer_position(LogicalPosition::new(x, y));
-            }
+            move_window(position.as_str(), &window);
         }
-
         let window_id = window.id();
         let handler = move |window: &Window, req: String| {
             if let Some((cmd, data)) = req.split_once(' ') {
                 if cmd == "set-title" {
                     window.set_title(data);
+                }
+                if cmd == "move-window" {
+                    move_window(data, window);
                 }
                 if cmd == "new-window" {
                     if let Ok(Value::Object(options)) = serde_json::from_str(data) {

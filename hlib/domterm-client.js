@@ -638,8 +638,7 @@ function loadHandler(event) {
             let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
             let parent = DomTerm.layoutTop;
             // only needed if we might use DnD setDragImage
-            if (! DomTerm.isSubWindow() && ! DomTerm.useToolkitSubwindows
-               && DomTerm.subwindows) {
+            if (! DomTerm.isSubWindow() && DomTerm.useSeparateContentChild()) {
                 const wrapper = document.createElement("div");
                 wrapper.classList.add("domterm-wrapper");
                 parent.appendChild(wrapper);
@@ -705,6 +704,10 @@ DomTerm.handleCommand = function(iframe, command, args) {
 
 function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
 {
+    if (dt == null) {
+        console.log("null dt in handleMessageFromParent "+command);
+        dt = DomTerm.mainTerm;
+    }
     const pane = dt.paneInfo;
     switch (command) {
     case "do-command":
@@ -841,7 +844,7 @@ function handleMessage(event) {
         let wholeStack = data.args[0];
         if (iframe) {
             let pane = DomTermLayout._elementToLayoutItem(iframe);
-            DomTermLayout.popoutWindow(wholeStack ? pane.parent : pane, null);
+            DomTermLayout.popoutWindow(wholeStack ? pane.parent : pane);
         }
     } else if (data.command=="domterm-socket-close") { // message to child
         let dt = DomTerm.focusedTerm;
