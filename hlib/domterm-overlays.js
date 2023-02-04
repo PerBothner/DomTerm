@@ -155,18 +155,18 @@ function showMessageBox(options, callback) {
         popup.removeEventListener('click', clickHandler);
         parent.removeEventListener('keydown', keydownHandler, true);
         popup.parentNode.removeChild(popup);
-        if (DomTerm.useToolkitSubwindows) {
-            DomTerm._qtBackend.lowerOrRaisePanes(true, true);
+        if (DomTerm.apphooks.lowerOrRaisePane) {
+            DomTerm.apphooks.lowerOrRaisePanes(true, true);
             const wnum = DomTerm.focusedWindowNumber;
-            if (wnum > 0)
-                DomTerm._qtBackend.focusPane(wnum);
+            if (wnum > 0 && DomTerm.apphooks.focusPane)
+                DomTerm.apphooks.focusPane(wnum);
         }
     }
     popup.addEventListener('click', clickHandler);
     parent.addEventListener('keydown', keydownHandler, true);
     popup.addEventListener('keydown', keydownHandler, true);
-    if (DomTerm.useToolkitSubwindows)
-        DomTerm._qtBackend.lowerOrRaisePanes(false, true);
+    if (DomTerm.apphooks.lowerOrRaisePanes)
+        DomTerm.apphooks.lowerOrRaisePanes(false, true);
 }
 
 /** Display "About DomTerm" popup.

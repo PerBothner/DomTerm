@@ -504,7 +504,9 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                     browser_specifier = browser_specifier_string.c_str();
                     break;
                 }
-                if (cmd == "electron") {
+                if (cmd == "electron"
+                    || cmd == "electron-widgets"
+                    ) {
                     browser_specifier = electron_command(options, wnum);
                     if (browser_specifier == NULL)
                         error_if_single = "'electron' not found in PATH";
@@ -758,6 +760,10 @@ display_session(struct options *options, struct pty_client *pclient,
         } else if (browser_specifier[0] == 'q' && browser_specifier[1] == 't'
                    && strcmp(browser_specifier, "qt-frames") != 0) {
             subwindows = "qt";
+        } else if (browser_specifier[0] == 'e'
+                   && strcmp(browser_specifier, "electron") != 0
+                   && strcmp(browser_specifier, "electron-frames") != 0) {
+            subwindows = "electron";
         }
     } else if (subwindows == "none")
         subwindows = "no";

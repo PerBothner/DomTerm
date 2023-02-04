@@ -1,4 +1,4 @@
-const {app, ipcMain, BrowserWindow, screen, dialog, Menu} = require('electron')
+const {app, ipcMain, BrowserWindow, BrowserView, screen, dialog, Menu} = require('electron')
 const path = require('path')
 const url = require('url')
 const fs = require('fs')
@@ -58,6 +58,9 @@ function createInitialWindow (argv) {
 var previousUrl = null;
 var previousWidth = 800;
 var previousHeight = 600;
+var viewMap = [];
+var windowMap = [];
+const webPreferences = {contextIsolation: false, worldSafeExecuteJavaScript: false, enableRemoteModule: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js')};
 
 function openNewWindow (url, options, headless) {
     if (! url)
@@ -99,7 +102,7 @@ function createNewWindow (url, options, headless)
     let frame = options.titlebar && options.titlebar === "system";
     let bwoptions = {
         width: w, height: h,
-        webPreferences: {contextIsolation: false, worldSafeExecuteJavaScript: false, enableRemoteModule: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js')},
+        webPreferences: webPreferences,
         useContentSize: true,
         frame: frame, transparent: !frame,
         show: false};
@@ -157,6 +160,16 @@ function eventToWindow(event) {
     return BrowserWindow.fromWebContents(event.sender);
 }
 
+function eventToWindowNumber(event) {
+    const webc = event.sender;
+    for (let i = viewMap.length; --i >= 0; ) {
+        let vi = viewMap[i];
+        if (vi && vi.webContents === webc)
+            return i;
+    }
+    return -1;
+}
+
 function logToBrowserConsole(window, message) { // FOR DEBUGGING
     window.send('log-to-browser-console', message);
 }
@@ -193,6 +206,47 @@ ipcMain.on('window-ops', (event, command, arg) => {
         eventToWindow(event).setMenuBarVisibility(arg);
         break;
     }
+});
+
+ipcMain.on('new-pane', (event, wnum, url) => {
+    let win = eventToWindow(event);
+    const view = new BrowserView({webPreferences: webPreferences});
+    win.addBrowserView(view);
+    viewMap[wnum] = view;
+    windowMap[wnum] = win;
+    view.webContents.loadURL(url);
+});
+
+ipcMain.on('close-pane', (event, wnum) => {
+    let win = eventToWindow(event);
+    const view = viewMap[wnum];
+    win.removeBrowserView(view);
+    view.webContents.close();
+    viewMap[wnum] = undefined;
+    windowMap[wnum] = undefined;
+});
+
+ipcMain.on('adopt-pane', (event, wnum) => {
+    let win = eventToWindow(event);
+    const view = viewMap[wnum];
+    windowMap[wnum].removeBrowserView(view);
+    win.addBrowserView(view);
+});
+
+ipcMain.on('forward-message-to-child', (event, wnum, command, jargs) => {
+    const view = viewMap[wnum];
+    view.webContents.send('from-parent-message', command, jargs);
+});
+
+ipcMain.on('forward-message-to-parent', (event, command, jargs) => {
+    const wnum = eventToWindowNumber(event);
+    windowMap[wnum].send('from-child-message', wnum, command, jargs);
+});
+
+ipcMain.on('set-pane-geometry', (event, wnum, x, y, width, height) => {
+    const view = viewMap[wnum];
+    view.setBounds({ x: Math.round(x), y: Math.round(y),
+                     width: Math.round(width), height: Math.round(height) })
 });
 
 function fixMenuItems(items, win = null) {

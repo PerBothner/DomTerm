@@ -345,7 +345,7 @@ static const char* browser_specifiers[] = {
     // following are generic
     "firefox",
     "browser",
-    "electron",
+    "electron", "electron-widgets",
     "chrome",
     "chrome-app",
     "google-chrome",

@@ -135,7 +135,7 @@ function connectAjax(name, prefix="", topNode=null)
 }
 
 function setupQWebChannel(channel) {
-    var backend = channel.objects.backend;
+    const backend = channel.objects.backend;
     DomTerm._qtBackend = backend;
     if (! DomTerm.usingJsMenus() && ! DomTerm.isSubWindow()) {
         DomTerm.popupMenu = function(cmenu, options) {
@@ -223,12 +223,29 @@ function setupQWebChannel(channel) {
             backend.setWindowTitle(title == null ? "" : title); };
     }
     DomTerm.sendSavedHtml = function(dt, html) { backend.setSavedHtml(html); }
+
+    if (DomTerm.useToolkitSubwindows) {
+        Object.assign(DomTerm.apphooks, {
+            adoptPane: backend.adoptPane,
+            closePane: backend.closePane,
+            focusPane: backend.focusPane,
+            lowerOrRaisePanes: backend.lowerOrRaisePanes,
+            newPane: backend.newPane,
+            sendChildMessage: backend.sendChildMessage,
+            sendParentMessage: (command, args) => {
+                backend.sendParentMessage(command, JSON.stringify(args));
+            },
+            setGeometry: backend.setGeometry,
+            setPaneZoom: backend.setPaneZoom,
+            showPane: backend.showPane
+        });
+    }
 };
 
 function setupParentMessages1() {
-    if (DomTerm.useToolkitSubwindows) {
+    if (DomTerm.apphooks.sendParentMessage) {
         DomTerm.sendParentMessage = function(command, ...args) {
-            DomTerm._qtBackend.sendParentMessage(command, JSON.stringify(args));
+            DomTerm.apphooks.sendParentMessage(command, args);
         }
     } else {
         DomTerm.sendParentMessage = function(command, ...args) {
@@ -422,6 +439,34 @@ function loadHandler(event) {
     if (m === "qt") {
         DomTerm.useToolkitSubwindows = true;
         DomTerm.useIFrame = 2;
+    } else if (m === "electron") {
+        DomTerm.useToolkitSubwindows = true;
+        DomTerm.useIFrame = 2;
+        Object.assign(DomTerm.apphooks, {
+            adoptPane: (wnum) => {
+                electronAccess.ipcRenderer.send('adopt-pane', wnum);
+            },
+            closePane: (wnum) => {
+                electronAccess.ipcRenderer.send('close-pane', wnum);
+            },
+            newPane: (wnum, url) => {
+                electronAccess.ipcRenderer.send('new-pane', wnum, url);
+            },
+            sendChildMessage: (wnum, command, jargs) => {
+                electronAccess.ipcRenderer.send('forward-message-to-child',
+                                                wnum, command, jargs);
+            },
+            setGeometry: (wnum, x, y, width, height) => {
+                const ratio = window.devicePixelRatio;
+                electronAccess.ipcRenderer.send('set-pane-geometry',
+                                                wnum, ratio * x, ratio * y,
+                                                ratio * width, ratio * height);
+            }
+        });
+        electronAccess.ipcRenderer.on('from-child-message',
+                                      (event, wnum, command, args) => {
+                                          handleMessageFromChild(wnum, command, args);
+                                      });
     } else if (m === "no") {
         DomTerm.subwindows = false;
     }
@@ -441,10 +486,20 @@ function loadHandler(event) {
         && (DomTerm.useToolkitSubwindows || ! DomTerm.isInIFrame())) {
         new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
-    if (DomTerm.isElectron() && ! DomTerm.isSubWindow()) {
-        window.electronAccess.ipcRenderer
-            .on("log-to-browser-console",
-                (_e, str) => DomTerm.log(str));
+    if (DomTerm.isElectron()) {
+        if (! DomTerm.isSubWindow()) {
+            window.electronAccess.ipcRenderer
+                .on("log-to-browser-console",
+                    (_e, str) => DomTerm.log(str));
+        } else if (DomTerm.useToolkitSubwindows) {
+            electronAccess.ipcRenderer.on('from-parent-message',
+                                          (event, command, jargs) => {
+                                              handleMessageFromParent(command, JSON.parse(jargs));
+                                          });
+            DomTerm.apphooks.sendParentMessage = (command, args) => {
+                electronAccess.ipcRenderer.send('forward-message-to-parent', command, args);
+            };
+        }
     }
     m = location.hash.match(/atom([^&;]*)/);
     if (m) {
@@ -519,8 +574,8 @@ function loadHandler(event) {
                 }
                 const terminal = pane?.terminal;
                 let childWindow;
-                if (DomTerm.useToolkitSubwindows && wnum >= 0) {
-                    DomTerm._qtBackend.sendChildMessage(wnum, command, JSON.stringify(args));
+                if (DomTerm.apphooks.sendChildMessage && wnum >= 0) {
+                    DomTerm.apphooks.sendChildMessage(wnum, command, JSON.stringify(args));
                 } else if (terminal) {
                     handleMessageFromParent(command, args, terminal);
                 } else if (pane?.contentElement instanceof HTMLIFrameElement

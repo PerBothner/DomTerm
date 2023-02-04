@@ -290,7 +290,7 @@ DomTermLayout.config = {
     settings:  { showMaximiseIcon: false,
                  reorderOnTabMenuClick: false,
                  useDragAndDrop: DomTerm.useDragAndDrop,
-                 copyForDragImage: DomTerm.copyForDragImage,
+                 copyForDragImage: DomTerm.copyForDragImage && ! DomTerm.useToolkitSubwindows,
                  checkGlWindowKey: false,
                },
     content: [{
@@ -316,8 +316,8 @@ DomTermLayout._containerHandleResize = function(container, wrapped) { // unused 
 }
 
 DomTermLayout.layoutClose = function(lcontent, windowNumber, from_handler=false) {
-    if (DomTerm.useToolkitSubwindows) {
-        DomTerm._qtBackend.closePane(windowNumber);
+    if (DomTerm.apphooks.closePane) {
+        DomTerm.apphooks.closePane(windowNumber);
     }
     const r = DomTermLayout._numberToLayoutItem(windowNumber)
     if (r && ! from_handler) {
@@ -407,9 +407,9 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
                 url += (url.indexOf('#') >= 0 ? '&' : '#')
                 + "view-saved=" +encodeURIComponent(cstate.url);
         }
-        if (DomTerm.useToolkitSubwindows && cstate.windowNumber >= 0 /*&& cstate.componentType === 'browser'*/) {
+        if (DomTerm.apphooks.newPane && cstate.windowNumber >= 0 /*&& cstate.componentType === 'browser'*/) {
             url = DomTerm.addSubWindowParams(url, cstate.componentType === 'browser'?'B':'T'/*FIXME*/);
-            DomTerm._qtBackend.newPane(cstate.windowNumber, url);
+            DomTerm.apphooks.newPane(cstate.windowNumber, url);
             wrapped = undefined; // FIXME
         } else {
             const mode = ctype === 'browser' ? 'B'
@@ -536,10 +536,10 @@ DomTermLayout.initialize = function(initialContent = null) {
         let pane;
         let wrapped;
         let parent = DomTerm.layoutTop;
-        if (DomTerm.useToolkitSubwindows) {
+        if (DomTerm.useToolkitSubwindows && DomTerm.apphooks.adoptPane) {
             element = undefined;
             if (componentConfig.initialized && wnum) { // dropped from elsewhere
-                DomTerm._qtBackend.adoptPane(Number(wnum));
+                DomTerm.apphooks.adoptPane(Number(wnum));
                 DomTerm.mainTerm.reportEvent("WINDOW-MOVED", wnum);
                 pane = new PaneInfo(wnum);
             } else {
@@ -589,13 +589,15 @@ DomTermLayout.initialize = function(initialContent = null) {
         container.paneInfo = pane;
         componentConfig.initialized = true;
         const content = pane.contentElement;
-        content.classList.add("lm_content");
-        content._layoutItem = container.parent;
-        DomTerm.showFocusedPane(content);
-        if (DomTerm.useSeparateContentChild()) {
-            let wrapped = content.parentNode;
-            if (typeof wnum === "number")
-                wrapped.windowNumber = wnum;
+        if (content) {
+            content.classList.add("lm_content");
+            content._layoutItem = container.parent;
+            DomTerm.showFocusedPane(content);
+            if (DomTerm.useSeparateContentChild()) {
+                let wrapped = content.parentNode;
+                if (typeof wnum === "number")
+                    wrapped.windowNumber = wnum;
+            }
         }
         const item = container.parent;
         DomTermLayout.updateLayoutTitle(item, componentConfig);
@@ -604,15 +606,15 @@ DomTermLayout.initialize = function(initialContent = null) {
 
         if (DomTerm.useToolkitSubwindows && wnum >= 0) {
             container.virtualVisibilityChangeRequiredEvent = (container, visible) => {
-                if (DomTerm.useToolkitSubwindows) {
-                    DomTerm._qtBackend.showPane(wnum, visible);
+                if (DomTerm.apphooks.showPane) {
+                    DomTerm.apphooks.showPane(wnum, visible);
                 }
             };
         }
         container.notifyResize = (container, x, y, width, height) => {
             const pane = container.paneInfo;
-            if (DomTerm.useToolkitSubwindows) {
-                DomTerm._qtBackend.setGeometry(wnum, x, y, width, height);
+            if (DomTerm.apphooks.setGeometry) {
+                DomTerm.apphooks.setGeometry(wnum, x, y, width, height);
             } else {
                 DomTermLayout.updateContentSize(pane);
             }
@@ -729,8 +731,8 @@ DomTermLayout.initialize = function(initialContent = null) {
                                      ratio * (ev.clientY - stackBounds.top);
                                  if (dt)
                                      dt.reportEvent("DRAG", "start");
-                                 if (DomTerm.useToolkitSubwindows) {
-                                     DomTerm._qtBackend.lowerOrRaisePanes(false, true);
+                                 if (DomTerm.apphooks.lowerOrRaisePanes) {
+                                     DomTerm.apphooks.lowerOrRaisePanes(false, true);
                                  }
                              });
     DomTermLayout.manager.on('dragend',
@@ -738,8 +740,8 @@ DomTermLayout.initialize = function(initialContent = null) {
                                  const dt = DomTerm.focusedTerm||DomTerm.mainTerm;
                                  if (dt)
                                      dt.reportEvent("DRAG", "end");
-                                 if (DomTerm.useToolkitSubwindows) {
-                                     DomTerm._qtBackend.lowerOrRaisePanes(true, true);
+                                 if (DomTerm.apphooks.lowerOrRaisePanes) {
+                                     DomTerm.apphooks.lowerOrRaisePanes(true, true);
                                  }
                              });
 
@@ -776,8 +778,8 @@ DomTermLayout.initialize = function(initialContent = null) {
                                          DomTermLayout.focusPane(newPane, 2);
                                  }
                                  if (newPane) {
-                                     if (DomTerm.useToolkitSubwindows)
-                                         DomTerm._qtBackend.focusPane(newWindow);
+                                     if (DomTerm.apphooks.focusPane)
+                                         DomTerm.apphooks.focusPane(newWindow);
                                      else if (newPane.contentElement.component instanceof HTMLIFrameElement)
                                          newPane.contentElement.focus({preventScroll: true});
                                  }

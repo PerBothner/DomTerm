@@ -291,8 +291,8 @@ else
             DomTerm.openNewWindow(null, moptions);
             */
             const mcount = menuCount++;
-            if (DomTerm.useToolkitSubwindows && mcount == 0) {
-                DomTerm._qtBackend.lowerOrRaisePanes(false, true);
+            if (DomTerm.apphooks.lowerOrRaisePanes && mcount == 0) {
+                DomTerm.apphooks.lowerOrRaisePanes(false, true);
             }
             DomTerm._focusMenu();
             DomTerm._menuActive = true;
@@ -304,9 +304,10 @@ else
                 const wnum = DomTerm._contextOptions?.windowNumber
                       || DomTerm.focusedWindowNumber;
                 if (DomTerm.useToolkitSubwindows) {
-                    DomTerm._qtBackend.lowerOrRaisePanes(true, true);
-                    if (wnum > 0)
-                        DomTerm._qtBackend.focusPane(wnum);
+                    if (DomTerm.apphooks.lowerOrRaisePanes)
+                        DomTerm.apphooks.lowerOrRaisePanes(true, true);
+                    if (wnum > 0 && DomTerm.apphooks.focusPane)
+                        DomTerm.apphooks.focusPane(wnum);
                 } else if (layout && wnum > 0) {
                     layout._selectLayoutPane(layout._numberToLayoutItem(wnum));
                 }
@@ -344,8 +345,8 @@ if (DomTerm.isElectron() ) {
 }
 
 DomTerm._focusMenu = function() {
-    if (DomTerm.useToolkitSubwindows)
-        DomTerm._qtBackend.focusPane(-1);
+    if (DomTerm.apphooks.focusPane)
+        DomTerm.apphooks.focusPane(-1);
     else if (document.activeElement instanceof HTMLIFrameElement)
         Menu._menubarNode?.focus({preventScroll: true});
 }

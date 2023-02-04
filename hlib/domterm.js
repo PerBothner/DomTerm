@@ -135,6 +135,10 @@ DomTerm.isSubWindow = function() { return location.pathname == "/simple.html"; }
 DomTerm.usingAjax = false;
 DomTerm.usingQtWebEngine = !!navigator.userAgent.match(/QtWebEngine[/]([^ ]+)/);
 
+/** Hooks for up-calling to the browser application.
+ * Depends on the front-end used. */
+DomTerm.apphooks = {};
+
 DomTerm.clickLink = function(e, dt = DomTerm.focuedTerm) {
     let target = e.target;
     for (let n = target; n instanceof Element; n = n.parentNode) {
@@ -466,8 +470,8 @@ DomTerm.setWindowFocused = function(focused, fromChild, windowNumber) {
         } else {
             document.body.classList.remove("focused");
         }
-        if (DomTerm.focusedChild && DomTerm.useToolkitSubwindows && windowNumber > 0) {
-            DomTerm._qtBackend.focusPane(windowNumber);
+        if (DomTerm.focusedChild && DomTerm.apphooks.focusPane && windowNumber > 0) {
+            DomTerm.apphooks.focusPane(windowNumber);
         }
     }
 }
@@ -564,8 +568,8 @@ DomTerm.updatePaneZoom = function(pane) {
             element.style.setProperty("transform-origin", "top left");
         }
         DomTerm._layout.updateContentSize(pane);
-    } else if (DomTerm.useToolkitSubwindows && DomTerm._qtBackend) {
-        DomTerm._qtBackend.setPaneZoom(pane.number, scale);
+    } else if (DomTerm.apphooks.setPaneZoom) {
+        DomTerm.apphooks.setPaneZoom(pane.number, scale);
     }
 }
 DomTerm.updateZoom = function() {
