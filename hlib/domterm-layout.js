@@ -147,12 +147,12 @@ DomTermLayout.domTermToLayoutItem = function(dt) { // FIXME
 DomTermLayout._elementToLayoutItem = function(goal, item = DomTermLayout.manager.root) {
     if (goal._layoutItem)
         return goal._layoutItem;
-    if (item.element == goal
-        || (item.container && item.container.getElement() == goal))
+    const wrapper = DomTerm.useSeparateContentChild() ? goal.parentNode : goal;
+    if (item.container && item.container.element === wrapper)
         return item;
     var citems = item.contentItems;
-    for (var i = 0; i < citems.length; i++) {
-        var r = DomTermLayout._elementToLayoutItem(goal, citems[i]);
+    for (let i = 0; i < citems.length; i++) {
+        const r = DomTermLayout._elementToLayoutItem(goal, citems[i]);
         if (r)
             return r;
     }
@@ -290,7 +290,7 @@ DomTermLayout.config = {
     settings:  { showMaximiseIcon: false,
                  reorderOnTabMenuClick: false,
                  useDragAndDrop: DomTerm.useDragAndDrop,
-                 copyForDragImage: DomTerm.useDragAndDrop,
+                 copyForDragImage: DomTerm.copyForDragImage,
                  checkGlWindowKey: false,
                },
     content: [{
@@ -476,13 +476,10 @@ DomTermLayout.updateContentSize = function(pane) {
     const item = pane.layoutItem;
     const mainZoom = (! DomTerm.isElectron() && ! DomTerm._qtBackend && document.body.zoomFactor) || 1.0;
     const itemZoom = mainZoom * pane.paneZoom();
-    const contentElement = container.wrapped;
-    const componentElement =
-          (contentElement instanceof HTMLElement
-           && contentElement.parentNode instanceof HTMLElement
-           && contentElement.parentNode.classList.contains("lm_component"))
-          ? contentElement.parentNode
-          : contentElement;
+    const componentElement = container.element;
+    const contentElement = DomTerm.useSeparateContentChild()
+          ? componentElement.lastChild
+          : componentElement;
     if (contentElement instanceof HTMLElement
         && item.parent.type === 'stack') {
         const stackElement = item.parentItem.element;
@@ -516,6 +513,7 @@ DomTermLayout.initialize = function(initialContent = null) {
     let top = DomTerm.layoutTop || document.body;
     let before = DomTerm.layoutBefore === undefined ? top.firstChild : DomTerm.layoutBefore;
     let lcontent = DomTerm._oldFocusedContent;
+    let lparent = lcontent && lcontent.parentElement;
     if (initialContent == null) {
         const newConfig = DomTerm._initialLayoutConfig
               || {
@@ -525,28 +523,53 @@ DomTermLayout.initialize = function(initialContent = null) {
               };
         initialContent = [ newConfig ];
     }
-    let lparent = lcontent && lcontent.parentElement;
     const config = Object.assign({}, DomTermLayout.config, { content: initialContent });
     const lmanager = new GoldenLayout(config, top, before);
     DomTermLayout.manager = lmanager;
     let lastContainer = null;
 
     DomTermLayout.manager.createContainerElement = (manager, config, item) => {
-        if (DomTerm.useToolkitSubwindows
-            || ! DomTerm.useSeparateContentChild()) {
-            return undefined;
-        }
+        const type = config.componentType;
+        const componentConfig = config.componentState;
+        let wnum = componentConfig.windowNumber;
         let element;
-        if (lparent && lparent.classList.contains("domterm-wrapper")) {
-            lparent.classList.add("lm_component");
+        let pane;
+        let wrapped;
+        let parent = DomTerm.layoutTop;
+        if (DomTerm.useToolkitSubwindows) {
+            element = undefined;
+            if (componentConfig.initialized && wnum) { // dropped from elsewhere
+                DomTerm._qtBackend.adoptPane(Number(wnum));
+                DomTerm.mainTerm.reportEvent("WINDOW-MOVED", wnum);
+                pane = new PaneInfo(wnum);
+            } else {
+                pane = DomTermLayout._initPane(componentConfig, type, undefined);
+            }
+        } else if (lcontent != null) {
+            element = lcontent;
+            if (lparent && lparent.classList.contains("domterm-wrapper"))
+                lparent.classList.add("lm_component");
+            const wtitle = ! componentConfig.windowTitle
+                  && DomTerm.focusedTerm?.getWindowTitle();
+            if (wtitle)
+                componentConfig.windowTitle = wtitle;
+            lcontent.paneNumber = DomTermLayout._newPaneNumber();
             element = lparent;
-            lparent = null;
+            lcontent = null;
         } else {
-            element = document.createElement('div');
-            DomTerm.layoutTop.appendChild(element);
+            if (DomTerm.useSeparateContentChild()) {
+                element = document.createElement('div');
+                element.classList.add("domterm-wrapper", "lm_component");
+                parent.appendChild(element);
+                parent = element;
+            }
+            pane = DomTermLayout._initPane(componentConfig, type, parent);
+            element = DomTerm.useSeparateContentChild() ? parent
+                : pane.contentElement;
         }
         return element;
     };
+
     DomTermLayout.manager.popoutClickHandler = (stack, event) => {
         if (event.ctrlKey) {
             DomTermLayout.popoutWindow(stack);
@@ -560,42 +583,17 @@ DomTermLayout.initialize = function(initialContent = null) {
         const type = container.componentType;
         let wnum = componentConfig.windowNumber;
         lastContainer = container;
-        var el;
-        let name;
-        let wrapped;
-        let pane;
-        if (DomTerm.useToolkitSubwindows && componentConfig.initialized
-           && wnum) { // dropped from elsewhere
-            DomTerm._qtBackend.adoptPane(Number(wnum));
-            DomTerm.mainTerm.reportEvent("WINDOW-MOVED", wnum);
-            pane = new PaneInfo(wnum);
-            wrapped = undefined;
-        } else if (lcontent != null && type === "domterm") {
-            const wtitle = ! componentConfig.windowTitle
-                  && DomTerm.focusedTerm?.getWindowTitle();
-            if (wtitle)
-                componentConfig.windowTitle = wtitle;
-            wrapped = lcontent;
-            let e = DomTerm._oldFocusedContent;
-            pane = DomTerm.focusedPane;
-            name = (e && (e.layoutTitle || e.getAttribute("name")))
-                || DomTerm.freshName();
-            wrapped.paneNumber = DomTermLayout._newPaneNumber();
-            lcontent.layoutTitle = undefined; // ???
-            lcontent = null;
-        } else {
-            pane = DomTermLayout._initPane(componentConfig, type, container.element);
-            wrapped = pane.contentElement;
-        }
+        const pane = DomTerm.paneMap[wnum];
         pane.layoutContainer = container;
         pane.layoutItem = container.parent;
         container.paneInfo = pane;
         componentConfig.initialized = true;
-        if (wrapped) {
-            name = wrapped.name;
-            DomTerm.showFocusedPane(wrapped);
-            wrapped.classList.add("lm_content");
-            wrapped._layoutItem = container.parent;
+        const content = pane.contentElement;
+        content.classList.add("lm_content");
+        content._layoutItem = container.parent;
+        DomTerm.showFocusedPane(content);
+        if (DomTerm.useSeparateContentChild()) {
+            let wrapped = content.parentNode;
             if (typeof wnum === "number")
                 wrapped.windowNumber = wnum;
         }
@@ -619,8 +617,6 @@ DomTermLayout.initialize = function(initialContent = null) {
                 DomTermLayout.updateContentSize(pane);
             }
         };
-
-        componentConfig.initialized = true;
 
         container.on("dragMoved", (screenX, screenY, component) => {
             const wX = screenX - DomTermLayout.dragStartOffsetX;
@@ -649,8 +645,7 @@ DomTermLayout.initialize = function(initialContent = null) {
                 DomTermLayout.manager.updateSize(); })
             ).observe(top);
         }
-        container.wrapped = wrapped;
-        return DomTerm.useSeparateContentChild() ? undefined : wrapped;
+        return content;
     }
 
     DomTermLayout.manager.registerComponent( 'domterm', registerComponent);
