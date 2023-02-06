@@ -226,7 +226,8 @@ AC_DEFUN([AT_WITH_QT],
        [path to Qt binaries])
      # HomeBrew installs into /usr/local/share/qt/libexec (macOS Intel)
      # or /opt/homebrew (Apple Silicon)
-     QT_TOOL_PATH=$QT_PATH:$PATH:/usr/local/share/qt/libexec:/opt/homebrew/opt/qt6/share/qt/libexec
+     # Fedora has moc and uic in /usr/lib64/qt6/libexec
+     QT_TOOL_PATH=$QT_PATH:$PATH:/usr/local/share/qt/libexec:/opt/homebrew/opt/qt6/share/qt/libexec:/usr/lib64/qt6/libexec:/usr/lib64/qt5/bin
 
      # Find qmake.
      AC_ARG_VAR([QMAKE],
