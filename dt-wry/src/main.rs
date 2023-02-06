@@ -163,19 +163,31 @@ fn main() -> wry::Result<()> {
                 }
             }
 
+            // The following logic for minimize/hide/show is a bit weird,
+            // but seems to what is needed to get things to work correctly.
             if req == "minimize" {
+                if ! window.is_visible() {
+                    if window.is_minimized() {
+                        window.set_visible(false);
+                        window.set_minimized(false);
+                    }
+                    window.set_visible(true);
+                }
                 window.set_minimized(true);
-            }
-            if req == "hide" {
-                window.set_minimized(true);
+            } else if req == "hide" {
                 window.set_visible(false);
-            }
-            if req == "show" {
-                window.set_visible(false);
+                if window.is_minimized() {
+                    window.set_minimized(false);
+                }
+            } else if req == "show" {
+                if window.is_minimized() {
+                    window.set_visible(false);
+                    window.set_minimized(false);
+                }
                 window.set_visible(true);
-                window.set_minimized(false);
                 window.set_focus();
             }
+
             if req == "close" {
                 let _ = proxy.send_event(UserEvents::CloseWindow(window.id()));
             }
