@@ -521,7 +521,7 @@ sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebso
 @end example
 If configuring @code{--with-qt} (recommended), also do:
 @example
-sudo dnf install gcc-c++ qt5-qtbase-devel qt5-qtwebengine-devel qt5-qtwebchannel-devel qt5-qtx11extras-devel
+sudo dnf install gcc-c++ qt6-qtbase-devel qt6-qtwebengine-devel qt6-qtwebchannel-devel qt5-qtx11extras-devel
 @end example
 If configuring with @code{--enable-compiled-in-resources} (for @code{xxd} - only needed at build time):
 @example
@@ -548,9 +548,9 @@ If configuring with @code{--with-webview} (experimental) do:
 sudo dnf install gtk3-devel webkit2gtk3-devel
 @end example
 
-If configuring with @code{--with-wry} (experimental) do:
+If configuring with @code{--with-wry} do:
 @example
-sudo dnf install rust cargo gtk3-devel webkit2gtk3-devel jq
+sudo dnf install rust cargo gtk3-devel webkit2gtk4.1-devel libsoup3-devel jq
 @end example
 
 @subsubheading Ubuntu/Debian
@@ -1453,7 +1453,7 @@ If there are no windows, create one.
 
 @indsubcmd{toggle-minimize}
 @item @b{@code{toggle-minimize}}
-@emph{(Electron and Qt only.)}
+@emph{(Electron, Qt, and Wry only.)}
 Toggle between normal and minimized state:
 If a window is hidden or minimized, show it.
 If visible, minimize it.
