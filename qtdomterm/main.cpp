@@ -74,6 +74,7 @@ const struct option long_options[] = {
     // The following option is handled internally in QtWebEngine.
     // We just need to pass it through without complaint to the QApplication.
     {"remote-debugging-port", 1, NULL, QT_OPTION},
+    {"webEngineArgs", 0, NULL, QT_OPTION},
     {"geometry", 1, NULL, GEOMETRY_OPTION},
     {"headless", 0, NULL, HEADLESS_OPTION},
     {"titlebar", 1, NULL, TITLEBAR_OPTION},
@@ -141,7 +142,7 @@ void parseArgs(int argc, char* argv[], ProcessOptions* processOptions)
                 processOptions->geometry = QString(optarg);
                 break;
             case QT_OPTION:
-                break;
+                goto post_args;
         }
     }
  post_args:
@@ -175,8 +176,10 @@ int main(int argc, char **argv)
     parseArgs(argc, argv, processOptions);
     optind = 1;
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (! processOptions->headless)
         QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+#endif
 
     BrowserApplication application(argc, argv, processOptionsPtr);
     //if (!application.isTheOnlyBrowser())

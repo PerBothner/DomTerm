@@ -111,8 +111,6 @@ qtwebengine_command(const char *cmd, struct options *options,
     sb.append(cmd);
     if (geometry)
         sb.printf(" --geometry %s", geometry);
-    if (options->qt_remote_debugging)
-        sb.printf(" --remote-debugging-port=%s", options->qt_remote_debugging);
     if (wnum > 0)
         sb.printf(" --window-number=%d", wnum);
     if (app_number > 0)
@@ -125,6 +123,8 @@ qtwebengine_command(const char *cmd, struct options *options,
                   titlebar == "system" ? "system" : "domterm");
     sb.printf(" --command-socket='%s'", backend_socket_name);
     sb.append(" --connect '%U'");
+    if (options->qt_remote_debugging)
+        sb.printf(" --webEngineArgs --remote-debugging-port=%s", options->qt_remote_debugging);
     return sb.strdup();
 }
 
