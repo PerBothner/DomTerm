@@ -262,7 +262,7 @@ void  BrowserMainWindow::slotSimpleCommand(const QString &command)
 void BrowserMainWindow::closeEvent(QCloseEvent *event)
 {
     event->accept();
-    application()->cmdSend(QString("CLOSE-WINDOW %d\n").arg(webView()->windowNumber()));
+    application()->cmdSend(QString("CLOSE-WINDOW %1\n").arg(webView()->windowNumber()));
     deleteLater();
 }
 
