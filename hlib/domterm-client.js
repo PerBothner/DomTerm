@@ -243,7 +243,8 @@ function setupQWebChannel(channel) {
 };
 
 function setupParentMessages1() {
-    if (DomTerm.apphooks.sendParentMessage) {
+    // DomTerm.apphooks.sendParentMessage may not have been set yet.
+    if (DomTerm.useToolkitSubwindows) {
         DomTerm.sendParentMessage = function(command, ...args) {
             DomTerm.apphooks.sendParentMessage(command, args);
         }
