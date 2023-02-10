@@ -1339,11 +1339,9 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
         ssize_t rcount = read(cclient->fd, obuf.avail_start(), obuf.avail_space());
         if (rcount <= 0) {
             if (rcount == 0)
-                return 0;
+                return -1;
             lwsl_err("browser_cmd failed read from browser errno:%s\n", strerror(errno));
-            if (errno == EAGAIN)
-                return 0;
-            return -1;
+            return errno == EAGAIN ? 0 : -1;
         }
         obuf.len += rcount;
         while (obuf.len > 0) {
