@@ -214,23 +214,23 @@ span.pending { background-color: lightgrey }
 span.pending span[std="prompt"] { color: green, background-color: lightgrey }
 span.url { font-family: sans-serif; font-size: inherit }
 
-div.dt-popup-panel {
-    width: 30em;
+.dt-popup-panel {
     min-width: 15em;
     max-width: 80%;
     border: thin solid sienna;
+    padding: 0px;
     border-radius: 6px;
 }
 
-div.dt-popup-panel > div {
+.dt-popup-panel > div {
     padding: 4px;
 }
 
-div.dt-popup-panel span.dt-close-button {
+.dt-popup-panel span.dt-close-button {
     float: right;
     padding: 2px;
 }
-div.dt-popup-panel, div.dt-popup-panel span.dt-close-button:hover,
+.dt-popup-panel, .dt-popup-panel span.dt-close-button:hover,
 .dt-titlebar-button:hover, .dt-titlebar .menu-item:hover {
     background-color:  #ececec;
 }
@@ -241,7 +241,7 @@ body[reverse-video] .dt-titlebar-button:hover, body[reverse-video] .dt-titlebar 
 body[reverse-video] .nwjs-menu.menubar
 { background-color: inherit }
 
-div.dt-popup-panel div.dt-overlay-titlebar {background-color: lightgrey; }
+.dt-popup-panel div.dt-overlay-titlebar {background-color: lightgrey; }
 
 div.dt-context-popup {
     font-size: small;

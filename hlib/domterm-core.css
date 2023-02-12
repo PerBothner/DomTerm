@@ -107,7 +107,7 @@ div.domterm span[std="caret"] {
     background-color: inherit;
 }
 
-div.dt-popup-panel {
+.dt-popup-panel {
     position: fixed;
     z-index: 2;
 }

@@ -45,6 +45,8 @@ function showMessageBox(options, callback) {
         + '<span class="dt-close-button">&#x2612;</span>'
         + options.title
         + '</div><div class="dt-overlay-body"></div>';
+    // Using "dialog" might be preferable (more accessible).
+    // However, dragging using updatePosition would need some changes.
     let popup = document.createElement("div");
     popup.classList.add("dt-popup-panel");
     if (options.buttons) {
@@ -84,9 +86,33 @@ function showMessageBox(options, callback) {
     let focusedButton = options.initialFocus < nbuttons ? options.initialFocus : -1;
     if (focusedButton >= 0)
         buttons[focusedButton].classList.add("dt-selected");
-    let oldX = 50, oldY = 50;
-    popup.style.left = oldX + 'px';
-    popup.style.top = oldY + 'px';
+    let minWidth = 200;
+    let preferredWidth = 400;
+    let updatePosition = (diffX, diffY) => {
+        oldX += diffX;
+        oldY += diffY;
+        popup.style.top = oldY + 'px';
+        let parent_width = parent.clientWidth;
+        let avail_width = parent_width - oldX - 4;
+        if (oldX >= 0) {
+            popup.style.left = oldX + 'px';
+            if (avail_width < minWidth)
+                popup.style.width = '';
+            else
+                popup.style.width = Math.min(avail_width, preferredWidth) + 'px';
+        } else {
+            if (preferredWidth + oldX < minWidth) {
+                popup.style.left = (preferredWidth + oldX - minWidth) + 'px';
+                popup.style.width = minWidth + 'px';
+            } else {
+                popup.style.left = 0 + 'px';
+                popup.style.width = (preferredWidth + oldX) + 'px';
+            }
+        }
+    }
+
+    let oldX = 0, oldY = 0;
+    updatePosition(50, 50);
     let close;
     let clickHandler = (e) => {
         for (let n = e.target; n && n !== popup; n = n.parentElement) {
@@ -106,7 +132,6 @@ function showMessageBox(options, callback) {
         DomTerm.clickLink(e);
     }
     let keydownHandler = (e) => {
-        console.log("keydown "+e.key);
         let key = e.key;
         switch (key) {
         case 'Escape':
@@ -144,12 +169,6 @@ function showMessageBox(options, callback) {
         }
     };
     let header = popup.querySelector('.dt-overlay-titlebar');
-    let updatePosition = (diffX, diffY) => {
-        oldX += diffX;
-        oldY += diffY;
-        popup.style.left = oldX + 'px';
-        popup.style.top = oldY + 'px';
-    };
     addDragHandler(header, popup, updatePosition, parent);
     close = () => {
         popup.removeEventListener('click', clickHandler);
@@ -207,11 +226,11 @@ function addDragHandler(header, widget, updatePosition, topNode) {
         let computedZoomStyle =  window.getComputedStyle(header)['zoom'];
         let computedZoom = Number(computedZoomStyle) || 1.0;
         widget.classList.add("dt-moving");
-        let oldX = edown.pageX / computedZoom;
-        let oldY = edown.pageY / computedZoom;// + this.buffers.scrollTop;
+        let oldX = edown.screenX / computedZoom;
+        let oldY = edown.screenY / computedZoom;// + this.buffers.scrollTop;
         let mouseHandler = (e) => {
-            let x = e.pageX / computedZoom;
-            let y = e.pageY / computedZoom;// + this.buffers.scrollTop;
+            let x = e.screenX / computedZoom;
+            let y = e.screenY / computedZoom;// + this.buffers.scrollTop;
             if (e.type == "mouseup" || e.type == "mouseleave") {
                 //widget.mouseDown = undefined;
                 if (mouseHandler) {
