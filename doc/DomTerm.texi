@@ -550,7 +550,7 @@ sudo dnf install gtk3-devel webkit2gtk3-devel
 
 If configuring with @code{--with-wry} do:
 @example
-sudo dnf install rust cargo gtk3-devel webkit2gtk4.1-devel libsoup3-devel jq
+sudo dnf install rust cargo gtk4-devel webkit2gtk4.1-devel libsoup3-devel jq
 @end example
 
 @subsubheading Ubuntu/Debian
@@ -5494,7 +5494,21 @@ Simple substitution uses curly braces: @code{@{directory@}}.
 Expressions, Lisp-style (prefix operator):  @code{@{+ @{N@} 1@}}
 or maybe @code{@{+ N 1@}} (see discussion below).
 
-Conditional: @code{@{A1?A2?A3?X1|B1?Y|Z@}}
+A conditional is india@{@var{cond1}@}@var{value1}
+cted by @code{@{?@var{condition}@}@var{true-part}|@var{false-part}}.
+If the @var{condition} is true, then @var{true-part} is evaluated;
+otherwise @var{false-part} is evaluated.
+Instead of @samp{|} the @var{true-part} may be separate by a new-line.
+This makes multi-part conditionals look like:
+@example
+@{@var{cond1}@}@var{value1}
+@{@var{cond2}@}@var{value2}
+@var{default-value}
+@end example
+The @var{true-part} extend to first unquote veritical bar or newline that
+is not nested in abother brace-section.
+
+OLD Conditional: @code{@{A1?A2?A3?X1|B1?Y|Z@}}
 is like C's @code{A1||A2||A3 ? X1 : B1 ? Y : Z}.
 For example:
 @example
@@ -5524,6 +5538,28 @@ Text inside double quotes is literal, except that string escapes
 are processed.  For example to include a literal semi-colon
 instead of having it be processed as a separator write @code{";"};
 to write double quotes write @code{"\""}.
+
+@subsubsection Parsing
+Parsing results is a nested structure that is encodable using a JSON.
+The parsing is normally done by the backend; the parse result may
+be forwarded to frontend as JSON.
+
+@subsubsection The expand command
+
+The @code{expand} command is helpful for testing template strings.
+It takes a template string and returns the evaluated value.
+By default the evaluation is done in the server, but if a @code{-}
+(@code{--window}) option is specified, the parsed template is
+send to the specified window to be evaluated in that window's context.
+
+Options can specify a context:
+@code{--to-bool} means evaluate the template to a boolean value.
+@code{--to-json} print the result as JSON-encoded.
+By default, an array is printed by printing each element
+followed by a newline.
+
+The @code{--parse-only} option just prints on the unevaluated
+parse tree in JSON format.
 
 @subheading Selection mode
 
