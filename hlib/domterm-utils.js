@@ -241,10 +241,12 @@ const HTMLinfo = {
     "q": ELEMENT_KIND_INLINE+ELEMENT_KIND_ALLOW,
     "radialGradient": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "rect": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
+    "rdf:RDF": ELEMENT_KIND_SKIP_FULLY+ELEMENT_KIND_ALLOW,
     "samp": ELEMENT_KIND_INLINE+ELEMENT_KIND_ALLOW,
     "script": ELEMENT_KIND_SKIP_FULLY+ELEMENT_KIND_ALLOW,
     "set": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
     "small": ELEMENT_KIND_INLINE+ELEMENT_KIND_ALLOW,
+    "sodipodi:namedview": ELEMENT_KIND_SKIP_FULLY+ELEMENT_KIND_ALLOW, // Inkscape metadata
     "source": ELEMENT_KIND_EMPTY, // invalid
     "span": ELEMENT_KIND_INLINE+ELEMENT_KIND_ALLOW,
     "stop": ELEMENT_KIND_SVG+ELEMENT_KIND_INLINE,
@@ -310,11 +312,13 @@ export function scrubHtml(str, options = {}) {
         return pos;
     }
     var doctypeRE = /^\s*<!DOCTYPE\s[^>]*>\s*/;
+    var xmldeclRE = /^\s*<[?]xml version=[^>]*>\s*/;
     var len = str.length;
     var baseUrl = null;
     var start = 0;
     var ok = 0;
     var i = 0;
+    let skipping = 0;
 
     var activeTags = new Array();
     loop:
@@ -357,9 +361,10 @@ export function scrubHtml(str, options = {}) {
             if (i + 1 == len)
                 break loop; // invalid
             ch = str.charCodeAt(i++);
-            if (ok == 0 && ch == 33) {
-                let m = str.match(doctypeRE);
-                if (m) {
+            if (ok == 0) {
+                let m;
+                if ((ch === 33 /*'!'*/ && (m = str.match(doctypeRE)))
+                    || (ch === 63 /*'?'*/ && (m = str.match(xmldeclRE)))) {
                     str = str.substring(m[0].length);
                     len = str.length;
                     i = 0;
@@ -398,6 +403,7 @@ export function scrubHtml(str, options = {}) {
                 if (! ((ch >= 65 && ch <= 90)  // 'A'..'Z'
                        || (ch >= 97 && ch <= 122) // 'a'..'z'
                        || (ch >= 48 && ch <= 57) // '0'..'9'
+                       || ch == 58 // ':'
                        || (ch == 35 && i==ok+2))) // initial '#'
                     break;
             }
@@ -416,8 +422,10 @@ export function scrubHtml(str, options = {}) {
                         len = str.length;
                         ok = i = ok + 6;
                     } else if ((einfo & ELEMENT_KIND_SKIP_TAG_OR_FULLY) != 0) {
-                        if ((einfo & ELEMENT_KIND_SKIP_FULLY) != 0)
+                        if ((einfo & ELEMENT_KIND_SKIP_FULLY) != 0) {
+                            skipping--;
                             ok = activeTags.pop();
+                        }
                         if ((einfo & ELEMENT_KIND_INLINE) == 0)
                             i = skipWhitespace(i);
                         str = str.substring(0, ok) + str.substring(i);
@@ -440,13 +448,14 @@ export function scrubHtml(str, options = {}) {
                     continue;
                 } else
                     break loop; // invalid - tag mismatch
-            } else {
+            } else { // element start tag
                 var tag = str.substring(ok+1,i-1);
                 var einfo = elementInfo(tag, activeTags);
-                if ((einfo & ELEMENT_KIND_ALLOW) == 0)
+                if ((einfo & ELEMENT_KIND_ALLOW) == 0 && skipping == 0)
                     break loop;
                 if ((einfo & ELEMENT_KIND_SKIP_FULLY) != 0) {
                     activeTags.push(ok);
+                    skipping++;
                 }
                 activeTags.push(tag);
                 // we've seen start tag - now check for attributes
@@ -531,6 +540,10 @@ export function scrubHtml(str, options = {}) {
                     if (i == len || str.charCodeAt(i++) != 62) // '>'
                         break loop; // invalid
                     activeTags.pop();
+                    if ((einfo & ELEMENT_KIND_SKIP_FULLY) != 0) {
+                        skipping--;
+                        ok = activeTags.pop();
+                    }
                 } else if (ch != 62) // '>'
                     break loop; // invalid
                 else if ((einfo & ELEMENT_KIND_EMPTY) != 0)
