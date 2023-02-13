@@ -138,7 +138,6 @@ private:
     int m_width, m_height;
 
     QAction *viewMenubarAction;
-    QIcon m_reloadIcon;
 
     friend class BrowserApplication;
     friend class WebView;
