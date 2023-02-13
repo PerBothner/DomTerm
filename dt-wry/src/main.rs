@@ -9,7 +9,7 @@ use std::io;
 use image;
 mod versions;
 
-const ICON_BYTES : &[u8] = include_bytes!("../../doc/domterm2.svg");
+const ICON_BYTES : &[u8] = include_bytes!("../../doc/domterm48.png");
 
 fn main() -> wry::Result<()> {
     // See https://wiki.archlinux.org/index.php/GTK#Disable_overlay_scrollbars
