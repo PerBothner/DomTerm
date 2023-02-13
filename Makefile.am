@@ -534,7 +534,7 @@ if WITH_QTWEBENGINE
 	$(INSTALL_DATA) $(srcdir)/qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
 	$(INSTALL_DATA) $(srcdir)/doc/domterm2.svg $(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/domterm.svg
-	$(INSTALL_DATA) $(srcdir)/doc/domterm.npng $(DESTDIR)$(datadir)/icons/hicolor/48x48/apps/domterm.png
+	$(INSTALL_DATA) $(srcdir)/doc/domterm48.png $(DESTDIR)$(datadir)/icons/hicolor/48x48/apps/domterm.png
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
 	$(INSTALL_DATA) $(srcdir)/electron/package.json $(srcdir)/electron/main.js $(srcdir)/electron/preload.js\
 	    $(DESTDIR)$(datadir)/domterm/electron/
