@@ -110,7 +110,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: client-data-links.stamp $(RESOURCE_DEPS) resources.stamp $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/icons/hicolor/scalable/apps/domterm.svg share/domterm/domterm2.ico $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(RESOURCE_DEPS) resources.stamp $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/icons/hicolor/scalable/apps/domterm.svg share/icons/hicolor/48x48/apps/domterm.png share/domterm/domterm2.ico $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -525,6 +525,7 @@ endif
 endif
 	$(INSTALL_DATA) share/domterm/domterm2.ico $(DESTDIR)$(pkgdatadir)
 	$(MKDIR_P) $(DESTDIR)$(datadir)/applications $(DESTDIR)$(datadir)/appdata \
+	    $(DESTDIR)$(datadir)/icons/hicolor/48x48/apps \
 	    $(DESTDIR)$(datadir)/icons/hicolor/scalable/apps
 	$(INSTALL_DATA) $(srcdir)/domterm.desktop $(DESTDIR)$(datadir)/applications/
 	$(INSTALL_DATA) $(srcdir)/domterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
@@ -533,6 +534,7 @@ if WITH_QTWEBENGINE
 	$(INSTALL_DATA) $(srcdir)/qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
 	$(INSTALL_DATA) $(srcdir)/doc/domterm2.svg $(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/domterm.svg
+	$(INSTALL_DATA) $(srcdir)/doc/domterm.npng $(DESTDIR)$(datadir)/icons/hicolor/48x48/apps/domterm.png
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
 	$(INSTALL_DATA) $(srcdir)/electron/package.json $(srcdir)/electron/main.js $(srcdir)/electron/preload.js\
 	    $(DESTDIR)$(datadir)/domterm/electron/
@@ -547,6 +549,7 @@ endif
 uninstall-local:
 	rm -f $(DESTDIR)$(datadir)/applications/domterm.desktop \
 	  $(DESTDIR)$(datadir)/applications/qtdomterm.desktop \
+	  $(DESTDIR)$(datadir)/icons/hicolor/48x48/apps/domterm.png \
 	  $(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/domterm.svg \
 	  $(DESTDIR)$(datadir)/appdata/domterm.appdata.xml \
 	  $(DESTDIR)$(datadir)/appdata/qtdomterm.appdata.xml
@@ -615,6 +618,10 @@ doc/domterm48.png: # doc/domterm2.svg
 share/icons/hicolor/scalable/apps/domterm.svg:
 	$(MKDIR_P) share/icons/hicolor/scalable/apps
 	cp $(srcdir)/doc/domterm2.svg $@
+
+share/icons/hicolor/48x48/apps/domterm.png: doc/domterm48.png
+	$(MKDIR_P) share/icons/hicolor/48x48/apps
+	cp $(srcdir)/doc/domterm48.png $@
 
 APPIMAGETOOL=appimagetool-x86_64.AppImage
 APP_RUN=appimage/DomTerm.AppDir/AppRun
