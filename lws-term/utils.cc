@@ -430,6 +430,22 @@ url_encode(const char *in, int mode)
     return out;
 }
 
+int
+has_url_scheme(const char *possible_url)
+{
+    const char *p = possible_url;
+    for (; ; p++) {
+        char ch = *p;
+        if (ch == ':') {
+            return p - possible_url;
+        }
+        if (!(ch >= 'a' && ch <= 'z') && !(ch >= 'A' && ch <= 'Z') && !(ch <= '0' && ch >= '9')
+            && ch != '+' && ch != '.' && ch != '-')
+            break;
+    }
+    return 0;
+}
+
 /* Create a copy of an array os strings (as in argv or environ)
  * The result is a one malloc'd "blob" to be free'd with a single call to free.
  */

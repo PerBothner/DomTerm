@@ -1312,7 +1312,7 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
                      void *user, void *in, size_t len) {
     struct browser_cmd_client *cclient = (struct browser_cmd_client *) lws_wsi_user(wsi);
     int status = -1;
-    //lwsl_info("browser_cmd callback %d\n", reason);
+    lwsl_info("browser_cmd callback %d\n", reason);
     switch (reason) {
     case LWS_CALLBACK_RAW_CLOSE_FILE:
         while (waitpid(cclient->cmd_pid, &status, 0) == -1 && errno == EINTR)
@@ -1326,8 +1326,8 @@ callback_browser_cmd(struct lws *wsi, enum lws_callback_reasons reason,
     case LWS_CALLBACK_RAW_WRITEABLE_FILE: {
         struct sbuf &ibuf = cclient->send_buffer;
         int to_write = ibuf.len - LWS_PRE;
-        size_t n =lws_write(cclient->wsi, (unsigned char*) ibuf.buffer+LWS_PRE,
-                            to_write, LWS_WRITE_BINARY);
+        size_t n = lws_write(cclient->wsi, (unsigned char*) ibuf.buffer+LWS_PRE,
+                             to_write, LWS_WRITE_BINARY);
         if (n != to_write)
              lwsl_err("lws_write failure in callback_browser_cmd\n");
         ibuf.len = LWS_PRE;

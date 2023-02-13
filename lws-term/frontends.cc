@@ -482,7 +482,8 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
                     else
                         p = "wry;qt;electron;chrome-app;firefox;browser";
 #else
-                    p = "electron;qt;wry;chrome-app;safari;firefox;browser";
+                    //p = "electron;qt;wry;chrome-app;safari;firefox;browser";
+                    p = "wry;qt;electron;chrome-app;safari;firefox;browser";
 #endif
                 }
             }

@@ -1368,12 +1368,17 @@ cat /path/to/doc.html | domterm html --base=/path/to/
 @indsubcmd{imgcat}
 @item @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
 @itemx @b{@code{imgcat}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{filename}
+@itemx @b{@code{image}} [@code{-@var{n}}] [@code{--@var{attrname}=@var{attrvalue}}]... @var{url}
 
-This script ``prints'' the contents of the named image file to domterm.
-This uses a ``@code{data:}'' URI with the file contents sent directly to domterm, so it works when working remotely.
+This script ``prints'' the contents of the image file to domterm.
+The image must be of a type that can be displayed by an HTML @code{<img>} element,
+such as a @code{png}, @code{jpg}, or @code{svg} file.
 
-The @var{filename} must be a file that can be displayed
-by an HTML @code{<img>} element, most commonly a @code{png} or @code{jpg} file.
+If a @var{filename} is specified, the file is read by the domterm command, and sent to the front-end
+(using a ``@code{data:}'' URI), so it works for remote contections.
+As the image data is ``inline'' in the DOM it is included when saving as HTML.
+
+If a @var{url} is specified, it is used instead. The front-end is responsible for fetching the data.
 
 By default (no @code{-n} is specified),
 the image has a @code{display: block} style
@@ -5539,12 +5544,12 @@ are processed.  For example to include a literal semi-colon
 instead of having it be processed as a separator write @code{";"};
 to write double quotes write @code{"\""}.
 
-@subsubsection Parsing
+@subsubheading Parsing
 Parsing results is a nested structure that is encodable using a JSON.
 The parsing is normally done by the backend; the parse result may
 be forwarded to frontend as JSON.
 
-@subsubsection The expand command
+@subsubheading The expand command
 
 The @code{expand} command is helpful for testing template strings.
 It takes a template string and returns the evaluated value.

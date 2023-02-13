@@ -320,6 +320,7 @@ int html_action(int argc, arglist_t argv, struct options *opts)
 
 int imgcat_action(int argc, arglist_t argv, struct options *opts)
 {
+    bool is_imgcat = argc > 0 && strcmp(argv[0], "imgcat") == 0;
     check_domterm(opts);
     int asize = 0;
     for (int i = 1; i < argc; i++) {
@@ -359,58 +360,60 @@ int imgcat_action(int argc, arglist_t argv, struct options *opts)
             }
         } else {
             *aptr = '\0';
-            if (access(arg, R_OK) != 0) {
-                printf_error(opts, "imgcat: No such file: %s", arg);
-                return EXIT_FAILURE;
-            }
-            int fimg = open(arg, O_RDONLY);
-            struct stat stbuf;
-            if (fstat(fimg, &stbuf) != 0 || (!S_ISREG(stbuf.st_mode))) {
-              /* Handle error FIXME */
-            }
-            off_t len = stbuf.st_size;
-            unsigned char *img = (unsigned char*)
-                mmap(NULL, len, PROT_READ, MAP_PRIVATE, fimg, 0);
-            const char *mime;
-#if HAVE_LIBMAGIC
-            magic_t magic; // FIXME should cache
-            magic = magic_open(MAGIC_MIME_TYPE); 
-            magic_load(magic, NULL);
-            magic_compile(magic, NULL);
-            mime = magic_buffer(magic, img, len);
-            if (mime && strcmp(mime, "text/plain") == 0) {
-                // This is mainly for svg.
-                const char *mime2 = get_mimetype(arg);
-                if (mime2)
-                    mime = mime2;
-            }
-#else
-            mime = get_mimetype(arg);
-#endif
-            if (mime == NULL) {
-                printf_error(opts, "imgcat: unknown file type: %s", arg);
-                return EXIT_FAILURE;
-            }
             if (n_arg)
                 overflow = "";
             else if (overflow == NULL)
                 overflow = "auto";
-            char *b64 = base64_encode(img, len);
-            munmap(img, len);
-            int rsize = 100+strlen(mime)+strlen(b64)+ strlen(abuf);
-            char *response = challoc(rsize);
-            int n = snprintf(response, rsize,
-                    n_arg ? "\033]72;%s<img%s src='data:%s;base64,%s'/>\007"
-                    : "\033]72;<div style='overflow-x: %s'><img%s src='data:%s;base64,%s'/></div>\007",
-                    overflow, abuf, mime, b64);
-            if (n >= rsize)
-                 fatal("buffer overflow");
+            sbuf response;
+            response.printf(n_arg ? "\033]72;%s<img%s "
+                            : "\033]72;<div style='overflow-x: %s'><img%s ",
+                            overflow, abuf);
+            if (! is_imgcat && has_url_scheme(arg) > 0) {
+                response.printf("src='%s'/>", arg);
+            } else {
+                if (access(arg, R_OK) != 0) {
+                    printf_error(opts, "imgcat: No such file: %s", arg);
+                    return EXIT_FAILURE;
+                }
+                int fimg = open(arg, O_RDONLY);
+                struct stat stbuf;
+                if (fstat(fimg, &stbuf) != 0 || (!S_ISREG(stbuf.st_mode))) {
+                    /* Handle error FIXME */
+                }
+                off_t len = stbuf.st_size;
+                unsigned char *img = (unsigned char*)
+                    mmap(NULL, len, PROT_READ, MAP_PRIVATE, fimg, 0);
+                const char *mime;
 #if HAVE_LIBMAGIC
-            magic_close(magic);
+                magic_t magic; // FIXME should cache
+                magic = magic_open(MAGIC_MIME_TYPE);
+                magic_load(magic, NULL);
+                magic_compile(magic, NULL);
+                mime = magic_buffer(magic, img, len);
+                if (mime && strcmp(mime, "text/plain") == 0) {
+                    // This is mainly for svg.
+                    const char *mime2 = get_mimetype(arg);
+                    if (mime2)
+                        mime = mime2;
+                }
+#else
+                mime = get_mimetype(arg);
 #endif
+                if (mime == NULL) {
+                    printf_error(opts, "imgcat: unknown file type: %s", arg);
+                    return EXIT_FAILURE;
+                }
+                char *b64 = base64_encode(img, len);
+                munmap(img, len);
+                response.printf("src='data:%s;base64,%s'/>", mime, b64);
+#if HAVE_LIBMAGIC
+                magic_close(magic);
+#endif
+                free(b64);
+            }
+            response.printf(n_arg ? "\007" : "</div>\007");
             free(abuf);
-            free(b64);
-            if (write(get_tty_out(), response, strlen(response)) <= 0) {
+            if (write(get_tty_out(), response.buffer, response.len) <= 0) {
                 lwsl_err("write failed\n");
                 return EXIT_FAILURE;
             }
@@ -1075,14 +1078,7 @@ int view_saved_action(int argc, arglist_t argv, struct options *opts)
         return EXIT_FAILURE;
     }
     const char *file = argv[optind];
-    const char *p = file;
-    bool saw_scheme = false;
-    for (; *p && *p != '/'; p++) {
-      if (*p == ':') {
-        saw_scheme = 1;
-        break;
-      }
-    }
+    bool saw_scheme = has_url_scheme(file) > 0;
     const char *fscheme = saw_scheme ? "" : "file://";
     char *fencoded = NULL;
     if (! saw_scheme) {

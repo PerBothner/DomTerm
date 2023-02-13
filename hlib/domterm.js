@@ -489,12 +489,17 @@ DomTerm.showFocusedPane = function(lcontent) {
     }
 };
 
+DomTerm.hackFileUrl = function(location) {
+    // Work around CORS limitations.
+    return "http://localhost:"+DomTerm.server_port + '/get-file/'
+        + DomTerm.server_key + '/' + location.substring(5);
+}
+
 DomTerm.addSubWindowParams = function(location, mode) {
     if (mode == 'T' || mode == 'V') {
         location = DomTerm.addLocationParams(location);
     } else if (location.startsWith('file:')) {
-        location = "http://localhost:"+DomTerm.server_port + '/get-file/'
-            + DomTerm.server_key + '/' + location.substring(5);
+        location = DomTerm.hackFileUrl(location);
     }
     if (DomTerm._mainWindowNumber >= 0 && (mode == 'T' || mode == 'V')) {
         location = location

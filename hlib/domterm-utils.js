@@ -515,7 +515,17 @@ export function scrubHtml(str, options = {}) {
                     if ((einfo & ELEMENT_KIND_CHECK_JS_TAG) != 0
                         && (attrname=="href" || attrname=="domterm-href"
                             || attrname=="src")) {
-                        if (tag == "base" && attrname == "href") {
+                        if (tag === "img" && attrvalue.startsWith("file:") && quote > 0 && attrname === "src") {
+                            const origvalue = attrvalue;
+                            attrvalue = DomTerm.hackFileUrl(attrvalue);
+                            const q = String.fromCharCode(quote);
+                            str = str.substring(0, valstart) + attrvalue
+                                + q + " originalsrc=" + q + origvalue
+                                + str.substring(valend);
+                            let delta = str.length - len;
+                            len += delta;
+                            i += delta;
+                        } else if (tag == "base" && attrname == "href") {
                             baseUrl = attrvalue;
                         } else if (baseUrl != null
                                    && attrvalue.indexOf(":") < 0) {
