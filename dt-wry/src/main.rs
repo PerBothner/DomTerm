@@ -6,7 +6,10 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::env;use std::io::Write;
 use std::io;
+use image;
 mod versions;
+
+const ICON_BYTES : &[u8] = include_bytes!("../../doc/domterm2.svg");
 
 fn main() -> wry::Result<()> {
     // See https://wiki.archlinux.org/index.php/GTK#Disable_overlay_scrollbars
@@ -16,7 +19,7 @@ fn main() -> wry::Result<()> {
             dpi::{LogicalSize, LogicalPosition},
             event::{Event, WindowEvent},
             event_loop::{ControlFlow, EventLoop, EventLoopProxy, EventLoopWindowTarget},
-            window::{Window, WindowBuilder, WindowId},
+            window::{Icon, Window, WindowBuilder, WindowId},
         },
         webview::{WebView, WebViewBuilder},
     };
@@ -135,6 +138,11 @@ fn main() -> wry::Result<()> {
             .with_transparent(! titlebar)
             .build(event_loop)
             .unwrap();
+
+        let icon_buffer = image::load_from_memory_with_format(&ICON_BYTES.to_vec(), image::ImageFormat::Png).unwrap().into_rgba8();
+        let (icon_width, icon_height) = icon_buffer.dimensions();
+        let icon_rgba = icon_buffer.into_raw();
+        window.set_window_icon(Some(Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap()));
 
         if let (Some(width),Some(height)) = (options.get("width"),options.get("height")) {
             if let (Some(w),Some(h)) = (width.as_f64(),height.as_f64()) {
