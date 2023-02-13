@@ -358,7 +358,6 @@ QString Backend::popupMessage(const QString&optionsAsJson)
         if (jdetail.isString())
             msgBox.setInformativeText(jdetail.toString());
     }
-    msgBox.setStyleSheet("QLabel{min-width: 300px;}");
     msgBox.exec();
     QAbstractButton *clicked = msgBox.clickedButton();
     if (clicked != nullptr) {
