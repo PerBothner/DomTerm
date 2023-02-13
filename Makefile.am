@@ -110,7 +110,7 @@ ADOC_GENERATED = \
   $(man1_MANS)
 endif
 
-all-am: client-data-links.stamp $(RESOURCE_DEPS) resources.stamp $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/domterm/domterm2.ico $(ADOC_GENERATED) \
+all-am: client-data-links.stamp $(RESOURCE_DEPS) resources.stamp $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/icons/hicolor/scalable/apps/domterm.svg share/domterm/domterm2.ico $(ADOC_GENERATED) \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -524,14 +524,15 @@ else
 endif
 endif
 	$(INSTALL_DATA) share/domterm/domterm2.ico $(DESTDIR)$(pkgdatadir)
-	$(MKDIR_P) $(DESTDIR)$(datadir)/applications \
-	    $(DESTDIR)$(datadir)/appdata
+	$(MKDIR_P) $(DESTDIR)$(datadir)/applications $(DESTDIR)$(datadir)/appdata \
+	    $(DESTDIR)$(datadir)/icons/hicolor/scalable/apps
 	$(INSTALL_DATA) $(srcdir)/domterm.desktop $(DESTDIR)$(datadir)/applications/
 	$(INSTALL_DATA) $(srcdir)/domterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 if WITH_QTWEBENGINE
 	$(INSTALL_DATA) $(srcdir)/qtdomterm.desktop $(DESTDIR)$(datadir)/applications/
 	$(INSTALL_DATA) $(srcdir)/qtdomterm.appdata.xml $(DESTDIR)$(datadir)/appdata/
 endif
+	$(INSTALL_DATA) $(srcdir)/doc/domterm2.svg $(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/domterm.svg
 	$(MKDIR_P) $(DESTDIR)$(datadir)/domterm/electron
 	$(INSTALL_DATA) $(srcdir)/electron/package.json $(srcdir)/electron/main.js $(srcdir)/electron/preload.js\
 	    $(DESTDIR)$(datadir)/domterm/electron/
@@ -546,6 +547,7 @@ endif
 uninstall-local:
 	rm -f $(DESTDIR)$(datadir)/applications/domterm.desktop \
 	  $(DESTDIR)$(datadir)/applications/qtdomterm.desktop \
+	  $(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/domterm.svg \
 	  $(DESTDIR)$(datadir)/appdata/domterm.appdata.xml \
 	  $(DESTDIR)$(datadir)/appdata/qtdomterm.appdata.xml
 	rm -f $(DESTDIR)$(bindir)/domterm$(EXEEXT)
@@ -606,6 +608,13 @@ wcwidth-list.txt: $(EAST_ASIAN_WIDTH_TXT)
 IMAGEMAGICK_CONVERT = convert
 doc/domterm2.ico: # doc/domterm2.svg
 	$(IMAGEMAGICK_CONVERT) -background none -density 384 doc/domterm2.svg -define icon:auto-resize=64,32,16 doc/domterm2.ico
+
+doc/domterm48.png: # doc/domterm2.svg
+	inkscape -w 48 -h 38 doc/domterm2.svg -o doc/domterm48.png
+
+share/icons/hicolor/scalable/apps/domterm.svg:
+	$(MKDIR_P) share/icons/hicolor/scalable/apps
+	cp $(srcdir)/doc/domterm2.svg $@
 
 APPIMAGETOOL=appimagetool-x86_64.AppImage
 APP_RUN=appimage/DomTerm.AppDir/AppRun
