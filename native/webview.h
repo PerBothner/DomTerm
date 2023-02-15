@@ -81,12 +81,12 @@ typedef struct {
   // The elements of the version number.
   webview_version_t version;
   // SemVer 2.0.0 version number in MAJOR.MINOR.PATCH format.
-  const char version_number[32];
+  char version_number[32];
   // SemVer 2.0.0 pre-release labels prefixed with "-" if specified, otherwise
   // an empty string.
-  const char pre_release[48];
+  char pre_release[48];
   // SemVer 2.0.0 build metadata prefixed with "+", otherwise an empty string.
-  const char build_metadata[48];
+  char build_metadata[48];
 } webview_version_info_t;
 
 #ifdef __cplusplus
@@ -248,18 +248,21 @@ inline int json_parse_c(const char *s, size_t sz, const char *key, size_t keysz,
     JSON_STATE_ESCAPE,
     JSON_STATE_UTF8
   } state = JSON_STATE_VALUE;
-  const char *k = NULL;
+  const char *k = nullptr;
   int index = 1;
   int depth = 0;
   int utf8_bytes = 0;
 
-  if (key == NULL) {
-    index = keysz;
+  *value = nullptr;
+  *valuesz = 0;
+
+  if (key == nullptr) {
+    index = static_cast<decltype(index)>(keysz);
+    if (index < 0) {
+      return -1;
+    }
     keysz = 0;
   }
-
-  *value = NULL;
-  *valuesz = 0;
 
   for (; sz > 0; s++, sz--) {
     enum {
@@ -269,7 +272,7 @@ inline int json_parse_c(const char *s, size_t sz, const char *key, size_t keysz,
       JSON_ACTION_START_STRUCT,
       JSON_ACTION_END_STRUCT
     } action = JSON_ACTION_NONE;
-    unsigned char c = *s;
+    auto c = static_cast<unsigned char>(*s);
     switch (state) {
     case JSON_STATE_VALUE:
       if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ',' ||
@@ -357,16 +360,16 @@ inline int json_parse_c(const char *s, size_t sz, const char *key, size_t keysz,
         }
       } else if (action == JSON_ACTION_END ||
                  action == JSON_ACTION_END_STRUCT) {
-        if (*value != NULL && index == 0) {
+        if (*value != nullptr && index == 0) {
           *valuesz = (size_t)(s + 1 - *value);
           return 0;
-        } else if (keysz > 0 && k != NULL) {
+        } else if (keysz > 0 && k != nullptr) {
           if (keysz == (size_t)(s - k - 1) && memcmp(key, k + 1, keysz) == 0) {
             index = 0;
           } else {
             index = 2;
           }
-          k = NULL;
+          k = nullptr;
         }
       }
     }
@@ -422,7 +425,7 @@ inline int json_unescape(const char *s, size_t n, char *out) {
         return -1;
       }
     }
-    if (out != NULL) {
+    if (out != nullptr) {
       *out++ = c;
     }
     s++;
@@ -432,7 +435,7 @@ inline int json_unescape(const char *s, size_t n, char *out) {
   if (*s != '"') {
     return -1;
   }
-  if (out != NULL) {
+  if (out != nullptr) {
     *out = '\0';
   }
   return r;
@@ -442,7 +445,7 @@ inline std::string json_parse(const std::string &s, const std::string &key,
                               const int index) {
   const char *value;
   size_t value_sz;
-  if (key == "") {
+  if (key.empty()) {
     json_parse_c(s.c_str(), s.length(), nullptr, index, &value, &value_sz);
   } else {
     json_parse_c(s.c_str(), s.length(), key.c_str(), key.length(), &value,
@@ -450,7 +453,7 @@ inline std::string json_parse(const std::string &s, const std::string &key,
   }
   if (value != nullptr) {
     if (value[0] != '"') {
-      return std::string(value, value_sz);
+      return {value, value_sz};
     }
     int n = json_unescape(value, value_sz, nullptr);
     if (n > 0) {
@@ -512,7 +515,7 @@ class gtk_webkit_engine {
 public:
   gtk_webkit_engine(bool debug, void *window)
       : m_window(static_cast<GtkWidget *>(window)) {
-    if (gtk_init_check(0, NULL) == FALSE) {
+    if (gtk_init_check(nullptr, nullptr) == FALSE) {
       return;
     }
     m_window = static_cast<GtkWidget *>(window);
@@ -595,21 +598,23 @@ public:
   }
 
   void set_html(const std::string &html) {
-    webkit_web_view_load_html(WEBKIT_WEB_VIEW(m_webview), html.c_str(), NULL);
+    webkit_web_view_load_html(WEBKIT_WEB_VIEW(m_webview), html.c_str(),
+                              nullptr);
   }
 
   void init(const std::string &js) {
     WebKitUserContentManager *manager =
         webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(m_webview));
     webkit_user_content_manager_add_script(
-        manager, webkit_user_script_new(
-                     js.c_str(), WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
-                     WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START, NULL, NULL));
+        manager,
+        webkit_user_script_new(js.c_str(), WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
+                               WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+                               nullptr, nullptr));
   }
 
   void eval(const std::string &js) {
-    webkit_web_view_run_javascript(WEBKIT_WEB_VIEW(m_webview), js.c_str(), NULL,
-                                   NULL, NULL);
+    webkit_web_view_run_javascript(WEBKIT_WEB_VIEW(m_webview), js.c_str(),
+                                   nullptr, nullptr, nullptr);
   }
 
 private:
@@ -623,7 +628,7 @@ private:
 #else
     JSGlobalContextRef ctx = webkit_javascript_result_get_global_context(r);
     JSValueRef value = webkit_javascript_result_get_value(r);
-    JSStringRef js = JSValueToStringCopy(ctx, value, NULL);
+    JSStringRef js = JSValueToStringCopy(ctx, value, nullptr);
     size_t n = JSStringGetMaximumUTF8CStringSize(js);
     s = g_new(char, n);
     JSStringGetUTF8CString(js, s, n);
@@ -700,9 +705,13 @@ enum WKUserScriptInjectionTime : NSInteger {
 enum NSModalResponse : NSInteger { NSModalResponseOK = 1 };
 
 // Convenient conversion of string literals.
-id operator"" _cls(const char *s, std::size_t) { return (id)objc_getClass(s); }
-SEL operator"" _sel(const char *s, std::size_t) { return sel_registerName(s); }
-id operator"" _str(const char *s, std::size_t) {
+inline id operator"" _cls(const char *s, std::size_t) {
+  return (id)objc_getClass(s);
+}
+inline SEL operator"" _sel(const char *s, std::size_t) {
+  return sel_registerName(s);
+}
+inline id operator"" _str(const char *s, std::size_t) {
   return objc::msg_send<id>("NSString"_cls, "stringWithUTF8String:"_sel, s);
 }
 
@@ -924,7 +933,7 @@ private:
         objc::msg_send<BOOL>(bundle_path, "hasSuffix:"_sel, ".app"_str);
     return !!bundled;
   }
-  void on_application_did_finish_launching(id delegate, id app) {
+  void on_application_did_finish_launching(id /*delegate*/, id app) {
     // See comments related to application lifecycle in create_app_delegate().
     if (!m_parent_window) {
       // Stop the main run loop so that we can return
@@ -1004,13 +1013,13 @@ private:
     objc::msg_send<void>(m_manager, "addScriptMessageHandler:name:"_sel,
                          script_message_handler, "external"_str);
 
-    init(R"script(
+    init(R""(
       window.external = {
         invoke: function(s) {
           window.webkit.messageHandlers.external.postMessage(s);
         },
       };
-      )script");
+      )"");
     objc::msg_send<void>(m_window, "setContentView:"_sel, m_webview);
     objc::msg_send<void>(m_window, "makeKeyAndOrderFront:"_sel, nullptr);
   }
@@ -1047,10 +1056,12 @@ using browser_engine = detail::cocoa_wkwebview_engine;
 #include "WebView2.h"
 
 #ifdef _MSC_VER
+#pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "user32.lib")
+#pragma comment(lib, "version.lib")
 #endif
 
 namespace webview {
@@ -1100,6 +1111,69 @@ inline std::string narrow_string(const std::wstring &input) {
   }
   // Failed to convert string from UTF-16 to UTF-8
   return std::string();
+}
+
+// Parses a version string with 1-4 integral components, e.g. "1.2.3.4".
+// Missing or invalid components default to 0, and excess components are ignored.
+template <typename T>
+std::array<unsigned int, 4>
+parse_version(const std::basic_string<T> &version) noexcept {
+  auto parse_component = [](auto sb, auto se) -> unsigned int {
+    try {
+      auto n = std::stol(std::basic_string<T>(sb, se));
+      return n < 0 ? 0 : n;
+    } catch (std::exception &) {
+      return 0;
+    }
+  };
+  auto end = version.end();
+  auto sb = version.begin(); // subrange begin
+  auto se = sb;              // subrange end
+  unsigned int ci = 0;       // component index
+  std::array<unsigned int, 4> components{};
+  while (sb != end && se != end && ci < components.size()) {
+    if (*se == static_cast<T>('.')) {
+      components[ci++] = parse_component(sb, se);
+      sb = ++se;
+      continue;
+    }
+    ++se;
+  }
+  if (sb < se && ci < components.size()) {
+    components[ci] = parse_component(sb, se);
+  }
+  return components;
+}
+
+template <typename T, std::size_t Length>
+auto parse_version(const T (&version)[Length]) noexcept {
+  return parse_version(std::basic_string<T>(version, Length));
+}
+
+std::wstring get_file_version_string(const std::wstring &file_path) noexcept {
+  DWORD dummy_handle; // Unused
+  DWORD info_buffer_length =
+      GetFileVersionInfoSizeW(file_path.c_str(), &dummy_handle);
+  if (info_buffer_length == 0) {
+    return std::wstring();
+  }
+  std::vector<char> info_buffer;
+  info_buffer.reserve(info_buffer_length);
+  if (!GetFileVersionInfoW(file_path.c_str(), 0, info_buffer_length,
+                           info_buffer.data())) {
+    return std::wstring();
+  }
+  auto sub_block = L"\\StringFileInfo\\040904B0\\ProductVersion";
+  LPWSTR version = nullptr;
+  unsigned int version_length = 0;
+  if (!VerQueryValueW(info_buffer.data(), sub_block,
+                      reinterpret_cast<LPVOID *>(&version), &version_length)) {
+    return std::wstring();
+  }
+  if (!version || version_length == 0) {
+    return std::wstring();
+  }
+  return std::wstring(version, version_length);
 }
 
 // A wrapper around COM library initialization. Calls CoInitializeEx in the
@@ -1183,6 +1257,8 @@ public:
   // Returns true if the library is currently loaded; otherwise false.
   bool is_loaded() const { return !!m_handle; }
 
+  void detach() { m_handle = nullptr; }
+
 private:
   HMODULE m_handle = nullptr;
 };
@@ -1190,12 +1266,13 @@ private:
 struct user32_symbols {
   using DPI_AWARENESS_CONTEXT = HANDLE;
   using SetProcessDpiAwarenessContext_t = BOOL(WINAPI *)(DPI_AWARENESS_CONTEXT);
+  using SetProcessDPIAware_t = BOOL(WINAPI *)();
 
   static constexpr auto SetProcessDpiAwarenessContext =
       library_symbol<SetProcessDpiAwarenessContext_t>(
           "SetProcessDpiAwarenessContext");
   static constexpr auto SetProcessDPIAware =
-      library_symbol<decltype(&::SetProcessDPIAware)>("SetProcessDPIAware");
+      library_symbol<SetProcessDPIAware_t>("SetProcessDPIAware");
 };
 
 struct shcore_symbols {
@@ -1204,6 +1281,67 @@ struct shcore_symbols {
 
   static constexpr auto SetProcessDpiAwareness =
       library_symbol<SetProcessDpiAwareness_t>("SetProcessDpiAwareness");
+};
+
+class reg_key {
+public:
+  explicit reg_key(HKEY root_key, const wchar_t *sub_key, DWORD options,
+                   REGSAM sam_desired) {
+    HKEY handle;
+    auto status =
+        RegOpenKeyExW(root_key, sub_key, options, sam_desired, &handle);
+    if (status == ERROR_SUCCESS) {
+      m_handle = handle;
+    }
+  }
+
+  explicit reg_key(HKEY root_key, const std::wstring &sub_key, DWORD options,
+                   REGSAM sam_desired)
+      : reg_key(root_key, sub_key.c_str(), options, sam_desired) {}
+
+  virtual ~reg_key() {
+    if (m_handle) {
+      RegCloseKey(m_handle);
+      m_handle = nullptr;
+    }
+  }
+
+  reg_key(const reg_key &other) = delete;
+  reg_key &operator=(const reg_key &other) = delete;
+  reg_key(reg_key &&other) = delete;
+  reg_key &operator=(reg_key &&other) = delete;
+
+  bool is_open() const { return !!m_handle; }
+  bool get_handle() const { return m_handle; }
+
+  std::wstring query_string(const wchar_t *name) const {
+    DWORD buf_length = 0;
+    // Get the size of the data in bytes.
+    auto status = RegQueryValueExW(m_handle, name, nullptr, nullptr, nullptr,
+                                   &buf_length);
+    if (status != ERROR_SUCCESS && status != ERROR_MORE_DATA) {
+      return std::wstring();
+    }
+    // Read the data.
+    std::wstring result(buf_length / sizeof(wchar_t), 0);
+    auto buf = reinterpret_cast<LPBYTE>(&result[0]);
+    status =
+        RegQueryValueExW(m_handle, name, nullptr, nullptr, buf, &buf_length);
+    if (status != ERROR_SUCCESS) {
+      return std::wstring();
+    }
+    // Remove trailing null-characters.
+    for (std::size_t length = result.size(); length > 0; --length) {
+      if (result[length - 1] != 0) {
+        result.resize(length);
+        break;
+      }
+    }
+    return result;
+  }
+
+private:
+  HKEY m_handle = nullptr;
 };
 
 inline bool enable_dpi_awareness() {
@@ -1225,6 +1363,308 @@ inline bool enable_dpi_awareness() {
   }
   return true;
 }
+
+// Enable built-in WebView2Loader implementation by default.
+#ifndef WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL
+#define WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL 1
+#endif
+
+// Link WebView2Loader.dll explicitly by default only if the built-in
+// implementation is enabled.
+#ifndef WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK
+#define WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL
+#endif
+
+// Explicit linking of WebView2Loader.dll should be used along with
+// the built-in implementation.
+#if WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL == 1 &&                                    \
+    WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK != 1
+#undef WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK
+#error Please set WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK=1.
+#endif
+
+#if WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL == 1
+// Gets the last component of a Windows native file path.
+// For example, if the path is "C:\a\b" then the result is "b".
+template <typename T>
+std::basic_string<T>
+get_last_native_path_component(const std::basic_string<T> &path) {
+  if (auto pos = path.find_last_of(static_cast<T>('\\'));
+      pos != std::basic_string<T>::npos) {
+    return path.substr(pos + 1);
+  }
+  return std::basic_string<T>();
+}
+#endif /* WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL */
+
+template <typename T> struct cast_info_t {
+  using type = T;
+  IID iid;
+};
+
+namespace mswebview2 {
+static constexpr IID
+    IID_ICoreWebView2CreateCoreWebView2ControllerCompletedHandler{
+        0x6C4819F3, 0xC9B7, 0x4260, 0x81, 0x27, 0xC9,
+        0xF5,       0xBD,   0xE7,   0xF6, 0x8C};
+static constexpr IID
+    IID_ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler{
+        0x4E8A3389, 0xC9D8, 0x4BD2, 0xB6, 0xB5, 0x12,
+        0x4F,       0xEE,   0x6C,   0xC1, 0x4D};
+static constexpr IID IID_ICoreWebView2PermissionRequestedEventHandler{
+    0x15E1C6A3, 0xC72A, 0x4DF3, 0x91, 0xD7, 0xD0, 0x97, 0xFB, 0xEC, 0x6B, 0xFD};
+static constexpr IID IID_ICoreWebView2WebMessageReceivedEventHandler{
+    0x57213F19, 0x00E6, 0x49FA, 0x8E, 0x07, 0x89, 0x8E, 0xA0, 0x1E, 0xCB, 0xD2};
+
+#if WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL == 1
+enum class webview2_runtime_type { installed = 0, embedded = 1 };
+
+namespace webview2_symbols {
+using CreateWebViewEnvironmentWithOptionsInternal_t =
+    HRESULT(STDMETHODCALLTYPE *)(
+        bool, webview2_runtime_type, PCWSTR, IUnknown *,
+        ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler *);
+using DllCanUnloadNow_t = HRESULT(STDMETHODCALLTYPE *)();
+
+static constexpr auto CreateWebViewEnvironmentWithOptionsInternal =
+    library_symbol<CreateWebViewEnvironmentWithOptionsInternal_t>(
+        "CreateWebViewEnvironmentWithOptionsInternal");
+static constexpr auto DllCanUnloadNow =
+    library_symbol<DllCanUnloadNow_t>("DllCanUnloadNow");
+} // namespace webview2_symbols
+#endif /* WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL */
+
+#if WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK == 1
+namespace webview2_symbols {
+using CreateCoreWebView2EnvironmentWithOptions_t = HRESULT(STDMETHODCALLTYPE *)(
+    PCWSTR, PCWSTR, ICoreWebView2EnvironmentOptions *,
+    ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler *);
+using GetAvailableCoreWebView2BrowserVersionString_t =
+    HRESULT(STDMETHODCALLTYPE *)(PCWSTR, LPWSTR *);
+
+static constexpr auto CreateCoreWebView2EnvironmentWithOptions =
+    library_symbol<CreateCoreWebView2EnvironmentWithOptions_t>(
+        "CreateCoreWebView2EnvironmentWithOptions");
+static constexpr auto GetAvailableCoreWebView2BrowserVersionString =
+    library_symbol<GetAvailableCoreWebView2BrowserVersionString_t>(
+        "GetAvailableCoreWebView2BrowserVersionString");
+} // namespace webview2_symbols
+#endif /* WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK */
+
+class loader {
+public:
+  HRESULT create_environment_with_options(
+      PCWSTR browser_dir, PCWSTR user_data_dir,
+      ICoreWebView2EnvironmentOptions *env_options,
+      ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
+          *created_handler) const {
+#if WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK == 1
+    if (m_lib.is_loaded()) {
+      if (auto fn = m_lib.get(
+              webview2_symbols::CreateCoreWebView2EnvironmentWithOptions)) {
+        return fn(browser_dir, user_data_dir, env_options, created_handler);
+      }
+    }
+#if WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL == 1
+    return create_environment_with_options_impl(browser_dir, user_data_dir,
+                                                env_options, created_handler);
+#else
+    return S_FALSE;
+#endif
+#else
+    return ::CreateCoreWebView2EnvironmentWithOptions(
+        browser_dir, user_data_dir, env_options, created_handler);
+#endif /* WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK */
+  }
+
+  HRESULT
+  get_available_browser_version_string(PCWSTR browser_dir,
+                                       LPWSTR *version) const {
+#if WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK == 1
+    if (m_lib.is_loaded()) {
+      if (auto fn = m_lib.get(
+              webview2_symbols::GetAvailableCoreWebView2BrowserVersionString)) {
+        return fn(browser_dir, version);
+      }
+    }
+#if WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL == 1
+    return get_available_browser_version_string_impl(browser_dir, version);
+#else
+    return S_FALSE;
+#endif
+#else
+    return ::GetAvailableCoreWebView2BrowserVersionString(browser_dir, version);
+#endif /* WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK */
+  }
+
+private:
+#if WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL == 1
+  struct client_info_t {
+    bool found = false;
+    std::wstring dll_path;
+    std::wstring version;
+    webview2_runtime_type runtime_type;
+  };
+
+  HRESULT create_environment_with_options_impl(
+      PCWSTR browser_dir, PCWSTR user_data_dir,
+      ICoreWebView2EnvironmentOptions *env_options,
+      ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
+          *created_handler) const {
+    auto found_client = find_available_client(browser_dir);
+    if (!found_client.found) {
+      return -1;
+    }
+    auto client_dll = native_library(found_client.dll_path.c_str());
+    if (auto fn = client_dll.get(
+            webview2_symbols::CreateWebViewEnvironmentWithOptionsInternal)) {
+      return fn(true, found_client.runtime_type, user_data_dir, env_options,
+                created_handler);
+    }
+    if (auto fn = client_dll.get(webview2_symbols::DllCanUnloadNow)) {
+      if (!fn()) {
+        client_dll.detach();
+      }
+    }
+    return ERROR_SUCCESS;
+  }
+
+  HRESULT
+  get_available_browser_version_string_impl(PCWSTR browser_dir,
+                                            LPWSTR *version) const {
+    if (!version) {
+      return -1;
+    }
+    auto found_client = find_available_client(browser_dir);
+    if (!found_client.found) {
+      return -1;
+    }
+    auto info_length_bytes =
+        found_client.version.size() * sizeof(found_client.version[0]);
+    auto info = static_cast<LPWSTR>(CoTaskMemAlloc(info_length_bytes));
+    if (!info) {
+      return -1;
+    }
+    CopyMemory(info, found_client.version.c_str(), info_length_bytes);
+    *version = info;
+    return 0;
+  }
+
+  client_info_t find_available_client(PCWSTR browser_dir) const {
+    if (browser_dir) {
+      return find_embedded_client(api_version, browser_dir);
+    }
+    auto found_client =
+        find_installed_client(api_version, true, default_release_channel_guid);
+    if (!found_client.found) {
+      found_client = find_installed_client(api_version, false,
+                                           default_release_channel_guid);
+    }
+    return found_client;
+  }
+
+  std::wstring make_client_dll_path(const std::wstring &dir) const {
+    auto dll_path = dir;
+    if (!dll_path.empty()) {
+      auto last_char = dir[dir.size() - 1];
+      if (last_char != L'\\' && last_char != L'/') {
+        dll_path += L'\\';
+      }
+    }
+    dll_path += L"EBWebView\\";
+#if defined(_M_X64) || defined(__x86_64__)
+    dll_path += L"x64";
+#elif defined(_M_IX86) || defined(__i386__)
+    dll_path += L"x86";
+#elif defined(_M_ARM64) || defined(__aarch64__)
+    dll_path += L"arm64";
+#else
+#error WebView2 integration for this platform is not yet supported.
+#endif
+    dll_path += L"\\EmbeddedBrowserWebView.dll";
+    return dll_path;
+  }
+
+  client_info_t
+  find_installed_client(unsigned int min_api_version, bool system,
+                        const std::wstring &release_channel) const {
+    std::wstring sub_key = client_state_reg_sub_key;
+    sub_key += release_channel;
+    auto root_key = system ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER;
+    reg_key key(root_key, sub_key, 0, KEY_READ | KEY_WOW64_32KEY);
+    if (!key.is_open()) {
+      return {};
+    }
+    auto ebwebview_value = key.query_string(L"EBWebView");
+
+    auto client_version_string =
+        get_last_native_path_component(ebwebview_value);
+    auto client_version = parse_version(client_version_string);
+    if (client_version[2] < min_api_version) {
+      // Our API version is greater than the runtime API version.
+      return {};
+    }
+
+    auto client_dll_path = make_client_dll_path(ebwebview_value);
+    return {true, client_dll_path, client_version_string,
+            webview2_runtime_type::installed};
+  }
+
+  client_info_t find_embedded_client(unsigned int min_api_version,
+                                     const std::wstring &dir) const {
+    auto client_dll_path = make_client_dll_path(dir);
+
+    auto client_version_string = get_file_version_string(client_dll_path);
+    auto client_version = parse_version(client_version_string);
+    if (client_version[2] < min_api_version) {
+      // Our API version is greater than the runtime API version.
+      return {};
+    }
+
+    return {true, client_dll_path, client_version_string,
+            webview2_runtime_type::embedded};
+  }
+
+  // The minimum WebView2 API version we need regardless of the SDK release
+  // actually used. The number comes from the SDK release version,
+  // e.g. 1.0.1150.38. To be safe the SDK should have a number that is greater
+  // than or equal to this number. The Edge browser webview client must
+  // have a number greater than or equal to this number.
+  static constexpr unsigned int api_version = 1150;
+
+  static constexpr auto client_state_reg_sub_key =
+      L"SOFTWARE\\Microsoft\\EdgeUpdate\\ClientState\\";
+
+  // GUID for the stable release channel.
+  static constexpr auto stable_release_guid =
+      L"{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+
+  static constexpr auto default_release_channel_guid = stable_release_guid;
+#endif /* WEBVIEW_MSWEBVIEW2_BUILTIN_IMPL */
+
+#if WEBVIEW_MSWEBVIEW2_EXPLICIT_LINK == 1
+  native_library m_lib{L"WebView2Loader.dll"};
+#endif
+};
+
+namespace cast_info {
+static constexpr auto controller_completed =
+    cast_info_t<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>{
+        IID_ICoreWebView2CreateCoreWebView2ControllerCompletedHandler};
+
+static constexpr auto environment_completed =
+    cast_info_t<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>{
+        IID_ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler};
+
+static constexpr auto message_received =
+    cast_info_t<ICoreWebView2WebMessageReceivedEventHandler>{
+        IID_ICoreWebView2WebMessageReceivedEventHandler};
+
+static constexpr auto permission_requested =
+    cast_info_t<ICoreWebView2PermissionRequestedEventHandler>{
+        IID_ICoreWebView2PermissionRequestedEventHandler};
+} // namespace cast_info
+} // namespace mswebview2
 
 class webview2_com_handler
     : public ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler,
@@ -1253,18 +1693,56 @@ public:
     return 0;
   }
   HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID *ppv) {
+    using namespace mswebview2::cast_info;
+
     if (!ppv) {
       return E_POINTER;
     }
-    *ppv = nullptr;
+
+    // All of the COM interfaces we implement should be added here regardless
+    // of whether they are required.
+    // This is just to be on the safe side in case the WebView2 Runtime ever
+    // requests a pointer to an interface we implement.
+    // The WebView2 Runtime must at the very least be able to get a pointer to
+    // ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler when we use
+    // our custom WebView2 loader implementation, and observations have shown
+    // that it is the only interface requested in this case. None have been
+    // observed to be requested when using the official WebView2 loader.
+
+    if (cast_if_equal_iid(riid, controller_completed, ppv) ||
+        cast_if_equal_iid(riid, environment_completed, ppv) ||
+        cast_if_equal_iid(riid, message_received, ppv) ||
+        cast_if_equal_iid(riid, permission_requested, ppv)) {
+      return S_OK;
+    }
+
     return E_NOINTERFACE;
   }
   HRESULT STDMETHODCALLTYPE Invoke(HRESULT res, ICoreWebView2Environment *env) {
-    env->CreateCoreWebView2Controller(m_window, this);
+    if (SUCCEEDED(res)) {
+      res = env->CreateCoreWebView2Controller(m_window, this);
+      if (SUCCEEDED(res)) {
+        return S_OK;
+      }
+    }
+    try_create_environment();
     return S_OK;
   }
   HRESULT STDMETHODCALLTYPE Invoke(HRESULT res,
                                    ICoreWebView2Controller *controller) {
+    if (FAILED(res)) {
+      // See try_create_environment() regarding
+      // HRESULT_FROM_WIN32(ERROR_INVALID_STATE).
+      // The result is E_ABORT if the parent window has been destroyed already.
+      switch (res) {
+      case HRESULT_FROM_WIN32(ERROR_INVALID_STATE):
+      case E_ABORT:
+        return S_OK;
+      }
+      try_create_environment();
+      return S_OK;
+    }
+
     ICoreWebView2 *webview;
     ::EventRegistrationToken token;
     controller->get_CoreWebView2(&webview);
@@ -1294,11 +1772,64 @@ public:
     return S_OK;
   }
 
+  // Checks whether the specified IID equals the IID of the specified type and
+  // if so casts the "this" pointer to T and returns it. Returns nullptr on
+  // mismatching IIDs.
+  // If ppv is specified then the pointer will also be assigned to *ppv.
+  template <typename T>
+  T *cast_if_equal_iid(REFIID riid, const cast_info_t<T> &info,
+                       LPVOID *ppv = nullptr) noexcept {
+    T *ptr = nullptr;
+    if (IsEqualIID(riid, info.iid)) {
+      ptr = static_cast<T *>(this);
+      ptr->AddRef();
+    }
+    if (ppv) {
+      *ppv = ptr;
+    }
+    return ptr;
+  }
+
+  // Set the function that will perform the initiating logic for creating
+  // the WebView2 environment.
+  void set_attempt_handler(std::function<HRESULT()> attempt_handler) noexcept {
+    m_attempt_handler = attempt_handler;
+  }
+
+  // Retry creating a WebView2 environment.
+  // The initiating logic for creating the environment is defined by the
+  // caller of set_attempt_handler().
+  void try_create_environment() noexcept {
+    // WebView creation fails with HRESULT_FROM_WIN32(ERROR_INVALID_STATE) if
+    // a running instance using the same user data folder exists, and the
+    // Environment objects have different EnvironmentOptions.
+    // Source: https://docs.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2environment?view=webview2-1.0.1150.38
+    if (m_attempts < m_max_attempts) {
+      ++m_attempts;
+      auto res = m_attempt_handler();
+      if (SUCCEEDED(res)) {
+        return;
+      }
+      // Not entirely sure if this error code only applies to
+      // CreateCoreWebView2Controller so we check here as well.
+      if (res == HRESULT_FROM_WIN32(ERROR_INVALID_STATE)) {
+        return;
+      }
+      try_create_environment();
+      return;
+    }
+    // Give up.
+    m_cb(nullptr, nullptr);
+  }
+
 private:
   HWND m_window;
   msg_cb_t m_msgCb;
   webview2_com_handler_cb_t m_cb;
   std::atomic<ULONG> m_ref_count{1};
+  std::function<HRESULT()> m_attempt_handler;
+  unsigned int m_max_attempts = 5;
+  unsigned int m_attempts = 0;
 };
 
 class win32_edge_engine {
@@ -1448,7 +1979,7 @@ public:
       r.bottom = height;
       AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
       SetWindowPos(
-          m_window, NULL, r.left, r.top, r.right - r.left, r.bottom - r.top,
+          m_window, nullptr, r.left, r.top, r.right - r.left, r.bottom - r.top,
           SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_FRAMECHANGED);
       resize(m_window);
     }
@@ -1479,11 +2010,12 @@ private:
     flag.test_and_set();
 
     wchar_t currentExePath[MAX_PATH];
-    GetModuleFileNameW(NULL, currentExePath, MAX_PATH);
+    GetModuleFileNameW(nullptr, currentExePath, MAX_PATH);
     wchar_t *currentExeName = PathFindFileNameW(currentExePath);
 
     wchar_t dataPath[MAX_PATH];
-    if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, dataPath))) {
+    if (!SUCCEEDED(
+            SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, dataPath))) {
       return false;
     }
     wchar_t userDataFolder[MAX_PATH];
@@ -1492,24 +2024,33 @@ private:
     m_com_handler = new webview2_com_handler(
         wnd, cb,
         [&](ICoreWebView2Controller *controller, ICoreWebView2 *webview) {
+          if (!controller || !webview) {
+            flag.clear();
+            return;
+          }
           controller->AddRef();
           webview->AddRef();
           m_controller = controller;
           m_webview = webview;
           flag.clear();
         });
-    HRESULT res = CreateCoreWebView2EnvironmentWithOptions(
-        nullptr, userDataFolder, nullptr, m_com_handler);
-    if (res != S_OK) {
-      return false;
-    }
+
+    m_com_handler->set_attempt_handler([&] {
+      return m_webview2_loader.create_environment_with_options(
+          nullptr, userDataFolder, nullptr, m_com_handler);
+    });
+    m_com_handler->try_create_environment();
+
     MSG msg = {};
-    while (flag.test_and_set() && GetMessage(&msg, NULL, 0, 0)) {
+    while (flag.test_and_set() && GetMessage(&msg, nullptr, 0, 0)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
+    if (!m_controller || !m_webview) {
+      return false;
+    }
     ICoreWebView2Settings *settings = nullptr;
-    res = m_webview->get_Settings(&settings);
+    auto res = m_webview->get_Settings(&settings);
     if (res != S_OK) {
       return false;
     }
@@ -1530,10 +2071,10 @@ private:
     m_controller->put_Bounds(bounds);
   }
 
-  static bool is_webview2_available() noexcept {
+  bool is_webview2_available() const noexcept {
     LPWSTR version_info = nullptr;
-    auto res =
-        GetAvailableCoreWebView2BrowserVersionString(nullptr, &version_info);
+    auto res = m_webview2_loader.get_available_browser_version_string(
+        nullptr, &version_info);
     // The result will be equal to HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)
     // if the WebView2 runtime is not installed.
     auto ok = SUCCEEDED(res) && version_info;
@@ -1549,13 +2090,14 @@ private:
   // CreateCoreWebView2EnvironmentWithOptions.
   // Source: https://docs.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/webview2-idl#createcorewebview2environmentwithoptions
   com_init_wrapper m_com_init{COINIT_APARTMENTTHREADED};
-  HWND m_window = NULL;
+  HWND m_window = nullptr;
   POINT m_minsz = POINT{0, 0};
   POINT m_maxsz = POINT{0, 0};
   DWORD m_main_thread = GetCurrentThreadId();
   ICoreWebView2 *m_webview = nullptr;
   ICoreWebView2Controller *m_controller = nullptr;
   webview2_com_handler *m_com_handler = nullptr;
+  mswebview2::loader m_webview2_loader;
 };
 
 } // namespace detail
@@ -1574,7 +2116,7 @@ public:
       : browser_engine(debug, wnd) {}
 
   void navigate(const std::string &url) {
-    if (url == "") {
+    if (url.empty()) {
       browser_engine::navigate("about:blank");
       return;
     }
@@ -1584,71 +2126,30 @@ public:
   using binding_t = std::function<void(std::string, std::string, void *)>;
   class binding_ctx_t {
   public:
-    binding_ctx_t(binding_t *callback, void *arg, bool sync = true)
-        : callback(callback), arg(arg), sync(sync) {}
+    binding_ctx_t(binding_t callback, void *arg)
+        : callback(callback), arg(arg) {}
     // This function is called upon execution of the bound JS function
-    binding_t *callback;
+    binding_t callback;
     // This user-supplied argument is passed to the callback
     void *arg;
-    // This boolean expresses whether or not this binding is synchronous or asynchronous
-    // Async bindings require the user to call the resolve function, sync bindings don't
-    bool sync;
   };
 
   using sync_binding_t = std::function<std::string(std::string)>;
-  using sync_binding_ctx_t = std::pair<webview *, sync_binding_t>;
 
   // Synchronous bind
   void bind(const std::string &name, sync_binding_t fn) {
-    if (bindings.count(name) == 0) {
-      bindings[name] = new binding_ctx_t(
-          new binding_t(
-              [](const std::string &seq, const std::string &req, void *arg) {
-                auto pair = static_cast<sync_binding_ctx_t *>(arg);
-                pair->first->resolve(seq, 0, pair->second(req));
-              }),
-          new sync_binding_ctx_t(this, fn));
-      bind_js(name);
-    }
+    auto wrapper = [this, fn](const std::string &seq, const std::string &req,
+                              void * /*arg*/) { resolve(seq, 0, fn(req)); };
+    bind(name, wrapper, nullptr);
   }
 
   // Asynchronous bind
-  void bind(const std::string &name, binding_t f, void *arg) {
-    if (bindings.count(name) == 0) {
-      bindings[name] = new binding_ctx_t(new binding_t(f), arg, false);
-      bind_js(name);
+  void bind(const std::string &name, binding_t fn, void *arg) {
+    if (bindings.count(name) > 0) {
+      return;
     }
-  }
-
-  void unbind(const std::string &name) {
-    if (bindings.find(name) != bindings.end()) {
-      auto js = "delete window['" + name + "'];";
-      init(js);
-      eval(js);
-      delete bindings[name]->callback;
-      if (bindings[name]->sync) {
-        delete static_cast<sync_binding_ctx_t *>(bindings[name]->arg);
-      }
-      delete bindings[name];
-      bindings.erase(name);
-    }
-  }
-
-  void resolve(const std::string &seq, int status, const std::string &result) {
-    dispatch([seq, status, result, this]() {
-      if (status == 0) {
-        eval("window._rpc[" + seq + "].resolve(" + result +
-             "); delete window._rpc[" + seq + "]");
-      } else {
-        eval("window._rpc[" + seq + "].reject(" + result +
-             "); delete window._rpc[" + seq + "]");
-      }
-    });
-  }
-
-private:
-  void bind_js(const std::string &name) {
-    auto js = "(function() { var name = '" + name + "';" + R"(
+    bindings.emplace(name, binding_ctx_t(fn, arg));
+    auto js = "(function() { var name = '" + name + "';" + R""(
       var RPC = window._rpc = (window._rpc || {nextSeq: 1});
       window[name] = function() {
         var seq = RPC.nextSeq++;
@@ -1665,23 +2166,47 @@ private:
         }));
         return promise;
       }
-    })())";
+    })())"";
     init(js);
     eval(js);
   }
 
+  void unbind(const std::string &name) {
+    auto found = bindings.find(name);
+    if (found != bindings.end()) {
+      auto js = "delete window['" + name + "'];";
+      init(js);
+      eval(js);
+      bindings.erase(found);
+    }
+  }
+
+  void resolve(const std::string &seq, int status, const std::string &result) {
+    dispatch([seq, status, result, this]() {
+      if (status == 0) {
+        eval("window._rpc[" + seq + "].resolve(" + result +
+             "); delete window._rpc[" + seq + "]");
+      } else {
+        eval("window._rpc[" + seq + "].reject(" + result +
+             "); delete window._rpc[" + seq + "]");
+      }
+    });
+  }
+
+private:
   void on_message(const std::string &msg) {
     auto seq = detail::json_parse(msg, "id", 0);
     auto name = detail::json_parse(msg, "method", 0);
     auto args = detail::json_parse(msg, "params", 0);
-    if (bindings.find(name) == bindings.end()) {
+    auto found = bindings.find(name);
+    if (found == bindings.end()) {
       return;
     }
-    auto fn = bindings[name];
-    (*fn->callback)(seq, args, fn->arg);
+    const auto &context = found->second;
+    context.callback(seq, args, context.arg);
   }
 
-  std::map<std::string, binding_ctx_t *> bindings;
+  std::map<std::string, binding_ctx_t> bindings;
 };
 } // namespace webview
 
