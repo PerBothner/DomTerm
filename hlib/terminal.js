@@ -7273,6 +7273,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     } else { // DtUtil.isObjectElement(el) or dt-cluster
                         dt._insertIntoLines(lineNode, line);
                         el.parentNode.insertBefore(lineNode, el);
+                        lineNode.measureLeft = el.measureLeft;
+                        lineNode.measureWidth = 0;
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
                     lineNode._widthMode = dt.lineStarts[line]._widthMode;
@@ -7280,13 +7282,11 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     lineNode._breakState = prevLine._breakState;
                     prevLine._breakState |= Terminal._BREAKS_VALID;
                     line++;
-                    if (! countColumns)
-                        beforeMeasure += lineNode.offsetLeft - beforePos;
-                    else if (isText) {
+                    beforeMeasure = lineNode.measureLeft;
+                    if (countColumns) {
                         let beforeColumns = oldel.parentNode == null ? 0
                             : oldel.previousSibling==lineNode ? 0
                             : dt.strWidthInContext(oldel.data, el);
-                        beforeMeasure += dt.charWidth * beforeColumns;
                         let oldWidthCols = dt.lineStarts[line-1]._widthColumns;
                         if (oldWidthCols) {
                             let startMeasure =
@@ -7296,8 +7296,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                             dt.lineStarts[line-1]._widthColumns = beforeCols;
                             lineNode._widthColumns = oldWidthCols - beforeCols;
                         }
-                    } else
-                        beforeMeasure = el.measureLeft;
+                    }
                     beforePos = indentWidth;
                     startOffset = beforeMeasure - beforePos;
                     dobreak = true;
@@ -7523,7 +7522,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             var countColumns = !Terminal._forceMeasureBreaks
                 && start._widthMode < Terminal._WIDTH_MODE_VARIABLE_SEEN;
             line = breakLine2(this, line, start, this.availWidth, countColumns);
-            start._breakState |= Terminal._BREAKS_VALID;
+            this.lineStarts[line]._breakState |= Terminal._BREAKS_VALID;
         }
     }
 
