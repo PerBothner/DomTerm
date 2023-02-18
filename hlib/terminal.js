@@ -96,12 +96,11 @@ import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
 import * as DtUtil from './domterm-utils.js';
 
-class Terminal {
-  constructor(name, topNode=null, no_session=null) {
-    // A unique name for this DomTerm instance. NOT USED?
-    // Generated names have the format:  name + "__" + something.
-    this.name = name; // deprecated
+class Terminal extends PaneInfo {
+  constructor(windowNumber, kind) {
+    super(windowNumber, kind);
 
+    this.paneInfo = this;
     // Options/state that should be saved/restored on detach/attach.
     // Restricted to properties that are JSON-serializable,
     // and that need to be saved/restored on detach/attach.
@@ -113,10 +112,10 @@ class Terminal {
 
     this._updateTimer = null;
 
-    // It might make sense to only allocate sstate if no_session !== "top".
+    // It might make sense to only allocate sstate if kind !== "top".
     // However, that seems likely to might break something.
     // Instead !sstyle.styleMap can be used to detect a "top" pseudo-Terminal.
-    if (no_session !== "top") {
+    if (this.kind !== "top") {
         // A stack of currently active "style" strings.
         sstate.styleMap = new Map();
     }
@@ -364,18 +363,27 @@ class Terminal {
     this._detachSaveNeeded = 1;
 
     this._mainBufferName = this.makeId("main")
-    this._altBufferName = this.makeId("alternate")
+      this._altBufferName = this.makeId("alternate")
+  }
+
+  setupElements(topNode) {
+    this.terminal = this;
+    let name = topNode == null ? null : topNode.getAttribute("id");
+    if (name == null)
+        name = "domterm";
+    // A unique name for this DomTerm instance. NOT USED?
+    // Generated names have the format:  name + "__" + something.
+    this.name = name; // deprecated
+
+    if (! DomTerm.mainTerm)
+        DomTerm.mainTerm = this;
+
     const dt = this;
     if (topNode) {
         this.topNode = topNode;
         topNode.spellcheck = false;
         topNode.terminal = this;
-        const pane = topNode.paneInfo;
-        if (pane) {
-            this.paneInfo = pane;
-            pane.terminal = this;
-        }
-        if (no_session=='view-saved') {
+        if (this.kind == 'view-saved') {
             // re-purpose the top-level node from the saved file.
             const buffers = topNode.firstElementChild;
             this.buffers = buffers;
@@ -405,7 +413,7 @@ class Terminal {
                                       },
                                       false);
         this._topOffset = 0; // placeholder - set in measureWindow
-        if (no_session=='view-saved') {
+        if (this.kind == 'view-saved') {
             let buffers = document.getElementsByClassName('dt-buffer');
             this.initial = buffers[buffers.length-1];
         } else {
@@ -485,7 +493,7 @@ class Terminal {
                                 });
             }
         };
-  }
+    }
 
     setEditingLine(el) {
         if (el !== this._currentEditingLine) {
@@ -512,10 +520,6 @@ class Terminal {
 
     isLineEditingOrMinibuffer() {
         return this.isLineEditing() || this._miniBuffer;
-    }
-
-    getOption(name, dflt = undefined) {
-        return this.paneInfo ? this.paneInfo.getOption(name, dflt): dflt;
     }
 
     hasClipboardServer(mode) {
@@ -977,26 +981,6 @@ DomTerm.EDITING_SELECTION = 1;
 // Handle Emacs key sequences locally.
 // Handle history locally
 // Handle shift of motion keys to extend selection
-
-DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
-    let topNode;
-    if (DomTerm.usingXtermJs()) {
-        let xterm = new window.Terminal();
-        xterm.open(parent);
-        topNode = xterm.element;
-        topNode.xterm = xterm;
-    } else {
-        topNode = document.createElement("div");
-        if (DomTerm.subwindows)
-            topNode.classList.add("lm_content");
-        parent.appendChild(topNode);
-    }
-    topNode.classList.add("domterm");
-    topNode.setAttribute("name", name);
-    if (DomTerm._oldFocusedContent == null)
-        DomTerm._oldFocusedContent = topNode;
-    return topNode;
-}
 
 // These are used to delimit "out-of-bound" urgent messages.
 Terminal.URGENT_BEGIN1 = 19; // '\023' (DC1) - out-of-band/urgent start
@@ -4114,10 +4098,12 @@ Terminal.prototype.forceWidthInColumns =
 };
 
 Terminal.prototype.measureWindow = function()  {
+    /*
     if (DomTerm.usingXtermJs()) {
         window.fit.fit(this.xterm);
         return;
     }
+    */
     let ruler = this._rulerNode;
     if (! ruler)
         return;
@@ -5772,8 +5758,8 @@ Terminal.prototype.getTitleInfo = function() {
     if (wtitle)
         info.windowTitle = wtitle;
     const snumber = this.sstate.sessionNumber;
-    const wnumber = this.topNode?.windowNumber;
-    const wname = this.topNode.getAttribute("window-name");
+    const wnumber = this.number;
+    const wname = this.topNode?.getAttribute("window-name");
     if (wtitle)
         info.windowTitle = wtitle;
     if (snumber >= 0)
@@ -5915,14 +5901,14 @@ Terminal.prototype.updateSettings = function() {
     }
     this._output_byte_by_byte = getOption("output-byte-by-byte", 0);
     if (this.isRemoteSession()) {
-        this._remote_input_interval =
+        pane._remote_input_interval =
             1000 * getOption("remote-input-interval", 10);
         let timeout = getOption("remote-output-timeout", -1);
         if (timeout < 0)
             timeout = 2 * getOption("remote-output-interval", 10);
         this._remote_output_timeout = 1000 * timeout;
     } else {
-        this._remote_input_interval = 0;
+        pane._remote_input_interval = 0;
         this._remote_output_timeout = 0;
     }
 
@@ -8121,12 +8107,12 @@ Terminal._keyCodeToValue = function(ecode) {
 }
 */
 
-Terminal.prototype.eventToKeyName = function(event) {
+Terminal.prototype.eventToKeyName = function(event, type=event.type) {
     if (! event.key)
         return browserKeymap.keyName(event);
     let base = event.key;
     let shift = event.shiftKey && base !== "Shift";
-    if (event.type == "keypress") {
+    if (type == "keypress") {
         base = "'" + base + "'";
         shift = false;
     }
@@ -8984,7 +8970,8 @@ DomTerm.masterKeymapDefault =
             "Alt+Mod++": "pane-zoom-in",
             "Alt+Mod+-": "pane-zoom-out",
             "Alt+Mod+0": "pane-zoom-reset",
-            "Ctrl-Shift-A": "enter-mux-mode",
+            "Alt-X": "enter-mux-mode",
+            "Ctrl-Shift-A": "enter-mux-mode", // OLD
             "Ctrl-Shift-F": "find-text",
             "Ctrl+Shift+L": "input-mode-cycle",
             "Ctrl+Shift+M": "toggle-paging-mode",
@@ -9213,10 +9200,14 @@ DomTerm.muxKeymap = new browserKeymap({
     "Up": "select-pane-up",
     "Right": "select-pane-right",
     "Down": "select-pane-down",
-    "Mod-Left": "new-pane-left",
+    "Mod-Left": "new-pane-left", //OLD
     "Mod-Right": "new-pane-right",
     "Mod-Down": "new-pane-below",
-    "Mod-Up": "new-pane-above"
+    "Mod-Up": "new-pane-above",
+    "Alt+Left": "new-pane-left",
+    "Alt+Right": "new-pane-right",
+    "Alt+Down": "new-pane-below",
+    "Alt+Up": "new-pane-above"
 });
 DomTerm.isKeyPressName = function(keyName) {
     return keyName.length >= 3 && keyName.charCodeAt(0) == 39/*"'"*/;
@@ -9382,9 +9373,9 @@ Terminal.prototype.keyDownHandler = function(event) {
     if (! keyName && event.key)
         keyName = event.key;
     if (! this._isOurEvent(event))
-        return;
+        return false;
     if (this._composing > 0 || event.which === 229)
-        return;
+        return false;
     if (this._composing == 0)
         this._composing = -1;
 
@@ -9401,7 +9392,7 @@ Terminal.prototype.keyDownHandler = function(event) {
         this.topNode.addEventListener("keyup", keyup, false);
     }
 
-    this.processKeyDown(keyName, event);
+    return this.processKeyDown(keyName, event);
 }
 
 Terminal.prototype.processKeyDown = function(keyName, event = null)
@@ -9460,7 +9451,7 @@ Terminal.prototype.processKeyDown = function(keyName, event = null)
 
 Terminal.prototype.keyPressHandler = function(event) {
     var key = event.keyCode ? event.keyCode : event.which;
-    let keyName = this.eventToKeyName(event);
+    let keyName = this.eventToKeyName(event, "keypress");
     if (DomTerm.verbosity >= 2)
         this.log("key-press kc:"+key+" key:"+event.key+" code:"+event.keyCode+" char:"+event.keyChar+" ctrl:"+event.ctrlKey+" alt:"+event.altKey+" which:"+event.which+" name:"+keyName+" in-l:"+this._inputLine);
     if (! this._isOurEvent(event))
@@ -9481,7 +9472,7 @@ Terminal.prototype.keyPressHandler = function(event) {
         if (event.which !== 0
             && key != 8
             && ! event.ctrlKey) {
-            var str = String.fromCharCode(key);
+            const str = event.key;
             this._clearSelection();
             this._addPendingInput(str);
             this._respondSimpleInput (str, keyName);
@@ -9748,7 +9739,7 @@ DomTerm._handleOutputData = function(dt, data) {
     return dlen;
 }
 
-DomTerm.initXtermJs = function(dt, topNode) {
+DomTerm.initXtermJs = function(dt, topNode) { // OBSOLETE
     let xterm = topNode.xterm;
     this.xterm = xterm;
     topNode.terminal = dt;
@@ -9812,51 +9803,6 @@ DomTerm.initXtermJs = function(dt, topNode) {
     xterm.addOscHandler(1, function(data) { dt.setWindowTitle(data, 1); return false; });
     xterm.addOscHandler(2, function(data) { dt.setWindowTitle(data, 2); return false; });
     xterm.addOscHandler(30, function(data) { dt.setWindowTitle(data, 30); return false; });
-}
-
-/** Connect using WebSockets */
-Terminal.connectWS = function(query, topNode=null, no_session=null) {
-    const wsprotocol = "domterm";
-    const wspath = Terminal._makeWsUrl(query);
-    let name = topNode == null ? null : topNode.getAttribute("id");
-    if (name == null)
-        name = "domterm";
-    var wt = new Terminal(name, topNode, no_session);
-    if (! DomTerm.mainTerm)
-        DomTerm.mainTerm = wt;
-    if (DomTerm.inAtomFlag && DomTerm.isInIFrame()) {
-        // Have atom-domterm's DomTermView create the WebSocket.  This avoids
-        // the WebSocket being closed when the iframe is moved around.
-        DomTerm.focusedTerm = wt;
-        DomTerm.sendParentMessage("domterm-new-websocket", wspath, wsprotocol);
-        wt.closeConnection = function() {
-             DomTerm.sendParentMessage("domterm-socket-close"); }
-        wt.processInputBytes = function(str) {
-            DomTerm.sendParentMessage("domterm-socket-send", str); }
-        return wt;
-    }
-    let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
-    wsocket.onopen = function(e) {
-        wt._reconnectCount = 0;
-        wt._socketOpen = true;
-        if (topNode !== null) {
-            if (DomTerm.usingXtermJs() && window.Terminal != undefined) {
-                DomTerm.initXtermJs(wt, topNode);
-                DomTerm.setFocus(wt, "N");
-            } else {
-                wt._handleSavedLog();
-                if (topNode.classList.contains("domterm-wrapper"))
-                    topNode = DomTerm.makeElement(name, topNode);
-                wt.initializeTerminal(topNode);
-            }
-        } else if (! DomTerm.isInIFrame()) {
-            wt.parser = new window.DTParser(wt);
-            wt.inputFollowsOutput = false;
-        }
-        wt.reportEvent(topNode ? "CONNECT" : "VERSION",
-                       JSON.stringify(DomTerm.versions));
-    };
-    return wt;
 }
 
 Terminal.prototype.showConnectFailure = function(ecode, reconnect=null, toRemote=true)  {
@@ -9926,115 +9872,6 @@ Terminal.prototype.showConnectFailure = function(ecode, reconnect=null, toRemote
     }
     div.addEventListener("click", handler, false);
 };
-
-Terminal.newWS = function(wspath, wsprotocol, wt) {
-    let wsocket;
-    try {
-        wsocket = new WebSocket(wspath, wsprotocol);
-        if (DomTerm.verbosity > 0)
-            console.log("created WebSocket on  "+wspath);
-    } catch (e) {
-        DomTerm.log("caught "+e.toString());
-    }
-    wsocket.binaryType = "arraybuffer";
-    wt.closeConnection = function() { wsocket.close(); };
-    wt._remote_input_timer_id = 0; // -1 means inside remote_input_timer
-    let remote_input_timer = () => {
-        if (! wt._remote_input_interval)
-            return;
-        wt._remote_input_timer_id = -1;
-        wt._confirmReceived();
-    };
-    wt.processInputBytes = function(bytes) {
-        let delay = wt.getOption("debug.input.extra-delay", 0);
-        let sendBytes = () => {
-            if (wt._remote_input_timer_id > 0) {
-                clearTimeout(wt._remote_input_timer_id);
-                wt._remote_input_timer_id = 0;
-            }
-            if (wt._remote_input_interval > 0 && ! wt.sstate.disconnected)
-                wt._remote_input_timer_id = setTimeout(remote_input_timer, wt._remote_input_interval);
-            wsocket.send(bytes);
-        };
-        if (delay && wt._remote_input_timer_id >= 0)
-            setTimeout(sendBytes, delay*1000);
-        else
-            sendBytes();
-    };
-    let remote_output_timer = () => {
-        wt.log("TIMEOUT - no output");
-        wt.showConnectFailure(-1);
-    }
-    wt._remote_output_timer_id = 0; // -1 means inside remote_output_timer
-    wsocket.onmessage = function(evt) {
-        DomTerm._handleOutputData(wt, evt.data);
-        if (wt._remote_output_timer_id > 0) {
-            clearTimeout(wt._remote_output_timer_id);
-            wt._remote_output_timer_id = 0;
-        }
-        if (wt._remote_output_timeout > 0)
-            wt._remote_output_timer_id = setTimeout(remote_output_timer, wt._remote_output_timeout);
-    }
-    wsocket.onerror = function(e) {
-        if (DomTerm.verbosity > 0)
-            DomTerm.log("unexpected WebSocket error code:"+e.code+" e:"+e);
-    }
-    wsocket.onclose = function(e) {
-        if (DomTerm.verbosity > 0)
-            DomTerm.log("unexpected WebSocket (connection:"+wt.topNode?.windowNumber+") close code:"+e.code+" e:"+e);
-        wt._socketOpen = false;
-        let reconnect = () => {
-            let reconnect = "&reconnect=" + wt._receivedCount;
-            wt._reconnectCount++;
-            let m = wspath.match(/^(.*)&reconnect=([0-9]+)(.*)$/);
-            if (m)
-                wspath = m[1] + reconnect + m[3];
-            else
-                wspath = wspath + reconnect;
-            let remote = wt.getRemoteHostUser();
-            if (remote)
-                wspath += ("&remote=" + encodeURIComponent(remote)
-                           + "&rsession=" + wt.sstate.sessionNumber);
-            let wsocket = Terminal.newWS(wspath, wsprotocol, wt);
-            wsocket.onopen = function(e) {
-                wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
-                wt._confirmedCount = wt._receivedCount;
-                wt._socketOpen = true;
-                wt._handleSavedLog();
-            };
-        };
-        let reconnectDelay = [0, 200, 400, 400][wt._reconnectCount];
-        if (reconnectDelay == 0)
-            reconnect();
-        else if (reconnectDelay)
-            setTimeout(reconnect, reconnectDelay);
-        else {
-            console.log("TOO MANY CONNECT fAILURES");
-            wt.showConnectFailure(e.code, reconnect, false);
-        }
-    }
-    return wsocket;
-}
-
-Terminal._makeWsUrl = function(query=null) {
-    var ws = ("#"+location.hash).match(/[#&;]ws=([^,&]*)/);
-    var url;
-    let protocol = location.protocol == "https:" ? "wss:" : "ws:";
-    if (DomTerm.server_port==undefined || (ws && ws[1]=="same"))
-        url = protocol
-            + "//"+location.hostname+":" + location.port + "/replsrc";
-    else if (ws)
-        url = protocol+ws[1];
-    else
-        url = protocol+"//localhost:"+DomTerm.server_port+"/replsrc";
-    if (DomTerm.server_key && ('&'+query).indexOf('&server-key=') < 0) {
-        query = (query ? (query + '&') : '')
-            + 'server-key=' + DomTerm.server_key;
-    }
-    if (query)
-        url = url + '?' + query;
-    return url;
-}
 
 Terminal.prototype.linkAllowedUrlSchemes = ":http:https:file:ftp:mailto:";
 
@@ -11359,7 +11196,7 @@ Terminal.loadSavedFile = function(topNode, url) {
         topNode.innerHTML = DtUtil.scrubHtml(responseText, {});
 
         let name = "domterm";
-        const dt = new Terminal(name, topNode, 'view-saved');
+        const dt = new Terminal(name, topNode, 'view-saved'); // FIXME
         dt.initial = document.getElementById(dt.makeId("main"));
         dt._initializeDomTerm(topNode);
         dt.sstate.windowTitle = "saved by DomTerm "+topNode.getAttribute("saved-version") + " on "+topNode.getAttribute("saved-time");

@@ -835,54 +835,54 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             }
 
             put_to_env_array(nenv, env_max, "TERM=xterm-256color");
-#if !  WITH_XTERMJS
-            put_to_env_array(nenv, env_max, "COLORTERM=truecolor");
-            const char* dinit = "DOMTERM=";
+            if (! pclient->use_xtermjs) {
+                put_to_env_array(nenv, env_max, "COLORTERM=truecolor");
+                const char* dinit = "DOMTERM=";
 #ifdef LWS_LIBRARY_VERSION
 #define SHOW_LWS_LIBRARY_VERSION "=" LWS_LIBRARY_VERSION
 #else
 #define SHOW_LWS_LIBRARY_VERSION ""
 #endif
-            const char *lstr = ";libwebsockets" SHOW_LWS_LIBRARY_VERSION;
-            const char* pinit = ";tty=";
-            char* ttyName = ttyname(0);
-            char pidbuf[40];
-            pid = getpid();
-            size_t dlen = strlen(dinit);
-            size_t llen = strlen(lstr);
-            size_t plen = strlen(pinit);
-            int tlen = ttyName == NULL ? 0 : strlen(ttyName);
-            const char *version_info =
-              /* FIXME   tclient != NULL ? tclient->version_info
-                    :*/ "version=" LDOMTERM_VERSION;
-            int vlen = version_info == NULL ? 0 : strlen(version_info);
-            int mlen = dlen + vlen + llen + (tlen > 0 ? plen + tlen : 0);
-            if (pid > 0) {
-                snprintf(pidbuf, sizeof(pidbuf), ";session#=%d;pid=%d",
-                        pclient->session_number, pid);
-                mlen += strlen(pidbuf);
+                const char *lstr = ";libwebsockets" SHOW_LWS_LIBRARY_VERSION;
+                const char* pinit = ";tty=";
+                char* ttyName = ttyname(0);
+                char pidbuf[40];
+                pid = getpid();
+                size_t dlen = strlen(dinit);
+                size_t llen = strlen(lstr);
+                size_t plen = strlen(pinit);
+                int tlen = ttyName == NULL ? 0 : strlen(ttyName);
+                const char *version_info =
+                    /* FIXME   tclient != NULL ? tclient->version_info
+                       :*/ "version=" LDOMTERM_VERSION;
+                int vlen = version_info == NULL ? 0 : strlen(version_info);
+                int mlen = dlen + vlen + llen + (tlen > 0 ? plen + tlen : 0);
+                if (pid > 0) {
+                    snprintf(pidbuf, sizeof(pidbuf), ";session#=%d;pid=%d",
+                             pclient->session_number, pid);
+                    mlen += strlen(pidbuf);
+                }
+                char* ebuf = challoc(mlen+1);
+                strcpy(ebuf, dinit);
+                int offset = dlen;
+                if (version_info)
+                    strcpy(ebuf+offset, version_info);
+                offset += vlen;
+                strcpy(ebuf+offset, lstr);
+                offset += llen;
+                if (tlen > 0) {
+                    strcpy(ebuf+offset, pinit);
+                    offset += plen;
+                    strcpy(ebuf+offset, ttyName);
+                    offset += tlen;
+                }
+                if (pid > 0) {
+                    strcpy(ebuf+offset, pidbuf);
+                    offset += strlen(pidbuf);
+                }
+                ebuf[mlen] = '\0';
+                put_to_env_array(nenv, env_max, ebuf);
             }
-            char* ebuf = challoc(mlen+1);
-            strcpy(ebuf, dinit);
-            int offset = dlen;
-            if (version_info)
-                strcpy(ebuf+offset, version_info);
-            offset += vlen;
-            strcpy(ebuf+offset, lstr);
-            offset += llen;
-            if (tlen > 0) {
-                strcpy(ebuf+offset, pinit);
-                offset += plen;
-                strcpy(ebuf+offset, ttyName);
-                offset += tlen;
-            }
-            if (pid > 0) {
-                strcpy(ebuf+offset, pidbuf);
-                offset += strlen(pidbuf);
-            }
-            ebuf[mlen] = '\0';
-            put_to_env_array(nenv, env_max, ebuf);
-#endif
 #if ENABLE_LD_PRELOAD
             int normal_user = getuid() == geteuid();
             char* domterm_home = get_bin_relative_path("");
@@ -2534,8 +2534,16 @@ int new_action(int argc, arglist_t argv, struct options *opts)
         printf_error(opts, "cannot execute '%s'", argv0);
         return EXIT_FAILURE;
     }
+    enum window_kind wkind = dterminal_window;
     struct pty_client *pclient = create_pclient(cmd, args, opts, false, NULL);
-    int r = display_session(opts, pclient, nullptr, dterminal_window);
+#if WITH_XTERMJS
+    std::string terminal_opt = get_setting_s(opts->settings, "terminal");
+    if (terminal_opt == "xtermjs") {
+        wkind = xterminal_window;
+        pclient->use_xtermjs = true;
+    }
+#endif
+    int r = display_session(opts, pclient, nullptr, wkind);
     if (r == EXIT_FAILURE) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }

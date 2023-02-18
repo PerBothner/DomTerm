@@ -675,7 +675,7 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
             " content=\"script-src 'unsafe-inline'\">\n"
             "<!--command used to start front-end: %s-->\n"
             "<script type='text/javascript'>\n"
-            "location.replace('http://localhost:%d/no-frames.html#server-key=%.*s&%s');\n"
+            "location.replace('http://localhost:%d/outer.html#server-key=%.*s&%s');\n"
             "</script>\n"
             "</head>\n"
             "<body></body></html>\n",
@@ -864,6 +864,8 @@ display_session(struct options *options, struct pty_client *pclient,
         json pane_options;
         if (wnum >= 0)
             pane_options["windowNumber"] = wnum;
+        if (wkind == xterminal_window)
+            pane_options["use_xtermjs"] = true;
         if (pclient && pclient->session_number >= 0)
             pane_options["sessionNumber"] = pclient->session_number;
         if (wkind == saved_window || wkind == browser_window) {
@@ -905,6 +907,8 @@ display_session(struct options *options, struct pty_client *pclient,
             if (pclient != NULL) {
                 sb.printf("&session-number=%d", pclient->session_number);
             }
+            if (wkind == xterminal_window)
+                sb.printf("&terminal=xtermjs");
             if (options->headless)
                 sb.printf("&headless=true");
 

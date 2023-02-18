@@ -349,6 +349,7 @@ HLIB_FIXED_FILES_MISC="\
   hlib/goldenlayout/img/lm_minimize_white.png \
   hlib/goldenlayout/img/lm_popin_white.png \
   hlib/macos-traffic-lights.css \
+  hlib/xterminal.js \
   hlib/jsMenus.css"
 case "$with_xterm_js" in
   ""|"no")

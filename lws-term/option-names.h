@@ -17,6 +17,9 @@ OPTION_S(openlink_application, "open.link.application", OPTION_MISC_TYPE)
 OPTION_S(log_file, "log.file", OPTION_STRING_TYPE)
 OPTION_S(titlebar, "titlebar", OPTION_STRING_TYPE)
 OPTION_S(subwindows, "subwindows", OPTION_STRING_TYPE)
+#if WITH_XTERMJS
+OPTION_S(termimal, "terminal", OPTION_STRING_TYPE) /* xtermjs or domterm */
+#endif
 
 /* front-end options */
 OPTION_F(style_user, "style.user", OPTION_MISC_TYPE)

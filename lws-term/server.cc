@@ -772,6 +772,16 @@ int process_options(int argc, arglist_t argv, struct options *opts)
 int
 main(int argc, char **argv)
 {
+#if 0
+    prescan_options(argc, (arglist_t) argv, &opts);
+    read_settings_file(&opts, false);
+    set_settings(&opts);
+    if (use_Qt/Wry/Electron && no server) {
+        fork/exec/daemonize self;
+        read/wait "VERSION";
+        exec Qt/Wry/Electron
+    }
+#endif
     argv0 = argv[0];
     memset(&info, 0, sizeof(info));
 #if LWS_LIBRARY_VERSION_NUMBER <= 2004002
@@ -1204,51 +1214,49 @@ make_socket_name(bool html_filename)
 
 char server_key[SERVER_KEY_LENGTH];
 
-static const char * standard_stylesheets[] = {
-    "hlib/domterm-core.css",
-    "hlib/domterm-standard.css",
-    "hlib/goldenlayout/css/goldenlayout-base.css",
-    "hlib/goldenlayout/css/themes/goldenlayout-light-theme.css",
-    "hlib/jsMenus.css",
-    "hlib/domterm-layout.css",
-    "hlib/domterm-default.css",
-#if WITH_XTERMJS
-    "hlib/xterm.css",
-#endif
-    NULL
-};
-static const char * standard_stylesheets_disabled[] = {
-    "hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css",
-    NULL
-};
-static const char * standard_stylesheets_simple[] = {
-    "hlib/domterm-core.css",
-    "hlib/domterm-standard.css",
-    "hlib/domterm-default.css",
-#if WITH_XTERMJS
-    "hlib/xterm.css",
-#endif
-    NULL
-};
 struct lib_info {
     const char *file;
     int options;
 };
 
+static struct lib_info standard_stylesheets[] = {
+    {"hlib/domterm-core.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-standard.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/goldenlayout/css/goldenlayout-base.css", LIB_WHEN_OUTER},
+    {"hlib/goldenlayout/css/themes/goldenlayout-light-theme.css", LIB_WHEN_OUTER},
+    {"hlib/jsMenus.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/domterm-layout.css", LIB_WHEN_OUTER },
+    {"hlib/domterm-default.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm.css", LIB_WHEN_XTERMJS},
+    {NULL, 0},
+};
+
+static struct lib_info standard_stylesheets_disabled[] = {
+    {"hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {NULL, 0},
+};
+#if 0
+static struct lib_info  standard_stylesheets_simple[] = {
+    {"hlib/domterm-core.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-standard.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-default.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm.css", LIB_WHEN_XTERMJS},
+    {NULL, 0},
+};
+#endif
+
 static struct lib_info standard_jslibs[] = {
-    {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
-    {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
 #if COMBINE_RESOURCES
     {"hlib/dt-combined.js", LIB_WHEN_SIMPLE},
 #else
-    {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-#if ! WITH_XTERMJS
+    {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/domterm-parser.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-#endif
-    {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE},
-    {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-    {"hlib/mark.es6.js", LIB_WHEN_SIMPLE},
-    {"hlib/domterm-findtext.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
+    {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/mark.es6.js", LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-findtext.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/FileSaver.js", LIB_WHEN_SIMPLE},
 #endif
 #if COMBINE_RESOURCES
@@ -1256,14 +1264,15 @@ static struct lib_info standard_jslibs[] = {
 #else
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
     {"hlib/qwebchannel.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
-    {"hlib/jsMenus.js", LIB_WHEN_OUTER},
+    {"hlib/jsMenus.js", LIB_WHEN_OUTER|LIB_WHEN_XTERMJS},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
-    {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-#if WITH_XTERMJS
-    {"hlib/xterm.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-    {"hlib/fit.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-#endif
+    {"hlib/xterm.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm-addon-fit.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm-addon-web-links.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterminal.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    //{"hlib/fit.js", LIB_WHEN_XTERMJS},
     {NULL, 0},
 };
 
@@ -1281,19 +1290,19 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
                  " charset=UTF-8'>\n"
                  "<title>DomTerm</title>\n",
                  base);
-    const char **p;
-    for (p = simple ? standard_stylesheets_simple : standard_stylesheets; *p; p++) {
-        obuf->printf("<link type='text/css' rel='stylesheet' href='%s'>\n", *p);
+    struct lib_info *lib;
+    for (lib = standard_stylesheets; lib->file != NULL; lib++) {
+        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER|LIB_WHEN_XTERMJS)) != 0)
+            obuf->printf("<link type='text/css' rel='stylesheet' href='%s'>\n", lib->file);
     }
     if (! simple) {
-        for (p = standard_stylesheets_disabled; *p; p++) {
-            obuf->printf("<link type='text/css' rel='stylesheet' href='%s' disabled='true'>\n", *p);
+        for (lib = standard_stylesheets_disabled; lib->file != NULL; lib++) {
+            obuf->printf("<link type='text/css' rel='stylesheet' href='%s' disabled='true'>\n", lib->file);
         }
     }
-    struct lib_info *lib;
     for (lib = standard_jslibs; lib->file != NULL; lib++) {
         const char *jstype = (lib->options & LIB_AS_MODULE) ? "module" : "text/javascript";
-        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER)) != 0)
+        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER|LIB_WHEN_XTERMJS)) != 0)
             obuf->printf("<script type='%s' src='%s'> </script>\n",
                          jstype, lib->file);
     }

@@ -150,6 +150,7 @@ public:
     bool is_ssh_pclient :1;
     bool has_primary_window :1;
     bool uses_packet_mode :1;
+    bool use_xtermjs :1 = false;
     bool exit;
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;
@@ -199,7 +200,7 @@ enum window_kind {
     unknown_window = 0, // also used for "open URL in browser"
     main_only_window = 1, // connection to main top-level window
     dterminal_window = 2,
-    //xterminal_window = 3, possible FUTURE xterm.js window
+    xterminal_window = 3, // use xterm.js terminal emulator
     saved_window  = 4,
     browser_window = 5,
 };
@@ -492,7 +493,7 @@ extern const char *getenv_from_array(const char* key, arglist_t envarray);
 extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_WHEN_SIMPLE 1
 #define LIB_WHEN_OUTER 2
-#define LIB_WHEN_NOFRAMES 4
+#define LIB_WHEN_XTERMJS 4
 #define LIB_AS_MODULE 8
 extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);

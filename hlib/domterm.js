@@ -130,9 +130,8 @@ DomTerm._settingsCounter = -1;
 
 //DomTerm.isInIFrame = function() { return window.parent != window; }
 DomTerm.isInIFrame = function() { return DomTerm.isSubWindow(); }
-DomTerm.isSubWindow = function() { return location.pathname == "/simple.html"; }
+DomTerm.isSubWindow = function() { const p = location.pathname; return p === "/simple.html" || p === "/xtermjs.html"; }
 
-DomTerm.usingAjax = false;
 DomTerm.usingQtWebEngine = !!navigator.userAgent.match(/QtWebEngine[/]([^ ]+)/);
 
 /** Hooks for up-calling to the browser application.
@@ -608,7 +607,7 @@ DomTerm.updateZoom = function() {
 }
 
 DomTerm.updateSettings = function(pane) {
-    if (pane.terminal)
+    if (pane.terminal && pane.kind !== "xterminal")
         pane.terminal.updateSettings();
     else if (pane.layoutItem) {
         const componentType = pane.layoutItem.toConfig().componentType;
@@ -630,6 +629,170 @@ DomTerm.updateSettings = function(pane) {
     }
 }
 
+DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
+    let topNode;
+    if (DomTerm.usingXtermJs()) {
+        let xterm = new window.Terminal();
+        xterm.open(parent);
+        topNode = xterm.element;
+        topNode.xterm = xterm;
+    } else {
+        topNode = document.createElement("div");
+        if (DomTerm.subwindows)
+            topNode.classList.add("lm_content");
+        parent.appendChild(topNode);
+    }
+    topNode.classList.add("domterm");
+    topNode.setAttribute("name", name);
+    if (DomTerm._oldFocusedContent == null)
+        DomTerm._oldFocusedContent = topNode;
+    return topNode;
+}
+
+DomTerm._makeWsUrl = function(query=null) {
+    var ws = ("#"+location.hash).match(/[#&;]ws=([^,&]*)/);
+    var url;
+    let protocol = location.protocol == "https:" ? "wss:" : "ws:";
+    if (DomTerm.server_port==undefined || (ws && ws[1]=="same"))
+        url = protocol
+            + "//"+location.hostname+":" + location.port + "/replsrc";
+    else if (ws)
+        url = protocol+ws[1];
+    else
+        url = protocol+"//localhost:"+DomTerm.server_port+"/replsrc";
+    if (DomTerm.server_key && ('&'+query).indexOf('&server-key=') < 0) {
+        query = (query ? (query + '&') : '')
+            + 'server-key=' + DomTerm.server_key;
+    }
+    if (query)
+        url = url + '?' + query;
+    return url;
+}
+
+DomTerm.newWS = function(wspath, wsprotocol, pane) {
+    const wt = pane; //.terminal;
+    let wsocket;
+    try {
+        wsocket = new WebSocket(wspath, wsprotocol);
+        if (DomTerm.verbosity > 0)
+            console.log("created WebSocket on  "+wspath);
+    } catch (e) {
+        DomTerm.log("caught "+e.toString());
+    }
+    wsocket.binaryType = "arraybuffer";
+    pane.closeConnection = function() { wsocket.close(); };
+    pane._remote_input_timer_id = 0; // -1 means inside remote_input_timer
+    let remote_input_timer = () => {
+        if (! pane._remote_input_interval)
+            return;
+        pane._remote_input_timer_id = -1;
+        wt._confirmReceived();
+    };
+    pane.processInputBytes = function(bytes) {
+        let delay = pane.getOption("debug.input.extra-delay", 0);
+        let sendBytes = () => {
+            if (pane._remote_input_timer_id > 0) {
+                clearTimeout(pane._remote_input_timer_id);
+                pane._remote_input_timer_id = 0;
+            }
+            if (pane._remote_input_interval > 0 && ! wt.sstate.disconnected/*FIXME*/)
+                pane._remote_input_timer_id = setTimeout(remote_input_timer, pane._remote_input_interval);
+            wsocket.send(bytes);
+        };
+        if (delay && pane._remote_input_timer_id >= 0)
+            setTimeout(sendBytes, delay*1000);
+        else
+            sendBytes();
+    };
+    let remote_output_timer = () => {
+        pane.log("TIMEOUT - no output");
+        pane.showConnectFailure(-1);
+    }
+    pane._remote_output_timer_id = 0; // -1 means inside remote_output_timer
+    wsocket.onmessage = function(evt) {
+        DomTerm._handleOutputData(pane, evt.data);
+        if (pane._remote_output_timer_id > 0) {
+            clearTimeout(pane._remote_output_timer_id);
+            pane._remote_output_timer_id = 0;
+        }
+        if (pane._remote_output_timeout > 0)
+            pane._remote_output_timer_id = setTimeout(remote_output_timer, pane._remote_output_timeout);
+    }
+    wsocket.onerror = function(e) {
+        if (DomTerm.verbosity > 0)
+            DomTerm.log("unexpected WebSocket error code:"+e.code+" e:"+e);
+    }
+    wsocket.onclose = function(e) {
+        if (DomTerm.verbosity > 0)
+            DomTerm.log("unexpected WebSocket (connection:"+wt.topNode?.windowNumber+") close code:"+e.code+" e:"+e);
+        pane._socketOpen = false;
+        let reconnect = () => {
+            let reconnect = "&reconnect=" + wt._receivedCount;
+            wt._reconnectCount++;
+            let m = wspath.match(/^(.*)&reconnect=([0-9]+)(.*)$/);
+            if (m)
+                wspath = m[1] + reconnect + m[3];
+            else
+                wspath = wspath + reconnect;
+            let remote = wt.getRemoteHostUser();
+            if (remote)
+                wspath += ("&remote=" + encodeURIComponent(remote)
+                           + "&rsession=" + wt.sstate.sessionNumber);
+            let wsocket = DomTerm.newWS(wspath, wsprotocol, pane);
+            wsocket.onopen = function(e) {
+                wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
+                wt._confirmedCount = wt._receivedCount;
+                wt._socketOpen = true;
+                wt._handleSavedLog();
+            };
+        };
+        let reconnectDelay = [0, 200, 400, 400][wt._reconnectCount];
+        if (reconnectDelay == 0)
+            reconnect();
+        else if (reconnectDelay)
+            setTimeout(reconnect, reconnectDelay);
+        else {
+            console.log("TOO MANY CONNECT fAILURES");
+            wt.showConnectFailure(e.code, reconnect, false);
+        }
+    }
+    return wsocket;
+}
+
+/** Connect using WebSockets */
+DomTerm.connectWS = function(query, pane, topNode=null) {
+    const wsprotocol = "domterm";
+    const no_session = pane.kind;
+    const wspath = DomTerm._makeWsUrl(query);
+    if (DomTerm.usingXtermJs()) {
+        pane.terminal = topNode.xterm;
+    } else
+        pane.setupElements(topNode);
+    let wt = pane;
+    let wsocket = DomTerm.newWS(wspath, wsprotocol, pane);
+    wsocket.onopen = function(e) {
+        wt._reconnectCount = 0;
+        wt._socketOpen = true;
+        if (topNode !== null) {
+            if (DomTerm.usingXtermJs() && window.Terminal != undefined) {
+                //DomTerm.initXtermJs(wt, topNode);
+                // DomTerm.setFocus(wt, "N");
+            } else {
+                wt._handleSavedLog();
+                if (topNode.classList.contains("domterm-wrapper"))
+                    topNode = DomTerm.makeElement(name, topNode);
+            }
+            pane.initializeTerminal(topNode);
+        } else if (! DomTerm.isInIFrame()) {
+            wt.parser = new window.DTParser(wt);
+            wt.inputFollowsOutput = false;
+        }
+        wt.reportEvent(topNode ? "CONNECT" : "VERSION",
+                       JSON.stringify(DomTerm.versions));
+    };
+    return wt;
+}
+
 DomTerm.handlingJsMenu = function() {
     return typeof Menu !== "undefined" && Menu._topmostMenu;
 };
@@ -641,11 +804,15 @@ if (DomTerm.isElectron()) {
 };
 
 class PaneInfo {
-    constructor(windowNumber) {
+    constructor(windowNumber, kind) {
         this.number = windowNumber;
         if (windowNumber > 0)
             DomTerm.paneMap[windowNumber] = this;
 
+        /** One of "dterminal" (domterm terminal) or "domterm" (legacy name);
+         * "xterminal" (xterm.js-based terminal); "top" (top container);
+         * "browser" or "view-saved". */
+        this.kind = kind;
         /** The ComponentItem for this pane if using GoldenLayout. */
         this.layoutItem = undefined;
 
@@ -656,10 +823,6 @@ class PaneInfo {
          * If DomTerm.useToolkitSubwindows: undefined.
          * Otherwise, either the topNode of a Terminal or an iframe. */
         this.contentElement = undefined;
-
-        /** Corresponding Terminal object, if it is not in a sub-window.
-         * If defined: this.terminal.topNode === this.contentElement. */
-        this.terminal = undefined;
 
         /** The 'pane-scale' setting for this pane.
          * This needs to multiplied by DomTerm.zoomMainBase
@@ -689,7 +852,16 @@ class PaneInfo {
         opt = DomTerm.globalSettings[name];
         return opt === undefined ? dflt : opt;
     }
-};
+}
+
+PaneInfo.create = function(windowNumber, kind) {
+    if (kind == "xterminal" && window.XTermPane != undefined)
+        return new window.XTermPane(windowNumber);
+    else if (kind === "dterminal" || kind === "xterminal" || kind == "top" || kind == "browse")
+        return new DTerminal(windowNumber, kind);
+    else
+        return new PaneInfo(windowNumber, kind);
+}
 
 /** Map from windowNumber to Paneinfo. */
 DomTerm.paneMap = new Array();

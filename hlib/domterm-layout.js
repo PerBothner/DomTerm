@@ -395,14 +395,20 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
                       : "&wname=")
             + cstate.windowName;
     }
-    let pane = new PaneInfo(cstate.windowNumber);
+    const ptype = ctype == "domterm" ? "dterminal" : ctypel
+    let pane;
     if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 : 2)
         || ctype === 'browser') {
+        pane = new PaneInfo(cstate.windowNumber, ptype);
         let url = ctype !== "view-saved" && cstate && cstate.url;
         if (! url) {
             url = DomTerm.paneLocation;
             if (query)
                 url += (url.indexOf('#') >= 0 ? '&' : '#') + query;
+            if (cstate.use_xtermjs) {
+                url = url.replace("/simple.html#",
+                                  "/xtermjs.html#terminal=xtermjs&");
+            }
             if (ctype === "view-saved" && cstate.url)
                 url += (url.indexOf('#') >= 0 ? '&' : '#')
                 + "view-saved=" +encodeURIComponent(cstate.url);
@@ -420,6 +426,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
             wrapped.paneInfo = pane;
         }
     } else {
+        pane = PaneInfo.create(cstate.windowNumber, ptype);
         let name = DomTerm.freshName();
         let el = DomTerm.makeElement(name, parent);
         wrapped = el;
@@ -435,7 +442,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
         if (ctype === "view-saved") {
             DTerminal.loadSavedFile(el, cstate.url);
         } else {
-            DTerminal.connectWS(query, el, null);
+            DomTerm.connectWS(query, pane, el);
         }
     }
     if (wrapped) {
@@ -650,7 +657,8 @@ DomTermLayout.initialize = function(initialContent = null) {
         return content;
     }
 
-    DomTermLayout.manager.registerComponent( 'domterm', registerComponent);
+    DomTermLayout.manager.registerComponent('domterm'/*SHOULD be "dterminal"*/, registerComponent);
+    DomTermLayout.manager.registerComponent("xterminal", registerComponent);
     DomTermLayout.manager.registerComponent("browser", registerComponent);
     DomTermLayout.manager.registerComponent("view-saved", registerComponent);
 

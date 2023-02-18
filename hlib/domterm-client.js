@@ -1,7 +1,4 @@
-import { Terminal } from './terminal.js';
 import * as DtUtil from './domterm-utils.js';
-
-var maxAjaxInterval = 2000;
 
 // These should perhaps be combined
 DomTerm.subwindows = true;
@@ -40,99 +37,6 @@ DomTerm.useToolkitSubwindows = false;
 // with less of the cost, plus it makes no-layout modes more consistent.
 // It also makes debugging a bit simpler.
 DomTerm.useIFrame = ! DomTerm.simpleLayout ? 1 : 0;
-
-/** Connect using XMLHttpRequest ("ajax") */
-function connectAjax(name, prefix="", topNode=null)
-{
-    var wt = new Terminal(name);
-    if (topNode == null)
-        topNode = document.getElementById("domterm");
-    var xhr = new XMLHttpRequest();
-    var sessionKey = 0;
-    var pendingInput = null;
-    var ajaxInterval = 200;
-    var awaitingAjax = false;
-    var timer = null;
-
-    function handleAjaxOpen() {
-        if (xhr.readyState === 4) {
-            var key = xhr.responseText.replace(/key=/, "");
-            wt.initializeTerminal(topNode);
-            sessionKey = key;
-            requestIO();
-        }
-    }
-
-    function handleTimeout() {
-        timer = null;
-        requestIO();
-    }
-
-    function handleAjaxIO() {
-        if (xhr.readyState === 4) {
-	    var dlen = DomTerm._handleOutputData(wt, xhr.response);
-            awaitingAjax = false;
-
-            if (pendingInput != null) {
-                ajaxInterval = 0;
-                requestIO();
-            } else {
-                if (dlen > 0)
-                    ajaxInterval = 0;
-                ajaxInterval += 200;
-                if (ajaxInterval > maxAjaxInterval)
-                    ajaxInterval = maxAjaxInterval;
-                timer = setTimeout(handleTimeout, ajaxInterval);
-            }
-        }
-    }
-    function requestIO() {
-        if (timer != null) {
-            clearTimeout(timer);
-            timer = null;
-        }
-        xhr.open("POST", prefix+"io-"+sessionKey);
-        xhr.onreadystatechange = handleAjaxIO;
-        xhr.responseType = "blob";
-        var bytes = pendingInput;
-        if (bytes !== null)
-            ajaxInterval = 0;
-        pendingInput = null;
-        xhr.onerror= function(e) {
-            wt.close();
-        }
-        let blob = new Blob(bytes == null ? [] : [bytes]);
-        xhr.send(blob);
-        awaitingAjax = true;
-    }
-
-    function onUnload(evt) {
-        var request = new XMLHttpRequest();
-        request.open("POST",prefix+"close-"+sessionKey);
-        request.send("");
-    }
-    window.addEventListener("beforeunload", onUnload, false);
-
-    function processInput(bytes) {
-        if (pendingInput == null)
-            pendingInput = bytes;
-        else {
-            let buf = new ArrayBuffer(pendingInput.byteLength+bytes.byteLength);
-            let narr = new Uint8Array(buf);
-            narr.set(pendingInput, 0);
-            narr.set(bytes, pendingInput.byteLength);
-            pendingInput = narr;
-        }
-        if (! awaitingAjax) {
-            requestIO();
-        }
-    }
-    wt.processInputBytes = processInput;
-
-    xhr.open("POST", prefix+"open.txt");
-    xhr.onreadystatechange = handleAjaxOpen;
-    xhr.send("VERSION="+JSON.stringify(DomTerm.versionInfo));
-}
 
 function setupQWebChannel(channel) {
     const backend = channel.objects.backend;
@@ -436,6 +340,9 @@ function loadHandler(event) {
         && (m || DomTerm.isElectron() || DomTerm.usingQtWebEngine || DomTerm.versions.wry)) {
         DomTerm.addTitlebar = true;
     }
+    const useXtermJs = params.get("terminal") === "xtermjs";
+    if (useXtermJs)
+        DomTerm.useIFrame = 2;
     m = params.get("subwindows");
     if (m === "qt") {
         DomTerm.useToolkitSubwindows = true;
@@ -634,11 +541,9 @@ function loadHandler(event) {
             wparams.delete("open");
             wparams.delete("session-number");
             wparams.set("main-window", "true");
-            const dt = Terminal.connectWS(wparams.toString(),
-                                          null, no_session);
-            const pane = new PaneInfo(mwinnum);
+            const pane = new DTerminal(mwinnum, no_session);
+            const dt = DomTerm.connectWS(wparams.toString(), pane, null);
             pane.terminal = dt;
-            dt.paneInfo = pane;
             wparams.delete("main-window");
         }
         if (mwinnum >= 0)
@@ -670,6 +575,8 @@ function loadHandler(event) {
                 cstate.sessionNumber = snumn;
             const wnameUnique = params.get("wname-unique");
             const wname = params.get("wname") || wnameUnique;
+            if (params.get("terminal")==="xtermjs")
+                cstate.use_xtermjs = true;
             if (wname) {
                 cstate.windowName = wname;
                 cstate.windowNameUnique = !!wnameUnique;
@@ -722,7 +629,7 @@ function loadHandler(event) {
                 el = DomTerm.makeElement(name, parent);
                 query += "&main-window=true";
             }
-            const pane = new PaneInfo(mwinnum);
+            const pane = PaneInfo.create(mwinnum, useXtermJs ? "xterminal" : "dterminal");
             pane.contentElement = el;
             el.paneInfo = pane;
             DomTerm.focusedPane = pane;
@@ -731,17 +638,13 @@ function loadHandler(event) {
             DomTerm.updateSizeFromBody();
         }
         if (location.search.search(/wait/) >= 0) {
-        } else if (location.hash == "#ajax" || ! window.WebSocket) {
-            DomTerm.usingAjax = true;
-            for (var i = 0; i < topNodes.length; i++)
-                connectAjax("domterm", "", topNodes[i]);
         } else if (! no_session || no_session === "view-saved") {
             for (var i = 0; i < topNodes.length; i++) {
                 const top = topNodes[i];
                 if (no_session === "view-saved") {
                     Terminal.loadSavedFile(top, browse_param);
                 } else {
-                    Terminal.connectWS(query, top, no_session);
+                    DomTerm.connectWS(query, top.paneInfo, top);
                 }
                 DomTerm.maybeWindowName(top);
             }
@@ -761,10 +664,9 @@ DomTerm.handleCommand = function(iframe, command, args) {
 function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
 {
     if (dt == null) {
-        console.log("null dt in handleMessageFromParent "+command);
         dt = DomTerm.mainTerm;
     }
-    const pane = dt.paneInfo;
+    const pane = dt ? dt.paneInfo : DomTerm.focusedPane;
     switch (command) {
     case "do-command":
         DomTerm.doNamedCommand(args[0], dt, args[1]);
@@ -880,13 +782,7 @@ function handleMessage(event) {
     if (data.command && data.args
              && DomTerm.handleCommand(iframe, data.command, data.args))
         return;
-    else if (data.command=="handle-output")
-        DomTerm._handleOutputData(dt, data.output);
-    else if (data.command=="socket-open") { // used by atom-domterm
-        dt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
-        dt.reportEvent("DETACH", "");
-        dt.initializeTerminal(dt.topNode);
-    } else if (data.command=="domterm-new-window") { // child to parent
+    else if (data.command=="domterm-new-window") { // child to parent
         DomTerm.openNewWindow(null, data.args[0]);
     } else if (data.command=="auto-paging") {
             DomTerm.setAutoPaging(data.args[0]);
@@ -903,9 +799,9 @@ function handleMessage(event) {
             DomTermLayout.popoutWindow(wholeStack ? pane.parent : pane);
         }
     } else if (data.command=="domterm-socket-close") { // message to child
-        let dt = DomTerm.focusedTerm;
-        if (dt)
-            dt.closeConnection();
+        let pane = DomTerm.focusedPane;
+        if (pane)
+            pane.closeConnection();
     } else if (data.command=="request-selection") { // parent to child
         // FIXME rename to doNamedCommand("copy"/"copy-as-html");
         DomTerm.sendParentMessage("value-to-clipboard",
