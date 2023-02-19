@@ -679,6 +679,21 @@ request_enter(struct options *opts, tty_client* tclient)
     tclient->pending_requests.enter(opts, opts->index());
 }
 
+pty_client::pty_client()
+{
+    use_xtermjs = false;
+    pid = -1;
+    nrows = -1;
+    ncols = -1;
+    pixh = -1;
+    pixw = -1;
+    detach_count = 0;
+    paused = 0;
+    saved_window_contents = NULL;
+    preserved_output = NULL;
+    preserve_mode = 1;
+}
+
 static struct pty_client *
 create_pclient(const char *cmd, arglist_t argv, struct options *opts,
                bool ssh_remoting, struct tty_client *t_hint)
@@ -719,7 +734,7 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     //if (tclient == NULL)              return NULL;
     outwsi = lws_adopt_descriptor_vhost(vhost, LWS_ADOPT_RAW_FILE_DESC, fd,
                                         "pty", NULL);
-    struct pty_client *pclient = (struct pty_client *) lws_wsi_user(outwsi);
+    struct pty_client *pclient = new (lws_wsi_user(outwsi)) pty_client();
     pclient->ttyname = tname;
     pclient->uses_packet_mode = packet_mode;
     tserver.session_count++;
@@ -731,19 +746,9 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     int snum = pty_clients.enter(pclient, hint);
     pclient->session_number = snum;
 
-    pclient->pid = -1;
     pclient->pty = master;
     pclient->pty_slave = slave;
     pclient->stderr_client = NULL;
-    pclient->nrows = -1;
-    pclient->ncols = -1;
-    pclient->pixh = -1;
-    pclient->pixw = -1;
-    pclient->detach_count = 0;
-    pclient->paused = 0;
-    pclient->saved_window_contents = NULL;
-    pclient->preserved_output = NULL;
-    pclient->preserve_mode = 1;
     pclient->first_tclient = NULL;
     pclient->last_tclient_ptr = &pclient->first_tclient;
     pclient->recent_tclient = NULL;

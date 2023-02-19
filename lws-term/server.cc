@@ -1268,8 +1268,11 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
     {"hlib/xterm.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm-addon-canvas.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-fit.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    //{"hlib/xterm-addon-serialize.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-web-links.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm-addon-webgl.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterminal.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     //{"hlib/fit.js", LIB_WHEN_XTERMJS},

@@ -517,6 +517,9 @@ class Terminal extends PaneInfo {
     isLineEditing() {
         return this.isLineEditingMode() && ! this._currentlyPagingOrPaused();
     }
+    applicationCursorKeysMode() {
+        return this.sstate.applicationCursorKeysMode;
+    }
 
     isLineEditingOrMinibuffer() {
         return this.isLineEditing() || this._miniBuffer;
@@ -623,6 +626,14 @@ class Terminal extends PaneInfo {
     // when closing the session (while preserving the WebSocket).
     clearVisibleState() {
         this.detachResizeSensor();
+        if (DomTerm.focusedTerm == this)
+            DomTerm.focusedTerm = null;
+        if (DomTerm.focusedPane == this)
+            DomTerm.focusedPane = null;
+
+        if (this.kind === "xterminal")
+            return;
+
         if (this.topNode && this.topNode.parentNode)
             this.topNode.parentNode.removeChild(this.topNode);
         this.topNode = null;
@@ -667,9 +678,6 @@ class Terminal extends PaneInfo {
         document.removeEventListener("selectionchange",
                                      this._selectionchangeListener);
         this._selectionchangeListener = null;
-        if (DomTerm.focusedTerm == this)
-            DomTerm.focusedTerm = null;
-
     }
 
     /// Are we reporting mouse events?
@@ -937,6 +945,21 @@ class Terminal extends PaneInfo {
         this.sstate.mouseMode = oldMode;
     }
 
+    /** Concatenate _deferredBytes with slice of bytes.
+     * Return concatenated array.  Clears _deferredBytes. */
+    withDeferredBytes(bytes, beginIndex = 0, endIndex = bytes.length) {
+        if (this._deferredBytes) {
+            let dlen = this._deferredBytes.length;
+            let narr = new Uint8Array(dlen + (endIndex - beginIndex));
+            narr.set(this._deferredBytes);
+            narr.set(bytes.subarray(beginIndex, endIndex), dlen);
+            this._deferredBytes = undefined;
+            return narr;
+        } else {
+            return bytes.slice(beginIndex, endIndex);
+        }
+    }
+
     setMouseMode(value) {
         var handler = this._mouseEventHandler;
         if (value) {
@@ -1035,7 +1058,7 @@ DomTerm.closeFromEof = function(dt) {
 
 // detach is true, false, or "export"
 Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
-    const wnumber = this.topNode?.windowNumber;
+    const wnumber = this.number;
     this.historySave();
     if (detach) {
         if (detach !== "export") // handled by "dragExported" handler
@@ -3666,16 +3689,15 @@ Terminal.prototype.resizeHandler = function() {
 }
 
 Terminal.prototype.attachResizeSensor = function() {
-    var dt = this;
-    dt._resizeObserver = new ResizeObserver(entries => {
-        dt.resizeHandler();
+    this._resizeObserver = new ResizeObserver(entries => {
+        this.resizeHandler();
     });
-    dt._resizeObserver.observe(dt.topNode);
+    this._resizeObserver.observe(this.contentElement);
 }
 
 Terminal.prototype.detachResizeSensor = function() {
     if (this._resizeObserver)
-        this._resizeObserver.unobserve(this.topNode);
+        this._resizeObserver.unobserve(this.contentElement);
     this._resizeObserver = undefined;
 };
 
@@ -4710,7 +4732,7 @@ Terminal.prototype.reportEvent = function(name, data = "",
     let str = name + ' ' + data;
     let slen = str.length;
     if (logIt)
-        this.log("reportEvent "+this.name+": "+str);
+        this.log("reportEvent "+str);
     // Max 3 bytes per UTF-16 character
     let buffer = new ArrayBuffer(2 + 3 * slen);
     let encoder = this._encoder;
@@ -6500,9 +6522,9 @@ Terminal.prototype._pauseContinue = function(paging = false, skip = false) {
     if (DomTerm.verbosity >= 2)
         this.log("pauseContinue was mode="+wasMode);
     if (wasMode == 2) {
-        var text = this.parser._deferredBytes;
+        var text = this._deferredBytes;
         if (text) {
-            this.parser._deferredBytes = undefined;
+            this._deferredBytes = undefined;
             if (skip) {
                 this._receivedCount
                     = (this._receivedCount + text.length) & Terminal._mask28;
@@ -6557,11 +6579,6 @@ Terminal.prototype._maybeConfirmReceived = function() {
 Terminal.prototype.insertBytes = function(bytes, startIndex = 0, endIndex = bytes.length) {
     if (DomTerm.verbosity >= 2)
         this.log("insertBytes "+this.name+" "+typeof bytes+" count:"+(endIndex-startIndex)+" received:"+this._receivedCount);
-    if (! this.parser) {
-        console.log("data received for non-terminal window (browse or view-saved)");
-        console.log("ignored for now");
-        return;
-    }
     while (startIndex < endIndex) {
         let urgent_begin = -1;
         let urgent_end = -1;
@@ -6577,7 +6594,7 @@ Terminal.prototype.insertBytes = function(bytes, startIndex = 0, endIndex = byte
         }
         if (urgent_begin >= 0 && (urgent_end < 0 || urgent_end > urgent_begin)) {
             if (urgent_begin > startIndex) {
-                this.parser._deferredBytes = this.parser.withDeferredBytes(bytes, startIndex, urgent_begin);
+                this._deferredBytes = this.withDeferredBytes(bytes, startIndex, urgent_begin);
             }
             this.pushControlState();
             startIndex = urgent_begin + 1;
@@ -6599,9 +6616,9 @@ Terminal.prototype.insertBytes = function(bytes, startIndex = 0, endIndex = byte
                 this.parseBytes(bytes, startIndex, urgent_end);
                 this.popControlState();
                 startIndex = urgent_end + 1;
-                let defb = this.parser._deferredBytes;
+                let defb = this._deferredBytes;
                 if (startIndex == endIndex && defb) {
-                    this.parser._deferredBytes = undefined;
+                    this._deferredBytes = undefined;
                     this.parseBytes(defb);
                 }
             } else {
@@ -6616,6 +6633,7 @@ Terminal.prototype.insertBytes = function(bytes, startIndex = 0, endIndex = byte
 Terminal.prototype.pushControlState = function() {
     const dt = this;
     var saved = {
+        deferredBytes: this._deferredBytes,
         receivedCount: this._receivedCount,
         setFromFollowingByte(ch) {
             let start;
@@ -6642,6 +6660,7 @@ Terminal.prototype.pushControlState = function() {
         },
         _savedControlState: this._savedControlState
     }
+    this._deferredBytes = undefined;
     this._savedControlState = saved;
     if (! DomTerm.usingXtermJs())
         this.parser.pushControlState(saved);
@@ -6650,6 +6669,7 @@ Terminal.prototype.popControlState = function() {
     var saved = this._savedControlState;
     if (saved) {
         this._savedControlState = saved._savedControlState;
+        this._deferredBytes = saved.deferredBytes;
         if (! DomTerm.usingXtermJs()) {
             this.parser.popControlState(saved);
         }
@@ -6669,12 +6689,18 @@ Terminal.prototype.insertString = function(str) {
 }
 // overridden if usingXtermJs()
 Terminal.prototype.parseBytes = function(bytes, beginIndex = 0, endIndex = bytes.length) {
+    if (! this.parser) {
+        console.log("data received for non-terminal window (browse or view-saved)");
+        console.log("ignored for now");
+        return;
+    }
+
     let rlen = endIndex - beginIndex;
-    if (this.parser._deferredBytes)
-        rlen += this.parser._deferredBytes.length;
+    if (this._deferredBytes)
+        rlen += this._deferredBytes.length;
     this.parser.parseBytes(bytes, beginIndex, endIndex);
-    if (this.parser._deferredBytes)
-        rlen -= this.parser._deferredBytes.length;
+    if (this._deferredBytes)
+        rlen -= this._deferredBytes.length;
     this._receivedCount = (this._receivedCount + rlen) & Terminal._mask28;
 
     if (this._afterOutputHook) {
@@ -8167,7 +8193,7 @@ Terminal.prototype.keyNameToChars = function(keyName, event=null) {
             mods += 8;
         if (mods > 0)
             return csi+(param==""||param=="O"?"1":param)+";"+(mods+1)+last;
-        else if ((this.sstate.applicationCursorKeysMode && param == "") || param == "O")
+        else if ((this.applicationCursorKeysMode() && param == "") || param == "O")
             return "\x1BO"+last;
         else
             return csi+param+last;
@@ -9382,7 +9408,7 @@ Terminal.prototype.keyDownHandler = function(event) {
     if (this._clearPendingDisplayMiscInfo()) {
     } else if (this._showingMiscInfo) {
         DomTerm.displayMiscInfo(this, false);
-    } else if (keyName == "Ctrl") {
+    } else if (keyName == "Ctrl" && this.kind !== "xterminal") {
         let keyup = (e) => {
             DomTerm.displayMiscInfo(this, true);
             this.topNode.removeEventListener("keyup", keyup, false);
@@ -9771,34 +9797,6 @@ DomTerm.initXtermJs = function(dt, topNode) { // OBSOLETE
     xterm.linkHandler = function(e, uri) {
         DomTerm.handleLinkRef(uri, undefined, dt);
     };
-    xterm.addCsiHandler("u",
-                               function(params,collect) {
-                                   switch (params[0]) {
-                                   case 90: {
-                                       let wnum = this.getParameter(2, -1);
-                                       let snum = this.getParameter(3, -1);
-                                       let options = {};
-                                       if (wnum >= 0)
-                                           options.windowNumber = wnum;
-                                       if (snum >= 0)
-                                           options.sessionNumber = snum;
-                                       DomTerm.newPane(params[1], options, dt);
-                                       return true;
-                                   }
-                                   case 91:
-                                       dt.setSessionNumber(params[1],
-                                                           params[2],
-                                                           params[3]-1);
-                                       return true;
-                                   case 99:
-                                       if (params[1]==99) {
-                                           DomTerm.closeFromEof(dt);
-                                           return true;
-                                       }
-                                       break;
-                                   }
-                                   return false;
-                               });
     xterm.addOscHandler(0, function(data) { dt.setWindowTitle(data, 0); return false; });
     xterm.addOscHandler(1, function(data) { dt.setWindowTitle(data, 1); return false; });
     xterm.addOscHandler(2, function(data) { dt.setWindowTitle(data, 2); return false; });

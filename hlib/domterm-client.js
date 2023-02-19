@@ -680,8 +680,8 @@ function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
         DomTerm.updateSettings(pane);
         break;
     case "domterm-close":
-        if (dt)
-            dt.close(args[0], args[1]);
+        if (pane)
+            pane.close(args[0], args[1]);
         break;
     }
 }

@@ -137,6 +137,7 @@ enum option_name {
  */
 class pty_client {
 public:
+    pty_client();
     int index() { return session_number; }
     void start_if_needed(struct options *opts);
     int pid;
@@ -150,7 +151,7 @@ public:
     bool is_ssh_pclient :1;
     bool has_primary_window :1;
     bool uses_packet_mode :1;
-    bool use_xtermjs :1 = false;
+    bool use_xtermjs :1;
     bool exit;
     // Number of "pending" re-attach after detach; -1 is allow infinite.
     int detach_count;

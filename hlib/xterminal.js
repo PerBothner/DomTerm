@@ -1,36 +1,76 @@
 import { Terminal as DTerminal } from './terminal.js';
 
 const XTerm = window.Terminal;
+const CanvasAddon = window.CanvasAddon.CanvasAddon;
 const FitAddon = window.FitAddon.FitAddon;
+const WebglAddon = window.WebglAddon.WebglAddon;
 
 class XTermPane extends DTerminal {
     constructor(windowNumber) {
         super(windowNumber, "xterminal");
         this.fitAddon = new FitAddon();
+        this.rendererType = 'canvas'; // 'dom' 'canvas' or 'webgl'
     }
     initializeTerminal(_topNode) {
         const xterm = this.terminal;
+        this.xterm = xterm;
 
-        // MAYBE use attachCustomKeyEventHandler instead of onKey
-        xterm.onKey((arg) => {
-            const ev = arg.domEvent;
-            const etype = ev.type;
-            console.log("onKey2 "+JSON.stringify(arg.key)+" type:"+arg.domEvent.type);
-            if (etype !== "keydown"
-                || ! this.keyDownHandler(ev)) {
-                this.keyPressHandler(ev, "'" + arg.key + "'");
-            }
+        const linkHandler = {
+            activate: (ev, text, range) => {
+                console.log("link activate "+text);
+                //DomTerm.handleLinkRef(text, undefined, this);
+            },
+            hover: (ev, text, range) => {
+                console.log("link hover "+text);
+            },
+            leave: (ev, text, range) => {
+                console.log("link leave "+text);
+            },
+            allowNonHttpProtocols: true
+        };
+        xterm.linkHandler = linkHandler;
+
+        xterm.attachCustomKeyEventHandler((e) => {
+            if (e.type == 'keypress')
+                this.keyPressHandler(e);
+            else if (e.type == 'keydown')
+                this.keyDownHandler(e);
+            return false;
         });
-        xterm.onResize((cols, rows) => {
-            console.log("onResize "+cols+"x"+rows);
-            this.setWindowSize(rows, cols, 0, 0);
+
+        xterm.parser
+            .addCsiHandler({final: 'u'},
+                           params => {
+                               console.log("csi handler for u");
+                               switch (params[0]) {
+                               case 91:
+                                   this.setSessionNumber(params[1],
+                                                         params[2],
+                                                         params[3]-1,
+                                                         params[4]);
+                                   break;
+                               case 99:
+                                   if (params[1]==99) {
+                                       DomTerm.closeFromEof(this);
+                                       return true;
+                                   }
+                                   break;
+                               }
+                               return false;
+                           });
+
+        xterm.onResize((sz) => {
+            this.setWindowSize(sz.rows, sz.cols, 0, 0);
         });
+
         xterm.onTitleChange((title) => {
-            console.log("title changed: "+title);
             this.setWindowTitle(title, 2);
         });
+
         xterm.loadAddon(this.fitAddon);
         this.fitAddon.fit();
+        this.attachResizeSensor();
+        this.setRendererType(this.rendererType);
     }
     hasFocus() {
         return this.contentElement.classList.contains("focus");
@@ -41,20 +81,99 @@ class XTermPane extends DTerminal {
         else
             xterm.blur()
     }
-    measureWindow() {
+    applicationCursorKeysMode() {
+        return this.xterm.modes.applicationCursorKeysMode;
+    }
+    resizeHandler() {
         this.fitAddon.fit();
     }
-    insertBytes(bytes, beginIndex, endIndex) {
-        this.parseBytes(bytes, beginIndex, endIndex);
-    }
     parseBytes(bytes, beginIndex, endIndex) {
+        if (DomTerm.verbosity >= 2) {
+            if (this._decoder == null)
+                this._decoder = new TextDecoder(); //label = "utf-8");
+            const str = this._decoder.decode(bytes.subarray(beginIndex, endIndex),
+                                             {stream:true});
+            let jstr = DomTerm.JsonLimited(str);
+            if (this._pagingMode == 2)
+                jstr += " paused";
+            if (this._savedControlState)
+                jstr += " urgent";
+            this.log("parseBytes "+jstr);
+        }
+        let rlen = endIndex - beginIndex;
         this.terminal.write(bytes.slice(beginIndex, endIndex));
+        this._receivedCount = (this._receivedCount + rlen) & DTerminal._mask28;
     }
     _isOurEvent(event) {
         return true; // maybe check "focus" class
     }
     _scrollIfNeeded() {
         return false;
+    }
+
+    // based on code in ttyd
+    setRendererType(value) {
+        //const { terminal } = this;
+        const disposeCanvasRenderer = () => {
+            try {
+                this.canvasAddon?.dispose();
+            } catch {
+                // ignore
+            }
+            this.canvasAddon = undefined;
+        };
+        const disposeWebglRenderer = () => {
+            try {
+                this.webglAddon?.dispose();
+            } catch {
+                // ignore
+            }
+            this.webglAddon = undefined;
+        };
+        const enableCanvasRenderer = () => {
+            if (this.canvasAddon) return;
+            this.canvasAddon = new CanvasAddon();
+            disposeWebglRenderer();
+            try {
+                this.xterm.loadAddon(this.canvasAddon);
+                console.log('canvas renderer loaded');
+            } catch (e) {
+                console.log('canvas renderer could not be loaded, falling back to dom renderer', e);
+                disposeCanvasRenderer();
+            }
+        };
+        const enableWebglRenderer = () => {
+            if (this.webglAddon) return;
+            this.webglAddon = new WebglAddon();
+            disposeCanvasRenderer();
+            try {
+                this.webglAddon.onContextLoss(() => {
+                    this.webglAddon?.dispose();
+                });
+                this.xterm.loadAddon(this.webglAddon);
+                console.log('WebGL renderer loaded');
+            } catch (e) {
+                console.log('WebGL renderer could not be loaded, falling back to canvas renderer', e);
+                disposeWebglRenderer();
+                enableCanvasRenderer();
+            }
+        };
+
+        switch (value) {
+            case 'canvas':
+                enableCanvasRenderer();
+                break;
+            case 'webgl':
+                enableWebglRenderer();
+                break;
+            case 'dom':
+                disposeWebglRenderer();
+                disposeCanvasRenderer();
+                console.log('dom renderer loaded');
+                break;
+            default:
+                break;
+        }
     }
 }
 window.XTermPane = XTermPane;

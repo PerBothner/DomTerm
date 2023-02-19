@@ -343,8 +343,11 @@ $(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR)
 if WITH_XTERMJS
 	cp $(NODE_MODULES_DIR)/xterm/lib/xterm.js \
 	  $(NODE_MODULES_DIR)/xterm/css/xterm.css \
+	  $(NODE_MODULES_DIR)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
 	  $(NODE_MODULES_DIR)/xterm-addon-fit/lib/xterm-addon-fit.js \
+	  $(NODE_MODULES_DIR)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
 	  $(NODE_MODULES_DIR)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
+	  $(NODE_MODULES_DIR)/xterm-addon-webgl/lib/xterm-addon-webgl.js \
 	  tmp-for-jar/hlib
 endif
 if WITH_JAVA
@@ -672,7 +675,12 @@ NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
 NPM = npm
 $(NODE_MODULES_DIR)/xterm/lib/xterm.js:
 	cd $(NODE_MODULES_PARENT) && $(NPM) install xterm
-$(NODE_MODULES_DIR)/xterm-addon-fit/lib/xterm-addon-fit.js:
-	cd $(NODE_MODULES_PARENT) && $(NPM) i -S xterm-addon-fit
-$(NODE_MODULES_DIR)/xterm-addon-web-links/lib/xterm-addon-web-links.js:
-	cd $(NODE_MODULES_PARENT) && $(NPM) i -S xterm-addon-web-links
+
+tmp-xterm-addons \
+$(NODE_MODULES_DIR)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
+$(NODE_MODULES_DIR)/xterm-addon-fit/lib/xterm-addon-fit.js \
+$(NODE_MODULES_DIR)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
+$(NODE_MODULES_DIR)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
+$(NODE_MODULES_DIR)/xterm-addon-webgl/lib/xterm-addon-webgl.js:
+	cd $(NODE_MODULES_PARENT) && $(NPM) i -S  xterm-addon-canvas xterm-addon-fit xterm-addon-serialize xterm-addon-webgl xterm-addon-web-links
+	touch tmp-xterm-addons
