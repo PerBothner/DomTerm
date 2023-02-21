@@ -2436,11 +2436,7 @@ class DTParser {
             }
             break;
         case 231: // paste
-            try {
-                term.pasteText(JSON.parse(text));
-            } catch (e) {
-                term.log("caught " + e + " in OSC 213 (paste)");
-            }
+            term.pasteTextFromJson(text);
             break;
         case 232:
             try {

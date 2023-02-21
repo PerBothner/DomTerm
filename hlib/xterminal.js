@@ -58,6 +58,12 @@ class XTermPane extends DTerminal {
                                }
                                return false;
                            });
+        xterm.parser
+            .registerOscHandler(231,
+                                (data) => {
+                                    this.pasteTextFromJson(data);
+                                    return true;
+                                });
 
         xterm.onResize((sz) => {
             this.setWindowSize(sz.rows, sz.cols, 0, 0);
@@ -80,6 +86,8 @@ class XTermPane extends DTerminal {
             xterm.focus();
         else
             xterm.blur()
+    }
+    maybeFocus() {
     }
     applicationCursorKeysMode() {
         return this.xterm.modes.applicationCursorKeysMode;

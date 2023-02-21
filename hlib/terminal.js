@@ -8317,6 +8317,15 @@ Terminal.prototype.pasteText = function(str) {
     }
 };
 
+Terminal.prototype.pasteTextFromJson = function(jstr) {
+    try {
+        this.pasteText(JSON.parse(jstr));
+    } catch (e) {
+        this.log("caught " + e + " in pasteTextFromJson (OSC 231)");
+    }
+}
+
+
 DomTerm.copyLink = function(options=DomTerm._contextOptions) {
     let href = options && options.href;
     if (href)

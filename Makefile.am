@@ -96,6 +96,14 @@ if WITH_QTWEBENGINE
 man1_MANS += share/man/man1/qtdomterm.1
 endif
 
+NODE_MODULES_PARENT = .
+#NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
+#XTERMJS_ADDONS_ROOT = $(NODE_MODULES_PARENT)/node_modules
+NODE_MODULES_DIR = xtermjs/addons
+XTERMJS_ROOT = xtermjs
+XTERMJS_ADDONS_ROOT = $(XTERMJS_ROOT)/addons
+NPM = npm
+
 ADOC_GENERATED = \
   share/domterm/help/domterm.html \
   share/domterm/help/qtdomterm.html \
@@ -337,17 +345,36 @@ recompile-sixel:
 	mv hlib/sixel/SD-tmp hlib/sixel/SixelDecoder.js
 	rm hlib/sixel/Types.js
 
-$(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR)
+if WITH_XTERMJS
+if ENABLE_DEBUG
+DOMTERM_JAR_EXTRA_DEPS = tmp-xterm-debug-built
+else
+DOMTERM_JAR_EXTRA_DEPS = tmp-xterm-built
+endif
+endif
+
+$(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR) $(DOMTERM_JAR_EXTRA_DEPS)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_XTERMJS
-	cp $(NODE_MODULES_DIR)/xterm/lib/xterm.js \
-	  $(NODE_MODULES_DIR)/xterm/css/xterm.css \
-	  $(NODE_MODULES_DIR)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
-	  $(NODE_MODULES_DIR)/xterm-addon-fit/lib/xterm-addon-fit.js \
-	  $(NODE_MODULES_DIR)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
-	  $(NODE_MODULES_DIR)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
-	  $(NODE_MODULES_DIR)/xterm-addon-webgl/lib/xterm-addon-webgl.js \
+if ENABLE_DEBUG
+	cp $(XTERMJS_ROOT)/debug-lib/xterm.js \
+	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-canvas.js \
+	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-fit.js \
+	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-serialize.js \
+	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-web-links.js \
+	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-webgl.js \
+	  tmp-for-jar/hlib
+else
+	cp $(XTERMJS_ROOT)/lib/xterm.js \
+	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-fit/lib/xterm-addon-fit.js \
+	  tmp-for-jar/hlib
+endif
+	cp $(XTERMJS_ROOT)/css/xterm.css \
+	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
+	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
+	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
+	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-webgl/lib/xterm-addon-webgl.js \
 	  tmp-for-jar/hlib
 endif
 if WITH_JAVA
@@ -491,7 +518,7 @@ WRY_PROFILE_DIR=release
 endif
 libexec/dt-wry$(EXEEXT): dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry$(EXEEXT) libexec
 	cp -p dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry libexec/
-dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry: dt-wry/src/main.rs dt-wry/src/versions.rs
+dt-wry/target/$(WRY_PROFILE_DIR)/dt-wry: dt-wry/src/main.rs
 if ENABLE_DEBUG
 	cd dt-wry && cargo build
 else
@@ -670,17 +697,24 @@ doc/DomTerm.iconset: doc/domterm2.svg
 doc/DomTerm.icns: doc/DomTerm.iconset
 	iconutil -c icns -o $@ doc/DomTerm.iconset
 
-NODE_MODULES_PARENT = .
-NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
-NPM = npm
 $(NODE_MODULES_DIR)/xterm/lib/xterm.js:
 	cd $(NODE_MODULES_PARENT) && $(NPM) install xterm
 
-tmp-xterm-addons \
-$(NODE_MODULES_DIR)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
-$(NODE_MODULES_DIR)/xterm-addon-fit/lib/xterm-addon-fit.js \
-$(NODE_MODULES_DIR)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
-$(NODE_MODULES_DIR)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
-$(NODE_MODULES_DIR)/xterm-addon-webgl/lib/xterm-addon-webgl.js:
-	cd $(NODE_MODULES_PARENT) && $(NPM) i -S  xterm-addon-canvas xterm-addon-fit xterm-addon-serialize xterm-addon-webgl xterm-addon-web-links
-	touch tmp-xterm-addons
+# Should probably use a git "submodule"
+xtermjs:
+	git clone git@github.com:xtermjs/xterm.js.git xtermjs
+
+tmp-xterm-built: xtermjs xtermjs/webpack.debug.js
+	cd xtermjs && yarn && npm run package
+	cd xtermjs/addons/xterm-addon-canvas && npm run package
+	cd xtermjs/addons/xterm-addon-fit && npm run package
+	cd xtermjs/addons/xterm-addon-serialize && npm run package
+	cd xtermjs/addons/xterm-addon-web-links && npm run package
+	cd xtermjs/addons/xterm-addon-webgl && npm run package
+	touch tmp-xterm-built
+
+tmp-xterm-debug-built: tmp-xterm-built
+	cd xtermjs && node_modules/.bin/webpack --config webpack.config.js --mode development -o debug-lib
+	for ADDON in canvas fit serialize web-links webgl; do \
+	  (cd xtermjs/addons/xterm-addon-$$ADDON && ../../node_modules/.bin/webpack --config webpack.config.js --mode development -o ../../debug-lib); done
+	touch tmp-xterm-debug-built
