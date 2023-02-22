@@ -6,26 +6,16 @@ Its main advantage is performance; in addition it benefits
 from a large community.  However, it is lacking many DomTerm
 features, most obviously embedded graphics or other HTML.
 
-There is an experimental build of DomTerm that uses xterm.js
-for basic terminal emulator functionality (escape sequence
-processing, and drawing).  Basic terminal output is quite
-a bit faster than with the default DomTerm engine.  However,
-much functionality is missing.
+DomTerm now has experimental support for using xterm.js.
+You can have some windows using the DomTerm emulator
+and windows using the xterm.js emulator - at the same time.
 
-To try it, grab and build my fork of xterm.js:
+To try it, checkout and build DomTerm as described [here](https://domterm.org/Downloading-and-building.html), with one change:
+When running `configure` add the `--with-xterm.js` option.
+If you want to be able to see what is going on, `--enable-debug` is also suggested.
 
-    git clone git@github.com:PerBothner/xterm.js.git
-    cd xterm.js
-    yarn
-    XTERM_DIR=`pwd`
+To select the xterm.js emulator specify the `terminal=xtermjs` [setting](https://domterm.org/Settings.html). This can be specified on the `domterm` command line or in the `settings.ini` configuration file.
+To open a terminal using the DomTerm emulator, specify `terminal=domterm` (the default).
 
-Build DomTerm with the extra `--with-xterm.js` flag to configure:
-
-    cd /path/to/this-directory
-    autoreconf -i
-    ./configure --with-xterm.js=${XTERM_DIR}/build
-    make
-
-Then to run it, do:
-
-    bin/domterm
+A list of features available when using `terminal=xtermjs` is planned,
+as well as a list of features only available when using `terminal=domterm`.
