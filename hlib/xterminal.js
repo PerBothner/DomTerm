@@ -76,6 +76,15 @@ class XTermPane extends DTerminal {
                                     return true;
                                 });
 
+        xterm.onBell(() => {
+            this.handleBell();
+        });
+        xterm.onBinary((string) => {
+            this.processResponseBytes(Uint8Array.from(string, v => v.charCodeAt(0)));
+        });
+        xterm.onData((string) => {
+            this.processResponseCharacters(string);
+        });
         xterm.onResize((sz) => {
             this.setWindowSize(sz.rows, sz.cols, 0, 0);
         });
