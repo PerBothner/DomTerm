@@ -314,8 +314,7 @@ DomTerm.closeSession = function(pane = DomTerm.focusedPane,
                                 detach = false, fromLayoutEvent = false) {
     if (pane) {
         if (pane.terminal) {
-            if (pane.terminal.topNode)
-                pane.terminal.close(detach, fromLayoutEvent);
+            pane.close(detach, fromLayoutEvent);
         } else {
             DomTerm.sendChildMessage(pane, "domterm-close", detach, fromLayoutEvent);
         }

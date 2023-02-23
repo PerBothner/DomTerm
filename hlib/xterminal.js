@@ -65,9 +65,20 @@ class XTermPane extends DTerminal {
                            });
         xterm.parser
             .registerOscHandler(103,
-                                (data) => {
-                                    console.log("restore saved snapshot "+data);
-                                    // FIXME
+                                (text) => {
+                                    console.log("restore saved snapshot "+text);
+                                    const comma = text.indexOf(",");
+                                    const rcount = Number(text.substring(0,comma));
+                                    const data = DtUtil.fromJson(text.substring(comma+1));
+                                    this._replayMode = true;
+                                    this.sstate = data.sstate;
+                                    xterm.resize(data.columns, data.rows);
+                                    xterm.write(data.serialized,
+                                                () => {
+                                                    this._replayMode = false;
+                                                    this._confirmedCount = rcount;
+                                                    this.fitAddon.fit();
+                                                });
                                 });
         xterm.parser
             .registerOscHandler(231,
@@ -86,7 +97,8 @@ class XTermPane extends DTerminal {
             this.processResponseCharacters(string);
         });
         xterm.onResize((sz) => {
-            this.setWindowSize(sz.rows, sz.cols, 0, 0);
+            if (! this._replayMode)
+                this.setWindowSize(sz.rows, sz.cols, 0, 0);
         });
 
         xterm.onTitleChange((title) => {
