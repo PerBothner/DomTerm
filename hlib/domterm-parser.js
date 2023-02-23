@@ -1388,7 +1388,7 @@ class DTParser {
                 DomTerm.setInputMode(this.getParameter(1, 112), term);
                 break;
             case 81: // get-window-contents
-                DomTerm.saveWindowContents(term);
+                term.saveWindowContents();
                 term._removeInputLine();
                 break;
             case 82:

@@ -367,15 +367,14 @@ if ENABLE_DEBUG
 	  tmp-for-jar/hlib
 else
 	cp $(XTERMJS_ROOT)/lib/xterm.js \
-	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-fit/lib/xterm-addon-fit.js \
-	  tmp-for-jar/hlib
-endif
-	cp $(XTERMJS_ROOT)/css/xterm.css \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
+	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-fit/lib/xterm-addon-fit.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-webgl/lib/xterm-addon-webgl.js \
 	  tmp-for-jar/hlib
+endif
+	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib
 endif
 if WITH_JAVA
 	cd tmp-for-jar && \

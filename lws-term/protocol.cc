@@ -522,7 +522,7 @@ tty_client::link_pclient(struct pty_client *pclient)
     this->pclient = pclient; // sometimes redundant
     *pclient->last_tclient_ptr = this;
     pclient->last_tclient_ptr = &this->next_tclient;
-    this->wkind = dterminal_window;
+    this->wkind = pclient->use_xtermjs ? xterminal_window : dterminal_window;
 }
 
 void link_command(struct lws *wsi, struct tty_client *tclient,
@@ -2606,7 +2606,8 @@ int attach_action(int argc, arglist_t argv, struct options *opts)
         tclient->initialized = 1;
         return EXIT_WAIT;
     }
-    return display_session(opts, pclient, nullptr, dterminal_window);
+    return display_session(opts, pclient, nullptr,
+                           pclient->use_xtermjs ? xterminal_window : dterminal_window);
 }
 
 int browse_action(int argc, arglist_t argv, struct options *opts)

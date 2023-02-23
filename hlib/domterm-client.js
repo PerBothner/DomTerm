@@ -341,7 +341,7 @@ function loadHandler(event) {
         DomTerm.addTitlebar = true;
     }
     const useXtermJs = params.get("terminal") === "xtermjs";
-    if (useXtermJs)
+    if (useXtermJs && typeof window.XTermPane === "undefined")
         DomTerm.useIFrame = 2;
     m = params.get("subwindows");
     if (m === "qt") {
@@ -533,15 +533,16 @@ function loadHandler(event) {
     const mwinnum = mwin && Number(mwin) >= 0 ? Number(mwin) : -1;
     const snum = params.get('session-number');
     if (! DomTerm.isSubWindow()) {
-        if (no_session === null && DomTerm.useIFrame == 2)
+        if (no_session === null
+            && (DomTerm.useIFrame == 2))
             no_session = "top";
-        if (no_session) {
+        if (no_session || useXtermJs) {
             const wparams = new URLSearchParams(hash);
-            wparams.append("no-session", no_session);
+            wparams.append("no-session", "top");
             wparams.delete("open");
             wparams.delete("session-number");
             wparams.set("main-window", "true");
-            const pane = new DTerminal(mwinnum, no_session);
+            const pane = new DTerminal(mwinnum, "top");
             const dt = DomTerm.connectWS(wparams.toString(), pane, null);
             pane.terminal = dt;
             wparams.delete("main-window");
@@ -581,7 +582,7 @@ function loadHandler(event) {
                 cstate.windowName = wname;
                 cstate.windowNameUnique = !!wnameUnique;
             }
-            let ctype = 'domterm';
+            let ctype = useXtermJs ? "xterminal" : "domterm";
             if (browse_param) {
                 cstate.url = browse_param;
                 ctype = no_session === "browse" ? "browser" : no_session;
@@ -589,7 +590,7 @@ function loadHandler(event) {
             const config = { type: 'component',
                              componentType: ctype,
                              componentState: cstate };
-            DomTerm._initialLayoutConfig = config;
+           DomTerm._initialLayoutConfig = config;
         }
         let topNodes = [];
         topNodes = document.getElementsByClassName("domterm");
@@ -627,7 +628,10 @@ function loadHandler(event) {
                 DomTerm.mainLocationParams = paneParams.toString();
             } else {
                 el = DomTerm.makeElement(name, parent);
-                query += "&main-window=true";
+                if (DomTerm.mainTerm?.kind === "top")
+                    query += "&main-window="+DomTerm._mainWindowNumber;
+                else
+                    query += "&main-window=true";
             }
             const pane = PaneInfo.create(mwinnum, useXtermJs ? "xterminal" : "dterminal");
             pane.contentElement = el;
@@ -672,8 +676,8 @@ function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
         DomTerm.doNamedCommand(args[0], dt, args[1]);
         break;
     case "set-focused":
-        if (dt)
-            dt.setFocused(args[0]);
+        if (pane)
+            pane.setFocused(args[0]);
         break;
     case "term-settings":
         pane.termOptions = args[0];

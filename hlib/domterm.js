@@ -764,9 +764,9 @@ DomTerm.connectWS = function(query, pane, topNode=null) {
     const wsprotocol = "domterm";
     const no_session = pane.kind;
     const wspath = DomTerm._makeWsUrl(query);
-    if (DomTerm.usingXtermJs()) {
+    if (no_session === "xterminal")
         pane.terminal = topNode.xterm;
-    } else
+    else
         pane.setupElements(topNode);
     let wt = pane;
     let wsocket = DomTerm.newWS(wspath, wsprotocol, pane);

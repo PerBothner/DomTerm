@@ -1,17 +1,21 @@
 import { Terminal as DTerminal } from './terminal.js';
+import * as DtUtil from './domterm-utils.js';
 
 const XTerm = window.Terminal;
 const CanvasAddon = window.CanvasAddon.CanvasAddon;
 const FitAddon = window.FitAddon.FitAddon;
+const SerializeAddon = window.SerializeAddon.SerializeAddon;
 const WebglAddon = window.WebglAddon.WebglAddon;
 
 class XTermPane extends DTerminal {
     constructor(windowNumber) {
         super(windowNumber, "xterminal");
-        this.fitAddon = new FitAddon();
+        this.fitAddon = new FitAddon(false);
+        this.serializeAddon = new SerializeAddon();
         this.rendererType = 'canvas'; // 'dom' 'canvas' or 'webgl'
     }
     initializeTerminal(_topNode) {
+        console.log("xterm.initializeTerminal");
         const xterm = this.terminal;
         this.xterm = xterm;
 
@@ -41,7 +45,6 @@ class XTermPane extends DTerminal {
         xterm.parser
             .addCsiHandler({final: 'u'},
                            params => {
-                               console.log("csi handler for u");
                                switch (params[0]) {
                                case 91:
                                    this.setSessionNumber(params[1],
@@ -55,9 +58,17 @@ class XTermPane extends DTerminal {
                                        return true;
                                    }
                                    break;
+                               default:
+                                   console.log("csi handler for u "+params[0]);
                                }
                                return false;
                            });
+        xterm.parser
+            .registerOscHandler(103,
+                                (data) => {
+                                    console.log("restore saved snapshot "+data);
+                                    // FIXME
+                                });
         xterm.parser
             .registerOscHandler(231,
                                 (data) => {
@@ -74,6 +85,7 @@ class XTermPane extends DTerminal {
         });
 
         xterm.loadAddon(this.fitAddon);
+        xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
         this.attachResizeSensor();
         this.setRendererType(this.rendererType);
@@ -81,11 +93,11 @@ class XTermPane extends DTerminal {
     hasFocus() {
         return this.contentElement.classList.contains("focus");
     }
-    seFocused(focused) {
+    setFocused(focused) {
         if (focused)
-            xterm.focus();
+            this.xterm.focus();
         else
-            xterm.blur()
+            this.xterm.blur()
     }
     maybeFocus() {
     }
@@ -117,6 +129,18 @@ class XTermPane extends DTerminal {
     }
     _scrollIfNeeded() {
         return false;
+    }
+
+    saveWindowContents() {
+        const rcount = this._receivedCount;
+        let data =
+            rcount
+            + ',{"sstate":'+DtUtil.toJson(this.sstate);
+        data += ',"rows":'+this.xterm.rows+',"columns":'+this.xterm.cols;
+        data += ', "serialized":'
+            + JSON.stringify(this.serializeAddon.serialize())
+            +'}';
+        this.reportEvent("WINDOW-CONTENTS", data);
     }
 
     // based on code in ttyd

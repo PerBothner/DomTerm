@@ -1036,20 +1036,18 @@ DomTerm.isFrameParent = function() {
         && DomTerm._oldFocusedContent;
 }
 
-DomTerm.saveWindowContents = function(dt=DomTerm.focusedTerm) {
-    if (!dt)
-        return;
-    dt._restoreInputLine();
-    var rcount = dt.parser._savedControlState ? dt.parser._savedControlState.receivedCount
-        : dt._receivedCount;
+Terminal.prototype.saveWindowContents = function() {
+    this._restoreInputLine();
+    var rcount = this.parser._savedControlState ? this.parser._savedControlState.receivedCount
+        : this._receivedCount;
     var data =
         rcount
-        + ',{"sstate":'+DtUtil.toJson(dt.sstate);
-    data += ',"rows":'+dt.numRows+',"columns":'+dt.numColumns;
+        + ',{"sstate":'+DtUtil.toJson(this.sstate);
+    data += ',"rows":'+this.numRows+',"columns":'+this.numColumns;
     data += ', "html":'
-        + JSON.stringify(dt.getAsHTML(false))
+        + JSON.stringify(this.getAsHTML(false))
         +'}';
-    dt.reportEvent("WINDOW-CONTENTS", data);
+    this.reportEvent("WINDOW-CONTENTS", data);
 }
 
 DomTerm.closeFromEof = function(dt) {
@@ -1068,7 +1066,7 @@ Terminal.prototype.close = function(detach = false, fromLayoutEvent = false) {
         }
     }
     if (this._detachSaveNeeded == 2) {
-        DomTerm.saveWindowContents(this);
+        this.saveWindowContents();
         this._detachSaveNeeded = 1;
     }
     this.reportEvent("CLOSE-WINDOW");
@@ -5803,8 +5801,8 @@ Terminal.prototype.updateWindowTitle = function() {
     const layout = DomTerm._layout;
     if (DomTerm.isSubWindow())
         DomTerm.sendParentMessage("domterm-set-title", info);
-    else if (layout && layout.manager)
-        layout.updateLayoutTitle(layout._elementToLayoutItem(this.topNode), info);
+    else if (layout && layout.manager && this.layoutItem)
+        layout.updateLayoutTitle(this.layoutItem, info);
     if (this.hasFocus())
         DomTerm.displayWindowTitle(info);
 }

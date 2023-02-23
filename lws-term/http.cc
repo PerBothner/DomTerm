@@ -339,16 +339,18 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 break;
             }
             bool is_simple = false, is_main = false, is_outer = false,
-                is_xtermjs = false;;
+                is_xtermjs = false, is_outer_with_xtermjs = false;
             if ((is_simple = strcmp(fname, "/simple.html") == 0)
                 || (is_xtermjs = strcmp(fname, "/xtermjs.html") == 0)
                 || (is_main = strcmp(fname, "/main.html") == 0)
+                || (is_outer_with_xtermjs = strcmp(fname, "/outer-with-xtermjs.html") == 0)
                 || (is_outer = strcmp(fname, "/outer.html") == 0)) {
                 sbuf sb;
                 make_html_text(&sb, http_port,
                                is_simple ? LIB_WHEN_SIMPLE
                                : is_xtermjs ? LIB_WHEN_XTERMJS
                                : is_main ? LIB_WHEN_OUTER
+                               : is_outer_with_xtermjs ? LIB_WHEN_XTERMJS|LIB_WHEN_OUTER|LIB_WHEN_SIMPLE
                                : LIB_WHEN_OUTER|LIB_WHEN_SIMPLE,
                                NULL, 0);
                 char *data = sb.buffer;

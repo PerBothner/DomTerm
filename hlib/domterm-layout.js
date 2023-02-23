@@ -189,11 +189,10 @@ DomTermLayout.focusPane = function(pane, focused) {
     if (element && element.firstElementChild
         && element.firstElementChild.classList.contains("lm_content"))
         element = element.firstElementChild;
-    let wnum;
-    if (element && element.terminal)
-        element.terminal.setFocused(focused);
-    else if ((wnum = Number(item.id)) >= 0) {
-        DomTerm.sendChildMessage(wnum, "set-focused", focused);
+    if (pane.setFocused)
+        pane.setFocused(focused);
+    else if (pane.number >= 0) {
+        DomTerm.sendChildMessage(pane.number, "set-focused", focused);
     }
 };
 
@@ -324,6 +323,14 @@ DomTermLayout.layoutClose = function(lcontent, windowNumber, from_handler=false)
         DomTermLayout.selectNextPane(true, windowNumber);
         r.remove();
     }
+    if (windowNumber === DomTerm.focusedWindowNumber)
+        DomTerm.focusedWindowNumber = 0;
+    const pane = DomTerm.paneMap[windowNumber];
+    if (pane.layoutItem === r) {
+        pane.layoutItem = undefined;
+        pane.layoutContainer = undefined;
+        DomTerm.paneMap[windowNumber] = undefined;
+    }
     DomTermLayout._pendingPopoutComponents--;
     if (DomTermLayout._pendingPopoutOptions && DomTerm.mainTerm
         && ! DomTermLayout._pendingPopoutComponents) {
@@ -395,7 +402,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
                       : "&wname=")
             + cstate.windowName;
     }
-    const ptype = ctype == "domterm" ? "dterminal" : ctypel
+    const ptype = ctype == "domterm" ? "dterminal" : ctype;
     let pane;
     if (DomTerm.useIFrame >= (paneNumber > 1 ? 1 : 2)
         || ctype === 'browser') {
@@ -783,13 +790,13 @@ DomTermLayout.initialize = function(initialContent = null) {
                                          DomTermLayout.focusPane(oldPane, 0);
 
                                      if (newPane)
-                                         DomTermLayout.focusPane(newPane, 2);
+                                     DomTermLayout.focusPane(newPane, 2);
                                  }
                                  if (newPane) {
                                      if (DomTerm.apphooks.focusPane)
                                          DomTerm.apphooks.focusPane(newWindow);
                                      else if (newPane.contentElement.component instanceof HTMLIFrameElement)
-                                         newPane.contentElement.focus({preventScroll: true});
+                                     newPane.contentElement.focus({preventScroll: true});
                                  }
                              });
     if (lastContainer)
