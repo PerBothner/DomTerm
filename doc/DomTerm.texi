@@ -420,7 +420,7 @@ Nicer @ref{password fields, @strong{password fields}}.
 @node Downloading and building
 @chapter Downloading and building
 
-@subheading Binary releases
+@section Binary releases
 
 Binary releases may be available
 @uref{https://github.com/PerBothner/DomTerm/releases/latest,from GitHub}
@@ -440,7 +440,7 @@ front-ends, but they do depend on GUI libraries that might not be
 on your platform.  On WSL 2, DomTerm defaults to using
 the @code{edge-app} front-end, which works pretty well.
 
-@subheading Getting the DomTerm source code
+@section Getting the DomTerm source code
 
 The sources are in
 a @uref{https://github.com/PerBothner/DomTerm,GitHub repository}.
@@ -462,7 +462,7 @@ you may be able to use @ref{electron nodepty} (experimental).
 @c A file named @code{domterm-@var{version}-wsl.zip} contains
 @c compiled installable files for WSL (Windows Subsystem for Linux).
 
-@subheading Simplified instructions
+@section Simplified instructions
 
 The following assumes you prioritize simple instructions
 over download speed, disk space, or maximum functionality.
@@ -508,7 +508,7 @@ For example to start the Qt frontend do:
 bin/domterm -Bqt
 @end example
 
-@subheading Prerequisites
+@section Prerequisites
 
 Please help out with instructions for other platforms, especially
 macOS, *BSD, and native (non-WSL) Windows.
@@ -778,7 +778,7 @@ make install
 configure ... --with-kddockwidgets=$KDDOCK_DIR
 @end example
 
-@subheading Building from source
+@section Building from source
 
 If building from the @code{git} respository, first do:
 @example
@@ -1038,7 +1038,7 @@ This uses @uref{https://en.wikipedia.org/wiki/SSH_(Secure_Shell),@code{ssh}}.
 For details @ref{Remoting over ssh,see here}:
 
 @anchor{session-creating}
-@subheading Creating a new session
+@section Creating a new session
 @indsubcmd{new}
 Creating a new session is done with the @code{new} commands,
 possibly abbreviated:
@@ -1068,7 +1068,7 @@ The following options control which front-end (usually a browser),
 if any, is started.
 
 @anchor{browser specifier}
-@subheading Browser specifier option
+@section Browser specifier option
 
 A @var{browser-specifier} option specifies how to
 display a new domterm window. This can be a window or tab in
@@ -1247,7 +1247,7 @@ usually over an @code{ssh} connection.
 @end table
 
 @anchor{window specifier option}
-@subheading Window specifier option
+@section Window specifier option
 
 Certain commands affect an existing window.
 These take a @dfn{window-specifier} option
@@ -1266,7 +1266,7 @@ Specify which windows are affected by the current command.
 
 The general format for window specifiers is @ref{window specifier,here}.
 
-@subheading Miscellaneous commands
+@section Miscellaneous commands
 
 @table @asis
 @indsubcmd{help}
@@ -1329,7 +1329,7 @@ Also close any windows, unless @code{--only} is specified.
 (This may kill remote sessions if their only window is closed.)
 @end table
 
-@subheading ``Printing'' images or html
+@section ``Printing'' images or html
 
 @table @asis
 @indsubcmd{html}
@@ -1404,7 +1404,7 @@ unless you also specify the @code{--height} option.)
 If not already at beginning of line, starts a fresh line
 @end table
 
-@subheading Sessions
+@section Sessions
 
 @table @asis
 @indsubcmd{attach}
@@ -1421,7 +1421,7 @@ The @code{status} command shows more information,
 including some information about each window.
 @end table
 
-@subheading Windows operations
+@section Windows operations
 
 @table @asis
 @indsubcmd{close}
@@ -1483,7 +1483,7 @@ Older (deprecated) form equivalent to:
 @code{--window=}@var{window-specifier} ... @var{subcommand} @var{options} ...
 @end table
 
-@subheading Automation
+@section Automation
 
 The following are useful for automatically or remotely controlling DomTerm.
 For examples for doing automatic testing for DomTerm
@@ -1626,7 +1626,7 @@ A @ref{window specifier option,window specifier} for the affected window.
 
 @end table
 
-@subheading Miscellaneous options
+@section Miscellaneous options
 
 An argument that contains equal-sign (@code{=}),
 does not start with a hyphen (@code{-}), and
@@ -1705,7 +1705,7 @@ inspecting any unusual HTML, CSS, or JavaScript you might throw at it.
 There are other @code{ldomterm} options which useful
 if you want to run DomTerm as a server.
 
-@subheading Starting a web server
+@section Starting a web server
 
 The @code{domterm} command normally starts an internal web-server, bur
 for security reasons this is only usable by the current user on the
@@ -5798,6 +5798,8 @@ using the latter to manage panes and tabs is likely preferable.
 @uref{https://termysequence.io/,TermySequence}
 has lots of features.
 @uref{https://github.com/TermySequence/termysequence,Source code.}
+
+@uref{https://arcan-fe.com/2022/10/15/whipping-up-a-new-shell-lashcat9/,Last#cat9} has some interesting ideas. One is that each shell command is a separate job.
 
 @subsubheading Tools and examples for Atom or Electron
 

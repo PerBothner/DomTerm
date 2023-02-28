@@ -42,7 +42,7 @@ h3 {
   font-size: large;
   margin: 1.5em 1em 1em 0
  }
-h3.section {
+body>div.section-level-extent h3.section {
     text-align: center; font-size: x-large
 }
 h3.subtitle {
