@@ -81,7 +81,8 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
             ? 13 : 11;
     }
 
-    let config = { type: 'component', componentType: 'domterm' };
+    const ctype = newItemConfig.use_xtermjs ? 'xterminal' : 'domterm';
+    let config = { componentType: ctype, type: 'component' };
     let extraConfig;
     if (newItemConfig) {
         extraConfig = newItemConfig;
@@ -435,7 +436,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
     } else {
         pane = PaneInfo.create(cstate.windowNumber, ptype);
         let name = DomTerm.freshName();
-        let el = DomTerm.makeElement(name, parent);
+        let el = DomTerm.makeElement(name, parent, ctype=== "xterminal");
         wrapped = el;
         pane.contentElement = wrapped;
         wrapped.paneInfo = pane;

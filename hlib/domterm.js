@@ -628,18 +628,21 @@ DomTerm.updateSettings = function(pane) {
     }
 }
 
-DomTerm.makeElement = function(name, parent = DomTerm.layoutTop) {
+DomTerm.makeElement = function(name, parent = DomTerm.layoutTop, useXtermJs = false) {
     let topNode;
-    if (DomTerm.usingXtermJs()) {
-        let xterm = new window.Terminal();
-        xterm.open(parent);
-        topNode = xterm.element;
-        topNode.xterm = xterm;
-    } else {
+    if (! useXtermJs || ! DomTerm.isSubWindow()) {
         topNode = document.createElement("div");
         if (DomTerm.subwindows)
             topNode.classList.add("lm_content");
         parent.appendChild(topNode);
+        parent = topNode;
+    }
+    if (useXtermJs) {
+        let xterm = new window.Terminal();
+        xterm.open(parent);
+        if (DomTerm.isSubWindow())
+            topNode = xterm.element;
+        topNode.xterm = xterm;
     }
     topNode.classList.add("domterm");
     topNode.setAttribute("name", name);
@@ -763,7 +766,8 @@ DomTerm.connectWS = function(query, pane, topNode=null) {
     const wsprotocol = "domterm";
     const no_session = pane.kind;
     const wspath = DomTerm._makeWsUrl(query);
-    if (no_session === "xterminal")
+    const useXtermJs = no_session === "xterminal";
+    if (useXtermJs)
         pane.terminal = topNode.xterm;
     else
         pane.setupElements(topNode);
@@ -779,7 +783,7 @@ DomTerm.connectWS = function(query, pane, topNode=null) {
             } else {
                 wt._handleSavedLog();
                 if (topNode.classList.contains("domterm-wrapper"))
-                    topNode = DomTerm.makeElement(name, topNode);
+                    topNode = DomTerm.makeElement(name, topNode, useXtermJs);
             }
             pane.initializeTerminal(topNode);
         } else if (! DomTerm.isInIFrame()) {

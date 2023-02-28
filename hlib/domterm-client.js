@@ -627,7 +627,7 @@ function loadHandler(event) {
                 paneParams.delete('window');
                 DomTerm.mainLocationParams = paneParams.toString();
             } else {
-                el = DomTerm.makeElement(name, parent);
+                el = DomTerm.makeElement(name, parent, useXtermJs);
                 if (DomTerm.mainTerm?.kind === "top")
                     query += "&main-window="+DomTerm._mainWindowNumber;
                 else
