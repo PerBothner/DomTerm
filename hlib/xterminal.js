@@ -22,7 +22,7 @@ class XTermPane extends DTerminal {
         const linkHandler = {
             activate: (ev, text, range) => {
                 console.log("link activate "+text);
-                //DomTerm.handleLinkRef(text, undefined, this);
+                DomTerm.handleLinkRef(text, undefined, this);
             },
             hover: (ev, text, range) => {
                 console.log("link hover "+text);
@@ -32,7 +32,7 @@ class XTermPane extends DTerminal {
             },
             allowNonHttpProtocols: true
         };
-        xterm.linkHandler = linkHandler;
+        xterm.options.linkHandler = linkHandler;
 
         xterm.attachCustomKeyEventHandler((e) => {
             if (e.type == 'keypress')
