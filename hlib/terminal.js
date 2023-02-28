@@ -8585,11 +8585,11 @@ DomTerm.valueToClipboard = function(values) {
     if (DomTerm.isElectron() || DomTerm.usingQtWebEngine) {
         if (DomTerm.useIFrame && DomTerm.isInIFrame()) {
             DomTerm.sendParentMessage("value-to-clipboard", values);
-        }
-        else if (DomTerm.isElectron()) {
+            return true;
+        } else if (DomTerm.isElectron() && electronAccess.clipboard) {
             electronAccess.clipboard.write(values);
+            return true;
         }
-        return true;
     }
     function handler (event){
         if (values.text)
