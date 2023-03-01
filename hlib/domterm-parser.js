@@ -1732,6 +1732,17 @@ class DTParser {
                 }
             }
             break;
+        case 4: {
+            let m = text.match(/^([0-9]+);[?]$/);
+            if (m) {
+                let c = parseInt(m[1], 10);
+                let color = c >= 0 && c < 256 ? this.color256(c) : "";
+                m = color.match(/#([0-9a-fA-F][0-9a-fA-F])([0-9a-fA-F][0-9a-fA-F])([0-9a-fA-F][0-9a-fA-F])/);
+                if (m)
+                    term.processResponseCharacters(`\x1b]4;${c};rgb:${m[1]}/${m[2]}/${m[3]}\x1b\\`);
+            }
+            break;
+        }
         case 10:
         case 11:
         case 12:
