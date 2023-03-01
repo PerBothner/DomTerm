@@ -1194,7 +1194,7 @@ export function positionBoundingRect(node, offset) {
                 }
             }
         } else if (offset < children.length) {
-            const next = children[sel.focusOffset];
+            const next = children[offset];
             if (next instanceof Text) {
                 const r = new Range();
                 r.setEnd(next, 0);
