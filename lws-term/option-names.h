@@ -18,7 +18,7 @@ OPTION_S(log_file, "log.file", OPTION_STRING_TYPE)
 OPTION_S(titlebar, "titlebar", OPTION_STRING_TYPE)
 OPTION_S(subwindows, "subwindows", OPTION_STRING_TYPE)
 #if WITH_XTERMJS
-OPTION_S(termimal, "terminal", OPTION_STRING_TYPE) /* xtermjs or domterm */
+OPTION_S(termimal, "xtermjs", OPTION_MISC_TYPE)
 #endif
 
 /* front-end options */

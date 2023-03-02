@@ -2542,8 +2542,9 @@ int new_action(int argc, arglist_t argv, struct options *opts)
     enum window_kind wkind = dterminal_window;
     struct pty_client *pclient = create_pclient(cmd, args, opts, false, NULL);
 #if WITH_XTERMJS
-    std::string terminal_opt = get_setting_s(opts->settings, "terminal");
-    if (terminal_opt == "xtermjs") {
+    std::string xtermjs_opt = get_setting_s(opts->settings, "xtermjs", "");
+    int xtermjs_value = bool_value(xtermjs_opt.c_str());
+    if (xtermjs_value > 0) {
         wkind = xterminal_window;
         pclient->use_xtermjs = true;
     }
