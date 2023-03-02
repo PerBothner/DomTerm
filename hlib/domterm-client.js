@@ -390,9 +390,11 @@ function loadHandler(event) {
     if (! DomTerm.server_key && (m = params.get('server-key')) != null) {
         DomTerm.server_key = m;
     }
-    if (DomTerm.usingQtWebEngine
-        && (DomTerm.useToolkitSubwindows || ! DomTerm.isInIFrame())) {
-        new QWebChannel(qt.webChannelTransport, setupQWebChannel);
+    if (DomTerm.usingQtWebEngine) {
+        DomTerm.paneLocation =
+            DomTerm.paneLocation.replace("/simple.html", "/simple.html?with=qchannel");
+        if (DomTerm.useToolkitSubwindows || ! DomTerm.isInIFrame())
+            new QWebChannel(qt.webChannelTransport, setupQWebChannel);
     }
     if (DomTerm.isElectron()) {
         if (! DomTerm.isSubWindow()) {

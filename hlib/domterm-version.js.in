@@ -54,5 +54,5 @@ DomTerm.isMac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
     : typeof os != "undefined" ? os.platform() == "darwin" : false;
 
 DomTerm.usingXtermJs = function() {
-    return location.pathname === "/xtermjs.html" || location.pathname === "/outer-with-xtermjs.html";
+    return location.pathname.indexOf("xtermjs") > 0;
 }

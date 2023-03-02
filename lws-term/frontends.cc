@@ -675,13 +675,13 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
             " content=\"script-src 'unsafe-inline'\">\n"
             "<!--command used to start front-end: %s-->\n"
             "<script type='text/javascript'>\n"
-            "location.replace('http://localhost:%d/%s#server-key=%.*s&%s');\n"
+            "location.replace('http://localhost:%d/outer%s.html%s#server-key=%.*s&%s');\n"
             "</script>\n"
             "</head>\n"
             "<body></body></html>\n",
             browser_specifier, http_port,
-            tclient->wkind == xterminal_window ? "outer-with-xtermjs.html"
-            : "outer.html",
+            tclient->wkind == xterminal_window ? "-xtermjs" : "",
+            do_Qt ? "?with=qchannel" : "",
             SERVER_KEY_LENGTH, server_key,
             hash_only);
         int hfile = open(tclient->main_html_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);

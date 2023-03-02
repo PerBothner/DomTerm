@@ -414,8 +414,8 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
             if (query)
                 url += (url.indexOf('#') >= 0 ? '&' : '#') + query;
             if (cstate.use_xtermjs) {
-                url = url.replace("/simple.html#",
-                                  "/xtermjs.html#terminal=xtermjs&");
+                url = url.replace(/[/]simple.html([?][^#]*)?#/,
+                                  "/xtermjs.html$1#terminal=xtermjs&");
             }
             if (ctype === "view-saved" && cstate.url)
                 url += (url.indexOf('#') >= 0 ? '&' : '#')

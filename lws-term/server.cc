@@ -1263,7 +1263,6 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/dt-outer.js", LIB_WHEN_OUTER},
 #else
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
-    {"hlib/qwebchannel.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
     {"hlib/jsMenus.js", LIB_WHEN_OUTER|LIB_WHEN_XTERMJS},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
@@ -1309,6 +1308,8 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
             obuf->printf("<script type='%s' src='%s'> </script>\n",
                          jstype, lib->file);
     }
+    if ((hoptions & LIB_WHEN_QT) != 0)
+        obuf->printf("<script type='text/javascript' src='qrc:///qtwebchannel/qwebchannel.js'> </script>\n");
     if ((hoptions & LIB_WHEN_OUTER) != 0)
         obuf->printf("<script type='text/javascript'>\n"
                      "DomTerm.server_port = %d;\n"

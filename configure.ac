@@ -323,7 +323,6 @@ HLIB_FIXED_FILES_OUTER="\
   hlib/goldenlayout.js \
   hlib/domterm-layout.js \
   hlib/domterm-menus.js \
-  hlib/qwebchannel.js \
   hlib/jsMenus.js \
   hlib/screenfull.js"
 HLIB_FIXED_FILES_MISC="\

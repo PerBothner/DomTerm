@@ -338,21 +338,25 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                     return -1; /* error or can't reuse connection: close the socket */
                 break;
             }
-            bool is_simple = false, is_main = false, is_outer = false,
-                is_xtermjs = false, is_outer_with_xtermjs = false;
-            if ((is_simple = strcmp(fname, "/simple.html") == 0)
-                || (is_xtermjs = strcmp(fname, "/xtermjs.html") == 0)
-                || (is_main = strcmp(fname, "/main.html") == 0)
-                || (is_outer_with_xtermjs = strcmp(fname, "/outer-with-xtermjs.html") == 0)
-                || (is_outer = strcmp(fname, "/outer.html") == 0)) {
+            int opts = 0;
+            if (strcmp(fname, "/simple.html") == 0)
+                opts = LIB_WHEN_SIMPLE;
+            else if (strcmp(fname, "/xtermjs.html") == 0)
+                opts = LIB_WHEN_XTERMJS;
+            else if (strcmp(fname, "/main.html") == 0)
+                opts = LIB_WHEN_OUTER;
+            else if (strcmp(fname, "/outer.html") == 0)
+                opts = LIB_WHEN_OUTER|LIB_WHEN_SIMPLE;
+            else if (strcmp(fname, "/outer-xtermjs.html") == 0)
+                opts = LIB_WHEN_XTERMJS|LIB_WHEN_OUTER|LIB_WHEN_SIMPLE;
+            if (opts) {
+                char wbuf[30];
+                const char *warg =
+                    lws_get_urlarg_by_name(wsi, "with=", wbuf, sizeof(wbuf)-1);
+                if (warg && strstr(warg, "qchannel") != nullptr)
+                    opts |= LIB_WHEN_QT;
                 sbuf sb;
-                make_html_text(&sb, http_port,
-                               is_simple ? LIB_WHEN_SIMPLE
-                               : is_xtermjs ? LIB_WHEN_XTERMJS
-                               : is_main ? LIB_WHEN_OUTER
-                               : is_outer_with_xtermjs ? LIB_WHEN_XTERMJS|LIB_WHEN_OUTER|LIB_WHEN_SIMPLE
-                               : LIB_WHEN_OUTER|LIB_WHEN_SIMPLE,
-                               NULL, 0);
+                make_html_text(&sb, http_port, opts, NULL, 0);
                 char *data = sb.buffer;
                 int dlen = sb.len;
                 sb.buffer = NULL;

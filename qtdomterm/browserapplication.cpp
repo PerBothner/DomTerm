@@ -533,6 +533,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
                     xurl = urlMatch.captured(1);
                     urlMainPart = urlMatch.captured(2);
                     serverKey = urlMatch.captured(3);
+                    break;
                 }
             }
         }
