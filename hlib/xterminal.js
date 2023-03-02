@@ -4,14 +4,15 @@ import * as DtUtil from './domterm-utils.js';
 const XTerm = window.Terminal;
 const CanvasAddon = window.CanvasAddon.CanvasAddon;
 const FitAddon = window.FitAddon.FitAddon;
-const SerializeAddon = window.SerializeAddon.SerializeAddon;
+//The following doesn't work - see https://github.com/xtermjs/xterm.js/issues/4424
+//const SerializeAddon = SerializeAddon.SerializeAddon;
 const WebglAddon = window.WebglAddon.WebglAddon;
 
 class XTermPane extends DTerminal {
     constructor(windowNumber) {
         super(windowNumber, "xterminal");
-        this.fitAddon = new FitAddon(false);
-        this.serializeAddon = new SerializeAddon();
+        this.fitAddon = new FitAddon();
+        this.serializeAddon = new SerializeAddon.SerializeAddon();
         this.rendererType = 'canvas'; // 'dom' 'canvas' or 'webgl'
     }
     initializeTerminal(_topNode) {

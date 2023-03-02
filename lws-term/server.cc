@@ -1263,14 +1263,14 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/dt-outer.js", LIB_WHEN_OUTER},
 #else
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
-    {"hlib/qwebchannel.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
+    {"hlib/qwebchannel.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
     {"hlib/jsMenus.js", LIB_WHEN_OUTER|LIB_WHEN_XTERMJS},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
     {"hlib/xterm.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-fit.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-canvas.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm-addon-serialize.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm-addon-serialize.js", LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-web-links.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-webgl.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterminal.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
