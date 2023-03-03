@@ -787,6 +787,7 @@ autoreconf -i
 This runs the GNU autotools (@code{aclocal}, @code{autoconf},
 and @code{automake}).
 
+@anchor{configure for build}
 Then run the @code{configure} script:
 @example
 ./configure @var{configure-options}
@@ -872,7 +873,7 @@ This @ref{webview-frontend,works ok though with some rough edges}.
 @item --with-wry
 @itemx --with-wry=@var{git-clone-path}@code{/wry}
 @itemx --with-wry=@code{@{}@var{dependency}@code{@}}
-Build @emph{experimental} support for the @uref{https://github.com/taurri/wry,Wry cross-platform framework}.  This creates a binary @code{bin/dt-wry}.
+Build support for the @uref{https://github.com/taurri/wry,Wry cross-platform framework}.  This creates a binary @code{bin/dt-wry}.
 which is used if you open a domterm window with the @code{-Bwry} option.
 If @code{--enable-debug} is specified, does a debug build,
 which is needed to get a web instructore.
@@ -880,7 +881,7 @@ which is needed to get a web instructore.
 
 Wry works similar to WebView, but is part of
 the @uref{https://tauri.studio/en/,Tauri} project and is written in Rust.
-A major advantage of Wry is that it is actively maintained.
+A major advantage of Wry is that it is very actively maintained.
 
 @item --with-libclipboard=@var{libclipboard_dir}
 Using the @uref{https://github.com/jtanx/libclipboard,libclipboard library}
@@ -895,10 +896,22 @@ then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR}.
 Use DocBook for generating HTML documentation.
 This used to be the default but is no longer recommended with texinfo 6.8.
 
+@item --with-xterm.js
+Build experimental support for using the @uref{http://xtermjs.org/,xterm.js}
+terminal emulator in addition to the DomTerm emulator.
+The main advantage of xterm.js is that it is very fast;
+however, it is missing many of the features of DomTerm.
+@ref{xtermjs,See here} for more information.
+
+This option clones xterm.js @uref{https://github.com/xtermjs/xterm.js/,from GitHub} into
+a @code{xtermjs} subdirectory, and builds it there.
+
 @item --enable-debug
 Build for development and better debugging.
 Sets @code{CFLAGS="-O0 -g"} @code{CXXFLAGS="-O0 -g"}.
 If @code{--with-wry}, build Wry with the @code{debug} profile.
+If @code{--with-xterm.js}, build the xterm.js modules with
+the @code{development} options.
 
 @item --enable-compiled-in-resources
 This feature causes the html, JavaScript and css files needed by DomTerm
@@ -2420,6 +2433,10 @@ If @var{mode} is @code{no}, disable support for sub-windows,
 which means all windows are top-level windows.
 Defaults to @code{yes}, unless running under a tiling window manager.
 (Currently only Sway is detected.) @emph{(Experimental.)}
+
+@item @code{@b{xtermjs} =} @var{value}
+If the boolean @var{value} is true, use the @ref{xtermjs,xterm.js}
+terminal emulator.
 @end table
 
 @node Applications
@@ -4484,6 +4501,7 @@ for how they may support some features differently.
 @menu
 * Tips::  Miscellaneous tips
 * Link handling::
+* xtermjs:: Using the xterm.js emulator
 * Detecting domterm terminal::
 * Shell prompts::  Shell prompts and tricks
 * drop down:: Use as a drop-down terminal
@@ -4841,6 +4859,29 @@ After expansion, if there are any unquoted shell special characters
 (any of @code{<>|&$}), then the command is executed by a shell.
 Otherwise, it is executed directly (in the background, as a daemon).
 @end table
+
+@node xtermjs
+@section Using the xterm.js emulator
+
+If you choose, you can use the @uref{http://xtermjs.org/,xterm.js}
+terminal emulator instead of standard DomTerm emulator.
+To do so, you must have built DomTerm with the @code{--with-xterm.js}
+option to @ref{configure for build,@code{configure}}.
+To open a terminal using xterm.js set the @code{xtermjs} setting to true.
+You can have a mix of terminals, some with @code{xtermjs=false}
+and some with @code{xtermjs=true}.
+
+The main advantage of using xterm.js is that it is very fast.
+You still benefit from many DomTerm features,
+including window managemenet with tabs and files;
+session management; a nice way to connect to remote computers; and more.
+
+The disadvantage of using xterm.js is that many features are not available -
+see @uref{https://github.com/PerBothner/DomTerm/issues/118,this page}
+for a summary of missing functionality.
+
+The xterm.js option is experimental.  Perhaps someday we can combine
+the speed of xterm.js with the functionality of DomTerm.
 
 @node Detecting domterm terminal
 @section Detecting domterm terminal
