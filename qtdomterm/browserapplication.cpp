@@ -516,7 +516,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
     // (used to make sure browser has read permission to user's files).
     // If so, read the file to extract the real url.
     // This avoids issues with file URLs - and might be slightly faster.
-    QRegularExpression filePattern("^file://(.*/start[^/]*.html)$");
+    QRegularExpression filePattern("^file://(.*/[^#?]+.html)$");
     QRegularExpressionMatch fileMatch = filePattern.match(url);
     if (fileMatch.hasMatch()) {
         QString fileName = fileMatch.captured(1);
