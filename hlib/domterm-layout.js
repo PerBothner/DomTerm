@@ -569,7 +569,8 @@ DomTermLayout.initialize = function(initialContent = null) {
             if (wtitle)
                 componentConfig.windowTitle = wtitle;
             lcontent.paneNumber = DomTermLayout._newPaneNumber();
-            element = lparent;
+            if (DomTerm.useSeparateContentChild())
+                element = lparent;
             lcontent = null;
         } else {
             if (DomTerm.useSeparateContentChild()) {
