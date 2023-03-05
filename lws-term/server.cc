@@ -1224,26 +1224,13 @@ static struct lib_info standard_stylesheets[] = {
     {"hlib/domterm-standard.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
     {"hlib/goldenlayout/css/goldenlayout-base.css", LIB_WHEN_OUTER},
     {"hlib/goldenlayout/css/themes/goldenlayout-light-theme.css", LIB_WHEN_OUTER},
+    {"hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css", LIB_WHEN_OUTER|LIB_CSS_DISABLED},
     {"hlib/jsMenus.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/domterm-layout.css", LIB_WHEN_OUTER },
     {"hlib/domterm-default.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
     {"hlib/xterm.css", LIB_WHEN_XTERMJS},
     {NULL, 0},
 };
-
-static struct lib_info standard_stylesheets_disabled[] = {
-    {"hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {NULL, 0},
-};
-#if 0
-static struct lib_info  standard_stylesheets_simple[] = {
-    {"hlib/domterm-core.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/domterm-standard.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/domterm-default.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm.css", LIB_WHEN_XTERMJS},
-    {NULL, 0},
-};
-#endif
 
 static struct lib_info standard_jslibs[] = {
     {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
@@ -1295,12 +1282,9 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
     struct lib_info *lib;
     for (lib = standard_stylesheets; lib->file != NULL; lib++) {
         if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER|LIB_WHEN_XTERMJS)) != 0)
-            obuf->printf("<link type='text/css' rel='stylesheet' href='%s'>\n", lib->file);
-    }
-    if (! simple) {
-        for (lib = standard_stylesheets_disabled; lib->file != NULL; lib++) {
-            obuf->printf("<link type='text/css' rel='stylesheet' href='%s' disabled='true'>\n", lib->file);
-        }
+            obuf->printf("<link type='text/css' rel='stylesheet' href='%s'%s>\n",
+                         lib->file,
+                         lib->options & LIB_CSS_DISABLED ? " disabled='true'" : "");
     }
     for (lib = standard_jslibs; lib->file != NULL; lib++) {
         const char *jstype = (lib->options & LIB_AS_MODULE) ? "module" : "text/javascript";

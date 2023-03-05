@@ -497,6 +497,7 @@ extern void copy_html_file(FILE*in, FILE*out);
 #define LIB_WHEN_XTERMJS 4
 #define LIB_AS_MODULE 8
 #define LIB_WHEN_QT 16 // Include "qwebchannel.js"
+#define LIB_CSS_DISABLED 32
 extern void make_html_text(struct sbuf *obuf, int port, int options,
                            const char *body_text, int body_length);
 extern int count_args(arglist_t);
