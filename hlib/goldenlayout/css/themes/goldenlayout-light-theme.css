@@ -16,10 +16,6 @@
   background: #000000;
   opacity: 0.1;
 }
-.lm_splitter:hover .lm_drag_handle,
-.lm_splitter.lm_dragging .lm_drag_handle {
-  background-color: #452500;
-}
 .lm_header {
   height: 20px;
 }
