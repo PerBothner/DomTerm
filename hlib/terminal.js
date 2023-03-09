@@ -3867,7 +3867,7 @@ DomTerm.removeInfoDisplay = function(div, dt) {
     }
 }
 DomTerm._positionInfoWidget = function(widget, dt) {
-    let top = dt.topNode;
+    let top = dt.contentElement;
     top.insertBefore(widget, top.firstChild);
     let topOffset = 0, leftOffset = 0; //, rightOffset = 0;
     let offset = dt._displayInfoYoffset;
