@@ -1255,6 +1255,7 @@ static struct lib_info standard_jslibs[] = {
 #endif
     {"hlib/xterm.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-fit.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm-addon-image.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-canvas.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-serialize.js", LIB_WHEN_XTERMJS},
     {"hlib/xterm-addon-web-links.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},

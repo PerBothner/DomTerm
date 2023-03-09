@@ -361,6 +361,7 @@ if ENABLE_DEBUG
 	cp $(XTERMJS_ROOT)/debug-lib/xterm.js \
 	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-canvas.js \
 	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-fit.js \
+	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-image.js \
 	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-serialize.js \
 	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-web-links.js \
 	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-webgl.js \
@@ -369,6 +370,7 @@ else
 	cp $(XTERMJS_ROOT)/lib/xterm.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-fit/lib/xterm-addon-fit.js \
+	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-image/lib/xterm-addon-image.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
 	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-webgl/lib/xterm-addon-webgl.js \
@@ -703,10 +705,11 @@ $(NODE_MODULES_DIR)/xterm/lib/xterm.js:
 xtermjs:
 	git clone git@github.com:xtermjs/xterm.js.git xtermjs
 
-tmp-xterm-built: xtermjs xtermjs/webpack.debug.js
+tmp-xterm-built: xtermjs xtermjs/webpack.debug.js setup-xterm-addon-image.stamp
 	cd xtermjs && yarn && npm run package
 	cd xtermjs/addons/xterm-addon-canvas && npm run package
 	cd xtermjs/addons/xterm-addon-fit && npm run package
+	cd xtermjs/addons/xterm-addon-image && npm run package
 	cd xtermjs/addons/xterm-addon-serialize && npm run package
 	cd xtermjs/addons/xterm-addon-web-links && npm run package
 	cd xtermjs/addons/xterm-addon-webgl && npm run package
@@ -714,6 +717,15 @@ tmp-xterm-built: xtermjs xtermjs/webpack.debug.js
 
 tmp-xterm-debug-built: tmp-xterm-built
 	cd xtermjs && node_modules/.bin/webpack --config webpack.config.js --mode development -o debug-lib
-	for ADDON in canvas fit serialize web-links webgl; do \
+	for ADDON in canvas fit image serialize web-links webgl; do \
 	  (cd xtermjs/addons/xterm-addon-$$ADDON && ../../node_modules/.bin/webpack --config webpack.config.js --mode development -o ../../debug-lib); done
 	touch tmp-xterm-debug-built
+
+xtermjs/addons/xterm-addon-image:
+	cd xtermjs/addons && git clone --branch master https://github.com/jerch/xterm-addon-image
+
+setup-xterm-addon-image.stamp: xtermjs/addons/xterm-addon-image
+	cd xtermjs && cp -avx addons/xterm-addon-image/overwrite/* .
+	cd xtermjs && mv demo/client.ts_copy demo/client.ts
+	cd xtermjs && cp -avx addons/xterm-addon-image/overwrite/.eslintrc.json .
+	touch setup-xterm-addon-image.stamp

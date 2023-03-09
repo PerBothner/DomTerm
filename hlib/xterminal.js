@@ -4,15 +4,30 @@ import * as DtUtil from './domterm-utils.js';
 const XTerm = window.Terminal;
 const CanvasAddon = window.CanvasAddon.CanvasAddon;
 const FitAddon = window.FitAddon.FitAddon;
+const ImageAddon = window.ImageAddon.ImageAddon;
 //The following doesn't work - see https://github.com/xtermjs/xterm.js/issues/4424
 //const SerializeAddon = SerializeAddon.SerializeAddon;
 const WebglAddon = window.WebglAddon.WebglAddon;
 
+// customize as needed (showing addon defaults)
+const imageCustomSettings = {
+  enableSizeReports: true,    // whether to enable CSI t reports (see below)
+  pixelLimit: 16777216,       // max. pixel size of a single image
+  sixelSupport: true,         // enable sixel support
+  sixelScrolling: true,       // whether to scroll on image output
+  sixelPaletteLimit: 256,     // initial sixel palette size
+  sixelSizeLimit: 25000000,   // size limit of a single sixel sequence
+  storageLimit: 128,          // FIFO storage limit in MB
+  showPlaceholder: true,      // whether to show a placeholder for evicted images
+  iipSupport: true,           // enable iTerm IIP support
+  iipSizeLimit: 20000000      // size limit of a single IIP sequence
+};
 class XTermPane extends DTerminal {
     constructor(windowNumber) {
         super(windowNumber, "xterminal");
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon.SerializeAddon();
+        this.imageAddon = new ImageAddon(imageCustomSettings);
         this.rendererType = 'canvas'; // 'dom' 'canvas' or 'webgl'
     }
     initializeTerminal(_topNode) {
@@ -107,6 +122,7 @@ class XTermPane extends DTerminal {
         });
 
         xterm.loadAddon(this.fitAddon);
+        xterm.loadAddon(this.imageAddon);
         xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
         this.attachResizeSensor();
@@ -129,7 +145,7 @@ class XTermPane extends DTerminal {
     resizeHandler() {
         this.fitAddon.fit();
     }
-    parseBytes(bytes, beginIndex, endIndex) {
+    parseBytes(bytes, beginIndex = 0, endIndex = bytes.length) {
         if (DomTerm.verbosity >= 2) {
             if (this._decoder == null)
                 this._decoder = new TextDecoder(); //label = "utf-8");
