@@ -9251,28 +9251,29 @@ DomTerm.dispatchTerminalMessage = function(command, ...args) {
     return false;
 }
 
-DomTerm.doNamedCommand = function(name, dt_or_item=undefined, keyName=null) {
+DomTerm.doNamedCommand = function(name, pane=undefined, keyName=null) {
     let command = commandMap[name];
     if (! command)
         return; // ERROR
     if (command.context === "parent" && DomTerm.isSubWindow()) {
         DomTerm.sendParentMessage("do-command", name, keyName);
     } else {
-        if (! dt_or_item)
-            dt_or_item = DomTerm.focusedPane?.layoutItem || DomTerm.focusedTerm;
-        if (command.context === "terminal" && ! (dt_or_item instanceof Terminal)) {
-            const ctype = dt_or_item.componentType;
-            if (ctype !== "domterm" && ctype !== "view-saved")
+        if (! pane)
+            pane = DomTerm.focusedPane;
+        if (command.context === "terminal"
+            && ! (pane instanceof Terminal)) {
+            const ctype = pane.kind;
+            if (ctype !== "domterm" && ctype !== "dterminal"
+                && ctype !== "xterminal" && ctype !== "view-saved")
                 return;
-            const term = dt_or_item.component?.terminal;
-            if (term)
-                command(term, keyName);
+            if (pane.terminal)
+                command(pane, keyName);
             else if (! DomTerm.isSubWindow())
-                DomTerm.sendChildMessage(Number(dt_or_item.id), "do-command",
+                DomTerm.sendChildMessage(pane.number, "do-command",
                                          name, keyName);
         }
         else
-            command(dt_or_item, keyName);
+            command(pane, keyName);
     }
 }
 
@@ -10261,7 +10262,7 @@ Terminal.prototype._pageUpOrDown = function(count, moveUp, paging) {
     this.scrollToCaret(null, force);
 };
 
-Terminal.prototype._scrollPage = function(count) {
+Terminal.prototype.scrollPage = function(count) {
     var amount = count * this.availHeight;
     if (count > 0)
         amount -= this.charHeight;
@@ -10270,15 +10271,15 @@ Terminal.prototype._scrollPage = function(count) {
     this._pageScroll(amount, true);
 }
 
-Terminal.prototype._scrollLine = function(count) {
+Terminal.prototype.scrollLine = function(count) {
     this._pageScroll(count * this.charHeight, true);
 }
 
-Terminal.prototype._pageTop = function() {
+Terminal.prototype.pageTop = function() {
     this.buffers.scrollTop = 0;
 }
 
-Terminal.prototype._pageBottom = function() {
+Terminal.prototype.pageBottom = function() {
     let target = this._vspacer.offsetTop - this.availHeight;
     if (target < 0)
         target = 0;

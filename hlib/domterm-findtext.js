@@ -1,6 +1,6 @@
 export { FindText };
 import { Terminal } from './terminal.js';
-import { commandMap, cmd } from './commands.js';
+import { cmd } from './commands.js';
 
 class FindText {
     constructor(term) {
@@ -243,12 +243,16 @@ cmd('find-select-pattern',
     function(dt, key) {
         document.getSelection().selectAllChildren(dt._findText.minibuf);
         return true;
+    }, {
+        context: "terminal"
     });
 
 cmd('find-next-match',
     function(dt, key) {
         FindText.doNext(dt, true);
         return true;
+    }, {
+        context: "terminal"
     });
 
 cmd('find-previous-match',
@@ -261,6 +265,8 @@ cmd('find-exit',
     function(dt, key) {
         dt.removeMiniBuffer(dt._findText.minibuf);
         return true;
+    }, {
+        context: "terminal"
     });
 
 cmd('find-toggle-match-case',

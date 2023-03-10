@@ -61,7 +61,7 @@ cmd('reset-terminal-soft',
         context: "terminal"
     });
 cmd('quit-domterm',
-    function(item, key) {
+    function(pane, key) {
         showMessage({ title: "Confirm Quit - DomTerm",
                       message: "Quit DomTerm?",
                       detail: "This will close all windows, kill all sessions (including detached sessions), and exit the domterm backend server.",
@@ -79,14 +79,14 @@ cmd('quit-domterm',
         context: "parent"
     });
 cmd('close-window',
-    function(item, key) {
+    function(pane, key) {
         DomTerm.closeAll(null);
         return true;
     }, {
         context: "parent"
     });
 cmd('close-pane',
-    function(item, key) {
+    function(pane, key) {
         DomTerm.closeSession();
         return true;
     }, {
@@ -106,28 +106,28 @@ function selectNextPane(forwards, vertical) {
                                      `${forwards ? "next" : "prev"},${vertical ? "v" : "h"}`);
 }
 cmd('select-pane-left',
-    function(item, key) {
+    function(pane, key) {
         selectNextPane(true, false);
         return true;
     }, {
         context: "parent"
     });
 cmd('select-pane-right',
-    function(dt, key) {
+    function(pane, key) {
         selectNextPane(true, false);
         return true;
     }, {
         context: "parent"
     });
 cmd('select-pane-up',
-    function(dt, key) {
+    function(pane, key) {
         selectNextPane(false, true);
         return true;
     }, {
         context: "parent"
     });
 cmd('select-pane-down',
-    function(dt, key) {
+    function(pane, key) {
         selectNextPane(false, true);
         return true;
     }, {
@@ -135,45 +135,45 @@ cmd('select-pane-down',
     });
 cmd('new-tab',
     function(dt, key) {
-        DomTerm.newPane(2, null, dt);
+        DomTerm.newPane(2, null, pane);
         return true;
     });
 cmd('new-pane',
-    function(dt, key) {
-        DomTerm.newPane(1, null, dt);
+    function(pane, key) {
+        DomTerm.newPane(1, null, pane);
         return true;
     });
 cmd('new-pane-left',
-    function(dt, key) {
-        DomTerm.newPane(10, null, dt);
+    function(pane, key) {
+        DomTerm.newPane(10, null, pane);
         return true;
     });
 cmd('new-pane-right',
-    function(dt, key) {
-        DomTerm.newPane(11, null, dt);
+    function(pane, key) {
+        DomTerm.newPane(11, null, pane);
         return true;
     });
 cmd('new-pane-above',
-    function(dt, key) {
-        DomTerm.newPane(12, null, dt);
+    function(pane, key) {
+        DomTerm.newPane(12, null, pane);
         return true;
     });
 cmd('new-pane-below',
-    function(dt, key) {
-        DomTerm.newPane(13, null, dt);
+    function(pane, key) {
+        DomTerm.newPane(13, null, pane);
         return true;
     });
 cmd('scroll-top',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._pageTop();
+        dt.pageTop();
         return true;
     }, {
         context: "terminal"
     });
 cmd('scroll-bottom',
     function(dt, key) {
-        dt._pageBottom();
+        dt.pageBottom();
         return true;
     }, {
         context: "terminal"
@@ -181,7 +181,7 @@ cmd('scroll-bottom',
 cmd('scroll-line-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._scrollLine(- dt.numericArgumentGet(1));
+        dt.scrollLine(- dt.numericArgumentGet(1));
         return true;
     }, {
         context: "terminal"
@@ -189,7 +189,7 @@ cmd('scroll-line-up',
 cmd('scroll-line-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._scrollLine(dt.numericArgumentGet(1));
+        dt.scrollLine(dt.numericArgumentGet(1));
         return true;
     }, {
         context: "terminal"
@@ -197,7 +197,7 @@ cmd('scroll-line-down',
 cmd('scroll-page-up',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._scrollPage(- dt.numericArgumentGet(1));
+        dt.scrollPage(- dt.numericArgumentGet(1));
         return true;
     }, {
         context: "terminal"
@@ -205,7 +205,7 @@ cmd('scroll-page-up',
 cmd('scroll-page-down',
     function(dt, key) {
         dt._disableScrollOnOutput = true;
-        dt._scrollPage(dt.numericArgumentGet(1));
+        dt.scrollPage(dt.numericArgumentGet(1));
         return true;
     }, {
         context: "terminal"
@@ -257,21 +257,21 @@ cmd('toggle-menubar',
         context: "parent"
     });
 cmd('toggle-fullscreen',
-    function(dt, key) {
+    function(pane, key) {
         DomTerm.windowOp('fullscreen', 'toggle');
         return true;
     }, {
         context: "parent"
     });
 cmd('exit-fullscreen',
-    function(dt, key) {
+    function(pane, key) {
         DomTerm.windowOp('fullscreen', 'off');
         return true;
     }, {
         context: "parent"
     });
 cmd('toggle-fullscreen-current-window', // FIXME needs work
-    function(dt, key) {
+    function(pane, key) {
         let requesting = ! screenfull.isFullscreen;
         if (! requesting) {
             requesting =
@@ -721,6 +721,8 @@ cmd('next-line-or-continue',
         dt.sstate.goalX = 0;
         dt._downLinesOrContinue(dt.numericArgumentGet(), false);
         return true;
+    }, {
+        context: "terminal"
     });
 cmd('up-line-extend',
     function(dt, key) {
@@ -869,7 +871,7 @@ cmd('insert-char',
     });
 
 cmd('focus-menubar',
-    function(item, keyName) {
+    function(pane, keyName) {
         console.log("focus-menubar subw:"+DomTerm.isSubWindow());
         return DomTerm.focusMenubar();
     }, {
@@ -883,50 +885,50 @@ function popoutTab(pane, wholeStack)
 }
 
 cmd('popout-tab',
-    function(item, keyName) {
-        return popoutTab(item, false);
+    function(pane, keyName) {
+        return popoutTab(pane, false);
     }, {
         context: "parent"
     });
 cmd('popout-tabset',
-    function(item, keyName) {
-        return popoutTab(item, true);
+    function(ipane, keyName) {
+        return popoutTab(pane, true);
     }, {
         context: "parent"
     });
 cmd('detach-session',
-    function(dt, keyName) {
+    function(pane, keyName) {
         DomTerm.closeSession(DomTerm.focusedPane, true, false);
         return true;
     });
 cmd('open-link',
-    function(dt, keyName) {
+    function(pane, keyName) {
         DomTerm.handleLink();
         return true;
     }, {
         context: "parent"
     });
 cmd('copy-link-address',
-    function(dt, keyName) {
+    function(pane, keyName) {
         DomTerm.copyLink();
         return true;
     }, {
         context: "parent"
     });
 cmd('open-domterm-homepage',
-    function(dt, keyName) {
+    function(pane, keyName) {
         DomTerm.requestOpenLink({href: 'https://domterm.org'});
         return true;
     });
 cmd('show-about-message',
-    function(item, keyName) {
+    function(pane, keyName) {
         showAboutMessage();
         return true;
     }, {
         context: "parent"
     });
 cmd('toggle-developer-tools',
-    function(item, keyName) {
+    function(pane, keyName) {
         let toggleTools =  window._dt_toggleDeveloperTools;
         if (!toggleTools)
             return "do-default";
@@ -936,15 +938,13 @@ cmd('toggle-developer-tools',
         context: "parent"
     });
 
-function zoom_command(step, mainWindow, item) {
+function zoom_command(step, mainWindow, pane) {
     let node = null;
     if (mainWindow) {
         const zoom = step == 0 ? 1.0 : (1 + 0.2 * step) * DomTerm.zoomMainAdjust;
         DomTerm.zoomMainAdjust = zoom;
         DomTerm.updateZoom();
     } else {
-        let pane = item
-            && (item.paneInfo || item.topNode?.paneInfo|| item.container?.paneInfo);
         if (! pane)
             return false;
         const zoom = step == 0 ? 1.0 : (1 + 0.2 * step) * pane.zoomAdjust;
@@ -954,38 +954,38 @@ function zoom_command(step, mainWindow, item) {
     return true;
 }
 cmd('window-zoom-reset',
-    function(item, keyName) {
-        return zoom_command(0, true, item);
+    function(pane, keyName) {
+        return zoom_command(0, true, pane);
     }, {
         context: "parent"
     });
 cmd('window-zoom-in',
-    function(item, keyName) {
-        return zoom_command(+1, true, item);
+    function(pane, keyName) {
+        return zoom_command(+1, true, pane);
     }, {
         context: "parent"
     });
 cmd('window-zoom-out',
-    function(item, keyName) {
-        return zoom_command(-1, true, item);
+    function(pane, keyName) {
+        return zoom_command(-1, true, pane);
     }, {
         context: "parent"
     });
 cmd('pane-zoom-in',
-    function(item, keyName) {
-        return zoom_command(+1, false, item);
+    function(pane, keyName) {
+        return zoom_command(+1, false, pane);
     }, {
         context: "parent"
     });
 cmd('pane-zoom-out',
-    function(item, keyName) {
-        return zoom_command(-1, false, item);
+    function(pane, keyName) {
+        return zoom_command(-1, false, pane);
     }, {
         context: "parent"
     });
 cmd('pane-zoom-reset',
-    function(item, keyName) {
-        return zoom_command(0, false, item);
+    function(pane, keyName) {
+        return zoom_command(0, false, pane);
     }, {
         context: "parent"
     });

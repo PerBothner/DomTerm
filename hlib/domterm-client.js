@@ -75,7 +75,7 @@ function setupQWebChannel(channel) {
         backend.inputModeChanged(mode);
     }
     if (DomTerm.mainSearchParams.get('qtdocking')) {
-        DomTerm.newPane = function(paneOp, options=null, dt=DomTerm.focusedTerm) {
+        DomTerm.newPane = function(paneOp, options=null, oldPane=DomTerm.focusedPane) {
             let windowNumber = options.windowNumber || -1;
             let url;
             if (options && options.componentType === "browser"
@@ -675,7 +675,7 @@ function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
     const pane = dt ? dt.paneInfo : DomTerm.focusedPane;
     switch (command) {
     case "do-command":
-        DomTerm.doNamedCommand(args[0], dt, args[1]);
+        DomTerm.doNamedCommand(args[0], pane, args[1]);
         break;
     case "set-focused":
         if (pane)
@@ -694,27 +694,16 @@ function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
 
 function handleMessageFromChild(windowNum, command, args) {
     let dlayout = DomTerm._layout;
-    let item;
-    let lcontent = null;
-    if (windowNum >= 0) {
-        item = dlayout?._numberToLayoutItem(windowNum);
-        for (let ch = DomTerm.layoutTop.firstElementChild; ch != null;
-             ch = ch.nextElementSibling) {
-            const ch2 = ch.classList.contains("lm_content") ? ch
-                  : ch.firstElementChild;
-            if ((ch === ch2 || (ch2 && ch2.classList.contains("lm_content")))
-                && ch2.windowNumber == windowNum) {
-                lcontent = ch2;
-                break;
-            }
-        }
-    } else {
+    let pane = DomTerm.paneMap[windowNum];
+    if (! pane) {
         console.log(`bad window number ${windowNum} to '${command}' command`);
+        return;
     }
+    let item = pane.layoutItem;
+    let lcontent = pane.contentElement;
     switch (command) {
     case "do-command":
-        if (item)
-            DomTerm.doNamedCommand(args[0], item, args[1]);
+        DomTerm.doNamedCommand(args[0], pane, args[1]);
         break;
     case "domterm-focus-window":
         DomTerm.setWindowFocused(args[0], true, args[1]);

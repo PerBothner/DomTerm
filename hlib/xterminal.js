@@ -80,6 +80,18 @@ class XTermPane extends DTerminal {
                                return false;
                            });
         xterm.parser
+            .registerOscHandler(88,
+                                (text) => { DomTerm.setOptions(text); });
+        xterm.parser
+            .registerOscHandler(89,
+                                (text) => {
+                                    try {
+                                        this.setSettings(JSON.parse(text));
+                                    } catch(e) {
+                                        console.log("error parsing settings file: "+e);
+                                    }
+                                });
+        xterm.parser
             .registerOscHandler(103,
                                 (text) => {
                                     console.log("restore saved snapshot "+text);
@@ -168,7 +180,18 @@ class XTermPane extends DTerminal {
     _scrollIfNeeded() {
         return false;
     }
-
+    pageTop() {
+        this.xterm.scrollToTop();
+    }
+    pageBottom() {
+        this.xterm.scrollToBottom();
+    }
+    scrollPage(count) {
+        this.xterm.scrollPages(count);
+    }
+    scrollLine(count) {
+        this.xterm.scrollLines(count);
+    }
     saveWindowContents() {
         const rcount = this._receivedCount;
         let data =

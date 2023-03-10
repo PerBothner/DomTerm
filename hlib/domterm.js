@@ -244,15 +244,10 @@ DomTerm.forEachTerminal = function(func) {
 /* Can be called in either DomTerm sub-window or layout-manager context.
    * Note this is in the DomTerm global object, not DomTermLayout.
  */
-DomTerm.newPane = function(paneOp, options = null, dt) {
-    let oldWindowNum;
-    if (! dt)
-        dt = DomTerm.focusedTerm || DomTerm.mainTerm;
-    if (dt instanceof window.DTerminal) {
-        oldWindowNum = dt.topNode?.windowNumber;
-    } else if (dt) { // ComponentItem
-        oldWindowNum = Number(dt.id);
-    }
+DomTerm.newPane = function(paneOp, options = null, oldPane) {
+    if (! oldPane)
+        oldPane = DomTerm.focusedPane || DomTerm.mainTerm;
+    let oldWindowNum = oldPane.number;
     if (typeof oldWindowNum !== "number")
         return; // ERROR
     DomTerm.mainTerm
@@ -362,6 +357,19 @@ DomTerm.windowOp = function(opname, arg=null) {
         }
     }
 
+}
+
+// Handle '{SETTINGS}' or 'WNUM,{OPTIONS}'/
+DomTerm.setOptions = function(jtext) {
+    try {
+        var obj2 = JSON.parse("["+jtext+"]");
+        let obj = obj2[obj2.length-1];
+        let pane = obj2.length >= 2 ? DomTerm.paneMap[obj2[0]]
+            : DomTerm.mainTerm.paneInfo;
+        pane.setOptions(obj);
+    } catch(e) {
+        console.log("error handling local settings");
+    }
 }
 
 DomTerm._extractGeometryOptions = function(options={}) {
@@ -855,6 +863,27 @@ class PaneInfo {
         opt = DomTerm.globalSettings[name];
         return opt === undefined ? dflt : opt;
     }
+    setOptions(options) {
+        for (const prop in options) {
+            if (options[prop] == null)
+                delete this.termOptions[prop];
+            else
+                this.termOptions[prop] = options[prop];
+        }
+        DomTerm.updateSettings(this);
+    }
+    /*
+        try {
+            // Handle '{SETTINGS}' or 'WNUM,{OPTIONS}'/
+            var obj2 = JSON.parse("["+joptions+"]");
+            let obj = obj2[options.length-1];
+            let pane = obj2.length >= 2 ? DomTerm.paneMap[obj2[0]]
+                : DomTerm.mainTerm.paneInfo;
+        } catch(e) {
+            console.log("error handling local settings");
+        }
+        }
+    */
 }
 
 PaneInfo.create = function(windowNumber, kind) {
