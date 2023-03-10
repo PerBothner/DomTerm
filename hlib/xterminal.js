@@ -49,6 +49,7 @@ class XTermPane extends DTerminal {
             allowNonHttpProtocols: true
         };
         xterm.options.linkHandler = linkHandler;
+        xterm.options.scrollback = Infinity;
 
         xterm.attachCustomKeyEventHandler((e) => {
             if (e.type == 'keypress')
