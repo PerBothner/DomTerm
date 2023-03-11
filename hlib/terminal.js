@@ -5618,64 +5618,6 @@ Terminal.prototype.eraseLineLeft = function() {
     this.cursorRight(column);
 };
 
-Terminal.prototype.rgb = function(r,g,b) {
-    var digits = "0123456789ABCDEF";
-    var r1 = r & 15;
-    var g1 = g & 15;
-    var b1 = b & 15;
-    return String.fromCharCode(35/*'#'*/,
-                               digits.charCodeAt((r-r1)/16),
-                               digits.charCodeAt(r1),
-                               digits.charCodeAt((g-g1)/16),
-                               digits.charCodeAt(g1),
-                               digits.charCodeAt((b-b1)/16),
-                               digits.charCodeAt(b1));
-};
-
-Terminal.prototype.color256 = function(u) {
-    // FIXME This is just the default - could be overridden.
-    //   0.. 16: system colors
-    if (u < 16) {
-        switch (u) {
-        case 0: return this.rgb(0x00, 0x00, 0x00); // Black
-        case 1: return this.rgb(0xB2, 0x18, 0x18); // Red
-        case 2: return this.rgb(0x18, 0xB2, 0x18); // Green
-        case 3: return this.rgb(0xB2, 0x68, 0x18); // Yellow
-        case 4: return this.rgb(0x18, 0x18, 0xB2); // Blue
-        case 5: return this.rgb(0xB2, 0x18, 0xB2); // Magenta
-        case 6: return this.rgb(0x18, 0xB2, 0xB2); // Cyan
-        case 7: return this.rgb(0xB2, 0xB2, 0xB2); // White (light gray)
-            // intensive versions
-        case 8: return this.rgb(0x68, 0x68, 0x68); // dark-gray
-        case 9: return this.rgb(0xFF, 0x54, 0x54); // light-red
-        case 10: return this.rgb(0x54, 0xFF, 0x54); // light-green
-        case 11: return this.rgb(0xFF, 0xFF, 0x54); // light-yellow
-        case 12: return this.rgb(0x54, 0x54, 0xFF); // light-blue
-        case 13: return this.rgb(0xFF, 0x54, 0xFF); // light-magenta
-        case 14: return this.rgb(0x54, 0xFF, 0xFF); // light-cyan
-        case 15: return this.rgb(0xFF, 0xFF, 0xFF); // White
-        }
-    }
-    u -= 16;
-
-    //  16..231: 6x6x6 rgb color cube
-    if (u < 216) {
-        var bcode = u % 6;
-        u = (u - bcode) / 6;
-        var gcode = u % 6;
-        u = (u - gcode) / 6;
-        var rcode = u % 6;
-        return this.rgb(rcode > 0 ? rcode * 40 + 55 : 0,
-                        gcode > 0 ? gcode * 40 + 55 : 0,
-                        bcode > 0 ? bcode * 40 + 55 : 0);
-    }
-    u -= 216;
-
-    // 232..255: gray, leaving out black and white
-    var gray = u * 10 + 8;
-    return this.rgb(gray, gray, gray);
-};
-
 Terminal.prototype.handleBell = function() {
     if (Terminal.BELL_TEXT && Terminal.BELL_TIMEOUT)
         this._displayInfoWithTimeout(Terminal.BELL_TEXT, null, Terminal.BELL_TIMEOUT);

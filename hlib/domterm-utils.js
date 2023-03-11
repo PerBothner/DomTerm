@@ -1324,3 +1324,61 @@ export function getGraphemeSegments(str, beginIndex, endIndex, segments, widths)
     }
     return widthInColumns;
 }
+
+export function rgb(r,g,b) {
+    var digits = "0123456789ABCDEF";
+    var r1 = r & 15;
+    var g1 = g & 15;
+    var b1 = b & 15;
+    return String.fromCharCode(35/*'#'*/,
+                               digits.charCodeAt((r-r1)/16),
+                               digits.charCodeAt(r1),
+                               digits.charCodeAt((g-g1)/16),
+                               digits.charCodeAt(g1),
+                               digits.charCodeAt((b-b1)/16),
+                               digits.charCodeAt(b1));
+}
+
+export function color256(u) {
+    // FIXME This is just the default - could be overridden.
+    //   0.. 16: system colors
+    if (u < 16) {
+        switch (u) {
+        case 0: return rgb(0x00, 0x00, 0x00); // Black
+        case 1: return rgb(0xB2, 0x18, 0x18); // Red
+        case 2: return rgb(0x18, 0xB2, 0x18); // Green
+        case 3: return rgb(0xB2, 0x68, 0x18); // Yellow
+        case 4: return rgb(0x18, 0x18, 0xB2); // Blue
+        case 5: return rgb(0xB2, 0x18, 0xB2); // Magenta
+        case 6: return rgb(0x18, 0xB2, 0xB2); // Cyan
+        case 7: return rgb(0xB2, 0xB2, 0xB2); // White (light gray)
+            // intensive versions
+        case 8: return rgb(0x68, 0x68, 0x68); // dark-gray
+        case 9: return rgb(0xFF, 0x54, 0x54); // light-red
+        case 10: return rgb(0x54, 0xFF, 0x54); // light-green
+        case 11: return rgb(0xFF, 0xFF, 0x54); // light-yellow
+        case 12: return rgb(0x54, 0x54, 0xFF); // light-blue
+        case 13: return rgb(0xFF, 0x54, 0xFF); // light-magenta
+        case 14: return rgb(0x54, 0xFF, 0xFF); // light-cyan
+        case 15: return rgb(0xFF, 0xFF, 0xFF); // White
+        }
+    }
+    u -= 16;
+
+    //  16..231: 6x6x6 rgb color cube
+    if (u < 216) {
+        var bcode = u % 6;
+        u = (u - bcode) / 6;
+        var gcode = u % 6;
+        u = (u - gcode) / 6;
+        var rcode = u % 6;
+        return rgb(rcode > 0 ? rcode * 40 + 55 : 0,
+                   gcode > 0 ? gcode * 40 + 55 : 0,
+                   bcode > 0 ? bcode * 40 + 55 : 0);
+    }
+    u -= 216;
+
+    // 232..255: gray, leaving out black and white
+    var gray = u * 10 + 8;
+    return rgb(gray, gray, gray);
+}

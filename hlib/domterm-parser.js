@@ -1053,14 +1053,14 @@ class DTParser {
                             && numParameters > i+4) {
                             var color = 
                                 term._pushStyle(property,
-                                                term.rgb(this.getParameter(i+2,0),
-                                                         this.getParameter(i+3,0),
-                                                         this.getParameter(i+4,0)));
+                                                DtUtil.rgb(this.getParameter(i+2,0),
+                                                           this.getParameter(i+3,0),
+                                                           this.getParameter(i+4,0)));
                             i += 4;
                         } else if (this.getParameter(i+1,-1) == 5
                                    && numParameters > i+2) {
                             var c = this.getParameter(i+2,0);
-                            term._pushStyle(property, term.color256(c));
+                            term._pushStyle(property, DtUtil.color256(c));
                             i += 2;
                         }
                         break;
@@ -1736,7 +1736,7 @@ class DTParser {
             let m = text.match(/^([0-9]+);[?]$/);
             if (m) {
                 let c = parseInt(m[1], 10);
-                let color = c >= 0 && c < 256 ? this.color256(c) : "";
+                let color = c >= 0 && c < 256 ? DtUtil.color256(c) : "";
                 m = color.match(/#([0-9a-fA-F][0-9a-fA-F])([0-9a-fA-F][0-9a-fA-F])([0-9a-fA-F][0-9a-fA-F])/);
                 if (m)
                     term.processResponseCharacters(`\x1b]4;${c};rgb:${m[1]}/${m[2]}/${m[3]}\x1b\\`);
