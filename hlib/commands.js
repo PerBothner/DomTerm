@@ -134,7 +134,7 @@ cmd('select-pane-down',
         context: "parent"
     });
 cmd('new-tab',
-    function(dt, key) {
+    function(pane, key) {
         DomTerm.newPane(2, null, pane);
         return true;
     });
