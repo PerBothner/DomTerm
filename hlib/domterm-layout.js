@@ -3,7 +3,7 @@
 
 export { DomTermLayout };
 
-import { GoldenLayout, LayoutConfig, ResolvedLayoutConfig, ItemConfig, ResolvedItemConfig, RowOrColumn, Tab } from './goldenlayout.js';
+import { GoldenLayout, LayoutConfig, ResolvedLayoutConfig, ItemConfig, ComponentItemConfig, ResolvedItemConfig, RowOrColumn, Tab } from './goldenlayout.js';
 import { escapeText } from './domterm-utils.js';
 
 class DomTermLayout {
@@ -100,7 +100,7 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
     let p = oldItem.parent;
     if (paneOp == 2) { // new tab
         const i = DomTermLayout._indexInParent(oldItem);
-        p.addItem(ItemConfig.resolve(config), addAfter ? i+1: i);
+        p.addItem(config, addAfter ? i+1: i);
     } else {
         let isColumn = paneOp==12||paneOp==13;
         var type = isColumn ? 'column' : 'row';
@@ -115,7 +115,7 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
                 rowOrColumn.updateSize();
                 column = rowOrColumn;
             }
-            column.addItem(ItemConfig.resolve(config), addAfter ? column.contentItems.length : 0);
+            column.addItem(config, addAfter ? column.contentItems.length : 0);
             return;
         }
         if (p && p.type == "stack") {
@@ -128,22 +128,12 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
                 pp = rowOrColumn;
             }
             var i = DomTermLayout._indexInParent(p);
-            pp.addItem(ItemConfig.resolve(config), addAfter ? i+1: i);
+            pp.addItem(config, addAfter ? i+1: i);
             return;
         }
         p.addChild(newItemConfig); // FIXME index after r
     }
 };
-
-DomTermLayout.domTermToLayoutItem = function(dt) { // FIXME
-    //if (! DomTermLayout.manager)
-    //    return null;
-    let node = dt.topNode;
-    if (node instanceof Element && node.classList.contains("lm_content"))
-        return DomTermLayout._elementToLayoutItem(node);
-    else
-        return null;
-}
 
 DomTermLayout._elementToLayoutItem = function(goal, item = DomTermLayout.manager.root) {
     if (goal._layoutItem)
@@ -226,9 +216,11 @@ DomTermLayout.popoutWindow = function(item, screenX, screenY) {
     const e = [];
     const options = { width: w, height: h, content: e };
     DomTermLayout._pendingPopoutComponents = 0;
+    // FIXME should reuse some of the GoldenLayout BrowserPopout support,
+    // particularly the config encoding.
 
     function encode(item) {
-        const itemConfig = item.toConfig();
+        const itemConfig = ComponentItemConfig.fromResolved(item.toConfig());
         const cstate = itemConfig?.componentState;
         const wnum = cstate?.windowNumber;
         const snum = cstate?.sessionNumber;
@@ -543,7 +535,7 @@ DomTermLayout.initialize = function(initialContent = null) {
     DomTermLayout.manager = lmanager;
     let lastContainer = null;
 
-    DomTermLayout.manager.createContainerElement = (manager, config, item) => {
+    DomTermLayout.manager.createComponentElement = (config, component) => {
         const type = config.componentType;
         const componentConfig = config.componentState;
         let wnum = componentConfig.windowNumber;
@@ -572,10 +564,11 @@ DomTermLayout.initialize = function(initialContent = null) {
             if (DomTerm.useSeparateContentChild())
                 element = lparent;
             lcontent = null;
+            pane = DomTerm.focusedPane;
         } else {
             if (DomTerm.useSeparateContentChild()) {
                 element = document.createElement('div');
-                element.classList.add("domterm-wrapper", "lm_component");
+                element.classList.add("domterm-wrapper");
                 parent.appendChild(element);
                 parent = element;
             }
@@ -583,6 +576,8 @@ DomTermLayout.initialize = function(initialContent = null) {
             element = DomTerm.useSeparateContentChild() ? parent
                 : pane.contentElement;
         }
+        if (pane.contentElement)
+            pane.contentElement.classList.add("lm_content");
         return element;
     };
 
@@ -606,7 +601,6 @@ DomTermLayout.initialize = function(initialContent = null) {
         componentConfig.initialized = true;
         const content = pane.contentElement;
         if (content) {
-            content.classList.add("lm_content");
             content._layoutItem = container.parent;
             DomTerm.showFocusedPane(content);
             if (DomTerm.useSeparateContentChild()) {

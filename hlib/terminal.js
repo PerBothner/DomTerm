@@ -1345,11 +1345,10 @@ DomTerm.setFocus = function(term, originMode="") {
     DomTerm.focusedTerm = term;
 }
 
-// Overridden for atom-domterm
 DomTerm.showFocusedTerm = function(term) {
     let m = DomTerm._layout;
     if (m) {
-        let item = term ? m.domTermToLayoutItem(term) : null;
+        let item = term ? term.layoutItem : null;
         DomTerm.showFocusedPane(term ? term.topNode : null);
         m.manager.focusComponent(item);
     }
