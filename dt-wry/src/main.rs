@@ -209,6 +209,7 @@ fn main() -> wry::Result<()> {
             .with_url(&url)
             .unwrap()
             .with_initialization_script(&script)
+            .with_clipboard(true)
             .with_ipc_handler(handler);
         #[cfg(debug_assertions)]
         let webview = webview.with_devtools(true);
