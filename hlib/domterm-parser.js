@@ -1124,7 +1124,7 @@ class DTParser {
             }
             break;
         case 113 /*'q'*/:
-            if (this._flagChars.indexOf(' ') >= 0) {
+            if (this._flagChars === ' ') {
                 // Set cursor style (DECSCUSR, VT520).
                 let style = this.getParameter(0, 1);
                 if (style > 0 && style < Terminal.caretStyles.length) {
@@ -1134,6 +1134,9 @@ class DTParser {
                     term.sstate.caretStyleFromCharSeq = -1;
                     this.caretCharStyle = this.caretStyleFromSettings;
                 }
+            } else if (this._flagChars === '>') { // XTVERSION
+                const version = `DomTerm(${DomTerm.versionString})`;
+                term.processResponseCharacters(`\x1BP>|${version}\x1B\\`);
             }
             break;
         case 114 /*'r'*/:
