@@ -517,7 +517,7 @@ macOS, *BSD, and native (non-WSL) Windows.
 
 On Fedora, you need to first:
 @example
-sudo dnf install gcc make automake autoconf texinfo patch libwebsockets libwebsockets-devel openssl-devel file-devel libcap-devel asciidoctor zlib-devel
+sudo dnf install gcc g++ make automake autoconf texinfo patch libwebsockets libwebsockets-devel openssl-devel file-devel libcap-devel asciidoctor zlib-devel
 @end example
 If configuring @code{--with-qt} (recommended), also do:
 @example
