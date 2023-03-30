@@ -191,6 +191,9 @@ ipcMain.on('window-ops', (event, command, arg) => {
         eventToWindow(event).show();
         break;
     case 'minimize':
+        // The extra 'show' seems to be needed on KDE (at least)
+        // if transitioning frm hidden to minimized.
+        eventToWindow(event).show();
         eventToWindow(event).minimize();
         break;
     case 'toggle-devtools':

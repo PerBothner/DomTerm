@@ -8,6 +8,8 @@ class DTParser {
         this.controlSequenceState = DTParser.INITIAL_STATE;
         this.parameters = new Array();
         this.textParameter = null;
+        // _flagChars contains contains prefix characters, and "intermediates" prefixed by ';'.
+        // Thus CSI ? Ps $ p (DECRQM) should set _flagChars to "?;$".
         this._flagChars = "";
         /** @type {Array|null} */
         this.saved_DEC_private_mode_flags = null;
@@ -147,9 +149,17 @@ class DTParser {
                     this.controlSequenceState = ch - 78 + DTParser.SEEN_ESC_SS2;
                     break;
                 case 80 /*'P'*/: // DCS
-                    this.controlSequenceState = DTParser.SEEN_DCS_STATE;
+                case 93 /*']'*/: // OSC
+                case 94 /*'^'*/: // PM
+                case 95 /*'\\'*/: // Application Program Command (APC)
+                    this.controlSequenceState =
+                        ch === 93 ? DTParser.SEEN_OSC_STATE
+                        : ch === 80 ? DTParser.SEEN_DCS_STATE
+                        : ch === 94 ? DTParser.SEEN_PM_STATE
+                        : DTParser.SEEN_APC_STATE;
                     this.parameters.length = 1;
                     this.parameters[0] = null;
+                    this._flagChars = "";
                     break;
                 case 91 /*'['*/: // CSI
                     this.controlSequenceState = DTParser.SEEN_ESC_LBRACKET_STATE;
@@ -159,16 +169,6 @@ class DTParser {
                     break;
                 case 92 /*'\\'*/: // ST (String Terminator)
                     this.controlSequenceState = DTParser.INITIAL_STATE;
-                    break;
-                case 93 /*']'*/: // OSC
-                case 94 /*'^'*/: // PM
-                case 95 /*'\\'*/: // Application Program Command (APC)
-                    this.controlSequenceState =
-                        ch == 93 ? DTParser.SEEN_OSC_STATE
-                        : ch == 94 ? DTParser.SEEN_PM_STATE
-                        : DTParser.SEEN_APC_STATE;
-                    this.parameters.length = 1;
-                    this.parameters[0] = null;
                     break;
                 case 99 /*'c'*/: // Full Reset (RIS)
                     term.resetTerminal(1, true);
@@ -267,13 +267,18 @@ class DTParser {
                     this.parameters.push(null);
                 }
                 else if (state == DTParser.SEEN_DCS_STATE) {
-                    this.controlSequenceState = DTParser.SEEN_DCS_TEXT_STATE;
-                    i--;
+                    if (ch === 113 /*'q'*/ && ! this._flagChars) {
+                        this.controlSequenceState = DTParser.SEEN_DCS_SIXEL_STATE;
+                    } else {
+                        this.controlSequenceState = DTParser.SEEN_DCS_TEXT_STATE;
+                        i--;
+                    }
                 } else if ((ch >= 60 && ch <= 63) /* in "<=>?" */
-                           || ch == 32 /*' '*/ || ch == 33 /*'!'*/
-                           || ch == 39 /*"'"*/)
+                           || (ch >= 32 && ch <= 39) /* in " !\"#$%&'" */) {
+                    if (this.parameters.length)
+                        this._flagChars += ";";
                     this._flagChars += String.fromCharCode(bytes[i]);
-                else {
+                } else {
                     this.handleControlSequence(ch);
                     this.parameters.length = 1;
                 }
@@ -296,8 +301,8 @@ class DTParser {
                     this.parameters.length = 1;
                 }
                 continue;
-            case DTParser.SEEN_DCS_TEXT_STATE:
-                if (bytes[i] === 113 /*'q'*/ && ! window.SixelDecoder) {
+            case DTParser.SEEN_DCS_SIXEL_STATE:
+                if (! window.SixelDecoder) {
                     term._deferredBytes = term.withDeferredBytes(bytes, i, endIndex);
                     if (window.SixelDecoder === undefined) {
                         window.SixelDecoder = null;
@@ -320,6 +325,7 @@ class DTParser {
                     return;
                 }
                 // ... fall through ...
+            case DTParser.SEEN_DCS_TEXT_STATE:
             case DTParser.SEEN_OSC_TEXT_STATE:
             case DTParser.SEEN_PM_STATE:
             case DTParser.SEEN_APC_STATE:
@@ -358,6 +364,8 @@ class DTParser {
                                 if (state == DTParser.SEEN_OSC_TEXT_STATE) {
                                     let text = this.decodeBytes(narr);
                                     this.handleOperatingSystemControl(this.parameters[0], text);
+                                } else if (state === DTParser.SEEN_DCS_SIXEL_STATE) {
+                                    this.handleSixel(narr);
                                 } else if (state === DTParser.SEEN_DCS_TEXT_STATE) {
                                     this.handleDeviceControlString(this.parameters, narr);
                                 } else {
@@ -1121,6 +1129,10 @@ class DTParser {
                 term.resetTerminal(0, false);
             } else if (this._flagChars.indexOf('"') >= 0) {
                 // Set conformance level (DECSCL)
+            } else if (this._flagChars === ";$" || this._flagChars === "?;$") { // DECRQM
+                const ps = this.getParameter(0, 0);
+                const m = this._flagChars === ";$" ? this.get_mode(ps) : this.get_DEC_private_mode(ps);
+                term.processResponseCharacters(`\x1B[?${ps};${m ? 1 : m === true ? 2 : 0}$y`);
             }
             break;
         case 113 /*'q'*/:
@@ -1508,7 +1520,7 @@ class DTParser {
         const term = this.term;
         const six = window.SixelDecoder;
         six.init();
-        six.decode(bytes, 1);
+        six.decode(bytes);
         let w = six.width, h = six.height;
         let next = term.outputBefore;
         if (next == term._caretNode)
@@ -1566,24 +1578,30 @@ class DTParser {
         const term = this.term;
         if (bytes.length == 0)
             return;
-        if (bytes.length > 2 && bytes[0] === 36
-            && bytes[1] === 113) { // DCS $ q Request Status String DECRQSS
+        if (bytes[0] === 113 /*'q'*/ && this._flagChars === "$") {
+            // DCS $ q Request Status String DECRQSS
             let response = null;
             /*
-              let text = this.decodeBytes(bytes);
-              switch (text.substring(2)) {
-              case xxx: response = "???"; break;
-              }
+            let text = this.decodeBytes(bytes);
+            switch (text.substring(2)) {
+            case xxx: response = "???"; break;
+            }
             */
             // DECRPSS—Report Selection or Setting
             term.processResponseCharacters(response ? "\x900$r"+response+"\x9C"
                                            : "\x901$r\x9C");
             return;
-        }
-        if (bytes[0] === 113) { // 'q'
-            this.handleSixel(bytes);
         } else
             console.log("handleDeviceControlString");
+    }
+
+    get_mode(param) {
+        const term = this.term;
+        switch (param) {
+        case 4: return term.sstate.insertMode;
+        case 20: return term.sstate.automaticNewlineMode !== 0;
+        }
+        return undefined;
     }
 
     get_DEC_private_mode(param) {
@@ -2458,13 +2476,19 @@ class DTParser {
     pushControlState(saved) {
         saved.controlSequenceState = this.controlSequenceState;
         saved.parameters = this.parameters;
+        saved.textParameter = this.textParameter;
+        saved.flagChars = this._flagChars;
         this.controlSequenceState = DTParser.INITIAL_STATE;
+        this.textParameter = null;
+        this._flagChars = "";
         this.parameters = new Array();
     }
 
     popControlState(saved) {
         this.controlSequenceState = saved.controlSequenceState;
         this.parameters = saved.parameters;
+        this.textParameter = saved.textParameter;
+        this._flagChars = saved.flagChars;
     }
 
     getParameter(index, defaultValue) {
@@ -2499,9 +2523,11 @@ DTParser.SEEN_ESC_SS3 = 15;
 DTParser.SEEN_CR = 17;
 DTParser.SEEN_DCS_STATE = 19;
 DTParser.SEEN_DCS_TEXT_STATE = 20;
-DTParser.SEEN_PM_STATE = 21;
-DTParser.SEEN_APC_STATE = 22;
-DTParser.PAUSE_REQUESTED = 23;
+/** Seen DCS params q */
+DTParser.SEEN_DCS_SIXEL_STATE = 21;
+DTParser.SEEN_PM_STATE = 22;
+DTParser.SEEN_APC_STATE = 23;
+DTParser.PAUSE_REQUESTED = 24;
 
 DTParser.REPLACEMENT_CHARACTER = 0xFFFD;
 
