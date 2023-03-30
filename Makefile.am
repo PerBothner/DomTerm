@@ -716,7 +716,7 @@ $(NODE_MODULES_DIR)/xterm/lib/xterm.js:
 xtermjs:
 	git clone git@github.com:xtermjs/xterm.js.git xtermjs
 
-tmp-xterm-built: xtermjs xtermjs/webpack.debug.js setup-xterm-addon-image.stamp
+tmp-xterm-built: xtermjs setup-xterm-addon-image.stamp
 	cd xtermjs && yarn && npm run package
 	cd xtermjs/addons/xterm-addon-canvas && npm run package
 	cd xtermjs/addons/xterm-addon-fit && npm run package
