@@ -1626,7 +1626,7 @@ class DTParser {
             return term.sstate.mouseMode == param;
         case 1004:
             return term.sstate.sendFocus;
-        case 1005: case 1006: case 1015:
+        case 1005: case 1006: case 1015: case 1016:
             return term.sstate.mouseCoordEncoding == param;
         }
     }
@@ -1685,7 +1685,7 @@ class DTParser {
         case 1004: // Send FocusIn/FocusOut events.
             term.sstate.sendFocus = value;
             break;
-        case 1005: case 1006: case 1015:
+        case 1005: case 1006: case 1015: case 1016:
             term.sstate.mouseCoordEncoding = value ? param : 0;
             break;
         case 47:

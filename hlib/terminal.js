@@ -321,7 +321,7 @@ class Terminal extends PaneInfo {
     sstate.mouseMode = 0;
 
     // How mouse coordinates are encoded in the response:
-    // 0 - old single-byte; 1005 (UTF8-EXT); 1006 (SGR_EXT); 1015 (URXVT_EXT)
+    // 0 - old single-byte; 1005 (UTF8-EXT); 1006 (SGR_EXT); 1015 (URXVT_EXT); 1016 (SGR-Pixels)
     sstate.mouseCoordEncoding = 0;
 
     sstate.sendFocus = false;
@@ -4506,13 +4506,18 @@ Terminal.prototype._mouseHandler = function(ev) {
     targetBounds = targetBounds[0];
     xdelta -= targetBounds.left;
     ydelta -= targetBounds.top;
-    col += Math.floor(xdelta / this.charWidth);
-    row += Math.floor(ydelta / this.charHeight);
+    let encoding = this.sstate.mouseCoordEncoding;
+    if (encoding === 1016) {
+        col = xdelta; // ???
+        row = ydelta;
+    } else {
+        col += Math.floor(xdelta / this.charWidth);
+        row += Math.floor(ydelta / this.charHeight);
+    }
 
     var mod = (ev.shiftKey?4:0) | (ev.metaKey?8:0) | (ev.ctrlKey?16:0);
     let bfinal = 77; // 'M'
     var button = Math.min(ev.which - 1, 2) | mod;
-    let encoding = this.sstate.mouseCoordEncoding;
     switch (ev.type) {
     case 'mousedown':
         if (this.sstate.mouseMode === 1002)
@@ -4524,7 +4529,7 @@ Terminal.prototype._mouseHandler = function(ev) {
             this.topNode.removeEventListener("mousemove",
                                              this._mouseEventHandler);
         switch (encoding) {
-        case 1006: case 1015:
+        case 1006: case 1015: case 1016:
             bfinal = 109; // 'm'
             break;
         default:
@@ -4572,6 +4577,7 @@ Terminal.prototype._mouseHandler = function(ev) {
             value += 32;
             // fall through
         case 1006: // SGR
+        case 1016: // SGR-Pixels
             encodeInteger(value);
             return;
         }
@@ -4590,7 +4596,7 @@ Terminal.prototype._mouseHandler = function(ev) {
         default:
             barray[blen++] = val == 255-32 ? 0 : val + 33;
             return;
-        case 1006: case 1015:
+        case 1006: case 1015: case 1016:
             if (prependSeparator)
                 barray[blen++] = 59; // ';'
             encodeInteger(val+1);
@@ -4599,6 +4605,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     }
     switch (encoding) {
     case 1006:
+    case 1016:
         barray[blen++] = 60; // '<'
         break;
     case 1015: break;
