@@ -8944,8 +8944,7 @@ DomTerm.masterKeymapDefault =
             "Alt+Mod++": "pane-zoom-in",
             "Alt+Mod+-": "pane-zoom-out",
             "Alt+Mod+0": "pane-zoom-reset",
-            "Alt-X": "enter-mux-mode",
-            "Ctrl-Shift-A": "enter-mux-mode", // OLD
+            "Ctrl-Shift-A": "enter-mux-mode",
             "Ctrl-Shift-F": "find-text",
             "Ctrl+Shift+L": "input-mode-cycle",
             "Ctrl+Shift+M": "toggle-paging-mode",
