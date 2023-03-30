@@ -237,8 +237,12 @@ AC_DEFUN([AT_WITH_QT],
        [missing],
        [$QT_TOOL_PATH])
      if test x"$QMAKE" = xmissing; then
-       AX_INSTEAD_IF([$4],
-         [Cannot find qmake.  Try --with-qt=PATH.])
+       if test x"$with_qt" = "x"; then
+          with_qt="no"
+       else
+         AX_INSTEAD_IF([$4],
+           [Cannot find qmake.  Try --with-qt=PATH.])
+       fi
        break
      fi
 
