@@ -18,9 +18,7 @@ native/macOS.plist
 native/pty/org_domterm_pty_PTY.h
 hlib/domterm-version.js
 hlib/dt-combined.js
-classes.stamp
-client-data-links.stamp
-wsclasses.stamp
+*.stamp
 tmp-for-xul
 tmp-for-jar
 tmp-repl.in
