@@ -1833,13 +1833,27 @@ class DTParser {
             }
             break;
         case 4: {
-            let m = text.match(/^([0-9]+);[?]$/);
+            let m = text.match(/^([0-9]+);(.*)$/);
             if (m) {
                 let c = parseInt(m[1], 10);
-                let color = c >= 0 && c < 256 ? DtUtil.color256(c) : "";
-                m = color.match(/#([0-9a-fA-F][0-9a-fA-F])([0-9a-fA-F][0-9a-fA-F])([0-9a-fA-F][0-9a-fA-F])/);
-                if (m)
-                    term.processResponseCharacters(`\x1b]4;${c};rgb:${m[1]}/${m[2]}/${m[3]}\x1b\\`);
+                const cvar = c >= 0 && c < 16
+                      && `--dt-${Terminal.colorNames[c]}`;
+                if (m[2] === "?") {
+                    let color;
+                    if (c >= 0 && c < 16)
+                        color = getComputedStyle(term.topNode).getPropertyValue(cvar);
+                    color = color || (c >= 0 && c < 256 ? DtUtil.color256(c) : "");
+                    m = color.match(/#([0-9a-fA-F]{2])([0-9a-fA-F]{2})([0-9a-fA-F]{2})/);
+                    if (m)
+                        term.processResponseCharacters(`\x1b]4;${c};rgb:${m[1]}/${m[2]}/${m[3]}\x1b\\`);
+                } else if (m[2] && c >= 0 && c < 16) {
+                    // convert "rgb:RR/GG/BB" to "#RRGGBB"
+                    let m2 = m[2]
+                        .match(/rgb:([0-9a-fA-F]{2})[/]([0-9a-fA-F]{2})[/]([0-9a-fA-F]{2})/);
+                    if (m2) {
+                        term.topNode.style.setProperty(cvar, `#${m2[1]}${m2[2]}${m2[3]}`);
+                    }
+                }
             }
             break;
         }

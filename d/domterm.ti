@@ -1,5 +1,5 @@
 # tc:XX means the termcap equivalency is XX
-domterm|DomTerm terminal emulator,
+domterm|xterm-domterm|DomTerm terminal emulator,
 # initialialization
 # smcup [tc: ti] string to start programs using cup
 # Save cursor as in DECSC and use Alternate Screen Buffer, clearing it first.
@@ -73,11 +73,11 @@ domterm|DomTerm terminal emulator,
 # no pad char [tc: NP]
 	npc,
 # screen erased with background color [tc: ut]
-#	bce,
-# terminal can redefine existing colors [tc: cc]
-#       ccc,
+	bce,
+# terminal can redefine existing colors [tc: cc] (only colors 0-15)
+       ccc,
 # initialize color #1 to (#2,#3,#4) [tc: Ic]
-#	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
+	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
 # newline ignored after 80 cols [Concept] [tc: xn]
 	xenl,
 #	bel=^G,
