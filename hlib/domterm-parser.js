@@ -1238,8 +1238,8 @@ class DTParser {
                     break;
                 case 16: // Report (rounded) character cell size in pixels
                     term.processResponseCharacters(
-                        "\x1B[6;"+Math.round(term.charHeight)
-                            +";"+Math.round(term.charWidth)+"t");
+                        "\x1B[6;"+term.charHeightI
+                            +";"+term.charWidthI+"t");
                     break;
                 case 18: // Report the size of the text area in characters.
                     term.processResponseCharacters("\x1B[8;"+term.numRows
@@ -1521,57 +1521,119 @@ class DTParser {
         const six = window.SixelDecoder;
         six.init();
         six.decode(bytes);
-        let w = six.width, h = six.height;
-        let next = term.outputBefore;
-        if (next == term._caretNode)
-            next = next.nextSibling;
-        const reuseCanvas = next instanceof Element
-              && next.tagName == "CANVAS"
-              && next.width >= w && next.height >= h;
-        const canvas = reuseCanvas ? next
-              : document.createElement("canvas");
-        if (! reuseCanvas) {
+        let sw = six.width, sh = six.height;
+        let insertContainer, insertBefore;
+        let w = sw, h = sh;
+        let oldImage;
+        let canvas;
+        let oldLine, oldColumn;
+        if (term.sstate.sixelDisplayMode) { // not sixel scrolling
+            // FIXME attach canvas to lineStarts[homeLine]
+            // do not adjust cursor position
+            // FIXME check if line is line span
+            insertContainer = term.lineStarts[term.homeLine];
+            insertBefore = insertContainer.firstChild;
+        } else { // sixel scrolling
+            term._fixOutputPosition();
+            oldLine = term.getAbsCursorLine();
+            oldColumn = term.getCursorColumn();
+            let next = term.outputBefore;
+            let prev = next ? next.previousSibling : term.outputContainer.lastChild;
+            if (prev instanceof Element && (prev.tagName === "IMG" || prev.tagName === "CANVAS")) {
+                next = prev;
+            }
+            if (next == term._caretNode)
+                next = next.nextSibling;
+            const oldTag = next instanceof Element && next.tagName;
+            insertContainer = term.outputContainer;
+            if (oldTag === "CANVAS" || oldTag === "IMG") {
+                const oldHeight = next.height;
+                const oldWidth = next.width;
+                oldImage = next;
+                if (oldHeight >= h)
+                    h = oldHeight;
+                if (oldWidth >= w)
+                    w = oldWidth;
+                if (oldTag === "CANVAS" && oldHeight >= sh && oldWidth >= sw) {
+                    this.outputBefore = canvas = next;
+                } else {
+                    canvas = document.createElement("canvas");
+                    w = Math.max(w, oldWidth);
+                    h = Math.max(h, oldHeight)
+                    canvas.setAttribute("width", w);
+                    canvas.setAttribute("height", h);
+                    insertContainer.insertBefore(canvas, next.nextSibling);
+                    next.remove();
+                    this.outputBefore = canvas
+                }
+            }
+            insertBefore = term.outputBefore;
+        }
+        if (! canvas) {
+            canvas = document.createElement("canvas");
             canvas.setAttribute("width", w);
             canvas.setAttribute("height", h);
         }
         const ctx = canvas.getContext('2d');
-        const idata = new ImageData(new Uint8ClampedArray(six.data32.buffer, 0, w * h * 4), w, h);
-        //six.toPixelData(idata.data, w, h);
-        ctx.putImageData(idata, 0, 0);
-        const charWidthI = Math.round(term.charWidth);
-        const charHeightI = Math.round(term.charHeight);
-        let wcols = Math.floor(w / charWidthI + 0.9);
-        let hlines = Math.floor(h / charHeightI + 0.9);
-        let oldLine = term.getAbsCursorLine();
-        let oldColumn = term.getCursorColumn();
-        if (reuseCanvas) {
-            this.outputBefore = canvas.nextSibling;
-        } else {
-            term.eraseCharactersRight(wcols, true);
-            if (false) {
-                // This works better with "Save as HTML"
-                // However, reuseCanvas is more complicated and inefficient.
-                let image = new Image(w, h);
-                image.src = canvas.toDataURL();
-                term.insertNode(image);
-            } else {
-                let span = term._createSpanNode();
-                span.setAttribute("content-value", DomTerm.makeSpaces(wcols));
-                span.appendChild(canvas);
-                span.style['position'] = "relative";
-                term.insertNode(span);
-            }
-            canvas.style.height = hlines * term.charHeight;
-            canvas.style.width = wcols * term.charWidth;
+        if (oldImage && oldImage !== canvas)
+            ctx.drawImage(oldImage, 0, 0);
+        if (sw > 0 && sh > 0) {
+            const idata = new ImageData(new Uint8ClampedArray(six.data32.buffer, 0, sw * sh * 4),
+                                        sw, sh);
+            ctx.putImageData(idata, 0, 0);
         }
-        let line = term.lineStarts[oldLine];
-        if (line._widthColumns !== undefined)
-            line._widthColumns += wcols;
-        if (term.currentCursorColumn >= 0)
-            term.currentCursorColumn += wcols;
-        line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
-        line._breakState = Terminal._BREAKS_UNMEASURED;
-        term.moveToAbs(oldLine+hlines-1, oldColumn+wcols, true);
+        // ??? adjust by devicePixelRatio and zoom?
+        const charWidthI = term.charWidthI;
+        const charHeightI = term.charHeightI;
+
+        canvas.classList.add("dt-background");
+        const cstyle = canvas.style;
+        const cw = w / term.charWidthI * term.charWidth;
+        const ch = h / term.charHeightI * term.charHeight;
+        // Using position="relative" would seem to be cleaner and
+        // more robust, but I can't get the stacking contexts to work, even
+        // with z-index=auto.  Specifically, captions written by nplayer
+        // aren't visible, even though they are later in the document order.
+        // Instead, use negative margins to set the effective width to 0.
+        cstyle.marginRight = `-${cw}px`;
+        cstyle.marginBottom = `-${ch}px`;
+        cstyle.display = "inline";
+        cstyle.verticalAlign = "top";
+        cstyle.width = `${cw}px`;
+        cstyle.height = `${ch}px`;
+        if (canvas != insertBefore) {
+            insertContainer.insertBefore(canvas, insertBefore);
+        }
+        term.outputBefore = canvas.nextSibling;
+        if (! (term.outputBefore instanceof Element
+               && term.outputBefore.getAttribute("line") !== null)) {
+            const scols = Math.floor(sw / charWidthI + 0.9);
+            const saveBackground = term._currentStyleBackground();
+            term._pushStyle("background-color", "transparent");
+            term.insertSimpleOutput(DomTerm.makeSpaces(scols), 0, scols);
+            term._pushStyle("background-color", saveBackground);
+        }
+        if (! term.sstate.sixelDisplayMode) {
+            let line = term.lineStarts[oldLine];
+            let wcols = Math.floor(w / charWidthI + 0.9);
+            let hlines = Math.floor(h / charHeightI + 0.9);
+            if (term.sstate.sixelScrollsRight) {
+            } else {
+                wcols = 0;
+            }
+            let newColumn = oldColumn+wcols;
+            if (newColumn >= term._regionRight) {
+                newColumn = term._regionLeft;
+                hlines++;
+            }
+            if (line._widthColumns !== undefined)
+                line._widthColumns += Math.max(line._widthColumns, newColumn);
+            if (term.currentCursorColumn >= 0)
+                term.currentCursorColumn += wcols;
+            line._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+            line._breakState = Terminal._BREAKS_UNMEASURED;
+            term.moveToAbs(oldLine+hlines-1, newColumn, true);
+        }
     }
 
     handleDeviceControlString(params, bytes) {
@@ -1617,11 +1679,13 @@ class DTParser {
         case 25: // Hide/show cursor (DECTCEM) - sent by emacs
             return term.sstate.showCaret;
         case 45: return (term.sstate.wraparoundMode & 1) != 0;
+        case 80: return !!term.sstate.sixelDisplayMode;
         case 47: // fall though
         case 1047: return term.usingAlternateScreenBuffer;
         case 1048: return term.sstate.savedCursor !== undefined;
         case 1049: return term.usingAlternateScreenBuffer;
         case 2004: return term.sstate.bracketedPasteMode;
+        case 8452: return !!term.sstate.sixelScrollsRight;
         case 9: case 1000: case 1001: case 1002: case 1003:
             return term.sstate.mouseMode == param;
         case 1004:
@@ -1629,6 +1693,7 @@ class DTParser {
         case 1005: case 1006: case 1015: case 1016:
             return term.sstate.mouseCoordEncoding == param;
         }
+        return undefined;
     }
 
     /** Do DECSET or related option.
@@ -1679,6 +1744,13 @@ class DTParser {
             else
                 term.sstate.wraparoundMode &= ~1;
             break;
+        case 80:
+            if (value)
+                term.sstate.sixelDisplayMode = true;
+            else
+                delete term.sstate.sixelDisplayMode;
+            console.log("DECSDM "+value);
+            break;
         case 9: case 1000: case 1001: case 1002: case 1003:
             term.setMouseMode(value ? param : 0);
             break;
@@ -1709,6 +1781,13 @@ class DTParser {
             break;
         case 2004:
             term.sstate.bracketedPasteMode = value;
+            break;
+        case 8452:
+            console.log("sixel scrolls right: "+value);
+            if (value)
+                term.sstate.sixelScrollsRight = true;
+            else
+                delete term.sstate.sixelScrollsRight;
             break;
         }
     };

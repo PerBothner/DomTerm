@@ -365,6 +365,8 @@ class Terminal extends PaneInfo {
     this._mainBufferName = this.makeId("main")
       this._altBufferName = this.makeId("alternate")
   }
+  get charWidthI() { return Math.round(this.charWidth); }
+  get charHeightI() { return Math.round(this.charHeight); }
 
   setupElements(topNode) {
     this.terminal = this;
@@ -2069,7 +2071,7 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             if (current instanceof Element && current.nodeName == "SPAN") {
                 let valueAttr = current.getAttribute("content-value");
                 let cls = current.classList;
-                if (valueAttr) {
+                if (valueAttr !== null) {
                     let c = this.strColumnToIndex(valueAttr,
                                                   goalColumn - column,
                                                   current);
@@ -2225,10 +2227,10 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             var ch;
             if (current instanceof Node) {
                 if (current instanceof Element && !handled) {
-                    let valueAttr = current.getAttribute("content-value");
-                    if (DtUtil.isObjectElement(current))
-                        column += 1;
-                    else {
+                    if (DtUtil.isObjectElement(current)) {
+                        if (! current.classList.contains("dt-background"))
+                            column += 1;
+                    } else {
                         ch = current.firstChild;
                         if (ch != null) {
                             parent = current;
@@ -2294,6 +2296,9 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
         current = current == 0 ? this._caretNode : this._caretNode.nextSibling;
         parent =  this._caretNode.parentNode;
     }
+    if (current instanceof Element
+        && current.classList.contains("dt-background"))
+        current = current.nextSibling;
     this.outputContainer = parent;
     this.outputBefore = current;
     this.currentAbsLine = absLine;
@@ -4980,7 +4985,8 @@ Terminal.prototype.updateCursorCache = function() {
             } else if (DtUtil.isObjectElement(cur)) {
                 if (cur == goalParent)
                     break;
-                col++;
+                if (! cur.classList.contains("dt-background"))
+                    col++;
                 cur = cur.nextSibling;
                 continue;
             } else if (tag == "P" || tag == "PRE" || tag == "DIV") {
@@ -5507,8 +5513,10 @@ Terminal.prototype.deleteCharactersRight = function(count, removeEmptySpan=true)
             next = parent.nextSibling;
             parent = parent.parentNode;
         } else if (DtUtil.isObjectElement(current)) {
-            parent.removeChild(current);
-            todo--;
+            if (! current.classList.contains("dt-background")) {
+                parent.removeChild(current);
+                todo--;
+            }
         } else if (current instanceof Text
                    || (current instanceof Element
                        && (tvalue = current.getAttribute("content-value")) != null
@@ -5792,6 +5800,10 @@ Terminal.prototype.resetTerminal = function(full, saved) {
 
     if (full >= 0) {
         this.forceWidthInColumns(-1);
+    }
+    if (full > 0) {
+        delete this.sstate.sixelDisplayMode;
+        delete this.sstate.sixelScrollsRight;
     }
     // FIXME a bunch more
 };
@@ -6292,6 +6304,12 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
                     string += '\n';
                     break;
                 }
+            } else if (tagName === "canvas"
+                       && node.class.contains("dt-background")) {
+                tagName = "img";
+                const sattr = document.createAttribute("src");
+                sattr.value = node.toDataURL();
+                tagAttributes = [sattr, ...tagAttributes];
             }
 
             var s = '<' + tagName;
