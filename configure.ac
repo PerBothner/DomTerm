@@ -313,6 +313,7 @@ HLIB_FIXED_FILES_INNER="\
   hlib/domterm-utils.js \
   hlib/sixel-decode.js \
   hlib/terminal.js \
+  hlib/domterm-parser.js \
   hlib/commands.js \
   hlib/FileSaver.js \
   hlib/unicode/uc-properties.js \
@@ -352,7 +353,6 @@ HLIB_FIXED_FILES_MISC="\
   hlib/jsMenus.css"
 case "$with_xterm_js" in
   ""|"no")
-    HLIB_FIXED_FILES_INNER="${HLIB_FIXED_FILES_INNER} hlib/domterm-parser.js"
     WITH_XTERMJS=0;;
   *) WITH_XTERMJS=1;;
 esac
