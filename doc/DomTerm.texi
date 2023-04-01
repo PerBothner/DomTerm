@@ -6729,7 +6729,7 @@ a fresh empty line added.
 @subsubsection Window operations
 
 @table @asis
-@item @code{"\e]104;" @var{op} [@code{,} @var{oldwin}] @code{,} @var{options} "a\n"}
+@item @code{"\e]204;" @var{op} [@code{,} @var{oldwin}] @code{,} @var{options} "a\n"}
 Create a new sub-window (pane).
 The new window is placed relative to @var{oldwin} (default: current window),
 based on the @var{op}. The @var{options} specify the kind of window

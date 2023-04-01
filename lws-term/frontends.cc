@@ -893,7 +893,7 @@ display_session(struct options *options, struct pty_client *pclient,
         if (top_marker && paneOp >= pane_left && paneOp <= pane_below)
             paneOp = pane_main_left + (paneOp - pane_left);
         printf_to_browser(wclient, URGENT_WRAP("\033]%d;%d,%d,%s\007"),
-                          104, paneOp, oldnum,
+                          204, paneOp, oldnum,
                           pane_options.dump().c_str());
         lws_callback_on_writable(wclient->out_wsi);
     } else if (wkind == browser_window && subwindows == "no") {

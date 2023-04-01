@@ -2321,7 +2321,23 @@ class DTParser {
                 term._replayMode = false;
             }
             break;
-        case 104:
+        case 104: {
+            // Reset color number
+            if (text === "")
+                text = "0;1;2;3;4;5;6;7;8;9;10;11;12;13;14;15";
+            const tlen = text.length;
+            for (let i = 0; i < tlen; ) {
+                let semi = text.indexOf(";", i);
+                let last = semi < 0 ? tlen : semi;
+                let cnum = Number(text.substring(i, last));
+                if (cnum >= 0 && cnum < 16) {
+                    term.topNode.style.removeProperty(`--dt-${Terminal.colorNames[c]}`);
+                }
+                i = last + 1;
+            }
+            break;
+        }
+        case 204:
             try {
                 const wargs = JSON.parse("[" + text + "]");
                 const paneOp = wargs[0];
