@@ -839,8 +839,14 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
                 }
             }
 
-            put_to_env_array(nenv, env_max, "TERM=xterm-256color");
-            if (! pclient->use_xtermjs) {
+            if (pclient->use_xtermjs) {
+                put_to_env_array(nenv, env_max, "TERM=xterm-256color");
+            } else {
+                put_to_env_array(nenv, env_max, "TERM=xterm-domterm");
+                sbuf tibuf;
+                tibuf.printf("TERMINFO=%s",
+                             get_bin_relative_path("/share/terminfo"));
+                put_to_env_array(nenv, env_max, tibuf.strdup());
                 put_to_env_array(nenv, env_max, "COLORTERM=truecolor");
                 const char* dinit = "DOMTERM=";
 #ifdef LWS_LIBRARY_VERSION
