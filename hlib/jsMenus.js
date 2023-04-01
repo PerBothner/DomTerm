@@ -335,7 +335,6 @@ class Menu {
 
 	static setApplicationMenu(menubar, parent=document.body, before=parent.firstChild) {
 		let oldNode = Menu._menubarNode;
-		Menu._keydownListen(true);
 		if (oldNode) {
 			let oldParent = oldNode.parentNode;
 			if (oldParent != null)
