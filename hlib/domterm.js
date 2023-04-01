@@ -80,7 +80,7 @@ DomTerm.JsonLimited = function(val) {
     let maxLog = DomTerm.logStringMax;
     if (maxLog > 0) {
         if (typeof val === "string" && val.length > maxLog)
-            return JSON.stringify(val.substring(0,maxLog))+"...";
+            return JSON.stringify(val.substring(0,maxLog-50))+"..."+JSON.stringify(val.substring(val.length-50));
         let jstr = JSON.stringify(val);
         if (jstr.length > maxLog)
              return jstr.substring(0,maxLog)+"\"...";
