@@ -119,6 +119,7 @@ ADOC_GENERATED = \
 endif
 
 all-am: client-data-links.stamp $(RESOURCE_DEPS) resources.stamp $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/icons/hicolor/scalable/apps/domterm.svg share/icons/hicolor/48x48/apps/domterm.png share/domterm/domterm2.ico $(ADOC_GENERATED) \
+  share/terminfo/d/domterm share/terminfo/x/xterm-domterm \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -589,6 +590,9 @@ if WITH_ASCIIDOCTOR
 	$(INSTALL_DATA) share/domterm/help/*.html \
 	  $(DESTDIR)$(datadir)/domterm/help/
 endif
+	$(MKDIR_P) $(DESTDIR)$(datadir)/terminfo/x $(DESTDIR)$(datadir)/terminfo/d
+	$(INSTALL_DATA) share/terminfo/x/xterm-domterm $(DESTDIR)$(datadir)/terminfo/x/xterm-domterm
+	cd $(DESTDIR)$(datadir)/terminfo/d && rm -f domterm && ln ../x/xterm-domterm domterm
 
 uninstall-local:
 	rm -f $(DESTDIR)$(datadir)/applications/domterm.desktop \
