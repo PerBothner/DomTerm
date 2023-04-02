@@ -187,6 +187,22 @@ domterm|xterm-domterm|DomTerm terminal emulator,
 	smul=\E[4m,
 # enter standout mode [tc: so]
 	smso=\E[7m,
+# user capabilities (extended) - see man (5) user_caps:
+        AX, E3=\E[3J, rmxx=\E[29m, smxx=\E[9m,
+        XM=\E[?1006;1000%?%p1%{1}%=%th%el%;,
+        xm=\E[<%i%p3%d;%p1%d;%p2%d;%?%p4%tM%em%;,
+        kDC3=\E[3;3~, kDC4=\E[3;4~, kDC5=\E[3;5~, kDC6=\E[3;6~, kDC7=\E[3;7~,
+        kDN=\E[1;2B, kDN3=\E[1;3B, kDN4=\E[1;4B, kDN5=\E[1;5B, kDN6=\E[1;6B, kDN7=\E[1;7B,
+        kEND3=\E[1;3F, kEND4=\E[1;4F, kEND5=\E[1;5F, kEND6=\E[1;6F, kEND7=\E[1;7F,
+        kHOM3=\E[1;3H, kHOM4=\E[1;4H, kHOM5=\E[1;5H, kHOM6=\E[1;6H, kHOM7=\E[1;7H,
+        kIC3=\E[2;3~, kIC4=\E[2;4~, kIC5=\E[2;5~, kIC6=\E[2;6~,	kIC7=\E[2;7~,
+        kLFT3=\E[1;3D, kLFT4=\E[1;4D, kLFT5=\E[1;5D, kLFT6=\E[1;6D, kLFT7=\E[1;7D,
+        kNXT3=\E[6;3~, kNXT4=\E[6;4~, kNXT5=\E[6;5~, kNXT6=\E[6;6~, kNXT7=\E[6;7~,
+        kPRV3=\E[5;3~, kPRV4=\E[5;4~, kPRV5=\E[5;5~, kPRV6=\E[5;6~, kPRV7=\E[5;7~,
+        kRIT3=\E[1;3C, kRIT4=\E[1;4C, kRIT5=\E[1;5C, kRIT6=\E[1;6C, kRIT7=\E[1;7C,
+        kUP=\E[1;2A, kUP3=\E[1;3A, kUP4=\E[1;4A, kUP5=\E[1;5A, kUP6=\E[1;6A, kUP7=\E[1;7A,
+        ka2=\EOx, kb1=\EOt, kb3=\EOv, kc2=\EOr,	kp5=\EOE,
+        kpADD=\EOk, kpCMA=\EOl,	kpDIV=\EOo, kpDOT=\EOn,	kpMUL=\EOj, kpSUB=\EOm,	kpZRO=\EOp,
 #
 # The following not (yet) implemented but defined by xterm-256 color:
 # Print/MC (media copy): mc0 mc4 mc5

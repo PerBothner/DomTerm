@@ -166,7 +166,7 @@ $(LIBPTY): native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 	$(CC) $(PTY_COMMON_PARAMS) -shared -o $@ $^
 
 share/terminfo/d/domterm share/terminfo/x/xterm-domterm: tools/domterm.ti
-	tic -o share/terminfo $<
+	tic -x -o share/terminfo $<
 
 #JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js
 
