@@ -151,7 +151,7 @@ class DTParser {
                 case 80 /*'P'*/: // DCS
                 case 93 /*']'*/: // OSC
                 case 94 /*'^'*/: // PM
-                case 95 /*'\\'*/: // Application Program Command (APC)
+                case 95 /*'_'*/: // Application Program Command (APC)
                     this.controlSequenceState =
                         ch === 93 ? DTParser.SEEN_OSC_STATE
                         : ch === 80 ? DTParser.SEEN_DCS_STATE
