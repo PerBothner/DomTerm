@@ -488,6 +488,37 @@ get_executable_path()
     return executable_path;
 }
 
+static const char *rpaths[2] = {
+    "../share/domterm",
+    RESOURCE_DIR
+};
+
+static const char *resource_path = nullptr;
+
+const char *
+get_resource_dir()
+{
+    if (resource_path)
+        return resource_path;
+    char *cmd_path = get_executable_path();
+    int cmd_dir_length = get_executable_directory_length();
+    sbuf sb;
+    for (int i = 0; i < 2; i++) {
+        const char *rpath = rpaths[i];
+        if (rpath[0] != '/') {
+            sb.reset();
+            sb.printf("%.*s/%s", cmd_dir_length, cmd_path, rpath);
+            rpath = sb.null_terminated();
+        }
+        if (access(rpath, R_OK) == 0) {
+            resource_path = (const char *) realpath(rpath, NULL);
+            return resource_path;
+        }
+    }
+    fprintf(stderr,"domterm: missing resource file\n");
+    exit(-1);
+}
+
 int
 get_executable_directory_length()
 {

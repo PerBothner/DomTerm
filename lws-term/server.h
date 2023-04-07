@@ -430,11 +430,9 @@ callback_inotify(struct lws *wsi, enum lws_callback_reasons reason, void *user, 
 extern int
 callback_ssh_stderr(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
-#ifdef RESOURCE_DIR
-extern const char *get_resource_path();
-#endif
 extern int get_executable_directory_length();
 extern char* get_executable_path();
+extern const char* get_resource_dir();
 extern char *get_bin_relative_path(const char* app_path);
 const char *domterm_settings_default(void);
 extern bool is_WindowsSubsystemForLinux(void);

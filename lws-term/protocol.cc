@@ -838,7 +838,9 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
                     }
                 }
             }
-
+            sbuf rdbuf;
+            rdbuf.printf("DOMTERM_RESOURCE_DIR=%s", get_resource_dir());
+            put_to_env_array(nenv, env_max, rdbuf.strdup());
             if (pclient->use_xtermjs) {
                 put_to_env_array(nenv, env_max, "TERM=xterm-256color");
             } else {

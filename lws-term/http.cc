@@ -47,29 +47,6 @@ lws_finalize_write_http_header(struct lws *wsi, unsigned char *start,
 }
 #endif
 
-#ifdef RESOURCE_DIR
-static const char *resource_path = NULL;
-static char domterm_jar_name[] = "domterm.jar";
-const char *
-get_resource_path()
-{
-  if (resource_path == NULL) {
-      resource_path = RESOURCE_DIR;
-      if (resource_path[0] != '/') {
-          char *cmd_path = get_executable_path();
-          int cmd_dir_length = get_executable_directory_length();
-          size_t blen = cmd_dir_length + strlen(resource_path)
-              + sizeof(domterm_jar_name) + 2;
-          char *buf = challoc(blen);
-          snprintf(buf, blen, "%.*s/%s/%s",
-                   cmd_dir_length, cmd_path, resource_path, domterm_jar_name);
-          resource_path = buf;
-      }
-  }
-  return resource_path;
-}
-#endif
-
 struct mimetype {
     const char *extension;
     const char *mimetype;

@@ -43,9 +43,8 @@ endif
 if ENABLE_COMPILED_IN_RESOURCES
 nodist_ldomterm_SOURCES += resources.cc
 ldomterm_CXXFLAGS += -DCOMPILED_IN_RESOURCES
-else
-ldomterm_CXXFLAGS += -DRESOURCE_DIR='"../share/domterm"'
 endif
+ldomterm_CXXFLAGS += -DRESOURCE_DIR='"$(pkgdatadir)"'
 if USE_KDDockWidgets
 ldomterm_CXXFLAGS += -DUSE_KDDockWidgets=1 $(QT_DOCKING_CFLAGS) -DQT_DOCKING_LIBDIR='"$(QT_DOCKING_LIBDIR)"'
 endif
