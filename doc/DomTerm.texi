@@ -58,8 +58,8 @@ DomTerm is Free Software (open-source)
 available at @uref{https://github.com/PerBothner/DomTerm,https://github.com/PerBothner/DomTerm}.
 
 There is a mailing list at @email{domterm-discuss@@domterm.org}
-with an @uref{http://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,information page}
-and @uref{http://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archives}.
+with an @uref{https://lists.domterm.org/listinfo.cgi/domterm-discuss-domterm.org,information page}
+and @uref{https://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archives}.
 
 @subheading Highlights and recent changes
 
@@ -167,7 +167,7 @@ It uses an extended @uref{https://invisible-island.net/xterm/,xterm}
 protocol, and sets the @code{TERM=xterm-256color} environment variable,
 like other modern terminal emulators.
 DomTerm does very well on
-the @uref{http://invisible-island.net/vttest/,@code{vttest}} terminal test program,
+the @uref{https://invisible-island.net/vttest/,@code{vttest}} terminal test program,
 including handling Background Color Erase.
 @item
 Standard @strong{mouse event handling}.
@@ -207,7 +207,7 @@ A back-end @strong{can ``print'' images, graphics, and rich text}.
 Here you can see evaluating and ``printing''
 @code{Paintable} objects, which are graphical objects such as
 filled polygons.
-from the @uref{http://www.gnu.org/software/kawa/,Kawa} REPL.
+from the @uref{https://www.gnu.org/software/kawa/,Kawa} REPL.
 
 The front page screenshot shows ``printing'' HTML for images and rich text.
 (The expressions starting with @code{#<} are
@@ -251,8 +251,8 @@ check out these @ref{Python tips} with more screenshots.
 
 @image{images/dt-gnuplot1}
 
-The @uref{http://www.gnuplot.info/,GnuPlot graphing utility} (version 5.1+)
-supports @uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,DomTerm as an output device}.
+The @uref{https://www.gnuplot.info/,GnuPlot graphing utility} (version 5.1+)
+supports @uref{https://per.bothner.com/blog/2016/gnuplot-in-domterm/,DomTerm as an output device}.
 
 @subheading Rich interaction
 
@@ -274,7 +274,7 @@ as seen in the nearby screenshot.
 Window size re-size will automatically re-do line-breaking.
 Copying the selection as text will only include hard newlines.
 Reports window resize to application.
-@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,@strong{Dynamic pretty-printing}} (Common Lisp style) uses special commands to group
+@uref{https://per.bothner.com/blog/2017/dynamic-prettyprinting/,@strong{Dynamic pretty-printing}} (Common Lisp style) uses special commands to group
 logical blocks, and attempts to keep the text of a block on a single line
 with automatic re-flow on window re-size.
 
@@ -378,7 +378,7 @@ Integration with selection and clipboard: If you press shift while using the
 arrow keys, the moved-over text becomes the current selection.
 @end itemize
 
-See @uref{http://per.bothner.com/blog/2019/shell-integration-proposal/,this article} for more discussion and screenshots.
+See @uref{https://per.bothner.com/blog/2019/shell-integration-proposal/,this article} for more discussion and screenshots.
 
 Optional @strong{input editing}.  In @dfn{character mode},
 each character is sent to the application, like a traditional terminal.
@@ -387,7 +387,7 @@ and sends the input line to the back-end when Enter is typed.
 A history of previous lines is available, accessible
 with the Up/Down arrow keys.
 @dfn{Automatic mode} switches between character mode and line mode
-depending on whether the back-end is in ``@uref{http://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
+depending on whether the back-end is in ``@uref{https://www.gnu.org/software/libc/manual/html_node/Canonical-or-Not.html,canonical mode}''.
 
 @subheading Miscelleanous
 
@@ -897,7 +897,7 @@ Use DocBook for generating HTML documentation.
 This used to be the default but is no longer recommended with texinfo 6.8.
 
 @item --with-xterm.js
-Build experimental support for using the @uref{http://xtermjs.org/,xterm.js}
+Build experimental support for using the @uref{https://xtermjs.org/,xterm.js}
 terminal emulator in addition to the DomTerm emulator.
 The main advantage of xterm.js is that it is very fast;
 however, it is missing many of the features of DomTerm.
@@ -1708,7 +1708,7 @@ This option prevents ``daemonizing'' - which is helpful for debugging.
 @emph{Only relevant for the @code{qtdomterm} front-end.}
 (For the Electron front-end, use menu item @i{Toggle Developer Tools}.
 If using a general web browser, use its debugger.)
-Allow @uref{http://doc.qt.io/qt-5/qtwebengine-debugging.html,remote debugging}
+Allow @uref{https://doc.qt.io/qt-6/qtwebengine-debugging.html,remote debugging}
 (using a Chromium-based browser, such as Google Chrome).
 This is useful for debugging DomTerm itself, as well as any
 inspecting any unusual HTML, CSS, or JavaScript you might throw at it.
@@ -2153,7 +2153,7 @@ for text in @code{QMenu} do:
 style.qt =
  |QMenu @{ color: green; @}
 @end example
-See @uref{http://doc.qt.io/qt-5/stylesheet-examples.html, more examples}.
+See @uref{https://doc.qt.io/qt-6/stylesheet-examples.html, more examples}.
 
 @indsetting{style.dark}
 @item @code{@b{style.dark} =} @var{value}
@@ -4427,7 +4427,7 @@ Instead of 3, you can use 0 (default - reset to the @code{style.caret} value), 1
 
 @subheading Example: A ``solarized'' theme
 
-The @uref{http://ethanschoonover.com/solarized,Solarized colorscheme}
+The @uref{https://ethanschoonover.com/solarized,Solarized colorscheme}
 aims for muted balanced colors for both light and dark styles.
 Put the following in your @ref{Settings} for a
 solarized dark look.
@@ -4632,9 +4632,9 @@ esac
 
 @subsubheading gnuplot
 
-The @uref{http://www.gnuplot.info/,gnuplot} graphing application
+The @uref{https://www.gnuplot.info/,gnuplot} graphing application
 has builtin support for
-@uref{http://per.bothner.com/blog/2016/gnuplot-in-domterm/,``printing'' graphical output}
+@uref{https://per.bothner.com/blog/2016/gnuplot-in-domterm/,``printing'' graphical output}
 to the DomTerm console
 
 @anchor{pandoc-output}
@@ -4863,7 +4863,7 @@ Otherwise, it is executed directly (in the background, as a daemon).
 @node xtermjs
 @section Using the xterm.js emulator
 
-If you choose, you can use the @uref{http://xtermjs.org/,xterm.js}
+If you choose, you can use the @uref{https://xtermjs.org/,xterm.js}
 terminal emulator instead of standard DomTerm emulator.
 To do so, you must have built DomTerm with the @code{--with-xterm.js}
 option to @ref{configure for build,@code{configure}}.
@@ -4979,7 +4979,7 @@ Many interactive REPL-style programs (such as a ``shell") allow
 you to customize the string used to prompt for input.
 Putting certain DomTerm-specific @ref{Wire byte protocol,escape sequences}
 in the prompt enables some
-@uref{http://per.bothner.com/blog/2019/shell-integration-proposal/,nice features}.
+@uref{https://per.bothner.com/blog/2019/shell-integration-proposal/,nice features}.
 
 The following discussion tests @code{$DOMTERM} to decide
 whether to do domterm-specific actions.
@@ -5441,19 +5441,19 @@ an optional front-end.
 @node Uses
 @chapter Projects using DomTerm
 
-When you run the @uref{http://www.gnu.org/software/kawa/,@b{Kawa}} REPL
+When you run the @uref{https://www.gnu.org/software/kawa/,@b{Kawa}} REPL
 under Domterm, some extra niceties are enabled:
-If you print out a @uref{www.gnu.org/software/kawa/tutorial/Pictures.html,picture value} it is shown as an (SVG) image.
+If you print out a @uref{https://www.gnu.org/software/kawa/tutorial/Pictures.html,picture value} it is shown as an (SVG) image.
 You can also print ``html values''.
 The default prompt adds folding (a hide/show button), and some structure.
 Printing lists and other structures does
-@uref{http://per.bothner.com/blog/2017/dynamic-prettyprinting/,dynamic pretty-printing}.
+@uref{https://per.bothner.com/blog/2017/dynamic-prettyprinting/,dynamic pretty-printing}.
 Debug printing of expressions includes folding and pretty-printing.
 
 @uref{https://github.com/jingyuewang/DtCalc.jl,@b{DtCalc.jl}} turns
 Julia's REPL into an advanced graphical calculator.
 
-The @uref{http://www.gnuplot.info/,@b{gnuplot}} graphing utility will print
+The @uref{https://www.gnuplot.info/,@b{gnuplot}} graphing utility will print
 @uref{https://per.bothner.com/blog/2016/gnuplot-in-domterm/,graphical output}
 directly to the terminal if using DomTerm.
 
@@ -5729,14 +5729,14 @@ if @code{measureNeeded} call unbreakLines, then breakLine1 (to measure).
 @subsubheading Document any discrepancies from xterm and ANSI
 
 While implementing all of the
-@uref{http://invisible-island.net/xterm/ctlseqs/ctlseqs.html,features of xterm}
+@uref{https://invisible-island.net/xterm/ctlseqs/ctlseqs.html,features of xterm}
 is probably not feasible, we should at least have a list of
 anything we don't implement, or implement differently from xterm.
 
-See also the @uref{http://www.ecma-international.org/publications/standards/Ecma-048.htm,ECMA-48 standard}.
+See also the @uref{https://www.ecma-international.org/publications/standards/Ecma-048.htm,ECMA-48 standard}.
 
 Error recovery and state transitions should follow
-@uref{http://www.vt100.net/emu/dec_ansi_parser,this}.
+@uref{https://www.vt100.net/emu/dec_ansi_parser,this}.
 
 @subsubheading Embedded HTML
 
@@ -5745,15 +5745,6 @@ If the @code{src} attribute of @code{<img>} is a relative URL
 the @code{domterm html} command should read the file
 and embed it as a @code{data:} URL.
 (As long as no @code{--base} option is specified.)
-
-@c @subsubheading Support Sixel graphics
-@c
-@c @uref{https://en.wikipedia.org/wiki/Sixel,Sixel} is an old raster
-@c image format supported by DEC terminals and some programs, including xterm.
-@c It is interesting because some programs (such as gnuplot) can use Sixel
-@c to interleave graphics and text, without requiring separate windows.
-@c
-@c This @uref{http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/,JavaScript utility} may be useful in converting raster data (post-sixel-decoding) to PNG, which could the be displayed with a @code{data:} URI.
 
 @subsubheading Highlighting
 
