@@ -1,4 +1,6 @@
 DIST_SUBDIRS = lws-term qtdomterm
+MISC_TOOLS = tools/bash-preexec.sh tools/shell-integration.bash \
+  tools/shell-integration.zsh tools/shell-integration.fish
 EXTRA_DIST = \
   hlib/terminal.js $(MISC_COPY_TO_JAR) $(JS_LIBS) $(CLIENT_DATA_FILES) \
   $(domterm_jar_sources) domterm-jar-manifest bin/jdomterm domterm.spec \
@@ -17,7 +19,7 @@ EXTRA_DIST = \
   doc/help/domterm-new.adoc \
   doc/help/domterm-window-specifier.adoc \
   doc/help/qtdomterm.adoc \
-  $(DOC_IMAGES) $(DOC_TOOLS) \
+  $(DOC_IMAGES) $(DOC_TOOLS) $(MISC_TOOLS) \
   native/preloads.cc \
   native/pty/apue.h native/pty/error.c native/pty/pty.c \
   native/pty/pty_fork.c native/pty/pty_fork.h
@@ -120,6 +122,7 @@ endif
 
 all-am: client-data-links.stamp $(RESOURCE_DEPS) resources.stamp $(WSDOMTERM_JAR) $(LIBPTY) $(PRELOADS_SO) $(MISCBINS) bin/domterm$(EXEEXT) share/domterm/electron/main.js share/domterm/electron/preload.js share/icons/hicolor/scalable/apps/domterm.svg share/icons/hicolor/48x48/apps/domterm.png share/domterm/domterm2.ico $(ADOC_GENERATED) \
   share/terminfo/d/domterm share/terminfo/x/xterm-domterm \
+  tools.stamp \
   share/domterm/help/domterm.txt \
   share/domterm/help/qtdomterm.txt \
   share/domterm/help/domterm-window-specifier.txt  \
@@ -167,6 +170,11 @@ $(LIBPTY): native/pty/pty.o native/pty/pty_fork.o native/pty/error.o
 
 share/terminfo/d/domterm share/terminfo/x/xterm-domterm: tools/domterm.ti
 	tic -x -o share/terminfo $<
+
+tools.stamp: $(MISC_TOOLS)
+	$(MKDIR_P) share/domterm/tools
+	cp -p $(MISC_TOOLS) share/domterm/tools
+	touch tools.stamp
 
 #JS_LIBS = hlib/FileSaver.js hlib/ResizeSensor.js hlib/wcwidth.js hlib/browserkeymap.js
 
@@ -431,10 +439,6 @@ DOC_IMAGES = \
   doc/images/python-pandas.png \
   doc/images/python-pretty1.png
 DOC_TOOLS = \
-  tools/bash-preexec.sh \
-  tools/shell-integration.bash \
-  tools/shell-integration.fish \
-  tools/shell-integration.zsh \
   tools/python/domterm/utils.py
 
 doc/DomTerm.xml: doc/DomTerm.texi
@@ -590,9 +594,10 @@ if WITH_ASCIIDOCTOR
 	$(INSTALL_DATA) share/domterm/help/*.html \
 	  $(DESTDIR)$(datadir)/domterm/help/
 endif
-	$(MKDIR_P) $(DESTDIR)$(datadir)/terminfo/x $(DESTDIR)$(datadir)/terminfo/d
+	$(MKDIR_P) $(DESTDIR)$(datadir)/terminfo/x $(DESTDIR)$(datadir)/terminfo/d $(DESTDIR)$(pkgdatadir)/tools
 	$(INSTALL_DATA) share/terminfo/x/xterm-domterm $(DESTDIR)$(datadir)/terminfo/x/xterm-domterm
 	cd $(DESTDIR)$(datadir)/terminfo/d && rm -f domterm && ln ../x/xterm-domterm domterm
+	$(INSTALL_DATA) $(MISC_TOOLS) $(DESTDIR)$(pkgdatadir)/tools
 
 uninstall-local:
 	rm -f $(DESTDIR)$(datadir)/applications/domterm.desktop \

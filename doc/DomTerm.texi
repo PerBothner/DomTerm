@@ -4988,9 +4988,7 @@ See @ref{Detecting domterm terminal,how to more reliably test for DomTerm}.
 @anchor{bash shell prompt}
 @subheading Setting the Bash shell prompt
 
-Download @uref{tools/shell-integration.bash,shell-integration.bash}
-and @uref{tools/bash-preexec.sh,bash-preexec.sh}.
-Then in your @code{~/.bashrc} put something like:
+In your @code{~/.bashrc} put something like:
 
 @example
 if [ "$PS1" != "" ]
@@ -5000,8 +4998,8 @@ then
 
   if [ -n "$DOMTERM" ]
   then
-    source /path/to/shell-integration.bash
-    source /path/to/bash-preexec.sh
+    source $DOMTERM_RESOURCE_DIR/tools/shell-integration.bash
+    source $DOMTERM_RESOURCE_DIR/tools/bash-preexec.sh
   fi
 fi
 @end example
@@ -5020,8 +5018,7 @@ from the command.
 @subheading Setting the Zsh shell prompt
 
 Zsh is similar to bash.
-Download @uref{tools/shell-integration.zsh,shell-integration.zsh}.
-Then in your @code{~/.zshrc} put something like:
+In your @code{~/.zshrc} put something like:
 
 @example
 if [ "$PS1" != "" ]
@@ -5029,7 +5026,7 @@ if [ "$PS1" != "" ]
 then
   if [ -n "$DOMTERM" ]
   then
-     source /path/to/shell-integration.zsh
+     source $DOMTERM_RESOURCE_DIR/tools/shell-integration.zsh
   fi
 fi
 @end example
@@ -5038,14 +5035,11 @@ fi
 @subheading Setting the Fish Shell (fish) prompt
 
 For @code{fish} (the Fish Shell),
-copy @uref{tools/shell-integration.fish,shell-integration.fish}
-into the Fish configuration directory @code{$__fish_config_dir}
-(which defaults to @code{.config/fish}).
-Then place the following in the main fish configuration file
+place the following in the main fish configuration file
 @code{$__fish_config_dir/config.fish}:
 @example
 if test -n "$DOMTERM"
-  source $__fish_config_dir/shell-integration.fish
+  source $DOMTERM_RESOURCE_DIR/tools/shell-integration.fish
 end
 @end example
 
