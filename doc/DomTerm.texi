@@ -5554,19 +5554,23 @@ Simple substitution uses curly braces: @code{@{directory@}}.
 Expressions, Lisp-style (prefix operator):  @code{@{+ @{N@} 1@}}
 or maybe @code{@{+ N 1@}} (see discussion below).
 
-A conditional is india@{@var{cond1}@}@var{value1}
-cted by @code{@{?@var{condition}@}@var{true-part}|@var{false-part}}.
+A conditional is indicated by @code{@{?@var{condition}@}@var{true-part}|@var{false-part}}.
 If the @var{condition} is true, then @var{true-part} is evaluated;
 otherwise @var{false-part} is evaluated.
-Instead of @samp{|} the @var{true-part} may be separate by a new-line.
+Instead of @samp{|} the @var{true-part} may be separated by a new-line.
 This makes multi-part conditionals look like:
 @example
-@{@var{cond1}@}@var{value1}
-@{@var{cond2}@}@var{value2}
+@{?@var{cond1}@}@var{value1}
+@{?@var{cond2}@}@var{value2}
 @var{default-value}
 @end example
-The @var{true-part} extend to first unquote veritical bar or newline that
+The @var{true-part} extends to first unquoted veritical bar or newline that
 is not nested in abother brace-section.
+
+Do we need extra braces for variable in expression-mode?
+For example: @code{@{?dark-mode@}pink|brown} or @code{@{?@{dark-mode@}@}pink|brown} - is the latter too awkward/error-prone?
+
+Use @code{@{' ...@}} for grouping or to enter text-node from expression-mode.
 
 OLD Conditional: @code{@{A1?A2?A3?X1|B1?Y|Z@}}
 is like C's @code{A1||A2||A3 ? X1 : B1 ? Y : Z}.
@@ -6996,7 +7000,7 @@ write:
 @end example
 
 German used to  have a rule where ``ck'' would be hyphenated as ``k-k'',
-as in Zucker (sugar):
+as in Zucker (sugar) or Zuk-ker.
 @example
 Zu\e]115;"k-","k","ck"\aer
 @end example
