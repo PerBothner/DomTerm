@@ -1300,6 +1300,7 @@ DomTerm.focusedTerm = null; // used if !useIFrame
 // (if 2 - also request low-level focus)
 // Runs in terminal's frame
 Terminal.prototype.setFocused = function(focused) {
+    this.previousKeyName = undefined;
     if (! this._rulerNode || DomTerm.handlingJsMenu() || ! this.topNode)
         return;  // skip if _initializeDomTerm not called
     let classList = this.topNode.classList;
@@ -4424,7 +4425,7 @@ Terminal.prototype._mouseHandler = function(ev) {
     // Avoids clearing selection.  Helps on Chrome, at least.
     if (ev.type == "mousedown" && ev.button == 2)
         ev.preventDefault();
-
+    this.previousKeyName = undefined;
     if (ev.button == 1 // middle-button should do "paste selection" on X11/Wayland
         && DomTerm.versions.userAgent.match(/X11/)) { // Also set for Wayland
         ev.preventDefault();
@@ -8998,6 +8999,8 @@ DomTerm.masterKeymapDefault =
             "Cmd+Q": "quit-domterm",
             "Cmd+W": "close-pane",
         } : {
+            "Ctrl+C": "copy-text-maybe",
+            "Ctrl+V": "paste-text-maybe",
             "Ctrl-Shift-F10": "focus-menubar", // Used by Konsole
             // "ContextMenu":  "context-menu",
             // "Ctrl-ContextMenu": "context-menu",

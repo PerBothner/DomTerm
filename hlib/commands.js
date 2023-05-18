@@ -389,6 +389,15 @@ cmd('paste-text',
     }, {
         context: "terminal"
     });
+cmd('paste-text-maybe',
+    function(dt, key) {
+        if (dt.sstate.inInputMode)
+            return DomTerm.doPaste(dt);
+        else
+            return false;
+    }, {
+        context: "terminal"
+    });
 cmd('copy-text',
     function(dt, key) {
         return DomTerm.valueToClipboard(Terminal._selectionValue(false));
@@ -414,6 +423,15 @@ cmd('copy-in-context',
 cmd('copy-text-or-interrupt',
     function(dt, key) {
         let cmd = document.getSelection().isCollapsed || key === dt.previousKeyName
+            ? 'client-action'
+            : 'copy-text';
+        return (commandMap[cmd])(dt, key);
+    }, {
+        context: "terminal"
+    });
+cmd('copy-text-maybe',
+    function(dt, key) {
+        let cmd = ! dt.sstate.inInputMode || document.getSelection().isCollapsed || key === dt.previousKeyName
             ? 'client-action'
             : 'copy-text';
         return (commandMap[cmd])(dt, key);

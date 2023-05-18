@@ -3283,26 +3283,6 @@ useful for navigating around in the buffer, including making selections.
 @c Enter/exit pager mode
 @c FUTURE @item @mux-prefix
 @c Prefix for Screen or TMux
-@item @kbd{Ctrl+Shift+@key{C}} @emph{(except macOS)} (@code{copy-text})
-@item @kbd{Cmd+@key{C}} @emph{(only macOS)}
-@itemx @kbd{Ctrl+@key{Insert}}
-Copy the selection to the clipboard.
-It is copied as both plain text (@code{text/plain})
-and formatted HTML (@code{text/html}) in case the receiving
-application can paste the latter.
-(@kbd{Ctrl+@key{C}} also works in line-editing mode.)
-@item @kbd{Ctrl+Shift+@key{V}} @emph{(except macOS)} (@code{paste-text})
-@item @kbd{Cmd+@key{V}} @emph{(only macOS)}
-@itemx @kbd{Shift+@key{Insert}}
-Paste text from the clipboard.
-(@kbd{Ctrl+@key{V}} also works in line-editing mode.)
-@item @kbd{Ctrl+Shift+@key{X}} @emph{(except macOS)} (@code{cut-text})
-@item @kbd{Cmd+@key{X}} @emph{(only macOS)}
-``Cut'': Restricts the selection to the current input area,
-copies that restricted selection to the clipboard,
-and then deletes the restricted selection.
-(In character mode, the deletion is implemented by sending
-the appropriate number of Delete/Backspace characters to the application.)
 @item @kbd{Ctrl+Shift+@key{S}} (@code{save-as-html})
 Save the display to a file.
 @item @kbd{Ctrl+Shift+@key{L}} (@code{input-mode-cycle})
@@ -3341,6 +3321,46 @@ Close the current pane (sub-window).
 @itemx @kbd{Cmd+@key{Q}} @emph{(only macOS)}
 Close all windows, and exit the domterm backend server.
 This kills any detached jobs.
+@end table
+
+@subsubheading Clipboard
+
+@table @asis
+@item @kbd{Ctrl+Shift+@key{C}} @emph{(except macOS)} (@code{copy-text})
+@item @kbd{Cmd+@key{C}} @emph{(only macOS)}
+@itemx @kbd{Ctrl+@key{Insert}}
+Copy the selection to the clipboard.
+It is copied as both plain text (@code{text/plain})
+and formatted HTML (@code{text/html}) in case the receiving
+application can paste the latter.
+(@kbd{Ctrl+@key{C}} also works in line-editing mode.)
+@item @kbd{Ctrl+Shift+@key{V}} @emph{(except macOS)} (@code{paste-text})
+@item @kbd{Cmd+@key{V}} @emph{(only macOS)}
+@itemx @kbd{Shift+@key{Insert}}
+Paste text from the clipboard.
+(@kbd{Ctrl+@key{V}} also works in line-editing mode.)
+@item @kbd{Ctrl+Shift+@key{X}} @emph{(except macOS)} (@code{cut-text})
+@item @kbd{Cmd+@key{X}} @emph{(only macOS)}
+``Cut'': Restricts the selection to the current input area,
+copies that restricted selection to the clipboard,
+and then deletes the restricted selection.
+(In character mode, the deletion is implemented by sending
+the appropriate number of Delete/Backspace characters to the application.)
+@end table
+
+After an input prompt, assumimg @ref{Shell prompts,shell integration} is active,
+the the following can also be used:
+@table @asis
+@item @kbd{Ctrl+@key{C}} @emph{(after input prompt, except macOS)} (@code{copy-text-maybe})
+If there is a non-empty selection @emph{and} this is not macOS
+@emph{and} we are input-reading mode with @ref{Shell prompts,shell integration},
+copy the selection to the clipboard.
+Otherwise, send @kbd{Ctrl+@key{C}} literally to the process
+(which traditionally interrupts it).
+@item @kbd{Ctrl+@key{V}} @emph{(after input prompt, except macOS)} (@code{paste-text-maybe})
+Paste text from the clipboard,
+assuming we are input-reading mode with @ref{Shell prompts,shell integration}.
+Otherwise send @kbd{Ctrl+@key{V}} literally to the process.
 @end table
 
 @subsubheading Scaling (zooming)
@@ -3646,7 +3666,7 @@ certain conditions, because of other compatibility issues.
 @table @asis
 @item @kbd{Ctrl+@key{C}} (@code{copy-text-or-interrupt}) @emph{(except macOS)}
 @itemx @kbd{Ctrl+@key{C}} (@code{client-action}) @emph{(only macOS)}
-If there is a non-empty selection @emph{and} this is not macOS.
+If there is a non-empty selection @emph{and} this is not macOS,
 copy the selection to the clipboard.
 Otherwise, send @kbd{Ctrl+@key{C}} literally to the process
 (which traditionally interrupts it).
