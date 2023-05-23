@@ -1159,8 +1159,16 @@ clutter of the browser location bar, menubar, or toolbar,
 or the browser taking over certain keybindings (like @kbd{ctrl+@key{N}}).
 
 @item @code{electron}
+@itemx @code{electron-frames}
+@itemx @code{electron-widgets} @emph{(Experimental)}
 Use a front-end based on @uref{https://electron.atom.io/,Electron}.
 This is currently the nicest (and default) front-end.
+
+The default (@code{electron-frames} or @code{electron}) uses a
+shared browser instance for all sub-windows in the same top-level window.
+The experimental @code{electron-widgets} runs each sub-window is
+a separate browser instance, which allows a sub-window to be moved from
+one top-level window to another without reloading.
 
 @item @code{qt}
 @itemx @code{qt-widgets}
@@ -5602,6 +5610,19 @@ Text inside double quotes is literal, except that string escapes
 are processed.  For example to include a literal semi-colon
 instead of having it be processed as a separator write @code{";"};
 to write double quotes write @code{"\""}.
+
+@subsubheading Syntax
+
+@display
+@var{operand-part} ::= @var{simple-char} | @var{string} | @var{substitution}
+@var{operand} ::= @var{operand-part}+
+@var{operands} ::= @var{operand} [@var{space} @var{operand}]+
+@var{substitution} ::= @samp{@{} @var{operands} @samp{@}}
+@var{condition-option} ::= @var{operand} | @samp{!} @var{operand}
+@var{condition} ::= @samp{@{?} @var{space}? @var{condition-option} [@var{space} @var{condition-option}]+ @var{space}? @samp{@}}
+@var{condition-separator} ::= @samp{|} | @var{newline}
+@var{conditional} ::= @var{condition} @var{phrase} [@var{condition-separator} @var{condition} @var{phrase}]+ [@var{condition-separator} @var{phrase}]?
+@end display
 
 @subsubheading Parsing
 Parsing results is a nested structure that is encodable using a JSON.

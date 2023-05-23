@@ -765,8 +765,7 @@ display_session(struct options *options, struct pty_client *pclient,
                    && strcmp(browser_specifier, "qt-frames") != 0) {
             subwindows = "qt";
         } else if (browser_specifier[0] == 'e'
-                   && strcmp(browser_specifier, "electron") != 0
-                   && strcmp(browser_specifier, "electron-frames") != 0) {
+                   && strcmp(browser_specifier, "electron-widgets") == 0) {
             subwindows = "electron";
         }
     } else if (subwindows == "none")
