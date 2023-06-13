@@ -368,7 +368,7 @@ DomTerm.setOptions = function(jtext) {
             : DomTerm.mainTerm.paneInfo;
         pane.setOptions(obj);
     } catch(e) {
-        console.log("error handling local settings");
+        console.log("error handling local settings "+e);
     }
 }
 
@@ -613,9 +613,9 @@ DomTerm.updateZoom = function() {
     }
 }
 
-DomTerm.updateSettings = function(pane) {
+DomTerm.updateSettings = function(pane, context) {
     if (pane.terminal && pane.kind !== "xterminal")
-        pane.terminal.updateSettings();
+        pane.terminal.updateSettings(context);
     else if (pane.layoutItem) {
         const componentType = pane.layoutItem.toConfig().componentType;
         if (componentType === "domterm" || componentType === "view-saved")
@@ -845,9 +845,7 @@ class PaneInfo {
          * as DomTerm.zoomMainBase and DomTerm.zoomMainAdjust. */
         this.zoomAdjust = 1.0;
 
-        // Table of named options local to this pane or terminal.
-        // Maybe set from command-line or UI
-        this.termOptions = {};
+        DomTerm.initSettings(this);
     }
 
     paneZoom() { return this.zoomSetting * this.zoomAdjust; }
@@ -863,27 +861,15 @@ class PaneInfo {
         opt = DomTerm.globalSettings[name];
         return opt === undefined ? dflt : opt;
     }
-    setOptions(options) {
+    setOptions(options, context) {
         for (const prop in options) {
             if (options[prop] == null)
                 delete this.termOptions[prop];
             else
                 this.termOptions[prop] = options[prop];
         }
-        DomTerm.updateSettings(this);
+        DomTerm.updateSettings(this, context);
     }
-    /*
-        try {
-            // Handle '{SETTINGS}' or 'WNUM,{OPTIONS}'/
-            var obj2 = JSON.parse("["+joptions+"]");
-            let obj = obj2[options.length-1];
-            let pane = obj2.length >= 2 ? DomTerm.paneMap[obj2[0]]
-                : DomTerm.mainTerm.paneInfo;
-        } catch(e) {
-            console.log("error handling local settings");
-        }
-        }
-    */
 }
 
 PaneInfo.create = function(windowNumber, kind) {

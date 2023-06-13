@@ -328,6 +328,7 @@ HLIB_FIXED_FILES_OUTER="\
   hlib/screenfull.js"
 HLIB_FIXED_FILES_MISC="\
   hlib/domterm.js \
+  hlib/settings-manager.js \
   hlib/domterm-client.js \
   hlib/domterm-core.css \
   hlib/domterm-default.css \

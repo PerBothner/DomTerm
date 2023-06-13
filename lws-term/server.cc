@@ -1239,6 +1239,7 @@ static struct lib_info standard_stylesheets[] = {
 
 static struct lib_info standard_jslibs[] = {
     {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/settings-manager.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
 #if COMBINE_RESOURCES
     {"hlib/dt-combined.js", LIB_WHEN_SIMPLE},

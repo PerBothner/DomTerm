@@ -92,6 +92,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 export { Terminal };
 import { commandMap } from './commands.js';
+import * as Settings from './settings-manager.js';
 import { addInfoDisplay } from './domterm-overlays.js';
 import * as UnicodeProperties from './unicode/uc-properties.js';
 import * as DtUtil from './domterm-utils.js';
@@ -5833,7 +5834,7 @@ Terminal.prototype.updateReverseVideo = function() {
 }
 
 Terminal.prototype._asBoolean = function(value) {
-    return value == "true" || value == "yes" || value == "on";
+    return value === "true" || value === "yes" || value === "on";
 }
 
 DomTerm.settingsHook = null;
@@ -5849,22 +5850,134 @@ Terminal.prototype.setSettings = function(obj) {
     this.updateSettings();
 }
 
-Terminal.prototype.updateSettings = function() {
+DomTerm.initSettings = function(term) {
+    // Table of named options local to this pane or terminal.
+    // Maybe set from command-line or UI
+    term.termOptions = {};
+
+    const settings = {};
+    term.settings = settings;
+    const addSetting = (name, evalMode, defaultTemplate, onChangeAction) => {
+        const setting = new Settings.Setting(name);
+        setting.evalMode = evalMode;
+        setting.defaultTemplate = defaultTemplate;
+        if (onChangeAction)
+            setting.onChangeAction = onChangeAction;
+        settings[name] = setting;
+        return setting;
+    };
+    addSetting("log.js-verbosity", Settings.EVAL_TO_NUMBER, "0",
+               (setting, context) => {
+                   const val = setting.value;
+                   if (val >= 0)
+                       DomTerm.verbosity = val;
+               });
+    addSetting("log.js-string-max", Settings.EVAL_TO_NUMBER, "200",
+               (setting, context) => {
+                   const val = setting.value;
+                   DomTerm.logStringMax = val >= 0 ? val : 200;
+               });
+    function updateCaret(setting, context) {
+        const forEditCaret = context?.curSetting.name === "style.edit-caret";
+        let cstyle = setting.value;
+        let nstyle = -1;
+        if (cstyle) {
+            cstyle = String(cstyle).trim();
+            nstyle = DTerminal.caretStyles.indexOf(cstyle);
+            if (nstyle < 0) {
+                nstyle = Number(cstyle);
+                if (! nstyle) {
+                    context.reportError(context, "invalid caret style name");
+                    nstyle = -1;
+                }
+            }
+        }
+        if (nstyle < 0 || nstyle >= DTerminal.caretStyles.length) {
+            nstyle = forEditCaret ? DTerminal.DEFAULT_EDIT_CARET_STYLE
+                : DTerminal.DEFAULT_CARET_STYLE;
+        }
+        const term = context.pane;
+        if (forEditCaret)
+            term.caretEditStyle = nstyle;
+        else {
+            term.caretStyleFromSettings = nstyle;
+            if (term.sstate.caretStyleFromCharSeq < 0)
+                term.caretCharStyle = nstyle;
+        }
+    }
+    addSetting("style.caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_CARET_STYLE], updateCaret);
+    addSetting("style.edit-caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_EDIT_CARET_STYLE], updateCaret);
+
+    function updateColor(setting, context) {
+        const name = context?.curSetting.name;
+        const term = context.pane;
+        const value = setting.value;
+        term.topNode.style.setProperty(setting.cssVariable, value);
+    }
+    addSetting("color.background", 0, "#fffff8", updateColor)
+        .cssVariable = "--background-color";
+    addSetting("color.foreground", 0, "#000000", updateColor)
+        .cssVariable = "--foreground-color";
+    addSetting("color.cyan", 0, "#00CDCD", updateColor)
+        .cssVariable = "--dt-cyan";
+
+    const darkSetting = addSetting("style.dark", Settings.EVAL_TO_NUMBER, "auto",
+               (setting, context) => {
+                   term.darkMode = setting.value;
+                   term.updateReverseVideo();
+               });
+        darkSetting.evaluateTemplate = (context) => {
+            const tmode = Settings.EVAL_TO_HYBRID;
+            let value = Settings.evaluateTemplate(context, tmode);
+            let dark_query = term._style_dark_query;
+            if (term._style_dark_listener) {
+                dark_query.removeEventListener('change', term._style_dark_listener);
+                term._style_dark_listener = undefined;
+            }
+            if (value.length === 1 && value[0] === "auto") {
+                if (! dark_query && window.matchMedia) {
+                    dark_query = window.matchMedia('(prefers-color-scheme: dark)');
+                    term._style_dark_query = dark_query;
+                }
+                if (dark_query) {
+                    term._style_dark_listener = (e) => {
+                        const context = new Settings.EvalContext(term);
+                        context.pushSetting(darkSetting);
+                        darkSetting.update(e.matches, context);
+                        context.popSetting();
+                        context.handlePending();
+                    };
+                    dark_query.addEventListener('change', term._style_dark_listener);
+                    return dark_query.matches;
+                } else
+                    return false;
+            }
+            return Settings.convertValue(value, tmode,
+                                         Settings.EVAL_TO_BOOLEAN, context);
+        };
+};
+
+Terminal.prototype.updateSettings = function(context = undefined) {
     let getOption = (name, dflt = undefined) => this.getOption(name, dflt);
     let val;
     const pane = this.paneInfo;
 
-    val = getOption("log.js-verbosity", -1);
-    if (val) {
-        let v = Number(val);
-        if (v >= 0)
-            DomTerm.verbosity = v;
+    const pending = new Array();
+    if (! context)
+        context = new Settings.EvalContext(pane);
+    for (const key in this.settings) {
+        const setting = this.settings[key];
+        const newSetting = getOption(key) || setting.defaultTemplate;
+        const oldSetting = setting.template;
+        if (newSetting !== oldSetting) {
+            setting.template = newSetting;
+            context.pushPending(setting);
+        }
     }
+    context.handlePending();
     val = getOption("log.js-to-server", false);
     if (val)
         DomTerm.logToServer = val;
-    val = getOption("log.js-string-max", null);
-    DomTerm.logStringMax = val !== null ? val : 200;
 
     this.linkAllowedUrlSchemes = Terminal.prototype.linkAllowedUrlSchemes;
     var link_conditions = "";
@@ -5893,58 +6006,7 @@ Terminal.prototype.updateSettings = function() {
         this._remote_output_timeout = 0;
     }
 
-    var style_dark = getOption("style.dark", "auto");
-    if (style_dark !== this._style_dark_old) {
-        this._style_dark_old = style_dark;
-        let dark_query = this._style_dark_query;
-        if (style_dark === "auto" && ! dark_query && window.matchMedia) {
-            dark_query = window.matchMedia('(prefers-color-scheme: dark)');
-            this._style_dark_query = dark_query;
-        }
-        if (this._style_dark_listener) {
-            dark_query.removeEventListener('change', this._style_dark_listener);
-            this._style_dark_listener = undefined;
-        }
-        if (style_dark === "auto") {
-            if (dark_query) {
-                this._style_dark_listener = (e) => {
-                    this.darkMode = e.matches;
-                    this.updateReverseVideo();
-                };
-                dark_query.addEventListener('change', this._style_dark_listener);
-                style_dark = dark_query.matches ? "true" : "false";
-            } else
-                style_dark = "false";
-        }
-        this.darkMode = this._asBoolean(style_dark);
-        this.updateReverseVideo();
-    }
     this.setBlinkRate(getOption("style.blink-rate", ""));
-
-    for (let c = 0; c <= 1; c++) {
-        let cstyle = getOption(c ? "style.edit-caret" : "style.caret");
-        let nstyle = -1;
-        if (cstyle) {
-            cstyle = String(cstyle).trim();
-            nstyle = Terminal.caretStyles.indexOf(cstyle);
-            if (nstyle < 0) {
-                nstyle = Number(cstyle);
-                if (! nstyle)
-                    nstyle = -1;
-            }
-        }
-        if (nstyle < 0 || nstyle >= Terminal.caretStyles.length) {
-            nstyle = c ? Terminal.DEFAULT_EDIT_CARET_STYLE
-                : Terminal.DEFAULT_CARET_STYLE;
-        }
-        if (c)
-            this.caretEditStyle = nstyle;
-        else {
-            this.caretStyleFromSettings = nstyle;
-            if (this.sstate.caretStyleFromCharSeq < 0)
-                this.caretCharStyle = nstyle;
-        }
-    }
 
         var style_user = getOption("style.user");
         if (style_user) {

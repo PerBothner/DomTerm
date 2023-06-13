@@ -1144,22 +1144,32 @@ int settings_action(int argc, arglist_t argv, struct options *opts)
         option = ".";
     if (! check_window_option(option, windows, "settings", opts, true))
         return EXIT_FAILURE;
+    int rval = EXIT_SUCCESS;
     for (int w : windows) {
         int wnum = w < 0 ? -w : w;
         tty_client *tclient = tty_clients(wnum);
         tty_client *mclient = tclient->main_window <= 0 ? tclient
             : main_windows[tclient->main_window];
         std::string csettings = opts->cmd_settings.dump();
-        if (w < 0) { // marked as top-window
-            mclient->ob.printf(URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
-                               csettings.c_str());
+        if (rval == EXIT_SUCCESS) { // first or only window
+            json request;
+            if (w >= 0)
+                request["wnumber"] = tclient->connection_number;
+            request["settings"] = opts->cmd_settings;
+            send_request(request, "set-settings", opts, tty_clients(w));
+            rval = EXIT_WAIT;
         } else {
-            mclient->ob.printf(URGENT_START_STRING "\033]88;%d,%s\007" URGENT_END_STRING,
-                               tclient->connection_number, csettings.c_str());
+            if (w < 0) { // marked as top-window
+                mclient->ob.printf(URGENT_START_STRING "\033]88;%s\007" URGENT_END_STRING,
+                                   csettings.c_str());
+            } else {
+                mclient->ob.printf(URGENT_START_STRING "\033]88;%d,%s\007" URGENT_END_STRING,
+                                   tclient->connection_number, csettings.c_str());
+            }
+            lws_callback_on_writable(mclient->wsi);
         }
-        lws_callback_on_writable(mclient->wsi);
     }
-    return EXIT_SUCCESS;
+    return rval;
 }
 
 int reverse_video_action(int argc, arglist_t argv, struct options *opts)

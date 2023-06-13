@@ -375,3 +375,71 @@ watch_settings_file()
                                ifd, "inotify", NULL);
 #endif
 }
+#if 0
+enum eval_mode {
+    WANT_NUMBER = 1,
+    WANT_STRING = 2,
+    WANT_STRING_LIST = 3
+};
+
+json
+evaluate_template(json form, eval_mode mode)
+{
+    return nullptr; // FIXME
+}
+
+json
+evaluate_operand(json form, json::iterator& position, eval_mode mode)
+{
+    json result = nullptr;
+    for (;;) {
+        if (position == form.end())
+            return result;;
+        json next = *position;
+    }
+    if (position == form.end())
+        return nullptr;
+    json next = *position;
+    if (next == "'QSTRING") {
+    }
+    return nullptr; // FIXME
+}
+
+json
+evaluate_substitution(json form, eval_mode mode)
+{
+    json::iterator position = form.begin();
+    json op = evaluate_operand(form, position, mode);
+    eval_mode op_mode = mode; // FIXME
+    for (;;) {
+        json arg = evaluate_operand(form, position, op_mode);
+    }
+    return nullptr; // FIXME
+}
+
+std::string parse_quoted_string(const char **ptr)
+{
+    std::string str;
+    const char *p = *ptr;
+    for (;;) {
+        int ch = 0xFF & *p++;
+        if (ch == '\\' && *p) {
+            ch = get_string_escape(&p);
+        }
+    }
+    *ptr = (const char*) p;
+    return str;
+}
+#if 0
+std::string expand_template(const char *template)
+{
+    const char *p = template;
+    for (; *p; p++) {
+        char ch = *p;
+        if (ch == '\'' || ch == '\"') {
+        } else if (ch == '{') {
+        }
+    }
+}
+#endif
+#endif

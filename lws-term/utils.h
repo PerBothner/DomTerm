@@ -50,6 +50,11 @@ char *
 base64_encode(const unsigned char *buffer, size_t length);
 
 argblob_t copy_strings(const char*const* strs);
+extern int count_args(arglist_t);
+extern argblob_t parse_args(const char*, bool);
+extern char* parse_string(const char*, bool);
+extern char* parse_string_escapes(const char*);
+extern int get_string_escape(const char **ptr);
 
 class sbuf {
 public:

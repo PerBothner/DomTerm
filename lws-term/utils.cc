@@ -155,6 +155,53 @@ static int count_hex_digits(const char *p, int max, int *valp)
   return i;
 }
 
+int
+get_string_escape(const char **ptr)
+{
+    const char *p = *ptr;
+    int ch = *p++;
+    switch (ch) {
+    case 'a': ch = '\007';  break;
+    case 'b': ch = '\b';  break;
+    case 'e': ch = '\033';  break;
+    case 'f': ch = '\f';  break;
+    case 'n': ch = '\n';  break;
+    case 'r': ch = '\r';  break;
+    case 't': ch = '\t';  break;
+    case 'v': ch = '\v';  break;
+    case '"':
+    case '\\':
+    case '/': // JSON
+        // ch = ch;
+        break;
+    case 'u':
+        if (*p == '{') {
+            int hval = 0;
+            int nhex = count_hex_digits(p+1, 6, &hval);
+            if (nhex == 0 || p[nhex+1] != '}')
+                ; // ERROR
+            ch = hval;
+            p += nhex + 2;
+        } else {
+            int hval = 0;
+            int nhex = count_hex_digits(p, 4, &hval);
+            if (nhex != 4)
+                ; // ERROR
+            ch = hval;
+            p += nhex;
+        }
+        break;
+        // MAYBE \0 OCT OCT OCT
+        // MAYBE \x HEX HEX
+        // MAYBE \U HEX HEX HEX HEX HEX HEX HEX HEX
+        // MAYBE \ SP* NEWLINE - ignore
+    default:
+        ;
+    }
+    *ptr = p;
+    return ch;
+}
+
 /* Internal function handling string escapes and quoting.
  * If dim==1, split into words (like shell parsing), and return an array.
  * If dim==0, return a single string, eliminating extra unquoted whitespace.
@@ -215,45 +262,7 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
               context = 0;
               continue;
             } else if (ch == '\\' && *p) {
-                ch = *p++;
-                switch (ch) {
-                case 'a': ch = '\007';  break;
-                case 'b': ch = '\b';  break;
-                case 'e': ch = '\033';  break;
-                case 'f': ch = '\f';  break;
-                case 'n': ch = '\n';  break;
-                case 'r': ch = '\r';  break;
-                case 't': ch = '\t';  break;
-                case 'v': ch = '\v';  break;
-                case '"':
-                case '\\':
-                case '/': // JSON
-                    // ch = ch;
-                    break;
-		case 'u':
-                    if (*p == '{') {
-                        int hval = 0;
-                        int nhex = count_hex_digits(p+1, 6, &hval);
-                        if (nhex == 0 || p[nhex+1] != '}')
-                            ; // ERROR
-                        ch = hval;
-                        p += nhex + 2;
-                    } else {
-                        int hval = 0;
-                        int nhex = count_hex_digits(p, 4, &hval);
-                        if (nhex != 4)
-                            ; // ERROR
-                        ch = hval;
-                        p += nhex;
-                    }
-                    break;
-                    // MAYBE \0 OCT OCT OCT
-                    // MAYBE \x HEX HEX
-                    // MAYBE \U HEX HEX HEX HEX HEX HEX HEX HEX
-                    // MAYBE \ SP* NEWLINE - ignore
-                default:
-                    ;
-                }
+                ch = get_string_escape(&p);
             } else if (check_shell_specials && pass == 0
                        && (ch == '$' || ch == '&' || ch == '|'
                            || ch == '<' || ch == '>')) {
