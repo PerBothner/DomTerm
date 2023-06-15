@@ -483,6 +483,10 @@ function evaluateStringEscape(context) {
 }
 
 function evaluateQuotedString(context, delim) {
+    // Don't handle '\\' escapes in a single-quoted 'string'.
+    const handleEscapes = delim == 39;
+    // However, two '\'' in a row becomes a single '\''.
+    const quoteIfDoubled = delim == 39;
     let i = context.curIndex;
     let template = context.template;
     let end = template.length;
@@ -493,9 +497,15 @@ function evaluateQuotedString(context, delim) {
             break;
         }
         let ch = template.charCodeAt(i++);
-        if (ch === delim)
-            break;
-        if (ch === 92) { // '\\'
+        if (ch === delim) {
+            if (quoteIfDoubled && i < end && template.charCodeAt(i) === delimit) {
+                result += String.fromCharCode(delim);
+                i++;
+            } else {
+                break;
+            }
+        }
+        if (ch === 92 && handleEscapes) { // '\\'
             context.curIndex = i;
             let ch = evaluateStringEscape(context);
             i = context.curIndex; 
@@ -503,7 +513,7 @@ function evaluateQuotedString(context, delim) {
         } else {
             let j = i;
             while (j < end && (ch = template.charCodeAt(j)) !== delim
-                   && ch !== 92) {
+                   && !(ch === 92 && handleEscapes)) {
                 j++;
             }
             result += template.substring(i - 1, j);
