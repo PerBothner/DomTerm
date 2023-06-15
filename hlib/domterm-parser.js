@@ -2265,22 +2265,7 @@ class DTParser {
                 let wnum = options.wnumber;
                 let pane = wnum !== undefined ? DomTerm.paneMap[wnum]
                     : DomTerm.mainTerm.paneInfo;
-                let errmsg = '';
-                const context = new EvalContext(term);
-                context.reportError = (context, message) => {
-                    if (errmsg)
-                        errmsg += '\n';
-                    errmsg += `setting '${context?.curSetting?.name}': ${message}`;
-                };
-                try {
-                    pane.setOptions(options.settings, context);
-                } catch (e) {
-                    errmsg = "caught "+e;
-                }
-                let r = {};
-                if (errmsg)
-                    r.err = errmsg;
-                term.sendResponse(r, options);
+                pane.setOptionsWithResponse(options.settings, options);
                 break;
             }
             }

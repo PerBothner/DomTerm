@@ -614,8 +614,8 @@ DomTerm.updateZoom = function() {
 }
 
 DomTerm.updateSettings = function(pane, context) {
-    if (pane.terminal && pane.kind !== "xterminal")
-        pane.terminal.updateSettings(context);
+    if (pane.terminal)
+        pane.updateSettings(context);
     else if (pane.layoutItem) {
         const componentType = pane.layoutItem.toConfig().componentType;
         if (componentType === "domterm" || componentType === "view-saved")
@@ -861,6 +861,7 @@ class PaneInfo {
         opt = DomTerm.globalSettings[name];
         return opt === undefined ? dflt : opt;
     }
+
     setOptions(options, context) {
         for (const prop in options) {
             if (options[prop] == null)

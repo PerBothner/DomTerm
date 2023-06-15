@@ -1,4 +1,4 @@
-export { Setting, EvalContext, convertValue, evaluateTemplate, EVAL_TO_NUMBER, EVAL_TO_BOOLEAN, EVAL_TO_HYBRID };
+export { Setting, EvalContext, convertValue, evaluateTemplate, EVAL_TO_NUMBER, EVAL_TO_BOOLEAN, EVAL_TO_HYBRID, EVAL_TO_STRING, EVAL_TO_LIST };
 
 const EVAL_TO_LIST = 1;
 const EVAL_TO_STRING = 2;
@@ -106,6 +106,17 @@ class EvalContext {
             this.pendingSettings.push(setting);
     }
 
+    addCleanupHook(hook) {
+        const oldCleanup = this.cleanupHook;
+        if (! oldCleanup)
+            this.cleanupHook = hook;
+        else
+            this.cleanupHook = (context) => {
+                oldCleanup(context);
+                hook(context);
+            };
+    }
+
     handlePending() {
         for (;;) {
             const setting = this.pendingSettings.pop();
@@ -114,6 +125,13 @@ class EvalContext {
             if (setting.invalid) {
                 setting.recalculate(this);
             }
+        }
+        for (;;) {
+            const cleanupHook = this.cleanupHook;
+            if (! cleanupHook)
+                break;
+            this.cleanupHook = undefined;
+            cleanupHook(this);
         }
     }
 

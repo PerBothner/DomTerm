@@ -520,6 +520,20 @@ class Terminal extends PaneInfo {
     isLineEditing() {
         return this.isLineEditingMode() && ! this._currentlyPagingOrPaused();
     }
+
+    updateColor(setting, value, context) {
+        if (this.topNode)
+            this.topNode.style.setProperty(setting.cssVariable, value);
+    }
+
+    updateCaretColor(caret, caretAccent, context) {
+        const topStyle = this.topNode?.style;
+        if (topStyle) {
+            topStyle.setProperty("--caret-color", caret);
+            topStyle.setProperty("--caret-accent-color", caretAccent);
+        }
+    }
+
     applicationCursorKeysMode() {
         return this.sstate.applicationCursorKeysMode;
     }
@@ -607,6 +621,25 @@ class Terminal extends PaneInfo {
         }
         if (this._blinkHideTime !== 0 && this._blinkEnabled == 1)
             this.startBlinkTimer();
+    }
+
+    setOptionsWithResponse(settings, options) {
+        let errmsg = '';
+        const context = new Settings.EvalContext(this);
+        context.reportError = (context, message) => {
+            if (errmsg)
+                errmsg += '\n';
+            errmsg += `setting '${context?.curSetting?.name}': ${message}`;
+        };
+        try {
+            this.setOptions(options.settings, context);
+        } catch (e) {
+            errmsg = "caught "+e;
+        }
+        let r = {};
+        if (errmsg)
+            r.err = errmsg;
+        this.sendResponse(r, options);
     }
 
     // state can be true, false or "toggle"
@@ -5877,6 +5910,44 @@ DomTerm.initSettings = function(term) {
                    const val = setting.value;
                    DomTerm.logStringMax = val >= 0 ? val : 200;
                });
+
+    function updateColor(setting, context) {
+        const name = context?.curSetting.name;
+        const term = context.pane;
+        const value = setting.value;
+        term.updateColor(setting, value, context);
+    }
+
+    const addColorSetting = (name, cssVariable, xtermThemeField, defaultTemplate) => {
+        const setting = addSetting(name, Settings.EVAL_TO_STRING, defaultTemplate, updateColor);
+        setting.cssVariable = cssVariable;
+        setting.xtermThemeField = xtermThemeField;
+        return setting;
+    }
+
+    const bgColor = addColorSetting("color.background",
+                                    "--background-color", "background",
+                                    "{?{style.dark};{color.black};#fffff8}");
+    const fgColor = addColorSetting("color.foreground",
+                                    "--foreground-color", "foreground",
+                                    "{?{style.dark};#fffff8;{color.black}}");
+    addColorSetting("color.black", "--dt-black", "black", "#000000");
+    addColorSetting("color.red", "--dt-red", "red", "#CD0000");
+    addColorSetting("color.green", "--dt-green", "green", "#00CD00");
+    addColorSetting("color.yellow", "--dt-yellow", "yellow", "#CDCD00");
+    addColorSetting("color.blue", "--dt-blue", "blue", "#0000CD");
+    addColorSetting("color.magenta", "--dt-magenta", "magenta", "#CD00CD");
+    addColorSetting("color.cyan", "--dt-cyan", "cyan", "#00CDCD");
+    addColorSetting("color.white", "--dt-lightgray", "white", "#E5E5E5");
+    addColorSetting("color.bright-black", "--dt-darkgray", "brightBlack", "#4D4D4D");
+    addColorSetting("color.bright-red", "--dt-lightred", "brightRed", "#FF0000");
+    addColorSetting("color.bright-green", "--dt-lightgreen", "brightGreen", "#00FF00");
+    addColorSetting("color.bright-yellow", "--dt-lightyellow", "brightYellow", "#FFFF00");
+    addColorSetting("color.bright-blue", "--dt-lightblue", "brightBlue", "#0000FF");
+    addColorSetting("color.bright-magenta", "--dt-lightmagenta", "brightMagenta", "#FF00FF");
+    addColorSetting("color.bright-cyan", "--dt-lightcyan", "brightCyan", "#00FFFF");
+    addColorSetting("color.bright-white", "--dt-white", "brightWhite", "#FFFFFF");
+
     function updateCaret(setting, context) {
         const forEditCaret = context?.curSetting.name === "style.edit-caret";
         let cstyle = setting.value;
@@ -5908,18 +5979,13 @@ DomTerm.initSettings = function(term) {
     addSetting("style.caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_CARET_STYLE], updateCaret);
     addSetting("style.edit-caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_EDIT_CARET_STYLE], updateCaret);
 
-    function updateColor(setting, context) {
-        const name = context?.curSetting.name;
-        const term = context.pane;
-        const value = setting.value;
-        term.topNode.style.setProperty(setting.cssVariable, value);
-    }
-    addSetting("color.background", 0, "#fffff8", updateColor)
-        .cssVariable = "--background-color";
-    addSetting("color.foreground", 0, "#000000", updateColor)
-        .cssVariable = "--foreground-color";
-    addSetting("color.cyan", 0, "#00CDCD", updateColor)
-        .cssVariable = "--dt-cyan";
+    addSetting("color.caret", Settings.EVAL_TO_LIST|Settings.EVAL_TO_STRING, "{color.foreground} {color.background}",
+               (setting, context) => {
+                   const val = setting.value;
+                   const val1 = val.length > 0 ? val[0] : fgColor.value;
+                   const val2 = val.length > 1 ? val[1] : bgColor.value;
+                   context?.pane?.updateCaretColor(val1, val2, context);
+               });
 
     const darkSetting = addSetting("style.dark", Settings.EVAL_TO_NUMBER, "auto",
                (setting, context) => {
@@ -6718,7 +6784,7 @@ Terminal.prototype.insertString = function(str) {
 Terminal.prototype.parseBytes = function(bytes, beginIndex = 0, endIndex = bytes.length) {
     if (! this.parser) {
         console.log("data received for non-terminal window (browse or view-saved)");
-        console.log("ignored for now");
+        console.trace("ignored for now "+this.kind);
         return;
     }
 

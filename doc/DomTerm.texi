@@ -2193,6 +2193,12 @@ If neither is specified the default is @code{0.3,0.7}.
 Change the style of the caret (text input cursor).
 See @ref{caret styling}.
 
+@indsetting{color.caret}
+@item @code{@b{color.caret} =} @var{caret-color}  @var{caret-accent-color}
+Set the color of the caret (text input cursor).
+The @var{caret-accent-color} is used for the foreground (text)
+when using a @code{block} or @code{blinking-block} caret.
+
 @indsetting{window-scale}
 @item @code{@b{window-scale} =} @var{value}
 The @code{window-scale} setting scales (zooms) entire top-level

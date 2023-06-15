@@ -93,6 +93,25 @@ class XTermPane extends DTerminal {
                                     }
                                 });
         xterm.parser
+            .registerOscHandler(97,
+                                (text) => {
+                                    let options, command;
+                                    try {
+                                        options = JSON.parse(text);
+                                    } catch (ex) {
+                                        options = { cmd: "unknown" };
+                                    }
+                                    command = options.cmd;
+                                    switch (command) {
+                                    case 'set-settings':
+                                        this.setOptionsWithResponse(options.settings, options);
+                                        break;
+                                    default:
+                                        console.log("unhandled OSC 97: "+command+" - "+text);
+                                    };
+                                });
+
+        xterm.parser
             .registerOscHandler(103,
                                 (text) => {
                                     console.log("restore saved snapshot "+text);
@@ -203,6 +222,36 @@ class XTermPane extends DTerminal {
             + JSON.stringify(this.serializeAddon.serialize())
             +'}';
         this.reportEvent("WINDOW-CONTENTS", data);
+    }
+
+    updateThemeLater(context) {
+        let theme = context._pendingTheme;
+        if (! theme) {
+            const oldTheme = this.xterm.options.theme;
+            theme = {};
+            if (oldTheme)
+                Object.assign(theme, oldTheme);
+            context.addCleanupHook((context) => {
+                this.xterm.options.theme = theme;
+            });
+            context._pendingTheme = theme;
+        }
+        return theme;
+    }
+
+    updateColor(setting, value, context) {
+        if (! value.match(/^#[0-9a-fA-F]{6}$/)) {
+            context.reportError(context, "bad color "+JSON.stringify(value)+" for "+setting.name);
+            return;
+        }
+        this.updateThemeLater(context)[setting.xtermThemeField] = value;
+    }
+
+    updateCaretColor(caret, caretAccent, context) {
+        console.log("update/xw color.caret: "+caret+"/"+caretAccent);
+        const theme = this.updateThemeLater(context);
+        theme.cursor = caret;
+        theme.cursorAccent = caretAccent;
     }
 
     // based on code in ttyd
