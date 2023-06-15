@@ -2108,7 +2108,9 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
     }
     if (pclient==NULL)
         lwsl_notice("- empty pclient buf:%d for %p\n", client->ob.buffer != NULL, client);
-    if (! pclient && client->wkind == dterminal_window
+    if (! pclient
+        && (client->wkind == dterminal_window
+            || client->wkind == xterminal_window)
         && client->ob.buffer != NULL
         && proxyMode != proxy_command_local) {
         if (proxyMode != proxy_display_local) {
