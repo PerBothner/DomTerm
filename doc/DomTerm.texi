@@ -1872,6 +1872,8 @@ and apply to all sessions and windows managed by a server.
 The settings that are active is the merge of the
 global and local settings, with the latter taking precedence.
 
+@section Controlling Settings
+
 @subheading Global settings from settings.ini file
 
 User preferences for DomTerm are normally in the file
@@ -1945,7 +1947,7 @@ of the current window.
 domterm settings style.dark=yes
 @end example
 
-@subheading Settings values
+@section Settings values and syntax
 
 How the raw characters of a settings value is interpreted
 depends on the keyword: Each keyword expects the value
@@ -2066,7 +2068,19 @@ This runs @code{ssh} with the @code{-E /tmp/gnu-ssh.log}
 when connecting remotely to @code{gnu.org},
 but with the flag @code{-E /tmp/ssh.log} when connecting to other hosts.
 
-@subheading Available settings
+@subsubheading Color values
+
+Colors should be specified using @code{#RRGGBB} syntax.
+For example, to change the color for ``blue'' to a more subdued value do:
+@example
+domterm settings "color.blue=#3465a4"
+@end example
+
+You can also use any color syntax supported by CSS if you
+use the default DomTerm engine,
+but this is not currently suppered if @code{xtermjs} is selected.
+
+@section Available settings
 
 @table @asis
 @indsetting{shell.default}
@@ -2174,6 +2188,59 @@ lighter background and a darker foreground colors.
 Whether @code{auto} works depends on browser and system support.
 It is known to work on Firefox on MacOS and Gnome;
 Electron and Wry on MacOS (but not Gnome); Epihany (on Gnome).
+
+@indsetting{color.background}
+@item @code{@b{color.background} =} @var{color}
+
+Set the default background color.  Most of the terminal window will
+have this color, unless overridden.
+
+The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};@{color.black@};#fffff8@}}.
+
+@indsetting{color.foreground}
+@item @code{@b{color.foreground} =} @var{color}
+
+Set the default foreground color. This is used for text, unless overridden.
+
+The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};#fffff;@{color.black@}@}}.
+
+@indsetting{color.black}
+@indsetting{color.red}
+@indsetting{color.green}
+@indsetting{color.yellow}
+@indsetting{color.blue}
+@indsetting{color.magenta}
+@indsetting{color.cyan}
+@indsetting{color.white}
+@indsetting{color.bright-black}
+@indsetting{color.bright-red}
+@indsetting{color.bright-green}
+@indsetting{color.bright-yellow}
+@indsetting{color.bright-blue}
+@indsetting{color.bright-magenta}
+@indsetting{color.bright-cyan}
+@indsetting{color.bright-white}
+@item @code{@b{color.black} =} @var{color}
+@itemx @code{@b{color.red} =} @var{color}
+@itemx @code{@b{color.green} =} @var{color}
+@itemx @code{@b{color.yellow} =} @var{color}
+@itemx @code{@b{color.blue} =} @var{color}
+@itemx @code{@b{color.magenta} =} @var{color}
+@itemx @code{@b{color.cyan} =} @var{color}
+@itemx @code{@b{color.white} =} @var{color}
+@itemx @code{@b{color.bright-black} =} @var{color}
+@itemx @code{@b{color.bright-red} =} @var{color}
+@itemx @code{@b{color.bright-green} =} @var{color}
+@itemx @code{@b{color.bright-yellow} =} @var{color}
+@itemx @code{@b{color.bright-blue} =} @var{color}
+@itemx @code{@b{color.bright-magenta} =} @var{color}
+@itemx @code{@b{color.bright-cyan} =} @var{color}
+@itemx @code{@b{color.bright-white} =} @var{color}
+Change the values of the basic 16 colors selected by the escape sequences
+@code{"\e[30m"} to @code{"\e[37m"} and @code{"\e[90m"} to @code{"\e[97m"}
+(for setting foreground color), and
+@code{"\e[40m"} to @code{"\e[47m"} and @code{"\e[100m"} to @code{"\e[107m"}
+(for setting background color).
 
 @indsetting{style.blink-rate}
 @item @code{@b{style.blink-rate} =} [@var{hide-time} [@var{show-time}]]
