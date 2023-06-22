@@ -1,16 +1,33 @@
-export { Setting, EvalContext, convertValue, evaluateTemplate, EVAL_TO_NUMBER, EVAL_TO_BOOLEAN, EVAL_TO_HYBRID, EVAL_TO_STRING, EVAL_TO_LIST };
+export { Setting, EvalContext, convertValue, evaluateTemplate, NUMBER_VALUE, BOOLEAN_VALUE, HYBRID_VALUE, STRING_VALUE, PLURAL_VALUE, MAP_VALUE, LIST_VALUE };
 
-const EVAL_TO_LIST = 1;
-const EVAL_TO_STRING = 2;
-const EVAL_TO_BOOLEAN = 4;
-const EVAL_TO_NUMBER = 8;
+// Multiple values; usually one value per template-word, within a single phrase
+// Implemented as an Array. Compare LIST_VALUE.
+const PLURAL_VALUE = 1;
+
+const STRING_VALUE = 2;
+
+const BOOLEAN_VALUE = 4;
+
+const NUMBER_VALUE = 8;
+
 // Evaluate a "word" to an array of values, which are conceptually
 // concatenated together. Elements are booleans, number, or strings.
 // String elements appear in odd-numbered groups: The initial (and every other)
 // string element is unquoted text; the second (if any) (and every other)
 // element is quoted text.
 // For example, abc\nde"xy"z becomes: ["abc", "\n", "de" "xy" "z"]
-const EVAL_TO_HYBRID = 16;
+const HYBRID_VALUE = 16;
+
+// Multiple values; usually one value per template-phrase
+// This is a outer-most type: For example compare a "command" (in the Unix sense)
+// would be a STRING_VALUE|PLURAL_VALUE (a sequence of command arguments),
+// while a sequence of commands would be STRING_VALUE|PLURAL_VALUE|LIST_VALUE.
+// Represented as an Array.
+const LIST_VALUE = 32;
+
+// Multiple values; usually one entry per template-phrase
+// This is also an outer-most type. Represented as an Object map.
+const MAP_VALUE = 64;
 
 class Setting {
     constructor(name) {
@@ -183,13 +200,47 @@ EvalContext.sameValue = function(val1, val2, nesting = 0) {
 }
 
 function evaluateTemplate(context, mode) {
-    return evaluatePhrase(context, mode);
-};
+    const phraseMode = mode & ~(LIST_VALUE|MAP_VALUE);
+    const need_arr = mode & LIST_VALUE;
+    const need_map = mode & MAP_VALUE;
+    let result = need_map ? {} : [];
+    for (;;) {
+        let ch = context.skipSpaces();
+        if (ch === -1)
+            break;
+        if (ch === 125) { // '}'
+            context.reportError(context, "unexpected '}'");
+            break;
+        }
+        if (ch === 59 || (ch >= 10 && ch <= 13)) { // ';' or '\n\v\t\r'.
+            context.curIndex++;
+        } else {
+            let key = need_map && evaluateWord(context, HYBRID_VALUE);
+            const value = evaluatePhrase(context, phraseMode);
+            if (need_map) {
+                const tail = key.length > 0 && key[key.length-1];
+                if (typeof tail === "string" && tail.endsWith(':')) {
+                    key[key.length-1] = tail.substring(0, tail.length-1);
+                } else {
+                    context.reportError("missing key");
+                }
+                key = convertValue(key, HYBRID_VALUE, STRING_VALUE, context);
+                result[key] = value;
+            } else
+                result.push(value);
+        }
+    }
+    if (need_map || need_arr)
+        return result;
+    if (result.length !== 1)
+        context.reportError(context, "unexpected multiple values");
+    return result[0];
+}
 
 // Evaluate a sequence of words.
 // Ended by unquoted newline, ';', '}' or end-of-string.
 function evaluatePhrase(context, mode) {
-    const listMode = mode|EVAL_TO_LIST;
+    const listMode = mode|PLURAL_VALUE;
     let result = [];
     for (;;) {
         let ch = context.skipSpaces();
@@ -219,7 +270,8 @@ const templateFunctions = (() => {
     function makeNumeric(name, apply) {
         let f = make(name, apply);
         table[name] = f;
-        f.expectedMode = (argno) => EVAL_TO_NUMBER;
+        f.expectedArgMode = (argno) => NUMBER_VALUE;
+        f.resultMode = NUMBER_VALUE;
         return f;
     }
     makeNumeric(
@@ -260,7 +312,7 @@ function evaluateCondition(context, mode) {
             }
             let negate = ch === 33; // '!'
             if (negate) context.curIndex++;
-            let val = evaluateWord(context, EVAL_TO_BOOLEAN);
+            let val = evaluateWord(context, BOOLEAN_VALUE);
             if (! selected && negate ? ! val : val) {
                 selected = true;
                 context.skipNesting++;
@@ -284,7 +336,7 @@ function evaluateCondition(context, mode) {
             if (selected)
                 return value;
             else
-                return convertValue("", EVAL_TO_STRING, mode, context);
+                return convertValue("", STRING_VALUE, mode, context);
         } else { // ch is ';' or '\n'
             context.curIndex++;
             ch = context.curIndex < end ? template.charCodeAt(context.curIndex) : -1;
@@ -333,8 +385,8 @@ function evaluateWord(context, mode) {
     let i = context.curIndex;
     let template = context.template;
     let end = template.length;
-    const buildHybrid = (mode & (EVAL_TO_HYBRID|EVAL_TO_BOOLEAN)) !== 0;
-    let tmode = buildHybrid ? EVAL_TO_HYBRID : EVAL_TO_STRING;
+    const buildHybrid = (mode & (HYBRID_VALUE|BOOLEAN_VALUE)) !== 0;
+    let tmode = buildHybrid ? HYBRID_VALUE : STRING_VALUE;
     // either an array or a string
     let result = buildHybrid ? [] : "";
     context.skipSpaces();
@@ -342,7 +394,9 @@ function evaluateWord(context, mode) {
         if (i >= end)
             break;
         let ch = template.charCodeAt(i++);
-        if (ch === 32 || ch === 9) { // SPACE or '\t'
+        if (ch <= 32 // SPACE or control
+            || ch === 125 || ch == 59) { // '}' or ';'
+            i--;
             break;
         } else if (ch === 34 || ch === 39) { // '\"' or '\''
             context.curIndex = i;
@@ -356,10 +410,16 @@ function evaluateWord(context, mode) {
             if (i < end && template.charCodeAt(i) === 63) { // '?'
                 context.curIndex = i + 1;
                 result += evaluateCondition(context, mode); // FIXME
+                let ch = context.skipSpaces(true);
+                if (ch === 125) { // '}'
+                    context.curIndex++;
+                } else if (ch === 59) {
+                    context.reportError(context, "extra ';' in condition");
+                }
                 i = context.curIndex;
             } else {
                 context.curIndex = i;
-                let str = evaluateWord(context, EVAL_TO_STRING);
+                let str = evaluateWord(context, STRING_VALUE);
                 let fun = templateFunctions[str];
                 let op = context.lookupOperator(str);
                 let args = [];
@@ -374,32 +434,32 @@ function evaluateWord(context, mode) {
                         i = context.curIndex + 1;
                         break;
                     }
-                    let argmode = fun && fun.expectedMode ? fun.expectedMode(iarg): 0;
-                    argmode &= ~EVAL_TO_LIST; // FIXME
+                    let argmode = fun && fun.expectedArgMode ? fun.expectedArgMode(iarg): 0;
+                    argmode &= ~PLURAL_VALUE; // FIXME
                     let arg = evaluateWord(context, argmode);
                     args.push(arg);
                 }
+                let val, valMode = STRING_VALUE;
                 if (context.skipNesting > 0) {
-                    result = "skip";
+                    val = "skip";
                 } else if (fun) {
-                    result = fun.apply(args);
+                    val = fun.apply(args);
+                    valMode = fun.resultMode;
                 } else if (op instanceof Setting) {
                     if (context.curSetting)
                         context.curSetting.noteDependency(op);
-                    let val = convertValue(op.get(context), op.evalMode,
-                                           tmode, context);
-                    if (buildHybrid)
-                        appendHybrid(result, val);
-                    else
-                        result += val;
+                    val = op.get(context);
+                    valMode = op.evalMode;
                 } else {
                     context.reportError(context, `unknown function or variable ${str}`);
-                    result = '???';
+                    val = '???';
                 }
+                val = convertValue(val, valMode, tmode, context);
+                if (buildHybrid)
+                    appendHybrid(result, val);
+                else
+                    result += val;
             }
-        } else if (ch === 125 || ch == 59) { // '}' or ';'
-            i--;
-            break;
         } else if (ch === 92) { // '\\'
             context.curIndex = i;
             let ch = evaluateStringEscape(context);
@@ -498,7 +558,7 @@ function evaluateQuotedString(context, delim) {
         }
         let ch = template.charCodeAt(i++);
         if (ch === delim) {
-            if (quoteIfDoubled && i < end && template.charCodeAt(i) === delimit) {
+            if (quoteIfDoubled && i < end && template.charCodeAt(i) === delim) {
                 result += String.fromCharCode(delim);
                 i++;
             } else {
@@ -529,24 +589,24 @@ function convertValue(value, srcMode, dstMode, context) {
     if (srcMode === dstMode)
         return value;
     // non-list to list
-    if ((srcMode & EVAL_TO_LIST) === 0
-        && (dstMode & EVAL_TO_LIST) !== 0) {
+    if ((srcMode & PLURAL_VALUE) === 0
+        && (dstMode & PLURAL_VALUE) !== 0) {
         return [convertValue(value, srcMode,
-                             dstMode & ~EVAL_TO_LIST,
+                             dstMode & ~PLURAL_VALUE,
                              context)];
     }
     // list to non-list
-    if ((srcMode & EVAL_TO_LIST) !== 0
-        && (dstMode & EVAL_TO_LIST) === 0) {
+    if ((srcMode & PLURAL_VALUE) !== 0
+        && (dstMode & PLURAL_VALUE) === 0) {
         if (value.length === 1)
-         return convertValue(value[0], srcMode & ~EVAL_TO_LIST,
+         return convertValue(value[0], srcMode & ~PLURAL_VALUE,
                              dstMode, context);
         // convert to string - convert each element, separated by space
-        if ((dstMode & EVAL_TO_STRING) !== 0) {
+        if ((dstMode & STRING_VALUE) !== 0) {
             let result = '';
             let first = true;
             for (const el of value) {
-                let str = convertValue(el, srcMode & ~EVAL_TO_LIST,
+                let str = convertValue(el, srcMode & ~PLURAL_VALUE,
                                        dstMode, context);
                 if (first)
                     result += " ";
@@ -555,33 +615,33 @@ function convertValue(value, srcMode, dstMode, context) {
             }
             return result;
         }
-        if ((dstMode & EVAL_TO_HYBRID) !== 0) {
+        if ((dstMode & HYBRID_VALUE) !== 0) {
             // FIXME
         }
         context.reportError(context, "invalid conversion");
-        return (dstMode & EVAL_TO_NUMBER) !== 0 ? NaN : false;
+        return (dstMode & NUMBER_VALUE) !== 0 ? NaN : false;
     }
-    if ((srcMode & EVAL_TO_LIST) !== 0
-        && (dstMode & EVAL_TO_LIST) !== 0) {
+    if ((srcMode & PLURAL_VALUE) !== 0
+        && (dstMode & PLURAL_VALUE) !== 0) {
         let result = [];
         for (const el of value) {
-            el.push(convertValue(el, srcMode & ~EVAL_TO_LIST,
-                                 dstMode & ~EVAL_TO_LIST,
+            el.push(convertValue(el, srcMode & ~PLURAL_VALUE,
+                                 dstMode & ~PLURAL_VALUE,
                                  context));
         }
         return result;
     }
     // non-list to non-list
-    if ((dstMode & EVAL_TO_STRING) !== 0
-        || (dstMode & EVAL_TO_NUMBER) !== 0) {
-        if ((srcMode & EVAL_TO_HYBRID) != 0) {
+    if ((dstMode & STRING_VALUE) !== 0
+        || (dstMode & NUMBER_VALUE) !== 0) {
+        if ((srcMode & HYBRID_VALUE) != 0) {
             let str = "";
             for (const el of value)
                 str += `${el}`;
             value = str;
         } else
             value = `${value}`;
-        if ((dstMode & EVAL_TO_NUMBER) !== 0) {
+        if ((dstMode & NUMBER_VALUE) !== 0) {
             const num = Number(value);
             if (isNaN(num) && value.trim() != "NaN")
                 context.reportError(context, "value is not a number");
@@ -589,14 +649,12 @@ function convertValue(value, srcMode, dstMode, context) {
         }
         return value;
     }
-    if ((dstMode & EVAL_TO_BOOLEAN) !== 0) {
-        if ((srcMode & EVAL_TO_STRING) !== 0)
+    if ((dstMode & BOOLEAN_VALUE) !== 0) {
+        if ((srcMode & STRING_VALUE) !== 0)
             return value.length > 0;
-        if ((srcMode & EVAL_TO_NUMBER) !== 0)
+        if ((srcMode & NUMBER_VALUE) !== 0)
             return value > 0;
-        if ((srcMode & EVAL_TO_NUMBER) !== 0)
-            return value > 0;
-        if ((srcMode & EVAL_TO_HYBRID) !== 0) {
+        if ((srcMode & HYBRID_VALUE) !== 0) {
             if (value.length == 1) {
                 let el = value[0];
                 if (typeof el === "string") {
@@ -617,8 +675,8 @@ function convertValue(value, srcMode, dstMode, context) {
             }
         }
     }
-    if ((dstMode & EVAL_TO_HYBRID) !== 0) {
-        if ((srcMode & EVAL_TO_STRING) !== 0)
+    if ((dstMode & HYBRID_VALUE) !== 0) {
+        if ((srcMode & STRING_VALUE) !== 0)
             value = ["", value, ""];
         else
             value = [value];

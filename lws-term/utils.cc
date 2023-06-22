@@ -170,6 +170,7 @@ get_string_escape(const char **ptr)
     case 't': ch = '\t';  break;
     case 'v': ch = '\v';  break;
     case '"':
+    case '\'':
     case '\\':
     case '/': // JSON
         // ch = ch;
@@ -258,10 +259,18 @@ parse_arg_string(const char *args, bool check_shell_specials, int dim)
             if ((ch == '\'' || ch == '"') && context <= 0 && dim >= 0) {
               context = ch;
               continue;
-            } else if (ch == context && (ch == '\'' || ch == '"')) {
+            } else if (ch == context && ch == '"') {
               context = 0;
               continue;
-            } else if (ch == '\\' && *p) {
+            } else if (ch == context && ch == '\'') {
+                // double apostrope is quoted: 'ab''yz' becomes "ab'yz"
+                if (*p == context) {
+                    p++;
+                } else {
+                    context = 0;
+                    continue;
+                }
+            } else if (ch == '\\' && *p && context != '\'') {
                 ch = get_string_escape(&p);
             } else if (check_shell_specials && pass == 0
                        && (ch == '$' || ch == '&' || ch == '|'

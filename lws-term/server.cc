@@ -56,7 +56,7 @@ maybe_daemonize()
 }
 
 /**
- * Run 'cmd', normall in a shell.
+ * Run 'cmd', normally in a shell.
  * If 'cclient' is null, this is similar to system(cmd).
  * If 'cclient' is non-null, this is similar to popen(cmd, "r"):
  * set cclient->fd for reading from command's stdout.

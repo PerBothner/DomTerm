@@ -5899,16 +5899,23 @@ DomTerm.initSettings = function(term) {
         settings[name] = setting;
         return setting;
     };
-    addSetting("log.js-verbosity", Settings.EVAL_TO_NUMBER, "0",
+
+    addSetting("log.js-verbosity", Settings.NUMBER_VALUE, "0",
                (setting, context) => {
                    const val = setting.value;
                    if (val >= 0)
                        DomTerm.verbosity = val;
                });
-    addSetting("log.js-string-max", Settings.EVAL_TO_NUMBER, "200",
+    addSetting("log.js-string-max", Settings.NUMBER_VALUE, "200",
                (setting, context) => {
                    const val = setting.value;
                    DomTerm.logStringMax = val >= 0 ? val : 200;
+               });
+
+    addSetting("output-byte-by-byte", Settings.NUMBER_VALUE, "0",
+               (setting, context) => {
+                   if (context.pane)
+                       context.pane._output_byte_by_byte = setting.value;
                });
 
     function updateColor(setting, context) {
@@ -5919,7 +5926,7 @@ DomTerm.initSettings = function(term) {
     }
 
     const addColorSetting = (name, cssVariable, xtermThemeField, defaultTemplate) => {
-        const setting = addSetting(name, Settings.EVAL_TO_STRING, defaultTemplate, updateColor);
+        const setting = addSetting(name, Settings.STRING_VALUE, defaultTemplate, updateColor);
         setting.cssVariable = cssVariable;
         setting.xtermThemeField = xtermThemeField;
         return setting;
@@ -5979,7 +5986,7 @@ DomTerm.initSettings = function(term) {
     addSetting("style.caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_CARET_STYLE], updateCaret);
     addSetting("style.edit-caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_EDIT_CARET_STYLE], updateCaret);
 
-    addSetting("color.caret", Settings.EVAL_TO_LIST|Settings.EVAL_TO_STRING, "{color.foreground} {color.background}",
+    addSetting("color.caret", Settings.PLURAL_VALUE|Settings.STRING_VALUE, "{color.foreground} {color.background}",
                (setting, context) => {
                    const val = setting.value;
                    const val1 = val.length > 0 ? val[0] : fgColor.value;
@@ -5987,40 +5994,51 @@ DomTerm.initSettings = function(term) {
                    context?.pane?.updateCaretColor(val1, val2, context);
                });
 
-    const darkSetting = addSetting("style.dark", Settings.EVAL_TO_NUMBER, "auto",
+    addSetting("keymap.line-edit", Settings.MAP_VALUE|Settings.STRING_VALUE, "",
+               (setting, context) => {
+                   DomTerm.lineEditKeymap =
+                       DomTerm.lineEditKeymapDefault.update(setting.value);
+               });
+    addSetting("keymap.master", Settings.MAP_VALUE|Settings.STRING_VALUE, "",
+               (setting, context) => {
+                   DomTerm.masterKeymap =
+                       DomTerm.masterKeymap.update(setting.value);
+               });
+
+    const darkSetting = addSetting("style.dark", Settings.NUMBER_VALUE, "auto",
                (setting, context) => {
                    term.darkMode = setting.value;
                    term.updateReverseVideo();
                });
-        darkSetting.evaluateTemplate = (context) => {
-            const tmode = Settings.EVAL_TO_HYBRID;
-            let value = Settings.evaluateTemplate(context, tmode);
-            let dark_query = term._style_dark_query;
-            if (term._style_dark_listener) {
-                dark_query.removeEventListener('change', term._style_dark_listener);
-                term._style_dark_listener = undefined;
+    darkSetting.evaluateTemplate = (context) => {
+        const tmode = Settings.HYBRID_VALUE;
+        let value = Settings.evaluateTemplate(context, tmode);
+        let dark_query = term._style_dark_query;
+        if (term._style_dark_listener) {
+            dark_query.removeEventListener('change', term._style_dark_listener);
+            term._style_dark_listener = undefined;
+        }
+        if (value.length === 1 && value[0] === "auto") {
+            if (! dark_query && window.matchMedia) {
+                dark_query = window.matchMedia('(prefers-color-scheme: dark)');
+                term._style_dark_query = dark_query;
             }
-            if (value.length === 1 && value[0] === "auto") {
-                if (! dark_query && window.matchMedia) {
-                    dark_query = window.matchMedia('(prefers-color-scheme: dark)');
-                    term._style_dark_query = dark_query;
-                }
-                if (dark_query) {
-                    term._style_dark_listener = (e) => {
-                        const context = new Settings.EvalContext(term);
-                        context.pushSetting(darkSetting);
-                        darkSetting.update(e.matches, context);
-                        context.popSetting();
-                        context.handlePending();
-                    };
-                    dark_query.addEventListener('change', term._style_dark_listener);
-                    return dark_query.matches;
-                } else
-                    return false;
-            }
-            return Settings.convertValue(value, tmode,
-                                         Settings.EVAL_TO_BOOLEAN, context);
-        };
+            if (dark_query) {
+                term._style_dark_listener = (e) => {
+                    const context = new Settings.EvalContext(term);
+                    context.pushSetting(darkSetting);
+                    darkSetting.update(e.matches, context);
+                    context.popSetting();
+                    context.handlePending();
+                };
+                dark_query.addEventListener('change', term._style_dark_listener);
+                return dark_query.matches;
+            } else
+                return false;
+        }
+        return Settings.convertValue(value, tmode,
+                                     Settings.BOOLEAN_VALUE, context);
+    };
 };
 
 Terminal.prototype.updateSettings = function(context = undefined) {
@@ -6041,6 +6059,7 @@ Terminal.prototype.updateSettings = function(context = undefined) {
         }
     }
     context.handlePending();
+
     val = getOption("log.js-to-server", false);
     if (val)
         DomTerm.logToServer = val;
@@ -6059,7 +6078,7 @@ Terminal.prototype.updateSettings = function(context = undefined) {
         this.linkAllowedUrlSchemes += m[2];
         a = m[1]+m[3];
     }
-    this._output_byte_by_byte = getOption("output-byte-by-byte", 0);
+
     if (this.isRemoteSession()) {
         pane._remote_input_interval =
             1000 * getOption("remote-input-interval", 10);
@@ -6095,25 +6114,6 @@ Terminal.prototype.updateSettings = function(context = undefined) {
             DomTerm.defaultWidth = -1;
             DomTerm.defaultHeight = -1;
         }
-
-        function updateKeyMap(mapName, defaultMap) {
-            var mapValue = getOption(mapName);
-            if (mapValue != null) {
-                let map = mapValue.trim().replace(/\n/g, ",");
-                // FIXME this is not as robust/general as it should be
-                map = map.replace(/("[^"]+")\s*:\s*([^"',\s]+)/g, '$1: "$2"')
-                    .replace(/'([^']+)'\s*:\s*([^"',\s]+)/g, '"$1": "$2"');
-                try {
-                    return defaultMap.update(JSON.parse("{" + map + "}"));
-                } catch (e) {
-                    console.log("syntax error in "+mapName+" in settings file ("+e+")");
-                }
-            }
-            return defaultMap;
-        }
-        DomTerm.lineEditKeymap = updateKeyMap("keymap.line-edit", DomTerm.lineEditKeymapDefault);
-        DomTerm.masterKeymap = updateKeyMap("keymap.master", DomTerm.masterKeymapDefault);
-    //}
 
     if (DomTerm.settingsHook) {
         var style_qt = getOption("style.qt");
