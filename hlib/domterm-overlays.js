@@ -33,8 +33,8 @@ function showMessage(options, callback) {
     if (DomTerm.isElectron() && ! options.bodyhtml) {
         electronAccess.ipcRenderer.invoke('messagebox', options)
             .then(callback);
-    } else if (DomTerm.usingQtWebEngine) {
-        DomTerm._qtBackend.popupMessage(JSON.stringify(options), callback);
+    } else if (DomTerm.usingQtWebEngine && ! callback) {
+        DomTerm._qtBackend.popupMessage(JSON.stringify(options));
     } else {
         showMessageBox(options, callback);
     }
