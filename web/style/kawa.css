@@ -38,6 +38,10 @@ h1, h2, h3, h4.subheading, h4.subsection {
   background-color: #e8f8f8;
   padding: 0.5ex 0.5em 0.3ex 0em;
 }
+h4.subheading, h4.subsection {
+  display: table;
+}
+
 h3 {
   font-size: large;
   margin: 1.5em 1em 1em 0
