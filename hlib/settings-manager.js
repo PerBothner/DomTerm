@@ -1,8 +1,8 @@
-export { Setting, EvalContext, convertValue, evaluateTemplate, NUMBER_VALUE, BOOLEAN_VALUE, HYBRID_VALUE, STRING_VALUE, PLURAL_VALUE, MAP_VALUE, LIST_VALUE };
+export { Setting, EvalContext, convertValue, evaluateTemplate, NUMBER_VALUE, BOOLEAN_VALUE, HYBRID_VALUE, STRING_VALUE, LIST_VALUE, MAP_VALUE, SERIES_VALUE };
 
 // Multiple values; usually one value per template-word, within a single phrase
-// Implemented as an Array. Compare LIST_VALUE.
-const PLURAL_VALUE = 1;
+// Implemented as an Array. Compare SERIES_VALUE.
+const LIST_VALUE = 1;
 
 const STRING_VALUE = 2;
 
@@ -20,10 +20,10 @@ const HYBRID_VALUE = 16;
 
 // Multiple values; usually one value per template-phrase
 // This is a outer-most type: For example compare a "command" (in the Unix sense)
-// would be a STRING_VALUE|PLURAL_VALUE (a sequence of command arguments),
-// while a sequence of commands would be STRING_VALUE|PLURAL_VALUE|LIST_VALUE.
+// would be a STRING_VALUE|LIST_VALUE (a sequence of command arguments),
+// while a sequence of commands would be STRING_VALUE|LIST_VALUE|SERIES_VALUE.
 // Represented as an Array.
-const LIST_VALUE = 32;
+const SERIES_VALUE = 32;
 
 // Multiple values; usually one entry per template-phrase
 // This is also an outer-most type. Represented as an Object map.
@@ -200,8 +200,8 @@ EvalContext.sameValue = function(val1, val2, nesting = 0) {
 }
 
 function evaluateTemplate(context, mode) {
-    const phraseMode = mode & ~(LIST_VALUE|MAP_VALUE);
-    const need_arr = mode & LIST_VALUE;
+    const phraseMode = mode & ~(SERIES_VALUE|MAP_VALUE);
+    const need_arr = mode & SERIES_VALUE;
     const need_map = mode & MAP_VALUE;
     let result = need_map ? {} : [];
     for (;;) {
@@ -240,7 +240,7 @@ function evaluateTemplate(context, mode) {
 // Evaluate a sequence of words.
 // Ended by unquoted newline, ';', '}' or end-of-string.
 function evaluatePhrase(context, mode) {
-    const listMode = mode|PLURAL_VALUE;
+    const listMode = mode|LIST_VALUE;
     let result = [];
     for (;;) {
         let ch = context.skipSpaces();
@@ -435,7 +435,7 @@ function evaluateWord(context, mode) {
                         break;
                     }
                     let argmode = fun && fun.expectedArgMode ? fun.expectedArgMode(iarg): 0;
-                    argmode &= ~PLURAL_VALUE; // FIXME
+                    argmode &= ~LIST_VALUE; // FIXME
                     let arg = evaluateWord(context, argmode);
                     args.push(arg);
                 }
@@ -495,11 +495,6 @@ function evaluateStringEscape(context) {
     case 114: ch = 13; break; // '\r'
     case 116: ch = 9; break; // '\t'
     case 118: ch = 11; break; // '\v'
-    case 34: // '"'
-    case 39: // '\''
-    case 47: // '/' (JSON)
-    case 92: // '\\'
-        break;
     case 117: // '\uXXXX' or '\u{XXXXXX}'
         let next = i < end ? template.charCodeAt(i) : -1;
         let maxDigits = 4;
@@ -534,8 +529,10 @@ function evaluateStringEscape(context) {
         i = j;
         break;
     default:
-        ch = errval;
-        context.reportError(context, 'unknown string escape \\' + template.charAt(i-1));
+        // Complain if unknown alphanumeric or control or non-ascii.
+        if ((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122)
+            || (ch >= 49 && ch <= 57) || ch < 32 || ch >= 127)
+            context.reportError(context, 'unknown string escape \\' + template.charAt(i-1));
         break;
     }
     context.curIndex = i;
@@ -546,7 +543,7 @@ function evaluateQuotedString(context, delim) {
     // Don't handle '\\' escapes in a single-quoted 'string'.
     const handleEscapes = delim == 39;
     // However, two '\'' in a row becomes a single '\''.
-    const quoteIfDoubled = delim == 39;
+    const quoteIfDoubled = true;
     let i = context.curIndex;
     let template = context.template;
     let end = template.length;
@@ -589,24 +586,24 @@ function convertValue(value, srcMode, dstMode, context) {
     if (srcMode === dstMode)
         return value;
     // non-list to list
-    if ((srcMode & PLURAL_VALUE) === 0
-        && (dstMode & PLURAL_VALUE) !== 0) {
+    if ((srcMode & LIST_VALUE) === 0
+        && (dstMode & LIST_VALUE) !== 0) {
         return [convertValue(value, srcMode,
-                             dstMode & ~PLURAL_VALUE,
+                             dstMode & ~LIST_VALUE,
                              context)];
     }
     // list to non-list
-    if ((srcMode & PLURAL_VALUE) !== 0
-        && (dstMode & PLURAL_VALUE) === 0) {
+    if ((srcMode & LIST_VALUE) !== 0
+        && (dstMode & LIST_VALUE) === 0) {
         if (value.length === 1)
-         return convertValue(value[0], srcMode & ~PLURAL_VALUE,
+         return convertValue(value[0], srcMode & ~LIST_VALUE,
                              dstMode, context);
         // convert to string - convert each element, separated by space
         if ((dstMode & STRING_VALUE) !== 0) {
             let result = '';
             let first = true;
             for (const el of value) {
-                let str = convertValue(el, srcMode & ~PLURAL_VALUE,
+                let str = convertValue(el, srcMode & ~LIST_VALUE,
                                        dstMode, context);
                 if (first)
                     result += " ";
@@ -621,12 +618,12 @@ function convertValue(value, srcMode, dstMode, context) {
         context.reportError(context, "invalid conversion");
         return (dstMode & NUMBER_VALUE) !== 0 ? NaN : false;
     }
-    if ((srcMode & PLURAL_VALUE) !== 0
-        && (dstMode & PLURAL_VALUE) !== 0) {
+    if ((srcMode & LIST_VALUE) !== 0
+        && (dstMode & LIST_VALUE) !== 0) {
         let result = [];
         for (const el of value) {
-            el.push(convertValue(el, srcMode & ~PLURAL_VALUE,
-                                 dstMode & ~PLURAL_VALUE,
+            el.push(convertValue(el, srcMode & ~LIST_VALUE,
+                                 dstMode & ~LIST_VALUE,
                                  context));
         }
         return result;
@@ -642,8 +639,26 @@ function convertValue(value, srcMode, dstMode, context) {
         } else
             value = `${value}`;
         if ((dstMode & NUMBER_VALUE) !== 0) {
-            const num = Number(value);
-            if (isNaN(num) && value.trim() != "NaN")
+            value = value.trim();
+            let base = 10;
+            const neg = value.charCodeAt(0) === 45 ? 1 : 0;
+            if (value.charCodeAt(neg) === 48) {
+                switch (value.charCodeAt(neg+1)) {
+                case 98: base = 2; break;
+                case 111: base = 8; break;
+                case 120: base = 16; break;
+                default: break;
+                }
+            }
+            let num;
+            if (base !== 10) {
+                const v = value.substring(neg+2);
+                // FIXME check that v contains only digits valid for base
+                num = parseInt(neg ? `-${v}` : v, base);
+            } else {
+                num = Number(value);
+            }
+            if (isNaN(num) && value() != "NaN")
                 context.reportError(context, "value is not a number");
             value = num;
         }

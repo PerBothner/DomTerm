@@ -169,12 +169,6 @@ get_string_escape(const char **ptr)
     case 'r': ch = '\r';  break;
     case 't': ch = '\t';  break;
     case 'v': ch = '\v';  break;
-    case '"':
-    case '\'':
-    case '\\':
-    case '/': // JSON
-        // ch = ch;
-        break;
     case 'u':
         if (*p == '{') {
             int hval = 0;
@@ -197,6 +191,7 @@ get_string_escape(const char **ptr)
         // MAYBE \U HEX HEX HEX HEX HEX HEX HEX HEX
         // MAYBE \ SP* NEWLINE - ignore
     default:
+        // ch = ch;
         ;
     }
     *ptr = p;

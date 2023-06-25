@@ -5986,7 +5986,7 @@ DomTerm.initSettings = function(term) {
     addSetting("style.caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_CARET_STYLE], updateCaret);
     addSetting("style.edit-caret", 0, DTerminal.caretStyles[DTerminal.DEFAULT_EDIT_CARET_STYLE], updateCaret);
 
-    addSetting("color.caret", Settings.PLURAL_VALUE|Settings.STRING_VALUE, "{color.foreground} {color.background}",
+    addSetting("color.caret", Settings.LIST_VALUE|Settings.STRING_VALUE, "{color.foreground} {color.background}",
                (setting, context) => {
                    const val = setting.value;
                    const val1 = val.length > 0 ? val[0] : fgColor.value;
