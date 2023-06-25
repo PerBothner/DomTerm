@@ -739,6 +739,7 @@ DomTerm.newWS = function(wspath, wsprotocol, pane) {
         let reconnect = () => {
             let reconnect = "&reconnect=" + wt._receivedCount;
             wt._reconnectCount++;
+            console.log("reconnecting after unexpected close - attempt "+ wt._reconnectCount);
             let m = wspath.match(/^(.*)&reconnect=([0-9]+)(.*)$/);
             if (m)
                 wspath = m[1] + reconnect + m[3];
@@ -751,6 +752,7 @@ DomTerm.newWS = function(wspath, wsprotocol, pane) {
             let wsocket = DomTerm.newWS(wspath, wsprotocol, pane);
             wsocket.onopen = function(e) {
                 wt.reportEvent("VERSION", JSON.stringify(DomTerm.versions));
+                wt._reconnectCount = 0;
                 wt._confirmedCount = wt._receivedCount;
                 wt._socketOpen = true;
                 wt._handleSavedLog();
@@ -763,6 +765,7 @@ DomTerm.newWS = function(wspath, wsprotocol, pane) {
             setTimeout(reconnect, reconnectDelay);
         else {
             console.log("TOO MANY CONNECT fAILURES");
+            wt._reconnectCount = 0;
             wt.showConnectFailure(e.code, reconnect, false);
         }
     }
