@@ -20,6 +20,23 @@ Ctrl+Shift+A
 @cindex @code{\NAME\} setting
 @end macro
 
+@macro stxlit{TEXT}
+@code{@b{\TEXT\}}
+@end macro
+@macro stxlitlbrace{TEXT}
+@code{@b{@{}}
+@end macro
+
+@macro arbno{THING}
+\THING\@sup{*}
+@end macro
+@c maybe use \x2217
+@c \THING\ @var{...}
+
+@macro atleastone{THING}
+\THING\@sup{+}
+@end macro
+
 @titlepage
 @title DomTerm - a terminal emulator and console using DOM and JavaScript
 @end titlepage
@@ -1883,10 +1900,10 @@ otherwise the location is @code{$XDG_CONFIG_HOME/domterm/settings.ini},
 where @code{XDG_CONFIG_HOME} defaults to @code{$HOME/.config}.
 (For compatibility reasons, @code{$HOME/.domterm/settings.ini}
 is also checked if @code{$XDG_CONFIG_HOME} is unset, but that may go away.)
+On WSL (Windows Subsystem for Linux) the file is
+@code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.
 
-(On WSL (Windows Subsystem for Linux) the file is
-@code{c:\Users\@var{USER}\AppData\Roaming\DomTerm\settings.ini}.)
-You can override this default with the @code{-settings} command-line argument.
+You can override settings file with the @code{-settings} command-line argument.
 If the @code{settings.ini} is changed it is automatically re-loaded.
 
 The syntax of @code{settings.ini} is a variant
@@ -1949,14 +1966,19 @@ domterm settings style.dark=yes
 
 @section Settings values and syntax
 
-How the raw characters of a settings value is interpreted
-depends on the keyword: Each keyword expects the value
-to have a specific type and hence syntax.
-The raw value is the characters in the settings file or command-file;
-the actual value is how those characters are interpreted (parsed).
+A setting value may be a string, a number, a boolean (true/false) value,
+or a combination of multiple of these values.
+How the raw text of setting is interpreted (parsed)
+depends on the setting, primarily the expected value type.
 
 Some settings specify a list of values.
-In that case the values are seperated by newlines or (unquoted) semi-colons.
+For example a setting that specifies a command to be run
+will be a list of strings: the name of the command, followed by
+command-line arguments.
+The items in the list are separated by non-quoted spaces.
+
+More complicated values (series or maps),
+separated by semi-colons or newlines, are discussed later.
 
 @subsubheading Boolean values
 
@@ -1965,12 +1987,29 @@ one of @code{true}, @code{yes}, or @code{on}
 enable the preference;
 one of @code{false}, @code{no}, or @code{off}  disable the preference.
 
+@subsubheading Number values
+
+Numbers are either integer or floating-point.
+
+You can specify a hexadecimal (base-16) integer with @samp{0x} prefix;
+an octal (base-8) integer with the @samp{0o} prefix;
+or a binary (base-2) integer with the @samp{0b} prefix.
+(Currently, non-decimal integers only work for settings marked with @emph{Template}.)
+
 @subsubheading String values
 
-If the type of value is a string, the actual value is roughly
-the characters of the raw value with any non-nested quotoes removed.
+When the setting value is a string or a string-list,
+the characters of the raw text are split into words:
+A sequence of regular characters, quoted strings, and escape sequences,
+separated by spaces.
 ``Extra spaces'' (more than one in a row, or at the start or end)
 that are not quoted are also removed.
+
+If the value needed is a single string, then the words
+are combined to a single string, with one space between each word.
+If the value needed is a list of strings, then each word becomes
+one of the strings.
+
 Both single quotes (apostrophes) and double quotes are handled.
 Thus the following are all equivalent:
 @example
@@ -1982,15 +2021,24 @@ history-storage-key='input history'
 
 Escape sequences starting with backslash (see below)
 are processed within double quotes and outside quotes.
-(They are currently also processed within single quotes, but that may change.)
+They are not processed within single quotes.
 
-Parsing as a string is the same as parsing as a command
-and then joining all the arguments separated by a single space.
+If an ending quote is doubled, then it is treated as a single literal delimiter.
+The following are all equivalent.
+@example
+history-storage-key='can''t miss'
+history-storage-key="can't miss"
+history-storage-key=can\'t\ miss
+@end example
 
 @anchor{string escapes}
 @subsubheading String escapes
 
 @table @asis
+@item @code{\"}
+@itemx @code{\\}
+@itemx @emph{etc for other non-letter non-control characters}
+The character following the initial backslash.
 @item @code{\a}
 Alert (Bell) (Unicode 0x07).
 @item @code{\b}
@@ -2005,21 +2053,13 @@ Newline (Unicode 0x0A).
 Carriage return (Unicode 0x0D).
 @item @code{\t}
 Tab (Unicode 0x09).
-@item @code{\u}@var{HHHH}
+@item @code{\u@var{HHHH}}
 Unicode 0x@var{HHHH} where @var{HHHH} are 4 hex digits.
-@item @code{\u@{}@var{HHHHHH}@code{@}}
+@item @code{\u@{@var{HHHHHH}@}}
 Unicode 0x@var{HHHHHH} where @var{HHHHHH} are 1-6 hex digits.
 @item @code{\v}
 Veritcal tab (Unicode 0x0B).
-@item @code{\"}
-@itemx @code{\\}
-@itemx @code{\/}
-The character following the backslash:
-Quotation Mark (Unicode 0x22), Backslash (Reverse solidus - Unicode 0xC),
-or plain slash (Unicode 0x2F - pointless but included for JSON compatibiity).
 @end table
-
-This is a superset of JSON.
 
 @subsubheading Command values
 @anchor{command value}
@@ -2031,6 +2071,9 @@ Special characters (including spaces) can be protected in single quotes
 Escape sequences starting with backslash (see above)
 are processed within double quotes and outside quotes.
 (They are currently also processed within single quotes, but that may change.)
+
+@emph{The following information about commands is
+subject to change to use the template framework.}
 
 Commands that display a session should include the pattern @code{%U}
 for URL that is filled in by the server.
@@ -2079,6 +2122,110 @@ domterm settings "color.blue=#3465a4"
 You can also use any color syntax supported by CSS if you
 use the default DomTerm engine,
 but this is not currently suppered if @code{xtermjs} is selected.
+
+@subsubheading Series values
+
+A @dfn{phrase} is one or more words (separated by spaces) that are evaluated to
+either a simple value or a list.
+Some settings (for example @code{browser.default})
+take a @dfn{series}, which is one or more phrases,
+separated by semi-colon or newline.
+
+@subsubheading Map values
+
+A @dfn{map} is a table from a key (usually a string) to some
+other value (such as a command).
+Syntactially, it is like a phrase, which entries separated by semi-colons.
+However, the first word of each phrase is the key:
+a word that ends in an unquoted colon (which is not part of the key).
+
+Settings that expect a map include @code{keymap.master} and @code{keymap.line-edit}.
+
+@section Template values
+
+@emph{This is work-in-progress.  The plan is for all (or at least most)
+settings values to become templates.}
+
+The value for some settings may be a @dfn{template},
+which can contain value substitutions, expressions, and conditions.
+
+A template will be expanded to a value, either in the frontend
+or the backend.
+@emph{Template expansion is not yet implemented by the backend.}
+
+@subsubheading Template parts
+
+@table @asis
+@item @var{template-word-part} ::= @var{regular-character} | @var{template-escape} | @var{double-quoted-stpring} | @var{single-quoted-string} | @var{template-substiution}
+@item @var{template-word} ::= @atleastone{@var{template-word-part}}
+@end table
+
+A @dfn{template-word} is a sequence of regular printing characters,
+escaped characters, quoted strings, or substitutions surrounded by braces.
+
+A @dfn{template-phrase} is a sequence of @var{template-word}s
+separated by unquoted spaces (horizontal white space).
+A template-phrase is ended by an unquoted @samp{;} (semicolon),
+unquoted newline (vertical white space),
+or a non-matching unquoted @samp{@}} (right brace).
+
+@subsubheading Value substitution
+A @dfn{value substitution} is a variable name surrounded by braces.
+It is replaced by the current value of the variable.
+A variable is some other settings name, or perhaps
+an automatically-generated value.
+@emph{Currently, the only supported variables are other frontend settings.}
+
+For example the default value for @code{color.caret} is
+@example
+color.caret = @{color.foreground@} @{color.background@}
+@end example
+This means that the current values of the @code{color.foreground} and
+@code{color.background} settings are substituted,
+resulting in a list of two color values.
+If either @code{color.foreground} or @code{color.background} changes then
+the value of @code{color.caret} is re-evaluated and updated automatically.
+
+@subsubheading Expression substitution
+An @dfn{expression substitution} is a @var{template-operator} followed by
+zero or more @var{template-argument}s, inside braces.
+Note that expressions are written in @uref{https://en.wikipedia.org/wiki/Polish_notation,prefix or ``Polish'' notation}, similar to Lisp
+(but using braces instead of parenthesis).
+
+@table @asis
+@item @var{template-operator} ::= @var{template-word}
+@item @var{template-argument} ::= @var{template-word}
+@item @var{template-expression} ::= @code{@{} @var{template-operator} @arbno{[@var{optional-space} @var{template-argument}]} @code{@}}
+@end table
+Here is a simple but contrived example
+that sets @code{log.js-string-max} to 100 times the value of @code{log.js-verbosity}.
+@example
+log.js-string-max = @{* 100 @{log.js-verbosity@}@}
+@end example
+
+These are the operators implemented so far - more are planned:
+@table @asis
+@item @code{+}
+The arguments are coerced to numbers and added.
+If there are no arguments, the result is 0.
+@item @code{*}
+The arguments are coerced to numbers and multiplied.
+If there are no arguments, the result is 1.
+@end table
+
+@subsubheading Conditional template
+
+@table @asis
+@item @var{template-conditional} ::= @stxlitlbrace{}@stxlit{?} @arbno{@var{template-condition}} @code{;} @var{template-then-phrase} ]@code{;} @var{template-else-phrase}] @stxlit{@}}
+@item @var{template--phrase} ::= @var{template-phrase} | @stxlit{?} @arbno{@var{template-condition}} @code{;} @var{template-then-phrase} ]@code{;} @var{template-else-phrase}]
+@item @var{template-condition} ::= [@stxlit{!}]@var{template-word}
+@end table
+
+For example the default for the @code{color.background} depends
+on whether @code{style.dark} is true:
+@example
+color.background = @{?@{style.dark@};#fffff8;@{color.black@}@}
+@end example
 
 @section Available settings
 
@@ -2179,7 +2326,7 @@ See @uref{https://doc.qt.io/qt-6/stylesheet-examples.html, more examples}.
 
 @indsetting{style.dark}
 @item @code{@b{style.dark} =} @var{value}
-This option (if set) selects ``reverse video'', which is a color preference
+@emph{Template.} This option (if set) selects ``reverse video'', which is a color preference
 for a darker background and a ligher foreground (text).
 The default is @code{auto}, which follows the system/desktop preference
 if possible, or otherwise @code{off}, which selects
@@ -2192,7 +2339,7 @@ Electron and Wry on MacOS (but not Gnome); Epihany (on Gnome).
 @indsetting{color.background}
 @item @code{@b{color.background} =} @var{color}
 
-Set the default background color.  Most of the terminal window will
+@emph{Template.} Set the default background color.  Most of the terminal window will
 have this color, unless overridden.
 
 The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};@{color.black@};#fffff8@}}.
@@ -2200,7 +2347,7 @@ The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};@{
 @indsetting{color.foreground}
 @item @code{@b{color.foreground} =} @var{color}
 
-Set the default foreground color. This is used for text, unless overridden.
+@emph{Template.} Set the default foreground color. This is used for text, unless overridden.
 
 The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};#fffff;@{color.black@}@}}.
 
@@ -2236,7 +2383,7 @@ The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};#f
 @itemx @code{@b{color.bright-magenta} =} @var{color}
 @itemx @code{@b{color.bright-cyan} =} @var{color}
 @itemx @code{@b{color.bright-white} =} @var{color}
-Change the values of the basic 16 colors selected by the escape sequences
+@emph{Template.} Change the values of the basic 16 colors selected by the escape sequences
 @code{"\e[30m"} to @code{"\e[37m"} and @code{"\e[90m"} to @code{"\e[97m"}
 (for setting foreground color), and
 @code{"\e[40m"} to @code{"\e[47m"} and @code{"\e[100m"} to @code{"\e[107m"}
@@ -2262,7 +2409,7 @@ See @ref{caret styling}.
 
 @indsetting{color.caret}
 @item @code{@b{color.caret} =} @var{caret-color}  @var{caret-accent-color}
-Set the color of the caret (text input cursor).
+@emph{Template.} Set the color of the caret (text input cursor).
 The @var{caret-accent-color} is used for the foreground (text)
 when using a @code{block} or @code{blinking-block} caret.
 
@@ -2322,12 +2469,12 @@ For details, see @ref{link-handlers}.
 
 @indsetting{keymap.master}
 @item @code{@b{keymap.master} =} @var{keymap-overrides}
-Add or replace keybindings that are active in all modes.
+@emph{Template.} Add or replace keybindings that are active in all modes.
 See @ref{Keyboard shortcuts} for defaults and an example.
 
 @indsetting{keymap.line-edit}
 @item @code{@b{keymap.line-edit} =} @var{keymap-overrides}
-Add or replace keybindings for @ref{Input line editing,input line editing}.
+@emph{Template.} Add or replace keybindings for @ref{Input line editing,input line editing}.
 @end table
 
 @subsubheading Remote connnections
@@ -2351,7 +2498,7 @@ command.remote-domterm =
  | @{jones@@mac.example.com@}/Users/jones/bin/domterm -d 15
 @end example
 The @code{@var{user}} and @code{@var{hostname}} are matched literally
-against those used to connect remotelty.
+against those used to connect remotely.
 If @code{@var{user}} is specified it must match exactly,
 otherwise any (or no) @code{@var{user}} matches.
 
@@ -2395,7 +2542,7 @@ it assume the connection has failed.
 Defaults to twice @code{remote_input_interval}.
 @indsetting{remote-output-interval}
 @item @code{@b{remote-output-interval} =} @var{output-interval}
-If non-zero, the remote (application) ends some data to the
+If non-zero, the remote (application) sends some data to the
 local browser at least every @code{remote_output_interval} seconds.
 Defaults to 10 seconds.
 @indsetting{remote-output-timeout}
@@ -2427,7 +2574,7 @@ The default is @code{/tmp/domterm-%P.log}.
 
 @indsetting{log.js-verbosity}
 @item @code{@b{log.js-verbosity} =} @var{level}
-Write more information to the JavaScript console.
+@emph{Template.} Write more information to the JavaScript console.
 
 @indsetting{log.js-to-server}
 @item @code{@b{log.js-to-server} =} @var{setting}
@@ -2442,7 +2589,7 @@ if specified the @code{-d @var{mask}} must have 4 set in the @var{mask}.
 
 @indsetting{log.js-string-max}
 @item @code{@b{log.js-string-max} =} @var{length}
-If positive, maximum length of strings to print to the JavaScript console.
+@emph{Template.} If positive, maximum length of strings to print to the JavaScript console.
 
 @indsetting{debug.input.extra-delay}
 @item @code{@b{debug.input.extra-delay} = } @var{delay}
@@ -2453,7 +2600,7 @@ which should be higher than @code{debug.input.extra-delay}.
 
 @indsetting{output-byte-by-byte}
 @item @code{@b{output-byte-by-byte} = } @var{count}
-When a front-end receives @var{N} output bytes to process, it may handle
+@emph{Template.} When a front-end receives @var{N} output bytes to process, it may handle
 multiple bytes (such as simple text) in one go.
 This option forces the last @var{count} bytes to be processed one at a time.
 (The first @var{N-count} bytes, if any, are processed first as a unit.)
@@ -3534,11 +3681,11 @@ Detach from current session and close the (sub-)window.
 
 @subheading Changing keybindings
 
-You can override the keymap (map from keystrokes to action).
-The @code{keymap.line-edit} @ref{Settings,setting} is a list (separated by commas or newlines),
-where each item is a quoted keystroke string, followed by a colon,
-followed by an action name. An action name is a string,
-but quotes are optional.
+You can override the keymap with the @code{keymap.line-edit} @ref{Settings,setting}.
+This is a map from keystroke strings (quoted or unquoted,
+followed by an unquoted colon)
+to action names (quoted or unquoted strings).
+The entries are separated by semi-colons or newlines.
 
 To enable ``standard'' handling of Ctrl+V for Paste and Ctrl+C for Copy
 (while still signalling interrupt when there is no selection) do:
@@ -5622,67 +5769,6 @@ substitutions and conditionals.
 
 Compare tmux's ``formats''. One idea is to use @samp{%} as an escape
 character, like extended printf-style formats.
-
-Another idea (explored below) is to use braces as the primary meta-characters:
-braces are used for substitutions and operations.
-
-A format is a mix of literal text, quoted strings (also treated as
-literal, but may have string-escapes), brace-enclosed expressions, and
-some special characters.
-
-Simple substitution uses curly braces: @code{@{directory@}}.
-
-Expressions, Lisp-style (prefix operator):  @code{@{+ @{N@} 1@}}
-or maybe @code{@{+ N 1@}} (see discussion below).
-
-A conditional is indicated by @code{@{?@var{condition}@}@var{true-part}|@var{false-part}}.
-If the @var{condition} is true, then @var{true-part} is evaluated;
-otherwise @var{false-part} is evaluated.
-Instead of @samp{|} the @var{true-part} may be separated by a new-line.
-This makes multi-part conditionals look like:
-@example
-@{?@var{cond1}@}@var{value1}
-@{?@var{cond2}@}@var{value2}
-@var{default-value}
-@end example
-The @var{true-part} extends to first unquoted veritical bar or newline that
-is not nested in abother brace-section.
-
-Do we need extra braces for variable in expression-mode?
-For example: @code{@{?dark-mode@}pink|brown} or @code{@{?@{dark-mode@}@}pink|brown} - is the latter too awkward/error-prone?
-
-Use @code{@{' ...@}} for grouping or to enter text-node from expression-mode.
-
-OLD Conditional: @code{@{A1?A2?A3?X1|B1?Y|Z@}}
-is like C's @code{A1||A2||A3 ? X1 : B1 ? Y : Z}.
-For example:
-@example
-style.color.input = @{@{dark-mode@}?green|yellow@}
-@end example
-Perhaps the extra braces could be implicit:
-@example
-style.color.input = @{dark-mode?green|yellow@}
-xx-width = @{< @{yy-width@} 50?50|@{+ @{zz-width@} 10@}@}
-@end example
-
-We need clear simple rules to distinguish characters in
-@var{text mode} (literal characters mostly) and @var{expression mode}
-(operators and variables that are evaluated).
-Text inside curly braces are in expression mode.
-However, text in a conditional following unquoted @samp{?} or @samp{|} is in text mode.
-You can get literal text in expression mode by using a quoted string.
-An unquoted word in expression mode can be an operator (prefix function name),
-variable name (looked up in the context), or a constant (which
-may be interpreted in a context-dependent manner).
-
-Usually an unescaped semi-colon is equivalent to a line-break.
-Both are usually used to separate items in a list,
-in contexts where is list is desired.
-
-Text inside double quotes is literal, except that string escapes
-are processed.  For example to include a literal semi-colon
-instead of having it be processed as a separator write @code{";"};
-to write double quotes write @code{"\""}.
 
 @subsubheading Syntax
 
