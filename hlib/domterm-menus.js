@@ -253,8 +253,10 @@ else
         menuItem({label: 'Terminal', submenu: terminalMenu}),
         menuItem({label: 'Help', submenu: helpMenu})
     ];
-    //let hamburgerChar = "\u2261";
-    let hamburgerChar = "\u2630";
+    //let hamburgerChar = "\u2261"; // Identical to
+    //let hamburgerChar = "\u{1d118}"; // Musical Symbol 3-line staff
+    //let hamburgerChar = "\u{1d362}"; // counting rod unit digit 3
+    let hamburgerChar = "\u2630"; // trigram for Heaven
     let hamburgerMenuItems = [
         menuItem({label: hamburgerChar, submenu: menuBarItems})
     ];
