@@ -553,7 +553,8 @@ DomTerm.updateSizeFromBody = function() {
 };
 
 DomTerm.updateBodySizeWithZoom = function() {
-    if (DomTerm.useToolkitSubwindows || DomTerm.isElectron() || DomTerm._qtBackend)
+    if (DomTerm.useToolkitSubwindows
+        || (top === window && (DomTerm.isElectron() || DomTerm._qtBackend)))
         return;
     const zoom = document.body.zoomFactor;
     const bodyStyle = document.body.style;
@@ -568,9 +569,11 @@ DomTerm.updateBodySizeWithZoom = function() {
 }
 
 DomTerm.updatePaneZoom = function(pane) {
-    const element = pane.contentElement;
+    let element = pane.contentElement;
     const scale = pane.paneZoom();
-    if (element) {
+    if (element && element.tagName === "IFRAME") {
+        DomTerm.sendChildMessage(pane.number, 'set-pane-zoom', scale);
+    } else if (element) {
         if (scale > 0.99 && scale < 1.01) {
             element.style.removeProperty("transform");
             element.style.removeProperty("transform-orgin");
@@ -578,11 +581,30 @@ DomTerm.updatePaneZoom = function(pane) {
             element.style.setProperty("transform", `scale(${scale})`);
             element.style.setProperty("transform-origin", "top left");
         }
-        DomTerm._layout.updateContentSize(pane);
+        pane.layoutContainer.scale(scale, element);
+        pane.layoutContainer.parent.updateSize();
+        if (pane.resizeHandler)
+            pane.resizeHandler();
     } else if (DomTerm.apphooks.setPaneZoom) {
         DomTerm.apphooks.setPaneZoom(pane.number, scale);
     }
 }
+DomTerm.updateBodyScale = function(zoom) {
+    let node = document.body;
+    if (zoom >= 0.99 && zoom <= 1.01) {
+        node.zoomFactor = undefined;
+        node.style.removeProperty("transform");
+        node.style.removeProperty("transform-orgin");
+    } else {
+        node.zoomFactor = zoom;
+        node.style.setProperty("transform",
+                               `scale(${node.zoomFactor})`);
+        node.style.setProperty("transform-origin", "top left");
+    }
+    DomTerm.updateBodySizeWithZoom();
+    DomTerm.updateSizeFromBody();
+}
+
 DomTerm.updateZoom = function() {
     let node = document.body;
     const zoom = DomTerm.zoomMainBase * DomTerm.zoomMainAdjust;
@@ -598,18 +620,8 @@ DomTerm.updateZoom = function() {
         DomTerm._qtBackend.setMainZoom(zoom);
     } else if (false && DomTerm.versions.wry) { // FUTURE - TODO
     } else {
-        if (zoom >= 0.99 && zoom <= 1.01) {
-            node.zoomFactor = undefined;
-            node.style.removeProperty("transform");
-            node.style.removeProperty("transform-orgin");
-        } else {
-            node.zoomFactor = zoom;
-            node.style.setProperty("transform",
-                                   `scale(${node.zoomFactor})`);
-            node.style.setProperty("transform-origin", "top left");
-        }
-        DomTerm.updateBodySizeWithZoom();
-        DomTerm.updateSizeFromBody();
+        DomTerm._layout?.manager?.scale(zoom);
+        DomTerm.updateBodyScale(zoom);
     }
 }
 

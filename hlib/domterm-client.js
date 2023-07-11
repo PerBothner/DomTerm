@@ -685,6 +685,9 @@ function handleMessageFromParent(command, args, dt = DomTerm.focusedTerm)
         pane.termOptions = args[0];
         DomTerm.updateSettings(pane);
         break;
+    case 'set-pane-zoom':
+        DomTerm.updateBodyScale(args[0]);
+        break;
     case "domterm-close":
         if (pane)
             pane.close(args[0], args[1]);

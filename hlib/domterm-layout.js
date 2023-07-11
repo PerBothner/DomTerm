@@ -296,6 +296,7 @@ DomTermLayout.config = {
     }
 };
 
+/*
 DomTermLayout._containerHandleResize = function(container, wrapped) { // unused ???
     if (DomTerm.usingXtermJs() || wrapped.nodeName == "IFRAME")
         return;
@@ -306,6 +307,7 @@ DomTermLayout._containerHandleResize = function(container, wrapped) { // unused 
                          dt.resizeHandler();
                  })
 }
+*/
 
 DomTermLayout.layoutClose = function(lcontent, windowNumber, from_handler=false) {
     if (DomTerm.apphooks.closePane) {
@@ -476,42 +478,6 @@ function _handleLayoutClick(ev) {
     }
 }
 
-DomTermLayout.updateContentSize = function(pane) {
-    // Based on updateNodeSize in goldenlayout's component-item.ts.
-    // Also takes zoom into account.
-    const container = pane.layoutContainer;
-    const item = pane.layoutItem;
-    const mainZoom = (! DomTerm.isElectron() && ! DomTerm._qtBackend && document.body.zoomFactor) || 1.0;
-    const itemZoom = mainZoom * pane.paneZoom();
-    const componentElement = container.element;
-    const contentElement = DomTerm.useSeparateContentChild()
-          ? componentElement.lastChild
-          : componentElement;
-    if (contentElement instanceof HTMLElement
-        && item.parent.type === 'stack') {
-        const stackElement = item.parentItem.element;
-        let stackBounds;
-        const itemElement = item.element;
-        const itemBounds = itemElement.getBoundingClientRect();
-        const layoutBounds = DomTermLayout.manager.container.getBoundingClientRect();
-        if (componentElement instanceof HTMLElement
-            && contentElement !== componentElement) {
-            stackBounds = stackElement.getBoundingClientRect();
-            componentElement.style.top = `${(stackBounds.top - layoutBounds.top) / mainZoom}px`;
-            componentElement.style.left = `${(stackBounds.left - layoutBounds.left) / mainZoom}px`;
-            componentElement.style.width = `${stackBounds.width / itemZoom}px`;
-            componentElement.style.height = `${stackBounds.height / itemZoom}px`;
-        } else {
-            stackBounds = layoutBounds;
-        }
-        contentElement.style.position = "absolute";
-        contentElement.style.top = `${(itemBounds.top - stackBounds.top) / mainZoom}px`;
-        contentElement.style.left = `${(itemBounds.left - stackBounds.left) / itemZoom}px`;
-        contentElement.style.width = `${itemBounds.width / itemZoom}px`;
-        contentElement.style.height = `${itemBounds.height / itemZoom}px`;
-    }
-}
-
 DomTermLayout.initialize = function(initialContent = null) {
     function activeContentItemHandler(item) {
         DomTerm.showFocusedPane(item.container.elemen);
@@ -621,15 +587,24 @@ DomTermLayout.initialize = function(initialContent = null) {
                 }
             };
         }
-        container.notifyResize = (container, x, y, width, height) => {
-            const pane = container.paneInfo;
-            if (DomTerm.apphooks.setGeometry) {
+        /* FUTURE (probably).
+         * - Depends on GL fixes - specifically updating
+         * - _height and _width of ComponentContainer.
+        if (DomTerm.apphooks.showPane && wnum >= 0) {
+            console.log("set how/hide callbacks");
+            container.on("hide", () => {
+                console.log("hide callback #"+wnum);
+                DomTerm.apphooks.showPane(wnum, false);});
+            container.on("show", () => {
+                console.log("show callback #"+wnum);
+                DomTerm.apphooks.showPane(wnum, true);});
+        }
+        */
+        if (DomTerm.apphooks.setGeometry) {
+            container.notifyResize = (container, x, y, width, height) => {
                 DomTerm.apphooks.setGeometry(wnum, x, y, width, height);
-            } else {
-                DomTermLayout.updateContentSize(pane);
             }
-        };
-
+        }
         container.on("dragMoved", (screenX, screenY, component) => {
             const wX = screenX - DomTermLayout.dragStartOffsetX;
             const wY = screenY - DomTermLayout.dragStartOffsetY;

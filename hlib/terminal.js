@@ -3689,6 +3689,8 @@ Terminal.prototype._computeHomeLine = function(home_node, home_offset,
 DomTerm._checkStyleResize = function(dt) { dt.resizeHandler(); }
 
 Terminal.prototype.resizeHandler = function() {
+    if (! this._rulerNode)
+        return;
     var dt = this;
     // FIXME we want the resize-sensor to be a child of helperNode
     if (DomTerm.verbosity > 0)
@@ -3697,7 +3699,6 @@ Terminal.prototype.resizeHandler = function() {
     let oldHeight = this.actualHeight;
     let oldCharWidth = this.charWidth;
     dt.measureWindow();
-    if (DomTerm.usingXtermJs()) return;
     let minColumns = dt.getOption("terminal.minimum-width", 5);
     let minRows = 2;
     if (this.numColumns < minColumns || this.numRows < minRows)
@@ -4157,12 +4158,6 @@ Terminal.prototype.forceWidthInColumns =
 };
 
 Terminal.prototype.measureWindow = function()  {
-    /*
-    if (DomTerm.usingXtermJs()) {
-        window.fit.fit(this.xterm);
-        return;
-    }
-    */
     let ruler = this._rulerNode;
     if (! ruler)
         return;
@@ -4214,7 +4209,7 @@ Terminal.prototype.measureWindow = function()  {
     }
 
     if (DomTerm.verbosity >= 2)
-        this.log("wrapDummy:"+this._wrapDummy+" width:"+this.rightMarginWidth+" top:"+this.name+"["+this.topNode.getAttribute("class")+"] clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight+" rbox:"+rbox);
+        this.log("wrapDummy width:"+this.rightMarginWidth+" top:"+this.name+"["+this.topNode.getAttribute("class")+"] clW:"+this.topNode.clientWidth+" clH:"+this.topNode.clientHeight+" top.offH:"+this.topNode.offsetHeight+" it.w:"+this.topNode.clientWidth+" it.h:"+this.topNode.clientHeight+" chW:"+this.charWidth+" chH:"+this.charHeight+" ht:"+availHeight+" rbox:"+rbox);
     if ((numRows != this.numRows || numColumns != this.numColumns
          || availHeight != this.availHeight || availWidth != this.availWidth)
         && ! this.isSavedSession()) {
