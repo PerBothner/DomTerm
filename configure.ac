@@ -302,7 +302,6 @@ fi
 AM_CONDITIONAL(WITH_XTERMJS,
     test "$with_xterm_js" != "" -a "$with_xterm_js" != "no")
 XTERMJS_PATH="$with_xterm_js"
-AC_SUBST(XTERMJS_PATH)
 
 dnl Files for "inner" JavaScript context
 HLIB_FIXED_FILES_INNER="\
@@ -355,8 +354,11 @@ HLIB_FIXED_FILES_MISC="\
 case "$with_xterm_js" in
   ""|"no")
     WITH_XTERMJS=0;;
+  "yes")
+    WITH_XTERMJS=1; XTERMJS_PATH=xtermjs;;
   *) WITH_XTERMJS=1;;
 esac
+AC_SUBST(XTERMJS_PATH)
 AC_SUBST(WITH_XTERMJS)
 AC_SUBST(HLIB_FIXED_FILES_INNER)
 AC_SUBST(HLIB_FIXED_FILES_OUTER)

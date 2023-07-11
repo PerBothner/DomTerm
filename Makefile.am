@@ -102,8 +102,9 @@ NODE_MODULES_PARENT = .
 #NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
 #XTERMJS_ADDONS_ROOT = $(NODE_MODULES_PARENT)/node_modules
 NODE_MODULES_DIR = xtermjs/addons
-XTERMJS_ROOT = xtermjs
+XTERMJS_ROOT = @XTERMJS_PATH@
 XTERMJS_ADDONS_ROOT = $(XTERMJS_ROOT)/addons
+XTERMJS_ADDONS = canvas fit image serialize web-links webgl
 NPM = npm
 
 ADOC_GENERATED = \
@@ -367,23 +368,13 @@ $(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR) $(DOMTERM_JAR_EXTRA_DEPS)
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_XTERMJS
 if ENABLE_DEBUG
-	cp $(XTERMJS_ROOT)/debug-lib/xterm.js \
-	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-canvas.js \
-	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-fit.js \
-	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-image.js \
-	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-serialize.js \
-	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-web-links.js \
-	  $(XTERMJS_ROOT)/debug-lib/xterm-addon-webgl.js \
-	  tmp-for-jar/hlib
+	cp $(XTERMJS_ROOT)/debug-lib/xterm.js tmp-for-jar/hlib
+	for ADDON in $(XTERMJS_ADDONS); do \
+	  cp $(XTERMJS_ROOT)/debug-lib/xterm-addon-$$ADDON.js tmp-for-jar/hlib; done
 else
-	cp $(XTERMJS_ROOT)/lib/xterm.js \
-	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-canvas/lib/xterm-addon-canvas.js \
-	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-fit/lib/xterm-addon-fit.js \
-	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-image/lib/xterm-addon-image.js \
-	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-serialize/lib/xterm-addon-serialize.js \
-	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-web-links/lib/xterm-addon-web-links.js \
-	  $(XTERMJS_ADDONS_ROOT)/xterm-addon-webgl/lib/xterm-addon-webgl.js \
-	  tmp-for-jar/hlib
+	cp $(XTERMJS_ROOT)/lib/xterm.js tmp-for-jar/hlib
+	for ADDON in $(XTERMJS_ADDONS); do \
+	  cp $(XTERMJS_ADDONS_ROOT)/xterm-addon-$$ADDON/lib/xterm-addon-$$ADDON.js; done
 endif
 	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib
 endif
@@ -725,27 +716,23 @@ $(NODE_MODULES_DIR)/xterm/lib/xterm.js:
 xtermjs:
 	git clone git@github.com:xtermjs/xterm.js.git xtermjs
 
-tmp-xterm-built: xtermjs setup-xterm-addon-image.stamp
-	cd xtermjs && yarn && npm run package
-	cd xtermjs/addons/xterm-addon-canvas && npm run package
-	cd xtermjs/addons/xterm-addon-fit && npm run package
-	cd xtermjs/addons/xterm-addon-image && npm run package
-	cd xtermjs/addons/xterm-addon-serialize && npm run package
-	cd xtermjs/addons/xterm-addon-web-links && npm run package
-	cd xtermjs/addons/xterm-addon-webgl && npm run package
+tmp-xterm-built: $(XTERMJS_ROOT)
+	cd $(XTERMJS_ROOT) && yarn && npm run package
+	for ADDON in $(XTERMJS_ADDONS); do \
+	  (cd $(XTERMJS_ROOT)/addons/xterm-addon-$$ADDON && npm run package); done
 	touch tmp-xterm-built
 
 tmp-xterm-debug-built: tmp-xterm-built
-	cd xtermjs && node_modules/.bin/webpack --config webpack.config.js --mode development -o debug-lib
-	for ADDON in canvas fit image serialize web-links webgl; do \
-	  (cd xtermjs/addons/xterm-addon-$$ADDON && ../../node_modules/.bin/webpack --config webpack.config.js --mode development -o ../../debug-lib); done
+	cd $(XTERMJS_ROOT) && node_modules/.bin/webpack --config webpack.config.js --mode development -o debug-lib
+	for ADDON in $(XTERMJS_ADDONS); do \
+	  (cd $(XTERMJS_ROOT)/addons/xterm-addon-$$ADDON && ../../node_modules/.bin/webpack --config webpack.config.js --mode development -o ../../debug-lib); done
 	touch tmp-xterm-debug-built
 
 xtermjs/addons/xterm-addon-image:
 	cd xtermjs/addons && git clone --branch master https://github.com/jerch/xterm-addon-image
 
-setup-xterm-addon-image.stamp: xtermjs/addons/xterm-addon-image
-	cd xtermjs && cp -avx addons/xterm-addon-image/overwrite/* .
-	cd xtermjs && mv demo/client.ts_copy demo/client.ts
-	cd xtermjs && cp -avx addons/xterm-addon-image/overwrite/.eslintrc.json .
+setup-xterm-addon-image.stamp: $(XTERMJS_ROOT)/addons/xterm-addon-image
+	cd $(XTERMJS_ROOT) && cp -avx addons/xterm-addon-image/overwrite/* .
+	cd $(XTERMJS_ROOT) && mv demo/client.ts_copy demo/client.ts
+	cd $(XTERMJS_ROOT) && cp -avx addons/xterm-addon-image/overwrite/.eslintrc.json .
 	touch setup-xterm-addon-image.stamp
