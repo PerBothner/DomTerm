@@ -57,7 +57,7 @@ div.domterm-spacer {
    - 'Noto Sans Mono'
    - 'IBM Plex Mono' (needs download and @font-face]
    Check with tests/256-colors.sh. */
-div.domterm { --monospace-family: Terminal, Menlo, monospace, DejaVu Sans Mono; }
+div.domterm { --monospace-family: Cascadia Code, Terminal, Menlo, monospace, DejaVu Sans Mono; }
 div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family) }
 div.domterm[reverse-video] span[std="prompt"] { background-color: #004000 } /* a dark green */
 .dt-editing-line {
