@@ -1,4 +1,4 @@
-export { Setting, EvalContext, convertValue, evaluateTemplate, NUMBER_VALUE, BOOLEAN_VALUE, HYBRID_VALUE, STRING_VALUE, LIST_VALUE, MAP_VALUE, SERIES_VALUE };
+export { Setting, EvalContext, convertValue, evaluateTemplate, stringAsBoolean, NUMBER_VALUE, BOOLEAN_VALUE, HYBRID_VALUE, STRING_VALUE, LIST_VALUE, MAP_VALUE, SERIES_VALUE };
 
 // Multiple values; usually one value per template-word, within a single phrase
 // Implemented as an Array. Compare SERIES_VALUE.
@@ -582,6 +582,14 @@ function evaluateQuotedString(context, delim) {
 }
 
 
+function stringAsBoolean(val) {
+    if (val === "true" || val === "yes" || val === "on" || val === "1")
+        return 1;
+    if (val === "false" || val === "no" || val === "off" || val === "0")
+        return 0;
+    return -1;
+}
+
 function convertValue(value, srcMode, dstMode, context) {
     if (srcMode === dstMode)
         return value;
@@ -673,11 +681,10 @@ function convertValue(value, srcMode, dstMode, context) {
             if (value.length == 1) {
                 let el = value[0];
                 if (typeof el === "string") {
-                    if (el === "true" || el === "yes" || el === "on" || el === "1")
-                        return true;
-                    if (el !== "false" && el !== "no" && el !== "off" && el !== "0")
+                    const v = stringAsBoolean(el);
+                    if (v < 0)
                         context.reportError(context, `cannot convert ${JSON.stringify(el)} to boolean`);
-                    return false;
+                    return v > 0;
                 } else {
                     return !!el;
                 }

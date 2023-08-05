@@ -1031,6 +1031,8 @@ Terminal.BELL_TEXT = "BELL!";
 /** Length of time to display BELL_TEXT. */
 Terminal.INFO_TIMEOUT = 1200;
 
+Terminal.defaultXtRendererType = 'canvas'; // 'dom' 'canvas' or 'webgl'
+
 window.addEventListener("unload", DomTerm.closeAll);
 
 // Handle selection
@@ -5912,7 +5914,25 @@ DomTerm.initSettings = function(term) {
                    if (context.pane)
                        context.pane._output_byte_by_byte = setting.value;
                });
-
+    addSetting("xtermjs", Settings.STRING_VALUE, "false",
+               (setting, context) => {
+                   let val = setting.value;
+                   let v = Settings.stringAsBoolean(val);
+                   const pane = context.pane;
+                   const isXtermjs = pane instanceof XTermPane;
+                   if (val === "dom" || val === "canvas" || val == "webgl")
+                       v = 1;
+                   else if (v > 0 && isXtermjs)
+                       val = Terminal.defaultXtRendererType;
+                   if (v < 0) {
+                       context.reportError(context, "invalid 'xtermjs' value "+JSON.stringify(val));
+                   } if (isXtermjs && v > 0) {
+                       pane.rendererType = val;
+                       pane.setRendererType(val);
+                   } else if (isXtermjs || v > 0) {
+                       context.reportError(context, "cannot disable/disable 'xtermjs' after start");
+                   }
+               });
     function updateColor(setting, context) {
         const name = context?.curSetting.name;
         const term = context.pane;

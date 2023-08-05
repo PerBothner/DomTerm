@@ -2552,9 +2552,11 @@ int new_action(int argc, arglist_t argv, struct options *opts)
     enum window_kind wkind = dterminal_window;
     struct pty_client *pclient = create_pclient(cmd, args, opts, false, NULL);
 #if WITH_XTERMJS
-    std::string xtermjs_opt = get_setting_s(opts->settings, "xtermjs", "");
+    std::string xtermjs_opt = get_setting_s(opts->settings, "xtermjs", "false");
     int xtermjs_value = bool_value(xtermjs_opt.c_str());
-    if (xtermjs_value > 0) {
+    if (xtermjs_value > 0 ||
+        (xtermjs_value < 0
+         && (xtermjs_opt == "dom" || xtermjs_opt == "canvas" || xtermjs_opt == "webgl"))) {
         wkind = xterminal_window;
         pclient->use_xtermjs = true;
     }

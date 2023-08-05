@@ -2665,6 +2665,8 @@ Defaults to @code{yes}, unless running under a tiling window manager.
 @item @code{@b{xtermjs} =} @var{value}
 If the boolean @var{value} is true, use the @ref{xtermjs,xterm.js}
 terminal emulator.
+If @var{value} is @code{dom}, @code{canvas}, or @code{webgl}
+select that xterm.js ``renderer''.
 @end table
 
 @node Applications

@@ -4,7 +4,7 @@ import * as DtUtil from './domterm-utils.js';
 const XTerm = window.Terminal;
 const CanvasAddon = window.CanvasAddon.CanvasAddon;
 const FitAddon = window.FitAddon.FitAddon;
-const ImageAddon = window.ImageAddon.ImageAddon;
+//const ImageAddon = window.ImageAddon.ImageAddon;
 //The following doesn't work - see https://github.com/xtermjs/xterm.js/issues/4424
 //const SerializeAddon = SerializeAddon.SerializeAddon;
 const WebglAddon = window.WebglAddon.WebglAddon;
@@ -27,11 +27,10 @@ class XTermPane extends DTerminal {
         super(windowNumber, "xterminal");
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon.SerializeAddon();
-        this.imageAddon = new ImageAddon(imageCustomSettings);
-        this.rendererType = 'canvas'; // 'dom' 'canvas' or 'webgl'
+        //this.imageAddon = new ImageAddon(imageCustomSettings);
     }
     initializeTerminal(_topNode) {
-        console.log("xterm.initializeTerminal");
+        this.rendererType = DTerminal.defaultXtRendererType;
         const xterm = this.terminal;
         this.xterm = xterm;
 
@@ -154,7 +153,7 @@ class XTermPane extends DTerminal {
         });
 
         xterm.loadAddon(this.fitAddon);
-        xterm.loadAddon(this.imageAddon);
+        //xterm.loadAddon(this.imageAddon);
         xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
         this.attachResizeSensor();
@@ -248,7 +247,6 @@ class XTermPane extends DTerminal {
     }
 
     updateCaretColor(caret, caretAccent, context) {
-        console.log("update/xw color.caret: "+caret+"/"+caretAccent);
         const theme = this.updateThemeLater(context);
         theme.cursor = caret;
         theme.cursorAccent = caretAccent;
