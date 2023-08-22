@@ -351,15 +351,10 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                                              resource->length,
                                              false, buffer);
             }
-            lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, NULL);
-            goto try_to_reuse;
-#else
-            const char* buf = fname;
-            int n = lws_serve_http_file(wsi, buf, content_type, NULL, 0);
-            if (n < 0 || ((n > 0) && lws_http_transaction_completed(wsi)))
-              return -1; /* error or can't reuse connection: close the socket */
-            break;
 #endif
+            lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND,
+                                   "<b>requested file not found</b>");
+            goto try_to_reuse;
     }
         case LWS_CALLBACK_HTTP_WRITEABLE:
             if (hclient->length) {
