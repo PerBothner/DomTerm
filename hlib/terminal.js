@@ -5919,18 +5919,21 @@ DomTerm.initSettings = function(term) {
                    let val = setting.value;
                    let v = Settings.stringAsBoolean(val);
                    const pane = context.pane;
-                   const isXtermjs = pane instanceof XTermPane;
+                   const isXtermjs = window.XTermPane &&
+                         pane instanceof XTermPane;
                    if (val === "dom" || val === "canvas" || val == "webgl")
                        v = 1;
                    else if (v > 0 && isXtermjs)
                        val = Terminal.defaultXtRendererType;
                    if (v < 0) {
-                       context.reportError(context, "invalid 'xtermjs' value "+JSON.stringify(val));
-                   } if (isXtermjs && v > 0) {
+                       context.reportError(context,
+                                           "invalid 'xtermjs' value "+JSON.stringify(val));
+                   } else if (isXtermjs && v > 0) {
                        pane.rendererType = val;
                        pane.setRendererType(val);
                    } else if (isXtermjs || v > 0) {
-                       context.reportError(context, "cannot disable/disable 'xtermjs' after start");
+                       context.reportError(context,
+                                           "cannot disable/disable 'xtermjs' after start");
                    }
                });
     function updateColor(setting, context) {
