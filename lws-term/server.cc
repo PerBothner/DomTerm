@@ -1301,12 +1301,6 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
     }
     if ((hoptions & LIB_WHEN_QT) != 0)
         obuf->printf("<script type='text/javascript' src='qrc:///qtwebchannel/qwebchannel.js'> </script>\n");
-    if ((hoptions & LIB_WHEN_OUTER) != 0)
-        obuf->printf("<script type='text/javascript'>\n"
-                     "DomTerm.server_port = %d;\n"
-                     "DomTerm.server_key = '%.*s';\n"
-                     "</script>\n",
-                     port, SERVER_KEY_LENGTH, server_key);
     obuf->printf("</head>\n<body>%.*s</body>\n</html>\n",
                  body_length, body_text);
 }
