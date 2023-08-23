@@ -159,6 +159,7 @@ maybe_exit(int exit_code)
 {
     lwsl_notice("maybe_exit %d sess:%d fr:%d cl:%s\n", exit_code, tserver.session_count, browser_cmd_clients.first() != nullptr, NO_TCLIENTS?"none":"some");
     if (tserver.session_count == 0
+        && ! main_options->http_server
         && browser_cmd_clients.first() == nullptr
         && NO_TCLIENTS)
         do_exit(exit_code, false);
@@ -739,6 +740,15 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     pclient->uses_packet_mode = packet_mode;
     tserver.session_count++;
 
+#if WITH_XTERMJS
+    std::string xtermjs_opt = get_setting_s(opts->settings, "xtermjs", "false");
+    int xtermjs_value = bool_value(xtermjs_opt.c_str());
+    if (xtermjs_value > 0 ||
+        (xtermjs_value < 0
+         && (xtermjs_opt == "dom" || xtermjs_opt == "canvas" || xtermjs_opt == "webgl"))) {
+        pclient->use_xtermjs = true;
+    }
+#endif
     int hint = t_hint ? t_hint->connection_number : -1;
     if (hint > 0 &&
         (! tty_clients.valid_index(hint) || pty_clients.valid_index(hint)))
@@ -1343,8 +1353,11 @@ open_window(const char *data, struct options *options)
     else if (! url) {
         arglist_t argv = default_command(options);
         char *cmd = find_in_path(argv[0]);
-        if (cmd != NULL)
+        if (cmd != NULL) {
             npclient = create_pclient(cmd, argv, options, false, nullptr);
+            if (npclient && npclient->use_xtermjs)
+                wkind = xterminal_window;
+        }
     }
     display_session(options, npclient, url, wkind);
     //if (wkind == main_only_window)
@@ -2322,6 +2335,7 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         }
         if (client == NULL) {
             client = new tty_client();
+            client->options = link_options(nullptr);
         }
         WSI_SET_TCLIENT(wsi, client);
         pclient = client->pclient;
@@ -2384,11 +2398,13 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
                 lws_callback_on_writable(wsi);
             }
         }
-        if (client->connection_number < 0)
-            client->set_connection_number(
+        if (client->connection_number < 0) {
+            wnum = client->set_connection_number(
                 reconnect_value > 0 && wnum > 0 ? wnum
                 : pclient ? pclient->session_number : -1);
-
+            if (client->main_window == 0)
+                main_windows.enter(client, wnum);
+        }
         // Defer start_pty so we can set up DOMTERM variable with version_info.
 
         if (main_options->verbosity > 0 || main_options->debug_level > 0) {
@@ -2551,16 +2567,6 @@ int new_action(int argc, arglist_t argv, struct options *opts)
     }
     enum window_kind wkind = dterminal_window;
     struct pty_client *pclient = create_pclient(cmd, args, opts, false, NULL);
-#if WITH_XTERMJS
-    std::string xtermjs_opt = get_setting_s(opts->settings, "xtermjs", "false");
-    int xtermjs_value = bool_value(xtermjs_opt.c_str());
-    if (xtermjs_value > 0 ||
-        (xtermjs_value < 0
-         && (xtermjs_opt == "dom" || xtermjs_opt == "canvas" || xtermjs_opt == "webgl"))) {
-        wkind = xterminal_window;
-        pclient->use_xtermjs = true;
-    }
-#endif
     int r = display_session(opts, pclient, nullptr, wkind);
     if (r == EXIT_FAILURE) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);

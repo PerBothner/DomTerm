@@ -316,7 +316,10 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 break;
             }
             int opts = 0;
-            if (strcmp(fname, "/simple.html") == 0)
+            if (port_specified && strcmp(fname, "/") == 0) {
+                opts = LIB_WHEN_OUTER|LIB_WHEN_SIMPLE;
+                // if xtermjs opts |= LIB_WHEN_XTERMJS
+            } else if (strcmp(fname, "/simple.html") == 0)
                 opts = LIB_WHEN_SIMPLE;
             else if (strcmp(fname, "/xtermjs.html") == 0)
                 opts = LIB_WHEN_XTERMJS;
