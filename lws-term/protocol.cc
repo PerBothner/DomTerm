@@ -1967,8 +1967,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
 
             if (to_proxy) {
                 clear_connection_number(client);
-                display_session(client->options, pclient,
-                                nullptr, dterminal_window);
+                display_terminal_session(client->options, pclient);
                 if (client->out_wsi && client->out_wsi != client->wsi) {
                     lwsl_notice("set_timeout clear tc:%p\n", client->wsi);
                     client->keep_after_unexpected_close = false;
@@ -2565,9 +2564,8 @@ int new_action(int argc, arglist_t argv, struct options *opts)
         printf_error(opts, "cannot execute '%s'", argv0);
         return EXIT_FAILURE;
     }
-    enum window_kind wkind = dterminal_window;
     struct pty_client *pclient = create_pclient(cmd, args, opts, false, NULL);
-    int r = display_session(opts, pclient, nullptr, wkind);
+    int r = display_terminal_session(opts, pclient);
     if (r == EXIT_FAILURE) {
         lws_set_timeout(pclient->pty_wsi, PENDING_TIMEOUT_SHUTDOWN_FLUSH, LWS_TO_KILL_SYNC);
     }
@@ -2625,8 +2623,7 @@ int attach_action(int argc, arglist_t argv, struct options *opts)
         tclient->initialized = 1;
         return EXIT_WAIT;
     }
-    return display_session(opts, pclient, nullptr,
-                           pclient->use_xtermjs ? xterminal_window : dterminal_window);
+    return display_terminal_session(opts, pclient);
 }
 
 int browse_action(int argc, arglist_t argv, struct options *opts)

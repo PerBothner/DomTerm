@@ -5933,7 +5933,7 @@ DomTerm.initSettings = function(term) {
                        pane.setRendererType(val);
                    } else if (isXtermjs || v > 0) {
                        context.reportError(context,
-                                           "cannot disable/disable 'xtermjs' after start");
+                                           "cannot enable/disable 'xtermjs' after start");
                    }
                });
     function updateColor(setting, context) {

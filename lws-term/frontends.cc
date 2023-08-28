@@ -955,3 +955,10 @@ display_session(struct options *options, struct pty_client *pclient,
     }
     return r;
 }
+
+int
+display_terminal_session(struct options *options, struct pty_client *pclient)
+{
+    return display_session(options, pclient, nullptr,
+                           pclient->use_xtermjs ? xterminal_window : dterminal_window);
+}

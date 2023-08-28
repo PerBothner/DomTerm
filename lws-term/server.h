@@ -440,6 +440,7 @@ extern bool is_SwayDesktop(void);
 extern int handle_command(int argc, arglist_t argv, struct options *opts);
 extern int display_session(struct options *, struct pty_client *,
                            const char *, enum window_kind);
+extern int display_terminal_session(struct options *, struct pty_client *);
 extern struct tty_client *display_pipe_session(struct options *, struct pty_client *);
 extern std::string default_browser_command();
 extern int do_run_browser(struct options *, struct tty_client*, const char *url, int wnum);
