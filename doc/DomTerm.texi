@@ -2334,7 +2334,7 @@ lighter background and a darker foreground colors.
 
 Whether @code{auto} works depends on browser and system support.
 It is known to work on Firefox on MacOS and Gnome;
-Electron and Wry on MacOS (but not Gnome); Epihany (on Gnome).
+Electron and Wry on MacOS (but not Gnome); Epiphany (on Gnome).
 
 @indsetting{color.background}
 @item @code{@b{color.background} =} @var{color}
@@ -3229,6 +3229,14 @@ To start DomTerm as a web server, run the @code{domterm} command
 with the @code{--port} option.
 It is highly recommended that you use https,
 with the @code{--ssl} option - see below.
+
+Use the @code{shell.default} setting to specify the command (shell) to be run for each connection.
+
+@strong{Warning:} Note that anyone who can connect with a web browser
+to the specified port can run the default command (or the
+@code{shell.default} override), with the permissions of the
+user starting the server. You probably want to set up a @code{guest} user,
+or set @code{shell.default} to some kind of @code{login} program.
 
 It is of course possible to run the @code{ssh} command from a
 DomTerm session, but that does not provide a persistent session on
@@ -5772,6 +5780,15 @@ substitutions and conditionals.
 Compare tmux's ``formats''. One idea is to use @samp{%} as an escape
 character, like extended printf-style formats.
 
+@subheading Value types
+
+A value can be string, number, boolean, hybrid, or a list of any of these.
+``Hybrid'' is used when we need to distinguish a quoted string from unquoted text, or a word that is a concatenation of values.
+A hybrid is represented using a vector, where even-indexed elements are quoted strings and odd-indexed elements are other values.
+Distinguishing a hybrid from a list depends on context - a vector is only to be interpreted as a hybrid is that is the desired type of an expression.
+
+The desired types of a template or template can be any of these types.
+
 @subsubheading Syntax
 
 @display
@@ -5785,8 +5802,27 @@ character, like extended printf-style formats.
 @var{conditional} ::= @var{condition} @var{phrase} [@var{condition-separator} @var{condition} @var{phrase}]+ [@var{condition-separator} @var{phrase}]?
 @end display
 
+@subsubheading Color settings/themes
+@table @asis
+@item @code{@b{color.black} =} @var{color}
+@item @code{@b{color.blue} =} @var{color}
+@item @code{@b{color.bright-blue} =} @var{color}
+Old css uses @code{--dt-lightblue} - i.e. ``light'' rather than
+``bright''.
+@item @code{@b{color.background} =} @var{color}
+@item @code{@b{color.cursor} =} @var{color}
+@item @code{@b{theme.}@var{theme-name}} = @var{object}
+For example:
+@example
+theme.solar = @{background: #fdf6e3, ... @}
+style.theme = solar
+@end example
+@end table
+If a specific @code{color.xxx} is defined (non-empty),
+it overrides the corresponding color in the theme.
+
 @subsubheading Parsing
-Parsing results is a nested structure that is encodable using a JSON.
+Parsing results in a nested structure that is encodable using a JSON.
 The parsing is normally done by the backend; the parse result may
 be forwarded to frontend as JSON.
 
