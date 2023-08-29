@@ -15,6 +15,18 @@ div.domterm {
     --main-dark-color: black;
 }
 div.domterm {
+    --selection-foreground-color: white;
+    --selection-background-color: #6060ff;
+    --selection-inactive-color: #8080a0;
+}
+div.domterm ::selection {
+    color: var(--selection-foreground-color);
+    background-color: var(--selection-inactive-color);
+}
+body.focused div.domterm-active ::selection {
+    background-color: var(--selection-background-color);
+}
+div.domterm {
     color: black; background-color: #fffff8; /* fallback if var not handled */
     --background-color: var(--main-light-color);
     --foreground-color: var(--main-dark-color);

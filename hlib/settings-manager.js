@@ -232,6 +232,8 @@ function evaluateTemplate(context, mode) {
     }
     if (need_map || need_arr)
         return result;
+    if (result.length === 0) // handle empty template
+       return evaluatePhrase(context, phraseMode);
     if (result.length !== 1)
         context.reportError(context, "unexpected multiple values");
     return result[0];

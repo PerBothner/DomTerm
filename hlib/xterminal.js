@@ -252,6 +252,13 @@ class XTermPane extends DTerminal {
         theme.cursorAccent = caretAccent;
     }
 
+    updateSelectionColor(foreground, background, inactive, context) {
+        const theme = this.updateThemeLater(context);
+        theme.selectionForeground = foreground;
+        theme.selectionBackground = background;
+        theme.selectionInactiveBackground = inactive;
+    }
+
     // based on code in ttyd
     setRendererType(value) {
         //const { terminal } = this;

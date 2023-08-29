@@ -534,6 +534,23 @@ class Terminal extends PaneInfo {
         }
     }
 
+    updateSelectionColor(foreground, background, inactive, context) {
+        const topStyle = this.topNode?.style;
+        const list = [
+            "--selection-foreground-color", foreground,
+            "--selection-background-color", background,
+            "--selection-inactive-color", inactive
+        ];
+        for (let i = 0; i < 6; i += 2) {
+            const propname = list[i];
+            const value = list[i+1];
+            if (value)
+                topStyle.setProperty(propname, value);
+            else
+                topStyle.removeProperty(propname);
+        }
+    }
+
     applicationCursorKeysMode() {
         return this.sstate.applicationCursorKeysMode;
     }
@@ -6010,6 +6027,16 @@ DomTerm.initSettings = function(term) {
                    const val1 = val.length > 0 ? val[0] : fgColor.value;
                    const val2 = val.length > 1 ? val[1] : bgColor.value;
                    context?.pane?.updateCaretColor(val1, val2, context);
+               });
+
+    addSetting("color.selection", Settings.LIST_VALUE|Settings.STRING_VALUE, "",
+               (setting, context) => {
+                   const val = setting.value;
+                   const v1 = val.length > 0 ? val[0] : "";
+                   const v2 = val.length > 1 ? val[1] : "";
+                   const v3 = val.length > 2 ? val[2]
+                         : val.length > 1 ? v2 : "";
+                   context?.pane?.updateSelectionColor(v1, v2, v3, context);
                });
 
     addSetting("keymap.line-edit", Settings.MAP_VALUE|Settings.STRING_VALUE, "",

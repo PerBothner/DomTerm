@@ -2413,6 +2413,15 @@ See @ref{caret styling}.
 The @var{caret-accent-color} is used for the foreground (text)
 when using a @code{block} or @code{blinking-block} caret.
 
+@indsetting{color.selection}
+@item @code{@b{color.selection} =} @var{text-color} @var{active-background-color} [@var{inactive-background-color}]
+@emph{Template.} Set the color of the selection.
+The @var{text-color} is used for the text (the foreground).
+The background color is @var{active-background-color} (in a focused window)
+or @var{inactive-background-color} (if the window does not have focus).
+If @var{active-background-color} is specified but
+@var{inactive-background-color} is not, then the former is used for the latter.
+
 @indsetting{window-scale}
 @item @code{@b{window-scale} =} @var{value}
 The @code{window-scale} setting scales (zooms) entire top-level
