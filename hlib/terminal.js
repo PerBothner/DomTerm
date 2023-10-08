@@ -535,6 +535,8 @@ class Terminal extends PaneInfo {
     }
 
     updateSelectionColor(foreground, background, inactive, context) {
+        if (! this.topNode)
+            return;
         const topStyle = this.topNode?.style;
         const list = [
             "--selection-foreground-color", foreground,
